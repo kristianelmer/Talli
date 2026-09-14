@@ -1,0 +1,90 @@
+npm run test:archive
+
+> talli-repository@0.1.0 test:archive
+> node --experimental-strip-types --test tests/archive_export.test.mjs && node --experimental-strip-types --test apps/web/tests/archive-rf1086-source.test.mjs
+
+✔ builds company-year archive from persisted workspace rows (3.119083ms)
+✔ archive download fetches only sanitized authority runs linked by submission id (1.520083ms)
+✔ archive ledger facts come through the generated capability query with a frozen projection (2.740375ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 106.551084
+✔ archive preserves frozen mixed chains except the exact owned RF, Tax and Accounts read retirements (18.181958ms)
+✔ archive preserves original selected opening and shareholder fields through the joined owner projection (57.998833ms)
+✔ a failing 2024 opening does not prevent a valid 2025 archive but still blocks the 2024 export (30.795542ms)
+✔ RF-only archive preserves original nested payload identities, requested year and company-wide history (12.472584ms)
+✔ actual generated RF archive transport isolates a malformed 2024 preview from the valid 2025 download (25.2535ms)
+✔ RF authority evidence is limited to retained submission references without adding a generic persistence call (10.386625ms)
+✔ owned sibling sources retain linked authority evidence and overlap never duplicates RF rows (11.197958ms)
+✔ unavailable rf source cannot complete the authoritative export (11.641625ms)
+✔ unavailable opening source cannot complete the authoritative export (8.921291ms)
+✔ unavailable tax source cannot complete the authoritative export (12.526791ms)
+✔ unavailable taxFiling source cannot complete the authoritative export (9.870333ms)
+✔ unavailable accountsFiling source cannot complete the authoritative export (11.961583ms)
+✔ unavailable audit_events source cannot complete the authoritative export (7.31775ms)
+✔ Accounts source errors retain priority and precede all sibling reads (6.900417ms)
+✔ authentication and step-up precede every source and export effect {"user":false} (10.442667ms)
+✔ authentication and step-up precede every source and export effect {"token":false} (7.037375ms)
+✔ authentication and step-up precede every source and export effect {"mfa":false} (6.361958ms)
+✔ empty retained history still rejects export and failed receipt never yields a downloadable archive (14.455667ms)
+✔ owned Tax source preserves all thirteen original fields beside unchanged RF history (7.64925ms)
+✔ owned Tax filing preserves nested payload and only linked evidence inside the Archive generation boundary (7.103458ms)
+✔ owned Accounts archive retains requested-year rows, company-wide comments, and only linked evidence (7.198416ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 591.798084
+npm run test:backup-restore
+
+> talli-repository@0.1.0 test:backup-restore
+> node --experimental-strip-types --test tests/backup_restore.test.mjs
+
+✔ company-tax evidence migration preserves an atomic reference-only backup boundary (1.115125ms)
+✖ backup manifest identifies launch-critical tables and object references (3.640875ms)
+✔ restore fixture preserves launch-critical accounting state in isolated workspace (0.797459ms)
+✔ company-tax submissions are counted and round-trip with generic filing submissions (0.253916ms)
+✔ restore integrity rejects missing and mismatched company-tax authority evidence pairs (0.262541ms)
+✔ restore integrity fails when corporate lifecycle rows or object metadata are incomplete (0.168875ms)
+✔ restore integrity reports missing object warning and missing critical rows (0.145041ms)
+✔ production restore launch gate requires recent passing restore test (0.119667ms)
+✔ corporate release and restore runbooks keep external gates explicitly pending (1.150291ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 8
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 90.077458
+
+✖ failing tests:
+
+test at tests/backup_restore.test.mjs:152:1
+✖ backup manifest identifies launch-critical tables and object references (3.640875ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(manifest.launchCriticalTables.includes("authority_test_runs"))
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/backup_restore.test.mjs:156:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

@@ -344,3 +344,65 @@ def test_explicit_backend_binding_requires_cutover_and_can_be_removed(database):
     assert db.execute("select inherit_option,set_option,admin_option from pg_auth_members where roleid='annual_accounts_filing_workflow_executor'::regrole and member='talli_ledger_backend'::regrole").fetchone() == (False, True, False)
     execute_binding(rollback=True)
     assert memberships(db) == before
+
+
+@pytest.mark.parametrize('risk,ready', [('warning', True), ('block', False)])
+def test_rf_release_reads_accounts_override_after_physical_retirement(database, risk, ready):
+    db = database
+    db.execute('update public.filing_overrides set risk_level=%s where id=%s', (risk, IDS['filing_overrides']))
+    db.execute("insert into public.filing_readiness_snapshots(company_id,income_year,obligation,status,ready,created_by) values(%s,2025,'aksjonaerregisteroppgaven','ready',true,%s)", (COMPANY, ACTORS['owner']))
+    apply(db, CUTOVER)
+    apply(db, CONTRACT)
+    with actor(db, role='shareholder_register_filing_executor'):
+        assert db.execute("select backend_system.rf1086_stored_release_inputs_v1(%s,2025,'aksjonaerregisteroppgaven')", (COMPANY,)).fetchone()[0] is ready
+    with actor(db, 'outsider', role='shareholder_register_filing_executor'):
+        assert db.execute("select backend_system.rf1086_stored_release_inputs_v1(%s,2025,'aksjonaerregisteroppgaven')", (COMPANY,)).fetchone()[0] is False
+
+
+@pytest.mark.parametrize('scopes', [['filing'], ['authority'], ['filing', 'authority']])
+def test_support_reads_exact_accounts_fields_only_with_open_current_case(database, scopes):
+    from uuid import uuid4
+
+    db = database
+    apply(db, CUTOVER)
+    apply(db, CONTRACT)
+    admin = ACTORS['owner']
+    operator = ACTORS['outsider']  # Deliberately has no company membership.
+    for identity, role in [(admin, 'admin'), (operator, 'support')]:
+        db.execute('update auth.users set email=%s where id=%s', (identity + '@example.invalid', identity))
+        db.execute('insert into public.support_operators(user_id,role,active) values(%s,%s,true)', (identity, role))
+    runner = db.execute('select current_user').fetchone()[0]
+    db.execute(sql.SQL('grant company_access_executor to {} with set true granted by {}').format(sql.Identifier(runner), sql.Identifier(runner)))
+
+    def identify(identity, fresh=True):
+        claims = json.dumps({'sub': identity, 'email': identity + '@example.invalid', 'role': 'authenticated',
+            'aal': 'aal2' if fresh else 'aal1', 'amr': [{'method': 'totp', 'timestamp': int(db.execute('select extract(epoch from now())').fetchone()[0])-1}]})
+        for key, value in [('talli.verified_actor_id', identity), ('talli.verified_actor_claims', claims)]:
+            db.execute('select set_config(%s,%s,true)', (key, value))
+        db.execute('set local role company_access_executor')
+
+    identify(admin)
+    case = db.execute("select * from public.company_access_grant_support_access(%s,%s,%s,'customer_request',%s,now()-interval '30 seconds',now()+interval '30 minutes')", (uuid4(), COMPANY, operator, scopes)).fetchone()[0]
+    identify(operator)
+    read = lambda: db.execute('select * from public.company_access_read_support_case(%s)', (case,)).fetchone()[3]
+    expect_error(db, 'support_access_not_available', read)
+    db.execute('select * from public.company_access_open_support_case(%s,%s)', (uuid4(), case)).fetchone()
+    result = read()
+    expected = {
+        'filing_submissions': ({'id', 'company_id', 'income_year', 'filing', 'status', 'updated_at'}, 2, 'filing'),
+        'authority_permissions': ({'id', 'company_id', 'obligation', 'production_enabled', 'updated_at'}, 1, 'authority'),
+        'authority_test_runs': ({'id', 'company_id', 'obligation', 'environment', 'status', 'test_reference', 'recorded_at'}, 1, 'authority'),
+    }
+    for family, (fields, count, scope) in expected.items():
+        assert len(result[family]) == (count if scope in scopes else 0)
+        for row in result[family]:
+            assert set(row) == fields
+            assert row['company_id'] == COMPANY
+    wrong_case = db.execute('select annual_accounts_filing.read_support_filing_history_v1(%s,%s)', (COMPANY, uuid4())).fetchone()[0]
+    assert wrong_case == {family: [] for family in expected}
+    identify(operator, fresh=False)
+    expect_error(db, 'support_access_not_available', read)
+    identify(admin)
+    db.execute("select * from public.company_access_revoke_support_access(%s,%s,'case_closed')", (uuid4(), case)).fetchone()
+    identify(operator)
+    expect_error(db, 'support_access_not_available', read)

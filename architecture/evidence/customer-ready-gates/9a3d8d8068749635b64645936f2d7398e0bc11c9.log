@@ -1,0 +1,2552 @@
+customer-ready-release-gate revision=9a3d8d8068749635b64645936f2d7398e0bc11c9
+startedAt=2026-09-14T11:50:50.694Z
+
+[schema-setup] command=git clone --depth 1 --branch v1.62.47 https://github.com/Skatteetaten/skattemeldingen.git
+Cloning into '/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-customer-ready-gate-hHKiC4/skattemeldingen'...
+warning: refs/tags/v1.62.47 980e1eab4d0de1e6582adc4fde9be029d55c4694 is not a commit!
+Note: switching to '7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+[schema-setup] exit=0
+[schema-setup] durationMs=7890
+
+[credential-scan] command=npm run test:credential-scan
+
+> talli-repository@0.1.0 test:credential-scan
+> node --test tests/committed_credentials.test.mjs && node scripts/check-committed-credentials.mjs
+
+✔ the credential scanner scans its own clean repository without matching itself (496.358ms)
+✔ the credential scanner rejects a tracked source credential (185.901792ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 737.904
+[credential-scan] exit=0
+[credential-scan] durationMs=1424
+
+[typecheck] command=npm run typecheck
+
+> talli-repository@0.1.0 typecheck
+> npm --prefix apps/web run typecheck
+
+
+> talli-web@0.1.0 typecheck
+> tsc --noEmit
+[typecheck] exit=0
+[typecheck] durationMs=1314
+
+[architecture] command=npm run check:architecture
+
+> talli-repository@0.1.0 check:architecture
+> node scripts/check-architecture.mjs --write-evidence && git diff --exit-code -- architecture/dependency-evidence.json
+
+{
+  "edges": [
+    {
+      "from": "backend-system:accounting-document-lifecycle",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend-system:annual-accounts-filing-preparation",
+      "imports": [
+        "talli_backend.modules.annual_accounts_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:annual_accounts_filing"
+    },
+    {
+      "from": "backend-system:annual-accounts-filing-reads",
+      "imports": [
+        "talli_backend.modules.annual_accounts_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:annual_accounts_filing"
+    },
+    {
+      "from": "backend-system:annual-accounts-readiness-preview",
+      "imports": [
+        "talli_backend.modules.annual_accounts_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:annual_accounts_filing"
+    },
+    {
+      "from": "backend-system:annual-accounts-source-facts",
+      "imports": [
+        "talli_backend.modules.annual_accounts_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:annual_accounts_filing"
+    },
+    {
+      "from": "backend-system:annual-accounts-tt02-evidence-import",
+      "imports": [
+        "talli_backend.modules.annual_accounts_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:annual_accounts_filing"
+    },
+    {
+      "from": "backend-system:annual-agreement-cleanup",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-billing-reads-and-cancellation",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-billing-support",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-provider-notification-intake",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-refund-recovery",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-support-agreement-cleanup-recovery",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:annual-support-refund-recovery",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:authority-connections-owner-lifecycle",
+      "imports": [
+        "talli_backend.modules.authority_connections.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:authority_connections"
+    },
+    {
+      "from": "backend-system:authority-connections-owner-lifecycle",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:authority-connections-state",
+      "imports": [
+        "talli_backend.modules.authority_connections.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:authority_connections"
+    },
+    {
+      "from": "backend-system:authority-connections-state",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:authority-operations",
+      "imports": [
+        "talli_backend.modules.authority_connections.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:authority_connections"
+    },
+    {
+      "from": "backend-system:banking-reconciliation",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
+      "from": "backend-system:billing-and-filing-entitlement",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:company-access-administration",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:company-access-context",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:company-access-onboarding-and-support",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:company-tax-assessment-previews",
+      "imports": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_tax_filing"
+    },
+    {
+      "from": "backend-system:company-tax-filing-preparation",
+      "imports": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_tax_filing"
+    },
+    {
+      "from": "backend-system:company-tax-filing-reads",
+      "imports": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_tax_filing"
+    },
+    {
+      "from": "backend-system:company-tax-settlement",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
+      "from": "backend-system:company-tax-settlement",
+      "imports": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_tax_filing"
+    },
+    {
+      "from": "backend-system:company-tax-settlement",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend-system:company-tax-settlement",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:company-tax-source-facts",
+      "imports": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_tax_filing"
+    },
+    {
+      "from": "backend-system:company-tax-tt02-evidence-import",
+      "imports": [
+        "talli_backend.modules.audit.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:audit"
+    },
+    {
+      "from": "backend-system:company-tax-tt02-evidence-import",
+      "imports": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_tax_filing"
+    },
+    {
+      "from": "backend-system:company-year-eligibility-and-admission",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.corporate_governance.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:corporate_governance"
+    },
+    {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:investment-activity",
+      "imports": [
+        "talli_backend.modules.banking.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:banking"
+    },
+    {
+      "from": "backend-system:investment-activity",
+      "imports": [
+        "talli_backend.modules.investments.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:investments"
+    },
+    {
+      "from": "backend-system:investment-activity",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:launch-signoff-records",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:ledger-posting-and-period-control",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:marketing-funnel-measurement",
+      "imports": [
+        "talli_backend.modules.marketing_measurement.public"
+      ],
+      "kind": "workflow",
+      "to": "backend-system:marketing_measurement"
+    },
+    {
+      "from": "backend-system:new-year-start",
+      "imports": [
+        "talli_backend.modules.ledger.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend-system:new-year-start",
+      "imports": [
+        "talli_backend.modules.shareholder_register_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:shareholder_register_filing"
+    },
+    {
+      "from": "backend-system:passive-validation-observation",
+      "imports": [
+        "talli_backend.modules.validation_observation.public"
+      ],
+      "kind": "workflow",
+      "to": "backend-system:validation_observation"
+    },
+    {
+      "from": "backend-system:shareholder-register-filing",
+      "imports": [
+        "talli_backend.modules.billing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:billing"
+    },
+    {
+      "from": "backend-system:shareholder-register-filing",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:shareholder-register-filing",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend-system:shareholder-register-filing",
+      "imports": [
+        "talli_backend.modules.shareholder_register_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:shareholder_register_filing"
+    },
+    {
+      "from": "backend-system:system-boundary-tracer",
+      "imports": [
+        "talli_backend.modules.system_boundary.public"
+      ],
+      "kind": "workflow",
+      "to": "backend-system:system_boundary"
+    }
+  ],
+  "generatedBy": "scripts/check-architecture.mjs",
+  "modules": [
+    "backend-system:marketing_measurement",
+    "backend-system:system_boundary",
+    "backend-system:validation_observation",
+    "backend:annual_accounts_filing",
+    "backend:audit",
+    "backend:authority_connections",
+    "backend:banking",
+    "backend:billing",
+    "backend:company_access",
+    "backend:company_tax_filing",
+    "backend:corporate_governance",
+    "backend:documents",
+    "backend:investments",
+    "backend:ledger",
+    "backend:shareholder_register_filing",
+    "web:annual-accounts-filing",
+    "web:authority-connections",
+    "web:banking",
+    "web:billing",
+    "web:company-access",
+    "web:company-tax-filing",
+    "web:corporate-governance",
+    "web:documents",
+    "web:investments",
+    "web:ledger",
+    "web:operator-controls",
+    "web:public-acquisition",
+    "web:shareholder-register-filing",
+    "web:system-boundary"
+  ],
+  "schemaVersion": "1.0",
+  "technicalOwnership": [
+    {
+      "owner": "backend-system",
+      "table": "annual_notification_inbox.receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.annual_accounts_migration_inventory"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.annual_accounts_migration_state"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.annual_accounts_quarantine"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.annual_accounts_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.annual_accounts_source_rows"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.annual_checkout_observation_work"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.authority_connections_overlap_grants"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_runs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.banking_migration_source_rows"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.company_tax_return_migration_inventory"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.company_tax_return_migration_state"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.company_tax_return_quarantine"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.company_tax_return_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.company_tax_return_source_rows"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_cursor_signing_keys"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_quarantine"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_runs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_migration_source_rows"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.ledger_workflow_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_consent_actions"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_funnel_events"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_funnel_withdrawals"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.marketing_measurement_releases"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.tax_settlement_migration_inventory"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.tax_settlement_migration_state"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.tax_settlement_quarantine"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.tax_settlement_reconciliations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.tax_settlement_source_rows"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_observation_control"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_observations"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_pilot_entitlements"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_reviewers"
+    },
+    {
+      "owner": "backend-system",
+      "table": "backend_system.validation_runs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "billing.billing_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "public.company_access_command_receipts"
+    },
+    {
+      "owner": "backend-system",
+      "table": "public.launch_signoffs"
+    },
+    {
+      "owner": "backend-system",
+      "table": "public.notification_outbox"
+    },
+    {
+      "owner": "backend-system",
+      "table": "shareholder_register_filing.migration_inventory"
+    },
+    {
+      "owner": "backend-system",
+      "table": "shareholder_register_filing.migration_quarantine"
+    },
+    {
+      "owner": "backend-system",
+      "table": "shareholder_register_filing.migration_state"
+    }
+  ]
+}
+[architecture] exit=0
+[architecture] durationMs=18143
+
+[boundary] command=npm run test:boundary
+
+> talli-repository@0.1.0 test:boundary
+> npm run test:boundary-backend && npm run test:boundary-web && npm run test:boundary-contract
+
+
+> talli-repository@0.1.0 test:boundary-backend
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests -m "not billing_database and not authority_database and not company_tax_database and not accounts_database"
+
+============================= test session starts ==============================
+platform darwin -- Python 3.12.12, pytest-8.4.1, pluggy-1.6.0
+rootdir: /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend
+configfile: pyproject.toml
+plugins: anyio-4.14.2
+collected 6671 items / 884 deselected / 5787 selected
+
+apps/backend/tests/test_altinn_authority_operations.py ................. [  0%]
+........................................................................ [  1%]
+.......................                                                  [  1%]
+apps/backend/tests/test_altinn_system_user.py .......................... [  2%]
+........................................................................ [  3%]
+...............                                                          [  3%]
+apps/backend/tests/test_annual_accounts_authority_ownership.py ......... [  4%]
+........................................................................ [  5%]
+.................                                                        [  5%]
+apps/backend/tests/test_annual_accounts_evidence.py .................... [  5%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [  9%]
+........................................................................ [ 10%]
+........................................................................ [ 12%]
+........................................................................ [ 13%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+........................................................................ [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 19%]
+........................................................................ [ 20%]
+........................................................................ [ 22%]
+........................................................................ [ 23%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 32%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 37%]
+..................................                                       [ 37%]
+apps/backend/tests/test_annual_accounts_filing.py ...................... [ 37%]
+........................................................................ [ 39%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+....................                                                     [ 42%]
+apps/backend/tests/test_annual_accounts_import_workflow.py ............. [ 42%]
+.............................                                            [ 42%]
+apps/backend/tests/test_annual_accounts_preparation.py .......           [ 42%]
+apps/backend/tests/test_annual_accounts_readiness_api.py ............... [ 43%]
+......                                                                   [ 43%]
+apps/backend/tests/test_annual_accounts_source_facts.py ................ [ 43%]
+.............                                                            [ 43%]
+apps/backend/tests/test_annual_accounts_workspace.py ................... [ 44%]
+                                                                         [ 44%]
+apps/backend/tests/test_annual_billing_api.py .......................... [ 44%]
+...............                                                          [ 44%]
+apps/backend/tests/test_annual_billing_policy.py ....................... [ 45%]
+................                                                         [ 45%]
+apps/backend/tests/test_annual_billing_runtime_configuration.py ........ [ 45%]
+...................................                                      [ 46%]
+apps/backend/tests/test_annual_checkout_api.py ......................... [ 46%]
+..........................                                               [ 47%]
+apps/backend/tests/test_annual_checkout_reconciliation_cli.py .......... [ 47%]
+.................                                                        [ 47%]
+apps/backend/tests/test_annual_checkout_service.py ..................... [ 47%]
+..............................                                           [ 48%]
+apps/backend/tests/test_annual_cleanup_api.py .......................... [ 48%]
+.......                                                                  [ 49%]
+apps/backend/tests/test_annual_cleanup_service.py ...................... [ 49%]
+.............                                                            [ 49%]
+apps/backend/tests/test_annual_notification_intake.py .................. [ 49%]
+...........                                                              [ 50%]
+apps/backend/tests/test_annual_observation_service.py .................. [ 50%]
+........                                                                 [ 50%]
+apps/backend/tests/test_annual_refund_recovery_api.py .................. [ 50%]
+...                                                                      [ 50%]
+apps/backend/tests/test_annual_refund_recovery_service.py .............. [ 51%]
+...........                                                              [ 51%]
+apps/backend/tests/test_annual_refund_service.py ....................... [ 51%]
+...............................                                          [ 52%]
+apps/backend/tests/test_annual_refund_targets_api.py ................    [ 52%]
+apps/backend/tests/test_annual_support_api.py .................          [ 52%]
+apps/backend/tests/test_annual_support_cleanup_api.py .................. [ 53%]
+.......                                                                  [ 53%]
+apps/backend/tests/test_annual_support_cleanup_service.py .............. [ 53%]
+..............                                                           [ 53%]
+apps/backend/tests/test_annual_support_refund_recovery_api.py .......... [ 53%]
+..................                                                       [ 54%]
+apps/backend/tests/test_annual_support_refund_recovery_service.py ...... [ 54%]
+...................                                                      [ 54%]
+apps/backend/tests/test_annual_support_refund_targets_api.py ........... [ 54%]
+......                                                                   [ 55%]
+apps/backend/tests/test_authority_callback_transport.py ...........      [ 55%]
+apps/backend/tests/test_authority_connections_api.py .................   [ 55%]
+apps/backend/tests/test_authority_connections_service.py ............... [ 55%]
+.................................                                        [ 56%]
+apps/backend/tests/test_authority_connections_state_workflow.py .....    [ 56%]
+apps/backend/tests/test_authority_filing_tools.py ...................... [ 56%]
+......................................................                   [ 57%]
+apps/backend/tests/test_authority_filing_transports.py ................. [ 58%]
+.............................................                            [ 58%]
+apps/backend/tests/test_authority_operations.py ........................ [ 59%]
+.....                                                                    [ 59%]
+apps/backend/tests/test_authority_operations_api.py ............         [ 59%]
+apps/backend/tests/test_authority_tool_grant.py ........................ [ 59%]
+...........                                                              [ 60%]
+apps/backend/tests/test_authority_tool_rf1086.py ....................... [ 60%]
+.....................                                                    [ 60%]
+apps/backend/tests/test_banking.py ..........                            [ 61%]
+apps/backend/tests/test_banking_api.py ....                              [ 61%]
+apps/backend/tests/test_banking_connections_api.py ..                    [ 61%]
+apps/backend/tests/test_banking_consent.py ....                          [ 61%]
+apps/backend/tests/test_banking_file_fallback.py .....                   [ 61%]
+apps/backend/tests/test_banking_file_workflow.py .                       [ 61%]
+apps/backend/tests/test_banking_provider_adapters.py ....                [ 61%]
+apps/backend/tests/test_banking_provider_contract.py ...                 [ 61%]
+apps/backend/tests/test_banking_public_contract.py ..                    [ 61%]
+apps/backend/tests/test_banking_sync.py ....                             [ 61%]
+apps/backend/tests/test_banking_workflow.py .                            [ 61%]
+apps/backend/tests/test_billing.py ............                          [ 61%]
+apps/backend/tests/test_billing_api.py ......                            [ 61%]
+apps/backend/tests/test_billing_equivalence.py ......................... [ 62%]
+................                                                         [ 62%]
+apps/backend/tests/test_billing_provider.py .....                        [ 62%]
+apps/backend/tests/test_company_access.py .............................. [ 63%]
+....                                                                     [ 63%]
+apps/backend/tests/test_company_cancellation_lifecycle.py .............. [ 63%]
+...........                                                              [ 63%]
+apps/backend/tests/test_company_eligibility.py ......................... [ 64%]
+................................                                         [ 64%]
+apps/backend/tests/test_company_onboarding.py ....................       [ 65%]
+apps/backend/tests/test_company_onboarding_migration.py ...              [ 65%]
+apps/backend/tests/test_company_support_access.py .....                  [ 65%]
+apps/backend/tests/test_company_tax_authority_payload.py ........        [ 65%]
+apps/backend/tests/test_company_tax_evidence_import.py ................. [ 65%]
+....                                                                     [ 65%]
+apps/backend/tests/test_company_tax_filing.py ...................        [ 65%]
+apps/backend/tests/test_company_tax_filing_api.py ...................... [ 66%]
+.....                                                                    [ 66%]
+apps/backend/tests/test_company_tax_filing_workflow.py ........          [ 66%]
+apps/backend/tests/test_company_tax_preparation.py ..................... [ 66%]
+....                                                                     [ 67%]
+apps/backend/tests/test_company_tax_readiness.py ....................... [ 67%]
+........................................................................ [ 68%]
+........................................................................ [ 69%]
+................................................................         [ 71%]
+apps/backend/tests/test_company_tax_rehearsal.py ....................... [ 71%]
+........................................................................ [ 72%]
+...............                                                          [ 72%]
+apps/backend/tests/test_company_tax_return_characterization.py ......... [ 73%]
+........................................................................ [ 74%]
+........................................................................ [ 75%]
+....                                                                     [ 75%]
+apps/backend/tests/test_company_tax_source_facts.py .................... [ 75%]
+.......                                                                  [ 76%]
+apps/backend/tests/test_company_tax_workspace.py ...........             [ 76%]
+apps/backend/tests/test_corporate_governance.py ....................     [ 76%]
+apps/backend/tests/test_corporate_governance_api.py .........            [ 76%]
+apps/backend/tests/test_corporate_governance_public_contract.py ...      [ 76%]
+apps/backend/tests/test_corporate_governance_supported_events.py ....... [ 76%]
+..........                                                               [ 77%]
+apps/backend/tests/test_corporate_governance_workflow.py ............... [ 77%]
+.                                                                        [ 77%]
+apps/backend/tests/test_documents.py ............                        [ 77%]
+apps/backend/tests/test_documents_api.py ...                             [ 77%]
+apps/backend/tests/test_investments.py .......................           [ 78%]
+apps/backend/tests/test_investments_api.py .............                 [ 78%]
+apps/backend/tests/test_investments_public_contract.py ...               [ 78%]
+apps/backend/tests/test_investments_supported_patterns.py .............. [ 78%]
+.........                                                                [ 78%]
+apps/backend/tests/test_investments_workflow.py ..........               [ 78%]
+apps/backend/tests/test_json_transport.py ..                             [ 78%]
+apps/backend/tests/test_launch_signoffs_api.py ............              [ 79%]
+apps/backend/tests/test_ledger.py ..........................             [ 79%]
+apps/backend/tests/test_ledger_api.py .......................            [ 80%]
+apps/backend/tests/test_ledger_company_year_close.py ................... [ 80%]
+                                                                         [ 80%]
+apps/backend/tests/test_ledger_corrections.py ...........                [ 80%]
+apps/backend/tests/test_ledger_full_year_reconstruction.py ............  [ 80%]
+apps/backend/tests/test_ledger_opening_bank_input.py ............        [ 80%]
+apps/backend/tests/test_ledger_public_contract.py ........               [ 81%]
+apps/backend/tests/test_ledger_supported_patterns.py ................... [ 81%]
+.............................................                            [ 82%]
+apps/backend/tests/test_ledger_workflow.py .......                       [ 82%]
+apps/backend/tests/test_legacy_billing_retirement.py ................... [ 82%]
+.............                                                            [ 82%]
+apps/backend/tests/test_legacy_rf1086_api.py ....................        [ 83%]
+apps/backend/tests/test_marketing_measurement_api.py ........            [ 83%]
+apps/backend/tests/test_maskinporten.py ................................ [ 83%]
+.....................................                                    [ 84%]
+apps/backend/tests/test_new_year_opening.py ........                     [ 84%]
+apps/backend/tests/test_postgres_authority_connections.py ......         [ 84%]
+apps/backend/tests/test_postgres_shareholder_register_filing.py ........ [ 84%]
+....................                                                     [ 85%]
+apps/backend/tests/test_rf1086_archive_source.py ....................... [ 85%]
+.....                                                                    [ 85%]
+apps/backend/tests/test_rf1086_authority.py ............................ [ 86%]
+........................................................................ [ 87%]
+.........................                                                [ 87%]
+apps/backend/tests/test_rf1086_cli_equivalence.py .................      [ 88%]
+apps/backend/tests/test_rf1086_offline_equivalence.py .................. [ 88%]
+....                                                                     [ 88%]
+apps/backend/tests/test_rf1086_preparation.py .......................... [ 89%]
+.........................                                                [ 89%]
+apps/backend/tests/test_rf1086_rule_equivalence.py ..................... [ 89%]
+.......                                                                  [ 89%]
+apps/backend/tests/test_rf1086_source_facts.py ......................... [ 90%]
+................                                                         [ 90%]
+apps/backend/tests/test_shareholder_register_filing_api.py ............. [ 90%]
+........................................................................ [ 92%]
+.......................                                                  [ 92%]
+apps/backend/tests/test_shareholder_register_filing_contract.py ...      [ 92%]
+apps/backend/tests/test_shareholder_register_filing_production.py ...... [ 92%]
+........................................................................ [ 93%]
+................................................................         [ 95%]
+apps/backend/tests/test_supabase_banking.py ............                 [ 95%]
+apps/backend/tests/test_supabase_corporate_governance.py ...........     [ 95%]
+apps/backend/tests/test_supabase_documents.py .....                      [ 95%]
+apps/backend/tests/test_supabase_investments.py ...............          [ 95%]
+apps/backend/tests/test_supabase_ledger.py ............................. [ 96%]
+......................................................                   [ 97%]
+apps/backend/tests/test_supabase_marketing_measurement.py s              [ 97%]
+apps/backend/tests/test_supabase_validation_observation.py s             [ 97%]
+apps/backend/tests/test_system_boundary.py ......                        [ 97%]
+apps/backend/tests/test_validation_observation.py .................      [ 97%]
+apps/backend/tests/test_vipps_billing.py ............................... [ 98%]
+.......................                                                  [ 98%]
+apps/backend/tests/test_vipps_mt_conformance_runner.py ................. [ 98%]
+...........................................                              [ 99%]
+apps/backend/tests/test_vipps_webhook.py .......................         [100%]
+
+========= 5785 passed, 2 skipped, 884 deselected in 178.68s (0:02:58) ==========
+
+> talli-repository@0.1.0 test:boundary-web
+> node --experimental-strip-types --test apps/web/tests/system-boundary-presentation.test.mjs apps/web/tests/banking-presentation.test.mjs apps/web/tests/banking-connection-presentation.test.mjs apps/web/tests/company-access-presentation.test.mjs apps/web/tests/company-access-administration.test.mjs apps/web/tests/company-access-cancellation.test.mjs apps/web/tests/company-access-onboarding.test.mjs apps/web/tests/company-access-stage-exit.test.mjs apps/web/tests/company-access-action-recovery.test.mjs apps/web/tests/company-eligibility.test.mjs apps/web/tests/company-year-eligibility-gate.test.mjs apps/web/tests/corporate-governance-draft-lifecycle.test.mjs apps/web/tests/corporate-governance-presentation.test.mjs apps/web/tests/corporate-governance-transport.test.mjs apps/web/tests/documents-presentation.test.mjs apps/web/tests/investments-presentation.test.mjs apps/web/tests/invitation-side-effects.test.mjs apps/web/tests/internal-redirect.test.mjs apps/web/tests/ledger-audit-side-effects.test.mjs apps/web/tests/ledger-presentation.test.mjs apps/web/tests/company-tax-transport.test.mjs apps/web/tests/ledger-writer-transport.test.mjs apps/web/tests/marketing-measurement.test.mjs apps/web/tests/owner-mfa-transition.test.mjs apps/web/tests/reauthentication.test.mjs apps/web/tests/public-acquisition.test.mjs tests/customer_agreement_actions.test.mjs tests/customer_agreement_reacceptance_ui.test.mjs apps/web/tests/operator-read-recovery.test.mjs apps/web/tests/authority-connections-transport.test.mjs tests/authority_connections_retirement.test.mjs apps/web/tests/shareholder-register-filing-transport.test.mjs && node --test tests/rf1086_workspace_fixture_safety.test.mjs tests/shareholder_register_browser_fixture_safety.test.mjs tests/rf1086_mixed_actions.test.mjs tests/rf1086_workspace_composition.test.mjs tests/company_tax_workspace_composition.test.mjs tests/annual_accounts_workspace_composition.test.mjs tests/annual_accounts_client.test.mjs
+
+✔ company connection reads batch more than 100 memberships without dropping or trusting unrelated records (59.818084ms)
+✔ authorityConnectionsStartSystemUserRequest carries only intent identity through authenticated no-store generated transport (0.514792ms)
+✔ authorityConnectionsRetrySystemUserRequest carries only intent identity through authenticated no-store generated transport (0.253459ms)
+✔ authorityConnectionsReconcileSystemUserRequest carries only intent identity through authenticated no-store generated transport (0.230417ms)
+✔ callback generated transport forwards proof separately from its sole request identity (0.281875ms)
+✔ generated authority result rejects unknown statuses and malformed response contracts (0.654583ms)
+✔ generated operator mutation preserves exact audit identity and redacted response (0.75625ms)
+✔ technical signoff command has no recording actor or trusted timestamp (0.370208ms)
+✔ connection presentation exposes only masked account, coverage and freshness (0.711625ms)
+✔ recovery states give one calm next action and make missing coverage visible (5.4855ms)
+✔ banking transport follows opaque pages through the generated client (45.625916ms)
+✔ bank file transport persists a backend preview before explicit acceptance (1.0515ms)
+✔ banking presentation preserves the frozen consumer shape without recreating policy (0.64325ms)
+✔ banking error presentation preserves retry identity only for unknown outcomes (0.151709ms)
+✔ create_invitation:outbox remains reachable and recovery finishes without another command (1.054542ms)
+✔ create_invitation:audit remains reachable and recovery finishes without another command (0.165125ms)
+✔ accept_invitation:audit remains reachable and recovery finishes without another command (0.150083ms)
+✔ revoke_invitation:audit remains reachable and recovery finishes without another command (0.150292ms)
+✔ resend_invitation:outbox remains reachable and recovery finishes without another command (0.16825ms)
+✔ resend_invitation:audit remains reachable and recovery finishes without another command (0.841583ms)
+✔ recovery actor comes from the server context and cannot claim another actor's continuation (0.171166ms)
+✔ delivery persistence is owned by atomic completion, never by a browser outbox insert (0.1145ms)
+✔ company-access administration transport uses only generated client operations (78.643666ms)
+✔ generated decoders fail closed on every unknown or token-shaped invitation field (1.025166ms)
+✔ cancellation lifecycle transport uses generated operations with bearer and deadline (40.134792ms)
+✔ generated cancellation decoders reject malformed optional fields, UUIDs, and timestamps (3.369125ms)
+✔ generated review decoder enforces evidence-reference length bounds (2.98975ms)
+✔ truncated successful command JSON becomes a typed 502 and preserves the operation (0.739416ms)
+✔ every concurrent archive source failure trips the completion barrier (1.092334ms)
+✔ actions preserve exact cancellation inputs for network and decoder failures (0.099834ms)
+✔ web cancellation lifecycle has no direct Supabase persistence or caller-owned proof (16.509333ms)
+✔ an unknown organization keeps the specific Enhetsregisteret guidance (1.692875ms)
+✔ agreement reacceptance uses an authenticated generated-client request (29.288208ms)
+✔ actions and agreement gates have no direct business-persistence facade (10.339375ms)
+✔ company-access and system-boundary transports share typed fail-closed backend configuration (20.525625ms)
+✔ both transports reject remote HTTP in every Node environment (0.438917ms)
+✔ company-access and system-boundary accept the same HTTPS and loopback origins (45.209375ms)
+✔ company-access transport sends the established session only through the generated client (1.792584ms)
+✔ the company-access app boundary owns its presentation model instead of a Supabase row DTO (19.120541ms)
+✔ owner context preserves the admitted company-year and current safety gate (0.839875ms)
+✔ company record presentation maps the generated camel-case contract to existing web registry facts (0.123167ms)
+✔ company-access transport fails closed on a partial context response (0.322666ms)
+✔ generated company-context decoder rejects lower assurance, lower scope, and non-owner roles (0.422167ms)
+✔ company records and case-bound operator access use authenticated generated-client operations (5.882875ms)
+✔ a verified user without an owner company reaches onboarding but other context failures stay closed (0.364334ms)
+✔ system-user callback delegates relationship authorization to the verified backend boundary (1.272042ms)
+✔ every Stage 1 web consumer authorizes through company-access contracts (164.518041ms)
+✔ stale admission evidence gets a truthful restart route (0.685167ms)
+✔ precheck and definitive eligibility use public generated-client calls (124.812334ms)
+✔ company-year admission is authenticated and carries the exact immutable boundary (0.928333ms)
+✔ company-year recheck is authenticated, trigger-bound, and fail-closed decoded (0.855834ms)
+✔ the functional public journey owns no policy, direct fetch, or business persistence (19.284792ms)
+✔ preview sends original facts and returns authoritative normalized payload and account lines (40.878791ms)
+✔ capture keeps released path and stable identity without retrying an ambiguous outcome (1.086542ms)
+✔ generated preview guard rejects malformed backend output (0.503625ms)
+✔ generated preview guard rejects malformed backend output (0.369375ms)
+✔ generated preview guard rejects malformed backend output (7.836709ms)
+✔ Archive read preserves all source fields and conceals malformed or foreign output as a failed source (4.141708ms)
+✔ submission preserves the original coded validation redirect: bad-date-shape (0.129584ms)
+✔ submission preserves the original coded validation redirect: zero (0.037417ms)
+✔ submission preserves the original coded validation redirect: negative (0.04175ms)
+✔ submission preserves the original coded validation redirect: unknown-kind (0.25875ms)
+✔ submission preserves the original coded validation redirect: unknown-document-status (0.060167ms)
+✔ submission preserves the original coded validation redirect: payable-with-bank (0.0365ms)
+✔ submission preserves the original coded validation redirect: validation-order (0.035375ms)
+✔ unparseable amount text retains backend-owned validation: abc (0.783583ms)
+✔ unparseable amount text retains backend-owned validation: Infinity (0.411417ms)
+✔ unparseable amount text retains backend-owned validation: 1,5 (0.266416ms)
+✔ filing workspace keeps a failed source unavailable and checks returned scope (1.322625ms)
+✔ TT02 import preserves evidence bytes, IDs, replay and MFA presentation (0.549166ms)
+✔ TT02 presenter distinguishes projection validation from persistence rejection (0.066625ms)
+✔ Tax preparation sends generated commands and rejects foreign scope (0.587625ms)
+✔ Tax lookup and acknowledgement only return absence for an explicit owned not-found (0.695625ms)
+✔ TT02 import retains the missing-company message (0.066875ms)
+✔ Tax assessment previews send ordered source facts unchanged through generated endpoints (0.423125ms)
+✔ readiness transport rejects wrong scope or corrupt policy output (0.199708ms)
+✔ readiness transport rejects wrong scope or corrupt policy output (0.138917ms)
+✔ readiness transport rejects wrong scope or corrupt policy output (0.157333ms)
+✔ readiness transport rejects wrong scope or corrupt policy output (0.132333ms)
+✔ generated Tax source client binds company/year and preserves complete empty-history evidence (0.5325ms)
+✔ generated Tax source client refuses incomplete shapes and mismatched scope (20.614292ms)
+✔ the recheck helper carries future serialized triggers through the API (4.083959ms)
+✔ a blocked recheck stops the consequential operation and preserves its next step (0.311792ms)
+✔ missing admission and provider failure both fail closed (0.168667ms)
+✔ registration failure removes every newly persisted governance document (1.900833ms)
+✔ registration failure preserves cleanup failures for reconciliation (0.243208ms)
+✔ governance errors expose stable Norwegian owner guidance (0.568917ms)
+✔ shareholder-loan form presentation explains treatment without exposing posting policy (0.456917ms)
+✔ shareholder-loan errors never fall through to dividend guidance (0.1ms)
+✔ only transport and server failures preserve an unknown-outcome retry (0.075167ms)
+✔ decision-facts transport sends only identity and accepts the generated response (45.632542ms)
+✔ owner-dividend lifecycle transport preserves path and idempotency evidence (0.456875ms)
+✔ owner-dividend transport rejects malformed lifecycle responses (0.476292ms)
+✔ shareholder-loan transport preserves identity and rejects malformed responses (0.40825ms)
+✔ document presentation is a transport-only shape conversion (0.902167ms)
+✔ signed upload uses exactly the backend-issued object and finalizes once (72.36525ms)
+✔ an ambiguous signed-transfer error is not blindly finalized (0.705208ms)
+✔ invitation login continuation accepts only same-origin absolute paths (0.539375ms)
+✔ investments transport uses generated routes, auth, idempotency, and opaque paging (33.715834ms)
+✔ investment unit reads reject lossy wire values (1.140125ms)
+✔ investment position reads preserve contract-declared lifecycle movement facts (0.257792ms)
+✔ investment unit presentation stays decimal-string exact (0.182042ms)
+✔ investments presentation maps canonical wire facts without owning policy (1.65775ms)
+✔ investments errors preserve retry identity only for unknown outcomes (0.272917ms)
+✔ investment actions require explicit owner and dividend attestations (2.449375ms)
+✔ investment wizard controls can shrink inside the mobile grid (1.238625ms)
+✔ side-effect identity is deterministic, actor-scoped, and purpose-scoped (0.859083ms)
+✔ two actors can reuse one operation id without losing audit evidence (0.701583ms)
+✔ same-actor retry reconciles exact rows and recovers an audit failure (0.384875ms)
+✔ foreign rows are not an oracle because actor-derived ids never trigger their lookup (0.121375ms)
+✔ ledger audit identity is deterministic and actor scoped (0.969458ms)
+✔ ledger audit replay reconciles the exact immutable row (0.515542ms)
+✔ ledger audit failure cannot be reported as success (0.403167ms)
+✔ an in-progress idempotent command preserves its operation id for retry (1.194333ms)
+✔ ledger errors keep the frozen plain-Norwegian guidance (0.197166ms)
+✔ year-scoped opening transport sends one exact company/year read and preserves zero or one row (22.562917ms)
+✔ year-scoped opening transport rejects another year without a broader or repeated read (18.269083ms)
+✔ year-scoped opening transport rejects another company without a broader or repeated read (6.555542ms)
+✔ year-scoped opening transport rejects multiple snapshots without a broader or repeated read (1.447167ms)
+✔ year-scoped opening transport rejects a continuation page without a broader or repeated read (0.420292ms)
+✔ year-scoped opening transport rejects a hidden continuation cursor without a broader or repeated read (0.351875ms)
+✔ year-scoped opening transport rejects an incomplete page without a broader or repeated read (0.295833ms)
+✔ year-scoped opening transport rejects inconsistent share capital without a broader or repeated read (0.939625ms)
+✔ year-scoped opening transport rejects a holder bound to another setup without a broader or repeated read (0.526291ms)
+✔ year-scoped opening transport rejects inconsistent shareholder totals without a broader or repeated read (0.301375ms)
+✔ opening-snapshot transport chunks companies and follows opaque pages (1.326833ms)
+✔ opening-snapshot compatibility projection preserves the frozen shape (0.156417ms)
+✔ opening-snapshot decoders reject malformed collections and invariants (0.648ms)
+✔ ledger query transport follows opaque pages through the generated client (2.132458ms)
+✔ reconstruction readiness comes from the generated backend contract (0.486458ms)
+✔ current company-year close comes from the generated read-only backend contract (0.602958ms)
+✔ company-year close presentation distinguishes stale and blocked assessments (0.1055ms)
+✔ generated reconstruction decoder rejects unknown gap codes (0.196042ms)
+✔ generated reconstruction decoder preserves historical null and rejects partial bindings (0.316166ms)
+✔ generated company-year close decoder rejects unknown gap codes (0.130916ms)
+✔ generated ledger query rejects a partial expanded source pair (0.240833ms)
+✔ source-aware ledger query fails closed against a source-unaware backend (0.2115ms)
+✔ source-aware ledger queries opt into the expanded response (0.160417ms)
+✔ ledger mutation transport injects decimal money and idempotency headers (0.263917ms)
+✔ administrative-cost transport requires exact purpose-bound success evidence (0.453084ms)
+✔ new-year start uses the generated atomic workflow without exposing ledger lines (0.223833ms)
+✔ new-year start rejects malformed or non-opening success evidence (0.216375ms)
+✔ opening setup action has no direct business persistence or duplicate posting policy (3.326042ms)
+✔ manual journals and period locks reconcile their frozen audit continuation (0.60875ms)
+✔ ledger presentation maps generated facts without recreating posting policy (0.335917ms)
+✔ opening entries recover their setup identity from canonical ledger source facts (0.262625ms)
+✔ archive presentation preserves the complete frozen ledger row projection (0.118ms)
+✔ ledger period-lock transport returns an empty result without a backend call (0.074833ms)
+✔ every approved ledger-coordinator form submits one operation ID (2.088958ms)
+✔ client action wizards keep one stable operation ID for their mounted form (0.159458ms)
+✔ ledger retry IDs are plumbed only to the matching page form (0.343208ms)
+✔ all relocated transactional writers use the stable operation ID at the generated boundary (0.615083ms)
+✔ share purchases and sales use the investments generated interface (0.513667ms)
+✔ share-sale wizard submits intent without duplicating authoritative FIFO policy (0.135209ms)
+✔ committed retries reach the coordinator before mutable legacy state can reject them (0.406875ms)
+✔ unknown coordinator outcomes preserve only the scoped retry operation (0.592083ms)
+✔ apps/web/tests/ledger-writer-transport.test.mjs (243.195417ms)
+✔ consented anonymous funnel events accept only the bounded public vocabulary (7.738459ms)
+✔ the first-party endpoint records one consented event without caching it (27.547958ms)
+✔ the generated backend client receives only an irreversible session hash (1.094166ms)
+✔ consent withdrawal deletes the bounded anonymous session through the same origin (0.522ms)
+✔ the beacon-compatible POST endpoint accepts only the bounded withdrawal command (0.433958ms)
+✔ the first-party endpoint rejects an oversized chunked body while streaming (0.758042ms)
+✔ the browser creates no optional storage before explicit consent and expires it after thirty minutes (0.339541ms)
+✔ funnel producers emit only a bounded event from an active consent session (0.216125ms)
+✔ the operator view consumes aggregate report fields without exposing raw identifiers (4.760208ms)
+✔ consent presentation uses accurate session wording and equal choices (1.389708ms)
+✔ support entry authorizes before protected reads and preserves its recovery destination (240.538209ms)
+✔ marketing entry authorizes before protected reads and preserves its recovery destination (20.844ms)
+✔ failed case or annual read suppresses ancillary reads, mutation controls and protected evidence (52.283041ms)
+✔ malformed or duplicate case/cursor selection never triggers protected page loaders (52.0535ms)
+✔ authorized support-role entry retains ordinary support and marketing behavior (14.227917ms)
+✔ presentation shell leaves scoped auth recovery to each page without mutating the session (3.839167ms)
+✔ page access preserves missing/rejected sessions, provider errors and both authorized operator roles (16.322292ms)
+✔ complete operator selection survives login and MFA without losing either cursor (22.301125ms)
+✔ malformed, duplicate and orphan operator selection cannot invoke protected loaders (145.061042ms)
+✔ late selected-target failure keeps full recovery destination and suppresses ancillary controls (41.37725ms)
+✔ owner AAL2 is distinguished from other context failures without weakening the gate (0.957875ms)
+✔ owner MFA inspection chooses enrollment, challenge, or verified state and fails closed (0.242833ms)
+✔ enrollment and verification expose no provider errors and only resume after confirmed AAL2 (0.368542ms)
+✔ explicit fresh MFA intent challenges an existing AAL2 session without a browser age decision (0.15675ms)
+✔ owner transition is reachable after company-year admission and exposes an accessible, Norwegian MFA gate (7.306ms)
+✔ the public offer stays in free recruitment mode with one eligibility action (1.010959ms)
+✔ the three-step eligibility explanation keeps its visual order for assistive technology (0.084541ms)
+✔ the static homepage renders every required offer field in the approved order (0.216958ms)
+✔ the recruitment homepage presents the approved annual offer exactly (0.077916ms)
+✔ the public offer carries the approved proof links, minimum FAQ, and final eligibility invitation (1.476292ms)
+✔ the complete public company-year promise is pinned to the canonical manifest (0.157583ms)
+✔ live claims and checkout deny by default and every ad stop rule is binding (0.254583ms)
+✔ the indexable public route set carries canonical metadata and no live overclaim (0.664375ms)
+✔ explicit reauthentication displays the login form despite a backend-rejected but valid Supabase session (22.643792ms)
+✔ ordinary signed-in login and signup redirects and unconfirmed-user gate remain intact (159.366625ms)
+✔ signIn preserves explicit reauthentication and next through failures (73.3465ms)
+✔ signInWithGoogle preserves explicit reauthentication and next through failures (13.800833ms)
+✔ successful password login consumes recovery intent; ordinary unconfirmed credentials keep verification recovery (4.758125ms)
+✔ Google startup carries recovery through its callback URL (3.009167ms)
+✔ the Google form carries the same explicit recovery intent as password sign-in (11.108458ms)
+✔ denied, missing, failed and unavailable OAuth callbacks return to an actionable recovery login (60.39725ms)
+✔ successful callback returns to the scoped page while ordinary email confirmation failure is unchanged (5.263875ms)
+✔ retained history reads keep every requested company and all years with authenticated no-store transport (19.851542ms)
+✔ archive source requests exactly one company/year and retains company-wide review facts (1.446292ms)
+✔ archive source rejects company without silently broadening or dropping evidence (0.967459ms)
+✔ archive source rejects year without silently broadening or dropping evidence (1.609708ms)
+✔ archive source rejects preview-company without silently broadening or dropping evidence (0.474583ms)
+✔ archive source rejects preview-year without silently broadening or dropping evidence (0.382667ms)
+✔ archive source rejects duplicate-preview without silently broadening or dropping evidence (0.355458ms)
+✔ archive source rejects comment-company without silently broadening or dropping evidence (0.366625ms)
+✔ archive source rejects duplicate-comment without silently broadening or dropping evidence (0.376708ms)
+✔ archive source rejects nested-issue without silently broadening or dropping evidence (0.362792ms)
+✔ archive source rejects extra-workspace-field without silently broadening or dropping evidence (0.272708ms)
+✔ year-bound archive decoding does not relax the unchanged all-history workspace decoder (0.590958ms)
+✔ workspace rejects company instead of presenting a successful partial history (0.207417ms)
+✔ workspace rejects child-company instead of presenting a successful partial history (0.180208ms)
+✔ workspace rejects duplicate instead of presenting a successful partial history (0.179708ms)
+✔ workspace rejects year instead of presenting a successful partial history (0.211292ms)
+✔ workspace rejects invalid-status instead of presenting a successful partial history (0.140667ms)
+✔ preview generation sends only original input identities and rejects a misbound audit scope (0.295125ms)
+✔ a preview read cannot substitute another aggregate (0.196125ms)
+✔ shipped Send and recovery generated contracts keep exact paths and nullable recovery result (0.298458ms)
+✔ presentation preserves nested original payload/manifest bytes and field names (0.182667ms)
+✔ canonical invalid approval input and stale MFA retain existing owner guidance codes (0.0865ms)
+✔ canonical ownership fallback requires exact not-found (404/SHAREHOLDER_REGISTER_FILING_NOT_FOUND) (0.393625ms)
+✔ canonical ownership fallback requires exact not-found (404/OTHER_NOT_FOUND) (0.227875ms)
+✔ canonical ownership fallback requires exact not-found (403/SHAREHOLDER_REGISTER_FILING_FORBIDDEN) (0.205292ms)
+✔ canonical ownership fallback requires exact not-found (503/SHAREHOLDER_REGISTER_FILING_UNAVAILABLE) (0.198625ms)
+✔ presents the generated tracer response as a safe Norwegian success (1.232209ms)
+✔ presents transport failures without leaking exception details (0.242292ms)
+✔ generated client accepts the declared success shape (19.554708ms)
+✔ generated client maps the typed correlation option to the declared header (0.642042ms)
+✔ generated client fails closed on an undeclared success shape (0.450459ms)
+✔ generated client rejects an availability value outside the closed contract (0.28725ms)
+✔ missing backend configuration fails closed with a typed error (0.161334ms)
+✔ web liveness stays process-only while readiness fails invalid configuration (0.331417ms)
+✔ web readiness validates local configuration without depending on backend reachability (0.242042ms)
+✔ Authority Connections retirement leaves no web authority signing, token or credential transport (54.920125ms)
+✔ the four standalone authority commands execute backend modules and retain their public command names (1.84075ms)
+✔ all migrated authority and filing facades are retired (1.228125ms)
+✔ company-year admission validates explicit authority and every immutable document before the generated command (3.097916ms)
+✔ the customer sees and explicitly accepts the complete pinned promise (2.311625ms)
+✔ legacy AS-only creation controls are absent (2.939042ms)
+✔ owner layout replaces children with an accessible reacceptance gate (1.000167ms)
+✔ Server Action reaccepts through the authenticated generated-client boundary (0.443792ms)
+ℹ tests 242
+ℹ suites 0
+ℹ pass 242
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1764.946833
+✔ Accounts source facts bind complete history to authenticated company/year evidence (23.442125ms)
+✔ Accounts workspace uses authenticated uncached transport and rejects foreign scope (0.86925ms)
+✔ Accounts import posts original evidence once and validates the inserted reference result (0.411084ms)
+✔ Accounts reads exactly once per company and preserves an omitted or explicit year (10.250167ms)
+✔ a failed company discards partial results and an absent token never reads (8.129083ms)
+✔ Accounts presentation preserves opaque nested receipt, payload and call extensions (0.356958ms)
+✔ Accounts assessment sends scoped original facts and preserves owned Corporate issues (6.883875ms)
+✔ unavailable readiness facts never become an empty clear assessment (4.079458ms)
+✔ unavailable readiness facts never become an empty clear assessment (4.243375ms)
+✔ assessment transport failure returns explicit unavailable state (3.297666ms)
+✔ owner actions compile as a Next server-action module (91.62475ms)
+✔ stored Tax receipt remains byte-equivalent after wire presentation: synthetic-completed-pending-feedback (1.214708ms)
+✔ stored Tax receipt remains byte-equivalent after wire presentation: synthetic-blank-url (0.195583ms)
+✔ stored Tax receipt remains byte-equivalent after wire presentation: synthetic-second-owner (0.141291ms)
+✔ stored Tax receipt remains byte-equivalent after wire presentation: synthetic-explicit-recorded-time (0.145542ms)
+✔ nested receipt, call, feedback and payload-reference extension fields survive presentation (0.344834ms)
+✔ one query per company supplies the complete source and keeps omitted year unscoped (9.517709ms)
+✔ one unavailable company discards partial results and retains an explicit error (5.061417ms)
+✔ incomplete receipt type fails the whole source visibly (6.168791ms)
+✔ incomplete receipt hash fails the whole source visibly (4.1335ms)
+✔ incomplete feedback classification fails the whole source visibly (3.800708ms)
+✔ incomplete payload reference fails the whole source visibly (4.344166ms)
+✔ incomplete call chronology fails the whole source visibly (3.466583ms)
+✔ incomplete unsupported raw payload fails the whole source visibly (3.094375ms)
+✔ Archive includes Tax-only submissions and only their linked evidence for the requested year (29.4445ms)
+✔ Archive source failure returns unavailable before building an archive or recording a receipt (9.705084ms)
+✔ readiness refresh uses every owned Tax readiness family (38.120166ms)
+✔ readiness refresh stops without snapshot or Audit writes on Tax failure (23.712584ms)
+✔ missing session token cannot turn an authorized company scope into complete empty Tax data (2.414291ms)
+✔ readiness preview failure stops the real refresh before any snapshot or Audit write (17.791334ms)
+✔ workspace assessment preserves portfolio estimate ordering and primary-company readiness scope (2.530667ms)
+✔ missing Tax assessment dependencies never yield zero or clear previews (2.605333ms)
+✔ missing Tax assessment dependencies never yield zero or clear previews (2.394792ms)
+✔ one failed assessment query discards partial success and preserves an explicit source error (2.139917ms)
+✔ Archive keeps company-wide Accounts comments but selects requested-year submissions and linked evidence (6.227042ms)
+✔ Accounts Archive failure cannot publish a partial sibling archive or complete its receipt (7.001833ms)
+✔ addFilingOverride uses canonical ownership even when a public RF mirror exists (49.101541ms)
+✔ addFilingOverride fails closed before any legacy effect when canonical ownership is unavailable (6.512834ms)
+✔ addFilingReviewComment uses canonical ownership even when a public RF mirror exists (4.005625ms)
+✔ addFilingReviewComment fails closed before any legacy effect when canonical ownership is unavailable (3.582209ms)
+✔ acknowledgeFilingReviewComment uses canonical ownership even when a public RF mirror exists (2.435625ms)
+✔ acknowledgeFilingReviewComment fails closed before any legacy effect when canonical ownership is unavailable (2.126417ms)
+✔ addFilingOverride preserves the sibling validator, writer and subsequent audit (3.746833ms)
+✔ addFilingReviewComment preserves the sibling validator, writer and subsequent audit (5.416458ms)
+✔ acknowledgeFilingReviewComment preserves the sibling validator, writer and subsequent audit (2.842542ms)
+✔ RF simulation delegates all five retired persistence effects before its unchanged audit (2.503209ms)
+✔ confirmAuthorityPermission preserves step-up and audit for RF (2.138625ms)
+✔ confirmAuthorityPermission preserves step-up and audit for sibling (1.767041ms)
+✔ recordAuthorityTestEvidence preserves step-up and audit for RF (3.4345ms)
+✔ recordAuthorityTestEvidence preserves step-up and audit for sibling (2.601792ms)
+✔ addFilingOverride uses owned Tax before exactly one existing Audit continuation (4.861084ms)
+✔ addFilingOverride stops on unavailable Tax without a sibling write or Audit continuation (2.844125ms)
+✔ addFilingReviewComment uses owned Tax before exactly one existing Audit continuation (3.388458ms)
+✔ addFilingReviewComment stops on unavailable Tax without a sibling write or Audit continuation (2.504167ms)
+✔ acknowledgeFilingReviewComment uses owned Tax before exactly one existing Audit continuation (1.56ms)
+✔ acknowledgeFilingReviewComment stops on unavailable Tax without a sibling write or Audit continuation (1.264833ms)
+✔ confirmAuthorityPermission uses owned Tax before exactly one existing Audit continuation (1.528833ms)
+✔ confirmAuthorityPermission stops on unavailable Tax without a sibling write or Audit continuation (1.57875ms)
+✔ recordAuthorityTestEvidence uses owned Tax before exactly one existing Audit continuation (2.295708ms)
+✔ recordAuthorityTestEvidence stops on unavailable Tax without a sibling write or Audit continuation (7.320583ms)
+✔ TT02 import sends original file bytes to owned API and has no web persistence continuation (2.844084ms)
+✔ addFilingOverride stops before Audit when Accounts is unavailable (2.485833ms)
+✔ addFilingReviewComment stops before Audit when Accounts is unavailable (2.632042ms)
+✔ acknowledgeFilingReviewComment stops before Audit when Accounts is unavailable (1.558875ms)
+✔ confirmAuthorityPermission stops before Audit when Accounts is unavailable (1.323125ms)
+✔ recordAuthorityTestEvidence stops before Audit when Accounts is unavailable (2.496292ms)
+✔ Accounts TT02 keeps one import then the original ok Audit behavior (2.572666ms)
+✔ Accounts TT02 keeps one import then the original returned-error Audit behavior (1.911292ms)
+✔ Accounts TT02 keeps one import then the original thrown-error Audit behavior (1.491083ms)
+✔ failed RF source preserves explicit unavailable state and never returns successful partial facts (45.971334ms)
+✔ composition replaces overlap mirrors by identity and preserves sibling records and ordering (15.776417ms)
+✔ one scoped source read supplies every family without substituting a current year (7.465375ms)
+✔ workspace RF backend refuses hosted database before opening a listener (196.24825ms)
+✔ workspace RF backend refuses hosted Supabase before opening a listener (116.848125ms)
+✔ workspace RF backend refuses global RF activation before opening a listener (103.880625ms)
+✔ workspace RF backend refuses global operator activation before opening a listener (98.35475ms)
+✔ workspace RF backend refuses ambient credential before opening a listener (96.206708ms)
+✔ workspace API requests use the actual current Supabase session and exact denial statuses (6.767958ms)
+✔ feedback fixture refuses hosted databases and undeclared operations before actor or SQL effects (1.520166ms)
+✔ feedback fixture verifies the token owner before reading membership or connecting an actor database session (0.498625ms)
+✔ workspace RF assertions use canonical commands and preserve sibling tax and audit rehearsals (1.404291ms)
+✔ fixture access refuses external databases and undeclared relations before SQL (0.463083ms)
+✔ fixture restores exact USER trigger modes on success without disabling foreign keys (0.805584ms)
+✔ fixture restores exact USER trigger modes on rollback without disabling foreign keys (0.21275ms)
+✔ fresh RF fixture permits only its five exact method templates and loopback egress (288.273333ms)
+✔ fresh local RF mock preserves request identity and emits relationship-bound feedback (46.358666ms)
+✔ fresh browser starts without a preview or approval and verifies the complete durable result (2.601416ms)
+✔ ambiguous fresh mock response records the original mutation before disconnecting (9.098416ms)
+✔ fresh RF browser uses finite fixture authority while preserving foreign keys and signoff storage (0.63775ms)
+✔ fresh RF basis binds every opening row to its existing owner without seeding filing success (1.140333ms)
+✔ fresh RF cleanup removes scoped public mirrors before openings (success) (1.306125ms)
+✔ fresh RF cleanup removes scoped public mirrors before openings (failure preserved) (0.8655ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (success) (10.523709ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (seed) (0.973833ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (restore) (0.9265ms)
+ℹ tests 95
+ℹ suites 0
+ℹ pass 95
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 809.508959
+
+> talli-repository@0.1.0 test:boundary-contract
+> node --test tests/contract/web_fastapi_boundary.test.mjs tests/company_access_review_fixes.test.mjs tests/company_access_review_round_2.test.mjs tests/company_access_onboarding_cutover.test.mjs tests/corporate_governance_review_fixes.test.mjs
+
+✔ eligibility, admission, and agreement operations are generated-client boundaries (17.149167ms)
+✔ the web onboarding slice has no legacy business-policy or persistence path (1.157417ms)
+✔ the complete Stage 1 web boundary is Supabase-auth-only (12.742375ms)
+✔ company access owns agreement evidence and the #138 facade has exited (0.450875ms)
+✔ the onboarding overlap and destructive contract are separate release artifacts (0.704ms)
+✔ capability owns immutable business request contracts (7.948542ms)
+✔ every invitation decoder rejects unknown and token-shaped response fields (1.196709ms)
+✔ all company-access success responses declare X-Request-ID (10.916041ms)
+✔ login preserves a sanitized invitation continuation for password and OAuth (1.565042ms)
+✔ invitation side effects reconcile in the trusted actor and command namespace (1.1795ms)
+✔ shipped server actions expose receipt-owned recovery without browser command inputs (0.997041ms)
+✔ membership role selector has a target-specific accessible name (0.402333ms)
+✔ capability manifest attributes the latest company-access ownership migration (0.309459ms)
+✔ authorization and hashing use versioned least-privilege helper boundaries (4.004125ms)
+✔ destructive contract is a later release artifact outside the automatic runner (1.259792ms)
+✔ cutover removes every authenticated self-membership update surface (1.442583ms)
+✔ command receipts are backend-system technical idempotency state (2.596541ms)
+✔ owner receipt visibility is atomic while acceptance keeps actor replay semantics (1.678292ms)
+✔ evidence distinguishes forced receipt RLS from genuine non-owner RLS (1.711666ms)
+✔ OpenAPI validates command UUIDs and RFC3339 revisions (10.102833ms)
+✔ the committed contract exposes one stable capability-prefixed tracer operation (13.625083ms)
+✔ the committed contract exposes the authenticated company-context operation (11.310417ms)
+✔ the committed contract exposes company-access invitation and membership administration (9.770333ms)
+✔ the committed contract exposes only ledger-owned browser commands (9.718125ms)
+✔ the committed contract assigns shareholder loans to corporate governance (9.40175ms)
+✔ the committed contract gives investments its complete activity interface (9.140875ms)
+✔ opening snapshots use the ledger compatibility authenticated read contract (9.204208ms)
+✔ the committed contract exposes the account-free banking workflow (11.661791ms)
+✔ the tracer contract declares optional request and response correlation headers (9.346625ms)
+✔ OpenAPI and generated TypeScript artifacts are byte-clean (1727.178333ms)
+✔ the OpenAPI document validates and operation IDs are globally unique (36.485875ms)
+✔ the current response contract remains compatible with the explicit v1 baseline (84.585209ms)
+✔ compatibility rejects newly required parameters and request bodies (50.31875ms)
+✔ compatibility rejects narrower authentication requirements (12.447959ms)
+✔ compatibility rejects removed or changed response headers (24.425167ms)
+✔ the generated package version matches the OpenAPI contract version (21.335459ms)
+✔ the generated client is committed and carries its provenance marker (2.054625ms)
+✔ the web tracer uses the generated package through a thin transport wrapper (0.127167ms)
+✔ annual refund recovery is an additive authenticated POST with no caller authority fields (8.858875ms)
+✔ annual refund target discovery preserves a minimal independent read contract (9.01325ms)
+✔ annual checkout preparation is an independent read without purchase authority (9.387542ms)
+✔ annual checkout withdrawal uses the original accepted body and key with a separate minimal result (9.369958ms)
+✔ corporate-governance manifests declare the implemented public surface (4.49425ms)
+✔ backend workflow documentation has one canonical governance workflow (1.437417ms)
+✔ lifecycle reader exposes migrated source-hash compatibility explicitly (1.065ms)
+✔ local gate rehearses predecessor ledger cutover before governance retires it (1.129833ms)
+✔ complete gate uses the backend-managed Python runtime (1.113792ms)
+✔ governance review regressions run in the complete acceptance boundary (1.125916ms)
+✔ document evidence ownership is acyclic and declared (1.789458ms)
+✔ document evidence registration cannot forge trusted actor or owner context (0.672792ms)
+✔ historical document evidence uses a migration-only backfill contract (0.636167ms)
+✔ future annual-data compatibility scopes remain frozen without a checker bypass (2.0715ms)
+✔ canonical decision payloads share one serializer (0.79725ms)
+ℹ tests 53
+ℹ suites 0
+ℹ pass 53
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2159.084
+[boundary] exit=0
+[boundary] durationMs=185344
+
+[build-web] command=TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built
+
+> talli-repository@0.1.0 build:web
+> npm --prefix apps/web run build
+
+
+> talli-web@0.1.0 build
+> cd ../.. && node apps/web/scripts/run-next.mjs build
+
+▲ Next.js 16.3.4 (Turbopack)
+✓ Running next.config.ts took 21ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 664ms
+  Running TypeScript ...
+  Finished TypeScript in 1176ms ...
+  Collecting page data using 9 workers ...
+  Generating static pages using 9 workers (0/34) ...
+  Generating static pages using 9 workers (8/34)
+  Generating static pages using 9 workers (16/34)
+  Generating static pages using 9 workers (25/34)
+✓ Generating static pages using 9 workers (34/34) in 235ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /actions
+├ ƒ /actions/[type]
+├ ƒ /api/marketing-events
+├ ○ /apple-icon.png
+├ ƒ /archive/[companyId]/[incomeYear]/download
+├ ƒ /auth/confirm
+├ ƒ /auth/systembruker/confirm
+├ ƒ /bank/callback
+├ ƒ /billing
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]/[obligation]
+├ ƒ /companies/[companyId]/annual-reporting/[incomeYear]/review
+├ ƒ /connections
+├ ƒ /corporate-decisions/[decisionId]
+├ ƒ /dashboard
+├ ○ /databehandleravtale
+├ ƒ /documents
+├ ƒ /documents/[documentId]/download
+├ ƒ /documents/[documentId]/preview
+├ ○ /email-confirmed
+├ ƒ /filing
+├ ƒ /filing/[obligation]
+├ ƒ /health/live
+├ ƒ /health/ready
+├ ○ /hjelp
+├ ○ /icon.svg
+├ ƒ /invite/accept
+├ ƒ /login
+├ ƒ /mfa
+├ ƒ /onboarding
+├ ƒ /operator
+├ ƒ /operator/marketing
+├ ○ /passer-talli
+├ ○ /personvern
+├ ○ /pris
+├ ○ /robots.txt
+├ ƒ /selskapsgrense
+├ ƒ /signup
+├ ○ /sikkerhet
+├ ○ /sitemap.xml
+├ ○ /sjekk-selskapet
+├ ○ /status
+├ ƒ /system-boundary
+├ ƒ /transactions
+├ ○ /ui
+├ ƒ /verify-email
+├ ○ /vilkar
+├ ƒ /workspace
+└ ƒ /year-end
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+> talli-repository@0.1.0 test:browser-public-acquisition:built
+> node --test tests/browser_public_acquisition.mjs
+
+✔ the production public journey is consent-silent, accessible, mobile-safe, and privacy bounded (4692.593542ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4931.412417
+[build-web] exit=0
+[build-web] durationMs=10054
+
+[build-backend] command=npm run build:backend
+
+> talli-repository@0.1.0 build:backend
+> uv build --project apps/backend
+Building source distribution...
+Building wheel from source distribution...
+Successfully built apps/backend/dist/talli_backend-0.1.0.tar.gz
+Successfully built apps/backend/dist/talli_backend-0.1.0-py3-none-any.whl
+[build-backend] exit=0
+[build-backend] durationMs=1580
+
+[boundary-smoke] command=npm run test:boundary-smoke
+
+> talli-repository@0.1.0 test:boundary-smoke
+> node --test tests/production_boundary_smoke.mjs
+
+✔ built artifacts support both deployment orders and isolate backend failure (2357.332542ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7414.300958
+[boundary-smoke] exit=0
+[boundary-smoke] durationMs=7577
+
+[launch-rehearsal] command=TALLI_PYTHON_BIN=apps/backend/.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal
+
+> talli-repository@0.1.0 test:launch-rehearsal
+> npm run test:opening && npm run test:documents && npm run test:bank && npm run test:bank-suggestions && npm run test:deployed-contract && npm run test:supabase-grants && npm run test:provider-ports && npm run test:manual-journal && npm run test:share-purchase && npm run test:share-sale && npm run test:investment-lots-schema && npm run test:dividend-received && npm run test:owner-dividend && npm run test:owner-dividend-payment && npm run test:shareholder-loan && npm run test:annual-data && npm run test:annual-readiness && npm run test:annual-corporate-documents && npm run test:authority-evidence && npm run test:authority-adapters && npm run test:authority-operations && npm run test:maskinporten && npm run test:system-user-requests && npm run test:rf1086:authority-client && npm run test:rf1086:production-pilot && npm run test:python-runtime && npm run test:corporate-documents && npm run test:corporate-decision-workflow && npm run test:corporate-governance-supported-events && npm run test:rf1086:persisted && npm run test:rf1086:submission && npm run test:annual-accounts && npm run test:annual-accounts-xml && npm run test:annual-accounts-authority && npm run test:annual-accounts-authority-script && npm run test:company-tax-return && npm run test:company-tax-return-xml && npm run test:company-tax-return-authority && npm run test:company-tax-return-authority-script && npm run test:review && npm run test:billing && npm run test:cancellation && npm run test:operator-support && npm run test:operator-mfa && npm run test:deadlines && npm run test:archive && npm run test:backup-restore && npm run test:security && npm run test:trusted-aal2-schema && npm run test:filing-release-gate && npm run test:production-filing-guide && npm run test:launch-copy && npm run test:launch-signoff && npm run test:validation-observation-launch-off && npm run test:legal-policy && npm run test:ci-gate
+
+
+> talli-repository@0.1.0 test:opening
+> node --experimental-strip-types --test tests/opening_balance.test.mjs
+
+✔ new-year start replaces the duplicate browser opening policy (1.675917ms)
+✔ public contract accepts only new-year business facts (0.144291ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68.282167
+
+> talli-repository@0.1.0 test:documents
+> node --experimental-strip-types --test apps/web/tests/documents-presentation.test.mjs tests/documents.test.mjs tests/document_removal_schema.test.mjs tests/documents_advisor_cleanup.test.mjs tests/documents_supported_pattern_evidence.test.mjs tests/workspace_presentation.test.mjs
+
+✔ document presentation is a transport-only shape conversion (0.81025ms)
+✔ signed upload uses exactly the backend-issued object and finalizes once (17.354625ms)
+✔ an ambiguous signed-transfer error is not blindly finalized (0.711375ms)
+✔ document metadata is forced-RLS capability state behind restricted functions (3.7435ms)
+✔ safe removal is reference-aware, audited, and metadata-restoring (1.337875ms)
+✔ all broad browser bucket policies and legacy removal execution are revoked (1.662416ms)
+✔ FastAPI is the only document lifecycle and object-operation policy boundary (5.499166ms)
+✔ web document paths retain only the one backend-issued signed upload (2.090166ms)
+✔ other producers retain a DocumentId relationship and never create document metadata (1.543917ms)
+✔ documents cleanup removes the residual browser metadata policy (2.706625ms)
+✔ documents cleanup plans request-local settings once per statement (1.62275ms)
+✔ documents advisor cleanup has an explicit predecessor rollback (1.44ms)
+✔ web source has no direct document metadata or object-storage persistence (55.992209ms)
+✔ neighboring application capabilities retain identifiers but no document writers (357.6375ms)
+✔ document backup remains a document-owned projection consumed by legacy archive composition (0.981125ms)
+✔ customer forms do not seed synthetic accounting facts (5.646459ms)
+✔ dashboard enters the dedicated annual workspace (1.999916ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 475.870584
+
+> talli-repository@0.1.0 test:bank
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_banking.py apps/backend/tests/test_banking_api.py -q
+
+..............                                                           [100%]
+14 passed in 1.65s
+
+> talli-repository@0.1.0 test:bank-suggestions
+> node --experimental-strip-types --test tests/bank_suggestion_schema.test.mjs tests/bank_suggestion_integration.test.mjs
+
+✔ banking coordinator revalidates the suggestion inside the atomic writer (2.843666ms)
+✔ transaction queue requires an explicit owner submit for every suggestion (0.974542ms)
+✔ bank suggestion approvals are immutable and posted atomically (2.823291ms)
+✔ database independently validates rule, version, direction, ambiguity, and period lock (0.908166ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 56.427791
+
+> talli-repository@0.1.0 test:deployed-contract
+> node --test tests/deployed_schema_contract.test.mjs
+
+✔ deployed schema contract covers every post-baseline product capability (0.807083ms)
+✔ reports only missing OpenAPI paths in stable order (0.112083ms)
+✔ reports compatibility paths that survived a completed stage exit (0.081125ms)
+✔ fails closed when the response is not a PostgREST OpenAPI document (0.765208ms)
+✔ contracted Tax schema needs no retired import RPC and rejects its restoration (0.160084ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 56.697708
+
+> talli-repository@0.1.0 test:supabase-grants
+> node --test tests/supabase_explicit_grants.test.mjs
+
+✔ Supabase Data API grants fail closed for anon and explicitly enable service_role (3.194125ms)
+✔ anonymous sessions cannot invoke authenticated mutation RPCs (0.744084ms)
+✔ Systembruker request objects have explicit least-privilege grants (1.197666ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 54.642083
+
+> talli-repository@0.1.0 test:provider-ports
+> node --experimental-strip-types --test tests/provider_ports.test.mjs
+
+✔ bank provider port fails closed until a provider is approved (0.680167ms)
+✔ bank webhook receipts are replay-safe without persisting raw provider identifiers (0.438208ms)
+✔ bank diagnostics redact bearer and credential material (0.220792ms)
+✔ document extraction port validates tenant scope and remains disabled (0.18925ms)
+✔ extraction output is always review-required and restricted to supported fields (1.321083ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 90.654917
+
+> talli-repository@0.1.0 test:manual-journal
+> uv run --project apps/backend pytest apps/backend/tests/test_ledger.py apps/backend/tests/test_ledger_api.py -k manual -q && node --test apps/web/tests/ledger-presentation.test.mjs
+
+....                                                                     [100%]
+4 passed, 45 deselected in 1.27s
+✔ an in-progress idempotent command preserves its operation id for retry (0.708125ms)
+✔ ledger errors keep the frozen plain-Norwegian guidance (0.138875ms)
+✔ year-scoped opening transport sends one exact company/year read and preserves zero or one row (17.453708ms)
+✔ year-scoped opening transport rejects another year without a broader or repeated read (1.485541ms)
+✔ year-scoped opening transport rejects another company without a broader or repeated read (0.367667ms)
+✔ year-scoped opening transport rejects multiple snapshots without a broader or repeated read (0.326625ms)
+✔ year-scoped opening transport rejects a continuation page without a broader or repeated read (0.272334ms)
+✔ year-scoped opening transport rejects a hidden continuation cursor without a broader or repeated read (0.22175ms)
+✔ year-scoped opening transport rejects an incomplete page without a broader or repeated read (0.245792ms)
+✔ year-scoped opening transport rejects inconsistent share capital without a broader or repeated read (0.307ms)
+✔ year-scoped opening transport rejects a holder bound to another setup without a broader or repeated read (0.283708ms)
+✔ year-scoped opening transport rejects inconsistent shareholder totals without a broader or repeated read (0.224958ms)
+✔ opening-snapshot transport chunks companies and follows opaque pages (1.020583ms)
+✔ opening-snapshot compatibility projection preserves the frozen shape (0.141208ms)
+✔ opening-snapshot decoders reject malformed collections and invariants (0.597334ms)
+✔ ledger query transport follows opaque pages through the generated client (0.4345ms)
+✔ reconstruction readiness comes from the generated backend contract (0.399833ms)
+✔ current company-year close comes from the generated read-only backend contract (0.459917ms)
+✔ company-year close presentation distinguishes stale and blocked assessments (0.183542ms)
+✔ generated reconstruction decoder rejects unknown gap codes (0.290833ms)
+✔ generated reconstruction decoder preserves historical null and rejects partial bindings (0.344625ms)
+✔ generated company-year close decoder rejects unknown gap codes (0.14825ms)
+✔ generated ledger query rejects a partial expanded source pair (0.282667ms)
+✔ source-aware ledger query fails closed against a source-unaware backend (0.222667ms)
+✔ source-aware ledger queries opt into the expanded response (0.181542ms)
+✔ ledger mutation transport injects decimal money and idempotency headers (0.25775ms)
+✔ administrative-cost transport requires exact purpose-bound success evidence (0.483209ms)
+✔ new-year start uses the generated atomic workflow without exposing ledger lines (0.333667ms)
+✔ new-year start rejects malformed or non-opening success evidence (0.269958ms)
+✔ opening setup action has no direct business persistence or duplicate posting policy (0.7825ms)
+✔ manual journals and period locks reconcile their frozen audit continuation (0.445958ms)
+✔ ledger presentation maps generated facts without recreating posting policy (0.324125ms)
+✔ opening entries recover their setup identity from canonical ledger source facts (0.236458ms)
+✔ archive presentation preserves the complete frozen ledger row projection (0.115542ms)
+✔ ledger period-lock transport returns an empty result without a backend call (0.064083ms)
+✔ every approved ledger-coordinator form submits one operation ID (1.092042ms)
+✔ client action wizards keep one stable operation ID for their mounted form (0.086167ms)
+✔ ledger retry IDs are plumbed only to the matching page form (0.302583ms)
+✔ all relocated transactional writers use the stable operation ID at the generated boundary (0.547ms)
+✔ share purchases and sales use the investments generated interface (0.194959ms)
+✔ share-sale wizard submits intent without duplicating authoritative FIFO policy (0.067875ms)
+✔ committed retries reach the coordinator before mutable legacy state can reject them (0.322042ms)
+✔ unknown coordinator outcomes preserve only the scoped retry operation (0.526917ms)
+ℹ tests 43
+ℹ suites 0
+ℹ pass 43
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 153.920583
+
+> talli-repository@0.1.0 test:share-purchase
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_investments.py apps/backend/tests/test_investments_public_contract.py apps/backend/tests/test_investments_workflow.py apps/backend/tests/test_investments_api.py -q && node --test apps/web/tests/investments-presentation.test.mjs && npm run test:investments-database-lifecycle
+
+.................................................                        [100%]
+49 passed in 3.46s
+✔ investments transport uses generated routes, auth, idempotency, and opaque paging (22.329875ms)
+✔ investment unit reads reject lossy wire values (1.219084ms)
+✔ investment position reads preserve contract-declared lifecycle movement facts (0.298542ms)
+✔ investment unit presentation stays decimal-string exact (0.205208ms)
+✔ investments presentation maps canonical wire facts without owning policy (1.044917ms)
+✔ investments errors preserve retry identity only for unknown outcomes (0.118ms)
+✔ investment actions require explicit owner and dividend attestations (1.692625ms)
+✔ investment wizard controls can shrink inside the mobile grid (2.007542ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 147.168625
+
+> talli-repository@0.1.0 test:investments-database-lifecycle
+> node --test --test-concurrency=1 tests/investments_capability_schema.test.mjs tests/investments_database_runtime.test.mjs
+
+✔ the complete local database gate includes the investments lifecycle (1.573792ms)
+✔ bank facts are claimed atomically through one restricted reversible routine (1.5255ms)
+✔ year-end measurement is executable, restricted, and reverses fail closed (0.770792ms)
+✔ lifecycle public cutover removes every v1 writer grant reversibly (1.792542ms)
+✔ contract and rollback artifacts bound hosted backend-system DDL authority (1.388791ms)
+✔ forward correction-source replay stays insert-only across rollback (0.290667ms)
+✔ expand and workflow keep predecessor and successor stores coherent (0.697292ms)
+✔ canonical investments tables are forced-RLS and runtime roles do not own them (0.5665ms)
+✔ investment lifecycle expansion separates recognition, settlement, and measurement (1.701708ms)
+✔ investment lifecycle workflow persists recognition and settlement separately (2.146833ms)
+✔ share-sale lifecycle recognizes exact FIFO facts before separate settlement (1.303333ms)
+✔ income lifecycle separates declaration or entitlement from cash receipt (1.148542ms)
+✔ lifecycle corrections preserve history and supersede only equal settlements (1.34325ms)
+✔ sale workflow owns FIFO persistence behind restricted investments functions (1.2165ms)
+✔ contract reconciles live state before removing predecessor production names (0.461208ms)
+✔ rollback disables successor first, preserves data, and is recutover-safe (0.386167ms)
+✔ sale contract reconciles FIFO state before removing predecessor names (0.454291ms)
+✔ sale rollback is non-destructive and recutover-safe (0.455083ms)
+✔ received-dividend workflow owns policy persistence behind restricted functions (0.723417ms)
+✔ received-dividend contract reconciles before predecessor removal (0.325583ms)
+✔ received-dividend rollback is non-destructive and recutover-safe (0.24075ms)
+✔ allocation identities remain stable across the overlap window (0.262709ms)
+✔ complete stage exit reconciles before deleting every investment predecessor (0.923375ms)
+✔ complete stage exit removes overlap-era and duplicate write policies (1.013042ms)
+✔ complete stage exit binds canonical investment writes to archive freshness (1.137417ms)
+✔ supported patterns keep writes private and publish correction lineage (2.351375ms)
+✔ supported-pattern rollback restores the exact predecessor or refuses after new data (0.4045ms)
+✔ supported-pattern authority cleanup grants no runtime authority (0.700958ms)
+✔ manual-evidence migration bounds owner authority after cleanup (0.430541ms)
+✔ lifecycle measurement bounds owner authority after cleanup (0.208083ms)
+✔ measurement reversals and investment boundaries are executable and reversible (1.571083ms)
+✔ settled wrong-amount corrections bind both reversals atomically (0.671916ms)
+✔ investments schema is private, forced-RLS, and restricted-role owned (23150.00425ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23293.933625
+
+> talli-repository@0.1.0 test:share-sale
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_investments.py apps/backend/tests/test_investments_public_contract.py apps/backend/tests/test_investments_workflow.py apps/backend/tests/test_investments_api.py apps/backend/tests/test_supabase_investments.py -q && node --test apps/web/tests/investments-presentation.test.mjs apps/web/tests/ledger-presentation.test.mjs && npm run test:investments-database-lifecycle
+
+................................................................         [100%]
+64 passed in 3.71s
+✔ investments transport uses generated routes, auth, idempotency, and opaque paging (20.973167ms)
+✔ investment unit reads reject lossy wire values (0.961375ms)
+✔ investment position reads preserve contract-declared lifecycle movement facts (0.233875ms)
+✔ investment unit presentation stays decimal-string exact (0.231667ms)
+✔ investments presentation maps canonical wire facts without owning policy (1.076458ms)
+✔ investments errors preserve retry identity only for unknown outcomes (0.2005ms)
+✔ investment actions require explicit owner and dividend attestations (2.722ms)
+✔ investment wizard controls can shrink inside the mobile grid (0.983333ms)
+✔ an in-progress idempotent command preserves its operation id for retry (0.947375ms)
+✔ ledger errors keep the frozen plain-Norwegian guidance (0.157041ms)
+✔ year-scoped opening transport sends one exact company/year read and preserves zero or one row (15.567375ms)
+✔ year-scoped opening transport rejects another year without a broader or repeated read (1.121917ms)
+✔ year-scoped opening transport rejects another company without a broader or repeated read (0.310291ms)
+✔ year-scoped opening transport rejects multiple snapshots without a broader or repeated read (0.317084ms)
+✔ year-scoped opening transport rejects a continuation page without a broader or repeated read (0.260334ms)
+✔ year-scoped opening transport rejects a hidden continuation cursor without a broader or repeated read (0.228667ms)
+✔ year-scoped opening transport rejects an incomplete page without a broader or repeated read (0.25275ms)
+✔ year-scoped opening transport rejects inconsistent share capital without a broader or repeated read (0.317083ms)
+✔ year-scoped opening transport rejects a holder bound to another setup without a broader or repeated read (0.302541ms)
+✔ year-scoped opening transport rejects inconsistent shareholder totals without a broader or repeated read (0.227458ms)
+✔ opening-snapshot transport chunks companies and follows opaque pages (1.025083ms)
+✔ opening-snapshot compatibility projection preserves the frozen shape (0.126125ms)
+✔ opening-snapshot decoders reject malformed collections and invariants (0.591125ms)
+✔ ledger query transport follows opaque pages through the generated client (0.462375ms)
+✔ reconstruction readiness comes from the generated backend contract (0.405209ms)
+✔ current company-year close comes from the generated read-only backend contract (0.319708ms)
+✔ company-year close presentation distinguishes stale and blocked assessments (0.087666ms)
+✔ generated reconstruction decoder rejects unknown gap codes (0.131125ms)
+✔ generated reconstruction decoder preserves historical null and rejects partial bindings (0.265167ms)
+✔ generated company-year close decoder rejects unknown gap codes (0.116834ms)
+✔ generated ledger query rejects a partial expanded source pair (0.191542ms)
+✔ source-aware ledger query fails closed against a source-unaware backend (0.175833ms)
+✔ source-aware ledger queries opt into the expanded response (0.150417ms)
+✔ ledger mutation transport injects decimal money and idempotency headers (0.212041ms)
+✔ administrative-cost transport requires exact purpose-bound success evidence (0.436417ms)
+✔ new-year start uses the generated atomic workflow without exposing ledger lines (0.19075ms)
+✔ new-year start rejects malformed or non-opening success evidence (0.190209ms)
+✔ opening setup action has no direct business persistence or duplicate posting policy (0.897334ms)
+✔ manual journals and period locks reconcile their frozen audit continuation (0.463541ms)
+✔ ledger presentation maps generated facts without recreating posting policy (0.240166ms)
+✔ opening entries recover their setup identity from canonical ledger source facts (0.206916ms)
+✔ archive presentation preserves the complete frozen ledger row projection (0.287542ms)
+✔ ledger period-lock transport returns an empty result without a backend call (0.08925ms)
+✔ every approved ledger-coordinator form submits one operation ID (1.419459ms)
+✔ client action wizards keep one stable operation ID for their mounted form (0.088167ms)
+✔ ledger retry IDs are plumbed only to the matching page form (0.435209ms)
+✔ all relocated transactional writers use the stable operation ID at the generated boundary (0.638167ms)
+✔ share purchases and sales use the investments generated interface (0.210917ms)
+✔ share-sale wizard submits intent without duplicating authoritative FIFO policy (0.069791ms)
+✔ committed retries reach the coordinator before mutable legacy state can reject them (0.339833ms)
+✔ unknown coordinator outcomes preserve only the scoped retry operation (0.548083ms)
+ℹ tests 51
+ℹ suites 0
+ℹ pass 51
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 163.367875
+
+> talli-repository@0.1.0 test:investments-database-lifecycle
+> node --test --test-concurrency=1 tests/investments_capability_schema.test.mjs tests/investments_database_runtime.test.mjs
+
+✔ the complete local database gate includes the investments lifecycle (1.278375ms)
+✔ bank facts are claimed atomically through one restricted reversible routine (1.31725ms)
+✔ year-end measurement is executable, restricted, and reverses fail closed (0.783291ms)
+✔ lifecycle public cutover removes every v1 writer grant reversibly (1.823666ms)
+✔ contract and rollback artifacts bound hosted backend-system DDL authority (1.620792ms)
+✔ forward correction-source replay stays insert-only across rollback (0.39675ms)
+✔ expand and workflow keep predecessor and successor stores coherent (0.778167ms)
+✔ canonical investments tables are forced-RLS and runtime roles do not own them (0.646833ms)
+✔ investment lifecycle expansion separates recognition, settlement, and measurement (1.686583ms)
+✔ investment lifecycle workflow persists recognition and settlement separately (2.262333ms)
+✔ share-sale lifecycle recognizes exact FIFO facts before separate settlement (0.995667ms)
+✔ income lifecycle separates declaration or entitlement from cash receipt (1.065125ms)
+✔ lifecycle corrections preserve history and supersede only equal settlements (1.306417ms)
+✔ sale workflow owns FIFO persistence behind restricted investments functions (1.364125ms)
+✔ contract reconciles live state before removing predecessor production names (0.572375ms)
+✔ rollback disables successor first, preserves data, and is recutover-safe (0.499375ms)
+✔ sale contract reconciles FIFO state before removing predecessor names (0.465333ms)
+✔ sale rollback is non-destructive and recutover-safe (0.354041ms)
+✔ received-dividend workflow owns policy persistence behind restricted functions (0.579083ms)
+✔ received-dividend contract reconciles before predecessor removal (0.296584ms)
+✔ received-dividend rollback is non-destructive and recutover-safe (0.237ms)
+✔ allocation identities remain stable across the overlap window (0.256ms)
+✔ complete stage exit reconciles before deleting every investment predecessor (0.902791ms)
+✔ complete stage exit removes overlap-era and duplicate write policies (0.874458ms)
+✔ complete stage exit binds canonical investment writes to archive freshness (1.182708ms)
+✔ supported patterns keep writes private and publish correction lineage (2.290709ms)
+✔ supported-pattern rollback restores the exact predecessor or refuses after new data (0.426291ms)
+✔ supported-pattern authority cleanup grants no runtime authority (0.754666ms)
+✔ manual-evidence migration bounds owner authority after cleanup (0.553625ms)
+✔ lifecycle measurement bounds owner authority after cleanup (0.256542ms)
+✔ measurement reversals and investment boundaries are executable and reversible (1.262375ms)
+✔ settled wrong-amount corrections bind both reversals atomically (0.757084ms)
+✔ investments schema is private, forced-RLS, and restricted-role owned (23339.171166ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23481.349416
+
+> talli-repository@0.1.0 test:investment-lots-schema
+> node --test tests/investment_lots_schema.test.mjs
+
+✔ FIFO migration owns lot history and atomic investment writes (2.867666ms)
+✔ legacy positions fail closed until lot history is reconstructed (0.786541ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 55.56825
+
+> talli-repository@0.1.0 test:dividend-received
+> uv run --project apps/backend pytest apps/backend/tests/test_investments.py apps/backend/tests/test_investments_workflow.py apps/backend/tests/test_investments_api.py apps/backend/tests/test_supabase_investments.py -k 'dividend or activity' -q && node --test apps/web/tests/investments-presentation.test.mjs && node --test tests/investments_capability_schema.test.mjs tests/investments_database_runtime.test.mjs
+
+..........                                                               [100%]
+10 passed, 51 deselected in 1.38s
+✔ investments transport uses generated routes, auth, idempotency, and opaque paging (20.819209ms)
+✔ investment unit reads reject lossy wire values (0.979709ms)
+✔ investment position reads preserve contract-declared lifecycle movement facts (0.235208ms)
+✔ investment unit presentation stays decimal-string exact (0.166625ms)
+✔ investments presentation maps canonical wire facts without owning policy (0.972083ms)
+✔ investments errors preserve retry identity only for unknown outcomes (0.111291ms)
+✔ investment actions require explicit owner and dividend attestations (4.272667ms)
+✔ investment wizard controls can shrink inside the mobile grid (0.910375ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 143.291667
+✔ the complete local database gate includes the investments lifecycle (1.369875ms)
+✔ bank facts are claimed atomically through one restricted reversible routine (1.330833ms)
+✔ year-end measurement is executable, restricted, and reverses fail closed (0.712708ms)
+✔ lifecycle public cutover removes every v1 writer grant reversibly (2.011417ms)
+✔ contract and rollback artifacts bound hosted backend-system DDL authority (1.745875ms)
+✔ forward correction-source replay stays insert-only across rollback (0.384083ms)
+✔ expand and workflow keep predecessor and successor stores coherent (0.772667ms)
+✔ canonical investments tables are forced-RLS and runtime roles do not own them (0.615ms)
+✔ investment lifecycle expansion separates recognition, settlement, and measurement (1.595625ms)
+✔ investment lifecycle workflow persists recognition and settlement separately (2.035375ms)
+✔ share-sale lifecycle recognizes exact FIFO facts before separate settlement (0.883291ms)
+✔ income lifecycle separates declaration or entitlement from cash receipt (1.159667ms)
+✔ lifecycle corrections preserve history and supersede only equal settlements (1.401417ms)
+✔ sale workflow owns FIFO persistence behind restricted investments functions (1.34725ms)
+✔ contract reconciles live state before removing predecessor production names (0.742875ms)
+✔ rollback disables successor first, preserves data, and is recutover-safe (0.516334ms)
+✔ sale contract reconciles FIFO state before removing predecessor names (0.528292ms)
+✔ sale rollback is non-destructive and recutover-safe (0.413125ms)
+✔ received-dividend workflow owns policy persistence behind restricted functions (0.70875ms)
+✔ received-dividend contract reconciles before predecessor removal (0.335541ms)
+✔ received-dividend rollback is non-destructive and recutover-safe (0.257375ms)
+✔ allocation identities remain stable across the overlap window (0.302334ms)
+✔ complete stage exit reconciles before deleting every investment predecessor (0.999459ms)
+✔ complete stage exit removes overlap-era and duplicate write policies (0.763333ms)
+✔ complete stage exit binds canonical investment writes to archive freshness (1.052542ms)
+✔ supported patterns keep writes private and publish correction lineage (2.276875ms)
+✔ supported-pattern rollback restores the exact predecessor or refuses after new data (0.414708ms)
+✔ supported-pattern authority cleanup grants no runtime authority (0.749833ms)
+✔ manual-evidence migration bounds owner authority after cleanup (0.58025ms)
+✔ lifecycle measurement bounds owner authority after cleanup (0.221833ms)
+✔ measurement reversals and investment boundaries are executable and reversible (2.316583ms)
+✔ settled wrong-amount corrections bind both reversals atomically (2.365833ms)
+✔ investments schema is private, forced-RLS, and restricted-role owned (23144.83825ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 23200.384583
+
+> talli-repository@0.1.0 test:owner-dividend
+> node --experimental-strip-types --test tests/owner_dividend.test.mjs
+
+✔ legacy owner-dividend accounting and placeholder helpers are gone (1.042333ms)
+✔ dividend basis and fact hashes are owned by the Python governance capability (0.296625ms)
+✔ server sends owner-dividend intent to governance without duplicating policy (0.639292ms)
+✔ wizard reviews all owners and meeting facts with proportional allocation only (0.445459ms)
+✔ workspace no longer embeds the legacy posting form or placeholder copy (0.195417ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68.752125
+
+> talli-repository@0.1.0 test:owner-dividend-payment
+> node --experimental-strip-types --test tests/owner_dividend_payment.test.mjs
+
+✔ server delegates policy-bound accounting atomically to governance (0.785708ms)
+✔ workspace presents only eligible transactions for each finalized open payable (0.193166ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 56.18075
+
+> talli-repository@0.1.0 test:shareholder-loan
+> node --experimental-strip-types --test tests/shareholder_loan.test.mjs
+
+✔ shareholder-loan intent crosses only the governance generated boundary (0.685375ms)
+✔ active Supabase integration no longer imports or exercises browser-owned loan policy (0.326417ms)
+✔ shareholder-loan wizard submits intent without owning domain or ledger policy (0.140917ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 62.867167
+
+> talli-repository@0.1.0 test:annual-data
+> node --experimental-strip-types --test tests/annual_data.test.mjs
+
+✔ builds structured year-end answers without free text (0.7985ms)
+✔ does not mark activity years as no-activity (0.082875ms)
+✔ seeds recorded activity into an unsaved year-end interview (0.089ms)
+✔ recorded activity cannot be hidden by a stale saved false answer (0.065666ms)
+✔ keeps user confirmations independent from registered activity (0.067375ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 85.629708
+
+> talli-repository@0.1.0 test:annual-readiness
+> node --experimental-strip-types --test tests/annual_readiness_gates.test.mjs
+
+✔ evaluates ready state separately for all annual obligations (2.82125ms)
+✔ returns hard blocks for missing permission and billing (0.253125ms)
+✔ composes a clear owned Tax assessment with no-activity annual data (0.165917ms)
+✔ keeps accepted warnings separate from open warnings (0.239042ms)
+✔ reports open warnings and obligation-specific blocks (1.036042ms)
+✔ Annual cannot turn missing or wrong-scope Tax preview into ready (0.140792ms)
+✔ Annual cannot turn missing or wrong-scope Tax preview into ready (0.105042ms)
+✔ Annual cannot turn missing or wrong-scope Tax preview into ready (0.091959ms)
+✔ Annual cannot turn missing or wrong-scope Tax preview into ready (0.109375ms)
+✔ Accounts readiness is blocked when its owned source is absent or foreign (0.182083ms)
+✔ Accounts readiness is blocked when its owned source is absent or foreign (0.068208ms)
+✔ Accounts readiness is blocked when its owned source is absent or foreign (0.059208ms)
+✔ Annual composes Accounts Corporate blocks and accepted warnings without recalculating them (0.130792ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 93.412125
+
+> talli-repository@0.1.0 test:annual-corporate-documents
+> node --experimental-strip-types --test tests/annual_corporate_documents.test.mjs
+
+✔ annual basis helpers were removed from the web authority boundary (1.22325ms)
+✔ annual decisions render only inside the Python backend (0.77875ms)
+✔ annual readiness is read from the Python governance API (0.543333ms)
+✔ annual server action uses backend canonicalization and rendered artifacts (0.461625ms)
+✔ year-end and filing UI expose the annual corporate lifecycle honestly (0.650416ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 59.541875
+
+> talli-repository@0.1.0 test:authority-evidence
+> node --experimental-strip-types --test tests/authority_test_evidence.test.mjs tests/annual_accounts_authority_evidence_import.test.mjs tests/company_tax_return_authority_evidence_import.test.mjs tests/rf1086_tt02_evidence.test.mjs tests/company_tax_return_tt02_evidence.test.mjs tests/annual_accounts_tt02_evidence.test.mjs
+
+✔ runtime imports validated RR0002 evidence as pending without enabling production (0.995334ms)
+✔ workspace offers a JSON evidence import and defaults manual evidence to pending (0.269708ms)
+✔ annual-accounts TT02 evidence is submitted, archived, test-only, and secret-free (5.026917ms)
+✔ builds accepted authority test evidence with receipt and archive refs (0.504125ms)
+✔ imports submitted annual-accounts TT02 evidence as pending runtime evidence (83.755167ms)
+✔ imports completed company-tax TT02 evidence as company- and year-bound pending evidence (65.808417ms)
+✔ company-tax TT02 import fails closed on identity, authority, handoff, receipt, or archive mismatches (661.6605ms)
+✔ annual-accounts TT02 import fails closed on company, production, and submission mismatches (258.069542ms)
+✔ requires test reference and recorder (0.251792ms)
+✔ gate requires accepted evidence with receipt and archive refs (0.1165ms)
+✔ gate surfaces latest rejected, blocked, and pending evidence (7.637708ms)
+✔ legacy predecessor migration links test-authority submissions without opening the direct-write policy (2.247084ms)
+✔ legacy predecessor migration exposes one authenticated owner-AAL2-protected atomic import RPC (1.555ms)
+✔ RPC evidence URLs use one canonical HTTPS grammar and reject traversal (0.29825ms)
+✔ RPC retries compare evidence content without replacing the original actors (0.174208ms)
+✔ owner evidence import uses the authenticated Company Tax API and stable errors (0.381084ms)
+✔ workspace offers a company-tax JSON evidence import bound to the active year (0.18675ms)
+✔ company-tax TT02 evidence is submitted, receipted, archived, test-only, and secret-free (5.289708ms)
+✔ RF-1086 TT02 evidence is accepted, complete, and secret-free (5.551583ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1173.089625
+
+> talli-repository@0.1.0 test:authority-adapters
+> node --experimental-strip-types --test tests/authority_adapters.test.mjs
+
+✔ RF-1086 transport is implemented but every production authority adapter remains disabled (1.0665ms)
+✔ RF-1086 plan preserves XML document, confirmation, feedback, and receipt sequence (0.107083ms)
+✔ tax return and annual accounts plans require an ID-porten person signing handoff (0.120125ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 81.646875
+
+> talli-repository@0.1.0 test:authority-operations
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_authority_operations.py apps/backend/tests/test_altinn_authority_operations.py apps/backend/tests/test_authority_operations_api.py -q && node --test tests/authority_operations_schema.test.mjs tests/authority_operations_actions.test.mjs
+
+........................................................................ [ 47%]
+........................................................................ [ 94%]
+.........                                                                [100%]
+153 passed in 3.20s
+✔ authority actions carry exact intent to the authenticated backend without web audit or credentials (0.7465ms)
+✔ operator UI exposes only the immutable RF-1086 operation and redacted results (0.199125ms)
+✔ operator audit history uses generated transport and retains current-admin UI visibility (0.12075ms)
+✔ callback operation carries only its fixed action identity through the shared transport (0.172834ms)
+✔ operator callback UI is native, exact, and honest about its narrow effect (0.480042ms)
+✔ authority operations are constrained, RLS protected, and service-written (0.917292ms)
+✔ rollback revokes access before dropping the table (0.495459ms)
+✔ callback operation migration expands only the constrained safe audit contract (0.520917ms)
+✔ callback rollback removes callback rows before restoring the original constraints (0.876959ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 56.305542
+
+> talli-repository@0.1.0 test:maskinporten
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_maskinporten.py apps/backend/tests/test_authority_tool_grant.py -q
+
+........................................................................ [ 69%]
+................................                                         [100%]
+104 passed in 9.68s
+
+> talli-repository@0.1.0 test:system-user-requests
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_authority_connections_service.py apps/backend/tests/test_authority_connections_api.py apps/backend/tests/test_altinn_system_user.py apps/backend/tests/test_authority_callback_transport.py apps/backend/tests/test_authority_connections_state_workflow.py -q && node --test tests/system_user_callback_route.test.mjs apps/web/tests/authority-connections-transport.test.mjs
+
+........................................................................ [ 37%]
+........................................................................ [ 74%]
+..................................................                       [100%]
+194 passed in 4.66s
+✔ company connection reads batch more than 100 memberships without dropping or trusting unrelated records (31.202459ms)
+✔ authorityConnectionsStartSystemUserRequest carries only intent identity through authenticated no-store generated transport (0.376625ms)
+✔ authorityConnectionsRetrySystemUserRequest carries only intent identity through authenticated no-store generated transport (0.239834ms)
+✔ authorityConnectionsReconcileSystemUserRequest carries only intent identity through authenticated no-store generated transport (0.230708ms)
+✔ callback generated transport forwards proof separately from its sole request identity (0.263291ms)
+✔ generated authority result rejects unknown statuses and malformed response contracts (0.662125ms)
+✔ generated operator mutation preserves exact audit identity and redacted response (0.727667ms)
+✔ technical signoff command has no recording actor or trusted timestamp (0.313417ms)
+✔ production route import defers canonical origin validation until a callback request (99.753ms)
+✔ callback redirects use only the fixed Talli origin, with localhost limited to non-production (0.410292ms)
+✔ callback ignores all query parameters and forwards only its local cookie with bound server proof (3.216459ms)
+✔ missing or invalid cookie, missing session, and missing transport key fail before backend effects (0.619ms)
+✔ backend owner, stale-request or provider rejection exposes no private diagnostic (0.287917ms)
+✔ callback rejects a backend result for another request (0.155125ms)
+✔ callback maps only existing local presentation states (0.9245ms)
+✔ web callback proof interoperates with the backend verifier and binds request plus bearer (25.077084ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 271.5785
+
+> talli-repository@0.1.0 test:rf1086:authority-client
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_rf1086_authority.py apps/backend/tests/test_authority_tool_rf1086.py -q
+
+........................................................................ [ 42%]
+........................................................................ [ 85%]
+.........................                                                [100%]
+169 passed in 10.18s
+
+> talli-repository@0.1.0 test:rf1086:production-pilot
+> node --experimental-strip-types --test tests/production_pilot.test.mjs tests/production_submission.test.mjs tests/controlled_production_beta_schema.test.mjs tests/rf1086_production_environment.test.mjs tests/controlled_production_beta_actions.test.mjs tests/rf1086_production_runbook.test.mjs && uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_shareholder_register_filing_production.py apps/backend/tests/test_postgres_shareholder_register_filing.py apps/backend/tests/test_shareholder_register_filing_api.py apps/backend/tests/test_legacy_rf1086_api.py -q
+
+✔ operator entitlement action is exact and database-authorized (3.392708ms)
+✔ owner approval delegates persisted identity and acknowledgement to the authenticated RF boundary (0.495625ms)
+✔ send action carries only approval identity through the authenticated backend transport (0.2015ms)
+✔ owner connection actions accept only local UUID selection and enforce fresh AAL2 before flow orchestration (0.31725ms)
+✔ production UI never equates receipt transport with final acceptance (0.169833ms)
+✔ production history reports unavailable backend reads through the existing error result (0.099167ms)
+✔ all migrations use portable JSONB object checks (51.419791ms)
+✔ creates a separate production-only aggregate with constrained states (2.164042ms)
+✔ denies direct customer mutation and keeps authority events service-only (0.348083ms)
+✔ approval and begin RPCs enforce owner AAL2 and an exact active entitlement (0.538209ms)
+✔ acceptance requires explicit final authority evidence and events are append-only (0.220708ms)
+✔ rollback revokes RPC access before dropping additive objects (0.318875ms)
+✔ Systembruker binding preserves every existing production filing gate (0.607916ms)
+✔ canonical RF relocation preserves physical production aggregates and uses dedicated authority (1.335291ms)
+✔ canonical begin retains owner MFA, exact System User and Billing bindings, and every original release gate (0.924292ms)
+✔ uses the backend's exact pilot decision without duplicating entitlement matching in the web app (0.78025ms)
+✔ fails closed when the backend does not return a pilot or billing decision (0.139667ms)
+✔ a non-exempt backend decision cannot skip the billing-refund signoff (0.724792ms)
+✔ recovery presentation carries the recorded identity through the generated backend contract (30.656459ms)
+✔ RF producer preserves the public Documents lifecycle and original filing linkage (0.307959ms)
+✔ filing page auto-resumes pending reconciliation and always exposes manual retry (0.149125ms)
+✔ legacy web default cannot infer backend production readiness from browser-host environment (0.738ms)
+✔ runbook covers the hand-held first production filing and immediate rollback (0.757666ms)
+✔ release docs require callback verification before self-service activation (0.109125ms)
+✔ runbook defines the activation order, recovery matrix, and local-proof boundary (0.284083ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 145.64475
+........................................................................ [ 24%]
+........................................................................ [ 48%]
+........................................................................ [ 72%]
+........................................................................ [ 96%]
+..........                                                               [100%]
+298 passed in 22.73s
+
+> talli-repository@0.1.0 test:python-runtime
+> node --experimental-strip-types --test tests/python_runtime.test.mjs
+
+✔ uses an explicit configured Python runtime (0.510958ms)
+✔ finds the project virtualenv for local filing-engine calls (0.107459ms)
+✔ fails closed when no dependency-complete Python runtime is configured (0.24275ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 84.92425
+
+> talli-repository@0.1.0 test:corporate-documents
+> node --experimental-strip-types --test tests/corporate_documents.test.mjs tests/corporate_document_schema.test.mjs tests/corporate_document_database_runtime.test.mjs
+
+✔ corporate lifecycle RPCs pass a fresh PostgreSQL rehearsal (3438.880417ms)
+✔ corporate decision schema is immutable, tenant scoped, and hash bound (3.373ms)
+✔ accounting policy accounts are server-side reviewed facts (0.750958ms)
+✔ database RPCs recompute canonical hashes and persisted accounting facts (1.85ms)
+✔ the web owns transport and presentation, not governance or rendering (3.24725ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3498.41125
+
+> talli-repository@0.1.0 test:corporate-decision-workflow
+> node --experimental-strip-types --test tests/corporate_decision_workflow.test.mjs
+
+✔ signed corporate upload validates PDF bytes and delegates immutable storage identity (1.073375ms)
+✔ server exposes step-up-protected immutable lifecycle actions (0.568417ms)
+✔ review, signed attestation, and preview UI use honest owner-only copy (0.207334ms)
+✔ superseded decisions are terminal in the owner UI (0.128959ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 96.707125
+
+> talli-repository@0.1.0 test:corporate-governance-supported-events
+> uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_corporate_governance.py apps/backend/tests/test_corporate_governance_public_contract.py apps/backend/tests/test_corporate_governance_supported_events.py apps/backend/tests/test_corporate_governance_workflow.py apps/backend/tests/test_corporate_governance_api.py apps/backend/tests/test_ledger_corrections.py -q && node --experimental-strip-types --test tests/corporate_governance_cross_output_reconciliation.test.mjs tests/archive_export.test.mjs tests/corporate_governance_review_fixes.test.mjs tests/ledger_supported_event_reversals_schema.test.mjs
+
+........................................................................ [ 94%]
+....                                                                     [100%]
+76 passed in 3.64s
+✔ builds company-year archive from persisted workspace rows (2.89675ms)
+✖ archive download fetches only sanitized authority runs linked by submission id (1.973583ms)
+✔ archive ledger facts come through the generated capability query with a frozen projection (0.815459ms)
+✔ #191 freezes the complete supported capital, financing, and group matrix (0.798417ms)
+✔ every supported occurrence is cent-exact, balanced, signed, and source-addressable (0.314625ms)
+✔ RF-1086 receives only registered issuer-capital facts (0.146709ms)
+✔ group-contribution tax handoffs retain gross, tax, and after-tax amounts separately (0.086375ms)
+✔ the pinned account set and immutable finalization contract stay executable (0.465209ms)
+✔ corporate-governance manifests declare the implemented public surface (4.157792ms)
+✔ backend workflow documentation has one canonical governance workflow (0.940916ms)
+✔ lifecycle reader exposes migrated source-hash compatibility explicitly (1.299041ms)
+✔ local gate rehearses predecessor ledger cutover before governance retires it (0.466167ms)
+✔ complete gate uses the backend-managed Python runtime (0.400583ms)
+✔ governance review regressions run in the complete acceptance boundary (0.530333ms)
+✔ document evidence ownership is acyclic and declared (1.615709ms)
+✔ document evidence registration cannot forge trusted actor or owner context (1.379792ms)
+✔ historical document evidence uses a migration-only backfill contract (0.8575ms)
+✔ future annual-data compatibility scopes remain frozen without a checker bypass (1.790209ms)
+✔ canonical decision payloads share one serializer (0.390792ms)
+✔ supported event reversals preserve immutable balanced lineage (3.086209ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 19
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 86.237333
+
+✖ failing tests:
+
+test at tests/archive_export.test.mjs:516:1
+✖ archive download fetches only sanitized authority runs linked by submission id (1.973583ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /filing_submissions[\s\S]*authority_test_run_id/u. Input:
+
+  'import { loadPresentedAnnualAccountsSource } from "../../../../lib/annual-accounts-workspace-source";\n' +
+    'import { loadPresentedCompanyTaxSource } from "../../../../lib/company-tax-workspace-source";\n' +
+    'import { loadTaxSettlementArchiveSource } from "../../../../../features/company-tax-filing";\n' +
+    'import { createHash } from "node:crypto";\n' +
+    '\n' +
+    'import {\n' +
+    '  loadLedgerEntriesForArchive,\n' +
+    '  presentLedgerEntriesForArchive,\n' +
+    '  loadOpeningSnapshotsForYear,\n' +
+    '  presentOpeningSnapshots,\n' +
+    '} from "../../../../../features/ledger";\n' +
+    'import {\n' +
+    '  loadInvestmentAcquisitionLots,\n' +
+    '  loadInvestmentActivity,\n' +
+    '  loadInvestmentPositions,\n' +
+    '  loadInvestmentShareSaleAllocations,\n' +
+    '  loadInvestmentCorrections,\n' +
+    '  effectiveInvestmentActivity,\n' +
+    '  presentAcquisitionLots,\n' +
+    '  presentInvestmentActivity,\n' +
+    '  presentInvestmentPositions,\n' +
+    '  presentShareSaleAllocations,\n' +
+    '  presentInvestmentCorrections,\n' +
+    '} from "../../../../../features/investments";\n' +
+    'import {\n' +
+    '  loadDocumentBackupProjection,\n' +
+    '} from "../../../../../features/documents";\n' +
+    'import {\n' +
+    '  listCorporateDecisionLifecycle,\n' +
+    '  listSupportedCorporateEvents,\n' +
+    '} from "../../../../../features/corporate-governance";\n' +
+    'import {\n' +
+    '  loadRf1086ArchiveSource,\n' +
+    '  presentRf1086Preview,\n' +
+    '  presentRf1086Simulation,\n' +
+    '  presentRf1086Permission,\n' +
+    '  presentRf1086TestEvidence,\n' +
+    '  presentRf1086ReviewComment,\n' +
+    '} from "../../../../../features/shareholder-register-filing";\n' +
+    'import { loadBillingSnapshot, presentBillingAccount } from "../../../../../features/billing";\n' +
+    'import {\n' +
+    '  buildPersistedCompanyArchive,\n' +
+    '  firstArchiveSourceError,\n' +
+    '} from "../../../../lib/archive";\n' +
+    'import { loadAcceptedMembershipCompany } from "../../../../lib/company-access-context";\n' +
+    'import { requireStepUpForAction } from "../../../../lib/security";\n' +
+    'import { getCurrentSessionAccessToken } from "../../../../lib/supabase/auth-session";\n' +
+    'import {\n' +
+    '  createSupabaseServerClient,\n' +
+    '  createSupabaseServiceRoleClient,\n' +
+    '} from "../../../../lib/supabase/server";\n' +
+    '\n' +
+    'async function loadArchiveOpeningSnapshots(accessToken: string, companyId: string, incomeYear: number) {\n' +
+    '  try {\n' +
+    '    const projection = presentOpeningSnapshots(await loadOpeningSnapshotsForYear(accessToken, companyId, incomeYear));\n' +
+    '    if ([...projection.setups, ...projection.shareholders].some((row) => row.company_id !== companyId)) {\n' +
+    '      throw new Error("Opening query escaped the authorized company scope.");\n' +
+    '    }\n' +
+    '    const setups = projection.setups.filter((setup) => setup.income_year === incomeYear);\n' +
+    '    const setupIds = new Set(setups.map((setup) => setup.id));\n' +
+    '    return { data: setups, shareholders: projection.shareholders.filter((row) => setupIds.has(row.setup_id)), error: null };\n' +
+    '  } catch {\n' +
+    '    return { data: null, shareholders: null, error: new Error("Opening archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveRf1086(accessToken: string, companyId: string, incomeYear: number) {\n' +
+    '  try {\n' +
+    '    // The source keeps company-wide comments/permissions and selects year-bound rows before decoding.\n' +
+    '    const workspace = await loadRf1086ArchiveSource(accessToken, companyId, incomeYear);\n' +
+    '    const submissions = workspace.simulations.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Simulation);\n' +
+    '    const evidenceIds = new Set(submissions.filter((row) => row.mode === "test_authority")\n' +
+    '      .map((row) => row.authority_test_run_id).filter((id): id is string => Boolean(id)));\n' +
+    '    return { data: {\n' +
+    '      submissions,\n' +
+    '      previews: workspace.previews.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Preview),\n' +
+    '      permissions: workspace.permissions.map(presentRf1086Permission),\n' +
+    '      comments: workspace.reviewComments.map(presentRf1086ReviewComment),\n' +
+    '      testEvidence: workspace.testEvidence.filter((row) => evidenceIds.has(row.id)).map(presentRf1086TestEvidence),\n' +
+    '    }, error: null };\n' +
+    '  } catch {\n' +
+    '    return { data: null, error: new Error("RF archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'function mergeArchiveRfRows<A extends { id: string }, B extends { id: string }>(existing: readonly A[], owned: readonly B[]): (A | B)[] {\n' +
+    '  // The overlap projection may still contain the same immutable row identity.\n' +
+    '  const rows = new Map<string, A | B>(existing.map((row) => [row.id, row]));\n' +
+    '  for (const row of owned) rows.set(row.id, row);\n' +
+    '  return [...rows.values()];\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveLedgerEntries(\n' +
+    '  accessToken: string,\n' +
+    '  companyId: string,\n' +
+    '  incomeYear: number,\n' +
+    ') {\n' +
+    '  try {\n' +
+    '    const entries = await loadLedgerEntriesForArchive(accessToken, [companyId]);\n' +
+    '    const presented = presentLedgerEntriesForArchive(entries);\n' +
+    '    if (presented.some((entry) => entry.company_id !== companyId)) {\n' +
+    '      throw new Error("Ledger query escaped the authorized company scope.");\n' +
+    '    }\n' +
+    '    return {\n' +
+    '      data: presented\n' +
+    '        .filter((entry) => entry.income_year === incomeYear)\n' +
+    '        .map((entry) => ({\n' +
+    '          id: entry.id,\n' +
+    '          company_id: entry.company_id,\n' +
+    '          setup_id: entry.setup_id,\n' +
+    '          income_year: entry.income_year,\n' +
+    '          entry_type: entry.entry_type,\n' +
+    '          memo: entry.memo,\n' +
+    '          lines: entry.lines,\n' +
+    '          created_by: entry.created_by,\n' +
+    '          created_at: entry.created_at,\n' +
+    '        })),\n' +
+    '      error: null,\n' +
+    '    };\n' +
+    '  } catch {\n' +
+    '    return { data: null, error: new Error("Ledger archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveDocuments(\n' +
+    '  accessToken: string,\n' +
+    '  companyId: string,\n' +
+    '  incomeYear: number,\n' +
+    ') {\n' +
+    '  try {\n' +
+    '    const result = await loadDocumentBackupProjection(accessToken, companyId, incomeYear);\n' +
+    '    return {\n' +
+    '      data: result.objects.map((document) => ({\n' +
+    '        id: document.documentId,\n' +
+    '        company_id: result.companyId,\n' +
+    '        income_year: result.incomeYear,\n' +
+    '        document_type: document.documentType,\n' +
+    '        name: document.name,\n' +
+    '        linked_to: document.linkedTo,\n' +
+    '        status: document.status,\n' +
+    '        retention_years: document.retentionYears,\n' +
+    '        storage_key: document.storageKey,\n' +
+    '        created_by: document.createdBy,\n' +
+    '        created_at: document.createdAt,\n' +
+    '        removed_at: document.removedAt,\n' +
+    '        removed_by: null,\n' +
+    '        removal_reason: document.removalReason,\n' +
+    '      })),\n' +
+    '      projection: result,\n' +
+    '      error: null,\n' +
+    '    };\n' +
+    '  } catch {\n' +
+    '    return { data: null, projection: null, error: new Error("Documents archive projection unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveBilling(accessToken: string, companyId: string) {\n' +
+    '  try {\n' +
+    '    const snapshot = await loadBillingSnapshot(accessToken, { companyIds: [companyId] });\n' +
+    '    return {\n' +
+    '      data: snapshot.accounts.map(presentBillingAccount),\n' +
+    '      error: null,\n' +
+    '    };\n' +
+    '  } catch {\n' +
+    '    return { data: null, error: new Error("Billing archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveCorporateLifecycle(\n' +
+    '  accessToken: string,\n' +
+    '  companyId: string,\n' +
+    '  incomeYear: number,\n' +
+    ') {\n' +
+    '  try {\n' +
+    '    const [lifecycle, supportedEvents, documents] = await Promise.all([\n' +
+    '      listCorporateDecisionLifecycle(accessToken, [companyId]),\n' +
+    '      listSupportedCorporateEvents(accessToken, [companyId]),\n' +
+    '      loadDocumentBackupProjection(accessToken, companyId, incomeYear),\n' +
+    '    ]);\n' +
+    '    const documentsById = new Map(\n' +
+    '      documents.objects.map((document) => [document.documentId, document]),\n' +
+    '    );\n' +
+    '    const artifacts = lifecycle.corporateDocumentArtifacts\n' +
+    '      .filter((item) => item.income_year === incomeYear)\n' +
+    '      .map((artifact) => ({\n' +
+    '        ...artifact,\n' +
+    '        storage_key: documentsById.get(artifact.document_id)?.storageKey ?? "",\n' +
+    '      }));\n' +
+    '    if (artifacts.some((artifact) => !artifact.storage_key)) {\n' +
+    '      throw new Error("Corporate artifact document evidence is incomplete.");\n' +
+    '    }\n' +
+    '    return {\n' +
+    '      data: {\n' +
+    '        corporateDecisions: lifecycle.corporateDecisions.filter(\n' +
+    '          (item) => item.income_year === incomeYear,\n' +
+    '        ),\n' +
+    '        corporateDocumentSets: lifecycle.corporateDocumentSets.filter(\n' +
+    '          (item) => item.income_year === incomeYear,\n' +
+    '        ),\n' +
+    '        corporateDocumentArtifacts: artifacts,\n' +
+    '        corporateDocumentEvents: lifecycle.corporateDocumentEvents.filter(\n' +
+    '          (item) => item.income_year === incomeYear,\n' +
+    '        ),\n' +
+    '        corporateDecisionFinalizations: lifecycle.corporateDecisionFinalizations.filter(\n' +
+    '          (item) => item.income_year === incomeYear,\n' +
+    '        ),\n' +
+    '        supportedCorporateEvents: supportedEvents.filter(\n' +
+    '          (item) => item.companyId === companyId && item.incomeYear === incomeYear,\n' +
+    '        ),\n' +
+    '      },\n' +
+    '      error: null,\n' +
+    '    };\n' +
+    '  } catch {\n' +
+    '    return { data: null, error: new Error("Corporate-governance archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveInvestments(\n' +
+    '  accessToken: string,\n' +
+    '  companyId: string,\n' +
+    '  incomeYear: number,\n' +
+    ') {\n' +
+    '  try {\n' +
+    '    const [activity, positions, lots, allocations, corrections] = await Promise.all([\n' +
+    '      loadInvestmentActivity(accessToken, [companyId]),\n' +
+    '      loadInvestmentPositions(accessToken, [companyId]),\n' +
+    '      loadInvestmentAcquisitionLots(accessToken, [companyId]),\n' +
+    '      loadInvestmentShareSaleAllocations(accessToken, [companyId]),\n' +
+    '      loadInvestmentCorrections(accessToken, [companyId]),\n' +
+    '    ]);\n' +
+    '    const presentedActivity = presentInvestmentActivity(activity).map((item) => {\n' +
+    '      if (item.action_type !== "share_sale") return item;\n' +
+    '      return {\n' +
+    '        ...item,\n' +
+    '        payload: {\n' +
+    '          ...item.payload,\n' +
+    '          lot_allocations: allocations\n' +
+    '            .filter((allocation) => allocation.saleActionId === item.id)\n' +
+    '            .sort((left, right) => left.allocationOrder - right.allocationOrder)\n' +
+    '            .map((allocation) => ({\n' +
+    '              lot_id: allocation.lotId,\n' +
+    '              acquisition_date: allocation.acquisitionDate,\n' +
+    '              share_count: allocation.allocatedShareCount,\n' +
+    '              cost_basis: Number(allocation.allocatedCostBasis.amount),\n' +
+    '              book_cost_basis: Number(allocation.allocatedBookCostBasis.amount),\n' +
+    '              tax_basis: Number(allocation.allocatedTaxBasis.amount),\n' +
+    '              net_proceeds: Number(allocation.allocatedNetProceeds.amount),\n' +
+    '              average_fund_equity_ratio_basis_points:\n' +
+    '                allocation.averageFundEquityRatioBasisPoints,\n' +
+    '          '... 9621 more characters
+
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/archive_export.test.mjs:521:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'import { loadPresentedAnnualAccountsSource } from "../../../../lib/annual-accounts-workspace-source";\nimport { loadPresentedCompanyTaxSource } from "../../../../lib/company-tax-workspace-source";\nimport { loadTaxSettlementArchiveSource } from "../../../../../features/company-tax-filing";\nimport { createHash } from "node:crypto";\n\nimport {\n  loadLedgerEntriesForArchive,\n  presentLedgerEntriesForArchive,\n  loadOpeningSnapshotsForYear,\n  presentOpeningSnapshots,\n} from "../../../../../features/ledger";\nimport {\n  loadInvestmentAcquisitionLots,\n  loadInvestmentActivity,\n  loadInvestmentPositions,\n  loadInvestmentShareSaleAllocations,\n  loadInvestmentCorrections,\n  effectiveInvestmentActivity,\n  presentAcquisitionLots,\n  presentInvestmentActivity,\n  presentInvestmentPositions,\n  presentShareSaleAllocations,\n  presentInvestmentCorrections,\n} from "../../../../../features/investments";\nimport {\n  loadDocumentBackupProjection,\n} from "../../../../../features/documents";\nimport {\n  listCorporateDecisionLifecycle,\n  listSupportedCorporateEvents,\n} from "../../../../../features/corporate-governance";\nimport {\n  loadRf1086ArchiveSource,\n  presentRf1086Preview,\n  presentRf1086Simulation,\n  presentRf1086Permission,\n  presentRf1086TestEvidence,\n  presentRf1086ReviewComment,\n} from "../../../../../features/shareholder-register-filing";\nimport { loadBillingSnapshot, presentBillingAccount } from "../../../../../features/billing";\nimport {\n  buildPersistedCompanyArchive,\n  firstArchiveSourceError,\n} from "../../../../lib/archive";\nimport { loadAcceptedMembershipCompany } from "../../../../lib/company-access-context";\nimport { requireStepUpForAction } from "../../../../lib/security";\nimport { getCurrentSessionAccessToken } from "../../../../lib/supabase/auth-session";\nimport {\n  createSupabaseServerClient,\n  createSupabaseServiceRoleClient,\n} from "../../../../lib/supabase/server";\n\nasync function loadArchiveOpeningSnapshots(accessToken: string, companyId: string, incomeYear: number) {\n  try {\n    const projection = presentOpeningSnapshots(await loadOpeningSnapshotsForYear(accessToken, companyId, incomeYear));\n    if ([...projection.setups, ...projection.shareholders].some((row) => row.company_id !== companyId)) {\n      throw new Error("Opening query escaped the authorized company scope.");\n    }\n    const setups = projection.setups.filter((setup) => setup.income_year === incomeYear);\n    const setupIds = new Set(setups.map((setup) => setup.id));\n    return { data: setups, shareholders: projection.shareholders.filter((row) => setupIds.has(row.setup_id)), error: null };\n  } catch {\n    return { data: null, shareholders: null, error: new Error("Opening archive source unavailable.") };\n  }\n}\n\nasync function loadArchiveRf1086(accessToken: string, companyId: string, incomeYear: number) {\n  try {\n    // The source keeps company-wide comments/permissions and selects year-bound rows before decoding.\n    const workspace = await loadRf1086ArchiveSource(accessToken, companyId, incomeYear);\n    const submissions = workspace.simulations.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Simulation);\n    const evidenceIds = new Set(submissions.filter((row) => row.mode === "test_authority")\n      .map((row) => row.authority_test_run_id).filter((id): id is string => Boolean(id)));\n    return { data: {\n      submissions,\n      previews: workspace.previews.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Preview),\n      permissions: workspace.permissions.map(presentRf1086Permission),\n      comments: workspace.reviewComments.map(presentRf1086ReviewComment),\n      testEvidence: workspace.testEvidence.filter((row) => evidenceIds.has(row.id)).map(presentRf1086TestEvidence),\n    }, error: null };\n  } catch {\n    return { data: null, error: new Error("RF archive source unavailable.") };\n  }\n}\n\nfunction mergeArchiveRfRows<A extends { id: string }, B extends { id: string }>(existing: readonly A[], owned: readonly B[]): (A | B)[] {\n  // The overlap projection may still contain the same immutable row identity.\n  const rows = new Map<string, A | B>(existing.map((row) => [row.id, row]));\n  for (const row of owned) rows.set(row.id, row);\n  return [...rows.values()];\n}\n\nasync function loadArchiveLedgerEntries(\n  accessToken: string,\n  companyId: string,\n  incomeYear: number,\n) {\n  try {\n    const entries = await loadLedgerEntriesForArchive(accessToken, [companyId]);\n    const presented = presentLedgerEntriesForArchive(entries);\n    if (presented.some((entry) => entry.company_id !== companyId)) {\n      throw new Error("Ledger query escaped the authorized company scope.");\n    }\n    return {\n      data: presented\n        .filter((entry) => entry.income_year === incomeYear)\n        .map((entry) => ({\n          id: entry.id,\n          company_id: entry.company_id,\n          setup_id: entry.setup_id,\n          income_year: entry.income_year,\n          entry_type: entry.entry_type,\n          memo: entry.memo,\n          lines: entry.lines,\n          created_by: entry.created_by,\n          created_at: entry.created_at,\n        })),\n      error: null,\n    };\n  } catch {\n    return { data: null, error: new Error("Ledger archive source unavailable.") };\n  }\n}\n\nasync function loadArchiveDocuments(\n  accessToken: string,\n  companyId: string,\n  incomeYear: number,\n) {\n  try {\n    const result = await loadDocumentBackupProjection(accessToken, companyId, incomeYear);\n    return {\n      data: result.objects.map((document) => ({\n        id: document.documentId,\n        company_id: result.companyId,\n        income_year: result.incomeYear,\n        document_type: document.documentType,\n        name: document.name,\n        linked_to: document.linkedTo,\n        status: document.status,\n        retention_years: document.retentionYears,\n        storage_key: document.storageKey,\n        created_by: document.createdBy,\n        created_at: document.createdAt,\n        removed_at: document.removedAt,\n        removed_by: null,\n        removal_reason: document.removalReason,\n      })),\n      projection: result,\n      error: null,\n    };\n  } catch {\n    return { data: null, projection: null, error: new Error("Documents archive projection unavailable.") };\n  }\n}\n\nasync function loadArchiveBilling(accessToken: string, companyId: string) {\n  try {\n    const snapshot = await loadBillingSnapshot(accessToken, { companyIds: [companyId] });\n    return {\n      data: snapshot.accounts.map(presentBillingAccount),\n      error: null,\n    };\n  } catch {\n    return { data: null, error: new Error("Billing archive source unavailable.") };\n  }\n}\n\nasync function loadArchiveCorporateLifecycle(\n  accessToken: string,\n  companyId: string,\n  incomeYear: number,\n) {\n  try {\n    const [lifecycle, supportedEvents, documents] = await Promise.all([\n      listCorporateDecisionLifecycle(accessToken, [companyId]),\n      listSupportedCorporateEvents(accessToken, [companyId]),\n      loadDocumentBackupProjection(accessToken, companyId, incomeYear),\n    ]);\n    const documentsById = new Map(\n      documents.objects.map((document) => [document.documentId, document]),\n    );\n    const artifacts = lifecycle.corporateDocumentArtifacts\n      .filter((item) => item.income_year === incomeYear)\n      .map((artifact) => ({\n        ...artifact,\n        storage_key: documentsById.get(artifact.document_id)?.storageKey ?? "",\n      }));\n    if (artifacts.some((artifact) => !artifact.storage_key)) {\n      throw new Error("Corporate artifact document evidence is incomplete.");\n    }\n    return {\n      data: {\n        corporateDecisions: lifecycle.corporateDecisions.filter(\n          (item) => item.income_year === incomeYear,\n        ),\n        corporateDocumentSets: lifecycle.corporateDocumentSets.filter(\n          (item) => item.income_year === incomeYear,\n        ),\n        corporateDocumentArtifacts: artifacts,\n        corporateDocumentEvents: lifecycle.corporateDocumentEvents.filter(\n          (item) => item.income_year === incomeYear,\n        ),\n        corporateDecisionFinalizations: lifecycle.corporateDecisionFinalizations.filter(\n          (item) => item.income_year === incomeYear,\n        ),\n        supportedCorporateEvents: supportedEvents.filter(\n          (item) => item.companyId === companyId && item.incomeYear === incomeYear,\n        ),\n      },\n      error: null,\n    };\n  } catch {\n    return { data: null, error: new Error("Corporate-governance archive source unavailable.") };\n  }\n}\n\nasync function loadArchiveInvestments(\n  accessToken: string,\n  companyId: string,\n  incomeYear: number,\n) {\n  try {\n    const [activity, positions, lots, allocations, corrections] = await Promise.all([\n      loadInvestmentActivity(accessToken, [companyId]),\n      loadInvestmentPositions(accessToken, [companyId]),\n      loadInvestmentAcquisitionLots(accessToken, [companyId]),\n      loadInvestmentShareSaleAllocations(accessToken, [companyId]),\n      loadInvestmentCorrections(accessToken, [companyId]),\n    ]);\n    const presentedActivity = presentInvestmentActivity(activity).map((item) => {\n      if (item.action_type !== "share_sale") return item;\n      return {\n        ...item,\n        payload: {\n          ...item.payload,\n          lot_allocations: allocations\n            .filter((allocation) => allocation.saleActionId === item.id)\n            .sort((left, right) => left.allocationOrder - right.allocationOrder)\n            .map((allocation) => ({\n              lot_id: allocation.lotId,\n              acquisition_date: allocation.acquisitionDate,\n              share_count: allocation.allocatedShareCount,\n              cost_basis: Number(allocation.allocatedCostBasis.amount),\n              book_cost_basis: Number(allocation.allocatedBookCostBasis.amount),\n              tax_basis: Number(allocation.allocatedTaxBasis.amount),\n              net_proceeds: Number(allocation.allocatedNetProceeds.amount),\n              average_fund_equity_ratio_basis_points:\n                allocation.averageFundEquityRatioBasisPoints,\n          '... 9621 more characters,
+    expected: /filing_submissions[\s\S]*authority_test_run_id/u,
+    operator: 'match',
+    diff: 'simple'
+  }
+[launch-rehearsal] exit=1
+[launch-rehearsal] durationMs=154792

@@ -1,0 +1,32 @@
+✔ archive preserves frozen mixed chains except the exact owned RF, Tax and Accounts read retirements (21.163375ms)
+✔ archive preserves original selected opening and shareholder fields through the joined owner projection (55.719833ms)
+✔ a failing 2024 opening does not prevent a valid 2025 archive but still blocks the 2024 export (29.899792ms)
+✔ RF-only archive preserves original nested payload identities, requested year and company-wide history (11.948709ms)
+✔ actual generated RF archive transport isolates a malformed 2024 preview from the valid 2025 download (27.256042ms)
+✔ RF authority evidence is limited to retained submission references without adding a generic persistence call (10.127417ms)
+✔ owned sibling sources retain linked authority evidence and overlap never duplicates RF rows (9.938292ms)
+✔ unavailable rf source cannot complete the authoritative export (11.774959ms)
+✔ unavailable opening source cannot complete the authoritative export (8.74825ms)
+✔ unavailable tax source cannot complete the authoritative export (10.380542ms)
+✔ unavailable taxFiling source cannot complete the authoritative export (13.416208ms)
+✔ unavailable accountsFiling source cannot complete the authoritative export (10.166166ms)
+✔ unavailable audit_events source cannot complete the authoritative export (9.265208ms)
+✔ Accounts source errors retain priority and precede all sibling reads (7.317292ms)
+✔ authentication and step-up precede every source and export effect {"user":false} (19.078542ms)
+✔ authentication and step-up precede every source and export effect {"token":false} (41.914375ms)
+✔ authentication and step-up precede every source and export effect {"mfa":false} (23.67925ms)
+✔ empty retained history still rejects export and failed receipt never yields a downloadable archive (36.992791ms)
+✔ owned Tax source preserves all thirteen original fields beside unchanged RF history (16.329292ms)
+✔ owned Tax filing preserves nested payload and only linked evidence inside the Archive generation boundary (22.142958ms)
+✔ owned Accounts archive retains requested-year rows, company-wide comments, and only linked evidence (14.043542ms)
+✔ builds company-year archive from persisted workspace rows (3.061167ms)
+✔ archive download fetches only sanitized authority runs linked by submission id (1.778792ms)
+✔ archive ledger facts come through the generated capability query with a frozen projection (1.971792ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 707.351125

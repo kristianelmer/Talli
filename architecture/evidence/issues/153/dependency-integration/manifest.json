@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0",
+  "status": "DEPENDENCY_INTEGRATION_VERIFIED_STAGE_EXIT_PENDING",
+  "baseRevision": "9a3d8d8068749635b64645936f2d7398e0bc11c9",
+  "artifacts": {
+    "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "c42c2cb66cc78d398178a34d7cb12383b9605ac9eaa0ffc10f3b15cac8830bdb",
+    "apps/web/tests/archive-rf1086-source.test.mjs": "5a03ddb2758dc08c9a55ad0a3588fe6e24d558f318ae6deb69cfe6a824bca39c",
+    "architecture/evidence/customer-ready-gates/9a3d8d8068749635b64645936f2d7398e0bc11c9.log": "431542bc3352665780d2bf9e9b2e349056e08e004507a14aafa086cb8397ad91",
+    "architecture/evidence/issues/153/dependency-integration/accounts-dependency-tests-first.log": "4e9ba95cd32e1e99ef09e8edf5749c6b6ababe286393a526f5486760a1d6704e",
+    "architecture/evidence/issues/153/dependency-integration/accounts-dependency-tests-support-first.log": "dc70454287662bf7ddf8fe699b76466ac7df06ec9b2e0007c6c862101a8ce206",
+    "architecture/evidence/issues/153/dependency-integration/accounts-lifecycle-28-tests.log": "2ccfc6b9710c63992c8524a2068a3d39e57e8b43af5a84b21c41d739b473d503",
+    "architecture/evidence/issues/153/dependency-integration/archive-source-gate-fix-second.log": "5e8e623dce8afc8a13b4b5de7eb4f170ef8bf9983e9a1acc0e0900a9eb31a34e",
+    "architecture/evidence/issues/153/dependency-integration/archive-source-gate-fix.log": "e49797db58b0980bd6b4ac35a9c73b5a4b4b05b25376b8fa7792da8c81fd49ba",
+    "architecture/evidence/issues/153/dependency-integration/ci-accounts-lanes-fixed.log": "85d2bc5863f9bd5dcbd82e4073e1b77bd2f5b568e482bd5c38709833fc6242ae",
+    "architecture/evidence/issues/153/dependency-integration/environment-recovery-spec-review-9a3d8d80.json": "08127782e477802d1fc1c9cb8dbe3a6e38ae524a374d56895252e24ba1ced5c1",
+    "architecture/evidence/issues/153/dependency-integration/environment-recovery-spec-review-9a3d8d80.md": "ea683076553fbef47a0bf97f898f7baeebaa0b5f5e662408c479646448818570",
+    "architecture/evidence/issues/153/dependency-integration/environment-recovery-standards-review-9a3d8d80.json": "df99270ace487b69fd6346818eef55e5a2c74e90848e158ffb729720bdd7224a",
+    "architecture/evidence/issues/153/dependency-integration/environment-recovery-standards-review-9a3d8d80.md": "91a687d5d661743c1cc02967e1cdb6b0d575eb9ffb2f5472d8df46e1f1eaf8a1",
+    "architecture/evidence/issues/153/dependency-integration/rehearsal-tail-first.log": "3ddf02c8f3a3c9bfbb8638a46740d3f0ca7923b9a3b3f14a5e62f0382046390c",
+    "architecture/evidence/issues/153/dependency-integration/rehearsal-tail-second.log": "e3b2f21c42fb16b9f00aaa27e48ef7d8f0e15ea0ec87d00c3f1384405a9ce064",
+    "architecture/evidence/issues/153/dependency-integration/verification.md": "973707f63cf76c245ba810a0767a40bf324740c1d87e6993871bdd44ffd98238",
+    "tests/archive_export.test.mjs": "7553e600edd83afc062e11541ed3ac6effeb873225d842b06d3232b1a269fbb3",
+    "tests/backup_restore.test.mjs": "3433852178f48bd9c4f8ebb624a84c08f56f322e1874993eb003ea760dfed366",
+    "tests/ci_release_gate.test.mjs": "c3b1661cd4e861d883e76074f30badbb505bb9fbd1909ec5f54f5ea9e0db9646"
+  }
+}

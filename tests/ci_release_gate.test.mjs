@@ -376,7 +376,7 @@ test("Vercel deploys the Next output near the owner-designated database", () => 
   assert.deepEqual(config.regions, ["dub1"]);
 });
 
-test("backend boundary partitions every test across the ordinary, Billing, Authority and Company Tax mandatory lanes", () => {
+test("backend boundary partitions every test across the ordinary, Billing, Authority, Company Tax and Accounts mandatory lanes", () => {
   const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
   const lifecycle = packageJson.scripts["test:billing-database-lifecycle"];
   const authorityLifecycle = packageJson.scripts["test:authority-connections-database"];
@@ -414,9 +414,15 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
   const tax = collect(`${pytest} ${taxFiles.join(" ")}`);
   assert.deepEqual(collect(`${pytest} apps/backend/tests -m company_tax_database`), tax);
   assert.ok(tax.size >= 21);
+  const accountsFiles = packageJson.scripts["test:annual-accounts-database"].match(/apps\/backend\/tests\/test_\w+\.py/gu);
+  assert.deepEqual(accountsFiles, ["apps/backend/tests/test_annual_accounts_filing_lifecycle.py"]);
+  const accounts = collect(`${pytest} ${accountsFiles.join(" ")}`);
+  assert.deepEqual(collect(`${pytest} apps/backend/tests -m accounts_database`), accounts);
+  assert.ok(accounts.size >= 23);
   const boundary = collect(packageJson.scripts["test:boundary-backend"]);
   const all = collect(`${pytest} apps/backend/tests`);
-  assert.deepEqual(new Set([...boundary, ...database, ...authority, ...tax]), all, "no backend test may disappear between lanes");
+  assert.deepEqual(new Set([...boundary, ...database, ...authority, ...tax, ...accounts]), all, "no backend test may disappear between lanes");
+  assert.deepEqual([...accounts].filter((id) => boundary.has(id) || database.has(id) || authority.has(id) || tax.has(id)), [], "Accounts must run only in its mandatory lane");
   assert.deepEqual([...boundary].filter((id) => database.has(id)), [], "database fixtures must not run in the ordinary boundary lane");
   assert.deepEqual([...boundary].filter((id) => authority.has(id)), [], "Authority fixtures must not run in the ordinary boundary lane");
   assert.deepEqual([...authority].filter((id) => database.has(id)), [], "database lifecycle lanes must not overlap");
@@ -437,7 +443,7 @@ test("mandatory Billing and Authority lifecycles refuse missing DB configuration
     }
     const env = { ...process.env, PATH: `${directory}:${process.env.PATH}` };
     delete env.DATABASE_URL;
-    for (const lane of ["test:billing-database-lifecycle", "test:authority-connections-database", "test:company-tax-database"]) {
+    for (const lane of ["test:billing-database-lifecycle", "test:authority-connections-database", "test:company-tax-database", "test:annual-accounts-database"]) {
       const result = run("sh", ["-c", packageJson.scripts[lane]], { env });
       assert.notEqual(result.status, 0, `missing DATABASE_URL must fail ${lane}`);
       assert.match(result.stderr, /DATABASE_URL.*disposable/u);
@@ -586,7 +592,7 @@ const phases=['topology:rollback:1','npm:test:ledger-database-lifecycle','npm:te
  'npm:test:validation-observation','npm:test:supabase-predecessor','topology:workspace','npm:test:supabase-rf-workspace',
  'npm:test:browser-owner','topology:rollback:2','npm:test:ledger-hosted-migration-authority',
  'npm:test:corporate-governance-database-lifecycle','npm:test:billing-database-lifecycle','topology:recutover',
- 'npm:test:authority-connections-database','npm:test:company-tax-database','npm:test:browser-owner-annual','npm:test:supabase-rf-feedback','npm:test:browser-authority-connections','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax'];
+ 'npm:test:authority-connections-database','npm:test:company-tax-database','npm:test:annual-accounts-database','npm:test:browser-owner-annual','npm:test:supabase-rf-feedback','npm:test:browser-authority-connections','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts'];
 const nodeShim=`#!/usr/bin/env bash
 set -euo pipefail
 if [[ "$1" == "scripts/prepare-isolated-supabase-workdir.mjs" ]]; then exit 0; fi
@@ -619,7 +625,7 @@ if [[ "$phase" == "$FAIL_PHASE" ]]; then exit 23; fi
 `;
 for(const fail of ['', 'topology:workspace','npm:test:supabase-rf-workspace','npm:test:browser-owner','topology:rollback:2',
  'npm:test:ledger-hosted-migration-authority','npm:test:billing-database-lifecycle','topology:recutover','npm:test:supabase-rf-feedback',
- 'npm:test:company-tax-database','npm:test:browser-owner-annual','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax']) {
+ 'npm:test:company-tax-database','npm:test:annual-accounts-database','npm:test:browser-owner-annual','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts']) {
  test(`real shell stops at ${fail||'success'} and restores owned generated files`,()=>{
   const dir=mkdtempSync(join(tmpdir(),'talli-151-shell-proof-'));
   try {

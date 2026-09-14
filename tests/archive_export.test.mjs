@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { buildPersistedCompanyArchive } from "../apps/web/app/lib/archive.ts";
+import { presentAnnualAccountsTestEvidence } from "../apps/web/features/annual-accounts-filing/presentation.ts";
 
 test("builds company-year archive from persisted workspace rows", () => {
   const archive = buildPersistedCompanyArchive({
@@ -518,13 +519,28 @@ test("archive download fetches only sanitized authority runs linked by submissio
     new URL("../apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts", import.meta.url),
     "utf8",
   );
-  assert.match(route, /filing_submissions[\s\S]*authority_test_run_id/u);
-  assert.match(route, /\.from\("authority_test_runs"\)/u);
+  assert.match(route, /loadPresentedAnnualAccountsSource\(accessToken, \[companyId\]\)/u);
+  assert.match(route, /accountsSource\.submissions\.filter\(row => row\.income_year === incomeYear\)/u);
   assert.match(
     route,
-    /\.select\("id, company_id, obligation, environment, status, test_reference, feedback_summary, receipt_reference, archive_reference, evidence_url, payload_hash, recorded_by, recorded_at"\)/u,
+    /filter\(\(submission\) => submission\.mode === "test_authority"\)[\s\S]*map\(\(submission\) => submission\.authority_test_run_id\)/u,
   );
-  assert.doesNotMatch(route, /authority_test_runs[\s\S]*\.select\("\*"\)/u);
+  assert.match(route, /accountsSource\.authorityTestRuns\.filter\(row => authorityTestRunIds\.includes\(row\.id\)\)/u);
+  assert.doesNotMatch(route, /\.from\("(?:filing_submissions|authority_test_runs)"\)/u);
+  const source = readFileSync(new URL("../apps/web/app/lib/annual-accounts-workspace-source.ts", import.meta.url), "utf8");
+  assert.match(source, /source\.testEvidence\.map\(presentAnnualAccountsTestEvidence\)/u);
+  const safe = {
+    id: "run", companyId: "company", obligation: "arsregnskap", environment: "test",
+    status: "pending", testReference: "reference", feedbackSummary: "summary",
+    receiptReference: "receipt", archiveReference: "archive", evidenceUrl: "evidence",
+    payloadHash: "hash", recordedBy: "owner", recordedAt: "2026-01-02T00:00:00Z",
+  };
+  assert.deepEqual(presentAnnualAccountsTestEvidence({ ...safe, rawPayload: "PRIVATE", accessToken: "SECRET" }), {
+    id: "run", company_id: "company", obligation: "arsregnskap", environment: "test",
+    status: "pending", test_reference: "reference", feedback_summary: "summary",
+    receipt_reference: "receipt", archive_reference: "archive", evidence_url: "evidence",
+    payload_hash: "hash", recorded_by: "owner", recorded_at: "2026-01-02T00:00:00Z",
+  });
   assert.match(route, /mergeArchiveRfRows\(authorityTestRuns \?\? \[\], rf1086\.data\?\.testEvidence \?\? \[\]\)/u);
   assert.match(
     route,

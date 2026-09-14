@@ -153,8 +153,10 @@ test("backup manifest identifies launch-critical tables and object references", 
   const manifest = buildBackupManifest(archiveFixture());
 
   assert.ok(manifest.launchCriticalTables.includes("annual_data"));
-  assert.ok(manifest.launchCriticalTables.includes("authority_test_runs"));
-  assert.ok(manifest.launchCriticalTables.includes("filing_submissions"));
+  for (const family of ["authority_test_runs", "authority_permissions", "filing_previews", "filing_submissions", "filing_overrides", "filing_review_comments"]) {
+    assert.ok(manifest.launchCriticalTables.includes(`annual_accounts_filing.${family}`));
+    assert.equal(manifest.launchCriticalTables.includes(family), false);
+  }
   assert.ok(manifest.launchCriticalTables.includes("billing.production_pilot_entitlements"));
   assert.ok(manifest.launchCriticalTables.includes("shareholder_register_filing.filing_approval_snapshots"));
   assert.ok(manifest.launchCriticalTables.includes("shareholder_register_filing.production_filing_submissions"));
@@ -169,8 +171,8 @@ test("backup manifest identifies launch-critical tables and object references", 
     "production filing state must restore entitlement, approval, submission, then events",
   );
   assert.ok(
-    manifest.launchCriticalTables.indexOf("authority_test_runs")
-      < manifest.launchCriticalTables.indexOf("filing_submissions"),
+    manifest.launchCriticalTables.indexOf("annual_accounts_filing.authority_test_runs")
+      < manifest.launchCriticalTables.indexOf("annual_accounts_filing.filing_submissions"),
     "authority test runs must restore before their linked submissions",
   );
   assert.ok(manifest.launchCriticalTables.includes("audit_events"));
