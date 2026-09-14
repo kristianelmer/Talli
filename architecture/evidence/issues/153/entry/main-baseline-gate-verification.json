@@ -1,0 +1,15 @@
+{
+  "status": "PASS_ROOT_COMPLETE_GATE_VERIFICATION",
+  "gates": [
+    {
+      "revision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+      "canonicalDigest": "sha256:681ba7da16c0f8b2fdc4f7b0c7a5897ede814ada9de3f9c7f543d8e3c13c9582",
+      "transcriptDigest": "sha256:0ffbfdd0827b2a6c960c7a0df548e068a28ae78b81f2895931221442c80dd676",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "startedAt": "2026-09-14T05:23:50.702Z",
+      "executedAt": "2026-09-14T05:44:22.652Z",
+      "checkCount": 11,
+      "previousPassingRevision": "a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2"
+    }
+  ]
+}

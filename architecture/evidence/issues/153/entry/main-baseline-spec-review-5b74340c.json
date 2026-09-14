@@ -1,0 +1,153 @@
+{
+  "revision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "evidencePath": "architecture/evidence/customer-ready-gates/5b74340ca75f215b43d754c6bf0fc49ef5974b0b.json",
+  "receiptRawSha256": "sha256:f0e4d6065f9289d0b699c3c4c344523f844aced540b9c8228ac9413b3f7aa1f9",
+  "evidenceDigest": "sha256:681ba7da16c0f8b2fdc4f7b0c7a5897ede814ada9de3f9c7f543d8e3c13c9582",
+  "transcriptPath": "architecture/evidence/customer-ready-gates/5b74340ca75f215b43d754c6bf0fc49ef5974b0b.log",
+  "transcriptDigest": "sha256:0ffbfdd0827b2a6c960c7a0df548e068a28ae78b81f2895931221442c80dd676",
+  "producer": "scripts/run-customer-ready-gate.mjs",
+  "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+  "schemaPath": "architecture/customer-ready-gate-evidence.schema.json",
+  "schemaDigest": "sha256:b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+  "schemaValid": true,
+  "checks": [
+    {
+      "name": "schema-setup",
+      "command": "git clone --depth 1 --branch v1.62.47 https://github.com/Skatteetaten/skattemeldingen.git",
+      "exitCode": 0,
+      "durationMs": 21045
+    },
+    {
+      "name": "credential-scan",
+      "command": "npm run test:credential-scan",
+      "exitCode": 0,
+      "durationMs": 1224
+    },
+    {
+      "name": "typecheck",
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "durationMs": 1286
+    },
+    {
+      "name": "architecture",
+      "command": "npm run check:architecture",
+      "exitCode": 0,
+      "durationMs": 16279
+    },
+    {
+      "name": "boundary",
+      "command": "npm run test:boundary",
+      "exitCode": 0,
+      "durationMs": 157906
+    },
+    {
+      "name": "build-web",
+      "command": "TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built",
+      "exitCode": 0,
+      "durationMs": 9378
+    },
+    {
+      "name": "build-backend",
+      "command": "npm run build:backend",
+      "exitCode": 0,
+      "durationMs": 1407
+    },
+    {
+      "name": "boundary-smoke",
+      "command": "npm run test:boundary-smoke",
+      "exitCode": 0,
+      "durationMs": 7271
+    },
+    {
+      "name": "launch-rehearsal",
+      "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal",
+      "exitCode": 0,
+      "durationMs": 245787
+    },
+    {
+      "name": "production-dependency-audit",
+      "command": "npm audit --omit=dev --audit-level=high && npm audit --prefix apps/web --omit=dev --audit-level=high",
+      "exitCode": 0,
+      "durationMs": 1227
+    },
+    {
+      "name": "database-isolation",
+      "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python npm run test:supabase:local",
+      "exitCode": 0,
+      "durationMs": 769039
+    },
+    {
+      "name": "whitespace",
+      "command": "bash scripts/check-clean-worktree.sh",
+      "exitCode": 0,
+      "durationMs": 99
+    }
+  ],
+  "elapsedMs": 1231950,
+  "summedDurationMs": 1231948,
+  "overheadMs": 2,
+  "startedAt": "2026-09-14T05:23:50.702Z",
+  "executedAt": "2026-09-14T05:44:22.652Z",
+  "previousPassingRevision": "a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2",
+  "previousIsAncestor": true,
+  "previousDoesNotCountToward152Pair": false,
+  "taxDatabasePassed": 32,
+  "browserCounts": {
+    "test:browser-public-acquisition:built": 1,
+    "test:browser-owner": 24,
+    "test:browser-owner-annual": 1,
+    "test:browser-authority-connections": 11,
+    "test:browser-shareholder-register-filing": 12,
+    "test:browser-company-tax": 2
+  },
+  "storageRevision": null,
+  "observedHead": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "observedStatus": "?? architecture/evidence/customer-ready-gates/5b74340ca75f215b43d754c6bf0fc49ef5974b0b.json\n?? architecture/evidence/customer-ready-gates/5b74340ca75f215b43d754c6bf0fc49ef5974b0b.log\n",
+  "sourceDelta": [],
+  "skips": {
+    "ordinaryBackend": 2,
+    "validationObservationPython": 1,
+    "mandatoryBrowser": 0,
+    "taxDatabase": 0
+  },
+  "supabaseAdvisors": {
+    "blocking": 0,
+    "performanceWarnings": 60
+  },
+  "verdict": "PASS_SEPARATE_EXACT_MAIN_BASELINE_GATE",
+  "findings": [],
+  "reviewedAt": "2026-09-14T05:46:30.413309+00:00",
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/main-baseline-spec-review-5b74340c.md",
+  "reportSha256": "eff9d91bb7aa17d7c9c169febb6f39426a1000d89faaf481f1b8c0489000fc9f",
+  "mainTree": "0e456c20064ba10879f44390e3cb6b06165dd8a1",
+  "orderedParents": [
+    "054740b81692e0e59b99a76fff085f322f1968b4",
+    "0b2d5ea8cfc4397e9dcf7203b886737c61a5ce09"
+  ],
+  "mainTreeEqualsReviewedHead": true,
+  "runtime": {
+    "python": "3.12.12 recorded in raw transcript",
+    "node": "24.20.0: saved launch wrapper PATH pin and version assertion, plus parent-reported successful launch; canonical receipt does not capture Node version/execPath",
+    "reportedLaunch": "python3 private/issue152-entry/run-full-gate.py --previous a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2",
+    "reportedSession": 94999,
+    "reportedParentPid": 60852,
+    "reportedGatePid": 60855,
+    "verifierNode": "24.20.0 explicitly selected for this independent read-only verifier"
+  },
+  "bindings": {
+    "verify-main-baseline-spec-5b74340c.mjs": "266f3a8e40d696ac6a59ea49ad83bd4130e08187826e1f8cd06c139a8ae2971d",
+    "main-baseline-spec-checks-5b74340c.json": "3c164504d38bb4195b3ccc24580ab7b59a8125e85ca38bbb10dbb0837baeb62c",
+    "main-baseline-spec-checks-5b74340c.log": "3c164504d38bb4195b3ccc24580ab7b59a8125e85ca38bbb10dbb0837baeb62c",
+    "run-full-gate.py": "d12273b2e3586b90b6f2ed4bb1ab3349955fb73702997426a4fcdb9ce75ac8f8",
+    "full-gate-5b74340ca75f215b43d754c6bf0fc49ef5974b0b.log": "eed0d5280d29d0bfdd0317352f3b0047761305f00100bbbc5738835dc688e8d9",
+    "main-baseline-gate-verification.json": "6fb848983f70c7639f32bc70ac8d62121a2615175a147941dc29049b191a3b05"
+  },
+  "limits": [
+    "Separate exact-main baseline only; accepted #152 pair remains 7c9b3caa -> a20b1065",
+    "Not adopted #153 entry or exit; no successor claim",
+    "Receipt/transcript untracked and not committed at review time",
+    "Exact-main CI and published closure not certified by this report",
+    "No product tests, database mutations, hosted operations, provider calls or browser execution performed"
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "finalHead": "0b2d5ea8cfc4397e9dcf7203b886737c61a5ce09",
+  "templateSha256": "b827c04351db712baf90e1a9a0f85a8c53fa9845f52005d0c63e5bc913dae4d0",
+  "receiptBindings": [
+    {
+      "revision": "7c9b3caae3cd278bbe381589308cf302142b58a5",
+      "receiptSha256": "2274e6219629a14f0e6e7a4750b02db059f1eaba27213037af454f0472d33164",
+      "canonicalDigest": "sha256:799bb21ece9c29531535f128df0a2880afe59d8d2ded374990f3e47b181f0e94",
+      "transcriptDigest": "sha256:c0a6774d82439cafbc528bf5996955a3017e3aeb7dd8c197b6a7f15b144d8622",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c"
+    },
+    {
+      "revision": "a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2",
+      "receiptSha256": "f8c6251b66e40427ea8ea010a03b45fd6ea6a11057d8e899e269bd9ab4eae0cc",
+      "canonicalDigest": "sha256:ca2dabdfd37b8d717f82ec427bbcccf3372f82508a5d14407ab3742825afb073",
+      "transcriptDigest": "sha256:b298c307c93e11ac3d16afcad13da664113766247f3195f0893e7fd6582f5212",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c"
+    }
+  ],
+  "committedSourceSha256": {
+    "architecture/evidence/issues/152/gate-pair/gate-pair-spec-review-152.md": "5dc871d790719583c50f399d56e5ca0a64b41cdde9be986ac6e72e89ce1be06d",
+    "architecture/evidence/issues/152/gate-pair/gate-pair-standards-review-152.md": "f50513853c05043fccd57aae387d8e8ac3fcc87af1848605c1db20ba573b2acf",
+    "architecture/evidence/issues/152/verification.md": "3bfb955ed672a1185e41bf69fcee76f9d87a5718ce25265b55de050fced10b3c",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "f94e53ccce5ce61e927be28e374d67c3d356a17620206107c204ef016f6a41b6"
+  },
+  "privateSourceSha256": {
+    "closure-receipt-template.md": "b827c04351db712baf90e1a9a0f85a8c53fa9845f52005d0c63e5bc913dae4d0",
+    "committed-pair-reread-152-0b2d5ea8.md": "088331e1d44eee031babddd36ad53ffde7fa3d7f911a5bb32d5cfad1fb1006eb",
+    "committed-pair-reread-152-0b2d5ea8.json": "353cab03d98237a98cb94d20499f48699ee30e28d20ebba47c38fb4003c0c4e2",
+    "preview-final-head-0b2d5ea8.json": "678d2273c7ce34468a4cfed41b297bf1551315e2246880b8e50bdc80430d90e9",
+    "production-after-draft.json": "96db19b2d267957ad44b3964b3dde72d77ae6aaf21bd856dca12093a887e68a7"
+  },
+  "checks": {
+    "gateDigestsAndTemplateAgree": true,
+    "rereadDigestMatches": true,
+    "finalTreeMatches": true,
+    "allSixCriteriaCovered": true
+  },
+  "pendingPublicationEvidence": [
+    "final-head CI34808139123 completion and actual checkout/tree verification",
+    "protected PR213 merge and exact main tree",
+    "MAIN_SHA/MAIN_RUN/MAIN_PREVIEW resolution and successful checks",
+    "fresh production-freeze recheck at integration",
+    "published receipt independent reread"
+  ],
+  "closedCorrection": {
+    "criterion": 3,
+    "issue": "Do not generalize TT02 atomic Audit and idempotent receipt guarantees to existing preparation operations.",
+    "resolution": "Preparation preserves existing authorization/MFA and Audit continuations. TT02 import preserves atomic Audit inclusion, idempotent receipts, original IDs and ambiguous-response recovery.",
+    "bindingNote": "The exact template binding was captured after the parent applied the correction; no pre-correction hash is asserted."
+  },
+  "axis": "Standards",
+  "verdict": "PASS_CORRECTED_TEMPLATE_ONLY_PENDING_INTEGRATION",
+  "findings": [],
+  "integrationApproved": false,
+  "publicationApproved": false,
+  "reportSha256": "c11fce42497debc6fbd41c2bc3d6db18600d25bc6aff736df91883be7257efd4"
+}

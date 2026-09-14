@@ -118,9 +118,9 @@
         ]
       }
     ],
-    "currentCapability": "company_tax_filing",
-    "currentIssue": "#152",
-    "status": "exit-review",
+    "currentCapability": "annual_accounts_filing",
+    "currentIssue": "#153",
+    "status": "active",
     "exitedCapabilities": [
       "company_access",
       "ledger",
@@ -130,7 +130,8 @@
       "corporate_governance",
       "billing",
       "authority_connections",
-      "shareholder_register_filing"
+      "shareholder_register_filing",
+      "company_tax_filing"
     ],
     "completedStages": [
       {
@@ -296,6 +297,25 @@
             "revision": "c8a8f3dd79ebe990136bda63bcfc126432104d6d",
             "evidencePath": "architecture/evidence/customer-ready-gates/c8a8f3dd79ebe990136bda63bcfc126432104d6d.json",
             "evidenceDigest": "sha256:95b09ebd71aa6d0ac0082ac12bb446afa7a9ff3bdb193d2020ee6fb2d92e14c7"
+          }
+        ]
+      },
+      {
+        "capability": "company_tax_filing",
+        "removalIssues": [
+          "#146",
+          "#152"
+        ],
+        "gates": [
+          {
+            "revision": "7c9b3caae3cd278bbe381589308cf302142b58a5",
+            "evidencePath": "architecture/evidence/customer-ready-gates/7c9b3caae3cd278bbe381589308cf302142b58a5.json",
+            "evidenceDigest": "sha256:799bb21ece9c29531535f128df0a2880afe59d8d2ded374990f3e47b181f0e94"
+          },
+          {
+            "revision": "a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2",
+            "evidencePath": "architecture/evidence/customer-ready-gates/a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2.json",
+            "evidenceDigest": "sha256:ca2dabdfd37b8d717f82ec427bbcccf3372f82508a5d14407ab3742825afb073"
           }
         ]
       }

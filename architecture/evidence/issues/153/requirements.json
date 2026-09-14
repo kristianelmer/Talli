@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#153",
+  "source": "https://github.com/kristianelmer/Talli/issues/153",
+  "claim": "https://github.com/kristianelmer/Talli/issues/153#issuecomment-5659621764",
+  "status": "ENTRY_BASELINE_ADOPTED_INVENTORY_PENDING",
+  "baselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "predecessor": {
+    "issue": "#152",
+    "state": "CLOSED",
+    "closedAt": "2026-09-14T05:51:21Z",
+    "receipt": "https://github.com/kristianelmer/Talli/issues/152#issuecomment-5659595000",
+    "independentPublishedReread": "PASS",
+    "rereadSha256": "0fa4aecee381a7b0641733f73c4d20a66ac9ddf3bf793621ca3de7e8cb17af69"
+  },
+  "stageEntry": {
+    "revision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+    "canonicalDigest": "sha256:681ba7da16c0f8b2fdc4f7b0c7a5897ede814ada9de3f9c7f543d8e3c13c9582",
+    "transcriptDigest": "sha256:0ffbfdd0827b2a6c960c7a0df548e068a28ae78b81f2895931221442c80dd676",
+    "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+    "startedAt": "2026-09-14T05:23:50.702Z",
+    "executedAt": "2026-09-14T05:44:22.652Z",
+    "checkCount": 11,
+    "previousPassingRevision": "a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2",
+    "status": "PASS_11_OF_11_INDEPENDENTLY_VERIFIED",
+    "evidencePath": "architecture/evidence/customer-ready-gates/5b74340ca75f215b43d754c6bf0fc49ef5974b0b.json",
+    "note": "Separate exact-main baseline gate; neither #153 exit pass. Ran as exact-main verification before predecessor closure; adopted only after predecessor published receipt reread and closure."
+  },
+  "criteria": [
+    {
+      "id": "GH-153-A1",
+      "requirement": "Supported annual-accounts cases produce outputs identical to current schema and TT02 evidence.",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "GH-153-A2",
+      "requirement": "Corporate-close facts and signed-artifact readiness remain required.",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "GH-153-A3",
+      "requirement": "Hybrid signing, submission, feedback, and receipt states remain fail closed and auditable.",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "GH-153-A4",
+      "requirement": "The complete owner workflow uses FastAPI and the generated client.",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "GH-153-A5",
+      "requirement": "Obligation-specific generic rows, duplicate TypeScript calculations, and active-stage compatibility code are removed.",
+      "status": "PENDING",
+      "evidence": []
+    },
+    {
+      "id": "GH-153-A6",
+      "requirement": "The complete `annual_accounts_filing` stage exit criteria from issue #132 pass before annual-compliance migration begins.",
+      "status": "PENDING",
+      "evidence": []
+    }
+  ],
+  "entryInventory": "pending before policy or stateful characterization",
+  "constraints": [
+    "One Annual Accounts Filing owner only; Annual aggregation remains #149.",
+    "Preserve exact approved sibling scopes until their last source moves; remove all such filing scopes at Accounts exit.",
+    "Immutable source handoff preserves company/year/obligation identity/version/digest/coverage/timing/attribution/outcomes/corrections/incidents. Billing alone applies commercial/refund policy.",
+    "No provider interaction, genuine filing, hosted migration, paid operation or production promotion.",
+    "Keep release/production frozen and #192 implementation paused through approved source prerequisites."
+  ]
+}
