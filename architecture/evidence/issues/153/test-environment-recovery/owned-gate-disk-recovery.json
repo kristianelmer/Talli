@@ -1,0 +1,637 @@
+{
+  "status": "PASS",
+  "scope": "detached anonymous talli_test volumes created during recorded #152/#153 gate windows",
+  "selectedMetadata": [
+    {
+      "CreatedAt": "2026-09-14T06:44:01+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/2c6ab04fe1c1141e891908ff83b625ea5eeda3ad09c95766a8c88bdbe7e0c767/_data",
+      "Name": "2c6ab04fe1c1141e891908ff83b625ea5eeda3ad09c95766a8c88bdbe7e0c767",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:23:47+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/2f6ba39be22a068fb1ac477f0b798c7c0f101544403b82bc8ef35d5a8d63406f/_data",
+      "Name": "2f6ba39be22a068fb1ac477f0b798c7c0f101544403b82bc8ef35d5a8d63406f",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:43:14+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/2fcb8d077ff6238bc4f71ff838b96fe93ae5e00c60752a60efc59c9f443924ca/_data",
+      "Name": "2fcb8d077ff6238bc4f71ff838b96fe93ae5e00c60752a60efc59c9f443924ca",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T07:27:37+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/4a8e058cdb902e5de67b1e184e7b23384dc37e22133436819080a93d0597d2b4/_data",
+      "Name": "4a8e058cdb902e5de67b1e184e7b23384dc37e22133436819080a93d0597d2b4",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:23:34+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/4b1ed586fd0a9fb6a536cb17193b97915294766fc5af3bf483ca68b797df88f1/_data",
+      "Name": "4b1ed586fd0a9fb6a536cb17193b97915294766fc5af3bf483ca68b797df88f1",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:40:47+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/5b60020afb82af46b019ebe2bbd3486a5a8a234663aa1b2497b28a8c35541179/_data",
+      "Name": "5b60020afb82af46b019ebe2bbd3486a5a8a234663aa1b2497b28a8c35541179",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:44:41+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/7e3253e8fc913b3d11ffef91f585b3d7028471677b9ebfd4339a7ffddb77d75f/_data",
+      "Name": "7e3253e8fc913b3d11ffef91f585b3d7028471677b9ebfd4339a7ffddb77d75f",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:18:13+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/9d391cbe8fb6ee975344a688cad47c24b54b533aa4b7a15966ac8c50cd93873d/_data",
+      "Name": "9d391cbe8fb6ee975344a688cad47c24b54b533aa4b7a15966ac8c50cd93873d",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:44:22+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/16b96bf4d8986d239b620b5b70a2a533555121a3d90bfa0b20c06f4b2ebab866/_data",
+      "Name": "16b96bf4d8986d239b620b5b70a2a533555121a3d90bfa0b20c06f4b2ebab866",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:44:28+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/37e23657d4448f79146b17f9f0ed351cbc871d396ccc2716f48d3dfb725cdc1e/_data",
+      "Name": "37e23657d4448f79146b17f9f0ed351cbc871d396ccc2716f48d3dfb725cdc1e",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:18:37+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/41c8bf394b5078a3d3a1893554b5902d11a8dbd41d3a158a9f9baf7c6c61372c/_data",
+      "Name": "41c8bf394b5078a3d3a1893554b5902d11a8dbd41d3a158a9f9baf7c6c61372c",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T07:33:47+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/65aa6041f13ebf6b279610e44f1715a10f0bf054e3e8d617e0c413923c1e2dbf/_data",
+      "Name": "65aa6041f13ebf6b279610e44f1715a10f0bf054e3e8d617e0c413923c1e2dbf",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T07:28:28+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/68c2dbd5e5941027e0bb40db1de1a29be377f91e9797dff2bbaa703946c3c461/_data",
+      "Name": "68c2dbd5e5941027e0bb40db1de1a29be377f91e9797dff2bbaa703946c3c461",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:22:21+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/70f260e8412bdefc7131ebed3077c5554db02575473ca0ae6fdd68e7bf8c9127/_data",
+      "Name": "70f260e8412bdefc7131ebed3077c5554db02575473ca0ae6fdd68e7bf8c9127",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:39:34+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/71c3972459f34e4c922f276b9ab66cf2a5a68bc50f03fa788b22376ccabe3be6/_data",
+      "Name": "71c3972459f34e4c922f276b9ab66cf2a5a68bc50f03fa788b22376ccabe3be6",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:23:08+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/97a4682d3a7b29bc9c2dc9be2cca852cbc3ce720f411d3412b571ce357a6c82a/_data",
+      "Name": "97a4682d3a7b29bc9c2dc9be2cca852cbc3ce720f411d3412b571ce357a6c82a",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T07:33:37+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/553c1a92df1610884cd62b7ee860aadf7bd570b7d463ae892678c01201fc0f68/_data",
+      "Name": "553c1a92df1610884cd62b7ee860aadf7bd570b7d463ae892678c01201fc0f68",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:23:37+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/0643d0cd995945ca4a0ad2152bde7aa49a5126a0c735096cd75418b152d806f0/_data",
+      "Name": "0643d0cd995945ca4a0ad2152bde7aa49a5126a0c735096cd75418b152d806f0",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:44:46+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/3121dba3cb18d7e228ae7281d3b1ca577afea85ee790ba91956f895b44aa3586/_data",
+      "Name": "3121dba3cb18d7e228ae7281d3b1ca577afea85ee790ba91956f895b44aa3586",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T07:33:53+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/6645fdb8cf3bf23f666144804c654f15992d6064f035f6beb78acd4f5ea6954f/_data",
+      "Name": "6645fdb8cf3bf23f666144804c654f15992d6064f035f6beb78acd4f5ea6954f",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T07:33:06+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/11781a64c999c5e12880976d9ce9f918f3fdfd7044ac7542205bfccaca9402ab/_data",
+      "Name": "11781a64c999c5e12880976d9ce9f918f3fdfd7044ac7542205bfccaca9402ab",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:23:29+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/67091d92d1fd6a78004011b47798350674d7966b68a44773d144d17ef7798dfb/_data",
+      "Name": "67091d92d1fd6a78004011b47798350674d7966b68a44773d144d17ef7798dfb",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:22:56+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/75185f3ba26352f542855ec748a4527030604ee9674f91889a6b8aeda253ae94/_data",
+      "Name": "75185f3ba26352f542855ec748a4527030604ee9674f91889a6b8aeda253ae94",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:23:29+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/72149472ce77ceeb659e6328dbc5ab04118e85ce9851bb4c7862350a8f82f2cf/_data",
+      "Name": "72149472ce77ceeb659e6328dbc5ab04118e85ce9851bb4c7862350a8f82f2cf",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T07:32:53+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/7208047851f7ec5daf30199f68332555144e65f3d3ca053b9b20c2b7e1c5d22e/_data",
+      "Name": "7208047851f7ec5daf30199f68332555144e65f3d3ca053b9b20c2b7e1c5d22e",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T07:33:34+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/a99eac1948b1745e7c7058170ec39f2b6ed137544613404c15b56b23b5ed7c10/_data",
+      "Name": "a99eac1948b1745e7c7058170ec39f2b6ed137544613404c15b56b23b5ed7c10",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:38:45+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/a2171976a27f3f573c3b6a0ec46cc0ec0ae55a6591b090798373d6527cfb38f6/_data",
+      "Name": "a2171976a27f3f573c3b6a0ec46cc0ec0ae55a6591b090798373d6527cfb38f6",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:23:53+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/aef5a406aa77a6167813e220655e99024545fedc3ee64862497486c2b861b6f6/_data",
+      "Name": "aef5a406aa77a6167813e220655e99024545fedc3ee64862497486c2b861b6f6",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:43:49+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/c4c36b38cd11a43ffe1d4a2ba47a20228937dbc714c4217c4b9a99e8989f4299/_data",
+      "Name": "c4c36b38cd11a43ffe1d4a2ba47a20228937dbc714c4217c4b9a99e8989f4299",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T07:33:29+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/c7ccc98bbe0f5f43b5e321a6e3dbcb2668185518339bf8529747e3d55e5bb5c1/_data",
+      "Name": "c7ccc98bbe0f5f43b5e321a6e3dbcb2668185518339bf8529747e3d55e5bb5c1",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:44:31+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/c604f03639c25b636eb5c45e9a1fd319cafd7a0cda62b6e7eeecc7c63f2bbfef/_data",
+      "Name": "c604f03639c25b636eb5c45e9a1fd319cafd7a0cda62b6e7eeecc7c63f2bbfef",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T07:32:16+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/c665bb1f968b88b7eea300321e160891b24c67b112c01b2c83baaae01e575f13/_data",
+      "Name": "c665bb1f968b88b7eea300321e160891b24c67b112c01b2c83baaae01e575f13",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:17:47+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/cc7f7d00b7398e42e5aed51fefa99c61b1e8c7e423cb1d9d5d64a44694defa70/_data",
+      "Name": "cc7f7d00b7398e42e5aed51fefa99c61b1e8c7e423cb1d9d5d64a44694defa70",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:19:51+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/d684ecf55eb247a32ed8da7a6616aa1fb83e530b657bc7f3c872324f6f3d2e7d/_data",
+      "Name": "d684ecf55eb247a32ed8da7a6616aa1fb83e530b657bc7f3c872324f6f3d2e7d",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:44:22+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/dc863e2566b4eb38473e8bd7d44625376bf481cdc735da981cdcd1c21e411248/_data",
+      "Name": "dc863e2566b4eb38473e8bd7d44625376bf481cdc735da981cdcd1c21e411248",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T06:39:11+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/e67c15ebda9ecb7589533c04fd3acf04cec041e7d28b960fa80ae254d93211c2/_data",
+      "Name": "e67c15ebda9ecb7589533c04fd3acf04cec041e7d28b960fa80ae254d93211c2",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T07:33:29+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/eb5c8bd41fa5439ca5df557250b59662e5f55337e886e6ce38948149a412757d/_data",
+      "Name": "eb5c8bd41fa5439ca5df557250b59662e5f55337e886e6ce38948149a412757d",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T07:28:03+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/f4a48354c1246e01da54d38e0dfc0f5bc3a9196471c55cfe2ee3012ec09adc73/_data",
+      "Name": "f4a48354c1246e01da54d38e0dfc0f5bc3a9196471c55cfe2ee3012ec09adc73",
+      "Options": null,
+      "Scope": "local"
+    },
+    {
+      "CreatedAt": "2026-09-14T07:29:44+02:00",
+      "Driver": "local",
+      "Labels": {
+        "com.docker.volume.anonymous": ""
+      },
+      "Mountpoint": "/var/lib/docker/volumes/f08c9b34671e0fd34366e820a91c8df28779636c4de8d691954246fb1a6948c7/_data",
+      "Name": "f08c9b34671e0fd34366e820a91c8df28779636c4de8d691954246fb1a6948c7",
+      "Options": null,
+      "Scope": "local"
+    }
+  ],
+  "catalogProof": [
+    {
+      "name": "2c6ab04fe1c1141e891908ff83b625ea5eeda3ad09c95766a8c88bdbe7e0c767",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "2f6ba39be22a068fb1ac477f0b798c7c0f101544403b82bc8ef35d5a8d63406f",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "2fcb8d077ff6238bc4f71ff838b96fe93ae5e00c60752a60efc59c9f443924ca",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "4a8e058cdb902e5de67b1e184e7b23384dc37e22133436819080a93d0597d2b4",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "4b1ed586fd0a9fb6a536cb17193b97915294766fc5af3bf483ca68b797df88f1",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "5b60020afb82af46b019ebe2bbd3486a5a8a234663aa1b2497b28a8c35541179",
+      "version": "16",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "7e3253e8fc913b3d11ffef91f585b3d7028471677b9ebfd4339a7ffddb77d75f",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "9d391cbe8fb6ee975344a688cad47c24b54b533aa4b7a15966ac8c50cd93873d",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "16b96bf4d8986d239b620b5b70a2a533555121a3d90bfa0b20c06f4b2ebab866",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "37e23657d4448f79146b17f9f0ed351cbc871d396ccc2716f48d3dfb725cdc1e",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "41c8bf394b5078a3d3a1893554b5902d11a8dbd41d3a158a9f9baf7c6c61372c",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "65aa6041f13ebf6b279610e44f1715a10f0bf054e3e8d617e0c413923c1e2dbf",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "68c2dbd5e5941027e0bb40db1de1a29be377f91e9797dff2bbaa703946c3c461",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "70f260e8412bdefc7131ebed3077c5554db02575473ca0ae6fdd68e7bf8c9127",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "71c3972459f34e4c922f276b9ab66cf2a5a68bc50f03fa788b22376ccabe3be6",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "97a4682d3a7b29bc9c2dc9be2cca852cbc3ce720f411d3412b571ce357a6c82a",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "553c1a92df1610884cd62b7ee860aadf7bd570b7d463ae892678c01201fc0f68",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "0643d0cd995945ca4a0ad2152bde7aa49a5126a0c735096cd75418b152d806f0",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "3121dba3cb18d7e228ae7281d3b1ca577afea85ee790ba91956f895b44aa3586",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "6645fdb8cf3bf23f666144804c654f15992d6064f035f6beb78acd4f5ea6954f",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "11781a64c999c5e12880976d9ce9f918f3fdfd7044ac7542205bfccaca9402ab",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "67091d92d1fd6a78004011b47798350674d7966b68a44773d144d17ef7798dfb",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "75185f3ba26352f542855ec748a4527030604ee9674f91889a6b8aeda253ae94",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "72149472ce77ceeb659e6328dbc5ab04118e85ce9851bb4c7862350a8f82f2cf",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "7208047851f7ec5daf30199f68332555144e65f3d3ca053b9b20c2b7e1c5d22e",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "a99eac1948b1745e7c7058170ec39f2b6ed137544613404c15b56b23b5ed7c10",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "a2171976a27f3f573c3b6a0ec46cc0ec0ae55a6591b090798373d6527cfb38f6",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "aef5a406aa77a6167813e220655e99024545fedc3ee64862497486c2b861b6f6",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "c4c36b38cd11a43ffe1d4a2ba47a20228937dbc714c4217c4b9a99e8989f4299",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "c7ccc98bbe0f5f43b5e321a6e3dbcb2668185518339bf8529747e3d55e5bb5c1",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "c604f03639c25b636eb5c45e9a1fd319cafd7a0cda62b6e7eeecc7c63f2bbfef",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "c665bb1f968b88b7eea300321e160891b24c67b112c01b2c83baaae01e575f13",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "cc7f7d00b7398e42e5aed51fefa99c61b1e8c7e423cb1d9d5d64a44694defa70",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "d684ecf55eb247a32ed8da7a6616aa1fb83e530b657bc7f3c872324f6f3d2e7d",
+      "version": "16",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "dc863e2566b4eb38473e8bd7d44625376bf481cdc735da981cdcd1c21e411248",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "e67c15ebda9ecb7589533c04fd3acf04cec041e7d28b960fa80ae254d93211c2",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "eb5c8bd41fa5439ca5df557250b59662e5f55337e886e6ce38948149a412757d",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "f4a48354c1246e01da54d38e0dfc0f5bc3a9196471c55cfe2ee3012ec09adc73",
+      "version": "17",
+      "talliTestCatalog": true
+    },
+    {
+      "name": "f08c9b34671e0fd34366e820a91c8df28779636c4de8d691954246fb1a6948c7",
+      "version": "16",
+      "talliTestCatalog": true
+    }
+  ],
+  "backup": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/owned-previous-gate-volumes.tar.gz",
+  "backupSha256": "c113e2ee8b0b85ab96538aa362d09626f57bc1d1ebd478ae28d7105473b814ef",
+  "backupBytes": 353048136,
+  "removedCount": 39,
+  "retained": "all active volumes, named volumes, unmatched creation windows and volumes without talli_test marker"
+}

@@ -406,6 +406,6 @@ test("marketing measurement is consent-bounded, private, aggregate-only, and ret
       where client_event_id = '${homeEventId}';
     `), "0");
   } finally {
-    docker(["rm", "--force", containerName]);
+    docker(["rm", "--force", "--volumes", containerName]);
   }
 });

@@ -206,6 +206,6 @@ test("marketing collection requires durable server-stamped approved notice proof
       assert.match(denied.stderr, /permission denied/u);
     }
   } finally {
-    docker(["rm", "--force", container]);
+    docker(["rm", "--force", "--volumes", container]);
   }
 });

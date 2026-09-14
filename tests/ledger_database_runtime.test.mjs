@@ -6846,6 +6846,6 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
     `));
     assert.equal(durableAfterRecutover, durableBeforeRollback);
   } finally {
-    docker(["rm", "--force", containerName]);
+    docker(["rm", "--force", "--volumes", containerName]);
   }
 });

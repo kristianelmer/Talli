@@ -1,0 +1,111 @@
+✔ Python architecture inspection consumes one framed request without waiting for EOF (28.0925ms)
+✖ architecture manifests, scoped documentation, and dependency evidence agree (18632.917042ms)
+✔ architecture evidence is deterministic and committed output is current (17649.880833ms)
+✔ legacy facades cannot shrink without current-source deletion proof (2.893083ms)
+✔ resource-owner deletion-only shrink may change only the affected operation (4.283042ms)
+✔ ledger #139 may relocate only the owner-approved atomic coordinator scopes (3.883834ms)
+✔ #150 RF relocation permits only both exact coordinators with all ten scopes (3.64875ms)
+✔ #192 retirement permits only all four exact frozen deletions and all three whole actions (11.492625ms)
+✔ pending foundation recovery blocks facade and migration changes (2.312875ms)
+✔ the frozen baseline is traceable to the pre-existing compatibility registry (1.132917ms)
+✔ legacy source proofs reject added writers and changed future operations (1.421542ms)
+✔ legacy facades block stage exit and fail after their capability has exited (1.718167ms)
+✔ completed stages require two consecutive complete-gate attestations (1.527041ms)
+✔ active-stage debt keeps the fourteen-day, stable-release, and one-successor limits (1.26525ms)
+✔ compatibility records cannot suppress authorization or other non-suppressible failures (0.714583ms)
+✔ active-stage debt requires bounded expiry and a removal condition (0.856416ms)
+✔ active-stage debt must expire strictly after the controlled current time (1.270208ms)
+✔ active-stage debt cannot outlive fourteen days or the next stable release (0.737875ms)
+✔ active-stage debt rejects semantically impossible timestamps (0.628625ms)
+✔ a fabricated release revision is rejected against the real tag target (48790.878209ms)
+✔ a lightweight customer-ready tag is rejected as a stable release (49588.383834ms)
+✔ reachable annotated releases with equal tagger timestamps fail closed (48325.108917ms)
+✔ a stale release selection is rejected after a later reachable tag (48861.311375ms)
+✔ a real stable customer-ready release after approval revokes active-stage debt (48496.406542ms)
+✔ module test evidence cannot assign one path to multiple ownership categories (15271.1155ms)
+✔ schema constraints and declared public exports are enforced (15328.614084ms)
+✔ backend workflow routes and public request exports reconcile in both directions (14876.440375ms)
+✔ database catalog and declared public import paths are authoritative (14862.489792ms)
+✔ database compatibility resources are globally unambiguous (48458.549792ms)
+✔ staged contract table retirement requires an empty-table preflight and rollback (54822.254375ms)
+✔ multiline web persistence requires an explicit rule-scoped exception (26211.209584ms)
+✔ web persistence exceptions match exact path, rule, AST-derived resource, and operation (26269.618459ms)
+✔ compatibility operations map to their serialized future tickets (1.686666ms)
+✔ the immutable frozen inventory remains exact while the active registry is a proven subset (1.083ms)
+✔ #192 keeps the immutable four-scope inventory and rejects stale clients, moved writers and dynamic additions (15220.755ms)
+✔ #200 removes the exact six support-search scopes atomically without changing the frozen baseline (15461.596084ms)
+✔ company cancellation lifecycle is capability-owned with no direct-web compatibility (0.753625ms)
+✔ anonymous object methods fail closed without merging separate call sites (15843.212166ms)
+✔ compatibility scopes match the exact enclosing operation (15445.710083ms)
+✔ compatibility scopes cannot overlap across future tickets (15157.82675ms)
+✔ compatibility registry is complete in both directions (15192.210125ms)
+✔ web boundary detection follows client provenance without flagging ordinary from methods (15083.389708ms)
+✔ web boundary analysis follows compiler bindings, type aliases, and callable aliases (15010.382041ms)
+✔ web boundary analysis preserves persistence and fetch provenance across imports and re-exports (15230.066958ms)
+✔ web boundary analysis permits local fetch bindings and non-import generated-client text (14897.383917ms)
+✔ generated-client deep imports are detected from every executable module-specifier form (15105.1845ms)
+✔ generated-client deep imports reject ambiguous same-ticket exceptions (14901.620834ms)
+✔ adapter bindings require source registration against the declared port (15066.095041ms)
+✔ company access declares and injects its persistence and company-registry adapters (4.551916ms)
+✔ adapter registration resolves decorator and port bindings to their declared public symbols (15025.352ms)
+✔ adapter registration accepts legitimate aliases of the declared public symbols (15936.458458ms)
+✔ adapter registration validates the final effective top-level binding (31483.047375ms)
+✔ backend composition, rule-scoped exceptions, documentation inventories, and shared kernel are enforced (15106.494916ms)
+✔ architecture checker rejects representative forbidden boundary violations (15178.071125ms)
+✔ #151 amendment permits only twelve exact handoffs and four exact read retirements (80.762792ms)
+✔ #151 bounded retirement compositions remain enforced after RF exits (710.818958ms)
+✔ preserved Tax retirement requires exact artifact bytes, source restoration and exclusive ownership (60698.107167ms)
+✔ #152 mixed actions retain exact Accounts/Audit chains and cannot inherit permission for another edit (86033.689459ms)
+ℹ tests 58
+ℹ suites 0
+ℹ pass 57
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 787945.445083
+
+✖ failing tests:
+
+test at tests/architecture_foundation.test.mjs:211:1
+✖ architecture manifests, scoped documentation, and dependency evidence agree (18632.917042ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    [
+      {
+        from: 'backend-system:accounting-document-lifecycle',
+        imports: [
+          'talli_backend.modules.documents.public'
+  ...
+      {
+  +     from: 'backend-system:annual-accounts-source-facts',
+  +     imports: [
+  +       'talli_backend.modules.annual_accounts_filing.public'
+  +     ],
+  +     kind: 'workflow',
+  +     to: 'backend:annual_accounts_filing'
+  +   },
+  +   {
+        from: 'backend-system:annual-accounts-tt02-evidence-import',
+        imports: [
+          'talli_backend.modules.annual_accounts_filing.public'
+        ],
+        kind: 'workflow',
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/architecture_foundation.test.mjs:246:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ { from: 'backend-system:accounting-document-lifecycle', imports: [Array], kind: 'workflow', to: 'backend:documents' }, { from: 'backend-system:annual-accounts-filing-preparation', imports: [Array], kind: 'workflow', to: 'backend:annual_accounts_filing' }, { from: 'backend-system:annual-accounts-filing-reads', imports: [Array], kind: 'workflow', to: 'backend:annual_accounts_filing' }, { from: 'backend-system:annual-accounts-readiness-preview', imports: [Array], kind: 'workflow', to: 'backend:annual_accounts_filing' }, { from: 'backend-system:annual-accounts-source-facts', imports: [Array], kind: 'workflow', to: 'backend:annual_accounts_filing' }, { from: 'backend-system:annual-accounts-tt02-evidence-import', imports: [Array], kind: 'workflow', to: 'backend:annual_accounts_filing' }, { from: 'backend-system:annual-agreement-cleanup', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:annual-billing-reads-and-cancellation', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:annual-billing-support', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:annual-provider-notification-intake', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:annual-refund-recovery', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:annual-support-agreement-cleanup-recovery', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:annual-support-refund-recovery', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:authority-connections-owner-lifecycle', imports: [Array], kind: 'workflow', to: 'backend:authority_connections' }, { from: 'backend-system:authority-connections-owner-lifecycle', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:authority-connections-state', imports: [Array], kind: 'workflow', to: 'backend:authority_connections' }, { from: 'backend-system:authority-connections-state', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:authority-operations', imports: [Array], kind: 'workflow', to: 'backend:authority_connections' }, { from: 'backend-system:banking-reconciliation', imports: [Array], kind: 'workflow', to: 'backend:banking' }, { from: 'backend-system:billing-and-filing-entitlement', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:company-access-administration', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:company-access-context', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:company-access-onboarding-and-support', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:company-tax-assessment-previews', imports: [Array], kind: 'workflow', to: 'backend:company_tax_filing' }, { from: 'backend-system:company-tax-filing-preparation', imports: [Array], kind: 'workflow', to: 'backend:company_tax_filing' }, { from: 'backend-system:company-tax-filing-reads', imports: [Array], kind: 'workflow', to: 'backend:company_tax_filing' }, { from: 'backend-system:company-tax-settlement', imports: [Array], kind: 'workflow', to: 'backend:banking' }, { from: 'backend-system:company-tax-settlement', imports: [Array], kind: 'workflow', to: 'backend:company_tax_filing' }, { from: 'backend-system:company-tax-settlement', imports: [Array], kind: 'workflow', to: 'backend:documents' }, { from: 'backend-system:company-tax-settlement', imports: [Array], kind: 'workflow', to: 'backend:ledger' }, { from: 'backend-system:company-tax-source-facts', imports: [Array], kind: 'workflow', to: 'backend:company_tax_filing' }, { from: 'backend-system:company-tax-tt02-evidence-import', imports: [Array], kind: 'workflow', to: 'backend:audit' }, { from: 'backend-system:company-tax-tt02-evidence-import', imports: [Array], kind: 'workflow', to: 'backend:company_tax_filing' }, { from: 'backend-system:company-year-eligibility-and-admission', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:corporate-governance', imports: [Array], kind: 'workflow', to: 'backend:banking' }, { from: 'backend-system:corporate-governance', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:corporate-governance', imports: [Array], kind: 'workflow', to: 'backend:corporate_governance' }, { from: 'backend-system:corporate-governance', imports: [Array], kind: 'workflow', to: 'backend:documents' }, { from: 'backend-system:corporate-governance', imports: [Array], kind: 'workflow', to: 'backend:ledger' }, { from: 'backend-system:investment-activity', imports: [Array], kind: 'workflow', to: 'backend:banking' }, { from: 'backend-system:investment-activity', imports: [Array], kind: 'workflow', to: 'backend:investments' }, { from: 'backend-system:investment-activity', imports: [Array], kind: 'workflow', to: 'backend:ledger' }, { from: 'backend-system:launch-signoff-records', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:ledger-posting-and-period-control', imports: [Array], kind: 'workflow', to: 'backend:ledger' }, { from: 'backend-system:marketing-funnel-measurement', imports: [Array], kind: 'workflow', to: 'backend-system:marketing_measurement' }, { from: 'backend-system:new-year-start', imports: [Array], kind: 'workflow', to: 'backend:ledger' }, { from: 'backend-system:new-year-start', imports: [Array], kind: 'workflow', to: 'backend:shareholder_register_filing' }, { from: 'backend-system:passive-validation-observation', imports: [Array], kind: 'workflow', to: 'backend-system:validation_observation' }, { from: 'backend-system:shareholder-register-filing', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:shareholder-register-filing', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:shareholder-register-filing', imports: [Array], kind: 'workflow', to: 'backend:documents' }, { from: 'backend-system:shareholder-register-filing', imports: [Array], kind: 'workflow', to: 'backend:shareholder_register_filing' }, { from: 'backend-system:system-boundary-tracer', imports: [Array], kind: 'workflow', to: 'backend-system:system_boundary' } ],
+    expected: [ { from: 'backend-system:accounting-document-lifecycle', imports: [Array], kind: 'workflow', to: 'backend:documents' }, { from: 'backend-system:annual-accounts-filing-preparation', imports: [Array], kind: 'workflow', to: 'backend:annual_accounts_filing' }, { from: 'backend-system:annual-accounts-filing-reads', imports: [Array], kind: 'workflow', to: 'backend:annual_accounts_filing' }, { from: 'backend-system:annual-accounts-readiness-preview', imports: [Array], kind: 'workflow', to: 'backend:annual_accounts_filing' }, { from: 'backend-system:annual-accounts-tt02-evidence-import', imports: [Array], kind: 'workflow', to: 'backend:annual_accounts_filing' }, { from: 'backend-system:annual-agreement-cleanup', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:annual-billing-reads-and-cancellation', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:annual-billing-support', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:annual-provider-notification-intake', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:annual-refund-recovery', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:annual-support-agreement-cleanup-recovery', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:annual-support-refund-recovery', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:authority-connections-owner-lifecycle', imports: [Array], kind: 'workflow', to: 'backend:authority_connections' }, { from: 'backend-system:authority-connections-owner-lifecycle', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:authority-connections-state', imports: [Array], kind: 'workflow', to: 'backend:authority_connections' }, { from: 'backend-system:authority-connections-state', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:authority-operations', imports: [Array], kind: 'workflow', to: 'backend:authority_connections' }, { from: 'backend-system:banking-reconciliation', imports: [Array], kind: 'workflow', to: 'backend:banking' }, { from: 'backend-system:billing-and-filing-entitlement', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:company-access-administration', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:company-access-context', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:company-access-onboarding-and-support', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:company-tax-assessment-previews', imports: [Array], kind: 'workflow', to: 'backend:company_tax_filing' }, { from: 'backend-system:company-tax-filing-preparation', imports: [Array], kind: 'workflow', to: 'backend:company_tax_filing' }, { from: 'backend-system:company-tax-filing-reads', imports: [Array], kind: 'workflow', to: 'backend:company_tax_filing' }, { from: 'backend-system:company-tax-settlement', imports: [Array], kind: 'workflow', to: 'backend:banking' }, { from: 'backend-system:company-tax-settlement', imports: [Array], kind: 'workflow', to: 'backend:company_tax_filing' }, { from: 'backend-system:company-tax-settlement', imports: [Array], kind: 'workflow', to: 'backend:documents' }, { from: 'backend-system:company-tax-settlement', imports: [Array], kind: 'workflow', to: 'backend:ledger' }, { from: 'backend-system:company-tax-source-facts', imports: [Array], kind: 'workflow', to: 'backend:company_tax_filing' }, { from: 'backend-system:company-tax-tt02-evidence-import', imports: [Array], kind: 'workflow', to: 'backend:audit' }, { from: 'backend-system:company-tax-tt02-evidence-import', imports: [Array], kind: 'workflow', to: 'backend:company_tax_filing' }, { from: 'backend-system:company-year-eligibility-and-admission', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:corporate-governance', imports: [Array], kind: 'workflow', to: 'backend:banking' }, { from: 'backend-system:corporate-governance', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:corporate-governance', imports: [Array], kind: 'workflow', to: 'backend:corporate_governance' }, { from: 'backend-system:corporate-governance', imports: [Array], kind: 'workflow', to: 'backend:documents' }, { from: 'backend-system:corporate-governance', imports: [Array], kind: 'workflow', to: 'backend:ledger' }, { from: 'backend-system:investment-activity', imports: [Array], kind: 'workflow', to: 'backend:banking' }, { from: 'backend-system:investment-activity', imports: [Array], kind: 'workflow', to: 'backend:investments' }, { from: 'backend-system:investment-activity', imports: [Array], kind: 'workflow', to: 'backend:ledger' }, { from: 'backend-system:launch-signoff-records', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:ledger-posting-and-period-control', imports: [Array], kind: 'workflow', to: 'backend:ledger' }, { from: 'backend-system:marketing-funnel-measurement', imports: [Array], kind: 'workflow', to: 'backend-system:marketing_measurement' }, { from: 'backend-system:new-year-start', imports: [Array], kind: 'workflow', to: 'backend:ledger' }, { from: 'backend-system:new-year-start', imports: [Array], kind: 'workflow', to: 'backend:shareholder_register_filing' }, { from: 'backend-system:passive-validation-observation', imports: [Array], kind: 'workflow', to: 'backend-system:validation_observation' }, { from: 'backend-system:shareholder-register-filing', imports: [Array], kind: 'workflow', to: 'backend:billing' }, { from: 'backend-system:shareholder-register-filing', imports: [Array], kind: 'workflow', to: 'backend:company_access' }, { from: 'backend-system:shareholder-register-filing', imports: [Array], kind: 'workflow', to: 'backend:documents' }, { from: 'backend-system:shareholder-register-filing', imports: [Array], kind: 'workflow', to: 'backend:shareholder_register_filing' }, { from: 'backend-system:system-boundary-tracer', imports: [Array], kind: 'workflow', to: 'backend-system:system_boundary' } ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

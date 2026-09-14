@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "1.0",
+  "status": "DISPOSABLE_TEST_ENVIRONMENT_RECOVERED_STAGE_EXIT_PENDING",
+  "baseRevision": "8a5565be77420eba54ee414c7af7fbcbd0302b13",
+  "artifacts": {
+    "architecture/evidence/customer-ready-gates/8a5565be77420eba54ee414c7af7fbcbd0302b13.log": "c93b5fe5d8e8b9c9029f793459f6c440a2bda4fabeb13c19a3a96071788808a3",
+    "architecture/evidence/issues/153/test-environment-recovery/accounts-architecture-expectation-fixed.log": "95fc26bada2ff4aabf9eb8d3a2cb5bdacc2829dfc3f4792e4091f95ff6fe25c3",
+    "architecture/evidence/issues/153/test-environment-recovery/binding-fix-spec-admin-8a5565be.json": "81035161ab4468441cb7ef23bd1b88f9bfb765f229826968d5f69cada048a056",
+    "architecture/evidence/issues/153/test-environment-recovery/binding-fix-spec-admin-8a5565be.log": "81035161ab4468441cb7ef23bd1b88f9bfb765f229826968d5f69cada048a056",
+    "architecture/evidence/issues/153/test-environment-recovery/binding-fix-spec-admin-8a5565be.py": "8eb1d1f549021372d98cd4201df0439c1416ca941b85e0d6f91f53c634716532",
+    "architecture/evidence/issues/153/test-environment-recovery/binding-fix-spec-review-8a5565be.json": "3e80ced7cd48db6e9a25f7843d80e1b5379469d5747c6a9a381bb2f2de9e70f6",
+    "architecture/evidence/issues/153/test-environment-recovery/binding-fix-spec-review-8a5565be.md": "31eb50ffe1c52648a592c20d4e7b79e88123d001ddb57fa736743d9068a8ac33",
+    "architecture/evidence/issues/153/test-environment-recovery/binding-fix-standards-review-8a5565be.json": "d74b27be37c9f299ecee3724f7559215e9faedd7bd65331f8a0fbd41c7b2c95a",
+    "architecture/evidence/issues/153/test-environment-recovery/binding-fix-standards-review-8a5565be.md": "8486726de78487c44caed04d18444f425ed9f84678a817a9e3ea12a1bc89234c",
+    "architecture/evidence/issues/153/test-environment-recovery/browser-integration-full-architecture-tests.log": "8781d7765e8b1de24be6887a09b4c7898f8e529ba1de8ce4e65de124421323cb",
+    "architecture/evidence/issues/153/test-environment-recovery/investments-volume-cleanup-regression.json": "b53843473d9252dde2e2b1827b8f0f3a83369fe8bc21fce1e838239a74a1a9ec",
+    "architecture/evidence/issues/153/test-environment-recovery/investments-volume-cleanup-regression.log": "542113a8336fdcf4ea9c6f1b5ec2b16be079738d7788c2497266d738349f8ecb",
+    "architecture/evidence/issues/153/test-environment-recovery/owned-gate-disk-recovery.json": "d850fa34fdd5b5dbb43cc39d837f16f8fe5b90a27ad5e5218094b3f20c9e7032",
+    "architecture/evidence/issues/153/test-environment-recovery/owned-gate-disk-recovery.log": "d1cbe4cd4cac5d5e0e31ae8484af8a085ec186f3e289969e898be12e6b0da87b",
+    "architecture/evidence/issues/153/test-environment-recovery/recover-owned-gate-disk.py": "388780c571df2e1c9e85bbe52cb48ae012b20c2c5bd43ef3e91f524f869d1f2c",
+    "architecture/evidence/issues/153/test-environment-recovery/verification.md": "76dea724572631ed174f2c2fc51dc3032697d44f7e94861c13d0e370a2be8087",
+    "tests/architecture_foundation.test.mjs": "4756f92d39981b8392c4a65faa9588450588a8356ef2ad8621a709ae3c9fc909",
+    "tests/banking_database_runtime.test.mjs": "ebd5b904406b3ae379a0483b454e12c728ff9da3d950df981315d7301be8480d",
+    "tests/company_access_database_runtime.test.mjs": "75000d3e685eb70d988b57d6a8444d3efc92da5d17194e4d7f7e1c3007aae860",
+    "tests/company_access_onboarding_database_runtime.test.mjs": "d92d55644ee91731232d07058476fe8c04f4ada882fdb76baaff6fa19342aa37",
+    "tests/corporate_document_database_runtime.test.mjs": "eafdc5d5727f5f7fda1a64ac7b53aab809abd385e88deca4d28f9189f9b8959f",
+    "tests/investments_database_runtime.test.mjs": "c71903522fe0833f901d3027e58a3ba1dd41170886f23e4a87be163ef9bf09ac",
+    "tests/ledger_database_runtime.test.mjs": "0911d420da3bbf24ce6c8fe5bcd266d91e015e997d2464999b89f5f4c2a16a3c",
+    "tests/marketing_consent_proof_database_runtime.test.mjs": "7675c68f9f43453040471530dec0ecd924e54d7e0bc3a3478631342e42fc9f3b",
+    "tests/marketing_measurement_database_runtime.test.mjs": "2c39a902ffa8e981246b17d294f2341e664dda4707fed76707d0138d433cc4c5",
+    "tests/validation_observation_database_runtime.test.mjs": "e89f78ec00117d3d890a58a9f9a52a2324017191a260be833a4fadbebbc246f7"
+  }
+}

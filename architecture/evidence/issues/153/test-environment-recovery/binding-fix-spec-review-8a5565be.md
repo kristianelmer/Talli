@@ -1,0 +1,11 @@
+PASS — bounded Spec follow-up `900472a0ecfbf5e8d7fc4996f4f641e33575103c...8a5565be77420eba54ee414c7af7fbcbd0302b13`. No new actionable finding.
+
+**STD-153-BINDING-1 CLOSED.** Backend-binding SQL line 17 now explicitly sets `ADMIN false`, satisfying its “without inheritance or administration” contract. Independently reran the original probe against the exact committed private snapshot: fresh grant, pre-existing ADMIN-true membership and repeat binding all produce `(admin=false, inherit=false, set=true)`; paired rollback removes membership. The outer transaction restores the original schema, fixture and exact global grants. SQL slot released. The already-closed source-reference fix is unchanged.
+
+The two web-check corrections require Accounts-owned Archive reads and unavailable-source handling, prohibit retired generic reads and require removal of the Accounts compatibility facade. They align stale assertions with the previously reviewed cutover and strengthen retirement checks; they do not loosen production behavior. Independently ran all ten focused checks: ten passed, zero skipped.
+
+Verified all 25 manifest artifact hashes and five original Spec report/probe adoptions byte-exact. The retained failed gate correctly records 5,785 backend passes, two skips and 884 database cases deselected, followed by two web failures and boundary exit 1. It receives no complete-gate credit.
+
+Read the separate concurrency producer/result: three connection-level phase/rollback checks pass, with all eight forward SQL hashes matching this candidate; its finally block drops the owned clone and verifies original global memberships. Read the final physical-topology advisor producer/output: 50 performance warnings, zero blocking findings, including four Accounts warnings. These are retained parent-run evidence, not independent concurrency/advisor reruns. The newly mandatory advisor invocation follows Accounts activation; no blocker exclusion was added.
+
+Requirements and compatibility registry remain unchanged. No shared implementation edit, competing web server, hosted/provider call or production authority occurred. Browser execution, complete immutable gates and protected integration remain pending; this follow-up grants no full-stage or successor credit.

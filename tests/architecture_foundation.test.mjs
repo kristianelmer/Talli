@@ -277,6 +277,14 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "to": "backend:annual_accounts_filing"
   },
   {
+    "from": "backend-system:annual-accounts-source-facts",
+    "imports": [
+      "talli_backend.modules.annual_accounts_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:annual_accounts_filing"
+  },
+  {
     "from": "backend-system:annual-accounts-tt02-evidence-import",
     "imports": [
       "talli_backend.modules.annual_accounts_filing.public"
