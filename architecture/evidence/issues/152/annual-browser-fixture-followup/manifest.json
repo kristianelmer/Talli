@@ -1,0 +1,19 @@
+{
+  "baselineRevision": "ac9b349ab58b89bdd0efa4810ef382844be5c6fa",
+  "status": "PASS_FOCUSED_BROWSER_FIX_FULL_GATE_PENDING",
+  "artifacts": {
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/annual-owner-tax-fixture-green.log": "79af08a62a06abee0256c111b636a6df54efbda84da982ab63ebbf3537ac1441",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/annual-owner-tax-fixture-red.log": "54cd284d3c95252ffcf7096a5c5749cf3bca5b375fb703880f6562872fc81909",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/final-standards-review-ac9b349a.json": "73397f9950c31ce5f691cf4d36b07b64bf1ab166a6946617fa42b19b64760d0b",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/verification.md": "47d323c12cde2153f2c3c9469a3b731c3c7b61d2557dc51b39521c0887846bb6",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/final-spec-review-ac9b349a.json": "010befedc2a8ebe21bde4cfd1289e30d676ee42e6b10e8df516ad2a35cfb4466",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/post-contract-remaining-browser.log": "a79566a7526f81f49faee4d051ae2fcce52cbd46160ab0c451352dea5e75f369",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/annual-fixture-cleanup-tests.log": "eae566e4b404598bffef856a54ff7ff74eb8f3753e1e375e02665d4ebde4aab6",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/final-standards-review-ac9b349a.md": "cc583862d79812004f81c30df4dca01b595b83041aed3b5b78e4e6ddcd7d3af8",
+    "architecture/evidence/issues/152/annual-browser-fixture-followup/final-spec-review-ac9b349a.md": "4a60ce5ef8d3aa387badf4e47475e4d667b17cc459e0f79a34abf37b04e6220f",
+    "tests/browser_fixture_safety.test.mjs": "b222829ba7c496fde97c0b8f17fe2b7c158ff22e14dbe6223f16ffd8797a3182",
+    "tests/browser_owner_annual_loop.mjs": "07e7c865260b07659f667f2af57a207b96086e5000fbb63d5d0859018e6c9eee",
+    "tests/browser_process_lifecycle.test.mjs": "677de2a71543141724a6dcc07093f89df2f5e13f64e6c067fd4cf4c85f41f513",
+    "tests/support/browser-owner-cleanup.mjs": "e862c23361e4a0cb6f7d0a38fe3cefc1cc6345df81b819d8cc4ef5ca457b8be9"
+  }
+}

@@ -1,0 +1,86 @@
+
+> talli-repository@0.1.0 test:supabase-rf-feedback
+> node --test --test-concurrency=1 tests/rf1086_feedback_schema.test.mjs
+
+✔ feedback fixture cleanup preserves primary and returned Supabase errors (1.299917ms)
+✔ creates private, constrained feedback metadata and durable reconciliation state (0.839875ms)
+✔ uses explicit least privilege grants and owner/operator read policies (1.389333ms)
+✔ recording validates exact relationships and the deterministic private key (0.4645ms)
+✔ change-only reconciliation events are serialized and expose safe diagnostics only (0.519ms)
+✔ backfills and atomically claims only an exact valid succeeded confirmation reference (0.718916ms)
+✔ rollback revokes functions first and restores only feature-owned schema and storage policy changes (0.459167ms)
+✔ local Supabase exposes owned RLS metadata and dedicated-executor mutation authority (33.236416ms)
+✔ local Supabase recovers confirmed submissions and limits feedback data to authorized readers (7968.365334ms)
+✔ canonical feedback preserves owner-only metadata and dedicated immutable journal authority (1.867125ms)
+✔ local fixture restores exact authority and keeps internal foreign keys active on success and failure (381.657417ms)
+✔ local company janitor restores its own missing Billing SET grant on success (43.936459ms)
+✔ local company janitor restores its own missing Billing SET grant on failure (43.543167ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8646.477
+
+> talli-repository@0.1.0 test:browser-authority-connections
+> node --test --test-concurrency=1 tests/browser_authority_connections_contract.test.mjs tests/authority_browser_fixture_safety.test.mjs tests/browser_authority_connections.mjs
+
+✔ authority fixture admits only exact local addresses and existing fixed owner provider requests (146.875792ms)
+✔ authority fixture socket guard rejects external DNS and connections before network I/O (93.912625ms)
+✔ mandatory authority browser uses real generated HTTP, backend-owned callback proof and scoped cleanup (2.280791ms)
+✔ historical RF fixture admits two fixed GET templates and rejects business mutations (90.360458ms)
+✔ owner connects through hydrated Next, generated FastAPI transport, real RLS and a local authority mock (24612.751834ms)
+✔ browser contexts use a catch-all fail-closed egress guard (11.552709ms)
+✔ signed feedback redirect is inspected before a bounded loopback follow (0.1605ms)
+✔ current reconciliation UI reaches Godkjent before DB and reload assertions (0.07125ms)
+✔ both browser contexts close before final health and egress assertions (0.079959ms)
+✔ owned process cleanup failures join teardown errors (0.101416ms)
+✔ RF-1086 reconciliation controls have responsive overflow and focus coverage (0.095083ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25364.723709
+
+> talli-repository@0.1.0 test:browser-shareholder-register-filing
+> node --test --test-concurrency=1 tests/shareholder_register_browser_fixture_safety.test.mjs tests/browser_shareholder_register_filing.mjs
+
+✔ owner completes fresh RF preview, review, approval, send and private feedback through the canonical backend (35106.697917ms)
+✔ fresh RF fixture permits only its five exact method templates and loopback egress (139.849625ms)
+✔ fresh local RF mock preserves request identity and emits relationship-bound feedback (37.074875ms)
+✔ fresh browser starts without a preview or approval and verifies the complete durable result (1.301625ms)
+✔ ambiguous fresh mock response records the original mutation before disconnecting (4.011459ms)
+✔ fresh RF browser uses finite fixture authority while preserving foreign keys and signoff storage (0.482292ms)
+✔ fresh RF basis binds every opening row to its existing owner without seeding filing success (0.941375ms)
+✔ fresh RF cleanup removes scoped public mirrors before openings (success) (1.013625ms)
+✔ fresh RF cleanup removes scoped public mirrors before openings (failure preserved) (0.683459ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (success) (9.40225ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (seed) (0.745375ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (restore) (0.721875ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 35699.811083
+
+> talli-repository@0.1.0 test:browser-company-tax
+> node --test --test-concurrency=1 tests/browser_tax_settlement.mjs tests/browser_tax_filing.mjs
+
+✔ Tax owner imports pending TT02 feedback, recovers a lost response and reads complete scoped history (22775.972916ms)
+✔ owner captures every settlement kind through wizard and workspace and retries without duplicate effects (34574.135167ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 57883.842958

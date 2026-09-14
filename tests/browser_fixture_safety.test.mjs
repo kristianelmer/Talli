@@ -154,7 +154,15 @@ test("retained annual browser seeds canonical historical RF/AU facts without rep
   assert.equal(JSON.parse(preview.values.find(value => typeof value === "string" && value.startsWith("{")))[ids.shareholderId],
     "<RF-1086U><shareholder>test</shareholder></RF-1086U>");
   const permissions = inserts.find(row => row.table === "authority_permissions");
-  assert.deepEqual(Array.from(permissions.value, row => row.obligation), ["skattemelding", "aarsregnskap"]);
+  assert.deepEqual(Array.from(permissions.value, row => row.obligation), ["aarsregnskap"]);
+  const taxPermission = sql.find(row => row.statement.includes("insert into company_tax_filing.authority_permissions"));
+  assert.ok(taxPermission, "Tax permission must use the contracted owner");
+  assert.deepEqual(Array.from(taxPermission.values), [ids.companyId, ids.ownerId]);
+  assert.match(taxPermission.statement, /values\(\$1,'skattemelding',\$2,\$2,true\)/u);
+  assert.ok(borrowed.includes("company_tax_filing.authority_permissions"));
+  assert.ok(sql.some(row => row.statement.includes("from public.authority_permissions")
+    && row.statement.includes("obligation='skattemelding'") && row.values[0] === ids.companyId),
+  "Tax fixture must verify no legacy permission mirror exists");
   assert.doesNotMatch(statements, /insert into (?:public|shareholder_register_filing)\.(?:filing_submissions|filing_approval_snapshots|production_filing_submissions)/u);
   assert.doesNotMatch(statements, /(?:paid|charge)_at|billing_accounts/u);
   assert.match(source, /set local role ledger_executor/u);

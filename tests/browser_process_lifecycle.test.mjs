@@ -240,9 +240,18 @@ for (const phase of ["predecessor", "overlap", "contracted", "tax-contracted"]) 
         "owner_dividend_events", "owner_dividend_artifacts", "owner_dividend_decisions", "annual_close_finalizations",
         "annual_close_events", "annual_close_artifacts", "annual_close_decisions", "shareholder_loans"]
         .map(name => `corporate_governance.${name}`));
+      required.push(...["filing_submissions", "filing_review_comments", "filing_overrides",
+        "filing_previews", "authority_test_runs", "authority_permissions"].map(name => `company_tax_filing.${name}`));
     }
     for (const relation of required) assert.ok(calls.some(call => call.startsWith(`delete from ${relation} `)), relation);
     const deletion = relation => calls.findIndex(call => call.startsWith(`delete from ${relation} `));
+    if (phase === "tax-contracted") {
+      assert.ok(deletion("company_tax_filing.filing_submissions") < deletion("company_tax_filing.authority_test_runs"));
+      assert.ok(deletion("company_tax_filing.filing_review_comments") < deletion("company_tax_filing.filing_previews"));
+      assert.ok(deletion("company_tax_filing.authority_permissions") < deletion("public.companies"));
+    } else {
+      assert.ok(!calls.some(call => call.startsWith("delete from company_tax_filing.authority_permissions ")));
+    }
     assert.ok(deletion(phase === "tax-contracted" ? "corporate_governance.owner_dividend_finalizations" : "public.corporate_decision_finalizations") < deletion("ledger.entries"));
     assert.ok(deletion(phase === "tax-contracted" ? "company_tax_filing.settlements" : "public.holding_actions") < deletion("banking.transactions"));
     assert.ok(deletion("banking.suggestion_acceptances") < deletion("ledger.entries"));
@@ -606,6 +615,8 @@ function cleanupDatabaseProbe(calls, { phase = "overlap", failStatement, failure
     return tables.get(relation);
   };
   const physicalKind = relation => {
+    if (relation.startsWith("company_tax_filing.") && relation !== "company_tax_filing.settlements"
+      && phase !== "tax-contracted") return undefined;
     if (phase === "tax-contracted" && ["public.corporate_document_events", "public.corporate_decision_finalizations",
       "public.corporate_document_artifacts", "public.corporate_document_sets", "public.corporate_decisions",
       "public.holding_actions", "public.bank_transactions", "public.bank_suggestion_acceptances", "public.investment_lot_allocations",

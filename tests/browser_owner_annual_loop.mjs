@@ -90,6 +90,8 @@ test("browser owner annual loop uses persisted state and survives reload", async
     await database.connect();
     assert.equal((await database.query("select phase from backend_system.tax_settlement_migration_state where singleton")).rows[0]?.phase,
       "contracted", "annual owner journey requires the final Tax topology");
+    assert.equal((await database.query("select phase from backend_system.company_tax_return_migration_state where singleton")).rows[0]?.phase,
+      "contracted", "annual owner journey requires the final Tax filing topology");
     const backendDatabasePassword = randomUUID().replaceAll("-", "");
     const ledgerDatabasePassword = randomUUID().replaceAll("-", "");
     const bankingDatabasePassword = randomUUID().replaceAll("-", "");
@@ -909,15 +911,15 @@ async function seedAnnualLoop(admin, database, ids, onCompanyCreated) {
         where p.id=$1`, [id])).rows[0].exact, true);
     }
   });
+  await fixtureTableTransaction(database, ["company_tax_filing.authority_permissions"], async () => {
+    await database.query(`insert into company_tax_filing.authority_permissions
+      (company_id,obligation,submitter_user_id,confirmed_by,production_enabled)
+      values($1,'skattemelding',$2,$2,true)`, [companyId,ownerId]);
+    assert.equal((await database.query(`select count(*)::int count from public.authority_permissions
+      where company_id=$1 and obligation='skattemelding'`, [companyId])).rows[0].count, 0);
+  });
   await assertNoError(
     admin.from("authority_permissions").insert([
-      {
-        company_id: companyId,
-        obligation: "skattemelding",
-        submitter_user_id: ownerId,
-        confirmed_by: ownerId,
-        production_enabled: true,
-      },
       {
         company_id: companyId,
         obligation: "aarsregnskap",
