@@ -41,7 +41,7 @@ def test_filing_migration_lifecycle(scenario):
         assert value, label
         checks.append(label)
     with psycopg.connect(url,autocommit=True) as db:
-        db.execute('begin')
+        db.execute('begin isolation level repeatable read')
         try:
             assert db.execute("select to_regclass('backend_system.company_tax_return_migration_state') is null").fetchone()[0], 'Run before the explicitly ordered filing expansion'
             db.execute('insert into auth.users(id) values(%s)',(owner,))
@@ -61,7 +61,7 @@ def test_filing_migration_lifecycle(scenario):
               db.execute("insert into public.filing_submissions(preview_id,company_id,income_year,filing,status,created_by) values(%s,%s,2025,%s,'ready',%s)",(preview,company,label,owner))
             db.execute('reset role')
             before=snapshot(db);environment=environment_snapshot(db)
-            for name in ('20260914200000_company_tax_return_expand','20260914201000_company_tax_return_read_contracts','20260914202000_company_tax_return_import_contract','20260914203000_company_tax_return_preparation_contracts'):
+            for name in ('20260914200000_company_tax_return_expand','20260914201000_company_tax_return_read_contracts','20260914202000_company_tax_return_import_contract','20260914203000_company_tax_return_preparation_contracts','20260914022608_company_tax_return_source_contract'):
              db.execute((ROOT/f'supabase/contract-migrations/{name}.sql').read_text().removesuffix('commit;\n').replace('begin;\n','',1))
             # Exercise a legacy write after expansion; cutover must capture its latest value.
             db.execute("update public.filing_previews set preview='Latest synthetic Tax preview' where filing='skattemelding for AS' and company_id=%s",(company,))
@@ -116,6 +116,39 @@ def test_filing_migration_lifecycle(scenario):
             db.execute('set local role company_tax_filing_workflow_executor')
             result=db.execute('select company_tax_filing.read_workspace_v1(%s,2025,%s)',(company,owner)).fetchone()[0]
             check('real owner read after cutover',len(result['previews'])==1)
+            source=db.execute('select company_tax_filing.read_source_snapshot_v1(%s,2025,%s)',(company,owner)).fetchone()[0]
+            check('positive source coverage after cutover',all(source['coverage'][flag] is True for flag in ('inventoryValid','quarantineClear','sourceRowsValid','legacyFencesValid','modeChecksValid','declaredExtentValid')))
+            check('source covers all six families',len(source['coverage']['familyCounts'])==6)
+            db.execute('reset role')
+            check('source reader has no ambient execute grant',all(not db.execute(
+                "select has_function_privilege(%s,'company_tax_filing.read_source_snapshot_v1(uuid,integer,text)','EXECUTE')",(role,)).fetchone()[0]
+                for role in ('anon','authenticated','service_role')))
+            for sql,flag,as_owner in (
+                ("alter table public.filing_submissions drop constraint tax152_legacy_writer_retired",'legacyFencesValid',False),
+                ("alter table company_tax_filing.filing_submissions drop constraint filing_submissions_mode_check",'modeChecksValid',True),
+                ("create table company_tax_filing.uncovered_source_probe(id integer)",'declaredExtentValid',True),
+                ("update backend_system.company_tax_return_migration_inventory set definition_sha256=repeat('0',64)",'inventoryValid',True),
+                ("update backend_system.company_tax_return_source_rows set source_sha256=repeat('0',64) where ctid=(select ctid from backend_system.company_tax_return_source_rows order by family,source_id,source_sha256 limit 1)",'sourceRowsValid',True),
+            ):
+             db.execute('savepoint source_mutant')
+             if as_owner:
+              db.execute('grant company_tax_filing_store_owner to postgres with inherit false,set true')
+              db.execute('set local role company_tax_filing_store_owner')
+             db.execute(sql)
+             db.execute('reset role');db.execute('set local role company_tax_filing_workflow_executor')
+             altered=db.execute('select company_tax_filing.read_source_snapshot_v1(%s,2025,%s)',(company,owner)).fetchone()[0]
+             check(flag+' drift is not complete evidence',altered['coverage'][flag] is False)
+             db.execute('rollback to savepoint source_mutant');db.execute('release savepoint source_mutant')
+            db.execute('set local role company_tax_filing_workflow_executor')
+            db.execute('savepoint wrong_source_actor')
+            try:
+             db.execute('select company_tax_filing.read_source_snapshot_v1(%s,2025,%s)',(company,'00000000-0000-0000-0000-000000000199'))
+             raise AssertionError('source accepted an unverified subject')
+            except psycopg.Error as error:
+             assert error.diag.message_primary=='company_tax_return_forbidden'
+             db.execute('rollback to savepoint wrong_source_actor')
+            db.execute('release savepoint wrong_source_actor')
+
             comment=db.execute("select company_tax_filing.add_review_comment_v1('00000000-0000-0000-0001-000000000000','advisory','Post-cutover comment',%s)",(owner,)).fetchone()[0]
             check('owned comment mutation works',comment['body']=='Post-cutover comment')
             db.execute('reset role')
@@ -177,6 +210,16 @@ def test_filing_migration_lifecycle(scenario):
              db.execute('rollback to savepoint unavailable')
             db.execute('release savepoint unavailable');db.execute('reset role')
             checks.append('old backend unavailable after full rollback')
+            db.execute('savepoint source_unavailable');db.execute('set local role company_tax_filing_workflow_executor')
+            try:
+             db.execute('select company_tax_filing.read_source_snapshot_v1(%s,2025,%s)',(company,owner))
+             raise AssertionError('rolled back source proof was available')
+            except psycopg.Error as error:
+             assert error.diag.message_primary=='company_tax_return_unavailable'
+             db.execute('rollback to savepoint source_unavailable')
+            db.execute('release savepoint source_unavailable');db.execute('reset role')
+            checks.append('positive source proof unavailable after full rollback')
+
             drop_artifact_temps()
             db.execute(cutover.read_text().removesuffix('commit;\n').replace('begin;\n','',1))
             check('re-cutover carries latest owned comment',db.execute('select body from company_tax_filing.filing_review_comments where id=%s',(comment['id'],)).fetchone()[0]=='Post-cutover comment')

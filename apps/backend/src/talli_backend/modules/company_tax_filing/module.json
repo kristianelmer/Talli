@@ -54,7 +54,18 @@
       "AnnualTaxEstimateSource",
       "wait_for_company_tax_validation",
       "wait_for_company_tax_feedback",
-      "wait_for_company_tax_clean_envelope"
+      "wait_for_company_tax_clean_envelope",
+      "CompanyTaxSourceQuery",
+      "CompanyTaxSourceSnapshot",
+      "CompanyTaxSourceEvidence",
+      "CompanyTaxHistoryCoverage",
+      "CompanyTaxSubmissionFact",
+      "CompanyTaxIncidentFact",
+      "CompanyTaxOutcomeFact",
+      "CompanyTaxCorrectionLink",
+      "CompanyTaxSourceFacts",
+      "project_company_tax_source",
+      "verify_company_tax_source"
     ],
     "events": [],
     "errors": [
@@ -80,7 +91,8 @@
       "CompanyTaxPreparationPersistence",
       "CompanyTaxAuthority",
       "company_tax_authority_adapter",
-      "CompanyTaxRehearsalIO"
+      "CompanyTaxRehearsalIO",
+      "CompanyTaxSourcePersistence"
     ]
   },
   "owns": {
@@ -163,6 +175,15 @@
       "adapters": [
         "talli_backend.adapters.local_company_tax_rehearsal.LocalCompanyTaxRehearsal"
       ]
+    },
+    {
+      "name": "CompanyTaxSourcePersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxSourcePersistence",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
     }
   ],
   "dependencies": [],
@@ -184,7 +205,9 @@
     "talli_backend.shared.kernel",
     "types",
     "typing",
-    "uuid"
+    "uuid",
+    "datetime",
+    "json"
   ],
   "forbiddenResponsibilities": [
     "Ledger account selection and posting policy",

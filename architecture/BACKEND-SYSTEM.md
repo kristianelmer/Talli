@@ -646,3 +646,24 @@ The `company-tax-assessment-previews` composition exposes authenticated POST `/a
 <!-- architecture-inventory
 {"ports": ["CompanyTaxRehearsalIO"], "adapterBindings": ["CompanyTaxRehearsalIO=>talli_backend.adapters.local_company_tax_rehearsal.LocalCompanyTaxRehearsal"], "adapterBindingOwners": ["CompanyTaxRehearsalIO=>backend-system"], "adapterBindingModes": ["CompanyTaxRehearsalIO=>local evidence and credential mechanisms; Company Tax owns durable rehearsal intent, prepare/resume guards and state transitions"]}
 -->
+
+
+`CompanyTaxSourcePersistence` binds to `talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction` for a verified owner repeatable snapshot. The Tax capability projects source evidence; Annual and Billing receive no generic persistence handle.
+
+<!-- architecture-inventory
+{"ports": ["CompanyTaxSourcePersistence"], "adapterBindings": ["CompanyTaxSourcePersistence=>talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"], "adapterBindingOwners": ["CompanyTaxSourcePersistence=>backend-system"], "adapterBindingModes": ["CompanyTaxSourcePersistence=>one verified owner repeatable snapshot; positive Tax migration coverage, complete enumeration and phase lock; no provider operation"]}
+-->
+
+
+`company-tax-source-facts` exposes `/api/v1/company-tax/source-facts` through `talli_backend.modules.company_tax_filing.public`. It publishes immutable owner-scoped Tax source evidence from one repeatable snapshot, with positive history coverage and explicit production-disabled/unknown/test distinctions.
+
+<!-- architecture-inventory
+{"workflows": ["company-tax-source-facts"], "workflowPurposes": ["company-tax-source-facts=>Publishes immutable owner-scoped Tax source evidence from one repeatable snapshot; requires positive history coverage and preserves production-disabled, unknown and test-only distinctions without Billing policy."], "routes": ["/api/v1/company-tax/source-facts"]}
+-->
+
+
+The positive Tax source reader is installed by `supabase/contract-migrations/20260914022608_company_tax_return_source_contract.sql`.
+
+<!-- architecture-inventory
+{"technicalMigrations": ["supabase/contract-migrations/20260914022608_company_tax_return_source_contract.sql"]}
+-->

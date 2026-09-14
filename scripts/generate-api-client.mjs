@@ -277,6 +277,7 @@ const bankingOperations = {
   ],
 };
 const companyTaxOperations = {
+  sourceFacts: ["/api/v1/company-tax/source-facts", "get", "companyTaxGetSourceFacts"],
   readinessPreview: ["/api/v1/company-tax/readiness-previews", "post", "companyTaxPreviewReadiness"],
   annualEstimatePreview: ["/api/v1/company-tax/annual-estimate-previews", "post", "companyTaxPreviewAnnualEstimate"],
   getPreview: ["/api/v1/company-tax/previews/{preview_id}", "get", "companyTaxGetPreview"],
@@ -855,6 +856,8 @@ const bankingSchemas = Object.fromEntries([
   "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const companyTaxSchemas = Object.fromEntries([
+  "CompanyTaxSourceEvidenceWire", "CompanyTaxHistoryCoverageWire", "CompanyTaxSubmissionFactWire",
+  "CompanyTaxIncidentFactWire", "CompanyTaxOutcomeFactWire", "CompanyTaxCorrectionLinkWire", "CompanyTaxSourceFactsWire",
   "CompanyTaxAssessmentFactsRequest", "CompanyTaxReadinessPreviewRequest", "CompanyTaxReadinessIssueWire",
   "CompanyTaxReadinessPreviewWire", "CompanyTaxAnnualEstimateWire",
   "CompanyTaxRecordedWire", "CompanyTaxOverrideRequest", "CompanyTaxReviewRequest", "CompanyTaxPermissionRequest", "CompanyTaxTestEvidenceRequest",
@@ -2652,6 +2655,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         \`\${baseUrl}/api/v1/company-tax/annual-estimate-previews\`,
         "POST", request, body, isCompanyTaxAnnualEstimateWire,
       );
+    },
+
+    async companyTaxGetSourceFacts(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxSourceFactsWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/source-facts?\${query}\`,
+        "GET", request, undefined, isCompanyTaxSourceFactsWire,
+      );
+      if (result.evidence.companyId !== companyId || result.evidence.incomeYear !== incomeYear
+          || (result.historyCoverage.status === "complete"
+            && result.historyCoverage.evidenceReference !== result.evidence.reference)) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
     },
 
     async companyTaxGetFilingWorkspace(

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
-import { TalliApiError } from "@talli/talli-api-client";
+import { createTalliApiClient, TalliApiError } from "@talli/talli-api-client";
 import { previewTaxSettlement, postTaxSettlement, taxPreviewErrorMessage, taxSubmissionErrorMessage } from "../features/company-tax-filing/index.ts";
 
 const operationId = "70000000-0000-4000-8000-000000000001";
@@ -226,4 +226,47 @@ for (const corruption of [
   t.mock.method(globalThis, "fetch", async () => Response.json({ companyId, incomeYear: 2025, issues: [], ...corruption }));
   await assert.rejects(previewCompanyTaxReadiness("owner", { companyId, incomeYear: 2025, annualData: null, ledgerEntries: [], holdingActions: [] }),
     error => error instanceof TalliApiError && error.status === 502);
+});
+
+
+function sourceFacts() {
+  const reference = `company-tax:${companyId}:2025`;
+  return {
+    evidence: { companyId, incomeYear: 2025, obligation: "skattemelding", scope: "talli_recorded_company_tax",
+      reference, version: "company-tax-source-v1:" + "0".repeat(64), digest: "0".repeat(64), evaluatedAt: "2026-09-14T00:00:00Z" },
+    readinessStatus: "blocked", hardBlocks: ["company_tax_production_disabled"],
+    historyCoverage: { status: "complete", reasons: [], evidenceReference: reference,
+      asOf: "2026-09-14T00:00:00Z", submissionCount: 0, scope: "talli_recorded_company_tax" },
+    recordedSubmissions: [], productionAttempts: [], correctionLinks: [], incidents: [], outcomes: [],
+  };
+}
+
+test("generated Tax source client binds company/year and preserves complete empty-history evidence", async () => {
+  const expected = sourceFacts();
+  const api = createTalliApiClient({ baseUrl: "https://backend.example", headers: { Authorization: "Bearer fixture" },
+    fetch: async (url, request) => {
+      assert.equal(new URL(url).pathname, "/api/v1/company-tax/source-facts");
+      assert.equal(new URL(url).searchParams.get("companyId"), companyId);
+      assert.equal(new URL(url).searchParams.get("incomeYear"), "2025");
+      assert.equal(request.method, "GET");
+      assert.equal(request.headers.Authorization, "Bearer fixture");
+      return Response.json(expected);
+    },
+  });
+  assert.deepEqual(await api.companyTaxGetSourceFacts(companyId, 2025), expected);
+});
+
+test("generated Tax source client refuses incomplete shapes and mismatched scope", async () => {
+  for (const mutate of [
+    value => { delete value.historyCoverage; },
+    value => { value.evidence.companyId = "00000000-0000-0000-0000-000000000199"; },
+    value => { value.evidence.incomeYear = 2024; },
+    value => { value.evidence.obligation = "aarsregnskap"; },
+    value => { value.historyCoverage.evidenceReference = "different"; },
+    value => { value.readinessStatus = "ready"; },
+  ]) {
+    const value = sourceFacts(); mutate(value);
+    const api = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async () => Response.json(value) });
+    await assert.rejects(api.companyTaxGetSourceFacts(companyId, 2025), error => error instanceof TalliApiError && error.status === 502);
+  }
 });

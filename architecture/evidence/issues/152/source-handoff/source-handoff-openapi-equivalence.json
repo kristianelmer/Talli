@@ -1,0 +1,17 @@
+{
+  "baselineRevision": "0b3b8c1e9cf2e154f48951f290c0b448b8f868bf",
+  "existingPathsUnchanged": 148,
+  "existingSchemasUnchanged": 411,
+  "addedPaths": [
+    "/api/v1/company-tax/source-facts"
+  ],
+  "addedSchemas": [
+    "CompanyTaxCorrectionLinkWire",
+    "CompanyTaxHistoryCoverageWire",
+    "CompanyTaxIncidentFactWire",
+    "CompanyTaxOutcomeFactWire",
+    "CompanyTaxSourceEvidenceWire",
+    "CompanyTaxSourceFactsWire",
+    "CompanyTaxSubmissionFactWire"
+  ]
+}

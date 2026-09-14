@@ -2964,6 +2964,84 @@ export interface BillingUnsupportedWire {
 
 export type ProductionPilotStatus = "pending" | "active" | "suspended" | "completed" | "revoked";
 
+export interface CompanyTaxSourceEvidenceWire {
+  companyId: string;
+  digest: string;
+  evaluatedAt: string;
+  incomeYear: number;
+  obligation: "skattemelding";
+  reference: string;
+  scope: "talli_recorded_company_tax";
+  version: string;
+}
+
+export interface CompanyTaxHistoryCoverageWire {
+  asOf: string;
+  evidenceReference: string | null;
+  reasons: string[];
+  scope: "talli_recorded_company_tax";
+  status: "complete" | "incomplete" | "unavailable";
+  submissionCount: number;
+}
+
+export interface CompanyTaxSubmissionFactWire {
+  adapterMode: string;
+  authorityConfirmedAt: string | null;
+  authorityConfirmedBy: string | null;
+  createdBy: string | null;
+  effectStatus: "unknown" | "not_production";
+  feedbackDocumentIds: string[];
+  observedAt: string | null;
+  payloadHash: string | null;
+  previewConfirmedAt: string | null;
+  previewConfirmedBy: string | null;
+  receiptReference: string | null;
+  sourceDigest: string;
+  sourceId: string;
+  sourceMode: string;
+  state: string;
+  submittedBy: string | null;
+}
+
+export interface CompanyTaxIncidentFactWire {
+  actorId: string | null;
+  adapterMode: string;
+  attribution: "unknown";
+  failureCode: string | null;
+  observedAt: string | null;
+  sourceDigest: string;
+  sourceId: string;
+  sourceMode: string;
+}
+
+export interface CompanyTaxOutcomeFactWire {
+  adapterMode: string;
+  attribution: "unknown";
+  observedAt: string | null;
+  outcome: "unknown" | "test_or_simulation";
+  recordedState: string;
+  sourceDigest: string;
+  sourceId: string;
+  sourceMode: string;
+}
+
+export interface CompanyTaxCorrectionLinkWire {
+  sourceId: string;
+  supersedesSourceId: string;
+}
+
+export interface CompanyTaxSourceFactsWire {
+  correctionLinks: CompanyTaxCorrectionLinkWire[];
+  evidence: CompanyTaxSourceEvidenceWire;
+  hardBlocks: string[];
+  historyCoverage: CompanyTaxHistoryCoverageWire;
+  incidents: CompanyTaxIncidentFactWire[];
+  outcomes: CompanyTaxOutcomeFactWire[];
+  productionAttempts: CompanyTaxSubmissionFactWire[];
+  readinessStatus: "blocked" | "unavailable";
+  recordedSubmissions: CompanyTaxSubmissionFactWire[];
+}
+
 export interface CompanyTaxAssessmentFactsRequest {
   annualData?: Record<string, unknown> | null;
   holdingActions: Record<string, unknown>[];
@@ -7659,6 +7737,112 @@ function isProductionPilotStatus(value: unknown): value is ProductionPilotStatus
   return value === "pending" || value === "active" || value === "suspended" || value === "completed" || value === "revoked";
 }
 
+function isCompanyTaxSourceEvidenceWire(value: unknown): value is CompanyTaxSourceEvidenceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","digest","evaluatedAt","incomeYear","obligation","reference","scope","version"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.digest === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.digest)) &&
+    isDateTime(value.evaluatedAt) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    value.obligation === "skattemelding" &&
+    typeof value.reference === "string" &&
+    value.scope === "talli_recorded_company_tax" &&
+    typeof value.version === "string"
+  );
+}
+
+function isCompanyTaxHistoryCoverageWire(value: unknown): value is CompanyTaxHistoryCoverageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["asOf","evidenceReference","reasons","scope","status","submissionCount"]) &&
+    isDateTime(value.asOf) &&
+    (typeof value.evidenceReference === "string" || value.evidenceReference === null) &&
+    Array.isArray(value.reasons) && value.reasons.every((item) => typeof item === "string") &&
+    value.scope === "talli_recorded_company_tax" &&
+    (value.status === "complete" || value.status === "incomplete" || value.status === "unavailable") &&
+    typeof value.submissionCount === "number" && Number.isInteger(value.submissionCount)
+  );
+}
+
+function isCompanyTaxSubmissionFactWire(value: unknown): value is CompanyTaxSubmissionFactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["adapterMode","authorityConfirmedAt","authorityConfirmedBy","createdBy","effectStatus","feedbackDocumentIds","observedAt","payloadHash","previewConfirmedAt","previewConfirmedBy","receiptReference","sourceDigest","sourceId","sourceMode","state","submittedBy"]) &&
+    typeof value.adapterMode === "string" &&
+    (typeof value.authorityConfirmedAt === "string" || value.authorityConfirmedAt === null) &&
+    (typeof value.authorityConfirmedBy === "string" || value.authorityConfirmedBy === null) &&
+    (typeof value.createdBy === "string" || value.createdBy === null) &&
+    (value.effectStatus === "unknown" || value.effectStatus === "not_production") &&
+    Array.isArray(value.feedbackDocumentIds) && value.feedbackDocumentIds.every((item) => typeof item === "string") &&
+    (typeof value.observedAt === "string" || value.observedAt === null) &&
+    (typeof value.payloadHash === "string" || value.payloadHash === null) &&
+    (typeof value.previewConfirmedAt === "string" || value.previewConfirmedAt === null) &&
+    (typeof value.previewConfirmedBy === "string" || value.previewConfirmedBy === null) &&
+    (typeof value.receiptReference === "string" || value.receiptReference === null) &&
+    typeof value.sourceDigest === "string" &&
+    isUuid(value.sourceId) &&
+    typeof value.sourceMode === "string" &&
+    typeof value.state === "string" &&
+    (typeof value.submittedBy === "string" || value.submittedBy === null)
+  );
+}
+
+function isCompanyTaxIncidentFactWire(value: unknown): value is CompanyTaxIncidentFactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actorId","adapterMode","attribution","failureCode","observedAt","sourceDigest","sourceId","sourceMode"]) &&
+    (typeof value.actorId === "string" || value.actorId === null) &&
+    typeof value.adapterMode === "string" &&
+    value.attribution === "unknown" &&
+    (typeof value.failureCode === "string" || value.failureCode === null) &&
+    (typeof value.observedAt === "string" || value.observedAt === null) &&
+    typeof value.sourceDigest === "string" &&
+    isUuid(value.sourceId) &&
+    typeof value.sourceMode === "string"
+  );
+}
+
+function isCompanyTaxOutcomeFactWire(value: unknown): value is CompanyTaxOutcomeFactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["adapterMode","attribution","observedAt","outcome","recordedState","sourceDigest","sourceId","sourceMode"]) &&
+    typeof value.adapterMode === "string" &&
+    value.attribution === "unknown" &&
+    (typeof value.observedAt === "string" || value.observedAt === null) &&
+    (value.outcome === "unknown" || value.outcome === "test_or_simulation") &&
+    typeof value.recordedState === "string" &&
+    typeof value.sourceDigest === "string" &&
+    isUuid(value.sourceId) &&
+    typeof value.sourceMode === "string"
+  );
+}
+
+function isCompanyTaxCorrectionLinkWire(value: unknown): value is CompanyTaxCorrectionLinkWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["sourceId","supersedesSourceId"]) &&
+    isUuid(value.sourceId) &&
+    isUuid(value.supersedesSourceId)
+  );
+}
+
+function isCompanyTaxSourceFactsWire(value: unknown): value is CompanyTaxSourceFactsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["correctionLinks","evidence","hardBlocks","historyCoverage","incidents","outcomes","productionAttempts","readinessStatus","recordedSubmissions"]) &&
+    Array.isArray(value.correctionLinks) && value.correctionLinks.every((item) => isCompanyTaxCorrectionLinkWire(item)) &&
+    isCompanyTaxSourceEvidenceWire(value.evidence) &&
+    Array.isArray(value.hardBlocks) && value.hardBlocks.every((item) => typeof item === "string") &&
+    isCompanyTaxHistoryCoverageWire(value.historyCoverage) &&
+    Array.isArray(value.incidents) && value.incidents.every((item) => isCompanyTaxIncidentFactWire(item)) &&
+    Array.isArray(value.outcomes) && value.outcomes.every((item) => isCompanyTaxOutcomeFactWire(item)) &&
+    Array.isArray(value.productionAttempts) && value.productionAttempts.every((item) => isCompanyTaxSubmissionFactWire(item)) &&
+    (value.readinessStatus === "blocked" || value.readinessStatus === "unavailable") &&
+    Array.isArray(value.recordedSubmissions) && value.recordedSubmissions.every((item) => isCompanyTaxSubmissionFactWire(item))
+  );
+}
+
 function isCompanyTaxAssessmentFactsRequest(value: unknown): value is CompanyTaxAssessmentFactsRequest {
   return (
     isRecord(value) &&
@@ -10242,6 +10426,22 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         `${baseUrl}/api/v1/company-tax/annual-estimate-previews`,
         "POST", request, body, isCompanyTaxAnnualEstimateWire,
       );
+    },
+
+    async companyTaxGetSourceFacts(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxSourceFactsWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/source-facts?${query}`,
+        "GET", request, undefined, isCompanyTaxSourceFactsWire,
+      );
+      if (result.evidence.companyId !== companyId || result.evidence.incomeYear !== incomeYear
+          || (result.historyCoverage.status === "complete"
+            && result.historyCoverage.evidenceReference !== result.evidence.reference)) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
     },
 
     async companyTaxGetFilingWorkspace(

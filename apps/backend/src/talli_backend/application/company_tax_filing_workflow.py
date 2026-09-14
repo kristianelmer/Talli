@@ -14,6 +14,7 @@ from talli_backend.modules.company_tax_filing.public import (
     normalize_company_tax_review, normalize_company_tax_test_evidence,
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
     CompanyTaxWorkspaceQuery, CompanyTaxFilingRows,
+    CompanyTaxSourceQuery, CompanyTaxSourceEvidence, CompanyTaxSourceFacts, project_company_tax_source, verify_company_tax_source,
     ImportCompanyTaxReturnEvidence, ImportedCompanyTaxEvidence, CompanyTaxEvidenceInput, project_company_tax_evidence,
     TaxSettlementKind, TaxSettlementArchiveQuery, validate_new_tax_settlement,
 )
@@ -122,6 +123,18 @@ class AuthenticatedCompanyTax:
             if result.company_id != query.company_id or result.income_year != query.income_year:
                 raise CompanyTaxError.unavailable()
             return result
+
+    async def filing_source_facts(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceFacts:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        async with self._session.transaction(snapshot=True) as transaction:
+            return project_company_tax_source(query, await transaction.filing_source_snapshot(query))
+
+    async def verify_filing_source(self, query: CompanyTaxSourceQuery, evidence: CompanyTaxSourceEvidence) -> bool:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        async with self._session.transaction(snapshot=True) as transaction:
+            return verify_company_tax_source(query, evidence, await transaction.filing_source_snapshot(query))
 
     async def import_return_evidence(self, command: ImportCompanyTaxReturnEvidence) -> ImportedCompanyTaxEvidence:
         if command.actor_id != self.actor_id:

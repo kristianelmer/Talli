@@ -1,0 +1,37 @@
+✔ preview sends original facts and returns authoritative normalized payload and account lines (16.311417ms)
+✔ capture keeps released path and stable identity without retrying an ambiguous outcome (0.952417ms)
+✔ generated preview guard rejects malformed backend output (0.486042ms)
+✔ generated preview guard rejects malformed backend output (0.531667ms)
+✔ generated preview guard rejects malformed backend output (0.398458ms)
+✔ Archive read preserves all source fields and conceals malformed or foreign output as a failed source (1.510125ms)
+✔ submission preserves the original coded validation redirect: bad-date-shape (0.093916ms)
+✔ submission preserves the original coded validation redirect: zero (0.03625ms)
+✔ submission preserves the original coded validation redirect: negative (0.040125ms)
+✔ submission preserves the original coded validation redirect: unknown-kind (0.070375ms)
+✔ submission preserves the original coded validation redirect: unknown-document-status (0.037792ms)
+✔ submission preserves the original coded validation redirect: payable-with-bank (0.032833ms)
+✔ submission preserves the original coded validation redirect: validation-order (0.027959ms)
+✔ unparseable amount text retains backend-owned validation: abc (0.503083ms)
+✔ unparseable amount text retains backend-owned validation: Infinity (1.257792ms)
+✔ unparseable amount text retains backend-owned validation: 1,5 (0.244ms)
+✔ filing workspace keeps a failed source unavailable and checks returned scope (1.110709ms)
+✔ TT02 import preserves evidence bytes, IDs, replay and MFA presentation (0.452833ms)
+✔ TT02 presenter distinguishes projection validation from persistence rejection (0.06075ms)
+✔ Tax preparation sends generated commands and rejects foreign scope (0.563916ms)
+✔ Tax lookup and acknowledgement only return absence for an explicit owned not-found (0.669042ms)
+✔ TT02 import retains the missing-company message (0.057625ms)
+✔ Tax assessment previews send ordered source facts unchanged through generated endpoints (0.40325ms)
+✔ readiness transport rejects wrong scope or corrupt policy output (0.2585ms)
+✔ readiness transport rejects wrong scope or corrupt policy output (0.256875ms)
+✔ readiness transport rejects wrong scope or corrupt policy output (0.238417ms)
+✔ readiness transport rejects wrong scope or corrupt policy output (0.135541ms)
+✔ generated Tax source client binds company/year and preserves complete empty-history evidence (0.482833ms)
+✔ generated Tax source client refuses incomplete shapes and mismatched scope (0.5085ms)
+ℹ tests 29
+ℹ suites 0
+ℹ pass 29
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 145.334292

@@ -1,0 +1,61 @@
+{
+  "baselineRevision": "0b3b8c1e9cf2e154f48951f290c0b448b8f868bf",
+  "status": "POSITIVE_RECORDED_TAX_HISTORY_HANDOFF_WITH_DISABLED_PRODUCTION",
+  "scope": "talli_recorded_company_tax",
+  "readiness": "The existing hard-disabled production implementation is the decisive blocked gate; no other readiness prerequisite is certified and caller-supplied assessments remain previews. Source readiness/version must be extended with current durable prerequisite facts before any later production activation.",
+  "checks": {
+    "unitApi": 73,
+    "generatedClient": 29,
+    "lifecycleScenarios": 7,
+    "positiveSourceProbeChecks": 10,
+    "readCommittedProofRejected": true,
+    "webTypecheck": "PASS",
+    "architecture": "PASS",
+    "unchangedExistingApiPaths": 148,
+    "unchangedExistingApiSchemas": 411,
+    "addedApiPaths": 1,
+    "addedSchemas": 7,
+    "hostedChanges": 0,
+    "providerCalls": 0,
+    "stageExit": false
+  },
+  "coverage": "Positive one-owner repeatable snapshot of all six owned filing families, migration hashes/reconciliation/retained identities, exact legacy fences, inherited modes and declared table extent. Missing coverage is unavailable/incomplete. Production-labelled or unknown-mode rows remain unknown attempts and make coverage incomplete without a production journal.",
+  "limitations": [
+    "Scope covers Talli-recorded Tax source, not all external authority filings.",
+    "No actual production authority operation, success, cause attribution or commercial decision is inferred.",
+    "No complete current durable prerequisite readiness or live HTTP JWT/browser stage-exit claim."
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "485a0f0f94f64b688a616dc39a6420c4513a0cc7285904b1b6dbe9490e358fe8",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/source_facts.py": "caefd447ef1dbea432f5e47c64d4e1b7e34e7db997cca5a64109771de4d78b4a",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "bb2e2e3168beff3071977af6d48bb8124e4945df62a76c8062b3b7895102504f",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "7854dc56974998e4a284c291a3fa9a3c6ccd5f49cb68deb45213524b1fc43381",
+    "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py": "1b4945e344782181323d0a0abb32af6dc19854d747bb29cef081592b23ce63b2",
+    "apps/backend/src/talli_backend/application/company_tax_filing_session.py": "1ec688d2eb3ce80a146a3b0fbd56c3bb2fdd9f93a7bd48918c6216fc8a2ca3d7",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "9e4083d88f399f98c4206ad412296e86be416d2983bdc7a12198a5772b5d9132",
+    "apps/backend/src/talli_backend/main.py": "2f9e433de941b9c990bf75ef3ddb4d5cec2412bb3227bf665d5e91f765b81fd2",
+    "supabase/contract-migrations/20260914022608_company_tax_return_source_contract.sql": "ae6e571b5c268a12d80ee43ca30931da9f277d303b6f5bc8dc7e38deb8b10db4",
+    "apps/backend/tests/test_company_tax_source_facts.py": "adab6b51b319d43bc0455e67aab230c41ca0140c4d8a636ef1900de5e41edf02",
+    "apps/backend/tests/test_company_tax_return_lifecycle.py": "5a7a188333932e74d58fb1d201dd02414b2d649be6d25dc07b0517bc3084f302",
+    "apps/web/tests/company-tax-transport.test.mjs": "e0ce7222cb6931f43bdadbd8fa576b733e96a4ca70a3e11ca5482fef0185d52a",
+    "scripts/rehearse-tax-topology.mjs": "aa722cbe8cd33245879e81ff6ea5f0232608ff1f229d7f9a15756f8fbd76ba5c",
+    "scripts/generate-api-client.mjs": "02ac9fd4d32ef3d799d69c41987b4ca965e0bc101da6e4c2ed09250782c0f32f",
+    "contracts/openapi/talli-v1.json": "f4dacf4b2f07d123e2e9d2fa05d673a20eb135d290436ffa755956f7eb27e1d1",
+    "packages/talli-api-client/src/generated/client.ts": "d0633f6b41f8fa04568d6cc6ea00891144b42b9b1ba25a7d6e6c8f6c6472d955",
+    "architecture/backend-system.json": "04c814a8c1d7af238e324d80278959e6aaa45c1491e884e2fc31174c24aabbee",
+    "architecture/BACKEND-SYSTEM.md": "e633ae982033359d515840fc0cdb9b70fa84c73075f4a441113bb9ac8680991d"
+  },
+  "evidenceSha256": {
+    "tax-source-read-committed.json": "d789590f0d66397f9c4d70b83e1e3bead9b203cc5c72d2fe81caf0683851aef2",
+    "source-handoff-final-architecture.log": "15971d5758d99d522d6a2dc7544e9610e0e20b8187ae5857efc986a3a7dbb9f4",
+    "source-handoff-lifecycle.log": "0e0177d95805cd7e9ccb1859b562b7fe1d8ffaed73559d85239e8afb6ed7a331",
+    "source-handoff-openapi-equivalence.json": "42765e2bc79a82ee65d4d6bcc44b8abe6ceb24e16467dff589b40444d758c0cb",
+    "source-handoff-typecheck.log": "315123929689ba827898fc4db391ec107ae78059288a79a22c591e870a84391e",
+    "local-source-snapshot.json": "9f1906f83c75b1be95d78609beb2302cb9fd9ee7d06001609203db2d705829ac",
+    "probe-tax-source-snapshot.py": "417f9d94da0afd7032b943d1d241c10778350d75df726c5f38ef4441e2ab1f0e",
+    "source-handoff-unit-api.log": "910f89e1f4174d589140c732403f59a418b5a5ed7c46b98220ddd26fc36728a0",
+    "probe-tax-source-read-committed.py": "c978e6a0d80739d2fb8dbaaf083a87987134460dd7eb3bbf85ec55f7b8d62a93",
+    "source-handoff-generated-client.log": "90308bedb0b25dd98184bdc970ca93acfdd79a8dfb81f52c2f6a1f608ff9c2c9"
+  },
+  "logNormalization": "Trailing blank lines removed from the committed typecheck transcript; private original retained."
+}

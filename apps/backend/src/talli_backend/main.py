@@ -78,7 +78,7 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxSettlementInput, TaxSettlementValidationError, TaxSettlementArchiveQuery, normalize_tax_settlement,
     BankTransactionReference, DocumentReference, TaxSettlementDocumentStatus,
     TaxSettlementKind as CompanyTaxSettlementKind,
-    CompanyTaxWorkspaceQuery, ImportCompanyTaxReturnEvidence, CompanyTaxRecordQuery, TaxFilingRecordId,
+    CompanyTaxWorkspaceQuery, CompanyTaxSourceQuery, ImportCompanyTaxReturnEvidence, CompanyTaxRecordQuery, TaxFilingRecordId,
     RecordCompanyTaxOverride, AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
 )
 from talli_backend.adapters.supabase_investments import compose_investments_application
@@ -937,6 +937,84 @@ class Rf1086IssueWire(TransportModel):
     level: str
     code: str
     message: str
+
+
+class CompanyTaxSourceEvidenceWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    obligation: Literal["skattemelding"]
+    scope: Literal["talli_recorded_company_tax"]
+    reference: str
+    version: str
+    digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    evaluated_at: datetime
+
+
+class CompanyTaxHistoryCoverageWire(TransportModel):
+    status: Literal["complete", "incomplete", "unavailable"]
+    reasons: list[str]
+    evidence_reference: str | None
+    as_of: datetime
+    submission_count: int
+    scope: Literal["talli_recorded_company_tax"]
+
+
+class CompanyTaxSubmissionFactWire(TransportModel):
+    source_id: UUID
+    source_mode: str
+    adapter_mode: str
+    state: str
+    effect_status: Literal["unknown", "not_production"]
+    observed_at: str | None
+    created_by: str | None
+    submitted_by: str | None
+    authority_confirmed_by: str | None
+    authority_confirmed_at: str | None
+    preview_confirmed_by: str | None
+    preview_confirmed_at: str | None
+    payload_hash: str | None
+    receipt_reference: str | None
+    feedback_document_ids: list[str]
+    source_digest: str
+
+
+class CompanyTaxIncidentFactWire(TransportModel):
+    source_id: UUID
+    source_mode: str
+    adapter_mode: str
+    failure_code: str | None
+    observed_at: str | None
+    actor_id: str | None
+    source_digest: str
+    attribution: Literal["unknown"]
+
+
+class CompanyTaxOutcomeFactWire(TransportModel):
+    source_id: UUID
+    source_mode: str
+    adapter_mode: str
+    recorded_state: str
+    outcome: Literal["unknown", "test_or_simulation"]
+    observed_at: str | None
+    source_digest: str
+    attribution: Literal["unknown"]
+
+
+class CompanyTaxCorrectionLinkWire(TransportModel):
+    source_id: UUID
+    supersedes_source_id: UUID
+
+
+class CompanyTaxSourceFactsWire(TransportModel):
+    evidence: CompanyTaxSourceEvidenceWire
+    readiness_status: Literal["blocked", "unavailable"]
+    hard_blocks: list[str]
+    history_coverage: CompanyTaxHistoryCoverageWire
+    recorded_submissions: list[CompanyTaxSubmissionFactWire]
+    production_attempts: list[CompanyTaxSubmissionFactWire]
+    correction_links: list[CompanyTaxCorrectionLinkWire]
+    incidents: list[CompanyTaxIncidentFactWire]
+    outcomes: list[CompanyTaxOutcomeFactWire]
 
 
 class CompanyTaxPreviewWire(TransportModel):
@@ -10104,6 +10182,42 @@ def create_app(
                     tax_basis=value.tax_basis, estimated_tax=value.estimated_tax, status=value.status)
             except (KeyError, TypeError, ValueError, OverflowError, AttributeError):
                 raise CompanyTaxError.invalid_input() from None
+        return await company_tax_call(execute)
+
+    @application.get(
+        "/api/v1/company-tax/source-facts",
+        operation_id="companyTaxGetSourceFacts", response_model=CompanyTaxSourceFactsWire,
+        responses=ledger_errors, tags=["company-tax"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_source_facts(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxSourceFactsWire:
+        async def execute() -> CompanyTaxSourceFactsWire:
+            session = await company_tax_application.session(bearer_token(credentials))
+            result = await session.filing_source_facts(CompanyTaxSourceQuery(
+                CompanyId(str(company_id)), IncomeYear(income_year), session.actor_id,
+            ))
+            try:
+                evidence, coverage = result.evidence, result.history_coverage
+                return CompanyTaxSourceFactsWire(
+                    evidence=CompanyTaxSourceEvidenceWire(company_id=str(evidence.company_id), income_year=int(evidence.income_year),
+                        obligation=evidence.obligation, scope=evidence.scope, reference=evidence.reference, version=evidence.version,
+                        digest=evidence.digest, evaluated_at=evidence.evaluated_at.value),
+                    readiness_status=result.readiness_status, hard_blocks=list(result.hard_blocks),
+                    history_coverage=CompanyTaxHistoryCoverageWire(status=coverage.status, reasons=list(coverage.reasons),
+                        evidence_reference=coverage.evidence_reference, as_of=coverage.as_of.value,
+                        submission_count=coverage.submission_count, scope=coverage.scope),
+                    recorded_submissions=[CompanyTaxSubmissionFactWire.model_validate(row, from_attributes=True) for row in result.recorded_submissions],
+                    production_attempts=[CompanyTaxSubmissionFactWire.model_validate(row, from_attributes=True) for row in result.production_attempts],
+                    correction_links=[CompanyTaxCorrectionLinkWire.model_validate(row, from_attributes=True) for row in result.correction_links],
+                    incidents=[CompanyTaxIncidentFactWire.model_validate(row, from_attributes=True) for row in result.incidents],
+                    outcomes=[CompanyTaxOutcomeFactWire.model_validate(row, from_attributes=True) for row in result.outcomes],
+                )
+            except ValidationError:
+                raise CompanyTaxError.unavailable() from None
         return await company_tax_call(execute)
 
     @application.get(

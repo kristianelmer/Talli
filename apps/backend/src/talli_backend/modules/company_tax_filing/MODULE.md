@@ -91,3 +91,14 @@ The shared `authority_tools._filing.FixedTransport` and parsing helpers remain t
 <!-- architecture-inventory
 {"ports": ["CompanyTaxRehearsalIO"]}
 -->
+
+
+`CompanyTaxSourceQuery`, `CompanyTaxSourceSnapshot`, `CompanyTaxSourceEvidence`, `CompanyTaxHistoryCoverage`, `CompanyTaxSubmissionFact`, `CompanyTaxIncidentFact`, `CompanyTaxOutcomeFact`, `CompanyTaxCorrectionLink`, `CompanyTaxSourceFacts`, `CompanyTaxSourcePersistence`, `project_company_tax_source` and `verify_company_tax_source` publish immutable evidence of the recorded Tax source. The adapter reads all six owned families and positive migration evidence in one authorized owner repeatable snapshot. The SQL contract checks scope, retained submission identities, six-family reconciliation, source hashes, exact legacy writer fences, original mode constraints and the declared seven-table Tax extent. Missing proof cannot mean no submissions. A production-labelled or unknown-mode legacy row remains an unknown potential attempt and makes coverage incomplete because no Tax production journal exists in this stage.
+
+Source readiness is currently blocked by the existing disabled Tax production implementation. A stored permission flag or TT02 receipt cannot enable it. This decisive gate does not certify any other readiness prerequisite or turn the caller-fact assessment into an authoritative source. Before production is enabled, the source version and readiness contract must include current durable Annual, Ledger and Investments facts. Test and simulation outcomes remain labelled with their original source/adapter modes, record identities, observation times and actor references. Local observation time is not authority event time; incident attribution stays unknown. Corrections require explicit recorded links. Billing alone applies commercial policy.
+
+The deferred `20260914022608_company_tax_return_source_contract.sql` follows the four filing expansion contracts in the explicit runner. Its function remains unavailable before cutover and after full rollback. Source evidence verification rereads a fresh snapshot and rejects scope/version/digest drift, future evidence times or incomplete coverage. The evidence scope is Talli-recorded Company Tax, not all external authority filings.
+
+<!-- architecture-inventory
+{"ports": ["CompanyTaxSourcePersistence"]}
+-->

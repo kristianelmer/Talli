@@ -41,7 +41,8 @@ try {
     if (settlement !== "contracted") throw new Error("filing_rehearsal_requires_settlement_contract");
     if (direction === "filing-expand") {
       for (const name of ["20260914200000_company_tax_return_expand.sql", "20260914201000_company_tax_return_read_contracts.sql",
-        "20260914202000_company_tax_return_import_contract.sql", "20260914203000_company_tax_return_preparation_contracts.sql"]) {
+        "20260914202000_company_tax_return_import_contract.sql", "20260914203000_company_tax_return_preparation_contracts.sql",
+        "20260914022608_company_tax_return_source_contract.sql"]) {
         await apply(`contract-migrations/${name}`);
       }
     } else {

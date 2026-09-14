@@ -9,7 +9,7 @@ from types import MappingProxyType
 
 from talli_backend.shared.kernel import (
     ActorId, CompanyId, CorrelationId, DomainError, ErrorCategory,
-    IdempotencyKey, IncomeYear, LocalDate, Money,
+    IdempotencyKey, IncomeYear, LocalDate, Money, Timestamp,
 )
 
 
@@ -644,7 +644,140 @@ async def rehearse_company_tax_return(
     return _freeze_return_fact(await run(configuration, io, sleep=sleep))
 
 
+@dataclass(frozen=True, slots=True)
+class CompanyTaxSourceQuery:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxSourceSnapshot:
+    """One authorized repeatable snapshot of the declared recorded Tax extent."""
+    rows: CompanyTaxFilingRows
+    coverage: Mapping[str, object] | None
+    as_of: Timestamp
+    complete_enumeration: bool
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "coverage", _freeze_return_fact(self.coverage))
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxSourceEvidence:
+    company_id: CompanyId
+    income_year: IncomeYear
+    reference: str
+    version: str
+    digest: str
+    evaluated_at: Timestamp
+    obligation: str = "skattemelding"
+    scope: str = "talli_recorded_company_tax"
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxHistoryCoverage:
+    status: str
+    reasons: tuple[str, ...]
+    evidence_reference: str | None
+    as_of: Timestamp
+    submission_count: int
+    scope: str = "talli_recorded_company_tax"
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxSubmissionFact:
+    source_id: str
+    source_mode: str
+    adapter_mode: str
+    state: str
+    effect_status: str
+    observed_at: str | None
+    created_by: str | None
+    submitted_by: str | None
+    authority_confirmed_by: str | None
+    authority_confirmed_at: str | None
+    preview_confirmed_by: str | None
+    preview_confirmed_at: str | None
+    payload_hash: str | None
+    receipt_reference: str | None
+    feedback_document_ids: tuple[str, ...]
+    source_digest: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxIncidentFact:
+    source_id: str
+    source_mode: str
+    adapter_mode: str
+    failure_code: str | None
+    observed_at: str | None
+    actor_id: str | None
+    source_digest: str
+    attribution: str = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxOutcomeFact:
+    source_id: str
+    source_mode: str
+    adapter_mode: str
+    recorded_state: str
+    outcome: str
+    observed_at: str | None
+    source_digest: str
+    attribution: str = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxCorrectionLink:
+    source_id: str
+    supersedes_source_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxSourceFacts:
+    evidence: CompanyTaxSourceEvidence
+    readiness_status: str
+    hard_blocks: tuple[str, ...]
+    history_coverage: CompanyTaxHistoryCoverage
+    recorded_submissions: tuple[CompanyTaxSubmissionFact, ...]
+    production_attempts: tuple[CompanyTaxSubmissionFact, ...]
+    correction_links: tuple[CompanyTaxCorrectionLink, ...]
+    incidents: tuple[CompanyTaxIncidentFact, ...]
+    outcomes: tuple[CompanyTaxOutcomeFact, ...]
+
+
+class CompanyTaxSourcePersistence(Protocol):
+    async def filing_source_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot: ...
+
+
+def project_company_tax_source(query: CompanyTaxSourceQuery, snapshot: CompanyTaxSourceSnapshot) -> CompanyTaxSourceFacts:
+    from .source_facts import project
+    return project(query, snapshot)
+
+
+def verify_company_tax_source(
+    query: CompanyTaxSourceQuery, evidence: CompanyTaxSourceEvidence, snapshot: CompanyTaxSourceSnapshot,
+) -> bool:
+    from .source_facts import verify
+    return verify(query, evidence, snapshot)
+
+
 __all__ = [
+    "CompanyTaxSourceQuery",
+    "CompanyTaxSourceSnapshot",
+    "CompanyTaxSourceEvidence",
+    "CompanyTaxHistoryCoverage",
+    "CompanyTaxSubmissionFact",
+    "CompanyTaxIncidentFact",
+    "CompanyTaxOutcomeFact",
+    "CompanyTaxCorrectionLink",
+    "CompanyTaxSourceFacts",
+    "CompanyTaxSourcePersistence",
+    "project_company_tax_source",
+    "verify_company_tax_source",
+
     "CompanyTaxRehearsalConfiguration",
     "CompanyTaxRehearsalIO",
     "rehearse_company_tax_return",

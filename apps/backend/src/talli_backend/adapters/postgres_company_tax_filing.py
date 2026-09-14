@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 import json
+from datetime import datetime
 import os
 
 import psycopg
@@ -16,7 +17,7 @@ from talli_backend.adapters.supabase_ledger import (
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
 from talli_backend.application.company_tax_filing_workflow import CompanyTaxApplication
 from talli_backend.modules.audit.public import AuditEventDraft, AuditInclusion, audit_inclusion_adapter
-from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear
+from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, Timestamp
 from talli_backend.modules.banking.public import (
     TaxSettlementBankCommand, TaxSettlementBankingPersistence,
     bank_transaction_claim_persistence_adapter,
@@ -29,6 +30,7 @@ from talli_backend.modules.company_tax_filing.public import (
     CompanyTaxCompanyIdentity, CompanyTaxReturnPersistence, CompanyTaxEvidenceProjection,
     ImportedCompanyTaxEvidence, TaxAuthorityEvidenceId, TaxFilingSubmissionId,
     CompanyTaxWorkspaceQuery, CompanyTaxFilingRows, CompanyTaxWorkspacePersistence,
+    CompanyTaxSourceQuery, CompanyTaxSourceSnapshot, CompanyTaxSourcePersistence,
     TaxSettlementPersistence, TaxSettlementArchivePersistence, TaxSettlementArchiveQuery, tax_settlement_persistence_adapter,
 )
 from talli_backend.modules.documents.public import (
@@ -119,13 +121,15 @@ class PostgresCompanyTaxSession:
         return self._verified.actor_id
 
     @asynccontextmanager
-    async def transaction(self) -> AsyncIterator[PostgresCompanyTaxTransaction]:
+    async def transaction(self, *, snapshot: bool = False) -> AsyncIterator[PostgresCompanyTaxTransaction]:
         if not self._database_url:
             raise CompanyTaxError.unavailable()
         try:
             async with await psycopg.AsyncConnection.connect(
                 self._database_url, connect_timeout=5, row_factory=dict_row,
             ) as connection, connection.transaction():
+                if snapshot:
+                    await connection.execute('set transaction isolation level repeatable read')
                 await connection.execute('set local role company_tax_filing_workflow_executor')
                 await connection.execute("select set_config('talli.verified_actor_id', %s, true)", (str(self.actor_id.subject),))
                 await connection.execute("select set_config('talli.verified_actor_claims', %s, true)", (self._verified.claims_json,))
@@ -139,6 +143,7 @@ class PostgresCompanyTaxSession:
             raise _company_tax_database_error(error) from None
 
 
+@tax_settlement_persistence_adapter(CompanyTaxSourcePersistence)
 @tax_settlement_persistence_adapter(CompanyTaxPreparationPersistence)
 @audit_inclusion_adapter(AuditInclusion)
 @tax_settlement_persistence_adapter(CompanyTaxReturnPersistence)
@@ -302,6 +307,27 @@ class PostgresCompanyTaxTransaction:
                 **{name: result[name] for name in ('previews', 'submissions', 'overrides',
                                                   'review_comments', 'permissions', 'test_evidence')})
         except (KeyError, TypeError, ValueError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def filing_source_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(
+            'select company_tax_filing.read_source_snapshot_v1(%s::uuid,%s::integer,%s::text) as result',
+            (str(query.company_id), int(query.income_year), str(self.actor_id.subject)),
+        )
+        value = row.get('result')
+        try:
+            if (not isinstance(value, Mapping) or value['companyId'] != str(query.company_id)
+                    or type(value['incomeYear']) is not int or value['incomeYear'] != int(query.income_year)
+                    or type(value['completeEnumeration']) is not bool):
+                raise ValueError()
+            rows = CompanyTaxFilingRows(query.company_id, query.income_year,
+                **{name: value['workspace'][name] for name in ('previews', 'submissions', 'overrides',
+                    'review_comments', 'permissions', 'test_evidence')})
+            return CompanyTaxSourceSnapshot(rows, value['coverage'],
+                Timestamp(datetime.fromisoformat(value['asOf'].replace('Z', '+00:00'))), value['completeEnumeration'])
+        except (KeyError, TypeError, ValueError, AttributeError):
             raise CompanyTaxError.unavailable() from None
 
     async def archive_settlements(self, query: TaxSettlementArchiveQuery) -> tuple[Mapping[str, object], ...]:
