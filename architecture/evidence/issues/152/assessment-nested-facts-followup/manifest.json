@@ -1,0 +1,11 @@
+{
+  "baselineRevision": "e2dfdf5475af3d051ad782650314839a47105451",
+  "status": "CONSUMED_NESTED_FACT_SHAPES_VALIDATED",
+  "finding": "Malformed ledger lines could yield a zero estimate; array-valued annual answers could be treated as false and yield clear readiness.",
+  "change": "Validate ledger entry/line containers, holding action payloads, Boolean annual answers/no-activity, and readiness risk-flag arrays before calculation. Keep supported amount coercions.",
+  "tests": 339,
+  "scope": "HTTP preview boundary; no business-data read/write or stage-exit credit.",
+  "artifacts": {
+    "tax-assessment-nested-facts-tests.log": "69a6564b89848ac347624bf0114f5de7515b87d93f82dd034483722daebc1111"
+  }
+}

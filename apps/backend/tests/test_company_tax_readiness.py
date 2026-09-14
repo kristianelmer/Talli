@@ -105,3 +105,32 @@ def test_malformed_preview_facts_are_rejected(preview_client, change):
     response = preview_client.post('/api/v1/company-tax/annual-estimate-previews',
         json={'ledgerEntries': [], 'holdingActions': [], **change}, headers={'Authorization': 'Bearer fixture'})
     assert response.status_code == 422
+
+
+@pytest.mark.parametrize('lines', [{}, '', None, [None], [42]])
+def test_nonarray_or_nonobject_ledger_lines_cannot_become_a_zero_estimate(preview_client, lines):
+    response = preview_client.post('/api/v1/company-tax/annual-estimate-previews',
+        json={'ledgerEntries': [{'entry_type': 'admin_cost', 'lines': lines}], 'holdingActions': []},
+        headers={'Authorization': 'Bearer fixture'})
+    assert response.status_code == 422
+    assert response.json()['code'] == 'REQUEST_VALIDATION_FAILED'
+
+
+@pytest.mark.parametrize('bad_value', [[], {}, '', 0, 1, None])
+def test_nonboolean_annual_answers_cannot_become_clear_readiness(preview_client, bad_value):
+    body = {'companyId': COMPANY, 'incomeYear': 2025, 'ledgerEntries': [], 'holdingActions': [],
+            'annualData': {'answers': {'shareholder_loans': bad_value}, 'no_activity_confirmed': True}}
+    response = preview_client.post('/api/v1/company-tax/readiness-previews', json=body, headers={'Authorization': 'Bearer fixture'})
+    assert response.status_code == 422
+    body['annualData'] = {'answers': {}, 'no_activity_confirmed': bad_value}
+    response = preview_client.post('/api/v1/company-tax/readiness-previews', json=body, headers={'Authorization': 'Bearer fixture'})
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize('flags', [None, {}, '', False])
+def test_nonarray_risk_flags_cannot_become_clear_readiness(preview_client, flags):
+    response = preview_client.post('/api/v1/company-tax/readiness-previews',
+        json={'companyId': COMPANY, 'incomeYear': 2025, 'annualData': None, 'holdingActions': [],
+              'ledgerEntries': [{'entry_type': 'opening_balance', 'lines': [], 'risk_flags': flags}]},
+        headers={'Authorization': 'Bearer fixture'})
+    assert response.status_code == 422

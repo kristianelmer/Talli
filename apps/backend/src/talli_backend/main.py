@@ -1052,6 +1052,18 @@ class CompanyTaxAssessmentFactsRequest(TransportModel):
 
     @model_validator(mode="after")
     def bounded_json_facts(self):
+        for entry in self.ledger_entries:
+            if (not isinstance(entry.get("entry_type"), str) or not isinstance(entry.get("lines"), list)
+                    or any(not isinstance(line, dict) for line in entry["lines"])):
+                raise ValueError("Tax preview ledger facts are malformed.")
+        for action in self.holding_actions:
+            if not isinstance(action.get("action_type"), str) or not isinstance(action.get("payload"), dict):
+                raise ValueError("Tax preview holding facts are malformed.")
+        if self.annual_data is not None:
+            answers = self.annual_data.get("answers")
+            if (not isinstance(answers, dict) or any(type(value) is not bool for value in answers.values())
+                    or type(self.annual_data.get("no_activity_confirmed")) is not bool):
+                raise ValueError("Tax preview annual answers are malformed.")
         facts = {"annualData": self.annual_data, "ledgerEntries": self.ledger_entries,
                  "holdingActions": self.holding_actions}
         try:
@@ -1066,6 +1078,12 @@ class CompanyTaxAssessmentFactsRequest(TransportModel):
 class CompanyTaxReadinessPreviewRequest(CompanyTaxAssessmentFactsRequest):
     company_id: UUID
     income_year: Annotated[int, Field(strict=True, ge=2000, le=2100)]
+
+    @model_validator(mode="after")
+    def readiness_ledger_flags(self):
+        if any(not isinstance(entry.get("risk_flags"), list) for entry in self.ledger_entries):
+            raise ValueError("Tax preview ledger risk flags are malformed.")
+        return self
 
 
 class CompanyTaxReadinessIssueWire(TransportModel):
