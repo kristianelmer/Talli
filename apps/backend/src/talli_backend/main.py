@@ -1054,7 +1054,7 @@ class CompanyTaxAssessmentFactsRequest(TransportModel):
     def bounded_json_facts(self):
         for entry in self.ledger_entries:
             if (not isinstance(entry.get("entry_type"), str) or not isinstance(entry.get("lines"), list)
-                    or any(not isinstance(line, dict) for line in entry["lines"])):
+                    or any(not isinstance(line, dict) or not isinstance(line.get("account"), str) for line in entry["lines"])):
                 raise ValueError("Tax preview ledger facts are malformed.")
         for action in self.holding_actions:
             if not isinstance(action.get("action_type"), str) or not isinstance(action.get("payload"), dict):

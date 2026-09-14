@@ -1,0 +1,5383 @@
+{
+  "schemaVersion": "1.0",
+  "sourceRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+  "runtime": "v24.20.0",
+  "sources": {
+    "apps/web/app/lib/annual-readiness.ts": "23bb49c6c57e69c68418747ca35cb164ea2122892f39de5f9c4ef6e7acccce37",
+    "apps/web/app/lib/company-tax-return.ts": "765b82a633a859c4108e83cb6f30b18e3fd3ad491f56a53485453f6bc3ca6ec7"
+  },
+  "scope": "Loose predecessor Boolean conditions through public pure/CLI inputs; HTTP preview rejects malformed Boolean fields separately.",
+  "cases": [
+    {
+      "id": "shareholder_loans-0",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": [],
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "block",
+            "code": "tax_return_shareholder_loan_review_required",
+            "message": "Aksjonær-/konsernlån krever gjennomgang før skattemelding.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "block",
+            "code": "tax_return_shareholder_loan_review_required",
+            "message": "Aksjonær-/konsernlån krever gjennomgang før skattemelding.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "shareholder_loans-1",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": {},
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "block",
+            "code": "tax_return_shareholder_loan_review_required",
+            "message": "Aksjonær-/konsernlån krever gjennomgang før skattemelding.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "block",
+            "code": "tax_return_shareholder_loan_review_required",
+            "message": "Aksjonær-/konsernlån krever gjennomgang før skattemelding.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "shareholder_loans-2",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": "",
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "shareholder_loans-3",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": 0,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "shareholder_loans-4",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": 1,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "block",
+            "code": "tax_return_shareholder_loan_review_required",
+            "message": "Aksjonær-/konsernlån krever gjennomgang før skattemelding.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "block",
+            "code": "tax_return_shareholder_loan_review_required",
+            "message": "Aksjonær-/konsernlån krever gjennomgang før skattemelding.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "shareholder_loans-5",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": null,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "shareholder_loans-6",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "shareholder_loans-7",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": true,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "block",
+            "code": "tax_return_shareholder_loan_review_required",
+            "message": "Aksjonær-/konsernlån krever gjennomgang før skattemelding.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "block",
+            "code": "tax_return_shareholder_loan_review_required",
+            "message": "Aksjonær-/konsernlån krever gjennomgang før skattemelding.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "shareholder_loans-8",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": "false",
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "block",
+            "code": "tax_return_shareholder_loan_review_required",
+            "message": "Aksjonær-/konsernlån krever gjennomgang før skattemelding.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "block",
+            "code": "tax_return_shareholder_loan_review_required",
+            "message": "Aksjonær-/konsernlån krever gjennomgang før skattemelding.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "declared_owner_dividends-0",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": [],
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "block",
+            "code": "tax_return_owner_dividend_review_required",
+            "message": "Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "block",
+            "code": "tax_return_owner_dividend_review_required",
+            "message": "Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "declared_owner_dividends-1",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": {},
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "block",
+            "code": "tax_return_owner_dividend_review_required",
+            "message": "Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "block",
+            "code": "tax_return_owner_dividend_review_required",
+            "message": "Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "declared_owner_dividends-2",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": "",
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "declared_owner_dividends-3",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": 0,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "declared_owner_dividends-4",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": 1,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "block",
+            "code": "tax_return_owner_dividend_review_required",
+            "message": "Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "block",
+            "code": "tax_return_owner_dividend_review_required",
+            "message": "Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "declared_owner_dividends-5",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": null,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "declared_owner_dividends-6",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "declared_owner_dividends-7",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": true,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "block",
+            "code": "tax_return_owner_dividend_review_required",
+            "message": "Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "block",
+            "code": "tax_return_owner_dividend_review_required",
+            "message": "Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "declared_owner_dividends-8",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": "false",
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "block",
+            "code": "tax_return_owner_dividend_review_required",
+            "message": "Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "block",
+            "code": "tax_return_owner_dividend_review_required",
+            "message": "Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bought_or_sold_shares-0",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": [],
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "warning",
+            "code": "tax_return_share_sale_or_purchase_review",
+            "message": "Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "warning",
+            "code": "tax_return_share_sale_or_purchase_review",
+            "message": "Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bought_or_sold_shares-1",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": {},
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "warning",
+            "code": "tax_return_share_sale_or_purchase_review",
+            "message": "Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "warning",
+            "code": "tax_return_share_sale_or_purchase_review",
+            "message": "Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bought_or_sold_shares-2",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": "",
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bought_or_sold_shares-3",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": 0,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bought_or_sold_shares-4",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": 1,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "warning",
+            "code": "tax_return_share_sale_or_purchase_review",
+            "message": "Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "warning",
+            "code": "tax_return_share_sale_or_purchase_review",
+            "message": "Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bought_or_sold_shares-5",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": null,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bought_or_sold_shares-6",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bought_or_sold_shares-7",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": true,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "warning",
+            "code": "tax_return_share_sale_or_purchase_review",
+            "message": "Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "warning",
+            "code": "tax_return_share_sale_or_purchase_review",
+            "message": "Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bought_or_sold_shares-8",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": "false",
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "warning",
+            "code": "tax_return_share_sale_or_purchase_review",
+            "message": "Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "warning",
+            "code": "tax_return_share_sale_or_purchase_review",
+            "message": "Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "no_activity_confirmed-0",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": [],
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_return_no_activity_with_activity_data",
+            "message": "No-activity er bekreftet, men året har posteringer eller holdinghandlinger.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "warning",
+            "code": "tax_return_no_activity_with_activity_data",
+            "message": "No-activity er bekreftet, men året har posteringer eller holdinghandlinger.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "no_activity_confirmed-1",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": {},
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_return_no_activity_with_activity_data",
+            "message": "No-activity er bekreftet, men året har posteringer eller holdinghandlinger.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "warning",
+            "code": "tax_return_no_activity_with_activity_data",
+            "message": "No-activity er bekreftet, men året har posteringer eller holdinghandlinger.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "no_activity_confirmed-2",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": "",
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "no_activity_confirmed-3",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": 0,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "no_activity_confirmed-4",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": 1,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_return_no_activity_with_activity_data",
+            "message": "No-activity er bekreftet, men året har posteringer eller holdinghandlinger.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "warning",
+            "code": "tax_return_no_activity_with_activity_data",
+            "message": "No-activity er bekreftet, men året har posteringer eller holdinghandlinger.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "no_activity_confirmed-5",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": null,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "no_activity_confirmed-6",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "no_activity_confirmed-7",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": true,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_return_no_activity_with_activity_data",
+            "message": "No-activity er bekreftet, men året har posteringer eller holdinghandlinger.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "warning",
+            "code": "tax_return_no_activity_with_activity_data",
+            "message": "No-activity er bekreftet, men året har posteringer eller holdinghandlinger.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "no_activity_confirmed-8",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": "false",
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_return_no_activity_with_activity_data",
+            "message": "No-activity er bekreftet, men året har posteringer eller holdinghandlinger.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "warning",
+            "code": "tax_return_no_activity_with_activity_data",
+            "message": "No-activity er bekreftet, men året har posteringer eller holdinghandlinger.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "warning_accepted_at-0",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [
+              {}
+            ],
+            "warning_accepted_by": null,
+            "warning_accepted_at": [],
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "warning_accepted_at-1",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [
+              {}
+            ],
+            "warning_accepted_by": null,
+            "warning_accepted_at": {},
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "warning_accepted_at-2",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [
+              {}
+            ],
+            "warning_accepted_by": null,
+            "warning_accepted_at": "",
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "warning",
+            "code": "tax_return_manual_journal_warning_unaccepted",
+            "message": "Manuelle posteringer må aksepteres før skattemelding.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "warning",
+            "code": "tax_return_manual_journal_warning_unaccepted",
+            "message": "Manuelle posteringer må aksepteres før skattemelding.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "warning_accepted_at-3",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [
+              {}
+            ],
+            "warning_accepted_by": null,
+            "warning_accepted_at": 0,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "warning",
+            "code": "tax_return_manual_journal_warning_unaccepted",
+            "message": "Manuelle posteringer må aksepteres før skattemelding.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "warning",
+            "code": "tax_return_manual_journal_warning_unaccepted",
+            "message": "Manuelle posteringer må aksepteres før skattemelding.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "warning_accepted_at-4",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [
+              {}
+            ],
+            "warning_accepted_by": null,
+            "warning_accepted_at": 1,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "warning_accepted_at-5",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [
+              {}
+            ],
+            "warning_accepted_by": null,
+            "warning_accepted_at": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "warning",
+            "code": "tax_return_manual_journal_warning_unaccepted",
+            "message": "Manuelle posteringer må aksepteres før skattemelding.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "warning",
+            "code": "tax_return_manual_journal_warning_unaccepted",
+            "message": "Manuelle posteringer må aksepteres før skattemelding.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "warning_accepted_at-6",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [
+              {}
+            ],
+            "warning_accepted_by": null,
+            "warning_accepted_at": false,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          },
+          {
+            "level": "warning",
+            "code": "tax_return_manual_journal_warning_unaccepted",
+            "message": "Manuelle posteringer må aksepteres før skattemelding.",
+            "accepted": false,
+            "source": "company_tax_return_payload"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "warning",
+            "code": "tax_return_manual_journal_warning_unaccepted",
+            "message": "Manuelle posteringer må aksepteres før skattemelding.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "warning_accepted_at-7",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [
+              {}
+            ],
+            "warning_accepted_by": null,
+            "warning_accepted_at": true,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    },
+    {
+      "id": "warning_accepted_at-8",
+      "input": {
+        "company": {
+          "id": "company-id"
+        },
+        "companyOrgNumber": "314259521",
+        "companyPartyNumber": "9000020078",
+        "incomeYear": 2025,
+        "annualData": {
+          "id": "annual-data-id",
+          "company_id": "company-id",
+          "income_year": 2025,
+          "answers": {
+            "shares_owned_at_year_end": true,
+            "bought_or_sold_shares": false,
+            "received_dividends": true,
+            "declared_owner_dividends": false,
+            "shareholder_loans": false,
+            "paid_costs": true,
+            "bank_balance_confirmed": true,
+            "has_unpaid_items": false,
+            "general_meeting_approved": true,
+            "authority_to_submit_confirmed": true
+          },
+          "confirmations": [
+            "bank_balance_confirmed",
+            "general_meeting_approved",
+            "authority_to_submit_confirmed"
+          ],
+          "no_activity_confirmed": false,
+          "annual_full_time_equivalents": 0,
+          "completed_by": "owner",
+          "completed_at": "2026-01-01T00:00:00Z",
+          "updated_by": "owner",
+          "updated_at": "2026-01-01T00:00:00Z"
+        },
+        "ledgerEntries": [
+          {
+            "id": "entry-id",
+            "company_id": "company-id",
+            "setup_id": "setup-id",
+            "income_year": 2025,
+            "entry_type": "annual",
+            "memo": "Annual",
+            "lines": [
+              {
+                "account": "1920",
+                "debit": 128510,
+                "credit": 0
+              },
+              {
+                "account": "8070",
+                "debit": 0,
+                "credit": 100000
+              },
+              {
+                "account": "7770",
+                "debit": 1490,
+                "credit": 0
+              },
+              {
+                "account": "2050",
+                "debit": 0,
+                "credit": 97020
+              }
+            ],
+            "risk_flags": [
+              {}
+            ],
+            "warning_accepted_by": null,
+            "warning_accepted_at": "false",
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ],
+        "holdingActions": [
+          {
+            "id": "action-id",
+            "company_id": "company-id",
+            "income_year": 2025,
+            "action_type": "dividend_received",
+            "action_date": "2025-06-15",
+            "payload": {
+              "gross_amount": 100000,
+              "taxable_add_back": 3000,
+              "tax_treatment": "fritaksmetoden"
+            },
+            "ledger_entry_id": "entry-id",
+            "bank_transaction_id": null,
+            "document_id": "document-id",
+            "risk_level": "info",
+            "blocker_code": null,
+            "created_by": "owner",
+            "created_at": "2026-01-01T00:00:00Z"
+          }
+        ]
+      },
+      "output": {
+        "readiness": [
+          {
+            "level": "warning",
+            "code": "tax_settlement_missing",
+            "message": "Skatteoppgjør er ikke registrert for året.",
+            "accepted": false,
+            "source": "tax_settlement"
+          }
+        ],
+        "feedback": [
+          {
+            "level": "info",
+            "code": "tax_return_payload_candidate_ready",
+            "message": "Skattemelding-kandidat kan bygges for lokal validering.",
+            "source": "company_tax_return_payload"
+          }
+        ]
+      }
+    }
+  ]
+}

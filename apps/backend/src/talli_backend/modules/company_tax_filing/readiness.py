@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from .calculation import feedback
+from .numbers import truthy
 from .public import CompanyTaxReadinessIssue, CompanyTaxReturnSource
 
 
@@ -15,7 +16,7 @@ def assess(source: CompanyTaxReturnSource, company_id: str) -> tuple[CompanyTaxR
             'block', 'blocking_holding_action',
             'Støttet holdinghandling må ryddes før skattemelding.', 'holding_actions'))
     if (not any(action.get('action_type') == 'tax_settlement' for action in scoped_actions)
-            and not (source.annual_data or {}).get('no_activity_confirmed')):
+            and not truthy((source.annual_data or {}).get('no_activity_confirmed'))):
         issues.append(CompanyTaxReadinessIssue(
             'warning', 'tax_settlement_missing',
             'Skatteoppgjør er ikke registrert for året.', 'tax_settlement'))

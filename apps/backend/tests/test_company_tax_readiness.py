@@ -134,3 +134,35 @@ def test_nonarray_risk_flags_cannot_become_clear_readiness(preview_client, flags
               'ledgerEntries': [{'entry_type': 'opening_balance', 'lines': [], 'risk_flags': flags}]},
         headers={'Authorization': 'Bearer fixture'})
     assert response.status_code == 422
+
+
+BOOLEAN_BOUNDARIES = json.loads((Path(__file__).resolve().parents[3] / 'architecture/evidence/issues/152/legacy-tax-boolean-boundaries.json').read_text())
+
+
+@pytest.mark.parametrize('case', BOOLEAN_BOUNDARIES['cases'], ids=lambda case: case['id'])
+def test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics(case):
+    from talli_backend.modules.company_tax_filing.public import build_company_tax_return
+    value = source(case['input'])
+    assert [asdict(issue) for issue in assess_company_tax_readiness(value, company_id=case['input']['company']['id'])] == case['output']['readiness']
+    assert [dict(item) for item in build_company_tax_return(value).feedback] == case['output']['feedback']
+
+
+@pytest.mark.parametrize('line', [{'debit': 100, 'credit': 0}, {'account': None, 'debit': 100, 'credit': 0}])
+def test_missing_account_discriminator_cannot_hide_a_cost(preview_client, line):
+    body = {'ledgerEntries': [{'entry_type': 'admin_cost', 'lines': [line]}], 'holdingActions': []}
+    response = preview_client.post('/api/v1/company-tax/annual-estimate-previews', json=body, headers={'Authorization': 'Bearer fixture'})
+    assert response.status_code == 422
+    line['account'] = '7770'
+    response = preview_client.post('/api/v1/company-tax/annual-estimate-previews', json=body, headers={'Authorization': 'Bearer fixture'})
+    assert response.status_code == 200
+    assert response.json()['adminCosts'] == 100
+
+
+def test_malformed_truthy_loan_answer_still_blocks_the_pure_cli_preparation_gate():
+    from talli_backend.modules.company_tax_filing.public import CompanyTaxError, prepare_company_tax_return
+    for answer in ([], {}):
+        raw = json.loads(json.dumps(CAPTURE['cases'][0]['input']))
+        raw['annualData']['answers']['shareholder_loans'] = answer
+        with pytest.raises(CompanyTaxError) as error:
+            prepare_company_tax_return(source(raw))
+        assert error.value.code == 'COMPANY_TAX_PAYLOAD_BLOCKED'

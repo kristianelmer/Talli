@@ -1,0 +1,164 @@
+FF.......FF.......FF.......FF.......FF.......                            [100%]
+=================================== FAILURES ===================================
+_ test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[shareholder_loans-0] _
+
+case = {'id': 'shareholder_loans-0', 'input': {'annualData': {'annual_full_time_equivalents': 0, 'answers': {'authority_to_su...an_review_required', 'level': 'block', 'message': 'Aksjonær-/konsernlån krever gjennomgang før skattemelding.', ...}]}}
+
+    @pytest.mark.parametrize('case', BOOLEAN_BOUNDARIES['cases'], ids=lambda case: case['id'])
+    def test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics(case):
+        from talli_backend.modules.company_tax_filing.public import build_company_tax_return
+        value = source(case['input'])
+>       assert [asdict(issue) for issue in assess_company_tax_readiness(value, company_id=case['input']['company']['id'])] == case['output']['readiness']
+E       AssertionError: assert [{'accepted':... året.', ...}] == [{'accepted':...lding.', ...}]
+E         
+E         Right contains one more item: {'accepted': False, 'code': 'tax_return_shareholder_loan_review_required', 'level': 'block', 'message': 'Aksjonær-/konsernlån krever gjennomgang før skattemelding.', ...}
+E         Use -v to get more diff
+
+apps/backend/tests/test_company_tax_readiness.py:146: AssertionError
+_ test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[shareholder_loans-1] _
+
+case = {'id': 'shareholder_loans-1', 'input': {'annualData': {'annual_full_time_equivalents': 0, 'answers': {'authority_to_su...an_review_required', 'level': 'block', 'message': 'Aksjonær-/konsernlån krever gjennomgang før skattemelding.', ...}]}}
+
+    @pytest.mark.parametrize('case', BOOLEAN_BOUNDARIES['cases'], ids=lambda case: case['id'])
+    def test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics(case):
+        from talli_backend.modules.company_tax_filing.public import build_company_tax_return
+        value = source(case['input'])
+>       assert [asdict(issue) for issue in assess_company_tax_readiness(value, company_id=case['input']['company']['id'])] == case['output']['readiness']
+E       AssertionError: assert [{'accepted':... året.', ...}] == [{'accepted':...lding.', ...}]
+E         
+E         Right contains one more item: {'accepted': False, 'code': 'tax_return_shareholder_loan_review_required', 'level': 'block', 'message': 'Aksjonær-/konsernlån krever gjennomgang før skattemelding.', ...}
+E         Use -v to get more diff
+
+apps/backend/tests/test_company_tax_readiness.py:146: AssertionError
+_ test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[declared_owner_dividends-0] _
+
+case = {'id': 'declared_owner_dividends-0', 'input': {'annualData': {'annual_full_time_equivalents': 0, 'answers': {'authorit...d', 'level': 'block', 'message': 'Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.', ...}]}}
+
+    @pytest.mark.parametrize('case', BOOLEAN_BOUNDARIES['cases'], ids=lambda case: case['id'])
+    def test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics(case):
+        from talli_backend.modules.company_tax_filing.public import build_company_tax_return
+        value = source(case['input'])
+>       assert [asdict(issue) for issue in assess_company_tax_readiness(value, company_id=case['input']['company']['id'])] == case['output']['readiness']
+E       AssertionError: assert [{'accepted':... året.', ...}] == [{'accepted':...lding.', ...}]
+E         
+E         Right contains one more item: {'accepted': False, 'code': 'tax_return_owner_dividend_review_required', 'level': 'block', 'message': 'Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.', ...}
+E         Use -v to get more diff
+
+apps/backend/tests/test_company_tax_readiness.py:146: AssertionError
+_ test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[declared_owner_dividends-1] _
+
+case = {'id': 'declared_owner_dividends-1', 'input': {'annualData': {'annual_full_time_equivalents': 0, 'answers': {'authorit...d', 'level': 'block', 'message': 'Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.', ...}]}}
+
+    @pytest.mark.parametrize('case', BOOLEAN_BOUNDARIES['cases'], ids=lambda case: case['id'])
+    def test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics(case):
+        from talli_backend.modules.company_tax_filing.public import build_company_tax_return
+        value = source(case['input'])
+>       assert [asdict(issue) for issue in assess_company_tax_readiness(value, company_id=case['input']['company']['id'])] == case['output']['readiness']
+E       AssertionError: assert [{'accepted':... året.', ...}] == [{'accepted':...lding.', ...}]
+E         
+E         Right contains one more item: {'accepted': False, 'code': 'tax_return_owner_dividend_review_required', 'level': 'block', 'message': 'Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.', ...}
+E         Use -v to get more diff
+
+apps/backend/tests/test_company_tax_readiness.py:146: AssertionError
+_ test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[bought_or_sold_shares-0] _
+
+case = {'id': 'bought_or_sold_shares-0', 'input': {'annualData': {'annual_full_time_equivalents': 0, 'answers': {'authority_t...iew', 'level': 'warning', 'message': 'Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.', ...}]}}
+
+    @pytest.mark.parametrize('case', BOOLEAN_BOUNDARIES['cases'], ids=lambda case: case['id'])
+    def test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics(case):
+        from talli_backend.modules.company_tax_filing.public import build_company_tax_return
+        value = source(case['input'])
+>       assert [asdict(issue) for issue in assess_company_tax_readiness(value, company_id=case['input']['company']['id'])] == case['output']['readiness']
+E       AssertionError: assert [{'accepted':... året.', ...}] == [{'accepted':...asjon.', ...}]
+E         
+E         Right contains one more item: {'accepted': False, 'code': 'tax_return_share_sale_or_purchase_review', 'level': 'warning', 'message': 'Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.', ...}
+E         Use -v to get more diff
+
+apps/backend/tests/test_company_tax_readiness.py:146: AssertionError
+_ test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[bought_or_sold_shares-1] _
+
+case = {'id': 'bought_or_sold_shares-1', 'input': {'annualData': {'annual_full_time_equivalents': 0, 'answers': {'authority_t...iew', 'level': 'warning', 'message': 'Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.', ...}]}}
+
+    @pytest.mark.parametrize('case', BOOLEAN_BOUNDARIES['cases'], ids=lambda case: case['id'])
+    def test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics(case):
+        from talli_backend.modules.company_tax_filing.public import build_company_tax_return
+        value = source(case['input'])
+>       assert [asdict(issue) for issue in assess_company_tax_readiness(value, company_id=case['input']['company']['id'])] == case['output']['readiness']
+E       AssertionError: assert [{'accepted':... året.', ...}] == [{'accepted':...asjon.', ...}]
+E         
+E         Right contains one more item: {'accepted': False, 'code': 'tax_return_share_sale_or_purchase_review', 'level': 'warning', 'message': 'Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.', ...}
+E         Use -v to get more diff
+
+apps/backend/tests/test_company_tax_readiness.py:146: AssertionError
+_ test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[no_activity_confirmed-0] _
+
+case = {'id': 'no_activity_confirmed-0', 'input': {'annualData': {'annual_full_time_equivalents': 0, 'answers': {'authority_t..., 'level': 'warning', 'message': 'No-activity er bekreftet, men året har posteringer eller holdinghandlinger.', ...}]}}
+
+    @pytest.mark.parametrize('case', BOOLEAN_BOUNDARIES['cases'], ids=lambda case: case['id'])
+    def test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics(case):
+        from talli_backend.modules.company_tax_filing.public import build_company_tax_return
+        value = source(case['input'])
+>       assert [asdict(issue) for issue in assess_company_tax_readiness(value, company_id=case['input']['company']['id'])] == case['output']['readiness']
+E       AssertionError: assert [{'accepted':... året.', ...}] == [{'accepted':...inger.', ...}]
+E         
+E         At index 0 diff: {'level': 'warning', 'code': 'tax_settlement_missing', 'message': 'Skatteoppgjør er ikke registrert for året.', 'source': 'tax_settlement', 'accepted': False} != {'level': 'warning', 'code': 'tax_return_no_activity_with_activity_data', 'message': 'No-activity er bekreftet, men året har posteringer eller holdinghandlinger.', 'accepted': False, 'source': 'company_tax_return_payload'}
+E         Use -v to get more diff
+
+apps/backend/tests/test_company_tax_readiness.py:146: AssertionError
+_ test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[no_activity_confirmed-1] _
+
+case = {'id': 'no_activity_confirmed-1', 'input': {'annualData': {'annual_full_time_equivalents': 0, 'answers': {'authority_t..., 'level': 'warning', 'message': 'No-activity er bekreftet, men året har posteringer eller holdinghandlinger.', ...}]}}
+
+    @pytest.mark.parametrize('case', BOOLEAN_BOUNDARIES['cases'], ids=lambda case: case['id'])
+    def test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics(case):
+        from talli_backend.modules.company_tax_filing.public import build_company_tax_return
+        value = source(case['input'])
+>       assert [asdict(issue) for issue in assess_company_tax_readiness(value, company_id=case['input']['company']['id'])] == case['output']['readiness']
+E       AssertionError: assert [{'accepted':... året.', ...}] == [{'accepted':...inger.', ...}]
+E         
+E         At index 0 diff: {'level': 'warning', 'code': 'tax_settlement_missing', 'message': 'Skatteoppgjør er ikke registrert for året.', 'source': 'tax_settlement', 'accepted': False} != {'level': 'warning', 'code': 'tax_return_no_activity_with_activity_data', 'message': 'No-activity er bekreftet, men året har posteringer eller holdinghandlinger.', 'accepted': False, 'source': 'company_tax_return_payload'}
+E         Use -v to get more diff
+
+apps/backend/tests/test_company_tax_readiness.py:146: AssertionError
+_ test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[warning_accepted_at-0] _
+
+case = {'id': 'warning_accepted_at-0', 'input': {'annualData': {'annual_full_time_equivalents': 0, 'answers': {'authority_to_... 'code': 'tax_settlement_missing', 'level': 'warning', 'message': 'Skatteoppgjør er ikke registrert for året.', ...}]}}
+
+    @pytest.mark.parametrize('case', BOOLEAN_BOUNDARIES['cases'], ids=lambda case: case['id'])
+    def test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics(case):
+        from talli_backend.modules.company_tax_filing.public import build_company_tax_return
+        value = source(case['input'])
+>       assert [asdict(issue) for issue in assess_company_tax_readiness(value, company_id=case['input']['company']['id'])] == case['output']['readiness']
+E       AssertionError: assert [{'accepted':...lding.', ...}] == [{'accepted':... året.', ...}]
+E         
+E         Left contains one more item: {'accepted': False, 'code': 'tax_return_manual_journal_warning_unaccepted', 'level': 'warning', 'message': 'Manuelle posteringer må aksepteres før skattemelding.', ...}
+E         Use -v to get more diff
+
+apps/backend/tests/test_company_tax_readiness.py:146: AssertionError
+_ test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[warning_accepted_at-1] _
+
+case = {'id': 'warning_accepted_at-1', 'input': {'annualData': {'annual_full_time_equivalents': 0, 'answers': {'authority_to_... 'code': 'tax_settlement_missing', 'level': 'warning', 'message': 'Skatteoppgjør er ikke registrert for året.', ...}]}}
+
+    @pytest.mark.parametrize('case', BOOLEAN_BOUNDARIES['cases'], ids=lambda case: case['id'])
+    def test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics(case):
+        from talli_backend.modules.company_tax_filing.public import build_company_tax_return
+        value = source(case['input'])
+>       assert [asdict(issue) for issue in assess_company_tax_readiness(value, company_id=case['input']['company']['id'])] == case['output']['readiness']
+E       AssertionError: assert [{'accepted':...lding.', ...}] == [{'accepted':... året.', ...}]
+E         
+E         Left contains one more item: {'accepted': False, 'code': 'tax_return_manual_journal_warning_unaccepted', 'level': 'warning', 'message': 'Manuelle posteringer må aksepteres før skattemelding.', ...}
+E         Use -v to get more diff
+
+apps/backend/tests/test_company_tax_readiness.py:146: AssertionError
+=========================== short test summary info ============================
+FAILED apps/backend/tests/test_company_tax_readiness.py::test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[shareholder_loans-0]
+FAILED apps/backend/tests/test_company_tax_readiness.py::test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[shareholder_loans-1]
+FAILED apps/backend/tests/test_company_tax_readiness.py::test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[declared_owner_dividends-0]
+FAILED apps/backend/tests/test_company_tax_readiness.py::test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[declared_owner_dividends-1]
+FAILED apps/backend/tests/test_company_tax_readiness.py::test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[bought_or_sold_shares-0]
+FAILED apps/backend/tests/test_company_tax_readiness.py::test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[bought_or_sold_shares-1]
+FAILED apps/backend/tests/test_company_tax_readiness.py::test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[no_activity_confirmed-0]
+FAILED apps/backend/tests/test_company_tax_readiness.py::test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[no_activity_confirmed-1]
+FAILED apps/backend/tests/test_company_tax_readiness.py::test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[warning_accepted_at-0]
+FAILED apps/backend/tests/test_company_tax_readiness.py::test_pure_and_cli_feedback_keeps_predecessor_boolean_semantics[warning_accepted_at-1]
+10 failed, 35 passed, 182 deselected in 1.06s

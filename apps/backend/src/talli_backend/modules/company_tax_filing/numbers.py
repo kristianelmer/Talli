@@ -14,6 +14,17 @@ def _array_text(values) -> str:
                     for value in values)
 
 
+def truthy(value: object) -> bool:
+    """ECMAScript Boolean conversion; empty arrays and objects remain true."""
+    if value is None or value is False:
+        return False
+    if isinstance(value, str):
+        return bool(value)
+    if isinstance(value, (int, float)):
+        return value != 0 and not (isinstance(value, float) and math.isnan(value))
+    return True
+
+
 def number(value: object) -> float:
     if value is None:
         return 0.0

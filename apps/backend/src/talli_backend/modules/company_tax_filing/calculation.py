@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping
 
-from .numbers import money, nonnegative, number, rounded, total, text as js_string
+from .numbers import money, nonnegative, number, rounded, total, truthy, text as js_string
 
 TAX = 'skattemeldingUpersonlig'
 BUSINESS = 'naeringsspesifikasjon'
@@ -73,22 +73,22 @@ def feedback(input):
         add('block', 'tax_return_annual_data_missing', 'Year-end interview må være fullført før skattemelding-payload.')
         return result
     answers = annual['answers']
-    if answers.get('shareholder_loans'):
+    if truthy(answers.get('shareholder_loans')):
         add('block', 'tax_return_shareholder_loan_review_required', 'Aksjonær-/konsernlån krever gjennomgang før skattemelding.')
-    if answers.get('declared_owner_dividends'):
+    if truthy(answers.get('declared_owner_dividends')):
         add('block', 'tax_return_owner_dividend_review_required', 'Utbytte til eier krever egenkapitalavstemming før automatisk skattemelding.')
     if any(entry['entry_type'] == 'shareholder_loan' for entry in entries):
         add('block', 'tax_return_shareholder_loan_review_required', 'Aksjonærlån er utenfor automatisk skattemelding-løype.')
-    if answers.get('bought_or_sold_shares') or any(action['action_type'] in ('share_purchase', 'share_sale') and not isinstance(action['payload'].get('calculation_id'), str) for action in actions):
+    if truthy(answers.get('bought_or_sold_shares')) or any(action['action_type'] in ('share_purchase', 'share_sale') and not isinstance(action['payload'].get('calculation_id'), str) for action in actions):
         add('warning', 'tax_return_share_sale_or_purchase_review', 'Kjøp/salg av aksjer må ha fritaksmetodeklassifisering og dokumentasjon.')
     for action in actions:
         if action['risk_level'] == 'block':
             add('block', 'tax_return_blocking_holding_action', 'Blokkerende holdinghandling må løses før skattemelding.')
         if action['action_type'] in ('dividend_received', 'fund_distribution_received', 'share_purchase', 'share_sale') and action['payload'].get('tax_treatment') != 'fritaksmetoden':
             add('block', 'tax_return_unclear_fritaksmetoden', 'Kun sikker fritaksmetodebehandling støttes i første skattemelding-løype.')
-    if any(entry['risk_flags'] and not entry.get('warning_accepted_at') for entry in entries):
+    if any(entry['risk_flags'] and not truthy(entry.get('warning_accepted_at')) for entry in entries):
         add('warning', 'tax_return_manual_journal_warning_unaccepted', 'Manuelle posteringer må aksepteres før skattemelding.')
-    if annual.get('no_activity_confirmed') and (any(e['entry_type'] != 'opening_balance' for e in entries) or any(a['action_type'] != 'tax_settlement' for a in actions)):
+    if truthy(annual.get('no_activity_confirmed')) and (any(e['entry_type'] != 'opening_balance' for e in entries) or any(a['action_type'] != 'tax_settlement' for a in actions)):
         add('warning', 'tax_return_no_activity_with_activity_data', 'No-activity er bekreftet, men året har posteringer eller holdinghandlinger.')
     totals = _ledger_totals(entries)
     classified = money(total(_amount(a, 'gross_amount') if a['action_type'] == 'dividend_received' else _amount(a, 'dividend_portion') if a['action_type'] == 'fund_distribution_received' else nonnegative(_sale_result(a)) if a['action_type'] == 'share_sale' else 0 for a in actions))
@@ -135,7 +135,7 @@ def build(input):
     distributions = [a for a in actions if a['action_type'] == 'fund_distribution_received']
     sales = [a for a in actions if a['action_type'] == 'share_sale']
     classified = total(_amount(a, 'gross_amount') for a in dividends) + total(_amount(a, 'dividend_portion') for a in distributions)
-    dividend = money(classified or (totals['dividendAndGainIncome'] if not dividends and not distributions and not sales else 0))
+    dividend = money(classified if truthy(classified) else (totals['dividendAndGainIncome'] if not dividends and not distributions and not sales else 0))
     gain = money(total(nonnegative(_sale_result(a)) for a in sales))
     loss = money(total(nonnegative(-_sale_result(a)) for a in sales))
     exempt_gain = money(total(_sale_component(a, 'exempt_gain', nonnegative(_sale_result(a))) for a in sales))
