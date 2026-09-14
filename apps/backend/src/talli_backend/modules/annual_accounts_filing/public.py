@@ -176,10 +176,50 @@ def simulate_annual_accounts_offline(source: AnnualAccountsOfflineSource) -> Ann
     return simulate(source)
 
 
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsEvidenceInput:
+    """Untrusted TT02 document plus caller identity supplied by the workflow.
+
+    The workflow supplies its clock and authenticates the actor. This pure
+    projection performs neither authorization nor authority classification.
+    """
+    company_id: str
+    expected_organization_number: str
+    evidence: object
+    recorded_by: str
+    recorded_at: str
+    evidence_url: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'evidence', _freeze(self.evidence))
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsEvidenceProjection:
+    company_id: str
+    obligation: str
+    environment: str
+    status: str
+    test_reference: str
+    feedback_summary: str
+    receipt_reference: str
+    archive_reference: str
+    evidence_url: str | None
+    payload_hash: str
+    recorded_by: str
+    recorded_at: str
+
+
+def import_annual_accounts_evidence(input: AnnualAccountsEvidenceInput) -> AnnualAccountsEvidenceProjection:
+    from .evidence import project
+    return project(input)
+
+
 __all__ = [
     'AnnualAccountsSource', 'AnnualAccountsCandidate', 'AnnualAccountsRenderInput',
     'AnnualAccountsDocuments', 'AnnualAccountsReadinessIssue', 'AnnualAccountsCorporateReadiness',
     'build_annual_accounts', 'render_annual_accounts', 'assess_annual_accounts_readiness',
     'AnnualAccountsOfflineSource', 'AnnualAccountsOfflineSimulation',
     'build_annual_accounts_offline_payload', 'assess_annual_accounts_offline', 'simulate_annual_accounts_offline',
+    'AnnualAccountsEvidenceInput', 'AnnualAccountsEvidenceProjection', 'import_annual_accounts_evidence',
 ]

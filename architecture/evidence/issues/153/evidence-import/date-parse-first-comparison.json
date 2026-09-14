@@ -1,0 +1,15 @@
+{
+  "cases": 1804,
+  "differences": [
+    {
+      "input": "100",
+      "valid": true,
+      "actual": false
+    },
+    {
+      "input": "999",
+      "valid": true,
+      "actual": false
+    }
+  ]
+}

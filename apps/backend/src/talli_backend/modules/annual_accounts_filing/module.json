@@ -4,7 +4,7 @@
   "name": "annual_accounts_filing",
   "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing",
   "owner": "backend:annual_accounts_filing",
-  "purpose": "Own deterministic annual-accounts calculations, RR0002 XML, Accounts-specific readiness and the distinct offline public-data Accounts projection; persistence and authority workflow migration remain pending.",
+  "purpose": "Own deterministic Annual Accounts calculation, RR0002 XML, Accounts readiness, offline projection and TT02 evidence projection; persistence and authority workflow migration remain pending.",
   "documentation": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.annual_accounts_filing.public",
   "exports": {
@@ -23,7 +23,10 @@
       "AnnualAccountsOfflineSimulation",
       "build_annual_accounts_offline_payload",
       "assess_annual_accounts_offline",
-      "simulate_annual_accounts_offline"
+      "simulate_annual_accounts_offline",
+      "AnnualAccountsEvidenceInput",
+      "AnnualAccountsEvidenceProjection",
+      "import_annual_accounts_evidence"
     ],
     "events": [],
     "errors": [],
@@ -46,7 +49,9 @@
     "decimal",
     "math",
     "re",
-    "types"
+    "types",
+    "hashlib",
+    "icu"
   ],
   "forbiddenResponsibilities": [
     "Ledger posting or account ownership",

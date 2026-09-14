@@ -1,0 +1,7224 @@
+{
+  "runtime": "v24.20.0",
+  "v8": "13.6.233.17-node.53",
+  "timeZone": "Europe/Oslo",
+  "scope": "Finite Date.parse acceptance used by existing TT02 evidence import; no provider operation or authority-time claim.",
+  "cases": [
+    {
+      "input": "",
+      "valid": false
+    },
+    {
+      "input": "bad",
+      "valid": false
+    },
+    {
+      "input": "0",
+      "valid": true
+    },
+    {
+      "input": "1",
+      "valid": true
+    },
+    {
+      "input": "12",
+      "valid": true
+    },
+    {
+      "input": "13",
+      "valid": false
+    },
+    {
+      "input": "31",
+      "valid": false
+    },
+    {
+      "input": "32",
+      "valid": true
+    },
+    {
+      "input": "49",
+      "valid": true
+    },
+    {
+      "input": "50",
+      "valid": true
+    },
+    {
+      "input": "99",
+      "valid": true
+    },
+    {
+      "input": "100",
+      "valid": true
+    },
+    {
+      "input": "999",
+      "valid": true
+    },
+    {
+      "input": "2026",
+      "valid": true
+    },
+    {
+      "input": "2026-02-30",
+      "valid": true
+    },
+    {
+      "input": "July 14, 2026",
+      "valid": true
+    },
+    {
+      "input": "Tue, 14 Jul 2026 12:00:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "random 2026",
+      "valid": true
+    },
+    {
+      "input": "random2026",
+      "valid": false
+    },
+    {
+      "input": "2026 random",
+      "valid": false
+    },
+    {
+      "input": "(ignored)2026",
+      "valid": true
+    },
+    {
+      "input": "2026(ignored)",
+      "valid": true
+    },
+    {
+      "input": "2026)",
+      "valid": false
+    },
+    {
+      "input": "-000000",
+      "valid": false
+    },
+    {
+      "input": "+000000",
+      "valid": true
+    },
+    {
+      "input": "+010000-01-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14\u0000garbage",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 ",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14",
+      "valid": false
+    },
+    {
+      "input": "0000-00-00",
+      "valid": false
+    },
+    {
+      "input": "0000-00-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-00-01",
+      "valid": false
+    },
+    {
+      "input": "0000-00-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-00-28",
+      "valid": false
+    },
+    {
+      "input": "0000-00-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-00-29",
+      "valid": false
+    },
+    {
+      "input": "0000-00-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-00-30",
+      "valid": false
+    },
+    {
+      "input": "0000-00-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-00-31",
+      "valid": false
+    },
+    {
+      "input": "0000-00-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-00-32",
+      "valid": false
+    },
+    {
+      "input": "0000-00-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-01-00",
+      "valid": false
+    },
+    {
+      "input": "0000-01-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-01-01",
+      "valid": true
+    },
+    {
+      "input": "0000-01-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-01-28",
+      "valid": true
+    },
+    {
+      "input": "0000-01-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-01-29",
+      "valid": true
+    },
+    {
+      "input": "0000-01-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-01-30",
+      "valid": true
+    },
+    {
+      "input": "0000-01-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-01-31",
+      "valid": true
+    },
+    {
+      "input": "0000-01-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-01-32",
+      "valid": false
+    },
+    {
+      "input": "0000-01-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-02-00",
+      "valid": false
+    },
+    {
+      "input": "0000-02-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-02-01",
+      "valid": true
+    },
+    {
+      "input": "0000-02-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-02-28",
+      "valid": true
+    },
+    {
+      "input": "0000-02-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-02-29",
+      "valid": true
+    },
+    {
+      "input": "0000-02-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-02-30",
+      "valid": true
+    },
+    {
+      "input": "0000-02-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-02-31",
+      "valid": true
+    },
+    {
+      "input": "0000-02-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-02-32",
+      "valid": false
+    },
+    {
+      "input": "0000-02-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-04-00",
+      "valid": false
+    },
+    {
+      "input": "0000-04-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-04-01",
+      "valid": true
+    },
+    {
+      "input": "0000-04-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-04-28",
+      "valid": true
+    },
+    {
+      "input": "0000-04-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-04-29",
+      "valid": true
+    },
+    {
+      "input": "0000-04-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-04-30",
+      "valid": true
+    },
+    {
+      "input": "0000-04-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-04-31",
+      "valid": true
+    },
+    {
+      "input": "0000-04-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-04-32",
+      "valid": false
+    },
+    {
+      "input": "0000-04-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-12-00",
+      "valid": false
+    },
+    {
+      "input": "0000-12-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-12-01",
+      "valid": true
+    },
+    {
+      "input": "0000-12-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-12-28",
+      "valid": true
+    },
+    {
+      "input": "0000-12-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-12-29",
+      "valid": true
+    },
+    {
+      "input": "0000-12-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-12-30",
+      "valid": true
+    },
+    {
+      "input": "0000-12-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-12-31",
+      "valid": true
+    },
+    {
+      "input": "0000-12-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0000-12-32",
+      "valid": false
+    },
+    {
+      "input": "0000-12-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-13-00",
+      "valid": false
+    },
+    {
+      "input": "0000-13-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-13-01",
+      "valid": false
+    },
+    {
+      "input": "0000-13-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-13-28",
+      "valid": false
+    },
+    {
+      "input": "0000-13-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-13-29",
+      "valid": false
+    },
+    {
+      "input": "0000-13-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-13-30",
+      "valid": false
+    },
+    {
+      "input": "0000-13-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-13-31",
+      "valid": false
+    },
+    {
+      "input": "0000-13-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0000-13-32",
+      "valid": false
+    },
+    {
+      "input": "0000-13-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-00-00",
+      "valid": false
+    },
+    {
+      "input": "0099-00-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-00-01",
+      "valid": false
+    },
+    {
+      "input": "0099-00-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-00-28",
+      "valid": false
+    },
+    {
+      "input": "0099-00-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-00-29",
+      "valid": false
+    },
+    {
+      "input": "0099-00-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-00-30",
+      "valid": false
+    },
+    {
+      "input": "0099-00-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-00-31",
+      "valid": false
+    },
+    {
+      "input": "0099-00-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-00-32",
+      "valid": false
+    },
+    {
+      "input": "0099-00-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-01-00",
+      "valid": false
+    },
+    {
+      "input": "0099-01-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-01-01",
+      "valid": true
+    },
+    {
+      "input": "0099-01-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-01-28",
+      "valid": true
+    },
+    {
+      "input": "0099-01-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-01-29",
+      "valid": true
+    },
+    {
+      "input": "0099-01-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-01-30",
+      "valid": true
+    },
+    {
+      "input": "0099-01-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-01-31",
+      "valid": true
+    },
+    {
+      "input": "0099-01-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-01-32",
+      "valid": false
+    },
+    {
+      "input": "0099-01-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-02-00",
+      "valid": false
+    },
+    {
+      "input": "0099-02-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-02-01",
+      "valid": true
+    },
+    {
+      "input": "0099-02-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-02-28",
+      "valid": true
+    },
+    {
+      "input": "0099-02-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-02-29",
+      "valid": true
+    },
+    {
+      "input": "0099-02-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-02-30",
+      "valid": true
+    },
+    {
+      "input": "0099-02-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-02-31",
+      "valid": true
+    },
+    {
+      "input": "0099-02-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-02-32",
+      "valid": false
+    },
+    {
+      "input": "0099-02-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-04-00",
+      "valid": false
+    },
+    {
+      "input": "0099-04-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-04-01",
+      "valid": true
+    },
+    {
+      "input": "0099-04-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-04-28",
+      "valid": true
+    },
+    {
+      "input": "0099-04-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-04-29",
+      "valid": true
+    },
+    {
+      "input": "0099-04-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-04-30",
+      "valid": true
+    },
+    {
+      "input": "0099-04-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-04-31",
+      "valid": true
+    },
+    {
+      "input": "0099-04-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-04-32",
+      "valid": false
+    },
+    {
+      "input": "0099-04-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-12-00",
+      "valid": false
+    },
+    {
+      "input": "0099-12-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-12-01",
+      "valid": true
+    },
+    {
+      "input": "0099-12-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-12-28",
+      "valid": true
+    },
+    {
+      "input": "0099-12-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-12-29",
+      "valid": true
+    },
+    {
+      "input": "0099-12-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-12-30",
+      "valid": true
+    },
+    {
+      "input": "0099-12-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-12-31",
+      "valid": true
+    },
+    {
+      "input": "0099-12-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0099-12-32",
+      "valid": false
+    },
+    {
+      "input": "0099-12-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-13-00",
+      "valid": false
+    },
+    {
+      "input": "0099-13-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-13-01",
+      "valid": false
+    },
+    {
+      "input": "0099-13-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-13-28",
+      "valid": false
+    },
+    {
+      "input": "0099-13-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-13-29",
+      "valid": false
+    },
+    {
+      "input": "0099-13-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-13-30",
+      "valid": false
+    },
+    {
+      "input": "0099-13-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-13-31",
+      "valid": false
+    },
+    {
+      "input": "0099-13-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0099-13-32",
+      "valid": false
+    },
+    {
+      "input": "0099-13-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-00-00",
+      "valid": false
+    },
+    {
+      "input": "0100-00-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-00-01",
+      "valid": false
+    },
+    {
+      "input": "0100-00-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-00-28",
+      "valid": false
+    },
+    {
+      "input": "0100-00-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-00-29",
+      "valid": false
+    },
+    {
+      "input": "0100-00-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-00-30",
+      "valid": false
+    },
+    {
+      "input": "0100-00-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-00-31",
+      "valid": false
+    },
+    {
+      "input": "0100-00-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-00-32",
+      "valid": false
+    },
+    {
+      "input": "0100-00-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-01-00",
+      "valid": false
+    },
+    {
+      "input": "0100-01-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-01-01",
+      "valid": true
+    },
+    {
+      "input": "0100-01-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-01-28",
+      "valid": true
+    },
+    {
+      "input": "0100-01-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-01-29",
+      "valid": true
+    },
+    {
+      "input": "0100-01-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-01-30",
+      "valid": true
+    },
+    {
+      "input": "0100-01-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-01-31",
+      "valid": true
+    },
+    {
+      "input": "0100-01-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-01-32",
+      "valid": false
+    },
+    {
+      "input": "0100-01-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-02-00",
+      "valid": false
+    },
+    {
+      "input": "0100-02-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-02-01",
+      "valid": true
+    },
+    {
+      "input": "0100-02-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-02-28",
+      "valid": true
+    },
+    {
+      "input": "0100-02-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-02-29",
+      "valid": true
+    },
+    {
+      "input": "0100-02-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-02-30",
+      "valid": true
+    },
+    {
+      "input": "0100-02-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-02-31",
+      "valid": true
+    },
+    {
+      "input": "0100-02-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-02-32",
+      "valid": false
+    },
+    {
+      "input": "0100-02-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-04-00",
+      "valid": false
+    },
+    {
+      "input": "0100-04-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-04-01",
+      "valid": true
+    },
+    {
+      "input": "0100-04-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-04-28",
+      "valid": true
+    },
+    {
+      "input": "0100-04-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-04-29",
+      "valid": true
+    },
+    {
+      "input": "0100-04-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-04-30",
+      "valid": true
+    },
+    {
+      "input": "0100-04-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-04-31",
+      "valid": true
+    },
+    {
+      "input": "0100-04-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-04-32",
+      "valid": false
+    },
+    {
+      "input": "0100-04-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-12-00",
+      "valid": false
+    },
+    {
+      "input": "0100-12-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-12-01",
+      "valid": true
+    },
+    {
+      "input": "0100-12-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-12-28",
+      "valid": true
+    },
+    {
+      "input": "0100-12-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-12-29",
+      "valid": true
+    },
+    {
+      "input": "0100-12-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-12-30",
+      "valid": true
+    },
+    {
+      "input": "0100-12-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-12-31",
+      "valid": true
+    },
+    {
+      "input": "0100-12-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "0100-12-32",
+      "valid": false
+    },
+    {
+      "input": "0100-12-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-13-00",
+      "valid": false
+    },
+    {
+      "input": "0100-13-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-13-01",
+      "valid": false
+    },
+    {
+      "input": "0100-13-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-13-28",
+      "valid": false
+    },
+    {
+      "input": "0100-13-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-13-29",
+      "valid": false
+    },
+    {
+      "input": "0100-13-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-13-30",
+      "valid": false
+    },
+    {
+      "input": "0100-13-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-13-31",
+      "valid": false
+    },
+    {
+      "input": "0100-13-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "0100-13-32",
+      "valid": false
+    },
+    {
+      "input": "0100-13-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-00-00",
+      "valid": false
+    },
+    {
+      "input": "1900-00-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-00-01",
+      "valid": false
+    },
+    {
+      "input": "1900-00-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-00-28",
+      "valid": false
+    },
+    {
+      "input": "1900-00-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-00-29",
+      "valid": false
+    },
+    {
+      "input": "1900-00-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-00-30",
+      "valid": false
+    },
+    {
+      "input": "1900-00-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-00-31",
+      "valid": false
+    },
+    {
+      "input": "1900-00-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-00-32",
+      "valid": false
+    },
+    {
+      "input": "1900-00-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-01-00",
+      "valid": false
+    },
+    {
+      "input": "1900-01-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-01-01",
+      "valid": true
+    },
+    {
+      "input": "1900-01-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-01-28",
+      "valid": true
+    },
+    {
+      "input": "1900-01-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-01-29",
+      "valid": true
+    },
+    {
+      "input": "1900-01-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-01-30",
+      "valid": true
+    },
+    {
+      "input": "1900-01-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-01-31",
+      "valid": true
+    },
+    {
+      "input": "1900-01-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-01-32",
+      "valid": false
+    },
+    {
+      "input": "1900-01-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-02-00",
+      "valid": false
+    },
+    {
+      "input": "1900-02-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-02-01",
+      "valid": true
+    },
+    {
+      "input": "1900-02-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-02-28",
+      "valid": true
+    },
+    {
+      "input": "1900-02-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-02-29",
+      "valid": true
+    },
+    {
+      "input": "1900-02-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-02-30",
+      "valid": true
+    },
+    {
+      "input": "1900-02-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-02-31",
+      "valid": true
+    },
+    {
+      "input": "1900-02-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-02-32",
+      "valid": false
+    },
+    {
+      "input": "1900-02-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-04-00",
+      "valid": false
+    },
+    {
+      "input": "1900-04-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-04-01",
+      "valid": true
+    },
+    {
+      "input": "1900-04-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-04-28",
+      "valid": true
+    },
+    {
+      "input": "1900-04-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-04-29",
+      "valid": true
+    },
+    {
+      "input": "1900-04-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-04-30",
+      "valid": true
+    },
+    {
+      "input": "1900-04-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-04-31",
+      "valid": true
+    },
+    {
+      "input": "1900-04-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-04-32",
+      "valid": false
+    },
+    {
+      "input": "1900-04-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-12-00",
+      "valid": false
+    },
+    {
+      "input": "1900-12-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-12-01",
+      "valid": true
+    },
+    {
+      "input": "1900-12-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-12-28",
+      "valid": true
+    },
+    {
+      "input": "1900-12-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-12-29",
+      "valid": true
+    },
+    {
+      "input": "1900-12-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-12-30",
+      "valid": true
+    },
+    {
+      "input": "1900-12-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-12-31",
+      "valid": true
+    },
+    {
+      "input": "1900-12-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1900-12-32",
+      "valid": false
+    },
+    {
+      "input": "1900-12-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-13-00",
+      "valid": false
+    },
+    {
+      "input": "1900-13-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-13-01",
+      "valid": false
+    },
+    {
+      "input": "1900-13-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-13-28",
+      "valid": false
+    },
+    {
+      "input": "1900-13-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-13-29",
+      "valid": false
+    },
+    {
+      "input": "1900-13-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-13-30",
+      "valid": false
+    },
+    {
+      "input": "1900-13-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-13-31",
+      "valid": false
+    },
+    {
+      "input": "1900-13-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1900-13-32",
+      "valid": false
+    },
+    {
+      "input": "1900-13-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-00-00",
+      "valid": false
+    },
+    {
+      "input": "2000-00-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-00-01",
+      "valid": false
+    },
+    {
+      "input": "2000-00-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-00-28",
+      "valid": false
+    },
+    {
+      "input": "2000-00-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-00-29",
+      "valid": false
+    },
+    {
+      "input": "2000-00-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-00-30",
+      "valid": false
+    },
+    {
+      "input": "2000-00-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-00-31",
+      "valid": false
+    },
+    {
+      "input": "2000-00-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-00-32",
+      "valid": false
+    },
+    {
+      "input": "2000-00-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-01-00",
+      "valid": false
+    },
+    {
+      "input": "2000-01-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-01-01",
+      "valid": true
+    },
+    {
+      "input": "2000-01-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-01-28",
+      "valid": true
+    },
+    {
+      "input": "2000-01-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-01-29",
+      "valid": true
+    },
+    {
+      "input": "2000-01-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-01-30",
+      "valid": true
+    },
+    {
+      "input": "2000-01-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-01-31",
+      "valid": true
+    },
+    {
+      "input": "2000-01-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-01-32",
+      "valid": false
+    },
+    {
+      "input": "2000-01-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-02-00",
+      "valid": false
+    },
+    {
+      "input": "2000-02-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-02-01",
+      "valid": true
+    },
+    {
+      "input": "2000-02-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-02-28",
+      "valid": true
+    },
+    {
+      "input": "2000-02-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-02-29",
+      "valid": true
+    },
+    {
+      "input": "2000-02-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-02-30",
+      "valid": true
+    },
+    {
+      "input": "2000-02-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-02-31",
+      "valid": true
+    },
+    {
+      "input": "2000-02-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-02-32",
+      "valid": false
+    },
+    {
+      "input": "2000-02-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-04-00",
+      "valid": false
+    },
+    {
+      "input": "2000-04-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-04-01",
+      "valid": true
+    },
+    {
+      "input": "2000-04-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-04-28",
+      "valid": true
+    },
+    {
+      "input": "2000-04-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-04-29",
+      "valid": true
+    },
+    {
+      "input": "2000-04-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-04-30",
+      "valid": true
+    },
+    {
+      "input": "2000-04-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-04-31",
+      "valid": true
+    },
+    {
+      "input": "2000-04-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-04-32",
+      "valid": false
+    },
+    {
+      "input": "2000-04-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-12-00",
+      "valid": false
+    },
+    {
+      "input": "2000-12-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-12-01",
+      "valid": true
+    },
+    {
+      "input": "2000-12-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-12-28",
+      "valid": true
+    },
+    {
+      "input": "2000-12-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-12-29",
+      "valid": true
+    },
+    {
+      "input": "2000-12-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-12-30",
+      "valid": true
+    },
+    {
+      "input": "2000-12-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-12-31",
+      "valid": true
+    },
+    {
+      "input": "2000-12-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2000-12-32",
+      "valid": false
+    },
+    {
+      "input": "2000-12-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-13-00",
+      "valid": false
+    },
+    {
+      "input": "2000-13-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-13-01",
+      "valid": false
+    },
+    {
+      "input": "2000-13-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-13-28",
+      "valid": false
+    },
+    {
+      "input": "2000-13-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-13-29",
+      "valid": false
+    },
+    {
+      "input": "2000-13-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-13-30",
+      "valid": false
+    },
+    {
+      "input": "2000-13-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-13-31",
+      "valid": false
+    },
+    {
+      "input": "2000-13-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2000-13-32",
+      "valid": false
+    },
+    {
+      "input": "2000-13-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-00-00",
+      "valid": false
+    },
+    {
+      "input": "2025-00-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-00-01",
+      "valid": false
+    },
+    {
+      "input": "2025-00-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-00-28",
+      "valid": false
+    },
+    {
+      "input": "2025-00-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-00-29",
+      "valid": false
+    },
+    {
+      "input": "2025-00-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-00-30",
+      "valid": false
+    },
+    {
+      "input": "2025-00-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-00-31",
+      "valid": false
+    },
+    {
+      "input": "2025-00-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-00-32",
+      "valid": false
+    },
+    {
+      "input": "2025-00-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-01-00",
+      "valid": false
+    },
+    {
+      "input": "2025-01-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-01-01",
+      "valid": true
+    },
+    {
+      "input": "2025-01-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-01-28",
+      "valid": true
+    },
+    {
+      "input": "2025-01-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-01-29",
+      "valid": true
+    },
+    {
+      "input": "2025-01-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-01-30",
+      "valid": true
+    },
+    {
+      "input": "2025-01-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-01-31",
+      "valid": true
+    },
+    {
+      "input": "2025-01-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-01-32",
+      "valid": false
+    },
+    {
+      "input": "2025-01-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-02-00",
+      "valid": false
+    },
+    {
+      "input": "2025-02-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-02-01",
+      "valid": true
+    },
+    {
+      "input": "2025-02-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-02-28",
+      "valid": true
+    },
+    {
+      "input": "2025-02-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-02-29",
+      "valid": true
+    },
+    {
+      "input": "2025-02-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-02-30",
+      "valid": true
+    },
+    {
+      "input": "2025-02-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-02-31",
+      "valid": true
+    },
+    {
+      "input": "2025-02-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-02-32",
+      "valid": false
+    },
+    {
+      "input": "2025-02-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-04-00",
+      "valid": false
+    },
+    {
+      "input": "2025-04-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-04-01",
+      "valid": true
+    },
+    {
+      "input": "2025-04-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-04-28",
+      "valid": true
+    },
+    {
+      "input": "2025-04-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-04-29",
+      "valid": true
+    },
+    {
+      "input": "2025-04-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-04-30",
+      "valid": true
+    },
+    {
+      "input": "2025-04-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-04-31",
+      "valid": true
+    },
+    {
+      "input": "2025-04-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-04-32",
+      "valid": false
+    },
+    {
+      "input": "2025-04-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-12-00",
+      "valid": false
+    },
+    {
+      "input": "2025-12-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-12-01",
+      "valid": true
+    },
+    {
+      "input": "2025-12-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-12-28",
+      "valid": true
+    },
+    {
+      "input": "2025-12-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-12-29",
+      "valid": true
+    },
+    {
+      "input": "2025-12-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-12-30",
+      "valid": true
+    },
+    {
+      "input": "2025-12-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-12-31",
+      "valid": true
+    },
+    {
+      "input": "2025-12-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2025-12-32",
+      "valid": false
+    },
+    {
+      "input": "2025-12-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-13-00",
+      "valid": false
+    },
+    {
+      "input": "2025-13-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-13-01",
+      "valid": false
+    },
+    {
+      "input": "2025-13-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-13-28",
+      "valid": false
+    },
+    {
+      "input": "2025-13-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-13-29",
+      "valid": false
+    },
+    {
+      "input": "2025-13-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-13-30",
+      "valid": false
+    },
+    {
+      "input": "2025-13-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-13-31",
+      "valid": false
+    },
+    {
+      "input": "2025-13-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2025-13-32",
+      "valid": false
+    },
+    {
+      "input": "2025-13-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-00-00",
+      "valid": false
+    },
+    {
+      "input": "2026-00-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-00-01",
+      "valid": false
+    },
+    {
+      "input": "2026-00-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-00-28",
+      "valid": false
+    },
+    {
+      "input": "2026-00-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-00-29",
+      "valid": false
+    },
+    {
+      "input": "2026-00-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-00-30",
+      "valid": false
+    },
+    {
+      "input": "2026-00-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-00-31",
+      "valid": false
+    },
+    {
+      "input": "2026-00-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-00-32",
+      "valid": false
+    },
+    {
+      "input": "2026-00-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-01-00",
+      "valid": false
+    },
+    {
+      "input": "2026-01-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-01-01",
+      "valid": true
+    },
+    {
+      "input": "2026-01-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-01-28",
+      "valid": true
+    },
+    {
+      "input": "2026-01-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-01-29",
+      "valid": true
+    },
+    {
+      "input": "2026-01-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-01-30",
+      "valid": true
+    },
+    {
+      "input": "2026-01-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-01-31",
+      "valid": true
+    },
+    {
+      "input": "2026-01-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-01-32",
+      "valid": false
+    },
+    {
+      "input": "2026-01-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-02-00",
+      "valid": false
+    },
+    {
+      "input": "2026-02-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-02-01",
+      "valid": true
+    },
+    {
+      "input": "2026-02-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-02-28",
+      "valid": true
+    },
+    {
+      "input": "2026-02-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-02-29",
+      "valid": true
+    },
+    {
+      "input": "2026-02-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-02-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-02-31",
+      "valid": true
+    },
+    {
+      "input": "2026-02-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-02-32",
+      "valid": false
+    },
+    {
+      "input": "2026-02-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-04-00",
+      "valid": false
+    },
+    {
+      "input": "2026-04-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-04-01",
+      "valid": true
+    },
+    {
+      "input": "2026-04-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-04-28",
+      "valid": true
+    },
+    {
+      "input": "2026-04-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-04-29",
+      "valid": true
+    },
+    {
+      "input": "2026-04-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-04-30",
+      "valid": true
+    },
+    {
+      "input": "2026-04-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-04-31",
+      "valid": true
+    },
+    {
+      "input": "2026-04-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-04-32",
+      "valid": false
+    },
+    {
+      "input": "2026-04-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-12-00",
+      "valid": false
+    },
+    {
+      "input": "2026-12-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-12-01",
+      "valid": true
+    },
+    {
+      "input": "2026-12-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-12-28",
+      "valid": true
+    },
+    {
+      "input": "2026-12-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-12-29",
+      "valid": true
+    },
+    {
+      "input": "2026-12-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-12-30",
+      "valid": true
+    },
+    {
+      "input": "2026-12-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-12-31",
+      "valid": true
+    },
+    {
+      "input": "2026-12-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-12-32",
+      "valid": false
+    },
+    {
+      "input": "2026-12-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-13-00",
+      "valid": false
+    },
+    {
+      "input": "2026-13-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-13-01",
+      "valid": false
+    },
+    {
+      "input": "2026-13-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-13-28",
+      "valid": false
+    },
+    {
+      "input": "2026-13-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-13-29",
+      "valid": false
+    },
+    {
+      "input": "2026-13-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-13-30",
+      "valid": false
+    },
+    {
+      "input": "2026-13-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-13-31",
+      "valid": false
+    },
+    {
+      "input": "2026-13-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-13-32",
+      "valid": false
+    },
+    {
+      "input": "2026-13-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-00-00",
+      "valid": false
+    },
+    {
+      "input": "9999-00-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-00-01",
+      "valid": false
+    },
+    {
+      "input": "9999-00-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-00-28",
+      "valid": false
+    },
+    {
+      "input": "9999-00-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-00-29",
+      "valid": false
+    },
+    {
+      "input": "9999-00-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-00-30",
+      "valid": false
+    },
+    {
+      "input": "9999-00-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-00-31",
+      "valid": false
+    },
+    {
+      "input": "9999-00-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-00-32",
+      "valid": false
+    },
+    {
+      "input": "9999-00-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-01-00",
+      "valid": false
+    },
+    {
+      "input": "9999-01-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-01-01",
+      "valid": true
+    },
+    {
+      "input": "9999-01-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-01-28",
+      "valid": true
+    },
+    {
+      "input": "9999-01-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-01-29",
+      "valid": true
+    },
+    {
+      "input": "9999-01-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-01-30",
+      "valid": true
+    },
+    {
+      "input": "9999-01-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-01-31",
+      "valid": true
+    },
+    {
+      "input": "9999-01-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-01-32",
+      "valid": false
+    },
+    {
+      "input": "9999-01-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-02-00",
+      "valid": false
+    },
+    {
+      "input": "9999-02-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-02-01",
+      "valid": true
+    },
+    {
+      "input": "9999-02-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-02-28",
+      "valid": true
+    },
+    {
+      "input": "9999-02-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-02-29",
+      "valid": true
+    },
+    {
+      "input": "9999-02-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-02-30",
+      "valid": true
+    },
+    {
+      "input": "9999-02-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-02-31",
+      "valid": true
+    },
+    {
+      "input": "9999-02-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-02-32",
+      "valid": false
+    },
+    {
+      "input": "9999-02-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-04-00",
+      "valid": false
+    },
+    {
+      "input": "9999-04-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-04-01",
+      "valid": true
+    },
+    {
+      "input": "9999-04-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-04-28",
+      "valid": true
+    },
+    {
+      "input": "9999-04-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-04-29",
+      "valid": true
+    },
+    {
+      "input": "9999-04-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-04-30",
+      "valid": true
+    },
+    {
+      "input": "9999-04-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-04-31",
+      "valid": true
+    },
+    {
+      "input": "9999-04-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-04-32",
+      "valid": false
+    },
+    {
+      "input": "9999-04-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-12-00",
+      "valid": false
+    },
+    {
+      "input": "9999-12-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-12-01",
+      "valid": true
+    },
+    {
+      "input": "9999-12-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-12-28",
+      "valid": true
+    },
+    {
+      "input": "9999-12-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-12-29",
+      "valid": true
+    },
+    {
+      "input": "9999-12-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-12-30",
+      "valid": true
+    },
+    {
+      "input": "9999-12-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-12-31",
+      "valid": true
+    },
+    {
+      "input": "9999-12-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "9999-12-32",
+      "valid": false
+    },
+    {
+      "input": "9999-12-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-13-00",
+      "valid": false
+    },
+    {
+      "input": "9999-13-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-13-01",
+      "valid": false
+    },
+    {
+      "input": "9999-13-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-13-28",
+      "valid": false
+    },
+    {
+      "input": "9999-13-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-13-29",
+      "valid": false
+    },
+    {
+      "input": "9999-13-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-13-30",
+      "valid": false
+    },
+    {
+      "input": "9999-13-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-13-31",
+      "valid": false
+    },
+    {
+      "input": "9999-13-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "9999-13-32",
+      "valid": false
+    },
+    {
+      "input": "9999-13-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-00-00",
+      "valid": false
+    },
+    {
+      "input": "+010000-00-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-00-01",
+      "valid": false
+    },
+    {
+      "input": "+010000-00-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-00-28",
+      "valid": false
+    },
+    {
+      "input": "+010000-00-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-00-29",
+      "valid": false
+    },
+    {
+      "input": "+010000-00-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-00-30",
+      "valid": false
+    },
+    {
+      "input": "+010000-00-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-00-31",
+      "valid": false
+    },
+    {
+      "input": "+010000-00-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-00-32",
+      "valid": false
+    },
+    {
+      "input": "+010000-00-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-01-00",
+      "valid": false
+    },
+    {
+      "input": "+010000-01-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-01-01",
+      "valid": true
+    },
+    {
+      "input": "+010000-01-28",
+      "valid": true
+    },
+    {
+      "input": "+010000-01-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-01-29",
+      "valid": true
+    },
+    {
+      "input": "+010000-01-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-01-30",
+      "valid": true
+    },
+    {
+      "input": "+010000-01-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-01-31",
+      "valid": true
+    },
+    {
+      "input": "+010000-01-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-01-32",
+      "valid": false
+    },
+    {
+      "input": "+010000-01-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-02-00",
+      "valid": false
+    },
+    {
+      "input": "+010000-02-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-02-01",
+      "valid": true
+    },
+    {
+      "input": "+010000-02-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-02-28",
+      "valid": true
+    },
+    {
+      "input": "+010000-02-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-02-29",
+      "valid": true
+    },
+    {
+      "input": "+010000-02-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-02-30",
+      "valid": true
+    },
+    {
+      "input": "+010000-02-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-02-31",
+      "valid": true
+    },
+    {
+      "input": "+010000-02-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-02-32",
+      "valid": false
+    },
+    {
+      "input": "+010000-02-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-04-00",
+      "valid": false
+    },
+    {
+      "input": "+010000-04-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-04-01",
+      "valid": true
+    },
+    {
+      "input": "+010000-04-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-04-28",
+      "valid": true
+    },
+    {
+      "input": "+010000-04-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-04-29",
+      "valid": true
+    },
+    {
+      "input": "+010000-04-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-04-30",
+      "valid": true
+    },
+    {
+      "input": "+010000-04-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-04-31",
+      "valid": true
+    },
+    {
+      "input": "+010000-04-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-04-32",
+      "valid": false
+    },
+    {
+      "input": "+010000-04-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-12-00",
+      "valid": false
+    },
+    {
+      "input": "+010000-12-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-12-01",
+      "valid": true
+    },
+    {
+      "input": "+010000-12-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-12-28",
+      "valid": true
+    },
+    {
+      "input": "+010000-12-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-12-29",
+      "valid": true
+    },
+    {
+      "input": "+010000-12-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-12-30",
+      "valid": true
+    },
+    {
+      "input": "+010000-12-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-12-31",
+      "valid": true
+    },
+    {
+      "input": "+010000-12-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+010000-12-32",
+      "valid": false
+    },
+    {
+      "input": "+010000-12-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-13-00",
+      "valid": false
+    },
+    {
+      "input": "+010000-13-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-13-01",
+      "valid": false
+    },
+    {
+      "input": "+010000-13-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-13-28",
+      "valid": false
+    },
+    {
+      "input": "+010000-13-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-13-29",
+      "valid": false
+    },
+    {
+      "input": "+010000-13-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-13-30",
+      "valid": false
+    },
+    {
+      "input": "+010000-13-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-13-31",
+      "valid": false
+    },
+    {
+      "input": "+010000-13-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+010000-13-32",
+      "valid": false
+    },
+    {
+      "input": "+010000-13-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-00-00",
+      "valid": false
+    },
+    {
+      "input": "-000001-00-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-00-01",
+      "valid": false
+    },
+    {
+      "input": "-000001-00-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-00-28",
+      "valid": false
+    },
+    {
+      "input": "-000001-00-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-00-29",
+      "valid": false
+    },
+    {
+      "input": "-000001-00-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-00-30",
+      "valid": false
+    },
+    {
+      "input": "-000001-00-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-00-31",
+      "valid": false
+    },
+    {
+      "input": "-000001-00-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-00-32",
+      "valid": false
+    },
+    {
+      "input": "-000001-00-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-01-00",
+      "valid": false
+    },
+    {
+      "input": "-000001-01-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-01-01",
+      "valid": true
+    },
+    {
+      "input": "-000001-01-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-01-28",
+      "valid": true
+    },
+    {
+      "input": "-000001-01-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-01-29",
+      "valid": true
+    },
+    {
+      "input": "-000001-01-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-01-30",
+      "valid": true
+    },
+    {
+      "input": "-000001-01-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-01-31",
+      "valid": true
+    },
+    {
+      "input": "-000001-01-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-01-32",
+      "valid": false
+    },
+    {
+      "input": "-000001-01-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-02-00",
+      "valid": false
+    },
+    {
+      "input": "-000001-02-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-02-01",
+      "valid": true
+    },
+    {
+      "input": "-000001-02-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-02-28",
+      "valid": true
+    },
+    {
+      "input": "-000001-02-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-02-29",
+      "valid": true
+    },
+    {
+      "input": "-000001-02-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-02-30",
+      "valid": true
+    },
+    {
+      "input": "-000001-02-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-02-31",
+      "valid": true
+    },
+    {
+      "input": "-000001-02-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-02-32",
+      "valid": false
+    },
+    {
+      "input": "-000001-02-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-04-00",
+      "valid": false
+    },
+    {
+      "input": "-000001-04-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-04-01",
+      "valid": true
+    },
+    {
+      "input": "-000001-04-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-04-28",
+      "valid": true
+    },
+    {
+      "input": "-000001-04-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-04-29",
+      "valid": true
+    },
+    {
+      "input": "-000001-04-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-04-30",
+      "valid": true
+    },
+    {
+      "input": "-000001-04-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-04-31",
+      "valid": true
+    },
+    {
+      "input": "-000001-04-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-04-32",
+      "valid": false
+    },
+    {
+      "input": "-000001-04-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-12-00",
+      "valid": false
+    },
+    {
+      "input": "-000001-12-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-12-01",
+      "valid": true
+    },
+    {
+      "input": "-000001-12-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-12-28",
+      "valid": true
+    },
+    {
+      "input": "-000001-12-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-12-29",
+      "valid": true
+    },
+    {
+      "input": "-000001-12-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-12-30",
+      "valid": true
+    },
+    {
+      "input": "-000001-12-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-12-31",
+      "valid": true
+    },
+    {
+      "input": "-000001-12-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-000001-12-32",
+      "valid": false
+    },
+    {
+      "input": "-000001-12-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-13-00",
+      "valid": false
+    },
+    {
+      "input": "-000001-13-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-13-01",
+      "valid": false
+    },
+    {
+      "input": "-000001-13-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-13-28",
+      "valid": false
+    },
+    {
+      "input": "-000001-13-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-13-29",
+      "valid": false
+    },
+    {
+      "input": "-000001-13-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-13-30",
+      "valid": false
+    },
+    {
+      "input": "-000001-13-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-13-31",
+      "valid": false
+    },
+    {
+      "input": "-000001-13-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-000001-13-32",
+      "valid": false
+    },
+    {
+      "input": "-000001-13-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-00-00",
+      "valid": false
+    },
+    {
+      "input": "+275760-00-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-00-01",
+      "valid": false
+    },
+    {
+      "input": "+275760-00-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-00-28",
+      "valid": false
+    },
+    {
+      "input": "+275760-00-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-00-29",
+      "valid": false
+    },
+    {
+      "input": "+275760-00-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-00-30",
+      "valid": false
+    },
+    {
+      "input": "+275760-00-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-00-31",
+      "valid": false
+    },
+    {
+      "input": "+275760-00-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-00-32",
+      "valid": false
+    },
+    {
+      "input": "+275760-00-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-01-00",
+      "valid": false
+    },
+    {
+      "input": "+275760-01-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-01-01",
+      "valid": true
+    },
+    {
+      "input": "+275760-01-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-01-28",
+      "valid": true
+    },
+    {
+      "input": "+275760-01-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-01-29",
+      "valid": true
+    },
+    {
+      "input": "+275760-01-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-01-30",
+      "valid": true
+    },
+    {
+      "input": "+275760-01-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-01-31",
+      "valid": true
+    },
+    {
+      "input": "+275760-01-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-01-32",
+      "valid": false
+    },
+    {
+      "input": "+275760-01-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-02-00",
+      "valid": false
+    },
+    {
+      "input": "+275760-02-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-02-01",
+      "valid": true
+    },
+    {
+      "input": "+275760-02-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-02-28",
+      "valid": true
+    },
+    {
+      "input": "+275760-02-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-02-29",
+      "valid": true
+    },
+    {
+      "input": "+275760-02-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-02-30",
+      "valid": true
+    },
+    {
+      "input": "+275760-02-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-02-31",
+      "valid": true
+    },
+    {
+      "input": "+275760-02-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-02-32",
+      "valid": false
+    },
+    {
+      "input": "+275760-02-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-04-00",
+      "valid": false
+    },
+    {
+      "input": "+275760-04-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-04-01",
+      "valid": true
+    },
+    {
+      "input": "+275760-04-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-04-28",
+      "valid": true
+    },
+    {
+      "input": "+275760-04-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-04-29",
+      "valid": true
+    },
+    {
+      "input": "+275760-04-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-04-30",
+      "valid": true
+    },
+    {
+      "input": "+275760-04-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-04-31",
+      "valid": true
+    },
+    {
+      "input": "+275760-04-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-04-32",
+      "valid": false
+    },
+    {
+      "input": "+275760-04-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-12-00",
+      "valid": false
+    },
+    {
+      "input": "+275760-12-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-12-01",
+      "valid": false
+    },
+    {
+      "input": "+275760-12-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-12-28",
+      "valid": false
+    },
+    {
+      "input": "+275760-12-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-12-29",
+      "valid": false
+    },
+    {
+      "input": "+275760-12-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-12-30",
+      "valid": false
+    },
+    {
+      "input": "+275760-12-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-12-31",
+      "valid": false
+    },
+    {
+      "input": "+275760-12-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-12-32",
+      "valid": false
+    },
+    {
+      "input": "+275760-12-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-13-00",
+      "valid": false
+    },
+    {
+      "input": "+275760-13-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-13-01",
+      "valid": false
+    },
+    {
+      "input": "+275760-13-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-13-28",
+      "valid": false
+    },
+    {
+      "input": "+275760-13-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-13-29",
+      "valid": false
+    },
+    {
+      "input": "+275760-13-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-13-30",
+      "valid": false
+    },
+    {
+      "input": "+275760-13-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-13-31",
+      "valid": false
+    },
+    {
+      "input": "+275760-13-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+275760-13-32",
+      "valid": false
+    },
+    {
+      "input": "+275760-13-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-00-00",
+      "valid": false
+    },
+    {
+      "input": "-271821-00-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-00-01",
+      "valid": false
+    },
+    {
+      "input": "-271821-00-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-00-28",
+      "valid": false
+    },
+    {
+      "input": "-271821-00-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-00-29",
+      "valid": false
+    },
+    {
+      "input": "-271821-00-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-00-30",
+      "valid": false
+    },
+    {
+      "input": "-271821-00-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-00-31",
+      "valid": false
+    },
+    {
+      "input": "-271821-00-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-00-32",
+      "valid": false
+    },
+    {
+      "input": "-271821-00-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-01-00",
+      "valid": false
+    },
+    {
+      "input": "-271821-01-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-01-01",
+      "valid": false
+    },
+    {
+      "input": "-271821-01-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-01-28",
+      "valid": false
+    },
+    {
+      "input": "-271821-01-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-01-29",
+      "valid": false
+    },
+    {
+      "input": "-271821-01-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-01-30",
+      "valid": false
+    },
+    {
+      "input": "-271821-01-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-01-31",
+      "valid": false
+    },
+    {
+      "input": "-271821-01-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-01-32",
+      "valid": false
+    },
+    {
+      "input": "-271821-01-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-02-00",
+      "valid": false
+    },
+    {
+      "input": "-271821-02-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-02-01",
+      "valid": false
+    },
+    {
+      "input": "-271821-02-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-02-28",
+      "valid": false
+    },
+    {
+      "input": "-271821-02-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-02-29",
+      "valid": false
+    },
+    {
+      "input": "-271821-02-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-02-30",
+      "valid": false
+    },
+    {
+      "input": "-271821-02-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-02-31",
+      "valid": false
+    },
+    {
+      "input": "-271821-02-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-02-32",
+      "valid": false
+    },
+    {
+      "input": "-271821-02-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-04-00",
+      "valid": false
+    },
+    {
+      "input": "-271821-04-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-04-01",
+      "valid": false
+    },
+    {
+      "input": "-271821-04-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-04-28",
+      "valid": true
+    },
+    {
+      "input": "-271821-04-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-271821-04-29",
+      "valid": true
+    },
+    {
+      "input": "-271821-04-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-271821-04-30",
+      "valid": true
+    },
+    {
+      "input": "-271821-04-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-271821-04-31",
+      "valid": true
+    },
+    {
+      "input": "-271821-04-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-271821-04-32",
+      "valid": false
+    },
+    {
+      "input": "-271821-04-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-12-00",
+      "valid": false
+    },
+    {
+      "input": "-271821-12-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-12-01",
+      "valid": true
+    },
+    {
+      "input": "-271821-12-01T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-271821-12-28",
+      "valid": true
+    },
+    {
+      "input": "-271821-12-28T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-271821-12-29",
+      "valid": true
+    },
+    {
+      "input": "-271821-12-29T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-271821-12-30",
+      "valid": true
+    },
+    {
+      "input": "-271821-12-30T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-271821-12-31",
+      "valid": true
+    },
+    {
+      "input": "-271821-12-31T00:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "-271821-12-32",
+      "valid": false
+    },
+    {
+      "input": "-271821-12-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-13-00",
+      "valid": false
+    },
+    {
+      "input": "-271821-13-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-13-01",
+      "valid": false
+    },
+    {
+      "input": "-271821-13-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-13-28",
+      "valid": false
+    },
+    {
+      "input": "-271821-13-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-13-29",
+      "valid": false
+    },
+    {
+      "input": "-271821-13-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-13-30",
+      "valid": false
+    },
+    {
+      "input": "-271821-13-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-13-31",
+      "valid": false
+    },
+    {
+      "input": "-271821-13-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-13-32",
+      "valid": false
+    },
+    {
+      "input": "-271821-13-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-00-00",
+      "valid": false
+    },
+    {
+      "input": "+999999-00-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-00-01",
+      "valid": false
+    },
+    {
+      "input": "+999999-00-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-00-28",
+      "valid": false
+    },
+    {
+      "input": "+999999-00-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-00-29",
+      "valid": false
+    },
+    {
+      "input": "+999999-00-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-00-30",
+      "valid": false
+    },
+    {
+      "input": "+999999-00-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-00-31",
+      "valid": false
+    },
+    {
+      "input": "+999999-00-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-00-32",
+      "valid": false
+    },
+    {
+      "input": "+999999-00-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-01-00",
+      "valid": false
+    },
+    {
+      "input": "+999999-01-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-01-01",
+      "valid": false
+    },
+    {
+      "input": "+999999-01-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-01-28",
+      "valid": false
+    },
+    {
+      "input": "+999999-01-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-01-29",
+      "valid": false
+    },
+    {
+      "input": "+999999-01-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-01-30",
+      "valid": false
+    },
+    {
+      "input": "+999999-01-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-01-31",
+      "valid": false
+    },
+    {
+      "input": "+999999-01-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-01-32",
+      "valid": false
+    },
+    {
+      "input": "+999999-01-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-02-00",
+      "valid": false
+    },
+    {
+      "input": "+999999-02-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-02-01",
+      "valid": false
+    },
+    {
+      "input": "+999999-02-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-02-28",
+      "valid": false
+    },
+    {
+      "input": "+999999-02-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-02-29",
+      "valid": false
+    },
+    {
+      "input": "+999999-02-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-02-30",
+      "valid": false
+    },
+    {
+      "input": "+999999-02-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-02-31",
+      "valid": false
+    },
+    {
+      "input": "+999999-02-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-02-32",
+      "valid": false
+    },
+    {
+      "input": "+999999-02-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-04-00",
+      "valid": false
+    },
+    {
+      "input": "+999999-04-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-04-01",
+      "valid": false
+    },
+    {
+      "input": "+999999-04-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-04-28",
+      "valid": false
+    },
+    {
+      "input": "+999999-04-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-04-29",
+      "valid": false
+    },
+    {
+      "input": "+999999-04-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-04-30",
+      "valid": false
+    },
+    {
+      "input": "+999999-04-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-04-31",
+      "valid": false
+    },
+    {
+      "input": "+999999-04-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-04-32",
+      "valid": false
+    },
+    {
+      "input": "+999999-04-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-12-00",
+      "valid": false
+    },
+    {
+      "input": "+999999-12-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-12-01",
+      "valid": false
+    },
+    {
+      "input": "+999999-12-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-12-28",
+      "valid": false
+    },
+    {
+      "input": "+999999-12-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-12-29",
+      "valid": false
+    },
+    {
+      "input": "+999999-12-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-12-30",
+      "valid": false
+    },
+    {
+      "input": "+999999-12-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-12-31",
+      "valid": false
+    },
+    {
+      "input": "+999999-12-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-12-32",
+      "valid": false
+    },
+    {
+      "input": "+999999-12-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-13-00",
+      "valid": false
+    },
+    {
+      "input": "+999999-13-00T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-13-01",
+      "valid": false
+    },
+    {
+      "input": "+999999-13-01T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-13-28",
+      "valid": false
+    },
+    {
+      "input": "+999999-13-28T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-13-29",
+      "valid": false
+    },
+    {
+      "input": "+999999-13-29T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-13-30",
+      "valid": false
+    },
+    {
+      "input": "+999999-13-30T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-13-31",
+      "valid": false
+    },
+    {
+      "input": "+999999-13-31T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "+999999-13-32",
+      "valid": false
+    },
+    {
+      "input": "+999999-13-32T00:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14Z",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 +02:00",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 -8",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 +2500",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 00:00",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 00:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 00:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 00:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 00:00 -8",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 00:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 23:59:59",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 23:59:59Z",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 23:59:59 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 23:59:59 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 23:59:59 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 23:59:59 -8",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 23:59:59 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 24:00",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 24:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 24:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 24:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 24:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 24:00 -8",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 24:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 24:00:00.001",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 24:00:00.001Z",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 24:00:00.001 GMT",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 24:00:00.001 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 24:00:00.001 +02:00",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 24:00:00.001 -8",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 24:00:00.001 +2500",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14T12:00:00",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14T12:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14T12:00:00 GMT",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14T12:00:00 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14T12:00:00 +02:00",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14T12:00:00 -8",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14T12:00:00 +2500",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 1::",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 1::Z",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 1:: GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 1:: UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 1:: +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 1:: -8",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 1:: +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 1:2:3",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 1:2:3Z",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 1:2:3 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 1:2:3 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 1:2:3 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 1:2:3 -8",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 1:2:3 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 12:34:56.12",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 12:34:56.12Z",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 12:34:56.12 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 12:34:56.12 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 12:34:56.12 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 12:34:56.12 -8",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 12:34:56.12 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 13:00 pm",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 13:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 13:00 pm GMT",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 13:00 pm UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 13:00 pm +02:00",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 13:00 pm -8",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 13:00 pm +2500",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 12:00 am",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 12:00 amZ",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 12:00 am GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 12:00 am UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 12:00 am +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 12:00 am -8",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 12:00 am +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 0:00 pm",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 0:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14 0:00 pm GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 0:00 pm UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 0:00 pm +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 0:00 pm -8",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14 0:00 pm +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14Z",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 +02:00",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 -8",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 +2500",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 00:00",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 00:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 00:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 00:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 00:00 -8",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 00:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 23:59:59",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 23:59:59Z",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 23:59:59 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 23:59:59 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 23:59:59 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 23:59:59 -8",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 23:59:59 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 24:00",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 24:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 24:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 24:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 24:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 24:00 -8",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 24:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 24:00:00.001",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 24:00:00.001Z",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 24:00:00.001 GMT",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 24:00:00.001 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 24:00:00.001 +02:00",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 24:00:00.001 -8",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 24:00:00.001 +2500",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14T12:00:00",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14T12:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14T12:00:00 GMT",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14T12:00:00 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14T12:00:00 +02:00",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14T12:00:00 -8",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14T12:00:00 +2500",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 1::",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 1::Z",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 1:: GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 1:: UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 1:: +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 1:: -8",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 1:: +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 1:2:3",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 1:2:3Z",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 1:2:3 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 1:2:3 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 1:2:3 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 1:2:3 -8",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 1:2:3 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 12:34:56.12",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 12:34:56.12Z",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 12:34:56.12 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 12:34:56.12 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 12:34:56.12 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 12:34:56.12 -8",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 12:34:56.12 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 13:00 pm",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 13:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 13:00 pm GMT",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 13:00 pm UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 13:00 pm +02:00",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 13:00 pm -8",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 13:00 pm +2500",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 12:00 am",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 12:00 amZ",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 12:00 am GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 12:00 am UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 12:00 am +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 12:00 am -8",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 12:00 am +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 0:00 pm",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 0:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "2026-7-14 0:00 pm GMT",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 0:00 pm UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 0:00 pm +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 0:00 pm -8",
+      "valid": true
+    },
+    {
+      "input": "2026-7-14 0:00 pm +2500",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026Z",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 GMT",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 +02:00",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 -8",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 +2500",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 00:00",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 00:00Z",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 00:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 00:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 00:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 00:00 -8",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 00:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 23:59:59",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 23:59:59Z",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 23:59:59 GMT",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 23:59:59 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 23:59:59 +02:00",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 23:59:59 -8",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 23:59:59 +2500",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 24:00",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 24:00Z",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 24:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 24:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 24:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 24:00 -8",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 24:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 24:00:00.001",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 24:00:00.001Z",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 24:00:00.001 GMT",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 24:00:00.001 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 24:00:00.001 +02:00",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 24:00:00.001 -8",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 24:00:00.001 +2500",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026T12:00:00",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026T12:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026T12:00:00 GMT",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026T12:00:00 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026T12:00:00 +02:00",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026T12:00:00 -8",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026T12:00:00 +2500",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 1::",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 1::Z",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 1:: GMT",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 1:: UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 1:: +02:00",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 1:: -8",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 1:: +2500",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 1:2:3",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 1:2:3Z",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 1:2:3 GMT",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 1:2:3 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 1:2:3 +02:00",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 1:2:3 -8",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 1:2:3 +2500",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 12:34:56.12",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 12:34:56.12Z",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 12:34:56.12 GMT",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 12:34:56.12 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 12:34:56.12 +02:00",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 12:34:56.12 -8",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 12:34:56.12 +2500",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 13:00 pm",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 13:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 13:00 pm GMT",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 13:00 pm UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 13:00 pm +02:00",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 13:00 pm -8",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 13:00 pm +2500",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 12:00 am",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 12:00 amZ",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 12:00 am GMT",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 12:00 am UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 12:00 am +02:00",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 12:00 am -8",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 12:00 am +2500",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 0:00 pm",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 0:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "07/14/2026 0:00 pm GMT",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 0:00 pm UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 0:00 pm +02:00",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 0:00 pm -8",
+      "valid": true
+    },
+    {
+      "input": "07/14/2026 0:00 pm +2500",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026Z",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 GMT",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 +02:00",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 -8",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 +2500",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 00:00",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 00:00Z",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 00:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 00:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 00:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 00:00 -8",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 00:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 23:59:59",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 23:59:59Z",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 23:59:59 GMT",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 23:59:59 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 23:59:59 +02:00",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 23:59:59 -8",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 23:59:59 +2500",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 24:00",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 24:00Z",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 24:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 24:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 24:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 24:00 -8",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 24:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 24:00:00.001",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 24:00:00.001Z",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 24:00:00.001 GMT",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 24:00:00.001 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 24:00:00.001 +02:00",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 24:00:00.001 -8",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 24:00:00.001 +2500",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026T12:00:00",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026T12:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026T12:00:00 GMT",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026T12:00:00 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026T12:00:00 +02:00",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026T12:00:00 -8",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026T12:00:00 +2500",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 1::",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 1::Z",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 1:: GMT",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 1:: UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 1:: +02:00",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 1:: -8",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 1:: +2500",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 1:2:3",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 1:2:3Z",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 1:2:3 GMT",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 1:2:3 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 1:2:3 +02:00",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 1:2:3 -8",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 1:2:3 +2500",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 12:34:56.12",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 12:34:56.12Z",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 12:34:56.12 GMT",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 12:34:56.12 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 12:34:56.12 +02:00",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 12:34:56.12 -8",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 12:34:56.12 +2500",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 13:00 pm",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 13:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 13:00 pm GMT",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 13:00 pm UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 13:00 pm +02:00",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 13:00 pm -8",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 13:00 pm +2500",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 12:00 am",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 12:00 amZ",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 12:00 am GMT",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 12:00 am UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 12:00 am +02:00",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 12:00 am -8",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 12:00 am +2500",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 0:00 pm",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 0:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "14 July 2026 0:00 pm GMT",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 0:00 pm UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 0:00 pm +02:00",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 0:00 pm -8",
+      "valid": true
+    },
+    {
+      "input": "14 July 2026 0:00 pm +2500",
+      "valid": true
+    },
+    {
+      "input": "01/02/03",
+      "valid": true
+    },
+    {
+      "input": "01/02/03Z",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 GMT",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 +02:00",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 -8",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 +2500",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 00:00",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 00:00Z",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 00:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 00:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 00:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 00:00 -8",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 00:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 23:59:59",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 23:59:59Z",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 23:59:59 GMT",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 23:59:59 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 23:59:59 +02:00",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 23:59:59 -8",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 23:59:59 +2500",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 24:00",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 24:00Z",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 24:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 24:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 24:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 24:00 -8",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 24:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 24:00:00.001",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 24:00:00.001Z",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 24:00:00.001 GMT",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 24:00:00.001 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 24:00:00.001 +02:00",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 24:00:00.001 -8",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 24:00:00.001 +2500",
+      "valid": false
+    },
+    {
+      "input": "01/02/03T12:00:00",
+      "valid": false
+    },
+    {
+      "input": "01/02/03T12:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "01/02/03T12:00:00 GMT",
+      "valid": false
+    },
+    {
+      "input": "01/02/03T12:00:00 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "01/02/03T12:00:00 +02:00",
+      "valid": false
+    },
+    {
+      "input": "01/02/03T12:00:00 -8",
+      "valid": false
+    },
+    {
+      "input": "01/02/03T12:00:00 +2500",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 1::",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 1::Z",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 1:: GMT",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 1:: UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 1:: +02:00",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 1:: -8",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 1:: +2500",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 1:2:3",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 1:2:3Z",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 1:2:3 GMT",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 1:2:3 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 1:2:3 +02:00",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 1:2:3 -8",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 1:2:3 +2500",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 12:34:56.12",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 12:34:56.12Z",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 12:34:56.12 GMT",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 12:34:56.12 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 12:34:56.12 +02:00",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 12:34:56.12 -8",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 12:34:56.12 +2500",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 13:00 pm",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 13:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 13:00 pm GMT",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 13:00 pm UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 13:00 pm +02:00",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 13:00 pm -8",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 13:00 pm +2500",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 12:00 am",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 12:00 amZ",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 12:00 am GMT",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 12:00 am UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 12:00 am +02:00",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 12:00 am -8",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 12:00 am +2500",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 0:00 pm",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 0:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "01/02/03 0:00 pm GMT",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 0:00 pm UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 0:00 pm +02:00",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 0:00 pm -8",
+      "valid": true
+    },
+    {
+      "input": "01/02/03 0:00 pm +2500",
+      "valid": true
+    },
+    {
+      "input": "2026Z",
+      "valid": true
+    },
+    {
+      "input": "2026 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026 +02:00",
+      "valid": false
+    },
+    {
+      "input": "2026 -8",
+      "valid": false
+    },
+    {
+      "input": "2026 +2500",
+      "valid": false
+    },
+    {
+      "input": "2026 00:00",
+      "valid": true
+    },
+    {
+      "input": "2026 00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026 00:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026 00:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026 00:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026 00:00 -8",
+      "valid": true
+    },
+    {
+      "input": "2026 00:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026 23:59:59",
+      "valid": true
+    },
+    {
+      "input": "2026 23:59:59Z",
+      "valid": true
+    },
+    {
+      "input": "2026 23:59:59 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026 23:59:59 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026 23:59:59 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026 23:59:59 -8",
+      "valid": true
+    },
+    {
+      "input": "2026 23:59:59 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026 24:00",
+      "valid": true
+    },
+    {
+      "input": "2026 24:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026 24:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026 24:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026 24:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026 24:00 -8",
+      "valid": true
+    },
+    {
+      "input": "2026 24:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026 24:00:00.001",
+      "valid": false
+    },
+    {
+      "input": "2026 24:00:00.001Z",
+      "valid": false
+    },
+    {
+      "input": "2026 24:00:00.001 GMT",
+      "valid": false
+    },
+    {
+      "input": "2026 24:00:00.001 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "2026 24:00:00.001 +02:00",
+      "valid": false
+    },
+    {
+      "input": "2026 24:00:00.001 -8",
+      "valid": false
+    },
+    {
+      "input": "2026 24:00:00.001 +2500",
+      "valid": false
+    },
+    {
+      "input": "2026T12:00:00",
+      "valid": true
+    },
+    {
+      "input": "2026T12:00:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026T12:00:00 GMT",
+      "valid": false
+    },
+    {
+      "input": "2026T12:00:00 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "2026T12:00:00 +02:00",
+      "valid": false
+    },
+    {
+      "input": "2026T12:00:00 -8",
+      "valid": false
+    },
+    {
+      "input": "2026T12:00:00 +2500",
+      "valid": false
+    },
+    {
+      "input": "2026 1::",
+      "valid": true
+    },
+    {
+      "input": "2026 1::Z",
+      "valid": true
+    },
+    {
+      "input": "2026 1:: GMT",
+      "valid": true
+    },
+    {
+      "input": "2026 1:: UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026 1:: +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026 1:: -8",
+      "valid": true
+    },
+    {
+      "input": "2026 1:: +2500",
+      "valid": true
+    },
+    {
+      "input": "2026 1:2:3",
+      "valid": true
+    },
+    {
+      "input": "2026 1:2:3Z",
+      "valid": true
+    },
+    {
+      "input": "2026 1:2:3 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026 1:2:3 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026 1:2:3 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026 1:2:3 -8",
+      "valid": true
+    },
+    {
+      "input": "2026 1:2:3 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026 12:34:56.12",
+      "valid": true
+    },
+    {
+      "input": "2026 12:34:56.12Z",
+      "valid": true
+    },
+    {
+      "input": "2026 12:34:56.12 GMT",
+      "valid": true
+    },
+    {
+      "input": "2026 12:34:56.12 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026 12:34:56.12 +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026 12:34:56.12 -8",
+      "valid": true
+    },
+    {
+      "input": "2026 12:34:56.12 +2500",
+      "valid": true
+    },
+    {
+      "input": "2026 13:00 pm",
+      "valid": false
+    },
+    {
+      "input": "2026 13:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "2026 13:00 pm GMT",
+      "valid": false
+    },
+    {
+      "input": "2026 13:00 pm UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "2026 13:00 pm +02:00",
+      "valid": false
+    },
+    {
+      "input": "2026 13:00 pm -8",
+      "valid": false
+    },
+    {
+      "input": "2026 13:00 pm +2500",
+      "valid": false
+    },
+    {
+      "input": "2026 12:00 am",
+      "valid": true
+    },
+    {
+      "input": "2026 12:00 amZ",
+      "valid": false
+    },
+    {
+      "input": "2026 12:00 am GMT",
+      "valid": true
+    },
+    {
+      "input": "2026 12:00 am UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026 12:00 am +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026 12:00 am -8",
+      "valid": true
+    },
+    {
+      "input": "2026 12:00 am +2500",
+      "valid": true
+    },
+    {
+      "input": "2026 0:00 pm",
+      "valid": true
+    },
+    {
+      "input": "2026 0:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "2026 0:00 pm GMT",
+      "valid": true
+    },
+    {
+      "input": "2026 0:00 pm UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "2026 0:00 pm +02:00",
+      "valid": true
+    },
+    {
+      "input": "2026 0:00 pm -8",
+      "valid": true
+    },
+    {
+      "input": "2026 0:00 pm +2500",
+      "valid": true
+    },
+    {
+      "input": "Jan 1",
+      "valid": true
+    },
+    {
+      "input": "Jan 1Z",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 GMT",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 +02:00",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 -8",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 +2500",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 00:00",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 00:00Z",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 00:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 00:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 00:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 00:00 -8",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 00:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 23:59:59",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 23:59:59Z",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 23:59:59 GMT",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 23:59:59 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 23:59:59 +02:00",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 23:59:59 -8",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 23:59:59 +2500",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 24:00",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 24:00Z",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 24:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 24:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 24:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 24:00 -8",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 24:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 24:00:00.001",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 24:00:00.001Z",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 24:00:00.001 GMT",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 24:00:00.001 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 24:00:00.001 +02:00",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 24:00:00.001 -8",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 24:00:00.001 +2500",
+      "valid": false
+    },
+    {
+      "input": "Jan 1T12:00:00",
+      "valid": false
+    },
+    {
+      "input": "Jan 1T12:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "Jan 1T12:00:00 GMT",
+      "valid": false
+    },
+    {
+      "input": "Jan 1T12:00:00 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "Jan 1T12:00:00 +02:00",
+      "valid": false
+    },
+    {
+      "input": "Jan 1T12:00:00 -8",
+      "valid": false
+    },
+    {
+      "input": "Jan 1T12:00:00 +2500",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 1::",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 1::Z",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 1:: GMT",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 1:: UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 1:: +02:00",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 1:: -8",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 1:: +2500",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 1:2:3",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 1:2:3Z",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 1:2:3 GMT",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 1:2:3 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 1:2:3 +02:00",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 1:2:3 -8",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 1:2:3 +2500",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 12:34:56.12",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 12:34:56.12Z",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 12:34:56.12 GMT",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 12:34:56.12 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 12:34:56.12 +02:00",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 12:34:56.12 -8",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 12:34:56.12 +2500",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 13:00 pm",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 13:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 13:00 pm GMT",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 13:00 pm UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 13:00 pm +02:00",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 13:00 pm -8",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 13:00 pm +2500",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 12:00 am",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 12:00 amZ",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 12:00 am GMT",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 12:00 am UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 12:00 am +02:00",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 12:00 am -8",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 12:00 am +2500",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 0:00 pm",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 0:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "Jan 1 0:00 pm GMT",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 0:00 pm UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 0:00 pm +02:00",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 0:00 pm -8",
+      "valid": true
+    },
+    {
+      "input": "Jan 1 0:00 pm +2500",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50Z",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 GMT",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 +02:00",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 -8",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 +2500",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 00:00",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 00:00Z",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 00:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 00:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 00:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 00:00 -8",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 00:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 23:59:59",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 23:59:59Z",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 23:59:59 GMT",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 23:59:59 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 23:59:59 +02:00",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 23:59:59 -8",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 23:59:59 +2500",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 24:00",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 24:00Z",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 24:00 GMT",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 24:00 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 24:00 +02:00",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 24:00 -8",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 24:00 +2500",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 24:00:00.001",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 24:00:00.001Z",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 24:00:00.001 GMT",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 24:00:00.001 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 24:00:00.001 +02:00",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 24:00:00.001 -8",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 24:00:00.001 +2500",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50T12:00:00",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50T12:00:00Z",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50T12:00:00 GMT",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50T12:00:00 UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50T12:00:00 +02:00",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50T12:00:00 -8",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50T12:00:00 +2500",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 1::",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 1::Z",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 1:: GMT",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 1:: UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 1:: +02:00",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 1:: -8",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 1:: +2500",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 1:2:3",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 1:2:3Z",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 1:2:3 GMT",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 1:2:3 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 1:2:3 +02:00",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 1:2:3 -8",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 1:2:3 +2500",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 12:34:56.12",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 12:34:56.12Z",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 12:34:56.12 GMT",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 12:34:56.12 UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 12:34:56.12 +02:00",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 12:34:56.12 -8",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 12:34:56.12 +2500",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 13:00 pm",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 13:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 13:00 pm GMT",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 13:00 pm UTC+0200",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 13:00 pm +02:00",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 13:00 pm -8",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 13:00 pm +2500",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 12:00 am",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 12:00 amZ",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 12:00 am GMT",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 12:00 am UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 12:00 am +02:00",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 12:00 am -8",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 12:00 am +2500",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 0:00 pm",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 0:00 pmZ",
+      "valid": false
+    },
+    {
+      "input": "1 Jan 50 0:00 pm GMT",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 0:00 pm UTC+0200",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 0:00 pm +02:00",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 0:00 pm -8",
+      "valid": true
+    },
+    {
+      "input": "1 Jan 50 0:00 pm +2500",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14T23:59:59.1Z",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14T23:59:59.1234567890123Z",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14T24:00Z",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14T24:00:00.000Z",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14T24:00:00.0001Z",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14T12:00+0200",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14T12:00+02:00",
+      "valid": true
+    },
+    {
+      "input": "2026-07-14T12:00+2400",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14T12:00+00:60",
+      "valid": false
+    },
+    {
+      "input": "2026-07-14t12:00z",
+      "valid": true
+    },
+    {
+      "input": "+275760-09-13T00:00:00.000Z",
+      "valid": true
+    },
+    {
+      "input": "+275760-09-13T00:00:00.001Z",
+      "valid": false
+    },
+    {
+      "input": "-271821-04-20T00:00:00.000Z",
+      "valid": true
+    },
+    {
+      "input": "-271821-04-19T23:59:59.999Z",
+      "valid": false
+    }
+  ]
+}

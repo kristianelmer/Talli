@@ -74,6 +74,23 @@ The CLI remains a consumer of the same root public interface, preserving its
 JSON, text, exit status and errors. Backend capability code never imports the
 legacy root model.
 
+`AnnualAccountsEvidenceInput` freezes an untrusted TT02 document and binds it to
+the company, actor and workflow-supplied recording time. The pure
+`import_annual_accounts_evidence` returns `AnnualAccountsEvidenceProjection` with
+the original ordered validations, hash composition, references and Norwegian
+errors. The result remains `pending`; a signed and archived TT02 receipt does
+not imply accepted evidence or production readiness. The workflow must authenticate
+the actor, authorize membership and MFA, and persist the projection separately.
+
+The released importer accepts V8's permissive finite `Date.parse` inputs after
+ECMAScript trimming. A local parser adaptation preserves this compatibility;
+its BSD license is included as `V8-LICENSE`. It only tests finite acceptance and
+does not assign an authority timestamp. At TimeClip endpoints it uses the existing
+PyICU dependency and process timezone, matching the pinned Node ICU behavior.
+Recording time is explicitly supplied by the workflow, so this pure operation
+does not read the clock. Unlike the Tax profile, this released Accounts profile
+does not validate otherwise unused income-year or secrets flags.
+
 ## Tests
 
 `apps/backend/tests/test_annual_accounts_filing.py` compares the public contracts
@@ -83,5 +100,7 @@ nested ignored metadata and signed integer overflow probes. Architecture enforce
 the module manifest, documentation and language-aware dependency evidence.
 `tests/test_annual_accounts_offline_migration.py` verifies 46 frozen root API cases
 and 14 actual CLI executions against pre-migration output. Existing Annual, Tax
-and Archive tests remain active. Evidence projection, provider-state relocation, generated workflow,
+and Archive tests remain active. `test_annual_accounts_evidence.py` checks 43 frozen
+evidence results, 1,804 actual importer date cases, 4,320 TimeClip cases across six
+timezones, and immutable inputs/results. Provider-state relocation, generated workflow,
 data migration/RLS/rollback and full stage-exit gates remain pending.
