@@ -114,19 +114,20 @@ def test_accepted_replay_reads_no_key_or_token_and_does_not_rewrite_evidence(rf_
     assert summary == original and calls == [] and path.read_bytes() == previous
 
 
-def test_retry_continues_original_durable_uuid_intent_and_skips_already_recorded_writes(rf_environment, fake_xml):
+def test_failed_post_preserves_original_intent_and_requires_reconciliation(rf_environment, fake_xml):
     def fail_subdocument(request):
         if request.url.path.endswith("/1086U"):
             return httpx.Response(503, json={"kode": "GLD_004", "melding": SECRET})
     with pytest.raises(Rf1086AuthorityError):
         execute(rf_environment, handler=fail_subdocument)
     previous = evidence(rf_environment)
-    assert previous["status"] == "failed_retryable" and previous["hovedskjema"]["hovedskjemaId"] == MAIN_ID
-    summary, calls = execute(rf_environment)
-    current = evidence(rf_environment)
-    assert [request.url.path.split("/")[-1] for request in calls] == ["token", "1086U", "bekreft", "dokumenter"]
-    assert current["preparedAt"] == previous["preparedAt"] and current["idempotencyKeys"] == previous["idempotencyKeys"]
-    assert summary["status"] == "accepted" and SECRET not in json.dumps(previous)
+    assert previous["status"] == "unknown" and previous["hovedskjema"]["hovedskjemaId"] == MAIN_ID
+    saved = Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"]).read_bytes()
+    with pytest.raises(Rf1086AuthorityError, match="RECONCILIATION_REQUIRED") as caught:
+        execute(rf_environment)
+    assert caught.value.test_calls == []
+    assert Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"]).read_bytes() == saved
+    assert SECRET not in json.dumps(previous)
 
 
 def test_confirmed_retry_only_lists_original_archive(rf_environment, fake_xml):
@@ -150,9 +151,9 @@ def test_malformed_saved_keys_are_never_replaced_with_new_provider_intent(rf_env
     saved = evidence(rf_environment)
     saved["idempotencyKeys"] = {}
     Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"]).write_text(json.dumps(saved))
-    with pytest.raises(KeyError) as caught:
+    with pytest.raises(Rf1086AuthorityError, match="SAVED_INTENT_INVALID") as caught:
         execute(rf_environment)
-    assert [request.url.path.split("/")[-1] for request in caught.value.test_calls] == ["token"]
+    assert caught.value.test_calls == []
     assert evidence(rf_environment)["idempotencyKeys"] == {}
 
 

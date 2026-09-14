@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "RF-1086",
+  "status": "IN_PROGRESS_LOCAL_RF_JOURNAL_HARDENING",
+  "source": "https://github.com/kristianelmer/Talli/issues/193",
+  "predecessor": {
+    "issue": "#153",
+    "merge": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+    "closure": "CLOSED_2026-09-14T22:42:36Z",
+    "receipt": "https://github.com/kristianelmer/Talli/issues/153#issuecomment-5671727749"
+  },
+  "criteria": [
+    {
+      "id": "GH-193-RF-A1",
+      "requirement": "official-source mapping, current schema/code-list pin and drift gate;",
+      "status": "PENDING"
+    },
+    {
+      "id": "GH-193-RF-A2",
+      "requirement": "complete readiness, preview, cross-output reconciliation, review, AAL2 approval, authority entitlement, idempotent journal, submit-once, feedback/correction, final decision/receipt, and archive;",
+      "status": "PENDING"
+    },
+    {
+      "id": "GH-193-RF-A3",
+      "requirement": "current TT02/service conformance plus representative genuine-company final production evidence;",
+      "status": "PENDING"
+    },
+    {
+      "id": "GH-193-RF-A4",
+      "requirement": "safe unknown-outcome reconciliation and no duplicate logical submission;",
+      "status": "PENDING"
+    },
+    {
+      "id": "GH-193-RF-A5",
+      "requirement": "precise enabled/disabled/blocked customer copy and operator kill switch;",
+      "status": "PENDING"
+    },
+    {
+      "id": "GH-193-RF-A6",
+      "requirement": "provider credentials isolated in backend; security, privacy, load, incident/rollback, browser/mobile, and two immutable complete gates;",
+      "status": "PENDING"
+    },
+    {
+      "id": "GH-193-RF-A7",
+      "requirement": "old generic filing writers/rules/adapters removed.",
+      "status": "PENDING"
+    }
+  ],
+  "limits": [
+    "Local RF work is active. No provider action or RF acceptance yet.",
+    "RF must pass before Tax begins; Tax must pass before Accounts.",
+    "The #172 accepted supported boundary cannot be silently narrowed.",
+    "No #149/#208/#192 final/#194 progression without the approved prerequisites."
+  ],
+  "claim": "https://github.com/kristianelmer/Talli/issues/193#issuecomment-5671808140"
+}
