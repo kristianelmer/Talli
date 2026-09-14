@@ -17,7 +17,7 @@ def truthy(value):
     if isinstance(value, str):
         return bool(value)
     if isinstance(value, (int, float)):
-        return value != 0 and not math.isnan(value)
+        return value != 0 and not (isinstance(value, float) and math.isnan(value))
     return True
 
 
@@ -32,7 +32,10 @@ def text(value):
         return ','.join('' if item is None else text(item) for item in value)
     if not isinstance(value, (int, float)):
         return '[object Object]'
-    value = float(value)
+    try:
+        value = float(value)
+    except OverflowError:
+        value = -math.inf if value < 0 else math.inf
     if math.isnan(value):
         return 'NaN'
     if math.isinf(value):
@@ -67,7 +70,9 @@ def number(value):
             return math.nan
     try:
         return float(value)
-    except (ValueError, TypeError, OverflowError):
+    except OverflowError:
+        return -math.inf if value < 0 else math.inf
+    except (ValueError, TypeError):
         return math.nan
 
 

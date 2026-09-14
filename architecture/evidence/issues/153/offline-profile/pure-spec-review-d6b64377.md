@@ -1,0 +1,11 @@
+Changes requested — two bounded parity defects at `d6b64377fbef401cdafcf3c5bc59cece8f816f61` versus `f8ec6c52`.
+
+1. **P2 — recursive freezing rejects ignored valid JSON** (`public.py:9–13`). A supported input with an unused Annual metadata field containing 600 nested arrays still produces the original 21 fields in baseline Node 24. Constructing `AnnualAccountsSource` instead raises `RecursionError`. A 100-level control passes; 1,200 levels also reproduce the regression. #153-A1 requires “outputs identical,” and #132 requires fixed-input/error equivalence. Use iterative detached freezing; the parent’s reported working-tree correction is outside this immutable review.
+
+2. **P2 — integer overflow changes Number semantics** (`numbers.py:68–71`). A 401-digit positive/negative JSON integer debit on account 1920 becomes signed Infinity in the predecessor’s binary64 input. The new coercer catches `OverflowError` and returns NaN, changing the bank/assets numeric-special results. Handle signed numeric overflow separately from invalid conversion. This is malformed/nonfinite preview parity under #153-A1 and the module’s explicit ECMAScript-coercion contract, not a supported filing or production claim.
+
+Independent private verification passed all 254 committed conformance cases. Eighteen additional scalar/array/whitespace/binary64 controls agree; only the two signed-overflow probes differ after normalizing JSON number representation. The 14 actual CLI captures reproduce byte-for-byte, closing the prior CLI presentation characterization gap. All 19 manifest references validate.
+
+The public boundary correctly documents caller-supplied facts, with no authorization, source-completeness or authority-acceptance attestation. Corporate blockers and company/year ledger selection preserve the reviewed ordering; common Annual policy remains separate. Frozen XML/error cases cover UTF-16, whitespace and Date.UTC quirks. No existing caller, SQL or provider behavior is switched by this slice.
+
+All six criteria remain pending. Evidence import, offline profile, authenticated workflow, source handoff, migration/rollback, retirement and full gates are outside this milestone. No shared source or database was modified, and no exit credit is granted.

@@ -56,18 +56,32 @@ length, ECMAScript whitespace, safe whole integers and the Date.UTC year-0–99
 rejection. These rules are local to the released Accounts profile, not shared
 accounting policy or a dependency on Tax internals.
 
-The existing offline public-data simulator has distinct 22-field, Python-rounding,
-account-coverage and attachment semantics. Its captured profile remains unchanged
-pending migration through a separately named public offline contract in this same
-capability. It cannot be silently replaced with the live RR0002 profile or left as
-a second Accounts owner at exit. Common offline Annual/Tax/Archive rules remain
-outside this stage.
+The offline public-data profile has distinct 22-field, Python-rounding,
+account-coverage and attachment semantics. `AnnualAccountsOfflineSource` receives
+the existing common Annual totals, common readiness issues and Accounts flags.
+`build_annual_accounts_offline_payload`, `assess_annual_accounts_offline` and
+`simulate_annual_accounts_offline` own the Accounts projection, attachment rules,
+ordered Accounts blockers, preview and simulated receipt. The simulation returns
+`AnnualAccountsOfflineSimulation`; all nested outputs are immutable. This profile
+does not emit live XML or certify production readiness.
+
+The existing root `holding_core.annual` public functions now adapt source/output
+shapes to these contracts. Their Accounts-specific implementations are removed.
+Common AnnualData totals, common readiness, Tax and Archive behavior remain byte
+unchanged at the function/class definition level. These are existing common
+source facts, not a second Accounts calculation or a new shared-kernel package.
+The CLI remains a consumer of the same root public interface, preserving its
+JSON, text, exit status and errors. Backend capability code never imports the
+legacy root model.
 
 ## Tests
 
 `apps/backend/tests/test_annual_accounts_filing.py` compares the public contracts
 against immutable predecessor outputs: 67 payload cases, 175 exact XML/error cases,
-11 readiness cases and nested immutability. Architecture enforcement reconciles
+11 readiness cases and nested immutability. The review follow-up includes deeply
+nested ignored metadata and signed integer overflow probes. Architecture enforcement reconciles
 the module manifest, documentation and language-aware dependency evidence.
-Evidence projection, offline CLI, provider-state relocation, generated workflow,
+`tests/test_annual_accounts_offline_migration.py` verifies 46 frozen root API cases
+and 14 actual CLI executions against pre-migration output. Existing Annual, Tax
+and Archive tests remain active. Evidence projection, provider-state relocation, generated workflow,
 data migration/RLS/rollback and full stage-exit gates remain pending.

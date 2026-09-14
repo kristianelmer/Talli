@@ -1,0 +1,7 @@
+(node:37134) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///private/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-pure-standards-o28co18v/apps/web/app/lib/annual-accounts.ts is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /private/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-pure-standards-o28co18v/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"depth":600,"predecessorUnchanged":true}
+
+RecursionError maximum recursion depth exceeded

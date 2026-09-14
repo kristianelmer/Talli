@@ -1,0 +1,17 @@
+[
+  {
+    "depth": 100,
+    "status": "ok",
+    "fieldCount": 21
+  },
+  {
+    "depth": 600,
+    "status": "RecursionError",
+    "message": "maximum recursion depth exceeded"
+  },
+  {
+    "depth": 1200,
+    "status": "RecursionError",
+    "message": "maximum recursion depth exceeded"
+  }
+]

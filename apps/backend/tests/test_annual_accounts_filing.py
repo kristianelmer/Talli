@@ -102,3 +102,24 @@ def test_snapshots_do_not_alias_caller_data_or_expose_mutable_results():
         first.fields[0]['value'] = 2024
     with pytest.raises(FrozenInstanceError):
         first.schema_type = 'changed'
+
+
+@pytest.mark.parametrize('location', ['annual', 'ledger'])
+def test_deep_ignored_json_metadata_preserves_original_payload(location):
+    value = json.loads(json.dumps(CAPTURE['payloadCases'][0]['input']))
+    nested = {'synthetic': True}
+    for _ in range(600):
+        nested = [nested]
+    target = value['annualData'] if location == 'annual' else value['ledgerEntries'][0]
+    target['ignored'] = nested
+    assert capture(lambda: payload(build_annual_accounts(source(value)))) == CAPTURE['payloadCases'][0]['output']
+
+
+@pytest.mark.parametrize('sign', [-1, 1])
+def test_unbounded_json_integer_amount_retains_signed_binary64_overflow(sign):
+    value = json.loads(json.dumps(CAPTURE['payloadCases'][0]['input']))
+    value['ledgerEntries'][0]['lines'] = [{'account': '1920', 'debit': sign * 10 ** 400, 'credit': 0}]
+    result = build_annual_accounts(source(value))
+    amounts = {field['tag']: field['value'] for field in result.fields}
+    assert amounts['sumBankinnskuddKontanter/aarets'] == sign * math.inf
+    assert amounts['sumEiendeler/aarets'] == sign * math.inf

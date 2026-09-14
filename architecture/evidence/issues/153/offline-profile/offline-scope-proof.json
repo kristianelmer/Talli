@@ -1,0 +1,42 @@
+{
+  "baselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "source": "holding_core/annual.py",
+  "removedAccountsPolicy": [
+    "_annual_accounts_payload_issues",
+    "_annual_accounts_attachment_decisions",
+    "_rr0002_fields",
+    "_field"
+  ],
+  "delegatingFunctions": [
+    "assess_annual_accounts_readiness",
+    "simulate_annual_accounts",
+    "build_annual_accounts_payload"
+  ],
+  "newTechnicalAdapters": [
+    "_accounts_offline_source",
+    "_offline_json"
+  ],
+  "unchangedDefinitions": {
+    "DocumentRecord": "1e3ed9d318ce18cca7b68cb44d22f93aa6dbfaf0da6dd37f4014b0cb93eb0547",
+    "YearEndInterviewAnswers": "e6fe59b86af43a64988713be480dee1c34d4722a9f4d00af5836b9b23c932461",
+    "AnnualReadinessIssue": "4bee519fdc4223246fa9fbec39b4c3cb91fc41d63cf35b905f6c9b968bf3fd1b",
+    "AnnualReadinessResult": "7703dbbe13b9c3f0947908354cb49c668f2c037c8428f22120c65ac8eca80400",
+    "AnnualData": "142ae0793603e78ace9b26f23c3365370b3f5ff6ddbce54e19b126004c13cbde",
+    "FilingSimulation": "f2f295e75de013d78b94d95f48fe0c07b1d1f49044483b4c955ff02331ba1849",
+    "Rr0002Field": "b4d6324dd40f441c15c5f3a8f552cd3b4efcb0986297f0ff8de446e853beed52",
+    "AnnualAccountsNotePayload": "01daa316284611791a2ab86ee572d296a39b92391cd4d736f7b9ff94cd73f196",
+    "AnnualAccountsAttachmentDecision": "34317ef0d845aab2a184e2c2b8736447fdc4b50059d6e17dfe29a08aafd28dc3",
+    "AnnualAccountsPayload": "08773c044b5c9a9871f5eacdbcf719c2e0a8e52ce1398629a96c648ca5467eb7",
+    "CompanyArchive": "d8360dbec91ea1e629edbeae3fbe50ee069ee4cdb30972954bdf52fad0177e95",
+    "build_annual_data": "d94e2e559ea2fedd96ab2c96aca6445f21ba91e59c521a0e7b2b7b93c1e390f6",
+    "assess_tax_return_readiness": "8a957ad9ca70b495af17f07a66b39a606e80ca0091074d849f1361319b21184d",
+    "simulate_tax_return": "de27e4442d16662027ae27bad7e965c5de97e020c6753017a61bea154478c2bf",
+    "build_company_archive": "047cadaff8713416b64bbf27c830d780cfb754ac9702519b9e9dd5a79d564392",
+    "write_company_archive": "3294cae702b93f35d1533590711800f218e50b3a69c105d38eba44c96ad4af10",
+    "_common_issues": "d58836822265752b32f0b88d2437018049fd2f5b55b7176f930e526782cfaaf7",
+    "_result": "cbe8f157ee5f72955c2350205feb7608e88580a2f5ca7cf5c671baaf50b1199f",
+    "_error": "dd211e7749cb59bf5944f7c3a71a556e194bc1f5a654780258cf3ad4cd9531fd",
+    "_warning": "d4822674f0dd334b80d403d8cf32136690df6b60a3caf9e9cdf9e22d1b1e544c",
+    "_money": "461c92b6cdb39e5c7c22b04133816a05f2cad5eef68f0346dd2ee5cdcf928a88"
+  }
+}

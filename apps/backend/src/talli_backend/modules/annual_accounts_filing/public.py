@@ -7,11 +7,28 @@ from types import MappingProxyType
 
 
 def _freeze(value):
-    if isinstance(value, Mapping):
-        return MappingProxyType({key: _freeze(item) for key, item in value.items()})
-    if isinstance(value, (list, tuple)):
-        return tuple(_freeze(item) for item in value)
-    return value
+    # Ignored JSON metadata may be deeply nested. Copy without Python call-stack
+    # recursion, while retaining input order and rejecting non-JSON cycles.
+    result = [None]
+    active = set()
+    pending = [('visit', value, result, 0)]
+    while pending:
+        operation, item, parent, key = pending.pop()
+        if operation == 'finish':
+            original, copied = item
+            parent[key] = MappingProxyType(copied) if isinstance(copied, dict) else tuple(copied)
+            active.remove(id(original))
+        elif isinstance(item, (Mapping, list, tuple)):
+            if id(item) in active:
+                raise ValueError('Annual Accounts source facts must not contain cycles.')
+            active.add(id(item))
+            entries = list(item.items()) if isinstance(item, Mapping) else list(enumerate(item))
+            copied = {child_key: None for child_key, _ in entries} if isinstance(item, Mapping) else [None] * len(item)
+            pending.append(('finish', (item, copied), parent, key))
+            pending.extend(('visit', child, copied, child_key) for child_key, child in reversed(entries))
+        else:
+            parent[key] = item
+    return result[0]
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,8 +113,73 @@ def assess_annual_accounts_readiness(
     return assess(source, company_id, corporate)
 
 
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsOfflineSource:
+    """Existing public-data Annual totals; deliberately distinct from live Ledger input.
+
+    Annual's offline model retains common aggregation and common readiness policy.
+    This contract owns only the Accounts projection of those immutable facts.
+    """
+    company_id: str
+    income_year: int
+    bank_balance: float
+    investment_balance: float
+    admin_costs: float
+    financial_income: float
+    financial_costs: float
+    shareholder_loan_payable: float
+    share_capital: float
+    retained_earnings: float
+    result_before_tax: float
+    general_meeting_approved: bool
+    common_issues: tuple[Mapping[str, object], ...] = ()
+    confirmations: tuple[str, ...] = ()
+    annual_full_time_equivalents: float | None = 0
+    audit_required: bool = False
+    small_enterprise: bool = True
+    annual_report_required: bool = False
+    cash_flow_statement_required: bool = False
+    sustainability_reporting_required: bool = False
+    fiscal_year_is_calendar_year: bool = True
+    prior_year_figures_confirmed: bool = True
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'common_issues', _freeze(self.common_issues))
+        object.__setattr__(self, 'confirmations', tuple(self.confirmations))
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsOfflineSimulation:
+    filing: str
+    preview: str
+    readiness: Mapping[str, object]
+    simulated_receipt_id: str | None
+    payload: Mapping[str, object]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'readiness', _freeze(self.readiness))
+        object.__setattr__(self, 'payload', _freeze(self.payload))
+
+
+def build_annual_accounts_offline_payload(source: AnnualAccountsOfflineSource) -> Mapping[str, object]:
+    from .offline import build_payload
+    return _freeze(build_payload(source))
+
+
+def assess_annual_accounts_offline(source: AnnualAccountsOfflineSource) -> Mapping[str, object]:
+    from .offline import assess
+    return _freeze(assess(source))
+
+
+def simulate_annual_accounts_offline(source: AnnualAccountsOfflineSource) -> AnnualAccountsOfflineSimulation:
+    from .offline import simulate
+    return simulate(source)
+
+
 __all__ = [
     'AnnualAccountsSource', 'AnnualAccountsCandidate', 'AnnualAccountsRenderInput',
     'AnnualAccountsDocuments', 'AnnualAccountsReadinessIssue', 'AnnualAccountsCorporateReadiness',
     'build_annual_accounts', 'render_annual_accounts', 'assess_annual_accounts_readiness',
+    'AnnualAccountsOfflineSource', 'AnnualAccountsOfflineSimulation',
+    'build_annual_accounts_offline_payload', 'assess_annual_accounts_offline', 'simulate_annual_accounts_offline',
 ]

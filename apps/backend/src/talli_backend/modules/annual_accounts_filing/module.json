@@ -4,7 +4,7 @@
   "name": "annual_accounts_filing",
   "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing",
   "owner": "backend:annual_accounts_filing",
-  "purpose": "Own deterministic annual-accounts calculations, RR0002 XML and Accounts-specific readiness; migration persistence and authority workflow remain pending.",
+  "purpose": "Own deterministic annual-accounts calculations, RR0002 XML, Accounts-specific readiness and the distinct offline public-data Accounts projection; persistence and authority workflow migration remain pending.",
   "documentation": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.annual_accounts_filing.public",
   "exports": {
@@ -18,7 +18,12 @@
       "AnnualAccountsCorporateReadiness",
       "build_annual_accounts",
       "render_annual_accounts",
-      "assess_annual_accounts_readiness"
+      "assess_annual_accounts_readiness",
+      "AnnualAccountsOfflineSource",
+      "AnnualAccountsOfflineSimulation",
+      "build_annual_accounts_offline_payload",
+      "assess_annual_accounts_offline",
+      "simulate_annual_accounts_offline"
     ],
     "events": [],
     "errors": [],
@@ -51,7 +56,8 @@
   ],
   "tests": {
     "policy": "apps/backend/tests/test_annual_accounts_filing.py",
-    "architecture": "tests/architecture_foundation.test.mjs"
+    "architecture": "tests/architecture_foundation.test.mjs",
+    "offline": "tests/test_annual_accounts_offline_migration.py"
   },
   "compatibilityExceptions": []
 }
