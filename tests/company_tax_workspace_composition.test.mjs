@@ -1,10 +1,23 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 
 const read = path => readFileSync(new URL(path, import.meta.url), "utf8");
+test("owner actions compile as a Next server-action module", async () => {
+  const require = createRequire(import.meta.url);
+  const { transform, loadBindings } = require("next/dist/build/swc");
+  await loadBindings();
+  const result = await transform(read("../apps/web/app/actions.ts"), {
+    filename: "/app/actions.ts",
+    jsc: { parser: { syntax: "typescript" }, target: "es2022" },
+    serverActions: { isReactServerLayer: true, isDevelopment: false,
+      useCacheEnabled: false, hashSalt: "tax-consumer-test", cacheKinds: ["default"] },
+  });
+  assert.ok(result.code.includes("registerServerReference"));
+});
 function module(source, dependencies = {}) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: {
