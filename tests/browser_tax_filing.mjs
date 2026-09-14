@@ -90,14 +90,15 @@ test("Tax owner imports pending TT02 feedback, recovers a lost response and read
   await manual.getByRole('button',{name:'Lagre test-evidens',exact:true}).click();
   await poll(()=>fixture.controls.filingCalls.some(c=>c.path==='/api/v1/company-tax/test-evidence'));
   assert.equal(fixture.controls.filingCalls.find(c=>c.path==='/api/v1/company-tax/test-evidence').status,200);
-  const relations=['company_tax_filing.filing_submissions','company_tax_filing.authority_test_runs','company_tax_filing.authority_permissions','public.audit_events','public.filing_submissions','public.authority_test_runs'];
+  const relations=['company_tax_filing.filing_submissions','company_tax_filing.authority_test_runs','company_tax_filing.authority_permissions','public.audit_events'];
   await fixtureTableTransaction(fixture.db,relations,async()=>{
     const count=async(table,extra='')=>(await fixture.db.query(`select count(*)::int count from ${table} where company_id=$1 ${extra}`,[fixture.companyId])).rows[0].count;
     assert.equal(await count('company_tax_filing.filing_submissions'),1);
     assert.equal(await count('company_tax_filing.authority_test_runs'),2);
     assert.equal(await count('company_tax_filing.authority_permissions'),1);
     assert.equal(await count('public.audit_events',"and action='company_tax_tt02_evidence_imported'"),1);
-    assert.equal(await count('public.filing_submissions'),0);assert.equal(await count('public.authority_test_runs'),0);
+    for (const family of ['filing_submissions','authority_test_runs'])
+      assert.equal((await fixture.db.query('select to_regclass($1) is null absent',[`public.${family}`])).rows[0].absent,true);
     const row=(await fixture.db.query('select submitted_payload::text payload,receipt_metadata::text receipt from company_tax_filing.filing_submissions where company_id=$1',[fixture.companyId])).rows[0];
     assert.doesNotMatch(row.payload+row.receipt,/SENTINEL|accessToken|privateKeyPem|personalIdentifier/u);
   });

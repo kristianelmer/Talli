@@ -882,53 +882,36 @@ async function seedAnnualLoop(admin, database, ids, onCompanyCreated) {
     "authority_connections.system_user_requests",
     "shareholder_register_filing.authority_permissions",
     "shareholder_register_filing.filing_previews",
-    "public.authority_permissions",
-    "public.filing_previews",
   ], async () => {
     await database.query(`insert into authority_connections.system_user_requests
       (id,company_id,initiating_owner_user_id,obligation,external_ref,status,preflight_verified_at,accepted_at)
       values($1,$2,$3,'aksjonaerregisteroppgaven',$4,'accepted',now(),now())`,
       [systemUserRequestId,companyId,ownerId,
         createHash("sha256").update(`browser-system-user:${systemUserRequestId}`).digest("base64url")]);
-    const permission = (await database.query(`insert into shareholder_register_filing.authority_permissions
+    await database.query(`insert into shareholder_register_filing.authority_permissions
       (company_id,obligation,submitter_user_id,confirmed_by,production_enabled)
-      values($1,'aksjonaerregisteroppgaven',$2,$2,true) returning id`, [companyId,ownerId])).rows[0];
-    await database.query(`insert into public.authority_permissions
-      select (jsonb_populate_record(null::public.authority_permissions,to_jsonb(r))).*
-      from shareholder_register_filing.authority_permissions r where r.id=$1`, [permission.id]);
+      values($1,'aksjonaerregisteroppgaven',$2,$2,true)`, [companyId,ownerId]);
     await database.query(`insert into shareholder_register_filing.filing_previews
       (id,company_id,setup_id,income_year,filing,status,issues,preview,hovedskjema_xml,underskjema_xml,source,created_by)
       values($1,$2,$3,2025,'aksjonærregisteroppgaven','ready','[]',$4,$5,$6::jsonb,'browser_test',$7)`,
       [previewId,companyId,setupId,"RF-1086 forhåndsvisning for Talli Browser Holding AS",
         "<RF-1086><org>test</org></RF-1086>",
         JSON.stringify({ [shareholderId]: "<RF-1086U><shareholder>test</shareholder></RF-1086U>" }),ownerId]);
-    await database.query(`insert into public.filing_previews
-      select (jsonb_populate_record(null::public.filing_previews,to_jsonb(r))).*
-      from shareholder_register_filing.filing_previews r where r.id=$1`, [previewId]);
-    for (const [table, id] of [["authority_permissions", permission.id], ["filing_previews", previewId]]) {
-      assert.equal((await database.query(`select to_jsonb(p)=to_jsonb(r) exact
-        from public.${table} p join shareholder_register_filing.${table} r using(id)
-        where p.id=$1`, [id])).rows[0].exact, true);
-    }
   });
   await fixtureTableTransaction(database, ["company_tax_filing.authority_permissions"], async () => {
     await database.query(`insert into company_tax_filing.authority_permissions
       (company_id,obligation,submitter_user_id,confirmed_by,production_enabled)
       values($1,'skattemelding',$2,$2,true)`, [companyId,ownerId]);
-    assert.equal((await database.query(`select count(*)::int count from public.authority_permissions
-      where company_id=$1 and obligation='skattemelding'`, [companyId])).rows[0].count, 0);
   });
-  await assertNoError(
-    admin.from("authority_permissions").insert([
-      {
-        company_id: companyId,
-        obligation: "aarsregnskap",
-        submitter_user_id: ownerId,
-        confirmed_by: ownerId,
-        production_enabled: true,
-      },
-    ]),
-  );
+  await fixtureTableTransaction(database, ["annual_accounts_filing.authority_permissions"], async () => {
+    await database.query(`insert into annual_accounts_filing.authority_permissions
+      (company_id,obligation,submitter_user_id,confirmed_by,production_enabled)
+      values($1,'aarsregnskap',$2,$2,true)`, [companyId,ownerId]);
+  });
+  for (const family of ["filing_previews", "filing_submissions", "filing_overrides",
+    "filing_review_comments", "authority_permissions", "authority_test_runs"]) {
+    assert.equal((await database.query("select to_regclass($1) is null absent", [`public.${family}`])).rows[0].absent, true);
+  }
 
 }
 

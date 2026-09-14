@@ -140,12 +140,17 @@ def project(query: AnnualAccountsSourceQuery, snapshot: AnnualAccountsSourceSnap
             row_digest = _digest(row)
             observed_at = row.get('updated_at') or row.get('created_at')
             potential = _potential_production(row)
+            feedback_ids = row.get('feedback_document_ids')
+            if feedback_ids is None:
+                feedback_ids = ()
+            if not isinstance(feedback_ids, (list, tuple)) or any(not isinstance(value, str) for value in feedback_ids):
+                raise ValueError('Recorded feedback references must be a text array')
             fact = AnnualAccountsSubmissionFact(
                 row['id'], row['mode'], row['adapter_mode'], row['status'],
                 'unknown' if potential else 'not_production', observed_at,
                 row.get('created_by'), row.get('submitted_by'), row.get('authority_confirmed_by'), row.get('authority_confirmed_at'),
                 row.get('preview_confirmed_by'), row.get('preview_confirmed_at'), row.get('payload_hash'), row.get('receipt_id'),
-                tuple(row.get('feedback_document_ids') or ()), row_digest,
+                tuple(feedback_ids), row_digest,
             )
             submissions.append(fact)
             if potential:

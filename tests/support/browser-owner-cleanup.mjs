@@ -115,12 +115,6 @@ const requiredCleanupRelations = Object.freeze([
   "investments.positions",
   "backend_system.ledger_workflow_receipts",
   "public.company_deletion_reviews",
-  "public.filing_review_comments",
-  "public.filing_overrides",
-  "public.filing_submissions",
-  "public.authority_test_runs",
-  "public.authority_permissions",
-  "public.filing_previews",
   "public.documents",
   "public.audit_events",
   "public.company_archive_export_receipts",
@@ -139,7 +133,11 @@ const canonicalTaxFilingCleanupRelations = Object.freeze([
   "company_tax_filing.authority_test_runs",
   "company_tax_filing.authority_permissions",
 ]);
+const genericFilingCleanupRelations = Object.freeze(["public.filing_submissions", "public.filing_review_comments", "public.filing_overrides", "public.filing_previews", "public.authority_test_runs", "public.authority_permissions"]);
+const canonicalAccountsCleanupRelations = Object.freeze(["annual_accounts_filing.filing_submissions", "annual_accounts_filing.filing_review_comments", "annual_accounts_filing.filing_overrides", "annual_accounts_filing.filing_previews", "annual_accounts_filing.authority_test_runs", "annual_accounts_filing.authority_permissions"]);
 const rolloutCleanupRelations = Object.freeze([
+  ...genericFilingCleanupRelations,
+  ...canonicalAccountsCleanupRelations,
   "public.bank_suggestion_acceptances",
   "public.corporate_document_events",
   "public.corporate_decision_finalizations",
@@ -193,6 +191,11 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
     if (row && ["r", "p"].includes(row.relkind)) present.add(relation);
     else assert.ok(!row || row.relkind === "v", "unexpected fixture relation kind");
   }
+  if (genericFilingCleanupRelations.some(relation => !present.has(relation))) {
+    assert.ok(genericFilingCleanupRelations.every(relation => !present.has(relation)), "partial generic filing retirement");
+    assert.equal((await database.query("select phase from backend_system.annual_accounts_migration_state where singleton")).rows[0]?.phase, "contracted");
+    for (const relation of canonicalAccountsCleanupRelations) assert.ok(present.has(relation), `missing Accounts fixture family ${relation}`);
+  }
   if (!present.has("public.holding_actions")) {
     assert.ok(present.has("company_tax_filing.settlements"), "missing Tax fixture family");
   }
@@ -238,6 +241,7 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
     const remove = async (relation) => {
       if (present.has(relation)) await database.query(`delete from ${relation} where company_id = $1`, [companyId]);
     };
+    for (const relation of canonicalAccountsCleanupRelations) await remove(relation);
     for (const relation of canonicalTaxFilingCleanupRelations) await remove(relation);
     await remove("company_tax_filing.settlements");
     for (const relation of canonicalGovernanceCleanupRelations) await remove(relation);

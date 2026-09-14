@@ -1,0 +1,94 @@
+[
+  {
+    "input": null,
+    "historyCoverage": "complete",
+    "projected": [],
+    "httpStatus": 200,
+    "wire": []
+  },
+  {
+    "input": [],
+    "historyCoverage": "complete",
+    "projected": [],
+    "httpStatus": 200,
+    "wire": []
+  },
+  {
+    "input": [
+      "document-reference"
+    ],
+    "historyCoverage": "complete",
+    "projected": [
+      "document-reference"
+    ],
+    "httpStatus": 200,
+    "wire": [
+      "document-reference"
+    ]
+  },
+  {
+    "input": "document-reference",
+    "historyCoverage": "complete",
+    "projected": [
+      "d",
+      "o",
+      "c",
+      "u",
+      "m",
+      "e",
+      "n",
+      "t",
+      "-",
+      "r",
+      "e",
+      "f",
+      "e",
+      "r",
+      "e",
+      "n",
+      "c",
+      "e"
+    ],
+    "httpStatus": 200,
+    "wire": [
+      "d",
+      "o",
+      "c",
+      "u",
+      "m",
+      "e",
+      "n",
+      "t",
+      "-",
+      "r",
+      "e",
+      "f",
+      "e",
+      "r",
+      "e",
+      "n",
+      "c",
+      "e"
+    ]
+  },
+  {
+    "input": {
+      "document-reference": "unexpected"
+    },
+    "historyCoverage": "complete",
+    "projected": [
+      "document-reference"
+    ],
+    "httpStatus": 200,
+    "wire": [
+      "document-reference"
+    ]
+  },
+  {
+    "input": 0,
+    "historyCoverage": "complete",
+    "projected": [],
+    "httpStatus": 200,
+    "wire": []
+  }
+]

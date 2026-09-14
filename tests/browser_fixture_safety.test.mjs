@@ -105,7 +105,7 @@ test("retained annual browser seeds canonical historical RF/AU facts without rep
   const borrowed = [];
   const database = { async query(statement, values) {
     sql.push({ statement, values });
-    return { rows: [{ id: "fixture-permission", exact: true, count: 0 }] };
+    return { rows: [{ id: "fixture-permission", exact: true, count: 0, absent: true }] };
   } };
   const admin = { from(table) { return { async insert(value) { inserts.push({ table, value }); return { error: null }; } }; } };
   const seed = vm.runInNewContext(`(${seedSource.trim()})`, {
@@ -140,29 +140,27 @@ test("retained annual browser seeds canonical historical RF/AU facts without rep
   assert.ok(borrowed.includes("ledger.entries"));
   assert.ok(borrowed.includes("authority_connections.system_user_requests"));
   assert.ok(borrowed.includes("shareholder_register_filing.filing_previews"));
-  for (const [table, id] of [["authority_permissions", "fixture-permission"], ["filing_previews", ids.previewId]]) {
-    assert.ok(borrowed.includes(`public.${table}`));
-    const mirror = sql.find(row => row.statement.includes(`insert into public.${table}`));
-    assert.ok(mirror.statement.includes(`jsonb_populate_record(null::public.${table},to_jsonb(r))`));
-    assert.equal(mirror.values[0], id);
-    assert.ok(sql.some(row => row.statement.includes(`from public.${table} p join shareholder_register_filing.${table}`)
-      && row.values[0] === id), "every historical mirror verifies full-row identity");
+  assert.doesNotMatch(statements, /insert into public\.(?:filing_previews|authority_permissions)/u);
+  for (const family of ["filing_previews", "filing_submissions", "filing_overrides", "filing_review_comments", "authority_permissions", "authority_test_runs"]) {
+    assert.ok(sql.some(row => row.statement.includes("to_regclass($1) is null") && row.values[0] === `public.${family}`));
+    assert.ok(!borrowed.includes(`public.${family}`));
   }
   const preview = sql.find(row => row.statement.includes("insert into shareholder_register_filing.filing_previews"));
   assert.ok(preview.values.includes(ids.previewId) && preview.values.includes(ids.setupId));
   assert.ok(preview.values.includes("<RF-1086><org>test</org></RF-1086>"));
   assert.equal(JSON.parse(preview.values.find(value => typeof value === "string" && value.startsWith("{")))[ids.shareholderId],
     "<RF-1086U><shareholder>test</shareholder></RF-1086U>");
-  const permissions = inserts.find(row => row.table === "authority_permissions");
-  assert.deepEqual(Array.from(permissions.value, row => row.obligation), ["aarsregnskap"]);
+  assert.ok(!inserts.some(row => row.table === "authority_permissions"));
+  const accountsPermission = sql.find(row => row.statement.includes("insert into annual_accounts_filing.authority_permissions"));
+  assert.ok(accountsPermission);
+  assert.deepEqual(Array.from(accountsPermission.values), [ids.companyId, ids.ownerId]);
+  assert.match(accountsPermission.statement, /values\(\$1,'aarsregnskap',\$2,\$2,true\)/u);
+  assert.ok(borrowed.includes("annual_accounts_filing.authority_permissions"));
   const taxPermission = sql.find(row => row.statement.includes("insert into company_tax_filing.authority_permissions"));
   assert.ok(taxPermission, "Tax permission must use the contracted owner");
   assert.deepEqual(Array.from(taxPermission.values), [ids.companyId, ids.ownerId]);
   assert.match(taxPermission.statement, /values\(\$1,'skattemelding',\$2,\$2,true\)/u);
   assert.ok(borrowed.includes("company_tax_filing.authority_permissions"));
-  assert.ok(sql.some(row => row.statement.includes("from public.authority_permissions")
-    && row.statement.includes("obligation='skattemelding'") && row.values[0] === ids.companyId),
-  "Tax fixture must verify no legacy permission mirror exists");
   assert.doesNotMatch(statements, /insert into (?:public|shareholder_register_filing)\.(?:filing_submissions|filing_approval_snapshots|production_filing_submissions)/u);
   assert.doesNotMatch(statements, /(?:paid|charge)_at|billing_accounts/u);
   assert.match(source, /set local role ledger_executor/u);

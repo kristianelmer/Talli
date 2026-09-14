@@ -22,6 +22,7 @@ try {
     "20260914110840_annual_accounts_filing_source_contract.sql",
     "20260914101805_annual_accounts_filing_cutover.sql",
     "20260914101842_annual_accounts_filing_contract.sql",
+    "20260914112549_annual_accounts_filing_backend_binding.sql",
   ]) {
     await database.query(await readFile(new URL(`../supabase/contract-migrations/${name}`, import.meta.url), "utf8"));
   }

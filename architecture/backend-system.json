@@ -636,7 +636,9 @@
       "supabase/contract-migrations/20260914092018_annual_accounts_filing_read_contracts.sql",
       "supabase/contract-migrations/20260914093204_annual_accounts_filing_import_contract.sql",
       "supabase/contract-migrations/20260914092924_annual_accounts_filing_preparation_contracts.sql",
-      "supabase/contract-migrations/20260914110840_annual_accounts_filing_source_contract.sql"
+      "supabase/contract-migrations/20260914110840_annual_accounts_filing_source_contract.sql",
+      "supabase/contract-migrations/20260914112549_annual_accounts_filing_backend_binding.sql",
+      "supabase/rollback/20260914112549_annual_accounts_filing_backend_binding.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },

@@ -322,3 +322,21 @@ def test_documents_retention_uses_owned_receipt_and_feedback_references(database
         assert db.execute('select documents.has_evidence_references_v1(%s)', (receipt,)).fetchone()[0] is True
         assert db.execute('select documents.has_evidence_references_v1(%s)', (feedback,)).fetchone()[0] is True
         assert db.execute('select documents.has_evidence_references_v1(%s)', (unrelated,)).fetchone()[0] is False
+
+
+def test_explicit_backend_binding_requires_cutover_and_can_be_removed(database):
+    db = database
+    artifact = '20260914112549_annual_accounts_filing_backend_binding.sql'
+    def execute_binding(rollback=False):
+        raw = (ROOT / 'supabase' / ('rollback' if rollback else 'contract-migrations') / artifact).read_text()
+        db.execute(raw.replace('begin;\n', '', 1).removesuffix('commit;\n'), prepare=False)
+    before = memberships(db)
+    expect_error(db, 'annual_accounts_unavailable', execute_binding)
+    assert memberships(db) == before
+    apply(db, CUTOVER)
+    execute_binding()
+    assert db.execute("select pg_has_role('talli_ledger_backend','annual_accounts_filing_workflow_executor','SET')").fetchone()[0]
+    assert not db.execute("select pg_has_role('talli_ledger_backend','annual_accounts_filing_store_owner','SET')").fetchone()[0]
+    assert db.execute("select inherit_option,set_option,admin_option from pg_auth_members where roleid='annual_accounts_filing_workflow_executor'::regrole and member='talli_ledger_backend'::regrole").fetchone() == (False, True, False)
+    execute_binding(rollback=True)
+    assert memberships(db) == before

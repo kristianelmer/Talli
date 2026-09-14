@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 const owners = Object.freeze({
   shareholder_register_filing: "shareholder_register_filing_store_owner",
   company_tax_filing: "company_tax_filing_store_owner",
+  annual_accounts_filing: "annual_accounts_filing_store_owner",
   corporate_governance: "corporate_governance_store_owner",
   ledger: "ledger_store_owner", billing: "billing_store_owner",
   documents: "documents_store_owner", authority_connections: "authority_connections_store_owner",
@@ -33,6 +34,13 @@ const allowed = new Set([
   "corporate_governance.shareholder_loans",
 
   "company_tax_filing.settlements",
+  "annual_accounts_filing.filing_submissions",
+  "annual_accounts_filing.filing_review_comments",
+  "annual_accounts_filing.filing_overrides",
+  "annual_accounts_filing.filing_previews",
+  "annual_accounts_filing.authority_test_runs",
+  "annual_accounts_filing.authority_permissions",
+
   "company_tax_filing.filing_submissions",
   "company_tax_filing.filing_review_comments",
   "company_tax_filing.filing_overrides",

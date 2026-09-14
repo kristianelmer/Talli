@@ -187,3 +187,11 @@ SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
 npm run test:browser-company-tax
+
+NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
+NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_URL="$API_URL" \
+SUPABASE_ANON_KEY="$local_anon_key" \
+SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+DATABASE_URL="$DB_URL" \
+npm run test:browser-annual-accounts

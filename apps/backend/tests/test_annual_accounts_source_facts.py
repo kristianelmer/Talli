@@ -229,3 +229,21 @@ def test_source_http_authenticates_and_uses_a_repeatable_owner_snapshot():
     sessions.expected_snapshot = replace(snapshot, rows=replace(snapshot.rows, income_year=None))
     assert client.get(path, headers={'Authorization':'Bearer synthetic-fixture'}).status_code == 503
     assert client.get(path.replace('incomeYear=2025','incomeYear=1999'), headers={'Authorization':'Bearer synthetic-fixture'}).status_code == 422
+
+    # Retained opaque JSON cannot become invented document identities. Null and
+    # arrays of text retain their declared meaning; other shapes fail closed.
+    for references in ['document-reference', {'document-reference': 'unexpected'}, 0, False, [123], [None]]:
+        raw = source()
+        raw['workspace']['submissions'][0]['feedback_document_ids'] = references
+        _, malformed = parse(raw)
+        with pytest.raises(AnnualAccountsError):
+            project_annual_accounts_source(query, malformed)
+        sessions.expected_snapshot = malformed
+        assert client.get(path, headers={'Authorization':'Bearer synthetic-fixture'}).status_code == 503
+    for references in [None, [], ['recorded-document-reference']]:
+        raw = source()
+        raw['workspace']['submissions'][0]['feedback_document_ids'] = references
+        _, sessions.expected_snapshot = parse(raw)
+        response = client.get(path, headers={'Authorization':'Bearer synthetic-fixture'})
+        assert response.status_code == 200
+        assert response.json()['recordedSubmissions'][0]['feedbackDocumentIds'] == (references or [])

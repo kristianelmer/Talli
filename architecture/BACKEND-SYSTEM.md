@@ -718,3 +718,14 @@ TT02 receipt.
 <!-- architecture-inventory
 {"workflows": ["annual-accounts-source-facts"], "workflowPurposes": ["annual-accounts-source-facts=>Publishes immutable owner-scoped Accounts source evidence from one repeatable snapshot; positive history coverage preserves production-disabled, unknown and test-only distinctions without Billing policy."], "routes": ["/api/v1/annual-accounts/source-facts"], "ports": ["AnnualAccountsSourcePersistence"], "adapterBindings": ["AnnualAccountsSourcePersistence=>talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction"], "adapterBindingOwners": ["AnnualAccountsSourcePersistence=>backend-system"], "adapterBindingModes": ["AnnualAccountsSourcePersistence=>one verified owner repeatable snapshot; positive Accounts migration coverage, complete enumeration and phase lock; no provider operation"], "technicalMigrations": ["supabase/contract-migrations/20260914110840_annual_accounts_filing_source_contract.sql"]}
 -->
+
+## Accounts restricted backend binding
+
+After verified Accounts cutover, the existing restricted backend login may SET
+only the Accounts workflow executor. It gains no store-owner role or ambient
+table privilege. A separate rollback removes that binding; storage rollback is
+still governed by the phase lock and paired physical artifacts.
+
+<!-- architecture-inventory
+{"technicalMigrations":["supabase/contract-migrations/20260914112549_annual_accounts_filing_backend_binding.sql","supabase/rollback/20260914112549_annual_accounts_filing_backend_binding.sql"]}
+-->
