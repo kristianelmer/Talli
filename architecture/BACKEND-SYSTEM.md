@@ -632,3 +632,17 @@ The `company-tax-assessment-previews` composition exposes authenticated POST `/a
 <!-- architecture-inventory
 {"workflows": ["company-tax-assessment-previews"], "workflowPurposes": ["company-tax-assessment-previews=>Authenticates the caller and evaluates supplied immutable Tax readiness and annual-estimate facts through the owned pure contracts. Preview labels do not attest stored completeness or authorize filing; no business read or mutation occurs."], "routes": ["/api/v1/company-tax/readiness-previews", "/api/v1/company-tax/annual-estimate-previews"]}
 -->
+
+
+`CompanyTaxAuthority` binds to `talli_backend.adapters.company_tax_authority.CompanyTaxTransport`. The fixed TT02 HTTP adapter uses the existing canonical shared filing transport mechanics; the Company Tax public contracts own polling decisions. No production provider activation or automated human confirmation is introduced.
+
+<!-- architecture-inventory
+{"ports": ["CompanyTaxAuthority"], "adapterBindings": ["CompanyTaxAuthority=>talli_backend.adapters.company_tax_authority.CompanyTaxTransport"], "adapterBindingOwners": ["CompanyTaxAuthority=>backend-system"], "adapterBindingModes": ["CompanyTaxAuthority=>fixed TT02 transport; Company Tax owns polling decisions and human confirmation remains external"]}
+-->
+
+
+`CompanyTaxRehearsalIO` binds to `talli_backend.adapters.local_company_tax_rehearsal.LocalCompanyTaxRehearsal`. The CLI composes the public Company Tax rehearsal and the local adapter; the adapter supplies files, time, revision, schema validation and credentials. Company Tax owns intent checkpoints and state transitions.
+
+<!-- architecture-inventory
+{"ports": ["CompanyTaxRehearsalIO"], "adapterBindings": ["CompanyTaxRehearsalIO=>talli_backend.adapters.local_company_tax_rehearsal.LocalCompanyTaxRehearsal"], "adapterBindingOwners": ["CompanyTaxRehearsalIO=>backend-system"], "adapterBindingModes": ["CompanyTaxRehearsalIO=>local evidence and credential mechanisms; Company Tax owns durable rehearsal intent, prepare/resume guards and state transitions"]}
+-->

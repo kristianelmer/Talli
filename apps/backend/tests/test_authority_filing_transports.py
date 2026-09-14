@@ -7,8 +7,12 @@ import httpx
 import pytest
 
 from talli_backend.authority_tools import annual_accounts_transport as annual
-from talli_backend.authority_tools import company_tax_transport as tax
+from talli_backend.adapters import company_tax_authority as tax
 from talli_backend.authority_tools._filing import MAX_RESPONSE_BYTES
+from talli_backend.modules.company_tax_filing.public import (
+    wait_for_company_tax_validation, wait_for_company_tax_feedback,
+    wait_for_company_tax_clean_envelope,
+)
 
 ID = "50001234/10000000-0000-4000-8000-000000000001"
 DATA = "20000000-0000-4000-8000-000000000002"
@@ -165,7 +169,7 @@ def test_tax_current_validation_create_upload_scan_and_job_sequence():
         await client.upload_envelope(instance_id=ID, envelope_xml=XML)
         assert (await client.get_envelope_scan(instance_id=ID))["fileScanResult"] == "Clean"
         assert (await client.start_validation(**IDENTITY, instance_id=ID))["jobId"] == "job-1"
-        return await tax.wait_for_validation(client, **IDENTITY, job_id="job-1")
+        return await wait_for_company_tax_validation(client, **IDENTITY, job_id="job-1", sleep=asyncio.sleep)
     assert run(sequence()) == {"resultXml": "<result/>"} and not pending
     assert [(r.method, str(r.url)) for r in requests] == [
         ("GET", tax.TAX_BASE+f"/2025/{ORG}"), ("POST", tax.TAX_BASE+f"/validertest/2025/{ORG}"),
@@ -235,7 +239,7 @@ def test_tax_feedback_failure_characterization(fault, code):
 def test_tax_validation_polling_failures_are_bounded(status, code):
     transport, requests, _ = queue({"jobbStatus": status})
     with pytest.raises(tax.CompanyTaxReturnAuthorityError) as caught:
-        run(tax.wait_for_validation(tax.CompanyTaxTransport(TAX_TOKEN, transport=transport), **IDENTITY, job_id="job", attempts=1))
+        run(wait_for_company_tax_validation(tax.CompanyTaxTransport(TAX_TOKEN, transport=transport), **IDENTITY, job_id="job", attempts=1, sleep=asyncio.sleep))
     assert caught.value.code == "COMPANY_TAX_VALIDATION_"+code and len(requests) == 1
 
 
@@ -319,9 +323,9 @@ def test_tax_scan_and_feedback_polling_are_read_only_and_preserve_intervals():
     sleeps = []
     async def sleep(seconds): sleeps.append(seconds)
     client = tax.CompanyTaxTransport(TAX_TOKEN, ALTINN_TOKEN, transport=transport)
-    assert run(tax.wait_for_clean_envelope(client, ID, sleep=sleep))["fileScanResult"] == "Clean"
+    assert run(wait_for_company_tax_clean_envelope(client, ID, sleep=sleep))["fileScanResult"] == "Clean"
     assert sleeps == [2] and [r.method for r in requests] == ["GET", "GET"]
     transport, requests, _ = queue(instance("confirmation"), instance("confirmation"))
     with pytest.raises(tax.CompanyTaxReturnAuthorityError) as caught:
-        run(tax.wait_for_feedback(tax.CompanyTaxTransport(TAX_TOKEN, ALTINN_TOKEN, transport=transport), instance_id=ID, attempts=2, sleep=sleep))
+        run(wait_for_company_tax_feedback(tax.CompanyTaxTransport(TAX_TOKEN, ALTINN_TOKEN, transport=transport), instance_id=ID, attempts=2, sleep=sleep))
     assert caught.value.code == "COMPANY_TAX_FEEDBACK_TIMEOUT" and len(requests) == 2

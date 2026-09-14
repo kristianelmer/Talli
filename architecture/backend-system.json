@@ -883,6 +883,18 @@
       "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
       "owner": "backend-system",
       "mode": "one verified phase-gated preparation transaction with Company Access accepted-role and fresh-MFA decisions"
+    },
+    {
+      "port": "CompanyTaxAuthority",
+      "adapter": "talli_backend.adapters.company_tax_authority.CompanyTaxTransport",
+      "owner": "backend-system",
+      "mode": "fixed TT02 transport; Company Tax owns polling decisions and human confirmation remains external"
+    },
+    {
+      "port": "CompanyTaxRehearsalIO",
+      "adapter": "talli_backend.adapters.local_company_tax_rehearsal.LocalCompanyTaxRehearsal",
+      "owner": "backend-system",
+      "mode": "local evidence and credential mechanisms; Company Tax owns durable rehearsal intent, prepare/resume guards and state transitions"
     }
   ],
   "allowedDependencies": {

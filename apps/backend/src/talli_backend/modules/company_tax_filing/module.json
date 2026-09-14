@@ -14,7 +14,9 @@
       "RecordCompanyTaxOverride",
       "AddCompanyTaxReviewComment",
       "ConfirmCompanyTaxPermission",
-      "RecordCompanyTaxTestEvidence"
+      "RecordCompanyTaxTestEvidence",
+      "CompanyTaxRehearsalConfiguration",
+      "rehearse_company_tax_return"
     ],
     "queries": [
       "NormalizedTaxSettlement",
@@ -49,12 +51,16 @@
       "normalize_company_tax_test_evidence",
       "CompanyTaxReadinessIssue",
       "assess_company_tax_readiness",
-      "AnnualTaxEstimateSource"
+      "AnnualTaxEstimateSource",
+      "wait_for_company_tax_validation",
+      "wait_for_company_tax_feedback",
+      "wait_for_company_tax_clean_envelope"
     ],
     "events": [],
     "errors": [
       "CompanyTaxError",
-      "TaxSettlementValidationError"
+      "TaxSettlementValidationError",
+      "CompanyTaxReturnAuthorityError"
     ],
     "identifiers": [
       "AccountingEntryReference",
@@ -71,7 +77,10 @@
       "TaxFilingSubmissionId",
       "CompanyTaxReturnPersistence",
       "TaxFilingRecordId",
-      "CompanyTaxPreparationPersistence"
+      "CompanyTaxPreparationPersistence",
+      "CompanyTaxAuthority",
+      "company_tax_authority_adapter",
+      "CompanyTaxRehearsalIO"
     ]
   },
   "owns": {
@@ -135,6 +144,24 @@
       "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
       "adapters": [
         "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
+    },
+    {
+      "name": "CompanyTaxAuthority",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxAuthority",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.company_tax_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.company_tax_authority.CompanyTaxTransport"
+      ]
+    },
+    {
+      "name": "CompanyTaxRehearsalIO",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxRehearsalIO",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.company_tax_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.local_company_tax_rehearsal.LocalCompanyTaxRehearsal"
       ]
     }
   ],

@@ -1,11 +1,10 @@
-"""Frozen #153 test-only HTTP sequence; final confirmation remains human controlled."""
+"""Fixed TT02 HTTP adapter for the Company Tax authority port."""
 from __future__ import annotations
-import asyncio
 import base64
 import json
 import re
 
-from ._filing import FixedTransport, FilingToolError, data_id, instance_id, income_year, iso, obj, opaque, org_number, valid, xml
+from talli_backend.authority_tools._filing import FixedTransport, data_id, instance_id, income_year, iso, obj, opaque, org_number, valid, xml
 
 APP_ID = "skd/formueinntekt-skattemelding-v2"
 BASE = f"https://skd.apps.tt02.altinn.no/{APP_ID}"
@@ -14,8 +13,9 @@ TAX_BASE = "https://api-test.sits.no/api/skattemelding/v2"
 ENVELOPE = "skattemeldingOgNaeringsspesifikasjon"
 
 
-class CompanyTaxReturnAuthorityError(FilingToolError):
-    pass
+from talli_backend.modules.company_tax_filing.public import (
+    CompanyTaxAuthority, CompanyTaxReturnAuthorityError, company_tax_authority_adapter,
+)
 
 
 def _element(content, name):
@@ -33,6 +33,7 @@ async def exchange_maskinporten_for_altinn_token(token, *, environment="test", t
     return opaque(raw)
 
 
+@company_tax_authority_adapter(CompanyTaxAuthority)
 class CompanyTaxTransport(FixedTransport):
     def __init__(self, tax_access_token, altinn_access_token=None, *, environment="test", transport=None, timeout_ms=20_000):
         if environment != "test":
@@ -89,7 +90,7 @@ class CompanyTaxTransport(FixedTransport):
         return {"dataId": data_id(self.safe(obj(result).get("id"))), "fileScanResult": self.safe(obj(result).get("fileScanResult"), "Unknown")}
 
     async def replace_envelope(self, *, instance_id, data_id: str, envelope_xml):
-        from ._filing import data_id as checked_id
+        from talli_backend.authority_tools._filing import data_id as checked_id
         _, result, _, _ = await self._request(self._url(instance_id)+"/data/"+checked_id(data_id), "PUT", self._altinn_token(),
             content_type="text/xml", body=xml(envelope_xml), headers={"content-disposition": "attachment; filename=skattemeldingOgNaeringsspesifikasjon.xml"})
         return {"dataId": checked_id(self.safe(obj(result).get("id"))), "fileScanResult": self.safe(obj(result).get("fileScanResult"), "Unknown")}
@@ -106,7 +107,7 @@ class CompanyTaxTransport(FixedTransport):
         return {"dataId": self.safe(element.get("id")), "fileScanResult": scan}
 
     async def get_instance(self, *, instance_id: str):
-        from ._filing import instance_id as checked_id
+        from talli_backend.authority_tools._filing import instance_id as checked_id
         _, result, _, _ = await self._request(self._url(instance_id), "GET", self._altinn_token())
         result = obj(result)
         if checked_id(self.safe(result.get("id"))) != instance_id:
@@ -144,7 +145,7 @@ class CompanyTaxTransport(FixedTransport):
         return {"instanceId": instance_id, "processTask": "confirmation", "transitioned": True}
 
     def get_owner_confirmation_url(self, *, instance_id: str):
-        from ._filing import instance_id as checked_id
+        from talli_backend.authority_tools._filing import instance_id as checked_id
         return f"https://skatt-test.sits.no/web/skattemelding-visning/altinn?appId={APP_ID}&instansId={checked_id(instance_id)}"
 
     async def get_feedback_receipt(self, *, instance_id):
@@ -179,7 +180,7 @@ class CompanyTaxTransport(FixedTransport):
             "archiveReference": f"{PLATFORM}/storage/api/v1/instances/{instance_id}"}
 
     async def start_validation(self, *, income_year, company_org_number, instance_id: str):
-        from ._filing import instance_id as checked_id
+        from talli_backend.authority_tools._filing import instance_id as checked_id
         _, result, _, _ = await self._request(TAX_BASE+"/jobb/altinn/"+self._case(income_year, company_org_number)+"/start",
             "POST", self._tax, content_type="application/json", body=json.dumps({"appId": APP_ID, "instansId": checked_id(instance_id)}, separators=(",", ":")))
         return {"jobId": self._job(self.safe(obj(result).get("jobbId"))), "status": self.safe(obj(result).get("jobbStatus"))}
@@ -193,43 +194,3 @@ class CompanyTaxTransport(FixedTransport):
         if status == 204 or not raw.strip():
             raise CompanyTaxReturnAuthorityError("Validation result is not ready.", code="COMPANY_TAX_VALIDATION_PENDING", retryable=True)
         return {"resultXml": xml(raw)}
-
-
-async def wait_for_validation(client, *, attempts=20, sleep=asyncio.sleep, **values):
-    if type(attempts) is not int or not 1 <= attempts <= 120:
-        raise ValueError("Validation attempts must be between 1 and 120.")
-    for attempt in range(attempts):
-        status = (await client.get_validation_status(**values))["status"]
-        if status == "FERDIG":
-            return await client.get_validation_result(**values)
-        if status in ("AVBRUTT", "FEILET"):
-            raise CompanyTaxReturnAuthorityError("Validation ended unsuccessfully.", code="COMPANY_TAX_VALIDATION_"+status, retryable=status == "FEILET")
-        if status not in ("NY", "OPPRETTET", "KJOERER", "VENTER"):
-            raise CompanyTaxReturnAuthorityError("Unknown validation status.", code="COMPANY_TAX_VALIDATION_STATUS_UNKNOWN")
-        if attempt < attempts-1:
-            await sleep(2)
-    raise CompanyTaxReturnAuthorityError("Validation polling timed out.", code="COMPANY_TAX_VALIDATION_TIMEOUT", retryable=True)
-
-
-async def wait_for_feedback(client, *, instance_id, attempts=30, sleep=asyncio.sleep):
-    if type(attempts) is not int or not 1 <= attempts <= 120:
-        raise ValueError("Feedback attempts must be between 1 and 120.")
-    for attempt in range(attempts):
-        try:
-            return await client.get_feedback_receipt(instance_id=instance_id)
-        except CompanyTaxReturnAuthorityError as error:
-            if error.code != "COMPANY_TAX_FEEDBACK_PENDING":
-                raise
-        if attempt < attempts-1:
-            await sleep(2)
-    raise CompanyTaxReturnAuthorityError("Feedback polling timed out.", code="COMPANY_TAX_FEEDBACK_TIMEOUT", retryable=True)
-
-
-async def wait_for_clean_envelope(client, instance_id, *, attempts=30, sleep=asyncio.sleep):
-    for attempt in range(attempts):
-        scan = await client.get_envelope_scan(instance_id=instance_id)
-        if scan["fileScanResult"] == "Clean":
-            return scan
-        if attempt < attempts-1:
-            await sleep(2)
-    raise CompanyTaxReturnAuthorityError("Envelope scan polling timed out.", code="COMPANY_TAX_ENVELOPE_SCAN_TIMEOUT", retryable=True)

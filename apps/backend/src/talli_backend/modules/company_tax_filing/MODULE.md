@@ -75,3 +75,19 @@ The full rollback restores the latest owned records and exact predecessor RPC pe
 
 
 The predecessor web Tax calculation, XML/envelope, evidence-projection and estimate files are removed. Tax-only helpers are also removed from the shared web authority-evidence file. The remaining Annual Accounts and shared definitions are unchanged. Existing JavaScript cross-output fixtures use a fixed test-only driver of these public Python contracts; no production TypeScript Tax implementation remains.
+
+
+`CompanyTaxAuthority` is the outbound test-authority port, registered through `company_tax_authority_adapter` to `talli_backend.adapters.company_tax_authority.CompanyTaxTransport`. Its fixed TT02 adapter preserves the existing endpoint, response-validation and redaction mechanics. `CompanyTaxReturnAuthorityError` preserves the sanitized failure shape. `wait_for_company_tax_validation`, `wait_for_company_tax_feedback` and `wait_for_company_tax_clean_envelope` own the existing retry, terminal-status and timeout decisions. The sleep mechanism is supplied by the caller. There is no human-confirmation operation on the port, and production transport remains disabled.
+
+The shared `authority_tools._filing.FixedTransport` and parsing helpers remain the single canonical technical implementation also used by Annual Accounts until #153. The Tax capability does not import those CLI mechanics. The old Tax transport file is removed; the CLI uses the declared adapter and public polling contracts. The local rehearsal state machine now resides in this capability.
+
+<!-- architecture-inventory
+{"ports": ["CompanyTaxAuthority"]}
+-->
+
+
+`CompanyTaxRehearsalConfiguration`, `CompanyTaxRehearsalIO` and `rehearse_company_tax_return` expose the existing local prepare/resume workflow. The frozen configuration contains only nonsecret declarations. The capability owns approved test scope, no-activity admission, prior evidence identity, durable intent before credential checks, repair eligibility, instance/upload/validation transitions, human handoff, read-only receipt resume and completed replay. The local adapter owns paths, JSON decoding, atomic private evidence writes, clocks, revision lookup, schema execution and credential acquisition. Existing pure payload generation crosses the public Tax contracts in process. The final summary is immutable; internal checkpoint evidence remains private mutable workflow state. No genuine filing or provider operation is performed during local verification.
+
+<!-- architecture-inventory
+{"ports": ["CompanyTaxRehearsalIO"]}
+-->

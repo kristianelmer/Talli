@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Protocol, TypeVar
 from types import MappingProxyType
 
@@ -551,7 +551,111 @@ def normalize_company_tax_test_evidence(command: RecordCompanyTaxTestEvidence) -
     return normalize_test_evidence(command)
 
 
+class CompanyTaxReturnAuthorityError(Exception):
+    """Stable sanitized authority failure; no provider response or credentials."""
+    def __init__(self, message: str, *, code: str, status: int | None = None,
+                 retryable: bool = False, validation_codes: list[str] | None = None):
+        super().__init__(message)
+        self.code, self.status, self.retryable = code, status, retryable
+        self.correlation_id = None
+        self.validation_codes = validation_codes or []
+
+    def evidence(self) -> Mapping[str, object]:
+        return {"code": self.code, "status": self.status, "correlationId": None,
+                "retryable": self.retryable, "message": str(self)}
+
+
+class CompanyTaxAuthority(Protocol):
+    """Existing test authority operations; human confirmation has no operation."""
+    async def fetch_current(self, *, income_year: int, company_org_number: str) -> Mapping[str, object]: ...
+    async def validate_test(self, *, income_year: int, company_org_number: str, envelope_xml: str) -> Mapping[str, object]: ...
+    async def create_instance(self, *, income_year: int, company_org_number: str) -> Mapping[str, object]: ...
+    async def upload_envelope(self, *, instance_id: str, envelope_xml: str) -> Mapping[str, object]: ...
+    async def replace_envelope(self, *, instance_id: str, data_id: str, envelope_xml: str) -> Mapping[str, object]: ...
+    async def get_envelope_scan(self, *, instance_id: str) -> Mapping[str, object]: ...
+    async def get_instance(self, *, instance_id: str) -> Mapping[str, object]: ...
+    async def advance_to_confirmation(self, *, instance_id: str) -> Mapping[str, object]: ...
+    def get_owner_confirmation_url(self, *, instance_id: str) -> str: ...
+    async def get_feedback_receipt(self, *, instance_id: str) -> Mapping[str, object]: ...
+    async def start_validation(self, *, income_year: int, company_org_number: str, instance_id: str) -> Mapping[str, object]: ...
+    async def get_validation_status(self, *, income_year: int, company_org_number: str, job_id: str) -> Mapping[str, object]: ...
+    async def get_validation_result(self, *, income_year: int, company_org_number: str, job_id: str) -> Mapping[str, object]: ...
+
+
+AuthorityAdapter = TypeVar("AuthorityAdapter", bound=type[object])
+
+
+def company_tax_authority_adapter(
+    contract: type[object],
+) -> Callable[[AuthorityAdapter], AuthorityAdapter]:
+    def declare(adapter: AuthorityAdapter) -> AuthorityAdapter:
+        _ = contract
+        return adapter
+    return declare
+
+
+async def wait_for_company_tax_validation(client: CompanyTaxAuthority, *, attempts: int = 20, sleep: Callable[[float], Awaitable[None]], **values) -> Mapping[str, object]:
+    from .authority_workflow import wait_for_validation
+    return await wait_for_validation(client, attempts=attempts, sleep=sleep, **values)
+
+
+async def wait_for_company_tax_feedback(client: CompanyTaxAuthority, *, instance_id: str, attempts: int = 30, sleep: Callable[[float], Awaitable[None]]) -> Mapping[str, object]:
+    from .authority_workflow import wait_for_feedback
+    return await wait_for_feedback(client, instance_id=instance_id, attempts=attempts, sleep=sleep)
+
+
+async def wait_for_company_tax_clean_envelope(client: CompanyTaxAuthority, instance_id: str, *, attempts: int = 30, sleep: Callable[[float], Awaitable[None]]) -> Mapping[str, object]:
+    from .authority_workflow import wait_for_clean_envelope
+    return await wait_for_clean_envelope(client, instance_id, attempts=attempts, sleep=sleep)
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxRehearsalConfiguration:
+    """Nonsecret CLI declarations; validation retains the original ordered guards."""
+    approved_test_write: str = ""
+    authority_environment: str = ""
+    mode: str = ""
+    scope: str = ""
+    system_user_org: str = ""
+    external_reference: str = ""
+
+
+class CompanyTaxRehearsalIO(Protocol):
+    """Local evidence, schema and credential mechanisms for the owned workflow."""
+    def select_evidence(self) -> None: ...
+    def load_evidence(self) -> dict[str, object] | None: ...
+    def load_case(self) -> Mapping[str, object]: ...
+    def save_evidence(self, evidence: Mapping[str, object]) -> None: ...
+    def evidence_filename(self) -> str: ...
+    def case_filename(self) -> str: ...
+    def revision(self) -> str: ...
+    def timestamp(self) -> str: ...
+    def prepare_credentials(self) -> None: ...
+    async def connect(self, evidence: Mapping[str, object]) -> CompanyTaxAuthority: ...
+    def generate(self, operation: str, values: Mapping[str, object]) -> Mapping[str, object]: ...
+    def validate_documents(self, documents: Mapping[str, object], envelope: str, schemas: tuple[str, ...]) -> None: ...
+
+
+async def rehearse_company_tax_return(
+    configuration: CompanyTaxRehearsalConfiguration, io: CompanyTaxRehearsalIO,
+    *, sleep: Callable[[float], Awaitable[None]],
+) -> Mapping[str, object]:
+    from .rehearsal import run
+    return MappingProxyType(await run(configuration, io, sleep=sleep))
+
+
 __all__ = [
+    "CompanyTaxRehearsalConfiguration",
+    "CompanyTaxRehearsalIO",
+    "rehearse_company_tax_return",
+
+    "CompanyTaxReturnAuthorityError",
+    "CompanyTaxAuthority",
+    "company_tax_authority_adapter",
+    "wait_for_company_tax_validation",
+    "wait_for_company_tax_feedback",
+    "wait_for_company_tax_clean_envelope",
+
     "TaxFilingRecordId", "CompanyTaxRecordQuery", "RecordCompanyTaxOverride", "AddCompanyTaxReviewComment",
     "ConfirmCompanyTaxPermission", "RecordCompanyTaxTestEvidence", "CompanyTaxRecordedResult",
     "CompanyTaxPreparationPersistence", "normalize_company_tax_override", "normalize_company_tax_review",

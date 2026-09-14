@@ -1,0 +1,41 @@
+{
+  "baselineRevision": "32c701e31ff83016342c47a74ab0951ba3eab05d",
+  "status": "OWNED_TEST_AUTHORITY_AND_LOCAL_REHEARSAL",
+  "checks": {
+    "existingAuthorityAndPayloadTests": 146,
+    "predecessorYearBoundaryCases": 108,
+    "totalTests": 254,
+    "architecture": "PASS",
+    "providerCalls": 0,
+    "fullStageExit": false
+  },
+  "preserved": [
+    "all existing HTTP method ASTs apart from relocated shared imports",
+    "all three polling bodies",
+    "durable intent before credential check and provider acquisition",
+    "existing replay, repair and human confirmation semantics"
+  ],
+  "canonicalSharedMechanism": "authority_tools._filing still supplies only the existing shared transport, file, codec and payload-boundary mechanisms used by Annual Accounts; Company Tax imports no CLI mechanics",
+  "limitations": [
+    "No HTTP or browser stage-exit claim",
+    "Production source completeness and history handoff remain outstanding"
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "99c5d5609374f1fc589dad9cc9134237b9ad1a2bc9c8e6a1ccbd8e7e9779dcbe",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/authority_workflow.py": "f2d6eabe70e7711f0acf98f01e975341b3c574899fb1be8d48395ca5ae3aa95a",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/rehearsal.py": "3084413656a598a48d2e05a5cc5f12bc9eccefb7606402d6c78a58afe373aa7c",
+    "apps/backend/src/talli_backend/adapters/company_tax_authority.py": "c6527d89d422f07de999b2c02df2fc7e8e189aeb5cc54a381acbffdb2e6089b4",
+    "apps/backend/src/talli_backend/adapters/local_company_tax_rehearsal.py": "5941d26360ac8068ce6dff61fcbf84b5eea5250c539e3929b316331168fbaf69",
+    "apps/backend/src/talli_backend/authority_tools/company_tax_test.py": "dfee89e9f4f0f20715b1a4f0084c91d913c46c94cb64252960233cb1fccfae69",
+    "apps/backend/tests/test_company_tax_rehearsal.py": "7682fec2495b83735052bce3cdaccc96b6f64c32bbb3a5a27fff89d814dfff04",
+    "apps/backend/tests/test_authority_filing_tools.py": "e04da56326f8921b87541fb6aafa369dc960b7507cb495b4548e62aa837ba9fd",
+    "apps/backend/tests/test_authority_filing_transports.py": "2a38015cabb460a6d9772f53b52bf068b4b7a6caa3a5ea8c5c7edfddd9e3092a"
+  },
+  "evidenceSha256": {
+    "legacy-case-years.json": "a9b6598aee51e9e245abacdb4f5c4ea04f09016211a4e16d60fb9924b8ec1934",
+    "authority-ownership-architecture.log": "73a972f5677c86235fef074a3c7acd6c782ff2173c4318bac103899e7bfb8510",
+    "capture-rehearsal-years.py": "b624b5810912e433d1c297f5c556c1e759424a50f46507c9495354023b6d9ba9",
+    "authority-ownership-tests.log": "ff27ecf1e6522031ec623119ad3e2d713613e764052211ff6cd6c9bc523a031d",
+    "retained-authority-definitions.json": "ab3235084b0c4ceb156639c980862c47e8095c79c1808cd977fe73d850cd36cb"
+  }
+}

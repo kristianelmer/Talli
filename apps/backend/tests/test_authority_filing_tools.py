@@ -13,7 +13,7 @@ import pytest
 from talli_backend.authority_tools import annual_accounts_test as annual
 from talli_backend.authority_tools import company_tax_test as tax
 from talli_backend.authority_tools import annual_accounts_transport as annual_http
-from talli_backend.authority_tools import company_tax_transport as tax_http
+from talli_backend.adapters import company_tax_authority as tax_http
 from talli_backend.authority_tools._filing import ROOT, payload, read_evidence, write_evidence
 from test_authority_filing_transports import ALTINN_TOKEN, TAX_TOKEN, ID, DATA, OTHER, ORG, annual_instance, instance, queue
 
@@ -24,7 +24,7 @@ def environment(tmp_path, kind):
     name = "ANNUAL_ACCOUNTS" if kind == "annual" else "COMPANY_TAX"
     fixture = "annual-accounts-simple-holding-2025.json" if kind == "annual" else "company-tax-no-activity-2025.json"
     return {f"TALLI_{name}_APPROVED_TEST_WRITE": "true", "TALLI_MASKINPORTEN_ENVIRONMENT": "test",
-        "TALLI_MASKINPORTEN_SCOPE": annual.SCOPE if kind == "annual" else " ".join(tax.SCOPES),
+        "TALLI_MASKINPORTEN_SCOPE": annual.SCOPE if kind == "annual" else "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write",
         f"TALLI_{name}_CASE_PATH": str(ROOT / "tests/fixtures/authority" / fixture),
         f"TALLI_{name}_EVIDENCE_PATH": str(tmp_path / "evidence.json"),
         "TALLI_MASKINPORTEN_SYSTEM_USER_ORG": ORG, "TALLI_MASKINPORTEN_SYSTEM_USER_EXTERNAL_REF": "original-fixture-ref",
@@ -392,7 +392,7 @@ def test_tax_key_file_failure_preserves_prepared_checkpoint(tmp_path):
 def test_real_client_composition_discards_grant_wrapper_and_preserves_external_reference(monkeypatch, module):
     from talli_backend.authority_tools import _grant
     configuration = _grant.CliGrantConfiguration("test", "client", "key", "synthetic-private-key",
-        annual.SCOPE if module is annual else " ".join(tax.SCOPES), ORG, "environment-ref")
+        annual.SCOPE if module is annual else "skatteetaten:formueinntekt/skattemelding altinn:instances.read altinn:instances.write", ORG, "environment-ref")
     monkeypatch.setattr(_grant.CliGrantConfiguration, "from_environment", lambda _: configuration)
     observed = []
     class Token:
