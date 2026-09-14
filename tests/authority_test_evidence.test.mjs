@@ -1,10 +1,10 @@
+import { buildAnnualAccountsAuthorityTestRunFromEvidence } from "./support/annual_accounts_public.mjs";
 import { buildCompanyTaxReturnAuthorityTestRunFromEvidence } from "./support/company_tax_public.mjs";
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
   authorityTestEvidenceGate,
-  buildAnnualAccountsAuthorityTestRunFromEvidence,
   buildAuthorityTestRun,
 } from "../apps/web/app/lib/authority-test-evidence.ts";
 

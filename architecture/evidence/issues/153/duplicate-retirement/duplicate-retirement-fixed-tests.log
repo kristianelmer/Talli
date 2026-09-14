@@ -1,0 +1,30 @@
+✔ builds verified RR0002 annual accounts payload fields (78.976875ms)
+✔ includes system costs, bank interest, and share-sale losses in annual result (47.372583ms)
+✔ separates tax expense from result before tax and includes tax payable in debt (49.905667ms)
+✔ returns annual accounts feedback for missing notes and unsupported cases (48.224125ms)
+✔ persists annual accounts payload feedback into readiness gate shape (49.941291ms)
+✔ renders deterministic live-schema RR0002 main and company-accounts XML (188.117584ms)
+✔ rejects a payload with readiness blocks (147.372333ms)
+✔ rejects unbalanced or fractional whole-kroner payloads (289.310125ms)
+✔ rejects a missing field or mismatched official orid (285.5725ms)
+✔ rejects a calendar-invalid approval date (102.378209ms)
+✔ builds accepted authority test evidence with receipt and archive refs (1.010875ms)
+✔ imports submitted annual-accounts TT02 evidence as pending runtime evidence (99.197667ms)
+✔ imports completed company-tax TT02 evidence as company- and year-bound pending evidence (65.71125ms)
+✔ company-tax TT02 import fails closed on identity, authority, handoff, receipt, or archive mismatches (655.926709ms)
+✔ annual-accounts TT02 import fails closed on company, production, and submission mismatches (235.531459ms)
+✔ requires test reference and recorder (0.43175ms)
+✔ gate requires accepted evidence with receipt and archive refs (0.113333ms)
+✔ gate surfaces latest rejected, blocked, and pending evidence (7.267583ms)
+✔ positions and FIFU lots reconcile cent-exactly to the canonical ledger (0.517917ms)
+✔ one effective fact set reconciles tax, annual accounts, SAF-T input, archive, and RF-1086 (523.294542ms)
+✔ every approved golden case traces recognition and settlement identities separately (0.162208ms)
+✔ a correction retains history while every effective output counts only the replacement (101.090666ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1192.221708

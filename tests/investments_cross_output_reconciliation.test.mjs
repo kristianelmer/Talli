@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { buildAnnualAccountsPayload } from "../apps/web/app/lib/annual-accounts.ts";
+import { buildAnnualAccountsPayload } from "./support/annual_accounts_public.mjs";
 import { buildPersistedCompanyArchive } from "../apps/web/app/lib/archive.ts";
 import { buildCompanyTaxReturnPayload } from "./support/company_tax_public.mjs";
 import { renderRf1086SourceFacts } from "./support/rf1086-source-facts.mjs";

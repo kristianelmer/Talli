@@ -1,0 +1,45 @@
+✔ builds verified RR0002 annual accounts payload fields (67.851208ms)
+✔ includes system costs, bank interest, and share-sale losses in annual result (47.896667ms)
+✔ separates tax expense from result before tax and includes tax payable in debt (52.825625ms)
+✔ returns annual accounts feedback for missing notes and unsupported cases (48.590125ms)
+✖ persists annual accounts payload feedback into readiness gate shape (50.11125ms)
+✔ renders deterministic live-schema RR0002 main and company-accounts XML (171.239084ms)
+✔ rejects a payload with readiness blocks (155.728083ms)
+✔ rejects unbalanced or fractional whole-kroner payloads (296.803333ms)
+✔ rejects a missing field or mismatched official orid (285.095333ms)
+✔ rejects a calendar-invalid approval date (93.7525ms)
+✔ builds accepted authority test evidence with receipt and archive refs (0.557292ms)
+✔ imports submitted annual-accounts TT02 evidence as pending runtime evidence (99.249167ms)
+✔ imports completed company-tax TT02 evidence as company- and year-bound pending evidence (89.658958ms)
+✔ company-tax TT02 import fails closed on identity, authority, handoff, receipt, or archive mismatches (659.02375ms)
+✔ annual-accounts TT02 import fails closed on company, production, and submission mismatches (219.552458ms)
+✔ requires test reference and recorder (0.187708ms)
+✔ gate requires accepted evidence with receipt and archive refs (0.102917ms)
+✔ gate surfaces latest rejected, blocked, and pending evidence (14.110792ms)
+✔ positions and FIFU lots reconcile cent-exactly to the canonical ledger (0.5505ms)
+✔ one effective fact set reconciles tax, annual accounts, SAF-T input, archive, and RF-1086 (543.541541ms)
+✔ every approved golden case traces recognition and settlement identities separately (0.148ms)
+✔ a correction retains history while every effective output counts only the replacement (101.044083ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 21
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1206.38225
+
+✖ failing tests:
+
+test at tests/annual_accounts_payload.test.mjs:160:1
+✖ persists annual accounts payload feedback into readiness gate shape (50.11125ms)
+  Error: assess_annual_accounts_readiness() takes 1 positional argument but 2 were given
+      at invoke (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/annual_accounts_public.mjs:17:29)
+      at assessAnnualAccountsReadiness (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/annual_accounts_public.mjs:22:55)
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/annual_accounts_payload.test.mjs:186:30)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)

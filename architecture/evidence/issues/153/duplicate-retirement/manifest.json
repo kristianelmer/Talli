@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0",
+  "status": "DUPLICATE_POLICY_RETIRED_STAGE_EXIT_PENDING",
+  "baseRevision": "baac7f6ef0c90ed20cfb29d33b80a1c85ef506d1",
+  "deleted": [
+    "apps/web/app/lib/annual-accounts-xml.ts",
+    "apps/web/app/lib/annual-accounts.ts"
+  ],
+  "artifacts": {
+    "apps/web/app/lib/authority-test-evidence.ts": "fb2c386e22fac885b7644443dc6de4ff8f59023fbf37d6ac0d7f36e4f605c1d6",
+    "architecture/evidence/issues/153/duplicate-retirement/duplicate-retirement-architecture.log": "4349931dfd72104c0962b76194f1874af018b550b570940a5f1c0f21cedc896f",
+    "architecture/evidence/issues/153/duplicate-retirement/duplicate-retirement-first-tests.log": "84e93be539f79b5bd32b035bea95a797ad35e4b7eb60c6454c03f48798fda0c2",
+    "architecture/evidence/issues/153/duplicate-retirement/duplicate-retirement-fixed-tests.log": "b7dbfc4c6d2668b244aa7a96627e7621b14c9b3fad6b568c0e7034631ccd8f75",
+    "architecture/evidence/issues/153/duplicate-retirement/duplicate-retirement-frozen-parity.log": "4d6832cfcd4559dcbe2883a8826cded07c9906b53d6eb647b7181ce8e3aa86c4",
+    "architecture/evidence/issues/153/duplicate-retirement/duplicate-retirement-retained-functions.json": "7d7112e485306b4949b64aa733d36a75358de0ede9f62794a185c1114ea0450b",
+    "architecture/evidence/issues/153/duplicate-retirement/duplicate-retirement-typecheck.log": "b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+    "architecture/evidence/issues/153/duplicate-retirement/verification.md": "8d3f385bf104ecf961ba0c82ec18cffb1341bf08fd3204b1272150f2075aab7a",
+    "architecture/evidence/issues/153/duplicate-retirement/verify-retained-functions.mjs": "d0d65f5ffd0ecb1b2cec959422673aef86e46a33e2915aca5319fdeb38681d5e",
+    "tests/annual_accounts_payload.test.mjs": "88e126a2da2b8da27f39726171620f986eadd76318ea9244e60dd933fbe46d8c",
+    "tests/annual_accounts_xml.test.mjs": "93bf7cf7b4c6c93d58e1c86f16bfcc701bdbba52cf21bfe6eab4c9160ba2df35",
+    "tests/authority_test_evidence.test.mjs": "6ea5711cbf0d1dd7d020f313754ef90809887a3dd626a869b04b4071b1de98e5",
+    "tests/investments_cross_output_reconciliation.test.mjs": "7862161d9f854fd679105af671c0303f670a0ca0740154149ced6cba561cf3b6",
+    "tests/support/annual_accounts_public.mjs": "e98100e2784c614f75e6d1977580b89f2d96c3b64da8095e06d7f3d5e5b7af6c",
+    "tests/support/annual_accounts_public_driver.py": "86fff154f9e5e81fd6ecdc93763b2070f8d7d4f9365fb059d482816449da2393"
+  }
+}
