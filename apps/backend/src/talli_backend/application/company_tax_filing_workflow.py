@@ -172,7 +172,10 @@ class AuthenticatedCompanyTax:
         if query.actor_id != self.actor_id:
             raise CompanyTaxError.forbidden()
         async with self._session.transaction() as transaction:
-            return await transaction.acknowledge_review_comment(query)
+            result = await transaction.acknowledge_review_comment(query)
+            if result.record_id != query.record_id:
+                raise CompanyTaxError.unavailable()
+            return result
 
     async def confirm_filing_permission(self, command: ConfirmCompanyTaxPermission) -> CompanyTaxRecordedResult:
         if command.actor_id != self.actor_id:

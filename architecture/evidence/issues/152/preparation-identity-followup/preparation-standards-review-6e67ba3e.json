@@ -1,0 +1,144 @@
+{
+  "baselineRevision": "5d240525284e6aa92e2875940a638adb110421a6",
+  "candidateRevision": "6e67ba3e0759641db845449756306df444a3a9b1",
+  "diffCommand": "git diff 5d240525284e6aa92e2875940a638adb110421a6...6e67ba3e0759641db845449756306df444a3a9b1",
+  "commits": "6e67ba3e feat(company-tax): own filing preparation controls (#152)\n",
+  "changedSourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py": "ad4c2f8161c50a5f43e889b22b31633a3ca78a2784775da35e48579e87009057",
+    "apps/backend/src/talli_backend/application/company_tax_filing_session.py": "046700d954937e932587df71685c824aa86ca04b6e0097bd38882f77214bf361",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "824b6ec58ba9da2a2a71f628b20cea371d154b1d9f2806a6d3830122a42f8c55",
+    "apps/backend/src/talli_backend/main.py": "e7d94c8eb210b63985b91d150e814e866a5a69a84c02433ec4b1e74d7c2d29a1",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "173a7941539029da3d76f1e23211433e3462e6b0416416519730e7bee256166f",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "e6102cdecf395f93ec49ca349107bd220a2b7c2af8525aa9ad816147f34ba898",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/preparation.py": "4a6fb855f6f5bbba6cae8ac2120e258d5b2ac77e68361ec06fe7bd663265efeb",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "e859d2959c976d9aaee7bf130eaa5a1ec1623420cb4355ff2f9fe50096e13eac",
+    "apps/backend/tests/test_company_tax_preparation.py": "714ec423a54abfed51f71238823794fe204a7182e587ba6c3244ae9f6634d749",
+    "apps/web/features/company-tax-filing/MODULE.md": "4871236acfdb1846709e66f53f3b415ac80f89bfc6252af86f25880314823c93",
+    "apps/web/features/company-tax-filing/index.ts": "a9dfcbec88155bf2797a7c4b30e5d08249f7895254d28785be482d4c30bc8a9c",
+    "apps/web/features/company-tax-filing/module.json": "6152f6099968314764330e988ee903e04a578c10678d9aaf842f6a4eb44afd9f",
+    "apps/web/features/company-tax-filing/transport.ts": "05252fbe1cb8b5dec52b4e40c32d123f48d38ba40cd12587de32feca99874053",
+    "apps/web/tests/company-tax-transport.test.mjs": "0ca9dddca573ed040d2f6c41902cf67664ced1108875e5ffbbf3fefad049cea8",
+    "architecture/BACKEND-SYSTEM.md": "ae1885b786adb43033e4361ba5b629a0de73d14edd0fe6fa025c4e940d5acdb4",
+    "architecture/backend-system.json": "27a78da819f908ac8c63a477f474ee1ba01981dae9433f944cf17a0332945ff8",
+    "architecture/dependency-evidence.json": "8e6f6239570dc9d4be37855d6a7918ee438866d4f46efa0dd91cc70900229aa0",
+    "architecture/evidence/issues/152/legacy-preparation-controls.json": "e230e65b3c4246ad4bbfac864780d6cbe49568ac122a5a0848b206d40c7aa13d",
+    "architecture/evidence/issues/152/preparation-contract/capture-preparation.mjs.txt": "514c3e292320412d9f7dd53ea9804f07e0d591601fe55c805372f1db0715743b",
+    "architecture/evidence/issues/152/preparation-contract/filing-preparation-contract-seeded.json": "031d88c2b9e0a5947491d7fbb919e61ce41906911e2cd53f1bb56a10cc719fc6",
+    "architecture/evidence/issues/152/preparation-contract/import-spec-followup-5d240525.json": "65583afb9d7103faf2716c3179a1fcdea6523e02a82334702896ecc582111a61",
+    "architecture/evidence/issues/152/preparation-contract/import-spec-followup-5d240525.md": "3186b49329fed24fba642c7de4cf0f92c47e4e114984a7f5283a471399c7b29a",
+    "architecture/evidence/issues/152/preparation-contract/import-standards-followup-5d240525.json": "f73e94a45a665dde148a18b12521b2cd1e6550fa2f4c912a0c837e542de73815",
+    "architecture/evidence/issues/152/preparation-contract/import-standards-followup-5d240525.md": "501bf4791f5baabfe57e29a11ecb12480c30fae20398f8fc8cd92c5cdc19dd7d",
+    "architecture/evidence/issues/152/preparation-contract/import-standards-review-b400103d.json": "170a27d8cf1859271ea21351d6ca11827e5abeb43f70f18e868dbfb027e29afb",
+    "architecture/evidence/issues/152/preparation-contract/import-standards-review-b400103d.md": "a9d473bf1344fd812d42b4147f6e65b670be3d7ebdfe39c4280ccc8a22b4ad4f",
+    "architecture/evidence/issues/152/preparation-contract/manifest.json": "389779e8d0fe05d46455ba78ecd960694fe1b05bd774446c3f38ad31a08846ac",
+    "architecture/evidence/issues/152/preparation-contract/preparation-backend-tests.log": "eee808bfd16a42957de4be6ff7e8dcefd9e4024777ee7ea3fdc852c7e81348ea",
+    "architecture/evidence/issues/152/preparation-contract/preparation-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "architecture/evidence/issues/152/preparation-contract/preparation-web-tests.log": "33a37571431e0144435969584dba4ff6212a33dd90621ebb66571489eda1da35",
+    "architecture/evidence/issues/152/preparation-contract/probe-filing-preparation-contract.py.txt": "1d1117aa1c7460543e0ee344406268753947a85060bf234d571a6edd35b455f0",
+    "contracts/openapi/talli-v1.json": "55f85ed43c3b8ae6c2c26a6186de48f111bc26f5e40a19af1f8cb320831946cb",
+    "packages/talli-api-client/src/generated/client.ts": "b8498db6702ebe4388c3bcf503bba9db50486d6cb950aa72b648413d19efabfe",
+    "scripts/generate-api-client.mjs": "359f276536e30d0232c33fa8a12bd35bcf9ac24341c734af394ed03cb64bc11c",
+    "supabase/migrations/20260914203000_company_tax_return_preparation_contracts.sql": "af3ea6bdb42d353a38914359fbf98615281c41560d64ebf77df18d4a6fc74080"
+  },
+  "extraction": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-152-6e67-standards-6q6ryd9t",
+  "artifactHashesVerified": {
+    "preparation-typecheck.log": true,
+    "probe-filing-preparation-contract.py.txt": true,
+    "import-standards-followup-5d240525.md": true,
+    "import-spec-followup-5d240525.md": true,
+    "import-spec-followup-5d240525.json": true,
+    "capture-preparation.mjs.txt": true,
+    "import-standards-review-b400103d.md": true,
+    "import-standards-review-b400103d.json": true,
+    "preparation-web-tests.log": true,
+    "filing-preparation-contract-seeded.json": true,
+    "import-standards-followup-5d240525.json": true,
+    "preparation-backend-tests.log": true
+  },
+  "legacyControlHashVerified": true,
+  "openapiDelta": {
+    "schemas": {
+      "added": [
+        "CompanyTaxOverrideRequest",
+        "CompanyTaxPermissionRequest",
+        "CompanyTaxRecordedWire",
+        "CompanyTaxReviewRequest",
+        "CompanyTaxTestEvidenceRequest"
+      ],
+      "removed": [],
+      "changed": []
+    },
+    "paths": {
+      "added": [
+        "/api/v1/company-tax/overrides",
+        "/api/v1/company-tax/permissions",
+        "/api/v1/company-tax/previews/{preview_id}",
+        "/api/v1/company-tax/review-comments",
+        "/api/v1/company-tax/review-comments/{comment_id}/acknowledgements",
+        "/api/v1/company-tax/test-evidence"
+      ],
+      "removed": [],
+      "changed": []
+    }
+  },
+  "legacyControlSourceHashesVerified": {
+    "apps/web/app/lib/filing-overrides.ts": {
+      "baseline": true,
+      "candidate": true
+    },
+    "apps/web/app/lib/review.ts": {
+      "baseline": true,
+      "candidate": true
+    },
+    "apps/web/app/lib/authority-test-evidence.ts": {
+      "baseline": true,
+      "candidate": true
+    }
+  },
+  "sqlHashesVerified": {
+    "migrationSha256": true,
+    "readContractSha256": true,
+    "importContractSha256": true,
+    "preparationContractSha256": true
+  },
+  "standardsSha256": {
+    "AGENTS.md": "c4530bac3939f37053438b48a3dad2ea6e99d04481480ef61bee71d3dc81d4af",
+    "CONTEXT.md": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9",
+    "docs/agents/domain.md": "0b66c33560f91373a7b268f3acf2c3d992e6a77cf5dc60acdc66efb4dc34a982",
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/BACKEND-SYSTEM.md": "ae1885b786adb43033e4361ba5b629a0de73d14edd0fe6fa025c4e940d5acdb4",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "173a7941539029da3d76f1e23211433e3462e6b0416416519730e7bee256166f"
+  },
+  "status": "PASS_BOUNDED_STANDARDS_REVIEW",
+  "findings": [],
+  "independentTests": {
+    "backend": 213,
+    "files": [
+      "test_company_tax_preparation.py",
+      "test_company_tax_evidence_import.py",
+      "test_company_tax_workspace.py",
+      "test_company_tax_return_characterization.py"
+    ],
+    "web": 21,
+    "runtimes": "standalone CPython3.12.12 venv and pinned Node v24.20.0; isolated immutable source/generated client",
+    "scope": "Pure and fake session/fetch tests only"
+  },
+  "reportedNotRerun": {
+    "backendBroader": 248,
+    "sqlRollbackChecks": 60,
+    "sqlPriorChecks": 45,
+    "sqlNewChecks": 15
+  },
+  "limits": [
+    "No shared repo, Git, DB, runtime, browser or provider changes.",
+    "Only the pinned preparation milestone; subsequent uncommitted UI excluded.",
+    "No genuine JWT/MFA, durable cutover/rollback, full-stage or release-gate acceptance."
+  ],
+  "privateArtifactSha256": {
+    "preparation-standards-tests-6e67ba3e.log": "2bba6db41bd794cf418364d4301800b6a4ce45e9ad58226756555bd07179b394",
+    "preparation-standards-web-6e67ba3e.log": "000df3cabe80f8f6e1b8a000239abd7c27016a3b97e63e41c17502b7ac9f71d2"
+  },
+  "reportSha256": "29b41755e7732c78572eb985349c4343ef967c5d1b7b41c73accebae3c79ec6d"
+}

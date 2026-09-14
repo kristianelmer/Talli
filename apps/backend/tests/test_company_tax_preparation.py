@@ -95,3 +95,22 @@ def test_preparation_unavailable_missing_mfa_and_hard_review_are_distinct():
         sessions.fail=error
         result=client.post('/api/v1/company-tax/permissions',json={'companyId':str(COMPANY),'productionEnabled':True},headers=headers)
         assert result.status_code==status and result.json()['code']==error.code
+
+
+def test_acknowledgement_identity_mismatch_rolls_back_before_http_response():
+    events=[]
+    class CorruptSessions(Sessions):
+        @asynccontextmanager
+        async def transaction(self):
+            events.append('begin')
+            try:yield self
+            except Exception:
+                events.append('rollback');raise
+            else:events.append('commit')
+        async def acknowledge_review_comment(self,query):
+            events.append('acknowledgement-write')
+            return CompanyTaxRecordedResult(TaxFilingRecordId('00000000-0000-0000-0000-000000000199'),COMPANY,None)
+    client=TestClient(create_app(company_tax_session_factory=CorruptSessions()))
+    result=client.post(f'/api/v1/company-tax/review-comments/{RECORD}/acknowledgements',headers={'Authorization':'Bearer fixture'})
+    assert result.status_code==503
+    assert events==['begin','acknowledgement-write','rollback']
