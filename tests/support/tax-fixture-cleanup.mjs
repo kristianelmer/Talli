@@ -7,7 +7,9 @@ assert.ok(isLoopbackPostgresUrl(process.env.DATABASE_URL));
 let input="";for await (const chunk of process.stdin) input+=chunk;
 const companies=JSON.parse(input);assert.ok(companies.length && companies.every(id=>/^[a-f0-9-]{36}$/u.test(id)));
 const db=new pg.Client({connectionString:process.env.DATABASE_URL});await db.connect();
-const relations=["company_tax_filing.settlements","ledger.entries","backend_system.ledger_workflow_receipts",
+const filingRelations=["filing_submissions","filing_review_comments","filing_overrides","filing_previews","authority_test_runs","authority_permissions"].map(name=>`company_tax_filing.${name}`);
+const filingExists=(await db.query("select to_regclass('company_tax_filing.filing_submissions') is not null present")).rows[0].present;
+const relations=[...(filingExists?filingRelations:[]),"company_tax_filing.settlements","ledger.entries","backend_system.ledger_workflow_receipts",
  "backend_system.ledger_command_receipts","banking.transactions","public.documents","public.audit_events",
  "public.company_archive_source_generations","public.company_year_acceptances","public.company_year_admissions",
  "public.company_eligibility_assessments","public.customer_agreement_acceptances","public.company_memberships","public.companies"];

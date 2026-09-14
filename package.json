@@ -124,7 +124,7 @@
     "test:supabase-rf-feedback": "node --test --test-concurrency=1 tests/rf1086_feedback_schema.test.mjs",
     "test:browser-shareholder-register-filing": "node --test --test-concurrency=1 tests/shareholder_register_browser_fixture_safety.test.mjs tests/browser_shareholder_register_filing.mjs",
     "test:company-tax-database": ": \"${DATABASE_URL:?DATABASE_URL must identify the owned disposable database}\" && node scripts/rehearse-tax-topology.mjs prepare && uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_company_tax_filing_database.py -q && node scripts/rehearse-tax-topology.mjs contract && uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_company_tax_filing_runtime.py -q && uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_company_tax_return_lifecycle.py -q && node scripts/rehearse-tax-topology.mjs filing-expand && node scripts/rehearse-tax-topology.mjs filing-contract",
-    "test:browser-company-tax": "node --test --test-concurrency=1 tests/browser_tax_settlement.mjs"
+    "test:browser-company-tax": "node --test --test-concurrency=1 tests/browser_tax_settlement.mjs tests/browser_tax_filing.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

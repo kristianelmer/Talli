@@ -33,6 +33,12 @@ const allowed = new Set([
   "corporate_governance.shareholder_loans",
 
   "company_tax_filing.settlements",
+  "company_tax_filing.filing_submissions",
+  "company_tax_filing.filing_review_comments",
+  "company_tax_filing.filing_overrides",
+  "company_tax_filing.filing_previews",
+  "company_tax_filing.authority_test_runs",
+  "company_tax_filing.authority_permissions",
   "backend_system.ledger_workflow_receipts",
   "public.filing_readiness_snapshots",
   "public.support_operators",

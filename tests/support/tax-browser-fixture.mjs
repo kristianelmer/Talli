@@ -10,7 +10,8 @@ import pg from "pg";
 import { allocateLoopbackPort,startOwnedProcess,stopOwnedProcess,waitForOwnedReadiness } from "./owned-process-lifecycle.mjs";
 import { isLoopbackPostgresUrl,isLoopbackSupabaseUrl } from "./supabase_fixture_safety.mjs";
 
-export async function startTaxBrowserFixture() {
+export async function startTaxBrowserFixture({incomeYear=2026}={}) {
+  assert.ok([2025,2026].includes(incomeYear));
   const databaseUrl=process.env.DATABASE_URL;
   const supabaseUrl=process.env.SUPABASE_URL;
   const anonKey=process.env.SUPABASE_ANON_KEY;
@@ -19,8 +20,8 @@ export async function startTaxBrowserFixture() {
   assert.ok(isLoopbackPostgresUrl(databaseUrl)&&isLoopbackSupabaseUrl(supabaseUrl));
   const db=new pg.Client({connectionString:databaseUrl});await db.connect();
   const admin=createClient(supabaseUrl,serviceKey,{auth:{autoRefreshToken:false,persistSession:false}});
-  const roles=[];let owner,companyId,backend,web,proxy;
-  const controls={dropNextCapture:false,failNextPreview:false,delayPreviewAmount:null,captures:[],previews:[]};
+  const roles=[];let owner,companyId,orgNumber,backend,web,proxy,taxAuthorization;
+  const controls={dropNextCapture:false,failNextPreview:false,delayPreviewAmount:null,captures:[],previews:[],filingCalls:[],dropNextTaxImport:false};
   const baseEnv=Object.fromEntries(['PATH','HOME','TMPDIR','LANG','LC_ALL'].filter(key=>process.env[key]).map(key=>[key,process.env[key]]));
   const close=async()=>{
     const errors=[];const attempt=async(fn)=>{try{await fn();}catch(e){errors.push(e);}};
@@ -37,12 +38,13 @@ export async function startTaxBrowserFixture() {
   };
   try {
     assert.equal((await db.query('select phase from backend_system.tax_settlement_migration_state')).rows[0].phase,'contracted');
+    if(incomeYear===2025)assert.equal((await db.query('select phase from backend_system.company_tax_return_migration_state')).rows[0].phase,'contracted');
     const email=`tax-browser-${randomUUID()}@example.test`,password=`Fixture-${randomUUID()}-1a!`;
     const created=await admin.auth.admin.createUser({email,password,email_confirm:true});assert.ifError(created.error);
     owner={id:created.data.user.id,email,password};
     const python=process.env.TALLI_BACKEND_PYTHON_BIN||'apps/backend/.venv/bin/python';
-    const seed=spawnSync(python,['tests/fixtures/seed_tax_browser_company.py'],{cwd:process.cwd(),env:{...baseEnv,DATABASE_URL:databaseUrl},input:JSON.stringify({owner:owner.id}),encoding:'utf8'});
-    assert.equal(seed.status,0,seed.stderr);companyId=JSON.parse(seed.stdout).companyId;
+    const seed=spawnSync(python,['tests/fixtures/seed_tax_browser_company.py'],{cwd:process.cwd(),env:{...baseEnv,DATABASE_URL:databaseUrl},input:JSON.stringify({owner:owner.id,incomeYear}),encoding:'utf8'});
+    assert.equal(seed.status,0,seed.stderr);({companyId,orgNumber}=JSON.parse(seed.stdout));
     const urls={};
     for(const role of ['talli_company_access_backend','talli_ledger_backend','talli_banking_backend']){
       const prior=(await db.query('select rolcanlogin,rolinherit,rolbypassrls from pg_roles where rolname=$1',[role])).rows;
@@ -65,6 +67,13 @@ export async function startTaxBrowserFixture() {
         const headers=new Headers();for(const [key,value]of Object.entries(req.headers))if(!['host','connection','content-length'].includes(key)&&value!==undefined)headers.set(key,Array.isArray(value)?value.join(','):value);
         const response=await fetch(backendOrigin+req.url,{method:req.method,headers,...(body?{body}:{})});
         const bytes=Buffer.from(await response.arrayBuffer());
+        if(req.url.startsWith('/api/v1/company-tax/')){
+          taxAuthorization=headers.get('authorization');
+          if(req.method==='POST'&&!req.url.endsWith('-previews')){
+            controls.filingCalls.push({path:req.url,body:JSON.parse(body),status:response.status,response:JSON.parse(bytes.toString())});
+            if(req.url==='/api/v1/company-tax/tt02-evidence-imports'&&controls.dropNextTaxImport&&response.ok){controls.dropNextTaxImport=false;res.destroy();return;}
+          }
+        }
         if(req.url==='/api/v1/ledger/tax-settlements'&&req.method==='POST'){
           controls.captures.push({body:JSON.parse(body),status:response.status,response:JSON.parse(bytes.toString())});
           if(controls.dropNextCapture&&response.status===201){controls.dropNextCapture=false;res.destroy();return;}
@@ -81,7 +90,12 @@ export async function startTaxBrowserFixture() {
     const nextCli=createRequire(new URL('../../apps/web/package.json',import.meta.url)).resolve('next/dist/bin/next');
     web=startOwnedProcess({command:process.execPath,args:[nextCli,'dev','apps/web','--hostname','127.0.0.1','--port',String(webPort)],cwd:process.cwd(),readinessProof:'Ready in',env:{...baseEnv,NEXT_TELEMETRY_DISABLED:'1',NEXT_PUBLIC_SUPABASE_URL:supabaseUrl,NEXT_PUBLIC_SUPABASE_ANON_KEY:anonKey,SUPABASE_URL:supabaseUrl,SUPABASE_ANON_KEY:anonKey,TALLI_BACKEND_URL:`http://127.0.0.1:${proxyPort}`,SITE_URL:siteOrigin}});
     await waitForOwnedReadiness({process:web,url:siteOrigin});
-    return {siteOrigin,backendOrigin,owner,companyId,controls,db,close};
+    const taxRequest=(path,options={})=>{
+      assert.ok(path.startsWith('/api/v1/company-tax/'));
+      assert.ok(taxAuthorization,'a real browser session must establish authorization');
+      return fetch(backendOrigin+path,{...options,headers:{...options.headers,authorization:taxAuthorization}});
+    };
+    return {siteOrigin,backendOrigin,owner,companyId,orgNumber,controls,db,close,taxRequest};
   }catch(error){try{await close();}catch(cleanup){throw new AggregateError([error,cleanup],'tax_browser_fixture_setup_failed');}throw error;}
 }
 
