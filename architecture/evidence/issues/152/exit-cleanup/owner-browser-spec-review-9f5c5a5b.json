@@ -1,0 +1,89 @@
+{
+  "axis": "Spec",
+  "boundedVerdict": "PASS_OWNER_BROWSER_REHEARSAL",
+  "overallExitAudit": "ACTIONABLE_RETIREMENT_AND_ASSURANCE_GAPS",
+  "baselineRevision": "5a0634ac5db27f63ab2e05e437f24712c282fd7a",
+  "reviewedRevision": "9f5c5a5b15971de69327c3e242a603c32c7c4b20",
+  "stageBaselineRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+  "reportSha256": "c1e01fea160d20ee6f1e7e0796e30be86cd9db7aaa274cedaab8f782883dd346",
+  "sourceBindings": {
+    "architecture/evidence/issues/152/owner-browser/complete-tax-owner-browser.log": "b86d2e2fa9861b76e3f85ab601e5c22cfe8af1d622b6b3ec0bb847bb66fd562d",
+    "architecture/evidence/issues/152/owner-browser/manifest.json": "a588e7fdd8fef3e136d40d720610877840cc6c298a530663b0ee8137e3568523",
+    "architecture/evidence/issues/152/owner-browser/prepare-owner-browser.log": "2619b835df558e3c4737d8610d37c13e64cade74c8fa829e48337a012862a2f4",
+    "architecture/evidence/issues/152/source-handoff-reviews/source-handoff-spec-review-5a0634ac.json": "4de72dfd4ce14d438d18ff6cb6368649128ae1758f75fa5f31356102fea4b2a1",
+    "architecture/evidence/issues/152/source-handoff-reviews/source-handoff-spec-review-5a0634ac.md": "3186f407e9733efce47c7e106b17c4e5292ec5fa52844302770cfb88b724f962",
+    "architecture/evidence/issues/152/source-handoff-reviews/source-handoff-standards-review-5a0634ac.json": "e70f9bc6067fa99d5fedf845f8579c9424302cd39b7ed61a8c20279f2ff4ba6c",
+    "architecture/evidence/issues/152/source-handoff-reviews/source-handoff-standards-review-5a0634ac.md": "108b4c08f8d8f624b2af547f601b223207337ccb8ac53dd426b3761912320272",
+    "package.json": "5b28d7603475d0cf0f3a54a646fc0185a87ea60fbab1bb34bca6c85938dc14cb",
+    "tests/browser_tax_filing.mjs": "4e6c0df67d5d246e358323be5ebd81ff0594a8b3f5cb8d46726e60418e0fd867",
+    "tests/browser_tax_settlement.mjs": "9ab259e17342acf89d4ef47a317de9b0280a3481a428db97ac9a3d79b5736133",
+    "tests/fixtures/seed_tax_browser_company.py": "81c574c61ce6acd6e952f370b272cda240ef18173d5de01772e44fdeae9a0493",
+    "tests/support/rf1086-fixture-access.mjs": "8ad2b40268f9413e7e49ea7c8cbb9c1e8e38eb70ca3a22ea0d25f284996adc9f",
+    "tests/support/tax-browser-auth.mjs": "d0de9aed624d3112cf7c33200812674b9f94a955dd3a20f0e988592b868e97d0",
+    "tests/support/tax-browser-fixture.mjs": "9d0d3b23433f9ec1e5008c1093d3550745ef92a5a0a2487f88144e10d4a82a5a",
+    "tests/support/tax-fixture-cleanup.mjs": "68d4681e094b13a462a52abeb48f639118f20f8c66e99738f9d5817fc9964072",
+    "scripts/assert-deployed-schema-contract.mjs": "a7a61a4cad120f2141557d094aa6d33a96863a94d62353f29e0028192a9c16bc",
+    "tests/deployed_schema_contract.test.mjs": "0ea7f47f6aac0015bf4ed6ab327bad0de723add573e97c2cff3716bc801becfa",
+    "architecture/company-archive-sources.json": "f2f3a3ad1127640db0c5ca50b45d45418aa71737c6bdcd8ceb25e7aab9aa9af1",
+    "tests/company_access_cancellation_schema.test.mjs": "3ad34208a38bf44ddcb3438e87b3a6b6aa5af0765fcd6761421e1974996acfc2",
+    "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql": "d192b105d87287ba59e7b88278c1c25d51e6620d19b1b5d5e34fc416ef21597c",
+    "supabase/contract-migrations/20260914012930_company_tax_return_contract.sql": "84269749fd846de1e3cf272427b244431c62f6a41d46f6824e880a0ef5090158",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": "3431d8b8e174baf7315f3b2e75a392007b5b9519e02b3e0fe0ae2682dbc90516",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "7854dc56974998e4a284c291a3fa9a3c6ccd5f49cb68deb45213524b1fc43381",
+    "architecture/evidence/issues/152/requirements.json": "cd4da5befa561f08dd35d1a62ba15e8b4ea3ade0873df6e1f16a680c62b7cdf6",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482"
+  },
+  "findings": [
+    {
+      "id": "SPEC-152-EXIT-DEPLOY",
+      "priority": "P2",
+      "file": "scripts/assert-deployed-schema-contract.mjs",
+      "line": 13,
+      "summary": "Correct Tax contraction fails the deployed-schema requirement while restored obsolete RPC is not forbidden."
+    },
+    {
+      "id": "SPEC-152-EXIT-ARCHIVE",
+      "priority": "P2",
+      "file": "tests/company_access_cancellation_schema.test.mjs",
+      "line": 98,
+      "summary": "Complete source-inventory guard omits all five canonical Tax filing triggers; removal mutant still passes.",
+      "runtimeDefectDemonstrated": false
+    }
+  ],
+  "independentChecks": {
+    "ownerBrowserManifestHashes": 10,
+    "mfaFunctionByteIdentical": true,
+    "requirementsByteIdentical": true,
+    "noApplicationGeneratedClientOrSqlDelta": true,
+    "pureRetiredRpcProbe": "REPRODUCED",
+    "archiveInventoryOriginalTest": "PASS",
+    "archiveFiveTriggersRemovedMutant": "UNEXPECTED_PASS"
+  },
+  "recordedEvidence": {
+    "browserJourneys": 2,
+    "passed": 2,
+    "skipped": 0,
+    "independentlyReran": false
+  },
+  "remainingEvidence": [
+    {
+      "requirement": "#132 comment 5083588592 release evidence: deployment-order compatibility",
+      "scope": "Tax filing old/current protocol; SQL rollback and previous settlement evidence insufficient alone",
+      "status": "NOT_FOUND_IN_COMMITTED_152_EVIDENCE"
+    }
+  ],
+  "documentationCleanup": [
+    "MODULE.md contains superseded intermediate deployment/ownership prose; refresh before exit."
+  ],
+  "limits": [
+    "No shared mutations, DB/browser/provider operations.",
+    "No full stage, production activation or successor acceptance.",
+    "Archive finding is missing assurance coverage, not demonstrated runtime invalidation."
+  ],
+  "privateArtifacts": {
+    "owner-browser-spec-probe-9f5c5a5b.mjs": "ba15393f66e358d7fab58ef7c9b29ddfe747a03f87cb914c60970ef8ae322b41",
+    "owner-browser-spec-probe-9f5c5a5b.log": "0c210e83a95d4d9d48551389cd2f2e8e1656ee72e0061702fcefe7914629b570",
+    "owner-browser-spec-bindings-9f5c5a5b.json": "b79745d61c8948c83e9f56b79b17d0f7df74d65522b2dffea8ca7737ce17ca50",
+    "issue132-spec-exit-comments.json": "1cb177a3491b34e125c80bd4520dea0e52e35380613797afe34a694e40391aff"
+  }
+}

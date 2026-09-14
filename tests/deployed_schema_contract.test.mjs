@@ -19,7 +19,6 @@ test("deployed schema contract covers every post-baseline product capability", (
     "/rpc/append_production_filing_event",
     "/rpc/approve_production_filing",
     "/rpc/begin_production_filing",
-    "/rpc/import_company_tax_tt02_evidence",
     "/rpc/remove_unlinked_document",
     "/rpc/restore_unlinked_document_after_storage_failure",
   ]);
@@ -37,6 +36,7 @@ test("deployed schema contract covers every post-baseline product capability", (
     "/rpc/attest_corporate_signed_artifact",
     "/rpc/create_corporate_document_draft",
     "/rpc/finalize_corporate_decision",
+    "/rpc/import_company_tax_tt02_evidence",
     "/rpc/manage_production_pilot_entitlement",
     "/rpc/record_corporate_document_event",
     "/rpc/record_owner_dividend_payment",
@@ -83,4 +83,12 @@ test("fails closed when the response is not a PostgREST OpenAPI document", () =>
     () => presentForbiddenDeployedSchemaPaths({ message: "unauthorized" }),
     /PostgREST OpenAPI document/u,
   );
+});
+
+test("contracted Tax schema needs no retired import RPC and rejects its restoration", () => {
+  const paths = Object.fromEntries(REQUIRED_DEPLOYED_SCHEMA_PATHS.map(path => [path, {}]));
+  assert.deepEqual(missingDeployedSchemaPaths({ paths }), []);
+  assert.deepEqual(presentForbiddenDeployedSchemaPaths({ paths }), []);
+  paths["/rpc/import_company_tax_tt02_evidence"] = {};
+  assert.deepEqual(presentForbiddenDeployedSchemaPaths({ paths }), ["/rpc/import_company_tax_tt02_evidence"]);
 });

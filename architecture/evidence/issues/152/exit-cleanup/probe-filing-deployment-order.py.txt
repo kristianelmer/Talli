@@ -1,0 +1,171 @@
+"""Owned local PostgREST legacy protocol / actual FastAPI adapter phase matrix.
+
+JWT signatures and AAL2 claims are fixture-owned; real Auth/TOTP is covered by
+browser_tax_filing.mjs. No provider or hosted network surface is used.
+"""
+import hashlib,json,os,subprocess,sys,time,socket
+from pathlib import Path
+from uuid import uuid4
+from urllib.parse import urlsplit,urlunsplit
+import psycopg,httpx,base64,hmac
+from psycopg import sql
+from psycopg.types.json import Jsonb
+from fastapi.testclient import TestClient
+ROOT=Path.cwd();sys.path[:0]=[str(ROOT/'apps/backend/src'),str(ROOT/'apps/backend/tests')]
+from talli_backend.adapters.postgres_company_tax_filing import PostgresCompanyTaxSession
+from talli_backend.adapters.supabase_ledger import _VerifiedActor
+from talli_backend.main import create_app
+import talli_backend.adapters.postgres_company_tax_filing as tax_adapter
+map_error=tax_adapter._company_tax_database_error
+def diagnostic_error(error):
+ print('SQL diagnostic:',getattr(getattr(error,'diag',None),'message_primary',type(error).__name__),flush=True)
+ return map_error(error)
+tax_adapter._company_tax_database_error=diagnostic_error
+from talli_backend.shared.kernel import ActorId,ActorKind,UserId
+from test_shareholder_register_filing_lifecycle import company
+from talli_backend.modules.company_tax_filing.public import CompanyTaxEvidenceInput,project_company_tax_evidence
+from talli_backend.adapters.postgres_company_tax_filing import _json_value
+PRIVATE=Path('/Users/kristianelmer/.codex/issue-192-private/issue152-entry')
+v=json.loads(Path('/Users/kristianelmer/.codex/issue-192-private/issue146-entry/local-environment-private.json').read_text())
+base_url=v['DB_URL'];assert urlsplit(base_url).hostname in ('localhost','127.0.0.1') and urlsplit(base_url).port==52966
+DB='tax152_protocol_d060';CONTAINER='talli-tax152-protocol-d060';assert DB=='tax152_protocol_d060'
+url=urlunsplit(urlsplit(base_url)._replace(path='/'+DB))
+env={**os.environ,'DOCKER_HOST':'unix:///Users/kristianelmer/.colima/talli/docker.sock'}
+base=['docker','exec','-i','-u','postgres','supabase_db_tallig6753']
+def docker(args,**kw):return subprocess.run(['docker',*args],env=env,capture_output=True,check=True,**kw).stdout
+with psycopg.connect(base_url,autocommit=True) as db:
+ assert not db.execute('select 1 from pg_database where datname=%s',(DB,)).fetchone(),'owned protocol DB already exists'
+ db.execute(sql.SQL('create database {} owner postgres').format(sql.Identifier(DB)))
+with (PRIVATE/'pre-owner-browser-tax152.dump').open('rb') as data:
+ r=subprocess.run(base+['pg_restore','-U','supabase_admin','-d',DB,'--exit-on-error'],stdin=data,capture_output=True,env=env)
+ assert r.returncode==0,'owned predecessor restore failed'
+web_role='tax152_web_'+uuid4().hex;api_role='tax152_api_'+uuid4().hex;password=uuid4().hex;secret=uuid4().hex+uuid4().hex
+checks=[];client=None;web_started=False;passed=False
+record=lambda label:checks.append(label)
+def apply(name):
+ with psycopg.connect(url,autocommit=True) as db:
+  db.execute((ROOT/'supabase'/name).read_text())
+  db.execute("notify pgrst,'reload schema'")
+ # DDL notifications are asynchronous. Read the actual endpoint schema below.
+ time.sleep(.3)
+try:
+ with psycopg.connect(url) as db:
+  cid,owner=company(db)
+  org=db.execute('select org_number from public.companies where id=%s',(cid,)).fetchone()[0]
+  for role,granted in ((web_role,'authenticated'),(api_role,'company_tax_filing_workflow_executor')):
+   db.execute(sql.SQL('create role {} login noinherit nobypassrls password {}').format(sql.Identifier(role),sql.Literal(password)))
+   db.execute(sql.SQL('grant {} to {} with inherit false,set true').format(sql.Identifier(granted),sql.Identifier(role)))
+  original_rpc=db.execute("select pg_get_functiondef('public.import_company_tax_tt02_evidence(jsonb)'::regprocedure)").fetchone()[0]
+ assert hashlib.sha256(original_rpc.split('AS $function$\n',1)[1].split('\n$function$',1)[0].encode()).hexdigest()==json.loads((ROOT/'architecture/evidence/issues/152/legacy-database-characterization.json').read_text())['legacyRpcBodySha256'],'exact pinned predecessor RPC body hash'
+ record('initial legacy RPC definition matches frozen predecessor SHA-256')
+ claims={'sub':str(owner),'role':'authenticated','aal':'aal2','amr':[{'method':'totp','timestamp':int(time.time())}],'exp':int(time.time())+3600}
+ b64=lambda value:base64.urlsafe_b64encode(value).rstrip(b'=')
+ unsigned=b64(b'{"alg":"HS256","typ":"JWT"}')+b'.'+b64(json.dumps(claims,separators=(',',':')).encode())
+ token=(unsigned+b'.'+b64(hmac.new(secret.encode(),unsigned,hashlib.sha256).digest())).decode()
+ networks=json.loads(docker(['inspect','supabase_db_tallig6753','--format','{{json .NetworkSettings.Networks}}']))
+ assert len(networks)==1
+ config=PRIVATE/'protocol-postgrest.env'
+ config.write_text(f'PGRST_DB_URI=postgresql://{web_role}:{password}@supabase_db_tallig6753:5432/{DB}\nPGRST_DB_SCHEMAS=public\nPGRST_DB_ANON_ROLE={web_role}\nPGRST_JWT_SECRET={secret}\n')
+ config.chmod(0o600)
+ docker(['run','--detach','--name',CONTAINER,'--label','talli.fixture=tax152-protocol-d060','--network',next(iter(networks)),'--publish','127.0.0.1::3000','--env-file',str(config),'public.ecr.aws/supabase/postgrest:v14.14'])
+ web_started=True
+ port=docker(['port',CONTAINER,'3000/tcp']).decode().strip();assert port.startswith('127.0.0.1:')
+ endpoint='http://'+port
+ for _ in range(100):
+  try:
+   if httpx.get(endpoint,headers={'authorization':'Bearer '+token}).status_code==200:break
+  except httpx.HTTPError:pass
+  time.sleep(.1)
+ else:raise AssertionError('owned PostgREST not ready')
+ record('owned PostgREST verifies dedicated synthetic JWT')
+ verified=_VerifiedActor(ActorId(ActorKind.USER,UserId(str(owner))),json.dumps(claims))
+ from psycopg.conninfo import make_conninfo
+ api_url=make_conninfo(url,user=api_role,password=password)
+ class Sessions:
+  async def session(self,received):
+   assert received=='fixture';return PostgresCompanyTaxSession(api_url,verified)
+ client=TestClient(create_app(company_tax_session_factory=Sessions()))
+ case=next(x for x in json.loads((ROOT/'architecture/evidence/issues/152/legacy-characterization.json').read_text())['evidenceCases'] if x['id']=='synthetic-completed-pending-feedback')
+ def replace_context(value):
+  return json.loads(json.dumps(value).replace(case['input']['companyId'],str(cid)).replace(case['input']['recordedBy'],str(owner)).replace(case['input']['expectedCompanyOrgNumber'],org))
+ evidence=replace_context(case['input']['evidence']);payload=replace_context(case['output']['value'])
+ def projection(e):
+  value=project_company_tax_evidence(CompanyTaxEvidenceInput(company_id=str(cid),expected_organization_number=org,expected_income_year=2025,evidence=e,evidence_url=case['input']['evidenceUrl'],recorded_by=str(owner)))
+  return _json_value({'authorityRun':value.authority_run,'submission':value.submission})
+ assert projection(evidence)==payload,'exact frozen predecessor request projection'
+ record('current projector matches frozen predecessor request body exactly')
+ def old(p=payload):return httpx.post(endpoint+'/rpc/import_company_tax_tt02_evidence',headers={'authorization':'Bearer '+token},json={'p_payload':p})
+ def new(e=evidence):return client.post('/api/v1/company-tax/tt02-evidence-imports',headers={'Authorization':'Bearer fixture'},json={'companyId':str(cid),'incomeYear':2025,'evidenceJson':json.dumps(e),'evidenceUrl':case['input']['evidenceUrl']})
+ def source():return client.get('/api/v1/company-tax/source-facts',headers={'Authorization':'Bearer fixture'},params={'companyId':str(cid),'incomeYear':2025})
+ def unavailable(label):
+  for result in (new(),source()):assert result.status_code==503,(label,result.status_code,result.text)
+  record(label)
+ def old_unavailable(label):
+  result=old();assert result.status_code in (401,403,404),(label,result.status_code,result.text)
+  record(label)
+ unavailable('current API on predecessor storage fails closed')
+ first=old();assert first.status_code==200,first.text
+ original=first.json();assert original['created'] is True
+ def wire(result):return {'authorityTestRunId':result['authority_test_run_id'],'filingSubmissionId':result['filing_submission_id'],'created':result['created']}
+ def legacy(result):return {'authority_test_run_id':result['authorityTestRunId'],'filing_submission_id':result['filingSubmissionId'],'created':result['created']}
+ assert old().json()=={**original,'created':False}
+ record('pinned predecessor RPC protocol creates once and replays original IDs')
+ for name in ('20260914200000_company_tax_return_expand','20260914201000_company_tax_return_read_contracts','20260914202000_company_tax_return_import_contract','20260914203000_company_tax_return_preparation_contracts','20260914022608_company_tax_return_source_contract'):
+  apply('contract-migrations/'+name+'.sql')
+ unavailable('current API on inert expansion fails closed')
+ assert old().json()=={**original,'created':False};record('legacy protocol remains authoritative during expansion')
+ apply('contract-migrations/20260914012503_company_tax_return_cutover.sql')
+ old_unavailable('legacy HTTP RPC denied after owned cutover')
+ result=new();assert result.status_code==200,result.text
+ assert result.json()=={**wire(original),'created':False};record('current API replays exact predecessor receipt after cutover')
+ # Fresh current-API evidence changes only the synthetic instance/data identities.
+ second_e=json.loads(json.dumps(evidence).replace(evidence['instance']['id'].split('/')[1],str(uuid4())).replace(evidence['receipt']['dataId'],str(uuid4())))
+ second_e['payloadHashes']['skattemelding']='1'*64
+ result=new(second_e);assert result.status_code==200,result.text
+ second=result.json();assert second['created'] is True
+ record('current API creates fresh pending evidence after cutover')
+ apply('contract-migrations/20260914012930_company_tax_return_contract.sql')
+ old_unavailable('retired legacy HTTP RPC absent after contract')
+ result=source();assert result.status_code==200,result.text
+ assert result.json()['historyCoverage']['status']=='complete' and result.json()['historyCoverage']['submissionCount']==2
+ record('contracted source positively enumerates both historical and current receipts')
+ apply('rollback/20260914012930_company_tax_return_contract.sql')
+ assert new(second_e).json()=={**second,'created':False};record('contract-only rollback retains current authoritative protocol')
+ apply('rollback/20260914012503_company_tax_return_cutover.sql')
+ unavailable('current API after full rollback fails closed without legacy fallback')
+ with psycopg.connect(url) as db:
+  assert db.execute("select pg_get_functiondef('public.import_company_tax_tt02_evidence(jsonb)'::regprocedure)").fetchone()[0]==original_rpc
+ record('full rollback restores byte-identical predecessor RPC definition')
+ assert old().json()=={**original,'created':False};record('legacy HTTP replay retains predecessor IDs after full rollback')
+ # Use the original frozen projection shape for current-created receipt replay.
+ second_p=projection(second_e)
+ result=old(second_p);assert result.status_code==200,result.text
+ assert result.json()=={**legacy(second),'created':False};record('legacy HTTP replay retains latest current-API IDs after full rollback')
+ third_e=json.loads(json.dumps(evidence).replace(evidence['instance']['id'].split('/')[1],str(uuid4())).replace(evidence['receipt']['dataId'],str(uuid4())))
+ third_e['payloadHashes']['skattemelding']='2'*64
+ third_p=projection(third_e)
+ result=old(third_p);assert result.status_code==200,result.text
+ third=result.json();assert third['created'] is True;record('legacy HTTP accepts fresh evidence after full rollback')
+ apply('contract-migrations/20260914012503_company_tax_return_cutover.sql')
+ apply('contract-migrations/20260914012930_company_tax_return_contract.sql')
+ result=new(third_e);assert result.status_code==200,result.text
+ assert result.json()=={**wire(third),'created':False};record('current API replays fresh rollback-era receipt after re-cutover')
+ old_unavailable('legacy HTTP denied again after re-contract')
+ result=source();assert result.status_code==200,result.text
+ assert result.json()['historyCoverage']['status']=='complete' and result.json()['historyCoverage']['submissionCount']==3
+ record('re-contracted source positively enumerates all three receipt generations')
+ passed=True
+finally:
+ if client:client.close()
+ if web_started:docker(['rm','--force',CONTAINER])
+ with psycopg.connect(base_url,autocommit=True) as db:
+  for role in (web_role,api_role):
+   if db.execute('select 1 from pg_roles where rolname=%s',(role,)).fetchone():
+    db.execute(sql.SQL('alter role {} nologin password null').format(sql.Identifier(role)))
+    db.execute(sql.SQL('drop role {}').format(sql.Identifier(role)))
+  if passed:db.execute(sql.SQL('drop database {}').format(sql.Identifier(DB)))
+ if passed:
+  (PRIVATE/'protocol-postgrest.env').unlink(missing_ok=True)
+  result={'status':'PASS','checks':checks,'count':len(checks),'sourceRevision':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'legacyRevision':'054740b81692e0e59b99a76fff085f322f1968b4','fixture':'Dedicated JWT signing realm with fixture AAL2 claims. Legacy requests traverse real loopback PostgREST; current requests traverse actual FastAPI ASGI and restricted Postgres adapter. Real Supabase Auth/TOTP is separate browser evidence.','cleanup':'Owned PostgREST container and cloned database removed; both ephemeral login roles dropped. Retained main topology unchanged.','providerCalls':0,'hostedChanges':0}
+  (PRIVATE/'filing-deployment-order.json').write_text(json.dumps(result,indent=2)+'\n')
+  print(json.dumps(result,indent=2))

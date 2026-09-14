@@ -1,0 +1,57 @@
+{
+  "base": "5a0634ac5db27f63ab2e05e437f24712c282fd7a",
+  "candidate": "9f5c5a5b15971de69327c3e242a603c32c7c4b20",
+  "isolatedArchive": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-owner-browser-standards-vcv80_jo",
+  "node": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+  "probe": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/owner-browser-standards-probe-9f5c5a5b.mjs",
+  "probeSha256": "b29c1b0611a48dbc7ba1aad6213e8b6447b3dfab75eb5daa6aac42dd0938a692",
+  "probeExitCode": 0,
+  "transcript": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/owner-browser-standards-probe-9f5c5a5b.log",
+  "transcriptSha256": "d54001e2edbb2bcb97ec8385813b85d8ba92c285ff2f418eee642565b737aec1",
+  "verifiedManifestBindings": {
+    "tests/browser_tax_filing.mjs": "4e6c0df67d5d246e358323be5ebd81ff0594a8b3f5cb8d46726e60418e0fd867",
+    "tests/browser_tax_settlement.mjs": "9ab259e17342acf89d4ef47a317de9b0280a3481a428db97ac9a3d79b5736133",
+    "tests/support/tax-browser-fixture.mjs": "9d0d3b23433f9ec1e5008c1093d3550745ef92a5a0a2487f88144e10d4a82a5a",
+    "tests/support/tax-browser-auth.mjs": "d0de9aed624d3112cf7c33200812674b9f94a955dd3a20f0e988592b868e97d0",
+    "tests/support/tax-fixture-cleanup.mjs": "68d4681e094b13a462a52abeb48f639118f20f8c66e99738f9d5817fc9964072",
+    "tests/support/rf1086-fixture-access.mjs": "8ad2b40268f9413e7e49ea7c8cbb9c1e8e38eb70ca3a22ea0d25f284996adc9f",
+    "tests/fixtures/seed_tax_browser_company.py": "81c574c61ce6acd6e952f370b272cda240ef18173d5de01772e44fdeae9a0493",
+    "package.json": "5b28d7603475d0cf0f3a54a646fc0185a87ea60fbab1bb34bca6c85938dc14cb",
+    "architecture/evidence/issues/152/owner-browser/complete-tax-owner-browser.log": "b86d2e2fa9861b76e3f85ab601e5c22cfe8af1d622b6b3ec0bb847bb66fd562d",
+    "architecture/evidence/issues/152/owner-browser/prepare-owner-browser.log": "2619b835df558e3c4737d8610d37c13e64cade74c8fa829e48337a012862a2f4"
+  },
+  "verdict": "PASS_BOUNDED_STANDARDS_REVIEW",
+  "findings": [],
+  "sourceHashes": {
+    "architecture/evidence/issues/152/owner-browser/complete-tax-owner-browser.log": "b86d2e2fa9861b76e3f85ab601e5c22cfe8af1d622b6b3ec0bb847bb66fd562d",
+    "architecture/evidence/issues/152/owner-browser/manifest.json": "a588e7fdd8fef3e136d40d720610877840cc6c298a530663b0ee8137e3568523",
+    "architecture/evidence/issues/152/owner-browser/prepare-owner-browser.log": "2619b835df558e3c4737d8610d37c13e64cade74c8fa829e48337a012862a2f4",
+    "architecture/evidence/issues/152/source-handoff-reviews/source-handoff-spec-review-5a0634ac.json": "4de72dfd4ce14d438d18ff6cb6368649128ae1758f75fa5f31356102fea4b2a1",
+    "architecture/evidence/issues/152/source-handoff-reviews/source-handoff-spec-review-5a0634ac.md": "3186f407e9733efce47c7e106b17c4e5292ec5fa52844302770cfb88b724f962",
+    "architecture/evidence/issues/152/source-handoff-reviews/source-handoff-standards-review-5a0634ac.json": "e70f9bc6067fa99d5fedf845f8579c9424302cd39b7ed61a8c20279f2ff4ba6c",
+    "architecture/evidence/issues/152/source-handoff-reviews/source-handoff-standards-review-5a0634ac.md": "108b4c08f8d8f624b2af547f601b223207337ccb8ac53dd426b3761912320272",
+    "package.json": "5b28d7603475d0cf0f3a54a646fc0185a87ea60fbab1bb34bca6c85938dc14cb",
+    "tests/browser_tax_filing.mjs": "4e6c0df67d5d246e358323be5ebd81ff0594a8b3f5cb8d46726e60418e0fd867",
+    "tests/browser_tax_settlement.mjs": "9ab259e17342acf89d4ef47a317de9b0280a3481a428db97ac9a3d79b5736133",
+    "tests/fixtures/seed_tax_browser_company.py": "81c574c61ce6acd6e952f370b272cda240ef18173d5de01772e44fdeae9a0493",
+    "tests/support/rf1086-fixture-access.mjs": "8ad2b40268f9413e7e49ea7c8cbb9c1e8e38eb70ca3a22ea0d25f284996adc9f",
+    "tests/support/tax-browser-auth.mjs": "d0de9aed624d3112cf7c33200812674b9f94a955dd3a20f0e988592b868e97d0",
+    "tests/support/tax-browser-fixture.mjs": "9d0d3b23433f9ec1e5008c1093d3550745ef92a5a0a2487f88144e10d4a82a5a",
+    "tests/support/tax-fixture-cleanup.mjs": "68d4681e094b13a462a52abeb48f639118f20f8c66e99738f9d5817fc9964072"
+  },
+  "diffSha256": "7d773f8e471331dd859ab43b0dc91e6733f7f0151db61fb7bbdfe36f1d1732d9",
+  "independentChecks": {
+    "authHelperBodyIdentical": true,
+    "settlementTestStatementIdentical": true,
+    "restorationHelperBodiesIdentical": 2,
+    "mockedBrowserEgressGuard": true,
+    "undeclaredAndExternalFixtureAccessFailsBeforeSql": true
+  },
+  "retainedBrowserEvidence": {
+    "journeysPassed": 2,
+    "skipped": 0,
+    "independentlyRerun": false
+  },
+  "limits": "No shared files, database, browser, provider or shared process mutations; only isolated source/AST/mock checks. No full-stage/gate/activation credit.",
+  "reportSha256": "b3768983c72eccf229d4325d20fc74e5df4fbc47fc4efa2b5a341ec606ba5f58"
+}

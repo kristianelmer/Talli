@@ -1,0 +1,73 @@
+{
+  "baselineRevision": "9f5c5a5b15971de69327c3e242a603c32c7c4b20",
+  "status": "ARCHIVE_AND_DEPLOYMENT_RETIREMENT_GAPS_FIXED_PROTOCOL_MATRIX_PASS",
+  "checks": {
+    "targetedTests": 43,
+    "failed": 0,
+    "skipped": 0,
+    "deploymentOrderChecks": 21,
+    "providerCalls": 0,
+    "hostedChanges": 0
+  },
+  "reviewFindings": [
+    "Spec: add five owned Tax Archive filing sources and guard their trigger/read completeness; public Accounts sources retained.",
+    "Spec: deployed schema must reject retired Tax TT02 RPC instead of requiring it.",
+    "Full gate: Archive VM harness must declare the current Tax source dependency and verify Tax receipt/evidence composition and unavailable-source behavior."
+  ],
+  "deploymentOrder": "Real dedicated loopback PostgREST for legacy protocol and actual FastAPI ASGI with restricted Postgres login for current API; dedicated synthetic JWT realm. Current API/SQL bytes match the named baseline revision. Browser real Auth/TOTP proof is separate. Original RPC body matches frozen SHA, all phase and latest-receipt replay checks pass.",
+  "failedGate": {
+    "revision": "9f5c5a5b15971de69327c3e242a603c32c7c4b20",
+    "failedCheck": "launch-rehearsal",
+    "reason": "Archive VM harness omitted new Tax source import",
+    "exitCredit": false,
+    "passedChecks": [
+      "credential-scan",
+      "typecheck",
+      "architecture",
+      "boundary",
+      "build-web",
+      "build-backend",
+      "boundary-smoke"
+    ]
+  },
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py": "1b4945e344782181323d0a0abb32af6dc19854d747bb29cef081592b23ce63b2",
+    "apps/backend/src/talli_backend/main.py": "2f9e433de941b9c990bf75ef3ddb4d5cec2412bb3227bf665d5e91f765b81fd2",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "9e4083d88f399f98c4206ad412296e86be416d2983bdc7a12198a5772b5d9132",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "485a0f0f94f64b688a616dc39a6420c4513a0cc7285904b1b6dbe9490e358fe8",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/evidence.py": "0b9ff2aaf0cf016fbea8d7e1a07b0d9cd6f73c3a0c18aac6c47f9c2536ba468a",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/source_facts.py": "caefd447ef1dbea432f5e47c64d4e1b7e34e7db997cca5a64109771de4d78b4a",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "f94e53ccce5ce61e927be28e374d67c3d356a17620206107c204ef016f6a41b6",
+    "apps/web/tests/archive-rf1086-source.test.mjs": "94de39f38c624057384a7364d7c39246b793c6449f65154f4a9a0ef2178fa6c5",
+    "architecture/company-archive-sources.json": "9d36640141b7353301a6d54d513f07c1915082fbafb004a5275544e681f185a4",
+    "scripts/assert-deployed-schema-contract.mjs": "5e38fdc84f27e9290b267ada30b0d574ddcbefb4e5777df0799579f1392af5e7",
+    "tests/company_access_cancellation_schema.test.mjs": "08347cbe49a455dc08941493f1d9ba1cef5f2c1c45fd82fb60ab2de1d8308337",
+    "tests/deployed_schema_contract.test.mjs": "f1990d158f5e684b652dedbbedf68566eb50f2b8571fcc6fb5640e9057d8c5ea",
+    "supabase/migrations/0005_company_tax_feedback_persistence.sql": "15b7544c94453a56c4a7264fd286b217e039c6a72c03b176522a1c45a3219eb1",
+    "supabase/contract-migrations/20260914022608_company_tax_return_source_contract.sql": "ae6e571b5c268a12d80ee43ca30931da9f277d303b6f5bc8dc7e38deb8b10db4",
+    "supabase/contract-migrations/20260914201000_company_tax_return_read_contracts.sql": "24ebea4288c9f1357ecdd6b6c761b8b9e816fc188fcabd4e0671125996cc4ff5",
+    "supabase/contract-migrations/20260914203000_company_tax_return_preparation_contracts.sql": "af3ea6bdb42d353a38914359fbf98615281c41560d64ebf77df18d4a6fc74080",
+    "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql": "d192b105d87287ba59e7b88278c1c25d51e6620d19b1b5d5e34fc416ef21597c",
+    "supabase/contract-migrations/20260914012930_company_tax_return_contract.sql": "84269749fd846de1e3cf272427b244431c62f6a41d46f6824e880a0ef5090158",
+    "supabase/contract-migrations/20260914200000_company_tax_return_expand.sql": "ce0a4b9ab6fc7f90ea4cd851e9a2cff2da113db9c461dc5911bd6c7abfc96281",
+    "supabase/contract-migrations/20260914202000_company_tax_return_import_contract.sql": "5b924cfe0d4771cc58723dcdc65f1c7f4612bd19bba7b0541f1ee0acd62d0cbb",
+    "supabase/rollback/20260914012503_company_tax_return_cutover.sql": "0808d9ef883fce1dee19bcd1330f1579682481c1596e522b2b5d5c73fc9e9f07",
+    "supabase/rollback/20260914012930_company_tax_return_contract.sql": "b8f7f2190e748a8a9e9a88787b68c46f64e08a9f201cc4eb1b9ed9d5c475ed8c"
+  },
+  "evidenceSha256": {
+    "owner-browser-standards-review-9f5c5a5b.md": "b3768983c72eccf229d4325d20fc74e5df4fbc47fc4efa2b5a341ec606ba5f58",
+    "filing-deployment-order.log": "6d7ebe9c63a40052e994b0eb6fb9967df47f2b47dab87d20f2d93681331c3e94",
+    "owner-browser-standards-review-9f5c5a5b.json": "68b7924af7eee10ad6bcad88fedcd31a50ef48734a723ea63d652bc0e3fb16fc",
+    "owner-browser-spec-review-9f5c5a5b.json": "daeee096cc944f88aa4dd47218d24b9400f0ab7f642589df1697000508e482c5",
+    "probe-filing-deployment-order.py.txt": "dd2a44775e711cc8d25e2202b4dbe0686b646c5a718f8b2e76e2479705b3a420",
+    "filing-deployment-order.json": "29e740d35f00c20b9b6e65d36c6d71217d0c92435cf3e2a61a098eb7ab021924",
+    "exit-cleanup-targeted.log": "fea0cc1df510e1e07ccdb2ad3d2e9152c811286591faf8f3ba0f01fee3d077dd",
+    "owner-browser-spec-review-9f5c5a5b.md": "c1e01fea160d20ee6f1e7e0796e30be86cd9db7aaa274cedaab8f782883dd346"
+  },
+  "limits": [
+    "Not full #152 stage exit; two new full passing gates and protected integration remain pending.",
+    "Dedicated protocol claims are synthetic, not actual human MFA; real MFA covered separately by browser.",
+    "No production transport activation or external authority result claimed."
+  ],
+  "probeHarnessCorrections": "Corrected unavailable JWT helper dependency, snake/camel receipt assertion, keyword DTO construction and function-body digest extraction. Fresh receipt fixtures use distinct payload hashes; a second instance with the same payload correctly collided with the retained idempotency constraint. No application/SQL change was made to force these probes to pass."
+}

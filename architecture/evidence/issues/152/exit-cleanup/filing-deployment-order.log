@@ -1,0 +1,39 @@
+SQL diagnostic: permission denied for function company_access_read_rf_company_identity_v1
+SQL diagnostic: function company_tax_filing.read_source_snapshot_v1(uuid, integer, text) does not exist
+SQL diagnostic: company_tax_return_unavailable
+SQL diagnostic: company_tax_return_unavailable
+SQL diagnostic: company_tax_return_unavailable
+SQL diagnostic: company_tax_return_unavailable
+{
+  "status": "PASS",
+  "checks": [
+    "initial legacy RPC definition matches frozen predecessor SHA-256",
+    "owned PostgREST verifies dedicated synthetic JWT",
+    "current projector matches frozen predecessor request body exactly",
+    "current API on predecessor storage fails closed",
+    "pinned predecessor RPC protocol creates once and replays original IDs",
+    "current API on inert expansion fails closed",
+    "legacy protocol remains authoritative during expansion",
+    "legacy HTTP RPC denied after owned cutover",
+    "current API replays exact predecessor receipt after cutover",
+    "current API creates fresh pending evidence after cutover",
+    "retired legacy HTTP RPC absent after contract",
+    "contracted source positively enumerates both historical and current receipts",
+    "contract-only rollback retains current authoritative protocol",
+    "current API after full rollback fails closed without legacy fallback",
+    "full rollback restores byte-identical predecessor RPC definition",
+    "legacy HTTP replay retains predecessor IDs after full rollback",
+    "legacy HTTP replay retains latest current-API IDs after full rollback",
+    "legacy HTTP accepts fresh evidence after full rollback",
+    "current API replays fresh rollback-era receipt after re-cutover",
+    "legacy HTTP denied again after re-contract",
+    "re-contracted source positively enumerates all three receipt generations"
+  ],
+  "count": 21,
+  "sourceRevision": "9f5c5a5b15971de69327c3e242a603c32c7c4b20",
+  "legacyRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+  "fixture": "Dedicated JWT signing realm with fixture AAL2 claims. Legacy requests traverse real loopback PostgREST; current requests traverse actual FastAPI ASGI and restricted Postgres adapter. Real Supabase Auth/TOTP is separate browser evidence.",
+  "cleanup": "Owned PostgREST container and cloned database removed; both ephemeral login roles dropped. Retained main topology unchanged.",
+  "providerCalls": 0,
+  "hostedChanges": 0
+}

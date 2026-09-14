@@ -50,7 +50,7 @@ const workspace = () => ({ companyId, incomeYear: null,
 });
 
 function route({ generic = {}, failures = {}, rf = workspace(), openings = [opening(2025), opening(2024)],
-  user = true, token = true, mfa = true, receiptError = false, routeSource = source, rfLoader } = {}) {
+  user = true, token = true, mfa = true, receiptError = false, routeSource = source, rfLoader, taxFiling = {} } = {}) {
   const calls = [], readTables = [], captures = [], openingYears = [], rfYears = [];
   const ledgerProjection = presentOpeningSnapshots(openings);
   const legacy = { opening_balance_setups: ledgerProjection.setups, opening_shareholders: ledgerProjection.shareholders, ...generic };
@@ -75,6 +75,15 @@ function route({ generic = {}, failures = {}, rf = workspace(), openings = [open
   };
   const empty = async () => [];
   const dependencies = {
+    "../../../../lib/company-tax-workspace-source": {
+      loadPresentedCompanyTaxSource: async (access, companies, year) => {
+        calls.push("read:tax-filing-api");
+        assert.equal(access, "verified-owner"); assert.deepEqual(plain(companies), [companyId]);
+        assert.equal(Number.isInteger(year), true);
+        return { previews: [], submissions: [], overrides: [], comments: [], authorityPermissions: [], authorityTestRuns: [],
+          ...taxFiling, error: failures.taxFiling ?? null };
+      },
+    },
     "../../../../../features/ledger": {
       loadOpeningSnapshotsForYear: async (access, company, year) => {
         calls.push("read:opening-api"); openingYears.push(year); assert.equal(access, "verified-owner");
@@ -288,7 +297,7 @@ test("mixed sibling chains retain their conditional authority read and overlap n
   assert.deepEqual(plain(fixture.captures[0].authorityTestRuns), [siblingEvidence]);
 });
 
-for (const failure of ["rf", "opening", "tax", "filing_previews", "authority_permissions", "filing_review_comments", "audit_events"]) {
+for (const failure of ["rf", "opening", "tax", "taxFiling", "filing_previews", "authority_permissions", "filing_review_comments", "audit_events"]) {
   test(`unavailable ${failure} source cannot complete the authoritative export`, async () => {
     const fixture = route({ failures: { [failure]: Error("unavailable") } });
     assert.equal((await fixture.run()).status, 500);
@@ -332,4 +341,24 @@ test("owned Tax source preserves all thirteen original fields beside unchanged R
   assert.equal(fixture.readTables.includes("holding_actions"), false);
   assert.equal(fixture.calls.filter(call => call === "read:tax-api").length, 1);
   assert.equal(fixture.calls.at(-1), "company_archive_complete_export");
+});
+
+
+test("owned Tax filing preserves nested payload and only linked evidence inside the Archive generation boundary", async () => {
+  const rf = workspace(); rf.simulations = []; rf.previews = []; rf.reviewComments = []; rf.permissions = [];
+  const submission = { ...rfPresentation.presentRf1086Simulation(simulation(2025, "test_authority")),
+    id: uid(152), filing: "skattemelding for AS", adapter_mode: "test_authority", status: "feedback_ready",
+    authority_test_run_id: uid(153), submitted_payload: { original: { immutable: ["æ", 2025] } } };
+  const permission = { id: uid(155), company_id: companyId, obligation: "skattemelding", production_enabled: false };
+  const taxEvidence = { ...rfPresentation.presentRf1086TestEvidence(evidence(uid(153))), obligation: "skattemelding", status: "pending" };
+  const fixture = route({ rf, taxFiling: { submissions: [submission], authorityPermissions: [permission],
+    authorityTestRuns: [taxEvidence, { ...taxEvidence, id: uid(154), test_reference: "unrelated" }] } });
+  assert.equal((await fixture.run()).status, 200);
+  assert.deepEqual(plain(fixture.captures[0].filingSubmissions), [submission]);
+  assert.deepEqual(plain(fixture.captures[0].authorityTestRuns), [taxEvidence]);
+  assert.deepEqual(plain(fixture.captures[0].authorityPermissions), [permission]);
+  assert.equal(fixture.captures[0].filingSubmissions[0].submitted_payload, submission.submitted_payload);
+  assert.ok(fixture.calls.indexOf("read:tax-filing-api") > fixture.calls.indexOf("company_archive_begin_export"));
+  assert.ok(fixture.calls.indexOf("read:tax-filing-api") < fixture.calls.indexOf("company_archive_complete_export"));
+  assert.equal(fixture.readTables.includes("authority_test_runs"), false);
 });
