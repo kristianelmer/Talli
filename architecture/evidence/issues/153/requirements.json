@@ -3,7 +3,7 @@
   "issue": "#153",
   "source": "https://github.com/kristianelmer/Talli/issues/153",
   "claim": "https://github.com/kristianelmer/Talli/issues/153#issuecomment-5659621764",
-  "status": "ENTRY_BASELINE_ADOPTED_INVENTORY_PENDING",
+  "status": "ENTRY_INVENTORY_REVIEW_PENDING",
   "baselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
   "predecessor": {
     "issue": "#152",
@@ -64,7 +64,13 @@
       "evidence": []
     }
   ],
-  "entryInventory": "pending before policy or stateful characterization",
+  "entryInventory": {
+    "status": "ENUMERATED_PENDING_INDEPENDENT_REVIEW",
+    "source": "source-inventory.json",
+    "catalog": "entry/database-catalog.json",
+    "rollbackRestore": "PASS_DISPOSABLE_LOCAL_CLONE",
+    "characterization": "not started"
+  },
   "constraints": [
     "One Annual Accounts Filing owner only; Annual aggregation remains #149.",
     "Preserve exact approved sibling scopes until their last source moves; remove all such filing scopes at Accounts exit.",

@@ -1,0 +1,17 @@
+{
+  "status": "PASS_AFTER_LOCAL_RESTORE_ROLE_CORRECTION",
+  "firstAttempt": {
+    "exit": 1,
+    "error": "postgres cannot SET ROLE annual_notification_store_owner when restoring schema ownership",
+    "effects": "Only newly created accounts153_lifecycle_d060 was partially restored. Retained source unchanged.",
+    "logSha256": "33ed6704696ac9068987abfd54a4ecb7679848771c3150034bc25638b1d9f5a8"
+  },
+  "correction": "Verified existing supabase_admin is the local superuser, verified zero clone sessions, dropped only the freshly created partial clone, recreated it, and restored with that existing role. No roles or grants changed.",
+  "secondAttempt": {
+    "exit": 0,
+    "countChecks": 6,
+    "phase": "company_tax_return_migration_state contracted",
+    "newAccountsSchemaAbsent": true
+  },
+  "noStageExitCredit": true
+}

@@ -1,0 +1,16 @@
+{
+  "status": "ENTRY_INVENTORY_REVIEW_PENDING",
+  "baselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "artifacts": {
+    "architecture/evidence/issues/153/source-inventory.json": "da03d4dfab7c7e51be703bb221c47abcbe8dfdac606f0a2c62cf566d45e08921",
+    "architecture/evidence/issues/153/entry/database-catalog.json": "97fdfcccd471d2835c80433d2f699543e2c4f91239f7ca67c61019b91145eb92",
+    "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+    "architecture/evidence/issues/153/entry-inventory/capture-entry-database.py": "3acfc63b9a2beb6fb1844269433af59c502b3d2afc2f0369c75f470cc39dc99a",
+    "architecture/evidence/issues/153/entry-inventory/create-lifecycle-clone.py": "e656ad4728365261ec4599c820e97af2f586e2db9db000e168c4d79cb7af018b",
+    "architecture/evidence/issues/153/entry-inventory/entry-spec-review-713a18d2.json": "6e6b04e607c30ff3b70242da7bde0893bea281d2a8a3810cf30b67d7d1653bf8",
+    "architecture/evidence/issues/153/entry-inventory/entry-spec-review-713a18d2.md": "7536af29bf3d87b59e7f0a6b3d98bfc980feb2122dcd407167290a5218344718",
+    "architecture/evidence/issues/153/entry-inventory/entry-standards-review-713a18d2.json": "a263d48c9faff2d20008ca7f3e0cda1594984178df58b2c6addd3874455a598a",
+    "architecture/evidence/issues/153/entry-inventory/entry-standards-review-713a18d2.md": "ead004527fa26749f085168f02e5bfbd33fceefde659613de3525b408f3179af",
+    "architecture/evidence/issues/153/entry-inventory/restore-verification.json": "5f36e183946a22373077b09d4ac14f5ffa9508aa3204e6da6f638453cbaa8121"
+  }
+}
