@@ -1,0 +1,205 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_ONE_IMMUTABLE_152_GATE",
+  "findings": [],
+  "reviewedRevision": "7c9b3caae3cd278bbe381589308cf302142b58a5",
+  "storageRevision": "a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2",
+  "evidencePath": "architecture/evidence/customer-ready-gates/7c9b3caae3cd278bbe381589308cf302142b58a5.json",
+  "evidenceDigest": "sha256:799bb21ece9c29531535f128df0a2880afe59d8d2ded374990f3e47b181f0e94",
+  "reportSha256": "ee155c299747bd486c5c90c662fd3cf80d19557a3906b4a02c3e3e416278ab74",
+  "verification": {
+    "revision": "7c9b3caae3cd278bbe381589308cf302142b58a5",
+    "evidencePath": "architecture/evidence/customer-ready-gates/7c9b3caae3cd278bbe381589308cf302142b58a5.json",
+    "receiptRawSha256": "sha256:2274e6219629a14f0e6e7a4750b02db059f1eaba27213037af454f0472d33164",
+    "evidenceDigest": "sha256:799bb21ece9c29531535f128df0a2880afe59d8d2ded374990f3e47b181f0e94",
+    "transcriptPath": "architecture/evidence/customer-ready-gates/7c9b3caae3cd278bbe381589308cf302142b58a5.log",
+    "transcriptDigest": "sha256:c0a6774d82439cafbc528bf5996955a3017e3aeb7dd8c197b6a7f15b144d8622",
+    "producer": "scripts/run-customer-ready-gate.mjs",
+    "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+    "schemaPath": "architecture/customer-ready-gate-evidence.schema.json",
+    "schemaDigest": "sha256:b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+    "schemaValid": true,
+    "checks": [
+      {
+        "name": "schema-setup",
+        "command": "git clone --depth 1 --branch v1.62.47 https://github.com/Skatteetaten/skattemeldingen.git",
+        "exitCode": 0,
+        "durationMs": 23364
+      },
+      {
+        "name": "credential-scan",
+        "command": "npm run test:credential-scan",
+        "exitCode": 0,
+        "durationMs": 1212
+      },
+      {
+        "name": "typecheck",
+        "command": "npm run typecheck",
+        "exitCode": 0,
+        "durationMs": 1202
+      },
+      {
+        "name": "architecture",
+        "command": "npm run check:architecture",
+        "exitCode": 0,
+        "durationMs": 15886
+      },
+      {
+        "name": "boundary",
+        "command": "npm run test:boundary",
+        "exitCode": 0,
+        "durationMs": 155506
+      },
+      {
+        "name": "build-web",
+        "command": "TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built",
+        "exitCode": 0,
+        "durationMs": 9160
+      },
+      {
+        "name": "build-backend",
+        "command": "npm run build:backend",
+        "exitCode": 0,
+        "durationMs": 1253
+      },
+      {
+        "name": "boundary-smoke",
+        "command": "npm run test:boundary-smoke",
+        "exitCode": 0,
+        "durationMs": 7183
+      },
+      {
+        "name": "launch-rehearsal",
+        "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal",
+        "exitCode": 0,
+        "durationMs": 238120
+      },
+      {
+        "name": "production-dependency-audit",
+        "command": "npm audit --omit=dev --audit-level=high && npm audit --prefix apps/web --omit=dev --audit-level=high",
+        "exitCode": 0,
+        "durationMs": 1253
+      },
+      {
+        "name": "database-isolation",
+        "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python npm run test:supabase:local",
+        "exitCode": 0,
+        "durationMs": 733976
+      },
+      {
+        "name": "whitespace",
+        "command": "bash scripts/check-clean-worktree.sh",
+        "exitCode": 0,
+        "durationMs": 94
+      }
+    ],
+    "elapsedMs": 1188210,
+    "summedDurationMs": 1188209,
+    "overheadMs": 1,
+    "startedAt": "2026-09-14T04:14:02.889Z",
+    "executedAt": "2026-09-14T04:33:51.099Z",
+    "previousPassingRevision": "fd78d3bbcf563dbc991f84c703b6816e088bca26",
+    "previousIsAncestor": true,
+    "previousDoesNotCountToward152Pair": true,
+    "taxDatabasePassed": 32,
+    "browserCounts": {
+      "test:browser-public-acquisition:built": 1,
+      "test:browser-owner": 24,
+      "test:browser-owner-annual": 1,
+      "test:browser-authority-connections": 11,
+      "test:browser-shareholder-register-filing": 12,
+      "test:browser-company-tax": 2
+    },
+    "storageRevision": "a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2",
+    "observedHead": "a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2",
+    "observedStatus": "",
+    "sourceDelta": [
+      "architecture/compatibility.json",
+      "architecture/evidence/customer-ready-gates/7c9b3caae3cd278bbe381589308cf302142b58a5.json",
+      "architecture/evidence/customer-ready-gates/7c9b3caae3cd278bbe381589308cf302142b58a5.log",
+      "architecture/evidence/issues/152/final-acceptance/annual-fixture-spec-review-849f81d4.json",
+      "architecture/evidence/issues/152/final-acceptance/annual-fixture-spec-review-849f81d4.md",
+      "architecture/evidence/issues/152/final-acceptance/annual-fixture-standards-review-849f81d4.json",
+      "architecture/evidence/issues/152/final-acceptance/annual-fixture-standards-review-849f81d4.md",
+      "architecture/evidence/issues/152/final-acceptance/exit-review-preflight-annual-tuples-ac9b349a.json",
+      "architecture/evidence/issues/152/final-acceptance/exit-review-preflight-standards-ac9b349a.json",
+      "architecture/evidence/issues/152/final-acceptance/exit-review-preflight-standards-ac9b349a.log",
+      "architecture/evidence/issues/152/final-acceptance/exit-review-preflight-standards-ac9b349a.md",
+      "architecture/evidence/issues/152/final-acceptance/final-spec-review-ac9b349a.json",
+      "architecture/evidence/issues/152/final-acceptance/final-spec-review-ac9b349a.md",
+      "architecture/evidence/issues/152/final-acceptance/final-standards-review-ac9b349a.json",
+      "architecture/evidence/issues/152/final-acceptance/final-standards-review-ac9b349a.md",
+      "architecture/evidence/issues/152/final-acceptance/first-exit-gate-verification.json",
+      "architecture/evidence/issues/152/final-acceptance/manifest.json",
+      "architecture/evidence/issues/152/final-acceptance/root-lock-spec-review-7c9b3caa.json",
+      "architecture/evidence/issues/152/final-acceptance/root-lock-spec-review-7c9b3caa.md",
+      "architecture/evidence/issues/152/final-acceptance/root-lock-standards-review-7c9b3caa.json",
+      "architecture/evidence/issues/152/final-acceptance/root-lock-standards-review-7c9b3caa.md",
+      "architecture/evidence/issues/152/final-acceptance/source-inventory-final-binding-ac9b349a.json",
+      "architecture/evidence/issues/152/requirements.json",
+      "architecture/evidence/issues/152/verification.md"
+    ],
+    "skips": {
+      "ordinaryBackend": 2,
+      "validationObservationPython": 1,
+      "mandatoryBrowser": 0,
+      "taxDatabase": 0
+    },
+    "supabaseAdvisors": {
+      "blocking": 0,
+      "performanceWarnings": 60
+    },
+    "committedBytesMatchReviewedBytes": true,
+    "storageDelta": "Evidence and active -> exit-review metadata only; all scopes and runtime unchanged",
+    "retainedAnnualTuplesUnchanged": 16,
+    "adoptionArtifactHashesVerified": 18,
+    "sixCriterionTextsUnchanged": true,
+    "noTaxExitRegistryClaim": true
+  },
+  "skipsDisclosure": {
+    "ordinaryBackend": {
+      "passed": 3455,
+      "optionalSkipped": 2,
+      "partitionedMandatoryDeselected": 861,
+      "files": [
+        "apps/backend/tests/test_supabase_marketing_measurement.py",
+        "apps/backend/tests/test_supabase_validation_observation.py"
+      ]
+    },
+    "validationObservationPython": {
+      "passed": 17,
+      "optionalSkipped": 1,
+      "mandatoryNodeSqlPassed": 1
+    },
+    "requiredBrowser": 0,
+    "taxDatabase": 0
+  },
+  "warningDisclosure": [
+    "60 nonblocking Supabase performance findings; zero blocking security/error findings",
+    "Migration privilege grant/revoke and role-membership warnings retained",
+    "Annotated XSD tag resolves to pinned commit7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba; detached-HEAD notice",
+    "Supabase CLI update advisory; no unsolicited upgrade",
+    "Two production npm audits:0vulnerabilities"
+  ],
+  "zeroExitCredit": [
+    "9f5c5a5b15971de69327c3e242a603c32c7c4b20 failed",
+    "41bcead181bc26f9c2e540ca5fbf53a8114e0120 failed",
+    "ac9b349ab58b89bdd0efa4810ef382844be5c6fa failed",
+    "849f81d4cb8a9405504138928539f8026d665852 cancelled",
+    "CI34805023185 failed",
+    "fd78d3bbcf563dbc991f84c703b6816e088bca26 prior #146 gate is not #152 exit credit"
+  ],
+  "pending": [
+    "Second linked #152 complete immutable gate",
+    "Protected integration",
+    "Exact-main CI/Preview and published receipt reread"
+  ],
+  "privateArtifactHashes": {
+    "verify-first-gate-spec-7c9b3caa.mjs": "9e077eeb8c24ccbebd62fd133f5fb0844a8aaf0b1e242595410e8533bd2ca31a",
+    "first-gate-spec-verification-7c9b3caa.json": "38cfd5df8552277cd249b41f28f1762a4af790ebf43efdaedcea64b34b2e5598",
+    "first-gate-spec-verification-7c9b3caa.log": "cd1ed23f50b6f4ccf7d595f59907e13cc12d5ed23b5b3f8d5cb1d944a0da7d12",
+    "first-gate-log-index-7c9b3caa.txt": "97d1686394a75983c24aa1866bed76add854313f6de2a15b61b57ab75baf1ab2"
+  },
+  "noSharedMutation": true,
+  "noProductTestsRerun": true
+}

@@ -1,0 +1,12 @@
+{
+  "status": "PASS_LOCAL_EXIT_ENVELOPE_PROTECTED_INTEGRATION_PENDING",
+  "firstGate": "7c9b3caae3cd278bbe381589308cf302142b58a5",
+  "secondGate": "a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2",
+  "artifacts": {
+    "architecture/evidence/issues/152/gate-pair/gate-pair-spec-review-152.md": "5dc871d790719583c50f399d56e5ca0a64b41cdde9be986ac6e72e89ce1be06d",
+    "architecture/evidence/issues/152/gate-pair/gate-pair-spec-review-152.json": "dfba36df8035dea2d2718c0a2df2c12d43f763a6e12f81e2b8115ac757c78b5a",
+    "architecture/evidence/issues/152/gate-pair/gate-pair-standards-review-152.md": "f50513853c05043fccd57aae387d8e8ac3fcc87af1848605c1db20ba573b2acf",
+    "architecture/evidence/issues/152/gate-pair/gate-pair-standards-review-152.json": "a3141178eff870522dae8f99b2ca18b55fc2beca115f74502cbcf996f7250999",
+    "architecture/evidence/issues/152/gate-pair/manifest.json": "5f209c1eddff38e8dada2268c00b8ebfb3d2b1c5d2f3fe3bba7ad0d15e470665"
+  }
+}

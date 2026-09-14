@@ -1,0 +1,11 @@
+PASS — one complete immutable #152 gate independently verified; the required pair is not yet complete.
+
+Tested revision: `7c9b3caae3cd278bbe381589308cf302142b58a5`. The schema-valid receipt binds the exact committed producer and transcript. All eleven named commands, zero exits and durations match the raw transcript and producer AST; schema setup also passed. Start/end are 2026-09-14 04:14:02.889Z–04:33:51.099Z. Recorded durations total 1,188,209ms against 1,188,210ms elapsed. Canonical sorted-JSON digest is `sha256:799bb21ece9c29531535f128df0a2880afe59d8d2ded374990f3e47b181f0e94`.
+
+The raw database lane executes 22 settlement lifecycle, three settlement runtime and seven filing lifecycle cases: all 32 pass. Mandatory browser groups pass without skips: built public acquisition 1, owner/fixture lifecycle 24, annual owner 1, Authority 11, fresh RF 12 and Tax 2. RF feedback passes 13. These counts include each group’s associated guards; they are not counts of distinct user journeys.
+
+Disclosures: ordinary backend reports 3455 passed, two optional adapter skips and 861 cases partitioned into mandatory lanes. Validation-observation Python separately reports 17 passed/one optional adapter skip; its real Node SQL rehearsal passes. Missing dedicated marketing/validation-observation adapter environment variables explain the optional conditions. Supabase advisors report zero blocking findings and 60 performance warnings; migration grant/revoke notices and the pinned-XSD annotated-tag/CLI-update notices remain in the raw log. Both dependency audits report zero vulnerabilities.
+
+Receipt/transcript were first committed at `a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2`; committed bytes match those inspected. All 18 adoption hashes verify. The storage delta contains evidence and only active→exit-review registry status; runtime, conservative source facts and sixteen retained Annual tuples are unchanged. Tax is not marked exited.
+
+The prior-passing pointer `fd78d3bb` is an ancestor from #146 and supplies no #152 pair credit. Failed 9f5c5a5b, 41bcead1 and ac9b349a, cancelled 849f81d4 and failed CI 34805023185 retain zero exit credit. Second linked gate, protected integration, exact-main checks and published receipt review remain pending. No gate, database, browser or provider was rerun.
