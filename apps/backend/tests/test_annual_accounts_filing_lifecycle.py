@@ -374,9 +374,9 @@ def test_support_reads_exact_accounts_fields_only_with_open_current_case(databas
     runner = db.execute('select current_user').fetchone()[0]
     db.execute(sql.SQL('grant company_access_executor to {} with set true granted by {}').format(sql.Identifier(runner), sql.Identifier(runner)))
 
-    def identify(identity, fresh=True):
+    def identify(identity, fresh=True, expired=False):
         claims = json.dumps({'sub': identity, 'email': identity + '@example.invalid', 'role': 'authenticated',
-            'aal': 'aal2' if fresh else 'aal1', 'amr': [{'method': 'totp', 'timestamp': int(db.execute('select extract(epoch from now())').fetchone()[0])-1}]})
+            'aal': 'aal2' if fresh else 'aal1', 'amr': [{'method': 'totp', 'timestamp': int(db.execute('select extract(epoch from now())').fetchone()[0])-(86400 if expired else 1)}]})
         for key, value in [('talli.verified_actor_id', identity), ('talli.verified_actor_claims', claims)]:
             db.execute('select set_config(%s,%s,true)', (key, value))
         db.execute('set local role company_access_executor')
@@ -401,6 +401,8 @@ def test_support_reads_exact_accounts_fields_only_with_open_current_case(databas
     wrong_case = db.execute('select annual_accounts_filing.read_support_filing_history_v1(%s,%s)', (COMPANY, uuid4())).fetchone()[0]
     assert wrong_case == {family: [] for family in expected}
     identify(operator, fresh=False)
+    expect_error(db, 'support_access_not_available', read)
+    identify(operator, expired=True)
     expect_error(db, 'support_access_not_available', read)
     identify(admin)
     db.execute("select * from public.company_access_revoke_support_access(%s,%s,'case_closed')", (uuid4(), case)).fetchone()

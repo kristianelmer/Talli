@@ -17,10 +17,20 @@
     "architecture/evidence/issues/153/dependency-integration/environment-recovery-standards-review-9a3d8d80.json": "df99270ace487b69fd6346818eef55e5a2c74e90848e158ffb729720bdd7224a",
     "architecture/evidence/issues/153/dependency-integration/environment-recovery-standards-review-9a3d8d80.md": "91a687d5d661743c1cc02967e1cdb6b0d575eb9ffb2f5472d8df46e1f1eaf8a1",
     "architecture/evidence/issues/153/dependency-integration/rehearsal-tail-first.log": "3ddf02c8f3a3c9bfbb8638a46740d3f0ca7923b9a3b3f14a5e62f0382046390c",
-    "architecture/evidence/issues/153/dependency-integration/rehearsal-tail-second.log": "e3b2f21c42fb16b9f00aaa27e48ef7d8f0e15ea0ec87d00c3f1384405a9ce064",
+    "architecture/evidence/issues/153/dependency-integration/rehearsal-tail-second.log": "33ee9d7f31d51035fa8703f2251eb656ecbbd87d70c4a1f7384b516a545f51cf",
     "architecture/evidence/issues/153/dependency-integration/verification.md": "973707f63cf76c245ba810a0767a40bf324740c1d87e6993871bdd44ffd98238",
     "tests/archive_export.test.mjs": "7553e600edd83afc062e11541ed3ac6effeb873225d842b06d3232b1a269fbb3",
     "tests/backup_restore.test.mjs": "3433852178f48bd9c4f8ebb624a84c08f56f322e1874993eb003ea760dfed366",
     "tests/ci_release_gate.test.mjs": "c3b1661cd4e861d883e76074f30badbb505bb9fbd1909ec5f54f5ea9e0db9646"
-  }
+  },
+  "publicationRedactions": [
+    {
+      "artifact": "architecture/evidence/issues/153/dependency-integration/rehearsal-tail-second.log",
+      "reason": "Failed pytest collection output repeats synthetic key delimiters from test parameter names; credential scanner intentionally rejects those headers outside test source. Only those header bytes are redacted. No scanner exception is added.",
+      "originalPrivatePath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rehearsal-tail-second.log",
+      "originalSha256": "e3b2f21c42fb16b9f00aaa27e48ef7d8f0e15ea0ec87d00c3f1384405a9ce064",
+      "originalRevision": "53b3ae3e5e3dcaf020e25113a5a31f9b8ca65701",
+      "occurrences": 4
+    }
+  ]
 }

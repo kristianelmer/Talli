@@ -6,11 +6,13 @@
 
 ## Purpose
 
-Own the deterministic annual-accounts filing rules and RR0002 documents. Stage
-#153 currently contains the pure calculation, XML and Accounts-specific readiness
-slice and test rehearsal lifecycle. The legacy writer remains authoritative until the explicit database
-cutover; authority work is accessible only through the existing explicitly
-approved synthetic test gate and fixed TT02 adapter. Production stays disabled.
+Own deterministic annual-accounts filing rules, RR0002 documents, readiness,
+preparation controls, evidence import, retained history and the test rehearsal
+lifecycle. The complete web slice uses FastAPI and the generated client. Explicit
+cutover establishes the owned store as the single writer; contract removes all
+six generic filing tables. Authority work remains accessible only through the
+existing explicitly approved synthetic test gate and fixed TT02 adapter.
+Production stays disabled.
 
 ## Owns and must not own
 
@@ -50,7 +52,11 @@ Six successor tables in `annual_accounts_filing` are declared and owned:
 They have FORCE RLS. Read and preparation policies require cutover or contracted
 phase, accepted membership and the appropriate owner/reviewer role. Expansion
 remains unavailable through every owned business contract.
-The legacy public writer remains active until a separately verified cutover.
+Before explicit cutover, the legacy public writer remains authoritative. Cutover
+reconciles all six families by count and digest and fences the legacy tables;
+contract removes them. Paired rollback restores the latest owned rows and original
+access definitions before returning authority to the legacy writer. Owned
+contracts fail closed during expansion and after rollback.
 No storage bucket is added.
 `AnnualAccountsAuthority` declares the fixed TT02 operations and
 `AnnualAccountsRehearsalIO` declares local file, clock, XML and credential seams.
@@ -129,8 +135,8 @@ timezones, and immutable inputs/results. The old standalone transport path and f
 The CLI maps directly to the owned Python calculation and XML contracts.
 The generated web workflow reads and writes through the owned boundary. Explicit
 cutover, contract and paired rollback artifacts preserve source provenance,
-latest state and the Archive invalidation behavior. Full stage-exit gates and
-durable source attestation remain pending.
+latest state and the Archive invalidation behavior. The durable source contract below carries positive history coverage. Full
+stage-exit gates and protected integration are tracked separately in issue #153.
 
 ## Authenticated filing boundary
 
