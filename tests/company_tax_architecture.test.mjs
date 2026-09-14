@@ -22,6 +22,10 @@ test("preserved Tax retirement requires exact artifact bytes, source restoration
   const invalid=/preserved source retirement is not bound/u;
   try {
     assert.doesNotMatch(errors(),invalid);
+    const deferredProbe = join(directory,"supabase/contract-migrations/uncatalogued_probe.sql");
+    writeFileSync(deferredProbe,"create table company_tax_filing.uncatalogued_probe(id uuid);\n");
+    assert.match(errors(), /migration table missing from catalog company_tax_filing\.uncatalogued_probe/u);
+    rmSync(deferredProbe);
     writeFileSync(path,original+"\n-- unbound edit\n");
     assert.match(errors(),invalid);
     const withoutCopy=original.replace("insert into public.holding_actions select * from company_tax_filing.settlements;", "perform 1;");

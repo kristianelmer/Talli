@@ -1,0 +1,10 @@
+import os,subprocess
+from pathlib import Path
+p=Path('/Users/kristianelmer/.codex/issue-192-private/issue152-entry');assert (p/'lifecycle-private.json').exists()
+env={**os.environ,'DOCKER_HOST':'unix:///Users/kristianelmer/.colima/talli/docker.sock'}
+base=['docker','exec','-i','-u','postgres','supabase_db_tallig6753']
+r=subprocess.run(base+['psql','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1','-c','drop database tax152_lifecycle_d060','-c','create database tax152_lifecycle_d060 owner postgres'],capture_output=True,env=env);assert r.returncode==0,r.stderr
+with (p/'owned-predecessor-for-tax152.dump').open('rb') as data:
+ r=subprocess.run(base+['pg_restore','-U','supabase_admin','-d','tax152_lifecycle_d060','--exit-on-error'],stdin=data,capture_output=True,env=env)
+(p/'lifecycle-clone-restore.log').write_bytes(r.stdout+r.stderr);assert r.returncode==0
+print('Disposable Tax152 clone reset')

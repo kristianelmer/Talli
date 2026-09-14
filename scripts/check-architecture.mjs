@@ -1466,7 +1466,11 @@ function validateSystemManifest(root, errors, schema) {
 
 function discoverMigrationTables(root) {
   const tables = new Set();
-  for (const path of walk(join(root, "supabase/migrations"), (candidate) => candidate.endsWith(".sql"))) {
+  // Explicitly ordered capability artifacts can create inert successor tables
+  // after a predecessor contract. They require the same ownership inventory.
+  const paths = ["supabase/migrations", "supabase/contract-migrations"].flatMap(directory =>
+    existsSync(join(root, directory)) ? walk(join(root, directory), candidate => candidate.endsWith(".sql")) : []);
+  for (const path of paths) {
     const source = readFileSync(path, "utf8");
     const statements = source.matchAll(
       /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z][a-z0-9_]*\.[a-z_]+)|alter\s+table\s+(?:if\s+exists\s+)?([a-z][a-z0-9_]*\.[a-z_]+)\s+set\s+schema\s+([a-z][a-z0-9_]*)|alter\s+table\s+(?:if\s+exists\s+)?([a-z][a-z0-9_]*\.[a-z_]+)\s+rename\s+to\s+([a-z_]+)/giu,

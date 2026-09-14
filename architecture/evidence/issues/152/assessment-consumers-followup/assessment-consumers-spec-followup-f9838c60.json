@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "verdict": "PASS_DIRECTIVE_FINDING_CLOSED",
+  "baseRevision": "862964d24f56e8be86e75a20b3a8fdedb0dd0058",
+  "candidateRevision": "f9838c6096640d9810381d86ef64dd8177ee35ac",
+  "diffCommand": "git diff 862964d24f56e8be86e75a20b3a8fdedb0dd0058...f9838c6096640d9810381d86ef64dd8177ee35ac",
+  "findingDisposition": {
+    "id": "SPEC-152-ASSESSMENT-CONSUMERS-1",
+    "state": "CLOSED",
+    "spec": "GH-152-A4",
+    "exactFollowupCompilation": "PASS server references registered",
+    "exactPredecessorControl": "FAIL misplaced directive as expected"
+  },
+  "sourceSha256": {
+    "apps/web/app/actions.ts": "457a6919488f6f87dcb579d041d52d694ca2e55172ec2aa5bbde874267d40856",
+    "tests/company_tax_workspace_composition.test.mjs": "bd796ee41f73a89b50cbc1d685734240e25106400efaf9aabb988b03095b819f"
+  },
+  "actionFileIdenticalExceptImportLocation": true,
+  "requirementsUnchanged": true,
+  "independentTests": {
+    "passed": 42,
+    "node": "24.20.0",
+    "next": "16.3.4",
+    "fullBuildBrowserDatabaseProviderRun": false
+  },
+  "privateArtifactSha256": {
+    "assessment-consumers-spec-tests-f9838c60.log": "c272563e8267505e97e7bd58f3c4bc0df7a3140823a47e5a0f9289c66f92fae4",
+    "assessment-consumers-spec-directive-f9838c60.log": "b3d2c5b3e78d96723c696a9770e864617641e2f603e70364d5d95f0c4b219e51",
+    "spec-assessment-consumers-f9838c60/directive-followup-spec-probe.mjs": "2d33261286601b061bf002385aee788a07f232f27e290fdeb04dff6f1ce72009"
+  },
+  "reportSha256": "030e344bd964d18dbbd011414c80cd4aea84e7a1f712ccd861428bc27be2d3a4",
+  "findings": [],
+  "limits": [
+    "No shared edits or runtime mutation.",
+    "No uncommitted source review.",
+    "No full-build/browser/provider/cutover/gate/full-stage/successor claim."
+  ]
+}

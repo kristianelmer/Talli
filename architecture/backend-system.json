@@ -555,7 +555,12 @@
       "supabase/migrations/20260913171000_company_tax_settlement_expand.sql",
       "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
       "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql",
-      "supabase/migrations/20260914200000_company_tax_return_expand.sql"
+      "supabase/contract-migrations/20260914200000_company_tax_return_expand.sql",
+      "supabase/contract-migrations/20260914201000_company_tax_return_read_contracts.sql",
+      "supabase/contract-migrations/20260914202000_company_tax_return_import_contract.sql",
+      "supabase/contract-migrations/20260914203000_company_tax_return_preparation_contracts.sql",
+      "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql",
+      "supabase/contract-migrations/20260914012930_company_tax_return_contract.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },
