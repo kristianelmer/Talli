@@ -1,0 +1,98 @@
+"""Actual commit/race rehearsal in an owned disposable clone, with synthetic facts."""
+import concurrent.futures
+import json,time,hashlib
+from pathlib import Path
+import psycopg
+from psycopg.conninfo import conninfo_to_dict
+from psycopg.types.json import Jsonb
+P=Path('/Users/kristianelmer/.codex/issue-192-private/issue152-entry');ROOT=Path.cwd()
+DSN=json.loads((P/'lifecycle-private.json').read_text())['DB_URL']
+assert conninfo_to_dict(DSN)['dbname']=='tax152_lifecycle_d060'
+fixture=json.loads((ROOT/'architecture/evidence/issues/152/legacy-characterization.json').read_text())
+case=next(c for c in fixture['evidenceCases'] if c['id']=='synthetic-completed-pending-feedback')
+payload=case['output']['value'];company=payload['authorityRun']['company_id'];owner=payload['authorityRun']['recorded_by']
+CUT=ROOT/'supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql'
+BACK=ROOT/'supabase/rollback/20260914012503_company_tax_return_cutover.sql'
+checks=[]
+def check(label,value):
+ assert value,label
+ checks.append(label)
+def claims(db):
+ value={'sub':owner,'role':'authenticated','aal':'aal2','amr':[{'method':'totp','timestamp':int(time.time())}]}
+ for key,item in [('request.jwt.claims',json.dumps(value)),('talli.verified_actor_id',owner),('talli.verified_actor_claims',json.dumps(value))]:db.execute('select set_config(%s,%s,true)',(key,item))
+def runtime(db):
+ claims(db)
+ db.execute('grant company_tax_filing_workflow_executor to postgres with inherit false,set true')
+ db.execute('set local role company_tax_filing_workflow_executor')
+def ungrant(db):
+ db.execute('reset role');db.execute('revoke company_tax_filing_workflow_executor from postgres')
+def apply(path):
+ with psycopg.connect(DSN,autocommit=True) as d:d.execute(path.read_text())
+def blocked(observer,blocker,relation,mode,granted):
+ deadline=time.monotonic()+8
+ while time.monotonic()<deadline:
+  if observer.execute('select exists(select 1 from pg_stat_activity a join pg_locks l using(pid) where %s=any(pg_blocking_pids(a.pid)) and l.relation=to_regclass(%s) and l.mode=%s and l.granted=%s)',(blocker,relation,mode,granted)).fetchone()[0]:return True
+  time.sleep(.01)
+ return False
+try:
+ with psycopg.connect(DSN,autocommit=True) as db:
+  check('unmodified predecessor clone',db.execute("select to_regclass('backend_system.company_tax_return_migration_state') is null").fetchone()[0])
+  # Seed all six families for both obligations using the original authenticated paths.
+  seed_path=P/'probe-filing-cutover.py'
+  assert hashlib.sha256(seed_path.read_bytes()).hexdigest()=='95600069c52208570cebe61a70f67c272131f7db66efcb72d616b08a3d8868c0', 'Seed producer changed'
+  seed=seed_path.read_text()
+  body=seed[seed.index("  db.execute('begin')"):seed.index("  db.execute('reset role')\n  before=snapshot(db)")]
+  exec('\n'.join(line[2:] for line in body.splitlines()),globals(),{'db':db})
+  db.execute('reset role');db.execute('commit')
+  for name in ('20260914200000_company_tax_return_expand','20260914201000_company_tax_return_read_contracts','20260914202000_company_tax_return_import_contract','20260914203000_company_tax_return_preparation_contracts'):
+   apply(ROOT/f'supabase/contract-migrations/{name}.sql')
+  # Old writer is already active and holds a row/table lock before cutover begins.
+  with psycopg.connect(DSN,autocommit=True) as old,psycopg.connect(DSN,autocommit=True) as stale,concurrent.futures.ThreadPoolExecutor(1) as pool:
+   stale.execute('begin isolation level repeatable read');stale.execute('select count(*) from public.companies')
+   old.execute('begin');claims(old);old.execute('set local role authenticated')
+   old.execute("insert into public.filing_previews(id,company_id,income_year,filing,status,preview,created_by) values('00000000-0000-0000-0001-000000000002',%s,2025,'skattemelding for AS','ready','Legacy transaction committed during cutover',%s)",(company,owner))
+   pending=pool.submit(apply,CUT)
+   check('cutover waits for already-active legacy transaction',blocked(db,old.info.backend_pid,'public.filing_previews','AccessExclusiveLock',False))
+   old.execute('commit');pending.result(timeout=15)
+   check('last legacy commit captured',db.execute("select preview from company_tax_filing.filing_previews where id='00000000-0000-0000-0001-000000000002'").fetchone()[0]=='Legacy transaction committed during cutover')
+   # The old repeatable-read snapshot cannot insert Tax after ownership moved.
+   claims(stale);stale.execute('set local role authenticated')
+   try:
+    stale.execute("insert into public.filing_previews(company_id,income_year,filing,status,preview,created_by) values(%s,2025,'skattemelding for AS','ready','Stale old writer',%s)",(company,owner))
+    raise AssertionError('stale old writer succeeded')
+   except psycopg.Error as e:check('stale legacy snapshot fails static writer fence',e.sqlstate in ('23514','40001'))
+   stale.execute('rollback')
+  # Accounts remains writable while Tax is canonical.
+  db.execute('begin');claims(db);db.execute('set local role authenticated')
+  db.execute("insert into public.filing_previews(id,company_id,income_year,filing,status,preview,created_by) values('00000000-0000-0000-0001-000000000003',%s,2025,'årsregnskap','ready','Accounts stays writable',%s)",(company,owner))
+  db.execute('commit');check('Accounts writer survives cutover',db.execute("select preview from public.filing_previews where id='00000000-0000-0000-0001-000000000003'").fetchone()[0]=='Accounts stays writable')
+  # Commit a new owned mutation, restoring test-only role membership before commit.
+  db.execute('begin');runtime(db)
+  comment=db.execute("select company_tax_filing.add_review_comment_v1('00000000-0000-0000-0001-000000000000','advisory','Committed owned comment',%s)",(owner,)).fetchone()[0]
+  ungrant(db);db.execute('commit')
+  # A new runtime read must hold rollback until its transaction ends. A different
+  # pre-rollback RR snapshot has not read phase yet and must fail after rollback.
+  with psycopg.connect(DSN,autocommit=True) as active,psycopg.connect(DSN,autocommit=True) as stale,concurrent.futures.ThreadPoolExecutor(1) as pool:
+   stale.execute('begin isolation level repeatable read');stale.execute('select count(*) from public.companies')
+   active.execute('begin');runtime(active)
+   result=active.execute('select company_tax_filing.read_workspace_v1(%s,2025,%s)',(company,owner)).fetchone()[0]
+   check('actual runtime reads committed owned comment',any(c['id']==comment['id'] for c in result['review_comments']))
+   pending=pool.submit(apply,BACK)
+   check('rollback waits for active runtime transaction',blocked(db,active.info.backend_pid,'backend_system.company_tax_return_migration_state','RowShareLock',True))
+   active.execute('rollback');pending.result(timeout=15)
+   check('rollback carries committed owned mutation',db.execute('select body from public.filing_review_comments where id=%s',(comment['id'],)).fetchone()[0]=='Committed owned comment')
+   runtime(stale)
+   try:
+    stale.execute('select company_tax_filing.read_workspace_v1(%s,2025,%s)',(company,owner))
+    raise AssertionError('stale owned source succeeded')
+   except psycopg.Error as e:check('stale owned RR snapshot fails closed after rollback',e.sqlstate=='40001' or e.diag.message_primary=='company_tax_return_unavailable')
+   stale.execute('rollback')
+  apply(CUT)
+  check('re-cutover retains committed owned mutation',db.execute('select body from company_tax_filing.filing_review_comments where id=%s',(comment['id'],)).fetchone()[0]=='Committed owned comment')
+  check('test runtime role membership restored',not db.execute("select pg_has_role(current_user,'company_tax_filing_workflow_executor','SET')").fetchone()[0])
+  status='PASS'
+except psycopg.Error as e:
+ status='FAIL';print({'sqlstate':e.sqlstate,'message':e.diag.message_primary});raise
+finally:
+ (P/'filing-cutover-races.json').write_text(json.dumps({'status':locals().get('status','FAIL'),'checks':checks,'database':'owned local disposable clone','cutoverSha256':hashlib.sha256(CUT.read_bytes()).hexdigest(),'rollbackSha256':hashlib.sha256(BACK.read_bytes()).hexdigest(),'limits':['No HTTP, hosted, browser, provider, or full-stage claim.']},indent=2)+'\n')
+print(json.dumps({'status':status,'checks':len(checks)}))

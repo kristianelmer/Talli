@@ -1,0 +1,15 @@
+from pathlib import Path
+import json,os,subprocess
+from unittest.mock import patch
+import pytest
+p=Path('/Users/kristianelmer/.codex/issue-192-private/issue152-entry')
+os.environ['DATABASE_URL']=json.loads((p.parent/'issue146-entry/local-environment-private.json').read_text())['DB_URL']
+original_read=Path.read_text
+target=(Path.cwd()/'supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql').resolve()
+old=subprocess.check_output(['git','show','9c879ff7:supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql'],text=True)
+def read(path,*args,**kwargs):
+ return old if path.resolve()==target else original_read(path,*args,**kwargs)
+with patch.object(Path,'read_text',read):
+ result=pytest.main(['-c','apps/backend/pyproject.toml','apps/backend/tests/test_company_tax_return_lifecycle.py','-k','no-direct-archive-grant','-q'])
+assert result==1,'Expected frozen predecessor to fail ACL preservation'
+print('Expected predecessor ACL regression reproduced')

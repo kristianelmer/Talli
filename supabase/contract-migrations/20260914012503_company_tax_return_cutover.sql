@@ -192,10 +192,6 @@ do $documents$ declare definition text; anchor text:='or company_tax_filing.has_
  execute pg_catalog.replace(definition,anchor,anchor||' or company_tax_filing.has_filing_document_reference_v1(p_document_id)');
 end; $documents$;
 
-create temporary table tax152_archive_grant on commit drop as select pg_catalog.has_function_privilege(current_user,'public.company_archive_track_source_write_v1()','EXECUTE') as had_execute;
-set local role company_archive_projection_executor;
-do $grant$ begin execute pg_catalog.format('grant execute on function public.company_archive_track_source_write_v1() to %I',session_user); end; $grant$;
-reset role;
 do $archive$ declare f text; scope text; begin
  foreach f in array array['filing_previews','filing_submissions','filing_review_comments','authority_permissions','authority_test_runs'] loop
   scope:=case when f in ('filing_previews','filing_submissions') then 'year' else 'company' end;
@@ -220,13 +216,6 @@ do $verify$ declare f text; expected jsonb; actual jsonb; begin
  then raise exception 'company_tax_return_archive_generation_changed'; end if;
  update backend_system.company_tax_return_migration_state set phase='cutover',changed_at=pg_catalog.now() where singleton;
 end; $verify$;
-do $restore_archive$ declare principal name:=current_user; begin
- if not (select had_execute from pg_temp.tax152_archive_grant) then
-  execute 'set local role company_archive_projection_executor';
-  execute pg_catalog.format('revoke execute on function public.company_archive_track_source_write_v1() from %I',principal);
-  execute 'reset role';
- end if;
-end; $restore_archive$;
 do $restore$ declare r record; begin
  for r in select * from pg_temp.tax152_cutover_roles loop
   if r.prior is null then execute pg_catalog.format('revoke %I from %I granted by %I',r.role_name,current_user,current_user);

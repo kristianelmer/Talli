@@ -1,0 +1,22 @@
+{
+  "status": "PASS",
+  "checks": [
+    "unmodified predecessor clone",
+    "cutover waits for already-active legacy transaction",
+    "last legacy commit captured",
+    "stale legacy snapshot fails static writer fence",
+    "Accounts writer survives cutover",
+    "actual runtime reads committed owned comment",
+    "rollback waits for active runtime transaction",
+    "rollback carries committed owned mutation",
+    "stale owned RR snapshot fails closed after rollback",
+    "re-cutover retains committed owned mutation",
+    "test runtime role membership restored"
+  ],
+  "database": "owned local disposable clone",
+  "cutoverSha256": "d192b105d87287ba59e7b88278c1c25d51e6620d19b1b5d5e34fc416ef21597c",
+  "rollbackSha256": "0808d9ef883fce1dee19bcd1330f1579682481c1596e522b2b5d5c73fc9e9f07",
+  "limits": [
+    "No HTTP, hosted, browser, provider, or full-stage claim."
+  ]
+}

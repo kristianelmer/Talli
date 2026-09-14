@@ -27,10 +27,11 @@ def environment_snapshot(db):
  'openingAcl',(select relacl from pg_class where oid='shareholder_register_filing.opening_balance_setups'::regclass),
  'archiveGenerations',(select jsonb_agg(to_jsonb(g) order by company_id,income_year) from public.company_archive_source_generations g),
  'audit',(select jsonb_agg(to_jsonb(a) order by id) from public.audit_events a),
+ 'archiveTriggerAcl',(select proacl from pg_proc where oid='public.company_archive_track_source_write_v1()'::regprocedure),
  'legacyRpc',pg_get_functiondef(to_regprocedure('public.import_company_tax_tt02_evidence(jsonb)')))""").fetchone()[0]
 
 
-@pytest.mark.parametrize('scenario', ['normal','set-only','changed-rpc','changed-trigger','missing-trigger','quarantine'])
+@pytest.mark.parametrize('scenario', ['normal','set-only','no-direct-archive-grant','changed-rpc','changed-trigger','missing-trigger','quarantine'])
 def test_filing_migration_lifecycle(scenario):
     url = os.environ.get('DATABASE_URL')
     assert url, 'DATABASE_URL must identify the owned disposable database'
@@ -69,6 +70,13 @@ def test_filing_migration_lifecycle(scenario):
             if scenario == 'set-only':
              db.execute('grant company_tax_filing_store_owner to postgres with inherit false,set true')
              environment=environment_snapshot(db)
+            if scenario == 'no-direct-archive-grant':
+             db.execute('grant company_archive_projection_executor to postgres with inherit false,set true')
+             db.execute('set local role company_archive_projection_executor')
+             db.execute('revoke execute on function public.company_archive_track_source_write_v1() from postgres')
+             db.execute('reset role')
+             db.execute('revoke company_archive_projection_executor from postgres')
+             environment=environment_snapshot(db)
             if scenario == 'changed-rpc':
              db.execute("create or replace function public.import_company_tax_tt02_evidence(p_payload jsonb) returns jsonb language plpgsql security definer set search_path='' as $$ begin raise exception 'changed writer'; end; $$")
             if scenario == 'changed-trigger':
@@ -98,7 +106,7 @@ def test_filing_migration_lifecycle(scenario):
              check(f+' exact Tax transfer including latest legacy write',actual==tax and len(tax)==1)
              check(f+' exact Accounts preservation',snapshot(db)[f]==[r for r in before[f] if r not in tax])
             after=environment_snapshot(db)
-            for key in ('memberships','schemas','openingAcl','archiveGenerations','audit'):
+            for key in ('memberships','schemas','openingAcl','archiveGenerations','audit','archiveTriggerAcl'):
              check(key+' unchanged',after[key]==environment[key])
             db.execute('grant company_tax_filing_workflow_executor to postgres with inherit false,set true')
             import time

@@ -1,0 +1,27 @@
+{
+  "baselineRevision": "9c879ff7",
+  "finding": "Redundant direct EXECUTE on the Archive trigger function survived borrowed owner-role cleanup.",
+  "correction": "No direct grant is needed. Trigger creation uses the temporary inherited owner membership, then restores it.",
+  "validation": {
+    "predecessor": "Expected failure: archiveTriggerAcl unchanged assertion",
+    "currentLifecycleScenarios": 7,
+    "committedRaceChecks": 11,
+    "raceSeedDependency": "probe-filing-cutover.py.txt; the race producer checks its exact SHA-256 before extracting the unchanged synthetic seed"
+  },
+  "sourceSha256": {
+    "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql": "d192b105d87287ba59e7b88278c1c25d51e6620d19b1b5d5e34fc416ef21597c",
+    "apps/backend/tests/test_company_tax_return_lifecycle.py": "cfe10d1862d77620667a761d4979746725f01c76dc8759dc1a6e3607cd17f26a"
+  },
+  "artifacts": {
+    "filing-lifecycle-archive-acl-tests.log": "f9598cef737c335184b693454e66f2838a511d59d3b3f5c0c1528461859b8296",
+    "probe-archive-acl-red.py.txt": "2aa8a70d740567dc642fb05bdb4ef2b3321107b2471f60847c0ab8afe3b50792",
+    "probe-filing-cutover.py.txt": "95600069c52208570cebe61a70f67c272131f7db66efcb72d616b08a3d8868c0",
+    "archive-acl-races.log": "dac26cd60696d6edaab5519c2c387a8db4155d60ee2e896b231ebcf92ac4ad70",
+    "archive-acl-red.log": "76fe0cb19f0ca96fb5059fa643c965429b1ddc454ca281ca8a76fa3293e78fad",
+    "probe-filing-cutover-races.py.txt": "5d1492910937e7aad5284f64b0a30ea14d3586e8327af661958f38054e58dfe9",
+    "filing-cutover-races.json": "6c6d285a124d7a388ed002d413782bc22d6ba2ad96aa8dd680c9e2008cc8c970"
+  },
+  "limits": [
+    "Local synthetic SQL only; no hosted, provider, HTTP, browser or full-stage claim."
+  ]
+}
