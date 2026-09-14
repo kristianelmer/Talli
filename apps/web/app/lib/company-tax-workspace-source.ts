@@ -5,8 +5,12 @@ import {
 } from "../../features/company-tax-filing/index.ts";
 
 // Compose one complete owned Tax read per company outside the frozen Accounts reads.
-export async function loadPresentedCompanyTaxSource(accessToken: string, companyIds: string[], incomeYear?: number) {
+export async function loadPresentedCompanyTaxSource(accessToken: string | null, companyIds: string[], incomeYear?: number) {
   try {
+    if (!accessToken) {
+      if (companyIds.length) throw new Error("Tax filing authentication is unavailable.");
+      return { error: null, previews: [], submissions: [], overrides: [], comments: [], authorityPermissions: [], authorityTestRuns: [] };
+    }
     const sources = await Promise.all(companyIds.map(companyId => loadCompanyTaxFilingWorkspace(accessToken, companyId, incomeYear ?? null)));
     return {
       error: null,

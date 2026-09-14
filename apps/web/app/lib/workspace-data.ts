@@ -96,9 +96,7 @@ export async function loadWorkspaceData() {
   const rfSource = accessToken
     ? await loadPresentedRf1086Source(accessToken, companies.map((company) => company.id))
     : { previews: [], submissions: [], overrides: [], comments: [], authorityPermissions: [], authorityTestRuns: [], error: null };
-  const taxSource = accessToken
-    ? await loadPresentedCompanyTaxSource(accessToken, companies.map((company) => company.id))
-    : { previews: [], submissions: [], overrides: [], comments: [], authorityPermissions: [], authorityTestRuns: [], error: null };
+  const taxSource = await loadPresentedCompanyTaxSource(accessToken, companies.map((company) => company.id));
   const previews = newestFirst(composeFilingSources(composeFilingSources(legacyPreviews, rfSource.previews), taxSource.previews), (row) => row.created_at);
   const submissions = newestFirst(composeFilingSources(composeFilingSources(legacySubmissions, rfSource.submissions), taxSource.submissions), (row) => row.updated_at);
   const overrides = newestFirst(composeFilingSources(composeFilingSources(legacyOverrides, rfSource.overrides), taxSource.overrides), (row) => row.created_at);

@@ -183,3 +183,11 @@ for (const failed of [false, true]) test(`readiness refresh ${failed ? "stops wi
     assert.equal(effects.filter(item => item.name === "audit_events").length, 1);
   }
 });
+
+test("missing session token cannot turn an authorized company scope into complete empty Tax data", async () => {
+  let calls = 0;
+  const readSource = load(async () => { calls += 1; return empty(); });
+  assert.deepEqual(plain(await readSource(null, ["company"], 2025)), unavailable);
+  assert.deepEqual(plain(await readSource(null, [])), { ...unavailable, error: null });
+  assert.equal(calls, 0);
+});

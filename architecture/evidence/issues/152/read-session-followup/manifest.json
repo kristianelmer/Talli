@@ -1,0 +1,15 @@
+{
+  "baselineRevision": "f5a9f41f",
+  "status": "MISSING_TOKEN_SOURCE_ERROR_FIXED",
+  "finding": "Authenticated workspace with nonempty company scope but no access token previously synthesized successful empty Tax rows.",
+  "change": "Always call the source helper; a missing token with nonempty scope returns explicit unavailable without calling the API. Empty scope remains valid.",
+  "tests": 18,
+  "typecheck": "PASS",
+  "limits": [
+    "Focused source/consumer dependency-double tests, not full HTTP/browser/stage exit."
+  ],
+  "artifacts": {
+    "tax-source-session-tests.log": "a71aee23a143491036dcdd0952331d95775a56d62a64f157b13024eb2445faf6",
+    "tax-source-session-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531"
+  }
+}
