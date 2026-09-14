@@ -2964,6 +2964,45 @@ export interface BillingUnsupportedWire {
 
 export type ProductionPilotStatus = "pending" | "active" | "suspended" | "completed" | "revoked";
 
+export interface CompanyTaxRecordedWire {
+  companyId: string;
+  incomeYear: number | null;
+  recordId: string;
+}
+
+export interface CompanyTaxOverrideRequest {
+  fieldTarget: string;
+  newValue: string;
+  oldValue: string;
+  ownerConfirmed: boolean;
+  previewId: string;
+  reason: string;
+  riskLevel: string;
+}
+
+export interface CompanyTaxReviewRequest {
+  body: string;
+  previewId: string;
+  severity?: string;
+}
+
+export interface CompanyTaxPermissionRequest {
+  companyId: string;
+  productionEnabled: boolean;
+}
+
+export interface CompanyTaxTestEvidenceRequest {
+  archiveReference?: string | null;
+  companyId: string;
+  environment: string;
+  evidenceUrl?: string | null;
+  feedbackSummary?: string;
+  payloadHash?: string | null;
+  receiptReference?: string | null;
+  status: string;
+  testReference: string;
+}
+
 export interface CompanyTaxEvidenceImportRequest {
   companyId: string;
   evidenceJson: string;
@@ -7581,6 +7620,65 @@ function isProductionPilotStatus(value: unknown): value is ProductionPilotStatus
   return value === "pending" || value === "active" || value === "suspended" || value === "completed" || value === "revoked";
 }
 
+function isCompanyTaxRecordedWire(value: unknown): value is CompanyTaxRecordedWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","recordId"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) || value.incomeYear === null) &&
+    isUuid(value.recordId)
+  );
+}
+
+function isCompanyTaxOverrideRequest(value: unknown): value is CompanyTaxOverrideRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["fieldTarget","newValue","oldValue","ownerConfirmed","previewId","reason","riskLevel"]) &&
+    typeof value.fieldTarget === "string" &&
+    typeof value.newValue === "string" &&
+    typeof value.oldValue === "string" &&
+    typeof value.ownerConfirmed === "boolean" &&
+    isUuid(value.previewId) &&
+    typeof value.reason === "string" &&
+    typeof value.riskLevel === "string"
+  );
+}
+
+function isCompanyTaxReviewRequest(value: unknown): value is CompanyTaxReviewRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["body","previewId","severity"]) &&
+    typeof value.body === "string" &&
+    isUuid(value.previewId) &&
+    (value.severity === undefined || typeof value.severity === "string")
+  );
+}
+
+function isCompanyTaxPermissionRequest(value: unknown): value is CompanyTaxPermissionRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","productionEnabled"]) &&
+    isUuid(value.companyId) &&
+    typeof value.productionEnabled === "boolean"
+  );
+}
+
+function isCompanyTaxTestEvidenceRequest(value: unknown): value is CompanyTaxTestEvidenceRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["archiveReference","companyId","environment","evidenceUrl","feedbackSummary","payloadHash","receiptReference","status","testReference"]) &&
+    (value.archiveReference === undefined || (typeof value.archiveReference === "string" || value.archiveReference === null)) &&
+    isUuid(value.companyId) &&
+    typeof value.environment === "string" &&
+    (value.evidenceUrl === undefined || (typeof value.evidenceUrl === "string" || value.evidenceUrl === null)) &&
+    (value.feedbackSummary === undefined || typeof value.feedbackSummary === "string") &&
+    (value.payloadHash === undefined || (typeof value.payloadHash === "string" || value.payloadHash === null)) &&
+    (value.receiptReference === undefined || (typeof value.receiptReference === "string" || value.receiptReference === null)) &&
+    typeof value.status === "string" &&
+    typeof value.testReference === "string"
+  );
+}
+
 function isCompanyTaxEvidenceImportRequest(value: unknown): value is CompanyTaxEvidenceImportRequest {
   return (
     isRecord(value) &&
@@ -9964,6 +10062,58 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       if (result.companyId !== body.companyId || result.incomeYear !== body.incomeYear) {
         throw new TalliApiError(502, undefined);
       }
+      return result;
+    },
+
+    async companyTaxGetPreview(previewId: string, request: TalliRequestOptions = {}): Promise<CompanyTaxPreviewWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/previews/${encodeURIComponent(previewId)}`,
+        "GET", request, undefined, isCompanyTaxPreviewWire,
+      );
+      if (result.id !== previewId) throw new TalliApiError(502, undefined);
+      return result;
+    },
+
+    async companyTaxAcknowledgeReviewComment(commentId: string, request: TalliRequestOptions = {}): Promise<CompanyTaxRecordedWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/review-comments/${encodeURIComponent(commentId)}/acknowledgements`,
+        "POST", request, undefined, isCompanyTaxRecordedWire,
+      );
+      if (result.recordId !== commentId) throw new TalliApiError(502, undefined);
+      return result;
+    },
+
+    async companyTaxRecordOverride(body: CompanyTaxOverrideRequest, request: TalliRequestOptions = {}): Promise<CompanyTaxRecordedWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/overrides`,
+        "POST", request, body, isCompanyTaxRecordedWire,
+      );
+      return result;
+    },
+
+    async companyTaxAddReviewComment(body: CompanyTaxReviewRequest, request: TalliRequestOptions = {}): Promise<CompanyTaxRecordedWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/review-comments`,
+        "POST", request, body, isCompanyTaxRecordedWire,
+      );
+      return result;
+    },
+
+    async companyTaxConfirmPermission(body: CompanyTaxPermissionRequest, request: TalliRequestOptions = {}): Promise<CompanyTaxRecordedWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/permissions`,
+        "POST", request, body, isCompanyTaxRecordedWire,
+      );
+      if (result.companyId !== body.companyId || result.incomeYear !== null) throw new TalliApiError(502, undefined);
+      return result;
+    },
+
+    async companyTaxRecordTestEvidence(body: CompanyTaxTestEvidenceRequest, request: TalliRequestOptions = {}): Promise<CompanyTaxRecordedWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/test-evidence`,
+        "POST", request, body, isCompanyTaxRecordedWire,
+      );
+      if (result.companyId !== body.companyId || result.incomeYear !== null) throw new TalliApiError(502, undefined);
       return result;
     },
 

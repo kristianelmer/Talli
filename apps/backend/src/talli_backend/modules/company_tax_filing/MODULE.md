@@ -53,3 +53,9 @@ The TT02 import accepts immutable raw evidence and obtains company identity from
 -->
 
 `ImportCompanyTaxReturnEvidence` carries the immutable command. `CompanyTaxCompanyIdentity` carries the authorized identity fact and `ImportedCompanyTaxEvidence` carries `TaxAuthorityEvidenceId`, `TaxFilingSubmissionId` and the creation flag.
+
+The preparation controls preserve the existing normalization, owner confirmation, reviewer acknowledgement and manual evidence behavior. `RecordCompanyTaxOverride`, `AddCompanyTaxReviewComment`, `ConfirmCompanyTaxPermission`, `RecordCompanyTaxTestEvidence`, `CompanyTaxRecordQuery`, `CompanyTaxRecordedResult`, `normalize_company_tax_override`, `normalize_company_tax_review`, `normalize_company_tax_test_evidence`, `TaxFilingRecordId`, `CompanyTaxPreparationPersistence` expose the declared Tax contracts. Company Access retains accepted-role and fresh-MFA policy. A permission flag records the existing owner declaration; it does not activate a provider or submit a filing. Existing web Audit continuations remain outside these formerly single-row operations.
+
+<!-- architecture-inventory
+{"ports": ["CompanyTaxPreparationPersistence"]}
+-->

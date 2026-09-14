@@ -21,7 +21,13 @@
     "ledgerPostTaxSettlement",
     "companyTaxGetSettlementArchiveSource",
     "companyTaxGetFilingWorkspace",
-    "companyTaxImportTt02Evidence"
+    "companyTaxImportTt02Evidence",
+    "companyTaxGetPreview",
+    "companyTaxRecordOverride",
+    "companyTaxAddReviewComment",
+    "companyTaxAcknowledgeReviewComment",
+    "companyTaxConfirmPermission",
+    "companyTaxRecordTestEvidence"
   ],
   "dependencies": [],
   "allowedImports": [

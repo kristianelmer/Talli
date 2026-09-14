@@ -90,6 +90,11 @@ class AccountingEntryReference(_UuidReference):
 
 class CompanyTaxError(DomainError):
     @classmethod
+    def hard_review_block(cls) -> CompanyTaxError:
+        return cls(code="COMPANY_TAX_HARD_REVIEW_BLOCK", category=ErrorCategory.FORBIDDEN,
+            message="Hard review-blokk kan ikke acknowledges som advisory.")
+
+    @classmethod
     def evidence_persistence_rejected(cls) -> CompanyTaxError:
         return cls(code="COMPANY_TAX_EVIDENCE_PERSISTENCE_REJECTED", category=ErrorCategory.INVALID_INPUT)
 
@@ -102,8 +107,8 @@ class CompanyTaxError(DomainError):
         return cls(code="COMPANY_TAX_NOT_FOUND", category=ErrorCategory.NOT_FOUND)
 
     @classmethod
-    def invalid_input(cls) -> CompanyTaxError:
-        return cls(code="COMPANY_TAX_INVALID_INPUT", category=ErrorCategory.INVALID_INPUT)
+    def invalid_input(cls, message: str = "") -> CompanyTaxError:
+        return cls(code="COMPANY_TAX_INVALID_INPUT", category=ErrorCategory.INVALID_INPUT, message=message)
 
     @classmethod
     def forbidden(cls) -> CompanyTaxError:
@@ -437,7 +442,93 @@ class CompanyTaxReturnPersistence(Protocol):
     async def import_return_evidence(self, projection: CompanyTaxEvidenceProjection, actor_id: ActorId) -> ImportedCompanyTaxEvidence: ...
 
 
+class TaxFilingRecordId(_UuidReference):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxRecordQuery:
+    actor_id: ActorId
+    record_id: TaxFilingRecordId
+
+
+@dataclass(frozen=True, slots=True)
+class RecordCompanyTaxOverride:
+    actor_id: ActorId
+    preview_id: TaxFilingRecordId
+    field_target: str
+    old_value: str
+    new_value: str
+    reason: str
+    risk_level: str
+    owner_confirmed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class AddCompanyTaxReviewComment:
+    actor_id: ActorId
+    preview_id: TaxFilingRecordId
+    severity: str
+    body: str
+
+
+@dataclass(frozen=True, slots=True)
+class ConfirmCompanyTaxPermission:
+    actor_id: ActorId
+    company_id: CompanyId
+    production_enabled: bool
+
+
+@dataclass(frozen=True, slots=True)
+class RecordCompanyTaxTestEvidence:
+    actor_id: ActorId
+    company_id: CompanyId
+    environment: str
+    status: str
+    test_reference: str
+    feedback_summary: str
+    receipt_reference: str | None = None
+    archive_reference: str | None = None
+    evidence_url: str | None = None
+    payload_hash: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxRecordedResult:
+    record_id: TaxFilingRecordId
+    company_id: CompanyId
+    income_year: IncomeYear | None
+
+
+class CompanyTaxPreparationPersistence(Protocol):
+    async def filing_preview(self, query: CompanyTaxRecordQuery) -> Mapping[str, object] | None: ...
+    async def record_override(self, command: RecordCompanyTaxOverride) -> CompanyTaxRecordedResult: ...
+    async def add_review_comment(self, command: AddCompanyTaxReviewComment) -> CompanyTaxRecordedResult: ...
+    async def acknowledge_review_comment(self, query: CompanyTaxRecordQuery) -> CompanyTaxRecordedResult: ...
+    async def confirm_filing_permission(self, command: ConfirmCompanyTaxPermission) -> CompanyTaxRecordedResult: ...
+    async def record_test_evidence(self, command: RecordCompanyTaxTestEvidence) -> CompanyTaxRecordedResult: ...
+
+
+def normalize_company_tax_override(command: RecordCompanyTaxOverride) -> RecordCompanyTaxOverride:
+    from .preparation import normalize_override
+    return normalize_override(command)
+
+
+def normalize_company_tax_review(command: AddCompanyTaxReviewComment) -> AddCompanyTaxReviewComment:
+    from .preparation import normalize_review
+    return normalize_review(command)
+
+
+def normalize_company_tax_test_evidence(command: RecordCompanyTaxTestEvidence) -> RecordCompanyTaxTestEvidence:
+    from .preparation import normalize_test_evidence
+    return normalize_test_evidence(command)
+
+
 __all__ = [
+    "TaxFilingRecordId", "CompanyTaxRecordQuery", "RecordCompanyTaxOverride", "AddCompanyTaxReviewComment",
+    "ConfirmCompanyTaxPermission", "RecordCompanyTaxTestEvidence", "CompanyTaxRecordedResult",
+    "CompanyTaxPreparationPersistence", "normalize_company_tax_override", "normalize_company_tax_review",
+    "normalize_company_tax_test_evidence",
     "CompanyTaxCompanyIdentity", "ImportCompanyTaxReturnEvidence", "TaxAuthorityEvidenceId",
     "TaxFilingSubmissionId", "ImportedCompanyTaxEvidence", "CompanyTaxReturnPersistence",
     "CompanyTaxWorkspaceQuery", "CompanyTaxFilingRows", "CompanyTaxWorkspacePersistence",

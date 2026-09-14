@@ -77,7 +77,8 @@ from talli_backend.modules.company_tax_filing.public import (
     TaxSettlementInput, TaxSettlementValidationError, TaxSettlementArchiveQuery, normalize_tax_settlement,
     BankTransactionReference, DocumentReference, TaxSettlementDocumentStatus,
     TaxSettlementKind as CompanyTaxSettlementKind,
-    CompanyTaxWorkspaceQuery, ImportCompanyTaxReturnEvidence,
+    CompanyTaxWorkspaceQuery, ImportCompanyTaxReturnEvidence, CompanyTaxRecordQuery, TaxFilingRecordId,
+    RecordCompanyTaxOverride, AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
 )
 from talli_backend.adapters.supabase_investments import compose_investments_application
 from talli_backend.adapters.supabase_marketing_measurement import (
@@ -1040,6 +1041,45 @@ class CompanyTaxSubmissionWire(TransportModel):
     submitted_by: UUID | None
     created_at: datetime
     updated_at: datetime
+
+
+class CompanyTaxRecordedWire(TransportModel):
+    record_id: UUID
+    company_id: UUID
+    income_year: int | None
+
+
+class CompanyTaxOverrideRequest(TransportModel):
+    preview_id: UUID
+    field_target: str
+    old_value: str
+    new_value: str
+    reason: str
+    risk_level: str
+    owner_confirmed: Annotated[bool, Field(strict=True)]
+
+
+class CompanyTaxReviewRequest(TransportModel):
+    preview_id: UUID
+    severity: str = "advisory"
+    body: str
+
+
+class CompanyTaxPermissionRequest(TransportModel):
+    company_id: UUID
+    production_enabled: Annotated[bool, Field(strict=True)]
+
+
+class CompanyTaxTestEvidenceRequest(TransportModel):
+    company_id: UUID
+    environment: str
+    status: str
+    test_reference: str
+    feedback_summary: str = ""
+    receipt_reference: str | None = None
+    archive_reference: str | None = None
+    evidence_url: str | None = None
+    payload_hash: str | None = None
 
 
 class CompanyTaxEvidenceImportRequest(TransportModel):
@@ -9814,6 +9854,112 @@ def create_app(
             )
 
         return await ledger_call(execute)
+
+    @application.get(
+        "/api/v1/company-tax/previews/{preview_id}",
+        operation_id="companyTaxGetPreview", response_model=CompanyTaxPreviewWire,
+        responses=ledger_errors, tags=["company-tax"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_get_preview(
+        preview_id: UUID, credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxPreviewWire:
+        async def execute() -> CompanyTaxPreviewWire:
+            session = await company_tax_application.session(bearer_token(credentials))
+            result = await session.filing_preview(CompanyTaxRecordQuery(session.actor_id, TaxFilingRecordId(str(preview_id))))
+            if result is None:
+                raise CompanyTaxError.not_found()
+            if result.get('id') != str(preview_id):
+                raise CompanyTaxError.unavailable()
+            try:
+                return CompanyTaxPreviewWire(**company_tax_json_wire(result))
+            except ValidationError:
+                raise CompanyTaxError.unavailable() from None
+        return await company_tax_call(execute)
+
+    @application.post(
+        "/api/v1/company-tax/review-comments/{comment_id}/acknowledgements",
+        operation_id="companyTaxAcknowledgeReviewComment", response_model=CompanyTaxRecordedWire,
+        responses=ledger_errors, tags=["company-tax"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_acknowledge_review_comment(
+        comment_id: UUID, credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxRecordedWire:
+        async def execute() -> CompanyTaxRecordedWire:
+            session = await company_tax_application.session(bearer_token(credentials))
+            result = await session.acknowledge_review_comment(CompanyTaxRecordQuery(session.actor_id, TaxFilingRecordId(str(comment_id))))
+            if str(result.record_id) != str(comment_id):
+                raise CompanyTaxError.unavailable()
+            return CompanyTaxRecordedWire(record_id=UUID(str(result.record_id)), company_id=UUID(str(result.company_id)),
+                income_year=int(result.income_year) if result.income_year is not None else None)
+        return await company_tax_call(execute)
+
+    @application.post(
+        "/api/v1/company-tax/overrides",
+        operation_id="companyTaxRecordOverride", response_model=CompanyTaxRecordedWire,
+        responses=ledger_errors, tags=["company-tax"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_record_override(
+        body: CompanyTaxOverrideRequest, credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxRecordedWire:
+        async def execute() -> CompanyTaxRecordedWire:
+            session = await company_tax_application.session(bearer_token(credentials))
+            result = await session.record_override(RecordCompanyTaxOverride(
+                actor_id=session.actor_id, preview_id=TaxFilingRecordId(str(body.preview_id)), field_target=body.field_target, old_value=body.old_value, new_value=body.new_value, reason=body.reason, risk_level=body.risk_level, owner_confirmed=body.owner_confirmed,
+            ))
+            return CompanyTaxRecordedWire(record_id=UUID(str(result.record_id)), company_id=UUID(str(result.company_id)),
+                income_year=int(result.income_year) if result.income_year is not None else None)
+        return await company_tax_call(execute)
+
+    @application.post(
+        "/api/v1/company-tax/review-comments",
+        operation_id="companyTaxAddReviewComment", response_model=CompanyTaxRecordedWire,
+        responses=ledger_errors, tags=["company-tax"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_add_review_comment(
+        body: CompanyTaxReviewRequest, credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxRecordedWire:
+        async def execute() -> CompanyTaxRecordedWire:
+            session = await company_tax_application.session(bearer_token(credentials))
+            result = await session.add_review_comment(AddCompanyTaxReviewComment(
+                actor_id=session.actor_id, preview_id=TaxFilingRecordId(str(body.preview_id)), severity=body.severity, body=body.body,
+            ))
+            return CompanyTaxRecordedWire(record_id=UUID(str(result.record_id)), company_id=UUID(str(result.company_id)),
+                income_year=int(result.income_year) if result.income_year is not None else None)
+        return await company_tax_call(execute)
+
+    @application.post(
+        "/api/v1/company-tax/permissions",
+        operation_id="companyTaxConfirmPermission", response_model=CompanyTaxRecordedWire,
+        responses=ledger_errors, tags=["company-tax"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_confirm_filing_permission(
+        body: CompanyTaxPermissionRequest, credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxRecordedWire:
+        async def execute() -> CompanyTaxRecordedWire:
+            session = await company_tax_application.session(bearer_token(credentials))
+            result = await session.confirm_filing_permission(ConfirmCompanyTaxPermission(
+                actor_id=session.actor_id, company_id=CompanyId(str(body.company_id)), production_enabled=body.production_enabled,
+            ))
+            return CompanyTaxRecordedWire(record_id=UUID(str(result.record_id)), company_id=UUID(str(result.company_id)),
+                income_year=int(result.income_year) if result.income_year is not None else None)
+        return await company_tax_call(execute)
+
+    @application.post(
+        "/api/v1/company-tax/test-evidence",
+        operation_id="companyTaxRecordTestEvidence", response_model=CompanyTaxRecordedWire,
+        responses=ledger_errors, tags=["company-tax"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def company_tax_record_test_evidence(
+        body: CompanyTaxTestEvidenceRequest, credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxRecordedWire:
+        async def execute() -> CompanyTaxRecordedWire:
+            session = await company_tax_application.session(bearer_token(credentials))
+            result = await session.record_test_evidence(RecordCompanyTaxTestEvidence(
+                actor_id=session.actor_id, company_id=CompanyId(str(body.company_id)), environment=body.environment, status=body.status, test_reference=body.test_reference, feedback_summary=body.feedback_summary, receipt_reference=body.receipt_reference, archive_reference=body.archive_reference, evidence_url=body.evidence_url, payload_hash=body.payload_hash,
+            ))
+            return CompanyTaxRecordedWire(record_id=UUID(str(result.record_id)), company_id=UUID(str(result.company_id)),
+                income_year=int(result.income_year) if result.income_year is not None else None)
+        return await company_tax_call(execute)
 
     @application.post(
         "/api/v1/company-tax/tt02-evidence-imports",

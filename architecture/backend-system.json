@@ -424,6 +424,21 @@
       "routes": [
         "/api/v1/company-tax/tt02-evidence-imports"
       ]
+    },
+    {
+      "name": "company-tax-filing-preparation",
+      "purpose": "Runs owned Tax override, review, acknowledgement, permission and manual-evidence controls with Company Access authorization; preserves existing external Audit continuations and performs no provider operation.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "routes": [
+        "/api/v1/company-tax/previews/{preview_id}",
+        "/api/v1/company-tax/overrides",
+        "/api/v1/company-tax/review-comments",
+        "/api/v1/company-tax/review-comments/{comment_id}/acknowledgements",
+        "/api/v1/company-tax/permissions",
+        "/api/v1/company-tax/test-evidence"
+      ]
     }
   ],
   "operationalControlState": {
@@ -846,6 +861,12 @@
       "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
       "owner": "backend-system",
       "mode": "one request-scoped import transaction; Tax owns validated receipt persistence and Audit retains its canonical legacy append implementation"
+    },
+    {
+      "port": "CompanyTaxPreparationPersistence",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "one verified phase-gated preparation transaction with Company Access accepted-role and fresh-MFA decisions"
     }
   ],
   "allowedDependencies": {

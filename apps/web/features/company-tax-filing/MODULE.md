@@ -23,3 +23,9 @@ The generated TT02 import transport submits the original bounded evidence JSON w
 <!-- architecture-inventory
 {"apiOperations":["companyTaxImportTt02Evidence"]}
 -->
+
+Generated preparation transports provide Tax preview lookup, overrides, review comments, acknowledgements, permissions and manual test evidence. A missing owned record permits the frozen sibling flow to continue; an unavailable or unauthorized source never becomes absence.
+
+<!-- architecture-inventory
+{"apiOperations": ["companyTaxGetPreview", "companyTaxRecordOverride", "companyTaxAddReviewComment", "companyTaxAcknowledgeReviewComment", "companyTaxConfirmPermission", "companyTaxRecordTestEvidence"]}
+-->

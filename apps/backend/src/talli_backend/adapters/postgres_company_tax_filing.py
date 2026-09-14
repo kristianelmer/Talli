@@ -16,13 +16,16 @@ from talli_backend.adapters.supabase_ledger import (
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
 from talli_backend.application.company_tax_filing_workflow import CompanyTaxApplication
 from talli_backend.modules.audit.public import AuditEventDraft, AuditInclusion, audit_inclusion_adapter
-from talli_backend.shared.kernel import ActorId, CompanyId
+from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear
 from talli_backend.modules.banking.public import (
     TaxSettlementBankCommand, TaxSettlementBankingPersistence,
     bank_transaction_claim_persistence_adapter,
 )
 from talli_backend.modules.company_tax_filing.public import (
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
+    CompanyTaxPreparationPersistence, CompanyTaxRecordQuery, RecordCompanyTaxOverride,
+    AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
+    CompanyTaxRecordedResult, TaxFilingRecordId,
     CompanyTaxCompanyIdentity, CompanyTaxReturnPersistence, CompanyTaxEvidenceProjection,
     ImportedCompanyTaxEvidence, TaxAuthorityEvidenceId, TaxFilingSubmissionId,
     CompanyTaxWorkspaceQuery, CompanyTaxFilingRows, CompanyTaxWorkspacePersistence,
@@ -43,6 +46,7 @@ def _company_tax_database_error(error: psycopg.DatabaseError):
         'company_tax_return_forbidden': CompanyTaxError.forbidden,
         'company_tax_return_not_found': CompanyTaxError.not_found,
         'company_tax_return_invalid_input': CompanyTaxError.invalid_input,
+        'company_tax_return_hard_review_block': CompanyTaxError.hard_review_block,
         'company_tax_return_unavailable': CompanyTaxError.unavailable,
     }
     message = error.diag.message_primary or ''
@@ -135,6 +139,7 @@ class PostgresCompanyTaxSession:
             raise _company_tax_database_error(error) from None
 
 
+@tax_settlement_persistence_adapter(CompanyTaxPreparationPersistence)
 @audit_inclusion_adapter(AuditInclusion)
 @tax_settlement_persistence_adapter(CompanyTaxReturnPersistence)
 @tax_settlement_persistence_adapter(CompanyTaxWorkspacePersistence)
@@ -172,6 +177,74 @@ class PostgresCompanyTaxTransaction:
         return await self._database_rows(query, (
             json.dumps(dict(payload), separators=(',', ':')), str(self.actor_id.subject),
         ))
+
+    async def filing_preview(self, query: CompanyTaxRecordQuery) -> Mapping[str, object] | None:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(
+            'select company_tax_filing.read_preview_v1(%s::uuid,%s::text) as result',
+            (str(query.record_id), str(query.actor_id.subject)),
+        )
+        result = row.get('result')
+        if result is None:
+            return None
+        try:
+            if (not isinstance(result, Mapping) or result.get('id') != str(query.record_id)
+                    or not isinstance(result.get('company_id'), str) or type(result.get('income_year')) is not int):
+                raise ValueError()
+            snapshot = CompanyTaxFilingRows(CompanyId(result['company_id']), IncomeYear(result['income_year']),
+                previews=[result], submissions=[], overrides=[], review_comments=[], permissions=[], test_evidence=[])
+            return snapshot.previews[0]
+        except (KeyError, TypeError, ValueError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def _preparation_result(self, query: str, parameters: tuple[object, ...], actor_id: ActorId) -> CompanyTaxRecordedResult:
+        if actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(query, (*parameters, str(actor_id.subject)))
+        result = row.get('result')
+        try:
+            if (not isinstance(result, Mapping) or not isinstance(result.get('id'), str)
+                    or not isinstance(result.get('company_id'), str)
+                    or result.get('income_year') is not None and type(result.get('income_year')) is not int):
+                raise ValueError()
+            return CompanyTaxRecordedResult(TaxFilingRecordId(result['id']), CompanyId(result['company_id']),
+                IncomeYear(result['income_year']) if result.get('income_year') is not None else None)
+        except (KeyError, TypeError, ValueError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def record_override(self, command: RecordCompanyTaxOverride) -> CompanyTaxRecordedResult:
+        return await self._preparation_result(
+            'select company_tax_filing.record_override_v1(%s::uuid,%s::text,%s::text,%s::text,%s::text,%s::text,%s::boolean,%s::text) as result',
+            (str(command.preview_id), command.field_target, command.old_value, command.new_value,
+             command.reason, command.risk_level, command.owner_confirmed), command.actor_id,
+        )
+
+    async def add_review_comment(self, command: AddCompanyTaxReviewComment) -> CompanyTaxRecordedResult:
+        return await self._preparation_result(
+            'select company_tax_filing.add_review_comment_v1(%s::uuid,%s::text,%s::text,%s::text) as result',
+            (str(command.preview_id), command.severity, command.body), command.actor_id,
+        )
+
+    async def acknowledge_review_comment(self, query: CompanyTaxRecordQuery) -> CompanyTaxRecordedResult:
+        return await self._preparation_result(
+            'select company_tax_filing.acknowledge_review_comment_v1(%s::uuid,%s::text) as result',
+            (str(query.record_id),), query.actor_id,
+        )
+
+    async def confirm_filing_permission(self, command: ConfirmCompanyTaxPermission) -> CompanyTaxRecordedResult:
+        return await self._preparation_result(
+            'select company_tax_filing.confirm_filing_permission_v1(%s::uuid,%s::boolean,%s::text) as result',
+            (str(command.company_id), command.production_enabled), command.actor_id,
+        )
+
+    async def record_test_evidence(self, command: RecordCompanyTaxTestEvidence) -> CompanyTaxRecordedResult:
+        return await self._preparation_result(
+            'select company_tax_filing.record_test_evidence_v1(%s::uuid,%s::jsonb,%s::text) as result',
+            (str(command.company_id), json.dumps({key: getattr(command, key) for key in (
+                'environment', 'status', 'test_reference', 'feedback_summary', 'receipt_reference',
+                'archive_reference', 'evidence_url', 'payload_hash')}, ensure_ascii=True)), command.actor_id,
+        )
 
     async def filing_company_identity(self, company_id: CompanyId, actor_id: ActorId) -> CompanyTaxCompanyIdentity:
         if actor_id != self.actor_id:

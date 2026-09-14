@@ -618,3 +618,11 @@ The import route is `/api/v1/company-tax/tt02-evidence-imports`.
 <!-- architecture-inventory
 {"routes":["/api/v1/company-tax/tt02-evidence-imports"]}
 -->
+
+## Company Tax filing controls
+
+The named preparation workflow carries owner/reviewer commands through immutable Tax contracts. Identity and accepted-role/fresh-MFA decisions use the existing Company Access public SQL contracts; fixed owned SQL operations cannot select a legacy writer. Routes: `/api/v1/company-tax/previews/{preview_id}`, `/api/v1/company-tax/overrides`, `/api/v1/company-tax/review-comments`, `/api/v1/company-tax/review-comments/{comment_id}/acknowledgements`, `/api/v1/company-tax/permissions`, `/api/v1/company-tax/test-evidence`.
+
+<!-- architecture-inventory
+{"workflows": ["company-tax-filing-preparation"], "workflowPurposes": ["company-tax-filing-preparation=>Runs owned Tax override, review, acknowledgement, permission and manual-evidence controls with Company Access authorization; preserves existing external Audit continuations and performs no provider operation."], "routes": ["/api/v1/company-tax/previews/{preview_id}", "/api/v1/company-tax/overrides", "/api/v1/company-tax/review-comments", "/api/v1/company-tax/review-comments/{comment_id}/acknowledgements", "/api/v1/company-tax/permissions", "/api/v1/company-tax/test-evidence"], "ports": ["CompanyTaxPreparationPersistence"], "adapterBindings": ["CompanyTaxPreparationPersistence=>talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"], "adapterBindingOwners": ["CompanyTaxPreparationPersistence=>backend-system"], "adapterBindingModes": ["CompanyTaxPreparationPersistence=>one verified phase-gated preparation transaction with Company Access accepted-role and fresh-MFA decisions"]}
+-->

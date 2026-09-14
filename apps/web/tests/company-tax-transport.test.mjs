@@ -149,3 +149,44 @@ test("TT02 presenter distinguishes projection validation from persistence reject
   assert.equal(taxEvidenceImportErrorMessage(new TalliApiError(422, { code: "COMPANY_TAX_INVALID_INPUT" })), "Ugyldig TT02-evidens");
   assert.equal(taxEvidenceImportErrorMessage(new TalliApiError(422, { code: "COMPANY_TAX_EVIDENCE_PERSISTENCE_REJECTED" })), "TT02-evidensen kunne ikke lagres.");
 });
+
+test("Tax preparation sends generated commands and rejects foreign scope", async (t) => {
+  environment(t);
+  const tax = await import("../features/company-tax-filing/index.ts");
+  let result = { recordId: operationId, companyId, incomeYear: null };
+  const sent = [];
+  t.mock.method(globalThis, "fetch", async (url, request) => {
+    sent.push({ path: new URL(url).pathname, method: request.method, body: JSON.parse(request.body) });
+    assert.equal(request.cache, "no-store");
+    assert.equal(request.headers.Authorization, "Bearer owner");
+    return Response.json(result);
+  });
+  for (const [name, path, body] of [
+    ["companyTaxRecordOverride", "overrides", { previewId: operationId, fieldTarget: " field ", oldValue: "old", newValue: "new", reason: "reason", riskLevel: "warning", ownerConfirmed: true }],
+    ["companyTaxAddReviewComment", "review-comments", { previewId: operationId, body: " review ", severity: "advisory" }],
+    ["companyTaxConfirmPermission", "permissions", { companyId, productionEnabled: true }],
+    ["companyTaxRecordTestEvidence", "test-evidence", { companyId, environment: "manual_evidence", status: "pending", testReference: " reference " }],
+  ]) {
+    assert.deepEqual(await tax[name]("owner", body), result);
+    assert.deepEqual(sent.at(-1), { path: `/api/v1/company-tax/${path}`, method: "POST", body });
+  }
+  result = { ...result, companyId: operationId };
+  await assert.rejects(tax.companyTaxConfirmPermission("owner", { companyId, productionEnabled: false }), error => error.status === 502);
+});
+
+test("Tax lookup and acknowledgement only return absence for an explicit owned not-found", async (t) => {
+  environment(t);
+  const { findCompanyTaxPreview, acknowledgeOwnedCompanyTaxComment } = await import("../features/company-tax-filing/index.ts");
+  let status = 404; let code = "COMPANY_TAX_NOT_FOUND";
+  t.mock.method(globalThis, "fetch", async () => Response.json({
+    type: "about:blank", title: "Tax request failed", status, code, detail: "Synthetic", instance: "/api/v1/company-tax", requestId: "fixture",
+  }, { status, headers: { "content-type": "application/problem+json" } }));
+  for (const method of [findCompanyTaxPreview, acknowledgeOwnedCompanyTaxComment]) {
+    assert.equal(await method("owner", operationId), null);
+    for (const failure of [[503, "COMPANY_TAX_DEPENDENCY_UNAVAILABLE"], [403, "COMPANY_TAX_FORBIDDEN"], [404, "OTHER_NOT_FOUND"]]) {
+      [status, code] = failure;
+      await assert.rejects(method("owner", operationId), error => error instanceof TalliApiError && error.status === status);
+    }
+    status = 404; code = "COMPANY_TAX_NOT_FOUND";
+  }
+});

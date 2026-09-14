@@ -1,0 +1,57 @@
+{
+  "status": "PREPARATION_CONTRACT_VERIFIED_OWNER_UI_AND_CUTOVER_PENDING",
+  "baselineRevision": "5d240525284e6aa92e2875940a638adb110421a6",
+  "databaseChecks": 60,
+  "backendTests": 248,
+  "webTests": 21,
+  "webTypecheck": "PASS",
+  "architecture": "PASS",
+  "openapiDelta": {
+    "schemas": {
+      "added": [
+        "CompanyTaxOverrideRequest",
+        "CompanyTaxPermissionRequest",
+        "CompanyTaxRecordedWire",
+        "CompanyTaxReviewRequest",
+        "CompanyTaxTestEvidenceRequest"
+      ],
+      "removed": [],
+      "changed": []
+    },
+    "paths": {
+      "added": [
+        "/api/v1/company-tax/overrides",
+        "/api/v1/company-tax/permissions",
+        "/api/v1/company-tax/previews/{preview_id}",
+        "/api/v1/company-tax/review-comments",
+        "/api/v1/company-tax/review-comments/{comment_id}/acknowledgements",
+        "/api/v1/company-tax/test-evidence"
+      ],
+      "removed": [],
+      "changed": []
+    }
+  },
+  "legacyControlCases": 20,
+  "legacyControlSha256": "e230e65b3c4246ad4bbfac864780d6cbe49568ac122a5a0848b206d40c7aa13d",
+  "limits": [
+    "SQL claims and fresh-MFA AMR timestamps are synthetic local fixtures; API authentication/persistence use test doubles. No genuine MFA, provider, browser or full-stage credit.",
+    "SQL fixture temporarily activates the phase within one rollback-only transaction. No durable expansion/cutover/rollback has been rehearsed.",
+    "The 60 SQL checks include 45 prior expansion/read checks and 15 new preparation checks, not 60 new control cases.",
+    "Audit remains its canonical legacy store; pre-existing web continuations remain pending their own migration.",
+    "Owner actions, owned read consumers, source completeness and full #152 stage exit remain pending."
+  ],
+  "artifacts": {
+    "preparation-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "probe-filing-preparation-contract.py.txt": "1d1117aa1c7460543e0ee344406268753947a85060bf234d571a6edd35b455f0",
+    "import-standards-followup-5d240525.md": "501bf4791f5baabfe57e29a11ecb12480c30fae20398f8fc8cd92c5cdc19dd7d",
+    "import-spec-followup-5d240525.md": "3186b49329fed24fba642c7de4cf0f92c47e4e114984a7f5283a471399c7b29a",
+    "import-spec-followup-5d240525.json": "65583afb9d7103faf2716c3179a1fcdea6523e02a82334702896ecc582111a61",
+    "capture-preparation.mjs.txt": "514c3e292320412d9f7dd53ea9804f07e0d591601fe55c805372f1db0715743b",
+    "import-standards-review-b400103d.md": "a9d473bf1344fd812d42b4147f6e65b670be3d7ebdfe39c4280ccc8a22b4ad4f",
+    "import-standards-review-b400103d.json": "170a27d8cf1859271ea21351d6ca11827e5abeb43f70f18e868dbfb027e29afb",
+    "preparation-web-tests.log": "33a37571431e0144435969584dba4ff6212a33dd90621ebb66571489eda1da35",
+    "filing-preparation-contract-seeded.json": "031d88c2b9e0a5947491d7fbb919e61ce41906911e2cd53f1bb56a10cc719fc6",
+    "import-standards-followup-5d240525.json": "f73e94a45a665dde148a18b12521b2cd1e6550fa2f4c912a0c837e542de73815",
+    "preparation-backend-tests.log": "eee808bfd16a42957de4be6ff7e8dcefd9e4024777ee7ea3fdc852c7e81348ea"
+  }
+}

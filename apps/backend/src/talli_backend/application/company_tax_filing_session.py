@@ -4,14 +4,14 @@ from typing import Protocol
 
 from talli_backend.modules.audit.public import AuditInclusion
 from talli_backend.modules.banking.public import TaxSettlementBankingPersistence
-from talli_backend.modules.company_tax_filing.public import TaxSettlementPersistence, TaxSettlementArchivePersistence, CompanyTaxWorkspacePersistence, CompanyTaxReturnPersistence
+from talli_backend.modules.company_tax_filing.public import TaxSettlementPersistence, TaxSettlementArchivePersistence, CompanyTaxWorkspacePersistence, CompanyTaxReturnPersistence, CompanyTaxPreparationPersistence
 from talli_backend.modules.documents.public import DocumentBindingPersistence
 from talli_backend.modules.ledger.public import LedgerPersistence
 from talli_backend.shared.kernel import ActorId
 
 
 class CompanyTaxTransaction(
-    TaxSettlementPersistence, TaxSettlementArchivePersistence, CompanyTaxWorkspacePersistence, CompanyTaxReturnPersistence, AuditInclusion, LedgerPersistence, TaxSettlementBankingPersistence,
+    TaxSettlementPersistence, TaxSettlementArchivePersistence, CompanyTaxWorkspacePersistence, CompanyTaxReturnPersistence, CompanyTaxPreparationPersistence, AuditInclusion, LedgerPersistence, TaxSettlementBankingPersistence,
     DocumentBindingPersistence, Protocol,
 ):
     @property

@@ -9,6 +9,9 @@ from talli_backend.application.company_tax_filing_session import CompanyTaxSessi
 from talli_backend.modules.audit.public import AuditEventDraft
 from talli_backend.modules.banking.public import BankTransactionId, ExternalActionReference, TaxSettlementBankCommand
 from talli_backend.modules.company_tax_filing.public import (
+    CompanyTaxRecordQuery, RecordCompanyTaxOverride, AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission,
+    RecordCompanyTaxTestEvidence, CompanyTaxRecordedResult, normalize_company_tax_override,
+    normalize_company_tax_review, normalize_company_tax_test_evidence,
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
     CompanyTaxWorkspaceQuery, CompanyTaxFilingRows,
     ImportCompanyTaxReturnEvidence, ImportedCompanyTaxEvidence, CompanyTaxEvidenceInput, project_company_tax_evidence,
@@ -143,4 +146,51 @@ class AuthenticatedCompanyTax:
                     message='Skattemelding TT02-evidens importert og venter på klassifisering med ref '
                     + str(projection.authority_run['test_reference']) + '.',
                 ))
+            return result
+
+    async def filing_preview(self, query: CompanyTaxRecordQuery) -> Mapping[str, object] | None:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        async with self._session.transaction() as transaction:
+            return await transaction.filing_preview(query)
+
+    async def record_override(self, command: RecordCompanyTaxOverride) -> CompanyTaxRecordedResult:
+        if command.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        normalized = normalize_company_tax_override(command)
+        async with self._session.transaction() as transaction:
+            return await transaction.record_override(normalized)
+
+    async def add_review_comment(self, command: AddCompanyTaxReviewComment) -> CompanyTaxRecordedResult:
+        if command.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        normalized = normalize_company_tax_review(command)
+        async with self._session.transaction() as transaction:
+            return await transaction.add_review_comment(normalized)
+
+    async def acknowledge_review_comment(self, query: CompanyTaxRecordQuery) -> CompanyTaxRecordedResult:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        async with self._session.transaction() as transaction:
+            return await transaction.acknowledge_review_comment(query)
+
+    async def confirm_filing_permission(self, command: ConfirmCompanyTaxPermission) -> CompanyTaxRecordedResult:
+        if command.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        if type(command.production_enabled) is not bool:
+            raise CompanyTaxError.invalid_input()
+        async with self._session.transaction() as transaction:
+            result = await transaction.confirm_filing_permission(command)
+            if result.company_id != command.company_id or result.income_year is not None:
+                raise CompanyTaxError.unavailable()
+            return result
+
+    async def record_test_evidence(self, command: RecordCompanyTaxTestEvidence) -> CompanyTaxRecordedResult:
+        if command.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        normalized = normalize_company_tax_test_evidence(command)
+        async with self._session.transaction() as transaction:
+            result = await transaction.record_test_evidence(normalized)
+            if result.company_id != command.company_id or result.income_year is not None:
+                raise CompanyTaxError.unavailable()
             return result
