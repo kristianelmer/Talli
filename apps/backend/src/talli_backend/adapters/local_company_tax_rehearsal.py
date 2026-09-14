@@ -1,6 +1,7 @@
 """Local file, clock, schema and credential seams for Company Tax rehearsal."""
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from talli_backend.authority_tools._filing import (
@@ -58,3 +59,12 @@ class LocalCompanyTaxRehearsal:
         names = ("skattemelding.xml", "naeringsspesifikasjon.xml", "envelope.xml")
         self._validate(dict(zip(names, (documents["skattemeldingXml"], documents["naeringsspesifikasjonXml"], envelope))),
             dict(zip(names, (self.xsd / name for name in schemas))))
+
+
+def local_rehearsal_summary(value):
+    """Detach the immutable public result into the CLI's original JSON shape."""
+    if isinstance(value, Mapping):
+        return {key: local_rehearsal_summary(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [local_rehearsal_summary(item) for item in value]
+    return value

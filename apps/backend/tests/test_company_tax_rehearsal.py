@@ -85,3 +85,56 @@ def test_predecessor_year_decoding_before_authority_through_public_workflow(case
         assert str(caught.value) == expected['message']
         assert io.checkpoints == []
         assert io.credentials_prepared is False
+
+
+def completed_evidence():
+    return {'status': 'submitted_and_receipted', 'environment': 'test', 'productionEnabled': False,
+            'companyOrgNumber': '310279617', 'incomeYear': 2025, 'instance': {'id': 'synthetic-instance'},
+            'authorityValidation': {'result': {'value': ['legacy-structured-metadata']}},
+            'receipt': {'reference': {'legacy': ['receipt']}},
+            'submission': {'archiveReference': 'archive'}}
+
+
+def test_completed_replay_public_summary_is_recursively_detached_and_immutable():
+    class CompletedReplay(MemoryRehearsal):
+        def __init__(self):
+            super().__init__(2025)
+            self.prior = completed_evidence()
+
+        def load_evidence(self):
+            return self.prior
+
+        def prepare_credentials(self):
+            pytest.fail('Completed replay read credentials')
+
+    io = CompletedReplay()
+    result = asyncio.run(rehearse_company_tax_return(CONFIGURATION, io, sleep=no_sleep))
+    assert result['validationResult']['value'] == ('legacy-structured-metadata',)
+    with pytest.raises(TypeError):
+        result['validationResult']['value'] = ('changed',)
+    with pytest.raises(AttributeError):
+        result['receiptReference']['legacy'].append('changed')
+    io.prior['authorityValidation']['result']['value'].append('source-change')
+    assert result['validationResult']['value'] == ('legacy-structured-metadata',)
+
+
+def test_completed_replay_cli_preserves_structured_json_summary(tmp_path):
+    from talli_backend.authority_tools import company_tax_test
+    from talli_backend.authority_tools._filing import write_evidence
+    prior = completed_evidence()
+    evidence = tmp_path / 'evidence.json'
+    write_evidence(evidence, prior)
+    environment = {
+        'TALLI_COMPANY_TAX_APPROVED_TEST_WRITE': 'true',
+        'TALLI_MASKINPORTEN_ENVIRONMENT': 'test',
+        'TALLI_COMPANY_TAX_REHEARSAL_MODE': 'resume',
+        'TALLI_MASKINPORTEN_SCOPE': CONFIGURATION.scope,
+        'TALLI_MASKINPORTEN_SYSTEM_USER_ORG': CONFIGURATION.system_user_org,
+        'TALLI_COMPANY_TAX_EVIDENCE_PATH': str(evidence),
+    }
+    async def forbidden_provider(*_):
+        pytest.fail('Completed replay called a provider')
+    result = asyncio.run(company_tax_test.run(environment, client_factory=forbidden_provider))
+    assert json.loads(json.dumps(result)) == result
+    assert result['validationResult'] == prior['authorityValidation']['result']
+    assert result['receiptReference'] == prior['receipt']['reference']

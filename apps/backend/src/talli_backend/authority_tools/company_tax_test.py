@@ -10,7 +10,7 @@ from ._filing import payload, validate_xml
 from talli_backend.adapters.company_tax_authority import (
     CompanyTaxTransport, exchange_maskinporten_for_altinn_token,
 )
-from talli_backend.adapters.local_company_tax_rehearsal import LocalCompanyTaxRehearsal
+from talli_backend.adapters.local_company_tax_rehearsal import LocalCompanyTaxRehearsal, local_rehearsal_summary
 from talli_backend.modules.company_tax_filing.public import (
     CompanyTaxRehearsalConfiguration, CompanyTaxReturnAuthorityError, rehearse_company_tax_return,
 )
@@ -38,7 +38,7 @@ async def run(environment=None, *, client_factory=_client, generate=payload, val
     )
     io = LocalCompanyTaxRehearsal(environment, client_factory=client_factory, generate=generate,
         validate=validate, real_client=client_factory is _client)
-    return dict(await rehearse_company_tax_return(configuration, io, sleep=sleep))
+    return local_rehearsal_summary(await rehearse_company_tax_return(configuration, io, sleep=sleep))
 
 
 def main():

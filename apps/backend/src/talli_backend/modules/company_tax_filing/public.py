@@ -641,7 +641,7 @@ async def rehearse_company_tax_return(
     *, sleep: Callable[[float], Awaitable[None]],
 ) -> Mapping[str, object]:
     from .rehearsal import run
-    return MappingProxyType(await run(configuration, io, sleep=sleep))
+    return _freeze_return_fact(await run(configuration, io, sleep=sleep))
 
 
 __all__ = [
