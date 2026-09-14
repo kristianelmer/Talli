@@ -13,6 +13,16 @@ from annual_accounts_rehearsal_trace import trace
 ROOT = Path(__file__).resolve().parents[3]
 CAPTURE = json.loads((ROOT / 'architecture/evidence/issues/153/authority-ownership/legacy-annual-payload-bridge.json').read_text())
 TRACES = json.loads((ROOT / 'architecture/evidence/issues/153/authority-ownership/legacy-rehearsal-traces.json').read_text())
+BOUNDARY_CASES = json.loads((ROOT / 'architecture/evidence/issues/153/authority-review-fixes/authority-spec-actual-bridge-results-50bfe67a.json').read_text())
+
+
+@pytest.mark.parametrize('case', BOUNDARY_CASES, ids=lambda case: f"{case['field']}={case['value']!r}")
+def test_reviewed_json_shapes_preserve_actual_predecessor_subprocess_boundary(case):
+    try:
+        result = {'value': payload('annual_accounts', case['input'])}
+    except ValueError as error:
+        result = {'error': type(error).__name__, 'message': str(error)}
+    assert result == case['old']
 
 
 @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])

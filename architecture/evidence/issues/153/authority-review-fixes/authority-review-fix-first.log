@@ -1,0 +1,47 @@
+......FF................................................................ [ 73%]
+..........................                                               [100%]
+=================================== FAILURES ===================================
+_ test_reviewed_json_shapes_preserve_actual_predecessor_subprocess_boundary[ledgerEntries={}] _
+
+case = {'field': 'ledgerEntries', 'input': {'annualData': {'answers': {'authority_to_submit_confirmed': True, 'bank_balance_c...nnhold>\n</melding>\n'}}, 'old': {'error': 'ValueError', 'message': 'Local authority payload generation failed.'}, ...}
+
+    @pytest.mark.parametrize('case', BOUNDARY_CASES, ids=lambda case: f"{case['field']}={case['value']!r}")
+    def test_reviewed_json_shapes_preserve_actual_predecessor_subprocess_boundary(case):
+        try:
+            result = {'value': payload('annual_accounts', case['input'])}
+        except ValueError as error:
+            result = {'error': {'type': type(error).__name__, 'message': str(error)}}
+>       assert result == case['old']
+E       AssertionError: assert {'error': {'m...'ValueError'}} == {'error': 'Va...tion failed.'}
+E         
+E         Differing items:
+E         {'error': {'message': 'Local authority payload generation failed.', 'type': 'ValueError'}} != {'error': 'ValueError'}
+E         Right contains 1 more item:
+E         {'message': 'Local authority payload generation failed.'}
+E         Use -v to get more diff
+
+apps/backend/tests/test_annual_accounts_authority_ownership.py:25: AssertionError
+_ test_reviewed_json_shapes_preserve_actual_predecessor_subprocess_boundary[ledgerEntries=''] _
+
+case = {'field': 'ledgerEntries', 'input': {'annualData': {'answers': {'authority_to_submit_confirmed': True, 'bank_balance_c...nnhold>\n</melding>\n'}}, 'old': {'error': 'ValueError', 'message': 'Local authority payload generation failed.'}, ...}
+
+    @pytest.mark.parametrize('case', BOUNDARY_CASES, ids=lambda case: f"{case['field']}={case['value']!r}")
+    def test_reviewed_json_shapes_preserve_actual_predecessor_subprocess_boundary(case):
+        try:
+            result = {'value': payload('annual_accounts', case['input'])}
+        except ValueError as error:
+            result = {'error': {'type': type(error).__name__, 'message': str(error)}}
+>       assert result == case['old']
+E       AssertionError: assert {'error': {'m...'ValueError'}} == {'error': 'Va...tion failed.'}
+E         
+E         Differing items:
+E         {'error': {'message': 'Local authority payload generation failed.', 'type': 'ValueError'}} != {'error': 'ValueError'}
+E         Right contains 1 more item:
+E         {'message': 'Local authority payload generation failed.'}
+E         Use -v to get more diff
+
+apps/backend/tests/test_annual_accounts_authority_ownership.py:25: AssertionError
+=========================== short test summary info ============================
+FAILED apps/backend/tests/test_annual_accounts_authority_ownership.py::test_reviewed_json_shapes_preserve_actual_predecessor_subprocess_boundary[ledgerEntries={}]
+FAILED apps/backend/tests/test_annual_accounts_authority_ownership.py::test_reviewed_json_shapes_preserve_actual_predecessor_subprocess_boundary[ledgerEntries='']
+2 failed, 96 passed in 0.17s

@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Standards",
+  "verdict": "PASS_BOUNDED_AUTHORITY_OWNERSHIP",
+  "baseRevision": "57df4221ba8341ae2b7c5e9942eb946e2e557088",
+  "candidateRevision": "50bfe67a17faf3bab714a51372a85d7e16886671",
+  "diffCommand": "git diff 57df4221ba8341ae2b7c5e9942eb946e2e557088...50bfe67a17faf3bab714a51372a85d7e16886671",
+  "findings": [],
+  "reportSha256": "acfe9f92807ad92786f077365429abdf4cae923bc3773964be17dd17088cb30f",
+  "changedArtifactBindings": {
+    "apps/backend/src/talli_backend/adapters/annual_accounts_authority.py": "a2aae81fc49e3a74570bb8e8f82876d8c83b7c047ab9ba7a61c3f4bae1773ffc",
+    "apps/backend/src/talli_backend/adapters/local_annual_accounts_rehearsal.py": "4449eed67ccc9b889f90c1b03f3f9771d15fd0ddccffecd0264801390dd9fc13",
+    "apps/backend/src/talli_backend/authority_tools/_filing.py": "39300305cbfee0df3ff7a544a32745c3e41c4ad18a2daf6d5ccb5d8d397fe45b",
+    "apps/backend/src/talli_backend/authority_tools/annual_accounts_payload.py": "50f09e107c82e871c149fd1b8469ddfcd381e70442b7cbd788aaa7a3b72db155",
+    "apps/backend/src/talli_backend/authority_tools/annual_accounts_test.py": "7cfb1c972f71a7b74999a22e286eac84a6e6908ab3a52f883a5460e744eccc54",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md": "78a1290a01cec3e7d0d5b5269552b528e7ffc50e4d3de54148971a01f5b9527f",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py": "6cc14a38c9d0879b568d144a55ba2af1f92ec993dab0e9e8819c418260237e3f",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json": "65aa3c008412d7f824905ce9f9206b5aa3d6792d921cc74c9b4b2cddf2b30528",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py": "fd15a810c19391d2dcf893114f2569624e940f125f6bb081cb74abe0a37acb7d",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/rehearsal.py": "07c19c3061bed8364a59aa580f7f380cb6f35e6cb3794a06844c741d5c77874f",
+    "apps/backend/tests/annual_accounts_rehearsal_trace.py": "ea588b4b80272b91dc583a28503838ead5147b9da4872fc8c8943753f384c562",
+    "apps/backend/tests/test_annual_accounts_authority_ownership.py": "7be72f616976a9d13f2903cb631e589c4efa73ac096f83eeadae1a9c535be06b",
+    "apps/backend/tests/test_authority_filing_tools.py": "3ec111856a50b6e2f3e69760f0232de2c94a372275596849a8242a620514a869",
+    "apps/backend/tests/test_authority_filing_transports.py": "757f128c66587f68aa5f3c82b90639910095a14edef5590f687e7124aec10a44",
+    "architecture/evidence/issues/153/authority-ownership/authority-owned-architecture-final.log": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9",
+    "architecture/evidence/issues/153/authority-ownership/authority-owned-architecture.log": "5687d8074e613b4763b138f43af69d8dba6f6bf6f829a5d2254d6aba263182b3",
+    "architecture/evidence/issues/153/authority-ownership/authority-owned-final-tests.log": "720dfc8cfe722ebe9dc3a78f6c0bd33aad25bbaae81c6815c2362105e50b4597",
+    "architecture/evidence/issues/153/authority-ownership/authority-owned-first-tests.log": "98e3ff7b6ba7f9a5458655c217779e5e0845e88cc67923e6e72b05bf605787d2",
+    "architecture/evidence/issues/153/authority-ownership/authority-owned-second-tests.log": "7d9fef575fc0b7d6d4c8495a9f9d20e65f043c22111b9f6d98ec6847cb94f0d1",
+    "architecture/evidence/issues/153/authority-ownership/authority-owned-third-tests.log": "673ecd31a411f24ecdeaac8d324648450fed0677c0b0088c5caf2af3a267cd2c",
+    "architecture/evidence/issues/153/authority-ownership/capture-annual-payload-bridge.mjs": "167217af9ed26ba693e3d5add76c2722d2343636dec576ae5606cbc57a718be9",
+    "architecture/evidence/issues/153/authority-ownership/capture-annual-rehearsal.py": "e849eccdca3f7a59c42e25276b2ca6133efa2318cf42c0454514d038ee50bc66",
+    "architecture/evidence/issues/153/authority-ownership/evidence-spec-review-57df4221.json": "cfe49222a52f15443994f9b3dec85d9528e60a439b0e624f8c2b72b918b88818",
+    "architecture/evidence/issues/153/authority-ownership/evidence-spec-review-57df4221.md": "6bf0d506071a96d00a813413c80833996c1c0b70156cf08277a2cbc432bbb26a",
+    "architecture/evidence/issues/153/authority-ownership/evidence-standards-review-57df4221.json": "8d88af8a6e8c1c38ff9acafa716ca0bd58f04cb67a2aa472169c4ddd161dec9e",
+    "architecture/evidence/issues/153/authority-ownership/evidence-standards-review-57df4221.md": "62a8ee50882cc4f94c4d68a7f9dfde9f6dbf0a49ef9dd0d17d1468aabcacd7a6",
+    "architecture/evidence/issues/153/authority-ownership/legacy-annual-payload-bridge.json": "7ba75e8a21aee7e66050dadb4c4db2d1dc9d142d01fa6bc2867e3b4e6bebbbd5",
+    "architecture/evidence/issues/153/authority-ownership/legacy-rehearsal-traces.json": "2d50e351a1bc3a4ea5debd3b0cf031df1cd4e4fc9063dff50bb77b85af10bd36",
+    "architecture/evidence/issues/153/authority-ownership/manifest.json": "0869b6dc43bf492ff4b80ca3bec4dd7fcf4628ee0cba08dbd768d505cb22ecc2",
+    "architecture/evidence/issues/153/authority-ownership/verification.md": "91622c56723e368901d89706cb3334621a51dd84f2d9c7102fd70b77a4bac569",
+    "package.json": "4b6c02008a343285481cd86d2ccc6266179f302afbf6d831a2ef0ea6c0017d98"
+  },
+  "retiredSourceBindings": {
+    "apps/backend/src/talli_backend/authority_tools/annual_accounts_transport.py": "0cf6f0d4972ccfe9b9c452c23752ccaccad52e4bdc0983c8bd8c9962bfb480bb",
+    "scripts/authority-tool-payload.mjs": "d7232070f18843a688e6799fcb032bafeda7430b91a4150d5ccf15742b88ee9f",
+    "tests/authority_tool_payload.test.mjs": "71aaa6f693eba6adc4556ef08227ebc06bbfc5c84d79b726894874ba9bde570e"
+  },
+  "unchangedBindings": {
+    "architecture/compatibility.json": "66ee4c62b8a32443adf43d167bd3f5da4b7f1f387bd46f4a0f6ddbab5de8b556",
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+    "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+    "architecture/evidence/issues/153/evidence-import/manifest.json": "8c79c5ca966ce4dbea2e3400a63c11767fb5260687ec1cb3d0c724e351b037df",
+    "apps/backend/pyproject.toml": "acef4faf616fa1678a922159955655d1f8a011b0fc05558e0a49a70220096b53",
+    "uv.lock": "f9511008745b497b8d8f6f0a296e53e9b209654cb5a8d4f939f9d06829df1c1f",
+    "apps/backend/uv.lock": "eb504b9620c33040797d3564a74437cce504928357d94acd5473acf5af28ce52"
+  },
+  "standardsBindings": {
+    "AGENTS.md": "c4530bac3939f37053438b48a3dad2ea6e99d04481480ef61bee71d3dc81d4af",
+    "CONTEXT.md": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9",
+    "docs/agents/domain.md": "0b66c33560f91373a7b268f3acf2c3d992e6a77cf5dc60acdc66efb4dc34a982",
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/COMPATIBILITY.md": "0aba38232b847b1b9843fdd9c04a34ce5cffe220951dd25fb4333e5c97d5c2dc"
+  },
+  "privateCheckBindings": {
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-standards-tests-50bfe67a.log": "1678749f21077975e93fa9e1d54779f20caa9beafccb5252ae016552c3d87a93",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-standards-static-checks-50bfe67a.json": "9cb8091118220ce362edda2449e6e44ccb0ed0a51c4006732b540b9dac13a2ec",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-standards-workspace-50bfe67a.json": "6589e68ef527e38a039e319ed6a9b32e1751b04be11a7abefac9a004f7794c50",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-standards-traces-50bfe67a.json": "2d50e351a1bc3a4ea5debd3b0cf031df1cd4e4fc9063dff50bb77b85af10bd36",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-standards-traces-50bfe67a.log": "766942b04eb71ad74681e7e9605804bd32e81be104fbfa1a831c8797f919e500",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-standards-payload-capture-50bfe67a.json": "7ba75e8a21aee7e66050dadb4c4db2d1dc9d142d01fa6bc2867e3b4e6bebbbd5",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-standards-payload-capture-50bfe67a.log": "91e4064e3e79b937927fd44d353f0e658d06bae2807c4e11ff4e096b2406ad17"
+  },
+  "checks": {
+    "manifestReferences": 40,
+    "privateReviewAdoptions": 4,
+    "independentTestsPassed": 226,
+    "reproducedOriginalTracesByteIdentical": 17,
+    "reproducedNodeBridgeOutcomesByteIdentical": 67,
+    "unchangedAdapterMethodsExceptQualifiedImport": 13,
+    "publicExportsMatchManifest": true,
+    "credentialCompositionAndCliPresentationUnchanged": true,
+    "python": "3.12.12",
+    "node": "24.20.0"
+  },
+  "commands": [
+    "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider apps/backend/tests/test_authority_filing_tools.py apps/backend/tests/test_authority_filing_transports.py apps/backend/tests/test_annual_accounts_authority_ownership.py",
+    "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python -B architecture/evidence/issues/153/authority-ownership/capture-annual-rehearsal.py PRIVATE_OUTPUT (GIT_DIR read-only source binding; GIT_WORK_TREE private extraction)",
+    "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node architecture/evidence/issues/153/authority-ownership/capture-annual-payload-bridge.mjs PRIVATE_OUTPUT /var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-authority-predecessor-a5z_7cuo"
+  ],
+  "limits": [
+    "Architecture evidence inspected, not rerun.",
+    "All provider interactions are test doubles; no real provider/DB/browser/shared-source operations.",
+    "No stage-exit or production acceptance."
+  ]
+}
