@@ -1,0 +1,227 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_FIX",
+  "baseRevision": "50bfe67a17faf3bab714a51372a85d7e16886671",
+  "reviewedRevision": "61c9c93add0cfd0011bd55e8f71200eaf8a76a43",
+  "diffCommand": "git diff 50bfe67a17faf3bab714a51372a85d7e16886671...61c9c93add0cfd0011bd55e8f71200eaf8a76a43",
+  "commits": [
+    "61c9c93add0cfd0011bd55e8f71200eaf8a76a43 fix(accounts): preserve original CLI scalar and collection input semantics"
+  ],
+  "findings": [],
+  "findingDispositions": [
+    {
+      "id": "SPEC-153-AUTH-1",
+      "priorSeverity": "P2",
+      "status": "CLOSED",
+      "file": "apps/backend/src/talli_backend/authority_tools/annual_accounts_payload.py",
+      "startLine": 8,
+      "endLine": 12,
+      "evidence": "Original actual bridge cases and eight reachable CLI controls match."
+    },
+    {
+      "id": "SPEC-153-AUTH-2",
+      "priorSeverity": "P2",
+      "status": "CLOSED",
+      "file": "apps/backend/src/talli_backend/authority_tools/annual_accounts_payload.py",
+      "startLine": 13,
+      "endLine": 15,
+      "evidence": "Original actual bridge cases and 195-case edge corpus match, including empty object/string rejection."
+    }
+  ],
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-fix-spec-review-61c9c93a.md",
+  "reportSha256": "86018d299eaa65d47c5800fbf822792de93ab03ec4a835b78409f537690d0583",
+  "sourceBindings": [
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/annual_accounts_payload.py",
+      "sha256": "09d2d1300fc6726b8b010998d2d033f0c2c548ea0e43df341b03fcc5d7263b09"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_authority_ownership.py",
+      "sha256": "fbbbbe04141e18dd6dbc613a1e0c3f4e26cf847d7ad8287148ac3be85b662aaf"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-review-fix-final.log",
+      "sha256": "ac3c6e6e43b4b44f739009cb6199025a81a95dcbb934005dc778ae11884fb090"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-review-fix-first.log",
+      "sha256": "96cdf4949d847a839cd6071658c5f907bf0ba972dc38bb07fa5cc485055b2bbf"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-spec-actual-bridge-50bfe67a.py",
+      "sha256": "17e9612609434b39bd1c6705935135aef15ee25e33364946218b2f7e3d1bbeac"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-spec-actual-bridge-results-50bfe67a.json",
+      "sha256": "14fdcb8472558dbd78c33d9316d7cc5df670e84b66da06895c504c3944768fe4"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-spec-review-50bfe67a.json",
+      "sha256": "150be6b77e7a3bf393202dcb43edbae9de153e6e3c4c8a8eae70051a10a43d16"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-spec-review-50bfe67a.md",
+      "sha256": "0bf299afce9a466727db44c9e1c2190b14281c01d4088df16db7a334a9684823"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-standards-review-50bfe67a.json",
+      "sha256": "d176a77768e9e0db7844c49a7c8f092333e541bd20a0a13dfa4b876edf495423"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-standards-review-50bfe67a.md",
+      "sha256": "acfe9f92807ad92786f077365429abdf4cae923bc3773964be17dd17088cb30f"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/manifest.json",
+      "sha256": "cd8cf4dfe6cbf87946ef188dffd44cfe2fb2cc29a4761a789bd3df6c60999c5c"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/verification.md",
+      "sha256": "bb4854357b4ac756173c37f5a410b4d4f0b39003dd80e9d24eb0e793a3173b75"
+    }
+  ],
+  "manifestArtifactChecks": [
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-review-fix-first.log",
+      "sha256": "96cdf4949d847a839cd6071658c5f907bf0ba972dc38bb07fa5cc485055b2bbf"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-spec-review-50bfe67a.json",
+      "sha256": "150be6b77e7a3bf393202dcb43edbae9de153e6e3c4c8a8eae70051a10a43d16"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-standards-review-50bfe67a.json",
+      "sha256": "d176a77768e9e0db7844c49a7c8f092333e541bd20a0a13dfa4b876edf495423"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-spec-actual-bridge-50bfe67a.py",
+      "sha256": "17e9612609434b39bd1c6705935135aef15ee25e33364946218b2f7e3d1bbeac"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/verification.md",
+      "sha256": "bb4854357b4ac756173c37f5a410b4d4f0b39003dd80e9d24eb0e793a3173b75"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-standards-review-50bfe67a.md",
+      "sha256": "acfe9f92807ad92786f077365429abdf4cae923bc3773964be17dd17088cb30f"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-spec-actual-bridge-results-50bfe67a.json",
+      "sha256": "14fdcb8472558dbd78c33d9316d7cc5df670e84b66da06895c504c3944768fe4"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-spec-review-50bfe67a.md",
+      "sha256": "0bf299afce9a466727db44c9e1c2190b14281c01d4088df16db7a334a9684823"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-review-fixes/authority-review-fix-final.log",
+      "sha256": "ac3c6e6e43b4b44f739009cb6199025a81a95dcbb934005dc778ae11884fb090"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/annual_accounts_payload.py",
+      "sha256": "09d2d1300fc6726b8b010998d2d033f0c2c548ea0e43df341b03fcc5d7263b09"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_authority_ownership.py",
+      "sha256": "fbbbbe04141e18dd6dbc613a1e0c3f4e26cf847d7ad8287148ac3be85b662aaf"
+    }
+  ],
+  "adoptedOriginals": [
+    {
+      "name": "authority-spec-review-50bfe67a.md",
+      "sha256": "0bf299afce9a466727db44c9e1c2190b14281c01d4088df16db7a334a9684823"
+    },
+    {
+      "name": "authority-spec-review-50bfe67a.json",
+      "sha256": "150be6b77e7a3bf393202dcb43edbae9de153e6e3c4c8a8eae70051a10a43d16"
+    },
+    {
+      "name": "authority-spec-actual-bridge-50bfe67a.py",
+      "sha256": "17e9612609434b39bd1c6705935135aef15ee25e33364946218b2f7e3d1bbeac"
+    },
+    {
+      "name": "authority-spec-actual-bridge-results-50bfe67a.json",
+      "sha256": "14fdcb8472558dbd78c33d9316d7cc5df670e84b66da06895c504c3944768fe4"
+    },
+    {
+      "name": "authority-standards-review-50bfe67a.md",
+      "sha256": "acfe9f92807ad92786f077365429abdf4cae923bc3773964be17dd17088cb30f"
+    },
+    {
+      "name": "authority-standards-review-50bfe67a.json",
+      "sha256": "d176a77768e9e0db7844c49a7c8f092333e541bd20a0a13dfa4b876edf495423"
+    }
+  ],
+  "requirementsSha256": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+  "originalCriteriaUnchangedAndPending": true,
+  "checks": [
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<private-pin>:<private-pin>/apps/backend/src:<private-pin>/apps/backend/tests PATH=<pinned-node-bin>:<backend-venv>/bin:/usr/bin:/bin <backend-venv>/bin/python -m pytest -q -c /dev/null --rootdir=. -p no:cacheprovider apps/backend/tests/test_authority_filing_tools.py apps/backend/tests/test_authority_filing_transports.py apps/backend/tests/test_annual_accounts_authority_ownership.py",
+      "passed": 236,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<private-pin>/apps/backend/src <backend-venv>/bin/python /Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-actual-bridge-61c9c93a.py",
+      "cases": 10,
+      "mismatches": 0
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<private-pin>/apps/backend/src <backend-venv>/bin/python /Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-payload-edges-61c9c93a.py",
+      "cases": 195,
+      "mismatches": 0
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<private-pin>/apps/backend/src <backend-venv>/bin/python /Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-fix-cli-reachability-61c9c93a.py",
+      "cases": 8,
+      "mismatches": 0,
+      "credentialAndProviderCalls": 0
+    }
+  ],
+  "privateArtifacts": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-fix-spec-tests-61c9c93a.log",
+      "sha256": "4c9d47bc6aea730b07dccd795a42d7a55ec36e050de712f097bfb0bcca696dd0"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-actual-bridge-61c9c93a.py",
+      "sha256": "879025c9c3fcd7690b54da13c85026a29f8a6878e7935bb13b01787ae5b30039"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-actual-bridge-results-61c9c93a.json",
+      "sha256": "754a7a6380b5d9575a8ca547623289d1b6d0b29f67ea25a147ee6384f3c3028a"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-payload-edges-61c9c93a.py",
+      "sha256": "e6edde3dff53fc951d0a011a76752012695e1f0e99225fd4270ec7d4cb74652c"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-payload-edges-inputs-61c9c93a.json",
+      "sha256": "70bb5bd0c84d9fad31bc4ba652cc0d61d1e327495de8f5f92420f198f8d83902"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-payload-edges-results-61c9c93a.json",
+      "sha256": "8bbe10fc9909a70b249b4f998e28091aaf350d9b5f508f5d754f7d254d11c504"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-fix-cli-reachability-61c9c93a.py",
+      "sha256": "4cd45ee2c7cc63437dfcfdb57110ad3f71675cef9791d133dc63b613c112f98b"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-fix-cli-reachability-results-61c9c93a.json",
+      "sha256": "c25d6490865b240d91b5078461dde4a504f19cd413f336d30d4bd54d30ca6c07"
+    }
+  ],
+  "runtime": {
+    "node": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+    "nodeVersion": "v24.20.0",
+    "python": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+    "pythonVersion": "Python 3.12.12"
+  },
+  "scopeLimits": [
+    "No shared repository, database, browser or provider mutation.",
+    "Private old/new rehearsal uses actual local payload and file writes with injected timestamp/revision and an exception before credentials.",
+    "No stage exit or complete owner workflow credit; all six criteria remain pending."
+  ]
+}

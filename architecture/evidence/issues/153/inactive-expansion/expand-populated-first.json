@@ -1,0 +1,12 @@
+{
+  "artifact": "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+  "sha256": "ea3c0601ec92539a5c9d672b5254a7342e6e63e4c4147e0ed7e6abec74ea7caa",
+  "database": "accounts153_lifecycle_d060",
+  "transaction": "ROLLBACK_ONLY",
+  "cases": [],
+  "status": "FAIL",
+  "error": "new row for relation \"filing_submissions\" violates check constraint \"filing_submissions_authority_mode_shape_check\"\nDETAIL:  Failing row contains (15300000-0000-4000-8000-000000000023, 15300000-0000-4000-8000-000000000020, 15300000-0000-4000-8000-000000000001, null, 2025, årsregnskap, simulation, simulation, null, null, ready, null, null, null, null, [], null, [], [], null, null, null, null, null, 15300000-0000-4000-8000-000000000010, null, 2026-09-14 09:10:14.175326+00, 2026-09-14 09:10:14.175326+00, 15300000-0000-4000-8000-000000000021).",
+  "sqlstate": "23514",
+  "fixtureRollbackVerified": true,
+  "schemaRollbackVerified": true
+}

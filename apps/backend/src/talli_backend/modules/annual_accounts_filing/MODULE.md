@@ -1,7 +1,7 @@
 # Annual Accounts Filing
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":[],"ports":["AnnualAccountsAuthority","AnnualAccountsRehearsalIO"],"publicEntryPoints":["talli_backend.modules.annual_accounts_filing.public"]}
+{"dependencies":[],"ownedTables":["annual_accounts_filing.authority_permissions","annual_accounts_filing.authority_test_runs","annual_accounts_filing.filing_overrides","annual_accounts_filing.filing_previews","annual_accounts_filing.filing_review_comments","annual_accounts_filing.filing_submissions"],"ports":["AnnualAccountsAuthority","AnnualAccountsRehearsalIO"],"publicEntryPoints":["talli_backend.modules.annual_accounts_filing.public"]}
 -->
 
 ## Purpose
@@ -44,7 +44,12 @@ manual warnings retain their original order. Common Annual gates remain separate
 
 ## Data and effects
 
-No database tables or storage buckets are activated by this slice.
+Six inert successor tables in `annual_accounts_filing` are declared and owned:
+`authority_permissions`, `authority_test_runs`, `filing_overrides`,
+`filing_previews`, `filing_review_comments`, and `filing_submissions`.
+They have FORCE RLS, no business policy and no runtime grants during expansion.
+The legacy public writer remains active until a separately verified cutover.
+No storage bucket is added.
 `AnnualAccountsAuthority` declares the fixed TT02 operations and
 `AnnualAccountsRehearsalIO` declares local file, clock, XML and credential seams.
 `annual_accounts_authority_adapter` registers implementations.

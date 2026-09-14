@@ -1,0 +1,87 @@
+{
+  "artifact": "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+  "sha256": "5676b907eb35d34a8717e6ac3aa4cc6a5c56f2f6221dc2e17e6bb4485f2d7551",
+  "localDatabase": "accounts153_lifecycle_d060",
+  "mode": "rollback-only",
+  "phase": "expanded",
+  "ownedTables": [
+    [
+      "authority_permissions",
+      true,
+      true,
+      "annual_accounts_filing_store_owner"
+    ],
+    [
+      "authority_test_runs",
+      true,
+      true,
+      "annual_accounts_filing_store_owner"
+    ],
+    [
+      "filing_overrides",
+      true,
+      true,
+      "annual_accounts_filing_store_owner"
+    ],
+    [
+      "filing_previews",
+      true,
+      true,
+      "annual_accounts_filing_store_owner"
+    ],
+    [
+      "filing_review_comments",
+      true,
+      true,
+      "annual_accounts_filing_store_owner"
+    ],
+    [
+      "filing_submissions",
+      true,
+      true,
+      "annual_accounts_filing_store_owner"
+    ]
+  ],
+  "reconciliations": [
+    [
+      "authority_permissions",
+      0,
+      0,
+      true
+    ],
+    [
+      "authority_test_runs",
+      0,
+      0,
+      true
+    ],
+    [
+      "filing_overrides",
+      0,
+      0,
+      true
+    ],
+    [
+      "filing_previews",
+      0,
+      0,
+      true
+    ],
+    [
+      "filing_review_comments",
+      0,
+      0,
+      true
+    ],
+    [
+      "filing_submissions",
+      0,
+      0,
+      true
+    ]
+  ],
+  "sourceFunctions": 37,
+  "status": "PASS",
+  "rolledBack": true,
+  "roleMembershipCountRestored": true
+}

@@ -1,0 +1,11 @@
+{
+  "symptom": "Postgres17.6 process segmentation fault during test-only role grant; automatically recovered",
+  "failedStatement": "grant annual_accounts_filing_store_owner,annual_accounts_filing_workflow_executor to current_user with set true",
+  "failedAtUtc": "2026-09-14 09:11:15.378",
+  "migrationCompletedBeforeFailure": true,
+  "queryDidNotReachAccountsRls": true,
+  "transactionAndFixturesRolledBack": true,
+  "harnessCorrection": "Explicit quoted runner role and explicit GRANTED BY, the same form already used by the migration. Populated role probe then passes.",
+  "causalLimit": "The failing shorthand statement is localized by the server log. No Postgres/Supabase engine fix or root-cause claim is made; the shared local server was not deliberately crashed again.",
+  "privateRawDiagnosticSha256": "7902e2896fe4c4f16354f5fb3f1f1776f8ed0394585586b773be86b4c8ff9cbf"
+}

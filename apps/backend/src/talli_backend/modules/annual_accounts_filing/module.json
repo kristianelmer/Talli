@@ -43,8 +43,17 @@
     ]
   },
   "owns": {
-    "postgresSchemas": [],
-    "tables": [],
+    "postgresSchemas": [
+      "annual_accounts_filing"
+    ],
+    "tables": [
+      "annual_accounts_filing.authority_permissions",
+      "annual_accounts_filing.authority_test_runs",
+      "annual_accounts_filing.filing_overrides",
+      "annual_accounts_filing.filing_previews",
+      "annual_accounts_filing.filing_review_comments",
+      "annual_accounts_filing.filing_submissions"
+    ],
     "storageBuckets": [],
     "projections": [],
     "migrations": "supabase/migrations"

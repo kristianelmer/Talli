@@ -5,6 +5,36 @@
   "compatibilityAdapterRegistry": "architecture/compatibility.json",
   "tables": [
     {
+      "name": "annual_accounts_filing.authority_permissions",
+      "kind": "capability-business",
+      "owner": "backend:annual_accounts_filing"
+    },
+    {
+      "name": "annual_accounts_filing.authority_test_runs",
+      "kind": "capability-business",
+      "owner": "backend:annual_accounts_filing"
+    },
+    {
+      "name": "annual_accounts_filing.filing_overrides",
+      "kind": "capability-business",
+      "owner": "backend:annual_accounts_filing"
+    },
+    {
+      "name": "annual_accounts_filing.filing_previews",
+      "kind": "capability-business",
+      "owner": "backend:annual_accounts_filing"
+    },
+    {
+      "name": "annual_accounts_filing.filing_review_comments",
+      "kind": "capability-business",
+      "owner": "backend:annual_accounts_filing"
+    },
+    {
+      "name": "annual_accounts_filing.filing_submissions",
+      "kind": "capability-business",
+      "owner": "backend:annual_accounts_filing"
+    },
+    {
       "name": "annual_notification_inbox.receipts",
       "kind": "technical"
     },
@@ -23,6 +53,26 @@
       "compatibilityResources": [
         "table:system_user_requests"
       ]
+    },
+    {
+      "name": "backend_system.annual_accounts_migration_inventory",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.annual_accounts_migration_state",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.annual_accounts_quarantine",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.annual_accounts_reconciliations",
+      "kind": "technical"
+    },
+    {
+      "name": "backend_system.annual_accounts_source_rows",
+      "kind": "technical"
     },
     {
       "name": "backend_system.annual_checkout_observation_work",
