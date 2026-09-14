@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "annual_accounts_filing",
+  "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing",
+  "owner": "backend:annual_accounts_filing",
+  "purpose": "Own deterministic annual-accounts calculations, RR0002 XML and Accounts-specific readiness; migration persistence and authority workflow remain pending.",
+  "documentation": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.annual_accounts_filing.public",
+  "exports": {
+    "commands": [],
+    "queries": [
+      "AnnualAccountsSource",
+      "AnnualAccountsCandidate",
+      "AnnualAccountsRenderInput",
+      "AnnualAccountsDocuments",
+      "AnnualAccountsReadinessIssue",
+      "AnnualAccountsCorporateReadiness",
+      "build_annual_accounts",
+      "render_annual_accounts",
+      "assess_annual_accounts_readiness"
+    ],
+    "events": [],
+    "errors": [],
+    "identifiers": []
+  },
+  "owns": {
+    "postgresSchemas": [],
+    "tables": [],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "supabase/migrations"
+  },
+  "ports": [],
+  "dependencies": [],
+  "allowedImports": [
+    "__future__",
+    "calendar",
+    "collections.abc",
+    "dataclasses",
+    "decimal",
+    "math",
+    "re",
+    "types"
+  ],
+  "forbiddenResponsibilities": [
+    "Ledger posting or account ownership",
+    "Corporate Governance and Documents source ownership",
+    "Annual common aggregation and Billing commercial policy",
+    "Database access, provider activation or production submission in the pure calculation slice"
+  ],
+  "tests": {
+    "policy": "apps/backend/tests/test_annual_accounts_filing.py",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

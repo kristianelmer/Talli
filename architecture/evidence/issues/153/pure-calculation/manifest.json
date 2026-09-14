@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.0",
+  "status": "PURE_CALCULATION_REVIEW_PENDING",
+  "baselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "characterizationReviewedRevision": "f8ec6c52",
+  "tests": {
+    "pureConformance": 254,
+    "architecture": "PASS after adding explicit __all__ exports",
+    "cliBaseline": 14
+  },
+  "limits": [
+    "No legacy writer, generated client, SQL or provider change.",
+    "Evidence importer, offline profile and authority workflow migration remain pending.",
+    "All six stage criteria remain pending; no exit-gate credit."
+  ],
+  "artifacts": {
+    "architecture/evidence/issues/153/pure-calculation/characterization-spec-review-f8ec6c52.md": "0545c5ee332c69d97fdb5c11966d1d7a5249218facca70f16d8f191186559af1",
+    "architecture/evidence/issues/153/pure-calculation/characterization-spec-review-f8ec6c52.json": "335e9f5036113b9aab574f1fccd1a671bdc75c32b98c65ddc834337b9130b2e7",
+    "architecture/evidence/issues/153/pure-calculation/characterization-standards-review-f8ec6c52.md": "b101b71ab0d36c1b07664c2f9e3f3e0abe041944d25b49a7beb0c1ddb3d6c7f3",
+    "architecture/evidence/issues/153/pure-calculation/characterization-standards-review-f8ec6c52.json": "937b3a415104ffef6c46244b3b377f41f588609791c513669a573ae2bf3617af",
+    "architecture/evidence/issues/153/pure-calculation/capture-legacy-cli.py": "7950639ad64dad78e66c854a643779542ced83fc6c30be8dc7744442413257a7",
+    "architecture/evidence/issues/153/pure-calculation/legacy-cli-characterization.json": "4ce173fdb2ab0e60eba583ddaac23b1c9d6e3d69e965fccb5747f09c03baf90c",
+    "architecture/evidence/issues/153/pure-calculation/pure-payload-xml-readiness-first.log": "76ac7736e54d35a98db6b2e5042dc70b2d91fbe18ae922c77b7e5a694a97d56c",
+    "architecture/evidence/issues/153/pure-calculation/pure-architecture-first.log": "1b1c81dabe45411c712fa8ab6eb0de19d55539b2923e954fe425ba9a1dd3f900",
+    "architecture/evidence/issues/153/pure-calculation/pure-architecture-final.log": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py": "533a23e612b3ec315e3dcbbb38e446192c9fc49e44323fa90fd3410a825ad2d5",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/rendering.py": "222fac8e3a0adaaa1b985cb320dd374f52511dc2c46a818b6b8141624e1ddbc3",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/calculation.py": "c579d40eb3ef800073219cc156e6bb6537d35dc10ed54e93274d72878d2532ec",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/__init__.py": "bbf344ff2db22c18f7f3081b331c1939f7b49daa110fa97ed2b6a49113c8b726",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/numbers.py": "5c2d2372410a4fb921eb83eeb6dacb233d17d9544c40aaffdb0b6588ce5d2dc2",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/readiness.py": "07783baea9e4f2085b3ba3d3620f1c896b93045dba765c26f9c3dc44be2e2234",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json": "cbef5762fe4371efd6c5ab7cbaebf5775734212cb255f61bf0f53945a849027b",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md": "29f25f3bc3b0e3ad746f629a9136f68a1f3c2c6ae3ccf7d2a95bcba9d7f7ec74",
+    "apps/backend/tests/test_annual_accounts_filing.py": "8be1990d291262c46866577abde3088f44dc0d9676b00311e82b4cfa63ba40fd",
+    "architecture/dependency-evidence.json": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9"
+  }
+}

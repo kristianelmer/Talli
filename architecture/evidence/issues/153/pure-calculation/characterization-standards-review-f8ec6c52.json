@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "1.0",
+  "verdict": "PASS_BOUNDED_CHARACTERIZATION_STANDARDS",
+  "axis": "Standards",
+  "baseRevision": "2074701450524f40d705b36c222dcabf2c215991",
+  "candidateRevision": "f8ec6c52e4e21c52362fadacb852953aab7c961a",
+  "sourceBaselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "diffCommand": "git diff 2074701450524f40d705b36c222dcabf2c215991...f8ec6c52e4e21c52362fadacb852953aab7c961a",
+  "findings": [],
+  "reportSha256": "b101b71ab0d36c1b07664c2f9e3f3e0abe041944d25b49a7beb0c1ddb3d6c7f3",
+  "changedArtifactBindings": {
+    "architecture/evidence/issues/153/characterization/capture-legacy-actions.mjs": "04399aaccfa58a477812322d0487442d027d05644f18990aa3d7bd85671da6f8",
+    "architecture/evidence/issues/153/characterization/capture-legacy-database.py": "a10ee053b389ca2a972d1a1f4b916ea54acba8cf74ca1bdb89cbfea3ea63bdec",
+    "architecture/evidence/issues/153/characterization/capture-legacy-offline.py": "b3631aefc30ccc845db3d4e0792b02a6cdc3f2a5df3b98b19535567c0e4032c8",
+    "architecture/evidence/issues/153/characterization/capture-legacy-pure.mjs": "6b6cfff3b2f93df65d73ad9ca19d3c892ad7114931dbbc4df8f84d30e5d188a6",
+    "architecture/evidence/issues/153/characterization/entry-inventory-spec-review-20747014.json": "e185494f9e7294259dc9f89496dda6046cdb91de172f2e015ee6ad30144d70a2",
+    "architecture/evidence/issues/153/characterization/entry-inventory-spec-review-20747014.md": "b311737b8f9f953d73fa7c65a083f67033c6fbda4205f4e8b439547aeafd56c0",
+    "architecture/evidence/issues/153/characterization/entry-inventory-standards-review-20747014.json": "7762eef6724bbc991d78b58e9284cddb3ece376ff893d8836e1816a36ed1d8c3",
+    "architecture/evidence/issues/153/characterization/entry-inventory-standards-review-20747014.md": "f2cef5713426feb182a847e4a4a422b7f2d4c8f15310441a58d5eebdd9675e43",
+    "architecture/evidence/issues/153/characterization/legacy-action-characterization.json": "267400245d4392710f44e070c0ad785275a5389a1477cb079e4e1229e04c4b63",
+    "architecture/evidence/issues/153/characterization/legacy-authority-workflow-tests.log": "70c040c8f1b525f8cd04a918370d07dcb80b9b84b2fb2e8fdc19d1191b5d23bf",
+    "architecture/evidence/issues/153/characterization/legacy-database-characterization-v2.json": "c09643442126965009097d58cf12d4252666e38095fb69ebdec539bccbc37d25",
+    "architecture/evidence/issues/153/characterization/legacy-offline-characterization.json": "de7d5c5398175a4882a96bc4b594d0781832ff86327ba78a3ea47cf07c39895d",
+    "architecture/evidence/issues/153/characterization/legacy-pure-characterization.json": "879953277ecf92ae4bb6672cbe96218a46ef8385ac5f735add96a5584e4e3492",
+    "architecture/evidence/issues/153/characterization/legacy-web-accounts-tests.log": "459564ab0383ec12365ea3ff6f6fb34b98d69c5fc111d87e9ff26c107bfef4d5",
+    "architecture/evidence/issues/153/characterization/manifest.json": "e6441fa44a449801ed7a58f817ac8397c38e3bbe571983f6a62049b02ecc43ee",
+    "architecture/evidence/issues/153/characterization/verification.md": "ae57e54eb0064ec9ea50c5edb243ad25927a8f2aa8346b4af28cfecfa719ca40"
+  },
+  "unchangedHistoricalBindings": {
+    "architecture/compatibility.json": "66ee4c62b8a32443adf43d167bd3f5da4b7f1f387bd46f4a0f6ddbab5de8b556",
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+    "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+    "architecture/evidence/issues/153/entry/manifest.json": "988a097f791059241ae448437f08f40f068c1cea746ba987d7873a8d8353895d",
+    "architecture/evidence/issues/153/entry-inventory/manifest.json": "14354bf198f216053cfe22c6324b6bd13ea8e5672cdc97112032758fa5158dd5",
+    "architecture/evidence/issues/153/source-inventory.json": "da03d4dfab7c7e51be703bb221c47abcbe8dfdac606f0a2c62cf566d45e08921"
+  },
+  "privateAdoptions": {
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/entry-inventory-spec-review-20747014.md": "b311737b8f9f953d73fa7c65a083f67033c6fbda4205f4e8b439547aeafd56c0",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/entry-inventory-spec-review-20747014.json": "e185494f9e7294259dc9f89496dda6046cdb91de172f2e015ee6ad30144d70a2",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/entry-inventory-standards-review-20747014.md": "f2cef5713426feb182a847e4a4a422b7f2d4c8f15310441a58d5eebdd9675e43",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/entry-inventory-standards-review-20747014.json": "7762eef6724bbc991d78b58e9284cddb3ece376ff893d8836e1816a36ed1d8c3",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/capture-legacy-pure.mjs": "6b6cfff3b2f93df65d73ad9ca19d3c892ad7114931dbbc4df8f84d30e5d188a6",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/capture-legacy-offline.py": "b3631aefc30ccc845db3d4e0792b02a6cdc3f2a5df3b98b19535567c0e4032c8",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/capture-legacy-actions.mjs": "04399aaccfa58a477812322d0487442d027d05644f18990aa3d7bd85671da6f8",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/capture-legacy-database.py": "a10ee053b389ca2a972d1a1f4b916ea54acba8cf74ca1bdb89cbfea3ea63bdec",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/legacy-pure-characterization.json": "879953277ecf92ae4bb6672cbe96218a46ef8385ac5f735add96a5584e4e3492",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/legacy-offline-characterization.json": "de7d5c5398175a4882a96bc4b594d0781832ff86327ba78a3ea47cf07c39895d",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/legacy-action-characterization.json": "267400245d4392710f44e070c0ad785275a5389a1477cb079e4e1229e04c4b63",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/legacy-database-characterization-v2.json": "c09643442126965009097d58cf12d4252666e38095fb69ebdec539bccbc37d25",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/legacy-authority-workflow-tests.log": "70c040c8f1b525f8cd04a918370d07dcb80b9b84b2fb2e8fdc19d1191b5d23bf",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/legacy-web-accounts-tests.log": "459564ab0383ec12365ea3ff6f6fb34b98d69c5fc111d87e9ff26c107bfef4d5"
+  },
+  "independentReproduction": {
+    "pure": {
+      "byteIdentical": true,
+      "sha256": "879953277ecf92ae4bb6672cbe96218a46ef8385ac5f735add96a5584e4e3492"
+    },
+    "actions": {
+      "byteIdentical": true,
+      "sha256": "267400245d4392710f44e070c0ad785275a5389a1477cb079e4e1229e04c4b63"
+    },
+    "offline": {
+      "all46CasesIdentical": true,
+      "fullReportIdenticalExceptFourCasePathPrefixes": true,
+      "casePaths": [
+        {
+          "original": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/tests/fixtures/annual_validation/simple_holding_blocked.json",
+          "rerun": "/private/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-characterization-standards-y9wra069/tests/fixtures/annual_validation/simple_holding_blocked.json"
+        },
+        {
+          "original": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/tests/fixtures/annual_validation/simple_holding_mismatch.json",
+          "rerun": "/private/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-characterization-standards-y9wra069/tests/fixtures/annual_validation/simple_holding_mismatch.json"
+        },
+        {
+          "original": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/tests/fixtures/annual_validation/simple_holding_pass.json",
+          "rerun": "/private/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-characterization-standards-y9wra069/tests/fixtures/annual_validation/simple_holding_pass.json"
+        },
+        {
+          "original": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/tests/fixtures/annual_validation/unsupported_group_contribution.json",
+          "rerun": "/private/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-characterization-standards-y9wra069/tests/fixtures/annual_validation/unsupported_group_contribution.json"
+        }
+      ],
+      "sha256": "78e59156cf3e525befc35b41658abf9649964cabe7ad813e0e5472a27ad195ee"
+    }
+  },
+  "privateCheckArtifacts": {
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/characterization-standards-reproduced-actions-f8ec6c52.json": "267400245d4392710f44e070c0ad785275a5389a1477cb079e4e1229e04c4b63",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/characterization-standards-workspace-f8ec6c52.json": "3a8c7b5f8ef161ad3be505438270a256eb0cc48b85dac4934e89433e6488ac39",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/characterization-standards-actions-f8ec6c52.log": "04b555ff6871c50d57c0bc3b56ef5ed8756ca34744165f0cb2a3b9a31fec3a18",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/characterization-standards-pure-f8ec6c52.log": "92a9dc039006c22b8822c6e2f57b211c3d24fdb035c354fa4727b07062e44bcd",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/characterization-standards-offline-f8ec6c52.log": "a8995c869199add1080d00b5ec358db096b765747a8d1c3afbcef819fbc46e05",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/characterization-standards-reproduced-pure-f8ec6c52.json": "879953277ecf92ae4bb6672cbe96218a46ef8385ac5f735add96a5584e4e3492",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/characterization-standards-reproduced-offline-f8ec6c52.json": "78e59156cf3e525befc35b41658abf9649964cabe7ad813e0e5472a27ad195ee"
+  },
+  "standardsBindings": {
+    "AGENTS.md": "c4530bac3939f37053438b48a3dad2ea6e99d04481480ef61bee71d3dc81d4af",
+    "CONTEXT.md": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9",
+    "docs/agents/domain.md": "0b66c33560f91373a7b268f3acf2c3d992e6a77cf5dc60acdc66efb4dc34a982",
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/COMPATIBILITY.md": "0aba38232b847b1b9843fdd9c04a34ce5cffe220951dd25fb4333e5c97d5c2dc"
+  },
+  "evidenceCounts": {
+    "payload": 67,
+    "xml": 175,
+    "evidenceImport": 43,
+    "accountsSpecificReadiness": 11,
+    "offline": 46,
+    "serverAction": 61,
+    "database": 87,
+    "existingAuthorityWorkflowTests": 138,
+    "existingWebTests": 46
+  },
+  "limits": [
+    "No SQL/browser/provider/shared-process execution.",
+    "184 historical tests reviewed from bound transcripts, not rerun.",
+    "87 SQL captures reviewed as retained producer/output evidence, not freshly observed database behavior.",
+    "Unaccepted membership/AAL1 behavior is a legacy observation, not the canonical authorization contract.",
+    "Offline canonical ownership disposition remains unresolved.",
+    "No stage-exit credit."
+  ]
+}
