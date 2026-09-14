@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "web-feature",
+  "name": "annual-accounts-filing",
+  "path": "apps/web/features/annual-accounts-filing",
+  "owner": "web:annual-accounts-filing",
+  "purpose": "Present owned Accounts workspace and readiness facts, and route preparation and TT02 import through generated authenticated transport.",
+  "documentation": "apps/web/features/annual-accounts-filing/MODULE.md",
+  "publicEntryPoint": "@/features/annual-accounts-filing",
+  "publicImportPaths": [
+    "@/features/annual-accounts-filing",
+    "apps/web/features/annual-accounts-filing",
+    "apps/web/features/annual-accounts-filing/index.ts"
+  ],
+  "ownedRoutes": [
+    "/workspace",
+    "/filing/[obligation]"
+  ],
+  "apiOperations": [
+    "annualAccountsGetFilingWorkspace",
+    "annualAccountsImportTt02Evidence",
+    "annualAccountsGetPreview",
+    "annualAccountsRecordOverride",
+    "annualAccountsAddReviewComment",
+    "annualAccountsAcknowledgeReviewComment",
+    "annualAccountsConfirmPermission",
+    "annualAccountsRecordTestEvidence",
+    "annualAccountsPreviewReadiness"
+  ],
+  "dependencies": [],
+  "allowedImports": [
+    "#backend-configuration",
+    "@talli/talli-api-client"
+  ],
+  "cachePolicy": {
+    "default": "no-store",
+    "allowed": []
+  },
+  "directBrowserFlows": [],
+  "forbiddenResponsibilities": [
+    "Posting, balancing, account-mapping, period-lock, warning, or authorization policy",
+    "Direct Supabase ledger persistence or business-endpoint fetch calls",
+    "Handwritten transport DTOs or generated-client deep imports",
+    "Caller-side accounting policy or transaction coordination"
+  ],
+  "tests": {
+    "feature": "tests/annual_accounts_client.test.mjs",
+    "stageExit": "apps/backend/tests/test_annual_accounts_workspace.py",
+    "architecture": "tests/architecture_foundation.test.mjs"
+  },
+  "compatibilityExceptions": []
+}

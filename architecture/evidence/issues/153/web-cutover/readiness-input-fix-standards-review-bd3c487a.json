@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Standards",
+  "verdict": "PASS_BOUNDED_FIX",
+  "baseRevision": "d36a6af7d4a8f3cff49b27f07e9570dd045fac72",
+  "candidateRevision": "bd3c487a7247925ce56def2498ac1f8f728f9619",
+  "diffCommand": "git diff --histogram d36a6af7d4a8f3cff49b27f07e9570dd045fac72...bd3c487a7247925ce56def2498ac1f8f728f9619",
+  "commits": "bd3c487a fix(accounts): reject malformed readiness request facts",
+  "closedFindings": [
+    "STD-153-READINESS-1"
+  ],
+  "findings": [],
+  "checks": [
+    "PASS: all 10 manifest hashes",
+    "PASS: 6 original private review/report bindings adopted byte-exact",
+    "PASS: pure readiness/calculation/number/public rules, iterative response serializer, OpenAPI/client, registry/criteria and released input types unchanged",
+    "PASS: only HTTP validator, its tests and evidence changed; no SQL or web implementation",
+    "PASS: original probe valid controls preserved; four malformed/scope variants now HTTP422"
+  ],
+  "independentTests": [
+    {
+      "command": "Python3.12.12 -B -m pytest -q -p no:cacheprovider test_annual_accounts_workspace.py test_annual_accounts_preparation.py test_annual_accounts_import_workflow.py test_annual_accounts_readiness_api.py test_json_transport.py (under apps/backend/tests)",
+      "result": "91 passed in 13.83s"
+    },
+    {
+      "command": "Python3.12.12 -B response-readiness-standards-input-probe-d36a6af7.py against private bd3c487a source",
+      "result": "two valid200 controls preserved, four malformed/scope variants422"
+    }
+  ],
+  "changedFileHashes": {
+    "apps/backend/src/talli_backend/main.py": "cf62cced32c5d9f319a2368fae37c37263feae221706e42990310d9a59f2ac9e",
+    "apps/backend/tests/test_annual_accounts_readiness_api.py": "4aa7da266639f3e513c934d1a1d5b8aaf59a256e7cd4ef08b3804a8c038ecda6",
+    "architecture/evidence/issues/153/readiness-input-fix/manifest.json": "2fb3d65117442bb43e70c74c698a552b5ba279de171ec3c2193090fa8b2e6069",
+    "architecture/evidence/issues/153/readiness-input-fix/read-controls-spec-review-af5c6523.json": "7cd2009d78bda01fffae1b7e47e1118352b6d174c6447211208f8f25223cde3d",
+    "architecture/evidence/issues/153/readiness-input-fix/read-controls-spec-review-af5c6523.md": "428b74ee6a6e24104fdd3069a2ca4fc34cdd05033306511abd4733c1ce831b83",
+    "architecture/evidence/issues/153/readiness-input-fix/readiness-input-fix-tests.log": "8299652be859aca06c266062f3c822fe648d5d7cb041c9993e50eab88bf16c47",
+    "architecture/evidence/issues/153/readiness-input-fix/response-readiness-spec-review-d36a6af7.json": "c2bd7a8adcb491fff1abd400e591b8c58269f7043f94406846c8eddc0c9a9509",
+    "architecture/evidence/issues/153/readiness-input-fix/response-readiness-spec-review-d36a6af7.md": "ed20ecde0914fb1c0e0f9d4fd37c1de30fc519f248523c1049cc5fe8f1afb099",
+    "architecture/evidence/issues/153/readiness-input-fix/response-readiness-standards-review-d36a6af7.json": "48f3e0dde80dfb06659dcfa169e9300d27891a3a5f6ac9978f086bbd0440566a",
+    "architecture/evidence/issues/153/readiness-input-fix/response-readiness-standards-review-d36a6af7.md": "e56baf4a2c55cadc22eb14c798883354edce6015d980ca0534589cfb414e8244",
+    "architecture/evidence/issues/153/readiness-input-fix/verification.md": "29370440287b571dd4be7de706eabfaf7bcba622e2909092a425db5b5b97aaf9"
+  },
+  "unchangedContractHashes": {
+    "architecture/compatibility.json": "66ee4c62b8a32443adf43d167bd3f5da4b7f1f387bd46f4a0f6ddbab5de8b556",
+    "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+    "contracts/openapi/talli-v1.json": "1390ab63bb08a0b1332c1a789ad5702c646760e7dee836402281b26252ab5428",
+    "packages/talli-api-client/src/generated/client.ts": "fa414bffcb1aac954e6101dda88916103c2680f55d6f711c77842096facff344",
+    "apps/backend/src/talli_backend/json_transport.py": "bdb2b5b12ff9268a24c83cbff234077ab73853408e84f3832e6abe24e3d210c4",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py": "6d99932b222b5028d2b59fd26c6dd06085d7ce5054d9e5f38f7bee8411a7590a",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/readiness.py": "07783baea9e4f2085b3ba3d3620f1c896b93045dba765c26f9c3dc44be2e2234",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/calculation.py": "c579d40eb3ef800073219cc156e6bb6537d35dc10ed54e93274d72878d2532ec",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/numbers.py": "9a9bc64da8087e312af6c21887682489b74c1883434d0077ec78d374e552c694",
+    "apps/web/app/lib/annual-data.ts": "60beab30fb5e7e2f3cd0ff41253d868b6b3229f0344ddb45960e5de66f995008",
+    "apps/web/app/lib/supabase/server.ts": "5e5f768f0dc6bbebe0e622e62ddb7c9d9409aa29b7d04da2ecdff6b9e9b962fd"
+  },
+  "standardsSourceHashes": {
+    "AGENTS.md": "c4530bac3939f37053438b48a3dad2ea6e99d04481480ef61bee71d3dc81d4af",
+    "CONTEXT.md": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9",
+    "docs/agents/domain.md": "0b66c33560f91373a7b268f3acf2c3d992e6a77cf5dc60acdc66efb4dc34a982",
+    "architecture/COMPATIBILITY.md": "0aba38232b847b1b9843fdd9c04a34ce5cffe220951dd25fb4333e5c97d5c2dc",
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482"
+  },
+  "privateArtifactHashes": {
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/readiness-input-fix-standards-tests-bd3c487a.log": "8a5694447a634b9975a319c8ea1a9f12a5a629bcce3879379368213803138982",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/readiness-input-fix-standards-bindings-bd3c487a.py": "10aff653ac902ad6fb38e60f705bb3001bb29e5126d5fe25c00e62f9e01fdbeb",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/readiness-input-fix-standards-workspace-bd3c487a.json": "7bc12f3efe58d8d01aa9904ef59f42cddfe61240ad6511e61fbc3e003f9c34fe",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/readiness-input-fix-standards-original-probe-bd3c487a.log": "fb9ef2e1fefaa1c6ff3b46f7c770ec9530f16a345b2c4d9d317fd7d18a896e51"
+  },
+  "originalProbeSha256": "3e8516d96f59f870a92304e8796ce4d6847d9b45ac75e27c42b58c6749d9181e",
+  "reportSha256": "dbdf7e275efc71307ef11b96170d2788c4b30795a982d0f621a3d6bad679adaf",
+  "limits": [
+    "No database/provider/browser/shared-source mutation",
+    "No full-stage credit",
+    "Uncommitted web excluded"
+  ]
+}

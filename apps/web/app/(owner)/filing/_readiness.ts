@@ -42,16 +42,6 @@ export function buildReadinessInput(data: WorkspaceData): AnnualReadinessInput |
     filingPreviews: scope(data.previews),
     filingSubmissions: scope(data.submissions),
     companyTaxReadiness: data.primaryTaxReadiness,
-    corporateDocuments: {
-      enabled: process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true",
-      readiness: data.primaryCorporateDecisionReadiness ?? {
-        annualSubmissionReady: false,
-        state: null,
-        blockers: [{
-          code: "corporate_documents_decision_missing",
-          message: "Årsbeslutning med dokumentsett må opprettes.",
-        }],
-      },
-    },
+    annualAccountsReadiness: data.primaryAnnualAccountsReadiness,
   };
 }

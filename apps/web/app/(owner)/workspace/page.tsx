@@ -66,16 +66,10 @@ import { preProductionDirectFilingCopy, requiredNonAffiliationCopy } from "../..
 import {
   getCurrentUser,
   hasSupabaseEnv,
-  listAuthorityPermissions,
-  listAuthorityTestRuns,
   listAnnualData,
   listBankTransactions,
   listDocumentsForCompanies,
-  listFilingPreviews,
-  listFilingOverrides,
   listFilingReadinessSnapshots,
-  listFilingReviewComments,
-  listFilingSubmissions,
   listLaunchSignoffs,
   listLedgerEntries,
   listNotificationOutbox,
@@ -1394,7 +1388,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                       <p>Kun simulering. Ingen live innsending er gjort.</p>
                       <p>{submission.calls.length} simulerte API-kall forberedt.</p>
                       <p>{submission.feedback_items.length} strukturerte tilbakemeldinger lagret.</p>
-                      <p>Arkivreferanse: {submission.submitted_payload_ref?.payloadHash.slice(0, 12) ?? "Mangler"}</p>
+                      <p>Arkivreferanse: {typeof submission.submitted_payload_ref?.payloadHash === "string" ? submission.submitted_payload_ref.payloadHash.slice(0, 12) : "Mangler"}</p>
                       <p>Bekreftet: {submission.preview_confirmed_at ? new Date(submission.preview_confirmed_at).toLocaleString("nb-NO") : "Nei"}</p>
                       <a href={`/archive/${submission.company_id}/${submission.income_year}/download`}>Eksporter arkiv</a>
                     </div>

@@ -1,3 +1,4 @@
+import { loadPresentedAnnualAccountsSource } from "./annual-accounts-workspace-source.ts";
 import { loadPresentedCompanyTaxSource } from "./company-tax-workspace-source.ts";
 import { loadPresentedRf1086Source, newestFirst, composeFilingSources } from "./rf1086-workspace-source";
 import { cache } from "react";
@@ -9,14 +10,9 @@ import { buildDeadlineDashboard } from "./deadlines.ts";
 import {
   getCurrentUser,
   listAnnualData,
-  listAuthorityPermissions,
   listBankTransactions,
   listDocumentsForCompanies,
-  listFilingOverrides,
-  listFilingPreviews,
   listFilingReadinessSnapshots,
-  listFilingReviewComments,
-  listFilingSubmissions,
   listLedgerEntries,
   listOpeningSetups,
   listPeriodLocks,
@@ -54,64 +50,52 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     openingResult,
     locksResult,
     annualDataResult,
-    previewsResult,
-    submissionsResult,
-    overridesResult,
     transactionsResult,
     actionsResult,
     correctionsResult,
     positionsResult,
     entriesResult,
     snapshotsResult,
-    commentsResult,
     billingEntitlement,
-    authorityResult,
     rfSource,
     taxSource,
+    accountsSource,
   ] = await Promise.all([
     listDocumentsForCompanies(companyIds),
     listOpeningSetups(companyIds),
     listPeriodLocks(companyIds),
     listAnnualData(companyIds),
-    listFilingPreviews(companyIds),
-    listFilingSubmissions(companyIds),
-    listFilingOverrides(companyIds),
     listBankTransactions(companyIds),
     listPresentedInvestmentActivity(accessToken, companyIds),
     listPresentedInvestmentCorrections(accessToken, companyIds),
     listPresentedInvestmentPositions(accessToken, companyIds),
     listLedgerEntries(companyIds),
     listFilingReadinessSnapshots(companyIds),
-    listFilingReviewComments(companyIds),
     loadBillingEntitlement(accessToken, {
       companyId: context.companyId,
       incomeYear: context.incomeYear,
       obligation: "aksjonaerregisteroppgaven",
       caseProfile: "rf1086_no_activity_v1",
     }),
-    listAuthorityPermissions(companyIds),
     loadPresentedRf1086Source(accessToken, companyIds, context.incomeYear),
     loadPresentedCompanyTaxSource(accessToken, companyIds, context.incomeYear),
+    loadPresentedAnnualAccountsSource(accessToken, companyIds, context.incomeYear),
   ]);
 
   const failedSources = [
     ["rf1086", rfSource.error],
     ["company-tax", taxSource.error],
+    ["annual-accounts", accountsSource.error],
     ["documents", documentsResult.error],
     ["opening", openingResult.error],
     ["locks", locksResult.error],
     ["annual_data", annualDataResult.error],
-    ["previews", previewsResult.error],
-    ["submissions", submissionsResult.error],
-    ["overrides", overridesResult.error],
     ["transactions", transactionsResult.error],
     ["actions", actionsResult.error],
     ["corrections", correctionsResult.error],
     ["positions", positionsResult.error],
     ["entries", entriesResult.error],
     ["snapshots", snapshotsResult.error],
-    ["comments", commentsResult.error],
-    ["authority", authorityResult.error],
   ].filter((entry) => entry[1]);
   if (failedSources.length) {
     console.error("annual_workspace_load_failed", { sources: failedSources.map(([source]) => source) });
@@ -124,9 +108,9 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     shareholders: openingResult.shareholders,
     locks: locksResult.locks,
     annualData: annualDataResult.annualData,
-    previews: newestFirst(composeFilingSources(composeFilingSources(previewsResult.previews, rfSource.previews), taxSource.previews), (row) => row.created_at),
-    submissions: newestFirst(composeFilingSources(composeFilingSources(submissionsResult.submissions, rfSource.submissions), taxSource.submissions), (row) => row.updated_at),
-    overrides: newestFirst(composeFilingSources(composeFilingSources(overridesResult.overrides, rfSource.overrides), taxSource.overrides), (row) => row.created_at),
+    previews: newestFirst(composeFilingSources(composeFilingSources(accountsSource.previews, rfSource.previews), taxSource.previews), (row) => row.created_at),
+    submissions: newestFirst(composeFilingSources(composeFilingSources(accountsSource.submissions, rfSource.submissions), taxSource.submissions), (row) => row.updated_at),
+    overrides: newestFirst(composeFilingSources(composeFilingSources(accountsSource.overrides, rfSource.overrides), taxSource.overrides), (row) => row.created_at),
     transactions: transactionsResult.transactions,
     actions: effectiveInvestmentActivity(
       actionsResult.actions,
@@ -135,8 +119,8 @@ export const loadAnnualWorkspace = cache(async (context: AnnualWorkspaceContext)
     positions: positionsResult.positions,
     entries: entriesResult.entries,
     snapshots: snapshotsResult.readinessSnapshots,
-    comments: newestFirst(composeFilingSources(composeFilingSources(commentsResult.comments, rfSource.comments), taxSource.comments), (row) => row.created_at),
-    authorityPermissions: newestFirst(composeFilingSources(composeFilingSources(authorityResult.authorityPermissions, rfSource.authorityPermissions), taxSource.authorityPermissions), (row) => row.updated_at),
+    comments: newestFirst(composeFilingSources(composeFilingSources(accountsSource.comments, rfSource.comments), taxSource.comments), (row) => row.created_at),
+    authorityPermissions: newestFirst(composeFilingSources(composeFilingSources(accountsSource.authorityPermissions, rfSource.authorityPermissions), taxSource.authorityPermissions), (row) => row.updated_at),
   });
   const deadlines = buildDeadlineDashboard({ incomeYear: context.incomeYear, submissions: records.submissions });
   const model = buildAnnualWorkspaceViewModel({

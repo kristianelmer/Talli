@@ -1,0 +1,7 @@
+# Accounts web consumer cutover in progress
+
+The owner workspace, Annual workspace, override/review/acknowledgement actions, permission/manual evidence actions, TT02 import, readiness refresh and reminder reads now use the owned Accounts generated client alongside the unchanged RF and Tax contracts. The Annual aggregator composes Accounts readiness; Corporate document status remains visible. Missing or failed source reads remain unavailable.
+
+89 focused web tests pass. TypeScript passes. Exact AST persistence-chain comparison against main baseline 5b74340ca75f215b43d754c6bf0fc49ef5974b0b preserves eight Audit and two Notification chains, including one import followed by the original returned-error/thrown-error Audit behavior. The two preceding readiness input reviews pass and are adopted unchanged.
+
+This is not a releasable or stage-exit candidate. The architecture guard intentionally remains failing until physical source retirement and its catalog proof permit deletion of the now-obsolete scopes and the source composition is bound. The proposed 19 deleted-call scopes are captured, but the active registry is unchanged in this checkpoint. Do not bypass the guard. Archive remains on its prior reads; duplicate pure TypeScript and import code retirement, source handoff, physical cutover/contract/rollback, browser verification and full exit gates are pending. No database/provider/production changes occurred in this web slice.

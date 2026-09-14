@@ -26,7 +26,7 @@ export function newestFirst<T>(rows: T[], timestamp: (row: T) => string): T[] {
 }
 
 
-export function composeFilingSources<T extends { id: string }>(legacy: T[], owned: T[]): T[] {
+export function composeFilingSources<A extends { id: string }, B extends { id: string }>(legacy: A[], owned: B[]): (A | B)[] {
   const ownedIds = new Set(owned.map((row) => row.id));
   return [...legacy.filter((row) => !ownedIds.has(row.id)), ...owned];
 }

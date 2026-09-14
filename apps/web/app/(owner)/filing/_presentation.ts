@@ -15,10 +15,10 @@ export function obligationFilingString(obligation: AuthorityObligation): string 
 
 function archiveReference(submission: FilingSubmissionRow): string | null {
   if (submission.receipt_metadata && "archiveReference" in submission.receipt_metadata) {
-    return submission.receipt_metadata.archiveReference;
+    return typeof submission.receipt_metadata.archiveReference === "string" ? submission.receipt_metadata.archiveReference : null;
   }
   if (submission.submitted_payload_ref && "archiveReference" in submission.submitted_payload_ref) {
-    return submission.submitted_payload_ref.archiveReference;
+    return typeof submission.submitted_payload_ref.archiveReference === "string" ? submission.submitted_payload_ref.archiveReference : null;
   }
   return null;
 }
