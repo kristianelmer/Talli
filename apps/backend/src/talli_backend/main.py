@@ -1146,8 +1146,24 @@ class AnnualAccountsReadinessPreviewRequest(TransportModel):
 
     @model_validator(mode="after")
     def bounded_readiness_facts(self):
-        if any(not isinstance(entry.get('risk_flags'), list) for entry in self.ledger_entries):
-            raise ValueError('Accounts ledger warning facts are malformed.')
+        for entry in self.ledger_entries:
+            flags = entry.get('risk_flags')
+            accepted_at = entry.get('warning_accepted_at')
+            if (not isinstance(entry.get('company_id'), str) or type(entry.get('income_year')) is not int
+                    or not isinstance(flags, list) or any(not isinstance(flag, str) for flag in flags)
+                    or accepted_at is not None and not isinstance(accepted_at, str)):
+                raise ValueError('Accounts ledger warning facts are malformed.')
+        if self.annual_data is not None:
+            annual = self.annual_data
+            answers, confirmations = annual.get('answers'), annual.get('confirmations')
+            equivalents = annual.get('annual_full_time_equivalents')
+            if (annual.get('company_id') != str(self.company_id)
+                    or type(annual.get('income_year')) is not int or annual['income_year'] != self.income_year
+                    or not isinstance(answers, dict) or type(answers.get('general_meeting_approved')) is not bool
+                    or any(type(answer) is not bool for answer in answers.values())
+                    or not isinstance(confirmations, list) or any(not isinstance(item, str) for item in confirmations)
+                    or equivalents is not None and type(equivalents) not in (int, float)):
+                raise ValueError('Accounts annual facts are malformed or outside the requested scope.')
         try:
             if len(json.dumps(self.model_dump(mode='json'), ensure_ascii=True, allow_nan=False).encode()) > 8 * 1024 * 1024:
                 raise ValueError('Accounts preview facts exceed the size limit.')

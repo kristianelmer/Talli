@@ -1,0 +1,354 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "baseRevision": "e6f8e889852e9c26057d80f75930dc5a34ad5729",
+  "revision": "af5c6523f081707fc08818919717371af6dd4ec9",
+  "diffCommand": "git diff e6f8e889852e9c26057d80f75930dc5a34ad5729...af5c6523f081707fc08818919717371af6dd4ec9",
+  "commits": [
+    "af5c6523 feat(accounts): add authenticated filing reads and controls"
+  ],
+  "verdict": "FINDING_P2_SHARED_STD_153_READ_1",
+  "findings": [
+    {
+      "id": "STD-153-READ-1",
+      "severity": "P2",
+      "sharedFinding": true,
+      "file": "apps/backend/src/talli_backend/main.py",
+      "lines": [
+        10343,
+        10350
+      ],
+      "specId": "GH-153-A1",
+      "specQuote": "Supported annual-accounts cases produce outputs identical to current schema and TT02 evidence.",
+      "summary": "Valid deeply nested retained JSON fails in final HTTP serialization after successful immutable projection and response construction.",
+      "independentReproduction": {
+        "depth1Status": 200,
+        "depth600Status": 500,
+        "jsonRoundTrip": "PASS",
+        "publicProjection": "PASS",
+        "thaw": "PASS"
+      },
+      "disposition": "OPEN_AT_PIN; uncommitted follow-up excluded"
+    }
+  ],
+  "sourceBindings": [
+    {
+      "path": "apps/backend/src/talli_backend/adapters/postgres_annual_accounts.py",
+      "sha256": "25532fd8c8b1fa7224d042e43344ed6b7db8cbbf47475373bf760be6547d5fc6"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/annual_accounts_session.py",
+      "sha256": "a1d4a9e40ec98a2494146f1ed1cb8a688e2766bdd9aa19857a3d5762300ca993"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/annual_accounts_workflow.py",
+      "sha256": "8863f199d327d5ee71de51f9586d082f6e707a03bc36717ec43ea65fbed61157"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "11f080324c0b71d55c7f58ff5cef53cd29e015b1264f1661fb2e009e80884071"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
+      "sha256": "5a3464f610cd907e4638e3e06ecae691306891098d194a2787a4325520509705"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json",
+      "sha256": "e62cc678be0b73c914982b0162cc8769a7f008f7da1d5725db5e168214c693cb"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/preparation.py",
+      "sha256": "54645f74a531f0df987e3057e984e282886eb931a297216b55aa559c3c748ed3"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py",
+      "sha256": "6d99932b222b5028d2b59fd26c6dd06085d7ce5054d9e5f38f7bee8411a7590a"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/workspace.py",
+      "sha256": "d2313feff725c07db289a3ce99806f28a51bc2a16bfc4a42166e08c0e1efbb2f"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_import_workflow.py",
+      "sha256": "2c18d7d9cc41059eaa49f0b3bd4517f8784d0015f73d1fa9cb24bcc35958ef59"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_preparation.py",
+      "sha256": "443a4dc3e192c7d3aeaf603620c0dc5d8c4de4c017d4d20a18f35a336c182839"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_workspace.py",
+      "sha256": "d144e8dcda53d077cbaa7f2356ab72b6fc8c0d93e1702b74a2391c6dd167286a"
+    },
+    {
+      "path": "architecture/BACKEND-SYSTEM.md",
+      "sha256": "1a36a04ddb55bf583f82737de7869f31fc560e2e291ad18f3fb1e6987c392e52"
+    },
+    {
+      "path": "architecture/backend-system.json",
+      "sha256": "e3a42b7ab2c2bc4a07531b724ccb1060f04682e2b62515c4c47c8ebda94e39f5"
+    },
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "31ad8b561d21a6d057eb53c767681117e7e6e01c78cebdd9637d26ca865c6ad6"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/expand-fix-spec-review-e6f8e889.json",
+      "sha256": "1d08aa69734519728db568d5725bf8ae52190225b6eb7b3ad0e84925522657a9"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/expand-fix-spec-review-e6f8e889.md",
+      "sha256": "caf105feb1f6438733bb37512c8e1f8134b8fe0d9a62fadf4829a094775c4a40"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/expand-fix-standards-review-e6f8e889.json",
+      "sha256": "1112a2f1cde136c03544e990784c490f51999a1a861b0ea806e9556ff824634e"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/expand-fix-standards-review-e6f8e889.md",
+      "sha256": "20bc89567a7584b59db4fd371d773bcedfe4cb8cc1735bf5f37b015febb33b74"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/expand-standards-review-04e682b6.json",
+      "sha256": "00451dd840a48350b82a73eaf415e0f9da02e136dbc3ccc78e20cd88e457605d"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/expand-standards-review-04e682b6.md",
+      "sha256": "8af33a1f2f1da13db204ae38bc4a38df7bb0a13911af756a22eef1409f43d1e7"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/probe-accounts-read-controls.py",
+      "sha256": "ee61c25b046dcc63386661cba7db500963bbd8ddae2e061abd2d41b995583412"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/read-controls-accounts-suite.log",
+      "sha256": "e3c99bd3ac6c8ff0771ca7ed56504d53678e03c61863d2bd2c6bd60bff5dfb05"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/read-controls-architecture-final.log",
+      "sha256": "31ad8b561d21a6d057eb53c767681117e7e6e01c78cebdd9637d26ca865c6ad6"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/read-controls-architecture-first.log",
+      "sha256": "ea845c0a1eac8a29bcf4ecdd5ab4083f6ece50e597b9ea1c5df7a3879fabd7e2"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/read-controls-architecture-second.log",
+      "sha256": "cbc4dcb8ca0ef3b223079686a2678e649a3877e796160c3c2b4f38094b975f67"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/read-controls-client-test-final.log",
+      "sha256": "1168da7832622ee403d258c5161d16ac9ee8a0f454855fa77bda2437d756ba8b"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/read-controls-client-test-first.log",
+      "sha256": "290209bb4510cdfb1e58796a55990934661f990e928d0b3f20f67f589fbfb814"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/read-controls-database-first-expectation-failure.json",
+      "sha256": "2c9c95bc1009f934f319a2a559affc916a33e697e437723baf5c79ae365efd17"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/read-controls-database-results.json",
+      "sha256": "1465b386db6f05f1181135a2fc2fa79af79b6cadf3d0968b694f30bcaa4cef04"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/read-controls-http-final.log",
+      "sha256": "b7897cf3ac97adb35da63fb4b6f6ded351f62ee41f71eadb775026fb154b035b"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/read-controls-http.log",
+      "sha256": "0f651421250045201aa5990e257d57f08c8048d352b1e2592b87a8dd6ec7473b"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/read-controls-import-http-first.log",
+      "sha256": "17afc9fe15a7f0c13443836212609b9272a4af8ae183bd2dc1560a382377ba52"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/read-controls-openapi-additive.json",
+      "sha256": "3cb7ceac07bbb9e85c95a9d32e27715aaaf1936285f177eefac6008b2d1b0a39"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/read-controls-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "architecture/evidence/issues/153/read-controls/verification.md",
+      "sha256": "124613ea406af5bd12c76832e578b78e070f1ca3ca41c97e384641f6073d729a"
+    },
+    {
+      "path": "contracts/openapi/talli-v1.json",
+      "sha256": "065a2c30157a9e25f45639047ddc1c3a7df1462813bd4822f9c01f4b048b89e2"
+    },
+    {
+      "path": "packages/talli-api-client/src/generated/client.ts",
+      "sha256": "50e5e88311f7481c464a97c50868cde5bb58fed2aafdbc0853612f021be52461"
+    },
+    {
+      "path": "scripts/generate-api-client.mjs",
+      "sha256": "4c0d6d660266d378ca25419f02a911eb776033aa2a58aeaf202be35d9c5e9b7c"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914092018_annual_accounts_filing_read_contracts.sql",
+      "sha256": "7c9366ed41cdbcb4cddb9d748d4e987d370b9a04be2f74890f7fa446174fdb29"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914092924_annual_accounts_filing_preparation_contracts.sql",
+      "sha256": "ba67f1fdcbf314b0ed545eaf040b11ca411d342d2dccf3960ce3a6c9b9aaa6c8"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914093204_annual_accounts_filing_import_contract.sql",
+      "sha256": "b3644149be001e768d8d497e248b438631ecb38a2589965108ab47d60d53fc48"
+    },
+    {
+      "path": "tests/annual_accounts_client.test.mjs",
+      "sha256": "3c605e003470a9482eae1bfcbb5aadf8b5373bc0cf645c65127d86b3ce021fa8"
+    }
+  ],
+  "manifest": {
+    "path": "architecture/evidence/issues/153/read-controls/manifest.json",
+    "sha256": "d2ca80cdb65377c7ecd559127bf7d7dd1353b52d7fd0aceb5a7b4262906eeaad",
+    "verifiedArtifacts": 43
+  },
+  "openapi": {
+    "schemas": {
+      "beforeCount": 418,
+      "afterCount": 432,
+      "added": [
+        "AnnualAccountsEvidenceImportRequest",
+        "AnnualAccountsEvidenceImportWire",
+        "AnnualAccountsOverrideRequest",
+        "AnnualAccountsOverrideWire",
+        "AnnualAccountsPermissionRequest",
+        "AnnualAccountsPermissionWire",
+        "AnnualAccountsPreviewWire",
+        "AnnualAccountsRecordedWire",
+        "AnnualAccountsReviewCommentWire",
+        "AnnualAccountsReviewRequest",
+        "AnnualAccountsSubmissionWire",
+        "AnnualAccountsTestEvidenceRequest",
+        "AnnualAccountsTestEvidenceWire",
+        "AnnualAccountsWorkspaceWire"
+      ],
+      "removed": [],
+      "modified": []
+    },
+    "paths": {
+      "beforeCount": 149,
+      "afterCount": 157,
+      "added": [
+        "/api/v1/annual-accounts/filing-workspace",
+        "/api/v1/annual-accounts/overrides",
+        "/api/v1/annual-accounts/permissions",
+        "/api/v1/annual-accounts/previews/{preview_id}",
+        "/api/v1/annual-accounts/review-comments",
+        "/api/v1/annual-accounts/review-comments/{comment_id}/acknowledgements",
+        "/api/v1/annual-accounts/test-evidence",
+        "/api/v1/annual-accounts/tt02-evidence-imports"
+      ],
+      "removed": [],
+      "modified": []
+    }
+  },
+  "requirements": {
+    "path": "architecture/evidence/issues/153/requirements.json",
+    "sha256": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+    "unchanged": true
+  },
+  "originalImporter": {
+    "path": "apps/web/app/lib/authority-test-evidence.ts",
+    "baselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+    "sha256": "3288e82a19ec640fa3b7142bac88f7d5262be957592303a1e41f6db057302d9d",
+    "byteIdentical": true
+  },
+  "checks": {
+    "focusedPython": {
+      "passed": 62,
+      "skipped": 0
+    },
+    "generatedClient": {
+      "passed": 2,
+      "skipped": 0
+    },
+    "independentClientCases": 13,
+    "originalNodeVsHttpDepths": [
+      0,
+      100,
+      600,
+      1000,
+      1200
+    ],
+    "retainedSqlCases": 47,
+    "retainedSqlDeniedPrivileges": 36,
+    "sqlRerun": false,
+    "sqlSlotUsed": false
+  },
+  "runtime": {
+    "python": "3.12.12",
+    "pythonPath": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+    "node": "v24.20.0",
+    "nodePath": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node"
+  },
+  "commands": [
+    "git log e6f8e889..af5c6523 --oneline",
+    "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=$PWD:$PWD/apps/backend/src:$PWD/apps/backend/tests <pythonPath> -m pytest -q -c /dev/null --rootdir=. -p no:cacheprovider apps/backend/tests/test_annual_accounts_workspace.py apps/backend/tests/test_annual_accounts_preparation.py apps/backend/tests/test_annual_accounts_import_workflow.py",
+    "<nodePath> --test tests/annual_accounts_client.test.mjs",
+    "<pythonPath> ../read-controls-spec-probe-af5c6523.py",
+    "<nodePath> ../read-controls-spec-client-probe-af5c6523.mjs",
+    "<pythonPath> ../read-controls-standards-deep-wire-af5c6523.py"
+  ],
+  "commandCwd": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-read-controls-af5c6523",
+  "harnessNotes": [
+    "First extra client harness installed fetch stub after client creation, producing ENOTFOUND for reserved backend.example. Corrected stub ordering only; original harness retained. No product failure inferred from this.",
+    "Accounts authority-test-evidence.ts checked byte-identical to protected baseline before Node probes.",
+    "SQL evidence uses rollback-only synthetic claims and phase toggles; no durable migration or real JWT ceremony credit."
+  ],
+  "scopeLimits": [
+    "Only fixed committed diff reviewed; later drafts excluded.",
+    "No DB, browser, provider or shared implementation mutations.",
+    "No full-stage exit, cutover, production or successor credit."
+  ],
+  "privateArtifacts": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-spec-bindings-af5c6523.json",
+      "sha256": "f2b2360eae50619fa92b610fb3a1748f394f4eb3173b92b6f76549a3f078a606"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-spec-tests-af5c6523.log",
+      "sha256": "1d4006d6f082d9f0bfcdf590568697d0dce6def1280beca3334ee0e8490c0073"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-spec-client-af5c6523.log",
+      "sha256": "5b2cd32d82fb1616a041901d1880481ce9d09004d06f4e71ca6a46aa48984a7f"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-spec-probe-af5c6523.py",
+      "sha256": "e16a53db633c297cb63c5d136e390fe7872b11147d10c90bc233e96b69343ec6"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-spec-probe-af5c6523.json",
+      "sha256": "8fcf1e363b5c4f1223c6eb1adbffa1851981cf51f40f26c46426f79accfb7b50"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-spec-client-probe-af5c6523.mjs",
+      "sha256": "0e33701df6129a42fb5c7a8ffcf1e3d6033e5994402a55065520d919ec24b59e"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-spec-client-probe-af5c6523.json",
+      "sha256": "61051fd036d6c5a21b862dc0c5ac0888df8c45d2e8650073c2d0c4cd3a12d9e8"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-spec-client-probe-af5c6523.first-harness-failure.mjs",
+      "sha256": "50648feffcfe13a175b1d90ddb8ea69bef240ebaaed6c491578ff72b5826f91f"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-standards-deep-wire-af5c6523.py",
+      "sha256": "40e844edd0382ee86805d20b673a0888505b3bdf6cc9a9785cb47d3b25e65cc4"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-spec-deep-wire-rerun-af5c6523.log",
+      "sha256": "7a05e85033d3c1f79d20578f5abd1895f954596fa579b01265f51ac75162e063"
+    }
+  ],
+  "reportSha256": "428b74ee6a6e24104fdd3069a2ca4fc34cdd05033306511abd4733c1ce831b83"
+}
