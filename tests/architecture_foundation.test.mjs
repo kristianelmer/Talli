@@ -216,6 +216,8 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   "backend-system:marketing_measurement",
   "backend-system:system_boundary",
   "backend-system:validation_observation",
+  "backend:annual_accounts_filing",
+  "backend:audit",
   "backend:authority_connections",
   "backend:banking",
   "backend:billing",
@@ -226,6 +228,7 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   "backend:investments",
   "backend:ledger",
   "backend:shareholder_register_filing",
+  "web:annual-accounts-filing",
   "web:authority-connections",
   "web:banking",
   "web:billing",
@@ -248,6 +251,46 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     ],
     "kind": "workflow",
     "to": "backend:documents"
+  },
+  {
+    "from": "backend-system:annual-accounts-filing-preparation",
+    "imports": [
+      "talli_backend.modules.annual_accounts_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:annual_accounts_filing"
+  },
+  {
+    "from": "backend-system:annual-accounts-filing-reads",
+    "imports": [
+      "talli_backend.modules.annual_accounts_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:annual_accounts_filing"
+  },
+  {
+    "from": "backend-system:annual-accounts-readiness-preview",
+    "imports": [
+      "talli_backend.modules.annual_accounts_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:annual_accounts_filing"
+  },
+  {
+    "from": "backend-system:annual-accounts-source-facts",
+    "imports": [
+      "talli_backend.modules.annual_accounts_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:annual_accounts_filing"
+  },
+  {
+    "from": "backend-system:annual-accounts-tt02-evidence-import",
+    "imports": [
+      "talli_backend.modules.annual_accounts_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:annual_accounts_filing"
   },
   {
     "from": "backend-system:annual-agreement-cleanup",
@@ -386,6 +429,30 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "to": "backend:company_access"
   },
   {
+    "from": "backend-system:company-tax-assessment-previews",
+    "imports": [
+      "talli_backend.modules.company_tax_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_tax_filing"
+  },
+  {
+    "from": "backend-system:company-tax-filing-preparation",
+    "imports": [
+      "talli_backend.modules.company_tax_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_tax_filing"
+  },
+  {
+    "from": "backend-system:company-tax-filing-reads",
+    "imports": [
+      "talli_backend.modules.company_tax_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_tax_filing"
+  },
+  {
     "from": "backend-system:company-tax-settlement",
     "imports": [
       "talli_backend.modules.banking.public"
@@ -416,6 +483,30 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     ],
     "kind": "workflow",
     "to": "backend:ledger"
+  },
+  {
+    "from": "backend-system:company-tax-source-facts",
+    "imports": [
+      "talli_backend.modules.company_tax_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_tax_filing"
+  },
+  {
+    "from": "backend-system:company-tax-tt02-evidence-import",
+    "imports": [
+      "talli_backend.modules.audit.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:audit"
+  },
+  {
+    "from": "backend-system:company-tax-tt02-evidence-import",
+    "imports": [
+      "talli_backend.modules.company_tax_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_tax_filing"
   },
   {
     "from": "backend-system:company-year-eligibility-and-admission",
@@ -2374,8 +2465,8 @@ test("the immutable frozen inventory remains exact while the active registry is 
   }
   assert.equal(expected.size, baseline.records.length);
 
-  assert.equal(registry.records.length, 6);
-  assert.equal(registry.records.flatMap((record) => record.scopes).length, 61);
+  assert.equal(registry.records.length, 4);
+  assert.equal(registry.records.flatMap((record) => record.scopes).length, 36);
   const baselineById = new Map(baseline.records.map((record) => [record.id, record]));
   const scopeKey = (scope) => [scope.path, scope.rule, scope.resource, scope.operation].join("\0");
   for (const record of registry.records) {
@@ -2393,7 +2484,7 @@ test("the immutable frozen inventory remains exact while the active registry is 
     assert.equal(approved.length, 12);
     if (record.id === "compat-annual-compliance-persistence") {
       for (const scope of approved) frozenScopes.add(scopeKey(scope));
-      assert.equal(record.scopes.filter((scope) => approved.some((item) => scopeKey(item) === scopeKey(scope))).length, 12);
+      assert.equal(record.scopes.filter((scope) => approved.some((item) => scopeKey(item) === scopeKey(scope))).length, 0);
     }
     assert.ok(record.scopes.every((scope) => frozenScopes.has(scopeKey(scope))), record.id);
     assert.equal("expiresAt" in record, false, record.id);
@@ -2418,6 +2509,8 @@ test("the immutable frozen inventory remains exact while the active registry is 
       "compat-billing-persistence",
       "compat-authority-connections-persistence",
       "compat-rf1086-persistence",
+      "compat-company-tax-persistence",
+      "compat-annual-accounts-persistence",
     ]),
   );
 });
@@ -3434,15 +3527,16 @@ test("#151 bounded retirement compositions remain enforced after RF exits", () =
   registry.migration.order = [
     { capability: "shareholder_register_filing", removalIssues: ["#151"] },
     { capability: "company_tax_filing", removalIssues: ["#146", "#152"] },
+    { capability: "annual_accounts_filing", removalIssues: ["#153"] },
     { capability: "annual_compliance", removalIssues: ["#149"] },
     { capability: "audit", removalIssues: ["#155"] },
     { capability: "company_archive", removalIssues: ["#157"] },
   ];
-  registry.migration.currentCapability = "company_tax_filing";
-  registry.migration.currentIssue = "#152";
-  registry.migration.exitedCapabilities = ["shareholder_register_filing"];
+  registry.migration.currentCapability = "annual_accounts_filing";
+  registry.migration.currentIssue = "#153";
+  registry.migration.exitedCapabilities = ["shareholder_register_filing", "company_tax_filing"];
   registry.migration.completedStages = [{ capability: "shareholder_register_filing", removalIssues: ["#151"],
-    gates: registry.migration.foundationRecovery.gates }];
+    gates: registry.migration.foundationRecovery.gates }, { capability: "company_tax_filing", removalIssues: ["#146", "#152"], gates: registry.migration.foundationRecovery.gates }];
   const current = new Map(records.flatMap((record) => record.scopes.map((scope) => [scope.path,
     readFileSync(new URL(`../${scope.path}`, import.meta.url), "utf8")])));
   const frozen = new Map([...current.keys()].map((path) => [path,
@@ -3455,7 +3549,8 @@ test("#151 bounded retirement compositions remain enforced after RF exits", () =
       sourceAtRevision: (path) => frozen.get(path), currentSource: (path) => sources.get(path),
       sourceAtGateRevision: (_revision, path) => current.get(path),
       resourceOwner: (resource) => resource === "table:opening_balance_setups" ? undefined
-        : resource === "table:holding_actions" ? taxOwner : "backend:shareholder_register_filing",
+        : resource === "table:holding_actions" ? taxOwner
+        : ["table:filing_previews", "table:filing_submissions", "table:filing_overrides", "table:filing_review_comments", "table:authority_permissions", "table:authority_test_runs"].includes(resource) ? "backend:annual_accounts_filing" : "backend:shareholder_register_filing",
     });
   };
   try {

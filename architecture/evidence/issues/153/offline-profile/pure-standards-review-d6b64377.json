@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Standards",
+  "verdict": "FINDING_P2_DEEP_SOURCE_COPY",
+  "baseRevision": "f8ec6c52e4e21c52362fadacb852953aab7c961a",
+  "candidateRevision": "d6b64377fbef401cdafcf3c5bc59cece8f816f61",
+  "diffCommand": "git diff f8ec6c52e4e21c52362fadacb852953aab7c961a...d6b64377fbef401cdafcf3c5bc59cece8f816f61",
+  "reportSha256": "2f46c142083ebd7fd8c5dfe2ecceb7339217231519d7da2c486a07414f221aaf",
+  "findings": [
+    {
+      "priority": 2,
+      "kind": "documented-contract robustness/preservation",
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py",
+      "startLine": 9,
+      "endLine": 12,
+      "title": "Preserve accepted deep source snapshots",
+      "reproduction": "600-level ignored JSON array in supported ledger-entry metadata; legacy output unchanged, new source construction raises RecursionError",
+      "rules": [
+        "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md:23",
+        "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md:40"
+      ]
+    }
+  ],
+  "changedArtifacts": {
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md": "29f25f3bc3b0e3ad746f629a9136f68a1f3c2c6ae3ccf7d2a95bcba9d7f7ec74",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/__init__.py": "bbf344ff2db22c18f7f3081b331c1939f7b49daa110fa97ed2b6a49113c8b726",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/calculation.py": "c579d40eb3ef800073219cc156e6bb6537d35dc10ed54e93274d72878d2532ec",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json": "cbef5762fe4371efd6c5ab7cbaebf5775734212cb255f61bf0f53945a849027b",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/numbers.py": "5c2d2372410a4fb921eb83eeb6dacb233d17d9544c40aaffdb0b6588ce5d2dc2",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py": "533a23e612b3ec315e3dcbbb38e446192c9fc49e44323fa90fd3410a825ad2d5",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/readiness.py": "07783baea9e4f2085b3ba3d3620f1c896b93045dba765c26f9c3dc44be2e2234",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/rendering.py": "222fac8e3a0adaaa1b985cb320dd374f52511dc2c46a818b6b8141624e1ddbc3",
+    "apps/backend/tests/test_annual_accounts_filing.py": "8be1990d291262c46866577abde3088f44dc0d9676b00311e82b4cfa63ba40fd",
+    "architecture/dependency-evidence.json": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9",
+    "architecture/evidence/issues/153/pure-calculation/capture-legacy-cli.py": "7950639ad64dad78e66c854a643779542ced83fc6c30be8dc7744442413257a7",
+    "architecture/evidence/issues/153/pure-calculation/characterization-spec-review-f8ec6c52.json": "335e9f5036113b9aab574f1fccd1a671bdc75c32b98c65ddc834337b9130b2e7",
+    "architecture/evidence/issues/153/pure-calculation/characterization-spec-review-f8ec6c52.md": "0545c5ee332c69d97fdb5c11966d1d7a5249218facca70f16d8f191186559af1",
+    "architecture/evidence/issues/153/pure-calculation/characterization-standards-review-f8ec6c52.json": "937b3a415104ffef6c46244b3b377f41f588609791c513669a573ae2bf3617af",
+    "architecture/evidence/issues/153/pure-calculation/characterization-standards-review-f8ec6c52.md": "b101b71ab0d36c1b07664c2f9e3f3e0abe041944d25b49a7beb0c1ddb3d6c7f3",
+    "architecture/evidence/issues/153/pure-calculation/legacy-cli-characterization.json": "4ce173fdb2ab0e60eba583ddaac23b1c9d6e3d69e965fccb5747f09c03baf90c",
+    "architecture/evidence/issues/153/pure-calculation/manifest.json": "0d48e5bc37875257a353cee74b8b6ad42dc0d5994a90bf67fac71ee5e95b6927",
+    "architecture/evidence/issues/153/pure-calculation/pure-architecture-final.log": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9",
+    "architecture/evidence/issues/153/pure-calculation/pure-architecture-first.log": "1b1c81dabe45411c712fa8ab6eb0de19d55539b2923e954fe425ba9a1dd3f900",
+    "architecture/evidence/issues/153/pure-calculation/pure-payload-xml-readiness-first.log": "76ac7736e54d35a98db6b2e5042dc70b2d91fbe18ae922c77b7e5a694a97d56c"
+  },
+  "unchangedBindings": {
+    "architecture/compatibility.json": "66ee4c62b8a32443adf43d167bd3f5da4b7f1f387bd46f4a0f6ddbab5de8b556",
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+    "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+    "architecture/evidence/issues/153/source-inventory.json": "da03d4dfab7c7e51be703bb221c47abcbe8dfdac606f0a2c62cf566d45e08921",
+    "architecture/evidence/issues/153/characterization/manifest.json": "e6441fa44a449801ed7a58f817ac8397c38e3bbe571983f6a62049b02ecc43ee"
+  },
+  "standardsBindings": {
+    "AGENTS.md": "c4530bac3939f37053438b48a3dad2ea6e99d04481480ef61bee71d3dc81d4af",
+    "CONTEXT.md": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9",
+    "docs/agents/domain.md": "0b66c33560f91373a7b268f3acf2c3d992e6a77cf5dc60acdc66efb4dc34a982",
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/COMPATIBILITY.md": "0aba38232b847b1b9843fdd9c04a34ce5cffe220951dd25fb4333e5c97d5c2dc"
+  },
+  "privateProbeBindings": {
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/pure-standards-workspace-d6b64377.json": "ad84e0749e9e4c368fc2da31540f67f9474abeb36536b19f307697698919949b",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/pure-standards-conformance-d6b64377.log": "2537386e181e18d3d7b0010b9dcc8f389c7a0c24eb7a0234c9a73ffd6020e393",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/pure-standards-cli-d6b64377.log": "f271f9423d1cd1e2e2150675dee707590f6d63238684e53701190972746e6a91",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/pure-standards-cli-reproduced-d6b64377.json": "4ce173fdb2ab0e60eba583ddaac23b1c9d6e3d69e965fccb5747f09c03baf90c",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/pure-standards-deep-source-probe.py": "c2991e228ccc7e1a9604c7e4b483f16e2394e81a5ffb2cc4a8e34ef1c20797ce",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/pure-standards-deep-source-probe.mjs": "6b22f5e5bf3871178b12b8985cf9412f5c9576ef72c87a58e783a6b6e59430cc",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/pure-standards-deep-source-d6b64377.log": "47b19826177cd57cc5e69209973f8e24c133b2ba8f16cf241a54c6a677f01482"
+  },
+  "checks": {
+    "manifestReferenceCount": 19,
+    "priorReviewOriginalsByteIdentical": 4,
+    "publicExportsMatchManifest": true,
+    "independentConformancePassed": 254,
+    "independentLegacyCliCapturesByteIdentical": 14,
+    "node": "24.20.0",
+    "python": "3.12.12"
+  },
+  "limits": [
+    "No architecture rerun; bound architecture evidence inspected.",
+    "No SQL/browser/provider/shared runtime actions.",
+    "No HTTP failure claim from pure-source reproducer.",
+    "No stage-exit credit."
+  ]
+}

@@ -139,6 +139,7 @@ function baseInput(overrides = {}) {
     ],
     filingSubmissions: [],
     companyTaxReadiness: { companyId: company.id, incomeYear: 2025, issues: [] },
+    annualAccountsReadiness: { companyId: company.id, incomeYear: 2025, issues: [] },
     ...overrides,
   };
 }
@@ -279,3 +280,21 @@ for (const preview of [undefined, null, { companyId: "other", incomeYear: 2025, 
     assert.ok(tax.hard_blocks.some(item => item.code === "company_tax_source_unavailable"));
   });
 }
+
+for (const readiness of [null, { companyId: "foreign", incomeYear: 2025, issues: [] }, { companyId: company.id, incomeYear: 2024, issues: [] }]) {
+  test("Accounts readiness is blocked when its owned source is absent or foreign", () => {
+    const result = evaluateAnnualReadinessGates(baseInput({ annualAccountsReadiness: readiness })).find(row => row.obligation === "aarsregnskap");
+    assert.equal(result.ready, false);
+    assert.ok(result.hard_blocks.some(issue => issue.code === "annual_accounts_source_unavailable"));
+  });
+}
+
+test("Annual composes Accounts Corporate blocks and accepted warnings without recalculating them", () => {
+  const issues = [
+    { level: "block", code: "corporate_documents_signatures_missing", message: "Signaturer mangler.", source: "corporate_documents", accepted: false },
+    { level: "warning", code: "manual_review", message: "Eier har akseptert kontroll.", source: "ledger", accepted: true },
+  ];
+  const result = evaluateAnnualReadinessGates(baseInput({ annualAccountsReadiness: { companyId: company.id, incomeYear: 2025, issues } })).find(row => row.obligation === "aarsregnskap");
+  assert.deepEqual(result.hard_blocks, [issues[0]]);
+  assert.deepEqual(result.accepted_warnings, [issues[1]]);
+});

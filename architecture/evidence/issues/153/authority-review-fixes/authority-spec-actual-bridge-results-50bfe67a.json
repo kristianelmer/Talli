@@ -1,0 +1,620 @@
+[
+  {
+    "field": "control",
+    "value": null,
+    "input": {
+      "incomeYear": 2025,
+      "annualData": {
+        "id": "annual-data-id",
+        "company_id": "company-id",
+        "income_year": 2025,
+        "answers": {
+          "shares_owned_at_year_end": true,
+          "bought_or_sold_shares": false,
+          "received_dividends": true,
+          "declared_owner_dividends": false,
+          "shareholder_loans": false,
+          "paid_costs": true,
+          "bank_balance_confirmed": true,
+          "has_unpaid_items": false,
+          "general_meeting_approved": true,
+          "authority_to_submit_confirmed": true
+        },
+        "confirmations": [
+          "bank_balance_confirmed",
+          "general_meeting_approved",
+          "authority_to_submit_confirmed"
+        ],
+        "no_activity_confirmed": false,
+        "completed_by": "owner",
+        "completed_at": "2026-01-01T00:00:00Z",
+        "updated_by": "owner",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      "ledgerEntries": [
+        {
+          "id": "entry-id",
+          "company_id": "company-id",
+          "setup_id": "setup-id",
+          "income_year": 2025,
+          "entry_type": "annual",
+          "memo": "Annual",
+          "lines": [
+            {
+              "account": "1920",
+              "debit": 128510,
+              "credit": 0
+            },
+            {
+              "account": "8070",
+              "debit": 0,
+              "credit": 100000
+            },
+            {
+              "account": "7770",
+              "debit": 1490,
+              "credit": 0
+            },
+            {
+              "account": "2000",
+              "debit": 0,
+              "credit": 30000
+            }
+          ],
+          "risk_flags": [],
+          "warning_accepted_by": null,
+          "warning_accepted_at": null,
+          "created_by": "owner",
+          "created_at": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "companyOrgNumber": "310279617",
+      "companyName": "LOGISK \u00d8DE TIGER AS",
+      "contactEmail": "synthetic@example.test",
+      "approvalDate": "2026-06-30",
+      "confirmingRepresentative": "Synthetic Person"
+    },
+    "old": {
+      "value": {
+        "mainFormXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig\" dataFormatId=\"1266\" dataFormatVersion=\"51820\" tjenestehandling=\"aarsregnskap_vanlig\" tjeneste=\"regnskap\">\n  <Innsender>\n    <enhet>\n      <organisasjonsnummer orid=\"18\">310279617</organisasjonsnummer>\n      <organisasjonsform orid=\"756\">AS</organisasjonsform>\n      <navn orid=\"1\">LOGISK \u00d8DE TIGER AS</navn>\n    </enhet>\n    <kontaktperson>\n      <e-post orid=\"19022\">synthetic@example.test</e-post>\n    </kontaktperson>\n    <opplysningerInnsending>\n      <noteMaskinellBehandling orid=\"37499\">20</noteMaskinellBehandling>\n      <systemNavn orid=\"39007\">Talli</systemNavn>\n    </opplysningerInnsending>\n  </Innsender>\n  <Skjemainnhold>\n    <regnskapsperiode>\n      <regnskapsaar orid=\"17102\">2025</regnskapsaar>\n      <regnskapsstart orid=\"17103\">2025-01-01</regnskapsstart>\n      <regnskapsslutt orid=\"17104\">2025-12-31</regnskapsslutt>\n    </regnskapsperiode>\n    <konsern>\n      <morselskap orid=\"4168\">nei</morselskap>\n    </konsern>\n    <regnskapsprinsipper>\n      <smaaForetak orid=\"8079\">ja</smaaForetak>\n      <regnskapsreglerSelskap orid=\"25021\">nei</regnskapsreglerSelskap>\n    </regnskapsprinsipper>\n    <fastsettelse>\n      <fastsettelsedato orid=\"17105\">2026-06-30</fastsettelsedato>\n      <bekreftendeSelskapsrepresentant orid=\"19023\">Synthetic Person</bekreftendeSelskapsrepresentant>\n    </fastsettelse>\n    <revisjonRegnskapsfoerer>\n      <aarsregnskapIkkeRevideres orid=\"34669\">ja</aarsregnskapIkkeRevideres>\n      <aarsregnskapUtarbeidetAutorisertRegnskapsfoerer orid=\"34670\">nei</aarsregnskapUtarbeidetAutorisertRegnskapsfoerer>\n      <tjenestebistandEksternAutorisertRegnskapsfoerer orid=\"34671\">nei</tjenestebistandEksternAutorisertRegnskapsfoerer>\n    </revisjonRegnskapsfoerer>\n  </Skjemainnhold>\n</melding>\n",
+        "companyAccountsXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema\" dataFormatId=\"758\" dataFormatVersion=\"51980\" versjon=\"1.1\" tjenestehandling=\"aarsregnskap_vanlig_underskjema\" tjeneste=\"regnskap\">\n  <Rapport-RR0002U>\n    <aarsregnskap>\n      <regnskapstype orid=\"25942\">S</regnskapstype>\n      <valuta orid=\"34984\">NOK</valuta>\n      <valoer orid=\"28974\">H</valoer>\n    </aarsregnskap>\n  </Rapport-RR0002U>\n  <Skjemainnhold-RR0002U>\n    <resultatregnskapDriftsresultat>\n      <driftsresultat><aarets orid=\"146\">-1490</aarets></driftsresultat>\n      <kostnad><sumDriftskostnad><aarets orid=\"17126\">1490</aarets></sumDriftskostnad></kostnad>\n    </resultatregnskapDriftsresultat>\n    <resultatregnskapFinansinntekt>\n      <nettoFinans><aarets orid=\"158\">100000</aarets></nettoFinans>\n      <finansinntekt><sumFinansinntekter><aarets orid=\"153\">100000</aarets></sumFinansinntekter></finansinntekt>\n      <finanskostnad><sumFinanskostnader><aarets orid=\"17130\">0</aarets></sumFinanskostnader></finanskostnad>\n    </resultatregnskapFinansinntekt>\n    <resultatregnskapResultat>\n      <resultat>\n        <resultatFoerSkattekostnad><aarets orid=\"167\">98510</aarets></resultatFoerSkattekostnad>\n        <skattekostnad><aarets orid=\"11835\">0</aarets></skattekostnad>\n        <aarsresultat><aarets orid=\"172\">98510</aarets></aarsresultat>\n      </resultat>\n    </resultatregnskapResultat>\n    <balanseAnleggsmidlerOmloepsmidler>\n      <sumEiendeler><aarets orid=\"219\">128510</aarets></sumEiendeler>\n      <balanseAnleggsmidler>\n        <sumAnleggsmidler><aarets orid=\"217\">0</aarets></sumAnleggsmidler>\n        <balanseFinansielleAnleggsmidler>\n          <investeringAksjerAndeler><aarets orid=\"7100\">0</aarets></investeringAksjerAndeler>\n          <sumFinansielleAnleggsmidler><aarets orid=\"5267\">0</aarets></sumFinansielleAnleggsmidler>\n        </balanseFinansielleAnleggsmidler>\n      </balanseAnleggsmidler>\n      <balanseOmloepsmidler>\n        <sumOmloepsmidler><aarets orid=\"194\">128510</aarets></sumOmloepsmidler>\n        <balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n          <bankinnskuddKontanter>\n            <sumBankinnskuddKontanter><aarets orid=\"29042\">128510</aarets></sumBankinnskuddKontanter>\n          </bankinnskuddKontanter>\n        </balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n      </balanseOmloepsmidler>\n    </balanseAnleggsmidlerOmloepsmidler>\n    <balanseEgenkapitalGjeld>\n      <sumEgenkapitalGjeld><aarets orid=\"251\">128510</aarets></sumEgenkapitalGjeld>\n      <balanseEgenkapitalInnskuttOpptjentEgenkapital>\n        <innskuttEgenkapital>\n          <sumInnskuttEgenkapital><aarets orid=\"3730\">30000</aarets></sumInnskuttEgenkapital>\n        </innskuttEgenkapital>\n        <opptjentEgenkaiptal>\n          <annenEgenkapital><aarets orid=\"3274\">98510</aarets></annenEgenkapital>\n          <sumOpptjentEgenkapital><aarets orid=\"9702\">98510</aarets></sumOpptjentEgenkapital>\n          <sumEgenkapital><aarets orid=\"250\">128510</aarets></sumEgenkapital>\n        </opptjentEgenkaiptal>\n      </balanseEgenkapitalInnskuttOpptjentEgenkapital>\n      <balanseGjeldOversikt>\n        <sumGjeld><aarets orid=\"1119\">0</aarets></sumGjeld>\n        <balanseKortsiktigGjeld>\n          <betalbarSkatt><aarets orid=\"2483\">0</aarets></betalbarSkatt>\n          <sumKortsiktigGjeld><aarets orid=\"85\">0</aarets></sumKortsiktigGjeld>\n        </balanseKortsiktigGjeld>\n      </balanseGjeldOversikt>\n    </balanseEgenkapitalGjeld>\n    <noter>\n      <noteAarsverkTjenestePensjon>\n        <antallAarsverk orid=\"37467\">0</antallAarsverk>\n      </noteAarsverkTjenestePensjon>\n    </noter>\n  </Skjemainnhold-RR0002U>\n</melding>\n",
+        "feedback": []
+      }
+    },
+    "new": {
+      "value": {
+        "mainFormXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig\" dataFormatId=\"1266\" dataFormatVersion=\"51820\" tjenestehandling=\"aarsregnskap_vanlig\" tjeneste=\"regnskap\">\n  <Innsender>\n    <enhet>\n      <organisasjonsnummer orid=\"18\">310279617</organisasjonsnummer>\n      <organisasjonsform orid=\"756\">AS</organisasjonsform>\n      <navn orid=\"1\">LOGISK \u00d8DE TIGER AS</navn>\n    </enhet>\n    <kontaktperson>\n      <e-post orid=\"19022\">synthetic@example.test</e-post>\n    </kontaktperson>\n    <opplysningerInnsending>\n      <noteMaskinellBehandling orid=\"37499\">20</noteMaskinellBehandling>\n      <systemNavn orid=\"39007\">Talli</systemNavn>\n    </opplysningerInnsending>\n  </Innsender>\n  <Skjemainnhold>\n    <regnskapsperiode>\n      <regnskapsaar orid=\"17102\">2025</regnskapsaar>\n      <regnskapsstart orid=\"17103\">2025-01-01</regnskapsstart>\n      <regnskapsslutt orid=\"17104\">2025-12-31</regnskapsslutt>\n    </regnskapsperiode>\n    <konsern>\n      <morselskap orid=\"4168\">nei</morselskap>\n    </konsern>\n    <regnskapsprinsipper>\n      <smaaForetak orid=\"8079\">ja</smaaForetak>\n      <regnskapsreglerSelskap orid=\"25021\">nei</regnskapsreglerSelskap>\n    </regnskapsprinsipper>\n    <fastsettelse>\n      <fastsettelsedato orid=\"17105\">2026-06-30</fastsettelsedato>\n      <bekreftendeSelskapsrepresentant orid=\"19023\">Synthetic Person</bekreftendeSelskapsrepresentant>\n    </fastsettelse>\n    <revisjonRegnskapsfoerer>\n      <aarsregnskapIkkeRevideres orid=\"34669\">ja</aarsregnskapIkkeRevideres>\n      <aarsregnskapUtarbeidetAutorisertRegnskapsfoerer orid=\"34670\">nei</aarsregnskapUtarbeidetAutorisertRegnskapsfoerer>\n      <tjenestebistandEksternAutorisertRegnskapsfoerer orid=\"34671\">nei</tjenestebistandEksternAutorisertRegnskapsfoerer>\n    </revisjonRegnskapsfoerer>\n  </Skjemainnhold>\n</melding>\n",
+        "companyAccountsXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema\" dataFormatId=\"758\" dataFormatVersion=\"51980\" versjon=\"1.1\" tjenestehandling=\"aarsregnskap_vanlig_underskjema\" tjeneste=\"regnskap\">\n  <Rapport-RR0002U>\n    <aarsregnskap>\n      <regnskapstype orid=\"25942\">S</regnskapstype>\n      <valuta orid=\"34984\">NOK</valuta>\n      <valoer orid=\"28974\">H</valoer>\n    </aarsregnskap>\n  </Rapport-RR0002U>\n  <Skjemainnhold-RR0002U>\n    <resultatregnskapDriftsresultat>\n      <driftsresultat><aarets orid=\"146\">-1490</aarets></driftsresultat>\n      <kostnad><sumDriftskostnad><aarets orid=\"17126\">1490</aarets></sumDriftskostnad></kostnad>\n    </resultatregnskapDriftsresultat>\n    <resultatregnskapFinansinntekt>\n      <nettoFinans><aarets orid=\"158\">100000</aarets></nettoFinans>\n      <finansinntekt><sumFinansinntekter><aarets orid=\"153\">100000</aarets></sumFinansinntekter></finansinntekt>\n      <finanskostnad><sumFinanskostnader><aarets orid=\"17130\">0</aarets></sumFinanskostnader></finanskostnad>\n    </resultatregnskapFinansinntekt>\n    <resultatregnskapResultat>\n      <resultat>\n        <resultatFoerSkattekostnad><aarets orid=\"167\">98510</aarets></resultatFoerSkattekostnad>\n        <skattekostnad><aarets orid=\"11835\">0</aarets></skattekostnad>\n        <aarsresultat><aarets orid=\"172\">98510</aarets></aarsresultat>\n      </resultat>\n    </resultatregnskapResultat>\n    <balanseAnleggsmidlerOmloepsmidler>\n      <sumEiendeler><aarets orid=\"219\">128510</aarets></sumEiendeler>\n      <balanseAnleggsmidler>\n        <sumAnleggsmidler><aarets orid=\"217\">0</aarets></sumAnleggsmidler>\n        <balanseFinansielleAnleggsmidler>\n          <investeringAksjerAndeler><aarets orid=\"7100\">0</aarets></investeringAksjerAndeler>\n          <sumFinansielleAnleggsmidler><aarets orid=\"5267\">0</aarets></sumFinansielleAnleggsmidler>\n        </balanseFinansielleAnleggsmidler>\n      </balanseAnleggsmidler>\n      <balanseOmloepsmidler>\n        <sumOmloepsmidler><aarets orid=\"194\">128510</aarets></sumOmloepsmidler>\n        <balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n          <bankinnskuddKontanter>\n            <sumBankinnskuddKontanter><aarets orid=\"29042\">128510</aarets></sumBankinnskuddKontanter>\n          </bankinnskuddKontanter>\n        </balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n      </balanseOmloepsmidler>\n    </balanseAnleggsmidlerOmloepsmidler>\n    <balanseEgenkapitalGjeld>\n      <sumEgenkapitalGjeld><aarets orid=\"251\">128510</aarets></sumEgenkapitalGjeld>\n      <balanseEgenkapitalInnskuttOpptjentEgenkapital>\n        <innskuttEgenkapital>\n          <sumInnskuttEgenkapital><aarets orid=\"3730\">30000</aarets></sumInnskuttEgenkapital>\n        </innskuttEgenkapital>\n        <opptjentEgenkaiptal>\n          <annenEgenkapital><aarets orid=\"3274\">98510</aarets></annenEgenkapital>\n          <sumOpptjentEgenkapital><aarets orid=\"9702\">98510</aarets></sumOpptjentEgenkapital>\n          <sumEgenkapital><aarets orid=\"250\">128510</aarets></sumEgenkapital>\n        </opptjentEgenkaiptal>\n      </balanseEgenkapitalInnskuttOpptjentEgenkapital>\n      <balanseGjeldOversikt>\n        <sumGjeld><aarets orid=\"1119\">0</aarets></sumGjeld>\n        <balanseKortsiktigGjeld>\n          <betalbarSkatt><aarets orid=\"2483\">0</aarets></betalbarSkatt>\n          <sumKortsiktigGjeld><aarets orid=\"85\">0</aarets></sumKortsiktigGjeld>\n        </balanseKortsiktigGjeld>\n      </balanseGjeldOversikt>\n    </balanseEgenkapitalGjeld>\n    <noter>\n      <noteAarsverkTjenestePensjon>\n        <antallAarsverk orid=\"37467\">0</antallAarsverk>\n      </noteAarsverkTjenestePensjon>\n    </noter>\n  </Skjemainnhold-RR0002U>\n</melding>\n",
+        "feedback": []
+      }
+    },
+    "same": true
+  },
+  {
+    "field": "annualData",
+    "value": false,
+    "input": {
+      "incomeYear": 2025,
+      "annualData": false,
+      "ledgerEntries": [
+        {
+          "id": "entry-id",
+          "company_id": "company-id",
+          "setup_id": "setup-id",
+          "income_year": 2025,
+          "entry_type": "annual",
+          "memo": "Annual",
+          "lines": [
+            {
+              "account": "1920",
+              "debit": 128510,
+              "credit": 0
+            },
+            {
+              "account": "8070",
+              "debit": 0,
+              "credit": 100000
+            },
+            {
+              "account": "7770",
+              "debit": 1490,
+              "credit": 0
+            },
+            {
+              "account": "2000",
+              "debit": 0,
+              "credit": 30000
+            }
+          ],
+          "risk_flags": [],
+          "warning_accepted_by": null,
+          "warning_accepted_at": null,
+          "created_by": "owner",
+          "created_at": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "companyOrgNumber": "310279617",
+      "companyName": "LOGISK \u00d8DE TIGER AS",
+      "contactEmail": "synthetic@example.test",
+      "approvalDate": "2026-06-30",
+      "confirmingRepresentative": "Synthetic Person"
+    },
+    "old": {
+      "value": {
+        "mainFormXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig\" dataFormatId=\"1266\" dataFormatVersion=\"51820\" tjenestehandling=\"aarsregnskap_vanlig\" tjeneste=\"regnskap\">\n  <Innsender>\n    <enhet>\n      <organisasjonsnummer orid=\"18\">310279617</organisasjonsnummer>\n      <organisasjonsform orid=\"756\">AS</organisasjonsform>\n      <navn orid=\"1\">LOGISK \u00d8DE TIGER AS</navn>\n    </enhet>\n    <kontaktperson>\n      <e-post orid=\"19022\">synthetic@example.test</e-post>\n    </kontaktperson>\n    <opplysningerInnsending>\n      <noteMaskinellBehandling orid=\"37499\">20</noteMaskinellBehandling>\n      <systemNavn orid=\"39007\">Talli</systemNavn>\n    </opplysningerInnsending>\n  </Innsender>\n  <Skjemainnhold>\n    <regnskapsperiode>\n      <regnskapsaar orid=\"17102\">2025</regnskapsaar>\n      <regnskapsstart orid=\"17103\">2025-01-01</regnskapsstart>\n      <regnskapsslutt orid=\"17104\">2025-12-31</regnskapsslutt>\n    </regnskapsperiode>\n    <konsern>\n      <morselskap orid=\"4168\">nei</morselskap>\n    </konsern>\n    <regnskapsprinsipper>\n      <smaaForetak orid=\"8079\">ja</smaaForetak>\n      <regnskapsreglerSelskap orid=\"25021\">nei</regnskapsreglerSelskap>\n    </regnskapsprinsipper>\n    <fastsettelse>\n      <fastsettelsedato orid=\"17105\">2026-06-30</fastsettelsedato>\n      <bekreftendeSelskapsrepresentant orid=\"19023\">Synthetic Person</bekreftendeSelskapsrepresentant>\n    </fastsettelse>\n    <revisjonRegnskapsfoerer>\n      <aarsregnskapIkkeRevideres orid=\"34669\">ja</aarsregnskapIkkeRevideres>\n      <aarsregnskapUtarbeidetAutorisertRegnskapsfoerer orid=\"34670\">nei</aarsregnskapUtarbeidetAutorisertRegnskapsfoerer>\n      <tjenestebistandEksternAutorisertRegnskapsfoerer orid=\"34671\">nei</tjenestebistandEksternAutorisertRegnskapsfoerer>\n    </revisjonRegnskapsfoerer>\n  </Skjemainnhold>\n</melding>\n",
+        "companyAccountsXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema\" dataFormatId=\"758\" dataFormatVersion=\"51980\" versjon=\"1.1\" tjenestehandling=\"aarsregnskap_vanlig_underskjema\" tjeneste=\"regnskap\">\n  <Rapport-RR0002U>\n    <aarsregnskap>\n      <regnskapstype orid=\"25942\">S</regnskapstype>\n      <valuta orid=\"34984\">NOK</valuta>\n      <valoer orid=\"28974\">H</valoer>\n    </aarsregnskap>\n  </Rapport-RR0002U>\n  <Skjemainnhold-RR0002U>\n    <resultatregnskapDriftsresultat>\n      <driftsresultat><aarets orid=\"146\">-1490</aarets></driftsresultat>\n      <kostnad><sumDriftskostnad><aarets orid=\"17126\">1490</aarets></sumDriftskostnad></kostnad>\n    </resultatregnskapDriftsresultat>\n    <resultatregnskapFinansinntekt>\n      <nettoFinans><aarets orid=\"158\">100000</aarets></nettoFinans>\n      <finansinntekt><sumFinansinntekter><aarets orid=\"153\">100000</aarets></sumFinansinntekter></finansinntekt>\n      <finanskostnad><sumFinanskostnader><aarets orid=\"17130\">0</aarets></sumFinanskostnader></finanskostnad>\n    </resultatregnskapFinansinntekt>\n    <resultatregnskapResultat>\n      <resultat>\n        <resultatFoerSkattekostnad><aarets orid=\"167\">98510</aarets></resultatFoerSkattekostnad>\n        <skattekostnad><aarets orid=\"11835\">0</aarets></skattekostnad>\n        <aarsresultat><aarets orid=\"172\">98510</aarets></aarsresultat>\n      </resultat>\n    </resultatregnskapResultat>\n    <balanseAnleggsmidlerOmloepsmidler>\n      <sumEiendeler><aarets orid=\"219\">128510</aarets></sumEiendeler>\n      <balanseAnleggsmidler>\n        <sumAnleggsmidler><aarets orid=\"217\">0</aarets></sumAnleggsmidler>\n        <balanseFinansielleAnleggsmidler>\n          <investeringAksjerAndeler><aarets orid=\"7100\">0</aarets></investeringAksjerAndeler>\n          <sumFinansielleAnleggsmidler><aarets orid=\"5267\">0</aarets></sumFinansielleAnleggsmidler>\n        </balanseFinansielleAnleggsmidler>\n      </balanseAnleggsmidler>\n      <balanseOmloepsmidler>\n        <sumOmloepsmidler><aarets orid=\"194\">128510</aarets></sumOmloepsmidler>\n        <balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n          <bankinnskuddKontanter>\n            <sumBankinnskuddKontanter><aarets orid=\"29042\">128510</aarets></sumBankinnskuddKontanter>\n          </bankinnskuddKontanter>\n        </balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n      </balanseOmloepsmidler>\n    </balanseAnleggsmidlerOmloepsmidler>\n    <balanseEgenkapitalGjeld>\n      <sumEgenkapitalGjeld><aarets orid=\"251\">128510</aarets></sumEgenkapitalGjeld>\n      <balanseEgenkapitalInnskuttOpptjentEgenkapital>\n        <innskuttEgenkapital>\n          <sumInnskuttEgenkapital><aarets orid=\"3730\">30000</aarets></sumInnskuttEgenkapital>\n        </innskuttEgenkapital>\n        <opptjentEgenkaiptal>\n          <annenEgenkapital><aarets orid=\"3274\">98510</aarets></annenEgenkapital>\n          <sumOpptjentEgenkapital><aarets orid=\"9702\">98510</aarets></sumOpptjentEgenkapital>\n          <sumEgenkapital><aarets orid=\"250\">128510</aarets></sumEgenkapital>\n        </opptjentEgenkaiptal>\n      </balanseEgenkapitalInnskuttOpptjentEgenkapital>\n      <balanseGjeldOversikt>\n        <sumGjeld><aarets orid=\"1119\">0</aarets></sumGjeld>\n        <balanseKortsiktigGjeld>\n          <betalbarSkatt><aarets orid=\"2483\">0</aarets></betalbarSkatt>\n          <sumKortsiktigGjeld><aarets orid=\"85\">0</aarets></sumKortsiktigGjeld>\n        </balanseKortsiktigGjeld>\n      </balanseGjeldOversikt>\n    </balanseEgenkapitalGjeld>\n    <noter>\n      <noteAarsverkTjenestePensjon>\n        <antallAarsverk orid=\"37467\">0</antallAarsverk>\n      </noteAarsverkTjenestePensjon>\n    </noter>\n  </Skjemainnhold-RR0002U>\n</melding>\n",
+        "feedback": []
+      }
+    },
+    "new": {
+      "error": "ValueError",
+      "message": "Local authority payload generation failed."
+    },
+    "same": false
+  },
+  {
+    "field": "annualData",
+    "value": 0,
+    "input": {
+      "incomeYear": 2025,
+      "annualData": 0,
+      "ledgerEntries": [
+        {
+          "id": "entry-id",
+          "company_id": "company-id",
+          "setup_id": "setup-id",
+          "income_year": 2025,
+          "entry_type": "annual",
+          "memo": "Annual",
+          "lines": [
+            {
+              "account": "1920",
+              "debit": 128510,
+              "credit": 0
+            },
+            {
+              "account": "8070",
+              "debit": 0,
+              "credit": 100000
+            },
+            {
+              "account": "7770",
+              "debit": 1490,
+              "credit": 0
+            },
+            {
+              "account": "2000",
+              "debit": 0,
+              "credit": 30000
+            }
+          ],
+          "risk_flags": [],
+          "warning_accepted_by": null,
+          "warning_accepted_at": null,
+          "created_by": "owner",
+          "created_at": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "companyOrgNumber": "310279617",
+      "companyName": "LOGISK \u00d8DE TIGER AS",
+      "contactEmail": "synthetic@example.test",
+      "approvalDate": "2026-06-30",
+      "confirmingRepresentative": "Synthetic Person"
+    },
+    "old": {
+      "value": {
+        "mainFormXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig\" dataFormatId=\"1266\" dataFormatVersion=\"51820\" tjenestehandling=\"aarsregnskap_vanlig\" tjeneste=\"regnskap\">\n  <Innsender>\n    <enhet>\n      <organisasjonsnummer orid=\"18\">310279617</organisasjonsnummer>\n      <organisasjonsform orid=\"756\">AS</organisasjonsform>\n      <navn orid=\"1\">LOGISK \u00d8DE TIGER AS</navn>\n    </enhet>\n    <kontaktperson>\n      <e-post orid=\"19022\">synthetic@example.test</e-post>\n    </kontaktperson>\n    <opplysningerInnsending>\n      <noteMaskinellBehandling orid=\"37499\">20</noteMaskinellBehandling>\n      <systemNavn orid=\"39007\">Talli</systemNavn>\n    </opplysningerInnsending>\n  </Innsender>\n  <Skjemainnhold>\n    <regnskapsperiode>\n      <regnskapsaar orid=\"17102\">2025</regnskapsaar>\n      <regnskapsstart orid=\"17103\">2025-01-01</regnskapsstart>\n      <regnskapsslutt orid=\"17104\">2025-12-31</regnskapsslutt>\n    </regnskapsperiode>\n    <konsern>\n      <morselskap orid=\"4168\">nei</morselskap>\n    </konsern>\n    <regnskapsprinsipper>\n      <smaaForetak orid=\"8079\">ja</smaaForetak>\n      <regnskapsreglerSelskap orid=\"25021\">nei</regnskapsreglerSelskap>\n    </regnskapsprinsipper>\n    <fastsettelse>\n      <fastsettelsedato orid=\"17105\">2026-06-30</fastsettelsedato>\n      <bekreftendeSelskapsrepresentant orid=\"19023\">Synthetic Person</bekreftendeSelskapsrepresentant>\n    </fastsettelse>\n    <revisjonRegnskapsfoerer>\n      <aarsregnskapIkkeRevideres orid=\"34669\">ja</aarsregnskapIkkeRevideres>\n      <aarsregnskapUtarbeidetAutorisertRegnskapsfoerer orid=\"34670\">nei</aarsregnskapUtarbeidetAutorisertRegnskapsfoerer>\n      <tjenestebistandEksternAutorisertRegnskapsfoerer orid=\"34671\">nei</tjenestebistandEksternAutorisertRegnskapsfoerer>\n    </revisjonRegnskapsfoerer>\n  </Skjemainnhold>\n</melding>\n",
+        "companyAccountsXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema\" dataFormatId=\"758\" dataFormatVersion=\"51980\" versjon=\"1.1\" tjenestehandling=\"aarsregnskap_vanlig_underskjema\" tjeneste=\"regnskap\">\n  <Rapport-RR0002U>\n    <aarsregnskap>\n      <regnskapstype orid=\"25942\">S</regnskapstype>\n      <valuta orid=\"34984\">NOK</valuta>\n      <valoer orid=\"28974\">H</valoer>\n    </aarsregnskap>\n  </Rapport-RR0002U>\n  <Skjemainnhold-RR0002U>\n    <resultatregnskapDriftsresultat>\n      <driftsresultat><aarets orid=\"146\">-1490</aarets></driftsresultat>\n      <kostnad><sumDriftskostnad><aarets orid=\"17126\">1490</aarets></sumDriftskostnad></kostnad>\n    </resultatregnskapDriftsresultat>\n    <resultatregnskapFinansinntekt>\n      <nettoFinans><aarets orid=\"158\">100000</aarets></nettoFinans>\n      <finansinntekt><sumFinansinntekter><aarets orid=\"153\">100000</aarets></sumFinansinntekter></finansinntekt>\n      <finanskostnad><sumFinanskostnader><aarets orid=\"17130\">0</aarets></sumFinanskostnader></finanskostnad>\n    </resultatregnskapFinansinntekt>\n    <resultatregnskapResultat>\n      <resultat>\n        <resultatFoerSkattekostnad><aarets orid=\"167\">98510</aarets></resultatFoerSkattekostnad>\n        <skattekostnad><aarets orid=\"11835\">0</aarets></skattekostnad>\n        <aarsresultat><aarets orid=\"172\">98510</aarets></aarsresultat>\n      </resultat>\n    </resultatregnskapResultat>\n    <balanseAnleggsmidlerOmloepsmidler>\n      <sumEiendeler><aarets orid=\"219\">128510</aarets></sumEiendeler>\n      <balanseAnleggsmidler>\n        <sumAnleggsmidler><aarets orid=\"217\">0</aarets></sumAnleggsmidler>\n        <balanseFinansielleAnleggsmidler>\n          <investeringAksjerAndeler><aarets orid=\"7100\">0</aarets></investeringAksjerAndeler>\n          <sumFinansielleAnleggsmidler><aarets orid=\"5267\">0</aarets></sumFinansielleAnleggsmidler>\n        </balanseFinansielleAnleggsmidler>\n      </balanseAnleggsmidler>\n      <balanseOmloepsmidler>\n        <sumOmloepsmidler><aarets orid=\"194\">128510</aarets></sumOmloepsmidler>\n        <balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n          <bankinnskuddKontanter>\n            <sumBankinnskuddKontanter><aarets orid=\"29042\">128510</aarets></sumBankinnskuddKontanter>\n          </bankinnskuddKontanter>\n        </balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n      </balanseOmloepsmidler>\n    </balanseAnleggsmidlerOmloepsmidler>\n    <balanseEgenkapitalGjeld>\n      <sumEgenkapitalGjeld><aarets orid=\"251\">128510</aarets></sumEgenkapitalGjeld>\n      <balanseEgenkapitalInnskuttOpptjentEgenkapital>\n        <innskuttEgenkapital>\n          <sumInnskuttEgenkapital><aarets orid=\"3730\">30000</aarets></sumInnskuttEgenkapital>\n        </innskuttEgenkapital>\n        <opptjentEgenkaiptal>\n          <annenEgenkapital><aarets orid=\"3274\">98510</aarets></annenEgenkapital>\n          <sumOpptjentEgenkapital><aarets orid=\"9702\">98510</aarets></sumOpptjentEgenkapital>\n          <sumEgenkapital><aarets orid=\"250\">128510</aarets></sumEgenkapital>\n        </opptjentEgenkaiptal>\n      </balanseEgenkapitalInnskuttOpptjentEgenkapital>\n      <balanseGjeldOversikt>\n        <sumGjeld><aarets orid=\"1119\">0</aarets></sumGjeld>\n        <balanseKortsiktigGjeld>\n          <betalbarSkatt><aarets orid=\"2483\">0</aarets></betalbarSkatt>\n          <sumKortsiktigGjeld><aarets orid=\"85\">0</aarets></sumKortsiktigGjeld>\n        </balanseKortsiktigGjeld>\n      </balanseGjeldOversikt>\n    </balanseEgenkapitalGjeld>\n    <noter>\n      <noteAarsverkTjenestePensjon>\n        <antallAarsverk orid=\"37467\">0</antallAarsverk>\n      </noteAarsverkTjenestePensjon>\n    </noter>\n  </Skjemainnhold-RR0002U>\n</melding>\n",
+        "feedback": []
+      }
+    },
+    "new": {
+      "error": "ValueError",
+      "message": "Local authority payload generation failed."
+    },
+    "same": false
+  },
+  {
+    "field": "annualData",
+    "value": -0.0,
+    "input": {
+      "incomeYear": 2025,
+      "annualData": -0.0,
+      "ledgerEntries": [
+        {
+          "id": "entry-id",
+          "company_id": "company-id",
+          "setup_id": "setup-id",
+          "income_year": 2025,
+          "entry_type": "annual",
+          "memo": "Annual",
+          "lines": [
+            {
+              "account": "1920",
+              "debit": 128510,
+              "credit": 0
+            },
+            {
+              "account": "8070",
+              "debit": 0,
+              "credit": 100000
+            },
+            {
+              "account": "7770",
+              "debit": 1490,
+              "credit": 0
+            },
+            {
+              "account": "2000",
+              "debit": 0,
+              "credit": 30000
+            }
+          ],
+          "risk_flags": [],
+          "warning_accepted_by": null,
+          "warning_accepted_at": null,
+          "created_by": "owner",
+          "created_at": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "companyOrgNumber": "310279617",
+      "companyName": "LOGISK \u00d8DE TIGER AS",
+      "contactEmail": "synthetic@example.test",
+      "approvalDate": "2026-06-30",
+      "confirmingRepresentative": "Synthetic Person"
+    },
+    "old": {
+      "value": {
+        "mainFormXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig\" dataFormatId=\"1266\" dataFormatVersion=\"51820\" tjenestehandling=\"aarsregnskap_vanlig\" tjeneste=\"regnskap\">\n  <Innsender>\n    <enhet>\n      <organisasjonsnummer orid=\"18\">310279617</organisasjonsnummer>\n      <organisasjonsform orid=\"756\">AS</organisasjonsform>\n      <navn orid=\"1\">LOGISK \u00d8DE TIGER AS</navn>\n    </enhet>\n    <kontaktperson>\n      <e-post orid=\"19022\">synthetic@example.test</e-post>\n    </kontaktperson>\n    <opplysningerInnsending>\n      <noteMaskinellBehandling orid=\"37499\">20</noteMaskinellBehandling>\n      <systemNavn orid=\"39007\">Talli</systemNavn>\n    </opplysningerInnsending>\n  </Innsender>\n  <Skjemainnhold>\n    <regnskapsperiode>\n      <regnskapsaar orid=\"17102\">2025</regnskapsaar>\n      <regnskapsstart orid=\"17103\">2025-01-01</regnskapsstart>\n      <regnskapsslutt orid=\"17104\">2025-12-31</regnskapsslutt>\n    </regnskapsperiode>\n    <konsern>\n      <morselskap orid=\"4168\">nei</morselskap>\n    </konsern>\n    <regnskapsprinsipper>\n      <smaaForetak orid=\"8079\">ja</smaaForetak>\n      <regnskapsreglerSelskap orid=\"25021\">nei</regnskapsreglerSelskap>\n    </regnskapsprinsipper>\n    <fastsettelse>\n      <fastsettelsedato orid=\"17105\">2026-06-30</fastsettelsedato>\n      <bekreftendeSelskapsrepresentant orid=\"19023\">Synthetic Person</bekreftendeSelskapsrepresentant>\n    </fastsettelse>\n    <revisjonRegnskapsfoerer>\n      <aarsregnskapIkkeRevideres orid=\"34669\">ja</aarsregnskapIkkeRevideres>\n      <aarsregnskapUtarbeidetAutorisertRegnskapsfoerer orid=\"34670\">nei</aarsregnskapUtarbeidetAutorisertRegnskapsfoerer>\n      <tjenestebistandEksternAutorisertRegnskapsfoerer orid=\"34671\">nei</tjenestebistandEksternAutorisertRegnskapsfoerer>\n    </revisjonRegnskapsfoerer>\n  </Skjemainnhold>\n</melding>\n",
+        "companyAccountsXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema\" dataFormatId=\"758\" dataFormatVersion=\"51980\" versjon=\"1.1\" tjenestehandling=\"aarsregnskap_vanlig_underskjema\" tjeneste=\"regnskap\">\n  <Rapport-RR0002U>\n    <aarsregnskap>\n      <regnskapstype orid=\"25942\">S</regnskapstype>\n      <valuta orid=\"34984\">NOK</valuta>\n      <valoer orid=\"28974\">H</valoer>\n    </aarsregnskap>\n  </Rapport-RR0002U>\n  <Skjemainnhold-RR0002U>\n    <resultatregnskapDriftsresultat>\n      <driftsresultat><aarets orid=\"146\">-1490</aarets></driftsresultat>\n      <kostnad><sumDriftskostnad><aarets orid=\"17126\">1490</aarets></sumDriftskostnad></kostnad>\n    </resultatregnskapDriftsresultat>\n    <resultatregnskapFinansinntekt>\n      <nettoFinans><aarets orid=\"158\">100000</aarets></nettoFinans>\n      <finansinntekt><sumFinansinntekter><aarets orid=\"153\">100000</aarets></sumFinansinntekter></finansinntekt>\n      <finanskostnad><sumFinanskostnader><aarets orid=\"17130\">0</aarets></sumFinanskostnader></finanskostnad>\n    </resultatregnskapFinansinntekt>\n    <resultatregnskapResultat>\n      <resultat>\n        <resultatFoerSkattekostnad><aarets orid=\"167\">98510</aarets></resultatFoerSkattekostnad>\n        <skattekostnad><aarets orid=\"11835\">0</aarets></skattekostnad>\n        <aarsresultat><aarets orid=\"172\">98510</aarets></aarsresultat>\n      </resultat>\n    </resultatregnskapResultat>\n    <balanseAnleggsmidlerOmloepsmidler>\n      <sumEiendeler><aarets orid=\"219\">128510</aarets></sumEiendeler>\n      <balanseAnleggsmidler>\n        <sumAnleggsmidler><aarets orid=\"217\">0</aarets></sumAnleggsmidler>\n        <balanseFinansielleAnleggsmidler>\n          <investeringAksjerAndeler><aarets orid=\"7100\">0</aarets></investeringAksjerAndeler>\n          <sumFinansielleAnleggsmidler><aarets orid=\"5267\">0</aarets></sumFinansielleAnleggsmidler>\n        </balanseFinansielleAnleggsmidler>\n      </balanseAnleggsmidler>\n      <balanseOmloepsmidler>\n        <sumOmloepsmidler><aarets orid=\"194\">128510</aarets></sumOmloepsmidler>\n        <balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n          <bankinnskuddKontanter>\n            <sumBankinnskuddKontanter><aarets orid=\"29042\">128510</aarets></sumBankinnskuddKontanter>\n          </bankinnskuddKontanter>\n        </balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n      </balanseOmloepsmidler>\n    </balanseAnleggsmidlerOmloepsmidler>\n    <balanseEgenkapitalGjeld>\n      <sumEgenkapitalGjeld><aarets orid=\"251\">128510</aarets></sumEgenkapitalGjeld>\n      <balanseEgenkapitalInnskuttOpptjentEgenkapital>\n        <innskuttEgenkapital>\n          <sumInnskuttEgenkapital><aarets orid=\"3730\">30000</aarets></sumInnskuttEgenkapital>\n        </innskuttEgenkapital>\n        <opptjentEgenkaiptal>\n          <annenEgenkapital><aarets orid=\"3274\">98510</aarets></annenEgenkapital>\n          <sumOpptjentEgenkapital><aarets orid=\"9702\">98510</aarets></sumOpptjentEgenkapital>\n          <sumEgenkapital><aarets orid=\"250\">128510</aarets></sumEgenkapital>\n        </opptjentEgenkaiptal>\n      </balanseEgenkapitalInnskuttOpptjentEgenkapital>\n      <balanseGjeldOversikt>\n        <sumGjeld><aarets orid=\"1119\">0</aarets></sumGjeld>\n        <balanseKortsiktigGjeld>\n          <betalbarSkatt><aarets orid=\"2483\">0</aarets></betalbarSkatt>\n          <sumKortsiktigGjeld><aarets orid=\"85\">0</aarets></sumKortsiktigGjeld>\n        </balanseKortsiktigGjeld>\n      </balanseGjeldOversikt>\n    </balanseEgenkapitalGjeld>\n    <noter>\n      <noteAarsverkTjenestePensjon>\n        <antallAarsverk orid=\"37467\">0</antallAarsverk>\n      </noteAarsverkTjenestePensjon>\n    </noter>\n  </Skjemainnhold-RR0002U>\n</melding>\n",
+        "feedback": []
+      }
+    },
+    "new": {
+      "error": "ValueError",
+      "message": "Local authority payload generation failed."
+    },
+    "same": false
+  },
+  {
+    "field": "annualData",
+    "value": "",
+    "input": {
+      "incomeYear": 2025,
+      "annualData": "",
+      "ledgerEntries": [
+        {
+          "id": "entry-id",
+          "company_id": "company-id",
+          "setup_id": "setup-id",
+          "income_year": 2025,
+          "entry_type": "annual",
+          "memo": "Annual",
+          "lines": [
+            {
+              "account": "1920",
+              "debit": 128510,
+              "credit": 0
+            },
+            {
+              "account": "8070",
+              "debit": 0,
+              "credit": 100000
+            },
+            {
+              "account": "7770",
+              "debit": 1490,
+              "credit": 0
+            },
+            {
+              "account": "2000",
+              "debit": 0,
+              "credit": 30000
+            }
+          ],
+          "risk_flags": [],
+          "warning_accepted_by": null,
+          "warning_accepted_at": null,
+          "created_by": "owner",
+          "created_at": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "companyOrgNumber": "310279617",
+      "companyName": "LOGISK \u00d8DE TIGER AS",
+      "contactEmail": "synthetic@example.test",
+      "approvalDate": "2026-06-30",
+      "confirmingRepresentative": "Synthetic Person"
+    },
+    "old": {
+      "value": {
+        "mainFormXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig\" dataFormatId=\"1266\" dataFormatVersion=\"51820\" tjenestehandling=\"aarsregnskap_vanlig\" tjeneste=\"regnskap\">\n  <Innsender>\n    <enhet>\n      <organisasjonsnummer orid=\"18\">310279617</organisasjonsnummer>\n      <organisasjonsform orid=\"756\">AS</organisasjonsform>\n      <navn orid=\"1\">LOGISK \u00d8DE TIGER AS</navn>\n    </enhet>\n    <kontaktperson>\n      <e-post orid=\"19022\">synthetic@example.test</e-post>\n    </kontaktperson>\n    <opplysningerInnsending>\n      <noteMaskinellBehandling orid=\"37499\">20</noteMaskinellBehandling>\n      <systemNavn orid=\"39007\">Talli</systemNavn>\n    </opplysningerInnsending>\n  </Innsender>\n  <Skjemainnhold>\n    <regnskapsperiode>\n      <regnskapsaar orid=\"17102\">2025</regnskapsaar>\n      <regnskapsstart orid=\"17103\">2025-01-01</regnskapsstart>\n      <regnskapsslutt orid=\"17104\">2025-12-31</regnskapsslutt>\n    </regnskapsperiode>\n    <konsern>\n      <morselskap orid=\"4168\">nei</morselskap>\n    </konsern>\n    <regnskapsprinsipper>\n      <smaaForetak orid=\"8079\">ja</smaaForetak>\n      <regnskapsreglerSelskap orid=\"25021\">nei</regnskapsreglerSelskap>\n    </regnskapsprinsipper>\n    <fastsettelse>\n      <fastsettelsedato orid=\"17105\">2026-06-30</fastsettelsedato>\n      <bekreftendeSelskapsrepresentant orid=\"19023\">Synthetic Person</bekreftendeSelskapsrepresentant>\n    </fastsettelse>\n    <revisjonRegnskapsfoerer>\n      <aarsregnskapIkkeRevideres orid=\"34669\">ja</aarsregnskapIkkeRevideres>\n      <aarsregnskapUtarbeidetAutorisertRegnskapsfoerer orid=\"34670\">nei</aarsregnskapUtarbeidetAutorisertRegnskapsfoerer>\n      <tjenestebistandEksternAutorisertRegnskapsfoerer orid=\"34671\">nei</tjenestebistandEksternAutorisertRegnskapsfoerer>\n    </revisjonRegnskapsfoerer>\n  </Skjemainnhold>\n</melding>\n",
+        "companyAccountsXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema\" dataFormatId=\"758\" dataFormatVersion=\"51980\" versjon=\"1.1\" tjenestehandling=\"aarsregnskap_vanlig_underskjema\" tjeneste=\"regnskap\">\n  <Rapport-RR0002U>\n    <aarsregnskap>\n      <regnskapstype orid=\"25942\">S</regnskapstype>\n      <valuta orid=\"34984\">NOK</valuta>\n      <valoer orid=\"28974\">H</valoer>\n    </aarsregnskap>\n  </Rapport-RR0002U>\n  <Skjemainnhold-RR0002U>\n    <resultatregnskapDriftsresultat>\n      <driftsresultat><aarets orid=\"146\">-1490</aarets></driftsresultat>\n      <kostnad><sumDriftskostnad><aarets orid=\"17126\">1490</aarets></sumDriftskostnad></kostnad>\n    </resultatregnskapDriftsresultat>\n    <resultatregnskapFinansinntekt>\n      <nettoFinans><aarets orid=\"158\">100000</aarets></nettoFinans>\n      <finansinntekt><sumFinansinntekter><aarets orid=\"153\">100000</aarets></sumFinansinntekter></finansinntekt>\n      <finanskostnad><sumFinanskostnader><aarets orid=\"17130\">0</aarets></sumFinanskostnader></finanskostnad>\n    </resultatregnskapFinansinntekt>\n    <resultatregnskapResultat>\n      <resultat>\n        <resultatFoerSkattekostnad><aarets orid=\"167\">98510</aarets></resultatFoerSkattekostnad>\n        <skattekostnad><aarets orid=\"11835\">0</aarets></skattekostnad>\n        <aarsresultat><aarets orid=\"172\">98510</aarets></aarsresultat>\n      </resultat>\n    </resultatregnskapResultat>\n    <balanseAnleggsmidlerOmloepsmidler>\n      <sumEiendeler><aarets orid=\"219\">128510</aarets></sumEiendeler>\n      <balanseAnleggsmidler>\n        <sumAnleggsmidler><aarets orid=\"217\">0</aarets></sumAnleggsmidler>\n        <balanseFinansielleAnleggsmidler>\n          <investeringAksjerAndeler><aarets orid=\"7100\">0</aarets></investeringAksjerAndeler>\n          <sumFinansielleAnleggsmidler><aarets orid=\"5267\">0</aarets></sumFinansielleAnleggsmidler>\n        </balanseFinansielleAnleggsmidler>\n      </balanseAnleggsmidler>\n      <balanseOmloepsmidler>\n        <sumOmloepsmidler><aarets orid=\"194\">128510</aarets></sumOmloepsmidler>\n        <balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n          <bankinnskuddKontanter>\n            <sumBankinnskuddKontanter><aarets orid=\"29042\">128510</aarets></sumBankinnskuddKontanter>\n          </bankinnskuddKontanter>\n        </balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n      </balanseOmloepsmidler>\n    </balanseAnleggsmidlerOmloepsmidler>\n    <balanseEgenkapitalGjeld>\n      <sumEgenkapitalGjeld><aarets orid=\"251\">128510</aarets></sumEgenkapitalGjeld>\n      <balanseEgenkapitalInnskuttOpptjentEgenkapital>\n        <innskuttEgenkapital>\n          <sumInnskuttEgenkapital><aarets orid=\"3730\">30000</aarets></sumInnskuttEgenkapital>\n        </innskuttEgenkapital>\n        <opptjentEgenkaiptal>\n          <annenEgenkapital><aarets orid=\"3274\">98510</aarets></annenEgenkapital>\n          <sumOpptjentEgenkapital><aarets orid=\"9702\">98510</aarets></sumOpptjentEgenkapital>\n          <sumEgenkapital><aarets orid=\"250\">128510</aarets></sumEgenkapital>\n        </opptjentEgenkaiptal>\n      </balanseEgenkapitalInnskuttOpptjentEgenkapital>\n      <balanseGjeldOversikt>\n        <sumGjeld><aarets orid=\"1119\">0</aarets></sumGjeld>\n        <balanseKortsiktigGjeld>\n          <betalbarSkatt><aarets orid=\"2483\">0</aarets></betalbarSkatt>\n          <sumKortsiktigGjeld><aarets orid=\"85\">0</aarets></sumKortsiktigGjeld>\n        </balanseKortsiktigGjeld>\n      </balanseGjeldOversikt>\n    </balanseEgenkapitalGjeld>\n    <noter>\n      <noteAarsverkTjenestePensjon>\n        <antallAarsverk orid=\"37467\">0</antallAarsverk>\n      </noteAarsverkTjenestePensjon>\n    </noter>\n  </Skjemainnhold-RR0002U>\n</melding>\n",
+        "feedback": []
+      }
+    },
+    "new": {
+      "error": "ValueError",
+      "message": "Local authority payload generation failed."
+    },
+    "same": false
+  },
+  {
+    "field": "annualData",
+    "value": null,
+    "input": {
+      "incomeYear": 2025,
+      "annualData": null,
+      "ledgerEntries": [
+        {
+          "id": "entry-id",
+          "company_id": "company-id",
+          "setup_id": "setup-id",
+          "income_year": 2025,
+          "entry_type": "annual",
+          "memo": "Annual",
+          "lines": [
+            {
+              "account": "1920",
+              "debit": 128510,
+              "credit": 0
+            },
+            {
+              "account": "8070",
+              "debit": 0,
+              "credit": 100000
+            },
+            {
+              "account": "7770",
+              "debit": 1490,
+              "credit": 0
+            },
+            {
+              "account": "2000",
+              "debit": 0,
+              "credit": 30000
+            }
+          ],
+          "risk_flags": [],
+          "warning_accepted_by": null,
+          "warning_accepted_at": null,
+          "created_by": "owner",
+          "created_at": "2026-01-01T00:00:00Z"
+        }
+      ],
+      "companyOrgNumber": "310279617",
+      "companyName": "LOGISK \u00d8DE TIGER AS",
+      "contactEmail": "synthetic@example.test",
+      "approvalDate": "2026-06-30",
+      "confirmingRepresentative": "Synthetic Person"
+    },
+    "old": {
+      "value": {
+        "mainFormXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig\" dataFormatId=\"1266\" dataFormatVersion=\"51820\" tjenestehandling=\"aarsregnskap_vanlig\" tjeneste=\"regnskap\">\n  <Innsender>\n    <enhet>\n      <organisasjonsnummer orid=\"18\">310279617</organisasjonsnummer>\n      <organisasjonsform orid=\"756\">AS</organisasjonsform>\n      <navn orid=\"1\">LOGISK \u00d8DE TIGER AS</navn>\n    </enhet>\n    <kontaktperson>\n      <e-post orid=\"19022\">synthetic@example.test</e-post>\n    </kontaktperson>\n    <opplysningerInnsending>\n      <noteMaskinellBehandling orid=\"37499\">20</noteMaskinellBehandling>\n      <systemNavn orid=\"39007\">Talli</systemNavn>\n    </opplysningerInnsending>\n  </Innsender>\n  <Skjemainnhold>\n    <regnskapsperiode>\n      <regnskapsaar orid=\"17102\">2025</regnskapsaar>\n      <regnskapsstart orid=\"17103\">2025-01-01</regnskapsstart>\n      <regnskapsslutt orid=\"17104\">2025-12-31</regnskapsslutt>\n    </regnskapsperiode>\n    <konsern>\n      <morselskap orid=\"4168\">nei</morselskap>\n    </konsern>\n    <regnskapsprinsipper>\n      <smaaForetak orid=\"8079\">ja</smaaForetak>\n      <regnskapsreglerSelskap orid=\"25021\">nei</regnskapsreglerSelskap>\n    </regnskapsprinsipper>\n    <fastsettelse>\n      <fastsettelsedato orid=\"17105\">2026-06-30</fastsettelsedato>\n      <bekreftendeSelskapsrepresentant orid=\"19023\">Synthetic Person</bekreftendeSelskapsrepresentant>\n    </fastsettelse>\n    <revisjonRegnskapsfoerer>\n      <aarsregnskapIkkeRevideres orid=\"34669\">ja</aarsregnskapIkkeRevideres>\n      <aarsregnskapUtarbeidetAutorisertRegnskapsfoerer orid=\"34670\">nei</aarsregnskapUtarbeidetAutorisertRegnskapsfoerer>\n      <tjenestebistandEksternAutorisertRegnskapsfoerer orid=\"34671\">nei</tjenestebistandEksternAutorisertRegnskapsfoerer>\n    </revisjonRegnskapsfoerer>\n  </Skjemainnhold>\n</melding>\n",
+        "companyAccountsXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema\" dataFormatId=\"758\" dataFormatVersion=\"51980\" versjon=\"1.1\" tjenestehandling=\"aarsregnskap_vanlig_underskjema\" tjeneste=\"regnskap\">\n  <Rapport-RR0002U>\n    <aarsregnskap>\n      <regnskapstype orid=\"25942\">S</regnskapstype>\n      <valuta orid=\"34984\">NOK</valuta>\n      <valoer orid=\"28974\">H</valoer>\n    </aarsregnskap>\n  </Rapport-RR0002U>\n  <Skjemainnhold-RR0002U>\n    <resultatregnskapDriftsresultat>\n      <driftsresultat><aarets orid=\"146\">-1490</aarets></driftsresultat>\n      <kostnad><sumDriftskostnad><aarets orid=\"17126\">1490</aarets></sumDriftskostnad></kostnad>\n    </resultatregnskapDriftsresultat>\n    <resultatregnskapFinansinntekt>\n      <nettoFinans><aarets orid=\"158\">100000</aarets></nettoFinans>\n      <finansinntekt><sumFinansinntekter><aarets orid=\"153\">100000</aarets></sumFinansinntekter></finansinntekt>\n      <finanskostnad><sumFinanskostnader><aarets orid=\"17130\">0</aarets></sumFinanskostnader></finanskostnad>\n    </resultatregnskapFinansinntekt>\n    <resultatregnskapResultat>\n      <resultat>\n        <resultatFoerSkattekostnad><aarets orid=\"167\">98510</aarets></resultatFoerSkattekostnad>\n        <skattekostnad><aarets orid=\"11835\">0</aarets></skattekostnad>\n        <aarsresultat><aarets orid=\"172\">98510</aarets></aarsresultat>\n      </resultat>\n    </resultatregnskapResultat>\n    <balanseAnleggsmidlerOmloepsmidler>\n      <sumEiendeler><aarets orid=\"219\">128510</aarets></sumEiendeler>\n      <balanseAnleggsmidler>\n        <sumAnleggsmidler><aarets orid=\"217\">0</aarets></sumAnleggsmidler>\n        <balanseFinansielleAnleggsmidler>\n          <investeringAksjerAndeler><aarets orid=\"7100\">0</aarets></investeringAksjerAndeler>\n          <sumFinansielleAnleggsmidler><aarets orid=\"5267\">0</aarets></sumFinansielleAnleggsmidler>\n        </balanseFinansielleAnleggsmidler>\n      </balanseAnleggsmidler>\n      <balanseOmloepsmidler>\n        <sumOmloepsmidler><aarets orid=\"194\">128510</aarets></sumOmloepsmidler>\n        <balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n          <bankinnskuddKontanter>\n            <sumBankinnskuddKontanter><aarets orid=\"29042\">128510</aarets></sumBankinnskuddKontanter>\n          </bankinnskuddKontanter>\n        </balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n      </balanseOmloepsmidler>\n    </balanseAnleggsmidlerOmloepsmidler>\n    <balanseEgenkapitalGjeld>\n      <sumEgenkapitalGjeld><aarets orid=\"251\">128510</aarets></sumEgenkapitalGjeld>\n      <balanseEgenkapitalInnskuttOpptjentEgenkapital>\n        <innskuttEgenkapital>\n          <sumInnskuttEgenkapital><aarets orid=\"3730\">30000</aarets></sumInnskuttEgenkapital>\n        </innskuttEgenkapital>\n        <opptjentEgenkaiptal>\n          <annenEgenkapital><aarets orid=\"3274\">98510</aarets></annenEgenkapital>\n          <sumOpptjentEgenkapital><aarets orid=\"9702\">98510</aarets></sumOpptjentEgenkapital>\n          <sumEgenkapital><aarets orid=\"250\">128510</aarets></sumEgenkapital>\n        </opptjentEgenkaiptal>\n      </balanseEgenkapitalInnskuttOpptjentEgenkapital>\n      <balanseGjeldOversikt>\n        <sumGjeld><aarets orid=\"1119\">0</aarets></sumGjeld>\n        <balanseKortsiktigGjeld>\n          <betalbarSkatt><aarets orid=\"2483\">0</aarets></betalbarSkatt>\n          <sumKortsiktigGjeld><aarets orid=\"85\">0</aarets></sumKortsiktigGjeld>\n        </balanseKortsiktigGjeld>\n      </balanseGjeldOversikt>\n    </balanseEgenkapitalGjeld>\n    <noter>\n      <noteAarsverkTjenestePensjon>\n        <antallAarsverk orid=\"37467\">0</antallAarsverk>\n      </noteAarsverkTjenestePensjon>\n    </noter>\n  </Skjemainnhold-RR0002U>\n</melding>\n",
+        "feedback": []
+      }
+    },
+    "new": {
+      "value": {
+        "mainFormXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig\" dataFormatId=\"1266\" dataFormatVersion=\"51820\" tjenestehandling=\"aarsregnskap_vanlig\" tjeneste=\"regnskap\">\n  <Innsender>\n    <enhet>\n      <organisasjonsnummer orid=\"18\">310279617</organisasjonsnummer>\n      <organisasjonsform orid=\"756\">AS</organisasjonsform>\n      <navn orid=\"1\">LOGISK \u00d8DE TIGER AS</navn>\n    </enhet>\n    <kontaktperson>\n      <e-post orid=\"19022\">synthetic@example.test</e-post>\n    </kontaktperson>\n    <opplysningerInnsending>\n      <noteMaskinellBehandling orid=\"37499\">20</noteMaskinellBehandling>\n      <systemNavn orid=\"39007\">Talli</systemNavn>\n    </opplysningerInnsending>\n  </Innsender>\n  <Skjemainnhold>\n    <regnskapsperiode>\n      <regnskapsaar orid=\"17102\">2025</regnskapsaar>\n      <regnskapsstart orid=\"17103\">2025-01-01</regnskapsstart>\n      <regnskapsslutt orid=\"17104\">2025-12-31</regnskapsslutt>\n    </regnskapsperiode>\n    <konsern>\n      <morselskap orid=\"4168\">nei</morselskap>\n    </konsern>\n    <regnskapsprinsipper>\n      <smaaForetak orid=\"8079\">ja</smaaForetak>\n      <regnskapsreglerSelskap orid=\"25021\">nei</regnskapsreglerSelskap>\n    </regnskapsprinsipper>\n    <fastsettelse>\n      <fastsettelsedato orid=\"17105\">2026-06-30</fastsettelsedato>\n      <bekreftendeSelskapsrepresentant orid=\"19023\">Synthetic Person</bekreftendeSelskapsrepresentant>\n    </fastsettelse>\n    <revisjonRegnskapsfoerer>\n      <aarsregnskapIkkeRevideres orid=\"34669\">ja</aarsregnskapIkkeRevideres>\n      <aarsregnskapUtarbeidetAutorisertRegnskapsfoerer orid=\"34670\">nei</aarsregnskapUtarbeidetAutorisertRegnskapsfoerer>\n      <tjenestebistandEksternAutorisertRegnskapsfoerer orid=\"34671\">nei</tjenestebistandEksternAutorisertRegnskapsfoerer>\n    </revisjonRegnskapsfoerer>\n  </Skjemainnhold>\n</melding>\n",
+        "companyAccountsXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema\" dataFormatId=\"758\" dataFormatVersion=\"51980\" versjon=\"1.1\" tjenestehandling=\"aarsregnskap_vanlig_underskjema\" tjeneste=\"regnskap\">\n  <Rapport-RR0002U>\n    <aarsregnskap>\n      <regnskapstype orid=\"25942\">S</regnskapstype>\n      <valuta orid=\"34984\">NOK</valuta>\n      <valoer orid=\"28974\">H</valoer>\n    </aarsregnskap>\n  </Rapport-RR0002U>\n  <Skjemainnhold-RR0002U>\n    <resultatregnskapDriftsresultat>\n      <driftsresultat><aarets orid=\"146\">-1490</aarets></driftsresultat>\n      <kostnad><sumDriftskostnad><aarets orid=\"17126\">1490</aarets></sumDriftskostnad></kostnad>\n    </resultatregnskapDriftsresultat>\n    <resultatregnskapFinansinntekt>\n      <nettoFinans><aarets orid=\"158\">100000</aarets></nettoFinans>\n      <finansinntekt><sumFinansinntekter><aarets orid=\"153\">100000</aarets></sumFinansinntekter></finansinntekt>\n      <finanskostnad><sumFinanskostnader><aarets orid=\"17130\">0</aarets></sumFinanskostnader></finanskostnad>\n    </resultatregnskapFinansinntekt>\n    <resultatregnskapResultat>\n      <resultat>\n        <resultatFoerSkattekostnad><aarets orid=\"167\">98510</aarets></resultatFoerSkattekostnad>\n        <skattekostnad><aarets orid=\"11835\">0</aarets></skattekostnad>\n        <aarsresultat><aarets orid=\"172\">98510</aarets></aarsresultat>\n      </resultat>\n    </resultatregnskapResultat>\n    <balanseAnleggsmidlerOmloepsmidler>\n      <sumEiendeler><aarets orid=\"219\">128510</aarets></sumEiendeler>\n      <balanseAnleggsmidler>\n        <sumAnleggsmidler><aarets orid=\"217\">0</aarets></sumAnleggsmidler>\n        <balanseFinansielleAnleggsmidler>\n          <investeringAksjerAndeler><aarets orid=\"7100\">0</aarets></investeringAksjerAndeler>\n          <sumFinansielleAnleggsmidler><aarets orid=\"5267\">0</aarets></sumFinansielleAnleggsmidler>\n        </balanseFinansielleAnleggsmidler>\n      </balanseAnleggsmidler>\n      <balanseOmloepsmidler>\n        <sumOmloepsmidler><aarets orid=\"194\">128510</aarets></sumOmloepsmidler>\n        <balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n          <bankinnskuddKontanter>\n            <sumBankinnskuddKontanter><aarets orid=\"29042\">128510</aarets></sumBankinnskuddKontanter>\n          </bankinnskuddKontanter>\n        </balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n      </balanseOmloepsmidler>\n    </balanseAnleggsmidlerOmloepsmidler>\n    <balanseEgenkapitalGjeld>\n      <sumEgenkapitalGjeld><aarets orid=\"251\">128510</aarets></sumEgenkapitalGjeld>\n      <balanseEgenkapitalInnskuttOpptjentEgenkapital>\n        <innskuttEgenkapital>\n          <sumInnskuttEgenkapital><aarets orid=\"3730\">30000</aarets></sumInnskuttEgenkapital>\n        </innskuttEgenkapital>\n        <opptjentEgenkaiptal>\n          <annenEgenkapital><aarets orid=\"3274\">98510</aarets></annenEgenkapital>\n          <sumOpptjentEgenkapital><aarets orid=\"9702\">98510</aarets></sumOpptjentEgenkapital>\n          <sumEgenkapital><aarets orid=\"250\">128510</aarets></sumEgenkapital>\n        </opptjentEgenkaiptal>\n      </balanseEgenkapitalInnskuttOpptjentEgenkapital>\n      <balanseGjeldOversikt>\n        <sumGjeld><aarets orid=\"1119\">0</aarets></sumGjeld>\n        <balanseKortsiktigGjeld>\n          <betalbarSkatt><aarets orid=\"2483\">0</aarets></betalbarSkatt>\n          <sumKortsiktigGjeld><aarets orid=\"85\">0</aarets></sumKortsiktigGjeld>\n        </balanseKortsiktigGjeld>\n      </balanseGjeldOversikt>\n    </balanseEgenkapitalGjeld>\n    <noter>\n      <noteAarsverkTjenestePensjon>\n        <antallAarsverk orid=\"37467\">0</antallAarsverk>\n      </noteAarsverkTjenestePensjon>\n    </noter>\n  </Skjemainnhold-RR0002U>\n</melding>\n",
+        "feedback": []
+      }
+    },
+    "same": true
+  },
+  {
+    "field": "ledgerEntries",
+    "value": {},
+    "input": {
+      "incomeYear": 2025,
+      "annualData": {
+        "id": "annual-data-id",
+        "company_id": "company-id",
+        "income_year": 2025,
+        "answers": {
+          "shares_owned_at_year_end": true,
+          "bought_or_sold_shares": false,
+          "received_dividends": true,
+          "declared_owner_dividends": false,
+          "shareholder_loans": false,
+          "paid_costs": true,
+          "bank_balance_confirmed": true,
+          "has_unpaid_items": false,
+          "general_meeting_approved": true,
+          "authority_to_submit_confirmed": true
+        },
+        "confirmations": [
+          "bank_balance_confirmed",
+          "general_meeting_approved",
+          "authority_to_submit_confirmed"
+        ],
+        "no_activity_confirmed": false,
+        "completed_by": "owner",
+        "completed_at": "2026-01-01T00:00:00Z",
+        "updated_by": "owner",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      "ledgerEntries": {},
+      "companyOrgNumber": "310279617",
+      "companyName": "LOGISK \u00d8DE TIGER AS",
+      "contactEmail": "synthetic@example.test",
+      "approvalDate": "2026-06-30",
+      "confirmingRepresentative": "Synthetic Person"
+    },
+    "old": {
+      "error": "ValueError",
+      "message": "Local authority payload generation failed."
+    },
+    "new": {
+      "value": {
+        "mainFormXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig\" dataFormatId=\"1266\" dataFormatVersion=\"51820\" tjenestehandling=\"aarsregnskap_vanlig\" tjeneste=\"regnskap\">\n  <Innsender>\n    <enhet>\n      <organisasjonsnummer orid=\"18\">310279617</organisasjonsnummer>\n      <organisasjonsform orid=\"756\">AS</organisasjonsform>\n      <navn orid=\"1\">LOGISK \u00d8DE TIGER AS</navn>\n    </enhet>\n    <kontaktperson>\n      <e-post orid=\"19022\">synthetic@example.test</e-post>\n    </kontaktperson>\n    <opplysningerInnsending>\n      <noteMaskinellBehandling orid=\"37499\">20</noteMaskinellBehandling>\n      <systemNavn orid=\"39007\">Talli</systemNavn>\n    </opplysningerInnsending>\n  </Innsender>\n  <Skjemainnhold>\n    <regnskapsperiode>\n      <regnskapsaar orid=\"17102\">2025</regnskapsaar>\n      <regnskapsstart orid=\"17103\">2025-01-01</regnskapsstart>\n      <regnskapsslutt orid=\"17104\">2025-12-31</regnskapsslutt>\n    </regnskapsperiode>\n    <konsern>\n      <morselskap orid=\"4168\">nei</morselskap>\n    </konsern>\n    <regnskapsprinsipper>\n      <smaaForetak orid=\"8079\">ja</smaaForetak>\n      <regnskapsreglerSelskap orid=\"25021\">nei</regnskapsreglerSelskap>\n    </regnskapsprinsipper>\n    <fastsettelse>\n      <fastsettelsedato orid=\"17105\">2026-06-30</fastsettelsedato>\n      <bekreftendeSelskapsrepresentant orid=\"19023\">Synthetic Person</bekreftendeSelskapsrepresentant>\n    </fastsettelse>\n    <revisjonRegnskapsfoerer>\n      <aarsregnskapIkkeRevideres orid=\"34669\">ja</aarsregnskapIkkeRevideres>\n      <aarsregnskapUtarbeidetAutorisertRegnskapsfoerer orid=\"34670\">nei</aarsregnskapUtarbeidetAutorisertRegnskapsfoerer>\n      <tjenestebistandEksternAutorisertRegnskapsfoerer orid=\"34671\">nei</tjenestebistandEksternAutorisertRegnskapsfoerer>\n    </revisjonRegnskapsfoerer>\n  </Skjemainnhold>\n</melding>\n",
+        "companyAccountsXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema\" dataFormatId=\"758\" dataFormatVersion=\"51980\" versjon=\"1.1\" tjenestehandling=\"aarsregnskap_vanlig_underskjema\" tjeneste=\"regnskap\">\n  <Rapport-RR0002U>\n    <aarsregnskap>\n      <regnskapstype orid=\"25942\">S</regnskapstype>\n      <valuta orid=\"34984\">NOK</valuta>\n      <valoer orid=\"28974\">H</valoer>\n    </aarsregnskap>\n  </Rapport-RR0002U>\n  <Skjemainnhold-RR0002U>\n    <resultatregnskapDriftsresultat>\n      <driftsresultat><aarets orid=\"146\">0</aarets></driftsresultat>\n      <kostnad><sumDriftskostnad><aarets orid=\"17126\">0</aarets></sumDriftskostnad></kostnad>\n    </resultatregnskapDriftsresultat>\n    <resultatregnskapFinansinntekt>\n      <nettoFinans><aarets orid=\"158\">0</aarets></nettoFinans>\n      <finansinntekt><sumFinansinntekter><aarets orid=\"153\">0</aarets></sumFinansinntekter></finansinntekt>\n      <finanskostnad><sumFinanskostnader><aarets orid=\"17130\">0</aarets></sumFinanskostnader></finanskostnad>\n    </resultatregnskapFinansinntekt>\n    <resultatregnskapResultat>\n      <resultat>\n        <resultatFoerSkattekostnad><aarets orid=\"167\">0</aarets></resultatFoerSkattekostnad>\n        <skattekostnad><aarets orid=\"11835\">0</aarets></skattekostnad>\n        <aarsresultat><aarets orid=\"172\">0</aarets></aarsresultat>\n      </resultat>\n    </resultatregnskapResultat>\n    <balanseAnleggsmidlerOmloepsmidler>\n      <sumEiendeler><aarets orid=\"219\">0</aarets></sumEiendeler>\n      <balanseAnleggsmidler>\n        <sumAnleggsmidler><aarets orid=\"217\">0</aarets></sumAnleggsmidler>\n        <balanseFinansielleAnleggsmidler>\n          <investeringAksjerAndeler><aarets orid=\"7100\">0</aarets></investeringAksjerAndeler>\n          <sumFinansielleAnleggsmidler><aarets orid=\"5267\">0</aarets></sumFinansielleAnleggsmidler>\n        </balanseFinansielleAnleggsmidler>\n      </balanseAnleggsmidler>\n      <balanseOmloepsmidler>\n        <sumOmloepsmidler><aarets orid=\"194\">0</aarets></sumOmloepsmidler>\n        <balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n          <bankinnskuddKontanter>\n            <sumBankinnskuddKontanter><aarets orid=\"29042\">0</aarets></sumBankinnskuddKontanter>\n          </bankinnskuddKontanter>\n        </balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n      </balanseOmloepsmidler>\n    </balanseAnleggsmidlerOmloepsmidler>\n    <balanseEgenkapitalGjeld>\n      <sumEgenkapitalGjeld><aarets orid=\"251\">0</aarets></sumEgenkapitalGjeld>\n      <balanseEgenkapitalInnskuttOpptjentEgenkapital>\n        <innskuttEgenkapital>\n          <sumInnskuttEgenkapital><aarets orid=\"3730\">0</aarets></sumInnskuttEgenkapital>\n        </innskuttEgenkapital>\n        <opptjentEgenkaiptal>\n          <annenEgenkapital><aarets orid=\"3274\">0</aarets></annenEgenkapital>\n          <sumOpptjentEgenkapital><aarets orid=\"9702\">0</aarets></sumOpptjentEgenkapital>\n          <sumEgenkapital><aarets orid=\"250\">0</aarets></sumEgenkapital>\n        </opptjentEgenkaiptal>\n      </balanseEgenkapitalInnskuttOpptjentEgenkapital>\n      <balanseGjeldOversikt>\n        <sumGjeld><aarets orid=\"1119\">0</aarets></sumGjeld>\n        <balanseKortsiktigGjeld>\n          <betalbarSkatt><aarets orid=\"2483\">0</aarets></betalbarSkatt>\n          <sumKortsiktigGjeld><aarets orid=\"85\">0</aarets></sumKortsiktigGjeld>\n        </balanseKortsiktigGjeld>\n      </balanseGjeldOversikt>\n    </balanseEgenkapitalGjeld>\n    <noter>\n      <noteAarsverkTjenestePensjon>\n        <antallAarsverk orid=\"37467\">0</antallAarsverk>\n      </noteAarsverkTjenestePensjon>\n    </noter>\n  </Skjemainnhold-RR0002U>\n</melding>\n",
+        "feedback": []
+      }
+    },
+    "same": false
+  },
+  {
+    "field": "ledgerEntries",
+    "value": "",
+    "input": {
+      "incomeYear": 2025,
+      "annualData": {
+        "id": "annual-data-id",
+        "company_id": "company-id",
+        "income_year": 2025,
+        "answers": {
+          "shares_owned_at_year_end": true,
+          "bought_or_sold_shares": false,
+          "received_dividends": true,
+          "declared_owner_dividends": false,
+          "shareholder_loans": false,
+          "paid_costs": true,
+          "bank_balance_confirmed": true,
+          "has_unpaid_items": false,
+          "general_meeting_approved": true,
+          "authority_to_submit_confirmed": true
+        },
+        "confirmations": [
+          "bank_balance_confirmed",
+          "general_meeting_approved",
+          "authority_to_submit_confirmed"
+        ],
+        "no_activity_confirmed": false,
+        "completed_by": "owner",
+        "completed_at": "2026-01-01T00:00:00Z",
+        "updated_by": "owner",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      "ledgerEntries": "",
+      "companyOrgNumber": "310279617",
+      "companyName": "LOGISK \u00d8DE TIGER AS",
+      "contactEmail": "synthetic@example.test",
+      "approvalDate": "2026-06-30",
+      "confirmingRepresentative": "Synthetic Person"
+    },
+    "old": {
+      "error": "ValueError",
+      "message": "Local authority payload generation failed."
+    },
+    "new": {
+      "value": {
+        "mainFormXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig\" dataFormatId=\"1266\" dataFormatVersion=\"51820\" tjenestehandling=\"aarsregnskap_vanlig\" tjeneste=\"regnskap\">\n  <Innsender>\n    <enhet>\n      <organisasjonsnummer orid=\"18\">310279617</organisasjonsnummer>\n      <organisasjonsform orid=\"756\">AS</organisasjonsform>\n      <navn orid=\"1\">LOGISK \u00d8DE TIGER AS</navn>\n    </enhet>\n    <kontaktperson>\n      <e-post orid=\"19022\">synthetic@example.test</e-post>\n    </kontaktperson>\n    <opplysningerInnsending>\n      <noteMaskinellBehandling orid=\"37499\">20</noteMaskinellBehandling>\n      <systemNavn orid=\"39007\">Talli</systemNavn>\n    </opplysningerInnsending>\n  </Innsender>\n  <Skjemainnhold>\n    <regnskapsperiode>\n      <regnskapsaar orid=\"17102\">2025</regnskapsaar>\n      <regnskapsstart orid=\"17103\">2025-01-01</regnskapsstart>\n      <regnskapsslutt orid=\"17104\">2025-12-31</regnskapsslutt>\n    </regnskapsperiode>\n    <konsern>\n      <morselskap orid=\"4168\">nei</morselskap>\n    </konsern>\n    <regnskapsprinsipper>\n      <smaaForetak orid=\"8079\">ja</smaaForetak>\n      <regnskapsreglerSelskap orid=\"25021\">nei</regnskapsreglerSelskap>\n    </regnskapsprinsipper>\n    <fastsettelse>\n      <fastsettelsedato orid=\"17105\">2026-06-30</fastsettelsedato>\n      <bekreftendeSelskapsrepresentant orid=\"19023\">Synthetic Person</bekreftendeSelskapsrepresentant>\n    </fastsettelse>\n    <revisjonRegnskapsfoerer>\n      <aarsregnskapIkkeRevideres orid=\"34669\">ja</aarsregnskapIkkeRevideres>\n      <aarsregnskapUtarbeidetAutorisertRegnskapsfoerer orid=\"34670\">nei</aarsregnskapUtarbeidetAutorisertRegnskapsfoerer>\n      <tjenestebistandEksternAutorisertRegnskapsfoerer orid=\"34671\">nei</tjenestebistandEksternAutorisertRegnskapsfoerer>\n    </revisjonRegnskapsfoerer>\n  </Skjemainnhold>\n</melding>\n",
+        "companyAccountsXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema\" dataFormatId=\"758\" dataFormatVersion=\"51980\" versjon=\"1.1\" tjenestehandling=\"aarsregnskap_vanlig_underskjema\" tjeneste=\"regnskap\">\n  <Rapport-RR0002U>\n    <aarsregnskap>\n      <regnskapstype orid=\"25942\">S</regnskapstype>\n      <valuta orid=\"34984\">NOK</valuta>\n      <valoer orid=\"28974\">H</valoer>\n    </aarsregnskap>\n  </Rapport-RR0002U>\n  <Skjemainnhold-RR0002U>\n    <resultatregnskapDriftsresultat>\n      <driftsresultat><aarets orid=\"146\">0</aarets></driftsresultat>\n      <kostnad><sumDriftskostnad><aarets orid=\"17126\">0</aarets></sumDriftskostnad></kostnad>\n    </resultatregnskapDriftsresultat>\n    <resultatregnskapFinansinntekt>\n      <nettoFinans><aarets orid=\"158\">0</aarets></nettoFinans>\n      <finansinntekt><sumFinansinntekter><aarets orid=\"153\">0</aarets></sumFinansinntekter></finansinntekt>\n      <finanskostnad><sumFinanskostnader><aarets orid=\"17130\">0</aarets></sumFinanskostnader></finanskostnad>\n    </resultatregnskapFinansinntekt>\n    <resultatregnskapResultat>\n      <resultat>\n        <resultatFoerSkattekostnad><aarets orid=\"167\">0</aarets></resultatFoerSkattekostnad>\n        <skattekostnad><aarets orid=\"11835\">0</aarets></skattekostnad>\n        <aarsresultat><aarets orid=\"172\">0</aarets></aarsresultat>\n      </resultat>\n    </resultatregnskapResultat>\n    <balanseAnleggsmidlerOmloepsmidler>\n      <sumEiendeler><aarets orid=\"219\">0</aarets></sumEiendeler>\n      <balanseAnleggsmidler>\n        <sumAnleggsmidler><aarets orid=\"217\">0</aarets></sumAnleggsmidler>\n        <balanseFinansielleAnleggsmidler>\n          <investeringAksjerAndeler><aarets orid=\"7100\">0</aarets></investeringAksjerAndeler>\n          <sumFinansielleAnleggsmidler><aarets orid=\"5267\">0</aarets></sumFinansielleAnleggsmidler>\n        </balanseFinansielleAnleggsmidler>\n      </balanseAnleggsmidler>\n      <balanseOmloepsmidler>\n        <sumOmloepsmidler><aarets orid=\"194\">0</aarets></sumOmloepsmidler>\n        <balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n          <bankinnskuddKontanter>\n            <sumBankinnskuddKontanter><aarets orid=\"29042\">0</aarets></sumBankinnskuddKontanter>\n          </bankinnskuddKontanter>\n        </balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n      </balanseOmloepsmidler>\n    </balanseAnleggsmidlerOmloepsmidler>\n    <balanseEgenkapitalGjeld>\n      <sumEgenkapitalGjeld><aarets orid=\"251\">0</aarets></sumEgenkapitalGjeld>\n      <balanseEgenkapitalInnskuttOpptjentEgenkapital>\n        <innskuttEgenkapital>\n          <sumInnskuttEgenkapital><aarets orid=\"3730\">0</aarets></sumInnskuttEgenkapital>\n        </innskuttEgenkapital>\n        <opptjentEgenkaiptal>\n          <annenEgenkapital><aarets orid=\"3274\">0</aarets></annenEgenkapital>\n          <sumOpptjentEgenkapital><aarets orid=\"9702\">0</aarets></sumOpptjentEgenkapital>\n          <sumEgenkapital><aarets orid=\"250\">0</aarets></sumEgenkapital>\n        </opptjentEgenkaiptal>\n      </balanseEgenkapitalInnskuttOpptjentEgenkapital>\n      <balanseGjeldOversikt>\n        <sumGjeld><aarets orid=\"1119\">0</aarets></sumGjeld>\n        <balanseKortsiktigGjeld>\n          <betalbarSkatt><aarets orid=\"2483\">0</aarets></betalbarSkatt>\n          <sumKortsiktigGjeld><aarets orid=\"85\">0</aarets></sumKortsiktigGjeld>\n        </balanseKortsiktigGjeld>\n      </balanseGjeldOversikt>\n    </balanseEgenkapitalGjeld>\n    <noter>\n      <noteAarsverkTjenestePensjon>\n        <antallAarsverk orid=\"37467\">0</antallAarsverk>\n      </noteAarsverkTjenestePensjon>\n    </noter>\n  </Skjemainnhold-RR0002U>\n</melding>\n",
+        "feedback": []
+      }
+    },
+    "same": false
+  },
+  {
+    "field": "ledgerEntries",
+    "value": [],
+    "input": {
+      "incomeYear": 2025,
+      "annualData": {
+        "id": "annual-data-id",
+        "company_id": "company-id",
+        "income_year": 2025,
+        "answers": {
+          "shares_owned_at_year_end": true,
+          "bought_or_sold_shares": false,
+          "received_dividends": true,
+          "declared_owner_dividends": false,
+          "shareholder_loans": false,
+          "paid_costs": true,
+          "bank_balance_confirmed": true,
+          "has_unpaid_items": false,
+          "general_meeting_approved": true,
+          "authority_to_submit_confirmed": true
+        },
+        "confirmations": [
+          "bank_balance_confirmed",
+          "general_meeting_approved",
+          "authority_to_submit_confirmed"
+        ],
+        "no_activity_confirmed": false,
+        "completed_by": "owner",
+        "completed_at": "2026-01-01T00:00:00Z",
+        "updated_by": "owner",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      "ledgerEntries": [],
+      "companyOrgNumber": "310279617",
+      "companyName": "LOGISK \u00d8DE TIGER AS",
+      "contactEmail": "synthetic@example.test",
+      "approvalDate": "2026-06-30",
+      "confirmingRepresentative": "Synthetic Person"
+    },
+    "old": {
+      "value": {
+        "mainFormXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig\" dataFormatId=\"1266\" dataFormatVersion=\"51820\" tjenestehandling=\"aarsregnskap_vanlig\" tjeneste=\"regnskap\">\n  <Innsender>\n    <enhet>\n      <organisasjonsnummer orid=\"18\">310279617</organisasjonsnummer>\n      <organisasjonsform orid=\"756\">AS</organisasjonsform>\n      <navn orid=\"1\">LOGISK \u00d8DE TIGER AS</navn>\n    </enhet>\n    <kontaktperson>\n      <e-post orid=\"19022\">synthetic@example.test</e-post>\n    </kontaktperson>\n    <opplysningerInnsending>\n      <noteMaskinellBehandling orid=\"37499\">20</noteMaskinellBehandling>\n      <systemNavn orid=\"39007\">Talli</systemNavn>\n    </opplysningerInnsending>\n  </Innsender>\n  <Skjemainnhold>\n    <regnskapsperiode>\n      <regnskapsaar orid=\"17102\">2025</regnskapsaar>\n      <regnskapsstart orid=\"17103\">2025-01-01</regnskapsstart>\n      <regnskapsslutt orid=\"17104\">2025-12-31</regnskapsslutt>\n    </regnskapsperiode>\n    <konsern>\n      <morselskap orid=\"4168\">nei</morselskap>\n    </konsern>\n    <regnskapsprinsipper>\n      <smaaForetak orid=\"8079\">ja</smaaForetak>\n      <regnskapsreglerSelskap orid=\"25021\">nei</regnskapsreglerSelskap>\n    </regnskapsprinsipper>\n    <fastsettelse>\n      <fastsettelsedato orid=\"17105\">2026-06-30</fastsettelsedato>\n      <bekreftendeSelskapsrepresentant orid=\"19023\">Synthetic Person</bekreftendeSelskapsrepresentant>\n    </fastsettelse>\n    <revisjonRegnskapsfoerer>\n      <aarsregnskapIkkeRevideres orid=\"34669\">ja</aarsregnskapIkkeRevideres>\n      <aarsregnskapUtarbeidetAutorisertRegnskapsfoerer orid=\"34670\">nei</aarsregnskapUtarbeidetAutorisertRegnskapsfoerer>\n      <tjenestebistandEksternAutorisertRegnskapsfoerer orid=\"34671\">nei</tjenestebistandEksternAutorisertRegnskapsfoerer>\n    </revisjonRegnskapsfoerer>\n  </Skjemainnhold>\n</melding>\n",
+        "companyAccountsXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema\" dataFormatId=\"758\" dataFormatVersion=\"51980\" versjon=\"1.1\" tjenestehandling=\"aarsregnskap_vanlig_underskjema\" tjeneste=\"regnskap\">\n  <Rapport-RR0002U>\n    <aarsregnskap>\n      <regnskapstype orid=\"25942\">S</regnskapstype>\n      <valuta orid=\"34984\">NOK</valuta>\n      <valoer orid=\"28974\">H</valoer>\n    </aarsregnskap>\n  </Rapport-RR0002U>\n  <Skjemainnhold-RR0002U>\n    <resultatregnskapDriftsresultat>\n      <driftsresultat><aarets orid=\"146\">0</aarets></driftsresultat>\n      <kostnad><sumDriftskostnad><aarets orid=\"17126\">0</aarets></sumDriftskostnad></kostnad>\n    </resultatregnskapDriftsresultat>\n    <resultatregnskapFinansinntekt>\n      <nettoFinans><aarets orid=\"158\">0</aarets></nettoFinans>\n      <finansinntekt><sumFinansinntekter><aarets orid=\"153\">0</aarets></sumFinansinntekter></finansinntekt>\n      <finanskostnad><sumFinanskostnader><aarets orid=\"17130\">0</aarets></sumFinanskostnader></finanskostnad>\n    </resultatregnskapFinansinntekt>\n    <resultatregnskapResultat>\n      <resultat>\n        <resultatFoerSkattekostnad><aarets orid=\"167\">0</aarets></resultatFoerSkattekostnad>\n        <skattekostnad><aarets orid=\"11835\">0</aarets></skattekostnad>\n        <aarsresultat><aarets orid=\"172\">0</aarets></aarsresultat>\n      </resultat>\n    </resultatregnskapResultat>\n    <balanseAnleggsmidlerOmloepsmidler>\n      <sumEiendeler><aarets orid=\"219\">0</aarets></sumEiendeler>\n      <balanseAnleggsmidler>\n        <sumAnleggsmidler><aarets orid=\"217\">0</aarets></sumAnleggsmidler>\n        <balanseFinansielleAnleggsmidler>\n          <investeringAksjerAndeler><aarets orid=\"7100\">0</aarets></investeringAksjerAndeler>\n          <sumFinansielleAnleggsmidler><aarets orid=\"5267\">0</aarets></sumFinansielleAnleggsmidler>\n        </balanseFinansielleAnleggsmidler>\n      </balanseAnleggsmidler>\n      <balanseOmloepsmidler>\n        <sumOmloepsmidler><aarets orid=\"194\">0</aarets></sumOmloepsmidler>\n        <balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n          <bankinnskuddKontanter>\n            <sumBankinnskuddKontanter><aarets orid=\"29042\">0</aarets></sumBankinnskuddKontanter>\n          </bankinnskuddKontanter>\n        </balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n      </balanseOmloepsmidler>\n    </balanseAnleggsmidlerOmloepsmidler>\n    <balanseEgenkapitalGjeld>\n      <sumEgenkapitalGjeld><aarets orid=\"251\">0</aarets></sumEgenkapitalGjeld>\n      <balanseEgenkapitalInnskuttOpptjentEgenkapital>\n        <innskuttEgenkapital>\n          <sumInnskuttEgenkapital><aarets orid=\"3730\">0</aarets></sumInnskuttEgenkapital>\n        </innskuttEgenkapital>\n        <opptjentEgenkaiptal>\n          <annenEgenkapital><aarets orid=\"3274\">0</aarets></annenEgenkapital>\n          <sumOpptjentEgenkapital><aarets orid=\"9702\">0</aarets></sumOpptjentEgenkapital>\n          <sumEgenkapital><aarets orid=\"250\">0</aarets></sumEgenkapital>\n        </opptjentEgenkaiptal>\n      </balanseEgenkapitalInnskuttOpptjentEgenkapital>\n      <balanseGjeldOversikt>\n        <sumGjeld><aarets orid=\"1119\">0</aarets></sumGjeld>\n        <balanseKortsiktigGjeld>\n          <betalbarSkatt><aarets orid=\"2483\">0</aarets></betalbarSkatt>\n          <sumKortsiktigGjeld><aarets orid=\"85\">0</aarets></sumKortsiktigGjeld>\n        </balanseKortsiktigGjeld>\n      </balanseGjeldOversikt>\n    </balanseEgenkapitalGjeld>\n    <noter>\n      <noteAarsverkTjenestePensjon>\n        <antallAarsverk orid=\"37467\">0</antallAarsverk>\n      </noteAarsverkTjenestePensjon>\n    </noter>\n  </Skjemainnhold-RR0002U>\n</melding>\n",
+        "feedback": []
+      }
+    },
+    "new": {
+      "value": {
+        "mainFormXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig\" dataFormatId=\"1266\" dataFormatVersion=\"51820\" tjenestehandling=\"aarsregnskap_vanlig\" tjeneste=\"regnskap\">\n  <Innsender>\n    <enhet>\n      <organisasjonsnummer orid=\"18\">310279617</organisasjonsnummer>\n      <organisasjonsform orid=\"756\">AS</organisasjonsform>\n      <navn orid=\"1\">LOGISK \u00d8DE TIGER AS</navn>\n    </enhet>\n    <kontaktperson>\n      <e-post orid=\"19022\">synthetic@example.test</e-post>\n    </kontaktperson>\n    <opplysningerInnsending>\n      <noteMaskinellBehandling orid=\"37499\">20</noteMaskinellBehandling>\n      <systemNavn orid=\"39007\">Talli</systemNavn>\n    </opplysningerInnsending>\n  </Innsender>\n  <Skjemainnhold>\n    <regnskapsperiode>\n      <regnskapsaar orid=\"17102\">2025</regnskapsaar>\n      <regnskapsstart orid=\"17103\">2025-01-01</regnskapsstart>\n      <regnskapsslutt orid=\"17104\">2025-12-31</regnskapsslutt>\n    </regnskapsperiode>\n    <konsern>\n      <morselskap orid=\"4168\">nei</morselskap>\n    </konsern>\n    <regnskapsprinsipper>\n      <smaaForetak orid=\"8079\">ja</smaaForetak>\n      <regnskapsreglerSelskap orid=\"25021\">nei</regnskapsreglerSelskap>\n    </regnskapsprinsipper>\n    <fastsettelse>\n      <fastsettelsedato orid=\"17105\">2026-06-30</fastsettelsedato>\n      <bekreftendeSelskapsrepresentant orid=\"19023\">Synthetic Person</bekreftendeSelskapsrepresentant>\n    </fastsettelse>\n    <revisjonRegnskapsfoerer>\n      <aarsregnskapIkkeRevideres orid=\"34669\">ja</aarsregnskapIkkeRevideres>\n      <aarsregnskapUtarbeidetAutorisertRegnskapsfoerer orid=\"34670\">nei</aarsregnskapUtarbeidetAutorisertRegnskapsfoerer>\n      <tjenestebistandEksternAutorisertRegnskapsfoerer orid=\"34671\">nei</tjenestebistandEksternAutorisertRegnskapsfoerer>\n    </revisjonRegnskapsfoerer>\n  </Skjemainnhold>\n</melding>\n",
+        "companyAccountsXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema\" dataFormatId=\"758\" dataFormatVersion=\"51980\" versjon=\"1.1\" tjenestehandling=\"aarsregnskap_vanlig_underskjema\" tjeneste=\"regnskap\">\n  <Rapport-RR0002U>\n    <aarsregnskap>\n      <regnskapstype orid=\"25942\">S</regnskapstype>\n      <valuta orid=\"34984\">NOK</valuta>\n      <valoer orid=\"28974\">H</valoer>\n    </aarsregnskap>\n  </Rapport-RR0002U>\n  <Skjemainnhold-RR0002U>\n    <resultatregnskapDriftsresultat>\n      <driftsresultat><aarets orid=\"146\">0</aarets></driftsresultat>\n      <kostnad><sumDriftskostnad><aarets orid=\"17126\">0</aarets></sumDriftskostnad></kostnad>\n    </resultatregnskapDriftsresultat>\n    <resultatregnskapFinansinntekt>\n      <nettoFinans><aarets orid=\"158\">0</aarets></nettoFinans>\n      <finansinntekt><sumFinansinntekter><aarets orid=\"153\">0</aarets></sumFinansinntekter></finansinntekt>\n      <finanskostnad><sumFinanskostnader><aarets orid=\"17130\">0</aarets></sumFinanskostnader></finanskostnad>\n    </resultatregnskapFinansinntekt>\n    <resultatregnskapResultat>\n      <resultat>\n        <resultatFoerSkattekostnad><aarets orid=\"167\">0</aarets></resultatFoerSkattekostnad>\n        <skattekostnad><aarets orid=\"11835\">0</aarets></skattekostnad>\n        <aarsresultat><aarets orid=\"172\">0</aarets></aarsresultat>\n      </resultat>\n    </resultatregnskapResultat>\n    <balanseAnleggsmidlerOmloepsmidler>\n      <sumEiendeler><aarets orid=\"219\">0</aarets></sumEiendeler>\n      <balanseAnleggsmidler>\n        <sumAnleggsmidler><aarets orid=\"217\">0</aarets></sumAnleggsmidler>\n        <balanseFinansielleAnleggsmidler>\n          <investeringAksjerAndeler><aarets orid=\"7100\">0</aarets></investeringAksjerAndeler>\n          <sumFinansielleAnleggsmidler><aarets orid=\"5267\">0</aarets></sumFinansielleAnleggsmidler>\n        </balanseFinansielleAnleggsmidler>\n      </balanseAnleggsmidler>\n      <balanseOmloepsmidler>\n        <sumOmloepsmidler><aarets orid=\"194\">0</aarets></sumOmloepsmidler>\n        <balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n          <bankinnskuddKontanter>\n            <sumBankinnskuddKontanter><aarets orid=\"29042\">0</aarets></sumBankinnskuddKontanter>\n          </bankinnskuddKontanter>\n        </balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n      </balanseOmloepsmidler>\n    </balanseAnleggsmidlerOmloepsmidler>\n    <balanseEgenkapitalGjeld>\n      <sumEgenkapitalGjeld><aarets orid=\"251\">0</aarets></sumEgenkapitalGjeld>\n      <balanseEgenkapitalInnskuttOpptjentEgenkapital>\n        <innskuttEgenkapital>\n          <sumInnskuttEgenkapital><aarets orid=\"3730\">0</aarets></sumInnskuttEgenkapital>\n        </innskuttEgenkapital>\n        <opptjentEgenkaiptal>\n          <annenEgenkapital><aarets orid=\"3274\">0</aarets></annenEgenkapital>\n          <sumOpptjentEgenkapital><aarets orid=\"9702\">0</aarets></sumOpptjentEgenkapital>\n          <sumEgenkapital><aarets orid=\"250\">0</aarets></sumEgenkapital>\n        </opptjentEgenkaiptal>\n      </balanseEgenkapitalInnskuttOpptjentEgenkapital>\n      <balanseGjeldOversikt>\n        <sumGjeld><aarets orid=\"1119\">0</aarets></sumGjeld>\n        <balanseKortsiktigGjeld>\n          <betalbarSkatt><aarets orid=\"2483\">0</aarets></betalbarSkatt>\n          <sumKortsiktigGjeld><aarets orid=\"85\">0</aarets></sumKortsiktigGjeld>\n        </balanseKortsiktigGjeld>\n      </balanseGjeldOversikt>\n    </balanseEgenkapitalGjeld>\n    <noter>\n      <noteAarsverkTjenestePensjon>\n        <antallAarsverk orid=\"37467\">0</antallAarsverk>\n      </noteAarsverkTjenestePensjon>\n    </noter>\n  </Skjemainnhold-RR0002U>\n</melding>\n",
+        "feedback": []
+      }
+    },
+    "same": true
+  },
+  {
+    "field": "ledgerEntries",
+    "value": null,
+    "input": {
+      "incomeYear": 2025,
+      "annualData": {
+        "id": "annual-data-id",
+        "company_id": "company-id",
+        "income_year": 2025,
+        "answers": {
+          "shares_owned_at_year_end": true,
+          "bought_or_sold_shares": false,
+          "received_dividends": true,
+          "declared_owner_dividends": false,
+          "shareholder_loans": false,
+          "paid_costs": true,
+          "bank_balance_confirmed": true,
+          "has_unpaid_items": false,
+          "general_meeting_approved": true,
+          "authority_to_submit_confirmed": true
+        },
+        "confirmations": [
+          "bank_balance_confirmed",
+          "general_meeting_approved",
+          "authority_to_submit_confirmed"
+        ],
+        "no_activity_confirmed": false,
+        "completed_by": "owner",
+        "completed_at": "2026-01-01T00:00:00Z",
+        "updated_by": "owner",
+        "updated_at": "2026-01-01T00:00:00Z"
+      },
+      "ledgerEntries": null,
+      "companyOrgNumber": "310279617",
+      "companyName": "LOGISK \u00d8DE TIGER AS",
+      "contactEmail": "synthetic@example.test",
+      "approvalDate": "2026-06-30",
+      "confirmingRepresentative": "Synthetic Person"
+    },
+    "old": {
+      "value": {
+        "mainFormXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig\" dataFormatId=\"1266\" dataFormatVersion=\"51820\" tjenestehandling=\"aarsregnskap_vanlig\" tjeneste=\"regnskap\">\n  <Innsender>\n    <enhet>\n      <organisasjonsnummer orid=\"18\">310279617</organisasjonsnummer>\n      <organisasjonsform orid=\"756\">AS</organisasjonsform>\n      <navn orid=\"1\">LOGISK \u00d8DE TIGER AS</navn>\n    </enhet>\n    <kontaktperson>\n      <e-post orid=\"19022\">synthetic@example.test</e-post>\n    </kontaktperson>\n    <opplysningerInnsending>\n      <noteMaskinellBehandling orid=\"37499\">20</noteMaskinellBehandling>\n      <systemNavn orid=\"39007\">Talli</systemNavn>\n    </opplysningerInnsending>\n  </Innsender>\n  <Skjemainnhold>\n    <regnskapsperiode>\n      <regnskapsaar orid=\"17102\">2025</regnskapsaar>\n      <regnskapsstart orid=\"17103\">2025-01-01</regnskapsstart>\n      <regnskapsslutt orid=\"17104\">2025-12-31</regnskapsslutt>\n    </regnskapsperiode>\n    <konsern>\n      <morselskap orid=\"4168\">nei</morselskap>\n    </konsern>\n    <regnskapsprinsipper>\n      <smaaForetak orid=\"8079\">ja</smaaForetak>\n      <regnskapsreglerSelskap orid=\"25021\">nei</regnskapsreglerSelskap>\n    </regnskapsprinsipper>\n    <fastsettelse>\n      <fastsettelsedato orid=\"17105\">2026-06-30</fastsettelsedato>\n      <bekreftendeSelskapsrepresentant orid=\"19023\">Synthetic Person</bekreftendeSelskapsrepresentant>\n    </fastsettelse>\n    <revisjonRegnskapsfoerer>\n      <aarsregnskapIkkeRevideres orid=\"34669\">ja</aarsregnskapIkkeRevideres>\n      <aarsregnskapUtarbeidetAutorisertRegnskapsfoerer orid=\"34670\">nei</aarsregnskapUtarbeidetAutorisertRegnskapsfoerer>\n      <tjenestebistandEksternAutorisertRegnskapsfoerer orid=\"34671\">nei</tjenestebistandEksternAutorisertRegnskapsfoerer>\n    </revisjonRegnskapsfoerer>\n  </Skjemainnhold>\n</melding>\n",
+        "companyAccountsXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema\" dataFormatId=\"758\" dataFormatVersion=\"51980\" versjon=\"1.1\" tjenestehandling=\"aarsregnskap_vanlig_underskjema\" tjeneste=\"regnskap\">\n  <Rapport-RR0002U>\n    <aarsregnskap>\n      <regnskapstype orid=\"25942\">S</regnskapstype>\n      <valuta orid=\"34984\">NOK</valuta>\n      <valoer orid=\"28974\">H</valoer>\n    </aarsregnskap>\n  </Rapport-RR0002U>\n  <Skjemainnhold-RR0002U>\n    <resultatregnskapDriftsresultat>\n      <driftsresultat><aarets orid=\"146\">0</aarets></driftsresultat>\n      <kostnad><sumDriftskostnad><aarets orid=\"17126\">0</aarets></sumDriftskostnad></kostnad>\n    </resultatregnskapDriftsresultat>\n    <resultatregnskapFinansinntekt>\n      <nettoFinans><aarets orid=\"158\">0</aarets></nettoFinans>\n      <finansinntekt><sumFinansinntekter><aarets orid=\"153\">0</aarets></sumFinansinntekter></finansinntekt>\n      <finanskostnad><sumFinanskostnader><aarets orid=\"17130\">0</aarets></sumFinanskostnader></finanskostnad>\n    </resultatregnskapFinansinntekt>\n    <resultatregnskapResultat>\n      <resultat>\n        <resultatFoerSkattekostnad><aarets orid=\"167\">0</aarets></resultatFoerSkattekostnad>\n        <skattekostnad><aarets orid=\"11835\">0</aarets></skattekostnad>\n        <aarsresultat><aarets orid=\"172\">0</aarets></aarsresultat>\n      </resultat>\n    </resultatregnskapResultat>\n    <balanseAnleggsmidlerOmloepsmidler>\n      <sumEiendeler><aarets orid=\"219\">0</aarets></sumEiendeler>\n      <balanseAnleggsmidler>\n        <sumAnleggsmidler><aarets orid=\"217\">0</aarets></sumAnleggsmidler>\n        <balanseFinansielleAnleggsmidler>\n          <investeringAksjerAndeler><aarets orid=\"7100\">0</aarets></investeringAksjerAndeler>\n          <sumFinansielleAnleggsmidler><aarets orid=\"5267\">0</aarets></sumFinansielleAnleggsmidler>\n        </balanseFinansielleAnleggsmidler>\n      </balanseAnleggsmidler>\n      <balanseOmloepsmidler>\n        <sumOmloepsmidler><aarets orid=\"194\">0</aarets></sumOmloepsmidler>\n        <balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n          <bankinnskuddKontanter>\n            <sumBankinnskuddKontanter><aarets orid=\"29042\">0</aarets></sumBankinnskuddKontanter>\n          </bankinnskuddKontanter>\n        </balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n      </balanseOmloepsmidler>\n    </balanseAnleggsmidlerOmloepsmidler>\n    <balanseEgenkapitalGjeld>\n      <sumEgenkapitalGjeld><aarets orid=\"251\">0</aarets></sumEgenkapitalGjeld>\n      <balanseEgenkapitalInnskuttOpptjentEgenkapital>\n        <innskuttEgenkapital>\n          <sumInnskuttEgenkapital><aarets orid=\"3730\">0</aarets></sumInnskuttEgenkapital>\n        </innskuttEgenkapital>\n        <opptjentEgenkaiptal>\n          <annenEgenkapital><aarets orid=\"3274\">0</aarets></annenEgenkapital>\n          <sumOpptjentEgenkapital><aarets orid=\"9702\">0</aarets></sumOpptjentEgenkapital>\n          <sumEgenkapital><aarets orid=\"250\">0</aarets></sumEgenkapital>\n        </opptjentEgenkaiptal>\n      </balanseEgenkapitalInnskuttOpptjentEgenkapital>\n      <balanseGjeldOversikt>\n        <sumGjeld><aarets orid=\"1119\">0</aarets></sumGjeld>\n        <balanseKortsiktigGjeld>\n          <betalbarSkatt><aarets orid=\"2483\">0</aarets></betalbarSkatt>\n          <sumKortsiktigGjeld><aarets orid=\"85\">0</aarets></sumKortsiktigGjeld>\n        </balanseKortsiktigGjeld>\n      </balanseGjeldOversikt>\n    </balanseEgenkapitalGjeld>\n    <noter>\n      <noteAarsverkTjenestePensjon>\n        <antallAarsverk orid=\"37467\">0</antallAarsverk>\n      </noteAarsverkTjenestePensjon>\n    </noter>\n  </Skjemainnhold-RR0002U>\n</melding>\n",
+        "feedback": []
+      }
+    },
+    "new": {
+      "value": {
+        "mainFormXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig\" dataFormatId=\"1266\" dataFormatVersion=\"51820\" tjenestehandling=\"aarsregnskap_vanlig\" tjeneste=\"regnskap\">\n  <Innsender>\n    <enhet>\n      <organisasjonsnummer orid=\"18\">310279617</organisasjonsnummer>\n      <organisasjonsform orid=\"756\">AS</organisasjonsform>\n      <navn orid=\"1\">LOGISK \u00d8DE TIGER AS</navn>\n    </enhet>\n    <kontaktperson>\n      <e-post orid=\"19022\">synthetic@example.test</e-post>\n    </kontaktperson>\n    <opplysningerInnsending>\n      <noteMaskinellBehandling orid=\"37499\">20</noteMaskinellBehandling>\n      <systemNavn orid=\"39007\">Talli</systemNavn>\n    </opplysningerInnsending>\n  </Innsender>\n  <Skjemainnhold>\n    <regnskapsperiode>\n      <regnskapsaar orid=\"17102\">2025</regnskapsaar>\n      <regnskapsstart orid=\"17103\">2025-01-01</regnskapsstart>\n      <regnskapsslutt orid=\"17104\">2025-12-31</regnskapsslutt>\n    </regnskapsperiode>\n    <konsern>\n      <morselskap orid=\"4168\">nei</morselskap>\n    </konsern>\n    <regnskapsprinsipper>\n      <smaaForetak orid=\"8079\">ja</smaaForetak>\n      <regnskapsreglerSelskap orid=\"25021\">nei</regnskapsreglerSelskap>\n    </regnskapsprinsipper>\n    <fastsettelse>\n      <fastsettelsedato orid=\"17105\">2026-06-30</fastsettelsedato>\n      <bekreftendeSelskapsrepresentant orid=\"19023\">Synthetic Person</bekreftendeSelskapsrepresentant>\n    </fastsettelse>\n    <revisjonRegnskapsfoerer>\n      <aarsregnskapIkkeRevideres orid=\"34669\">ja</aarsregnskapIkkeRevideres>\n      <aarsregnskapUtarbeidetAutorisertRegnskapsfoerer orid=\"34670\">nei</aarsregnskapUtarbeidetAutorisertRegnskapsfoerer>\n      <tjenestebistandEksternAutorisertRegnskapsfoerer orid=\"34671\">nei</tjenestebistandEksternAutorisertRegnskapsfoerer>\n    </revisjonRegnskapsfoerer>\n  </Skjemainnhold>\n</melding>\n",
+        "companyAccountsXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<melding xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns=\"http://schema.brreg.no/regnsys/aarsregnskap_vanlig/underskjema\" dataFormatId=\"758\" dataFormatVersion=\"51980\" versjon=\"1.1\" tjenestehandling=\"aarsregnskap_vanlig_underskjema\" tjeneste=\"regnskap\">\n  <Rapport-RR0002U>\n    <aarsregnskap>\n      <regnskapstype orid=\"25942\">S</regnskapstype>\n      <valuta orid=\"34984\">NOK</valuta>\n      <valoer orid=\"28974\">H</valoer>\n    </aarsregnskap>\n  </Rapport-RR0002U>\n  <Skjemainnhold-RR0002U>\n    <resultatregnskapDriftsresultat>\n      <driftsresultat><aarets orid=\"146\">0</aarets></driftsresultat>\n      <kostnad><sumDriftskostnad><aarets orid=\"17126\">0</aarets></sumDriftskostnad></kostnad>\n    </resultatregnskapDriftsresultat>\n    <resultatregnskapFinansinntekt>\n      <nettoFinans><aarets orid=\"158\">0</aarets></nettoFinans>\n      <finansinntekt><sumFinansinntekter><aarets orid=\"153\">0</aarets></sumFinansinntekter></finansinntekt>\n      <finanskostnad><sumFinanskostnader><aarets orid=\"17130\">0</aarets></sumFinanskostnader></finanskostnad>\n    </resultatregnskapFinansinntekt>\n    <resultatregnskapResultat>\n      <resultat>\n        <resultatFoerSkattekostnad><aarets orid=\"167\">0</aarets></resultatFoerSkattekostnad>\n        <skattekostnad><aarets orid=\"11835\">0</aarets></skattekostnad>\n        <aarsresultat><aarets orid=\"172\">0</aarets></aarsresultat>\n      </resultat>\n    </resultatregnskapResultat>\n    <balanseAnleggsmidlerOmloepsmidler>\n      <sumEiendeler><aarets orid=\"219\">0</aarets></sumEiendeler>\n      <balanseAnleggsmidler>\n        <sumAnleggsmidler><aarets orid=\"217\">0</aarets></sumAnleggsmidler>\n        <balanseFinansielleAnleggsmidler>\n          <investeringAksjerAndeler><aarets orid=\"7100\">0</aarets></investeringAksjerAndeler>\n          <sumFinansielleAnleggsmidler><aarets orid=\"5267\">0</aarets></sumFinansielleAnleggsmidler>\n        </balanseFinansielleAnleggsmidler>\n      </balanseAnleggsmidler>\n      <balanseOmloepsmidler>\n        <sumOmloepsmidler><aarets orid=\"194\">0</aarets></sumOmloepsmidler>\n        <balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n          <bankinnskuddKontanter>\n            <sumBankinnskuddKontanter><aarets orid=\"29042\">0</aarets></sumBankinnskuddKontanter>\n          </bankinnskuddKontanter>\n        </balanseOmloepsmidlerInvesteringerBankinnskuddKontanter>\n      </balanseOmloepsmidler>\n    </balanseAnleggsmidlerOmloepsmidler>\n    <balanseEgenkapitalGjeld>\n      <sumEgenkapitalGjeld><aarets orid=\"251\">0</aarets></sumEgenkapitalGjeld>\n      <balanseEgenkapitalInnskuttOpptjentEgenkapital>\n        <innskuttEgenkapital>\n          <sumInnskuttEgenkapital><aarets orid=\"3730\">0</aarets></sumInnskuttEgenkapital>\n        </innskuttEgenkapital>\n        <opptjentEgenkaiptal>\n          <annenEgenkapital><aarets orid=\"3274\">0</aarets></annenEgenkapital>\n          <sumOpptjentEgenkapital><aarets orid=\"9702\">0</aarets></sumOpptjentEgenkapital>\n          <sumEgenkapital><aarets orid=\"250\">0</aarets></sumEgenkapital>\n        </opptjentEgenkaiptal>\n      </balanseEgenkapitalInnskuttOpptjentEgenkapital>\n      <balanseGjeldOversikt>\n        <sumGjeld><aarets orid=\"1119\">0</aarets></sumGjeld>\n        <balanseKortsiktigGjeld>\n          <betalbarSkatt><aarets orid=\"2483\">0</aarets></betalbarSkatt>\n          <sumKortsiktigGjeld><aarets orid=\"85\">0</aarets></sumKortsiktigGjeld>\n        </balanseKortsiktigGjeld>\n      </balanseGjeldOversikt>\n    </balanseEgenkapitalGjeld>\n    <noter>\n      <noteAarsverkTjenestePensjon>\n        <antallAarsverk orid=\"37467\">0</antallAarsverk>\n      </noteAarsverkTjenestePensjon>\n    </noter>\n  </Skjemainnhold-RR0002U>\n</melding>\n",
+        "feedback": []
+      }
+    },
+    "same": true
+  }
+]

@@ -1,0 +1,180 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "annual_accounts_filing",
+  "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing",
+  "owner": "backend:annual_accounts_filing",
+  "purpose": "Own Annual Accounts calculation, XML, readiness, evidence, rehearsal and phase-gated filing persistence through the generated web boundary.",
+  "documentation": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.annual_accounts_filing.public",
+  "exports": {
+    "commands": [
+      "rehearse_annual_accounts",
+      "prepare_annual_accounts_for_signing"
+    ],
+    "queries": [
+      "AnnualAccountsSource",
+      "AnnualAccountsCandidate",
+      "AnnualAccountsRenderInput",
+      "AnnualAccountsDocuments",
+      "AnnualAccountsReadinessIssue",
+      "AnnualAccountsCorporateReadiness",
+      "build_annual_accounts",
+      "render_annual_accounts",
+      "assess_annual_accounts_readiness",
+      "AnnualAccountsOfflineSource",
+      "AnnualAccountsOfflineSimulation",
+      "build_annual_accounts_offline_payload",
+      "assess_annual_accounts_offline",
+      "simulate_annual_accounts_offline",
+      "AnnualAccountsEvidenceInput",
+      "AnnualAccountsEvidenceProjection",
+      "import_annual_accounts_evidence",
+      "AnnualAccountsRehearsalConfiguration",
+      "ImportAnnualAccountsEvidence",
+      "AnnualAccountsCompanyIdentity",
+      "ImportedAnnualAccountsEvidence",
+      "AnnualAccountsRecordQuery",
+      "RecordAnnualAccountsOverride",
+      "AddAnnualAccountsReviewComment",
+      "ConfirmAnnualAccountsPermission",
+      "RecordAnnualAccountsTestEvidence",
+      "AnnualAccountsRecordedResult",
+      "normalize_annual_accounts_override",
+      "normalize_annual_accounts_review",
+      "normalize_annual_accounts_test_evidence",
+      "AnnualAccountsWorkspaceQuery",
+      "AnnualAccountsFilingRows",
+      "AnnualAccountsSourceQuery",
+      "AnnualAccountsSourceSnapshot",
+      "AnnualAccountsSourceEvidence",
+      "AnnualAccountsHistoryCoverage",
+      "AnnualAccountsSubmissionFact",
+      "AnnualAccountsIncidentFact",
+      "AnnualAccountsOutcomeFact",
+      "AnnualAccountsCorrectionLink",
+      "AnnualAccountsSourceFacts",
+      "project_annual_accounts_source",
+      "verify_annual_accounts_source"
+    ],
+    "events": [],
+    "errors": [
+      "AnnualAccountsAuthorityError",
+      "AnnualAccountsError"
+    ],
+    "identifiers": [
+      "AnnualAccountsAuthority",
+      "AnnualAccountsRehearsalIO",
+      "annual_accounts_authority_adapter",
+      "AnnualAccountsEvidencePersistence",
+      "AnnualAccountsRecordId",
+      "AnnualAccountsPreparationPersistence",
+      "AnnualAccountsWorkspacePersistence",
+      "annual_accounts_persistence_adapter",
+      "AnnualAccountsSourcePersistence"
+    ]
+  },
+  "owns": {
+    "postgresSchemas": [
+      "annual_accounts_filing"
+    ],
+    "tables": [
+      "annual_accounts_filing.authority_permissions",
+      "annual_accounts_filing.authority_test_runs",
+      "annual_accounts_filing.filing_overrides",
+      "annual_accounts_filing.filing_previews",
+      "annual_accounts_filing.filing_review_comments",
+      "annual_accounts_filing.filing_submissions"
+    ],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "supabase/migrations"
+  },
+  "ports": [
+    {
+      "name": "AnnualAccountsAuthority",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.annual_accounts_filing.public.AnnualAccountsAuthority",
+      "registrationDecorator": "talli_backend.modules.annual_accounts_filing.public.annual_accounts_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.annual_accounts_authority.AnnualAccountsTransport"
+      ]
+    },
+    {
+      "name": "AnnualAccountsRehearsalIO",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.annual_accounts_filing.public.AnnualAccountsRehearsalIO",
+      "registrationDecorator": "talli_backend.modules.annual_accounts_filing.public.annual_accounts_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.local_annual_accounts_rehearsal.LocalAnnualAccountsRehearsal"
+      ]
+    },
+    {
+      "name": "AnnualAccountsWorkspacePersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.annual_accounts_filing.public.AnnualAccountsWorkspacePersistence",
+      "registrationDecorator": "talli_backend.modules.annual_accounts_filing.public.annual_accounts_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction"
+      ]
+    },
+    {
+      "name": "AnnualAccountsPreparationPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.annual_accounts_filing.public.AnnualAccountsPreparationPersistence",
+      "registrationDecorator": "talli_backend.modules.annual_accounts_filing.public.annual_accounts_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction"
+      ]
+    },
+    {
+      "name": "AnnualAccountsEvidencePersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.annual_accounts_filing.public.AnnualAccountsEvidencePersistence",
+      "registrationDecorator": "talli_backend.modules.annual_accounts_filing.public.annual_accounts_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction"
+      ]
+    },
+    {
+      "name": "AnnualAccountsSourcePersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.annual_accounts_filing.public.AnnualAccountsSourcePersistence",
+      "registrationDecorator": "talli_backend.modules.annual_accounts_filing.public.annual_accounts_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction"
+      ]
+    }
+  ],
+  "dependencies": [],
+  "allowedImports": [
+    "__future__",
+    "calendar",
+    "collections.abc",
+    "dataclasses",
+    "decimal",
+    "math",
+    "re",
+    "types",
+    "hashlib",
+    "icu",
+    "typing",
+    "uuid",
+    "talli_backend.shared.kernel",
+    "datetime",
+    "json",
+    "contextlib"
+  ],
+  "forbiddenResponsibilities": [
+    "Ledger posting or account ownership",
+    "Corporate Governance and Documents source ownership",
+    "Annual common aggregation and Billing commercial policy",
+    "Provider activation, production submission and persistence before the explicit migration cutover"
+  ],
+  "tests": {
+    "policy": "apps/backend/tests/test_annual_accounts_filing.py",
+    "architecture": "tests/architecture_foundation.test.mjs",
+    "offline": "tests/test_annual_accounts_offline_migration.py"
+  },
+  "compatibilityExceptions": []
+}

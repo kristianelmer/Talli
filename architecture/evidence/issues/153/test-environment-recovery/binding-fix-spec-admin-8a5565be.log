@@ -1,0 +1,55 @@
+{
+  "revision": "8a5565be77420eba54ee414c7af7fbcbd0302b13",
+  "mode": "ROLLBACK_ONLY_PREEXISTING_BINDING_ADMIN_OPTION",
+  "cases": [
+    {
+      "case": "fresh membership",
+      "actual": [
+        [
+          false,
+          false,
+          true
+        ]
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "existing admin membership",
+      "actual": [
+        [
+          false,
+          false,
+          true
+        ]
+      ],
+      "expected": [
+        [
+          false,
+          false,
+          true
+        ]
+      ]
+    },
+    {
+      "case": "fixed binding rerun",
+      "actual": [
+        [
+          false,
+          false,
+          true
+        ]
+      ],
+      "status": "PASS"
+    },
+    {
+      "case": "binding rollback",
+      "actual": [],
+      "status": "PASS"
+    }
+  ],
+  "bindingSha256": "fdcb34e81a79e8e5d9c59f01230969ad6f292e2c466bac9d65a8c1293b109211",
+  "status": "PASS_ADMIN_FALSE_ENFORCED",
+  "globalMembershipsRestored": true,
+  "schemaRollbackVerified": true,
+  "fixtureRollbackVerified": true
+}

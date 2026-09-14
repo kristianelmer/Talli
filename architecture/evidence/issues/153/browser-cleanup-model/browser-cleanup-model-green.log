@@ -1,0 +1,23 @@
+✔ browser owner cleanup preserves every prior family in predecessor before company and user (15.641209ms)
+✔ browser owner cleanup preserves every prior family in overlap before company and user (12.295125ms)
+✔ browser owner cleanup preserves every prior family in contracted before company and user (12.115792ms)
+✔ browser owner cleanup preserves every prior family in tax-contracted before company and user (13.385791ms)
+✔ browser owner cleanup preserves every prior family in accounts-expanded before company and user (12.857375ms)
+✔ browser owner cleanup preserves every prior family in accounts-contracted before company and user (14.003625ms)
+✔ browser owner cleanup removes every tracked company before the shared owner (12.446416ms)
+✔ browser owner cleanup preserves source failure and continues independent cleanup (6.035791ms)
+✔ browser owner cleanup preserves both operation and rollback failures (4.09075ms)
+✔ browser owner cleanup fails closed for accounts-missing-family (0.796291ms)
+✔ browser owner cleanup fails closed for accounts-partial-retirement (0.3815ms)
+✔ browser owner cleanup fails closed for accounts-wrong-phase (0.556917ms)
+✔ browser owner cleanup fails closed for missing-family (1.772459ms)
+✔ browser owner cleanup fails closed for wrong-owner (0.554209ms)
+✔ browser owner cleanup fails closed for invalid-trigger-mode (2.74675ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 191.163792

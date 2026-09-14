@@ -1,0 +1,545 @@
+npm run test:archive
+
+> talli-repository@0.1.0 test:archive
+> node --experimental-strip-types --test tests/archive_export.test.mjs && node --experimental-strip-types --test apps/web/tests/archive-rf1086-source.test.mjs
+
+✔ builds company-year archive from persisted workspace rows (3.421ms)
+✔ archive download fetches only sanitized authority runs linked by submission id (1.54425ms)
+✔ archive ledger facts come through the generated capability query with a frozen projection (0.936917ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 94.132459
+✔ archive preserves frozen mixed chains except the exact owned RF, Tax and Accounts read retirements (17.678958ms)
+✔ archive preserves original selected opening and shareholder fields through the joined owner projection (56.092583ms)
+✔ a failing 2024 opening does not prevent a valid 2025 archive but still blocks the 2024 export (31.783125ms)
+✔ RF-only archive preserves original nested payload identities, requested year and company-wide history (20.711041ms)
+✔ actual generated RF archive transport isolates a malformed 2024 preview from the valid 2025 download (25.50925ms)
+✔ RF authority evidence is limited to retained submission references without adding a generic persistence call (10.116833ms)
+✔ owned sibling sources retain linked authority evidence and overlap never duplicates RF rows (10.454208ms)
+✔ unavailable rf source cannot complete the authoritative export (10.78225ms)
+✔ unavailable opening source cannot complete the authoritative export (8.487625ms)
+✔ unavailable tax source cannot complete the authoritative export (8.585125ms)
+✔ unavailable taxFiling source cannot complete the authoritative export (16.509958ms)
+✔ unavailable accountsFiling source cannot complete the authoritative export (7.47575ms)
+✔ unavailable audit_events source cannot complete the authoritative export (7.784542ms)
+✔ Accounts source errors retain priority and precede all sibling reads (7.828667ms)
+✔ authentication and step-up precede every source and export effect {"user":false} (16.307041ms)
+✔ authentication and step-up precede every source and export effect {"token":false} (7.258875ms)
+✔ authentication and step-up precede every source and export effect {"mfa":false} (6.869916ms)
+✔ empty retained history still rejects export and failed receipt never yields a downloadable archive (13.879042ms)
+✔ owned Tax source preserves all thirteen original fields beside unchanged RF history (8.623708ms)
+✔ owned Tax filing preserves nested payload and only linked evidence inside the Archive generation boundary (8.894292ms)
+✔ owned Accounts archive retains requested-year rows, company-wide comments, and only linked evidence (7.95175ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 666.142542
+npm run test:backup-restore
+
+> talli-repository@0.1.0 test:backup-restore
+> node --experimental-strip-types --test tests/backup_restore.test.mjs
+
+✔ company-tax evidence migration preserves an atomic reference-only backup boundary (1.068417ms)
+✔ backup manifest identifies launch-critical tables and object references (0.713167ms)
+✔ restore fixture preserves launch-critical accounting state in isolated workspace (0.410833ms)
+✔ company-tax submissions are counted and round-trip with generic filing submissions (0.199542ms)
+✔ restore integrity rejects missing and mismatched company-tax authority evidence pairs (1.006917ms)
+✔ restore integrity fails when corporate lifecycle rows or object metadata are incomplete (0.228958ms)
+✔ restore integrity reports missing object warning and missing critical rows (0.194125ms)
+✔ production restore launch gate requires recent passing restore test (0.135708ms)
+✔ corporate release and restore runbooks keep external gates explicitly pending (1.205416ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 86.654667
+npm run test:security
+
+> talli-repository@0.1.0 test:security
+> node --experimental-strip-types --test tests/security_step_up.test.mjs
+
+✔ step-up accepts fresh signed AAL2 claims for the matching actor (2.170667ms)
+✔ step-up accepts supported signed MFA method references and uses the newest one (0.166083ms)
+✔ step-up fails closed for AAL1, cross-user, missing AMR, and string-only AMR claims (0.261542ms)
+✔ step-up rejects invalid, stale, and future MFA timestamps (0.148959ms)
+✔ all protected corporate actions require fresh AAL2 user presence (0.143334ms)
+✔ server gate verifies claims, never reads legacy step-up rows, and audits allow/block (0.471875ms)
+✔ claims lookup failures are blocked and audited without leaking provider details (0.176625ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 86.61
+npm run test:trusted-aal2-schema
+
+> talli-repository@0.1.0 test:trusted-aal2-schema
+> node --test tests/trusted_aal2_schema.test.mjs
+
+✔ legacy step-up events are inaccessible to customer Data API roles (2.964917ms)
+✔ corporate step-up RPC trusts signed AAL2 and timestamped AMR claims only (1.11175ms)
+✔ final founder confirmation is a database-enforced launch signoff key (0.735583ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 56.200125
+npm run test:filing-release-gate
+
+> talli-repository@0.1.0 test:filing-release-gate
+> node --experimental-strip-types --test tests/filing_release_gate.test.mjs
+
+✔ release evidence keeps authority and filing switches off after local browser proof (0.720333ms)
+✔ keeps all production filing gates disabled without authority, billing, step-up, and human review (0.490625ms)
+✔ blocks production when authority evidence or filing-specific signoff is missing (0.24275ms)
+✔ marks only the exactly entitled RF obligation production ready when every release gate passes (0.446959ms)
+✔ cannot report production ready when a live adapter is unimplemented or disabled (0.137333ms)
+✔ fresh AAL2 and enabled adapters cannot replace final founder confirmation (0.110458ms)
+✔ a stale restore rehearsal blocks every production filing (0.106875ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 99.665542
+npm run test:production-filing-guide
+
+> talli-repository@0.1.0 test:production-filing-guide
+> node --test tests/production_filing_action_guide.test.mjs
+
+✔ checklist and guide keep the exact ordered stage sequence (0.946167ms)
+✔ both documents keep runtime signoffs in the signoff stage (0.557667ms)
+✔ both documents keep case-specific gates in their operating stages (0.314125ms)
+✔ mandatory gates stay affirmative without localized contradictions (7.022958ms)
+✔ mandatory-gate contradiction matcher rejects bypasses but allows fail-closed language (0.347209ms)
+✔ every guide stage uses only numbered checkbox action entries (0.977667ms)
+✔ mandatory gate declarations stay outside exact action checkboxes (0.176ms)
+✔ founder go-live approval stays pending until the complete evidence set exists (0.21225ms)
+✔ production credential readiness is verified without exposing the key (0.237708ms)
+✔ unknown outcome shutdown precedes read-only reconciliation (0.176792ms)
+✔ legal-pack approval stage says professional approval is pending (0.08275ms)
+✔ guide preserves switch, evidence, and unknown-outcome stop rules (0.215166ms)
+✔ both documents state the narrow scope and forbid adjacent filing scope (0.218541ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 67.075375
+npm run test:launch-copy
+
+> talli-repository@0.1.0 test:launch-copy
+> node --experimental-strip-types --test tests/launch_copy.test.mjs
+
+✔ requires non-affiliation and pre-production gate language in public app copy (1.485792ms)
+✔ rejects launch claims that outrun authority evidence (0.346208ms)
+✔ public homepage is a truthful free recruitment entry (1.8135ms)
+✔ public company check is free, provisional, and distinguishes provider failure (1.054792ms)
+✔ public legal copy identifies the real beta operator and contains no placeholders (0.304417ms)
+✔ email signup communicates the hosted twelve-character password floor (0.394416ms)
+✔ launch validator rejects beta overclaims about review, payment, and delivery (0.110042ms)
+✔ owner Systembruker copy distinguishes approval from verified readiness (0.182542ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 94.866916
+npm run test:launch-signoff
+
+> talli-repository@0.1.0 test:launch-signoff
+> node --experimental-strip-types --test tests/launch_signoff.test.mjs
+
+✔ blocks launch when required signoffs are missing (0.649083ms)
+✔ blocks launch when signoff is rejected or incomplete (0.458ms)
+✔ requires fresh restore signoff (0.121583ms)
+✔ rejects future-dated launch signoffs (0.293125ms)
+✔ passes only when every launch signoff is approved with evidence (0.09825ms)
+✔ builds persisted launch signoff record and validates approved evidence (1.23ms)
+✔ documented launch_legal_name_public_copy entry is a valid approved record (0.129583ms)
+✔ launch evidence records the final founder gate as intentionally unapproved (2.029292ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 87.049459
+npm run test:validation-observation-launch-off
+
+> talli-repository@0.1.0 test:validation-observation-launch-off
+> node --test tests/validation_observation_launch_off.test.mjs
+
+✔ full-launch source configuration is exact off and public contracts expose no validation-observation authority (7.73675ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 57.200375
+npm run test:legal-policy
+
+> talli-repository@0.1.0 test:legal-policy
+> node --test tests/legal_policy_pack.test.mjs tests/launch_human_gate_preparation.test.mjs
+
+✔ measurement decision inventories application-controlled data without hosted overclaims (0.726917ms)
+✔ consent proof remains exact-release-bound and inactive without human approval (0.119458ms)
+✔ validation plan links preparation without opening intake (0.065833ms)
+✔ founder-approved pilot observation direction stays separate and fails closed for launch (0.275125ms)
+✔ pre-intake pack stays blank, protected-store-first and fail closed (0.239958ms)
+✔ terms cover holding-first scope, unsupported cases, filing limits, refunds, and no advisory guarantee (0.711167ms)
+✔ legal pack uses one beta-to-live business agreement and explicit electronic acceptance (0.31125ms)
+✔ privacy and pack metadata identify the supplier without transfer or hosting overclaims (0.298208ms)
+✔ production evidence retains both named-company gates and production filing NO-GO (0.254667ms)
+✔ privacy policy and DPA cover launch-critical data and processor boundaries (0.184542ms)
+✔ retention/delete policy distinguishes export, retention hold, and deletion constraints (0.130333ms)
+✔ incident policy covers detection, containment, notification, filing incidents, and postmortems (0.132333ms)
+✔ incident policy names pre-incorporation roles and a customer notification approach (0.116958ms)
+✔ retention policy fixes archive responsibility and audit-id pseudonymization (0.32525ms)
+✔ founder decision records the approved AI-assisted boundary and real-data stop (0.169583ms)
+✔ legal pack uses the approved annual offer, role boundary, and measured retention (0.1935ms)
+✔ privacy policy states a GDPR art. 6 legal basis and a least-privilege operator access model (0.181583ms)
+✔ DPA covers breach notification to the controller, audit rights, and duration (0.124792ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 65.615333
+npm run test:ci-gate
+
+> talli-repository@0.1.0 test:ci-gate
+> node --test tests/ci_release_gate.test.mjs tests/mass_market_execution_control_plane.test.mjs
+
+✔ release gate covers pull requests and main with least privilege (25.151958ms)
+✔ release gate runs every customer-readiness check before promotion (0.974708ms)
+✔ manual release gates can retain linked immutable evidence (0.170959ms)
+✔ database isolation uses the locked Python renderer environment (0.137917ms)
+✔ database isolation runs the complete ledger contract lifecycle (0.56125ms)
+✔ local immutable gate rejects tracked, staged, and untracked drift (723.963625ms)
+✔ local immutable gate normalizes terminal output before recording it (0.692792ms)
+✔ database harness restores generated drift and preserves failure semantics (6538.433166ms)
+✔ browser owner rehearsal includes executable owned-process lifecycle coverage (1.16925ms)
+✔ Vercel deploys the Next output near the owner-designated database (0.184666ms)
+✖ backend boundary partitions every test across the ordinary, Billing, Authority and Company Tax mandatory lanes (17838.08075ms)
+✔ mandatory Billing and Authority lifecycles refuse missing DB configuration before any test runner (22.921083ms)
+✔ mandatory local lane preserves every predecessor before Billing and final Authority verification (1837.869083ms)
+✔ rollback RF=false AU=v restores dependency order (0.406166ms)
+✔ rollback RF=true AU=v restores dependency order (0.092834ms)
+✔ rollback RF=false AU=null restores dependency order (0.083583ms)
+✔ rollback RF=true AU=null restores dependency order (0.0625ms)
+✔ workspace rollback followed by final recutover restores signoff policy topology (0.1425ms)
+✔ RF rollback failure prevents all predecessor mutations (0.3265ms)
+✔ workspace retains AU and Ledger overlap for Billing and sibling consumers (0.089917ms)
+✔ workspace refuses wrong Ledger topology {"ledger_kind":null,"ledger_setup":false} (0.061ms)
+✔ workspace refuses wrong Ledger topology {"ledger_kind":"r"} (0.046666ms)
+✔ workspace refuses wrong Ledger topology {"ledger_setup":false} (0.040666ms)
+✔ workspace refuses wrong Ledger topology {"opening_kind":null} (0.058584ms)
+✔ final RF contract follows explicit final Ledger guard and owner recutover (0.074208ms)
+✔ final refuses incomplete Ledger contract {"ledger_kind":"v","ledger_setup":true} (0.057833ms)
+✔ final refuses incomplete Ledger contract {"ledger_kind":null,"ledger_setup":true} (0.044417ms)
+✔ final refuses incomplete Ledger contract {"ledger_kind":"v","ledger_setup":false} (0.059ms)
+✔ dependency failure stops final sequence at migrations/20260909125113_legacy_rf1086_authority_relocation.sql (0.101875ms)
+✔ dependency failure stops final sequence at migrations/20260909190548_shareholder_register_filing_capability.sql (0.064375ms)
+✔ dependency failure stops final sequence at migrations/20260909190905_shareholder_register_filing_cutover.sql (0.0745ms)
+✔ dependency failure stops final sequence at contract-migrations/20260909190955_shareholder_register_filing_contract.sql (0.067084ms)
+✔ success is refused if SQL does not establish target state (0.116416ms)
+✔ unexpected earlier owner topology fails before mutation (0.045083ms)
+✔ unknown direction fails before even probing the database (0.065334ms)
+✔ package partition retains every original file once (0.735083ms)
+✔ complete local runner requires the fresh RF browser after historical recovery (0.214708ms)
+✖ real shell stops at success and restores owned generated files (862.44825ms)
+✔ real shell stops at topology:workspace and restores owned generated files (451.773917ms)
+✔ real shell stops at npm:test:supabase-rf-workspace and restores owned generated files (434.194125ms)
+✔ real shell stops at npm:test:browser-owner and restores owned generated files (496.172208ms)
+✔ real shell stops at topology:rollback:2 and restores owned generated files (578.134333ms)
+✔ real shell stops at npm:test:ledger-hosted-migration-authority and restores owned generated files (449.779958ms)
+✔ real shell stops at npm:test:billing-database-lifecycle and restores owned generated files (583.091208ms)
+✔ real shell stops at topology:recutover and restores owned generated files (534.38875ms)
+✖ real shell stops at npm:test:supabase-rf-feedback and restores owned generated files (534.778583ms)
+✔ real shell stops at npm:test:company-tax-database and restores owned generated files (503.913292ms)
+✖ real shell stops at npm:test:browser-owner-annual and restores owned generated files (554.204083ms)
+✖ real shell stops at npm:test:browser-shareholder-register-filing and restores owned generated files (560.644417ms)
+✖ real shell stops at npm:test:browser-company-tax and restores owned generated files (562.130291ms)
+✔ the live execution control plane pins the complete route and sole clearance (2.837334ms)
+✔ all #179 lanes, signoffs, freshness, and independent controls are explicit (0.9495ms)
+✔ #188 has a complete executable planned criterion ledger before claim (0.508666ms)
+✔ #140 has a complete executable planned criterion ledger before product edits (0.148875ms)
+✔ the control plane blocks premature banking, validation, spend, and external effects (0.229625ms)
+✔ approved billing split preserves source order and both completion barriers (0.263959ms)
+ℹ tests 56
+ℹ suites 0
+ℹ pass 50
+ℹ fail 6
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 34200.025125
+
+✖ failing tests:
+
+test at tests/ci_release_gate.test.mjs:379:1
+✖ backend boundary partitions every test across the ordinary, Billing, Authority and Company Tax mandatory lanes (17838.08075ms)
+  AssertionError [ERR_ASSERTION]: no backend test may disappear between lanes
+  + actual - expected
+  ... Skipped lines
+  
+  + Set(6648) {
+  - Set(6671) {
+      "tests/test_annual_accounts_authority_ownership.py::test_reviewed_json_shapes_preserve_actual_predecessor_subprocess_boundary[annualData='']",
+      "tests/test_annual_accounts_authority_ownership.py::test_reviewed_json_shapes_preserve_actual_predecessor_subprocess_boundary[ledgerEntries='']",
+      "tests/test_annual_accounts_evidence.py::test_evidence_date_acceptance_matches_pinned_node['']",
+      "tests/test_annual_accounts_evidence.py::test_evidence_date_acceptance_matches_pinned_node['(ignored)2026']",
+      "tests/test_annual_accounts_evidence.py::test_evidence_date_acceptance_matches_pinned_node['+000000']",
+  ...
+      "tests/test_annual_accounts_evidence.py::test_evidence_date_acceptance_matches_pinned_node['random2026']",
+  -   "tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_source_drift_without_mutation[insert into public.filing_previews(company_id,income_year,filing,status,preview,created_by) values('15300000-0000-4000-8000-000000000001',2025,'unclassified','ready','Synthetic unknown','15300000-0000-4000-8000-000000000010')-annual_accounts_cutover_quarantine]",
+  -   "tests/test_annual_accounts_filing_lifecycle.py::test_source_history_detects_real_database_coverage_drift[update backend_system.annual_accounts_migration_inventory set definition_sha256=repeat('0',64)-inventoryValid-True]",
+  -   "tests/test_annual_accounts_filing_lifecycle.py::test_source_history_detects_real_database_coverage_drift[update backend_system.annual_accounts_source_rows set source_sha256=repeat('0',64) where ctid=(select ctid from backend_system.annual_accounts_source_rows order by family,source_id,source_sha256 limit 1)-sourceRowsValid-True]",
+      "tests/test_banking_file_fallback.py::test_camt_rejects_entities_currency_mismatch_and_out_of_year_rows[<!DOCTYPE x [<!ENTITY y 'boom'>]><Document>&y;</Document>]",
+      "tests/test_legacy_billing_retirement_runtime.py::test_cleanup_rows_cannot_be_repurposed_as_acquisition_or_other_history[created_at=created_at-interval '1 day']",
+      "tests/test_legacy_billing_retirement_runtime.py::test_cleanup_rows_cannot_be_repurposed_as_acquisition_or_other_history[idempotency_key='replacement-key']",
+      "tests/test_legacy_billing_retirement_runtime.py::test_cleanup_rows_cannot_be_repurposed_as_acquisition_or_other_history[kind='subscription']",
+      "tests/test_legacy_billing_retirement_runtime.py::test_cleanup_rows_cannot_be_repurposed_as_acquisition_or_other_history[provider='replacement-provider']",
+  ...
+      'tests/test_annual_accounts_filing.py::test_xml_matches_original_bytes_or_ordered_rejection[wrong-currency]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_contract_preserves_first_index_inventory',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_inactive_rows_without_preserved_provenance',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_source_drift_without_mutation[alter table public.filing_previews add column unexpected_accounts_probe text-annual_accounts_source_schema_changed]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_source_drift_without_mutation[alter table public.filing_previews disable trigger company_archive_track_filing_previews-annual_accounts_source_schema_changed]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_target_protection_drift[alter table annual_accounts_filing.filing_previews disable row level security]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_target_protection_drift[alter table annual_accounts_filing.filing_previews no force row level security]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_target_protection_drift[alter table annual_accounts_filing.filing_submissions drop constraint filing_submissions_mode_check]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_target_protection_drift[create policy accounts_probe_unscoped on annual_accounts_filing.filing_previews for select to annual_accounts_filing_store_owner using(true)]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_target_protection_drift[grant select on annual_accounts_filing.filing_previews to authenticated]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_documents_retention_uses_owned_receipt_and_feedback_references',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_explicit_backend_binding_requires_cutover_and_can_be_removed',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_full_rollback_rejects_changed_source_protections[alter table public.filing_previews disable row level security]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_full_rollback_rejects_changed_source_protections[alter table public.filing_previews disable trigger company_archive_track_filing_previews]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_latest_state_survives_contract_full_rollback_and_recutover',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_real_authorization_and_phase_contracts[contracted]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_real_authorization_and_phase_contracts[cutover]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_real_authorization_and_phase_contracts[expanded]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_source_history_detects_real_database_coverage_drift[alter table annual_accounts_filing.filing_submissions drop constraint filing_submissions_mode_check-modeChecksValid-True]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_source_history_detects_real_database_coverage_drift[alter table public.filing_submissions drop constraint accounts153_legacy_writer_retired-legacyFencesValid-False]',
+  -   'tests/test_annual_accounts_filing_lifecycle.py::test_source_history_detects_real_database_coverage_drift[create table annual_accounts_filing.uncovered_source_probe(id integer)-declaredExtentValid-True]',
+      'tests/test_annual_accounts_import_workflow.py::test_http_import_matches_released_projection_or_error[archived-tt02-pending]',
+      'tests/test_annual_accounts_import_workflow.py::test_http_import_matches_released_projection_or_error[date-parse-+010000-01-01T00:00:00Z]',
+      'tests/test_annual_accounts_import_workflow.py::test_http_import_matches_released_projection_or_error[date-parse-0099-01-01]',
+      'tests/test_annual_accounts_import_workflow.py::test_http_import_matches_released_projection_or_error[date-parse-0]',
+      'tests/test_annual_accounts_import_workflow.py::test_http_import_matches_released_projection_or_error[date-parse-2026-02-30]',
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/ci_release_gate.test.mjs:419:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: Set(6648) { 'tests/test_altinn_authority_operations.py::test_existing_exact_definition_is_read_only_and_token_never_escapes[register_rf1086_system-already_verified]', 'tests/test_altinn_authority_operations.py::test_existing_exact_definition_is_read_only_and_token_never_escapes[set_rf1086_systembruker_callback-callback_already_verified]', 'tests/test_altinn_authority_operations.py::test_registration_missing_creates_exact_body_once_and_verifies', 'tests/test_altinn_authority_operations.py::test_callback_empty_updates_exact_body_once_and_verifies_after_uncertain_put', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[False-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[False-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[None-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[None-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[true-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[true-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[1-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[1-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_lazy_disabled_environment_never_requires_provider_credentials[None]', 'tests/test_altinn_authority_operations.py::test_lazy_disabled_environment_never_requires_provider_credentials[false]', 'tests/test_altinn_authority_operations.py::test_lazy_disabled_environment_never_requires_provider_credentials[1]', 'tests/test_altinn_authority_operations.py::test_lazy_disabled_environment_never_requires_provider_credentials[TRUE]', 'tests/test_altinn_authority_operations.py::test_lazy_disabled_environment_never_requires_provider_credentials[ true]', 'tests/test_altinn_authority_operations.py::test_production_configuration_errors_are_safe_before_signing[CLIENT_ID-test-client-authority_client_id_invalid]', 'tests/test_altinn_authority_operations.py::test_production_configuration_errors_are_safe_before_signing[CLIENT_ID- 10000000-0000-4000-8000-000000000001-authority_client_id_invalid]', 'tests/test_altinn_authority_operations.py::test_production_configuration_errors_are_safe_before_signing[KEY_ID-tt02-key-authority_key_id_invalid]', 'tests/test_altinn_authority_operations.py::test_production_configuration_errors_are_safe_before_signing[PRIVATE_KEY_PEM-/private/key.pem-authority_private_key_invalid]', 'tests/test_altinn_authority_operations.py::test_production_configuration_errors_are_safe_before_signing[PRIVATE_KEY_PEM------[REDACTED SYNTHETIC TEST KEY HEADER]-----\\ntest-placeholder\\n-----END PRIVATE KEY------authority_private_key_invalid]', 'tests/test_altinn_authority_operations.py::test_production_configuration_errors_are_safe_before_signing[PRIVATE_KEY_PEM------[REDACTED SYNTHETIC TEST KEY HEADER]-----\\nlocal-placeholder\\n-----END PRIVATE KEY-----xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'... 6608 more characters, 'tests/test_altinn_authority_operations.py::test_test_configuration_is_never_usable_for_these_production_operations', 'tests/test_altinn_authority_operations.py::test_unprepared_or_substituted_intent_has_no_token_or_http_activity[False]', 'tests/test_altinn_authority_operations.py::test_unprepared_or_substituted_intent_has_no_token_or_http_activity[True]', 'tests/test_altinn_authority_operations.py::test_token_error_never_reaches_system_register_and_diagnostics_are_redacted[register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_token_error_never_reaches_system_register_and_diagnostics_are_redacted[set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[401-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[401-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[403-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[403-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[429-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[429-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[500-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[500-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_redirect_is_never_followed_or_treated_as_a_normal_provider_response[response0-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_redirect_is_never_followed_or_treated_as_a_normal_provider_response[response0-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_redirect_is_never_followed_or_treated_as_a_normal_provider_response[response1-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_redirect_is_never_followed_or_treated_as_a_normal_provider_response[response1-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response0-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response0-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response1-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response1-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response2-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response2-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response3-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response3-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response4-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response4-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response5-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response5-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_registration_projection_preserves_legacy_documented_response_aliases', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[clientId-value0-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[clientId-value0-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[rights-value1-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[rights-value1-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[accessPackages-value2-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[accessPackages-value2-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[isVisible-1-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[isVisible-1-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[id-other-system-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[id-other-system-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_registration_create_failure_is_not_reposted_and_later_explicit_attempt_reads_first[create_response0-authority_http_error-409]', 'tests/test_altinn_authority_operations.py::test_registration_create_failure_is_not_reposted_and_later_explicit_attempt_reads_first[create_response1-authority_http_error-204]', 'tests/test_altinn_authority_operations.py::test_registration_create_failure_is_not_reposted_and_later_explicit_attempt_reads_first[create_response2-authority_response_invalid-201]', 'tests/test_altinn_authority_operations.py::test_registration_create_failure_is_not_reposted_and_later_explicit_attempt_reads_first[create_response3-authority_response_invalid-201]', 'tests/test_altinn_authority_operations.py::test_registration_create_failure_is_not_reposted_and_later_explicit_attempt_reads_first[create_response4-authority_network_error-None]', 'tests/test_altinn_authority_operations.py::test_callback_missing_system_is_conflict_without_registration', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[top]', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[vendor]', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[localized]', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[right]', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[resource]', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[dual_alias]', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[deleted]', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[vendor_null]', 'tests/test_altinn_authority_operations.py::test_callback_accepts_exact_legacy_casing_and_omitted_vendor_authority', 'tests/test_altinn_authority_operations.py::test_callback_reads_back_after_any_update_outcome_and_only_observed_target_confirms[update0]', 'tests/test_altinn_authority_operations.py::test_callback_reads_back_after_any_update_outcome_and_only_observed_target_confirms[update1]', 'tests/test_altinn_authority_operations.py::test_callback_reads_back_after_any_update_outcome_and_only_observed_target_confirms[update2]', 'tests/test_altinn_authority_operations.py::test_callback_reads_back_after_any_update_outcome_and_only_observed_target_confirms[update3]', 'tests/test_altinn_authority_operations.py::test_callback_reads_back_after_any_update_outcome_and_only_observed_target_confirms[update4]', 'tests/test_altinn_authority_operations.py::test_callback_reads_back_after_any_update_outcome_and_only_observed_target_confirms[update5]', 'tests/test_altinn_authority_operations.py::test_callback_preserves_safe_update_failure_when_readback_proves_no_change[update0-authority_http_error-503]', 'tests/test_altinn_authority_operations.py::test_callback_preserves_safe_update_failure_when_readback_proves_no_change[update1-authority_response_invalid-200]', 'tests/test_altinn_authority_operations.py::test_callback_preserves_safe_update_failure_when_readback_proves_no_change[update2-authority_network_error-None]', 'tests/test_altinn_authority_operations.py::test_callback_readback_failure_remains_unverified_even_if_put_succeeded[verification0-404]', 'tests/test_altinn_authority_operations.py::test_callback_readback_failure_remains_unverified_even_if_put_succeeded[verification1-200]', 'tests/test_altinn_authority_operations.py::test_callback_readback_failure_remains_unverified_even_if_put_succeeded[verification2-200]', 'tests/test_altinn_authority_operations.py::test_callback_readback_failure_remains_unverified_even_if_put_succeeded[verification3-None]', 'tests/test_altinn_authority_operations.py::test_callback_even_error_responses_are_stream_capped_before_status_branch[404]', 'tests/test_altinn_authority_operations.py::test_callback_even_error_responses_are_stream_capped_before_status_branch[503]', 'tests/test_altinn_authority_operations.py::test_callback_successful_put_without_exact_observed_target_is_conflict[empty]', 'tests/test_altinn_authority_operations.py::test_callback_successful_put_without_exact_observed_target_is_conflict[drift]', 'tests/test_altinn_authority_operations.py::test_registration_created_uuid_alone_does_not_prove_verified_definition[drift]', 'tests/test_altinn_authority_operations.py::test_registration_created_uuid_alone_does_not_prove_verified_definition[absent]', 'tests/test_altinn_authority_operations.py::test_configuration_change_before_explicit_next_prepare_rebinds_tokens_to_audited_client', 'tests/test_altinn_authority_operations.py::test_shared_adapter_keeps_both_fixed_preparations_independent', 'tests/test_altinn_authority_operations.py::test_registration_response_text_strips_bom_for_create_and_readback', ... 6548 more items },
+    expected: Set(6671) { 'tests/test_altinn_authority_operations.py::test_existing_exact_definition_is_read_only_and_token_never_escapes[register_rf1086_system-already_verified]', 'tests/test_altinn_authority_operations.py::test_existing_exact_definition_is_read_only_and_token_never_escapes[set_rf1086_systembruker_callback-callback_already_verified]', 'tests/test_altinn_authority_operations.py::test_registration_missing_creates_exact_body_once_and_verifies', 'tests/test_altinn_authority_operations.py::test_callback_empty_updates_exact_body_once_and_verifies_after_uncertain_put', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[False-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[False-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[None-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[None-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[true-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[true-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[1-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_operations_are_disabled_by_default_even_with_injected_credentials[1-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_lazy_disabled_environment_never_requires_provider_credentials[None]', 'tests/test_altinn_authority_operations.py::test_lazy_disabled_environment_never_requires_provider_credentials[false]', 'tests/test_altinn_authority_operations.py::test_lazy_disabled_environment_never_requires_provider_credentials[1]', 'tests/test_altinn_authority_operations.py::test_lazy_disabled_environment_never_requires_provider_credentials[TRUE]', 'tests/test_altinn_authority_operations.py::test_lazy_disabled_environment_never_requires_provider_credentials[ true]', 'tests/test_altinn_authority_operations.py::test_production_configuration_errors_are_safe_before_signing[CLIENT_ID-test-client-authority_client_id_invalid]', 'tests/test_altinn_authority_operations.py::test_production_configuration_errors_are_safe_before_signing[CLIENT_ID- 10000000-0000-4000-8000-000000000001-authority_client_id_invalid]', 'tests/test_altinn_authority_operations.py::test_production_configuration_errors_are_safe_before_signing[KEY_ID-tt02-key-authority_key_id_invalid]', 'tests/test_altinn_authority_operations.py::test_production_configuration_errors_are_safe_before_signing[PRIVATE_KEY_PEM-/private/key.pem-authority_private_key_invalid]', 'tests/test_altinn_authority_operations.py::test_production_configuration_errors_are_safe_before_signing[PRIVATE_KEY_PEM------[REDACTED SYNTHETIC TEST KEY HEADER]-----\\ntest-placeholder\\n-----END PRIVATE KEY------authority_private_key_invalid]', 'tests/test_altinn_authority_operations.py::test_production_configuration_errors_are_safe_before_signing[PRIVATE_KEY_PEM------[REDACTED SYNTHETIC TEST KEY HEADER]-----\\nlocal-placeholder\\n-----END PRIVATE KEY-----xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'... 6608 more characters, 'tests/test_altinn_authority_operations.py::test_test_configuration_is_never_usable_for_these_production_operations', 'tests/test_altinn_authority_operations.py::test_unprepared_or_substituted_intent_has_no_token_or_http_activity[False]', 'tests/test_altinn_authority_operations.py::test_unprepared_or_substituted_intent_has_no_token_or_http_activity[True]', 'tests/test_altinn_authority_operations.py::test_token_error_never_reaches_system_register_and_diagnostics_are_redacted[register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_token_error_never_reaches_system_register_and_diagnostics_are_redacted[set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[401-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[401-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[403-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[403-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[429-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[429-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[500-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_failed_initial_read_cannot_create_or_update[500-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_redirect_is_never_followed_or_treated_as_a_normal_provider_response[response0-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_redirect_is_never_followed_or_treated_as_a_normal_provider_response[response0-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_redirect_is_never_followed_or_treated_as_a_normal_provider_response[response1-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_redirect_is_never_followed_or_treated_as_a_normal_provider_response[response1-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response0-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response0-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response1-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response1-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response2-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response2-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response3-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response3-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response4-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response4-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response5-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_invalid_initial_read_is_bounded_and_cannot_write[response5-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_registration_projection_preserves_legacy_documented_response_aliases', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[clientId-value0-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[clientId-value0-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[rights-value1-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[rights-value1-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[accessPackages-value2-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[accessPackages-value2-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[isVisible-1-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[isVisible-1-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[id-other-system-register_rf1086_system]', 'tests/test_altinn_authority_operations.py::test_drift_is_conflict_and_never_overwritten[id-other-system-set_rf1086_systembruker_callback]', 'tests/test_altinn_authority_operations.py::test_registration_create_failure_is_not_reposted_and_later_explicit_attempt_reads_first[create_response0-authority_http_error-409]', 'tests/test_altinn_authority_operations.py::test_registration_create_failure_is_not_reposted_and_later_explicit_attempt_reads_first[create_response1-authority_http_error-204]', 'tests/test_altinn_authority_operations.py::test_registration_create_failure_is_not_reposted_and_later_explicit_attempt_reads_first[create_response2-authority_response_invalid-201]', 'tests/test_altinn_authority_operations.py::test_registration_create_failure_is_not_reposted_and_later_explicit_attempt_reads_first[create_response3-authority_response_invalid-201]', 'tests/test_altinn_authority_operations.py::test_registration_create_failure_is_not_reposted_and_later_explicit_attempt_reads_first[create_response4-authority_network_error-None]', 'tests/test_altinn_authority_operations.py::test_callback_missing_system_is_conflict_without_registration', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[top]', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[vendor]', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[localized]', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[right]', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[resource]', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[dual_alias]', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[deleted]', 'tests/test_altinn_authority_operations.py::test_callback_requires_exact_current_shape_before_whole_definition_update[vendor_null]', 'tests/test_altinn_authority_operations.py::test_callback_accepts_exact_legacy_casing_and_omitted_vendor_authority', 'tests/test_altinn_authority_operations.py::test_callback_reads_back_after_any_update_outcome_and_only_observed_target_confirms[update0]', 'tests/test_altinn_authority_operations.py::test_callback_reads_back_after_any_update_outcome_and_only_observed_target_confirms[update1]', 'tests/test_altinn_authority_operations.py::test_callback_reads_back_after_any_update_outcome_and_only_observed_target_confirms[update2]', 'tests/test_altinn_authority_operations.py::test_callback_reads_back_after_any_update_outcome_and_only_observed_target_confirms[update3]', 'tests/test_altinn_authority_operations.py::test_callback_reads_back_after_any_update_outcome_and_only_observed_target_confirms[update4]', 'tests/test_altinn_authority_operations.py::test_callback_reads_back_after_any_update_outcome_and_only_observed_target_confirms[update5]', 'tests/test_altinn_authority_operations.py::test_callback_preserves_safe_update_failure_when_readback_proves_no_change[update0-authority_http_error-503]', 'tests/test_altinn_authority_operations.py::test_callback_preserves_safe_update_failure_when_readback_proves_no_change[update1-authority_response_invalid-200]', 'tests/test_altinn_authority_operations.py::test_callback_preserves_safe_update_failure_when_readback_proves_no_change[update2-authority_network_error-None]', 'tests/test_altinn_authority_operations.py::test_callback_readback_failure_remains_unverified_even_if_put_succeeded[verification0-404]', 'tests/test_altinn_authority_operations.py::test_callback_readback_failure_remains_unverified_even_if_put_succeeded[verification1-200]', 'tests/test_altinn_authority_operations.py::test_callback_readback_failure_remains_unverified_even_if_put_succeeded[verification2-200]', 'tests/test_altinn_authority_operations.py::test_callback_readback_failure_remains_unverified_even_if_put_succeeded[verification3-None]', 'tests/test_altinn_authority_operations.py::test_callback_even_error_responses_are_stream_capped_before_status_branch[404]', 'tests/test_altinn_authority_operations.py::test_callback_even_error_responses_are_stream_capped_before_status_branch[503]', 'tests/test_altinn_authority_operations.py::test_callback_successful_put_without_exact_observed_target_is_conflict[empty]', 'tests/test_altinn_authority_operations.py::test_callback_successful_put_without_exact_observed_target_is_conflict[drift]', 'tests/test_altinn_authority_operations.py::test_registration_created_uuid_alone_does_not_prove_verified_definition[drift]', 'tests/test_altinn_authority_operations.py::test_registration_created_uuid_alone_does_not_prove_verified_definition[absent]', 'tests/test_altinn_authority_operations.py::test_configuration_change_before_explicit_next_prepare_rebinds_tokens_to_audited_client', 'tests/test_altinn_authority_operations.py::test_shared_adapter_keeps_both_fixed_preparations_independent', 'tests/test_altinn_authority_operations.py::test_registration_response_text_strips_bom_for_create_and_readback', ... 6571 more items },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/ci_release_gate.test.mjs:623:2
+✖ real shell stops at success and restores owned generated files (862.44825ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    [
+      'topology:rollback:1',
+      'npm:test:ledger-database-lifecycle',
+      'npm:test:banking-database-lifecycle',
+      'npm:test:investments-database-lifecycle',
+  ...
+      'npm:test:company-tax-database',
+  +   'npm:test:annual-accounts-database',
+      'npm:test:browser-owner-annual',
+      'npm:test:supabase-rf-feedback',
+      'npm:test:browser-authority-connections',
+      'npm:test:browser-shareholder-register-filing',
+      'npm:test:browser-company-tax',
+  +   'npm:test:browser-annual-accounts'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/ci_release_gate.test.mjs:633:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'topology:rollback:1', 'npm:test:ledger-database-lifecycle', 'npm:test:banking-database-lifecycle', 'npm:test:investments-database-lifecycle', 'npm:test:documents-database-lifecycle', 'npm:test:marketing-measurement-database', 'npm:test:validation-observation', 'npm:test:supabase-predecessor', 'topology:workspace', 'npm:test:supabase-rf-workspace', 'npm:test:browser-owner', 'topology:rollback:2', 'npm:test:ledger-hosted-migration-authority', 'npm:test:corporate-governance-database-lifecycle', 'npm:test:billing-database-lifecycle', 'topology:recutover', 'npm:test:authority-connections-database', 'npm:test:company-tax-database', 'npm:test:annual-accounts-database', 'npm:test:browser-owner-annual', 'npm:test:supabase-rf-feedback', 'npm:test:browser-authority-connections', 'npm:test:browser-shareholder-register-filing', 'npm:test:browser-company-tax', 'npm:test:browser-annual-accounts' ],
+    expected: [ 'topology:rollback:1', 'npm:test:ledger-database-lifecycle', 'npm:test:banking-database-lifecycle', 'npm:test:investments-database-lifecycle', 'npm:test:documents-database-lifecycle', 'npm:test:marketing-measurement-database', 'npm:test:validation-observation', 'npm:test:supabase-predecessor', 'topology:workspace', 'npm:test:supabase-rf-workspace', 'npm:test:browser-owner', 'topology:rollback:2', 'npm:test:ledger-hosted-migration-authority', 'npm:test:corporate-governance-database-lifecycle', 'npm:test:billing-database-lifecycle', 'topology:recutover', 'npm:test:authority-connections-database', 'npm:test:company-tax-database', 'npm:test:browser-owner-annual', 'npm:test:supabase-rf-feedback', 'npm:test:browser-authority-connections', 'npm:test:browser-shareholder-register-filing', 'npm:test:browser-company-tax' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/ci_release_gate.test.mjs:623:2
+✖ real shell stops at npm:test:supabase-rf-feedback and restores owned generated files (534.778583ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    [
+      'topology:rollback:1',
+      'npm:test:ledger-database-lifecycle',
+      'npm:test:banking-database-lifecycle',
+      'npm:test:investments-database-lifecycle',
+  ...
+      'npm:test:company-tax-database',
+  +   'npm:test:annual-accounts-database',
+      'npm:test:browser-owner-annual',
+      'npm:test:supabase-rf-feedback'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/ci_release_gate.test.mjs:633:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'topology:rollback:1', 'npm:test:ledger-database-lifecycle', 'npm:test:banking-database-lifecycle', 'npm:test:investments-database-lifecycle', 'npm:test:documents-database-lifecycle', 'npm:test:marketing-measurement-database', 'npm:test:validation-observation', 'npm:test:supabase-predecessor', 'topology:workspace', 'npm:test:supabase-rf-workspace', 'npm:test:browser-owner', 'topology:rollback:2', 'npm:test:ledger-hosted-migration-authority', 'npm:test:corporate-governance-database-lifecycle', 'npm:test:billing-database-lifecycle', 'topology:recutover', 'npm:test:authority-connections-database', 'npm:test:company-tax-database', 'npm:test:annual-accounts-database', 'npm:test:browser-owner-annual', 'npm:test:supabase-rf-feedback' ],
+    expected: [ 'topology:rollback:1', 'npm:test:ledger-database-lifecycle', 'npm:test:banking-database-lifecycle', 'npm:test:investments-database-lifecycle', 'npm:test:documents-database-lifecycle', 'npm:test:marketing-measurement-database', 'npm:test:validation-observation', 'npm:test:supabase-predecessor', 'topology:workspace', 'npm:test:supabase-rf-workspace', 'npm:test:browser-owner', 'topology:rollback:2', 'npm:test:ledger-hosted-migration-authority', 'npm:test:corporate-governance-database-lifecycle', 'npm:test:billing-database-lifecycle', 'topology:recutover', 'npm:test:authority-connections-database', 'npm:test:company-tax-database', 'npm:test:browser-owner-annual', 'npm:test:supabase-rf-feedback' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/ci_release_gate.test.mjs:623:2
+✖ real shell stops at npm:test:browser-owner-annual and restores owned generated files (554.204083ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    [
+      'topology:rollback:1',
+      'npm:test:ledger-database-lifecycle',
+      'npm:test:banking-database-lifecycle',
+      'npm:test:investments-database-lifecycle',
+  ...
+      'npm:test:company-tax-database',
+  +   'npm:test:annual-accounts-database',
+      'npm:test:browser-owner-annual'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/ci_release_gate.test.mjs:633:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'topology:rollback:1', 'npm:test:ledger-database-lifecycle', 'npm:test:banking-database-lifecycle', 'npm:test:investments-database-lifecycle', 'npm:test:documents-database-lifecycle', 'npm:test:marketing-measurement-database', 'npm:test:validation-observation', 'npm:test:supabase-predecessor', 'topology:workspace', 'npm:test:supabase-rf-workspace', 'npm:test:browser-owner', 'topology:rollback:2', 'npm:test:ledger-hosted-migration-authority', 'npm:test:corporate-governance-database-lifecycle', 'npm:test:billing-database-lifecycle', 'topology:recutover', 'npm:test:authority-connections-database', 'npm:test:company-tax-database', 'npm:test:annual-accounts-database', 'npm:test:browser-owner-annual' ],
+    expected: [ 'topology:rollback:1', 'npm:test:ledger-database-lifecycle', 'npm:test:banking-database-lifecycle', 'npm:test:investments-database-lifecycle', 'npm:test:documents-database-lifecycle', 'npm:test:marketing-measurement-database', 'npm:test:validation-observation', 'npm:test:supabase-predecessor', 'topology:workspace', 'npm:test:supabase-rf-workspace', 'npm:test:browser-owner', 'topology:rollback:2', 'npm:test:ledger-hosted-migration-authority', 'npm:test:corporate-governance-database-lifecycle', 'npm:test:billing-database-lifecycle', 'topology:recutover', 'npm:test:authority-connections-database', 'npm:test:company-tax-database', 'npm:test:browser-owner-annual' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/ci_release_gate.test.mjs:623:2
+✖ real shell stops at npm:test:browser-shareholder-register-filing and restores owned generated files (560.644417ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    [
+      'topology:rollback:1',
+      'npm:test:ledger-database-lifecycle',
+      'npm:test:banking-database-lifecycle',
+      'npm:test:investments-database-lifecycle',
+  ...
+      'npm:test:company-tax-database',
+  +   'npm:test:annual-accounts-database',
+      'npm:test:browser-owner-annual',
+      'npm:test:supabase-rf-feedback',
+      'npm:test:browser-authority-connections',
+      'npm:test:browser-shareholder-register-filing'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/ci_release_gate.test.mjs:633:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'topology:rollback:1', 'npm:test:ledger-database-lifecycle', 'npm:test:banking-database-lifecycle', 'npm:test:investments-database-lifecycle', 'npm:test:documents-database-lifecycle', 'npm:test:marketing-measurement-database', 'npm:test:validation-observation', 'npm:test:supabase-predecessor', 'topology:workspace', 'npm:test:supabase-rf-workspace', 'npm:test:browser-owner', 'topology:rollback:2', 'npm:test:ledger-hosted-migration-authority', 'npm:test:corporate-governance-database-lifecycle', 'npm:test:billing-database-lifecycle', 'topology:recutover', 'npm:test:authority-connections-database', 'npm:test:company-tax-database', 'npm:test:annual-accounts-database', 'npm:test:browser-owner-annual', 'npm:test:supabase-rf-feedback', 'npm:test:browser-authority-connections', 'npm:test:browser-shareholder-register-filing' ],
+    expected: [ 'topology:rollback:1', 'npm:test:ledger-database-lifecycle', 'npm:test:banking-database-lifecycle', 'npm:test:investments-database-lifecycle', 'npm:test:documents-database-lifecycle', 'npm:test:marketing-measurement-database', 'npm:test:validation-observation', 'npm:test:supabase-predecessor', 'topology:workspace', 'npm:test:supabase-rf-workspace', 'npm:test:browser-owner', 'topology:rollback:2', 'npm:test:ledger-hosted-migration-authority', 'npm:test:corporate-governance-database-lifecycle', 'npm:test:billing-database-lifecycle', 'topology:recutover', 'npm:test:authority-connections-database', 'npm:test:company-tax-database', 'npm:test:browser-owner-annual', 'npm:test:supabase-rf-feedback', 'npm:test:browser-authority-connections', 'npm:test:browser-shareholder-register-filing' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/ci_release_gate.test.mjs:623:2
+✖ real shell stops at npm:test:browser-company-tax and restores owned generated files (562.130291ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    [
+      'topology:rollback:1',
+      'npm:test:ledger-database-lifecycle',
+      'npm:test:banking-database-lifecycle',
+      'npm:test:investments-database-lifecycle',
+  ...
+      'npm:test:company-tax-database',
+  +   'npm:test:annual-accounts-database',
+      'npm:test:browser-owner-annual',
+      'npm:test:supabase-rf-feedback',
+      'npm:test:browser-authority-connections',
+      'npm:test:browser-shareholder-register-filing',
+      'npm:test:browser-company-tax'
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/ci_release_gate.test.mjs:633:11)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'topology:rollback:1', 'npm:test:ledger-database-lifecycle', 'npm:test:banking-database-lifecycle', 'npm:test:investments-database-lifecycle', 'npm:test:documents-database-lifecycle', 'npm:test:marketing-measurement-database', 'npm:test:validation-observation', 'npm:test:supabase-predecessor', 'topology:workspace', 'npm:test:supabase-rf-workspace', 'npm:test:browser-owner', 'topology:rollback:2', 'npm:test:ledger-hosted-migration-authority', 'npm:test:corporate-governance-database-lifecycle', 'npm:test:billing-database-lifecycle', 'topology:recutover', 'npm:test:authority-connections-database', 'npm:test:company-tax-database', 'npm:test:annual-accounts-database', 'npm:test:browser-owner-annual', 'npm:test:supabase-rf-feedback', 'npm:test:browser-authority-connections', 'npm:test:browser-shareholder-register-filing', 'npm:test:browser-company-tax' ],
+    expected: [ 'topology:rollback:1', 'npm:test:ledger-database-lifecycle', 'npm:test:banking-database-lifecycle', 'npm:test:investments-database-lifecycle', 'npm:test:documents-database-lifecycle', 'npm:test:marketing-measurement-database', 'npm:test:validation-observation', 'npm:test:supabase-predecessor', 'topology:workspace', 'npm:test:supabase-rf-workspace', 'npm:test:browser-owner', 'topology:rollback:2', 'npm:test:ledger-hosted-migration-authority', 'npm:test:corporate-governance-database-lifecycle', 'npm:test:billing-database-lifecycle', 'topology:recutover', 'npm:test:authority-connections-database', 'npm:test:company-tax-database', 'npm:test:browser-owner-annual', 'npm:test:supabase-rf-feedback', 'npm:test:browser-authority-connections', 'npm:test:browser-shareholder-register-filing', 'npm:test:browser-company-tax' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

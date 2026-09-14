@@ -1,0 +1,11 @@
+PASS — bounded Standards review of006469373fc79f16c20dfec75bbc0d3ecd51ff6c…5915af48277c4074556ba2b750c93e523ffeb85a. No new actionable documented-standard breach or heuristic finding.
+
+The test-only selector returns only the fixed six public mirrors. Absence is accepted only when all six are gone, Accounts explicitly reports contracted, and all six owned counterparts are ordinary/partitioned tables. Partial retirement, wrong relation kinds, missing families and catalog errors fail before fixture effects (rf1086-fixture-access.mjs:162–182). Accounts tables are checked through the catalog but never returned as fixture-authority targets. This respects ADR0011’s owner boundaries and ADR0013/#132’s fail-closed retirement requirements.
+
+Both RF fixture callers use the selector. Fresh RF cleanup preserves company-scoped child-before-opening deletion while public mirrors remain and issues no deletes against retired mirrors (browser_shareholder_register_filing.mjs:414–438). Original RF resources, foreign-key protections, exact ACL/FORCE-RLS/trigger/membership restoration and aggregated teardown errors remain. I verified the existing transaction/rollback helper bodies and the entire fresh browser assertion body are byte-identical. The patch changes five test/support paths and no application, SQL, gate ownership, registry or frozen-baseline source.
+
+Independent pinned Node24 validation:52 fixture/model tests pass with one explicit existing real-database skip. A separate actual-selector probe passes38 catalog cases, covering both supported states, each partial/missing family, invalid kinds and row counts, absent/wrong phase, hosted-host rejection and unchanged error propagation. These are isolated model/mock checks, not real database or hydrated browser proof.
+
+All16 manifest artifacts and11 original private review/probe adoptions verify byte-for-byte. The original006 gate failure is retained without exit credit; its preceding41 Accounts SQL cases and annual-owner browser success remain separately scoped. The new dedicated runtime proof and complete immutable pair are still pending.
+
+No shared edits, database/Docker/provider operations or full gate were performed. Prior role-creation and journal reviews remain applicable. No stage-exit or protected-integration acceptance is claimed.

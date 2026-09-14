@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#153",
+  "baseRevision": "ee0a6d862759c47ecdb0679300280095e8324359",
+  "status": "TARGETED_PASS_FULL_EXIT_PENDING",
+  "sourceBindings": {
+    "tests/browser_process_lifecycle.test.mjs": "a9b92f944b97c0ed93728a045e8e786afb4d9744cd081ef312702b43e6663b00"
+  },
+  "artifacts": [
+    {
+      "path": "architecture/evidence/issues/153/browser-cleanup-model/browser-cleanup-model-complete.log",
+      "sha256": "6c751f25c235608c845f34fc491bbd24a227d2ab7c0e3a656628d906f9e3cfa9",
+      "bytes": 2698
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-cleanup-model/browser-cleanup-model-green.log",
+      "sha256": "54ba99b7c5562ce7ad1a98ba1dda721c203cdb51f8291728fa94b9710234f4d9",
+      "bytes": 1508
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-cleanup-model/browser-cleanup-model-red.log",
+      "sha256": "31ab9c4e96013bab3c55b0dc29f735a271f8d4696aa5b9c555f34d15d20aa702",
+      "bytes": 32410
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-cleanup-model/journal-focused-root.log",
+      "sha256": "9bf1c63983ef779fa9be6590e8cc3b35f45b025260186101e7031530b77ced3c",
+      "bytes": 340
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-cleanup-model/verification.md",
+      "sha256": "a47773329df9f3363d9d517f733495e555ce4660693a94c2534e9acbea214e78",
+      "bytes": 1841
+    },
+    {
+      "path": "architecture/evidence/customer-ready-gates/10e6698efdcad2726f5ca9f7dcdb7352317ceb11.log",
+      "sha256": "1b1b270a8d89c2df63abbda2745875b4b2a50854f388108e2d73ebf957a92128",
+      "bytes": 317127
+    }
+  ]
+}

@@ -145,9 +145,8 @@ export default async function FilingObligationPage({
 
   const returnTo = `/filing/${obligation}`;
   const snapshot = evaluateObligationReadiness(input, obligation);
-  const corporateReadiness = input.corporateDocuments?.enabled
-    ? input.corporateDocuments.readiness
-    : null;
+  const corporateEnabled = process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true";
+  const corporateReadiness = corporateEnabled ? data.primaryCorporateDecisionReadiness : null;
   const annualCorporateDecision = data.corporateDecisions.find(
     (decision) => decision.company_id === input.company.id
       && decision.income_year === input.incomeYear
@@ -229,7 +228,7 @@ export default async function FilingObligationPage({
               />
             </div>
             <div className="filingStepBody">
-              {input.corporateDocuments?.enabled ? (
+              {corporateEnabled ? (
                 <>
                   <p className="cardNote">
                     Tilstand: {corporateReadiness?.state ?? "draft"}. Årsregnskapet er ikke produksjonsklart før

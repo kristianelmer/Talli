@@ -1,0 +1,116 @@
+{
+  "verdict": "PASS_PUBLISHED_RECEIPT_REREAD",
+  "findings": [],
+  "checkedAt": "2026-09-14T05:50:11.356500+00:00",
+  "receiptUrl": "https://github.com/kristianelmer/Talli/issues/152#issuecomment-5659595000",
+  "receiptBodySha256": "184550ba5f0212796278208f41a704e4ec13bc4406858ba879a36230892d85fd",
+  "receiptMatchesApprovedDraftByteExactly": true,
+  "issueStateObserved": "open",
+  "originalSixCriteriaUnchanged": true,
+  "criteriaCheckStateAtReview": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+  ],
+  "protectedMerge": {
+    "pr": 213,
+    "main": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+    "reviewedHead": "0b2d5ea8cfc4397e9dcf7203b886737c61a5ce09",
+    "tree": "0e456c20064ba10879f44390e3cb6b06165dd8a1",
+    "orderedParents": [
+      "054740b81692e0e59b99a76fff085f322f1968b4",
+      "0b2d5ea8cfc4397e9dcf7203b886737c61a5ce09"
+    ],
+    "liveMainRefMatches": true,
+    "strictReleaseGate": true,
+    "enforceAdmins": true
+  },
+  "liveRuns": [
+    {
+      "id": 34808139123,
+      "headSha": "0b2d5ea8cfc4397e9dcf7203b886737c61a5ce09",
+      "conclusion": "success",
+      "jobs": {
+        "Database isolation": "success",
+        "Application": "success",
+        "Immutable evidence": "skipped",
+        "Release gate": "success"
+      },
+      "rawLogSha256": "b9d12a408b384a89b3cd899e4c49364bc52fea716e3a03f16d314f75d2d2f453"
+    },
+    {
+      "id": 34809460472,
+      "headSha": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+      "conclusion": "success",
+      "jobs": {
+        "Application": "success",
+        "Database isolation": "success",
+        "Immutable evidence": "skipped",
+        "Release gate": "success"
+      },
+      "rawLogSha256": "09b9271de7209a523f6ef2cc766ba15f907e51cc47cdca80033d38d5affe8206"
+    }
+  ],
+  "actualCheckoutEvidence": {
+    "head": {
+      "sha": "3cf6e84c94e5879aac51abbe241d65abea83d6ee",
+      "jobs": [
+        "Database isolation",
+        "Application"
+      ],
+      "tree": "0e456c20064ba10879f44390e3cb6b06165dd8a1"
+    },
+    "main": {
+      "sha": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+      "jobs": [
+        "Application",
+        "Database isolation"
+      ],
+      "tree": "0e456c20064ba10879f44390e3cb6b06165dd8a1"
+    }
+  },
+  "committedPairRetained": true,
+  "committedBlobLinkBindings": {
+    "architecture/evidence/customer-ready-gates/7c9b3caae3cd278bbe381589308cf302142b58a5.json": "2274e6219629a14f0e6e7a4750b02db059f1eaba27213037af454f0472d33164",
+    "architecture/evidence/customer-ready-gates/a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2.json": "f8c6251b66e40427ea8ea010a03b45fd6ea6a11057d8e899e269bd9ab4eae0cc",
+    "architecture/evidence/issues/152/gate-pair/gate-pair-spec-review-152.md": "5dc871d790719583c50f399d56e5ca0a64b41cdde9be986ac6e72e89ce1be06d",
+    "architecture/evidence/issues/152/gate-pair/gate-pair-standards-review-152.md": "f50513853c05043fccd57aae387d8e8ac3fcc87af1848605c1db20ba573b2acf",
+    "architecture/evidence/issues/152/verification.md": "3bfb955ed672a1185e41bf69fcee76f9d87a5718ce25265b55de050fced10b3c"
+  },
+  "evidenceBindings": {
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-reread-live-152-head-checkout.json": "73f331c1cad35049d0aa844946eab0d2a84dc0e304364c9b1bcba3b196103e57",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-reread-live-152-protection.json": "97077fda90063af76efc9308c50525863233074ee056906e7a95db16c78f02b1",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-reread-live-152-main-jobs.json": "6101e1572e89a9c854a8724d4bf24beca99d0f569e380f106aa507e3f305ea72",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-reread-live-152-head-jobs.json": "1caed7d7b16d80d6cc90f1a949618dd800f90368e983f3942ac2d63fa0e30764",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-reread-live-152-current-main.json": "d4ac271bc01e8fbf9797ae1fdaf8a712bd68828c8f913db255395cbbc01e2dee",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-reread-live-152-pr.json": "4ba64359535d6fa943a918ed6b0c61a565cce85898151ea14d7970586b7f7af5",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-reread-live-152-comment.json": "0b290aefe30651e4c69f154c14e6c81fd9c6cef0ad7ace18444e2cad51a8f349",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-reread-live-152-main.json": "e051b855b6acce5398fa5f49e0e67eb54b3921ef165886c9542fc6cfb1b8df8a",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-reread-live-152-head-run.json": "d06920283b83ea3c1a353453b9ddba36d0f68db6d0ca1f9c833e4d9cb5d9248c",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-reread-live-152-main-run.json": "3bda4ea285b97257bc02c389490556273964cf8c41c5d60d8ba1ed60c187b03f",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-reread-live-152-issue.json": "2fcab47c741de89e96025ced02da253beb77a8a81232fb99637606a43effdcac",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/closure-receipt-final.md": "184550ba5f0212796278208f41a704e4ec13bc4406858ba879a36230892d85fd",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/final-integration-152.json": "c680ee1ef62e9bfd1df3a33ddf74f59c3afd67af51267e52a69b3d7b1f8b0d5c",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/committed-pair-reread-152-0b2d5ea8.json": "353cab03d98237a98cb94d20499f48699ee30e28d20ebba47c38fb4003c0c4e2",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/preview-final-head-0b2d5ea8.json": "678d2273c7ce34468a4cfed41b297bf1551315e2246880b8e50bdc80430d90e9",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/preview-main-5b74340c.json": "d62cfd41265bafd9fe27e4a7d36c72071b7a03429fdaa376ea86cbd271c666c6",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/production-final-integration-054512.json": "e02e5e0d1ca71487eaf4e5813f811a013f7ec86bc0be46f0e673ca2f2660215e",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/ci-34808139123-complete.log": "b9d12a408b384a89b3cd899e4c49364bc52fea716e3a03f16d314f75d2d2f453",
+    "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/ci-34809460472-complete.log": "09b9271de7209a523f6ef2cc766ba15f907e51cc47cdca80033d38d5affe8206"
+  },
+  "limits": [
+    "Live GitHub comment/issue/PR/main/run/job/protection were fetched independently.",
+    "Preview and frozen-production claims checked against timestamped private provider evidence; this review made no new Vercel request and claims no live browser/backend status.",
+    "Optional skips and warnings are disclosed; conditional Immutable evidence job skipped as intended.",
+    "Preparation Audit continuations are distinguished from atomic TT02 import.",
+    "Existing disabled production blocks readiness; no durable prerequisite, external authority, hosted migration, live filing or provider activation inference.",
+    "Issue remains open with original unchecked boxes pending parent closure action; no successor claim or mutation performed."
+  ],
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-receipt-reread-152.md",
+  "reportSha256": "eeb0a0fa03dd36a8ac45f322dabd99716d22bcef6d88ff32491722ecd402898d",
+  "committedWorkflowSha256": "58e1d6d869a63961876f7f0234b39784d736ad00a89d2a7866eeb1751f1d43f1",
+  "checksArtifactSha256": "faa325166923c976571640fe75cf403781ed6195031a0e52d9c9aa9ac75f140c"
+}

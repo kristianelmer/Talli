@@ -20,8 +20,9 @@ export async function startTaxBrowserFixture({incomeYear=2026}={}) {
   assert.ok(isLoopbackPostgresUrl(databaseUrl)&&isLoopbackSupabaseUrl(supabaseUrl));
   const db=new pg.Client({connectionString:databaseUrl});await db.connect();
   const admin=createClient(supabaseUrl,serviceKey,{auth:{autoRefreshToken:false,persistSession:false}});
-  const roles=[];let owner,companyId,orgNumber,backend,web,proxy,taxAuthorization;
-  const controls={dropNextCapture:false,failNextPreview:false,delayPreviewAmount:null,captures:[],previews:[],filingCalls:[],dropNextTaxImport:false};
+  const roles=[];let owner,companyId,orgNumber,backend,web,proxy;
+  const filingAuthorization=new Map();
+  const controls={dropNextCapture:false,failNextPreview:false,delayPreviewAmount:null,captures:[],previews:[],filingCalls:[],dropNextTaxImport:false,failAccountsReads:false,accountsReadFailures:[]};
   const baseEnv=Object.fromEntries(['PATH','HOME','TMPDIR','LANG','LC_ALL'].filter(key=>process.env[key]).map(key=>[key,process.env[key]]));
   const close=async()=>{
     const errors=[];const attempt=async(fn)=>{try{await fn();}catch(e){errors.push(e);}};
@@ -65,10 +66,14 @@ export async function startTaxBrowserFixture({incomeYear=2026}={}) {
       try{
         let body='';for await(const chunk of req)body+=chunk;
         const headers=new Headers();for(const [key,value]of Object.entries(req.headers))if(!['host','connection','content-length'].includes(key)&&value!==undefined)headers.set(key,Array.isArray(value)?value.join(','):value);
+        if(controls.failAccountsReads && req.method==='GET' && req.url.startsWith('/api/v1/annual-accounts/')) {
+          controls.accountsReadFailures.push({path:req.url,status:503});
+          res.writeHead(503);res.end();return;
+        }
         const response=await fetch(backendOrigin+req.url,{method:req.method,headers,...(body?{body}:{})});
         const bytes=Buffer.from(await response.arrayBuffer());
-        if(req.url.startsWith('/api/v1/company-tax/')){
-          taxAuthorization=headers.get('authorization');
+        if(req.url.startsWith('/api/v1/company-tax/') || req.url.startsWith('/api/v1/annual-accounts/')){
+          filingAuthorization.set(req.url.split('/')[3],headers.get('authorization'));
           if(req.method==='POST'&&!req.url.endsWith('-previews')){
             controls.filingCalls.push({path:req.url,body:JSON.parse(body),status:response.status,response:JSON.parse(bytes.toString())});
             if(req.url==='/api/v1/company-tax/tt02-evidence-imports'&&controls.dropNextTaxImport&&response.ok){controls.dropNextTaxImport=false;res.destroy();return;}
@@ -90,12 +95,15 @@ export async function startTaxBrowserFixture({incomeYear=2026}={}) {
     const nextCli=createRequire(new URL('../../apps/web/package.json',import.meta.url)).resolve('next/dist/bin/next');
     web=startOwnedProcess({command:process.execPath,args:[nextCli,'dev','apps/web','--hostname','127.0.0.1','--port',String(webPort)],cwd:process.cwd(),readinessProof:'Ready in',env:{...baseEnv,NEXT_TELEMETRY_DISABLED:'1',NEXT_PUBLIC_SUPABASE_URL:supabaseUrl,NEXT_PUBLIC_SUPABASE_ANON_KEY:anonKey,SUPABASE_URL:supabaseUrl,SUPABASE_ANON_KEY:anonKey,TALLI_BACKEND_URL:`http://127.0.0.1:${proxyPort}`,SITE_URL:siteOrigin}});
     await waitForOwnedReadiness({process:web,url:siteOrigin});
-    const taxRequest=(path,options={})=>{
-      assert.ok(path.startsWith('/api/v1/company-tax/'));
-      assert.ok(taxAuthorization,'a real browser session must establish authorization');
-      return fetch(backendOrigin+path,{...options,headers:{...options.headers,authorization:taxAuthorization}});
+    const filingRequest=(capability,path,options={})=>{
+      assert.ok(path.startsWith(`/api/v1/${capability}/`));
+      const authorization=filingAuthorization.get(capability);
+      assert.ok(authorization,'a real browser session must establish authorization');
+      return fetch(backendOrigin+path,{...options,headers:{...options.headers,authorization}});
     };
-    return {siteOrigin,backendOrigin,owner,companyId,orgNumber,controls,db,close,taxRequest};
+    const taxRequest=(path,options)=>filingRequest('company-tax',path,options);
+    const accountsRequest=(path,options)=>filingRequest('annual-accounts',path,options);
+    return {siteOrigin,backendOrigin,owner,companyId,orgNumber,controls,db,close,taxRequest,accountsRequest};
   }catch(error){try{await close();}catch(cleanup){throw new AggregateError([error,cleanup],'tax_browser_fixture_setup_failed');}throw error;}
 }
 

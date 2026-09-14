@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0",
+  "status": "PURE_EVIDENCE_REVIEW_PENDING",
+  "previousRevision": "e412ebcc",
+  "tests": {
+    "pytest": 2112,
+    "frozenEvidenceCases": 43,
+    "importerDateCases": 1804,
+    "timeClipCases": 4320,
+    "architecture": "PASS"
+  },
+  "limits": [
+    "No web or database cutover",
+    "No provider operation",
+    "All six original acceptance criteria remain pending"
+  ],
+  "artifacts": {
+    "architecture/evidence/issues/153/evidence-import/v8-reference-sources.json": "2689ba4e6e08c850d41fd825f9ff8b8677c9b673becc4ed1c1cc0621472d1be8",
+    "architecture/evidence/issues/153/evidence-import/date-parse-second-comparison.json": "0f5452989c48982cde2a618cff601a40fdde98e69b2e0a6ce5e97e656e10acf3",
+    "architecture/evidence/issues/153/evidence-import/offline-standards-review-e412ebcc.md": "b0f4dc8ce06cd80c1654239c2df5702b9987b897963c17c3d0f87fbb249bf032",
+    "architecture/evidence/issues/153/evidence-import/evidence-first-tests.log": "ddb14e3eaf6853858fc78049bfd35f35935db17046bc8bdc186a46d4b13fcb5e",
+    "architecture/evidence/issues/153/evidence-import/offline-spec-review-e412ebcc.md": "c2a60b4f7729fcd86c8003edd4251884486af0b70ede7590a523cd62a834df3e",
+    "architecture/evidence/issues/153/evidence-import/evidence-architecture.log": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9",
+    "architecture/evidence/issues/153/evidence-import/offline-standards-review-e412ebcc.json": "01f64a6343fcbdd3ded2c118175a7df585761f1f472e8862c5efb3c63b5bf687",
+    "architecture/evidence/issues/153/evidence-import/evidence-second-tests.log": "479d26475389d96a617e29023ee30c17b1a8e97c17d0cc7db09138cad83cd7d5",
+    "architecture/evidence/issues/153/evidence-import/legacy-import-dates.json": "224402da9a7590157553e8dd1739e98fc1b7acc3c3c80405abe042a658422fb2",
+    "architecture/evidence/issues/153/evidence-import/capture-import-dates.mjs": "65afaf3df4923d7eaa8e4711429d36f937c8c6a5cc901232b993dd27cb2082b4",
+    "architecture/evidence/issues/153/evidence-import/capture-date-parse.mjs": "2da921df81d83b246c63cf2c644e497b2146d2e96115efe1fb1e48b7b6bfe469",
+    "architecture/evidence/issues/153/evidence-import/date-parse-first-comparison.json": "c4a9bfec40a6aee5d4fc6c035e916dfbb6ecc9ea399efc1aa1c56ed75eebb404",
+    "architecture/evidence/issues/153/evidence-import/offline-spec-review-e412ebcc.json": "c9f3c58cdb9ced94c10155cb65d869a0468c4f4a09b43dff4a5c805413ab6118",
+    "architecture/evidence/issues/153/evidence-import/verification.md": "95485fab3e5a7463e4ed9533226b61931bf71bc0d208bc6c75fee18e75e7b189",
+    "architecture/evidence/issues/153/evidence-import/legacy-date-parse.json": "2d282f129fb996249eb79908ad53495623a1d41d6ced3f8aee1e193603e42dc4",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/date_parse.py": "a7b4cb590c607e0a246b6c44098861dd3171f800af22a521850f5598838a64b6",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py": "5ed31725891678bbbe82b29af17c92fd4cf02d76c396cfed4b8a3be73f19aa9e",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/rendering.py": "222fac8e3a0adaaa1b985cb320dd374f52511dc2c46a818b6b8141624e1ddbc3",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/V8-LICENSE": "6ab33af8774a0f396ee3aeeb761e3229057682d6f9fa7f572e390c2cb3a6e509",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/calculation.py": "c579d40eb3ef800073219cc156e6bb6537d35dc10ed54e93274d72878d2532ec",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/__init__.py": "bbf344ff2db22c18f7f3081b331c1939f7b49daa110fa97ed2b6a49113c8b726",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md": "8fc2b5f0831ba643845942ded79d7bfcc4932c527fb9050419331a1c9ffe9458",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py": "c7b8996391bf831d9530cfe9717d8353231126167ba2d0aed19e52efd764ceaf",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/numbers.py": "9a9bc64da8087e312af6c21887682489b74c1883434d0077ec78d374e552c694",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json": "aa10d5afe0c3769dd5136e0e8e8f1e6b4986af0a6681381374de86516c6cdaee",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/readiness.py": "07783baea9e4f2085b3ba3d3620f1c896b93045dba765c26f9c3dc44be2e2234",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/evidence.py": "a6be36e7b61699f5e91b463b9ba23dfdbfe6f1fd57d32d141060122dd1fdc69e",
+    "apps/backend/tests/test_annual_accounts_evidence.py": "5c931c47e57dce1c18599b05248559d6b45e954d3af8feaf3e36ab6ecd18a41f",
+    "architecture/dependency-evidence.json": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9"
+  }
+}

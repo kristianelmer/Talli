@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/probe-accounts-old-backend.py", line 22, in <module>
+    else:raise AssertionError('predecessor server unavailable')
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: predecessor server unavailable

@@ -1,0 +1,41 @@
+[
+  {
+    "lostResponseAfter": "create_instance",
+    "firstStoredStatus": "failed_retryable",
+    "firstStoredInstance": null,
+    "secondInvocationCalls": [
+      "create_instance",
+      "upload_main_form",
+      "upload_company_accounts",
+      "validate_instance",
+      "lock_for_signing",
+      "get_signing_handoff"
+    ],
+    "totalConsequentialCalls": 2,
+    "finalStatus": "locked_for_person_signing",
+    "mode": "PURE_LOCAL_FAKES_NO_PROVIDER_OR_DB"
+  },
+  {
+    "lostResponseAfter": "lock_for_signing",
+    "firstStoredStatus": "failed_retryable",
+    "firstStoredInstance": {
+      "id": "created-instance",
+      "dataIds": {
+        "mainForm": "main",
+        "companyAccounts": "accounts"
+      },
+      "createdProcessTask": "data",
+      "mainFormUploaded": true,
+      "companyAccountsUploaded": true,
+      "locked": false
+    },
+    "secondInvocationCalls": [
+      "validate_instance",
+      "lock_for_signing",
+      "get_signing_handoff"
+    ],
+    "totalConsequentialCalls": 2,
+    "finalStatus": "locked_for_person_signing",
+    "mode": "PURE_LOCAL_FAKES_NO_PROVIDER_OR_DB"
+  }
+]

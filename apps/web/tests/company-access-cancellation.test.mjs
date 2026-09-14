@@ -289,8 +289,9 @@ test("web cancellation lifecycle has no direct Supabase persistence or caller-ow
   assert.match(archiveRoute, /createSupabaseServiceRoleClient/u);
   assert.match(archiveRoute, /rpc\(\s*"company_archive_complete_export"/u);
   assert.match(archiveRoute, /createHash\("sha256"\)/u);
-  assert.match(archiveRoute, /submissionError/u);
-  assert.match(archiveRoute, /authorityTestRunsError/u);
+  assert.match(archiveRoute, /loadPresentedAnnualAccountsSource\(accessToken, \[companyId\]\)/u);
+  assert.match(archiveRoute, /if \(accountsSource\.error\) return new Response/u);
+  assert.doesNotMatch(archiveRoute, /\.from\("(?:filing_submissions|authority_test_runs)"\)/u);
   assert.match(archiveRoute, /firstArchiveSourceError\(sourceResults\)/u);
   assert.match(archiveRoute, /loadArchiveOpeningSnapshots\(accessToken, companyId, incomeYear\)/u);
   assert.doesNotMatch(archiveRoute, /\.from\("opening_shareholders"\)/u);

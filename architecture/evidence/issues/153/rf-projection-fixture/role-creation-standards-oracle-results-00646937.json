@@ -1,0 +1,132 @@
+{
+  "mode": "PINNED_ACTUAL_APPLY_FUNCTION_WITH_PURE_CATALOG_STUB_NO_DB",
+  "count": 21,
+  "results": [
+    {
+      "case": "two fresh roles exact bootstrap grants",
+      "expectedAccepted": true,
+      "actualAccepted": true,
+      "status": "PASS"
+    },
+    {
+      "case": "one fresh role",
+      "expectedAccepted": true,
+      "actualAccepted": true,
+      "status": "PASS"
+    },
+    {
+      "case": "both existing no delta",
+      "expectedAccepted": true,
+      "actualAccepted": true,
+      "status": "PASS"
+    },
+    {
+      "case": "existing roles additional management grant",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "superuser creation no delta",
+      "expectedAccepted": true,
+      "actualAccepted": true,
+      "status": "PASS"
+    },
+    {
+      "case": "superuser unexpected management grant",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "noncreator rejected",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "bootstrap role not superuser",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "wrong grantor",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "wrong recipient",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "wrong role",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "SET leak",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "INHERIT leak",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "ADMIN changed",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "old membership removed",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "old membership changed",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "additional self-granted management",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "missing mandatory creation grant",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "other artifact exact state",
+      "expectedAccepted": true,
+      "actualAccepted": true,
+      "status": "PASS"
+    },
+    {
+      "case": "other artifact added bootstrap grant",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    },
+    {
+      "case": "rollback added bootstrap grant",
+      "expectedAccepted": false,
+      "actualAccepted": false,
+      "status": "PASS"
+    }
+  ]
+}

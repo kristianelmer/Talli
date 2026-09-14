@@ -1,0 +1,118 @@
+{
+  "baseRevision": "900472a0ecfbf5e8d7fc4996f4f641e33575103c",
+  "candidateRevision": "8a5565be77420eba54ee414c7af7fbcbd0302b13",
+  "diffCommand": "git diff --histogram 900472a0ecfbf5e8d7fc4996f4f641e33575103c...8a5565be77420eba54ee414c7af7fbcbd0302b13",
+  "commits": [
+    "8a5565be fix(accounts): enforce nonadministrative binding and final topology checks"
+  ],
+  "snapshot": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-bindingfix-standards-_3twrfvd",
+  "changedFiles": {
+    "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "bcf4ad3ec885fefdc496722d80a32f6e7c98321fb7d4dd2bdcef56215323ed0d",
+    "apps/web/tests/company-access-cancellation.test.mjs": "f11ef035c16737f53a47f2750416e62f651b3ae30673e864e6db82c6558c008d",
+    "architecture/evidence/customer-ready-gates/900472a0ecfbf5e8d7fc4996f4f641e33575103c.log": "3746f4d96f6084a7eda2044390c09eb424d60d06fb349c6edf7ed98c55bd4d0f",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-backend-binding-admin-fixed.log": "a9c55dc6cbdf2058e464a0ad1bd00dafa99bee8d143dcc1a0593658b4a23d9c7",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-boundary-check-fixed-first.log": "a410cc0fc51a4e6ee93120947b04b86605c2ecf614d9c36e36f46e0b2797f8b6",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-boundary-check-fixed-second.log": "4504116c2131998b7c39c7bdfdd09c65b28cb3dbe830f0d49cfbcf12a2462bde",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-900472a0.json": "5a6a01ac52cf0654de8cc1256b74a37538a3fe17e0fee43f419432494c47671c",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-first.log": "e655b03f78e98d32d2e79b89ea975aca97442a8be1d1afd0a320af8a67ea12ad",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-second.log": "16fbef719a115fb7e4dce3ad0a6345f2c4df023489d39f5a59f1333715327bb5",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-third.log": "4a7f4ef39c35814cf15da2e40cdd9127a501bcc781065b3c33e4f30e8a942687",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-runtime-concurrency-first.log": "995ec77e3f54d7791763c8819dd581649702b9bb65cc77cc548c999077f5182e",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-runtime-concurrency.json": "5d7285723d0c7fc64a331860ba519564d7b0499a8997c0c985dd5ac349418eeb",
+    "architecture/evidence/issues/153/gate-follow-up/manifest.json": "1d6ef27cf4894ea4f7c104c889a192dd5a21bdb945578304e20353367b91a19a",
+    "architecture/evidence/issues/153/gate-follow-up/probe-accounts-final-advisors.py": "98f293910578c68befde85263ffb47ad4d3913b8440383c2e90c95953e720195",
+    "architecture/evidence/issues/153/gate-follow-up/probe-accounts-runtime-concurrency.py": "7a456fbc8947bd649890a093ce126b9824100259b67d7e2510cfa7abd64f5122",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-binding-admin-900472a0.json": "aba6a90d45bc44de11ddd3bdec55d11052951d7916ac1b498cde5de4cba544e0",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-binding-admin-900472a0.log": "aba6a90d45bc44de11ddd3bdec55d11052951d7916ac1b498cde5de4cba544e0",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-binding-admin-900472a0.py": "555e9a239611c34a57dbce01189b2b1cd106079a2ccfd0cae295eac205c31396",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-review-900472a0.json": "0db1b68d6256503837abd3f780e4cfc8ef6e9a8d810510c6318c623da53b6b65",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-review-900472a0.md": "2675c1712553dcf2d19cf0ade1fa363f3810a1c78782e9e239c47510b600723e",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-standards-review-900472a0.json": "508612875881ab029482668c0888adf4f40c6cafaec841dd8b61f20fd2e27426",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-standards-review-900472a0.md": "d815acbeee5f01b4320439b80c84e2ab2bc49d6bcaa8ed2d0a7553a5c0b2d2e5",
+    "architecture/evidence/issues/153/gate-follow-up/verification.md": "ce90e9557e4e04358b694e297049e984922cef4e1b5e89428221f7f1e811c6ba",
+    "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+    "supabase/contract-migrations/20260914112549_annual_accounts_filing_backend_binding.sql": "fdcb34e81a79e8e5d9c59f01230969ad6f292e2c466bac9d65a8c1293b109211",
+    "tests/authority_connections_retirement.test.mjs": "712be3a128f464ec8223faf905e76983eb652b7ea5d915ac7c50fc2e279e5e98"
+  },
+  "manifestRefs": {
+    "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "bcf4ad3ec885fefdc496722d80a32f6e7c98321fb7d4dd2bdcef56215323ed0d",
+    "apps/web/tests/company-access-cancellation.test.mjs": "f11ef035c16737f53a47f2750416e62f651b3ae30673e864e6db82c6558c008d",
+    "architecture/evidence/customer-ready-gates/900472a0ecfbf5e8d7fc4996f4f641e33575103c.log": "3746f4d96f6084a7eda2044390c09eb424d60d06fb349c6edf7ed98c55bd4d0f",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-backend-binding-admin-fixed.log": "a9c55dc6cbdf2058e464a0ad1bd00dafa99bee8d143dcc1a0593658b4a23d9c7",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-boundary-check-fixed-first.log": "a410cc0fc51a4e6ee93120947b04b86605c2ecf614d9c36e36f46e0b2797f8b6",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-boundary-check-fixed-second.log": "4504116c2131998b7c39c7bdfdd09c65b28cb3dbe830f0d49cfbcf12a2462bde",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-900472a0.json": "5a6a01ac52cf0654de8cc1256b74a37538a3fe17e0fee43f419432494c47671c",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-first.log": "e655b03f78e98d32d2e79b89ea975aca97442a8be1d1afd0a320af8a67ea12ad",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-second.log": "16fbef719a115fb7e4dce3ad0a6345f2c4df023489d39f5a59f1333715327bb5",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-third.log": "4a7f4ef39c35814cf15da2e40cdd9127a501bcc781065b3c33e4f30e8a942687",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-runtime-concurrency-first.log": "995ec77e3f54d7791763c8819dd581649702b9bb65cc77cc548c999077f5182e",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-runtime-concurrency.json": "5d7285723d0c7fc64a331860ba519564d7b0499a8997c0c985dd5ac349418eeb",
+    "architecture/evidence/issues/153/gate-follow-up/probe-accounts-final-advisors.py": "98f293910578c68befde85263ffb47ad4d3913b8440383c2e90c95953e720195",
+    "architecture/evidence/issues/153/gate-follow-up/probe-accounts-runtime-concurrency.py": "7a456fbc8947bd649890a093ce126b9824100259b67d7e2510cfa7abd64f5122",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-binding-admin-900472a0.json": "aba6a90d45bc44de11ddd3bdec55d11052951d7916ac1b498cde5de4cba544e0",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-binding-admin-900472a0.log": "aba6a90d45bc44de11ddd3bdec55d11052951d7916ac1b498cde5de4cba544e0",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-binding-admin-900472a0.py": "555e9a239611c34a57dbce01189b2b1cd106079a2ccfd0cae295eac205c31396",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-review-900472a0.json": "0db1b68d6256503837abd3f780e4cfc8ef6e9a8d810510c6318c623da53b6b65",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-review-900472a0.md": "2675c1712553dcf2d19cf0ade1fa363f3810a1c78782e9e239c47510b600723e",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-standards-review-900472a0.json": "508612875881ab029482668c0888adf4f40c6cafaec841dd8b61f20fd2e27426",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-standards-review-900472a0.md": "d815acbeee5f01b4320439b80c84e2ab2bc49d6bcaa8ed2d0a7553a5c0b2d2e5",
+    "architecture/evidence/issues/153/gate-follow-up/verification.md": "ce90e9557e4e04358b694e297049e984922cef4e1b5e89428221f7f1e811c6ba",
+    "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+    "supabase/contract-migrations/20260914112549_annual_accounts_filing_backend_binding.sql": "fdcb34e81a79e8e5d9c59f01230969ad6f292e2c466bac9d65a8c1293b109211",
+    "tests/authority_connections_retirement.test.mjs": "712be3a128f464ec8223faf905e76983eb652b7ea5d915ac7c50fc2e279e5e98"
+  },
+  "manifestMismatches": [],
+  "byteExactPrivateAdoptions": [
+    "source-fix-standards-review-900472a0.json",
+    "source-fix-standards-review-900472a0.md",
+    "source-fix-spec-binding-admin-900472a0.json",
+    "source-fix-spec-review-900472a0.md",
+    "source-fix-spec-binding-admin-900472a0.log",
+    "source-fix-spec-binding-admin-900472a0.py",
+    "source-fix-spec-review-900472a0.json"
+  ],
+  "axis": "Standards",
+  "verdict": "PASS_BOUNDED_FOLLOWUP",
+  "closedFindings": [
+    "STD-153-BINDING-1"
+  ],
+  "findings": [],
+  "standards": {
+    "AGENTS.md": "c4530bac3939f37053438b48a3dad2ea6e99d04481480ef61bee71d3dc81d4af",
+    "CONTEXT.md": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9",
+    "docs/agents/domain.md": "0b66c33560f91373a7b268f3acf2c3d992e6a77cf5dc60acdc66efb4dc34a982",
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/COMPATIBILITY.md": "7683810e3f0b816fcc166c428faba245060f91c86ae7e0750b39803730c57ab7",
+    "architecture/BACKEND-SYSTEM.md": "7f100617422503ee17b7016ec9b2d1645593e8c53c7fd61cd271483b6a890e3b"
+  },
+  "independentChecks": [
+    {
+      "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node --test apps/web/tests/company-access-cancellation.test.mjs tests/authority_connections_retirement.test.mjs",
+      "workingDirectory": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-bindingfix-standards-_3twrfvd",
+      "exitCode": 0,
+      "passed": 10,
+      "skipped": 0,
+      "log": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/binding-fix-standards-tests-8a5565be.log",
+      "sha256": "4739803941bd7791be28703459cafbc7d6627211ef8f40c5c2ab5ef0e3f041fc"
+    }
+  ],
+  "retainedEvidenceOnly": {
+    "backendBindingSqlRegression": "1 passed, 22 deselected",
+    "advisors": {
+      "warnings": 50,
+      "performance": 50,
+      "blocking": 0,
+      "accountsWarnings": 4
+    },
+    "phaseConcurrencyChecks": 3,
+    "originalGate": "5785 passed, 2 skipped, 884 deselected; two web checks failed"
+  },
+  "limits": [
+    "No reviewer SQL, browser, provider or hosted execution",
+    "No full-gate or stage-exit acceptance",
+    "Original phase probes use local synthetic claims, not genuine JWT acceptance"
+  ],
+  "reportSha256": "8486726de78487c44caed04d18444f425ed9f84678a817a9e3ea12a1bc89234c"
+}

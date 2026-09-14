@@ -1,0 +1,13 @@
+PASS — bounded entry inventory at `2074701450524f40d705b36c222dcabf2c215991` against `713a18d2`. No defect introduced by this evidence-only commit.
+
+All 93 source hashes match immutable baseline `5b74340c` and remain unchanged at the reviewed revision. All ten manifest references and four copied independent reviews match. The original six criteria remain PENDING; characterization is explicitly not started.
+
+The catalog enumerates the six Accounts row families, ownership/RLS, columns/defaults, constraints, policies/grants, indexes/triggers, inbound foreign keys and 37 source-text-referencing function identities/hashes. Accounts review comments remain parent-preview classified with the preserved `rf1086_preview` target. This supports inventory; it is not exhaustive runtime dependency or authorization proof.
+
+The 3,422,908-byte private rollback dump matches SHA-256 `9e51f4edb2acbf2c322f06239e6485323b73beb8edeb3003db9f71c6331c16ee`; restore and initial failure logs match recorded hashes. The documented correction uses the existing local superuser after the initial schema-owner failure. Recorded successful restoration checks six empty families, contracted Tax state and no Accounts schema. Empty counts do not establish populated Accounts identity, Audit/replay or latest-state rollback preservation; those remain characterization/lifecycle work. I performed no DB operation.
+
+The offline boundary needs explicit disposition before policy replacement, not before characterization. `holding_cli/main.py:178` reaches `validation.py:114` and `annual.py:299/440`. Offline annual result omits the runtime’s tax-expense subtraction, and its investment balance covers only account 1800. The runtime covers six investment accounts and a different RR0002 field/profile set. Therefore #153-A1 (“outputs identical”) requires separate frozen CLI JSON/text/status/error/default and core payload captures before sharing rules.
+
+For #132’s exact exit (“only implementation and owner”), place Accounts-specific offline rules under an explicitly named canonical profile or otherwise remove/delegate overlap without changing those observable semantics. Merely calling the reachable duplicate “offline” cannot settle exit ownership. Preserve common AnnualData, Tax and Archive aggregation under their existing scope; no #149 expansion is implied. The parent’s proposed distinct public offline profile is a reasonable candidate, subject to import/data-contract review.
+
+Inventory acceptance permits characterization. It grants no implementation, populated rollback, settled offline design or stage-exit credit.

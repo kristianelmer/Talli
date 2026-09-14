@@ -1,0 +1,32 @@
+[
+  {
+    "name": "required",
+    "unchanged": true,
+    "sha256": "c9404bd8f96e4fcf6e7125eadf6a942d3bc8efe94e9aae393b47af64cbf43335"
+  },
+  {
+    "name": "optional",
+    "unchanged": true,
+    "sha256": "81de4e7768b7f0c58f50f1f69beac4b70adbe31971d34fd5b904d2c9d2fa3a0f"
+  },
+  {
+    "name": "buildAuthorityTestRun",
+    "unchanged": true,
+    "sha256": "7f37205c7eefc5e0b76e75d076f442f9b6b192c468126aac3d17fa8cb5d60069"
+  },
+  {
+    "name": "authorityTestRunStatusLabel",
+    "unchanged": true,
+    "sha256": "41f313a1de4e8a9c72d48202395f422cc2be3740f551a0988a96c9cb52efb1e3"
+  },
+  {
+    "name": "authorityTestEvidenceGateStatusLabel",
+    "unchanged": true,
+    "sha256": "8dcfe73ff07e4bb6ce12e7e57a8de3f9cd6648572fae4b220cc1e7b44d276686"
+  },
+  {
+    "name": "authorityTestEvidenceGate",
+    "unchanged": true,
+    "sha256": "b4ea810b9dfe9c1fd52b09a37ffbeb045b9372c32cf23da34111823cd4a7b8ad"
+  }
+]

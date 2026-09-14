@@ -50,7 +50,7 @@ const workspace = () => ({ companyId, incomeYear: null,
 });
 
 function route({ generic = {}, failures = {}, rf = workspace(), openings = [opening(2025), opening(2024)],
-  user = true, token = true, mfa = true, receiptError = false, routeSource = source, rfLoader, taxFiling = {} } = {}) {
+  user = true, token = true, mfa = true, receiptError = false, routeSource = source, rfLoader, taxFiling = {}, accountsFiling = {} } = {}) {
   const calls = [], readTables = [], captures = [], openingYears = [], rfYears = [];
   const ledgerProjection = presentOpeningSnapshots(openings);
   const legacy = { opening_balance_setups: ledgerProjection.setups, opening_shareholders: ledgerProjection.shareholders, ...generic };
@@ -75,6 +75,15 @@ function route({ generic = {}, failures = {}, rf = workspace(), openings = [open
   };
   const empty = async () => [];
   const dependencies = {
+    "../../../../lib/annual-accounts-workspace-source": {
+      loadPresentedAnnualAccountsSource: async (access, companies, year) => {
+        calls.push("read:accounts-filing-api");
+        assert.equal(access, "verified-owner"); assert.deepEqual(plain(companies), [companyId]);
+        assert.equal(year, undefined, "Accounts company-wide comments retain older preview links");
+        return { previews: [], submissions: [], overrides: [], comments: [], authorityPermissions: [], authorityTestRuns: [],
+          ...accountsFiling, error: failures.accountsFiling ?? null };
+      },
+    },
     "../../../../lib/company-tax-workspace-source": {
       loadPresentedCompanyTaxSource: async (access, companies, year) => {
         calls.push("read:tax-filing-api");
@@ -192,8 +201,8 @@ function queryChains(text) {
   return chains;
 }
 
-test("archive preserves frozen mixed chains except the exact owned RF and Tax read retirements", () => {
-  assert.deepEqual(queryChains(source), ORIGINAL_MIXED_CHAINS.filter(chain => chain.table !== "holding_actions"));
+test("archive preserves frozen mixed chains except the exact owned RF, Tax and Accounts read retirements", () => {
+  assert.deepEqual(queryChains(source), ORIGINAL_MIXED_CHAINS.filter(chain => !["holding_actions", "filing_submissions", "authority_test_runs", "filing_previews", "authority_permissions", "filing_review_comments"].includes(chain.table)));
   assert.equal(source.includes('.from("holding_actions")'), false);
   assert.equal(source.includes('.from("opening_balance_setups")'), false);
   assert.equal(source.includes('.from("opening_shareholders")'), false);
@@ -285,19 +294,19 @@ test("RF authority evidence is limited to retained submission references without
   assert.equal(fixture.readTables.includes("authority_test_runs"), false);
 });
 
-test("mixed sibling chains retain their conditional authority read and overlap never duplicates RF rows", async () => {
+test("owned sibling sources retain linked authority evidence and overlap never duplicates RF rows", async () => {
   const rf = workspace(), rfRow = rfPresentation.presentRf1086Simulation(rf.simulations[0]);
   const sibling = { ...rfRow, id: uid(70), filing: "skattemelding", mode: "test_authority", authority_test_run_id: uid(71) };
   const siblingEvidence = { ...rfPresentation.presentRf1086TestEvidence(evidence(uid(71))), obligation: "skattemelding" };
-  const fixture = route({ rf, generic: { filing_submissions: [rfRow, sibling], authority_test_runs: [siblingEvidence] } });
+  const fixture = route({ rf, taxFiling: { submissions: [rfRow, sibling], authorityTestRuns: [siblingEvidence] } });
   assert.equal((await fixture.run()).status, 200);
-  assert.deepEqual(fixture.readTables.slice(0, 2), ["filing_submissions", "authority_test_runs"]);
+  assert.deepEqual(fixture.readTables, ["audit_events", "bank_suggestion_acceptances"]);
   assert.equal(fixture.captures[0].filingSubmissions.length, 2);
   assert.deepEqual(plain(fixture.captures[0].filingSubmissions[1]), sibling);
   assert.deepEqual(plain(fixture.captures[0].authorityTestRuns), [siblingEvidence]);
 });
 
-for (const failure of ["rf", "opening", "tax", "taxFiling", "filing_previews", "authority_permissions", "filing_review_comments", "audit_events"]) {
+for (const failure of ["rf", "opening", "tax", "taxFiling", "accountsFiling", "audit_events"]) {
   test(`unavailable ${failure} source cannot complete the authoritative export`, async () => {
     const fixture = route({ failures: { [failure]: Error("unavailable") } });
     assert.equal((await fixture.run()).status, 500);
@@ -305,14 +314,12 @@ for (const failure of ["rf", "opening", "tax", "taxFiling", "filing_previews", "
   });
 }
 
-test("original submission and authority errors retain priority and effect order", async () => {
-  const first = route({ failures: { filing_submissions: true, rf: true } });
+test("Accounts source errors retain priority and precede all sibling reads", async () => {
+  const first = route({ failures: { accountsFiling: true, rf: true } });
   assert.equal(await (await first.run()).text(), "Kunne ikke lese innsendingsgrunnlaget");
   assert.equal(first.calls.includes("read:rf-api"), false);
-  const sibling = { ...rfPresentation.presentRf1086Simulation(simulation(2025, "test_authority")), filing: "skattemelding" };
-  const second = route({ generic: { filing_submissions: [sibling] }, failures: { authority_test_runs: true, rf: true } });
-  assert.equal(await (await second.run()).text(), "Kunne ikke lese myndighetsdokumentasjonen");
-  assert.equal(second.calls.includes("read:opening-api"), false);
+  assert.equal(first.calls.includes("read:opening-api"), false);
+  assert.equal(first.calls.includes("company_archive_complete_export"), false);
 });
 
 for (const options of [{ user: false }, { token: false }, { mfa: false }]) {
@@ -361,4 +368,31 @@ test("owned Tax filing preserves nested payload and only linked evidence inside 
   assert.ok(fixture.calls.indexOf("read:tax-filing-api") > fixture.calls.indexOf("company_archive_begin_export"));
   assert.ok(fixture.calls.indexOf("read:tax-filing-api") < fixture.calls.indexOf("company_archive_complete_export"));
   assert.equal(fixture.readTables.includes("authority_test_runs"), false);
+});
+
+
+test("owned Accounts archive retains requested-year rows, company-wide comments, and only linked evidence", async () => {
+  const submission = { ...rfPresentation.presentRf1086Simulation(simulation(2025, "test_authority")),
+    id: uid(160), filing: "årsregnskap", authority_test_run_id: uid(161),
+    submitted_payload: { original: { immutable: ["æ", 2025] } } };
+  const history = { id: uid(162), preview_id: uid(163), company_id: companyId, body: "2024 retained comment" };
+  const permission = { id: uid(164), company_id: companyId, obligation: "arsregnskap", production_enabled: false };
+  const linked = { ...rfPresentation.presentRf1086TestEvidence(evidence(uid(161))), obligation: "arsregnskap", status: "pending" };
+  const currentPreview = { id: uid(165), company_id: companyId, income_year: 2025, filing: "årsregnskap" };
+  const accountsFiling = { submissions: [submission, { ...submission, id: uid(166), income_year: 2024 }],
+    previews: [currentPreview, { ...currentPreview, id: uid(163), income_year: 2024 }],
+    comments: [history], authorityPermissions: [permission], authorityTestRuns: [linked, { ...linked, id: uid(167) }] };
+  const rf = workspace(); rf.simulations = []; rf.previews = []; rf.reviewComments = []; rf.permissions = [];
+  const fixture = route({ rf, accountsFiling });
+  assert.equal((await fixture.run()).status, 200);
+  const input = fixture.captures[0];
+  assert.deepEqual(plain(input.filingSubmissions), [submission]);
+  assert.deepEqual(plain(input.filingPreviews), [currentPreview]);
+  assert.deepEqual(plain(input.reviewComments), [history]);
+  assert.deepEqual(plain(input.authorityPermissions), [permission]);
+  assert.deepEqual(plain(input.authorityTestRuns), [linked]);
+  assert.equal(input.filingSubmissions[0].submitted_payload, submission.submitted_payload);
+  assert.deepEqual(fixture.readTables, ["audit_events", "bank_suggestion_acceptances"]);
+  assert.ok(fixture.calls.indexOf("read:accounts-filing-api") > fixture.calls.indexOf("company_archive_begin_export"));
+  assert.equal(fixture.calls.at(-1), "company_archive_complete_export");
 });

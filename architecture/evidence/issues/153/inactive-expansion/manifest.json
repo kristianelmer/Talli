@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "1.0",
+  "status": "INACTIVE_EXPANSION_REVIEW_PENDING",
+  "sourceRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "previousRevision": "61c9c93a",
+  "localPhase": "expanded",
+  "checks": {
+    "populatedSourceRows": 7,
+    "familiesReconciled": 6,
+    "accessProbes": 60,
+    "classifierProbes": 7,
+    "quarantineRows": 2,
+    "dependentRoutines": 37,
+    "advisorsBlocking": 0,
+    "architecture": "PASS"
+  },
+  "artifacts": {
+    "architecture/evidence/issues/153/inactive-expansion/expand-quarantine.json": "8056b574d659866b8f05d909dee651ab328a0723825b0c21a0b089a4cfe6ab26",
+    "architecture/evidence/issues/153/inactive-expansion/probe-accounts-expand.py": "f778eebf728e22d119342a25c032875637ba84cd01ad1e9fb237bf787a08c1ce",
+    "architecture/evidence/issues/153/inactive-expansion/authority-fix-standards-review-61c9c93a.json": "a6c9660714d345f0d7315c0fe6687c0e0e218d5173b393b0820f59e1b7585f50",
+    "architecture/evidence/issues/153/inactive-expansion/expand-local-apply.json": "a60fb58c2fd18ccde270204df5ef04753220de609599354f602510a0a257de43",
+    "architecture/evidence/issues/153/inactive-expansion/authority-fix-spec-review-61c9c93a.md": "86018d299eaa65d47c5800fbf822792de93ab03ec4a835b78409f537690d0583",
+    "architecture/evidence/issues/153/inactive-expansion/apply-local-accounts-expand.py": "dd167b92074a3a3f757357a115d2a537b5716bde02b44bf275e665a31455fd88",
+    "architecture/evidence/issues/153/inactive-expansion/expand-populated-first.json": "9704d63b7ddc9c0e807c0c39a9c2bd6c69ebb56bbdf88141ebb6adcc684fe9c6",
+    "architecture/evidence/issues/153/inactive-expansion/probe-accounts-populated-expand.py": "907665171ad5689545ea20dc2de05e16e140616bbffae10eb35e1e387edcb740",
+    "architecture/evidence/issues/153/inactive-expansion/expand-first-probe.json": "acbdc21e220386005993e828647490dc29218017f35243f70b326db2e7af10f8",
+    "architecture/evidence/issues/153/inactive-expansion/inspect-accounts-advisors.py": "a9520ecda11533c1a0a824fecd8643f4b5e27bc7a4c44fbb69d8c185a1b50224",
+    "architecture/evidence/issues/153/inactive-expansion/verification.md": "594a92f7c74e6b98c44e6b980f2d4a5fecae173da3212920fb86e9c07101c6e7",
+    "architecture/evidence/issues/153/inactive-expansion/expand-architecture.log": "4f2339a8b136e18efa2600ab2d65659cc842a092ddf119ca615495ac7b79f578",
+    "architecture/evidence/issues/153/inactive-expansion/expand-advisors-local-tls.stderr": "81f919d0bef0e76ac433f90c5afb665beb47d68fa0cee4e562903838fd9b1351",
+    "architecture/evidence/issues/153/inactive-expansion/expand-populated-explicit-role.json": "450c11c94a7689c9edeab3db1b77d0b9b392a357ca1be9dfaa2fa70bb94025dc",
+    "architecture/evidence/issues/153/inactive-expansion/authority-fix-standards-review-61c9c93a.md": "8691b3a1eb9080130fb0323e845e505cf0b156d708737d06b3fab6c6ff2eeb63",
+    "architecture/evidence/issues/153/inactive-expansion/expand-advisors-summary.json": "82b53bd8b6fe3ce016223a501a98f92eb75f528e2534247d5d28e2cf9c60f70c",
+    "architecture/evidence/issues/153/inactive-expansion/expand-advisors.stderr": "4a519831ea3947cd4fc7a67309855024b4b7aaac74051bd88333268afcf54d53",
+    "architecture/evidence/issues/153/inactive-expansion/expand-advisors-local-tls.stdout": "d22dada3153e47992f62de08d0097d5079c4cfd0e0fcfe9ca4fdd4fccb8063b6",
+    "architecture/evidence/issues/153/inactive-expansion/expand-populated-second.json": "15bed314797b05c5d3ab92166d314d309935066d29d405b0f257204dff251ddc",
+    "architecture/evidence/issues/153/inactive-expansion/authority-fix-spec-review-61c9c93a.json": "b328c587f39c465e1ca8eba6ac7a0eed7b9b3f5634b1435b439e2094e0e54c9d",
+    "architecture/evidence/issues/153/inactive-expansion/local-probe-diagnostic.json": "81f9ab2993888ddf83a6dbc89e8ed4e96a2b2eb0f3ed9be8b956bf3cfc3e35f0",
+    "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql": "ea3c0601ec92539a5c9d672b5254a7342e6e63e4c4147e0ed7e6abec74ea7caa",
+    "apps/backend/tests/accounts_database_fixtures.py": "987bd221fb2776982f0d0dc4352e6b93c64e3e83f25a4e7be74fc45ddd89114d",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md": "3fc9c9c98f64f25a3b9f12104e34cf16c716fc27136079f49424ba7acb0dfdf9",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json": "1c89b1fb3266776a1eca7d4f46be9e5a691a540599cfd023d5768aa299e0b206",
+    "architecture/BACKEND-SYSTEM.md": "ea63d2e49c58d57a5c5cc37ea72d93969f1822ebef87bea47941bebe850f9052",
+    "architecture/backend-system.json": "145976854a627f58558bfbc964307a326a15b64931cfb7b5f92932b2d842436b",
+    "architecture/database-catalog.json": "c52e171a944e55521c808ef81acd9158a72c69bbe4a902edcc5879944eb9b3e0",
+    "architecture/dependency-evidence.json": "4f2339a8b136e18efa2600ab2d65659cc842a092ddf119ca615495ac7b79f578"
+  },
+  "limits": [
+    "No cutover, hosted migration or provider operation",
+    "Synthetic SQL roles do not prove HTTP authorization",
+    "All six acceptance criteria remain pending"
+  ]
+}

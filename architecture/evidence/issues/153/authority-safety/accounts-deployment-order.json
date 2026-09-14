@@ -1,0 +1,28 @@
+{
+  "status": "PASS",
+  "checks": [
+    "new API on predecessor storage unavailable",
+    "legacy REST remains original writer",
+    "new API on inactive expansion unavailable",
+    "legacy REST still writes during expansion",
+    "legacy REST writes fenced after cutover",
+    "current API imports pending evidence after cutover",
+    "current API reads pre-cutover and current evidence",
+    "legacy REST absent after physical contract",
+    "current API writes after physical contract",
+    "contract preserves all four evidence generations",
+    "contract rollback retains fenced legacy writer",
+    "contract rollback retains current reads",
+    "current API unavailable after full rollback",
+    "full rollback restores legacy REST writer",
+    "legacy REST reads latest owned evidence after rollback",
+    "legacy REST fenced again after recutover",
+    "recutover preserves all five evidence generations"
+  ],
+  "count": 17,
+  "sourceRevision": "eb7d312054c32a8e94dd9d0c8bf9f22dcf9a12fa",
+  "limits": "Fixture JWT realm and injected verified session; actual PostgREST, FastAPI ASGI and restricted SQL adapter. Real Auth/TOTP is separate browser evidence.",
+  "cleanup": "Owned container/database/ephemeral logins removed, all global memberships restored",
+  "providerCalls": 0,
+  "hostedChanges": 0
+}

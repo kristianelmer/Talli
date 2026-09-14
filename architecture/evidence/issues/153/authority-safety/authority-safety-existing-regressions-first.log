@@ -1,0 +1,273 @@
+........................................................................ [ 26%]
+........................................................................ [ 53%]
+......................................FFFFFFFFFFFF.F.FF................. [ 80%]
+......................................................                   [100%]
+=================================== FAILURES ===================================
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[prepare] _
+
+case = {'id': 'prepare', 'trace': {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture...chiveReference': None, 'companyOrgNumber': '310279617', 'environment': 'test', 'evidenceFile': 'evidence.json', ...}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints....json', ...}}} == {'checkpoints....json', ...}}}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...T02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}, ...]} != {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...T02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}, ...]}
+E         {'events': [{'input': {'input': {...
+E         
+E         ...Full output truncated (2 lines hidden), use '-vv' to show
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[validation_errors] _
+
+case = {'id': 'validation_errors', 'trace': {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'c... 'create_instance'}, ...], 'output': {'error': {'message': 'Altinn RR0002 validation failed.', 'type': 'ValueError'}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints...ValueError'}}} == {'checkpoints...ValueError'}}}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...T02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}, ...]} != {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...inn TT02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}]}
+E         {'events': [{'input': {'input': {...
+E         
+E         ...Full output truncated (2 lines hidden), use '-vv' to show
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[connect] _
+
+case = {'id': 'connect', 'trace': {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture...: 'connect'}], 'output': {'error': {'message': 'Synthetic network failure.', 'type': 'AnnualAccountsAuthorityError'}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints...orityError'}}} == {'checkpoints...orityError'}}}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}]} != {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}]}
+E         {'events': [{'input': {'input': {'annualData': {'annual_full_time_equivalents': 0, 'answers': {...}, 'company_id': 'co... 'case.json', 'cod...
+E         
+E         ...Full output truncated (2 lines hidden), use '-vv' to show
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[create_instance] _
+
+case = {'id': 'create_instance', 'trace': {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'cas...tance'}, ...], 'output': {'error': {'message': 'Synthetic network failure.', 'type': 'AnnualAccountsAuthorityError'}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints...orityError'}}} == {'checkpoints...orityError'}}}
+E         
+E         Differing items:
+E         {'output': {'error': {'message': 'An earlier authority operation may have completed. Reconcile the saved evidence before retrying.', 'type': 'AnnualAccountsAuthorityError'}}} != {'output': {'error': {'message': 'Synthetic network failure.', 'type': 'AnnualAccountsAuthorityError'}}}
+E         {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...inn TT02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}]} != {'checkpoints': [{'authority': 'Br...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[upload_main_form] _
+
+case = {'id': 'upload_main_form', 'trace': {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'ca...tance'}, ...], 'output': {'error': {'message': 'Synthetic network failure.', 'type': 'AnnualAccountsAuthorityError'}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints...orityError'}}} == {'checkpoints...orityError'}}}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...inn TT02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}]} != {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...inn TT02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}]}
+E         {'events': [{'input': {'input': {...
+E         
+E         ...Full output truncated (2 lines hidden), use '-vv' to show
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[upload_company_accounts] _
+
+case = {'id': 'upload_company_accounts', 'trace': {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT0...tance'}, ...], 'output': {'error': {'message': 'Synthetic network failure.', 'type': 'AnnualAccountsAuthorityError'}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints...orityError'}}} == {'checkpoints...orityError'}}}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...inn TT02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}]} != {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...inn TT02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}]}
+E         {'events': [{'input': {'input': {...
+E         
+E         ...Full output truncated (2 lines hidden), use '-vv' to show
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[validate_instance] _
+
+case = {'id': 'validate_instance', 'trace': {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'c...tance'}, ...], 'output': {'error': {'message': 'Synthetic network failure.', 'type': 'AnnualAccountsAuthorityError'}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints...orityError'}}} == {'checkpoints...orityError'}}}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...inn TT02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}]} != {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...inn TT02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}]}
+E         {'events': [{'input': {'input': {...
+E         
+E         ...Full output truncated (2 lines hidden), use '-vv' to show
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[lock_for_signing] _
+
+case = {'id': 'lock_for_signing', 'trace': {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'ca...tance'}, ...], 'output': {'error': {'message': 'Synthetic network failure.', 'type': 'AnnualAccountsAuthorityError'}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints...orityError'}}} == {'checkpoints...orityError'}}}
+E         
+E         Differing items:
+E         {'output': {'error': {'message': 'An earlier authority operation may have completed. Reconcile the saved evidence before retrying.', 'type': 'AnnualAccountsAuthorityError'}}} != {'output': {'error': {'message': 'Synthetic network failure.', 'type': 'AnnualAccountsAuthorityError'}}}
+E         {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...T02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}, ...]} != {'checkpoints': [{'authority': 'Br...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[get_signing_handoff] _
+
+case = {'id': 'get_signing_handoff', 'trace': {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', ...tance'}, ...], 'output': {'error': {'message': 'Synthetic network failure.', 'type': 'AnnualAccountsAuthorityError'}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints...orityError'}}} == {'checkpoints...orityError'}}}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...T02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}, ...]} != {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...T02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}, ...]}
+E         {'events': [{'input': {'input': {...
+E         
+E         ...Full output truncated (2 lines hidden), use '-vv' to show
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[resume_pending] _
+
+case = {'id': 'resume_pending', 'trace': {'checkpoints': [{'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617...chiveReference': None, 'companyOrgNumber': '310279617', 'environment': 'test', 'evidenceFile': 'evidence.json', ...}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints....json', ...}}} == {'checkpoints....json', ...}}}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'checkpoints': [{'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617', 'environment': 'test', 'evidenc.....}, {'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617', 'environment': 'test', 'error': None, ...}]} != {'checkpoints': [{'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617', 'environment': 'test', 'evidenc.....}, {'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617', 'environment': 'test', 'error': None, ...}]}
+E         {'events': [{'input': {'input': {...
+E         
+E         ...Full output truncated (2 lines hidden), use '-vv' to show
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[resume_completed] _
+
+case = {'id': 'resume_completed', 'trace': {'checkpoints': [{'codeCommit': 'synthetic-revision', 'companyOrgNumber': '3102796...Reference': 'archive', 'companyOrgNumber': '310279617', 'environment': 'test', 'evidenceFile': 'evidence.json', ...}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints....json', ...}}} == {'checkpoints....json', ...}}}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'checkpoints': [{'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617', 'environment': 'test', 'evidenc.....}, {'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617', 'environment': 'test', 'error': None, ...}]} != {'checkpoints': [{'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617', 'environment': 'test', 'evidenc.....}, {'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617', 'environment': 'test', 'error': None, ...}]}
+E         {'events': [{'input': {'input': {...
+E         
+E         ...Full output truncated (2 lines hidden), use '-vv' to show
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[get_submission_evidence] _
+
+case = {'id': 'get_submission_evidence', 'trace': {'checkpoints': [{'codeCommit': 'synthetic-revision', 'companyOrgNumber': '...dence'}, ...], 'output': {'error': {'message': 'Synthetic network failure.', 'type': 'AnnualAccountsAuthorityError'}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints...orityError'}}} == {'checkpoints...orityError'}}}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'checkpoints': [{'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617', 'environment': 'test', 'evidenc...CCOUNTS_NETWORK_ERROR', 'correlationId': None, 'message': 'Synthetic network failure.', 'retryable': True, ...}, ...}]} != {'checkpoints': [{'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617', 'environment': 'test', 'evidenc...CCOUNTS_NETWORK_ERROR', 'correlationId': None, 'message': 'Synthetic network failure.', 'retryable': True, ...}, ...}]}
+E         {'events': [{'input': {'input': {...
+E         
+E         ...Full output truncated (2 lines hidden), use '-vv' to show
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[partial_upload] _
+
+case = {'id': 'partial_upload', 'trace': {'checkpoints': [{'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617...chiveReference': None, 'companyOrgNumber': '310279617', 'environment': 'test', 'evidenceFile': 'evidence.json', ...}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints....json', ...}}} == {'checkpoints....json', ...}}}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'checkpoints': [{'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617', 'environment': 'test', 'evidenc.....}, {'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617', 'environment': 'test', 'error': None, ...}]} != {'checkpoints': [{'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617', 'environment': 'test', 'evidenc.....}, {'codeCommit': 'synthetic-revision', 'companyOrgNumber': '310279617', 'environment': 'test', 'error': None, ...}]}
+E         {'events': [{'input': {'input': {...
+E         
+E         ...Full output truncated (2 lines hidden), use '-vv' to show
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[save_first] _
+
+case = {'id': 'save_first', 'trace': {'checkpoints': [], 'events': [{'input': {'input': {'annualData': {...}, 'approvalDate':... 'operation': 'save_evidence'}], 'output': {'error': {'message': 'Synthetic checkpoint failure.', 'type': 'OSError'}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints...: 'OSError'}}} == {'checkpoints...: 'OSError'}}}
+E         
+E         Omitting 2 identical items, use -vv to show
+E         Differing items:
+E         {'events': [{'input': {'input': {'annualData': {'annual_full_time_equivalents': 0, 'answers': {...}, 'company_id': 'co....json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}, 'operation': 'save_evidence'}]} != {'events': [{'input': {'input': {'annualData': {'annual_full_time_equivalents': 0, 'answers': {...}, 'company_id': 'co....json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}, 'operation': 'save_evidence'}]}
+E         Use -v to get more diff
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+_ test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[save_after_upload] _
+
+case = {'id': 'save_after_upload', 'trace': {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'c...tion': 'create_instance'}, ...], 'output': {'error': {'message': 'Synthetic checkpoint failure.', 'type': 'OSError'}}}}
+
+    @pytest.mark.parametrize('case', TRACES['cases'], ids=lambda case: case['id'])
+    def test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints(case):
+>       assert trace(annual_accounts_test, case['id'], relocated=True) == case['trace']
+E       AssertionError: assert {'checkpoints...: 'OSError'}}} == {'checkpoints...: 'OSError'}}}
+E         
+E         Omitting 1 identical items, use -vv to show
+E         Differing items:
+E         {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...inn TT02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}]} != {'checkpoints': [{'authority': 'Brønnøysundregistrene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit...inn TT02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': 'LOGISK ØDE TIGER AS', ...}]}
+E         {'events': [{'input': {'input': {...
+E         
+E         ...Full output truncated (2 lines hidden), use '-vv' to show
+
+../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py:30: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[prepare]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[validation_errors]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[connect]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[create_instance]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[upload_main_form]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[upload_company_accounts]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[validate_instance]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[lock_for_signing]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[get_signing_handoff]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[resume_pending]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[resume_completed]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[get_submission_evidence]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[partial_upload]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[save_first]
+FAILED ../../../issue-192-private/issue153-entry/authority-fixes-eb7d3120/apps/backend/tests/test_annual_accounts_authority_ownership.py::test_owned_rehearsal_preserves_original_effect_order_and_durable_checkpoints[save_after_upload]
+15 failed, 255 passed in 2.99s

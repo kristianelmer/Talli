@@ -276,6 +276,19 @@ const bankingOperations = {
     "bankingListSuggestionAcceptances",
   ],
 };
+const annualAccountsOperations = {
+  sourceFacts: ["/api/v1/annual-accounts/source-facts", "get", "annualAccountsGetSourceFacts"],
+  readinessPreview: ["/api/v1/annual-accounts/readiness-previews", "post", "annualAccountsPreviewReadiness"],
+  getPreview: ["/api/v1/annual-accounts/previews/{preview_id}", "get", "annualAccountsGetPreview"],
+  override: ["/api/v1/annual-accounts/overrides", "post", "annualAccountsRecordOverride"],
+  review: ["/api/v1/annual-accounts/review-comments", "post", "annualAccountsAddReviewComment"],
+  acknowledge: ["/api/v1/annual-accounts/review-comments/{comment_id}/acknowledgements", "post", "annualAccountsAcknowledgeReviewComment"],
+  permission: ["/api/v1/annual-accounts/permissions", "post", "annualAccountsConfirmPermission"],
+  testEvidence: ["/api/v1/annual-accounts/test-evidence", "post", "annualAccountsRecordTestEvidence"],
+
+  importEvidence: ["/api/v1/annual-accounts/tt02-evidence-imports", "post", "annualAccountsImportTt02Evidence"],
+  workspace: ["/api/v1/annual-accounts/filing-workspace", "get", "annualAccountsGetFilingWorkspace"],
+};
 const companyTaxOperations = {
   sourceFacts: ["/api/v1/company-tax/source-facts", "get", "companyTaxGetSourceFacts"],
   readinessPreview: ["/api/v1/company-tax/readiness-previews", "post", "companyTaxPreviewReadiness"],
@@ -394,6 +407,11 @@ for (const [name, [operationPath, method, operationId]] of Object.entries(bankin
   }
 }
 for (const [name, [operationPath, method, operationId]] of Object.entries(billingOperations)) {
+  if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
+    throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
+  }
+}
+for (const [name, [operationPath, method, operationId]] of Object.entries(annualAccountsOperations)) {
   if (contract.paths?.[operationPath]?.[method]?.operationId !== operationId) {
     throw new Error(`Expected ${operationId} for ${name} at ${operationPath}`);
   }
@@ -855,7 +873,16 @@ const bankingSchemas = Object.fromEntries([
   "SupportedBankDataFormat",
   "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
+const annualAccountsSchemas = Object.fromEntries([
+  "AnnualAccountsCorporateBlockerWire", "AnnualAccountsReadinessPreviewRequest", "AnnualAccountsReadinessIssueWire", "AnnualAccountsReadinessPreviewWire",
+  "AnnualAccountsRecordedWire", "AnnualAccountsOverrideRequest", "AnnualAccountsReviewRequest", "AnnualAccountsPermissionRequest", "AnnualAccountsTestEvidenceRequest",
+  "AnnualAccountsEvidenceImportRequest", "AnnualAccountsEvidenceImportWire",
+  "AnnualAccountsWorkspaceWire", "AnnualAccountsPreviewWire", "AnnualAccountsSubmissionWire",
+  "AnnualAccountsOverrideWire", "AnnualAccountsReviewCommentWire", "AnnualAccountsPermissionWire", "AnnualAccountsTestEvidenceWire",
+].map((name) => [name, contract.components.schemas[name]]));
 const companyTaxSchemas = Object.fromEntries([
+  "AnnualAccountsSourceEvidenceWire", "AnnualAccountsHistoryCoverageWire", "AnnualAccountsSubmissionFactWire",
+  "AnnualAccountsIncidentFactWire", "AnnualAccountsOutcomeFactWire", "AnnualAccountsCorrectionLinkWire", "AnnualAccountsSourceFactsWire",
   "CompanyTaxSourceEvidenceWire", "CompanyTaxHistoryCoverageWire", "CompanyTaxSubmissionFactWire",
   "CompanyTaxIncidentFactWire", "CompanyTaxOutcomeFactWire", "CompanyTaxCorrectionLinkWire", "CompanyTaxSourceFactsWire",
   "CompanyTaxAssessmentFactsRequest", "CompanyTaxReadinessPreviewRequest", "CompanyTaxReadinessIssueWire",
@@ -988,6 +1015,8 @@ ${Object.entries(bankingSchemas).map(([name, schema]) => renderSchema(name, sche
 
 ${Object.entries(billingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
+${Object.entries(annualAccountsSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
 ${Object.entries(companyTaxSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(shareholderRegisterFilingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
@@ -1105,6 +1134,8 @@ ${Object.entries(corporateGovernanceSchemas).map(([name, schema]) => renderGuard
 ${Object.entries(bankingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
 ${Object.entries(billingSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
+
+${Object.entries(annualAccountsSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
 ${Object.entries(companyTaxSchemas).map(([name, schema]) => renderGuard(name, schema)).join("\n\n")}
 
@@ -2571,6 +2602,121 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         isAdministrativeCostEntryWire,
       );
       if (result.companyId !== body.companyId || result.incomeYear !== body.incomeYear) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+    async annualAccountsPreviewReadiness(
+      body: AnnualAccountsReadinessPreviewRequest, request: TalliRequestOptions = {},
+    ): Promise<AnnualAccountsReadinessPreviewWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/annual-accounts/readiness-previews\`,
+        "POST", request, body, isAnnualAccountsReadinessPreviewWire,
+      );
+      if (result.companyId !== body.companyId || result.incomeYear !== body.incomeYear) throw new TalliApiError(502, undefined);
+      return result;
+    },
+
+    async annualAccountsGetPreview(previewId: string, request: TalliRequestOptions = {}): Promise<AnnualAccountsPreviewWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/annual-accounts/previews/\${encodeURIComponent(previewId)}\`,
+        "GET", request, undefined, isAnnualAccountsPreviewWire,
+      );
+      if (result.id !== previewId) throw new TalliApiError(502, undefined);
+      return result;
+    },
+
+    async annualAccountsAcknowledgeReviewComment(commentId: string, request: TalliRequestOptions = {}): Promise<AnnualAccountsRecordedWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/annual-accounts/review-comments/\${encodeURIComponent(commentId)}/acknowledgements\`,
+        "POST", request, undefined, isAnnualAccountsRecordedWire,
+      );
+      if (result.recordId !== commentId) throw new TalliApiError(502, undefined);
+      return result;
+    },
+
+    async annualAccountsRecordOverride(body: AnnualAccountsOverrideRequest, request: TalliRequestOptions = {}): Promise<AnnualAccountsRecordedWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/annual-accounts/overrides\`,
+        "POST", request, body, isAnnualAccountsRecordedWire,
+      );
+      return result;
+    },
+
+    async annualAccountsAddReviewComment(body: AnnualAccountsReviewRequest, request: TalliRequestOptions = {}): Promise<AnnualAccountsRecordedWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/annual-accounts/review-comments\`,
+        "POST", request, body, isAnnualAccountsRecordedWire,
+      );
+      return result;
+    },
+
+    async annualAccountsConfirmPermission(body: AnnualAccountsPermissionRequest, request: TalliRequestOptions = {}): Promise<AnnualAccountsRecordedWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/annual-accounts/permissions\`,
+        "POST", request, body, isAnnualAccountsRecordedWire,
+      );
+      if (result.companyId !== body.companyId || result.incomeYear !== null) throw new TalliApiError(502, undefined);
+      return result;
+    },
+
+    async annualAccountsRecordTestEvidence(body: AnnualAccountsTestEvidenceRequest, request: TalliRequestOptions = {}): Promise<AnnualAccountsRecordedWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/annual-accounts/test-evidence\`,
+        "POST", request, body, isAnnualAccountsRecordedWire,
+      );
+      if (result.companyId !== body.companyId || result.incomeYear !== null) throw new TalliApiError(502, undefined);
+      return result;
+    },
+
+    async annualAccountsImportTt02Evidence(
+      body: AnnualAccountsEvidenceImportRequest, request: TalliRequestOptions = {},
+    ): Promise<AnnualAccountsEvidenceImportWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/annual-accounts/tt02-evidence-imports\`,
+        "POST", request, body, isAnnualAccountsEvidenceImportWire,
+      );
+    },
+
+    async annualAccountsGetSourceFacts(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<AnnualAccountsSourceFactsWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/annual-accounts/source-facts?\${query}\`,
+        "GET", request, undefined, isAnnualAccountsSourceFactsWire,
+      );
+      if (result.evidence.companyId !== companyId || result.evidence.incomeYear !== incomeYear
+          || (result.historyCoverage.status === "complete"
+            && result.historyCoverage.evidenceReference !== result.evidence.reference)) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
+
+    async annualAccountsGetFilingWorkspace(
+      companyId: string, incomeYear: number | null = null, request: TalliRequestOptions = {},
+    ): Promise<AnnualAccountsWorkspaceWire> {
+      const query = new URLSearchParams({ companyId });
+      if (incomeYear !== null) query.set("incomeYear", String(incomeYear));
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/annual-accounts/filing-workspace?\${query}\`,
+        "GET", request, undefined, isAnnualAccountsWorkspaceWire,
+      );
+      const families = [result.previews, result.submissions, result.overrides,
+        result.reviewComments, result.permissions, result.testEvidence];
+      if (result.companyId !== companyId || result.incomeYear !== incomeYear
+          || families.some(rows => rows.some(row => row.companyId !== companyId)
+            || new Set(rows.map(row => row.id)).size !== rows.length)
+          || [result.previews, result.submissions, result.overrides].some(rows =>
+            rows.some(row => incomeYear !== null && row.incomeYear !== incomeYear))
+          || [...result.submissions, ...result.overrides].some(row => row.previewId !== null
+            && !result.previews.some(preview => preview.id === row.previewId && preview.incomeYear === row.incomeYear))
+          || result.reviewComments.some(row => !result.previews.some(preview => preview.id === row.previewId))
+          || result.submissions.some(row => row.authorityTestRunId !== null
+            && !result.testEvidence.some(evidence => evidence.id === row.authorityTestRunId))) {
         throw new TalliApiError(502, undefined);
       }
       return result;

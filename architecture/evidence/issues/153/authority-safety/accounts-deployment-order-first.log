@@ -1,0 +1,17 @@
+PASS new API on predecessor storage unavailable
+PASS legacy REST remains original writer
+PASS new API on inactive expansion unavailable
+PASS legacy REST still writes during expansion
+PASS legacy REST writes fenced after cutover
+PASS current API imports pending evidence after cutover
+PASS current API reads pre-cutover and current evidence
+PASS legacy REST absent after physical contract
+PASS current API writes after physical contract
+PASS contract preserves all four evidence generations
+PASS contract rollback retains fenced legacy writer
+PASS contract rollback retains current reads
+PASS current API unavailable after full rollback
+PASS full rollback restores legacy REST writer
+PASS legacy REST reads latest owned evidence after rollback
+PASS legacy REST fenced again after recutover
+PASS recutover preserves all five evidence generations

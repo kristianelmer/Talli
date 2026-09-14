@@ -1,0 +1,49 @@
+{
+  "candidate": "55f5abbdcb0f4d638f26aea093db13722ef922c5",
+  "baseline": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "allSixCriterionIdsAndTextUnchanged": true,
+  "allSixExitStatusesPending": true,
+  "gatePairEmpty": true,
+  "referencedManifestCount": 23,
+  "referencedManifests": {
+    "authority-ownership/manifest.json": "0869b6dc43bf492ff4b80ca3bec4dd7fcf4628ee0cba08dbd768d505cb22ecc2",
+    "authority-review-fixes/manifest.json": "cd8cf4dfe6cbf87946ef188dffd44cfe2fb2cc29a4761a789bd3df6c60999c5c",
+    "authority-safety/manifest.json": "92a34cc750c979b00cfe5e604bb164d5c967b4091decb86403fcfa8891bf9ee3",
+    "browser-cleanup-model/manifest.json": "b2839100d6dd5b7dc11b2fbb15fa888913a02a68505bc2b89e5a11541da7cd1b",
+    "browser-integration/manifest.json": "f304c5f822a837261f053103de4c9984e41de29d02c7ffcbc3ff1526b540b18c",
+    "characterization/manifest.json": "e6441fa44a449801ed7a58f817ac8397c38e3bbe571983f6a62049b02ecc43ee",
+    "dependency-integration/manifest.json": "163d20b8263a60f562d551d4b84c0c3915e0e5785febc70a9ab603e0f7c20c60",
+    "duplicate-retirement/manifest.json": "cd249599df21ff749f0ae8b81f5121afc99c331b2ca498d5295a9758b24f7f1b",
+    "entry-inventory/manifest.json": "14354bf198f216053cfe22c6324b6bd13ea8e5672cdc97112032758fa5158dd5",
+    "entry/manifest.json": "988a097f791059241ae448437f08f40f068c1cea746ba987d7873a8d8353895d",
+    "evidence-import/manifest.json": "8c79c5ca966ce4dbea2e3400a63c11767fb5260687ec1cb3d0c724e351b037df",
+    "gate-follow-up/manifest.json": "1d6ef27cf4894ea4f7c104c889a192dd5a21bdb945578304e20353367b91a19a",
+    "journal-ownership/manifest.json": "158d38f821615dfcc4528e32a4507e43d36910911aa33a06f28879c9dbf6ba43",
+    "journal-reviews/manifest.json": "27dbc3da2e798ba2c3aaa557c55d124722525ced56de24d73f93fc6c4616b11d",
+    "offline-profile/manifest.json": "e49659dd966b5f4f018117f02b8dc248279744bc76fbf2e3de4b4dd26c5da74e",
+    "physical-retirement/manifest.json": "1a3570c0a34c56a979b727cbb68e940b06b87cf3e8802d5a42d3da6ea231e79b",
+    "publication-follow-up/manifest.json": "d45ebdc1d1f635dc8f943d4503f2b2e66db32faec46c177953ff10bf56195ddc",
+    "pure-calculation/manifest.json": "0d48e5bc37875257a353cee74b8b6ad42dc0d5994a90bf67fac71ee5e95b6927",
+    "read-controls/manifest.json": "d2ca80cdb65377c7ecd559127bf7d7dd1353b52d7fd0aceb5a7b4262906eeaad",
+    "readiness-input-fix/manifest.json": "2fb3d65117442bb43e70c74c698a552b5ba279de171ec3c2193090fa8b2e6069",
+    "response-readiness/manifest.json": "58c9892c8c655dc3a5d4dd38b3f06ec665804c683028c1d7e8a2a1151fcdb267",
+    "source-handoff/manifest.json": "fa90767b4f92435bb0e257a4c4ee11d8c8d5d7cf2c0891aaf0ad81519a1cbc84",
+    "web-cutover/manifest.json": "5436f07313cf82ecb51e625e7c3b5aba2a5334988acc0372afb3df3dc8577856"
+  },
+  "registry": {
+    "currentCapability": "annual_accounts_filing",
+    "currentIssue": "#153",
+    "status": "active",
+    "currentAccountsFacadeOrDebt": false,
+    "orderUnchanged": true,
+    "activeScopeCount": 36
+  },
+  "f1eTo55EvidenceOnly": true,
+  "unchangedSourceDecisions": {
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+    "architecture/evidence/issues/151/compatibility-amendment-v2-inventory.json": "698439251dbba00606c04ea9599032db5f3a082a14946ad4cb1beef24d121c28",
+    "architecture/evidence/issues/151/compatibility-amendment-v2-decision.json": "d9d4d90f19641f4bea8a0d8205adddbaf5b6922b2786cde666068948411b2972",
+    "architecture/evidence/issues/192/source-order-amendment-proposal.md": "c15d83b4f0e3276393d6417ee02bb18d70f6ed3ba094952f9112ad1faa7cfa3e"
+  },
+  "proposedRequirementsSha256": "e94da69165a7dcb63b1dfd9ad675aa7f78f3b5c212e52cafe13fa87a0f304b21"
+}

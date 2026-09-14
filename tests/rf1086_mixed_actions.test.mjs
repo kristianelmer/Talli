@@ -16,7 +16,7 @@ function action(name, dependencies) {
 const redirectSignal = Symbol("redirect");
 const companyId = "10000000-0000-4000-8000-000000000001";
 const preview = { id: "preview", company_id: companyId, income_year: 2025, filing: "årsregnskap" };
-function setup({ owned = false, taxOwned = false, failure = false, taxFailure = false } = {}) {
+function setup({ owned = false, taxOwned = false, failure = false, taxFailure = false, accountsFailure = false, auditError = false, auditThrow = false } = {}) {
   const effects = [];
   const result = { recordId: "record", companyId, incomeYear: 2025 };
   const form = new FormData();
@@ -35,6 +35,8 @@ function setup({ owned = false, taxOwned = false, failure = false, taxFailure = 
         const chain = new Proxy({}, { get(_target, method) {
           if (method === "then") return (resolve) => {
             effects.push(`${table}:${kind}`);
+            if (table === "audit_events" && auditThrow) throw new Error("Audit transport failed");
+            if (table === "audit_events" && auditError) { resolve({ error: { message: "Audit rejected" } }); return; }
             resolve({ data: table === "filing_review_comments" ? { id: "comment", company_id: companyId, severity: "advisory" } : preview, error: null });
           };
           return () => { if (["insert", "upsert", "update"].includes(method)) kind = method; return chain; };
@@ -49,6 +51,11 @@ function setup({ owned = false, taxOwned = false, failure = false, taxFailure = 
     acknowledgeOwnedRf1086Comment: async () => { effects.push("canonical-acknowledge"); if (failure) throw new Error("unavailable"); return owned ? result : null; },
     findCompanyTaxPreview: async () => { effects.push("tax-lookup"); if (taxFailure) throw new Error("unavailable"); return taxOwned ? { id: "preview", companyId, incomeYear: 2025, filing: "skattemelding for AS" } : null; },
     acknowledgeOwnedCompanyTaxComment: async () => { effects.push("tax-acknowledge"); if (taxFailure) throw new Error("unavailable"); return taxOwned ? result : null; },
+    findAnnualAccountsPreview: async () => { effects.push("accounts-lookup"); if (accountsFailure) throw new Error("unavailable"); return { id: "preview", companyId, incomeYear: 2025, filing: "årsregnskap" }; },
+    acknowledgeOwnedAnnualAccountsComment: async () => { effects.push("accounts-acknowledge"); if (accountsFailure) throw new Error("unavailable"); return result; },
+    ...Object.fromEntries(["annualAccountsRecordOverride", "annualAccountsAddReviewComment", "annualAccountsConfirmPermission", "annualAccountsRecordTestEvidence"].map(name => [name, async () => { effects.push("accounts-write"); if (accountsFailure) throw new Error("unavailable"); return result; }])),
+    annualAccountsActionErrorMessage: () => "Accounts unavailable",
+    loadAcceptedMembershipCompany: async () => ({ id: companyId, org_number: "123456789" }),
     companyTaxActionErrorMessage: () => "Tax unavailable",
     companyTaxRecordOverride: async () => { effects.push("tax-write"); if (taxFailure) throw new Error("unavailable"); return result; },
     companyTaxAddReviewComment: async () => { effects.push("tax-write"); if (taxFailure) throw new Error("unavailable"); return result; },
@@ -86,9 +93,9 @@ for (const name of ["addFilingOverride", "addFilingReviewComment", "acknowledgeF
   });
 }
 for (const [name, expected] of [
-  ["addFilingOverride", ["canonical-lookup", "tax-lookup", "filing_previews:read", "validate-override", "filing_overrides:insert", "audit_events:insert"]],
-  ["addFilingReviewComment", ["canonical-lookup", "tax-lookup", "filing_previews:read", "filing_review_comments:insert", "audit_events:insert"]],
-  ["acknowledgeFilingReviewComment", ["canonical-acknowledge", "tax-acknowledge", "filing_review_comments:read", "validate-advisory", "filing_review_comments:update", "audit_events:insert"]],
+  ["addFilingOverride", ["canonical-lookup", "tax-lookup", "accounts-lookup", "validate-override", "accounts-write", "audit_events:insert"]],
+  ["addFilingReviewComment", ["canonical-lookup", "tax-lookup", "accounts-lookup", "accounts-write", "audit_events:insert"]],
+  ["acknowledgeFilingReviewComment", ["canonical-acknowledge", "tax-acknowledge", "accounts-acknowledge", "audit_events:insert"]],
 ]) {
   test(`${name} preserves the sibling validator, writer and subsequent audit`, async () => {
     const { effects, form, dependencies } = setup();
@@ -105,7 +112,7 @@ for (const [name, table, kind] of [["confirmAuthorityPermission", "authority_per
   for (const owned of [true, false]) test(`${name} preserves step-up and audit for ${owned ? "RF" : "sibling"}`, async () => {
     const { effects, form, dependencies } = setup({ owned });
     await assert.rejects(action(name, dependencies)(form), (error) => error === redirectSignal);
-    assert.deepEqual(effects, ["step-up", owned ? "canonical-write" : `${table}:${kind}`, "audit_events:insert"]);
+    assert.deepEqual(effects, ["step-up", owned ? "canonical-write" : "accounts-write", "audit_events:insert"]);
   });
 }
 
@@ -137,3 +144,27 @@ test("TT02 import sends original file bytes to owned API and has no web persiste
   await assert.rejects(action("recordCompanyTaxReturnTt02Evidence", dependencies)(form), error => error === redirectSignal);
   assert.deepEqual(effects, ["tax-import"]);
 });
+
+for (const name of ["addFilingOverride", "addFilingReviewComment", "acknowledgeFilingReviewComment", "confirmAuthorityPermission", "recordAuthorityTestEvidence"]) {
+  test(`${name} stops before Audit when Accounts is unavailable`, async () => {
+    const { effects, form, dependencies } = setup({ accountsFailure: true });
+    await assert.rejects(action(name, dependencies)(form), error => error === redirectSignal);
+    assert.equal(effects.includes("audit_events:insert"), false);
+  });
+}
+for (const audit of ["ok", "returned-error", "thrown-error"]) {
+  test(`Accounts TT02 keeps one import then the original ${audit} Audit behavior`, async () => {
+    const { effects, form, dependencies } = setup({ auditError: audit === "returned-error", auditThrow: audit === "thrown-error" });
+    const raw = '{ "synthetic": true, "unicode": "ø" }';
+    form.set("evidenceFile", new File([raw], "evidence.json"));
+    dependencies.importAnnualAccountsTt02Evidence = async (token, body) => {
+      assert.equal(token, "verified-session");
+      assert.deepEqual(body, { companyId, evidenceJson: raw, evidenceUrl: "" });
+      effects.push("accounts-import");
+      return { recordId: "record", testReference: "tt02:original" };
+    };
+    dependencies.annualAccountsEvidenceImportErrorMessage = () => "Unavailable";
+    await assert.rejects(action("recordAnnualAccountsTt02Evidence", dependencies)(form), error => audit === "thrown-error" ? error.message === "Audit transport failed" : error === redirectSignal);
+    assert.deepEqual(effects, ["step-up", "accounts-import", "audit_events:insert"]);
+  });
+}

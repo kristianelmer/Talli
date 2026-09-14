@@ -1238,7 +1238,7 @@ test("company access RLS isolates tenants and exposes exact membership roles to 
       acceptanceOperationId, "80000000-0000-4000-8000-000000000003",
     ), /completed_receipt_concealed/u);
   } finally {
-    docker(["rm", "--force", containerName]);
+    docker(["rm", "--force", "--volumes", containerName]);
   }
 });
 
@@ -2042,6 +2042,6 @@ test("cancellation lifecycle is atomic, review-bound, replay-safe, and tenant co
     });
     assert.equal(psql(containerName, ["-Atc", "select status from public.company_cancellations where id = '52000000-0000-0000-0000-000000000005';"]).trim(), "deleted");
   } finally {
-    docker(["rm", "--force", containerName]);
+    docker(["rm", "--force", "--volumes", containerName]);
   }
 });

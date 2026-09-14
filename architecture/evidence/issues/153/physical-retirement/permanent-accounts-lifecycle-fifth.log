@@ -1,0 +1,26 @@
+................F                                                        [100%]
+=================================== FAILURES ===================================
+_____ test_documents_retention_uses_owned_receipt_and_feedback_references ______
+
+database = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10c2b8620>
+
+    def test_documents_retention_uses_owned_receipt_and_feedback_references(database):
+        db = database
+        apply(db, CUTOVER)
+        apply(db, CONTRACT)
+        receipt = '15300000-0000-4000-8000-000000000101'
+        feedback = '15300000-0000-4000-8000-000000000102'
+        unrelated = '15300000-0000-4000-8000-000000000103'
+        with actor(db, role='annual_accounts_filing_store_owner'):
+            db.execute('update annual_accounts_filing.filing_submissions set receipt_id=%s,feedback_document_ids=%s::jsonb where id=%s', (receipt, json.dumps([feedback]), IDS['filing_submissions']))
+            db.execute('reset role')
+            with actor(db, 'outsider', role='documents_executor'):
+                for name in ('request.jwt.claims', 'talli.verified_actor_claims'):
+                    db.execute("select set_config(%s,'{}',true)", (name,))
+>               assert db.execute('select documents.has_evidence_references_v1(%s)', (receipt,)).fetchone()[0] is True
+E               assert False is True
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:281: AssertionError
+=========================== short test summary info ============================
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_documents_retention_uses_owned_receipt_and_feedback_references
+1 failed, 16 passed in 6.31s

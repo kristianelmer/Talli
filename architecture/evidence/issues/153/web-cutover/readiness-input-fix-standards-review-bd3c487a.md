@@ -1,0 +1,9 @@
+PASS — **STD-153-READINESS-1 closed**, with no new actionable Standards or Fowler heuristic finding in `d36a6af7d4a8f3cff49b27f07e9570dd045fac72...bd3c487a7247925ce56def2498ac1f8f728f9619`.
+
+The HTTP validator now rejects malformed consumed Annual and Ledger facts before invoking Accounts policy. Annual Boolean answers, string confirmations, numeric/null employee equivalents and company/year scope align with the released `AnnualDataRow`/`YearEndInterviewAnswers` types. Ledger warning flags and acceptance values are checked without requiring unrelated rows to match the selected company/year, preserving the existing portfolio filtering. Missing/null optional employee equivalents remain supported. The pure JavaScript-compatible rules remain byte-identical.
+
+Independently reran the original probe against a private immutable candidate archive: malformed string approval, object equivalents, object confirmations and foreign Annual scope now return 422 with `REQUEST_VALIDATION_FAILED`. Supported facts still return the original clear preview, while Boolean false still returns `general_meeting_not_approved`. No rejection of supported input was found in the reviewed cases.
+
+**91 focused Python tests passed independently** with Python3.12.12: all 11 frozen readiness cases, ten new malformed/scope controls, prior read/import/control tests and iterative serializer regressions (both routes through depth1200). All ten manifest references and six adopted private review files match exact bytes. OpenAPI/generated client, the response serializer, pure public contracts, registry/frozen scopes and six pending criteria remain unchanged.
+
+This is bounded source/HTTP verification. No database, provider, browser or shared checkout mutation occurred. Uncommitted web work is excluded, and this supplies no full-stage exit credit.

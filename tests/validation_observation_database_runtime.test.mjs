@@ -256,6 +256,6 @@ test("pilot observation is database-authoritative, bounded, private, revocable, 
       commit;
     `), "0");
   } finally {
-    docker(["rm", "--force", containerName]);
+    docker(["rm", "--force", "--volumes", containerName]);
   }
 });

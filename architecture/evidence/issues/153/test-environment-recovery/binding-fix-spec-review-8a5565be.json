@@ -1,0 +1,276 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_FOLLOWUP",
+  "baseRevision": "900472a0ecfbf5e8d7fc4996f4f641e33575103c",
+  "candidateRevision": "8a5565be77420eba54ee414c7af7fbcbd0302b13",
+  "singleCommit": true,
+  "privateArchive": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-binding-fix-8a5565be",
+  "findingDispositions": [
+    {
+      "id": "STD-153-BINDING-1",
+      "status": "CLOSED_ON_PINNED_COMMIT",
+      "line": 17,
+      "path": "supabase/contract-migrations/20260914112549_annual_accounts_filing_backend_binding.sql",
+      "independentCases": [
+        {
+          "case": "fresh membership",
+          "actual": [
+            [
+              false,
+              false,
+              true
+            ]
+          ],
+          "status": "PASS"
+        },
+        {
+          "case": "existing admin membership",
+          "actual": [
+            [
+              false,
+              false,
+              true
+            ]
+          ],
+          "expected": [
+            [
+              false,
+              false,
+              true
+            ]
+          ]
+        },
+        {
+          "case": "fixed binding rerun",
+          "actual": [
+            [
+              false,
+              false,
+              true
+            ]
+          ],
+          "status": "PASS"
+        },
+        {
+          "case": "binding rollback",
+          "actual": [],
+          "status": "PASS"
+        }
+      ]
+    }
+  ],
+  "newFindings": [],
+  "sourceBindings": [
+    {
+      "path": "apps/backend/tests/test_annual_accounts_filing_lifecycle.py",
+      "sha256": "bcf4ad3ec885fefdc496722d80a32f6e7c98321fb7d4dd2bdcef56215323ed0d"
+    },
+    {
+      "path": "apps/web/tests/company-access-cancellation.test.mjs",
+      "sha256": "f11ef035c16737f53a47f2750416e62f651b3ae30673e864e6db82c6558c008d"
+    },
+    {
+      "path": "architecture/evidence/customer-ready-gates/900472a0ecfbf5e8d7fc4996f4f641e33575103c.log",
+      "sha256": "3746f4d96f6084a7eda2044390c09eb424d60d06fb349c6edf7ed98c55bd4d0f"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/accounts-backend-binding-admin-fixed.log",
+      "sha256": "a9c55dc6cbdf2058e464a0ad1bd00dafa99bee8d143dcc1a0593658b4a23d9c7"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/accounts-boundary-check-fixed-first.log",
+      "sha256": "a410cc0fc51a4e6ee93120947b04b86605c2ecf614d9c36e36f46e0b2797f8b6"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/accounts-boundary-check-fixed-second.log",
+      "sha256": "4504116c2131998b7c39c7bdfdd09c65b28cb3dbe830f0d49cfbcf12a2462bde"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-900472a0.json",
+      "sha256": "5a6a01ac52cf0654de8cc1256b74a37538a3fe17e0fee43f419432494c47671c"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-first.log",
+      "sha256": "e655b03f78e98d32d2e79b89ea975aca97442a8be1d1afd0a320af8a67ea12ad"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-second.log",
+      "sha256": "16fbef719a115fb7e4dce3ad0a6345f2c4df023489d39f5a59f1333715327bb5"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-third.log",
+      "sha256": "4a7f4ef39c35814cf15da2e40cdd9127a501bcc781065b3c33e4f30e8a942687"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/accounts-runtime-concurrency-first.log",
+      "sha256": "995ec77e3f54d7791763c8819dd581649702b9bb65cc77cc548c999077f5182e"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/accounts-runtime-concurrency.json",
+      "sha256": "5d7285723d0c7fc64a331860ba519564d7b0499a8997c0c985dd5ac349418eeb"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/manifest.json",
+      "sha256": "1d6ef27cf4894ea4f7c104c889a192dd5a21bdb945578304e20353367b91a19a"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/probe-accounts-final-advisors.py",
+      "sha256": "98f293910578c68befde85263ffb47ad4d3913b8440383c2e90c95953e720195"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/probe-accounts-runtime-concurrency.py",
+      "sha256": "7a456fbc8947bd649890a093ce126b9824100259b67d7e2510cfa7abd64f5122"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-binding-admin-900472a0.json",
+      "sha256": "aba6a90d45bc44de11ddd3bdec55d11052951d7916ac1b498cde5de4cba544e0"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-binding-admin-900472a0.log",
+      "sha256": "aba6a90d45bc44de11ddd3bdec55d11052951d7916ac1b498cde5de4cba544e0"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-binding-admin-900472a0.py",
+      "sha256": "555e9a239611c34a57dbce01189b2b1cd106079a2ccfd0cae295eac205c31396"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-review-900472a0.json",
+      "sha256": "0db1b68d6256503837abd3f780e4cfc8ef6e9a8d810510c6318c623da53b6b65"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-review-900472a0.md",
+      "sha256": "2675c1712553dcf2d19cf0ade1fa363f3810a1c78782e9e239c47510b600723e"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/source-fix-standards-review-900472a0.json",
+      "sha256": "508612875881ab029482668c0888adf4f40c6cafaec841dd8b61f20fd2e27426"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/source-fix-standards-review-900472a0.md",
+      "sha256": "d815acbeee5f01b4320439b80c84e2ab2bc49d6bcaa8ed2d0a7553a5c0b2d2e5"
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-follow-up/verification.md",
+      "sha256": "ce90e9557e4e04358b694e297049e984922cef4e1b5e89428221f7f1e811c6ba"
+    },
+    {
+      "path": "scripts/test-supabase-local.sh",
+      "sha256": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914112549_annual_accounts_filing_backend_binding.sql",
+      "sha256": "fdcb34e81a79e8e5d9c59f01230969ad6f292e2c466bac9d65a8c1293b109211"
+    },
+    {
+      "path": "tests/authority_connections_retirement.test.mjs",
+      "sha256": "712be3a128f464ec8223faf905e76983eb652b7ea5d915ac7c50fc2e279e5e98"
+    }
+  ],
+  "evidenceBindings": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/binding-fix-spec-admin-8a5565be.py",
+      "sha256": "8eb1d1f549021372d98cd4201df0439c1416ca941b85e0d6f91f53c634716532"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/binding-fix-spec-admin-8a5565be.json",
+      "sha256": "81035161ab4468441cb7ef23bd1b88f9bfb765f229826968d5f69cada048a056"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/binding-fix-spec-admin-8a5565be.log",
+      "sha256": "81035161ab4468441cb7ef23bd1b88f9bfb765f229826968d5f69cada048a056"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/binding-fix-spec-web-8a5565be.log",
+      "sha256": "38d3b6472a7bb1e5f80bcc32cda067efbb4d94d060e8553b01aac9413274ffe5"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/binding-fix-spec-static-8a5565be.json",
+      "sha256": "b4dbfbe9f94803dcdf73e4455ca89458e74cf1d62118424b9df2ca22d2c148c9"
+    }
+  ],
+  "checks": {
+    "manifestArtifacts": 25,
+    "allHashesVerified": true,
+    "priorSpecAdoptionsExact": [
+      "source-fix-spec-binding-admin-900472a0.json",
+      "source-fix-spec-binding-admin-900472a0.log",
+      "source-fix-spec-binding-admin-900472a0.py",
+      "source-fix-spec-review-900472a0.json",
+      "source-fix-spec-review-900472a0.md"
+    ],
+    "concurrency": {
+      "checks": [
+        "source read holds phase lock and blocks concurrent rollback",
+        "stale repeatable snapshot cannot read source after rollback",
+        "fresh source read unavailable after rollback"
+      ],
+      "allForwardSqlBindingsMatch": true,
+      "scope": "retained parent-run independent-connection clone proof; not rerun here"
+    },
+    "advisors": {
+      "findings": 50,
+      "blocking": 0,
+      "allPerformance": true,
+      "accounts": [
+        {
+          "name": "auth_rls_initplan",
+          "level": "WARN"
+        },
+        {
+          "name": "multiple_permissive_policies",
+          "level": "WARN"
+        },
+        {
+          "name": "multiple_permissive_policies",
+          "level": "WARN"
+        },
+        {
+          "name": "multiple_permissive_policies",
+          "level": "WARN"
+        }
+      ],
+      "scope": "retained parent-run final physical topology; producer applies expansion/cutover/contract"
+    },
+    "failedGate900Observed": [
+      "[schema-setup] exit=0",
+      "\u2139 fail 0",
+      "[credential-scan] exit=0",
+      "[typecheck] exit=0",
+      "[architecture] exit=0",
+      "collected 6671 items / 884 deselected / 5787 selected",
+      "========= 5785 passed, 2 skipped, 884 deselected in 182.76s (0:03:02) ==========",
+      "\u2139 fail 2",
+      "[boundary] exit=1"
+    ],
+    "criteriaRegistrySourceProjectorUnchanged": true
+  },
+  "independentCommands": [
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python' /Users/kristianelmer/.codex/issue-192-private/issue153-entry/binding-fix-spec-admin-8a5565be.py",
+      "exitCode": 0,
+      "scope": "original ADMIN probe adapted to pinned fixed snapshot, four controls, outer rollback only"
+    },
+    {
+      "command": "'/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node' --test apps/web/tests/company-access-cancellation.test.mjs tests/authority_connections_retirement.test.mjs",
+      "cwd": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-binding-fix-8a5565be",
+      "exitCode": 0,
+      "tests": 10,
+      "passed": 10,
+      "skipped": 0
+    }
+  ],
+  "allSqlRollbackRestorationChecks": true,
+  "sqlSlotReleased": true,
+  "limitations": [
+    "No broad lifecycle rerun",
+    "Concurrency/advisors are separately inspected parent-run evidence",
+    "No browser or competing webserver",
+    "Failed900 gate earns zero fullgate credit",
+    "No hosted/provider action",
+    "No stageexit/successor credit",
+    "Later worktree changes excluded"
+  ],
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/binding-fix-spec-review-8a5565be.md",
+  "reportSha256": "31eb50ffe1c52648a592c20d4e7b79e88123d001ddb57fa736743d9068a8ac33",
+  "wordCount": 278
+}

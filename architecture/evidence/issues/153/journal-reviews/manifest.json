@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#153",
+  "baseRevision": "f1e6316c4cac895c43be88aef776c88cc97db204",
+  "status": "SPEC_PASS_RUNTIME_RECOVERED_FULL_EXIT_PENDING",
+  "artifacts": [
+    {
+      "path": "architecture/evidence/customer-ready-gates/f1e6316c4cac895c43be88aef776c88cc97db204.log",
+      "sha256": "c9e360c0a3847b55084c77e8352b31cf9e2b2342bf34114eae36479a45cddbbf",
+      "bytes": 98932
+    },
+    {
+      "path": "architecture/evidence/issues/153/journal-reviews/docker-restart-health.json",
+      "sha256": "7f5ee5bd0908fd79653dfc5712725bfd1c4da9fe701dfd94751759fef0f59e2e",
+      "bytes": 603
+    },
+    {
+      "path": "architecture/evidence/issues/153/journal-reviews/docker-restart-investments-runtime.log",
+      "sha256": "df0a044f4f6a9ace063d2611541799d12ca7a2f2178c3dfbaa52e39fd4795672",
+      "bytes": 207
+    },
+    {
+      "path": "architecture/evidence/issues/153/journal-reviews/journal-spec-bindings-f1e6316c.json",
+      "sha256": "af87536ffb0a3844a3220f3a61d593de77591316e251def311917abe73989e29",
+      "bytes": 13555
+    },
+    {
+      "path": "architecture/evidence/issues/153/journal-reviews/journal-spec-cleanup-f1e6316c.log",
+      "sha256": "bef7cd079b75c0acdf01feee0b5d0dc98d09e4a5b97aeb9e7fcaddfefb432b77",
+      "bytes": 2261
+    },
+    {
+      "path": "architecture/evidence/issues/153/journal-reviews/journal-spec-fixture-f1e6316c.log",
+      "sha256": "4cfa34d870ce891c443017943cc35b32ce7fecf373183ede606d28435ae00422",
+      "bytes": 551
+    },
+    {
+      "path": "architecture/evidence/issues/153/journal-reviews/journal-spec-probe-f1e6316c.json",
+      "sha256": "4242c1eb69df2ed188c0fef2ce1d83cc2769d203f54e68ba470cfae88e529a0d",
+      "bytes": 935
+    },
+    {
+      "path": "architecture/evidence/issues/153/journal-reviews/journal-spec-probe-f1e6316c.py",
+      "sha256": "ca28b1696f494c61b490773726b63840f090b6a8cce4ef3c6f39d2e579e3df08",
+      "bytes": 2806
+    },
+    {
+      "path": "architecture/evidence/issues/153/journal-reviews/journal-spec-review-f1e6316c.json",
+      "sha256": "e5f9b4adeee34c22fd0837c688de037b1b44a99a4b6636b668e1fe7758df9124",
+      "bytes": 3995
+    },
+    {
+      "path": "architecture/evidence/issues/153/journal-reviews/journal-spec-review-f1e6316c.md",
+      "sha256": "57a0aaa383af3ad15091d35564a2fa6559249e6011c6162b67707df4bfd5e98d",
+      "bytes": 2610
+    },
+    {
+      "path": "architecture/evidence/issues/153/journal-reviews/journal-spec-tests-f1e6316c.log",
+      "sha256": "fa9bda7c831754a57ab8011aeb4199bda7bd00524493f71a2d97ae853e72d970",
+      "bytes": 340
+    },
+    {
+      "path": "architecture/evidence/issues/153/journal-reviews/verification.md",
+      "sha256": "d4d1a4e15dfc86f90513ad75ac5bf86e8335301160ae6b306982e7cda2ceb1a4",
+      "bytes": 1161
+    }
+  ]
+}

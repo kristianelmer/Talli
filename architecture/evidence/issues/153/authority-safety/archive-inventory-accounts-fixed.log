@@ -1,0 +1,165 @@
+✔ expand migration adds append-only revision-bound deletion reviews (2.432166ms)
+✔ request derives archive and source completeness inside one atomic RPC (1.9495ms)
+✖ archive route and generation triggers share one complete source inventory (7.702792ms)
+✔ expand deterministically supersedes and conceals legacy duplicates (0.6185ms)
+✔ review is admin+AAL2 only, append-only, and cannot be self-approved by an owner (0.560625ms)
+✔ finalize re-derives prerequisites and requires exact approved review (0.407417ms)
+✔ legacy export-required cancellations resume through a receipt-bound RPC (0.334916ms)
+✔ archive receipt completion is server-only, one-time, expiring, and generation-bound (0.777708ms)
+✔ direct lifecycle RPCs mirror strict request validation before receipts (0.588791ms)
+✔ archive and reconciliation reject null income years explicitly (0.281708ms)
+✔ review JSON is projected to the strict public response shape (0.203709ms)
+✔ lifecycle commands use durable receipts and least-privilege RLS (0.9825ms)
+✔ lifecycle mutations share operation-company-cancellation lock order (0.348875ms)
+✔ unknown command outcomes reconcile behind the exact operation lock (0.40575ms)
+✔ contract migration removes direct cancellation access only after generated-client cutover (0.807292ms)
+✔ the release Supabase suite includes cancellation schema coverage (0.314042ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 15
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 79.6195
+
+✖ failing tests:
+
+test at tests/company_access_cancellation_schema.test.mjs:99:1
+✖ archive route and generation triggers share one complete source inventory (7.702792ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /company_archive_track_source_write_v1/u. Input:
+  
+  '-- #153 CUTOVER: reconcile the final generic filing source and activate one owner.\n' +
+    '-- Apply only after expansion and all Accounts contracts. No provider operation.\n' +
+    'begin;\n' +
+    "set local lock_timeout='5s';\n" +
+    "set local statement_timeout='120s';\n" +
+    "set local timezone='UTC';\n" +
+    "set local search_path='';\n" +
+    "select pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('talli:annual-accounts-filing:migration:v1',0));\n" +
+    'create temporary table accounts153_cutover_roles(role_name name primary key,prior jsonb) on commit drop;\n' +
+    'do $borrow$ declare r text; previous jsonb; begin\n' +
+    " foreach r in array array['ledger_store_owner','annual_accounts_filing_store_owner','shareholder_register_filing_store_owner','company_access_executor','company_tax_filing_store_owner','company_archive_projection_executor','documents_store_owner'] loop\n" +
+    "  if not pg_catalog.pg_has_role(current_user,r,'SET') or not pg_catalog.pg_has_role(current_user,r,'USAGE') then\n" +
+    "   select pg_catalog.jsonb_build_object('admin',m.admin_option,'inherit',m.inherit_option,'set',m.set_option) into previous\n" +
+    '   from pg_catalog.pg_auth_members m where m.roleid=(select oid from pg_catalog.pg_roles where rolname=r)\n' +
+    '    and m.member=(select oid from pg_catalog.pg_roles where rolname=current_user)\n' +
+    '    and m.grantor=(select oid from pg_catalog.pg_roles where rolname=current_user);\n' +
+    '   insert into accounts153_cutover_roles values(r,previous);\n' +
+    "   execute pg_catalog.format('grant %I to %I with set true, inherit true granted by %I',r,current_user,current_user);\n" +
+    '  end if;\n' +
+    ' end loop;\n' +
+    'end; $borrow$;\n' +
+    '\n' +
+    'create temporary table accounts153_cutover_schema_privileges on commit drop as\n' +
+    " select pg_catalog.has_schema_privilege(current_user,'backend_system','CREATE') as backend_create;\n" +
+    'grant select on accounts153_cutover_schema_privileges to ledger_store_owner;\n' +
+    'set local role ledger_store_owner;\n' +
+    'do $schema_grant$ begin\n' +
+    ' if not (select backend_create from pg_temp.accounts153_cutover_schema_privileges) then\n' +
+    "  execute pg_catalog.format('grant create on schema backend_system to %I',session_user);\n" +
+    ' end if;\n' +
+    'end; $schema_grant$;\n' +
+    'reset role;\n' +
+    'select phase from backend_system.annual_accounts_migration_state where singleton for update;\n' +
+    'do $phase$ begin\n' +
+    " if coalesce((select phase from backend_system.annual_accounts_migration_state where singleton) not in ('expanded','rolled_back'),true) then\n" +
+    "  raise exception 'annual_accounts_cutover_requires_expanded'; end if;\n" +
+    " if (select phase from backend_system.company_tax_return_migration_state where singleton) is distinct from 'contracted' then\n" +
+    "  raise exception 'annual_accounts_predecessor_required'; end if;\n" +
+    'end; $phase$;\n' +
+    'lock table public.filing_previews,public.authority_test_runs,public.authority_permissions,\n' +
+    ' public.filing_submissions,public.filing_overrides,public.filing_review_comments,\n' +
+    ' annual_accounts_filing.filing_previews,annual_accounts_filing.authority_test_runs,annual_accounts_filing.authority_permissions,\n' +
+    ' annual_accounts_filing.filing_submissions,annual_accounts_filing.filing_overrides,annual_accounts_filing.filing_review_comments in access exclusive mode;\n' +
+    'create temporary table accounts153_cutover_setup_ids(id uuid primary key) on commit drop;\n' +
+    'insert into accounts153_cutover_setup_ids\n' +
+    'select setup_id from public.filing_previews where setup_id is not null\n' +
+    'union select setup_id from public.filing_submissions where setup_id is not null;\n' +
+    'create temporary table accounts153_cutover_setup_scopes(id uuid primary key,company_id uuid,income_year integer) on commit drop;\n' +
+    'grant select on accounts153_cutover_setup_ids to shareholder_register_filing_store_owner;\n' +
+    'grant insert on accounts153_cutover_setup_scopes to shareholder_register_filing_store_owner;\n' +
+    'set local role shareholder_register_filing_store_owner;\n' +
+    'lock table shareholder_register_filing.opening_balance_setups in share row exclusive mode;\n' +
+    'create policy accounts153_cutover_setup_scope on shareholder_register_filing.opening_balance_setups\n' +
+    ' for select to shareholder_register_filing_store_owner using(true);\n' +
+    'insert into pg_temp.accounts153_cutover_setup_scopes\n' +
+    'select s.id,s.company_id,s.income_year from shareholder_register_filing.opening_balance_setups s\n' +
+    'join pg_temp.accounts153_cutover_setup_ids wanted on wanted.id=s.id;\n' +
+    'drop policy accounts153_cutover_setup_scope on shareholder_register_filing.opening_balance_setups;\n' +
+    'reset role;\n' +
+    '\n' +
+    'create or replace function pg_temp.accounts153_cutover_classify(family text,row_data jsonb) returns text\n' +
+    "language plpgsql set search_path='' as $function$\n" +
+    'declare linked jsonb;\n' +
+    'begin\n' +
+    " if family in ('filing_previews','filing_submissions','filing_overrides') then\n" +
+    "  if row_data->>'filing' is distinct from 'årsregnskap' then return 'quarantine'; end if;\n" +
+    " elsif family in ('authority_permissions','authority_test_runs') then\n" +
+    "  if row_data->>'obligation' is distinct from 'aarsregnskap' then return 'quarantine'; end if;\n" +
+    " elsif family<>'filing_review_comments' then raise exception 'annual_accounts_unknown_family';\n" +
+    ' end if;\n' +
+    " if family='filing_overrides' and row_data->>'field_target' like 'skattemelding.%' then return 'quarantine'; end if;\n" +
+    " if family in ('filing_previews','filing_submissions') and row_data->>'setup_id' is not null then\n" +
+    "  select pg_catalog.to_jsonb(s) into linked from pg_temp.accounts153_cutover_setup_scopes s where s.id=(row_data->>'setup_id')::uuid;\n" +
+    "  if linked is null or linked->>'company_id' is distinct from row_data->>'company_id'\n" +
+    "   or linked->>'income_year' is distinct from row_data->>'income_year'\n" +
+    "  then return 'quarantine'; end if;\n" +
+    ' end if;\n' +
+    " if family='filing_review_comments' and row_data->>'preview_id' is null then return 'quarantine'; end if;\n" +
+    " if family in ('filing_submissions','filing_overrides','filing_review_comments') and row_data->>'preview_id' is not null then\n" +
+    "  select pg_catalog.to_jsonb(p) into linked from public.filing_previews p where p.id=(row_data->>'preview_id')::uuid;\n" +
+    "  if linked is null or linked->>'filing' is distinct from 'årsregnskap'\n" +
+    "   or linked->>'company_id' is distinct from row_data->>'company_id'\n" +
+    "   or (row_data ? 'income_year' and linked->>'income_year' is distinct from row_data->>'income_year')\n" +
+    "  then return 'quarantine'; end if;\n" +
+    "  if pg_temp.accounts153_cutover_classify('filing_previews',linked)<>'accounts' then return 'quarantine'; end if;\n" +
+    ' end if;\n' +
+    " if family='filing_submissions' and row_data->>'authority_test_run_id' is not null then\n" +
+    "  select pg_catalog.to_jsonb(r) into linked from public.authority_test_runs r where r.id=(row_data->>'authority_test_run_id')::uuid;\n" +
+    "  if linked is null or linked->>'obligation' is distinct from 'aarsregnskap'\n" +
+    "   or linked->>'company_id' is distinct from row_data->>'company_id'\n" +
+    "  then return 'quarantine'; end if;\n" +
+    ' end if;\n' +
+    " return 'accounts';\n" +
+    'end; $function$;\n' +
+    '\n' +
+    '\n' +
+    '-- Attest the reviewed canonical structure, not a snapshot of an unknown target.\n' +
+    '-- Fingerprints normalize role names and include effective ACLs, owner privileges,\n' +
+    '-- columns, constraints, indexes, RLS, policies and triggers. The paired rollback\n' +
+    '-- fence is the only normalized difference and must first match exactly.\n' +
+    'do $target_schema$ declare f text; actual text; rollback_phase boolean; begin\n' +
+    " rollback_phase := (select phase='rolled_back' from backend_system.annual_accounts_migration_state where singleton);\n" +
+    " foreach f in array array['filing_previews','authority_test_runs','authority_permissions','filing_submissions','filing_overrides','filing_review_comments'] loop\n" +
+    '  if rollback_phase then\n' +
+    "   if not exists(select 1 from pg_catalog.pg_constraint where conrelid=pg_catalog.to_regclass('annual_accounts_filing.'||f)\n" +
+    "    and conname='accounts153_owned_writer_inactive' and contype='c' and not convalidated\n" +
+    "    and pg_catalog.pg_get_expr(conbin,conrelid)='false') then raise exception 'annual_accounts_rollback_target_fence_missing'; end if;\n" +
+    "  elsif exists(select 1 from pg_catalog.pg_constraint where conrelid=pg_catalog.to_regclass('annual_accounts_filing.'||f) and conname='accounts153_owned_writer_inactive')\n" +
+    "  then raise exception 'annual_accounts_target_schema_changed'; end if;\n" +
+    "  select pg_catalog.encode(extensions.digest(observed.definition::text,'sha256'),'hex') into actual from (\n" +
+    'select pg_catalog.jsonb_build_object(\n' +
+    " 'owner',pg_catalog.pg_get_userbyid(c.relowner),'kind',c.relkind,\n" +
+    " 'ownerRole',(select pg_catalog.jsonb_build_object('super',r.rolsuper,'inherit',r.rolinherit,'createRole',r.rolcreaterole,'createDb',r.rolcreatedb,'login',r.rolcanlogin,'bypassRls',r.rolbypassrls) from pg_catalog.pg_roles r where r.oid=c.relowner),\n" +
+    " 'acl',(select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('grantor',pg_catalog.pg_get_userbyid(a.grantor),'grantee',case when a.grantee=0 then 'PUBLIC' else pg_catalog.pg_get_userbyid(a.grantee) end,'privilege',a.privilege_type,'grantable',a.is_grantable) order by a.grantor::regrole::text,a.grantee::regrole::text,a.privilege_type),'[]'::jsonb) from pg_catalog.aclexplode(coalesce(c.relacl,pg_catalog.acldefault('r',c.relowner))) a),\n" +
+    " 'rls',c.relrowsecurity,'forceRls',c.relforcerowsecurity,\n" +
+    " 'columns',(select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('name',a.attname,'type',pg_catalog.format_type(a.atttypid,a.atttypmod),'notNull',a.attnotnull,'default',pg_catalog.pg_get_expr(d.adbin,d.adrelid),'identity',a.attidentity,'generated',a.attgenerated) order by a.attnum)\n" +
+    '  from pg_catalog.pg_attribute a left join pg_catalog.pg_attrdef d on d.adrelid=a.attrelid and d.adnum=a.attnum where a.attrelid=c.oid and a.attnum>0 and not a.attisdropped),\n' +
+    " 'constraints',(select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('name',x.conname,'type',x.contype,'definition',pg_catalog.pg_get_constraintdef(x.oid),'validated',x.convalidated) order by x.conname),'[]'::jsonb) from pg_catalog.pg_constraint x where x.conrelid=c.oid and x.conname<>'accounts153_owned_writer_inactive'),\n" +
+    " 'indexes',(select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('name',idx.relname,'definition',pg_catalog.pg_get_indexdef(i.indexrelid),'valid',i.indisvalid,'ready',i.indisready) order by idx.relname),'[]'::jsonb) from pg_catalog.pg_index i join pg_c"... 22580 more characters
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/company_access_cancellation_schema.test.mjs:206:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "-- #153 CUTOVER: reconcile the final generic filing source and activate one owner.\n-- Apply only after expansion and all Accounts contracts. No provider operation.\nbegin;\nset local lock_timeout='5s';\nset local statement_timeout='120s';\nset local timezone='UTC';\nset local search_path='';\nselect pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('talli:annual-accounts-filing:migration:v1',0));\ncreate temporary table accounts153_cutover_roles(role_name name primary key,prior jsonb) on commit drop;\ndo $borrow$ declare r text; previous jsonb; begin\n foreach r in array array['ledger_store_owner','annual_accounts_filing_store_owner','shareholder_register_filing_store_owner','company_access_executor','company_tax_filing_store_owner','company_archive_projection_executor','documents_store_owner'] loop\n  if not pg_catalog.pg_has_role(current_user,r,'SET') or not pg_catalog.pg_has_role(current_user,r,'USAGE') then\n   select pg_catalog.jsonb_build_object('admin',m.admin_option,'inherit',m.inherit_option,'set',m.set_option) into previous\n   from pg_catalog.pg_auth_members m where m.roleid=(select oid from pg_catalog.pg_roles where rolname=r)\n    and m.member=(select oid from pg_catalog.pg_roles where rolname=current_user)\n    and m.grantor=(select oid from pg_catalog.pg_roles where rolname=current_user);\n   insert into accounts153_cutover_roles values(r,previous);\n   execute pg_catalog.format('grant %I to %I with set true, inherit true granted by %I',r,current_user,current_user);\n  end if;\n end loop;\nend; $borrow$;\n\ncreate temporary table accounts153_cutover_schema_privileges on commit drop as\n select pg_catalog.has_schema_privilege(current_user,'backend_system','CREATE') as backend_create;\ngrant select on accounts153_cutover_schema_privileges to ledger_store_owner;\nset local role ledger_store_owner;\ndo $schema_grant$ begin\n if not (select backend_create from pg_temp.accounts153_cutover_schema_privileges) then\n  execute pg_catalog.format('grant create on schema backend_system to %I',session_user);\n end if;\nend; $schema_grant$;\nreset role;\nselect phase from backend_system.annual_accounts_migration_state where singleton for update;\ndo $phase$ begin\n if coalesce((select phase from backend_system.annual_accounts_migration_state where singleton) not in ('expanded','rolled_back'),true) then\n  raise exception 'annual_accounts_cutover_requires_expanded'; end if;\n if (select phase from backend_system.company_tax_return_migration_state where singleton) is distinct from 'contracted' then\n  raise exception 'annual_accounts_predecessor_required'; end if;\nend; $phase$;\nlock table public.filing_previews,public.authority_test_runs,public.authority_permissions,\n public.filing_submissions,public.filing_overrides,public.filing_review_comments,\n annual_accounts_filing.filing_previews,annual_accounts_filing.authority_test_runs,annual_accounts_filing.authority_permissions,\n annual_accounts_filing.filing_submissions,annual_accounts_filing.filing_overrides,annual_accounts_filing.filing_review_comments in access exclusive mode;\ncreate temporary table accounts153_cutover_setup_ids(id uuid primary key) on commit drop;\ninsert into accounts153_cutover_setup_ids\nselect setup_id from public.filing_previews where setup_id is not null\nunion select setup_id from public.filing_submissions where setup_id is not null;\ncreate temporary table accounts153_cutover_setup_scopes(id uuid primary key,company_id uuid,income_year integer) on commit drop;\ngrant select on accounts153_cutover_setup_ids to shareholder_register_filing_store_owner;\ngrant insert on accounts153_cutover_setup_scopes to shareholder_register_filing_store_owner;\nset local role shareholder_register_filing_store_owner;\nlock table shareholder_register_filing.opening_balance_setups in share row exclusive mode;\ncreate policy accounts153_cutover_setup_scope on shareholder_register_filing.opening_balance_setups\n for select to shareholder_register_filing_store_owner using(true);\ninsert into pg_temp.accounts153_cutover_setup_scopes\nselect s.id,s.company_id,s.income_year from shareholder_register_filing.opening_balance_setups s\njoin pg_temp.accounts153_cutover_setup_ids wanted on wanted.id=s.id;\ndrop policy accounts153_cutover_setup_scope on shareholder_register_filing.opening_balance_setups;\nreset role;\n\ncreate or replace function pg_temp.accounts153_cutover_classify(family text,row_data jsonb) returns text\nlanguage plpgsql set search_path='' as $function$\ndeclare linked jsonb;\nbegin\n if family in ('filing_previews','filing_submissions','filing_overrides') then\n  if row_data->>'filing' is distinct from 'årsregnskap' then return 'quarantine'; end if;\n elsif family in ('authority_permissions','authority_test_runs') then\n  if row_data->>'obligation' is distinct from 'aarsregnskap' then return 'quarantine'; end if;\n elsif family<>'filing_review_comments' then raise exception 'annual_accounts_unknown_family';\n end if;\n if family='filing_overrides' and row_data->>'field_target' like 'skattemelding.%' then return 'quarantine'; end if;\n if family in ('filing_previews','filing_submissions') and row_data->>'setup_id' is not null then\n  select pg_catalog.to_jsonb(s) into linked from pg_temp.accounts153_cutover_setup_scopes s where s.id=(row_data->>'setup_id')::uuid;\n  if linked is null or linked->>'company_id' is distinct from row_data->>'company_id'\n   or linked->>'income_year' is distinct from row_data->>'income_year'\n  then return 'quarantine'; end if;\n end if;\n if family='filing_review_comments' and row_data->>'preview_id' is null then return 'quarantine'; end if;\n if family in ('filing_submissions','filing_overrides','filing_review_comments') and row_data->>'preview_id' is not null then\n  select pg_catalog.to_jsonb(p) into linked from public.filing_previews p where p.id=(row_data->>'preview_id')::uuid;\n  if linked is null or linked->>'filing' is distinct from 'årsregnskap'\n   or linked->>'company_id' is distinct from row_data->>'company_id'\n   or (row_data ? 'income_year' and linked->>'income_year' is distinct from row_data->>'income_year')\n  then return 'quarantine'; end if;\n  if pg_temp.accounts153_cutover_classify('filing_previews',linked)<>'accounts' then return 'quarantine'; end if;\n end if;\n if family='filing_submissions' and row_data->>'authority_test_run_id' is not null then\n  select pg_catalog.to_jsonb(r) into linked from public.authority_test_runs r where r.id=(row_data->>'authority_test_run_id')::uuid;\n  if linked is null or linked->>'obligation' is distinct from 'aarsregnskap'\n   or linked->>'company_id' is distinct from row_data->>'company_id'\n  then return 'quarantine'; end if;\n end if;\n return 'accounts';\nend; $function$;\n\n\n-- Attest the reviewed canonical structure, not a snapshot of an unknown target.\n-- Fingerprints normalize role names and include effective ACLs, owner privileges,\n-- columns, constraints, indexes, RLS, policies and triggers. The paired rollback\n-- fence is the only normalized difference and must first match exactly.\ndo $target_schema$ declare f text; actual text; rollback_phase boolean; begin\n rollback_phase := (select phase='rolled_back' from backend_system.annual_accounts_migration_state where singleton);\n foreach f in array array['filing_previews','authority_test_runs','authority_permissions','filing_submissions','filing_overrides','filing_review_comments'] loop\n  if rollback_phase then\n   if not exists(select 1 from pg_catalog.pg_constraint where conrelid=pg_catalog.to_regclass('annual_accounts_filing.'||f)\n    and conname='accounts153_owned_writer_inactive' and contype='c' and not convalidated\n    and pg_catalog.pg_get_expr(conbin,conrelid)='false') then raise exception 'annual_accounts_rollback_target_fence_missing'; end if;\n  elsif exists(select 1 from pg_catalog.pg_constraint where conrelid=pg_catalog.to_regclass('annual_accounts_filing.'||f) and conname='accounts153_owned_writer_inactive')\n  then raise exception 'annual_accounts_target_schema_changed'; end if;\n  select pg_catalog.encode(extensions.digest(observed.definition::text,'sha256'),'hex') into actual from (\nselect pg_catalog.jsonb_build_object(\n 'owner',pg_catalog.pg_get_userbyid(c.relowner),'kind',c.relkind,\n 'ownerRole',(select pg_catalog.jsonb_build_object('super',r.rolsuper,'inherit',r.rolinherit,'createRole',r.rolcreaterole,'createDb',r.rolcreatedb,'login',r.rolcanlogin,'bypassRls',r.rolbypassrls) from pg_catalog.pg_roles r where r.oid=c.relowner),\n 'acl',(select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('grantor',pg_catalog.pg_get_userbyid(a.grantor),'grantee',case when a.grantee=0 then 'PUBLIC' else pg_catalog.pg_get_userbyid(a.grantee) end,'privilege',a.privilege_type,'grantable',a.is_grantable) order by a.grantor::regrole::text,a.grantee::regrole::text,a.privilege_type),'[]'::jsonb) from pg_catalog.aclexplode(coalesce(c.relacl,pg_catalog.acldefault('r',c.relowner))) a),\n 'rls',c.relrowsecurity,'forceRls',c.relforcerowsecurity,\n 'columns',(select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('name',a.attname,'type',pg_catalog.format_type(a.atttypid,a.atttypmod),'notNull',a.attnotnull,'default',pg_catalog.pg_get_expr(d.adbin,d.adrelid),'identity',a.attidentity,'generated',a.attgenerated) order by a.attnum)\n  from pg_catalog.pg_attribute a left join pg_catalog.pg_attrdef d on d.adrelid=a.attrelid and d.adnum=a.attnum where a.attrelid=c.oid and a.attnum>0 and not a.attisdropped),\n 'constraints',(select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('name',x.conname,'type',x.contype,'definition',pg_catalog.pg_get_constraintdef(x.oid),'validated',x.convalidated) order by x.conname),'[]'::jsonb) from pg_catalog.pg_constraint x where x.conrelid=c.oid and x.conname<>'accounts153_owned_writer_inactive'),\n 'indexes',(select coalesce(pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('name',idx.relname,'definition',pg_catalog.pg_get_indexdef(i.indexrelid),'valid',i.indisvalid,'ready',i.indisready) order by idx.relname),'[]'::jsonb) from pg_catalog.pg_index i join pg_c"... 22580 more characters,
+    expected: /company_archive_track_source_write_v1/u,
+    operator: 'match',
+    diff: 'simple'
+  }

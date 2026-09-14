@@ -1,0 +1,10 @@
+✔ the immutable frozen inventory remains exact while the active registry is a proven subset (1.981667ms)
+✔ #151 bounded retirement compositions remain enforced after RF exits (670.452125ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 911.244208

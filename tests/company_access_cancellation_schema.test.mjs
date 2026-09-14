@@ -40,6 +40,10 @@ const taxFilingCutoverPath = new URL(
   "../supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql",
   import.meta.url,
 );
+const accountsCutoverPath = new URL(
+  "../supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql",
+  import.meta.url,
+);
 
 function sql(path) {
   return readFileSync(path, "utf8");
@@ -101,6 +105,7 @@ test("archive route and generation triggers share one complete source inventory"
   const rfCutover = sql(rfCutoverPath);
   const taxCutover = sql(taxCutoverPath);
   const taxFilingCutover = sql(taxFilingCutoverPath);
+  const accountsCutover = sql(accountsCutoverPath);
   const inventory = JSON.parse(sql(archiveInventoryPath));
   const declared = new Map(inventory.sources.map((item) => [item.table, item.scope]));
   const routeTables = new Set([...route.matchAll(/\.from\("([a-z0-9_]+)"\)/gu)].map((match) => match[1]));
@@ -118,6 +123,11 @@ test("archive route and generation triggers share one complete source inventory"
     "company_tax_filing.filing_review_comments",
     "company_tax_filing.authority_permissions",
     "company_tax_filing.authority_test_runs",
+    "annual_accounts_filing.filing_previews",
+    "annual_accounts_filing.filing_submissions",
+    "annual_accounts_filing.filing_review_comments",
+    "annual_accounts_filing.authority_permissions",
+    "annual_accounts_filing.authority_test_runs",
     // Opening shares and bank amounts come from their separate owners. The
     // other RF sources supplement the retained sibling filing table reads.
     "shareholder_register_filing.opening_balance_setups",
@@ -186,6 +196,15 @@ test("archive route and generation triggers share one complete source inventory"
   const billingScope = legacyTriggerInventory.get("billing_accounts");
   legacyTriggerInventory.delete("billing_accounts");
   legacyTriggerInventory.set("billing.billing_accounts", billingScope);
+  // Accounts copies the exact original Archive trigger definitions and scope.
+  for (const table of ["filing_previews", "filing_submissions", "filing_review_comments", "authority_permissions", "authority_test_runs"]) {
+    assert.ok(legacyTriggerInventory.has(table));
+    const scope = legacyTriggerInventory.get(table);
+    legacyTriggerInventory.delete(table);
+    legacyTriggerInventory.set(`annual_accounts_filing.${table}`, scope);
+  }
+  assert.match(accountsCutover, /where tgname like 'company_archive_track_%'/u);
+  assert.match(accountsCutover, /pg_catalog\.replace\(t\.definition/u);
   const canonicalInvestmentTriggerInventory = new Map(
     [...investmentsStageExit.matchAll(
       /before insert or update or delete on (investments\.[a-z0-9_]+) for each row\s+execute function public\.company_archive_track_source_write_v1\('(year|company)', 'company_id'\)/gu,
@@ -239,6 +258,7 @@ test("archive route and generation triggers share one complete source inventory"
     "loadArchiveRf1086(accessToken, companyId, incomeYear)",
     "loadTaxSettlementArchiveSource(accessToken, companyId, incomeYear)",
     "loadPresentedCompanyTaxSource(accessToken, [companyId], incomeYear)",
+    "loadPresentedAnnualAccountsSource(accessToken, [companyId])",
   ]) {
     assert.ok(route.indexOf(read) > route.indexOf('"company_archive_begin_export"'));
     assert.ok(route.indexOf(read) < route.indexOf('"company_archive_complete_export"'));

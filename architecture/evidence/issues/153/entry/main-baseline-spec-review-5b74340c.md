@@ -1,0 +1,11 @@
+PASS — separate exact-main baseline gate at `5b74340ca75f215b43d754c6bf0fc49ef5974b0b`. No actionable receipt or coverage findings.
+
+The gate passed 11/11 on 2026-09-14, 05:23:50.702–05:44:22.652 UTC. Independent validation confirms the tested-revision schema, canonical sorted-JSON digest `681ba7da16c0f8b2fdc4f7b0c7a5897ede814ada9de3f9c7f543d8e3c13c9582`, raw transcript digest `0ffbfdd0827b2a6c960c7a0df548e068a28ae78b81f2895931221442c80dd676`, and tested-producer digest `0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c`. Every command, zero exit and duration matches the raw transcript and producer. Schema setup also passed; recorded durations account for elapsed time within two milliseconds.
+
+Actual Tax SQL coverage is 32 passes (22 settlement lifecycle, three runtime, seven filing lifecycle), with zero skips. All six required browser groups passed with zero failures, cancellations or skips: public acquisition 1, owner/fixture lifecycle 24, annual owner 1, Authority 11, RF 12 and Tax 2. Two existing optional backend skips and one optional validation-observation Python skip remain disclosed; mandatory SQL observation coverage ran. Advisors report zero blocking findings and 60 performance warnings. No new product test was executed for this review.
+
+Main’s ordered parents are protected predecessor `054740b8` and reviewed head `0b2d5ea8`; its tree `0e456c20064ba10879f44390e3cb6b06165dd8a1` equals the reviewed head exactly. The receipt explicitly links ancestor `a20b1065`. Source is unchanged; only this receipt/log are untracked, so committed storage is not claimed.
+
+Python 3.12.12 is recorded in the transcript. Node 24.20.0 attribution rests on the saved wrapper’s PATH pin/version assertion and parent’s observed successful launch, not a canonical-receipt runtime field or independent historical executable attestation. The wrapper pins standalone Python and local Docker configuration; its bytes and summary log are bound in JSON.
+
+This is a separate main/baseline pass. It neither replaces the accepted #152 pair nor adopts #153 entry/exit evidence. Exact-main CI, remaining integration verification and published #152 closure reread are outside this receipt review; #153 remains unclaimed. No hosted/provider, live production or authority-acceptance claim is made.

@@ -1,0 +1,12 @@
+import ts from '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/node_modules/typescript/lib/typescript.js';
+import {execFileSync} from 'node:child_process';
+import {readFileSync,writeFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+const path='apps/web/app/lib/authority-test-evidence.ts';
+const source=execFileSync('git',['show',`HEAD:${path}`],{encoding:'utf8'});
+const after=readFileSync(path,'utf8');
+const definitions=text=>new Map(ts.createSourceFile(path,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TS).statements.filter(node=>ts.isFunctionDeclaration(node)).map(node=>[node.name.text,node.getText()]));
+const before=definitions(source),current=definitions(after);
+const result=[...current].map(([name,body])=>({name,unchanged:before.get(name)===body,sha256:createHash('sha256').update(body).digest('hex')}));
+if(result.some(item=>!item.unchanged))throw new Error('retained definition changed');
+writeFileSync('/Users/kristianelmer/.codex/issue-192-private/issue153-entry/duplicate-retirement-retained-functions.json',JSON.stringify(result,null,2)+'\n');

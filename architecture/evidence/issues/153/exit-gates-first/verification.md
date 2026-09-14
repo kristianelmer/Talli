@@ -1,0 +1,9 @@
+# First complete Accounts exit gate
+
+Immutable revision2fc8ec93eb4eeb818e5273481801ec1be0079b19 passes all11 mandatory checks, from2026-09-14T20:46:44.947Z to21:08:46.575Z. The root verifier recomputes canonical/transcript/producer digests, verifies every named command/exit/duration and chronology. The additional Accounts verifier confirms the complete ordered predecessor-to-final-browser sequence, all41 Accounts SQL cases, final activation/advisors and actual Accounts owner browser success.
+
+This is the first Accounts exit pass, not the predecessor entry gate. A second consecutive complete gate linked to this exact revision remains mandatory. The full run includes5831 backend passes (two preexisting optional skips),699 Billing database passes, all41 Accounts SQL cases, actual annual owner/RF feedback/Authority/RF/Tax/Accounts browser lanes, cleanup and clean-worktree verification. The optional validation-observation Python suite retains one skip. Every required final browser runs without skips. Advisors report zero blocking findings; early/final performance warning counts are60/53.
+
+Both original independent browser-correction reviews at2fc8 pass and are preserved unchanged, with their probes/bindings. They complete the bounded review chain after whole-stage review, authority-safety/journal fixes, role-creation restoration and RF projection correction. Their scoped runtime claims remain distinct from this complete receipt. Production is still frozen atd331ee2717d1eeacef0d81db42b9d4fb5848b408, and protected main remains5b74340ca75f215b43d754c6bf0fc49ef5974b0b.
+
+No hosted migration, provider request, genuine filing or production activation occurred. Second gate, final metadata/registry adoption, protected head/main CI and Preview, merge, completion receipt and independent published reread remain pending. No successor stage is claimed.

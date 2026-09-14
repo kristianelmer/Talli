@@ -1,0 +1,28 @@
+✔ authority fixture admits only exact local addresses and existing fixed owner provider requests (165.927ms)
+✔ authority fixture socket guard rejects external DNS and connections before network I/O (124.822625ms)
+✔ mandatory authority browser uses real generated HTTP, backend-owned callback proof and scoped cleanup (1.729292ms)
+✔ historical RF fixture admits two fixed GET templates and rejects business mutations (132.7455ms)
+✔ Supabase browser fixtures only accept loopback URLs (1.185125ms)
+✔ browser database fixtures only accept loopback PostgreSQL URLs (0.181709ms)
+✔ owner browser harness stops before remote fixture creation (476.632584ms)
+✔ owner browser harness rejects a remote database mixed with local Supabase (339.405708ms)
+✔ retained annual browser seeds canonical historical RF/AU facts without replacing the live simulation (3.933458ms)
+✔ fresh RF fixture permits only its five exact method templates and loopback egress (160.409375ms)
+✔ fresh local RF mock preserves request identity and emits relationship-bound feedback (55.789042ms)
+✔ fresh browser starts without a preview or approval and verifies the complete durable result (1.514583ms)
+✔ ambiguous fresh mock response records the original mutation before disconnecting (7.626041ms)
+✔ fresh RF browser uses finite fixture authority while preserving foreign keys and signoff storage (0.644875ms)
+✔ fresh RF basis binds every opening row to its existing owner without seeding filing success (2.737791ms)
+✔ fresh RF cleanup removes scoped public mirrors before openings (success) (2.045458ms)
+✔ fresh RF cleanup removes scoped public mirrors before openings (failure preserved) (1.133667ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (success) (17.111667ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (seed) (0.943833ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (restore) (0.883333ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 910.442292

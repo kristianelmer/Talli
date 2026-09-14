@@ -1,0 +1,32 @@
+{
+  "manifestRefs": 46,
+  "mismatches": [],
+  "byteExactPrivateAdoptions": [
+    "probe-accounts-old-backend.py",
+    "stage-exit-standards-ambiguous-replay-eb7d3120.json",
+    "stage-exit-spec-review-eb7d3120.md",
+    "stage-exit-standards-ambiguous-replay-eb7d3120.py",
+    "accounts-old-backend-probe-first.log",
+    "dependency-integration-spec-review-53b3ae3e.json",
+    "stage-exit-standards-review-eb7d3120.md",
+    "accounts-old-backend-server.log",
+    "stage-exit-spec-ambiguous-replay-eb7d3120.json",
+    "stage-exit-standards-validation-response-eb7d3120.py",
+    "probe-accounts-deployment-order.py",
+    "stage-exit-spec-review-eb7d3120.json",
+    "dependency-integration-spec-review-53b3ae3e.md",
+    "stage-exit-spec-validation-response-eb7d3120.json",
+    "accounts-old-backend-server-first.log",
+    "deployment-probe-source-bindings-eb7d3120.json",
+    "probe-accounts-old-backend-first.py",
+    "accounts-deployment-order.json",
+    "accounts-old-backend-consumer.mjs",
+    "accounts-old-backend-probe-second.log",
+    "stage-exit-standards-review-eb7d3120.json",
+    "accounts-old-backend-consumer.log",
+    "accounts-old-backend-protocol.json",
+    "accounts-deployment-order-first.log",
+    "stage-exit-standards-validation-response-eb7d3120.json"
+  ],
+  "primarySourceFilesVerified": 2
+}

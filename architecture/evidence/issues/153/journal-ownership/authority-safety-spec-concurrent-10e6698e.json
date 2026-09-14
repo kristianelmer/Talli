@@ -1,0 +1,14 @@
+{
+  "sameJournal": "in-memory-evidence.json",
+  "createEffects": 2,
+  "returnedInstances": [
+    "instance-2",
+    "instance-1"
+  ],
+  "persistedInstance": "instance-2",
+  "returnedStatuses": [
+    "locked_for_person_signing",
+    "locked_for_person_signing"
+  ],
+  "mode": "LOCAL_FAKE_NO_DB_OR_PROVIDER"
+}

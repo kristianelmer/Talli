@@ -193,7 +193,11 @@ test("partial setup cleanup closes the database and removes only known resources
   );
 });
 
-for (const phase of ["predecessor", "overlap", "contracted", "tax-contracted"]) {
+const accountsCleanupFamilies = ["filing_submissions", "filing_review_comments", "filing_overrides",
+  "filing_previews", "authority_test_runs", "authority_permissions"];
+const taxRetiredPhases = ["tax-contracted", "accounts-expanded", "accounts-contracted"];
+const rfRetiredPhases = ["contracted", ...taxRetiredPhases];
+for (const phase of ["predecessor", "overlap", ...rfRetiredPhases]) {
   test(`browser owner cleanup preserves every prior family in ${phase} before company and user`, async () => {
     const calls = [];
     const database = cleanupDatabaseProbe(calls, { phase });
@@ -217,7 +221,7 @@ for (const phase of ["predecessor", "overlap", "contracted", "tax-contracted"]) 
       ...["production_filing_events", "production_feedback_artifacts", "production_filing_submissions",
         "filing_approval_snapshots"].map(name => `${rf}.${name}`),
       `${authority}.system_user_requests`, "billing.production_pilot_entitlements", "billing.billing_accounts",
-      ...["opening_shareholders", "opening_balance_setups"].map(name => `${["contracted", "tax-contracted"].includes(phase) ? rf : "public"}.${name}`),
+      ...["opening_shareholders", "opening_balance_setups"].map(name => `${rfRetiredPhases.includes(phase) ? rf : "public"}.${name}`),
       ...["transaction_sources", "coverage_intervals", "suggestion_acceptances", "transactions", "source_files",
         "sync_attempts", "accounts", "connections"].map(name => `banking.${name}`),
       ...["opening_received_dividend_settlements", "opening_position_component_sources", "opening_position_components",
@@ -230,7 +234,7 @@ for (const phase of ["predecessor", "overlap", "contracted", "tax-contracted"]) 
       "backend_system.banking_command_receipts", "backend_system.ledger_command_receipts", "backend_system.ledger_workflow_receipts",
     ];
     assert.equal(required.length, 77);
-    if (phase === "tax-contracted") {
+    if (taxRetiredPhases.includes(phase)) {
       for (const name of ["corporate_document_events", "corporate_decision_finalizations", "corporate_document_artifacts",
         "corporate_document_sets", "corporate_decisions", "holding_actions", "bank_transactions", "bank_suggestion_acceptances",
         "investment_lot_allocations", "investment_lots", "investment_positions"]) {
@@ -243,17 +247,32 @@ for (const phase of ["predecessor", "overlap", "contracted", "tax-contracted"]) 
       required.push(...["filing_submissions", "filing_review_comments", "filing_overrides",
         "filing_previews", "authority_test_runs", "authority_permissions"].map(name => `company_tax_filing.${name}`));
     }
+    if (phase === "accounts-contracted") {
+      for (const name of accountsCleanupFamilies) {
+        const index = required.indexOf(`public.${name}`);
+        if (index !== -1) required.splice(index, 1);
+        assert.ok(!calls.some(call => call.startsWith(`delete from public.${name} `)));
+      }
+    }
+    if (phase.startsWith("accounts-")) required.push(...accountsCleanupFamilies.map(name => `annual_accounts_filing.${name}`));
+    else assert.ok(!calls.some(call => call.startsWith("delete from annual_accounts_filing.")));
     for (const relation of required) assert.ok(calls.some(call => call.startsWith(`delete from ${relation} `)), relation);
     const deletion = relation => calls.findIndex(call => call.startsWith(`delete from ${relation} `));
-    if (phase === "tax-contracted") {
+    if (phase.startsWith("accounts-")) {
+      assert.ok(deletion("annual_accounts_filing.filing_submissions") < deletion("annual_accounts_filing.authority_test_runs"));
+      assert.ok(deletion("annual_accounts_filing.filing_review_comments") < deletion("annual_accounts_filing.filing_previews"));
+      assert.ok(deletion("annual_accounts_filing.filing_overrides") < deletion("annual_accounts_filing.filing_previews"));
+      assert.ok(deletion("annual_accounts_filing.authority_permissions") < deletion("public.companies"));
+    }
+    if (taxRetiredPhases.includes(phase)) {
       assert.ok(deletion("company_tax_filing.filing_submissions") < deletion("company_tax_filing.authority_test_runs"));
       assert.ok(deletion("company_tax_filing.filing_review_comments") < deletion("company_tax_filing.filing_previews"));
       assert.ok(deletion("company_tax_filing.authority_permissions") < deletion("public.companies"));
     } else {
       assert.ok(!calls.some(call => call.startsWith("delete from company_tax_filing.authority_permissions ")));
     }
-    assert.ok(deletion(phase === "tax-contracted" ? "corporate_governance.owner_dividend_finalizations" : "public.corporate_decision_finalizations") < deletion("ledger.entries"));
-    assert.ok(deletion(phase === "tax-contracted" ? "company_tax_filing.settlements" : "public.holding_actions") < deletion("banking.transactions"));
+    assert.ok(deletion(taxRetiredPhases.includes(phase) ? "corporate_governance.owner_dividend_finalizations" : "public.corporate_decision_finalizations") < deletion("ledger.entries"));
+    assert.ok(deletion(taxRetiredPhases.includes(phase) ? "company_tax_filing.settlements" : "public.holding_actions") < deletion("banking.transactions"));
     assert.ok(deletion("banking.suggestion_acceptances") < deletion("ledger.entries"));
     assert.ok(deletion("ledger.entry_sources") < deletion("ledger.entries"));
     assert.ok(deletion("ledger.entry_corrections") < deletion("ledger.entries"));
@@ -322,6 +341,19 @@ test("browser owner cleanup preserves both operation and rollback failures", asy
   assert.deepEqual(errors[0].errors, [failure, rollbackFailure]);
   assert.deepEqual(calls.slice(-2), ["delete_user:owner-created", "database_end"]);
 });
+
+for (const defect of ["accounts-missing-family", "accounts-partial-retirement", "accounts-wrong-phase"]) {
+  test(`browser owner cleanup fails closed for ${defect}`, async () => {
+    const calls = [];
+    const database = cleanupDatabaseProbe(calls, { phase: "accounts-contracted", defect });
+    const errors = await cleanupBrowserOwnerResources({ admin: cleanupAdmin(calls), database, databaseStarted: true,
+      companyId: "55555555-5555-4555-8555-555555555555" });
+    assert.equal(errors.length, 1);
+    assert.ok(!calls.some(call => call.startsWith("delete from ")));
+    assert.ok(!calls.includes("commit"));
+    database.assertRestored();
+  });
+}
 
 for (const defect of ["missing-family", "wrong-owner", "invalid-trigger-mode"]) {
   test(`browser owner cleanup fails closed for ${defect}`, async () => {
@@ -596,7 +628,7 @@ function cleanupDatabaseProbe(calls, { phase = "overlap", failStatement, failure
   const tables = new Map();
   const schemas = new Map();
   let role = "postgres";
-  const ownerBySchema = { company_tax_filing: "company_tax_filing_store_owner",
+  const ownerBySchema = { annual_accounts_filing: "annual_accounts_filing_store_owner", company_tax_filing: "company_tax_filing_store_owner",
     corporate_governance: "corporate_governance_store_owner", public: "postgres", backend_system: "ledger_store_owner",
     ledger: "ledger_store_owner", banking: "banking_store_owner", investments: "investments_store_owner",
     billing: "billing_store_owner", documents: "documents_store_owner",
@@ -615,9 +647,14 @@ function cleanupDatabaseProbe(calls, { phase = "overlap", failStatement, failure
     return tables.get(relation);
   };
   const physicalKind = relation => {
+    if (relation.startsWith("annual_accounts_filing.") && !phase.startsWith("accounts-")) return undefined;
+    if (defect === "accounts-missing-family" && relation === "annual_accounts_filing.filing_previews") return undefined;
+    if (phase === "accounts-contracted" && accountsCleanupFamilies.map(name => `public.${name}`).includes(relation)) {
+      return defect === "accounts-partial-retirement" && relation === "public.filing_previews" ? "r" : undefined;
+    }
     if (relation.startsWith("company_tax_filing.") && relation !== "company_tax_filing.settlements"
-      && phase !== "tax-contracted") return undefined;
-    if (phase === "tax-contracted" && ["public.corporate_document_events", "public.corporate_decision_finalizations",
+      && !taxRetiredPhases.includes(phase)) return undefined;
+    if (taxRetiredPhases.includes(phase) && ["public.corporate_document_events", "public.corporate_decision_finalizations",
       "public.corporate_document_artifacts", "public.corporate_document_sets", "public.corporate_decisions",
       "public.holding_actions", "public.bank_transactions", "public.bank_suggestion_acceptances", "public.investment_lot_allocations",
       "public.investment_lots", "public.investment_positions"].includes(relation)) return undefined;
@@ -627,9 +664,9 @@ function cleanupDatabaseProbe(calls, { phase = "overlap", failStatement, failure
       if (relation.startsWith("shareholder_register_filing.") || relation.startsWith("authority_connections.") || relation === "ledger.opening_bank_inputs") return undefined;
     } else if (["public.system_user_requests", ...["production_feedback_artifacts", "production_filing_events",
       "production_filing_submissions", "filing_approval_snapshots"].map(name => `public.${name}`)].includes(relation)) {
-      return ["contracted", "tax-contracted"].includes(phase) ? undefined : "v";
+      return rfRetiredPhases.includes(phase) ? undefined : "v";
     }
-    if (["contracted", "tax-contracted"].includes(phase) && ["public.opening_balance_setups", "public.opening_shareholders"].includes(relation)) return undefined;
+    if (rfRetiredPhases.includes(phase) && ["public.opening_balance_setups", "public.opening_shareholders"].includes(relation)) return undefined;
     return "r";
   };
   const decode = identifier => identifier.replaceAll('"', "");
@@ -650,6 +687,9 @@ function cleanupDatabaseProbe(calls, { phase = "overlap", failStatement, failure
       statement = statement.replace(/\s+/gu, " ").trim();
       calls.push(statement);
       if (failStatement && statement.startsWith(failStatement)) throw failure;
+      if (statement === "select phase from backend_system.annual_accounts_migration_state where singleton") {
+        return { rows: [{ phase: defect === "accounts-wrong-phase" ? "cutover" : "contracted" }] };
+      }
       if (statement.includes("select relkind")) {
         const relkind = physicalKind(values[0]);
         return { rows: relkind ? [{ relkind }] : [] };

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0",
+  "status": "AUTHORITY_PARITY_FIX_REVIEW_PENDING",
+  "reviewedRevision": "50bfe67a",
+  "fixedFindings": [
+    "falsey Annual scalar handling",
+    "non-array Ledger rejection"
+  ],
+  "tests": {
+    "authoritySuite": 236,
+    "actualPredecessorBridgeCases": 10
+  },
+  "artifacts": {
+    "architecture/evidence/issues/153/authority-review-fixes/authority-review-fix-first.log": "96cdf4949d847a839cd6071658c5f907bf0ba972dc38bb07fa5cc485055b2bbf",
+    "architecture/evidence/issues/153/authority-review-fixes/authority-spec-review-50bfe67a.json": "150be6b77e7a3bf393202dcb43edbae9de153e6e3c4c8a8eae70051a10a43d16",
+    "architecture/evidence/issues/153/authority-review-fixes/authority-standards-review-50bfe67a.json": "d176a77768e9e0db7844c49a7c8f092333e541bd20a0a13dfa4b876edf495423",
+    "architecture/evidence/issues/153/authority-review-fixes/authority-spec-actual-bridge-50bfe67a.py": "17e9612609434b39bd1c6705935135aef15ee25e33364946218b2f7e3d1bbeac",
+    "architecture/evidence/issues/153/authority-review-fixes/verification.md": "bb4854357b4ac756173c37f5a410b4d4f0b39003dd80e9d24eb0e793a3173b75",
+    "architecture/evidence/issues/153/authority-review-fixes/authority-standards-review-50bfe67a.md": "acfe9f92807ad92786f077365429abdf4cae923bc3773964be17dd17088cb30f",
+    "architecture/evidence/issues/153/authority-review-fixes/authority-spec-actual-bridge-results-50bfe67a.json": "14fdcb8472558dbd78c33d9316d7cc5df670e84b66da06895c504c3944768fe4",
+    "architecture/evidence/issues/153/authority-review-fixes/authority-spec-review-50bfe67a.md": "0bf299afce9a466727db44c9e1c2190b14281c01d4088df16db7a334a9684823",
+    "architecture/evidence/issues/153/authority-review-fixes/authority-review-fix-final.log": "ac3c6e6e43b4b44f739009cb6199025a81a95dcbb934005dc778ae11884fb090",
+    "apps/backend/src/talli_backend/authority_tools/annual_accounts_payload.py": "09d2d1300fc6726b8b010998d2d033f0c2c548ea0e43df341b03fcc5d7263b09",
+    "apps/backend/tests/test_annual_accounts_authority_ownership.py": "fbbbbe04141e18dd6dbc613a1e0c3f4e26cf847d7ad8287148ac3be85b662aaf"
+  }
+}

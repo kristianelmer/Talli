@@ -104,5 +104,6 @@ test("year-end and filing UI expose the annual corporate lifecycle honestly", ()
   assert.match(yearEndSource, /CorporateAnnualDecisionForm/);
   assert.match(`${yearEndSource}\n${formSource}`, /superseded|erstattet/i);
   assert.match(filingSource, /corporate_documents|beslutningsdokument/i);
-  assert.match(readinessSource, /corporateDocuments/);
+  assert.match(readinessSource, /annualAccountsReadiness: data.primaryAnnualAccountsReadiness/);
+  assert.match(filingSource, /data.primaryCorporateDecisionReadiness/);
 });

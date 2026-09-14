@@ -1,0 +1,2184 @@
+{
+  "status": "READ_ONLY_PREDECESSOR_CATALOG_CAPTURE",
+  "capturedAt": "2026-09-14T05:58:00.515527+00:00",
+  "baselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "localDatabase": "supabase_db_tallig6753/postgres",
+  "serverVersion": "17.6",
+  "predecessorStates": {
+    "tax_settlement_migration_state": "contracted",
+    "company_tax_return_migration_state": "contracted"
+  },
+  "tables": {
+    "public.authority_permissions": {
+      "relrowsecurity": true,
+      "relforcerowsecurity": false,
+      "relkind": "r",
+      "owner": "postgres",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "not_null": true,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "obligation",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "submitter_user_id",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "confirmed_by",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "confirmed_at",
+          "type": "timestamp with time zone",
+          "not_null": true,
+          "default": "now()"
+        },
+        {
+          "name": "production_enabled",
+          "type": "boolean",
+          "not_null": true,
+          "default": "false"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "not_null": true,
+          "default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "conname": "authority_permissions_check",
+          "contype": "c",
+          "definition": "CHECK ((submitter_user_id = confirmed_by))"
+        },
+        {
+          "conname": "authority_permissions_company_id_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+        },
+        {
+          "conname": "authority_permissions_company_id_obligation_key",
+          "contype": "u",
+          "definition": "UNIQUE (company_id, obligation)"
+        },
+        {
+          "conname": "authority_permissions_confirmed_by_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "authority_permissions_obligation_check",
+          "contype": "c",
+          "definition": "CHECK ((obligation = ANY (ARRAY['aksjonaerregisteroppgaven'::text, 'skattemelding'::text, 'aarsregnskap'::text])))"
+        },
+        {
+          "conname": "authority_permissions_pkey",
+          "contype": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "conname": "authority_permissions_submitter_user_id_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (submitter_user_id) REFERENCES auth.users(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "tax152_legacy_writer_retired",
+          "contype": "c",
+          "definition": "CHECK ((obligation <> 'skattemelding'::text))"
+        }
+      ],
+      "policies": [
+        {
+          "policyname": "company members can read authority permissions",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "(EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = authority_permissions.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)))))",
+          "with_check": null
+        },
+        {
+          "policyname": "owners can create authority permissions",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "INSERT",
+          "qual": null,
+          "with_check": "((submitter_user_id = ( SELECT auth.uid() AS uid)) AND (confirmed_by = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = authority_permissions.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.role = 'owner'::text)))))"
+        },
+        {
+          "policyname": "owners can update authority permissions",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "UPDATE",
+          "qual": "(EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = authority_permissions.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.role = 'owner'::text))))",
+          "with_check": "((submitter_user_id = ( SELECT auth.uid() AS uid)) AND (confirmed_by = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = authority_permissions.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.role = 'owner'::text)))))"
+        },
+        {
+          "policyname": "support_case_read_authority_permissions",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "company_access_executor"
+          ],
+          "cmd": "SELECT",
+          "qual": "company_access_has_open_support_case_v1(company_access_current_support_case_id_v1(), company_id, 'authority'::text)",
+          "with_check": null
+        }
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "privilege_type": "INSERT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "UPDATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "company_access_executor",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "DELETE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "INSERT",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "SELECT",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "UPDATE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "DELETE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "INSERT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "UPDATE",
+          "is_grantable": "NO"
+        }
+      ],
+      "indexes": [
+        {
+          "indexname": "authority_permissions_company_id_obligation_key",
+          "indexdef": "CREATE UNIQUE INDEX authority_permissions_company_id_obligation_key ON public.authority_permissions USING btree (company_id, obligation)"
+        },
+        {
+          "indexname": "authority_permissions_company_obligation_idx",
+          "indexdef": "CREATE INDEX authority_permissions_company_obligation_idx ON public.authority_permissions USING btree (company_id, obligation)"
+        },
+        {
+          "indexname": "authority_permissions_pkey",
+          "indexdef": "CREATE UNIQUE INDEX authority_permissions_pkey ON public.authority_permissions USING btree (id)"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "company_archive_track_authority_permissions",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER company_archive_track_authority_permissions BEFORE INSERT OR DELETE OR UPDATE ON public.authority_permissions FOR EACH ROW WHEN ((pg_trigger_depth() = 0)) EXECUTE FUNCTION company_archive_track_source_write_v1('company', 'company_id')",
+          "function": "public.company_archive_track_source_write_v1"
+        },
+        {
+          "tgname": "rf151_legacy_write_barrier",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER rf151_legacy_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.authority_permissions FOR EACH ROW EXECUTE FUNCTION shareholder_register_filing.sync_legacy_projection_v1()",
+          "function": "shareholder_register_filing.sync_legacy_projection_v1"
+        }
+      ],
+      "referencingForeignKeys": [],
+      "rowCounts": {
+        "total": 0,
+        "accounts": 0,
+        "other": 0
+      }
+    },
+    "public.authority_test_runs": {
+      "relrowsecurity": true,
+      "relforcerowsecurity": false,
+      "relkind": "r",
+      "owner": "postgres",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "not_null": true,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "obligation",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "environment",
+          "type": "text",
+          "not_null": true,
+          "default": "'test'::text"
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "test_reference",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "feedback_summary",
+          "type": "text",
+          "not_null": true,
+          "default": "''::text"
+        },
+        {
+          "name": "receipt_reference",
+          "type": "text",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "archive_reference",
+          "type": "text",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "evidence_url",
+          "type": "text",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "payload_hash",
+          "type": "text",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "recorded_by",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "recorded_at",
+          "type": "timestamp with time zone",
+          "not_null": true,
+          "default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "conname": "authority_test_runs_company_id_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+        },
+        {
+          "conname": "authority_test_runs_environment_check",
+          "contype": "c",
+          "definition": "CHECK ((environment = ANY (ARRAY['test'::text, 'manual_evidence'::text])))"
+        },
+        {
+          "conname": "authority_test_runs_obligation_check",
+          "contype": "c",
+          "definition": "CHECK ((obligation = ANY (ARRAY['aksjonaerregisteroppgaven'::text, 'skattemelding'::text, 'aarsregnskap'::text])))"
+        },
+        {
+          "conname": "authority_test_runs_pkey",
+          "contype": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "conname": "authority_test_runs_recorded_by_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (recorded_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "authority_test_runs_status_check",
+          "contype": "c",
+          "definition": "CHECK ((status = ANY (ARRAY['accepted'::text, 'rejected'::text, 'blocked'::text, 'pending'::text])))"
+        },
+        {
+          "conname": "authority_test_runs_test_reference_check",
+          "contype": "c",
+          "definition": "CHECK ((test_reference <> ''::text))"
+        },
+        {
+          "conname": "tax152_legacy_writer_retired",
+          "contype": "c",
+          "definition": "CHECK ((obligation <> 'skattemelding'::text))"
+        }
+      ],
+      "policies": [
+        {
+          "policyname": "company members can read authority test runs",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "(EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = authority_test_runs.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)))))",
+          "with_check": null
+        },
+        {
+          "policyname": "owners can create authority test runs",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "INSERT",
+          "qual": null,
+          "with_check": "((recorded_by = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = authority_test_runs.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.role = 'owner'::text)))))"
+        },
+        {
+          "policyname": "support_case_read_authority_runs",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "company_access_executor"
+          ],
+          "cmd": "SELECT",
+          "qual": "company_access_has_open_support_case_v1(company_access_current_support_case_id_v1(), company_id, 'authority'::text)",
+          "with_check": null
+        }
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "privilege_type": "INSERT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "company_access_executor",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "DELETE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "INSERT",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "SELECT",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "UPDATE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "DELETE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "INSERT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "UPDATE",
+          "is_grantable": "NO"
+        }
+      ],
+      "indexes": [
+        {
+          "indexname": "authority_test_runs_company_obligation_idx",
+          "indexdef": "CREATE INDEX authority_test_runs_company_obligation_idx ON public.authority_test_runs USING btree (company_id, obligation, recorded_at DESC)"
+        },
+        {
+          "indexname": "authority_test_runs_evidence_identity_key",
+          "indexdef": "CREATE UNIQUE INDEX authority_test_runs_evidence_identity_key ON public.authority_test_runs USING btree (company_id, obligation, environment, test_reference) WHERE ((obligation = 'skattemelding'::text) AND (environment = 'test'::text) AND (status = 'pending'::text) AND (test_reference ~ '^tt02:[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text) AND (feedback_summary = 'validertOK; personbekreftelse fullført; offisiell tilbakemelding mottatt; myndighetsutfall venter på klassifisering.'::text) AND (receipt_reference ~ '^https://platform[.]tt02[.]altinn[.]no/storage/api/v1/instances/[0-9]+/[0-9a-f-]{36}/data/[0-9a-f-]{36}$'::text) AND (archive_reference ~ '^https://platform[.]tt02[.]altinn[.]no/storage/api/v1/instances/[0-9]+/[0-9a-f-]{36}$'::text) AND (payload_hash ~ '^sha256:[0-9a-f]{64}$'::text))"
+        },
+        {
+          "indexname": "authority_test_runs_pkey",
+          "indexdef": "CREATE UNIQUE INDEX authority_test_runs_pkey ON public.authority_test_runs USING btree (id)"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "company_archive_track_authority_test_runs",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER company_archive_track_authority_test_runs BEFORE INSERT OR DELETE OR UPDATE ON public.authority_test_runs FOR EACH ROW WHEN ((pg_trigger_depth() = 0)) EXECUTE FUNCTION company_archive_track_source_write_v1('company', 'company_id')",
+          "function": "public.company_archive_track_source_write_v1"
+        },
+        {
+          "tgname": "rf151_legacy_write_barrier",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER rf151_legacy_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.authority_test_runs FOR EACH ROW EXECUTE FUNCTION shareholder_register_filing.sync_legacy_projection_v1()",
+          "function": "shareholder_register_filing.sync_legacy_projection_v1"
+        }
+      ],
+      "referencingForeignKeys": [
+        {
+          "source": "filing_submissions",
+          "conname": "filing_submissions_authority_test_run_id_fkey",
+          "definition": "FOREIGN KEY (authority_test_run_id) REFERENCES authority_test_runs(id) ON DELETE RESTRICT"
+        }
+      ],
+      "rowCounts": {
+        "total": 0,
+        "accounts": 0,
+        "other": 0
+      }
+    },
+    "public.filing_previews": {
+      "relrowsecurity": true,
+      "relforcerowsecurity": false,
+      "relkind": "r",
+      "owner": "postgres",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "not_null": true,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "setup_id",
+          "type": "uuid",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "income_year",
+          "type": "integer",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "filing",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "issues",
+          "type": "jsonb",
+          "not_null": true,
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "preview",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "hovedskjema_xml",
+          "type": "text",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "underskjema_xml",
+          "type": "jsonb",
+          "not_null": true,
+          "default": "'{}'::jsonb"
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "not_null": true,
+          "default": "'python_rf1086_engine'::text"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "not_null": true,
+          "default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "conname": "filing_previews_company_id_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+        },
+        {
+          "conname": "filing_previews_created_by_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "filing_previews_income_year_check",
+          "contype": "c",
+          "definition": "CHECK (((income_year >= 2000) AND (income_year <= 2100)))"
+        },
+        {
+          "conname": "filing_previews_pkey",
+          "contype": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "conname": "filing_previews_setup_id_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (setup_id) REFERENCES shareholder_register_filing.opening_balance_setups(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "filing_previews_status_check",
+          "contype": "c",
+          "definition": "CHECK ((status = ANY (ARRAY['ready'::text, 'blocked'::text, 'warning'::text])))"
+        },
+        {
+          "conname": "tax152_legacy_writer_retired",
+          "contype": "c",
+          "definition": "CHECK ((filing <> 'skattemelding for AS'::text))"
+        }
+      ],
+      "policies": [
+        {
+          "policyname": "company members can read filing previews",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "(EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = filing_previews.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)))))",
+          "with_check": null
+        },
+        {
+          "policyname": "owners can create filing previews",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "INSERT",
+          "qual": null,
+          "with_check": "((created_by = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = filing_previews.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.role = 'owner'::text)))))"
+        }
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "privilege_type": "INSERT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "legacy_rf1086_executor",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "DELETE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "INSERT",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "SELECT",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "UPDATE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "DELETE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "INSERT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "UPDATE",
+          "is_grantable": "NO"
+        }
+      ],
+      "indexes": [
+        {
+          "indexname": "filing_previews_company_id_year_idx",
+          "indexdef": "CREATE INDEX filing_previews_company_id_year_idx ON public.filing_previews USING btree (company_id, income_year)"
+        },
+        {
+          "indexname": "filing_previews_pkey",
+          "indexdef": "CREATE UNIQUE INDEX filing_previews_pkey ON public.filing_previews USING btree (id)"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "company_archive_track_filing_previews",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER company_archive_track_filing_previews BEFORE INSERT OR DELETE OR UPDATE ON public.filing_previews FOR EACH ROW WHEN ((pg_trigger_depth() = 0)) EXECUTE FUNCTION company_archive_track_source_write_v1('year', 'company_id')",
+          "function": "public.company_archive_track_source_write_v1"
+        },
+        {
+          "tgname": "rf151_legacy_write_barrier",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER rf151_legacy_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.filing_previews FOR EACH ROW EXECUTE FUNCTION shareholder_register_filing.sync_legacy_projection_v1()",
+          "function": "shareholder_register_filing.sync_legacy_projection_v1"
+        }
+      ],
+      "referencingForeignKeys": [
+        {
+          "source": "filing_overrides",
+          "conname": "filing_overrides_preview_id_fkey",
+          "definition": "FOREIGN KEY (preview_id) REFERENCES filing_previews(id) ON DELETE CASCADE"
+        },
+        {
+          "source": "filing_review_comments",
+          "conname": "filing_review_comments_preview_id_fkey",
+          "definition": "FOREIGN KEY (preview_id) REFERENCES filing_previews(id) ON DELETE CASCADE"
+        },
+        {
+          "source": "filing_submissions",
+          "conname": "filing_submissions_preview_id_fkey",
+          "definition": "FOREIGN KEY (preview_id) REFERENCES filing_previews(id) ON DELETE CASCADE"
+        }
+      ],
+      "rowCounts": {
+        "total": 0,
+        "accounts": 0,
+        "other": 0
+      }
+    },
+    "public.filing_submissions": {
+      "relrowsecurity": true,
+      "relforcerowsecurity": false,
+      "relkind": "r",
+      "owner": "postgres",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "not_null": true,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "preview_id",
+          "type": "uuid",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "setup_id",
+          "type": "uuid",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "income_year",
+          "type": "integer",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "filing",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "mode",
+          "type": "text",
+          "not_null": true,
+          "default": "'simulation'::text"
+        },
+        {
+          "name": "adapter_mode",
+          "type": "text",
+          "not_null": true,
+          "default": "'simulation'::text"
+        },
+        {
+          "name": "payload_hash",
+          "type": "text",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "idempotency_key",
+          "type": "text",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "authority_confirmed_by",
+          "type": "uuid",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "authority_confirmed_at",
+          "type": "timestamp with time zone",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "preview_confirmed_by",
+          "type": "uuid",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "preview_confirmed_at",
+          "type": "timestamp with time zone",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "calls",
+          "type": "jsonb",
+          "not_null": true,
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "receipt_id",
+          "type": "text",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "feedback_document_ids",
+          "type": "jsonb",
+          "not_null": true,
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "feedback_items",
+          "type": "jsonb",
+          "not_null": true,
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "receipt_metadata",
+          "type": "jsonb",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "submitted_payload_ref",
+          "type": "jsonb",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "submitted_payload",
+          "type": "jsonb",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "failure_code",
+          "type": "text",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "failure_message",
+          "type": "text",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "submitted_by",
+          "type": "uuid",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "not_null": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "not_null": true,
+          "default": "now()"
+        },
+        {
+          "name": "authority_test_run_id",
+          "type": "uuid",
+          "not_null": false,
+          "default": null
+        }
+      ],
+      "constraints": [
+        {
+          "conname": "filing_submissions_adapter_mode_check",
+          "contype": "c",
+          "definition": "CHECK ((adapter_mode = ANY (ARRAY['simulation'::text, 'test_authority'::text, 'production'::text])))"
+        },
+        {
+          "conname": "filing_submissions_authority_confirmed_by_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (authority_confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "filing_submissions_authority_mode_shape_check",
+          "contype": "c",
+          "definition": "CHECK ((((mode = 'simulation'::text) AND (preview_id IS NOT NULL) AND (authority_test_run_id IS NULL)) OR ((mode = 'test_authority'::text) AND (preview_id IS NULL) AND (authority_test_run_id IS NOT NULL))))"
+        },
+        {
+          "conname": "filing_submissions_authority_test_run_id_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (authority_test_run_id) REFERENCES authority_test_runs(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "filing_submissions_company_id_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+        },
+        {
+          "conname": "filing_submissions_created_by_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "filing_submissions_income_year_check",
+          "contype": "c",
+          "definition": "CHECK (((income_year >= 2000) AND (income_year <= 2100)))"
+        },
+        {
+          "conname": "filing_submissions_mode_check",
+          "contype": "c",
+          "definition": "CHECK ((mode = ANY (ARRAY['simulation'::text, 'test_authority'::text])))"
+        },
+        {
+          "conname": "filing_submissions_pkey",
+          "contype": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "conname": "filing_submissions_preview_confirmed_by_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (preview_confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "filing_submissions_preview_id_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (preview_id) REFERENCES filing_previews(id) ON DELETE CASCADE"
+        },
+        {
+          "conname": "filing_submissions_preview_id_key",
+          "contype": "u",
+          "definition": "UNIQUE (preview_id)"
+        },
+        {
+          "conname": "filing_submissions_setup_id_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (setup_id) REFERENCES shareholder_register_filing.opening_balance_setups(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "filing_submissions_status_check",
+          "contype": "c",
+          "definition": "CHECK ((status = ANY (ARRAY['ready'::text, 'authority_confirmed'::text, 'preview_confirmed'::text, 'submitting'::text, 'submitted'::text, 'feedback_ready'::text, 'receipt_stored'::text, 'failed_retryable'::text, 'failed_blocked'::text])))"
+        },
+        {
+          "conname": "filing_submissions_submitted_by_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (submitted_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "tax152_legacy_writer_retired",
+          "contype": "c",
+          "definition": "CHECK ((filing <> 'skattemelding for AS'::text))"
+        }
+      ],
+      "policies": [
+        {
+          "policyname": "company members can read filing submissions",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "(EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = filing_submissions.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)))))",
+          "with_check": null
+        },
+        {
+          "policyname": "owners can create filing submissions",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "INSERT",
+          "qual": null,
+          "with_check": "((created_by = ( SELECT auth.uid() AS uid)) AND (mode = 'simulation'::text) AND (EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = filing_submissions.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.role = 'owner'::text)))))"
+        },
+        {
+          "policyname": "owners can update filing submissions",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "UPDATE",
+          "qual": "((created_by = ( SELECT auth.uid() AS uid)) AND (mode = 'simulation'::text) AND (EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = filing_submissions.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.role = 'owner'::text)))))",
+          "with_check": "((created_by = ( SELECT auth.uid() AS uid)) AND (mode = 'simulation'::text) AND (EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = filing_submissions.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.role = 'owner'::text)))))"
+        },
+        {
+          "policyname": "support_case_read_filing_submissions",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "company_access_executor"
+          ],
+          "cmd": "SELECT",
+          "qual": "company_access_has_open_support_case_v1(company_access_current_support_case_id_v1(), company_id, 'filing'::text)",
+          "with_check": null
+        }
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "privilege_type": "INSERT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "UPDATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "company_access_executor",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "DELETE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "INSERT",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "SELECT",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "UPDATE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "DELETE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "INSERT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "UPDATE",
+          "is_grantable": "NO"
+        }
+      ],
+      "indexes": [
+        {
+          "indexname": "filing_submissions_authority_test_run_id_key",
+          "indexdef": "CREATE UNIQUE INDEX filing_submissions_authority_test_run_id_key ON public.filing_submissions USING btree (authority_test_run_id)"
+        },
+        {
+          "indexname": "filing_submissions_company_id_year_idx",
+          "indexdef": "CREATE INDEX filing_submissions_company_id_year_idx ON public.filing_submissions USING btree (company_id, income_year)"
+        },
+        {
+          "indexname": "filing_submissions_pkey",
+          "indexdef": "CREATE UNIQUE INDEX filing_submissions_pkey ON public.filing_submissions USING btree (id)"
+        },
+        {
+          "indexname": "filing_submissions_preview_id_key",
+          "indexdef": "CREATE UNIQUE INDEX filing_submissions_preview_id_key ON public.filing_submissions USING btree (preview_id)"
+        },
+        {
+          "indexname": "filing_submissions_test_authority_idempotency_key",
+          "indexdef": "CREATE UNIQUE INDEX filing_submissions_test_authority_idempotency_key ON public.filing_submissions USING btree (idempotency_key) WHERE ((idempotency_key IS NOT NULL) AND (mode = 'test_authority'::text))"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "company_archive_track_filing_submissions",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER company_archive_track_filing_submissions BEFORE INSERT OR DELETE OR UPDATE ON public.filing_submissions FOR EACH ROW WHEN ((pg_trigger_depth() = 0)) EXECUTE FUNCTION company_archive_track_source_write_v1('year', 'company_id')",
+          "function": "public.company_archive_track_source_write_v1"
+        },
+        {
+          "tgname": "rf151_legacy_write_barrier",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER rf151_legacy_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.filing_submissions FOR EACH ROW EXECUTE FUNCTION shareholder_register_filing.sync_legacy_projection_v1()",
+          "function": "shareholder_register_filing.sync_legacy_projection_v1"
+        }
+      ],
+      "referencingForeignKeys": [],
+      "rowCounts": {
+        "total": 0,
+        "accounts": 0,
+        "other": 0
+      }
+    },
+    "public.filing_overrides": {
+      "relrowsecurity": true,
+      "relforcerowsecurity": false,
+      "relkind": "r",
+      "owner": "postgres",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "not_null": true,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "preview_id",
+          "type": "uuid",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "income_year",
+          "type": "integer",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "filing",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "field_target",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "old_value",
+          "type": "text",
+          "not_null": true,
+          "default": "''::text"
+        },
+        {
+          "name": "new_value",
+          "type": "text",
+          "not_null": true,
+          "default": "''::text"
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "risk_level",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "owner_confirmed_by",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "owner_confirmed_at",
+          "type": "timestamp with time zone",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "not_null": true,
+          "default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "conname": "filing_overrides_check",
+          "contype": "c",
+          "definition": "CHECK (((old_value <> ''::text) OR (new_value <> ''::text)))"
+        },
+        {
+          "conname": "filing_overrides_company_id_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+        },
+        {
+          "conname": "filing_overrides_created_by_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "filing_overrides_field_target_check",
+          "contype": "c",
+          "definition": "CHECK ((field_target <> ''::text))"
+        },
+        {
+          "conname": "filing_overrides_filing_check",
+          "contype": "c",
+          "definition": "CHECK ((filing <> ''::text))"
+        },
+        {
+          "conname": "filing_overrides_income_year_check",
+          "contype": "c",
+          "definition": "CHECK (((income_year >= 2000) AND (income_year <= 2100)))"
+        },
+        {
+          "conname": "filing_overrides_owner_confirmed_by_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (owner_confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "filing_overrides_pkey",
+          "contype": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "conname": "filing_overrides_preview_id_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (preview_id) REFERENCES filing_previews(id) ON DELETE CASCADE"
+        },
+        {
+          "conname": "filing_overrides_reason_check",
+          "contype": "c",
+          "definition": "CHECK ((reason <> ''::text))"
+        },
+        {
+          "conname": "filing_overrides_risk_level_check",
+          "contype": "c",
+          "definition": "CHECK ((risk_level = ANY (ARRAY['advisory'::text, 'warning'::text, 'block'::text])))"
+        },
+        {
+          "conname": "tax152_legacy_writer_retired",
+          "contype": "c",
+          "definition": "CHECK (((filing <> 'skattemelding for AS'::text) AND (field_target !~~ 'skattemelding.%'::text)))"
+        }
+      ],
+      "policies": [
+        {
+          "policyname": "company members can read filing overrides",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "(EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = filing_overrides.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)))))",
+          "with_check": null
+        },
+        {
+          "policyname": "owners can create filing overrides",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "INSERT",
+          "qual": null,
+          "with_check": "((created_by = ( SELECT auth.uid() AS uid)) AND (owner_confirmed_by = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = filing_overrides.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.role = 'owner'::text)))) AND ((preview_id IS NULL) OR (EXISTS ( SELECT 1\n   FROM filing_previews fp\n  WHERE ((fp.id = filing_overrides.preview_id) AND (fp.company_id = filing_overrides.company_id) AND (fp.income_year = filing_overrides.income_year) AND (fp.filing = filing_overrides.filing))))))"
+        }
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "privilege_type": "INSERT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "DELETE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "INSERT",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "SELECT",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "UPDATE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "DELETE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "INSERT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "UPDATE",
+          "is_grantable": "NO"
+        }
+      ],
+      "indexes": [
+        {
+          "indexname": "filing_overrides_company_id_year_idx",
+          "indexdef": "CREATE INDEX filing_overrides_company_id_year_idx ON public.filing_overrides USING btree (company_id, income_year)"
+        },
+        {
+          "indexname": "filing_overrides_pkey",
+          "indexdef": "CREATE UNIQUE INDEX filing_overrides_pkey ON public.filing_overrides USING btree (id)"
+        },
+        {
+          "indexname": "filing_overrides_preview_id_idx",
+          "indexdef": "CREATE INDEX filing_overrides_preview_id_idx ON public.filing_overrides USING btree (preview_id)"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "rf151_legacy_write_barrier",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER rf151_legacy_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.filing_overrides FOR EACH ROW EXECUTE FUNCTION shareholder_register_filing.sync_legacy_projection_v1()",
+          "function": "shareholder_register_filing.sync_legacy_projection_v1"
+        }
+      ],
+      "referencingForeignKeys": [],
+      "rowCounts": {
+        "total": 0,
+        "accounts": 0,
+        "other": 0
+      }
+    },
+    "public.filing_review_comments": {
+      "relrowsecurity": true,
+      "relforcerowsecurity": false,
+      "relkind": "r",
+      "owner": "postgres",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "not_null": true,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "preview_id",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "company_id",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "target",
+          "type": "text",
+          "not_null": true,
+          "default": "'rf1086_preview'::text"
+        },
+        {
+          "name": "severity",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "body",
+          "type": "text",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "not_null": true,
+          "default": null
+        },
+        {
+          "name": "acknowledged_by",
+          "type": "uuid",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "acknowledged_at",
+          "type": "timestamp with time zone",
+          "not_null": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "not_null": true,
+          "default": "now()"
+        }
+      ],
+      "constraints": [
+        {
+          "conname": "filing_review_comments_acknowledged_by_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (acknowledged_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "filing_review_comments_body_check",
+          "contype": "c",
+          "definition": "CHECK ((body <> ''::text))"
+        },
+        {
+          "conname": "filing_review_comments_company_id_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+        },
+        {
+          "conname": "filing_review_comments_created_by_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+        },
+        {
+          "conname": "filing_review_comments_pkey",
+          "contype": "p",
+          "definition": "PRIMARY KEY (id)"
+        },
+        {
+          "conname": "filing_review_comments_preview_id_fkey",
+          "contype": "f",
+          "definition": "FOREIGN KEY (preview_id) REFERENCES filing_previews(id) ON DELETE CASCADE"
+        },
+        {
+          "conname": "filing_review_comments_severity_check",
+          "contype": "c",
+          "definition": "CHECK ((severity = ANY (ARRAY['advisory'::text, 'hard_block'::text])))"
+        }
+      ],
+      "policies": [
+        {
+          "policyname": "company members can read filing review comments",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "SELECT",
+          "qual": "(EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = filing_review_comments.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)))))",
+          "with_check": null
+        },
+        {
+          "policyname": "owners and reviewers can create filing review comments",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "INSERT",
+          "qual": null,
+          "with_check": "((created_by = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = filing_review_comments.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.role = ANY (ARRAY['owner'::text, 'reviewer'::text]))))))"
+        },
+        {
+          "policyname": "owners can acknowledge filing review comments",
+          "permissive": "PERMISSIVE",
+          "roles": [
+            "authenticated"
+          ],
+          "cmd": "UPDATE",
+          "qual": "(EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = filing_review_comments.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.role = 'owner'::text))))",
+          "with_check": "((acknowledged_by = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM company_access_policy.authenticated_actor_memberships_v1() m(company_id, user_id, role, accepted_at)\n  WHERE ((m.company_id = filing_review_comments.company_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND (m.role = 'owner'::text)))))"
+        }
+      ],
+      "grants": [
+        {
+          "grantee": "authenticated",
+          "privilege_type": "INSERT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "authenticated",
+          "privilege_type": "UPDATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "DELETE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "INSERT",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "SELECT",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "postgres",
+          "privilege_type": "UPDATE",
+          "is_grantable": "YES"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "DELETE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "INSERT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "REFERENCES",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "SELECT",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "TRIGGER",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "TRUNCATE",
+          "is_grantable": "NO"
+        },
+        {
+          "grantee": "service_role",
+          "privilege_type": "UPDATE",
+          "is_grantable": "NO"
+        }
+      ],
+      "indexes": [
+        {
+          "indexname": "filing_review_comments_pkey",
+          "indexdef": "CREATE UNIQUE INDEX filing_review_comments_pkey ON public.filing_review_comments USING btree (id)"
+        },
+        {
+          "indexname": "filing_review_comments_preview_id_idx",
+          "indexdef": "CREATE INDEX filing_review_comments_preview_id_idx ON public.filing_review_comments USING btree (preview_id, created_at)"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "company_archive_track_filing_review_comments",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER company_archive_track_filing_review_comments BEFORE INSERT OR DELETE OR UPDATE ON public.filing_review_comments FOR EACH ROW WHEN ((pg_trigger_depth() = 0)) EXECUTE FUNCTION company_archive_track_source_write_v1('company', 'company_id')",
+          "function": "public.company_archive_track_source_write_v1"
+        },
+        {
+          "tgname": "rf151_legacy_write_barrier",
+          "tgenabled": "O",
+          "definition": "CREATE TRIGGER rf151_legacy_write_barrier BEFORE INSERT OR DELETE OR UPDATE ON public.filing_review_comments FOR EACH ROW EXECUTE FUNCTION shareholder_register_filing.sync_legacy_projection_v1()",
+          "function": "shareholder_register_filing.sync_legacy_projection_v1"
+        }
+      ],
+      "referencingForeignKeys": [],
+      "rowCounts": {
+        "total": 0,
+        "accounts": 0,
+        "other": 0
+      }
+    }
+  },
+  "sourceFunctions": [
+    {
+      "name": "backend_system.rf1086_stored_release_inputs_v1(p_company_id uuid, p_income_year integer, p_obligation text)",
+      "security_definer": true,
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,shareholder_register_filing_executor=X/postgres,shareholder_register_filing_store_owner=X/postgres}",
+      "definitionSha256": "3adde6ea5557b61813e0af53912bb150ded475f06b2a673492e7484592de1b38"
+    },
+    {
+      "name": "company_tax_filing.acknowledge_review_comment_v1(p_comment uuid, p_subject text)",
+      "security_definer": true,
+      "owner": "company_tax_filing_store_owner",
+      "acl": "{company_tax_filing_store_owner=X/company_tax_filing_store_owner,company_tax_filing_workflow_executor=X/company_tax_filing_store_owner}",
+      "definitionSha256": "6cff4aeb2379827cc88d88346c6a99cbcf28f8025183c3defd6d6192564ab8be"
+    },
+    {
+      "name": "company_tax_filing.add_review_comment_v1(p_preview uuid, p_severity text, p_body text, p_subject text)",
+      "security_definer": true,
+      "owner": "company_tax_filing_store_owner",
+      "acl": "{company_tax_filing_store_owner=X/company_tax_filing_store_owner,company_tax_filing_workflow_executor=X/company_tax_filing_store_owner}",
+      "definitionSha256": "30f81aa08f123e4fe8db3f635014d7dd4a666643411a926bcf1a8da6e9be9937"
+    },
+    {
+      "name": "company_tax_filing.confirm_filing_permission_v1(p_company uuid, p_enabled boolean, p_subject text)",
+      "security_definer": true,
+      "owner": "company_tax_filing_store_owner",
+      "acl": "{company_tax_filing_store_owner=X/company_tax_filing_store_owner,company_tax_filing_workflow_executor=X/company_tax_filing_store_owner}",
+      "definitionSha256": "5b94c3faa5f0cb5963d37af946b3dbe8e34d138811e89c38f61df3f8e2cdf078"
+    },
+    {
+      "name": "company_tax_filing.has_filing_document_reference_v1(p_document uuid)",
+      "security_definer": true,
+      "owner": "company_tax_filing_store_owner",
+      "acl": "{company_tax_filing_store_owner=X/company_tax_filing_store_owner,documents_store_owner=X/company_tax_filing_store_owner,postgres=X/company_tax_filing_store_owner}",
+      "definitionSha256": "eab2dac8ee5cbd9009b6ac8b62a420ab76160192ca7332bfb6c6047df98de61c"
+    },
+    {
+      "name": "company_tax_filing.import_tt02_evidence_v1(p_payload jsonb, p_subject text)",
+      "security_definer": true,
+      "owner": "company_tax_filing_store_owner",
+      "acl": "{company_tax_filing_store_owner=X/company_tax_filing_store_owner,company_tax_filing_workflow_executor=X/company_tax_filing_store_owner}",
+      "definitionSha256": "aa015277ec49aede03ca74f1aa0746911dd4927bf303b634297b6b097f17044f"
+    },
+    {
+      "name": "company_tax_filing.read_preview_v1(p_id uuid, p_subject text)",
+      "security_definer": true,
+      "owner": "company_tax_filing_store_owner",
+      "acl": "{company_tax_filing_store_owner=X/company_tax_filing_store_owner,company_tax_filing_workflow_executor=X/company_tax_filing_store_owner}",
+      "definitionSha256": "a30395623f395b8bd74665525218df8d5d959c764eb608c4c000a19f8153221b"
+    },
+    {
+      "name": "company_tax_filing.read_source_snapshot_v1(p_company uuid, p_year integer, p_subject text)",
+      "security_definer": true,
+      "owner": "company_tax_filing_store_owner",
+      "acl": "{company_tax_filing_store_owner=X/company_tax_filing_store_owner,company_tax_filing_workflow_executor=X/company_tax_filing_store_owner}",
+      "definitionSha256": "1862afc12a36179ea40d9930368d771c038c6e61063b6f12a87c13ce5177cdc1"
+    },
+    {
+      "name": "company_tax_filing.read_workspace_v1(p_company uuid, p_year integer, p_subject text)",
+      "security_definer": true,
+      "owner": "company_tax_filing_store_owner",
+      "acl": "{company_tax_filing_store_owner=X/company_tax_filing_store_owner,company_tax_filing_workflow_executor=X/company_tax_filing_store_owner}",
+      "definitionSha256": "a0e714cc4afc5c098484b900d93dbdda3f96cf8daac2d341e4c9755109e9066a"
+    },
+    {
+      "name": "company_tax_filing.record_override_v1(p_preview uuid, p_target text, p_old text, p_new text, p_reason text, p_risk text, p_confirmed boolean, p_subject text)",
+      "security_definer": true,
+      "owner": "company_tax_filing_store_owner",
+      "acl": "{company_tax_filing_store_owner=X/company_tax_filing_store_owner,company_tax_filing_workflow_executor=X/company_tax_filing_store_owner}",
+      "definitionSha256": "dad04a01b820f6e010410d45bff12b2bdad10867316e092b4c6b7db7bbbd1ceb"
+    },
+    {
+      "name": "company_tax_filing.record_test_evidence_v1(p_company uuid, p_data jsonb, p_subject text)",
+      "security_definer": true,
+      "owner": "company_tax_filing_store_owner",
+      "acl": "{company_tax_filing_store_owner=X/company_tax_filing_store_owner,company_tax_filing_workflow_executor=X/company_tax_filing_store_owner}",
+      "definitionSha256": "2a6cef859da8968421a24eba4a84ba3991995d717ade5ac5711bb798f90593ae"
+    },
+    {
+      "name": "documents.has_evidence_references_v1(p_document_id uuid)",
+      "security_definer": true,
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres,documents_store_owner=X/postgres,documents_executor=X/postgres}",
+      "definitionSha256": "0064566026052ba54ee031d0447bd8a823abf0021b808be0a1c7f022af7b3827"
+    },
+    {
+      "name": "public.company_access_read_support_case(p_case_id uuid)",
+      "security_definer": true,
+      "owner": "company_access_executor",
+      "acl": "{company_access_executor=X/company_access_executor}",
+      "definitionSha256": "1a2ed306b5340c9f4c7d6062a6373db768eace615ce5a11248e6ce77aa4d521d"
+    },
+    {
+      "name": "public.remove_unlinked_document(p_document_id uuid)",
+      "security_definer": true,
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "definitionSha256": "fa0d3a48e41c5d4f2ad74be9dc1618a43dbc85bedab6e1daac5028c9032665b7"
+    },
+    {
+      "name": "shareholder_register_filing.acknowledge_review_comment_v1(p_comment_id uuid)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "634097ecc14f34ffcb5338905981b22e03f3b65f532aba748b8c36080bdd9671"
+    },
+    {
+      "name": "shareholder_register_filing.add_review_comment_v1(p_preview_id uuid, p_severity text, p_body text)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "e189503f70c3ba37283d8fa6a8038a28324530ec338803cda09bee17f88ac6c5"
+    },
+    {
+      "name": "shareholder_register_filing.append_production_feedback_reconciliation(p_submission_id uuid, p_lease_id uuid, p_forsendelse_id uuid, p_state text, p_artifact_hashes text[], p_safe_error_code text, p_correlation_id text)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "ca350b39184d9c29f5979f9356b22e83363c5216ad99d1f382496fa1a25a71c9"
+    },
+    {
+      "name": "shareholder_register_filing.append_production_filing_event(p_submission_id uuid, p_operation_name text, p_operation_state text, p_attempt integer, p_body_hash text, p_idempotency_key uuid, p_authority_reference text, p_failure_class text, p_status text, p_final_authority_decision boolean)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "b57334debc9596971b7bd905b0e6b38cb11b7297c1ecac30b39495610a2507c9"
+    },
+    {
+      "name": "shareholder_register_filing.approve_production_filing(p_preview_id uuid, p_entitlement_id uuid, p_manifest jsonb, p_manifest_hash text, p_adapter_version text)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "ea8c1cf378e20db3cf7baa8407175bc5bb954f98881c9a812f33f42d2d6ea0a9"
+    },
+    {
+      "name": "shareholder_register_filing.begin_production_filing(p_approval_id uuid)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "936a08bbbf908f468fa1ac9678ebd428c81a3e3e2707b530d6a5d80ba8608ec7"
+    },
+    {
+      "name": "shareholder_register_filing.can_read_submission_v1(p_submission_id uuid)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "bed92d4b68dc0e34eb04da1cac2c95ca6970fb76667d5b22deb2aa669e816b50"
+    },
+    {
+      "name": "shareholder_register_filing.claim_production_feedback_reconciliation(p_submission_id uuid, p_lease_id uuid)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "58d55bd36c6fc9e6eadc3811f37f186c373d760d8789a8501d34510bfae3a293"
+    },
+    {
+      "name": "shareholder_register_filing.classify_legacy_row_v1(family text, row_data jsonb)",
+      "security_definer": true,
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "definitionSha256": "d9a043d21f2b222e7d36e3a544963c20fb1b2973182bbb4ddfe091e432045cff"
+    },
+    {
+      "name": "shareholder_register_filing.confirm_filing_permission_v1(p_company_id uuid, p_enabled boolean)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "12c940879e51b4948b0c2a70a0e12dd91366ae837630fb665ab73f2ca9911434"
+    },
+    {
+      "name": "shareholder_register_filing.has_blocking_override_v1(p_company_id uuid, p_income_year integer)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,postgres=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "0510da8e82f13088abb72eaed2cad8864d63ef356f0dbc73ffc8f9a7ca95d90f"
+    },
+    {
+      "name": "shareholder_register_filing.has_document_reference_v1(p_document_id uuid)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,documents_store_owner=X/shareholder_register_filing_store_owner,postgres=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "a0b50701fc0b0309de5d7966973774e793f6a0b9642eabe3f3a55bb563e7b323"
+    },
+    {
+      "name": "shareholder_register_filing.insert_preparation_row_v1(p_family text, p_row jsonb)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "c3e024c1a8fba8ce93b10a8d2090ef2b2a427fa9cfb0a532beb0902c0d68f86c"
+    },
+    {
+      "name": "shareholder_register_filing.prepare_operation_v1(p_submission_id uuid, p_operation_name text, p_body_hash text, p_idempotency_key uuid)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "3f4870620ac02abce35b80df670200b882e7a3e909db60003da70aa11dd55593"
+    },
+    {
+      "name": "shareholder_register_filing.read_scope_inventory_v1(p_company_id uuid, p_income_year integer, p_verified_subject text)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,postgres=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "be3700d98e97aa498a5200ba7634e4fa9efcad685ebd90001e10f59ad610e554"
+    },
+    {
+      "name": "shareholder_register_filing.read_support_filing_history_v1(p_company_id uuid, p_case_id uuid)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,company_access_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "535baed9980d6f55ae77afd624163ccff16dc450d69047b4bff5a69f9938e1bb"
+    },
+    {
+      "name": "shareholder_register_filing.record_override_v1(p_preview_id uuid, p_target text, p_old text, p_new text, p_reason text, p_risk text, p_confirmed boolean)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "98b9ee2718618d1670b8d5b194e90678ee7d1eee5a83c1a13e9f64a6e821b926"
+    },
+    {
+      "name": "shareholder_register_filing.record_preview_v1(p_company_id uuid, p_setup_id uuid, p_status text, p_issues jsonb, p_preview text, p_main_xml text, p_sub_xml jsonb)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "5311895b766909c862915021afa548958c34aaa4020db489add36173cb738253"
+    },
+    {
+      "name": "shareholder_register_filing.record_production_feedback_artifact(p_company_id uuid, p_submission_id uuid, p_document_id uuid, p_authority_reference text, p_content_type text, p_byte_length bigint, p_sha256 text, p_classification text)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "806917eebcb45fa7fbc3f502a4b49bd4165ebfcc394c45142efe6392940f10d2"
+    },
+    {
+      "name": "shareholder_register_filing.record_simulation_v1(p_preview_id uuid, p_data jsonb)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "3b3dd4e5defb0989a4100ec42158d9afeefdd5aebc8390fa00062cccaa283fa2"
+    },
+    {
+      "name": "shareholder_register_filing.record_test_evidence_v1(p_company_id uuid, p_data jsonb)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "5af98683855496c8527ccb64a5447cb2beca3786709078bb868edb12ca47d984"
+    },
+    {
+      "name": "shareholder_register_filing.release_production_feedback_reconciliation(p_submission_id uuid, p_lease_id uuid)",
+      "security_definer": true,
+      "owner": "shareholder_register_filing_store_owner",
+      "acl": "{shareholder_register_filing_store_owner=X/shareholder_register_filing_store_owner,shareholder_register_filing_executor=X/shareholder_register_filing_store_owner}",
+      "definitionSha256": "86ee2e6dbaf9fdf6a00089cc39ef6c40fc367a4d15179d64b33f95df0e0e30f0"
+    },
+    {
+      "name": "shareholder_register_filing.sync_legacy_projection_v1()",
+      "security_definer": true,
+      "owner": "postgres",
+      "acl": "{postgres=X/postgres}",
+      "definitionSha256": "31073d52a16cd39233f328af9ddafdf859279fecafa818895b0c1dcb27f3dc9d"
+    }
+  ],
+  "rollbackAsset": {
+    "privatePath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/pre-accounts-entry.dump",
+    "sha256": "9e51f4edb2acbf2c322f06239e6485323b73beb8edeb3003db9f71c6331c16ee",
+    "bytes": 3422908,
+    "format": "PostgreSQL custom dump",
+    "restoreRehearsal": "PASS: disposable accounts153_lifecycle_d060, six table counts and contracted predecessor state match; no Accounts schema exists",
+    "containsRows": "private only; no row payloads in committed catalog inventory",
+    "restoreLogSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

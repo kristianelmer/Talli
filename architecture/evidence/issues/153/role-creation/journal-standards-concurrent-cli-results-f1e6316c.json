@@ -1,0 +1,16 @@
+{
+  "status": "EXCLUSIVE_OWNERSHIP_VERIFIED",
+  "sameRealEvidenceFile": true,
+  "secondRejectedBeforeConnect": true,
+  "createEffects": 1,
+  "lockEffects": 1,
+  "returnedInstances": [
+    "instance-1"
+  ],
+  "persistedInstance": "instance-1",
+  "returnedStatuses": [
+    "locked_for_person_signing"
+  ],
+  "mode": "ACTUAL_CLI_AND_LOCAL_FILE_IO_WITH_FAKE_PROVIDER",
+  "temporaryFilesRemovedAfterProbe": true
+}

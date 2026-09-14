@@ -1,0 +1,636 @@
+{
+  "artifact": "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+  "sha256": "ea3c0601ec92539a5c9d672b5254a7342e6e63e4c4147e0ed7e6abec74ea7caa",
+  "database": "accounts153_lifecycle_d060",
+  "transaction": "ROLLBACK_ONLY",
+  "cases": [
+    {
+      "role": "anon",
+      "family": "filing_previews",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "anon",
+      "family": "filing_previews",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "anon",
+      "family": "authority_test_runs",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "anon",
+      "family": "authority_test_runs",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "anon",
+      "family": "authority_permissions",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "anon",
+      "family": "authority_permissions",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "anon",
+      "family": "filing_submissions",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "anon",
+      "family": "filing_submissions",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "anon",
+      "family": "filing_overrides",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "anon",
+      "family": "filing_overrides",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "anon",
+      "family": "filing_review_comments",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "anon",
+      "family": "filing_review_comments",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "authenticated",
+      "family": "filing_previews",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "authenticated",
+      "family": "filing_previews",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "authenticated",
+      "family": "authority_test_runs",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "authenticated",
+      "family": "authority_test_runs",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "authenticated",
+      "family": "authority_permissions",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "authenticated",
+      "family": "authority_permissions",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "authenticated",
+      "family": "filing_submissions",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "authenticated",
+      "family": "filing_submissions",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "authenticated",
+      "family": "filing_overrides",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "authenticated",
+      "family": "filing_overrides",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "authenticated",
+      "family": "filing_review_comments",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "authenticated",
+      "family": "filing_review_comments",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "service_role",
+      "family": "filing_previews",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "service_role",
+      "family": "filing_previews",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "service_role",
+      "family": "authority_test_runs",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "service_role",
+      "family": "authority_test_runs",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "service_role",
+      "family": "authority_permissions",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "service_role",
+      "family": "authority_permissions",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "service_role",
+      "family": "filing_submissions",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "service_role",
+      "family": "filing_submissions",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "service_role",
+      "family": "filing_overrides",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "service_role",
+      "family": "filing_overrides",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "service_role",
+      "family": "filing_review_comments",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "service_role",
+      "family": "filing_review_comments",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for schema annual_accounts_filing"
+      }
+    },
+    {
+      "role": "annual_accounts_filing_workflow_executor",
+      "family": "filing_previews",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for table filing_previews"
+      }
+    },
+    {
+      "role": "annual_accounts_filing_workflow_executor",
+      "family": "filing_previews",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for table filing_previews"
+      }
+    },
+    {
+      "role": "annual_accounts_filing_workflow_executor",
+      "family": "authority_test_runs",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for table authority_test_runs"
+      }
+    },
+    {
+      "role": "annual_accounts_filing_workflow_executor",
+      "family": "authority_test_runs",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for table authority_test_runs"
+      }
+    },
+    {
+      "role": "annual_accounts_filing_workflow_executor",
+      "family": "authority_permissions",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for table authority_permissions"
+      }
+    },
+    {
+      "role": "annual_accounts_filing_workflow_executor",
+      "family": "authority_permissions",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for table authority_permissions"
+      }
+    },
+    {
+      "role": "annual_accounts_filing_workflow_executor",
+      "family": "filing_submissions",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for table filing_submissions"
+      }
+    },
+    {
+      "role": "annual_accounts_filing_workflow_executor",
+      "family": "filing_submissions",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for table filing_submissions"
+      }
+    },
+    {
+      "role": "annual_accounts_filing_workflow_executor",
+      "family": "filing_overrides",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for table filing_overrides"
+      }
+    },
+    {
+      "role": "annual_accounts_filing_workflow_executor",
+      "family": "filing_overrides",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for table filing_overrides"
+      }
+    },
+    {
+      "role": "annual_accounts_filing_workflow_executor",
+      "family": "filing_review_comments",
+      "operation": "read",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for table filing_review_comments"
+      }
+    },
+    {
+      "role": "annual_accounts_filing_workflow_executor",
+      "family": "filing_review_comments",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "permission denied for table filing_review_comments"
+      }
+    },
+    {
+      "role": "annual_accounts_filing_store_owner",
+      "family": "filing_previews",
+      "operation": "read",
+      "outcome": {
+        "count": 0
+      }
+    },
+    {
+      "role": "annual_accounts_filing_store_owner",
+      "family": "filing_previews",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "new row violates row-level security policy for table \"filing_previews\""
+      }
+    },
+    {
+      "role": "annual_accounts_filing_store_owner",
+      "family": "authority_test_runs",
+      "operation": "read",
+      "outcome": {
+        "count": 0
+      }
+    },
+    {
+      "role": "annual_accounts_filing_store_owner",
+      "family": "authority_test_runs",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "new row violates row-level security policy for table \"authority_test_runs\""
+      }
+    },
+    {
+      "role": "annual_accounts_filing_store_owner",
+      "family": "authority_permissions",
+      "operation": "read",
+      "outcome": {
+        "count": 0
+      }
+    },
+    {
+      "role": "annual_accounts_filing_store_owner",
+      "family": "authority_permissions",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "new row violates row-level security policy for table \"authority_permissions\""
+      }
+    },
+    {
+      "role": "annual_accounts_filing_store_owner",
+      "family": "filing_submissions",
+      "operation": "read",
+      "outcome": {
+        "count": 0
+      }
+    },
+    {
+      "role": "annual_accounts_filing_store_owner",
+      "family": "filing_submissions",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "new row violates row-level security policy for table \"filing_submissions\""
+      }
+    },
+    {
+      "role": "annual_accounts_filing_store_owner",
+      "family": "filing_overrides",
+      "operation": "read",
+      "outcome": {
+        "count": 0
+      }
+    },
+    {
+      "role": "annual_accounts_filing_store_owner",
+      "family": "filing_overrides",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "new row violates row-level security policy for table \"filing_overrides\""
+      }
+    },
+    {
+      "role": "annual_accounts_filing_store_owner",
+      "family": "filing_review_comments",
+      "operation": "read",
+      "outcome": {
+        "count": 0
+      }
+    },
+    {
+      "role": "annual_accounts_filing_store_owner",
+      "family": "filing_review_comments",
+      "operation": "insert",
+      "outcome": {
+        "sqlstate": "42501",
+        "error": "new row violates row-level security policy for table \"filing_review_comments\""
+      }
+    },
+    {
+      "classificationProbe": "filing_previews",
+      "alteration": {
+        "filing": "unknown_obligation"
+      },
+      "result": "quarantine"
+    },
+    {
+      "classificationProbe": "authority_test_runs",
+      "alteration": {
+        "obligation": "unknown"
+      },
+      "result": "quarantine"
+    },
+    {
+      "classificationProbe": "filing_review_comments",
+      "alteration": {
+        "preview_id": null
+      },
+      "result": "quarantine"
+    },
+    {
+      "classificationProbe": "filing_overrides",
+      "alteration": {
+        "field_target": "skattemelding.field"
+      },
+      "result": "quarantine"
+    },
+    {
+      "classificationProbe": "filing_submissions",
+      "alteration": {
+        "company_id": "15300000-0000-4000-8000-000000000014"
+      },
+      "result": "quarantine"
+    },
+    {
+      "classificationProbe": "filing_submissions",
+      "alteration": {
+        "income_year": 2024
+      },
+      "result": "quarantine"
+    },
+    {
+      "classificationProbe": "filing_submissions",
+      "alteration": {
+        "authority_test_run_id": "15300000-0000-4000-8000-000000000014"
+      },
+      "result": "quarantine"
+    }
+  ],
+  "reconciliations": [
+    [
+      "authority_permissions",
+      1,
+      1,
+      true
+    ],
+    [
+      "authority_test_runs",
+      1,
+      1,
+      true
+    ],
+    [
+      "filing_overrides",
+      1,
+      1,
+      true
+    ],
+    [
+      "filing_previews",
+      1,
+      1,
+      true
+    ],
+    [
+      "filing_review_comments",
+      1,
+      1,
+      true
+    ],
+    [
+      "filing_submissions",
+      2,
+      2,
+      true
+    ]
+  ],
+  "legacyRowsUnchanged": true,
+  "existingRoleMembershipsUnchanged": true,
+  "roleProbeSetup": "Temporary test-only SET after membership restoration check; rolled back.",
+  "legacyWriterStillActive": true,
+  "status": "PASS",
+  "fixtureRollbackVerified": true,
+  "schemaRollbackVerified": true
+}

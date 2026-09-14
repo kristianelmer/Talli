@@ -2316,6 +2316,6 @@ test("company-access onboarding is atomic, replay-safe, tenant-isolated, and pha
       `);
     }
   } finally {
-    docker(["rm", "--force", containerName]);
+    docker(["rm", "--force", "--volumes", containerName]);
   }
 });

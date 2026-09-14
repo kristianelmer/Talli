@@ -1,0 +1,21 @@
+{
+  "status": "TARGETED_RUNTIME_HARNESS_NOT_COMPLETE_GATE",
+  "source": "scripts/test-supabase-local.sh",
+  "sourceSha256": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+  "omittedTestCommands": [
+    "test:ledger-database-lifecycle",
+    "test:banking-database-lifecycle",
+    "test:investments-database-lifecycle",
+    "test:documents-database-lifecycle",
+    "test:marketing-measurement-database",
+    "test:validation-observation",
+    "test:supabase-predecessor",
+    "test:supabase-rf-workspace",
+    "test:browser-owner",
+    "test:authority-connections-database",
+    "test:browser-owner-annual"
+  ],
+  "billing": "Original node contract/rollback/recutover suite only; previously passing 699 Python tests omitted",
+  "preserved": "original isolated-stack startup, topology transformations, Ledger authority, Corporate lifecycle, Billing contract, Tax and Accounts full SQL/activation, advisors, RF feedback and four final filing browser commands, teardown",
+  "harnessSha256": "d8c06061274890920c99ed28a59faf6b752e8a94f4c32a37efe7346df69a6190"
+}

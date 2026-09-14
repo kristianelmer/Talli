@@ -1,0 +1,180 @@
+{
+  "axis": "Standards",
+  "verdict": "PASS_BOUNDED_FOLLOWUP",
+  "baseRevision": "10e6698efdcad2726f5ca9f7dcdb7352317ceb11",
+  "candidateRevision": "f1e6316c4cac895c43be88aef776c88cc97db204",
+  "commits": [
+    "f1e6316c4cac895c43be88aef776c88cc97db204 test(accounts): model browser cleanup across storage retirement",
+    "ee0a6d862759c47ecdb0679300280095e8324359 fix(accounts): serialize local rehearsal evidence ownership"
+  ],
+  "diffCommand": "git diff 10e6698efdcad2726f5ca9f7dcdb7352317ceb11...f1e6316c4cac895c43be88aef776c88cc97db204",
+  "snapshot": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-journal-standards-z958w3p2",
+  "closedFindings": [
+    "STD-153-JOURNAL-1"
+  ],
+  "newFindings": [],
+  "sourceAndEvidenceBindings": {
+    "apps/backend/src/talli_backend/adapters/local_annual_accounts_rehearsal.py": "8c235aadd4063bb2398ef81b4711759521a34be91d8893530a6d5b82fe10eea7",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md": "30276ef80feaabeb44b9dcbdaa0ae7f747e472a9e186c7603623255d7431e493",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json": "21317051f3ea026f98aa8f6e02eef48df01487317da3ef3ddf8a0f5bd36ce502",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py": "4a9db32b227c59c0ad04e90d4afb7f05f58d6994113c6224922463363fb2386a",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/rehearsal.py": "5705ab94619c688e5c16233e623aa9235e43527169f0ed293afba945a3bcaa27",
+    "apps/backend/tests/test_annual_accounts_rehearsal_ownership.py": "ea42b6eb375103682f8c5ba1435627528b1e431ffc3f5e17523321d51b0e6597",
+    "apps/backend/tests/test_annual_accounts_rehearsal_recovery.py": "6210acbf143e8f460dd4cc0fa13ecd003d91073bc5040e5efa6e3cd2bbb3608d",
+    "architecture/evidence/customer-ready-gates/10e6698efdcad2726f5ca9f7dcdb7352317ceb11.log": "1b1b270a8d89c2df63abbda2745875b4b2a50854f388108e2d73ebf957a92128",
+    "architecture/evidence/issues/153/browser-cleanup-model/browser-cleanup-model-complete.log": "6c751f25c235608c845f34fc491bbd24a227d2ab7c0e3a656628d906f9e3cfa9",
+    "architecture/evidence/issues/153/browser-cleanup-model/browser-cleanup-model-green.log": "54ba99b7c5562ce7ad1a98ba1dda721c203cdb51f8291728fa94b9710234f4d9",
+    "architecture/evidence/issues/153/browser-cleanup-model/browser-cleanup-model-red.log": "31ab9c4e96013bab3c55b0dc29f735a271f8d4696aa5b9c555f34d15d20aa702",
+    "architecture/evidence/issues/153/browser-cleanup-model/journal-focused-root.log": "9bf1c63983ef779fa9be6590e8cc3b35f45b025260186101e7031530b77ced3c",
+    "architecture/evidence/issues/153/browser-cleanup-model/manifest.json": "b2839100d6dd5b7dc11b2fbb15fa888913a02a68505bc2b89e5a11541da7cd1b",
+    "architecture/evidence/issues/153/browser-cleanup-model/verification.md": "a47773329df9f3363d9d517f733495e555ce4660693a94c2534e9acbea214e78",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-spec-archive-10e6698e.log": "b5dcf8ebaf7ce92bf181d49e423c24ba336b353e0fa2f0e64a7650a2a85ea489",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-spec-bindings-10e6698e.json": "fe0362309a27353ad305674ffa76df57874fe742560b82d2a59e24652c4b2f8e",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-spec-concurrent-10e6698e.json": "4bb6431104e69b0c7ad6a6619d60db1f976767612f7bb43ac784f8f92e3f1f37",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-spec-concurrent-cli-10e6698e.json": "f9699f762b686cba9355f82dd17b041970f595c2d5f2098d1eea141b06f604b6",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-spec-probe-10e6698e.json": "2fcdc0f3fbba70a0390ba89fdcaafa4559bd89a5ecfc8d6a8dd308467d3f9d4b",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-spec-probe-10e6698e.py": "9893954477f7ccc2ca05e7b47fb1f8f01ec6585af50fa14f9e0937d8b5a4e8f1",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-spec-review-10e6698e.json": "1e9ce581e805112ddb47d8a238be02168dba1eb5b599f8d1cf018545008ccfb2",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-spec-review-10e6698e.md": "f223e197a057b1096543e8ca74d64b1a2533da85328edd9889700f61d4513117",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-spec-tests-10e6698e.log": "4d35bede1e784cfed3c0176aff1c68537e04375f50100f8530a50298c2e75d03",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-standards-archive-10e6698e.log": "f03a8090b6a3f98f797851e58f634d059947a8c3427970af4e5e5a5bc41f9f22",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-standards-artifact-checks-10e6698e.json": "c53b2958f676633c873ff88d897aa18df738b33b930cd25abb34ee389f57dedd",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-standards-concurrent-cli-10e6698e.py": "3617322d99cd832e7dc3f51dba46730f441a8f02f0c73dbdb94f332cbccfae0b",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-standards-concurrent-cli-results-10e6698e.json": "f9699f762b686cba9355f82dd17b041970f595c2d5f2098d1eea141b06f604b6",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-standards-concurrent-probe-10e6698e.py": "43c7eadb7c6a7580046862b946c98f1a2c8052aadaa6d93183a25b7c4bdf85f7",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-standards-concurrent-results-10e6698e.json": "4bb6431104e69b0c7ad6a6619d60db1f976767612f7bb43ac784f8f92e3f1f37",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-standards-edge-probe-10e6698e.py": "65f0a023bffb40001d0e94a962185c8c215122b525223663cc6f6aaa4aa1fdb1",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-standards-edge-results-10e6698e.json": "210014f2fc2aee5813c1613cc84ed0e3f7f9bdd01962ebce1974d41b39198f58",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-standards-review-10e6698e.json": "fd4bb011d1bd2ffc2a2abd3f56f04ea84fef518dd05391c1a350dd9032396881",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-standards-review-10e6698e.md": "3a7b447738a0824c1230b08b4ef6d0c91e63229e5f107908322b69e980dbe108",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-standards-tests-10e6698e.log": "4d35bede1e784cfed3c0176aff1c68537e04375f50100f8530a50298c2e75d03",
+    "architecture/evidence/issues/153/journal-ownership/authority-safety-standards-workspace-10e6698e.json": "9e2de19e60a86ab2f77aac2bbfdf0c06e394d4c67a9594297d91ac4655d468e9",
+    "architecture/evidence/issues/153/journal-ownership/journal-architecture-first.log": "17b763f93f18dc1015f37235604bdcb3f05da4c2a082b44c7b6043f74600bf0e",
+    "architecture/evidence/issues/153/journal-ownership/journal-architecture-real-worktree.log": "5096ab8df3bc349b6886466baae30461c5504bf924bb82a09b40006cf94d4109",
+    "architecture/evidence/issues/153/journal-ownership/journal-focused-first.log": "b95ebb540a33c0e0127c539b47e749bef31596f0c9454e4c7fe7aa3903612c04",
+    "architecture/evidence/issues/153/journal-ownership/journal-focused-real-worktree.log": "64f06b0b6818931e5bc6a630a4bb35a79db8f611b584856548306d8c5183f2df",
+    "architecture/evidence/issues/153/journal-ownership/journal-ownership-green.log": "aadd6be37c153ac932c107dea717d09119dd6aa20d052856495bb7fdacbb55f1",
+    "architecture/evidence/issues/153/journal-ownership/journal-ownership-red.log": "485bd8ee9f4370c53edb864e44be3ab59f24f885e591f36e7c985852c36347d7",
+    "architecture/evidence/issues/153/journal-ownership/manifest.json": "158d38f821615dfcc4528e32a4507e43d36910911aa33a06f28879c9dbf6ba43",
+    "architecture/evidence/issues/153/journal-ownership/verification.md": "0ea8da8b55f9bb1c884ff88f220e3c3fd0f789791ef956491d7e18c239243aaa",
+    "tests/browser_process_lifecycle.test.mjs": "a9b92f944b97c0ed93728a045e8e786afb4d9744cd081ef312702b43e6663b00"
+  },
+  "standardsBindings": {
+    "AGENTS.md": "c4530bac3939f37053438b48a3dad2ea6e99d04481480ef61bee71d3dc81d4af",
+    "CONTEXT.md": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9",
+    "docs/agents/domain.md": "0b66c33560f91373a7b268f3acf2c3d992e6a77cf5dc60acdc66efb4dc34a982",
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/BACKEND-SYSTEM.md": "f940e129f387dcb2f9f8b7851398a044c56db912897f1cd91ff16e0911ef0d49",
+    "architecture/COMPATIBILITY.md": "7683810e3f0b816fcc166c428faba245060f91c86ae7e0750b39803730c57ab7"
+  },
+  "cachedSpecBindings": {
+    "issue153-current.json": "e90e3a7291b049d41f6b193d831c9e4126b04b54a27f5782db4993836cf7e0b6",
+    "stage-exit132-comments-current.md": "6c1bc0d88cf93369f1551f8cacecd00c3f72916a11c31c8b491d512338011fec"
+  },
+  "skill": {
+    "path": "/Users/kristianelmer/.codex/skills/code-review/SKILL.md",
+    "sha256": "47f4e52c21694def9c7c11cbfbf891ca35eac7a93e395797515be3c8a409ae50"
+  },
+  "independentResults": {
+    "pythonFocused": {
+      "passed": 282,
+      "runtime": "CPython3.12.12/PyICU2.16.2/ICU78.2"
+    },
+    "nodeCleanupModels": {
+      "passed": 15,
+      "skipped": 1,
+      "runtime": "Node24.20.0",
+      "skipReason": "No local Supabase runtime in isolated model run; no DB credit"
+    },
+    "actualCliLocalFileProbe": {
+      "status": "EXCLUSIVE_OWNERSHIP_VERIFIED",
+      "sameRealEvidenceFile": true,
+      "secondRejectedBeforeConnect": true,
+      "createEffects": 1,
+      "lockEffects": 1,
+      "returnedInstances": [
+        "instance-1"
+      ],
+      "persistedInstance": "instance-1",
+      "returnedStatuses": [
+        "locked_for_person_signing"
+      ],
+      "mode": "ACTUAL_CLI_AND_LOCAL_FILE_IO_WITH_FAKE_PROVIDER",
+      "temporaryFilesRemovedAfterProbe": true
+    },
+    "priorRecoveryValidationEdges": {
+      "passed": 10
+    },
+    "businessBodyAstIdentical": true,
+    "manifestSources": 8,
+    "manifestArtifacts": 34,
+    "byteExactPrivateAdoptions": 21
+  },
+  "unchangedControls": {
+    "architecture/compatibility.json": "e06ddbbc974bbaa7f418eced549bef1c02e3b29d4e12a6851ed503428aa83e10",
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+    "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+    "tests/support/browser-owner-cleanup.mjs": "aaef07dad4bad9931503daa7c229c13152bf4e2a6f5f007659981a13469d10e5"
+  },
+  "commands": [
+    {
+      "command": [
+        "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+        "-B",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "-c",
+        "apps/backend/pyproject.toml",
+        "apps/backend/tests/test_annual_accounts_rehearsal_recovery.py",
+        "apps/backend/tests/test_annual_accounts_validation_response.py",
+        "apps/backend/tests/test_annual_accounts_authority_ownership.py",
+        "apps/backend/tests/test_authority_filing_tools.py",
+        "apps/backend/tests/test_authority_filing_transports.py",
+        "apps/backend/tests/test_annual_accounts_rehearsal_ownership.py"
+      ],
+      "cwd": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-journal-standards-z958w3p2",
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+        "--test",
+        "--test-name-pattern=browser owner cleanup",
+        "tests/browser_process_lifecycle.test.mjs"
+      ],
+      "cwd": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-journal-standards-z958w3p2",
+      "returncode": 0,
+      "databaseEnvironmentRemoved": true
+    }
+  ],
+  "probeCommands": [
+    "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<snapshot>/apps/backend/src:<snapshot>/apps/backend/tests <backend-venv-python> -B /Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-standards-concurrent-cli-f1e6316c.py",
+    "same environment: <backend-venv-python> -B /Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-safety-standards-edge-probe-10e6698e.py"
+  ],
+  "privateArtifactBindings": {
+    "journal-standards-workspace-f1e6316c.json": "4f545c17e6e95ca05dade5acf9f5355460447fc1f63aca6b64a518d920403221",
+    "journal-standards-tests-f1e6316c.log": "3d737f80ee2ed1bdd87bf263f7deccc4cf5ed8f32667ddddc6e502a940ec9c13",
+    "journal-standards-test-command-f1e6316c.json": "158d3806308a201f579dac77e5df2c00ce97208e8e680ba06c071e81b156a312",
+    "journal-standards-cleanup-tests-f1e6316c.log": "9f2d35f994d4e74e50e4b03527720d6ad5586ed158286c0a32374cbed2d90fad",
+    "journal-standards-cleanup-command-f1e6316c.json": "ffd2b0891b996c15563200e77292dab227dbe270ef360fa5c4417778ebf31795",
+    "journal-standards-concurrent-cli-f1e6316c.py": "e4290c58004ddc8ca9a73ba585e75ee6807e17683d83730b6f976ff81eaed5f6",
+    "journal-standards-concurrent-cli-results-f1e6316c.json": "0d716a3f8942fa2515068c83a4a4d5e6154fb7dfbdce0947eca51afab1d086bf",
+    "journal-standards-edge-results-f1e6316c.json": "210014f2fc2aee5813c1613cc84ed0e3f7f9bdd01962ebce1974d41b39198f58",
+    "journal-standards-artifact-checks-f1e6316c.json": "1e698118a19d9202c3e0b76f0ca5fc5df7e4494c3f7a1440c94756847b8f01b1",
+    "journal-standards-structural-checks-f1e6316c.json": "bebfb2e638eb5f7d521a0a86b3a3fcc34cd7935f796f62ce3a520d43e19870c9",
+    "authority-safety-standards-concurrent-cli-10e6698e.py": "3617322d99cd832e7dc3f51dba46730f441a8f02f0c73dbdb94f332cbccfae0b",
+    "authority-safety-standards-edge-probe-10e6698e.py": "65f0a023bffb40001d0e94a962185c8c215122b525223663cc6f6aaa4aa1fdb1"
+  },
+  "reportSha256": "543b70f5fc799c8a0222ea9ee0ec3c1e5c11637d84ef90af60f6a0c19b77b63d",
+  "limits": [
+    "No implementation writes, shared-process changes, SQL/Docker/browser/provider operations.",
+    "Only local POSIX filesystem journal ownership; no distributed or cross-journal coordination claim.",
+    "No independent complete gate, stage exit or protected integration credit.",
+    "Architecture success assessed from retained actual-CLI transcript, not independently rerun; invalid first harness explicitly excluded."
+  ]
+}

@@ -1,0 +1,36 @@
+✔ Supabase browser fixtures only accept loopback URLs (0.519416ms)
+✔ browser database fixtures only accept loopback PostgreSQL URLs (0.117ms)
+✔ owner browser harness stops before remote fixture creation (368.891375ms)
+✔ owner browser harness rejects a remote database mixed with local Supabase (286.709083ms)
+✔ retained annual browser seeds canonical historical RF/AU facts without replacing the live simulation (3.196958ms)
+✔ readiness rejects when its owned process exits before an unrelated listener responds (32.774458ms)
+✔ an unrelated ready listener cannot satisfy a live child without its bind proof (49.877667ms)
+✔ readiness failure tears down a live owned process (46.733041ms)
+✔ a listener that never responds cannot outlive the readiness deadline (110.084667ms)
+✔ a ready owned process is terminated and cleanup is idempotent (53.957875ms)
+✔ forced process cleanup has a final timeout and tolerates an undefined handle (11.643167ms)
+✔ partial setup cleanup closes the database and removes only known resources (0.417458ms)
+✔ browser owner cleanup preserves every prior family in predecessor before company and user (14.091459ms)
+✔ browser owner cleanup preserves every prior family in overlap before company and user (12.997208ms)
+✔ browser owner cleanup preserves every prior family in contracted before company and user (12.313875ms)
+✔ browser owner cleanup preserves every prior family in tax-contracted before company and user (13.071958ms)
+✔ browser owner cleanup preserves every prior family in accounts-expanded before company and user (12.576625ms)
+✔ browser owner cleanup preserves every prior family in accounts-contracted before company and user (12.999125ms)
+✔ browser owner cleanup removes every tracked company before the shared owner (12.475917ms)
+✔ browser owner cleanup preserves source failure and continues independent cleanup (8.3025ms)
+✔ browser owner cleanup preserves both operation and rollback failures (3.792416ms)
+✔ browser owner cleanup fails closed for accounts-missing-family (0.57525ms)
+✔ browser owner cleanup fails closed for accounts-partial-retirement (0.183916ms)
+✔ browser owner cleanup fails closed for accounts-wrong-phase (0.443916ms)
+✔ browser owner cleanup fails closed for missing-family (0.222875ms)
+✔ browser owner cleanup fails closed for wrong-owner (0.507208ms)
+✔ browser owner cleanup fails closed for invalid-trigger-mode (2.848042ms)
+﹣ browser owner cleanup removes immutable corporate and production filing graphs (0.202625ms) # local Supabase runtime is required
+ℹ tests 28
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 712.4725

@@ -460,6 +460,61 @@
       "routes": [
         "/api/v1/company-tax/source-facts"
       ]
+    },
+    {
+      "name": "annual-accounts-filing-reads",
+      "purpose": "Returns immutable complete Accounts filing rows for one authorized company and optional year; copied expansion and rolled-back sources fail closed.",
+      "publicPackages": [
+        "talli_backend.modules.annual_accounts_filing.public"
+      ],
+      "routes": [
+        "/api/v1/annual-accounts/filing-workspace"
+      ]
+    },
+    {
+      "name": "annual-accounts-filing-preparation",
+      "purpose": "Runs owned Accounts override, review, acknowledgement, permission and manual-evidence controls with Company Access authorization; preserves existing external Audit continuations and performs no provider operation.",
+      "publicPackages": [
+        "talli_backend.modules.annual_accounts_filing.public"
+      ],
+      "routes": [
+        "/api/v1/annual-accounts/previews/{preview_id}",
+        "/api/v1/annual-accounts/overrides",
+        "/api/v1/annual-accounts/review-comments",
+        "/api/v1/annual-accounts/review-comments/{comment_id}/acknowledgements",
+        "/api/v1/annual-accounts/permissions",
+        "/api/v1/annual-accounts/test-evidence"
+      ]
+    },
+    {
+      "name": "annual-accounts-tt02-evidence-import",
+      "purpose": "Authenticates and projects Accounts TT02 evidence and commits its single owned evidence row; preserves the subsequent web Audit continuation without a provider operation.",
+      "publicPackages": [
+        "talli_backend.modules.annual_accounts_filing.public"
+      ],
+      "routes": [
+        "/api/v1/annual-accounts/tt02-evidence-imports"
+      ]
+    },
+    {
+      "name": "annual-accounts-readiness-preview",
+      "purpose": "Presents Accounts-owned readiness for supplied immutable Annual, Ledger and Corporate facts; a preview grants no durable filing authorization.",
+      "publicPackages": [
+        "talli_backend.modules.annual_accounts_filing.public"
+      ],
+      "routes": [
+        "/api/v1/annual-accounts/readiness-previews"
+      ]
+    },
+    {
+      "name": "annual-accounts-source-facts",
+      "purpose": "Publishes immutable owner-scoped Accounts source evidence from one repeatable snapshot; positive history coverage preserves production-disabled, unknown and test-only distinctions without Billing policy.",
+      "publicPackages": [
+        "talli_backend.modules.annual_accounts_filing.public"
+      ],
+      "routes": [
+        "/api/v1/annual-accounts/source-facts"
+      ]
     }
   ],
   "operationalControlState": {
@@ -478,6 +533,11 @@
     ],
     "tables": [
       "annual_notification_inbox.receipts",
+      "backend_system.annual_accounts_migration_inventory",
+      "backend_system.annual_accounts_migration_state",
+      "backend_system.annual_accounts_quarantine",
+      "backend_system.annual_accounts_reconciliations",
+      "backend_system.annual_accounts_source_rows",
       "backend_system.annual_checkout_observation_work",
       "backend_system.authority_connections_overlap_grants",
       "backend_system.banking_command_receipts",
@@ -571,7 +631,14 @@
       "supabase/contract-migrations/20260914203000_company_tax_return_preparation_contracts.sql",
       "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql",
       "supabase/contract-migrations/20260914012930_company_tax_return_contract.sql",
-      "supabase/contract-migrations/20260914022608_company_tax_return_source_contract.sql"
+      "supabase/contract-migrations/20260914022608_company_tax_return_source_contract.sql",
+      "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+      "supabase/contract-migrations/20260914092018_annual_accounts_filing_read_contracts.sql",
+      "supabase/contract-migrations/20260914093204_annual_accounts_filing_import_contract.sql",
+      "supabase/contract-migrations/20260914092924_annual_accounts_filing_preparation_contracts.sql",
+      "supabase/contract-migrations/20260914110840_annual_accounts_filing_source_contract.sql",
+      "supabase/contract-migrations/20260914112549_annual_accounts_filing_backend_binding.sql",
+      "supabase/rollback/20260914112549_annual_accounts_filing_backend_binding.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },
@@ -912,6 +979,30 @@
       "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
       "owner": "backend-system",
       "mode": "one verified owner repeatable snapshot; positive Tax migration coverage, complete enumeration and phase lock; no provider operation"
+    },
+    {
+      "port": "AnnualAccountsWorkspacePersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction",
+      "owner": "backend-system",
+      "mode": "one verified phase-gated Accounts transaction; accepted Company Access role and fresh MFA for sensitive evidence and permission writes"
+    },
+    {
+      "port": "AnnualAccountsPreparationPersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction",
+      "owner": "backend-system",
+      "mode": "one verified phase-gated Accounts transaction; accepted Company Access role and fresh MFA for sensitive evidence and permission writes"
+    },
+    {
+      "port": "AnnualAccountsEvidencePersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction",
+      "owner": "backend-system",
+      "mode": "one verified phase-gated Accounts transaction; accepted Company Access role and fresh MFA for sensitive evidence and permission writes"
+    },
+    {
+      "port": "AnnualAccountsSourcePersistence",
+      "adapter": "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction",
+      "owner": "backend-system",
+      "mode": "one verified owner repeatable snapshot; positive Accounts migration coverage, complete enumeration and phase lock; no provider operation"
     }
   ],
   "allowedDependencies": {
@@ -986,7 +1077,11 @@
       "time",
       "typing",
       "uuid",
-      "json"
+      "json",
+      "talli_backend.adapters.postgres_annual_accounts",
+      "talli_backend.application.annual_accounts_session",
+      "talli_backend.modules.annual_accounts_filing.public",
+      "talli_backend.json_transport"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",

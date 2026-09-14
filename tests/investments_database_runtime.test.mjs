@@ -3701,6 +3701,6 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
       )::text;
     `), "false:true:true:true:true");
   } finally {
-    docker(["rm", "--force", containerName]);
+    docker(["rm", "--force", "--volumes", containerName]);
   }
 });

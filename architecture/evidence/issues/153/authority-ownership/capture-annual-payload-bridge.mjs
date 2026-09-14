@@ -1,0 +1,11 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {pathToFileURL} from 'node:url';
+if(process.version!=='v24.20.0')throw new Error('Pinned Node required');
+const root=process.argv[3] ?? process.cwd();
+const {authorityToolPayload}=await import(pathToFileURL(root+'/scripts/authority-tool-payload.mjs'));
+const captured=JSON.parse(readFileSync(root+'/architecture/evidence/issues/153/characterization/legacy-pure-characterization.json'));
+const c=JSON.parse(readFileSync(root+'/tests/fixtures/authority/annual-accounts-simple-holding-2025.json'));
+const defaults={companyOrgNumber:c.company.orgNumber,companyName:c.company.name,contactEmail:'synthetic@example.test',approvalDate:'2026-06-30',confirmingRepresentative:'Synthetic Person'};
+const cases=captured.payloadCases.map(c=>{const input={...c.input,...defaults};try{return {id:c.id,input,output:{value:authorityToolPayload({operation:'annual_accounts',input})}}}catch{return {id:c.id,input,output:{error:'Local authority payload generation failed.'}}}});
+const result={runtime:process.version,sourceRevision:'57df4221',cases};const raw=JSON.stringify(result,null,2)+'\n';writeFileSync(process.argv[2],raw,{flag:'wx'});console.log(JSON.stringify({cases:cases.length,sha256:createHash('sha256').update(raw).digest('hex')}));

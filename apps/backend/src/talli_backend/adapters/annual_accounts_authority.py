@@ -1,0 +1,152 @@
+"""Fixed RR0002 TT02 HTTP adapter. A person, never this adapter, signs."""
+from __future__ import annotations
+import json
+
+from talli_backend.authority_tools._filing import FixedTransport, FilingToolError, data_id, instance_id, iso, obj, opaque, org_number, xml
+
+BASE = "https://brg.apps.tt02.altinn.no/brg/aarsregnskap-vanlig-202406"
+PLATFORM = "https://platform.tt02.altinn.no"
+
+
+from talli_backend.modules.annual_accounts_filing.public import (
+    AnnualAccountsAuthority, AnnualAccountsAuthorityError, annual_accounts_authority_adapter,
+)
+
+
+async def exchange_maskinporten_for_altinn_token(token, *, environment="test", transport=None, timeout_ms=20_000):
+    if environment not in ("test", "production"):
+        raise ValueError("Annual accounts authority environment must be test or production.")
+    host = PLATFORM if environment == "test" else "https://platform.altinn.no"
+    request = FixedTransport("ANNUAL_ACCOUNTS", AnnualAccountsAuthorityError, transport=transport, timeout_ms=timeout_ms)
+    raw, _, _, _ = await request._request(host+"/authentication/api/v1/exchange/maskinporten", "GET", token, accept="text/plain")
+    return opaque(raw)
+
+
+@annual_accounts_authority_adapter(AnnualAccountsAuthority)
+class AnnualAccountsTransport(FixedTransport):
+    def __init__(self, altinn_access_token, *, environment="test", transport=None, timeout_ms=20_000):
+        if environment != "test":
+            raise ValueError("Annual accounts production authority transport is disabled.")
+        self._token = opaque(altinn_access_token)
+        super().__init__("ANNUAL_ACCOUNTS", AnnualAccountsAuthorityError,
+            transport=transport, timeout_ms=timeout_ms, secrets=(self._token,))
+
+    def _url(self, value):
+        return f"{BASE}/instances/{instance_id(value)}"
+
+    def _task(self, value):
+        task = obj(obj(obj(value).get("process")).get("currentTask"))
+        return self.safe(task.get("altinnTaskType") or task.get("elementId"), "unknown")
+
+    def _elements(self, value, kind):
+        elements = obj(value).get("data")
+        return [obj(v) for v in elements if self.safe(obj(v).get("dataType")) == kind] if isinstance(elements, list) else []
+
+    async def create_instance(self, *, company_org_number):
+        _, result, _, _ = await self._request(BASE+"/instances/create", "POST", self._token,
+            content_type="application/json", body=json.dumps({"instanceOwner": {"organisationNumber": org_number(company_org_number)}}, separators=(",", ":")))
+        identifier = instance_id(self.safe(obj(result).get("id")))
+        identifiers = {}
+        for key, kind in (("mainForm", "Hovedskjema"), ("companyAccounts", "Underskjema")):
+            matches = [self.safe(v.get("id")) for v in self._elements(result, kind)]
+            matches = [v for v in matches if v]
+            if len(matches) != 1:
+                raise AnnualAccountsAuthorityError("Altinn did not create exactly one main form and company-accounts element.",
+                    code="ANNUAL_ACCOUNTS_DATA_ELEMENTS_MISSING")
+            identifiers[key] = data_id(matches[0])
+        return {"id": identifier, "dataIds": identifiers, "processTask": self._task(result)}
+
+    async def _upload(self, *, instance_id, data_id: str, xml: str):
+        from talli_backend.authority_tools._filing import data_id as checked_id, xml as checked_xml
+        identifier = checked_id(data_id)
+        await self._request(self._url(instance_id)+f"/data/{identifier}", "PUT", self._token,
+            content_type="application/xml", body=checked_xml(xml))
+        return {"dataId": identifier, "uploaded": True}
+
+    async def upload_main_form(self, **values):
+        return await self._upload(**values)
+
+    async def upload_company_accounts(self, **values):
+        return await self._upload(**values)
+
+    async def validate_instance(self, *, instance_id):
+        _, result, _, _ = await self._request(self._url(instance_id)+"/validate", "GET", self._token)
+        issues = result if isinstance(result, list) else obj(result).get("validationIssues")
+        if not isinstance(issues, list):
+            raise AnnualAccountsAuthorityError("Altinn did not return recognized validation evidence.",
+                code="ANNUAL_ACCOUNTS_VALIDATION_RESPONSE_INVALID")
+        severities = {1: "Error", 2: "Warning", 3: "Informational", 4: "Fixed", 5: "Success"}
+        normalized = []
+        for value in issues:
+            severity = obj(value).get("severity")
+            if type(severity) is int:
+                severity = severities.get(severity)
+            elif isinstance(severity, str):
+                severity = severity if any(name.lower() == severity.lower() for name in severities.values()) else None
+            else:
+                severity = None
+            if severity is None:
+                raise AnnualAccountsAuthorityError("Altinn returned an unknown validation issue severity.",
+                    code="ANNUAL_ACCOUNTS_VALIDATION_RESPONSE_INVALID")
+            normalized.append({"severity": severity,
+                "code": self.safe(obj(value).get("code"), "ANNUAL_ACCOUNTS_VALIDATION_ISSUE"),
+                "field": self.safe(obj(value).get("field")), "message": self.safe(obj(value).get("message"))})
+        return {"hasErrors": any(v["severity"].lower() == "error" for v in normalized), "issues": normalized}
+
+    async def lock_for_signing(self, *, instance_id):
+        _, result, _, _ = await self._request(self._url(instance_id)+"/process/next", "PUT", self._token,
+            content_type="application/json", body='{"action":"confirm"}')
+        task = obj(obj(result).get("currentTask"))
+        process_task = self.safe(task.get("altinnTaskType") or task.get("elementId"), "unknown")
+        if process_task != "signing":
+            raise AnnualAccountsAuthorityError("Altinn did not confirm the signing task.",
+                code="ANNUAL_ACCOUNTS_SIGNING_STATE_UNCONFIRMED")
+        return {"processTask": process_task, "locked": True}
+
+    async def _instance(self, identifier):
+        _, result, _, _ = await self._request(self._url(identifier), "GET", self._token)
+        if instance_id(self.safe(obj(result).get("id"))) != identifier:
+            raise AnnualAccountsAuthorityError("Altinn returned a different annual accounts instance id.",
+                code="ANNUAL_ACCOUNTS_INSTANCE_MISMATCH")
+        return obj(result)
+
+    async def get_signing_handoff(self, *, instance_id):
+        result = await self._instance(instance_id)
+        if self._task(result) != "signing":
+            raise AnnualAccountsAuthorityError("Altinn did not confirm the signing task.",
+                code="ANNUAL_ACCOUNTS_SIGNING_STATE_UNCONFIRMED")
+        return {"instanceId": instance_id, "processTask": self._task(result),
+                "signingUrl": f"{BASE}/#/instance/{instance_id}", "signed": False, "submitted": False}
+
+    async def get_submission_evidence(self, *, instance_id):
+        result = await self._instance(instance_id)
+        process, status = obj(result.get("process")), obj(result.get("status"))
+        ended, event = iso(process.get("ended")), self.safe(process.get("endEvent")) or None
+        completed = "currentTask" in process and process["currentTask"] is None and ended is not None and event is not None
+        archived_at = iso(status.get("archived"))
+        archived = status.get("isArchived") is True and archived_at is not None
+        signatures = self._elements(result, "signature")
+        signature = signatures[0] if len(signatures) == 1 else None
+        signed = signature is not None and self.safe(signature.get("contentType")) == "application/json"
+        signature_id = data_id(self.safe(signature.get("id"))) if signed else None
+        receipts = self._elements(result, "ref-data-as-pdf")
+        element = receipts[0] if len(receipts) == 1 else None
+        receipt = None
+        if element and self.safe(element.get("contentType")) == "application/pdf":
+            identifier = data_id(self.safe(element.get("id")))
+            try:
+                size = float(element.get("size"))
+            except (TypeError, ValueError):
+                size = 0
+            if isinstance(size, float) and size.is_integer() and size > 0:
+                receipt = {"dataId": identifier, "dataType": "ref-data-as-pdf",
+                        "filename": self.safe(element.get("filename"), "annual-accounts-receipt.pdf"),
+                        "contentType": "application/pdf", "sizeBytes": int(size),
+                        "reference": f"{PLATFORM}/storage/api/v1/instances/{instance_id}/data/{identifier}",
+                        "downloadUrl": self._url(instance_id)+f"/data/{identifier}"}
+        return {"instanceId": instance_id, "processCompleted": completed, "processEndedAt": ended,
+            "endEvent": event, "signed": signed, "signatureDataId": signature_id,
+            "submitted": completed and signed and archived and receipt is not None,
+            "archived": archived, "archivedAt": archived_at,
+            "archiveReference": f"{PLATFORM}/storage/api/v1/instances/{instance_id}" if archived else None,
+            "receipt": receipt}

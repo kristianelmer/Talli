@@ -1,0 +1,30 @@
+architecture: Tax source composition requires its exact body and unchanged sibling persistence chains: apps/web/app/actions.ts operation:refreshAnnualReadinessSnapshots
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:filing_overrides is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:authority_permissions is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:filing_previews is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:filing_submissions is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:filing_submissions is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:filing_review_comments is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:filing_overrides is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:filing_previews is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:filing_review_comments is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:filing_previews is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:filing_overrides is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:filing_review_comments is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:authority_permissions is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:authority_test_runs is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:authority_permissions is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:authority_test_runs is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:filing_previews is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: future frozen scope resource table:filing_submissions is not owned by active or exited capability
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:queueDeadlineReminders
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:refreshAnnualReadinessSnapshots
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:refreshAnnualReadinessSnapshots
+architecture: compat-audit-persistence: legacy operation changed: apps/web/app/actions.ts operation:acknowledgeFilingReviewComment
+architecture: compat-audit-persistence: legacy operation changed: apps/web/app/actions.ts operation:addFilingOverride
+architecture: compat-audit-persistence: legacy operation changed: apps/web/app/actions.ts operation:addFilingReviewComment
+architecture: compat-audit-persistence: legacy operation changed: apps/web/app/actions.ts operation:confirmAuthorityPermission
+architecture: compat-audit-persistence: legacy operation changed: apps/web/app/actions.ts operation:queueDeadlineReminders
+architecture: compat-audit-persistence: legacy operation changed: apps/web/app/actions.ts operation:recordAuthorityTestEvidence
+architecture: compat-audit-persistence: legacy operation changed: apps/web/app/actions.ts operation:refreshAnnualReadinessSnapshots
+architecture: compat-notification-persistence: legacy operation changed: apps/web/app/actions.ts operation:queueDeadlineReminders

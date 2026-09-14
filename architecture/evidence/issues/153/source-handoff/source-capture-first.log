@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/capture-accounts-source.py", line 22, in <module>
+    facts=project_annual_accounts_source(query,source)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py", line 604, in project_annual_accounts_source
+    from .source_facts import project
+  File "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/src/talli_backend/modules/annual_accounts_filing/source_facts.py", line 52
+    pending.append(('close', (item, b'}' if mapping else b']'))
+                  ^
+SyntaxError: '(' was never closed

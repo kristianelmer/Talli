@@ -1,0 +1,507 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "verdict": "FINDINGS",
+  "baseRevision": "57df4221ba8341ae2b7c5e9942eb946e2e557088",
+  "reviewedRevision": "50bfe67a17faf3bab714a51372a85d7e16886671",
+  "diffCommand": "git diff 57df4221ba8341ae2b7c5e9942eb946e2e557088...50bfe67a17faf3bab714a51372a85d7e16886671",
+  "commits": [
+    "50bfe67a17faf3bab714a51372a85d7e16886671 refactor(accounts): own test rehearsal and retire the Node payload bridge"
+  ],
+  "findings": [
+    {
+      "id": "SPEC-153-AUTH-1",
+      "severity": "P2",
+      "file": "apps/backend/src/talli_backend/authority_tools/annual_accounts_payload.py",
+      "startLine": 8,
+      "endLine": 9,
+      "title": "Preserve false-like Annual input defaults at the CLI mapping",
+      "spec": "GH-153-A1: Supported annual-accounts cases produce outputs identical to current schema and TT02 evidence.",
+      "description": "Using the unchanged valid 2025 payload fixture, annualData false, 0, -0.0 or empty string returns original XML and empty feedback through the original 57df4221 _filing.payload/Node subprocess. The new mapping passes these scalar values into AnnualAccountsSource; calculation calls .get() and the wrapper raises ValueError: Local authority payload generation failed. Raw rehearsal case annualData reaches this path unchanged. Preserve the released false-like behavior at the boundary without replacing truthy malformed shapes with absent data."
+    },
+    {
+      "id": "SPEC-153-AUTH-2",
+      "severity": "P2",
+      "file": "apps/backend/src/talli_backend/authority_tools/annual_accounts_payload.py",
+      "startLine": 10,
+      "endLine": 10,
+      "title": "Reject non-array Ledger payloads before calculating",
+      "spec": "GH-153-A1 plus #132 characterization of exact supported outputs and errors.",
+      "description": "For direct fixed payload generation, ledgerEntries {} or empty string previously fails because the released bridge expects an array. The new mapping admits both values; Python iterates them as empty and emits zero-balance XML without feedback. Require the accepted collection shape while preserving missing/null defaults. The outer rehearsal already normalizes these false-like Ledger values; this finding concerns the migrated fixed payload/public mapping boundary, not a claim that the live rehearsal newly accepts such cases."
+    }
+  ],
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-review-50bfe67a.md",
+  "reportSha256": "0bf299afce9a466727db44c9e1c2190b14281c01d4088df16db7a334a9684823",
+  "manifestArtifactChecks": [
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/evidence-spec-review-57df4221.md",
+      "sha256": "6bf0d506071a96d00a813413c80833996c1c0b70156cf08277a2cbc432bbb26a"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/evidence-standards-review-57df4221.json",
+      "sha256": "8d88af8a6e8c1c38ff9acafa716ca0bd58f04cb67a2aa472169c4ddd161dec9e"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/authority-owned-second-tests.log",
+      "sha256": "7d9fef575fc0b7d6d4c8495a9f9d20e65f043c22111b9f6d98ec6847cb94f0d1"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/authority-owned-first-tests.log",
+      "sha256": "98e3ff7b6ba7f9a5458655c217779e5e0845e88cc67923e6e72b05bf605787d2"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/authority-owned-architecture.log",
+      "sha256": "5687d8074e613b4763b138f43af69d8dba6f6bf6f829a5d2254d6aba263182b3"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/legacy-rehearsal-traces.json",
+      "sha256": "2d50e351a1bc3a4ea5debd3b0cf031df1cd4e4fc9063dff50bb77b85af10bd36"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/authority-owned-final-tests.log",
+      "sha256": "720dfc8cfe722ebe9dc3a78f6c0bd33aad25bbaae81c6815c2362105e50b4597"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/verification.md",
+      "sha256": "91622c56723e368901d89706cb3334621a51dd84f2d9c7102fd70b77a4bac569"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/authority-owned-third-tests.log",
+      "sha256": "673ecd31a411f24ecdeaac8d324648450fed0677c0b0088c5caf2af3a267cd2c"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/authority-owned-architecture-final.log",
+      "sha256": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/capture-annual-rehearsal.py",
+      "sha256": "e849eccdca3f7a59c42e25276b2ca6133efa2318cf42c0454514d038ee50bc66"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/evidence-spec-review-57df4221.json",
+      "sha256": "cfe49222a52f15443994f9b3dec85d9528e60a439b0e624f8c2b72b918b88818"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/evidence-standards-review-57df4221.md",
+      "sha256": "62a8ee50882cc4f94c4d68a7f9dfde9f6dbf0a49ef9dd0d17d1468aabcacd7a6"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/capture-annual-payload-bridge.mjs",
+      "sha256": "167217af9ed26ba693e3d5add76c2722d2343636dec576ae5606cbc57a718be9"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/legacy-annual-payload-bridge.json",
+      "sha256": "7ba75e8a21aee7e66050dadb4c4db2d1dc9d142d01fa6bc2867e3b4e6bebbbd5"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/date_parse.py",
+      "sha256": "a7b4cb590c607e0a246b6c44098861dd3171f800af22a521850f5598838a64b6"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py",
+      "sha256": "fd15a810c19391d2dcf893114f2569624e940f125f6bb081cb74abe0a37acb7d"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py",
+      "sha256": "6cc14a38c9d0879b568d144a55ba2af1f92ec993dab0e9e8819c418260237e3f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/rendering.py",
+      "sha256": "222fac8e3a0adaaa1b985cb320dd374f52511dc2c46a818b6b8141624e1ddbc3"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/V8-LICENSE",
+      "sha256": "6ab33af8774a0f396ee3aeeb761e3229057682d6f9fa7f572e390c2cb3a6e509"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/calculation.py",
+      "sha256": "c579d40eb3ef800073219cc156e6bb6537d35dc10ed54e93274d72878d2532ec"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/__init__.py",
+      "sha256": "bbf344ff2db22c18f7f3081b331c1939f7b49daa110fa97ed2b6a49113c8b726"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
+      "sha256": "78a1290a01cec3e7d0d5b5269552b528e7ffc50e4d3de54148971a01f5b9527f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py",
+      "sha256": "c7b8996391bf831d9530cfe9717d8353231126167ba2d0aed19e52efd764ceaf"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/rehearsal.py",
+      "sha256": "07c19c3061bed8364a59aa580f7f380cb6f35e6cb3794a06844c741d5c77874f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/numbers.py",
+      "sha256": "9a9bc64da8087e312af6c21887682489b74c1883434d0077ec78d374e552c694"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json",
+      "sha256": "65aa3c008412d7f824905ce9f9206b5aa3d6792d921cc74c9b4b2cddf2b30528"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/readiness.py",
+      "sha256": "07783baea9e4f2085b3ba3d3620f1c896b93045dba765c26f9c3dc44be2e2234"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/evidence.py",
+      "sha256": "a6be36e7b61699f5e91b463b9ba23dfdbfe6f1fd57d32d141060122dd1fdc69e"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/_filing.py",
+      "sha256": "39300305cbfee0df3ff7a544a32745c3e41c4ad18a2daf6d5ccb5d8d397fe45b"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/annual_accounts_test.py",
+      "sha256": "7cfb1c972f71a7b74999a22e286eac84a6e6908ab3a52f883a5460e744eccc54"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/annual_accounts_payload.py",
+      "sha256": "50f09e107c82e871c149fd1b8469ddfcd381e70442b7cbd788aaa7a3b72db155"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/annual_accounts_authority.py",
+      "sha256": "a2aae81fc49e3a74570bb8e8f82876d8c83b7c047ab9ba7a61c3f4bae1773ffc"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/local_annual_accounts_rehearsal.py",
+      "sha256": "4449eed67ccc9b889f90c1b03f3f9771d15fd0ddccffecd0264801390dd9fc13"
+    },
+    {
+      "path": "apps/backend/tests/test_authority_filing_tools.py",
+      "sha256": "3ec111856a50b6e2f3e69760f0232de2c94a372275596849a8242a620514a869"
+    },
+    {
+      "path": "apps/backend/tests/test_authority_filing_transports.py",
+      "sha256": "757f128c66587f68aa5f3c82b90639910095a14edef5590f687e7124aec10a44"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_authority_ownership.py",
+      "sha256": "7be72f616976a9d13f2903cb631e589c4efa73ac096f83eeadae1a9c535be06b"
+    },
+    {
+      "path": "apps/backend/tests/annual_accounts_rehearsal_trace.py",
+      "sha256": "ea588b4b80272b91dc583a28503838ead5147b9da4872fc8c8943753f384c562"
+    },
+    {
+      "path": "package.json",
+      "sha256": "4b6c02008a343285481cd86d2ccc6266179f302afbf6d831a2ef0ea6c0017d98"
+    },
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9"
+    }
+  ],
+  "sourceBindings": [
+    {
+      "path": "apps/backend/src/talli_backend/adapters/annual_accounts_authority.py",
+      "status": "present",
+      "sha256": "a2aae81fc49e3a74570bb8e8f82876d8c83b7c047ab9ba7a61c3f4bae1773ffc",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/local_annual_accounts_rehearsal.py",
+      "status": "present",
+      "sha256": "4449eed67ccc9b889f90c1b03f3f9771d15fd0ddccffecd0264801390dd9fc13",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/_filing.py",
+      "status": "present",
+      "sha256": "39300305cbfee0df3ff7a544a32745c3e41c4ad18a2daf6d5ccb5d8d397fe45b",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/annual_accounts_payload.py",
+      "status": "present",
+      "sha256": "50f09e107c82e871c149fd1b8469ddfcd381e70442b7cbd788aaa7a3b72db155",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/annual_accounts_test.py",
+      "status": "present",
+      "sha256": "7cfb1c972f71a7b74999a22e286eac84a6e6908ab3a52f883a5460e744eccc54",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
+      "status": "present",
+      "sha256": "78a1290a01cec3e7d0d5b5269552b528e7ffc50e4d3de54148971a01f5b9527f",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py",
+      "status": "present",
+      "sha256": "6cc14a38c9d0879b568d144a55ba2af1f92ec993dab0e9e8819c418260237e3f",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json",
+      "status": "present",
+      "sha256": "65aa3c008412d7f824905ce9f9206b5aa3d6792d921cc74c9b4b2cddf2b30528",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py",
+      "status": "present",
+      "sha256": "fd15a810c19391d2dcf893114f2569624e940f125f6bb081cb74abe0a37acb7d",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/rehearsal.py",
+      "status": "present",
+      "sha256": "07c19c3061bed8364a59aa580f7f380cb6f35e6cb3794a06844c741d5c77874f",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "apps/backend/tests/annual_accounts_rehearsal_trace.py",
+      "status": "present",
+      "sha256": "ea588b4b80272b91dc583a28503838ead5147b9da4872fc8c8943753f384c562",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_authority_ownership.py",
+      "status": "present",
+      "sha256": "7be72f616976a9d13f2903cb631e589c4efa73ac096f83eeadae1a9c535be06b",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "apps/backend/tests/test_authority_filing_tools.py",
+      "status": "present",
+      "sha256": "3ec111856a50b6e2f3e69760f0232de2c94a372275596849a8242a620514a869",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "apps/backend/tests/test_authority_filing_transports.py",
+      "status": "present",
+      "sha256": "757f128c66587f68aa5f3c82b90639910095a14edef5590f687e7124aec10a44",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/authority-owned-architecture-final.log",
+      "status": "present",
+      "sha256": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/authority-owned-architecture.log",
+      "status": "present",
+      "sha256": "5687d8074e613b4763b138f43af69d8dba6f6bf6f829a5d2254d6aba263182b3",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/authority-owned-final-tests.log",
+      "status": "present",
+      "sha256": "720dfc8cfe722ebe9dc3a78f6c0bd33aad25bbaae81c6815c2362105e50b4597",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/authority-owned-first-tests.log",
+      "status": "present",
+      "sha256": "98e3ff7b6ba7f9a5458655c217779e5e0845e88cc67923e6e72b05bf605787d2",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/authority-owned-second-tests.log",
+      "status": "present",
+      "sha256": "7d9fef575fc0b7d6d4c8495a9f9d20e65f043c22111b9f6d98ec6847cb94f0d1",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/authority-owned-third-tests.log",
+      "status": "present",
+      "sha256": "673ecd31a411f24ecdeaac8d324648450fed0677c0b0088c5caf2af3a267cd2c",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/capture-annual-payload-bridge.mjs",
+      "status": "present",
+      "sha256": "167217af9ed26ba693e3d5add76c2722d2343636dec576ae5606cbc57a718be9",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/capture-annual-rehearsal.py",
+      "status": "present",
+      "sha256": "e849eccdca3f7a59c42e25276b2ca6133efa2318cf42c0454514d038ee50bc66",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/evidence-spec-review-57df4221.json",
+      "status": "present",
+      "sha256": "cfe49222a52f15443994f9b3dec85d9528e60a439b0e624f8c2b72b918b88818",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/evidence-spec-review-57df4221.md",
+      "status": "present",
+      "sha256": "6bf0d506071a96d00a813413c80833996c1c0b70156cf08277a2cbc432bbb26a",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/evidence-standards-review-57df4221.json",
+      "status": "present",
+      "sha256": "8d88af8a6e8c1c38ff9acafa716ca0bd58f04cb67a2aa472169c4ddd161dec9e",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/evidence-standards-review-57df4221.md",
+      "status": "present",
+      "sha256": "62a8ee50882cc4f94c4d68a7f9dfde9f6dbf0a49ef9dd0d17d1468aabcacd7a6",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/legacy-annual-payload-bridge.json",
+      "status": "present",
+      "sha256": "7ba75e8a21aee7e66050dadb4c4db2d1dc9d142d01fa6bc2867e3b4e6bebbbd5",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/legacy-rehearsal-traces.json",
+      "status": "present",
+      "sha256": "2d50e351a1bc3a4ea5debd3b0cf031df1cd4e4fc9063dff50bb77b85af10bd36",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/manifest.json",
+      "status": "present",
+      "sha256": "0869b6dc43bf492ff4b80ca3bec4dd7fcf4628ee0cba08dbd768d505cb22ecc2",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "architecture/evidence/issues/153/authority-ownership/verification.md",
+      "status": "present",
+      "sha256": "91622c56723e368901d89706cb3334621a51dd84f2d9c7102fd70b77a4bac569",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "package.json",
+      "status": "present",
+      "sha256": "4b6c02008a343285481cd86d2ccc6266179f302afbf6d831a2ef0ea6c0017d98",
+      "bindingRevision": "50bfe67a17faf3bab714a51372a85d7e16886671"
+    },
+    {
+      "path": "scripts/authority-tool-payload.mjs",
+      "status": "deleted",
+      "sha256": "d7232070f18843a688e6799fcb032bafeda7430b91a4150d5ccf15742b88ee9f",
+      "bindingRevision": "57df4221ba8341ae2b7c5e9942eb946e2e557088"
+    },
+    {
+      "path": "tests/authority_tool_payload.test.mjs",
+      "status": "deleted",
+      "sha256": "71aaa6f693eba6adc4556ef08227ebc06bbfc5c84d79b726894874ba9bde570e",
+      "bindingRevision": "57df4221ba8341ae2b7c5e9942eb946e2e557088"
+    }
+  ],
+  "unchangedHttpMethods": [
+    "__init__",
+    "_url",
+    "_task",
+    "_elements",
+    "create_instance",
+    "_upload",
+    "upload_main_form",
+    "upload_company_accounts",
+    "validate_instance",
+    "lock_for_signing",
+    "_instance",
+    "get_signing_handoff",
+    "get_submission_evidence"
+  ],
+  "credentialFactoryAndCliMainByteIdentical": true,
+  "originalCriteriaUnchangedAndPending": true,
+  "privateArtifacts": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-tests-50bfe67a.log",
+      "sha256": "b65dd2da3f7814f62149a3fa8ded5aea1e1e8ff94404960f5bcce276bfc6df2e"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-recapture-traces-50bfe67a.json",
+      "sha256": "2d50e351a1bc3a4ea5debd3b0cf031df1cd4e4fc9063dff50bb77b85af10bd36"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-recapture-payload-50bfe67a.json",
+      "sha256": "7ba75e8a21aee7e66050dadb4c4db2d1dc9d142d01fa6bc2867e3b4e6bebbbd5"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-replay-depth-50bfe67a.py",
+      "sha256": "4e2e179d3595c3300ea2c244ac605a17210f940e5aa4a1e0f46668c8d2e2bcd1"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-replay-depth-50bfe67a.json",
+      "sha256": "1b34743f19cc9d071364c9cdb81c5ace43c133b817e7d2421bf887cbc8d048d0"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-payload-edges-50bfe67a.py",
+      "sha256": "54199ae8f9625244f6e01143bfc8614563a02a7d27b3b670d43175e8d5aaadf2"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-payload-edges-inputs-50bfe67a.json",
+      "sha256": "70bb5bd0c84d9fad31bc4ba652cc0d61d1e327495de8f5f92420f198f8d83902"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-payload-edges-results-50bfe67a.json",
+      "sha256": "ab7bb93be5f3a2405c4cf7747602c9bb3e5cde768fefb790c16e7666b6be0471"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-actual-bridge-50bfe67a.py",
+      "sha256": "17e9612609434b39bd1c6705935135aef15ee25e33364946218b2f7e3d1bbeac"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-actual-bridge-results-50bfe67a.json",
+      "sha256": "14fdcb8472558dbd78c33d9316d7cc5df670e84b66da06895c504c3944768fe4"
+    }
+  ],
+  "checks": [
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<private-pin>:<private-pin>/apps/backend/src:<private-pin>/apps/backend/tests PATH=<pinned-node-bin>:<backend-venv>/bin:/usr/bin:/bin <backend-venv>/bin/python -m pytest -q -c /dev/null --rootdir=. -p no:cacheprovider apps/backend/tests/test_authority_filing_tools.py apps/backend/tests/test_authority_filing_transports.py apps/backend/tests/test_annual_accounts_authority_ownership.py",
+      "passed": 226,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "GIT_DIR=<shared-readonly-git-dir> PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<private-pin>/apps/backend/src:<private-pin>/apps/backend/tests <backend-venv>/bin/python architecture/evidence/issues/153/authority-ownership/capture-annual-rehearsal.py <private>/authority-spec-recapture-traces-50bfe67a.json",
+      "cases": 17,
+      "byteExact": true
+    },
+    {
+      "command": "<pinned-node> architecture/evidence/issues/153/authority-ownership/capture-annual-payload-bridge.mjs <private>/authority-spec-recapture-payload-50bfe67a.json <verified-private-57df-snapshot>",
+      "cases": 67,
+      "byteExact": true
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<private-pin>/apps/backend/src <backend-venv>/bin/python /Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-payload-edges-50bfe67a.py",
+      "cases": 195,
+      "mismatches": 4,
+      "note": "Three false-like Annual cases plus empty Ledger object; additional empty-string cases verified below."
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<private-pin>/apps/backend/src <backend-venv>/bin/python /Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-actual-bridge-50bfe67a.py",
+      "cases": 10,
+      "mismatches": 6,
+      "note": "Actual original Python _filing.payload starts pinned Node bridge. Controls match; four false-like Annual and two malformed Ledger values differ."
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<private-pin>/apps/backend/src <backend-venv>/bin/python /Users/kristianelmer/.codex/issue-192-private/issue153-entry/authority-spec-replay-depth-50bfe67a.py",
+      "comparisons": 3,
+      "mismatches": 0,
+      "depths": [
+        100,
+        400,
+        600
+      ]
+    }
+  ],
+  "runtime": {
+    "pythonPath": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+    "pythonVersion": "Python 3.12.12",
+    "nodePath": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+    "nodeVersion": "v24.20.0"
+  },
+  "limitations": [
+    "No provider/network authority operation or database/browser mutation; HTTP tests use supplied mocks.",
+    "Trace producer redirects original transport import and injects file/clock/revision/provider seams; unchanged actual old run body was verified.",
+    "No full-stage gate, live web cutover, authorization/source completeness or production acceptance claim."
+  ]
+}

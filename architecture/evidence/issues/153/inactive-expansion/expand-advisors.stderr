@@ -1,0 +1,3 @@
+Connecting to remote database...
+[31mfailed to connect to <REDACTED>: effect/sql/SqlError: PgClient: Failed to connect[39m
+Try rerunning the command with --debug to troubleshoot the error.

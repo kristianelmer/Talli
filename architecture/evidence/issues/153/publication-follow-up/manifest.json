@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0",
+  "status": "PUBLICATION_AND_MFA_CONTROLS_VERIFIED_STAGE_EXIT_PENDING",
+  "baseRevision": "53b3ae3e5e3dcaf020e25113a5a31f9b8ca65701",
+  "originalFailedGate": {
+    "privatePath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/full-gate-53b3ae3e-original.log",
+    "sha256": "364e2e331ab772a954d8c081f897a058b70b6b4184b264eaf24adeabcdcac7a1",
+    "publishedDerivative": "full-gate-53b3ae3e-redacted.log",
+    "transformation": "Only synthetic test key header markers redacted"
+  },
+  "artifacts": {
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md": "6d998d786e923988bb26ee8fde4e3ce0b86085bbdd62a305942a973d5e194aa4",
+    "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "5a4b7c8766e93fcd283ab256a26fc965c1b74e691f330860abdf020775db062b",
+    "architecture/evidence/issues/153/dependency-integration/manifest.json": "163d20b8263a60f562d551d4b84c0c3915e0e5785febc70a9ab603e0f7c20c60",
+    "architecture/evidence/issues/153/dependency-integration/rehearsal-tail-second.log": "33ee9d7f31d51035fa8703f2251eb656ecbbd87d70c4a1f7384b516a545f51cf",
+    "architecture/evidence/issues/153/publication-follow-up/accounts-dependency-tests-expired-mfa.log": "e00a8e9d5d5f92ac7b5a3d57f026a877a602eb7764494af251692cd1c4355959",
+    "architecture/evidence/issues/153/publication-follow-up/accounts-final-docs-architecture.log": "23091325e26ea3bbb93531a2dafd538355890112315f0b6bcc130fa06bec06be",
+    "architecture/evidence/issues/153/publication-follow-up/credential-evidence-redaction-fixed.log": "d4cdc9064dc22e9990a6515dc094367e21aaa40cd46c74990fe6390f4d1a72b3",
+    "architecture/evidence/issues/153/publication-follow-up/dependency-integration-standards-review-53b3ae3e.json": "493851148f9c6ac898236a6ec0d3f8f05508f745d5e9a398dcb4dac94a265cd1",
+    "architecture/evidence/issues/153/publication-follow-up/dependency-integration-standards-review-53b3ae3e.md": "c15aac6ba3cba3c4cd5887c24ed6372ceebbf37addf7fc066e84ef9da54a0f41",
+    "architecture/evidence/issues/153/publication-follow-up/full-gate-53b3ae3e-redacted.log": "0c93ff1ae3a59932df390ad5cf7156b74b5b633f66ceed729f73117cd9da0ada",
+    "architecture/evidence/issues/153/publication-follow-up/verification.md": "363fd8240d84b6ac2cdc44865d789dad3238874e4c8bc54823281a40cb991279"
+  }
+}

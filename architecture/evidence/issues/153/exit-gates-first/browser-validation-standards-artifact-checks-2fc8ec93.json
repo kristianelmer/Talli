@@ -1,0 +1,99 @@
+{
+  "verifiedManifestArtifacts": 26,
+  "exactPrivateAdoptions": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-spec-bindings-5915af48.json",
+      "sha256": "a1466d84e0c70a254df2559952aee5921d07ab42b9468a5cb2101cc10cd01dbd"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-spec-probe-5915af48.json",
+      "sha256": "82d00f6a857e1459998259d396481a3491f4ca80fda617f1a21c982063087742"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-spec-probe-5915af48.mjs",
+      "sha256": "bbbe03970d7a8cd9c4c8d21792581a44931b67f46ade2cd2bd96a9579494413c"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-spec-review-5915af48.json",
+      "sha256": "c5c2671eaf7acf477abdd4145dee943a5c5c37e87bdca4ee79fb307cfd927721"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-spec-review-5915af48.md",
+      "sha256": "903c55cad1a759dc76484d06a8d1565ba2fdf8980cd5197c51e6c248e93f379d"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-spec-tests-5915af48.log",
+      "sha256": "d22bd355cad3dfec1980c8d4cd27f8173b1b7d54a655b8b4213af6d6c4d2b891"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-spec-workspace-5915af48.json",
+      "sha256": "ab427095c5d91ae5af2c78b6a48ec1e87307910d05adfa644b177d6d3939bf8f"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-standards-artifact-checks-5915af48.json",
+      "sha256": "1dd8824d3df475bd27a9dba1a4135f97caa10a53337d957884e03852bbba9c15"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-standards-review-5915af48.json",
+      "sha256": "8ed88a8918aa838a82cfb3d3d59ae584a4627ba5f49cc6b517c74a672f480a1d"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-standards-review-5915af48.md",
+      "sha256": "5f3a3406a56361dba8bde09be76671cd04b3c085750ff260c589494a26c7203a"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-standards-selector-probe-5915af48.mjs",
+      "sha256": "b5342f2837994340d6fd8a5fcaf970c3632df1420b160a089b48e45a7d870979"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-standards-selector-results-5915af48.json",
+      "sha256": "b90b01c94c118e98a4c137958251a8bb192f216fda9fc14c3d25a66efad32a0f"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-standards-tests-5915af48.log",
+      "sha256": "7a94bae5b0b5815cde023d57c336d144e09b9333ed61d0aa2211992b728d70d7"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/rf-projection-standards-workspace-5915af48.json",
+      "sha256": "eba6b3b3524b7eb2028db6f157596c1eaaee1de31c8c178ee21742f1a31ff925"
+    }
+  ],
+  "runtimeSourceBindings": {
+    "tests/browser_annual_accounts_filing.mjs": "06e5735299c9bdba7c7fffb83df781ff7617c23979a54fd13a536646baf84be0",
+    "tests/support/tax-browser-fixture.mjs": "84b2fe6420190772cf9d121c1320aaf8c9961fa553e6dbf799e3eedae7836704",
+    "tests/support/rf1086-fixture-access.mjs": "b91fdf5b688b180a703642b70b91567154400cace12bebd292e6c9927a38a362",
+    "tests/support/rf1086-workspace-api.mjs": "cff638bfe761732ddb513683be516a522dbb5ca57df985acd9dba3e9e22b68a4",
+    "tests/browser_shareholder_register_filing.mjs": "f91b8c24b27fd2e9ee618987f5a5e591b08f8f8a9e13c39dbda26b9b194c7146",
+    "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d"
+  },
+  "sourceScopeManifest": {
+    "status": "TARGETED_RUNTIME_HARNESS_NOT_COMPLETE_GATE",
+    "source": "scripts/test-supabase-local.sh",
+    "sourceSha256": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+    "omittedTestCommands": [
+      "test:ledger-database-lifecycle",
+      "test:banking-database-lifecycle",
+      "test:investments-database-lifecycle",
+      "test:documents-database-lifecycle",
+      "test:marketing-measurement-database",
+      "test:validation-observation",
+      "test:supabase-predecessor",
+      "test:supabase-rf-workspace",
+      "test:browser-owner",
+      "test:authority-connections-database",
+      "test:browser-owner-annual"
+    ],
+    "billing": "Original node contract/rollback/recutover suite only; previously passing 699 Python tests omitted",
+    "preserved": "original isolated-stack startup, topology transformations, Ledger authority, Corporate lifecycle, Billing contract, Tax and Accounts full SQL/activation, advisors, RF feedback and four final filing browser commands, teardown",
+    "harnessSha256": "d8c06061274890920c99ed28a59faf6b752e8a94f4c32a37efe7346df69a6190"
+  },
+  "onlyTwoTestSourcesChanged": true,
+  "unchangedControls": {
+    "architecture/compatibility.json": "e06ddbbc974bbaa7f418eced549bef1c02e3b29d4e12a6851ed503428aa83e10",
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+    "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+    "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+    "package.json": "47b34c14544e0ee80570af051555d1f87e8633576fcef98e74cb9208b2ec9339",
+    "apps/web/app/(owner)/workspace/page.tsx": "806edef6866d70005699fb34e795bddd70bcdedce538aa0727a249decd592107"
+  }
+}

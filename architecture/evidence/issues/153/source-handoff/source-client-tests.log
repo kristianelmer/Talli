@@ -1,0 +1,11 @@
+✔ Accounts source facts bind complete history to authenticated company/year evidence (32.039708ms)
+✔ Accounts workspace uses authenticated uncached transport and rejects foreign scope (0.642791ms)
+✔ Accounts import posts original evidence once and validates the inserted reference result (0.345375ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 191.161875

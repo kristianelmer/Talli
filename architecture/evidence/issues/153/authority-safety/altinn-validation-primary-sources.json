@@ -1,0 +1,15 @@
+{
+  "revision": "a25765548616c4b0f777cfd63b598dd2e188f280",
+  "sources": [
+    {
+      "url": "https://raw.githubusercontent.com/Altinn/app-lib-dotnet/a25765548616c4b0f777cfd63b598dd2e188f280/src/Altinn.App.Core/Models/Validation/ValidationIssue.cs",
+      "sha256": "e61a6f246c8026b797213538dbea5a3062dc2163dbfa37ffa0ec3ad44020510a",
+      "file": "ValidationIssue.cs"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/Altinn/app-lib-dotnet/a25765548616c4b0f777cfd63b598dd2e188f280/src/Altinn.App.Core/Models/Validation/ValidationIssueSeverity.cs",
+      "sha256": "2f65898d68ad71d7ddf8cf381df4dd65e54a59864ca9386e57c302f88779aff2",
+      "file": "ValidationIssueSeverity.cs"
+    }
+  ]
+}

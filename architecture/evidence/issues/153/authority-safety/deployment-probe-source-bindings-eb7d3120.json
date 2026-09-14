@@ -1,0 +1,534 @@
+{
+  "revision": "eb7d312054c32a8e94dd9d0c8bf9f22dcf9a12fa",
+  "changedNonEvidenceFiles": 132,
+  "files": [
+    {
+      "path": "apps/backend/pyproject.toml",
+      "sha256": "758c85cdb20e25d0edbaad99e674c3033435cfbd95e76f6ca76ea0390273fc53"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/annual_accounts_authority.py",
+      "sha256": "a2aae81fc49e3a74570bb8e8f82876d8c83b7c047ab9ba7a61c3f4bae1773ffc"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/local_annual_accounts_rehearsal.py",
+      "sha256": "4449eed67ccc9b889f90c1b03f3f9771d15fd0ddccffecd0264801390dd9fc13"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/postgres_annual_accounts.py",
+      "sha256": "3f9c862abcf530d24a1c60381fd74089c46d41d9f88893cf110cf7b5ef699c15"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/annual_accounts_session.py",
+      "sha256": "318a4555953c7685fc7e73225495f49c4b5a4af52934c985f17b36ee0c2438a0"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/annual_accounts_workflow.py",
+      "sha256": "e602ed24b11d4586112461624a7d0334029a779d525eb5868c6bbbc1947332c9"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/_filing.py",
+      "sha256": "39300305cbfee0df3ff7a544a32745c3e41c4ad18a2daf6d5ccb5d8d397fe45b"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/annual_accounts_payload.py",
+      "sha256": "09d2d1300fc6726b8b010998d2d033f0c2c548ea0e43df341b03fcc5d7263b09"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/annual_accounts_test.py",
+      "sha256": "7cfb1c972f71a7b74999a22e286eac84a6e6908ab3a52f883a5460e744eccc54"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/json_transport.py",
+      "sha256": "bdb2b5b12ff9268a24c83cbff234077ab73853408e84f3832e6abe24e3d210c4"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "93ce56a4e2a91c9eb8eb051a78adf9a8e2c8a7a7e2964aa4f3814018c6ba72bb"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
+      "sha256": "6d998d786e923988bb26ee8fde4e3ce0b86085bbdd62a305942a973d5e194aa4"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/V8-LICENSE",
+      "sha256": "6ab33af8774a0f396ee3aeeb761e3229057682d6f9fa7f572e390c2cb3a6e509"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/__init__.py",
+      "sha256": "bbf344ff2db22c18f7f3081b331c1939f7b49daa110fa97ed2b6a49113c8b726"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py",
+      "sha256": "6cc14a38c9d0879b568d144a55ba2af1f92ec993dab0e9e8819c418260237e3f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/calculation.py",
+      "sha256": "c579d40eb3ef800073219cc156e6bb6537d35dc10ed54e93274d72878d2532ec"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/date_parse.py",
+      "sha256": "a7b4cb590c607e0a246b6c44098861dd3171f800af22a521850f5598838a64b6"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/evidence.py",
+      "sha256": "a6be36e7b61699f5e91b463b9ba23dfdbfe6f1fd57d32d141060122dd1fdc69e"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json",
+      "sha256": "afd4ab67224dea9c27dfe3023d1f930ece1ddbfea6ae7df43fdc7d8aa2871854"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/numbers.py",
+      "sha256": "9a9bc64da8087e312af6c21887682489b74c1883434d0077ec78d374e552c694"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py",
+      "sha256": "c7b8996391bf831d9530cfe9717d8353231126167ba2d0aed19e52efd764ceaf"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/preparation.py",
+      "sha256": "54645f74a531f0df987e3057e984e282886eb931a297216b55aa559c3c748ed3"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py",
+      "sha256": "5c4c3127f21f9529f02c58504a18f91bbe5138d7ae8e98a3a1831f349255ece2"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/readiness.py",
+      "sha256": "07783baea9e4f2085b3ba3d3620f1c896b93045dba765c26f9c3dc44be2e2234"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/rehearsal.py",
+      "sha256": "07c19c3061bed8364a59aa580f7f380cb6f35e6cb3794a06844c741d5c77874f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/rendering.py",
+      "sha256": "222fac8e3a0adaaa1b985cb320dd374f52511dc2c46a818b6b8141624e1ddbc3"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/source_facts.py",
+      "sha256": "f4ce835fddb00cbb646e793bf7b33525449e9a81ef395b1d92b540920bebe84f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/workspace.py",
+      "sha256": "d2313feff725c07db289a3ce99806f28a51bc2a16bfc4a42166e08c0e1efbb2f"
+    },
+    {
+      "path": "apps/backend/tests/accounts_database_fixtures.py",
+      "sha256": "987bd221fb2776982f0d0dc4352e6b93c64e3e83f25a4e7be74fc45ddd89114d"
+    },
+    {
+      "path": "apps/backend/tests/annual_accounts_rehearsal_trace.py",
+      "sha256": "ea588b4b80272b91dc583a28503838ead5147b9da4872fc8c8943753f384c562"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_authority_ownership.py",
+      "sha256": "fbbbbe04141e18dd6dbc613a1e0c3f4e26cf847d7ad8287148ac3be85b662aaf"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_evidence.py",
+      "sha256": "5c931c47e57dce1c18599b05248559d6b45e954d3af8feaf3e36ab6ecd18a41f"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_filing.py",
+      "sha256": "fb10e4e3888e4688ada2ac3ff902aeadb210d2fb8aa15236eaf575737599f752"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_filing_lifecycle.py",
+      "sha256": "5a4b7c8766e93fcd283ab256a26fc965c1b74e691f330860abdf020775db062b"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_import_workflow.py",
+      "sha256": "2c18d7d9cc41059eaa49f0b3bd4517f8784d0015f73d1fa9cb24bcc35958ef59"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_preparation.py",
+      "sha256": "443a4dc3e192c7d3aeaf603620c0dc5d8c4de4c017d4d20a18f35a336c182839"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_readiness_api.py",
+      "sha256": "4aa7da266639f3e513c934d1a1d5b8aaf59a256e7cd4ef08b3804a8c038ecda6"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_source_facts.py",
+      "sha256": "aa0d365145f593963dd125f488c16e3be0dad33dff696d8c8c996345606ac7c9"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_workspace.py",
+      "sha256": "b92518157c370029ca85070dd2e2b7e58f3b0a312cd931978396c323e9d100b3"
+    },
+    {
+      "path": "apps/backend/tests/test_authority_filing_tools.py",
+      "sha256": "3ec111856a50b6e2f3e69760f0232de2c94a372275596849a8242a620514a869"
+    },
+    {
+      "path": "apps/backend/tests/test_authority_filing_transports.py",
+      "sha256": "757f128c66587f68aa5f3c82b90639910095a14edef5590f687e7124aec10a44"
+    },
+    {
+      "path": "apps/backend/tests/test_json_transport.py",
+      "sha256": "f153e95074376223b7b0d22c3493b495556703a9179b74f763ee48c374cd3c97"
+    },
+    {
+      "path": "apps/web/app/(owner)/filing/[obligation]/page.tsx",
+      "sha256": "4758a1b6e6c6e99ac33e4a515df6c82fb9ee93fec549e36affe659a636535e71"
+    },
+    {
+      "path": "apps/web/app/(owner)/filing/_presentation.ts",
+      "sha256": "13cafd34d08d7a513fd9595bb1bba21a85479072b0897d525fe37ae3d57c7948"
+    },
+    {
+      "path": "apps/web/app/(owner)/filing/_readiness.ts",
+      "sha256": "83b25588b33b91c975077c345186136c9aac809a7692e6261ca40cca61306734"
+    },
+    {
+      "path": "apps/web/app/(owner)/workspace/page.tsx",
+      "sha256": "806edef6866d70005699fb34e795bddd70bcdedce538aa0727a249decd592107"
+    },
+    {
+      "path": "apps/web/app/actions.ts",
+      "sha256": "f1ec0ca68b4bce714333bf28eeb5681f1424e43bd4f78af617f9414eca124763"
+    },
+    {
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "sha256": "f11c087e9063f1dc90b15a78bc1ff43310b042ed65ed6891c4a77fc427d1f737"
+    },
+    {
+      "path": "apps/web/app/lib/annual-accounts-assessment-source.ts",
+      "sha256": "54ebc29f546fa6a2eb2d9cfa43724e4507306adef49a89cffe872c3fdf4db300"
+    },
+    {
+      "path": "apps/web/app/lib/annual-accounts-workspace-source.ts",
+      "sha256": "81022e8f4f2232b4d3549c92adeb7c6cbbc4bade599ed6a4f82045373447ef09"
+    },
+    {
+      "path": "apps/web/app/lib/annual-accounts-xml.ts",
+      "status": "DELETED"
+    },
+    {
+      "path": "apps/web/app/lib/annual-accounts.ts",
+      "status": "DELETED"
+    },
+    {
+      "path": "apps/web/app/lib/annual-readiness.ts",
+      "sha256": "2a0aab6d23650ddb48278126b53ee533bfb2dc8fd7bd119efcc10bfebe011756"
+    },
+    {
+      "path": "apps/web/app/lib/annual-workspace-server.ts",
+      "sha256": "10a385af0a40a2fc306fd479deed565f147e035885dde23ad215382ddb5bb2d1"
+    },
+    {
+      "path": "apps/web/app/lib/authority-test-evidence.ts",
+      "sha256": "fb2c386e22fac885b7644443dc6de4ff8f59023fbf37d6ac0d7f36e4f605c1d6"
+    },
+    {
+      "path": "apps/web/app/lib/backup-restore.ts",
+      "sha256": "e903e5e114cc069d7acaaba074e4b6535c269ed7372cc5822fdde8737334e94f"
+    },
+    {
+      "path": "apps/web/app/lib/rf1086-workspace-source.ts",
+      "sha256": "f8e190facf2b40453987d736fbeb58bfd9e0dbded0e32b463aa1a9f1a41624e7"
+    },
+    {
+      "path": "apps/web/app/lib/supabase/server.ts",
+      "sha256": "8c8ae2d8a2391459ab7a3171a36d74fe0e1c3695de3712512ca2d10738869d8b"
+    },
+    {
+      "path": "apps/web/app/lib/workspace-data.ts",
+      "sha256": "239a8613e5a28057ae6e68793f3b370ecb337501d2f36ae32e9a87cc7b5c1691"
+    },
+    {
+      "path": "apps/web/features/annual-accounts-filing/MODULE.md",
+      "sha256": "27ba5ed97c2d2aa43c92bf2c0288fcf286ea4df27d406212054598296f2508ec"
+    },
+    {
+      "path": "apps/web/features/annual-accounts-filing/index.ts",
+      "sha256": "12d6c33304c638bbcefb584c7962edc0442763a7c35b7b3bc5785853cd001335"
+    },
+    {
+      "path": "apps/web/features/annual-accounts-filing/module.json",
+      "sha256": "76656d38ddb60b9dc918bb09cd8c0bfa861a73b2bbce1a3d46346d9e33a78878"
+    },
+    {
+      "path": "apps/web/features/annual-accounts-filing/presentation.ts",
+      "sha256": "9cb4676207da80cdc0ea70f471ce2fc40ea789be5c11187a0909b95aad39490b"
+    },
+    {
+      "path": "apps/web/features/annual-accounts-filing/transport.ts",
+      "sha256": "4eee7df7c9aadc50d265bf90ce5f0b40123939b85ca81321605d48559a051926"
+    },
+    {
+      "path": "apps/web/tests/archive-rf1086-source.test.mjs",
+      "sha256": "5a03ddb2758dc08c9a55ad0a3588fe6e24d558f318ae6deb69cfe6a824bca39c"
+    },
+    {
+      "path": "apps/web/tests/company-access-cancellation.test.mjs",
+      "sha256": "f11ef035c16737f53a47f2750416e62f651b3ae30673e864e6db82c6558c008d"
+    },
+    {
+      "path": "architecture/BACKEND-SYSTEM.md",
+      "sha256": "7f100617422503ee17b7016ec9b2d1645593e8c53c7fd61cd271483b6a890e3b"
+    },
+    {
+      "path": "architecture/COMPATIBILITY.md",
+      "sha256": "7683810e3f0b816fcc166c428faba245060f91c86ae7e0750b39803730c57ab7"
+    },
+    {
+      "path": "architecture/backend-system.json",
+      "sha256": "86f16409cd9bdc421f440b1ad03fafed4a73db40f67f82fda238b89ec931b712"
+    },
+    {
+      "path": "architecture/company-archive-sources.json",
+      "sha256": "b7df4dc0209e311c7e2dbcb7c95dda92b871a4eb8f780dc99eacce9d51b1d325"
+    },
+    {
+      "path": "architecture/compatibility.json",
+      "sha256": "e06ddbbc974bbaa7f418eced549bef1c02e3b29d4e12a6851ed503428aa83e10"
+    },
+    {
+      "path": "architecture/database-catalog.json",
+      "sha256": "a1eba68ce31461101ccfa3e7e5ed063c53baf97db0d7092f6265416c1a1b44dc"
+    },
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "5096ab8df3bc349b6886466baae30461c5504bf924bb82a09b40006cf94d4109"
+    },
+    {
+      "path": "contracts/openapi/talli-v1.json",
+      "sha256": "ccc36b62f6dedafc4370258f1d3123b0a86a62ecef5d9f383b611d038f15de92"
+    },
+    {
+      "path": "holding_core/annual.py",
+      "sha256": "74a7d7082a93413ed0aa2f3e5bb91e21461f9e56ed352534b67f3ec9723e9e42"
+    },
+    {
+      "path": "package.json",
+      "sha256": "47b34c14544e0ee80570af051555d1f87e8633576fcef98e74cb9208b2ec9339"
+    },
+    {
+      "path": "packages/talli-api-client/src/generated/client.ts",
+      "sha256": "2dfa531e82a2ba31d034e513f9e9b06809d4309043c0fe00683fa4130e7ed836"
+    },
+    {
+      "path": "scripts/authority-tool-payload.mjs",
+      "status": "DELETED"
+    },
+    {
+      "path": "scripts/check-architecture.mjs",
+      "sha256": "03bd3acc876d2fe9c9ae77e538f8446f3478c3735e8540422655913d60d813d1"
+    },
+    {
+      "path": "scripts/generate-api-client.mjs",
+      "sha256": "9da93f88e0a635ba5dd3079014b7c227a2145fc97dd725bee910914243bfce35"
+    },
+    {
+      "path": "scripts/rehearse-accounts-topology.mjs",
+      "sha256": "39e78f93e1b39bbe7cf58b2741c1bdff8c4bcff98166e48dc08a4c68a91efd9b"
+    },
+    {
+      "path": "scripts/test-supabase-local.sh",
+      "sha256": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+      "sha256": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914092018_annual_accounts_filing_read_contracts.sql",
+      "sha256": "7c9366ed41cdbcb4cddb9d748d4e987d370b9a04be2f74890f7fa446174fdb29"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914092924_annual_accounts_filing_preparation_contracts.sql",
+      "sha256": "ba67f1fdcbf314b0ed545eaf040b11ca411d342d2dccf3960ce3a6c9b9aaa6c8"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914093204_annual_accounts_filing_import_contract.sql",
+      "sha256": "b3644149be001e768d8d497e248b438631ecb38a2589965108ab47d60d53fc48"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql",
+      "sha256": "0d8a50cd22ec0859ba87dc075a7c4357edad77024ad27623036456fe6bd1d0a1"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql",
+      "sha256": "3f4495c1d75644413171150b71f2048f34ef100dcf3492bcc28005f5c31f064b"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql",
+      "sha256": "9f4a89374a4945841f8f3610de2390884db3faa527e2c7374e5a4a3df6cad401"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914110840_annual_accounts_filing_source_contract.sql",
+      "sha256": "adaa9493ed3f222c3196b459a1844d59d27add668cf2ee4965bae4c343b7ddf6"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914112549_annual_accounts_filing_backend_binding.sql",
+      "sha256": "fdcb34e81a79e8e5d9c59f01230969ad6f292e2c466bac9d65a8c1293b109211"
+    },
+    {
+      "path": "supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql",
+      "sha256": "6f31c93d658a9acd54b549f132b651ef9e5186cfb99041f9fc85efb8114d3271"
+    },
+    {
+      "path": "supabase/rollback/20260914101842_annual_accounts_filing_contract.sql",
+      "sha256": "ea5a272c6a29bae8e1371a4fd1ec954ca7e3e1e2dcfa0af3ea2af2c6987646f1"
+    },
+    {
+      "path": "supabase/rollback/20260914112549_annual_accounts_filing_backend_binding.sql",
+      "sha256": "b881ef58fa67db47427f098282d0eb5b75e01325bcb81bdd022b48b71048f597"
+    },
+    {
+      "path": "tests/annual_accounts_authority_evidence_import.test.mjs",
+      "sha256": "7c79b78769453938813ddf2aabcefcd5261259438d1330131d099084e970d63e"
+    },
+    {
+      "path": "tests/annual_accounts_client.test.mjs",
+      "sha256": "2aa4498e3e668af991581cd71b1f06c9812aa423e871637e1f0400730eece235"
+    },
+    {
+      "path": "tests/annual_accounts_payload.test.mjs",
+      "sha256": "88e126a2da2b8da27f39726171620f986eadd76318ea9244e60dd933fbe46d8c"
+    },
+    {
+      "path": "tests/annual_accounts_workspace_composition.test.mjs",
+      "sha256": "9c5f1242e0cc57b8bb0ac9a1093fee4e8b88a1670eaaab6c611f99fc8f889490"
+    },
+    {
+      "path": "tests/annual_accounts_xml.test.mjs",
+      "sha256": "93bf7cf7b4c6c93d58e1c86f16bfcc701bdbba52cf21bfe6eab4c9160ba2df35"
+    },
+    {
+      "path": "tests/annual_corporate_documents.test.mjs",
+      "sha256": "f71623ab5e9f681237a4bf37db0a48489e8dd2757fd9b748aa39d0a74ef8d6e1"
+    },
+    {
+      "path": "tests/annual_readiness_gates.test.mjs",
+      "sha256": "55f9805d530d411057fb5ba7ef0d942e67be94dd4e0bb93ac5ab5165ebbf70ec"
+    },
+    {
+      "path": "tests/architecture_foundation.test.mjs",
+      "sha256": "4756f92d39981b8392c4a65faa9588450588a8356ef2ad8621a709ae3c9fc909"
+    },
+    {
+      "path": "tests/archive_export.test.mjs",
+      "sha256": "7553e600edd83afc062e11541ed3ac6effeb873225d842b06d3232b1a269fbb3"
+    },
+    {
+      "path": "tests/authority_connections_retirement.test.mjs",
+      "sha256": "712be3a128f464ec8223faf905e76983eb652b7ea5d915ac7c50fc2e279e5e98"
+    },
+    {
+      "path": "tests/authority_test_evidence.test.mjs",
+      "sha256": "6ea5711cbf0d1dd7d020f313754ef90809887a3dd626a869b04b4071b1de98e5"
+    },
+    {
+      "path": "tests/authority_tool_payload.test.mjs",
+      "status": "DELETED"
+    },
+    {
+      "path": "tests/backup_restore.test.mjs",
+      "sha256": "3433852178f48bd9c4f8ebb624a84c08f56f322e1874993eb003ea760dfed366"
+    },
+    {
+      "path": "tests/banking_database_runtime.test.mjs",
+      "sha256": "ebd5b904406b3ae379a0483b454e12c728ff9da3d950df981315d7301be8480d"
+    },
+    {
+      "path": "tests/browser_annual_accounts_filing.mjs",
+      "sha256": "4fc75a37aefc7b95e4226765dfa4456ae1dc74ebac3dd3856ef041342ef53c95"
+    },
+    {
+      "path": "tests/browser_fixture_safety.test.mjs",
+      "sha256": "018ee1cdd0bd760d609838c2cf7bc73714a00be5e1e11f6ec77d3dac3345159f"
+    },
+    {
+      "path": "tests/browser_owner_annual_loop.mjs",
+      "sha256": "1073429c0fba39ea846db103c17d47e841368033fa936c637a102f693e63c202"
+    },
+    {
+      "path": "tests/browser_tax_filing.mjs",
+      "sha256": "08ecc0a2cb2c98f79757fa2d5dd0744b953786559dd2a9d8441702a85ad48bf5"
+    },
+    {
+      "path": "tests/ci_release_gate.test.mjs",
+      "sha256": "c3b1661cd4e861d883e76074f30badbb505bb9fbd1909ec5f54f5ea9e0db9646"
+    },
+    {
+      "path": "tests/company_access_database_runtime.test.mjs",
+      "sha256": "75000d3e685eb70d988b57d6a8444d3efc92da5d17194e4d7f7e1c3007aae860"
+    },
+    {
+      "path": "tests/company_access_onboarding_database_runtime.test.mjs",
+      "sha256": "d92d55644ee91731232d07058476fe8c04f4ada882fdb76baaff6fa19342aa37"
+    },
+    {
+      "path": "tests/company_tax_architecture.test.mjs",
+      "sha256": "c6eea89a26fc59808780ceb5fbe3941a7769016a22f587c8857d280b42cc3fd5"
+    },
+    {
+      "path": "tests/company_tax_workspace_composition.test.mjs",
+      "sha256": "431e2ee07efcb19ca0b4ae78b387d24249a63bd1cf254a3f53c0ef40b5427b8d"
+    },
+    {
+      "path": "tests/corporate_document_database_runtime.test.mjs",
+      "sha256": "eafdc5d5727f5f7fda1a64ac7b53aab809abd385e88deca4d28f9189f9b8959f"
+    },
+    {
+      "path": "tests/investments_cross_output_reconciliation.test.mjs",
+      "sha256": "7862161d9f854fd679105af671c0303f670a0ca0740154149ced6cba561cf3b6"
+    },
+    {
+      "path": "tests/investments_database_runtime.test.mjs",
+      "sha256": "c71903522fe0833f901d3027e58a3ba1dd41170886f23e4a87be163ef9bf09ac"
+    },
+    {
+      "path": "tests/ledger_database_runtime.test.mjs",
+      "sha256": "0911d420da3bbf24ce6c8fe5bcd266d91e015e997d2464999b89f5f4c2a16a3c"
+    },
+    {
+      "path": "tests/marketing_consent_proof_database_runtime.test.mjs",
+      "sha256": "7675c68f9f43453040471530dec0ecd924e54d7e0bc3a3478631342e42fc9f3b"
+    },
+    {
+      "path": "tests/marketing_measurement_database_runtime.test.mjs",
+      "sha256": "2c39a902ffa8e981246b17d294f2341e664dda4707fed76707d0138d433cc4c5"
+    },
+    {
+      "path": "tests/rf1086_mixed_actions.test.mjs",
+      "sha256": "af293c89d51ac2abb477fc0efc7e5c4078b6246b2d8b689c1cc531486c3d0674"
+    },
+    {
+      "path": "tests/support/annual_accounts_public.mjs",
+      "sha256": "e98100e2784c614f75e6d1977580b89f2d96c3b64da8095e06d7f3d5e5b7af6c"
+    },
+    {
+      "path": "tests/support/annual_accounts_public_driver.py",
+      "sha256": "86fff154f9e5e81fd6ecdc93763b2070f8d7d4f9365fb059d482816449da2393"
+    },
+    {
+      "path": "tests/support/browser-owner-cleanup.mjs",
+      "sha256": "aaef07dad4bad9931503daa7c229c13152bf4e2a6f5f007659981a13469d10e5"
+    },
+    {
+      "path": "tests/support/rf1086-fixture-access.mjs",
+      "sha256": "0d127245797fad9860119a724769434c9df2350f668e22ec5ded3f5220106c77"
+    },
+    {
+      "path": "tests/support/tax-browser-fixture.mjs",
+      "sha256": "785bf7daa0ee90ac2452ef9d84239af3c7f4d99dcd2ea7fcbd88f88b2bfab081"
+    },
+    {
+      "path": "tests/support/tax-fixture-cleanup.mjs",
+      "sha256": "470a618a09fab15ff6c71eaa57549f43393fedd8b1bece9a8c6b0c25cc0246d4"
+    },
+    {
+      "path": "tests/test_annual_accounts_offline_migration.py",
+      "sha256": "bbb1b4613878fe83dc45ce0a9b14feddc8655212326d9c780d5e799d24d41fb2"
+    },
+    {
+      "path": "tests/validation_observation_database_runtime.test.mjs",
+      "sha256": "e89f78ec00117d3d890a58a9f9a52a2324017191a260be833a4fadbebbc246f7"
+    }
+  ]
+}

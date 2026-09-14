@@ -1,0 +1,21 @@
+{
+  "command": [
+    "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+    "-B",
+    "-m",
+    "pytest",
+    "-q",
+    "-p",
+    "no:cacheprovider",
+    "-c",
+    "apps/backend/pyproject.toml",
+    "apps/backend/tests/test_annual_accounts_rehearsal_recovery.py",
+    "apps/backend/tests/test_annual_accounts_validation_response.py",
+    "apps/backend/tests/test_annual_accounts_authority_ownership.py",
+    "apps/backend/tests/test_authority_filing_tools.py",
+    "apps/backend/tests/test_authority_filing_transports.py",
+    "apps/backend/tests/test_annual_accounts_rehearsal_ownership.py"
+  ],
+  "cwd": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-journal-standards-z958w3p2",
+  "returncode": 0
+}

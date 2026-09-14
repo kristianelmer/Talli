@@ -1,0 +1,216 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "baseRevision": "d36a6af7d4a8f3cff49b27f07e9570dd045fac72",
+  "revision": "bd3c487a7247925ce56def2498ac1f8f728f9619",
+  "diffCommand": "git diff --histogram d36a6af7d4a8f3cff49b27f07e9570dd045fac72...bd3c487a7247925ce56def2498ac1f8f728f9619",
+  "commits": [
+    "bd3c487a fix(accounts): reject malformed readiness request facts"
+  ],
+  "verdict": "PASS_BOUNDED_FIX",
+  "findings": [],
+  "findingDispositions": [
+    {
+      "id": "STD-153-READINESS-1",
+      "disposition": "CLOSED",
+      "before": "HTTP200 issues[] for confirmations={} despite legacyTypeError",
+      "after": "HTTP422 REQUEST_VALIDATION_FAILED before policy evaluation",
+      "specIds": [
+        "GH-153-A1",
+        "GH-153-A3"
+      ]
+    }
+  ],
+  "manifest": {
+    "path": "architecture/evidence/issues/153/readiness-input-fix/manifest.json",
+    "sha256": "2fb3d65117442bb43e70c74c698a552b5ba279de171ec3c2193090fa8b2e6069",
+    "verifiedArtifacts": 10
+  },
+  "sourceBindings": [
+    {
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "cf62cced32c5d9f319a2368fae37c37263feae221706e42990310d9a59f2ac9e"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_readiness_api.py",
+      "sha256": "4aa7da266639f3e513c934d1a1d5b8aaf59a256e7cd4ef08b3804a8c038ecda6"
+    },
+    {
+      "path": "architecture/evidence/issues/153/readiness-input-fix/response-readiness-standards-review-d36a6af7.md",
+      "sha256": "e56baf4a2c55cadc22eb14c798883354edce6015d980ca0534589cfb414e8244"
+    },
+    {
+      "path": "architecture/evidence/issues/153/readiness-input-fix/readiness-input-fix-tests.log",
+      "sha256": "8299652be859aca06c266062f3c822fe648d5d7cb041c9993e50eab88bf16c47"
+    },
+    {
+      "path": "architecture/evidence/issues/153/readiness-input-fix/response-readiness-spec-review-d36a6af7.md",
+      "sha256": "ed20ecde0914fb1c0e0f9d4fd37c1de30fc519f248523c1049cc5fe8f1afb099"
+    },
+    {
+      "path": "architecture/evidence/issues/153/readiness-input-fix/verification.md",
+      "sha256": "29370440287b571dd4be7de706eabfaf7bcba622e2909092a425db5b5b97aaf9"
+    },
+    {
+      "path": "architecture/evidence/issues/153/readiness-input-fix/read-controls-spec-review-af5c6523.md",
+      "sha256": "428b74ee6a6e24104fdd3069a2ca4fc34cdd05033306511abd4733c1ce831b83"
+    },
+    {
+      "path": "architecture/evidence/issues/153/readiness-input-fix/read-controls-spec-review-af5c6523.json",
+      "sha256": "7cd2009d78bda01fffae1b7e47e1118352b6d174c6447211208f8f25223cde3d"
+    },
+    {
+      "path": "architecture/evidence/issues/153/readiness-input-fix/response-readiness-standards-review-d36a6af7.json",
+      "sha256": "48f3e0dde80dfb06659dcfa169e9300d27891a3a5f6ac9978f086bbd0440566a"
+    },
+    {
+      "path": "architecture/evidence/issues/153/readiness-input-fix/response-readiness-spec-review-d36a6af7.json",
+      "sha256": "c2bd7a8adcb491fff1abd400e591b8c58269f7043f94406846c8eddc0c9a9509"
+    }
+  ],
+  "unchangedSources": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py",
+      "sha256": "6d99932b222b5028d2b59fd26c6dd06085d7ce5054d9e5f38f7bee8411a7590a"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/readiness.py",
+      "sha256": "07783baea9e4f2085b3ba3d3620f1c896b93045dba765c26f9c3dc44be2e2234"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/calculation.py",
+      "sha256": "c579d40eb3ef800073219cc156e6bb6537d35dc10ed54e93274d72878d2532ec"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/json_transport.py",
+      "sha256": "bdb2b5b12ff9268a24c83cbff234077ab73853408e84f3832e6abe24e3d210c4"
+    },
+    {
+      "path": "contracts/openapi/talli-v1.json",
+      "sha256": "1390ab63bb08a0b1332c1a789ad5702c646760e7dee836402281b26252ab5428"
+    },
+    {
+      "path": "packages/talli-api-client/src/generated/client.ts",
+      "sha256": "fa414bffcb1aac954e6101dda88916103c2680f55d6f711c77842096facff344"
+    },
+    {
+      "path": "architecture/evidence/issues/153/characterization/legacy-pure-characterization.json",
+      "sha256": "879953277ecf92ae4bb6672cbe96218a46ef8385ac5f735add96a5584e4e3492"
+    },
+    {
+      "path": "architecture/evidence/issues/153/requirements.json",
+      "sha256": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc"
+    },
+    {
+      "path": "apps/web/app/lib/annual-data.ts",
+      "sha256": "60beab30fb5e7e2f3cd0ff41253d868b6b3229f0344ddb45960e5de66f995008"
+    },
+    {
+      "path": "apps/web/app/lib/annual-readiness.ts",
+      "sha256": "6e9dfde2b151cb0bdf96cf14774c2c7140db278f8a5e598419285b82858a7817"
+    },
+    {
+      "path": "apps/web/app/lib/annual-accounts.ts",
+      "sha256": "91796975e407b260a9c028f3c7a3fb37ac525aae10a5306140418082e7041a33"
+    },
+    {
+      "path": "apps/web/app/actions.ts",
+      "sha256": "457a6919488f6f87dcb579d041d52d694ca2e55172ec2aa5bbde874267d40856"
+    }
+  ],
+  "adoptedOriginals": [
+    {
+      "path": "architecture/evidence/issues/153/readiness-input-fix/response-readiness-standards-review-d36a6af7.md",
+      "original": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-standards-review-d36a6af7.md",
+      "sha256": "e56baf4a2c55cadc22eb14c798883354edce6015d980ca0534589cfb414e8244"
+    },
+    {
+      "path": "architecture/evidence/issues/153/readiness-input-fix/response-readiness-spec-review-d36a6af7.md",
+      "original": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-spec-review-d36a6af7.md",
+      "sha256": "ed20ecde0914fb1c0e0f9d4fd37c1de30fc519f248523c1049cc5fe8f1afb099"
+    },
+    {
+      "path": "architecture/evidence/issues/153/readiness-input-fix/read-controls-spec-review-af5c6523.md",
+      "original": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-spec-review-af5c6523.md",
+      "sha256": "428b74ee6a6e24104fdd3069a2ca4fc34cdd05033306511abd4733c1ce831b83"
+    },
+    {
+      "path": "architecture/evidence/issues/153/readiness-input-fix/read-controls-spec-review-af5c6523.json",
+      "original": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-spec-review-af5c6523.json",
+      "sha256": "7cd2009d78bda01fffae1b7e47e1118352b6d174c6447211208f8f25223cde3d"
+    },
+    {
+      "path": "architecture/evidence/issues/153/readiness-input-fix/response-readiness-standards-review-d36a6af7.json",
+      "original": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-standards-review-d36a6af7.json",
+      "sha256": "48f3e0dde80dfb06659dcfa169e9300d27891a3a5f6ac9978f086bbd0440566a"
+    },
+    {
+      "path": "architecture/evidence/issues/153/readiness-input-fix/response-readiness-spec-review-d36a6af7.json",
+      "original": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-spec-review-d36a6af7.json",
+      "sha256": "c2bd7a8adcb491fff1abd400e591b8c58269f7043f94406846c8eddc0c9a9509"
+    }
+  ],
+  "checks": {
+    "committedTestsPassed": 21,
+    "skipped": 0,
+    "originalProbeComparisons": 4,
+    "additionalBoundaryCases": 20,
+    "databaseExecuted": false,
+    "sharedMutation": false
+  },
+  "supportedFactProducerEvidence": {
+    "file": "apps/web/app/lib/annual-data.ts",
+    "facts": "buildYearEndInterviewAnswers emits all10 booleans; annualConfirmations emits string array",
+    "caller": "apps/web/app/actions.ts:saveYearEndInterview",
+    "employeeEquivalents": "Number(...) validated finite and nonnegative before persistence"
+  },
+  "runtime": {
+    "python": "3.12.12",
+    "pythonPath": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+    "node": "v24.20.0",
+    "nodePath": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node"
+  },
+  "commandCwd": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-readiness-input-fix-bd3c487a",
+  "commands": [
+    "git log d36a6af7..bd3c487a --oneline",
+    "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=$PWD:$PWD/apps/backend/src:$PWD/apps/backend/tests <pythonPath> -m pytest -q -c /dev/null --rootdir=. -p no:cacheprovider apps/backend/tests/test_annual_accounts_readiness_api.py",
+    "<pythonPath> ../readiness-input-fix-spec-original-probe-bd3c487a.py",
+    "<pythonPath> ../readiness-input-fix-spec-boundaries-bd3c487a.py"
+  ],
+  "privateArtifacts": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/readiness-input-fix-spec-tests-bd3c487a.log",
+      "sha256": "e90972c73f24b1137081fcea457cb0fe57057a237544a83d2d65c2cfe4922c9b"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/readiness-input-fix-spec-original-probe-bd3c487a.py",
+      "sha256": "be29a746ec01006d27ca9e3607786b3e050d67dacf063718a4c2fb314d92c273"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/readiness-input-fix-spec-original-probe-bd3c487a.log",
+      "sha256": "cb3a07ac4ef0a19a74ec30d73d8a448fd5a37bc6bc633c89ac021204c6204675"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/readiness-input-fix-spec-original-probe-bd3c487a.json",
+      "sha256": "e3e761d1548ea112beaab0ec1186ce8d5f8377acff0de8f386d78439b506d23b"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-spec-legacy-node-d36a6af7.mjs",
+      "sha256": "4ca849235b035820a83bbe3330a0e18e0d47e4deb6c9f3875d06b169ae622a0a"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/readiness-input-fix-spec-boundaries-bd3c487a.py",
+      "sha256": "659a741ce1fca4d4f66e54d29a91519312651e4cb73db8432db2fb1db142b45c"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/readiness-input-fix-spec-boundaries-bd3c487a.json",
+      "sha256": "824c7d3032daa1e30a5a5bc84fcfd22e8cd3e1e819ea1970f374ca3b9a76ae50"
+    }
+  ],
+  "scopeLimits": [
+    "Read-only immutable commit review; uncommitted web excluded.",
+    "No SQL/browser/provider execution.",
+    "No durable source attestation or full-stage credit."
+  ],
+  "reportSha256": "c8a2f78609f1c6d156d362bf1861a4ac69f05fec371bd470f864a8e39142ac84"
+}

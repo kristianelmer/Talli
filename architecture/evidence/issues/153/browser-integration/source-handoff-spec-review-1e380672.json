@@ -1,0 +1,331 @@
+{
+  "axis": "Spec",
+  "verdict": "FINDINGS",
+  "baseRevision": "9ba2a33a2214b398ca0d62e1bad6bd3fc1674fe3",
+  "candidateRevision": "1e38067282e144996b455e428c267f6be3534421",
+  "singleCommit": true,
+  "privateArchive": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-source-handoff-1e380672",
+  "findings": [
+    {
+      "id": "STD-153-SOURCE-1",
+      "priority": 2,
+      "status": "OPEN_ON_PINNED_COMMIT",
+      "sharedWith": "Standards",
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/source_facts.py",
+      "line": 148,
+      "requirementQuote": "Preserve evidence identity, source version, timing, attribution and company/year.",
+      "reproduction": [
+        {
+          "storedLegacyValue": "doc-id",
+          "projectedIds": [
+            "d",
+            "o",
+            "c",
+            "-",
+            "i",
+            "d"
+          ],
+          "coverage": "complete",
+          "readiness": "blocked"
+        },
+        {
+          "storedLegacyValue": {
+            "doc-id": true
+          },
+          "projectedIds": [
+            "doc-id"
+          ],
+          "coverage": "complete",
+          "readiness": "blocked"
+        },
+        {
+          "storedLegacyValue": 0,
+          "projectedIds": [],
+          "coverage": "complete",
+          "readiness": "blocked"
+        },
+        {
+          "storedLegacyValue": [],
+          "projectedIds": [],
+          "coverage": "complete",
+          "readiness": "blocked"
+        }
+      ]
+    }
+  ],
+  "sourceBindings": [
+    {
+      "path": "apps/backend/src/talli_backend/adapters/postgres_annual_accounts.py",
+      "sha256": "3f9c862abcf530d24a1c60381fd74089c46d41d9f88893cf110cf7b5ef699c15"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/annual_accounts_session.py",
+      "sha256": "318a4555953c7685fc7e73225495f49c4b5a4af52934c985f17b36ee0c2438a0"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/annual_accounts_workflow.py",
+      "sha256": "e602ed24b11d4586112461624a7d0334029a779d525eb5868c6bbbc1947332c9"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "93ce56a4e2a91c9eb8eb051a78adf9a8e2c8a7a7e2964aa4f3814018c6ba72bb"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
+      "sha256": "36be058c16af5ff660beadb1988e6a0bd2fb575f36506c329c5ca13ab86fa816"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json",
+      "sha256": "afd4ab67224dea9c27dfe3023d1f930ece1ddbfea6ae7df43fdc7d8aa2871854"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py",
+      "sha256": "5c4c3127f21f9529f02c58504a18f91bbe5138d7ae8e98a3a1831f349255ece2"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/source_facts.py",
+      "sha256": "c8fe4dbdcf707958f0db357dc5605bf04e8c857d41a9171d8f189af1a3a9ebb9"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_filing_lifecycle.py",
+      "sha256": "edfd3bba47fe4a0e169567d1c09791e4e4fcabc98e9fd3a4c8ace3f1020d068d"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_source_facts.py",
+      "sha256": "4a0462e3631d917a30af25b6452dab5545c0b8d2ae88af98d0d8d22a2363a631"
+    },
+    {
+      "path": "apps/web/features/annual-accounts-filing/MODULE.md",
+      "sha256": "27ba5ed97c2d2aa43c92bf2c0288fcf286ea4df27d406212054598296f2508ec"
+    },
+    {
+      "path": "apps/web/features/annual-accounts-filing/index.ts",
+      "sha256": "12d6c33304c638bbcefb584c7962edc0442763a7c35b7b3bc5785853cd001335"
+    },
+    {
+      "path": "apps/web/features/annual-accounts-filing/module.json",
+      "sha256": "76656d38ddb60b9dc918bb09cd8c0bfa861a73b2bbce1a3d46346d9e33a78878"
+    },
+    {
+      "path": "apps/web/features/annual-accounts-filing/transport.ts",
+      "sha256": "4eee7df7c9aadc50d265bf90ce5f0b40123939b85ca81321605d48559a051926"
+    },
+    {
+      "path": "architecture/BACKEND-SYSTEM.md",
+      "sha256": "fc1a9514b2e62f43940bf7ad0132aba4c839fd446d8ac13696f9331f2fdbe3ad"
+    },
+    {
+      "path": "architecture/backend-system.json",
+      "sha256": "f6d4a854092a038bebef3d2c1bd4b277358e387c14951dcffd0f627c38278724"
+    },
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "5096ab8df3bc349b6886466baae30461c5504bf924bb82a09b40006cf94d4109"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/capture-accounts-source.py",
+      "sha256": "203c9f04f693015355e2e27d5b8bd380ed6159b2ef96f9db543d935bbb1a502b"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/duplicate-retirement-spec-review-9ba2a33a.json",
+      "sha256": "b5629dfbc22d904d61299c012ab7477813a9f3b15164bf921f04d194a887c355"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/duplicate-retirement-spec-review-9ba2a33a.md",
+      "sha256": "312f8cd2c2d6f3f19c2e1d81e750d96888ced72ddd7a26d96d8cfaee35a3a960"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/duplicate-retirement-standards-review-9ba2a33a.json",
+      "sha256": "4bff58b3eaa2c24d9d1605d210e12a32547060efc8edddb689deeac2b6674510"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/duplicate-retirement-standards-review-9ba2a33a.md",
+      "sha256": "f5d6ae9cf1fc7a70b10cc9007b290d0a177fbfd2a1767c937dbbafbf0e022043"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/local-source-snapshot.json",
+      "sha256": "115d320a5695850f2afce69b0c347c9502388dac42671cfa229ac1db551545c7"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/manifest.json",
+      "sha256": "fa90767b4f92435bb0e257a4c4ee11d8c8d5d7cf2c0891aaf0ad81519a1cbc84"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/source-capture-first.log",
+      "sha256": "87478131515d8af382d1b99abbf6f5ac9e173eaa26dc8648fe302827938bb9e9"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/source-capture-second.log",
+      "sha256": "4b15457a325aef1cb444dc74a375a3a37d04a63190bdcd953ba3c3e6dbe77576"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/source-client-tests.log",
+      "sha256": "670ceca699dfe13a009a434d81a272a274ec8cb2c6cd7b8c6952bf5b4e0376cf"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/source-facts-first-tests.log",
+      "sha256": "7884bd7c8eba447569333e70d8ff2bc53407b341ee10be49c5428443dd057276"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/source-facts-second-tests.log",
+      "sha256": "f772327bd4d3032c806ad72a634ba3717d7f08f78d90b417bbb498c0e28bc222"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/source-handoff-first-architecture.log",
+      "sha256": "29237ea2bcbb8b9d83b11374652eaaa9365bcb1b35c2a363007a341ccef0e353"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/source-handoff-lifecycle-first.log",
+      "sha256": "b2affcaab16b83fa30b7cc634f76617b96daf6011602d6536a2b30db6627d473"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/source-handoff-second-architecture.log",
+      "sha256": "5096ab8df3bc349b6886466baae30461c5504bf924bb82a09b40006cf94d4109"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/source-handoff-typecheck.log",
+      "sha256": "b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e"
+    },
+    {
+      "path": "architecture/evidence/issues/153/source-handoff/verification.md",
+      "sha256": "3f5bb0d84eb00fc7289ddcfc19bc655283b73ae6ce0f021902bfda8e2bfc746f"
+    },
+    {
+      "path": "contracts/openapi/talli-v1.json",
+      "sha256": "ccc36b62f6dedafc4370258f1d3123b0a86a62ecef5d9f383b611d038f15de92"
+    },
+    {
+      "path": "packages/talli-api-client/src/generated/client.ts",
+      "sha256": "2dfa531e82a2ba31d034e513f9e9b06809d4309043c0fe00683fa4130e7ed836"
+    },
+    {
+      "path": "scripts/generate-api-client.mjs",
+      "sha256": "9da93f88e0a635ba5dd3079014b7c227a2145fc97dd725bee910914243bfce35"
+    },
+    {
+      "path": "scripts/rehearse-accounts-topology.mjs",
+      "sha256": "bb252a01a051b4bd228ecef49fd8ca6557608caf7a16fa073baaffdeef87c424"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914110840_annual_accounts_filing_source_contract.sql",
+      "sha256": "adaa9493ed3f222c3196b459a1844d59d27add668cf2ee4965bae4c343b7ddf6"
+    },
+    {
+      "path": "tests/annual_accounts_client.test.mjs",
+      "sha256": "2aa4498e3e668af991581cd71b1f06c9812aa423e871637e1f0400730eece235"
+    }
+  ],
+  "prerequisiteSqlBindings": {
+    "20260914090244_annual_accounts_filing_expand.sql": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea",
+    "20260914092018_annual_accounts_filing_read_contracts.sql": "7c9366ed41cdbcb4cddb9d748d4e987d370b9a04be2f74890f7fa446174fdb29",
+    "20260914092924_annual_accounts_filing_preparation_contracts.sql": "ba67f1fdcbf314b0ed545eaf040b11ca411d342d2dccf3960ce3a6c9b9aaa6c8",
+    "20260914093204_annual_accounts_filing_import_contract.sql": "b3644149be001e768d8d497e248b438631ecb38a2589965108ab47d60d53fc48",
+    "20260914101625_annual_accounts_filing_dependency_contracts.sql": "0d8a50cd22ec0859ba87dc075a7c4357edad77024ad27623036456fe6bd1d0a1",
+    "20260914110840_annual_accounts_filing_source_contract.sql": "adaa9493ed3f222c3196b459a1844d59d27add668cf2ee4965bae4c343b7ddf6",
+    "20260914101805_annual_accounts_filing_cutover.sql": "3f4495c1d75644413171150b71f2048f34ef100dcf3492bcc28005f5c31f064b",
+    "20260914101842_annual_accounts_filing_contract.sql": "9f4a89374a4945841f8f3610de2390884db3faa527e2c7374e5a4a3df6cad401"
+  },
+  "evidenceBindings": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/source-handoff-spec-sql-1e380672.py",
+      "sha256": "6dc85999edf93e1fa24a9a079b48b3212188b067c10067ab277973f9b7ac3ebc"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/source-handoff-spec-sql-1e380672.json",
+      "sha256": "c150b7424c74de7dcdc010985498f5553d9040a2eb9bb1f2ba880d6977d34b76"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/source-handoff-spec-sql-1e380672.log",
+      "sha256": "c150b7424c74de7dcdc010985498f5553d9040a2eb9bb1f2ba880d6977d34b76"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/source-handoff-spec-sql-first-1e380672.log",
+      "sha256": "6ded70eeda8ba2f0873759a6e573e8e9b427ca37b0a2e6ebf8e069424cf9ff45"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/source-handoff-spec-malformed-sql-1e380672.py",
+      "sha256": "ddfa982dde24dab49ec9dd9e6a484529b5e9e70bbe4051c368e90cea288ec1c1"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/source-handoff-spec-malformed-sql-1e380672.json",
+      "sha256": "b1fabbff21d9274694d90fc66f921b7a22e502cb9f0c273a3575e58a71a90ee9"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/source-handoff-spec-malformed-sql-1e380672.log",
+      "sha256": "b1fabbff21d9274694d90fc66f921b7a22e502cb9f0c273a3575e58a71a90ee9"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/source-handoff-spec-client-1e380672.log",
+      "sha256": "f83ff94f24d957b1ddb9a4885fd2128836ecbf5583e237e2d61ce31d9015b44b"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/source-handoff-spec-static-1e380672.json",
+      "sha256": "55d25f8c1bf1950fcc247f24edf7d22f240a0e8a440ccb674c213056cf183c7d"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/issue153-source-review.json",
+      "sha256": "125dc74793030831d9cdd7de6c004e935853c158696adf1b6cb5f07068b2acb2"
+    }
+  ],
+  "independentChecks": {
+    "sqlPassed": 8,
+    "malformedSqlCasesReproduced": 3,
+    "arrayControlPassed": 1,
+    "clientTestsPassed": 3,
+    "clientSkipped": 0,
+    "static": {
+      "manifestArtifacts": 39,
+      "allHashesMatch": true,
+      "oldPathsUnchanged": 158,
+      "oldSchemasUnchanged": 436,
+      "newPaths": [
+        "/api/v1/annual-accounts/source-facts"
+      ],
+      "newSchemas": [
+        "AnnualAccountsCorrectionLinkWire",
+        "AnnualAccountsHistoryCoverageWire",
+        "AnnualAccountsIncidentFactWire",
+        "AnnualAccountsOutcomeFactWire",
+        "AnnualAccountsSourceEvidenceWire",
+        "AnnualAccountsSourceFactsWire",
+        "AnnualAccountsSubmissionFactWire"
+      ],
+      "priorSpecAdoptionByteExact": true,
+      "capturedSqlBindingsMatch": true
+    }
+  },
+  "independentCommands": [
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python' /Users/kristianelmer/.codex/issue-192-private/issue153-entry/source-handoff-spec-sql-1e380672.py",
+      "exitCode": 0,
+      "mode": "outer rollback only; pinned private archive; exact owned loopback guard"
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python' /Users/kristianelmer/.codex/issue-192-private/issue153-entry/source-handoff-spec-malformed-sql-1e380672.py",
+      "exitCode": 0,
+      "mode": "outer rollback only; pinned private archive; exact owned loopback guard"
+    },
+    {
+      "command": "'/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node' --test tests/annual_accounts_client.test.mjs",
+      "cwd": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-source-handoff-1e380672",
+      "exitCode": 0
+    }
+  ],
+  "fixtureLimits": [
+    "Synthetic verified actor claims, not genuine JWT/MFA ceremony",
+    "Temporary owner policy for two canonical mutation fixtures, dropped before source reads; never business authority",
+    "Initial private harness zero-row UPDATE failure retained; corrected harness pass separate",
+    "Malformed JSON probe uses unchanged predecessor public write path before migration"
+  ],
+  "allDatabaseTransactionsRolledBack": true,
+  "sqlSlotReleased": true,
+  "limits": [
+    "No provider/hosted/browser action",
+    "No fullstage gate or acceptance",
+    "Later worktree edits excluded",
+    "Blocked production fact does not certify Corporate/signed-artifact readiness"
+  ],
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/source-handoff-spec-review-1e380672.md",
+  "reportSha256": "1623a93258881088a3e427123debdc1000e84b5512a2d76e22afaf78130e4828",
+  "wordCount": 296
+}

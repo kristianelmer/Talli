@@ -1,0 +1,254 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED",
+  "findings": [],
+  "baseRevision": "8a5565be77420eba54ee414c7af7fbcbd0302b13",
+  "candidateRevision": "9a3d8d8068749635b64645936f2d7398e0bc11c9",
+  "singleCommit": true,
+  "privateArchive": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-environment-recovery-9a3d8d80",
+  "sourceBindings": [
+    {
+      "path": "architecture/evidence/customer-ready-gates/8a5565be77420eba54ee414c7af7fbcbd0302b13.log",
+      "sha256": "c93b5fe5d8e8b9c9029f793459f6c440a2bda4fabeb13c19a3a96071788808a3"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/accounts-architecture-expectation-fixed.log",
+      "sha256": "95fc26bada2ff4aabf9eb8d3a2cb5bdacc2829dfc3f4792e4091f95ff6fe25c3"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/binding-fix-spec-admin-8a5565be.json",
+      "sha256": "81035161ab4468441cb7ef23bd1b88f9bfb765f229826968d5f69cada048a056"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/binding-fix-spec-admin-8a5565be.log",
+      "sha256": "81035161ab4468441cb7ef23bd1b88f9bfb765f229826968d5f69cada048a056"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/binding-fix-spec-admin-8a5565be.py",
+      "sha256": "8eb1d1f549021372d98cd4201df0439c1416ca941b85e0d6f91f53c634716532"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/binding-fix-spec-review-8a5565be.json",
+      "sha256": "3e80ced7cd48db6e9a25f7843d80e1b5379469d5747c6a9a381bb2f2de9e70f6"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/binding-fix-spec-review-8a5565be.md",
+      "sha256": "31eb50ffe1c52648a592c20d4e7b79e88123d001ddb57fa736743d9068a8ac33"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/binding-fix-standards-review-8a5565be.json",
+      "sha256": "d74b27be37c9f299ecee3724f7559215e9faedd7bd65331f8a0fbd41c7b2c95a"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/binding-fix-standards-review-8a5565be.md",
+      "sha256": "8486726de78487c44caed04d18444f425ed9f84678a817a9e3ea12a1bc89234c"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/browser-integration-full-architecture-tests.log",
+      "sha256": "8781d7765e8b1de24be6887a09b4c7898f8e529ba1de8ce4e65de124421323cb"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/investments-volume-cleanup-regression.json",
+      "sha256": "b53843473d9252dde2e2b1827b8f0f3a83369fe8bc21fce1e838239a74a1a9ec"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/investments-volume-cleanup-regression.log",
+      "sha256": "542113a8336fdcf4ea9c6f1b5ec2b16be079738d7788c2497266d738349f8ecb"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/manifest.json",
+      "sha256": "efa43c3899183ee6be6ef4613d8a5ee71141a9db5ed20f147c503102933bf75f"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/owned-gate-disk-recovery.json",
+      "sha256": "d850fa34fdd5b5dbb43cc39d837f16f8fe5b90a27ad5e5218094b3f20c9e7032"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/owned-gate-disk-recovery.log",
+      "sha256": "d1cbe4cd4cac5d5e0e31ae8484af8a085ec186f3e289969e898be12e6b0da87b"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/recover-owned-gate-disk.py",
+      "sha256": "388780c571df2e1c9e85bbe52cb48ae012b20c2c5bd43ef3e91f524f869d1f2c"
+    },
+    {
+      "path": "architecture/evidence/issues/153/test-environment-recovery/verification.md",
+      "sha256": "76dea724572631ed174f2c2fc51dc3032697d44f7e94861c13d0e370a2be8087"
+    },
+    {
+      "path": "tests/architecture_foundation.test.mjs",
+      "sha256": "4756f92d39981b8392c4a65faa9588450588a8356ef2ad8621a709ae3c9fc909"
+    },
+    {
+      "path": "tests/banking_database_runtime.test.mjs",
+      "sha256": "ebd5b904406b3ae379a0483b454e12c728ff9da3d950df981315d7301be8480d"
+    },
+    {
+      "path": "tests/company_access_database_runtime.test.mjs",
+      "sha256": "75000d3e685eb70d988b57d6a8444d3efc92da5d17194e4d7f7e1c3007aae860"
+    },
+    {
+      "path": "tests/company_access_onboarding_database_runtime.test.mjs",
+      "sha256": "d92d55644ee91731232d07058476fe8c04f4ada882fdb76baaff6fa19342aa37"
+    },
+    {
+      "path": "tests/corporate_document_database_runtime.test.mjs",
+      "sha256": "eafdc5d5727f5f7fda1a64ac7b53aab809abd385e88deca4d28f9189f9b8959f"
+    },
+    {
+      "path": "tests/investments_database_runtime.test.mjs",
+      "sha256": "c71903522fe0833f901d3027e58a3ba1dd41170886f23e4a87be163ef9bf09ac"
+    },
+    {
+      "path": "tests/ledger_database_runtime.test.mjs",
+      "sha256": "0911d420da3bbf24ce6c8fe5bcd266d91e015e997d2464999b89f5f4c2a16a3c"
+    },
+    {
+      "path": "tests/marketing_consent_proof_database_runtime.test.mjs",
+      "sha256": "7675c68f9f43453040471530dec0ecd924e54d7e0bc3a3478631342e42fc9f3b"
+    },
+    {
+      "path": "tests/marketing_measurement_database_runtime.test.mjs",
+      "sha256": "2c39a902ffa8e981246b17d294f2341e664dda4707fed76707d0138d433cc4c5"
+    },
+    {
+      "path": "tests/validation_observation_database_runtime.test.mjs",
+      "sha256": "e89f78ec00117d3d890a58a9f9a52a2324017191a260be833a4fadbebbc246f7"
+    }
+  ],
+  "independentChecks": {
+    "status": "PASS_READONLY_BINDINGS",
+    "manifestArtifacts": 26,
+    "backup": {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/owned-previous-gate-volumes.tar.gz",
+      "sha256": "c113e2ee8b0b85ab96538aa362d09626f57bc1d1ebd478ae28d7105473b814ef",
+      "bytes": 353048136,
+      "mode": "0600",
+      "selectedVolumes": 39,
+      "windowCounts": [
+        13,
+        13,
+        13
+      ],
+      "allArchiveTopLevelsExact": true,
+      "allPgVersions16or17": true,
+      "allTalliTestCatalogMarkersVerified": true,
+      "archiveMembers": 74019
+    },
+    "runtimeSources": [
+      {
+        "path": "tests/banking_database_runtime.test.mjs",
+        "onlyChange": "--volumes argument",
+        "beforeSha256": "407fcdb9be1653d783378def60a773b3b7a548cd10d8d43300760f2c8500f8ad",
+        "afterSha256": "ebd5b904406b3ae379a0483b454e12c728ff9da3d950df981315d7301be8480d"
+      },
+      {
+        "path": "tests/company_access_database_runtime.test.mjs",
+        "onlyChange": "--volumes argument",
+        "beforeSha256": "b2f2099ed7ad41535360cb4f9811fe15117f444aeac8e7b5c550d3401b31a5a1",
+        "afterSha256": "75000d3e685eb70d988b57d6a8444d3efc92da5d17194e4d7f7e1c3007aae860"
+      },
+      {
+        "path": "tests/company_access_onboarding_database_runtime.test.mjs",
+        "onlyChange": "--volumes argument",
+        "beforeSha256": "62bacaaaa9707300de7334597c21f3f12e50419eff1f8f7d7f98257cacede6d4",
+        "afterSha256": "d92d55644ee91731232d07058476fe8c04f4ada882fdb76baaff6fa19342aa37"
+      },
+      {
+        "path": "tests/corporate_document_database_runtime.test.mjs",
+        "onlyChange": "--volumes argument",
+        "beforeSha256": "a890b726567b14786d1c4d980dcc2e99ebf9e28c5a64f74eac9c6d67bdc4597c",
+        "afterSha256": "eafdc5d5727f5f7fda1a64ac7b53aab809abd385e88deca4d28f9189f9b8959f"
+      },
+      {
+        "path": "tests/investments_database_runtime.test.mjs",
+        "onlyChange": "--volumes argument",
+        "beforeSha256": "3b391af47956bebe32eaa889e54eec00bd4e4128fd721920b53b6f9b2cfe39f6",
+        "afterSha256": "c71903522fe0833f901d3027e58a3ba1dd41170886f23e4a87be163ef9bf09ac"
+      },
+      {
+        "path": "tests/ledger_database_runtime.test.mjs",
+        "onlyChange": "--volumes argument",
+        "beforeSha256": "96f5ed4e4ea098cf44a5499c75b644a317565c48a7601bef97d870b99b91c2db",
+        "afterSha256": "0911d420da3bbf24ce6c8fe5bcd266d91e015e997d2464999b89f5f4c2a16a3c"
+      },
+      {
+        "path": "tests/marketing_consent_proof_database_runtime.test.mjs",
+        "onlyChange": "--volumes argument",
+        "beforeSha256": "eeeabb810c146d3592d2b86d6b5341f8ffc0c8b26ce89b864119a0a7d61ffee0",
+        "afterSha256": "7675c68f9f43453040471530dec0ecd924e54d7e0bc3a3478631342e42fc9f3b"
+      },
+      {
+        "path": "tests/marketing_measurement_database_runtime.test.mjs",
+        "onlyChange": "--volumes argument",
+        "beforeSha256": "207bedb5331d3f00617d81751bf71347df88f0ea24624abed089fdbea159e7aa",
+        "afterSha256": "2c39a902ffa8e981246b17d294f2341e664dda4707fed76707d0138d433cc4c5"
+      },
+      {
+        "path": "tests/validation_observation_database_runtime.test.mjs",
+        "onlyChange": "--volumes argument",
+        "beforeSha256": "b683fdd781860b0f94a4ee9dca9482a7ee9a0ac9de81315c921e9f35501ba0b3",
+        "afterSha256": "e89f78ec00117d3d890a58a9f9a52a2324017191a260be833a4fadbebbc246f7"
+      }
+    ],
+    "originalSpecAdoptionsExact": [
+      "binding-fix-spec-admin-8a5565be.json",
+      "binding-fix-spec-admin-8a5565be.log",
+      "binding-fix-spec-admin-8a5565be.py",
+      "binding-fix-spec-review-8a5565be.json",
+      "binding-fix-spec-review-8a5565be.md"
+    ],
+    "limits": [
+      "No Docker command executed",
+      "No runtime regression or recovery rerun",
+      "Archive read verification is not a database restore rehearsal"
+    ]
+  },
+  "additionalChecks": {
+    "architectureChangeOnlyDeclaredEdge": true,
+    "originalCriteriaRegistryArchitectureDeclarationsUnchanged": true,
+    "failedGateENOSPCAndPriorPassStepsVerified": true,
+    "architecturePriorResult": {
+      "passed": 57,
+      "failed": 1
+    },
+    "investmentsRetainedRegression": {
+      "exit": 0,
+      "addedVolumes": [],
+      "removedExistingVolumes": []
+    }
+  },
+  "evidenceBindings": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/environment-recovery-spec-checks-9a3d8d80.py",
+      "sha256": "21967bc3e02a8800fbd97cdaf7f0d8a115d815ffca5f0c88f9fdb7f27b6d7426"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/environment-recovery-spec-checks-9a3d8d80.json",
+      "sha256": "a00cbdb6bfa7efc4cb83e6899ffd8f683ca1ac2bca81388e5b7d97b39fe9d270"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/environment-recovery-spec-checks-9a3d8d80.log",
+      "sha256": "a00cbdb6bfa7efc4cb83e6899ffd8f683ca1ac2bca81388e5b7d97b39fe9d270"
+    }
+  ],
+  "independentCommands": [
+    {
+      "command": "python3 /Users/kristianelmer/.codex/issue-192-private/issue153-entry/environment-recovery-spec-checks-9a3d8d80.py",
+      "exitCode": 0,
+      "scope": "read-only Git/filesystem/archive verification; no Docker invocation"
+    }
+  ],
+  "limits": [
+    "No runtime/architecture broad rerun",
+    "No Docker/database/browser mutation",
+    "Backup inspection does not prove restore usability",
+    "Retained Investments pass/volume delta is parent-run evidence",
+    "Failed8a gate receives zero completegate credit",
+    "No stageexit/provider/production authority",
+    "Later worktree changes excluded"
+  ],
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/environment-recovery-spec-review-9a3d8d80.md",
+  "reportSha256": "ea683076553fbef47a0bf97f898f7baeebaa0b5f5e662408c479646448818570",
+  "wordCount": 273
+}

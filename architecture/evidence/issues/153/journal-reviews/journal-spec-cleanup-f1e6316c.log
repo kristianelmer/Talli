@@ -1,0 +1,31 @@
+✔ readiness rejects when its owned process exits before an unrelated listener responds (31.749084ms)
+✔ an unrelated ready listener cannot satisfy a live child without its bind proof (42.91875ms)
+✔ readiness failure tears down a live owned process (43.675ms)
+✔ a listener that never responds cannot outlive the readiness deadline (110.557166ms)
+✔ a ready owned process is terminated and cleanup is idempotent (51.642459ms)
+✔ forced process cleanup has a final timeout and tolerates an undefined handle (12.034708ms)
+✔ partial setup cleanup closes the database and removes only known resources (0.310667ms)
+✔ browser owner cleanup preserves every prior family in predecessor before company and user (15.153792ms)
+✔ browser owner cleanup preserves every prior family in overlap before company and user (13.600583ms)
+✔ browser owner cleanup preserves every prior family in contracted before company and user (11.991208ms)
+✔ browser owner cleanup preserves every prior family in tax-contracted before company and user (13.164375ms)
+✔ browser owner cleanup preserves every prior family in accounts-expanded before company and user (13.152875ms)
+✔ browser owner cleanup preserves every prior family in accounts-contracted before company and user (13.3155ms)
+✔ browser owner cleanup removes every tracked company before the shared owner (12.117167ms)
+✔ browser owner cleanup preserves source failure and continues independent cleanup (8.511542ms)
+✔ browser owner cleanup preserves both operation and rollback failures (4.287875ms)
+✔ browser owner cleanup fails closed for accounts-missing-family (0.65575ms)
+✔ browser owner cleanup fails closed for accounts-partial-retirement (0.216625ms)
+✔ browser owner cleanup fails closed for accounts-wrong-phase (0.511625ms)
+✔ browser owner cleanup fails closed for missing-family (0.344125ms)
+✔ browser owner cleanup fails closed for wrong-owner (0.575708ms)
+✔ browser owner cleanup fails closed for invalid-trigger-mode (2.941125ms)
+﹣ browser owner cleanup removes immutable corporate and production filing graphs (0.205416ms) # local Supabase runtime is required
+ℹ tests 23
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 699.072667

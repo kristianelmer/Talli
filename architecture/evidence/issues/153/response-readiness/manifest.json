@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "1.0",
+  "status": "RESPONSE_READINESS_REVIEW_PENDING",
+  "baseRevision": "af5c6523f081707fc08818919717371af6dd4ec9",
+  "fixedFinding": "STD-153-READ-1",
+  "artifacts": {
+    "apps/backend/src/talli_backend/main.py": "e83aea0f62c1a85520a8139d37e120a99add30a414605a7dcdd9ceb8c49aa6b0",
+    "apps/backend/tests/test_annual_accounts_workspace.py": "b92518157c370029ca85070dd2e2b7e58f3b0a312cd931978396c323e9d100b3",
+    "architecture/BACKEND-SYSTEM.md": "e2246ab623632fbe81970303e29065360653307db12c645401e6a5f053d5545f",
+    "architecture/backend-system.json": "5572b6de126037a72e5a530d52d33977a8e1b9f71cf599da577d7825f8786024",
+    "architecture/dependency-evidence.json": "dadff0a5b30a22e061f793b6e3d4c9f366c95690f0ee124f717b47b22403e248",
+    "contracts/openapi/talli-v1.json": "1390ab63bb08a0b1332c1a789ad5702c646760e7dee836402281b26252ab5428",
+    "packages/talli-api-client/src/generated/client.ts": "fa414bffcb1aac954e6101dda88916103c2680f55d6f711c77842096facff344",
+    "scripts/generate-api-client.mjs": "cc13458a5bbee0bf58b0a1cc8c6141d84013aa56eaa9f3f439105f386a4eab53",
+    "apps/backend/src/talli_backend/json_transport.py": "bdb2b5b12ff9268a24c83cbff234077ab73853408e84f3832e6abe24e3d210c4",
+    "apps/backend/tests/test_annual_accounts_readiness_api.py": "d5a08591f15cd1e0a0e7dd5f8dfa1030019954da69fe415d3f2363a1e1561eac",
+    "apps/backend/tests/test_json_transport.py": "f153e95074376223b7b0d22c3493b495556703a9179b74f763ee48c374cd3c97",
+    "architecture/evidence/issues/153/response-readiness/read-controls-standards-review-af5c6523.json": "62a24b12ddd7d77e63ddba7d531a2dccca5e0a124d3aee2f59542d01f72ef81d",
+    "architecture/evidence/issues/153/response-readiness/read-controls-standards-deep-wire-af5c6523.py": "40e844edd0382ee86805d20b673a0888505b3bdf6cc9a9785cb47d3b25e65cc4",
+    "architecture/evidence/issues/153/response-readiness/deep-wire-fixed-original-probe.log": "c4c783b0f852aeef8310b4a22fb05640114ee58c6b30785679fd73fc703c39c3",
+    "architecture/evidence/issues/153/response-readiness/read-controls-standards-deep-wire-af5c6523.log": "4838d39d47cf452e2d4856bc3a99b0b952582f9ae7eff7a99da129933f23f157",
+    "architecture/evidence/issues/153/response-readiness/read-controls-standards-review-af5c6523.md": "630bede593ab4139f28ce3760c7cc858c4ad8d1a4ea0ce3aab8ec537944d4b39",
+    "architecture/evidence/issues/153/response-readiness/deep-wire-fix-tests.log": "82774856b69b7842a4d724de71bb309d41e128dadb143357ea44aab2e25015ba",
+    "architecture/evidence/issues/153/response-readiness/read-controls-standards-deep-wire-trace-af5c6523.log": "a97bac3cde303b3006f41791a10a5aa322f817866ec5a4e78038cea789120796",
+    "architecture/evidence/issues/153/response-readiness/read-controls-standards-deep-wire-trace-af5c6523.py": "ea4ed7b06fd60c570895fc07a50b7161cb1a78bc811045e5562b7dc2467e2d38",
+    "architecture/evidence/issues/153/response-readiness/verification.md": "923e91ebba7fa6085c345932df5d1095e9c73c628d329927904080fea1408fa9",
+    "architecture/evidence/issues/153/response-readiness/deep-wire-readiness-architecture.log": "dadff0a5b30a22e061f793b6e3d4c9f366c95690f0ee124f717b47b22403e248",
+    "architecture/evidence/issues/153/response-readiness/readiness-api-first-constructor-failure.log": "6dc2d473d7962fd4a04c453b59bf6f01d20d01f3adfe5492fc49f490e5ce2c5d",
+    "architecture/evidence/issues/153/response-readiness/readiness-api-tests.log": "1b8b27871678fd781d8602c1618e660dc68c84d66628e8146c24cf8ab49cb4a2",
+    "architecture/evidence/issues/153/response-readiness/deep-wire-readiness-tests-final.log": "4956522027b50c9218cf5bf5a8b50ebce8335bf16ea4cbe81e9da2c1e29b9fcd"
+  }
+}

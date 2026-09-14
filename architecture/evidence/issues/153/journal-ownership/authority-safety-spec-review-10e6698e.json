@@ -1,0 +1,76 @@
+{
+  "verdict": "CHANGES_REQUIRED",
+  "base": "eb7d312054c32a8e94dd9d0c8bf9f22dcf9a12fa",
+  "candidate": "10e6698efdcad2726f5ca9f7dcdb7352317ceb11",
+  "findingDispositions": [
+    {
+      "id": "STD-153-REPLAY-1",
+      "status": "CLOSED",
+      "proof": "Original two-invocation fixtures now reject before reconnect; actual atomic-file writer failure cases preserve pending intent."
+    },
+    {
+      "id": "STD-153-VALIDATION-1",
+      "status": "CLOSED",
+      "proof": "Original malformed HTTP200 responses now fail before lock; empty-array positive control still locks once."
+    }
+  ],
+  "newFindings": [
+    {
+      "id": "STD-153-JOURNAL-1",
+      "severity": "P2",
+      "status": "OPEN",
+      "source": "apps/backend/src/talli_backend/modules/annual_accounts_filing/rehearsal.py:94-127",
+      "supportingSources": [
+        "apps/backend/src/talli_backend/adapters/local_annual_accounts_rehearsal.py:23",
+        "apps/backend/src/talli_backend/authority_tools/_filing.py:174"
+      ],
+      "spec": "GH-153-A3 signing/submission states remain fail closed and auditable; #132 characterization/equivalence includes idempotency and retries.",
+      "reproduction": "Two concurrent actual CLI invocations sharing one real file produce two create/lock effects and distinct success IDs; only one instance persisted.",
+      "requiredCorrection": "Serialize a journal before loading prior state through consequential effects/checkpoints; competing invocation must fail before provider construction."
+    }
+  ],
+  "independentTests": {
+    "backendPassed": 275,
+    "archivePassed": 16,
+    "additionalProbeCases": 13,
+    "skips": 0,
+    "additionalConcurrentDefectProbes": 2,
+    "concurrentResultsMatchStandardsByteForByte": true
+  },
+  "bindingsArtifact": "authority-safety-spec-bindings-10e6698e.json",
+  "manifestChecks": 46,
+  "originalAdoptionsChecked": 15,
+  "originalTraceUnchanged": true,
+  "deploymentProofApplicability": "Earlier17storagephase+7exactoldbackend protocol checks remain applicable: no changes to consumed SQL/workspace/import/generated HTTP implementations. Authority-safety paths are separately tested with fake ports only.",
+  "commands": [
+    "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=apps/backend/src:apps/backend/tests <pinned-python3.12.12> -m pytest -q -c /dev/null --rootdir=. -p no:cacheprovider apps/backend/tests/test_annual_accounts_rehearsal_recovery.py apps/backend/tests/test_annual_accounts_validation_response.py apps/backend/tests/test_annual_accounts_authority_ownership.py apps/backend/tests/test_authority_filing_tools.py apps/backend/tests/test_authority_filing_transports.py",
+    "<pinned-node24.20.0> --test tests/company_access_cancellation_schema.test.mjs",
+    "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=apps/backend/src:apps/backend/tests <pinned-python3.12.12> <private>/authority-safety-spec-probe-10e6698e.py"
+  ],
+  "runtime": {
+    "python": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+    "node": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+    "cwd": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-authority-safety-10e6698e"
+  },
+  "artifacts": {
+    "authority-safety-spec-bindings-10e6698e.json": "fe0362309a27353ad305674ffa76df57874fe742560b82d2a59e24652c4b2f8e",
+    "authority-safety-spec-tests-10e6698e.log": "4d35bede1e784cfed3c0176aff1c68537e04375f50100f8530a50298c2e75d03",
+    "authority-safety-spec-archive-10e6698e.log": "b5dcf8ebaf7ce92bf181d49e423c24ba336b353e0fa2f0e64a7650a2a85ea489",
+    "authority-safety-spec-probe-10e6698e.py": "9893954477f7ccc2ca05e7b47fb1f8f01ec6585af50fa14f9e0937d8b5a4e8f1",
+    "authority-safety-spec-probe-10e6698e.json": "2fcdc0f3fbba70a0390ba89fdcaafa4559bd89a5ecfc8d6a8dd308467d3f9d4b",
+    "stage-exit-standards-ambiguous-replay-eb7d3120.py": "c4323a6723f89570e3d9a11758bac48d1af754e1add22df41ecc60a01d18533a",
+    "stage-exit-standards-validation-response-eb7d3120.py": "677c10e89c5bad7407725705f8ced7391b154c0ee3268bf48e609655da2e0024",
+    "authority-safety-standards-concurrent-probe-10e6698e.py": "43c7eadb7c6a7580046862b946c98f1a2c8052aadaa6d93183a25b7c4bdf85f7",
+    "authority-safety-standards-concurrent-cli-10e6698e.py": "3617322d99cd832e7dc3f51dba46730f441a8f02f0c73dbdb94f332cbccfae0b",
+    "authority-safety-spec-concurrent-10e6698e.json": "4bb6431104e69b0c7ad6a6619d60db1f976767612f7bb43ac784f8f92e3f1f37",
+    "authority-safety-spec-concurrent-cli-10e6698e.json": "f9699f762b686cba9355f82dd17b041970f595c2d5f2098d1eea141b06f604b6"
+  },
+  "reportSha256": "f223e197a057b1096543e8ca74d64b1a2533da85328edd9889700f61d4513117",
+  "limits": [
+    "Private snapshot and private temporary files only",
+    "No shared repository/DB/Docker/browser/provider mutations",
+    "No power-loss/durable storage hardware claim",
+    "No full gate or stage-exit credit",
+    "Original whole-stage report stays historical; this closes its two sequential findings and identifies a new concurrent-journal gap."
+  ]
+}

@@ -1,0 +1,195 @@
+{
+  "baseRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "candidateRevision": "713a18d2d01375def49a29804b1fcf86b218159c",
+  "manifestHashesVerified": 15,
+  "privateByteExactAdoptions": {
+    "architecture/evidence/issues/153/entry/published-receipt-reread-152.md": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-receipt-reread-152.md",
+    "architecture/evidence/issues/153/entry/published-receipt-reread-152.json": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-receipt-reread-152.json",
+    "architecture/evidence/issues/153/entry/published-receipt-152.json": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/published-receipt-152.json",
+    "architecture/evidence/issues/153/entry/issue152-closed.json": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/issue152-closed.json",
+    "architecture/evidence/issues/153/entry/final-integration-152.json": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/final-integration-152.json",
+    "architecture/evidence/issues/153/entry/ci-34808139123-verified.json": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/ci-34808139123-verified.json",
+    "architecture/evidence/issues/153/entry/ci-34809460472-verified.json": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/ci-34809460472-verified.json",
+    "architecture/evidence/issues/153/entry/main-baseline-gate-verification.json": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/main-baseline-gate-verification.json",
+    "architecture/evidence/issues/153/entry/main-baseline-spec-review-5b74340c.md": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/main-baseline-spec-review-5b74340c.md",
+    "architecture/evidence/issues/153/entry/main-baseline-spec-review-5b74340c.json": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/main-baseline-spec-review-5b74340c.json",
+    "architecture/evidence/issues/153/entry/committed-pair-reread-152-0b2d5ea8.json": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/committed-pair-reread-152-0b2d5ea8.json",
+    "architecture/evidence/issues/153/entry/closure-preflight-standards-review-152.json": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/closure-preflight-standards-review-152.json"
+  },
+  "privateOriginalNotLocated": [
+    "architecture/evidence/issues/153/entry/issue153-original.json"
+  ],
+  "exactRegistryTransition": true,
+  "allRecordsAndFrozenBaselineUnchanged": true,
+  "originalSixCriteriaPending": true,
+  "inventoryPending": true,
+  "firstGateStorage": [
+    "713a18d2d01375def49a29804b1fcf86b218159c"
+  ],
+  "receiptBindings": {
+    "revision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+    "canonicalDigest": "sha256:681ba7da16c0f8b2fdc4f7b0c7a5897ede814ada9de3f9c7f543d8e3c13c9582",
+    "transcriptDigest": "sha256:0ffbfdd0827b2a6c960c7a0df548e068a28ae78b81f2895931221442c80dd676",
+    "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+    "startedAt": "2026-09-14T05:23:50.702Z",
+    "executedAt": "2026-09-14T05:44:22.652Z",
+    "checkCount": 11,
+    "previousPassingRevision": "a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2",
+    "status": "PASS_11_OF_11_INDEPENDENTLY_VERIFIED",
+    "evidencePath": "architecture/evidence/customer-ready-gates/5b74340ca75f215b43d754c6bf0fc49ef5974b0b.json",
+    "note": "Separate exact-main baseline gate; neither #153 exit pass. Ran as exact-main verification before predecessor closure; adopted only after predecessor published receipt reread and closure."
+  },
+  "testedSchemaSha256": "b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+  "changedFileSha256": {
+    "architecture/compatibility.json": "66ee4c62b8a32443adf43d167bd3f5da4b7f1f387bd46f4a0f6ddbab5de8b556",
+    "architecture/evidence/customer-ready-gates/5b74340ca75f215b43d754c6bf0fc49ef5974b0b.json": "f0e4d6065f9289d0b699c3c4c344523f844aced540b9c8228ac9413b3f7aa1f9",
+    "architecture/evidence/customer-ready-gates/5b74340ca75f215b43d754c6bf0fc49ef5974b0b.log": "0ffbfdd0827b2a6c960c7a0df548e068a28ae78b81f2895931221442c80dd676",
+    "architecture/evidence/issues/153/entry/ci-34808139123-verified.json": "1cc9024798cad1b9ac750d10a561caf9b38b387883496cce2b8a02b948738f7b",
+    "architecture/evidence/issues/153/entry/ci-34809460472-verified.json": "3731b3d5c5d29e655289d950e28182f08d2ae419572f131d3f39deacf885bf11",
+    "architecture/evidence/issues/153/entry/closure-preflight-standards-review-152.json": "4a3083d718c1e5deca020287dc58b5b1aa54c33ce5f9087c198796858ca056bd",
+    "architecture/evidence/issues/153/entry/committed-pair-reread-152-0b2d5ea8.json": "353cab03d98237a98cb94d20499f48699ee30e28d20ebba47c38fb4003c0c4e2",
+    "architecture/evidence/issues/153/entry/final-integration-152.json": "c680ee1ef62e9bfd1df3a33ddf74f59c3afd67af51267e52a69b3d7b1f8b0d5c",
+    "architecture/evidence/issues/153/entry/issue152-closed.json": "495424b7edde3180515eb7a72cd2e71991e8f6dfd008b4b96644981f3ec70185",
+    "architecture/evidence/issues/153/entry/issue153-original.json": "1dae5765add0a07adc01d2b1987fe41a2889e541bbf7ce751803e1a87f97cc90",
+    "architecture/evidence/issues/153/entry/main-baseline-gate-verification.json": "6fb848983f70c7639f32bc70ac8d62121a2615175a147941dc29049b191a3b05",
+    "architecture/evidence/issues/153/entry/main-baseline-spec-review-5b74340c.json": "ab0f4b2157a07c5a371e8aba73b77530595cf4bdbbae2c598dd45e8ec980408d",
+    "architecture/evidence/issues/153/entry/main-baseline-spec-review-5b74340c.md": "eff9d91bb7aa17d7c9c169febb6f39426a1000d89faaf481f1b8c0489000fc9f",
+    "architecture/evidence/issues/153/entry/manifest.json": "988a097f791059241ae448437f08f40f068c1cea746ba987d7873a8d8353895d",
+    "architecture/evidence/issues/153/entry/published-receipt-152.json": "b6d67fab7c71ef6b534d5b299adc6a0b4e493e406a07fe90d142d2145d0306d2",
+    "architecture/evidence/issues/153/entry/published-receipt-reread-152.json": "0fa4aecee381a7b0641733f73c4d20a66ac9ddf3bf793621ca3de7e8cb17af69",
+    "architecture/evidence/issues/153/entry/published-receipt-reread-152.md": "eeb0a0fa03dd36a8ac45f322dabd99716d22bcef6d88ff32491722ecd402898d",
+    "architecture/evidence/issues/153/requirements.json": "ce6a24e2e949dd3303719a0c176d83a206abb6ba1b96bc0c2176833f99e7fec8"
+  },
+  "commits": [
+    "713a18d2 docs(accounts): adopt verified predecessor and immutable entry baseline"
+  ],
+  "axis": "Standards",
+  "verdict": "PASS_BOUNDED_ENTRY_ADOPTION",
+  "findings": [],
+  "diffCommand": "git diff 5b74340ca75f215b43d754c6bf0fc49ef5974b0b...713a18d2d01375def49a29804b1fcf86b218159c",
+  "diffSha256": "549c68ffcbed1fc4cd92ba9eb63e180ebb0b072a49726c9552fb587efcd95ca8",
+  "schemaValid": true,
+  "schemaDateTimeValidation": "Explicit recorded UTC RFC3339 lexical/date parse check; standard AJV structural validation.",
+  "exact16AnnualTuples": [
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_review_comments",
+      "operation": "acknowledgeFilingReviewComment"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_overrides",
+      "operation": "addFilingOverride"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_review_comments",
+      "operation": "addFilingReviewComment"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_overrides",
+      "operation": "refreshAnnualReadinessSnapshots"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_previews",
+      "operation": "addFilingOverride"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_previews",
+      "operation": "addFilingReviewComment"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:authority_permissions",
+      "operation": "confirmAuthorityPermission"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:authority_test_runs",
+      "operation": "recordAuthorityTestEvidence"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:authority_permissions",
+      "operation": "refreshAnnualReadinessSnapshots"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_previews",
+      "operation": "refreshAnnualReadinessSnapshots"
+    },
+    {
+      "record": "compat-annual-compliance-persistence",
+      "path": "apps/web/app/actions.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_submissions",
+      "operation": "refreshAnnualReadinessSnapshots"
+    },
+    {
+      "record": "compat-company-archive-persistence",
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:authority_permissions",
+      "operation": "GET"
+    },
+    {
+      "record": "compat-company-archive-persistence",
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:authority_test_runs",
+      "operation": "GET"
+    },
+    {
+      "record": "compat-company-archive-persistence",
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_previews",
+      "operation": "GET"
+    },
+    {
+      "record": "compat-company-archive-persistence",
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_review_comments",
+      "operation": "GET"
+    },
+    {
+      "record": "compat-company-archive-persistence",
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "rule": "direct-web-business-persistence",
+      "resource": "table:filing_submissions",
+      "operation": "GET"
+    }
+  ],
+  "privateProbeSha256": "bb88a4213f5dfe09706b9f387b4005f8301f3fd97174f3d773dfde6010a6cf59",
+  "schemaTranscriptSha256": "ded156f2eef84ab4a79a323960a96778ed3aa2323aed4586f1d77f211139f921",
+  "reportSha256": "ead004527fa26749f085168f02e5bfbd33fceefde659613de3525b408f3179af",
+  "limits": [
+    "Entry adoption only; no #153 implementation or exit acceptance.",
+    "Historical closure/live integration evidence inspected, not re-queried.",
+    "No tracked writes, DB, browser, gate or application tests."
+  ]
+}

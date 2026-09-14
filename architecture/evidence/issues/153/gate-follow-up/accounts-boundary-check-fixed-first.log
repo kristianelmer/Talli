@@ -1,0 +1,286 @@
+✔ cancellation lifecycle transport uses generated operations with bearer and deadline (23.193167ms)
+✔ generated cancellation decoders reject malformed optional fields, UUIDs, and timestamps (3.306417ms)
+✔ generated review decoder enforces evidence-reference length bounds (1.794042ms)
+✔ truncated successful command JSON becomes a typed 502 and preserves the operation (0.347042ms)
+✔ every concurrent archive source failure trips the completion barrier (0.211833ms)
+✔ actions preserve exact cancellation inputs for network and decoder failures (0.074208ms)
+✖ web cancellation lifecycle has no direct Supabase persistence or caller-owned proof (4.471417ms)
+✔ Authority Connections retirement leaves no web authority signing, token or credential transport (29.624958ms)
+✔ the four standalone authority commands execute backend modules and retain their public command names (1.118375ms)
+✔ all migrated authority and filing facades are retired (1.442292ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 9
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 158.741583
+
+✖ failing tests:
+
+test at apps/web/tests/company-access-cancellation.test.mjs:245:1
+✖ web cancellation lifecycle has no direct Supabase persistence or caller-owned proof (4.471417ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /loadPresentedAnnualAccountsSource\(accessToken, companyId, null\)/u. Input:
+  
+  'import { loadPresentedAnnualAccountsSource } from "../../../../lib/annual-accounts-workspace-source";\n' +
+    'import { loadPresentedCompanyTaxSource } from "../../../../lib/company-tax-workspace-source";\n' +
+    'import { loadTaxSettlementArchiveSource } from "../../../../../features/company-tax-filing";\n' +
+    'import { createHash } from "node:crypto";\n' +
+    '\n' +
+    'import {\n' +
+    '  loadLedgerEntriesForArchive,\n' +
+    '  presentLedgerEntriesForArchive,\n' +
+    '  loadOpeningSnapshotsForYear,\n' +
+    '  presentOpeningSnapshots,\n' +
+    '} from "../../../../../features/ledger";\n' +
+    'import {\n' +
+    '  loadInvestmentAcquisitionLots,\n' +
+    '  loadInvestmentActivity,\n' +
+    '  loadInvestmentPositions,\n' +
+    '  loadInvestmentShareSaleAllocations,\n' +
+    '  loadInvestmentCorrections,\n' +
+    '  effectiveInvestmentActivity,\n' +
+    '  presentAcquisitionLots,\n' +
+    '  presentInvestmentActivity,\n' +
+    '  presentInvestmentPositions,\n' +
+    '  presentShareSaleAllocations,\n' +
+    '  presentInvestmentCorrections,\n' +
+    '} from "../../../../../features/investments";\n' +
+    'import {\n' +
+    '  loadDocumentBackupProjection,\n' +
+    '} from "../../../../../features/documents";\n' +
+    'import {\n' +
+    '  listCorporateDecisionLifecycle,\n' +
+    '  listSupportedCorporateEvents,\n' +
+    '} from "../../../../../features/corporate-governance";\n' +
+    'import {\n' +
+    '  loadRf1086ArchiveSource,\n' +
+    '  presentRf1086Preview,\n' +
+    '  presentRf1086Simulation,\n' +
+    '  presentRf1086Permission,\n' +
+    '  presentRf1086TestEvidence,\n' +
+    '  presentRf1086ReviewComment,\n' +
+    '} from "../../../../../features/shareholder-register-filing";\n' +
+    'import { loadBillingSnapshot, presentBillingAccount } from "../../../../../features/billing";\n' +
+    'import {\n' +
+    '  buildPersistedCompanyArchive,\n' +
+    '  firstArchiveSourceError,\n' +
+    '} from "../../../../lib/archive";\n' +
+    'import { loadAcceptedMembershipCompany } from "../../../../lib/company-access-context";\n' +
+    'import { requireStepUpForAction } from "../../../../lib/security";\n' +
+    'import { getCurrentSessionAccessToken } from "../../../../lib/supabase/auth-session";\n' +
+    'import {\n' +
+    '  createSupabaseServerClient,\n' +
+    '  createSupabaseServiceRoleClient,\n' +
+    '} from "../../../../lib/supabase/server";\n' +
+    '\n' +
+    'async function loadArchiveOpeningSnapshots(accessToken: string, companyId: string, incomeYear: number) {\n' +
+    '  try {\n' +
+    '    const projection = presentOpeningSnapshots(await loadOpeningSnapshotsForYear(accessToken, companyId, incomeYear));\n' +
+    '    if ([...projection.setups, ...projection.shareholders].some((row) => row.company_id !== companyId)) {\n' +
+    '      throw new Error("Opening query escaped the authorized company scope.");\n' +
+    '    }\n' +
+    '    const setups = projection.setups.filter((setup) => setup.income_year === incomeYear);\n' +
+    '    const setupIds = new Set(setups.map((setup) => setup.id));\n' +
+    '    return { data: setups, shareholders: projection.shareholders.filter((row) => setupIds.has(row.setup_id)), error: null };\n' +
+    '  } catch {\n' +
+    '    return { data: null, shareholders: null, error: new Error("Opening archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveRf1086(accessToken: string, companyId: string, incomeYear: number) {\n' +
+    '  try {\n' +
+    '    // The source keeps company-wide comments/permissions and selects year-bound rows before decoding.\n' +
+    '    const workspace = await loadRf1086ArchiveSource(accessToken, companyId, incomeYear);\n' +
+    '    const submissions = workspace.simulations.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Simulation);\n' +
+    '    const evidenceIds = new Set(submissions.filter((row) => row.mode === "test_authority")\n' +
+    '      .map((row) => row.authority_test_run_id).filter((id): id is string => Boolean(id)));\n' +
+    '    return { data: {\n' +
+    '      submissions,\n' +
+    '      previews: workspace.previews.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Preview),\n' +
+    '      permissions: workspace.permissions.map(presentRf1086Permission),\n' +
+    '      comments: workspace.reviewComments.map(presentRf1086ReviewComment),\n' +
+    '      testEvidence: workspace.testEvidence.filter((row) => evidenceIds.has(row.id)).map(presentRf1086TestEvidence),\n' +
+    '    }, error: null };\n' +
+    '  } catch {\n' +
+    '    return { data: null, error: new Error("RF archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'function mergeArchiveRfRows<A extends { id: string }, B extends { id: string }>(existing: readonly A[], owned: readonly B[]): (A | B)[] {\n' +
+    '  // The overlap projection may still contain the same immutable row identity.\n' +
+    '  const rows = new Map<string, A | B>(existing.map((row) => [row.id, row]));\n' +
+    '  for (const row of owned) rows.set(row.id, row);\n' +
+    '  return [...rows.values()];\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveLedgerEntries(\n' +
+    '  accessToken: string,\n' +
+    '  companyId: string,\n' +
+    '  incomeYear: number,\n' +
+    ') {\n' +
+    '  try {\n' +
+    '    const entries = await loadLedgerEntriesForArchive(accessToken, [companyId]);\n' +
+    '    const presented = presentLedgerEntriesForArchive(entries);\n' +
+    '    if (presented.some((entry) => entry.company_id !== companyId)) {\n' +
+    '      throw new Error("Ledger query escaped the authorized company scope.");\n' +
+    '    }\n' +
+    '    return {\n' +
+    '      data: presented\n' +
+    '        .filter((entry) => entry.income_year === incomeYear)\n' +
+    '        .map((entry) => ({\n' +
+    '          id: entry.id,\n' +
+    '          company_id: entry.company_id,\n' +
+    '          setup_id: entry.setup_id,\n' +
+    '          income_year: entry.income_year,\n' +
+    '          entry_type: entry.entry_type,\n' +
+    '          memo: entry.memo,\n' +
+    '          lines: entry.lines,\n' +
+    '          created_by: entry.created_by,\n' +
+    '          created_at: entry.created_at,\n' +
+    '        })),\n' +
+    '      error: null,\n' +
+    '    };\n' +
+    '  } catch {\n' +
+    '    return { data: null, error: new Error("Ledger archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveDocuments(\n' +
+    '  accessToken: string,\n' +
+    '  companyId: string,\n' +
+    '  incomeYear: number,\n' +
+    ') {\n' +
+    '  try {\n' +
+    '    const result = await loadDocumentBackupProjection(accessToken, companyId, incomeYear);\n' +
+    '    return {\n' +
+    '      data: result.objects.map((document) => ({\n' +
+    '        id: document.documentId,\n' +
+    '        company_id: result.companyId,\n' +
+    '        income_year: result.incomeYear,\n' +
+    '        document_type: document.documentType,\n' +
+    '        name: document.name,\n' +
+    '        linked_to: document.linkedTo,\n' +
+    '        status: document.status,\n' +
+    '        retention_years: document.retentionYears,\n' +
+    '        storage_key: document.storageKey,\n' +
+    '        created_by: document.createdBy,\n' +
+    '        created_at: document.createdAt,\n' +
+    '        removed_at: document.removedAt,\n' +
+    '        removed_by: null,\n' +
+    '        removal_reason: document.removalReason,\n' +
+    '      })),\n' +
+    '      projection: result,\n' +
+    '      error: null,\n' +
+    '    };\n' +
+    '  } catch {\n' +
+    '    return { data: null, projection: null, error: new Error("Documents archive projection unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveBilling(accessToken: string, companyId: string) {\n' +
+    '  try {\n' +
+    '    const snapshot = await loadBillingSnapshot(accessToken, { companyIds: [companyId] });\n' +
+    '    return {\n' +
+    '      data: snapshot.accounts.map(presentBillingAccount),\n' +
+    '      error: null,\n' +
+    '    };\n' +
+    '  } catch {\n' +
+    '    return { data: null, error: new Error("Billing archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveCorporateLifecycle(\n' +
+    '  accessToken: string,\n' +
+    '  companyId: string,\n' +
+    '  incomeYear: number,\n' +
+    ') {\n' +
+    '  try {\n' +
+    '    const [lifecycle, supportedEvents, documents] = await Promise.all([\n' +
+    '      listCorporateDecisionLifecycle(accessToken, [companyId]),\n' +
+    '      listSupportedCorporateEvents(accessToken, [companyId]),\n' +
+    '      loadDocumentBackupProjection(accessToken, companyId, incomeYear),\n' +
+    '    ]);\n' +
+    '    const documentsById = new Map(\n' +
+    '      documents.objects.map((document) => [document.documentId, document]),\n' +
+    '    );\n' +
+    '    const artifacts = lifecycle.corporateDocumentArtifacts\n' +
+    '      .filter((item) => item.income_year === incomeYear)\n' +
+    '      .map((artifact) => ({\n' +
+    '        ...artifact,\n' +
+    '        storage_key: documentsById.get(artifact.document_id)?.storageKey ?? "",\n' +
+    '      }));\n' +
+    '    if (artifacts.some((artifact) => !artifact.storage_key)) {\n' +
+    '      throw new Error("Corporate artifact document evidence is incomplete.");\n' +
+    '    }\n' +
+    '    return {\n' +
+    '      data: {\n' +
+    '        corporateDecisions: lifecycle.corporateDecisions.filter(\n' +
+    '          (item) => item.income_year === incomeYear,\n' +
+    '        ),\n' +
+    '        corporateDocumentSets: lifecycle.corporateDocumentSets.filter(\n' +
+    '          (item) => item.income_year === incomeYear,\n' +
+    '        ),\n' +
+    '        corporateDocumentArtifacts: artifacts,\n' +
+    '        corporateDocumentEvents: lifecycle.corporateDocumentEvents.filter(\n' +
+    '          (item) => item.income_year === incomeYear,\n' +
+    '        ),\n' +
+    '        corporateDecisionFinalizations: lifecycle.corporateDecisionFinalizations.filter(\n' +
+    '          (item) => item.income_year === incomeYear,\n' +
+    '        ),\n' +
+    '        supportedCorporateEvents: supportedEvents.filter(\n' +
+    '          (item) => item.companyId === companyId && item.incomeYear === incomeYear,\n' +
+    '        ),\n' +
+    '      },\n' +
+    '      error: null,\n' +
+    '    };\n' +
+    '  } catch {\n' +
+    '    return { data: null, error: new Error("Corporate-governance archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveInvestments(\n' +
+    '  accessToken: string,\n' +
+    '  companyId: string,\n' +
+    '  incomeYear: number,\n' +
+    ') {\n' +
+    '  try {\n' +
+    '    const [activity, positions, lots, allocations, corrections] = await Promise.all([\n' +
+    '      loadInvestmentActivity(accessToken, [companyId]),\n' +
+    '      loadInvestmentPositions(accessToken, [companyId]),\n' +
+    '      loadInvestmentAcquisitionLots(accessToken, [companyId]),\n' +
+    '      loadInvestmentShareSaleAllocations(accessToken, [companyId]),\n' +
+    '      loadInvestmentCorrections(accessToken, [companyId]),\n' +
+    '    ]);\n' +
+    '    const presentedActivity = presentInvestmentActivity(activity).map((item) => {\n' +
+    '      if (item.action_type !== "share_sale") return item;\n' +
+    '      return {\n' +
+    '        ...item,\n' +
+    '        payload: {\n' +
+    '          ...item.payload,\n' +
+    '          lot_allocations: allocations\n' +
+    '            .filter((allocation) => allocation.saleActionId === item.id)\n' +
+    '            .sort((left, right) => left.allocationOrder - right.allocationOrder)\n' +
+    '            .map((allocation) => ({\n' +
+    '              lot_id: allocation.lotId,\n' +
+    '              acquisition_date: allocation.acquisitionDate,\n' +
+    '              share_count: allocation.allocatedShareCount,\n' +
+    '              cost_basis: Number(allocation.allocatedCostBasis.amount),\n' +
+    '              book_cost_basis: Number(allocation.allocatedBookCostBasis.amount),\n' +
+    '              tax_basis: Number(allocation.allocatedTaxBasis.amount),\n' +
+    '              net_proceeds: Number(allocation.allocatedNetProceeds.amount),\n' +
+    '              average_fund_equity_ratio_basis_points:\n' +
+    '                allocation.averageFundEquityRatioBasisPoints,\n' +
+    '          '... 9621 more characters
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/company-access-cancellation.test.mjs:292:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'import { loadPresentedAnnualAccountsSource } from "../../../../lib/annual-accounts-workspace-source";\nimport { loadPresentedCompanyTaxSource } from "../../../../lib/company-tax-workspace-source";\nimport { loadTaxSettlementArchiveSource } from "../../../../../features/company-tax-filing";\nimport { createHash } from "node:crypto";\n\nimport {\n  loadLedgerEntriesForArchive,\n  presentLedgerEntriesForArchive,\n  loadOpeningSnapshotsForYear,\n  presentOpeningSnapshots,\n} from "../../../../../features/ledger";\nimport {\n  loadInvestmentAcquisitionLots,\n  loadInvestmentActivity,\n  loadInvestmentPositions,\n  loadInvestmentShareSaleAllocations,\n  loadInvestmentCorrections,\n  effectiveInvestmentActivity,\n  presentAcquisitionLots,\n  presentInvestmentActivity,\n  presentInvestmentPositions,\n  presentShareSaleAllocations,\n  presentInvestmentCorrections,\n} from "../../../../../features/investments";\nimport {\n  loadDocumentBackupProjection,\n} from "../../../../../features/documents";\nimport {\n  listCorporateDecisionLifecycle,\n  listSupportedCorporateEvents,\n} from "../../../../../features/corporate-governance";\nimport {\n  loadRf1086ArchiveSource,\n  presentRf1086Preview,\n  presentRf1086Simulation,\n  presentRf1086Permission,\n  presentRf1086TestEvidence,\n  presentRf1086ReviewComment,\n} from "../../../../../features/shareholder-register-filing";\nimport { loadBillingSnapshot, presentBillingAccount } from "../../../../../features/billing";\nimport {\n  buildPersistedCompanyArchive,\n  firstArchiveSourceError,\n} from "../../../../lib/archive";\nimport { loadAcceptedMembershipCompany } from "../../../../lib/company-access-context";\nimport { requireStepUpForAction } from "../../../../lib/security";\nimport { getCurrentSessionAccessToken } from "../../../../lib/supabase/auth-session";\nimport {\n  createSupabaseServerClient,\n  createSupabaseServiceRoleClient,\n} from "../../../../lib/supabase/server";\n\nasync function loadArchiveOpeningSnapshots(accessToken: string, companyId: string, incomeYear: number) {\n  try {\n    const projection = presentOpeningSnapshots(await loadOpeningSnapshotsForYear(accessToken, companyId, incomeYear));\n    if ([...projection.setups, ...projection.shareholders].some((row) => row.company_id !== companyId)) {\n      throw new Error("Opening query escaped the authorized company scope.");\n    }\n    const setups = projection.setups.filter((setup) => setup.income_year === incomeYear);\n    const setupIds = new Set(setups.map((setup) => setup.id));\n    return { data: setups, shareholders: projection.shareholders.filter((row) => setupIds.has(row.setup_id)), error: null };\n  } catch {\n    return { data: null, shareholders: null, error: new Error("Opening archive source unavailable.") };\n  }\n}\n\nasync function loadArchiveRf1086(accessToken: string, companyId: string, incomeYear: number) {\n  try {\n    // The source keeps company-wide comments/permissions and selects year-bound rows before decoding.\n    const workspace = await loadRf1086ArchiveSource(accessToken, companyId, incomeYear);\n    const submissions = workspace.simulations.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Simulation);\n    const evidenceIds = new Set(submissions.filter((row) => row.mode === "test_authority")\n      .map((row) => row.authority_test_run_id).filter((id): id is string => Boolean(id)));\n    return { data: {\n      submissions,\n      previews: workspace.previews.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Preview),\n      permissions: workspace.permissions.map(presentRf1086Permission),\n      comments: workspace.reviewComments.map(presentRf1086ReviewComment),\n      testEvidence: workspace.testEvidence.filter((row) => evidenceIds.has(row.id)).map(presentRf1086TestEvidence),\n    }, error: null };\n  } catch {\n    return { data: null, error: new Error("RF archive source unavailable.") };\n  }\n}\n\nfunction mergeArchiveRfRows<A extends { id: string }, B extends { id: string }>(existing: readonly A[], owned: readonly B[]): (A | B)[] {\n  // The overlap projection may still contain the same immutable row identity.\n  const rows = new Map<string, A | B>(existing.map((row) => [row.id, row]));\n  for (const row of owned) rows.set(row.id, row);\n  return [...rows.values()];\n}\n\nasync function loadArchiveLedgerEntries(\n  accessToken: string,\n  companyId: string,\n  incomeYear: number,\n) {\n  try {\n    const entries = await loadLedgerEntriesForArchive(accessToken, [companyId]);\n    const presented = presentLedgerEntriesForArchive(entries);\n    if (presented.some((entry) => entry.company_id !== companyId)) {\n      throw new Error("Ledger query escaped the authorized company scope.");\n    }\n    return {\n      data: presented\n        .filter((entry) => entry.income_year === incomeYear)\n        .map((entry) => ({\n          id: entry.id,\n          company_id: entry.company_id,\n          setup_id: entry.setup_id,\n          income_year: entry.income_year,\n          entry_type: entry.entry_type,\n          memo: entry.memo,\n          lines: entry.lines,\n          created_by: entry.created_by,\n          created_at: entry.created_at,\n        })),\n      error: null,\n    };\n  } catch {\n    return { data: null, error: new Error("Ledger archive source unavailable.") };\n  }\n}\n\nasync function loadArchiveDocuments(\n  accessToken: string,\n  companyId: string,\n  incomeYear: number,\n) {\n  try {\n    const result = await loadDocumentBackupProjection(accessToken, companyId, incomeYear);\n    return {\n      data: result.objects.map((document) => ({\n        id: document.documentId,\n        company_id: result.companyId,\n        income_year: result.incomeYear,\n        document_type: document.documentType,\n        name: document.name,\n        linked_to: document.linkedTo,\n        status: document.status,\n        retention_years: document.retentionYears,\n        storage_key: document.storageKey,\n        created_by: document.createdBy,\n        created_at: document.createdAt,\n        removed_at: document.removedAt,\n        removed_by: null,\n        removal_reason: document.removalReason,\n      })),\n      projection: result,\n      error: null,\n    };\n  } catch {\n    return { data: null, projection: null, error: new Error("Documents archive projection unavailable.") };\n  }\n}\n\nasync function loadArchiveBilling(accessToken: string, companyId: string) {\n  try {\n    const snapshot = await loadBillingSnapshot(accessToken, { companyIds: [companyId] });\n    return {\n      data: snapshot.accounts.map(presentBillingAccount),\n      error: null,\n    };\n  } catch {\n    return { data: null, error: new Error("Billing archive source unavailable.") };\n  }\n}\n\nasync function loadArchiveCorporateLifecycle(\n  accessToken: string,\n  companyId: string,\n  incomeYear: number,\n) {\n  try {\n    const [lifecycle, supportedEvents, documents] = await Promise.all([\n      listCorporateDecisionLifecycle(accessToken, [companyId]),\n      listSupportedCorporateEvents(accessToken, [companyId]),\n      loadDocumentBackupProjection(accessToken, companyId, incomeYear),\n    ]);\n    const documentsById = new Map(\n      documents.objects.map((document) => [document.documentId, document]),\n    );\n    const artifacts = lifecycle.corporateDocumentArtifacts\n      .filter((item) => item.income_year === incomeYear)\n      .map((artifact) => ({\n        ...artifact,\n        storage_key: documentsById.get(artifact.document_id)?.storageKey ?? "",\n      }));\n    if (artifacts.some((artifact) => !artifact.storage_key)) {\n      throw new Error("Corporate artifact document evidence is incomplete.");\n    }\n    return {\n      data: {\n        corporateDecisions: lifecycle.corporateDecisions.filter(\n          (item) => item.income_year === incomeYear,\n        ),\n        corporateDocumentSets: lifecycle.corporateDocumentSets.filter(\n          (item) => item.income_year === incomeYear,\n        ),\n        corporateDocumentArtifacts: artifacts,\n        corporateDocumentEvents: lifecycle.corporateDocumentEvents.filter(\n          (item) => item.income_year === incomeYear,\n        ),\n        corporateDecisionFinalizations: lifecycle.corporateDecisionFinalizations.filter(\n          (item) => item.income_year === incomeYear,\n        ),\n        supportedCorporateEvents: supportedEvents.filter(\n          (item) => item.companyId === companyId && item.incomeYear === incomeYear,\n        ),\n      },\n      error: null,\n    };\n  } catch {\n    return { data: null, error: new Error("Corporate-governance archive source unavailable.") };\n  }\n}\n\nasync function loadArchiveInvestments(\n  accessToken: string,\n  companyId: string,\n  incomeYear: number,\n) {\n  try {\n    const [activity, positions, lots, allocations, corrections] = await Promise.all([\n      loadInvestmentActivity(accessToken, [companyId]),\n      loadInvestmentPositions(accessToken, [companyId]),\n      loadInvestmentAcquisitionLots(accessToken, [companyId]),\n      loadInvestmentShareSaleAllocations(accessToken, [companyId]),\n      loadInvestmentCorrections(accessToken, [companyId]),\n    ]);\n    const presentedActivity = presentInvestmentActivity(activity).map((item) => {\n      if (item.action_type !== "share_sale") return item;\n      return {\n        ...item,\n        payload: {\n          ...item.payload,\n          lot_allocations: allocations\n            .filter((allocation) => allocation.saleActionId === item.id)\n            .sort((left, right) => left.allocationOrder - right.allocationOrder)\n            .map((allocation) => ({\n              lot_id: allocation.lotId,\n              acquisition_date: allocation.acquisitionDate,\n              share_count: allocation.allocatedShareCount,\n              cost_basis: Number(allocation.allocatedCostBasis.amount),\n              book_cost_basis: Number(allocation.allocatedBookCostBasis.amount),\n              tax_basis: Number(allocation.allocatedTaxBasis.amount),\n              net_proceeds: Number(allocation.allocatedNetProceeds.amount),\n              average_fund_equity_ratio_basis_points:\n                allocation.averageFundEquityRatioBasisPoints,\n          '... 9621 more characters,
+    expected: /loadPresentedAnnualAccountsSource\(accessToken, companyId, null\)/u,
+    operator: 'match',
+    diff: 'simple'
+  }

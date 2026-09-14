@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildAnnualAccountsPayload } from "../apps/web/app/lib/annual-accounts.ts";
+import { buildAnnualAccountsPayload, assessAnnualAccountsReadiness } from "./support/annual_accounts_public.mjs";
 import { evaluateAnnualReadinessGates } from "../apps/web/app/lib/annual-readiness.ts";
 
 const readyBillingEntitlements = Object.fromEntries([
@@ -183,6 +183,8 @@ test("persists annual accounts payload feedback into readiness gate shape", () =
     overrides: [],
     locks: [{ id: "lock-id", company_id: "company-id", income_year: 2025, reason: "locked", locked_by: "owner", locked_at: "2026-01-01T00:00:00Z" }],
     annualData: { ...annualData, annual_full_time_equivalents: null },
+    annualAccountsReadiness: assessAnnualAccountsReadiness({companyId: "company-id", incomeYear: 2025,
+      annualData: { ...annualData, annual_full_time_equivalents: null }, ledgerEntries}),
     billingEntitlements: readyBillingEntitlements,
     authorityPermissions: [
       { obligation: "aksjonaerregisteroppgaven", confirmed_at: "2026-01-01T00:00:00Z", production_enabled: true },

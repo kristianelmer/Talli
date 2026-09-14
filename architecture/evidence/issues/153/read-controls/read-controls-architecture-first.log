@@ -1,0 +1,22 @@
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared ImportAnnualAccountsEvidence
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared AnnualAccountsCompanyIdentity
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared ImportedAnnualAccountsEvidence
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared AnnualAccountsRecordQuery
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared RecordAnnualAccountsOverride
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared AddAnnualAccountsReviewComment
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared ConfirmAnnualAccountsPermission
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared RecordAnnualAccountsTestEvidence
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared AnnualAccountsRecordedResult
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared normalize_annual_accounts_override
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared normalize_annual_accounts_review
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared normalize_annual_accounts_test_evidence
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared AnnualAccountsError
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared AnnualAccountsRecordId
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared annual_accounts_persistence_adapter
+architecture: architecture/backend-system.json: documentation omits declared talli_backend.modules.annual_accounts_filing.public
+architecture: architecture/backend-system.json: documentation omits declared talli_backend.modules.annual_accounts_filing.public
+architecture: architecture/backend-system.json: documentation omits declared talli_backend.modules.annual_accounts_filing.public
+architecture: architecture/backend-system.json: documentation inventory is missing publicPackages talli_backend.modules.annual_accounts_filing.public, talli_backend.modules.annual_accounts_filing.public, talli_backend.modules.annual_accounts_filing.public
+architecture: apps/backend/src/talli_backend/main.py: undeclared composition-root dependency talli_backend.adapters.postgres_annual_accounts
+architecture: apps/backend/src/talli_backend/main.py: undeclared composition-root dependency talli_backend.application.annual_accounts_session
+architecture: apps/backend/src/talli_backend/main.py: undeclared composition-root dependency talli_backend.modules.annual_accounts_filing.public

@@ -1,0 +1,834 @@
+✖ archive preserves frozen mixed chains except the exact owned RF and Tax read retirements (21.20825ms)
+✖ archive preserves original selected opening and shareholder fields through the joined owner projection (161.275583ms)
+✖ a failing 2024 opening does not prevent a valid 2025 archive but still blocks the 2024 export (26.052209ms)
+✖ RF-only archive preserves original nested payload identities, requested year and company-wide history (29.020916ms)
+✖ actual generated RF archive transport isolates a malformed 2024 preview from the valid 2025 download (12.122542ms)
+✖ RF authority evidence is limited to retained submission references without adding a generic persistence call (9.317959ms)
+✖ mixed sibling chains retain their conditional authority read and overlap never duplicates RF rows (13.203916ms)
+✖ unavailable rf source cannot complete the authoritative export (8.947958ms)
+✖ unavailable opening source cannot complete the authoritative export (9.690958ms)
+✖ unavailable tax source cannot complete the authoritative export (8.810958ms)
+✖ unavailable taxFiling source cannot complete the authoritative export (9.44475ms)
+✖ unavailable filing_previews source cannot complete the authoritative export (8.932ms)
+✖ unavailable authority_permissions source cannot complete the authoritative export (8.619333ms)
+✖ unavailable filing_review_comments source cannot complete the authoritative export (10.136458ms)
+✖ unavailable audit_events source cannot complete the authoritative export (7.310708ms)
+✖ original submission and authority errors retain priority and effect order (6.466375ms)
+✖ authentication and step-up precede every source and export effect {"user":false} (7.216667ms)
+✖ authentication and step-up precede every source and export effect {"token":false} (15.50675ms)
+✖ authentication and step-up precede every source and export effect {"mfa":false} (6.954542ms)
+✖ empty retained history still rejects export and failed receipt never yields a downloadable archive (6.914625ms)
+✖ owned Tax source preserves all thirteen original fields beside unchanged RF history (6.45425ms)
+✖ owned Tax filing preserves nested payload and only linked evidence inside the Archive generation boundary (7.036208ms)
+✔ builds company-year archive from persisted workspace rows (3.696666ms)
+✖ archive download fetches only sanitized authority runs linked by submission id (3.336834ms)
+✔ archive ledger facts come through the generated capability query with a frozen projection (0.857875ms)
+ℹ tests 25
+ℹ suites 0
+ℹ pass 2
+ℹ fail 23
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 686.581083
+
+✖ failing tests:
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:195:1
+✖ archive preserves frozen mixed chains except the exact owned RF and Tax read retirements (21.20825ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      {
+  -     expression: 'supabase .from("filing_submissions") .select("id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by") .eq("company_id", companyId) .eq("income_year", incomeYear)',
+  -     table: 'filing_submissions'
+  -   },
+  -   {
+  -     expression: 'supabase .from("authority_test_runs") .select("id, company_id, obligation, environment, status, test_reference, feedback_summary, receipt_reference, archive_reference, evidence_url, payload_hash, recorded_by, recorded_at") .in("id", authorityTestRunIds)',
+  -     table: 'authority_test_runs'
+  -   },
+  -   {
+  -     expression: 'supabase .from("filing_previews") .select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at") .eq("company_id", companyId) .eq("income_year", incomeYear)',
+  -     table: 'filing_previews'
+  -   },
+  -   {
+  -     expression: 'supabase .from("authority_permissions") .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at") .eq("company_id", companyId)',
+  -     table: 'authority_permissions'
+  -   },
+  -   {
+  -     expression: 'supabase .from("filing_review_comments") .select("id, preview_id, company_id, target, severity, body, created_by, acknowledged_by, acknowledged_at, created_at") .eq("company_id", companyId)',
+  -     table: 'filing_review_comments'
+  -   },
+  -   {
+        expression: 'supabase .from("audit_events") .select("id, company_id, actor_id, category, action, message, created_at") .eq("company_id", companyId)',
+        table: 'audit_events'
+      },
+      {
+        expression: 'supabase .from("bank_suggestion_acceptances") .select("id, company_id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, reason, lines, accepted_by, accepted_at") .eq("company_id", companyId)',
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:196:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.start (node:internal/test_runner/test:1257:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ { table: 'audit_events', expression: 'supabase .from("audit_events") .select("id, company_id, actor_id, category, action, message, created_at") .eq("company_id", companyId)' }, { table: 'bank_suggestion_acceptances', expression: 'supabase .from("bank_suggestion_acceptances") .select("id, company_id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, reason, lines, accepted_by, accepted_at") .eq("company_id", companyId)' } ],
+    expected: [ { table: 'filing_submissions', expression: 'supabase .from("filing_submissions") .select("id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by") .eq("company_id", companyId) .eq("income_year", incomeYear)' }, { table: 'authority_test_runs', expression: 'supabase .from("authority_test_runs") .select("id, company_id, obligation, environment, status, test_reference, feedback_summary, receipt_reference, archive_reference, evidence_url, payload_hash, recorded_by, recorded_at") .in("id", authorityTestRunIds)' }, { table: 'filing_previews', expression: 'supabase .from("filing_previews") .select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at") .eq("company_id", companyId) .eq("income_year", incomeYear)' }, { table: 'authority_permissions', expression: 'supabase .from("authority_permissions") .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at") .eq("company_id", companyId)' }, { table: 'filing_review_comments', expression: 'supabase .from("filing_review_comments") .select("id, preview_id, company_id, target, severity, body, created_by, acknowledged_by, acknowledged_at, created_at") .eq("company_id", companyId)' }, { table: 'audit_events', expression: 'supabase .from("audit_events") .select("id, company_id, actor_id, category, action, message, created_at") .eq("company_id", companyId)' }, { table: 'bank_suggestion_acceptances', expression: 'supabase .from("bank_suggestion_acceptances") .select("id, company_id, bank_transaction_id, ledger_entry_id, rule_id, rule_version, reason, lines, accepted_by, accepted_at") .eq("company_id", companyId)' } ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:202:1
+✖ archive preserves original selected opening and shareholder fields through the joined owner projection (161.275583ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:215:1
+✖ a failing 2024 opening does not prevent a valid 2025 archive but still blocks the 2024 export (26.052209ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:231:1
+✖ RF-only archive preserves original nested payload identities, requested year and company-wide history (29.020916ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:245:1
+✖ actual generated RF archive transport isolates a malformed 2024 preview from the valid 2025 download (12.122542ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:281:1
+✖ RF authority evidence is limited to retained submission references without adding a generic persistence call (9.317959ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:288:1
+✖ mixed sibling chains retain their conditional authority read and overlap never duplicates RF rows (13.203916ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:301:3
+✖ unavailable rf source cannot complete the authoritative export (8.947958ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:301:3
+✖ unavailable opening source cannot complete the authoritative export (9.690958ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:301:3
+✖ unavailable tax source cannot complete the authoritative export (8.810958ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:301:3
+✖ unavailable taxFiling source cannot complete the authoritative export (9.44475ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:301:3
+✖ unavailable filing_previews source cannot complete the authoritative export (8.932ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:301:3
+✖ unavailable authority_permissions source cannot complete the authoritative export (8.619333ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:301:3
+✖ unavailable filing_review_comments source cannot complete the authoritative export (10.136458ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:301:3
+✖ unavailable audit_events source cannot complete the authoritative export (7.310708ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:308:1
+✖ original submission and authority errors retain priority and effect order (6.466375ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:319:3
+✖ authentication and step-up precede every source and export effect {"user":false} (7.216667ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:319:3
+✖ authentication and step-up precede every source and export effect {"token":false} (15.50675ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:319:3
+✖ authentication and step-up precede every source and export effect {"mfa":false} (6.954542ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:325:1
+✖ empty retained history still rejects export and failed receipt never yields a downloadable archive (6.914625ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:333:1
+✖ owned Tax source preserves all thirteen original fields beside unchanged RF history (6.45425ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at apps/web/tests/archive-rf1086-source.test.mjs:347:1
+✖ owned Tax filing preserves nested payload and only linked evidence inside the Archive generation boundary (7.036208ms)
+  node:internal/modules/cjs/loader:1568
+    throw err;
+    ^
+  
+  Error: Cannot find module '../../../../lib/annual-accounts-workspace-source'
+  Require stack:
+  - /Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs
+      at Module._resolveFilename (node:internal/modules/cjs/loader:1564:15)
+      at wrapResolveFilename (node:internal/modules/cjs/loader:1118:27)
+      at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1142:10)
+      at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1169:12)
+      at Module._load (node:internal/modules/cjs/loader:1341:5)
+      at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+      at Module.require (node:internal/modules/cjs/loader:1674:12)
+      at require (node:internal/modules/helpers:157:16)
+      at require (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/web/tests/archive-rf1086-source.test.mjs:139:71)
+      at evalmachine.<anonymous>:4:44 {
+    code: 'MODULE_NOT_FOUND',
+    requireStack: [ '/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/web/tests/archive-rf1086-source.test.mjs' ]
+  }
+
+test at tests/archive_export.test.mjs:517:1
+✖ archive download fetches only sanitized authority runs linked by submission id (3.336834ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /loadPresentedAnnualAccountsSource\(accessToken, \[companyId\], incomeYear\)/u. Input:
+  
+  'import { loadPresentedAnnualAccountsSource } from "../../../../lib/annual-accounts-workspace-source";\n' +
+    'import { loadPresentedCompanyTaxSource } from "../../../../lib/company-tax-workspace-source";\n' +
+    'import { loadTaxSettlementArchiveSource } from "../../../../../features/company-tax-filing";\n' +
+    'import { createHash } from "node:crypto";\n' +
+    '\n' +
+    'import {\n' +
+    '  loadLedgerEntriesForArchive,\n' +
+    '  presentLedgerEntriesForArchive,\n' +
+    '  loadOpeningSnapshotsForYear,\n' +
+    '  presentOpeningSnapshots,\n' +
+    '} from "../../../../../features/ledger";\n' +
+    'import {\n' +
+    '  loadInvestmentAcquisitionLots,\n' +
+    '  loadInvestmentActivity,\n' +
+    '  loadInvestmentPositions,\n' +
+    '  loadInvestmentShareSaleAllocations,\n' +
+    '  loadInvestmentCorrections,\n' +
+    '  effectiveInvestmentActivity,\n' +
+    '  presentAcquisitionLots,\n' +
+    '  presentInvestmentActivity,\n' +
+    '  presentInvestmentPositions,\n' +
+    '  presentShareSaleAllocations,\n' +
+    '  presentInvestmentCorrections,\n' +
+    '} from "../../../../../features/investments";\n' +
+    'import {\n' +
+    '  loadDocumentBackupProjection,\n' +
+    '} from "../../../../../features/documents";\n' +
+    'import {\n' +
+    '  listCorporateDecisionLifecycle,\n' +
+    '  listSupportedCorporateEvents,\n' +
+    '} from "../../../../../features/corporate-governance";\n' +
+    'import {\n' +
+    '  loadRf1086ArchiveSource,\n' +
+    '  presentRf1086Preview,\n' +
+    '  presentRf1086Simulation,\n' +
+    '  presentRf1086Permission,\n' +
+    '  presentRf1086TestEvidence,\n' +
+    '  presentRf1086ReviewComment,\n' +
+    '} from "../../../../../features/shareholder-register-filing";\n' +
+    'import { loadBillingSnapshot, presentBillingAccount } from "../../../../../features/billing";\n' +
+    'import {\n' +
+    '  buildPersistedCompanyArchive,\n' +
+    '  firstArchiveSourceError,\n' +
+    '} from "../../../../lib/archive";\n' +
+    'import { loadAcceptedMembershipCompany } from "../../../../lib/company-access-context";\n' +
+    'import { requireStepUpForAction } from "../../../../lib/security";\n' +
+    'import { getCurrentSessionAccessToken } from "../../../../lib/supabase/auth-session";\n' +
+    'import {\n' +
+    '  createSupabaseServerClient,\n' +
+    '  createSupabaseServiceRoleClient,\n' +
+    '} from "../../../../lib/supabase/server";\n' +
+    '\n' +
+    'async function loadArchiveOpeningSnapshots(accessToken: string, companyId: string, incomeYear: number) {\n' +
+    '  try {\n' +
+    '    const projection = presentOpeningSnapshots(await loadOpeningSnapshotsForYear(accessToken, companyId, incomeYear));\n' +
+    '    if ([...projection.setups, ...projection.shareholders].some((row) => row.company_id !== companyId)) {\n' +
+    '      throw new Error("Opening query escaped the authorized company scope.");\n' +
+    '    }\n' +
+    '    const setups = projection.setups.filter((setup) => setup.income_year === incomeYear);\n' +
+    '    const setupIds = new Set(setups.map((setup) => setup.id));\n' +
+    '    return { data: setups, shareholders: projection.shareholders.filter((row) => setupIds.has(row.setup_id)), error: null };\n' +
+    '  } catch {\n' +
+    '    return { data: null, shareholders: null, error: new Error("Opening archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveRf1086(accessToken: string, companyId: string, incomeYear: number) {\n' +
+    '  try {\n' +
+    '    // The source keeps company-wide comments/permissions and selects year-bound rows before decoding.\n' +
+    '    const workspace = await loadRf1086ArchiveSource(accessToken, companyId, incomeYear);\n' +
+    '    const submissions = workspace.simulations.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Simulation);\n' +
+    '    const evidenceIds = new Set(submissions.filter((row) => row.mode === "test_authority")\n' +
+    '      .map((row) => row.authority_test_run_id).filter((id): id is string => Boolean(id)));\n' +
+    '    return { data: {\n' +
+    '      submissions,\n' +
+    '      previews: workspace.previews.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Preview),\n' +
+    '      permissions: workspace.permissions.map(presentRf1086Permission),\n' +
+    '      comments: workspace.reviewComments.map(presentRf1086ReviewComment),\n' +
+    '      testEvidence: workspace.testEvidence.filter((row) => evidenceIds.has(row.id)).map(presentRf1086TestEvidence),\n' +
+    '    }, error: null };\n' +
+    '  } catch {\n' +
+    '    return { data: null, error: new Error("RF archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'function mergeArchiveRfRows<A extends { id: string }, B extends { id: string }>(existing: readonly A[], owned: readonly B[]): (A | B)[] {\n' +
+    '  // The overlap projection may still contain the same immutable row identity.\n' +
+    '  const rows = new Map<string, A | B>(existing.map((row) => [row.id, row]));\n' +
+    '  for (const row of owned) rows.set(row.id, row);\n' +
+    '  return [...rows.values()];\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveLedgerEntries(\n' +
+    '  accessToken: string,\n' +
+    '  companyId: string,\n' +
+    '  incomeYear: number,\n' +
+    ') {\n' +
+    '  try {\n' +
+    '    const entries = await loadLedgerEntriesForArchive(accessToken, [companyId]);\n' +
+    '    const presented = presentLedgerEntriesForArchive(entries);\n' +
+    '    if (presented.some((entry) => entry.company_id !== companyId)) {\n' +
+    '      throw new Error("Ledger query escaped the authorized company scope.");\n' +
+    '    }\n' +
+    '    return {\n' +
+    '      data: presented\n' +
+    '        .filter((entry) => entry.income_year === incomeYear)\n' +
+    '        .map((entry) => ({\n' +
+    '          id: entry.id,\n' +
+    '          company_id: entry.company_id,\n' +
+    '          setup_id: entry.setup_id,\n' +
+    '          income_year: entry.income_year,\n' +
+    '          entry_type: entry.entry_type,\n' +
+    '          memo: entry.memo,\n' +
+    '          lines: entry.lines,\n' +
+    '          created_by: entry.created_by,\n' +
+    '          created_at: entry.created_at,\n' +
+    '        })),\n' +
+    '      error: null,\n' +
+    '    };\n' +
+    '  } catch {\n' +
+    '    return { data: null, error: new Error("Ledger archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveDocuments(\n' +
+    '  accessToken: string,\n' +
+    '  companyId: string,\n' +
+    '  incomeYear: number,\n' +
+    ') {\n' +
+    '  try {\n' +
+    '    const result = await loadDocumentBackupProjection(accessToken, companyId, incomeYear);\n' +
+    '    return {\n' +
+    '      data: result.objects.map((document) => ({\n' +
+    '        id: document.documentId,\n' +
+    '        company_id: result.companyId,\n' +
+    '        income_year: result.incomeYear,\n' +
+    '        document_type: document.documentType,\n' +
+    '        name: document.name,\n' +
+    '        linked_to: document.linkedTo,\n' +
+    '        status: document.status,\n' +
+    '        retention_years: document.retentionYears,\n' +
+    '        storage_key: document.storageKey,\n' +
+    '        created_by: document.createdBy,\n' +
+    '        created_at: document.createdAt,\n' +
+    '        removed_at: document.removedAt,\n' +
+    '        removed_by: null,\n' +
+    '        removal_reason: document.removalReason,\n' +
+    '      })),\n' +
+    '      projection: result,\n' +
+    '      error: null,\n' +
+    '    };\n' +
+    '  } catch {\n' +
+    '    return { data: null, projection: null, error: new Error("Documents archive projection unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveBilling(accessToken: string, companyId: string) {\n' +
+    '  try {\n' +
+    '    const snapshot = await loadBillingSnapshot(accessToken, { companyIds: [companyId] });\n' +
+    '    return {\n' +
+    '      data: snapshot.accounts.map(presentBillingAccount),\n' +
+    '      error: null,\n' +
+    '    };\n' +
+    '  } catch {\n' +
+    '    return { data: null, error: new Error("Billing archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveCorporateLifecycle(\n' +
+    '  accessToken: string,\n' +
+    '  companyId: string,\n' +
+    '  incomeYear: number,\n' +
+    ') {\n' +
+    '  try {\n' +
+    '    const [lifecycle, supportedEvents, documents] = await Promise.all([\n' +
+    '      listCorporateDecisionLifecycle(accessToken, [companyId]),\n' +
+    '      listSupportedCorporateEvents(accessToken, [companyId]),\n' +
+    '      loadDocumentBackupProjection(accessToken, companyId, incomeYear),\n' +
+    '    ]);\n' +
+    '    const documentsById = new Map(\n' +
+    '      documents.objects.map((document) => [document.documentId, document]),\n' +
+    '    );\n' +
+    '    const artifacts = lifecycle.corporateDocumentArtifacts\n' +
+    '      .filter((item) => item.income_year === incomeYear)\n' +
+    '      .map((artifact) => ({\n' +
+    '        ...artifact,\n' +
+    '        storage_key: documentsById.get(artifact.document_id)?.storageKey ?? "",\n' +
+    '      }));\n' +
+    '    if (artifacts.some((artifact) => !artifact.storage_key)) {\n' +
+    '      throw new Error("Corporate artifact document evidence is incomplete.");\n' +
+    '    }\n' +
+    '    return {\n' +
+    '      data: {\n' +
+    '        corporateDecisions: lifecycle.corporateDecisions.filter(\n' +
+    '          (item) => item.income_year === incomeYear,\n' +
+    '        ),\n' +
+    '        corporateDocumentSets: lifecycle.corporateDocumentSets.filter(\n' +
+    '          (item) => item.income_year === incomeYear,\n' +
+    '        ),\n' +
+    '        corporateDocumentArtifacts: artifacts,\n' +
+    '        corporateDocumentEvents: lifecycle.corporateDocumentEvents.filter(\n' +
+    '          (item) => item.income_year === incomeYear,\n' +
+    '        ),\n' +
+    '        corporateDecisionFinalizations: lifecycle.corporateDecisionFinalizations.filter(\n' +
+    '          (item) => item.income_year === incomeYear,\n' +
+    '        ),\n' +
+    '        supportedCorporateEvents: supportedEvents.filter(\n' +
+    '          (item) => item.companyId === companyId && item.incomeYear === incomeYear,\n' +
+    '        ),\n' +
+    '      },\n' +
+    '      error: null,\n' +
+    '    };\n' +
+    '  } catch {\n' +
+    '    return { data: null, error: new Error("Corporate-governance archive source unavailable.") };\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    'async function loadArchiveInvestments(\n' +
+    '  accessToken: string,\n' +
+    '  companyId: string,\n' +
+    '  incomeYear: number,\n' +
+    ') {\n' +
+    '  try {\n' +
+    '    const [activity, positions, lots, allocations, corrections] = await Promise.all([\n' +
+    '      loadInvestmentActivity(accessToken, [companyId]),\n' +
+    '      loadInvestmentPositions(accessToken, [companyId]),\n' +
+    '      loadInvestmentAcquisitionLots(accessToken, [companyId]),\n' +
+    '      loadInvestmentShareSaleAllocations(accessToken, [companyId]),\n' +
+    '      loadInvestmentCorrections(accessToken, [companyId]),\n' +
+    '    ]);\n' +
+    '    const presentedActivity = presentInvestmentActivity(activity).map((item) => {\n' +
+    '      if (item.action_type !== "share_sale") return item;\n' +
+    '      return {\n' +
+    '        ...item,\n' +
+    '        payload: {\n' +
+    '          ...item.payload,\n' +
+    '          lot_allocations: allocations\n' +
+    '            .filter((allocation) => allocation.saleActionId === item.id)\n' +
+    '            .sort((left, right) => left.allocationOrder - right.allocationOrder)\n' +
+    '            .map((allocation) => ({\n' +
+    '              lot_id: allocation.lotId,\n' +
+    '              acquisition_date: allocation.acquisitionDate,\n' +
+    '              share_count: allocation.allocatedShareCount,\n' +
+    '              cost_basis: Number(allocation.allocatedCostBasis.amount),\n' +
+    '              book_cost_basis: Number(allocation.allocatedBookCostBasis.amount),\n' +
+    '              tax_basis: Number(allocation.allocatedTaxBasis.amount),\n' +
+    '              net_proceeds: Number(allocation.allocatedNetProceeds.amount),\n' +
+    '              average_fund_equity_ratio_basis_points:\n' +
+    '                allocation.averageFundEquityRatioBasisPoints,\n' +
+    '          '... 9621 more characters
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/archive_export.test.mjs:522:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'import { loadPresentedAnnualAccountsSource } from "../../../../lib/annual-accounts-workspace-source";\nimport { loadPresentedCompanyTaxSource } from "../../../../lib/company-tax-workspace-source";\nimport { loadTaxSettlementArchiveSource } from "../../../../../features/company-tax-filing";\nimport { createHash } from "node:crypto";\n\nimport {\n  loadLedgerEntriesForArchive,\n  presentLedgerEntriesForArchive,\n  loadOpeningSnapshotsForYear,\n  presentOpeningSnapshots,\n} from "../../../../../features/ledger";\nimport {\n  loadInvestmentAcquisitionLots,\n  loadInvestmentActivity,\n  loadInvestmentPositions,\n  loadInvestmentShareSaleAllocations,\n  loadInvestmentCorrections,\n  effectiveInvestmentActivity,\n  presentAcquisitionLots,\n  presentInvestmentActivity,\n  presentInvestmentPositions,\n  presentShareSaleAllocations,\n  presentInvestmentCorrections,\n} from "../../../../../features/investments";\nimport {\n  loadDocumentBackupProjection,\n} from "../../../../../features/documents";\nimport {\n  listCorporateDecisionLifecycle,\n  listSupportedCorporateEvents,\n} from "../../../../../features/corporate-governance";\nimport {\n  loadRf1086ArchiveSource,\n  presentRf1086Preview,\n  presentRf1086Simulation,\n  presentRf1086Permission,\n  presentRf1086TestEvidence,\n  presentRf1086ReviewComment,\n} from "../../../../../features/shareholder-register-filing";\nimport { loadBillingSnapshot, presentBillingAccount } from "../../../../../features/billing";\nimport {\n  buildPersistedCompanyArchive,\n  firstArchiveSourceError,\n} from "../../../../lib/archive";\nimport { loadAcceptedMembershipCompany } from "../../../../lib/company-access-context";\nimport { requireStepUpForAction } from "../../../../lib/security";\nimport { getCurrentSessionAccessToken } from "../../../../lib/supabase/auth-session";\nimport {\n  createSupabaseServerClient,\n  createSupabaseServiceRoleClient,\n} from "../../../../lib/supabase/server";\n\nasync function loadArchiveOpeningSnapshots(accessToken: string, companyId: string, incomeYear: number) {\n  try {\n    const projection = presentOpeningSnapshots(await loadOpeningSnapshotsForYear(accessToken, companyId, incomeYear));\n    if ([...projection.setups, ...projection.shareholders].some((row) => row.company_id !== companyId)) {\n      throw new Error("Opening query escaped the authorized company scope.");\n    }\n    const setups = projection.setups.filter((setup) => setup.income_year === incomeYear);\n    const setupIds = new Set(setups.map((setup) => setup.id));\n    return { data: setups, shareholders: projection.shareholders.filter((row) => setupIds.has(row.setup_id)), error: null };\n  } catch {\n    return { data: null, shareholders: null, error: new Error("Opening archive source unavailable.") };\n  }\n}\n\nasync function loadArchiveRf1086(accessToken: string, companyId: string, incomeYear: number) {\n  try {\n    // The source keeps company-wide comments/permissions and selects year-bound rows before decoding.\n    const workspace = await loadRf1086ArchiveSource(accessToken, companyId, incomeYear);\n    const submissions = workspace.simulations.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Simulation);\n    const evidenceIds = new Set(submissions.filter((row) => row.mode === "test_authority")\n      .map((row) => row.authority_test_run_id).filter((id): id is string => Boolean(id)));\n    return { data: {\n      submissions,\n      previews: workspace.previews.filter((row) => row.incomeYear === incomeYear).map(presentRf1086Preview),\n      permissions: workspace.permissions.map(presentRf1086Permission),\n      comments: workspace.reviewComments.map(presentRf1086ReviewComment),\n      testEvidence: workspace.testEvidence.filter((row) => evidenceIds.has(row.id)).map(presentRf1086TestEvidence),\n    }, error: null };\n  } catch {\n    return { data: null, error: new Error("RF archive source unavailable.") };\n  }\n}\n\nfunction mergeArchiveRfRows<A extends { id: string }, B extends { id: string }>(existing: readonly A[], owned: readonly B[]): (A | B)[] {\n  // The overlap projection may still contain the same immutable row identity.\n  const rows = new Map<string, A | B>(existing.map((row) => [row.id, row]));\n  for (const row of owned) rows.set(row.id, row);\n  return [...rows.values()];\n}\n\nasync function loadArchiveLedgerEntries(\n  accessToken: string,\n  companyId: string,\n  incomeYear: number,\n) {\n  try {\n    const entries = await loadLedgerEntriesForArchive(accessToken, [companyId]);\n    const presented = presentLedgerEntriesForArchive(entries);\n    if (presented.some((entry) => entry.company_id !== companyId)) {\n      throw new Error("Ledger query escaped the authorized company scope.");\n    }\n    return {\n      data: presented\n        .filter((entry) => entry.income_year === incomeYear)\n        .map((entry) => ({\n          id: entry.id,\n          company_id: entry.company_id,\n          setup_id: entry.setup_id,\n          income_year: entry.income_year,\n          entry_type: entry.entry_type,\n          memo: entry.memo,\n          lines: entry.lines,\n          created_by: entry.created_by,\n          created_at: entry.created_at,\n        })),\n      error: null,\n    };\n  } catch {\n    return { data: null, error: new Error("Ledger archive source unavailable.") };\n  }\n}\n\nasync function loadArchiveDocuments(\n  accessToken: string,\n  companyId: string,\n  incomeYear: number,\n) {\n  try {\n    const result = await loadDocumentBackupProjection(accessToken, companyId, incomeYear);\n    return {\n      data: result.objects.map((document) => ({\n        id: document.documentId,\n        company_id: result.companyId,\n        income_year: result.incomeYear,\n        document_type: document.documentType,\n        name: document.name,\n        linked_to: document.linkedTo,\n        status: document.status,\n        retention_years: document.retentionYears,\n        storage_key: document.storageKey,\n        created_by: document.createdBy,\n        created_at: document.createdAt,\n        removed_at: document.removedAt,\n        removed_by: null,\n        removal_reason: document.removalReason,\n      })),\n      projection: result,\n      error: null,\n    };\n  } catch {\n    return { data: null, projection: null, error: new Error("Documents archive projection unavailable.") };\n  }\n}\n\nasync function loadArchiveBilling(accessToken: string, companyId: string) {\n  try {\n    const snapshot = await loadBillingSnapshot(accessToken, { companyIds: [companyId] });\n    return {\n      data: snapshot.accounts.map(presentBillingAccount),\n      error: null,\n    };\n  } catch {\n    return { data: null, error: new Error("Billing archive source unavailable.") };\n  }\n}\n\nasync function loadArchiveCorporateLifecycle(\n  accessToken: string,\n  companyId: string,\n  incomeYear: number,\n) {\n  try {\n    const [lifecycle, supportedEvents, documents] = await Promise.all([\n      listCorporateDecisionLifecycle(accessToken, [companyId]),\n      listSupportedCorporateEvents(accessToken, [companyId]),\n      loadDocumentBackupProjection(accessToken, companyId, incomeYear),\n    ]);\n    const documentsById = new Map(\n      documents.objects.map((document) => [document.documentId, document]),\n    );\n    const artifacts = lifecycle.corporateDocumentArtifacts\n      .filter((item) => item.income_year === incomeYear)\n      .map((artifact) => ({\n        ...artifact,\n        storage_key: documentsById.get(artifact.document_id)?.storageKey ?? "",\n      }));\n    if (artifacts.some((artifact) => !artifact.storage_key)) {\n      throw new Error("Corporate artifact document evidence is incomplete.");\n    }\n    return {\n      data: {\n        corporateDecisions: lifecycle.corporateDecisions.filter(\n          (item) => item.income_year === incomeYear,\n        ),\n        corporateDocumentSets: lifecycle.corporateDocumentSets.filter(\n          (item) => item.income_year === incomeYear,\n        ),\n        corporateDocumentArtifacts: artifacts,\n        corporateDocumentEvents: lifecycle.corporateDocumentEvents.filter(\n          (item) => item.income_year === incomeYear,\n        ),\n        corporateDecisionFinalizations: lifecycle.corporateDecisionFinalizations.filter(\n          (item) => item.income_year === incomeYear,\n        ),\n        supportedCorporateEvents: supportedEvents.filter(\n          (item) => item.companyId === companyId && item.incomeYear === incomeYear,\n        ),\n      },\n      error: null,\n    };\n  } catch {\n    return { data: null, error: new Error("Corporate-governance archive source unavailable.") };\n  }\n}\n\nasync function loadArchiveInvestments(\n  accessToken: string,\n  companyId: string,\n  incomeYear: number,\n) {\n  try {\n    const [activity, positions, lots, allocations, corrections] = await Promise.all([\n      loadInvestmentActivity(accessToken, [companyId]),\n      loadInvestmentPositions(accessToken, [companyId]),\n      loadInvestmentAcquisitionLots(accessToken, [companyId]),\n      loadInvestmentShareSaleAllocations(accessToken, [companyId]),\n      loadInvestmentCorrections(accessToken, [companyId]),\n    ]);\n    const presentedActivity = presentInvestmentActivity(activity).map((item) => {\n      if (item.action_type !== "share_sale") return item;\n      return {\n        ...item,\n        payload: {\n          ...item.payload,\n          lot_allocations: allocations\n            .filter((allocation) => allocation.saleActionId === item.id)\n            .sort((left, right) => left.allocationOrder - right.allocationOrder)\n            .map((allocation) => ({\n              lot_id: allocation.lotId,\n              acquisition_date: allocation.acquisitionDate,\n              share_count: allocation.allocatedShareCount,\n              cost_basis: Number(allocation.allocatedCostBasis.amount),\n              book_cost_basis: Number(allocation.allocatedBookCostBasis.amount),\n              tax_basis: Number(allocation.allocatedTaxBasis.amount),\n              net_proceeds: Number(allocation.allocatedNetProceeds.amount),\n              average_fund_equity_ratio_basis_points:\n                allocation.averageFundEquityRatioBasisPoints,\n          '... 9621 more characters,
+    expected: /loadPresentedAnnualAccountsSource\(accessToken, \[companyId\], incomeYear\)/u,
+    operator: 'match',
+    diff: 'simple'
+  }

@@ -1,0 +1,155 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Standards",
+  "verdict": "PASS_BOUNDED_OFFLINE_PROFILE_AND_FIX",
+  "baseRevision": "d6b64377fbef401cdafcf3c5bc59cece8f816f61",
+  "candidateRevision": "e412ebcceba83399f26f283d879b67118bfe697a",
+  "diffCommand": "git diff d6b64377fbef401cdafcf3c5bc59cece8f816f61...e412ebcceba83399f26f283d879b67118bfe697a",
+  "findings": [],
+  "closedFindings": [
+    {
+      "originalCandidate": "d6b64377fbef401cdafcf3c5bc59cece8f816f61",
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py",
+      "priority": 2,
+      "finding": "Recursive immutable source copy rejects accepted deep ignored JSON",
+      "closure": "Original probe now canonical21; depths100/600/1200 pass; nested immutability/shared reference copying/cycle rejection independently verified."
+    }
+  ],
+  "reportSha256": "b0f4dc8ce06cd80c1654239c2df5702b9987b897963c17c3d0f87fbb249bf032",
+  "changedArtifactBindings": {
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md": "7d6cffd5919affb838e4ded71e8cb1312539708d7d56a258db323fffe9eadd1d",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json": "a367a450c2bd2ff27a9f042f53267929a1a4c3517e1ab9a361c579919e31023a",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/numbers.py": "9a9bc64da8087e312af6c21887682489b74c1883434d0077ec78d374e552c694",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py": "c7b8996391bf831d9530cfe9717d8353231126167ba2d0aed19e52efd764ceaf",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py": "9095f4e43be95cf3d74fcc57997ec9b3d490eb78dcb5cfa8b281baf07e4a9b26",
+    "apps/backend/tests/test_annual_accounts_filing.py": "fb10e4e3888e4688ada2ac3ff902aeadb210d2fb8aa15236eaf575737599f752",
+    "architecture/evidence/issues/153/offline-profile/deep-probe-fixed.json": "1b838b74c846fb5486db6d3a5a6865e14d95333bf5671976df81d3947a8a51a1",
+    "architecture/evidence/issues/153/offline-profile/manifest.json": "e49659dd966b5f4f018117f02b8dc248279744bc76fbf2e3de4b4dd26c5da74e",
+    "architecture/evidence/issues/153/offline-profile/numeric-probe-fixed.json": "36f87857c9aa51260cdf2ae67fda0e7f88b57baef36f2a8d27c57d674171adac",
+    "architecture/evidence/issues/153/offline-profile/offline-profile-architecture.log": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9",
+    "architecture/evidence/issues/153/offline-profile/offline-profile-first-tests.log": "966cd0e18b73b3413842a8698a606ac582b561e721b9f04f102c3867351ead0c",
+    "architecture/evidence/issues/153/offline-profile/offline-profile-second-tests.log": "1606cf5d5da84d04f0bd8a66c8d4eae65ebca5cf753f4166308fd1a3bca7d687",
+    "architecture/evidence/issues/153/offline-profile/offline-root-python-suite.log": "3a6a4132186f2e4a73ef0ba9c1202f475112d6e810a0da8e1dcf29545af1c61f",
+    "architecture/evidence/issues/153/offline-profile/offline-scope-proof.json": "5424a8f29f8833a0a2abd8bf7a0fad39a26bdd6ff796003243ba14e7ac4288a2",
+    "architecture/evidence/issues/153/offline-profile/pure-review-fix-probes.json": "87ab6d694f1274b865dde19acdf2ae0f7b7918ebce4bea3458879bba83145cdd",
+    "architecture/evidence/issues/153/offline-profile/pure-spec-review-d6b64377.json": "c88ba99b66ba8ab77a23798c93ee989b9d8a20378914de2877bb73ae2e2aea3f",
+    "architecture/evidence/issues/153/offline-profile/pure-spec-review-d6b64377.md": "78b292d7363ad8cb4d95d61d49a0d76480dde3814d132ba94e9865d5da08e9ec",
+    "architecture/evidence/issues/153/offline-profile/pure-standards-review-d6b64377.json": "0d21c1643e5940125aa41d1a8440d59d6333645b8947ee6ad477ad3df6ca76ee",
+    "architecture/evidence/issues/153/offline-profile/pure-standards-review-d6b64377.md": "2f46c142083ebd7fd8c5dfe2ecceb7339217231519d7da2c486a07414f221aaf",
+    "architecture/evidence/issues/153/offline-profile/review-probes/deep-new-probe-d6b64377.json": "bd7276a9487998bde19a72d72308a94b5166c1cadeaf70fd326f4f3981c527b5",
+    "architecture/evidence/issues/153/offline-profile/review-probes/deep-old-probe-d6b64377.json": "1b838b74c846fb5486db6d3a5a6865e14d95333bf5671976df81d3947a8a51a1",
+    "architecture/evidence/issues/153/offline-profile/review-probes/independent-cli-capture-d6b64377.json": "4ce173fdb2ab0e60eba583ddaac23b1c9d6e3d69e965fccb5747f09c03baf90c",
+    "architecture/evidence/issues/153/offline-profile/review-probes/independent-cli-capture-d6b64377.log": "f271f9423d1cd1e2e2150675dee707590f6d63238684e53701190972746e6a91",
+    "architecture/evidence/issues/153/offline-profile/review-probes/independent-deep-probe.mjs": "0384a58353ae54934fbb00fb56c09d5308408ed8520bcf40e59346c794ead984",
+    "architecture/evidence/issues/153/offline-profile/review-probes/independent_deep_probe.py": "fd0e661d05fcd55c03670c1e59d2da3828551631d4125aa117226adbbf7b0638",
+    "architecture/evidence/issues/153/offline-profile/review-probes/numeric-probe-inputs-d6b64377.json": "e3d3f0873fcdc09ddd0704a01e85418fecf9afbc2ff855e60aa73e309d2f6b50",
+    "architecture/evidence/issues/153/offline-profile/review-probes/numeric-probe-new-d6b64377.json": "d08e461fa2a3e7f2aae82c9a527dd9c5f7a6fd01aaed39c1ca2b347e169e03a9",
+    "architecture/evidence/issues/153/offline-profile/review-probes/numeric-probe-old-d6b64377.json": "1bf6c90516aba88b830bdec69f6b448f5f9edad6746dd9c27b2590f40f40760b",
+    "architecture/evidence/issues/153/offline-profile/review-probes/numeric-probe.mjs": "2599e44a57cd8d0bd0564d5f0fadf4b99aafdf9dd6db48f879153641bc8582d0",
+    "architecture/evidence/issues/153/offline-profile/review-probes/numeric_probe.py": "3c02e7ef323bbbde1eae554af0ca54b5b86093aa0ef133f04d18a036b1276a87",
+    "architecture/evidence/issues/153/offline-profile/review-probes/pure-spec-tests-d6b64377.log": "76ac7736e54d35a98db6b2e5042dc70b2d91fbe18ae922c77b7e5a694a97d56c",
+    "architecture/evidence/issues/153/offline-profile/review-probes/pure-standards-cli-d6b64377.log": "f271f9423d1cd1e2e2150675dee707590f6d63238684e53701190972746e6a91",
+    "architecture/evidence/issues/153/offline-profile/review-probes/pure-standards-cli-reproduced-d6b64377.json": "4ce173fdb2ab0e60eba583ddaac23b1c9d6e3d69e965fccb5747f09c03baf90c",
+    "architecture/evidence/issues/153/offline-profile/review-probes/pure-standards-conformance-d6b64377.log": "2537386e181e18d3d7b0010b9dcc8f389c7a0c24eb7a0234c9a73ffd6020e393",
+    "architecture/evidence/issues/153/offline-profile/review-probes/pure-standards-deep-source-d6b64377.log": "47b19826177cd57cc5e69209973f8e24c133b2ba8f16cf241a54c6a677f01482",
+    "architecture/evidence/issues/153/offline-profile/review-probes/pure-standards-deep-source-probe.mjs": "6b22f5e5bf3871178b12b8985cf9412f5c9576ef72c87a58e783a6b6e59430cc",
+    "architecture/evidence/issues/153/offline-profile/review-probes/pure-standards-deep-source-probe.py": "c2991e228ccc7e1a9604c7e4b483f16e2394e81a5ffb2cc4a8e34ef1c20797ce",
+    "architecture/evidence/issues/153/offline-profile/review-probes/pure-standards-workspace-d6b64377.json": "ad84e0749e9e4c368fc2da31540f67f9474abeb36536b19f307697698919949b",
+    "holding_core/annual.py": "74a7d7082a93413ed0aa2f3e5bb91e21461f9e56ed352534b67f3ec9723e9e42",
+    "tests/test_annual_accounts_offline_migration.py": "bbb1b4613878fe83dc45ce0a9b14feddc8655212326d9c780d5e799d24d41fb2"
+  },
+  "manifestReferenceCount": 44,
+  "unchangedBindings": {
+    "architecture/compatibility.json": "66ee4c62b8a32443adf43d167bd3f5da4b7f1f387bd46f4a0f6ddbab5de8b556",
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+    "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+    "architecture/evidence/issues/153/characterization/manifest.json": "e6441fa44a449801ed7a58f817ac8397c38e3bbe571983f6a62049b02ecc43ee",
+    "architecture/evidence/issues/153/pure-calculation/manifest.json": "0d48e5bc37875257a353cee74b8b6ad42dc0d5994a90bf67fac71ee5e95b6927",
+    "pyproject.toml": "c4d43e59008aa2414a345d4fb52b50f5100e003ab7e1468b29f8ef268de6cb2e"
+  },
+  "standardsBindings": {
+    "AGENTS.md": "c4530bac3939f37053438b48a3dad2ea6e99d04481480ef61bee71d3dc81d4af",
+    "CONTEXT.md": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9",
+    "docs/agents/domain.md": "0b66c33560f91373a7b268f3acf2c3d992e6a77cf5dc60acdc66efb4dc34a982",
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/COMPATIBILITY.md": "0aba38232b847b1b9843fdd9c04a34ce5cffe220951dd25fb4333e5c97d5c2dc"
+  },
+  "offlineScopeProof": {
+    "baselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+    "source": "holding_core/annual.py",
+    "removedAccountsPolicy": [
+      "_annual_accounts_payload_issues",
+      "_annual_accounts_attachment_decisions",
+      "_rr0002_fields",
+      "_field"
+    ],
+    "delegatingFunctions": [
+      "assess_annual_accounts_readiness",
+      "simulate_annual_accounts",
+      "build_annual_accounts_payload"
+    ],
+    "newTechnicalAdapters": [
+      "_accounts_offline_source",
+      "_offline_json"
+    ],
+    "unchangedDefinitions": {
+      "DocumentRecord": "1e3ed9d318ce18cca7b68cb44d22f93aa6dbfaf0da6dd37f4014b0cb93eb0547",
+      "YearEndInterviewAnswers": "e6fe59b86af43a64988713be480dee1c34d4722a9f4d00af5836b9b23c932461",
+      "AnnualReadinessIssue": "4bee519fdc4223246fa9fbec39b4c3cb91fc41d63cf35b905f6c9b968bf3fd1b",
+      "AnnualReadinessResult": "7703dbbe13b9c3f0947908354cb49c668f2c037c8428f22120c65ac8eca80400",
+      "AnnualData": "142ae0793603e78ace9b26f23c3365370b3f5ff6ddbce54e19b126004c13cbde",
+      "FilingSimulation": "f2f295e75de013d78b94d95f48fe0c07b1d1f49044483b4c955ff02331ba1849",
+      "Rr0002Field": "b4d6324dd40f441c15c5f3a8f552cd3b4efcb0986297f0ff8de446e853beed52",
+      "AnnualAccountsNotePayload": "01daa316284611791a2ab86ee572d296a39b92391cd4d736f7b9ff94cd73f196",
+      "AnnualAccountsAttachmentDecision": "34317ef0d845aab2a184e2c2b8736447fdc4b50059d6e17dfe29a08aafd28dc3",
+      "AnnualAccountsPayload": "08773c044b5c9a9871f5eacdbcf719c2e0a8e52ce1398629a96c648ca5467eb7",
+      "CompanyArchive": "d8360dbec91ea1e629edbeae3fbe50ee069ee4cdb30972954bdf52fad0177e95",
+      "build_annual_data": "d94e2e559ea2fedd96ab2c96aca6445f21ba91e59c521a0e7b2b7b93c1e390f6",
+      "assess_tax_return_readiness": "8a957ad9ca70b495af17f07a66b39a606e80ca0091074d849f1361319b21184d",
+      "simulate_tax_return": "de27e4442d16662027ae27bad7e965c5de97e020c6753017a61bea154478c2bf",
+      "build_company_archive": "047cadaff8713416b64bbf27c830d780cfb754ac9702519b9e9dd5a79d564392",
+      "write_company_archive": "3294cae702b93f35d1533590711800f218e50b3a69c105d38eba44c96ad4af10",
+      "_common_issues": "d58836822265752b32f0b88d2437018049fd2f5b55b7176f930e526782cfaaf7",
+      "_result": "cbe8f157ee5f72955c2350205feb7608e88580a2f5ca7cf5c671baaf50b1199f",
+      "_error": "dd211e7749cb59bf5944f7c3a71a556e194bc1f5a654780258cf3ad4cd9531fd",
+      "_warning": "d4822674f0dd334b80d403d8cf32136690df6b60a3caf9e9cdf9e22d1b1e544c",
+      "_money": "461c92b6cdb39e5c7c22b04133816a05f2cad5eef68f0346dd2ee5cdcf928a88"
+    }
+  },
+  "privateCheckBindings": {
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/offline-standards-numeric-e412ebcc.json": "36f87857c9aa51260cdf2ae67fda0e7f88b57baef36f2a8d27c57d674171adac",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/offline-standards-original-deep-e412ebcc.log": "3613b11caad0695ab7625ded395f404f442db9c16803005076bb2ddab5df9197",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/offline-standards-conformance-e412ebcc.log": "d375edb34ac651011941e757ef2b8fd4e9d86f0d3a119b5799b9fa8e9b437e77",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/offline-standards-validation-e412ebcc.log": "0f93bbfec99c9833e28739fb509605786dd7ee4e5daa7bcdb4ab6728999f51ca",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/offline-standards-immutability-probe-e412ebcc.py": "5b0ea7fdbfbd8ae85ffd74e511c27a04835164ef5cc57a4792839297d755f956",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/offline-standards-workspace-e412ebcc.json": "a07466f2a5501f7f327ff3c121de8a369aa246206bd682005520d75b8cc928b9",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/offline-standards-immutability-e412ebcc.log": "8b64e3e877ea3e9ac487774f7a1097b29cac252e413ef2fc42650eb032affb8c",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/offline-standards-deep-e412ebcc.log": "1b838b74c846fb5486db6d3a5a6865e14d95333bf5671976df81d3947a8a51a1",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/offline-standards-numeric-e412ebcc.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/offline-standards-validation-pinned-path-e412ebcc.log": "df184e1384a1d41f53ef77ec2045c1c728488ca377dff284cad494d0d1091885"
+  },
+  "checks": {
+    "commonDefinitionsByteIdentical": 21,
+    "removedAccountsPolicyHelpers": 4,
+    "independentCombinedTests": 273,
+    "frozenOfflineCasesInsideCombinedTests": 46,
+    "actualCliCasesInsideCombinedTests": 14,
+    "numericBinary64Comparisons": 20,
+    "deepLevels": [
+      100,
+      600,
+      1200
+    ],
+    "publicExportsMatchManifest": true,
+    "noBackendHoldingCoreImport": true,
+    "python": "3.12.12",
+    "initialIsolatedValidationFailure": "Host python3 selected by subprocess; corrected task-local PATH to backend venv; original log retained."
+  },
+  "limits": [
+    "57-test root suite and architecture result inspected from bound evidence, not rerun.",
+    "No shared source/DB/browser/provider mutation.",
+    "No complete stage-exit credit."
+  ]
+}

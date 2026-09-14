@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { fixtureTableTransaction } from "./support/rf1086-fixture-access.mjs";
-import { apiRequest, deniedRf } from "./support/rf1086-workspace-api.mjs";
+import { apiRequest, deniedRf, rfFixtureTransaction } from "./support/rf1086-workspace-api.mjs";
 import { TalliApiError } from "../packages/talli-api-client/src/index.ts";
 import { createRfDatabaseActor } from "./support/rf1086-database-actor.mjs";
 
@@ -14,6 +14,49 @@ const local = {
   TALLI_COMPANY_ACCESS_DATABASE_URL: "postgresql://localhost/fixture", SUPABASE_URL: "http://127.0.0.1:45001",
   TALLI_AUTHORITY_OPS_ENABLED: "false", TALLI_RF1086_PRODUCTION_ENABLED: "false",
 };
+
+function projectionCatalog({ retired = false, missingOwned = false, partial = false, phase = "contracted" } = {}) {
+  const statements = [];
+  const exists = relation => !relation.startsWith("public.") || !retired
+    || (partial && relation === "public.filing_previews");
+  const database = { connectionParameters: { host: "127.0.0.1" }, query: async (statement, parameters = []) => {
+    statements.push(statement);
+    if (statement.includes("unnest($1::text[])")) return { rows: parameters[0].map(name => ({ name,
+      relkind: exists(name) && !(missingOwned && name === "annual_accounts_filing.filing_previews") ? "r" : null })) };
+    if (statement.includes("to_regclass('backend_system.annual_accounts_migration_state')")) return { rows: [{ present: retired }] };
+    if (statement.includes("select phase from backend_system.annual_accounts_migration_state")) return { rows: [{ phase }] };
+    if (statement.includes("select current_user principal")) return { rows: [{ principal: "postgres", bypass: true }] };
+    if (statement.includes("pg_has_role")) return { rows: [{ present: true }] };
+    if (statement.includes("nspacl::text acl,has_schema_privilege")) return { rows: [{ acl: "schema-acl", permitted: true }] };
+    if (statement.includes("nspacl::text acl")) return { rows: [{ acl: "schema-acl" }] };
+    if (statement.includes("c.relacl::text acl")) {
+      assert.ok(exists(parameters[0]), `relation ${parameters[0]} does not exist`);
+      const schema = parameters[0].split(".")[0];
+      return { rows: [{ acl: "table-acl", forced: true, owner: schema === "public" ? "postgres"
+        : parameters[0].endsWith("migration_inventory") || parameters[0].endsWith("migration_quarantine") ? "postgres"
+        : `${schema}_store_owner`, missing: [] }] };
+    }
+    if (statement.includes("select relacl::text acl")) return { rows: [{ acl: "table-acl", forced: true }] };
+    return { rows: [] };
+  } };
+  return { database, statements };
+}
+
+for (const retired of [false, true]) test(`RF fixture uses its declared projection phase (${retired ? "Accounts contracted" : "legacy present"})`, async () => {
+  const { database, statements } = projectionCatalog({ retired });
+  assert.equal(await rfFixtureTransaction(database, async () => "original-result"), "original-result");
+  assert.equal(statements.at(-1), "commit");
+  assert.doesNotMatch(statements.join("\n"), /set local role "annual_accounts_filing_store_owner"/u);
+});
+
+for (const [name, options] of [["partial retirement", { partial: true }], ["missing owned family", { missingOwned: true }],
+  ["uncontracted phase", { phase: "cutover" }]]) test(`RF fixture refuses ${name} before fixture effects`, async () => {
+  const { database, statements } = projectionCatalog({ retired: true, ...options });
+  let called = false;
+  await assert.rejects(rfFixtureTransaction(database, async () => { called = true; }));
+  assert.equal(called, false);
+  assert.ok(!statements.includes("begin"));
+});
 
 for (const [name, additions, failure] of [
   ["hosted database", { DATABASE_URL: "postgresql://hosted.invalid/fixture" }, "authority_browser_fixture_requires_loopback"],

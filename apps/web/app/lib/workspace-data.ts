@@ -1,3 +1,5 @@
+import { loadAnnualAccountsAssessmentSource } from "./annual-accounts-assessment-source.ts";
+import { loadPresentedAnnualAccountsSource } from "./annual-accounts-workspace-source.ts";
 import { loadPresentedCompanyTaxSource } from "./company-tax-workspace-source.ts";
 import { loadPresentedRf1086Source, newestFirst, composeFilingSources } from "./rf1086-workspace-source";
 import { buildCancellationLifecycle } from "./cancellation";
@@ -10,18 +12,12 @@ import { reviewChecklistStatus } from "./invitations";
 import { loadCompanyTaxAssessmentSource } from "./company-tax-assessment-source.ts";
 import {
   getCurrentUser,
-  listAuthorityPermissions,
-  listAuthorityTestRuns,
   listAnnualData,
   listBankSuggestionAcceptances,
   listBankTransactions,
   listCorporateDocumentLifecycle,
   listDocumentsForCompanies,
-  listFilingPreviews,
-  listFilingOverrides,
   listFilingReadinessSnapshots,
-  listFilingReviewComments,
-  listFilingSubmissions,
   listProductionFilingState,
   listLedgerEntries,
   listNotificationOutbox,
@@ -78,8 +74,6 @@ export async function loadWorkspaceData() {
         error: null,
       };
   const { setups, shareholders } = user ? await listOpeningSetups(companies.map((company) => company.id)) : { setups: [], shareholders: [] };
-  const { previews: legacyPreviews } = user ? await listFilingPreviews(companies.map((company) => company.id)) : { previews: [] };
-  const { submissions: legacySubmissions } = user ? await listFilingSubmissions(companies.map((company) => company.id)) : { submissions: [] };
   const { error: productionStateError, ...productionState } = user
     ? await listProductionFilingState(companies.map((company) => company.id))
     : {
@@ -89,21 +83,18 @@ export async function loadWorkspaceData() {
         productionFeedbackArtifacts: [],
         error: null,
       };
-  const { overrides: legacyOverrides } = user ? await listFilingOverrides(companies.map((company) => company.id)) : { overrides: [] };
   const { readinessSnapshots } = user ? await listFilingReadinessSnapshots(companies.map((company) => company.id)) : { readinessSnapshots: [] };
-  const { comments: legacyComments } = user ? await listFilingReviewComments(companies.map((company) => company.id)) : { comments: [] };
-  const { authorityPermissions: legacyAuthorityPermissions } = user ? await listAuthorityPermissions(companies.map((company) => company.id)) : { authorityPermissions: [] };
-  const { authorityTestRuns: legacyAuthorityTestRuns } = user ? await listAuthorityTestRuns(companies.map((company) => company.id)) : { authorityTestRuns: [] };
   const rfSource = accessToken
     ? await loadPresentedRf1086Source(accessToken, companies.map((company) => company.id))
     : { previews: [], submissions: [], overrides: [], comments: [], authorityPermissions: [], authorityTestRuns: [], error: null };
   const taxSource = await loadPresentedCompanyTaxSource(accessToken, companies.map((company) => company.id));
-  const previews = newestFirst(composeFilingSources(composeFilingSources(legacyPreviews, rfSource.previews), taxSource.previews), (row) => row.created_at);
-  const submissions = newestFirst(composeFilingSources(composeFilingSources(legacySubmissions, rfSource.submissions), taxSource.submissions), (row) => row.updated_at);
-  const overrides = newestFirst(composeFilingSources(composeFilingSources(legacyOverrides, rfSource.overrides), taxSource.overrides), (row) => row.created_at);
-  const comments = newestFirst(composeFilingSources(composeFilingSources(legacyComments, rfSource.comments), taxSource.comments), (row) => row.created_at);
-  const authorityPermissions = newestFirst(composeFilingSources(composeFilingSources(legacyAuthorityPermissions, rfSource.authorityPermissions), taxSource.authorityPermissions), (row) => row.updated_at);
-  const authorityTestRuns = newestFirst(composeFilingSources(composeFilingSources(legacyAuthorityTestRuns, rfSource.authorityTestRuns), taxSource.authorityTestRuns), (row) => row.recorded_at);
+  const accountsSource = await loadPresentedAnnualAccountsSource(accessToken, companies.map((company) => company.id));
+  const previews = newestFirst(composeFilingSources(composeFilingSources(accountsSource.previews, rfSource.previews), taxSource.previews), (row) => row.created_at);
+  const submissions = newestFirst(composeFilingSources(composeFilingSources(accountsSource.submissions, rfSource.submissions), taxSource.submissions), (row) => row.updated_at);
+  const overrides = newestFirst(composeFilingSources(composeFilingSources(accountsSource.overrides, rfSource.overrides), taxSource.overrides), (row) => row.created_at);
+  const comments = newestFirst(composeFilingSources(composeFilingSources(accountsSource.comments, rfSource.comments), taxSource.comments), (row) => row.created_at);
+  const authorityPermissions = newestFirst(composeFilingSources(composeFilingSources(accountsSource.authorityPermissions, rfSource.authorityPermissions), taxSource.authorityPermissions), (row) => row.updated_at);
+  const authorityTestRuns = newestFirst(composeFilingSources(composeFilingSources(accountsSource.authorityTestRuns, rfSource.authorityTestRuns), taxSource.authorityTestRuns), (row) => row.recorded_at);
   const primaryCompanyId = companies[0]?.id;
   const { invitations, memberships, error: companyAccessAdministrationError } = user
     ? await listCompanyAccessAdministration(primaryCompanyId)
@@ -260,6 +251,17 @@ export async function loadWorkspaceData() {
         : "Dokumentstatus kunne ikke leses.";
     }
   }
+  const accountsAssessment = await loadAnnualAccountsAssessmentSource({
+    accessToken, companyId: primaryCompanyId ?? null, incomeYear: primaryIncomeYear,
+    annualData: primaryAnnualData ?? null, ledgerEntries: entries,
+    corporateEnabled: process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true",
+    corporateBlockers: primaryCorporateDecisionReadiness?.blockers ?? [{
+      code: "corporate_documents_decision_missing", message: "Årsbeslutning med dokumentsett må opprettes.",
+    }],
+    sourceUnavailable: Boolean(annualDataError || entriesError || accountsSource.error
+      || process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true" && corporateReadinessError),
+  });
+  const primaryAnnualAccountsReadiness = accountsAssessment.readiness;
   const primaryFilingReady = primaryReadinessSnapshots.some(
     (snapshot) => snapshot.obligation === "aksjonaerregisteroppgaven" && snapshot.ready,
   );
@@ -295,7 +297,7 @@ export async function loadWorkspaceData() {
   const deadlineReminderPreferences = defaultReminderPreferences();
   return {
     user,
-    error: error ?? corporateLifecycleError ?? corporateReadinessError ?? productionStateError ?? rfSource.error ?? taxSource.error ?? taxAssessment.error ?? companyAccessAdministrationError ?? cancellationLifecycleError,
+    error: error ?? corporateLifecycleError ?? corporateReadinessError ?? productionStateError ?? rfSource.error ?? taxSource.error ?? accountsSource.error ?? taxAssessment.error ?? accountsAssessment.error ?? companyAccessAdministrationError ?? cancellationLifecycleError,
     cancellationLifecycleError,
     companies,
     documents,
@@ -340,6 +342,7 @@ export async function loadWorkspaceData() {
     manualJournalWarnings,
     taxEstimate,
     primaryTaxReadiness,
+    primaryAnnualAccountsReadiness,
     incomeYears,
     primaryIncomeYear,
     primaryBillingAccount,

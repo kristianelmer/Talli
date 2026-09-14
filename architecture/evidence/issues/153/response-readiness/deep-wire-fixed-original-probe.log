@@ -1,0 +1,18 @@
+[
+  {
+    "depth": 1,
+    "jsonRoundTrip": "PASS",
+    "publicImmutableProjection": "PASS",
+    "thaw": "PASS",
+    "httpStatus": 200,
+    "body": "complete workspace"
+  },
+  {
+    "depth": 600,
+    "jsonRoundTrip": "PASS",
+    "publicImmutableProjection": "PASS",
+    "thaw": "PASS",
+    "httpStatus": 200,
+    "body": "complete workspace"
+  }
+]

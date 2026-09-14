@@ -1,0 +1,16 @@
+{
+  "baseRevision": "5915af48277c4074556ba2b750c93e523ffeb85a",
+  "scope": "Targeted isolated runtime, not complete gate",
+  "sourceBindings": {
+    "tests/browser_annual_accounts_filing.mjs": "06e5735299c9bdba7c7fffb83df781ff7617c23979a54fd13a536646baf84be0",
+    "tests/support/tax-browser-fixture.mjs": "84b2fe6420190772cf9d121c1320aaf8c9961fa553e6dbf799e3eedae7836704",
+    "tests/support/rf1086-fixture-access.mjs": "b91fdf5b688b180a703642b70b91567154400cace12bebd292e6c9927a38a362",
+    "tests/support/rf1086-workspace-api.mjs": "cff638bfe761732ddb513683be516a522dbb5ca57df985acd9dba3e9e22b68a4",
+    "tests/browser_shareholder_register_filing.mjs": "f91b8c24b27fd2e9ee618987f5a5e591b08f8f8a9e13c39dbda26b9b194c7146",
+    "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d"
+  },
+  "sourcesUnchangedFromBaseExcept": [
+    "tests/browser_annual_accounts_filing.mjs",
+    "tests/support/tax-browser-fixture.mjs"
+  ]
+}

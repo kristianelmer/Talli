@@ -1,0 +1,136 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#153",
+  "source": "https://github.com/kristianelmer/Talli/issues/153",
+  "status": "IMPLEMENTED_LOCAL_EXIT_GATES_PENDING",
+  "baselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "predecessor": {
+    "issue": "#152",
+    "state": "CLOSED",
+    "receipt": "https://github.com/kristianelmer/Talli/issues/152#issuecomment-5659595000"
+  },
+  "criteria": [
+    {
+      "id": "GH-153-A1",
+      "requirement": "Supported annual-accounts cases produce outputs identical to current schema and TT02 evidence.",
+      "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+      "evidence": [
+        "characterization/manifest.json",
+        "pure-calculation/manifest.json",
+        "evidence-import/manifest.json",
+        "offline-profile/manifest.json",
+        "authority-ownership/manifest.json",
+        "duplicate-retirement/manifest.json",
+        "authority-safety/manifest.json",
+        "journal-ownership/manifest.json",
+        "journal-reviews/manifest.json"
+      ]
+    },
+    {
+      "id": "GH-153-A2",
+      "requirement": "Corporate-close facts and signed-artifact readiness remain required.",
+      "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+      "evidence": [
+        "characterization/manifest.json",
+        "readiness-input-fix/manifest.json",
+        "response-readiness/manifest.json",
+        "web-cutover/manifest.json"
+      ]
+    },
+    {
+      "id": "GH-153-A3",
+      "requirement": "Hybrid signing, submission, feedback, and receipt states remain fail closed and auditable.",
+      "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+      "evidence": [
+        "authority-ownership/manifest.json",
+        "authority-review-fixes/manifest.json",
+        "read-controls/manifest.json",
+        "physical-retirement/manifest.json",
+        "gate-follow-up/manifest.json",
+        "dependency-integration/manifest.json",
+        "authority-safety/manifest.json",
+        "journal-ownership/manifest.json",
+        "journal-reviews/manifest.json"
+      ]
+    },
+    {
+      "id": "GH-153-A4",
+      "requirement": "The complete owner workflow uses FastAPI and the generated client.",
+      "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+      "evidence": [
+        "read-controls/manifest.json",
+        "web-cutover/manifest.json",
+        "browser-integration/manifest.json",
+        "source-handoff/manifest.json",
+        "dependency-integration/manifest.json",
+        "authority-safety/manifest.json",
+        "browser-cleanup-model/manifest.json"
+      ]
+    },
+    {
+      "id": "GH-153-A5",
+      "requirement": "Obligation-specific generic rows, duplicate TypeScript calculations, and active-stage compatibility code are removed.",
+      "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+      "evidence": [
+        "duplicate-retirement/manifest.json",
+        "physical-retirement/manifest.json",
+        "source-handoff/manifest.json",
+        "browser-cleanup-model/manifest.json"
+      ]
+    },
+    {
+      "id": "GH-153-A6",
+      "requirement": "The complete `annual_accounts_filing` stage exit criteria from issue #132 pass before annual-compliance migration begins.",
+      "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+      "evidence": [
+        "entry/manifest.json",
+        "entry-inventory/manifest.json",
+        "physical-retirement/manifest.json",
+        "gate-follow-up/manifest.json",
+        "dependency-integration/manifest.json",
+        "publication-follow-up/manifest.json",
+        "authority-safety/manifest.json",
+        "journal-ownership/manifest.json",
+        "browser-cleanup-model/manifest.json",
+        "journal-reviews/manifest.json"
+      ]
+    }
+  ],
+  "sourceHandoff": {
+    "evidence": "source-handoff/manifest.json",
+    "hardening": "browser-integration/manifest.json",
+    "meaning": "Immutable company/year/obligation evidence, positive completeness coverage, unknown outcomes, correction links and incident facts. Production remains blocked; Billing owns all commercial classification."
+  },
+  "stageExit": {
+    "deploymentOrder": "PASS_17_STORAGE_PHASE_AND_7_EXACT_PREDECESSOR_HTTP_CHECKS",
+    "independentReview": "F1E_BOTH_AXES_PASS_STANDARDS_ADOPTION_PENDING",
+    "gatePair": [],
+    "protectedIntegration": "PENDING",
+    "productionObservation": "NOT_APPLICABLE_NO_PRODUCTION_PATH_ACTIVATED"
+  },
+  "limits": [
+    "No hosted migration, provider activation, genuine filing, paid operation or production promotion.",
+    "Corporate close and signed-artifact facts remain Corporate/Document owned. Preview inputs do not certify durable authorization.",
+    "No annual-compliance or final Billing implementation before the approved serial prerequisites."
+  ],
+  "safetyCorrections": {
+    "evidence": "authority-safety/manifest.json",
+    "requirements": "#132 no ambiguous effect retries; #153 fail closed hybrid signing",
+    "changes": [
+      "durable create/lock operation marker and reconciliation-required retry guard",
+      "strict positive validation shape/severity and signing task checks",
+      "confirmed lock resumes through read-only submission evidence",
+      "exclusive canonical local journal ownership across reads, awaits and all checkpoints"
+    ],
+    "parity": "Frozen statutory payload/XML and successful requests unchanged; ambiguous failures intentionally tightened"
+  },
+  "stageEntry": {
+    "revision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+    "evidencePath": "architecture/evidence/customer-ready-gates/5b74340ca75f215b43d754c6bf0fc49ef5974b0b.json",
+    "status": "PASS_11_OF_11_ENTRY_ONLY"
+  },
+  "claim": {
+    "branch": "codex/issue-153-annual-accounts-d060",
+    "url": "https://github.com/kristianelmer/Talli/issues/153#issuecomment-5659621764"
+  }
+}

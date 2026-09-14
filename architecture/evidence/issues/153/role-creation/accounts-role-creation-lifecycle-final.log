@@ -1,0 +1,55 @@
+.........F............................                                   [100%]
+=================================== FAILURES ===================================
+_______ test_expansion_assertion_rejects_changed_preexisting_self_grant ________
+
+unexpanded_database = <psycopg.Connection [INERROR] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10baf9100>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10baf9a00>
+
+    def test_expansion_assertion_rejects_changed_preexisting_self_grant(unexpanded_database, monkeypatch):
+        db = unexpanded_database
+        hide_existing_accounts_roles(db)
+        for role_name in ACCOUNTS_ROLES:
+            db.execute(sql.SQL('create role {} nologin noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls').format(sql.Identifier(role_name)))
+        runner = db.execute('select current_user').fetchone()[0]
+        db.execute(sql.SQL('grant annual_accounts_filing_store_owner to {} with admin false,inherit false,set false granted by {}').format(sql.Identifier(runner), sql.Identifier(runner)))
+        inject_expansion_grant(monkeypatch, 'set true')
+        with pytest.raises(AssertionError):
+>           apply(db, EXPANSION[0])
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:160: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:58: in apply
+    db.execute(raw.replace('begin;\n', '', 1).removesuffix('commit;\n'), prepare=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [INERROR] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10baf9100>
+query = "-- #153 EXPAND ONLY. Legacy generic Accounts rows remain the sole active writer.\n-- No API permission or business wr...rant annual_accounts_filing_store_owner to %I with set true granted by %I',current_user,current_user); end; $probe$;\n"
+params = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.SyntaxError: syntax error at or near "f"
+E           LINE 1: ...ccounts_filing_store_owner to postgres with admin f,inherit ...
+E                                                                        ^
+E           QUERY:  grant annual_accounts_filing_store_owner to postgres with admin f,inherit f,set f granted by postgres
+E           CONTEXT:  PL/pgSQL function inline_code_block line 5 at EXECUTE
+
+apps/backend/.venv/lib/python3.12/site-packages/psycopg/connection.py:257: SyntaxError
+=========================== short test summary info ============================
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_expansion_assertion_rejects_changed_preexisting_self_grant
+1 failed, 37 passed in 14.70s

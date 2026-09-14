@@ -1,0 +1,138 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#153",
+  "baseRevision": "5915af48277c4074556ba2b750c93e523ffeb85a",
+  "status": "TARGETED_FINAL_BROWSER_LANES_PASS_CORRECTION_REVIEW_AND_FULL_GATE_PENDING",
+  "artifacts": [
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/accounts-browser-correction-models.log",
+      "sha256": "98512b6d634aeb1c801d1ec020bbb5dfcdb01bc7238cccb26dbd04946c936660",
+      "bytes": 6050
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/accounts-browser-focused-corrected.log",
+      "sha256": "3df8caf192cd7f8f6db5b3349eb562f8db96b724263dc65b39e3ccdbb34bfcab",
+      "bytes": 77256
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/accounts-browser-focused-first.log",
+      "sha256": "da59769e10f3ba89960add5292b4b75c2f6ab49f193d5d59b1bafe28ad054ba1",
+      "bytes": 77940
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-post-accounts-focused-first.log",
+      "sha256": "cbca4d13598291a49d6a2e85ef32df3fef18c031dc9fae2d65d8d4b0c963cc0b",
+      "bytes": 83037
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-post-accounts-focused-scope.json",
+      "sha256": "cb300e0ed3643241b5a4c5294b4a4c978ab6b14eae994bc7e759fb2f4deff1ef",
+      "bytes": 1076
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-projection-spec-bindings-5915af48.json",
+      "sha256": "a1466d84e0c70a254df2559952aee5921d07ab42b9468a5cb2101cc10cd01dbd",
+      "bytes": 6551
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-projection-spec-probe-5915af48.json",
+      "sha256": "82d00f6a857e1459998259d396481a3491f4ca80fda617f1a21c982063087742",
+      "bytes": 1483
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-projection-spec-probe-5915af48.mjs",
+      "sha256": "bbbe03970d7a8cd9c4c8d21792581a44931b67f46ade2cd2bd96a9579494413c",
+      "bytes": 2197
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-projection-spec-review-5915af48.json",
+      "sha256": "c5c2671eaf7acf477abdd4145dee943a5c5c37e87bdca4ee79fb307cfd927721",
+      "bytes": 9172
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-projection-spec-review-5915af48.md",
+      "sha256": "903c55cad1a759dc76484d06a8d1565ba2fdf8980cd5197c51e6c248e93f379d",
+      "bytes": 2158
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-projection-spec-tests-5915af48.log",
+      "sha256": "d22bd355cad3dfec1980c8d4cd27f8173b1b7d54a655b8b4213af6d6c4d2b891",
+      "bytes": 2963
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-projection-spec-workspace-5915af48.json",
+      "sha256": "ab427095c5d91ae5af2c78b6a48ec1e87307910d05adfa644b177d6d3939bf8f",
+      "bytes": 263
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-projection-standards-artifact-checks-5915af48.json",
+      "sha256": "1dd8824d3df475bd27a9dba1a4135f97caa10a53337d957884e03852bbba9c15",
+      "bytes": 4068
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-projection-standards-review-5915af48.json",
+      "sha256": "8ed88a8918aa838a82cfb3d3d59ae584a4627ba5f49cc6b517c74a672f480a1d",
+      "bytes": 5206
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-projection-standards-review-5915af48.md",
+      "sha256": "5f3a3406a56361dba8bde09be76671cd04b3c085750ff260c589494a26c7203a",
+      "bytes": 2324
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-projection-standards-selector-probe-5915af48.mjs",
+      "sha256": "b5342f2837994340d6fd8a5fcaf970c3632df1420b160a089b48e45a7d870979",
+      "bytes": 3144
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-projection-standards-selector-results-5915af48.json",
+      "sha256": "b90b01c94c118e98a4c137958251a8bb192f216fda9fc14c3d25a66efad32a0f",
+      "bytes": 4966
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-projection-standards-tests-5915af48.log",
+      "sha256": "7a94bae5b0b5815cde023d57c336d144e09b9333ed61d0aa2211992b728d70d7",
+      "bytes": 5109
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/rf-projection-standards-workspace-5915af48.json",
+      "sha256": "eba6b3b3524b7eb2028db6f157596c1eaaee1de31c8c178ee21742f1a31ff925",
+      "bytes": 524
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/run-accounts-browser-corrected.py",
+      "sha256": "6bbe75128c52008365f5417da7301d14eeb69121e9810d0c37855607accf2af3",
+      "bytes": 975
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/run-accounts-browser-focused.py",
+      "sha256": "c9a60d6706b6e59918621ed7bef1242dd8c6aa6ae665bf39144d1cccebf2e51e",
+      "bytes": 971
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/run-accounts-browser-focused.sh",
+      "sha256": "b6cf18f4d30b25842ba622416e682265625c4b85eb8386fb0d8b5aa2e9eb0dae",
+      "bytes": 8690
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/run-rf-post-accounts-focused.py",
+      "sha256": "fbcf23660ce8e3eb685f74f7e666fe3690d0a927f9e78348b146b3bdafdf1405",
+      "bytes": 971
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/run-rf-post-accounts-focused.sh",
+      "sha256": "d8c06061274890920c99ed28a59faf6b752e8a94f4c32a37efe7346df69a6190",
+      "bytes": 8566
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/runtime-source-bindings.json",
+      "sha256": "91f09eb0f004078e256b3d6f1a6a10ba90f7bef8e55871b04e85ac1d00f24b42",
+      "bytes": 970
+    },
+    {
+      "path": "architecture/evidence/issues/153/browser-validation/verification.md",
+      "sha256": "8f03235238bedf67c8e0f0651707ecfe83192c9c03f33a632965cf0db0db6eb3",
+      "bytes": 2639
+    }
+  ]
+}

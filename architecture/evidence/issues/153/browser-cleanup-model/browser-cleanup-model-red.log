@@ -1,0 +1,499 @@
+✖ browser owner cleanup preserves every prior family in predecessor before company and user (4.675417ms)
+✖ browser owner cleanup preserves every prior family in overlap before company and user (0.8355ms)
+✖ browser owner cleanup preserves every prior family in contracted before company and user (0.762375ms)
+✖ browser owner cleanup preserves every prior family in tax-contracted before company and user (0.667167ms)
+✖ browser owner cleanup removes every tracked company before the shared owner (1.413084ms)
+✖ browser owner cleanup preserves source failure and continues independent cleanup (1.159875ms)
+✖ browser owner cleanup preserves both operation and rollback failures (1.23925ms)
+✔ browser owner cleanup fails closed for missing-family (0.303709ms)
+✔ browser owner cleanup fails closed for wrong-owner (0.542292ms)
+✔ browser owner cleanup fails closed for invalid-trigger-mode (0.502125ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 3
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 118.87025
+
+✖ failing tests:
+
+test at tests/browser_process_lifecycle.test.mjs:197:3
+✖ browser owner cleanup preserves every prior family in predecessor before company and user (4.675417ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+  +   + actual - expected
+  +   
+  +   + 'annual_accounts_filing_store_owner'
+  +   - undefined
+  +   
+  +       at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+  +       at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+  +       at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+  +       at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+  +       at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+  +       at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:201:20)
+  +       at async Test.run (node:internal/test_runner/test:1404:7)
+  +       at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+  +     actual: 'annual_accounts_filing_store_owner',
+  +     code: 'ERR_ASSERTION',
+  +     diff: 'simple',
+  +     expected: undefined,
+  +     generatedMessage: false,
+  +     operator: 'strictEqual'
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:204:12)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [
+      AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+      + actual - expected
+      
+      + 'annual_accounts_filing_store_owner'
+      - undefined
+      
+          at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+          at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+          at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+          at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+          at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+          at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:201:20)
+          at async Test.run (node:internal/test_runner/test:1404:7)
+          at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+    ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/browser_process_lifecycle.test.mjs:197:3
+✖ browser owner cleanup preserves every prior family in overlap before company and user (0.8355ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+  +   + actual - expected
+  +   
+  +   + 'annual_accounts_filing_store_owner'
+  +   - undefined
+  +   
+  +       at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+  +       at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+  +       at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+  +       at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+  +       at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+  +       at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:201:20)
+  +       at async Test.run (node:internal/test_runner/test:1404:7)
+  +       at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+  +     actual: 'annual_accounts_filing_store_owner',
+  +     code: 'ERR_ASSERTION',
+  +     diff: 'simple',
+  +     expected: undefined,
+  +     generatedMessage: false,
+  +     operator: 'strictEqual'
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:204:12)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [
+      AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+      + actual - expected
+      
+      + 'annual_accounts_filing_store_owner'
+      - undefined
+      
+          at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+          at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+          at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+          at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+          at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+          at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:201:20)
+          at async Test.run (node:internal/test_runner/test:1404:7)
+          at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+    ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/browser_process_lifecycle.test.mjs:197:3
+✖ browser owner cleanup preserves every prior family in contracted before company and user (0.762375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+  +   + actual - expected
+  +   
+  +   + 'annual_accounts_filing_store_owner'
+  +   - undefined
+  +   
+  +       at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+  +       at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+  +       at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+  +       at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+  +       at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+  +       at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:201:20)
+  +       at async Test.run (node:internal/test_runner/test:1404:7)
+  +       at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+  +     actual: 'annual_accounts_filing_store_owner',
+  +     code: 'ERR_ASSERTION',
+  +     diff: 'simple',
+  +     expected: undefined,
+  +     generatedMessage: false,
+  +     operator: 'strictEqual'
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:204:12)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [
+      AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+      + actual - expected
+      
+      + 'annual_accounts_filing_store_owner'
+      - undefined
+      
+          at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+          at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+          at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+          at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+          at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+          at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:201:20)
+          at async Test.run (node:internal/test_runner/test:1404:7)
+          at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+    ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/browser_process_lifecycle.test.mjs:197:3
+✖ browser owner cleanup preserves every prior family in tax-contracted before company and user (0.667167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+  +   + actual - expected
+  +   
+  +   + 'annual_accounts_filing_store_owner'
+  +   - undefined
+  +   
+  +       at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+  +       at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+  +       at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+  +       at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+  +       at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+  +       at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:201:20)
+  +       at async Test.run (node:internal/test_runner/test:1404:7)
+  +       at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+  +     actual: 'annual_accounts_filing_store_owner',
+  +     code: 'ERR_ASSERTION',
+  +     diff: 'simple',
+  +     expected: undefined,
+  +     generatedMessage: false,
+  +     operator: 'strictEqual'
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:204:12)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [
+      AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+      + actual - expected
+      
+      + 'annual_accounts_filing_store_owner'
+      - undefined
+      
+          at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+          at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+          at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+          at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+          at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+          at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:201:20)
+          at async Test.run (node:internal/test_runner/test:1404:7)
+          at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+    ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/browser_process_lifecycle.test.mjs:270:1
+✖ browser owner cleanup removes every tracked company before the shared owner (1.413084ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+  +   + actual - expected
+  +   
+  +   + 'annual_accounts_filing_store_owner'
+  +   - undefined
+  +   
+  +       at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+  +       at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+  +       at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+  +       at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+  +       at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+  +       at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:274:18)
+  +       at async Test.run (node:internal/test_runner/test:1404:7)
+  +       at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+  +     actual: 'annual_accounts_filing_store_owner',
+  +     code: 'ERR_ASSERTION',
+  +     diff: 'simple',
+  +     expected: undefined,
+  +     generatedMessage: false,
+  +     operator: 'strictEqual'
+  +   },
+  +   AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+  +   + actual - expected
+  +   
+  +   + 'annual_accounts_filing_store_owner'
+  +   - undefined
+  +   
+  +       at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+  +       at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+  +       at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+  +       at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+  +       at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+  +       at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:274:18)
+  +       at async Test.run (node:internal/test_runner/test:1404:7)
+  +       at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+  +     actual: 'annual_accounts_filing_store_owner',
+  +     code: 'ERR_ASSERTION',
+  +     diff: 'simple',
+  +     expected: undefined,
+  +     generatedMessage: false,
+  +     operator: 'strictEqual'
+  +   }
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:283:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [
+      AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+      + actual - expected
+      
+      + 'annual_accounts_filing_store_owner'
+      - undefined
+      
+          at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+          at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+          at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+          at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+          at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+          at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:274:18)
+          at async Test.run (node:internal/test_runner/test:1404:7)
+          at async Test.processPendingSubtests (node:internal/test_runner/test:969:7),
+      AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+      + actual - expected
+      
+      + 'annual_accounts_filing_store_owner'
+      - undefined
+      
+          at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+          at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+          at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+          at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+          at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+          at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:274:18)
+          at async Test.run (node:internal/test_runner/test:1404:7)
+          at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+    ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/browser_process_lifecycle.test.mjs:291:1
+✖ browser owner cleanup preserves source failure and continues independent cleanup (1.159875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+  +   AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+  +   + actual - expected
+  +   
+  +   + 'annual_accounts_filing_store_owner'
+  +   - undefined
+  +   
+  +       at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+  +       at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+  +       at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+  +       at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+  +       at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+  +       at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:296:18)
+  +       at async Test.run (node:internal/test_runner/test:1404:7)
+  +       at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+  +     actual: 'annual_accounts_filing_store_owner',
+  +     code: 'ERR_ASSERTION',
+  +     diff: 'simple',
+  +     expected: undefined,
+  +     generatedMessage: false,
+  +     operator: 'strictEqual'
+  +   }
+  -   Error: source cleanup failed
+  -       at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:293:25)
+  -       at Test.runInAsyncScope (node:async_hooks:227:14)
+  -       at Test.run (node:internal/test_runner/test:1397:25)
+  -       at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+  -       at Test.postRun (node:internal/test_runner/test:1537:19)
+  -       at Test.run (node:internal/test_runner/test:1462:12)
+  -       at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:304:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [
+      AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+      + actual - expected
+      
+      + 'annual_accounts_filing_store_owner'
+      - undefined
+      
+          at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+          at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+          at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+          at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+          at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+          at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:296:18)
+          at async Test.run (node:internal/test_runner/test:1404:7)
+          at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+    ],
+    expected: [
+      Error: source cleanup failed
+          at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:293:25)
+          at Test.runInAsyncScope (node:async_hooks:227:14)
+          at Test.run (node:internal/test_runner/test:1397:25)
+          at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+          at Test.postRun (node:internal/test_runner/test:1537:19)
+          at Test.run (node:internal/test_runner/test:1462:12)
+          at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+    ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/browser_process_lifecycle.test.mjs:313:1
+✖ browser owner cleanup preserves both operation and rollback failures (1.23925ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+  +   AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+  +   + actual - expected
+  +   
+  +   + 'annual_accounts_filing_store_owner'
+  +   - undefined
+  +   
+  +       at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+  +       at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+  +       at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+  +       at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+  +       at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+  +       at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:318:18)
+  +       at async Test.run (node:internal/test_runner/test:1404:7)
+  +       at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+  +     actual: 'annual_accounts_filing_store_owner',
+  +     code: 'ERR_ASSERTION',
+  +     diff: 'simple',
+  +     expected: undefined,
+  +     generatedMessage: false,
+  +     operator: 'strictEqual'
+  +   },
+  -   Error: fixture delete failed
+  -       at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:315:19)
+  -       at Test.runInAsyncScope (node:async_hooks:227:14)
+  -       at Test.run (node:internal/test_runner/test:1397:25)
+  -       at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+  -       at Test.postRun (node:internal/test_runner/test:1537:19)
+  -       at Test.run (node:internal/test_runner/test:1462:12)
+  -       at async Test.processPendingSubtests (node:internal/test_runner/test:969:7),
+      Error: fixture rollback failed
+          at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:316:27)
+          at Test.runInAsyncScope (node:async_hooks:227:14)
+          at Test.run (node:internal/test_runner/test:1397:25)
+          at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:322:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [
+      AssertionError [ERR_ASSERTION]: schema grant uses its exact owner
+      + actual - expected
+      
+      + 'annual_accounts_filing_store_owner'
+      - undefined
+      
+          at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:693:16)
+          at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:184:24)
+          at async deleteBrowserOwnerCompanySources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:240:3)
+          at async attempt (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:9:7)
+          at async cleanupBrowserOwnerResources (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/browser-owner-cleanup.mjs:34:7)
+          at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:318:18)
+          at async Test.run (node:internal/test_runner/test:1404:7)
+          at async Test.processPendingSubtests (node:internal/test_runner/test:969:7),
+      Error: fixture rollback failed
+          at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:316:27)
+          at Test.runInAsyncScope (node:async_hooks:227:14)
+          at Test.run (node:internal/test_runner/test:1397:25)
+          at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+          at Test.postRun (node:internal/test_runner/test:1537:19)
+          at Test.run (node:internal/test_runner/test:1462:12)
+          at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+    ],
+    expected: [
+      Error: fixture delete failed
+          at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:315:19)
+          at Test.runInAsyncScope (node:async_hooks:227:14)
+          at Test.run (node:internal/test_runner/test:1397:25)
+          at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+          at Test.postRun (node:internal/test_runner/test:1537:19)
+          at Test.run (node:internal/test_runner/test:1462:12)
+          at async Test.processPendingSubtests (node:internal/test_runner/test:969:7),
+      Error: fixture rollback failed
+          at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_process_lifecycle.test.mjs:316:27)
+          at Test.runInAsyncScope (node:async_hooks:227:14)
+          at Test.run (node:internal/test_runner/test:1397:25)
+          at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+          at Test.postRun (node:internal/test_runner/test:1537:19)
+          at Test.run (node:internal/test_runner/test:1462:12)
+          at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+    ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

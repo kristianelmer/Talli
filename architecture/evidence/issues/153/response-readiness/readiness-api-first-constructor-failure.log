@@ -1,0 +1,224 @@
+FFFFFFFFFFF                                                              [100%]
+=================================== FAILURES ===================================
+___ test_readiness_http_keeps_accounts_and_corporate_issue_order[supported] ____
+
+case = {'id': 'supported', 'input': {'annualData': {'answers': {'authority_to_submit_confirmed': True, 'bank_balance_confirme..., 'created_at': '2026-01-01T00:00:00Z', 'created_by': 'owner', 'entry_type': 'annual', ...}]}, 'output': {'value': []}}
+
+    @pytest.mark.parametrize('case',CASES,ids=lambda c:c['id'])
+    def test_readiness_http_keeps_accounts_and_corporate_issue_order(case):
+        value=json.loads(json.dumps(case['input']).replace('company-id',COMPANY))
+        corporate=value.get('corporateDocuments')
+        body=dict(companyId=value['company']['id'],incomeYear=value['incomeYear'],annualData=value.get('annualData'),ledgerEntries=value['ledgerEntries'],
+            corporateEnabled=corporate['enabled'] if corporate else False,
+            corporateBlockers=corporate['readiness']['blockers'] if corporate else [])
+        client=TestClient(create_app(annual_accounts_session_factory=Sessions()))
+        response=client.post('/api/v1/annual-accounts/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+>       assert response.status_code==200,response.text
+E       AssertionError: {"type":"https://talli.no/problems/annual-accounts-invalid-input","title":"Annual accounts request failed","status":422,"detail":"The annual accounts request could not be completed.","instance":"/api/v1/annual-accounts/readiness-previews","code":"ANNUAL_ACCOUNTS_INVALID_INPUT","requestId":"284ce7fc-5356-4153-9bd6-c597fcd4093c"}
+E       assert 422 == 200
+E        +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+
+apps/backend/tests/test_annual_accounts_readiness_api.py:29: AssertionError
+_ test_readiness_http_keeps_accounts_and_corporate_issue_order[missing-annual] _
+
+case = {'id': 'missing-annual', 'input': {'annualData': None, 'company': {'id': 'company-id'}, 'incomeYear': 2025, 'ledgerEnt..., 'created_at': '2026-01-01T00:00:00Z', 'created_by': 'owner', 'entry_type': 'annual', ...}]}, 'output': {'value': []}}
+
+    @pytest.mark.parametrize('case',CASES,ids=lambda c:c['id'])
+    def test_readiness_http_keeps_accounts_and_corporate_issue_order(case):
+        value=json.loads(json.dumps(case['input']).replace('company-id',COMPANY))
+        corporate=value.get('corporateDocuments')
+        body=dict(companyId=value['company']['id'],incomeYear=value['incomeYear'],annualData=value.get('annualData'),ledgerEntries=value['ledgerEntries'],
+            corporateEnabled=corporate['enabled'] if corporate else False,
+            corporateBlockers=corporate['readiness']['blockers'] if corporate else [])
+        client=TestClient(create_app(annual_accounts_session_factory=Sessions()))
+        response=client.post('/api/v1/annual-accounts/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+>       assert response.status_code==200,response.text
+E       AssertionError: {"type":"https://talli.no/problems/annual-accounts-invalid-input","title":"Annual accounts request failed","status":422,"detail":"The annual accounts request could not be completed.","instance":"/api/v1/annual-accounts/readiness-previews","code":"ANNUAL_ACCOUNTS_INVALID_INPUT","requestId":"0564e782-bbfd-4b36-a0c7-a400648c7e16"}
+E       assert 422 == 200
+E        +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+
+apps/backend/tests/test_annual_accounts_readiness_api.py:29: AssertionError
+_ test_readiness_http_keeps_accounts_and_corporate_issue_order[missing-ledger] _
+
+case = {'id': 'missing-ledger', 'input': {'annualData': {'answers': {'authority_to_submit_confirmed': True, 'bank_balance_con...er_missing', 'level': 'block', 'message': 'Årsregnskap krever postert åpningsbalanse eller holdinghandlinger.', ...}]}}
+
+    @pytest.mark.parametrize('case',CASES,ids=lambda c:c['id'])
+    def test_readiness_http_keeps_accounts_and_corporate_issue_order(case):
+        value=json.loads(json.dumps(case['input']).replace('company-id',COMPANY))
+        corporate=value.get('corporateDocuments')
+        body=dict(companyId=value['company']['id'],incomeYear=value['incomeYear'],annualData=value.get('annualData'),ledgerEntries=value['ledgerEntries'],
+            corporateEnabled=corporate['enabled'] if corporate else False,
+            corporateBlockers=corporate['readiness']['blockers'] if corporate else [])
+        client=TestClient(create_app(annual_accounts_session_factory=Sessions()))
+        response=client.post('/api/v1/annual-accounts/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+>       assert response.status_code==200,response.text
+E       AssertionError: {"type":"https://talli.no/problems/annual-accounts-invalid-input","title":"Annual accounts request failed","status":422,"detail":"The annual accounts request could not be completed.","instance":"/api/v1/annual-accounts/readiness-previews","code":"ANNUAL_ACCOUNTS_INVALID_INPUT","requestId":"a9884227-4ae4-41fc-8d93-e26706238d2e"}
+E       assert 422 == 200
+E        +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+
+apps/backend/tests/test_annual_accounts_readiness_api.py:29: AssertionError
+_ test_readiness_http_keeps_accounts_and_corporate_issue_order[other-company] __
+
+case = {'id': 'other-company', 'input': {'annualData': {'answers': {'authority_to_submit_confirmed': True, 'bank_balance_conf...er_missing', 'level': 'block', 'message': 'Årsregnskap krever postert åpningsbalanse eller holdinghandlinger.', ...}]}}
+
+    @pytest.mark.parametrize('case',CASES,ids=lambda c:c['id'])
+    def test_readiness_http_keeps_accounts_and_corporate_issue_order(case):
+        value=json.loads(json.dumps(case['input']).replace('company-id',COMPANY))
+        corporate=value.get('corporateDocuments')
+        body=dict(companyId=value['company']['id'],incomeYear=value['incomeYear'],annualData=value.get('annualData'),ledgerEntries=value['ledgerEntries'],
+            corporateEnabled=corporate['enabled'] if corporate else False,
+            corporateBlockers=corporate['readiness']['blockers'] if corporate else [])
+        client=TestClient(create_app(annual_accounts_session_factory=Sessions()))
+        response=client.post('/api/v1/annual-accounts/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+>       assert response.status_code==200,response.text
+E       AssertionError: {"type":"https://talli.no/problems/annual-accounts-invalid-input","title":"Annual accounts request failed","status":422,"detail":"The annual accounts request could not be completed.","instance":"/api/v1/annual-accounts/readiness-previews","code":"ANNUAL_ACCOUNTS_INVALID_INPUT","requestId":"5b983e9f-96f6-4c8e-b72b-d11370d20fb3"}
+E       assert 422 == 200
+E        +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+
+apps/backend/tests/test_annual_accounts_readiness_api.py:29: AssertionError
+___ test_readiness_http_keeps_accounts_and_corporate_issue_order[other-year] ___
+
+case = {'id': 'other-year', 'input': {'annualData': {'answers': {'authority_to_submit_confirmed': True, 'bank_balance_confirm...er_missing', 'level': 'block', 'message': 'Årsregnskap krever postert åpningsbalanse eller holdinghandlinger.', ...}]}}
+
+    @pytest.mark.parametrize('case',CASES,ids=lambda c:c['id'])
+    def test_readiness_http_keeps_accounts_and_corporate_issue_order(case):
+        value=json.loads(json.dumps(case['input']).replace('company-id',COMPANY))
+        corporate=value.get('corporateDocuments')
+        body=dict(companyId=value['company']['id'],incomeYear=value['incomeYear'],annualData=value.get('annualData'),ledgerEntries=value['ledgerEntries'],
+            corporateEnabled=corporate['enabled'] if corporate else False,
+            corporateBlockers=corporate['readiness']['blockers'] if corporate else [])
+        client=TestClient(create_app(annual_accounts_session_factory=Sessions()))
+        response=client.post('/api/v1/annual-accounts/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+>       assert response.status_code==200,response.text
+E       AssertionError: {"type":"https://talli.no/problems/annual-accounts-invalid-input","title":"Annual accounts request failed","status":422,"detail":"The annual accounts request could not be completed.","instance":"/api/v1/annual-accounts/readiness-previews","code":"ANNUAL_ACCOUNTS_INVALID_INPUT","requestId":"c69a0b6d-7f71-4037-9abc-825490979241"}
+E       assert 422 == 200
+E        +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+
+apps/backend/tests/test_annual_accounts_readiness_api.py:29: AssertionError
+_ test_readiness_http_keeps_accounts_and_corporate_issue_order[unapproved-close] _
+
+case = {'id': 'unapproved-close', 'input': {'annualData': {'answers': {'authority_to_submit_confirmed': True, 'bank_balance_c...: 'general_meeting_not_approved', 'level': 'block', 'message': 'Generalforsamling må godkjenne årsregnskapet.', ...}]}}
+
+    @pytest.mark.parametrize('case',CASES,ids=lambda c:c['id'])
+    def test_readiness_http_keeps_accounts_and_corporate_issue_order(case):
+        value=json.loads(json.dumps(case['input']).replace('company-id',COMPANY))
+        corporate=value.get('corporateDocuments')
+        body=dict(companyId=value['company']['id'],incomeYear=value['incomeYear'],annualData=value.get('annualData'),ledgerEntries=value['ledgerEntries'],
+            corporateEnabled=corporate['enabled'] if corporate else False,
+            corporateBlockers=corporate['readiness']['blockers'] if corporate else [])
+        client=TestClient(create_app(annual_accounts_session_factory=Sessions()))
+        response=client.post('/api/v1/annual-accounts/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+>       assert response.status_code==200,response.text
+E       AssertionError: {"type":"https://talli.no/problems/annual-accounts-invalid-input","title":"Annual accounts request failed","status":422,"detail":"The annual accounts request could not be completed.","instance":"/api/v1/annual-accounts/readiness-previews","code":"ANNUAL_ACCOUNTS_INVALID_INPUT","requestId":"66611068-72ae-40ee-9af5-3234394fe304"}
+E       assert 422 == 200
+E        +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+
+apps/backend/tests/test_annual_accounts_readiness_api.py:29: AssertionError
+_ test_readiness_http_keeps_accounts_and_corporate_issue_order[corporate-enabled-false] _
+
+case = {'id': 'corporate-enabled-false', 'input': {'annualData': {'answers': {'authority_to_submit_confirmed': True, 'bank_ba...e_missing', 'message': 'Corporate close missing'}], 'state': None}}, 'incomeYear': 2025, ...}, 'output': {'value': []}}
+
+    @pytest.mark.parametrize('case',CASES,ids=lambda c:c['id'])
+    def test_readiness_http_keeps_accounts_and_corporate_issue_order(case):
+        value=json.loads(json.dumps(case['input']).replace('company-id',COMPANY))
+        corporate=value.get('corporateDocuments')
+        body=dict(companyId=value['company']['id'],incomeYear=value['incomeYear'],annualData=value.get('annualData'),ledgerEntries=value['ledgerEntries'],
+            corporateEnabled=corporate['enabled'] if corporate else False,
+            corporateBlockers=corporate['readiness']['blockers'] if corporate else [])
+        client=TestClient(create_app(annual_accounts_session_factory=Sessions()))
+        response=client.post('/api/v1/annual-accounts/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+>       assert response.status_code==200,response.text
+E       AssertionError: {"type":"https://talli.no/problems/annual-accounts-invalid-input","title":"Annual accounts request failed","status":422,"detail":"The annual accounts request could not be completed.","instance":"/api/v1/annual-accounts/readiness-previews","code":"ANNUAL_ACCOUNTS_INVALID_INPUT","requestId":"f66657c8-5e92-4b19-937b-9d5f06788d31"}
+E       assert 422 == 200
+E        +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+
+apps/backend/tests/test_annual_accounts_readiness_api.py:29: AssertionError
+_ test_readiness_http_keeps_accounts_and_corporate_issue_order[corporate-enabled-true] _
+
+case = {'id': 'corporate-enabled-true', 'input': {'annualData': {'answers': {'authority_to_submit_confirmed': True, 'bank_bal...ng', ...}, {'accepted': False, 'code': 'close_missing', 'level': 'block', 'message': 'Corporate close missing', ...}]}}
+
+    @pytest.mark.parametrize('case',CASES,ids=lambda c:c['id'])
+    def test_readiness_http_keeps_accounts_and_corporate_issue_order(case):
+        value=json.loads(json.dumps(case['input']).replace('company-id',COMPANY))
+        corporate=value.get('corporateDocuments')
+        body=dict(companyId=value['company']['id'],incomeYear=value['incomeYear'],annualData=value.get('annualData'),ledgerEntries=value['ledgerEntries'],
+            corporateEnabled=corporate['enabled'] if corporate else False,
+            corporateBlockers=corporate['readiness']['blockers'] if corporate else [])
+        client=TestClient(create_app(annual_accounts_session_factory=Sessions()))
+        response=client.post('/api/v1/annual-accounts/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+>       assert response.status_code==200,response.text
+E       AssertionError: {"type":"https://talli.no/problems/annual-accounts-invalid-input","title":"Annual accounts request failed","status":422,"detail":"The annual accounts request could not be completed.","instance":"/api/v1/annual-accounts/readiness-previews","code":"ANNUAL_ACCOUNTS_INVALID_INPUT","requestId":"683cdf80-ffea-410c-a146-2047d2a638fe"}
+E       assert 422 == 200
+E        +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+
+apps/backend/tests/test_annual_accounts_readiness_api.py:29: AssertionError
+_ test_readiness_http_keeps_accounts_and_corporate_issue_order[unaccepted-warning] _
+
+case = {'id': 'unaccepted-warning', 'input': {'annualData': {'answers': {'authority_to_submit_confirmed': True, 'bank_balance...l_warning_unaccepted', 'level': 'warning', 'message': 'Manuelle posteringer med filingadvarsel må aksepteres.', ...}]}}
+
+    @pytest.mark.parametrize('case',CASES,ids=lambda c:c['id'])
+    def test_readiness_http_keeps_accounts_and_corporate_issue_order(case):
+        value=json.loads(json.dumps(case['input']).replace('company-id',COMPANY))
+        corporate=value.get('corporateDocuments')
+        body=dict(companyId=value['company']['id'],incomeYear=value['incomeYear'],annualData=value.get('annualData'),ledgerEntries=value['ledgerEntries'],
+            corporateEnabled=corporate['enabled'] if corporate else False,
+            corporateBlockers=corporate['readiness']['blockers'] if corporate else [])
+        client=TestClient(create_app(annual_accounts_session_factory=Sessions()))
+        response=client.post('/api/v1/annual-accounts/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+>       assert response.status_code==200,response.text
+E       AssertionError: {"type":"https://talli.no/problems/annual-accounts-invalid-input","title":"Annual accounts request failed","status":422,"detail":"The annual accounts request could not be completed.","instance":"/api/v1/annual-accounts/readiness-previews","code":"ANNUAL_ACCOUNTS_INVALID_INPUT","requestId":"f8187f14-da6e-411b-b84a-eeaa92cce553"}
+E       assert 422 == 200
+E        +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+
+apps/backend/tests/test_annual_accounts_readiness_api.py:29: AssertionError
+_ test_readiness_http_keeps_accounts_and_corporate_issue_order[accepted-warning] _
+
+case = {'id': 'accepted-warning', 'input': {'annualData': {'answers': {'authority_to_submit_confirmed': True, 'bank_balance_c...anual_journal_warning_accepted', 'level': 'warning', 'message': 'Manuell postering er akseptert som advarsel.', ...}]}}
+
+    @pytest.mark.parametrize('case',CASES,ids=lambda c:c['id'])
+    def test_readiness_http_keeps_accounts_and_corporate_issue_order(case):
+        value=json.loads(json.dumps(case['input']).replace('company-id',COMPANY))
+        corporate=value.get('corporateDocuments')
+        body=dict(companyId=value['company']['id'],incomeYear=value['incomeYear'],annualData=value.get('annualData'),ledgerEntries=value['ledgerEntries'],
+            corporateEnabled=corporate['enabled'] if corporate else False,
+            corporateBlockers=corporate['readiness']['blockers'] if corporate else [])
+        client=TestClient(create_app(annual_accounts_session_factory=Sessions()))
+        response=client.post('/api/v1/annual-accounts/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+>       assert response.status_code==200,response.text
+E       AssertionError: {"type":"https://talli.no/problems/annual-accounts-invalid-input","title":"Annual accounts request failed","status":422,"detail":"The annual accounts request could not be completed.","instance":"/api/v1/annual-accounts/readiness-previews","code":"ANNUAL_ACCOUNTS_INVALID_INPUT","requestId":"94be5585-a68c-483e-96f8-7f85ffe46cfd"}
+E       assert 422 == 200
+E        +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+
+apps/backend/tests/test_annual_accounts_readiness_api.py:29: AssertionError
+_ test_readiness_http_keeps_accounts_and_corporate_issue_order[ordered-all-blocks-warnings] _
+
+case = {'id': 'ordered-all-blocks-warnings', 'input': {'annualData': {'annual_full_time_equivalents': None, 'answers': {'auth...anual_journal_warning_accepted', 'level': 'warning', 'message': 'Manuell postering er akseptert som advarsel.', ...}]}}
+
+    @pytest.mark.parametrize('case',CASES,ids=lambda c:c['id'])
+    def test_readiness_http_keeps_accounts_and_corporate_issue_order(case):
+        value=json.loads(json.dumps(case['input']).replace('company-id',COMPANY))
+        corporate=value.get('corporateDocuments')
+        body=dict(companyId=value['company']['id'],incomeYear=value['incomeYear'],annualData=value.get('annualData'),ledgerEntries=value['ledgerEntries'],
+            corporateEnabled=corporate['enabled'] if corporate else False,
+            corporateBlockers=corporate['readiness']['blockers'] if corporate else [])
+        client=TestClient(create_app(annual_accounts_session_factory=Sessions()))
+        response=client.post('/api/v1/annual-accounts/readiness-previews',json=body,headers={'Authorization':'Bearer fixture'})
+>       assert response.status_code==200,response.text
+E       AssertionError: {"type":"https://talli.no/problems/annual-accounts-invalid-input","title":"Annual accounts request failed","status":422,"detail":"The annual accounts request could not be completed.","instance":"/api/v1/annual-accounts/readiness-previews","code":"ANNUAL_ACCOUNTS_INVALID_INPUT","requestId":"641739a7-acb1-4664-9950-22742169d463"}
+E       assert 422 == 200
+E        +  where 422 = <Response [422 Unprocessable Entity]>.status_code
+
+apps/backend/tests/test_annual_accounts_readiness_api.py:29: AssertionError
+=========================== short test summary info ============================
+FAILED apps/backend/tests/test_annual_accounts_readiness_api.py::test_readiness_http_keeps_accounts_and_corporate_issue_order[supported]
+FAILED apps/backend/tests/test_annual_accounts_readiness_api.py::test_readiness_http_keeps_accounts_and_corporate_issue_order[missing-annual]
+FAILED apps/backend/tests/test_annual_accounts_readiness_api.py::test_readiness_http_keeps_accounts_and_corporate_issue_order[missing-ledger]
+FAILED apps/backend/tests/test_annual_accounts_readiness_api.py::test_readiness_http_keeps_accounts_and_corporate_issue_order[other-company]
+FAILED apps/backend/tests/test_annual_accounts_readiness_api.py::test_readiness_http_keeps_accounts_and_corporate_issue_order[other-year]
+FAILED apps/backend/tests/test_annual_accounts_readiness_api.py::test_readiness_http_keeps_accounts_and_corporate_issue_order[unapproved-close]
+FAILED apps/backend/tests/test_annual_accounts_readiness_api.py::test_readiness_http_keeps_accounts_and_corporate_issue_order[corporate-enabled-false]
+FAILED apps/backend/tests/test_annual_accounts_readiness_api.py::test_readiness_http_keeps_accounts_and_corporate_issue_order[corporate-enabled-true]
+FAILED apps/backend/tests/test_annual_accounts_readiness_api.py::test_readiness_http_keeps_accounts_and_corporate_issue_order[unaccepted-warning]
+FAILED apps/backend/tests/test_annual_accounts_readiness_api.py::test_readiness_http_keeps_accounts_and_corporate_issue_order[accepted-warning]
+FAILED apps/backend/tests/test_annual_accounts_readiness_api.py::test_readiness_http_keeps_accounts_and_corporate_issue_order[ordered-all-blocks-warnings]
+11 failed in 3.00s

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "1.0",
+  "status": "REVIEW_AND_GATE_FAILURES_FIXED_STAGE_EXIT_PENDING",
+  "baseRevision": "900472a0ecfbf5e8d7fc4996f4f641e33575103c",
+  "artifacts": {
+    "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "bcf4ad3ec885fefdc496722d80a32f6e7c98321fb7d4dd2bdcef56215323ed0d",
+    "apps/web/tests/company-access-cancellation.test.mjs": "f11ef035c16737f53a47f2750416e62f651b3ae30673e864e6db82c6558c008d",
+    "architecture/evidence/customer-ready-gates/900472a0ecfbf5e8d7fc4996f4f641e33575103c.log": "3746f4d96f6084a7eda2044390c09eb424d60d06fb349c6edf7ed98c55bd4d0f",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-backend-binding-admin-fixed.log": "a9c55dc6cbdf2058e464a0ad1bd00dafa99bee8d143dcc1a0593658b4a23d9c7",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-boundary-check-fixed-first.log": "a410cc0fc51a4e6ee93120947b04b86605c2ecf614d9c36e36f46e0b2797f8b6",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-boundary-check-fixed-second.log": "4504116c2131998b7c39c7bdfdd09c65b28cb3dbe830f0d49cfbcf12a2462bde",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-900472a0.json": "5a6a01ac52cf0654de8cc1256b74a37538a3fe17e0fee43f419432494c47671c",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-first.log": "e655b03f78e98d32d2e79b89ea975aca97442a8be1d1afd0a320af8a67ea12ad",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-second.log": "16fbef719a115fb7e4dce3ad0a6345f2c4df023489d39f5a59f1333715327bb5",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-final-advisors-third.log": "4a7f4ef39c35814cf15da2e40cdd9127a501bcc781065b3c33e4f30e8a942687",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-runtime-concurrency-first.log": "995ec77e3f54d7791763c8819dd581649702b9bb65cc77cc548c999077f5182e",
+    "architecture/evidence/issues/153/gate-follow-up/accounts-runtime-concurrency.json": "5d7285723d0c7fc64a331860ba519564d7b0499a8997c0c985dd5ac349418eeb",
+    "architecture/evidence/issues/153/gate-follow-up/probe-accounts-final-advisors.py": "98f293910578c68befde85263ffb47ad4d3913b8440383c2e90c95953e720195",
+    "architecture/evidence/issues/153/gate-follow-up/probe-accounts-runtime-concurrency.py": "7a456fbc8947bd649890a093ce126b9824100259b67d7e2510cfa7abd64f5122",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-binding-admin-900472a0.json": "aba6a90d45bc44de11ddd3bdec55d11052951d7916ac1b498cde5de4cba544e0",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-binding-admin-900472a0.log": "aba6a90d45bc44de11ddd3bdec55d11052951d7916ac1b498cde5de4cba544e0",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-binding-admin-900472a0.py": "555e9a239611c34a57dbce01189b2b1cd106079a2ccfd0cae295eac205c31396",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-review-900472a0.json": "0db1b68d6256503837abd3f780e4cfc8ef6e9a8d810510c6318c623da53b6b65",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-spec-review-900472a0.md": "2675c1712553dcf2d19cf0ade1fa363f3810a1c78782e9e239c47510b600723e",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-standards-review-900472a0.json": "508612875881ab029482668c0888adf4f40c6cafaec841dd8b61f20fd2e27426",
+    "architecture/evidence/issues/153/gate-follow-up/source-fix-standards-review-900472a0.md": "d815acbeee5f01b4320439b80c84e2ab2bc49d6bcaa8ed2d0a7553a5c0b2d2e5",
+    "architecture/evidence/issues/153/gate-follow-up/verification.md": "ce90e9557e4e04358b694e297049e984922cef4e1b5e89428221f7f1e811c6ba",
+    "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+    "supabase/contract-migrations/20260914112549_annual_accounts_filing_backend_binding.sql": "fdcb34e81a79e8e5d9c59f01230969ad6f292e2c466bac9d65a8c1293b109211",
+    "tests/authority_connections_retirement.test.mjs": "712be3a128f464ec8223faf905e76983eb652b7ea5d915ac7c50fc2e279e5e98"
+  }
+}

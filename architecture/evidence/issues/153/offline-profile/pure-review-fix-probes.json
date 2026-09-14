@@ -1,0 +1,16 @@
+{
+  "numericCases": 20,
+  "status": "PASS",
+  "comparison": "JSON numeric tokens interpreted as binary64, matching JavaScript Number. One out-of-safe-range finite diagnostic uses exponent versus decimal spelling; numeric value is equal. Signed overflow diagnostics and remaining fields match.",
+  "deepMetadataDepths": [
+    100,
+    600,
+    1200
+  ],
+  "deepMetadataStatus": "all return 21 fields",
+  "bindings": {
+    "numeric-probe-fixed.json": "36f87857c9aa51260cdf2ae67fda0e7f88b57baef36f2a8d27c57d674171adac",
+    "numeric-probe-old-d6b64377.json": "1bf6c90516aba88b830bdec69f6b448f5f9edad6746dd9c27b2590f40f40760b",
+    "deep-probe-fixed.json": "1b838b74c846fb5486db6d3a5a6865e14d95333bf5671976df81d3947a8a51a1"
+  }
+}

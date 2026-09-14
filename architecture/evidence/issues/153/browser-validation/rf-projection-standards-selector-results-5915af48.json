@@ -1,0 +1,234 @@
+{
+  "mode": "ACTUAL_SELECTOR_WITH_PURE_CATALOG_STUB_NO_DATABASE",
+  "passed": 38,
+  "results": [
+    {
+      "case": "all public ordinary tables",
+      "expectedAccepted": true,
+      "status": "PASS",
+      "queries": 3
+    },
+    {
+      "case": "all public partitioned tables",
+      "expectedAccepted": true,
+      "status": "PASS",
+      "queries": 2
+    },
+    {
+      "case": "retired public, all owned ordinary",
+      "expectedAccepted": true,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "retired public, all owned partitioned",
+      "expectedAccepted": true,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "contracted with public remains",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 3
+    },
+    {
+      "case": "absent state",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 2
+    },
+    {
+      "case": "absent public wrong phase expanded",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 3
+    },
+    {
+      "case": "absent public wrong phase cutover",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 3
+    },
+    {
+      "case": "absent public wrong phase rolled_back",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 3
+    },
+    {
+      "case": "absent public wrong phase unexpected",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 3
+    },
+    {
+      "case": "partial public 0",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 3
+    },
+    {
+      "case": "missing owned 0",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "partial public 1",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 3
+    },
+    {
+      "case": "missing owned 1",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "partial public 2",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 3
+    },
+    {
+      "case": "missing owned 2",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "partial public 3",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 3
+    },
+    {
+      "case": "missing owned 3",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "partial public 4",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 3
+    },
+    {
+      "case": "missing owned 4",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "partial public 5",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 3
+    },
+    {
+      "case": "missing owned 5",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "public wrong kind v",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 1
+    },
+    {
+      "case": "owned wrong kind v",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "public wrong kind m",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 1
+    },
+    {
+      "case": "owned wrong kind m",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "public wrong kind f",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 1
+    },
+    {
+      "case": "owned wrong kind f",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "public wrong kind S",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 1
+    },
+    {
+      "case": "owned wrong kind S",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "public wrong kind i",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 1
+    },
+    {
+      "case": "owned wrong kind i",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "short public catalog",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 1
+    },
+    {
+      "case": "long public catalog",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 1
+    },
+    {
+      "case": "short owned catalog",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "long owned catalog",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 4
+    },
+    {
+      "case": "host denied before query",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 0
+    },
+    {
+      "case": "catalog error preserved",
+      "expectedAccepted": false,
+      "status": "PASS",
+      "queries": 1
+    }
+  ]
+}

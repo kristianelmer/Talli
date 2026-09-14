@@ -1,0 +1,162 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#153",
+  "baseRevision": "10e6698efdcad2726f5ca9f7dcdb7352317ceb11",
+  "status": "IMPLEMENTED_TARGETED_VERIFIED_FULL_EXIT_PENDING",
+  "finding": "STD-153-JOURNAL-1",
+  "sourceBindings": {
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py": "4a9db32b227c59c0ad04e90d4afb7f05f58d6994113c6224922463363fb2386a",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/rehearsal.py": "5705ab94619c688e5c16233e623aa9235e43527169f0ed293afba945a3bcaa27",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md": "30276ef80feaabeb44b9dcbdaa0ae7f747e472a9e186c7603623255d7431e493",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json": "21317051f3ea026f98aa8f6e02eef48df01487317da3ef3ddf8a0f5bd36ce502",
+    "apps/backend/src/talli_backend/adapters/local_annual_accounts_rehearsal.py": "8c235aadd4063bb2398ef81b4711759521a34be91d8893530a6d5b82fe10eea7",
+    "apps/backend/tests/test_annual_accounts_rehearsal_recovery.py": "6210acbf143e8f460dd4cc0fa13ecd003d91073bc5040e5efa6e3cd2bbb3608d",
+    "apps/backend/tests/test_annual_accounts_rehearsal_ownership.py": "ea42b6eb375103682f8c5ba1435627528b1e431ffc3f5e17523321d51b0e6597"
+  },
+  "artifacts": [
+    {
+      "path": "authority-safety-spec-archive-10e6698e.log",
+      "sha256": "b5dcf8ebaf7ce92bf181d49e423c24ba336b353e0fa2f0e64a7650a2a85ea489",
+      "bytes": 1515
+    },
+    {
+      "path": "authority-safety-spec-bindings-10e6698e.json",
+      "sha256": "fe0362309a27353ad305674ffa76df57874fe742560b82d2a59e24652c4b2f8e",
+      "bytes": 14734
+    },
+    {
+      "path": "authority-safety-spec-concurrent-10e6698e.json",
+      "sha256": "4bb6431104e69b0c7ad6a6619d60db1f976767612f7bb43ac784f8f92e3f1f37",
+      "bytes": 307
+    },
+    {
+      "path": "authority-safety-spec-concurrent-cli-10e6698e.json",
+      "sha256": "f9699f762b686cba9355f82dd17b041970f595c2d5f2098d1eea141b06f604b6",
+      "bytes": 420
+    },
+    {
+      "path": "authority-safety-spec-probe-10e6698e.json",
+      "sha256": "2fcdc0f3fbba70a0390ba89fdcaafa4559bd89a5ecfc8d6a8dd308467d3f9d4b",
+      "bytes": 2115
+    },
+    {
+      "path": "authority-safety-spec-probe-10e6698e.py",
+      "sha256": "9893954477f7ccc2ca05e7b47fb1f8f01ec6585af50fa14f9e0937d8b5a4e8f1",
+      "bytes": 4351
+    },
+    {
+      "path": "authority-safety-spec-review-10e6698e.json",
+      "sha256": "1e9ce581e805112ddb47d8a238be02168dba1eb5b599f8d1cf018545008ccfb2",
+      "bytes": 5036
+    },
+    {
+      "path": "authority-safety-spec-review-10e6698e.md",
+      "sha256": "f223e197a057b1096543e8ca74d64b1a2533da85328edd9889700f61d4513117",
+      "bytes": 2547
+    },
+    {
+      "path": "authority-safety-spec-tests-10e6698e.log",
+      "sha256": "4d35bede1e784cfed3c0176aff1c68537e04375f50100f8530a50298c2e75d03",
+      "bytes": 340
+    },
+    {
+      "path": "authority-safety-standards-archive-10e6698e.log",
+      "sha256": "f03a8090b6a3f98f797851e58f634d059947a8c3427970af4e5e5a5bc41f9f22",
+      "bytes": 1509
+    },
+    {
+      "path": "authority-safety-standards-artifact-checks-10e6698e.json",
+      "sha256": "c53b2958f676633c873ff88d897aa18df738b33b930cd25abb34ee389f57dedd",
+      "bytes": 1312
+    },
+    {
+      "path": "authority-safety-standards-concurrent-cli-10e6698e.py",
+      "sha256": "3617322d99cd832e7dc3f51dba46730f441a8f02f0c73dbdb94f332cbccfae0b",
+      "bytes": 2902
+    },
+    {
+      "path": "authority-safety-standards-concurrent-cli-results-10e6698e.json",
+      "sha256": "f9699f762b686cba9355f82dd17b041970f595c2d5f2098d1eea141b06f604b6",
+      "bytes": 420
+    },
+    {
+      "path": "authority-safety-standards-concurrent-probe-10e6698e.py",
+      "sha256": "43c7eadb7c6a7580046862b946c98f1a2c8052aadaa6d93183a25b7c4bdf85f7",
+      "bytes": 1327
+    },
+    {
+      "path": "authority-safety-standards-concurrent-results-10e6698e.json",
+      "sha256": "4bb6431104e69b0c7ad6a6619d60db1f976767612f7bb43ac784f8f92e3f1f37",
+      "bytes": 307
+    },
+    {
+      "path": "authority-safety-standards-edge-probe-10e6698e.py",
+      "sha256": "65f0a023bffb40001d0e94a962185c8c215122b525223663cc6f6aaa4aa1fdb1",
+      "bytes": 3010
+    },
+    {
+      "path": "authority-safety-standards-edge-results-10e6698e.json",
+      "sha256": "210014f2fc2aee5813c1613cc84ed0e3f7f9bdd01962ebce1974d41b39198f58",
+      "bytes": 1394
+    },
+    {
+      "path": "authority-safety-standards-review-10e6698e.json",
+      "sha256": "fd4bb011d1bd2ffc2a2abd3f56f04ea84fef518dd05391c1a350dd9032396881",
+      "bytes": 23369
+    },
+    {
+      "path": "authority-safety-standards-review-10e6698e.md",
+      "sha256": "3a7b447738a0824c1230b08b4ef6d0c91e63229e5f107908322b69e980dbe108",
+      "bytes": 2429
+    },
+    {
+      "path": "authority-safety-standards-tests-10e6698e.log",
+      "sha256": "4d35bede1e784cfed3c0176aff1c68537e04375f50100f8530a50298c2e75d03",
+      "bytes": 340
+    },
+    {
+      "path": "authority-safety-standards-workspace-10e6698e.json",
+      "sha256": "9e2de19e60a86ab2f77aac2bbfdf0c06e394d4c67a9594297d91ac4655d468e9",
+      "bytes": 170
+    },
+    {
+      "path": "journal-architecture-first.log",
+      "sha256": "17b763f93f18dc1015f37235604bdcb3f05da4c2a082b44c7b6043f74600bf0e",
+      "bytes": 40028
+    },
+    {
+      "path": "journal-architecture-real-worktree.log",
+      "sha256": "5096ab8df3bc349b6886466baae30461c5504bf924bb82a09b40006cf94d4109",
+      "bytes": 17261
+    },
+    {
+      "path": "journal-focused-first.log",
+      "sha256": "b95ebb540a33c0e0127c539b47e749bef31596f0c9454e4c7fe7aa3903612c04",
+      "bytes": 340
+    },
+    {
+      "path": "journal-focused-real-worktree.log",
+      "sha256": "64f06b0b6818931e5bc6a630a4bb35a79db8f611b584856548306d8c5183f2df",
+      "bytes": 340
+    },
+    {
+      "path": "journal-ownership-green.log",
+      "sha256": "aadd6be37c153ac932c107dea717d09119dd6aa20d052856495bb7fdacbb55f1",
+      "bytes": 99
+    },
+    {
+      "path": "journal-ownership-red.log",
+      "sha256": "485bd8ee9f4370c53edb864e44be3ab59f24f885e591f36e7c985852c36347d7",
+      "bytes": 17237
+    },
+    {
+      "path": "verification.md",
+      "sha256": "0ea8da8b55f9bb1c884ff88f220e3c3fd0f789791ef956491d7e18c239243aaa",
+      "bytes": 2551
+    }
+  ],
+  "limits": [
+    "Local POSIX evidence-file ownership only; no provider or hosted effects.",
+    "Original full gate remains in progress; no exit credit."
+  ]
+}

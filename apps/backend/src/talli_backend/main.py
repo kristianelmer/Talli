@@ -70,6 +70,16 @@ from talli_backend.adapters.supabase_corporate_governance import (
 )
 from talli_backend.adapters.supabase_documents import SupabaseDocumentsAdapter
 from talli_backend.adapters.supabase_ledger import compose_ledger_application
+from talli_backend.json_transport import json_value, model_json_response
+from talli_backend.adapters.postgres_annual_accounts import compose_annual_accounts_application
+from talli_backend.application.annual_accounts_session import AnnualAccountsSessionFactory
+from talli_backend.modules.annual_accounts_filing.public import (
+    AnnualAccountsSourceQuery,
+    AnnualAccountsSource, AnnualAccountsCorporateReadiness, AnnualAccountsReadinessIssue, assess_annual_accounts_readiness,
+    ImportAnnualAccountsEvidence, AnnualAccountsError, AnnualAccountsWorkspaceQuery, AnnualAccountsRecordQuery, AnnualAccountsRecordId,
+    RecordAnnualAccountsOverride, AddAnnualAccountsReviewComment, ConfirmAnnualAccountsPermission,
+    RecordAnnualAccountsTestEvidence,
+)
 from talli_backend.adapters.postgres_company_tax_filing import compose_company_tax_application
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
 from talli_backend.modules.company_tax_filing.public import (
@@ -1017,6 +1027,298 @@ class CompanyTaxSourceFactsWire(TransportModel):
     outcomes: list[CompanyTaxOutcomeFactWire]
 
 
+class AnnualAccountsSourceEvidenceWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    obligation: Literal["aarsregnskap"]
+    scope: Literal["talli_recorded_annual_accounts"]
+    reference: str
+    version: str
+    digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    evaluated_at: datetime
+
+
+class AnnualAccountsHistoryCoverageWire(TransportModel):
+    status: Literal["complete", "incomplete", "unavailable"]
+    reasons: list[str]
+    evidence_reference: str | None
+    as_of: datetime
+    submission_count: int
+    scope: Literal["talli_recorded_annual_accounts"]
+
+
+class AnnualAccountsSubmissionFactWire(TransportModel):
+    source_id: UUID
+    source_mode: str
+    adapter_mode: str
+    state: str
+    effect_status: Literal["unknown", "not_production"]
+    observed_at: str | None
+    created_by: str | None
+    submitted_by: str | None
+    authority_confirmed_by: str | None
+    authority_confirmed_at: str | None
+    preview_confirmed_by: str | None
+    preview_confirmed_at: str | None
+    payload_hash: str | None
+    receipt_reference: str | None
+    feedback_document_ids: list[str]
+    source_digest: str
+
+
+class AnnualAccountsIncidentFactWire(TransportModel):
+    source_id: UUID
+    source_mode: str
+    adapter_mode: str
+    failure_code: str | None
+    observed_at: str | None
+    actor_id: str | None
+    source_digest: str
+    attribution: Literal["unknown"]
+
+
+class AnnualAccountsOutcomeFactWire(TransportModel):
+    source_id: UUID
+    source_mode: str
+    adapter_mode: str
+    recorded_state: str
+    outcome: Literal["unknown", "test_or_simulation"]
+    observed_at: str | None
+    source_digest: str
+    attribution: Literal["unknown"]
+
+
+class AnnualAccountsCorrectionLinkWire(TransportModel):
+    source_id: UUID
+    supersedes_source_id: UUID
+
+
+class AnnualAccountsSourceFactsWire(TransportModel):
+    evidence: AnnualAccountsSourceEvidenceWire
+    readiness_status: Literal["blocked", "unavailable"]
+    hard_blocks: list[str]
+    history_coverage: AnnualAccountsHistoryCoverageWire
+    recorded_submissions: list[AnnualAccountsSubmissionFactWire]
+    production_attempts: list[AnnualAccountsSubmissionFactWire]
+    correction_links: list[AnnualAccountsCorrectionLinkWire]
+    incidents: list[AnnualAccountsIncidentFactWire]
+    outcomes: list[AnnualAccountsOutcomeFactWire]
+
+
+class AnnualAccountsPreviewWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    setup_id: UUID | None
+    income_year: int
+    filing: Literal["årsregnskap"]
+    status: Literal["ready", "blocked", "warning"]
+    issues: list[dict[str, Any]]
+    preview: str
+    hovedskjema_xml: str | None
+    underskjema_xml: dict[str, str]
+    source: str
+    created_by: UUID
+    created_at: datetime
+
+
+class AnnualAccountsOverrideWire(TransportModel):
+    id: UUID
+    preview_id: UUID | None
+    company_id: UUID
+    income_year: int
+    filing: Literal["årsregnskap"]
+    field_target: str
+    old_value: str
+    new_value: str
+    reason: str
+    risk_level: Literal["advisory", "warning", "block"]
+    owner_confirmed_by: UUID
+    owner_confirmed_at: datetime
+    created_by: UUID
+    created_at: datetime
+
+
+class AnnualAccountsReviewCommentWire(TransportModel):
+    id: UUID
+    preview_id: UUID
+    company_id: UUID
+    target: str
+    severity: Literal["advisory", "hard_block"]
+    body: str
+    created_by: UUID
+    acknowledged_by: UUID | None
+    acknowledged_at: datetime | None
+    created_at: datetime
+
+
+class AnnualAccountsPermissionWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    obligation: Literal["aarsregnskap"]
+    submitter_user_id: UUID
+    confirmed_by: UUID
+    confirmed_at: datetime
+    production_enabled: bool
+    updated_at: datetime
+
+
+class AnnualAccountsTestEvidenceWire(TransportModel):
+    id: UUID
+    company_id: UUID
+    obligation: Literal["aarsregnskap"]
+    environment: Literal["test", "manual_evidence"]
+    status: Literal["accepted", "rejected", "blocked", "pending"]
+    test_reference: str
+    feedback_summary: str
+    receipt_reference: str | None
+    archive_reference: str | None
+    evidence_url: str | None
+    payload_hash: str | None
+    recorded_by: UUID
+    recorded_at: datetime
+
+
+class AnnualAccountsSubmissionWire(TransportModel):
+    id: UUID
+    preview_id: UUID | None
+    authority_test_run_id: UUID | None
+    company_id: UUID
+    setup_id: UUID | None
+    income_year: int
+    filing: Literal["årsregnskap"]
+    mode: Literal["simulation", "test_authority"]
+    adapter_mode: Literal["simulation", "test_authority", "production"]
+    payload_hash: str | None
+    idempotency_key: str | None
+    status: str
+    authority_confirmed_by: UUID | None
+    authority_confirmed_at: datetime | None
+    preview_confirmed_by: UUID | None
+    preview_confirmed_at: datetime | None
+    calls: list[dict[str, Any]]
+    receipt_id: str | None
+    feedback_document_ids: list[str]
+    feedback_items: list[dict[str, Any]]
+    receipt_metadata: dict[str, Any] | None
+    submitted_payload_ref: dict[str, Any] | None
+    submitted_payload: dict[str, Any] | None
+    failure_code: str | None
+    failure_message: str | None
+    created_by: UUID
+    submitted_by: UUID | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AnnualAccountsCorporateBlockerWire(TransportModel):
+    code: str
+    message: str
+
+
+class AnnualAccountsReadinessPreviewRequest(TransportModel):
+    company_id: UUID
+    income_year: Annotated[int, Field(strict=True, ge=2000, le=2100)]
+    annual_data: dict[str, Any] | None = None
+    ledger_entries: list[dict[str, Any]]
+    corporate_enabled: Annotated[bool, Field(strict=True)]
+    corporate_blockers: list[AnnualAccountsCorporateBlockerWire]
+
+    @model_validator(mode="after")
+    def bounded_readiness_facts(self):
+        for entry in self.ledger_entries:
+            flags = entry.get('risk_flags')
+            accepted_at = entry.get('warning_accepted_at')
+            if (not isinstance(entry.get('company_id'), str) or type(entry.get('income_year')) is not int
+                    or not isinstance(flags, list) or any(not isinstance(flag, str) for flag in flags)
+                    or accepted_at is not None and not isinstance(accepted_at, str)):
+                raise ValueError('Accounts ledger warning facts are malformed.')
+        if self.annual_data is not None:
+            annual = self.annual_data
+            answers, confirmations = annual.get('answers'), annual.get('confirmations')
+            equivalents = annual.get('annual_full_time_equivalents')
+            if (annual.get('company_id') != str(self.company_id)
+                    or type(annual.get('income_year')) is not int or annual['income_year'] != self.income_year
+                    or not isinstance(answers, dict) or type(answers.get('general_meeting_approved')) is not bool
+                    or any(type(answer) is not bool for answer in answers.values())
+                    or not isinstance(confirmations, list) or any(not isinstance(item, str) for item in confirmations)
+                    or equivalents is not None and type(equivalents) not in (int, float)):
+                raise ValueError('Accounts annual facts are malformed or outside the requested scope.')
+        try:
+            if len(json.dumps(self.model_dump(mode='json'), ensure_ascii=True, allow_nan=False).encode()) > 8 * 1024 * 1024:
+                raise ValueError('Accounts preview facts exceed the size limit.')
+        except RecursionError:
+            raise ValueError('Accounts preview facts are too deeply nested.') from None
+        return self
+
+
+class AnnualAccountsReadinessIssueWire(TransportModel):
+    level: Literal['block', 'warning']
+    code: str
+    message: str
+    source: str
+    accepted: bool
+
+
+class AnnualAccountsReadinessPreviewWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    issues: list[AnnualAccountsReadinessIssueWire]
+
+
+class AnnualAccountsRecordedWire(TransportModel):
+    record_id: UUID
+    company_id: UUID
+    income_year: int | None
+
+
+class AnnualAccountsOverrideRequest(TransportModel):
+    preview_id: UUID
+    field_target: str
+    old_value: str
+    new_value: str
+    reason: str
+    risk_level: str
+    owner_confirmed: Annotated[bool, Field(strict=True)]
+
+
+class AnnualAccountsReviewRequest(TransportModel):
+    preview_id: UUID
+    severity: str = "advisory"
+    body: str
+
+
+class AnnualAccountsPermissionRequest(TransportModel):
+    company_id: UUID
+    production_enabled: Annotated[bool, Field(strict=True)]
+
+
+class AnnualAccountsTestEvidenceRequest(TransportModel):
+    company_id: UUID
+    environment: str
+    status: str
+    test_reference: str
+    feedback_summary: str = ""
+    receipt_reference: str | None = None
+    archive_reference: str | None = None
+    evidence_url: str | None = None
+    payload_hash: str | None = None
+
+
+class AnnualAccountsWorkspaceWire(TransportModel):
+    company_id: UUID
+    income_year: int | None
+    previews: list[AnnualAccountsPreviewWire]
+    submissions: list[AnnualAccountsSubmissionWire]
+    overrides: list[AnnualAccountsOverrideWire]
+    review_comments: list[AnnualAccountsReviewCommentWire]
+    permissions: list[AnnualAccountsPermissionWire]
+    test_evidence: list[AnnualAccountsTestEvidenceWire]
+
+
+def annual_accounts_json_wire(value: object) -> Any:
+    return json_value(value)
+
+
 class CompanyTaxPreviewWire(TransportModel):
     id: UUID
     company_id: UUID
@@ -1226,6 +1528,23 @@ class CompanyTaxTestEvidenceRequest(TransportModel):
     archive_reference: str | None = None
     evidence_url: str | None = None
     payload_hash: str | None = None
+
+
+class AnnualAccountsEvidenceImportRequest(TransportModel):
+    company_id: UUID
+    evidence_json: Annotated[str, Field(strict=True, min_length=1, max_length=524288)]
+    evidence_url: str | None = None
+
+    @model_validator(mode="after")
+    def bounded_utf8_evidence(self):
+        if len(self.evidence_json.encode("utf-8", errors="replace")) > 512 * 1024:
+            raise ValueError("Evidence file exceeds the size limit.")
+        return self
+
+
+class AnnualAccountsEvidenceImportWire(TransportModel):
+    record_id: UUID
+    test_reference: str
 
 
 class CompanyTaxEvidenceImportRequest(TransportModel):
@@ -4112,7 +4431,7 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         request.state.request_id = _request_id(request)
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
-        if request.url.path == "/api/v1/ledger/opening-snapshots/by-year" or request.url.path.startswith(("/api/v1/billing/annual/", "/api/v1/authority-connections/", "/api/v1/operator-controls/", "/api/v1/legacy-rf1086/", "/api/v1/shareholder-register-filings/", "/api/v1/company-tax/")):
+        if request.url.path == "/api/v1/ledger/opening-snapshots/by-year" or request.url.path.startswith(("/api/v1/billing/annual/", "/api/v1/authority-connections/", "/api/v1/operator-controls/", "/api/v1/legacy-rf1086/", "/api/v1/shareholder-register-filings/", "/api/v1/company-tax/", "/api/v1/annual-accounts/")):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -4149,6 +4468,7 @@ def create_app(
     company_registry_gateway: CompanyRegistryGateway | None = None,
     ledger_session_factory: LedgerSessionFactory | None = None,
     company_tax_session_factory: CompanyTaxSessionFactory | None = None,
+    annual_accounts_session_factory: AnnualAccountsSessionFactory | None = None,
     investments_session_factory: InvestmentsSessionFactory | None = None,
     corporate_governance_session_factory: CorporateGovernanceSessionFactory | None = None,
     documents_session_factory: DocumentsSessionFactory | None = None,
@@ -4196,6 +4516,7 @@ def create_app(
     )
     ledger_application = compose_ledger_application(ledger_session_factory)
     company_tax_application = compose_company_tax_application(company_tax_session_factory)
+    annual_accounts_application = compose_annual_accounts_application(annual_accounts_session_factory)
     investments_application = compose_investments_application(
         investments_session_factory
     )
@@ -4474,6 +4795,32 @@ def create_app(
                 code=error.code,
                 title="Marketing measurement request failed",
                 detail=error.detail,
+            ) from None
+
+    async def annual_accounts_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
+        try:
+            return await call()
+        except LedgerAuthenticationError:
+            raise ApiProblem(
+                status=401,
+                code="AUTHENTICATION_REQUIRED",
+                title="Authentication required",
+                detail="A valid session is required.",
+            ) from None
+        except (LedgerError, AnnualAccountsError) as error:
+            statuses = {
+                ErrorCategory.INVALID_INPUT: 422,
+                ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409,
+                ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409,
+                ErrorCategory.DEPENDENCY_UNAVAILABLE: 503,
+            }
+            raise ApiProblem(
+                status=statuses[error.category],
+                code=error.code.replace("LEDGER_", "ANNUAL_ACCOUNTS_") if isinstance(error, LedgerError) else error.code,
+                title="Annual accounts request failed",
+                detail=error.message or "The annual accounts request could not be completed.",
             ) from None
 
     async def company_tax_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
@@ -10002,6 +10349,200 @@ def create_app(
         return await ledger_call(execute)
 
     @application.get(
+        "/api/v1/annual-accounts/previews/{preview_id}",
+        operation_id="annualAccountsGetPreview", response_model=AnnualAccountsPreviewWire,
+        responses=ledger_errors, tags=["annual-accounts"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def annual_accounts_get_preview(
+        preview_id: UUID, credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualAccountsPreviewWire:
+        async def execute() -> AnnualAccountsPreviewWire:
+            session = await annual_accounts_application.session(bearer_token(credentials))
+            result = await session.filing_preview(AnnualAccountsRecordQuery(session.actor_id, AnnualAccountsRecordId(str(preview_id))))
+            if result is None:
+                raise AnnualAccountsError.not_found()
+            if result.get('id') != str(preview_id):
+                raise AnnualAccountsError.unavailable()
+            try:
+                return model_json_response(AnnualAccountsPreviewWire(**annual_accounts_json_wire(result)))
+            except ValidationError:
+                raise AnnualAccountsError.unavailable() from None
+        return await annual_accounts_call(execute)
+
+    @application.post(
+        "/api/v1/annual-accounts/review-comments/{comment_id}/acknowledgements",
+        operation_id="annualAccountsAcknowledgeReviewComment", response_model=AnnualAccountsRecordedWire,
+        responses=ledger_errors, tags=["annual-accounts"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def annual_accounts_acknowledge_review_comment(
+        comment_id: UUID, credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualAccountsRecordedWire:
+        async def execute() -> AnnualAccountsRecordedWire:
+            session = await annual_accounts_application.session(bearer_token(credentials))
+            result = await session.acknowledge_review_comment(AnnualAccountsRecordQuery(session.actor_id, AnnualAccountsRecordId(str(comment_id))))
+            if str(result.record_id) != str(comment_id):
+                raise AnnualAccountsError.unavailable()
+            return AnnualAccountsRecordedWire(record_id=UUID(str(result.record_id)), company_id=UUID(str(result.company_id)),
+                income_year=int(result.income_year) if result.income_year is not None else None)
+        return await annual_accounts_call(execute)
+
+    @application.post(
+        "/api/v1/annual-accounts/overrides",
+        operation_id="annualAccountsRecordOverride", response_model=AnnualAccountsRecordedWire,
+        responses=ledger_errors, tags=["annual-accounts"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def annual_accounts_record_override(
+        body: AnnualAccountsOverrideRequest, credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualAccountsRecordedWire:
+        async def execute() -> AnnualAccountsRecordedWire:
+            session = await annual_accounts_application.session(bearer_token(credentials))
+            result = await session.record_override(RecordAnnualAccountsOverride(
+                actor_id=session.actor_id, preview_id=AnnualAccountsRecordId(str(body.preview_id)), field_target=body.field_target, old_value=body.old_value, new_value=body.new_value, reason=body.reason, risk_level=body.risk_level, owner_confirmed=body.owner_confirmed,
+            ))
+            return AnnualAccountsRecordedWire(record_id=UUID(str(result.record_id)), company_id=UUID(str(result.company_id)),
+                income_year=int(result.income_year) if result.income_year is not None else None)
+        return await annual_accounts_call(execute)
+
+    @application.post(
+        "/api/v1/annual-accounts/review-comments",
+        operation_id="annualAccountsAddReviewComment", response_model=AnnualAccountsRecordedWire,
+        responses=ledger_errors, tags=["annual-accounts"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def annual_accounts_add_review_comment(
+        body: AnnualAccountsReviewRequest, credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualAccountsRecordedWire:
+        async def execute() -> AnnualAccountsRecordedWire:
+            session = await annual_accounts_application.session(bearer_token(credentials))
+            result = await session.add_review_comment(AddAnnualAccountsReviewComment(
+                actor_id=session.actor_id, preview_id=AnnualAccountsRecordId(str(body.preview_id)), severity=body.severity, body=body.body,
+            ))
+            return AnnualAccountsRecordedWire(record_id=UUID(str(result.record_id)), company_id=UUID(str(result.company_id)),
+                income_year=int(result.income_year) if result.income_year is not None else None)
+        return await annual_accounts_call(execute)
+
+    @application.post(
+        "/api/v1/annual-accounts/permissions",
+        operation_id="annualAccountsConfirmPermission", response_model=AnnualAccountsRecordedWire,
+        responses=ledger_errors, tags=["annual-accounts"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def annual_accounts_confirm_filing_permission(
+        body: AnnualAccountsPermissionRequest, credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualAccountsRecordedWire:
+        async def execute() -> AnnualAccountsRecordedWire:
+            session = await annual_accounts_application.session(bearer_token(credentials))
+            result = await session.confirm_filing_permission(ConfirmAnnualAccountsPermission(
+                actor_id=session.actor_id, company_id=CompanyId(str(body.company_id)), production_enabled=body.production_enabled,
+            ))
+            return AnnualAccountsRecordedWire(record_id=UUID(str(result.record_id)), company_id=UUID(str(result.company_id)),
+                income_year=int(result.income_year) if result.income_year is not None else None)
+        return await annual_accounts_call(execute)
+
+    @application.post(
+        "/api/v1/annual-accounts/test-evidence",
+        operation_id="annualAccountsRecordTestEvidence", response_model=AnnualAccountsRecordedWire,
+        responses=ledger_errors, tags=["annual-accounts"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def annual_accounts_record_test_evidence(
+        body: AnnualAccountsTestEvidenceRequest, credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualAccountsRecordedWire:
+        async def execute() -> AnnualAccountsRecordedWire:
+            session = await annual_accounts_application.session(bearer_token(credentials))
+            result = await session.record_test_evidence(RecordAnnualAccountsTestEvidence(
+                actor_id=session.actor_id, company_id=CompanyId(str(body.company_id)), environment=body.environment, status=body.status, test_reference=body.test_reference, feedback_summary=body.feedback_summary, receipt_reference=body.receipt_reference, archive_reference=body.archive_reference, evidence_url=body.evidence_url, payload_hash=body.payload_hash,
+            ))
+            return AnnualAccountsRecordedWire(record_id=UUID(str(result.record_id)), company_id=UUID(str(result.company_id)),
+                income_year=int(result.income_year) if result.income_year is not None else None)
+        return await annual_accounts_call(execute)
+
+    @application.post(
+        "/api/v1/annual-accounts/readiness-previews",
+        operation_id="annualAccountsPreviewReadiness", response_model=AnnualAccountsReadinessPreviewWire,
+        responses=ledger_errors, tags=["annual-accounts"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def preview_annual_accounts_readiness(
+        facts: AnnualAccountsReadinessPreviewRequest,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualAccountsReadinessPreviewWire:
+        async def execute() -> AnnualAccountsReadinessPreviewWire:
+            await annual_accounts_application.session(bearer_token(credentials))
+            try:
+                source = AnnualAccountsSource(income_year=facts.income_year, annual_data=facts.annual_data, ledger_entries=facts.ledger_entries)
+                corporate = AnnualAccountsCorporateReadiness(facts.corporate_enabled, tuple(
+                    AnnualAccountsReadinessIssue('block', blocker.code, blocker.message, 'corporate_documents')
+                    for blocker in facts.corporate_blockers))
+                issues = assess_annual_accounts_readiness(source, company_id=str(facts.company_id), corporate=corporate)
+                return AnnualAccountsReadinessPreviewWire(company_id=facts.company_id, income_year=facts.income_year,
+                    issues=[AnnualAccountsReadinessIssueWire(level=issue.level,code=issue.code,message=issue.message,
+                        source=issue.source,accepted=issue.accepted) for issue in issues])
+            except (KeyError, TypeError, ValueError, OverflowError, AttributeError):
+                raise AnnualAccountsError.invalid_input() from None
+        return await annual_accounts_call(execute)
+
+    @application.get(
+        "/api/v1/annual-accounts/source-facts",
+        operation_id="annualAccountsGetSourceFacts", response_model=AnnualAccountsSourceFactsWire,
+        responses=ledger_errors, tags=["annual-accounts"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def annual_accounts_source_facts(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualAccountsSourceFactsWire:
+        async def execute() -> AnnualAccountsSourceFactsWire:
+            session = await annual_accounts_application.session(bearer_token(credentials))
+            result = await session.filing_source_facts(AnnualAccountsSourceQuery(
+                CompanyId(str(company_id)), IncomeYear(income_year), session.actor_id,
+            ))
+            try:
+                evidence, coverage = result.evidence, result.history_coverage
+                return AnnualAccountsSourceFactsWire(
+                    evidence=AnnualAccountsSourceEvidenceWire(company_id=str(evidence.company_id), income_year=int(evidence.income_year),
+                        obligation=evidence.obligation, scope=evidence.scope, reference=evidence.reference, version=evidence.version,
+                        digest=evidence.digest, evaluated_at=evidence.evaluated_at.value),
+                    readiness_status=result.readiness_status, hard_blocks=list(result.hard_blocks),
+                    history_coverage=AnnualAccountsHistoryCoverageWire(status=coverage.status, reasons=list(coverage.reasons),
+                        evidence_reference=coverage.evidence_reference, as_of=coverage.as_of.value,
+                        submission_count=coverage.submission_count, scope=coverage.scope),
+                    recorded_submissions=[AnnualAccountsSubmissionFactWire.model_validate(row, from_attributes=True) for row in result.recorded_submissions],
+                    production_attempts=[AnnualAccountsSubmissionFactWire.model_validate(row, from_attributes=True) for row in result.production_attempts],
+                    correction_links=[AnnualAccountsCorrectionLinkWire.model_validate(row, from_attributes=True) for row in result.correction_links],
+                    incidents=[AnnualAccountsIncidentFactWire.model_validate(row, from_attributes=True) for row in result.incidents],
+                    outcomes=[AnnualAccountsOutcomeFactWire.model_validate(row, from_attributes=True) for row in result.outcomes],
+                )
+            except ValidationError:
+                raise AnnualAccountsError.unavailable() from None
+        return await annual_accounts_call(execute)
+
+    @application.get(
+        "/api/v1/annual-accounts/filing-workspace",
+        operation_id="annualAccountsGetFilingWorkspace", response_model=AnnualAccountsWorkspaceWire,
+        responses=ledger_errors, tags=["annual-accounts"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def annual_accounts_filing_workspace(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int | None, Query(alias="incomeYear", ge=2000, le=2100)] = None,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualAccountsWorkspaceWire:
+        async def execute() -> AnnualAccountsWorkspaceWire:
+            session = await annual_accounts_application.session(bearer_token(credentials))
+            result = await session.filing_workspace(AnnualAccountsWorkspaceQuery(
+                session.actor_id, CompanyId(str(company_id)),
+                IncomeYear(income_year) if income_year is not None else None,
+            ))
+            try:
+                return model_json_response(AnnualAccountsWorkspaceWire(
+                    company_id=company_id, income_year=income_year,
+                    **{name: annual_accounts_json_wire(getattr(result, name)) for name in (
+                        'previews', 'submissions', 'overrides', 'review_comments', 'permissions', 'test_evidence')},
+                ))
+            except ValidationError:
+                raise AnnualAccountsError.unavailable() from None
+        return await annual_accounts_call(execute)
+
+    @application.get(
         "/api/v1/company-tax/previews/{preview_id}",
         operation_id="companyTaxGetPreview", response_model=CompanyTaxPreviewWire,
         responses=ledger_errors, tags=["company-tax"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
@@ -10106,6 +10647,33 @@ def create_app(
             return CompanyTaxRecordedWire(record_id=UUID(str(result.record_id)), company_id=UUID(str(result.company_id)),
                 income_year=int(result.income_year) if result.income_year is not None else None)
         return await company_tax_call(execute)
+
+    @application.post(
+        "/api/v1/annual-accounts/tt02-evidence-imports",
+        operation_id="annualAccountsImportTt02Evidence", response_model=AnnualAccountsEvidenceImportWire,
+        responses=ledger_errors, tags=["annual-accounts"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def annual_accounts_import_tt02_evidence(
+        body: AnnualAccountsEvidenceImportRequest,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualAccountsEvidenceImportWire:
+        async def execute() -> AnnualAccountsEvidenceImportWire:
+            session = await annual_accounts_application.session(bearer_token(credentials))
+            try:
+                evidence = json.loads(body.evidence_json, parse_constant=reject_non_json_constant)
+                if not isinstance(evidence, dict):
+                    raise ValueError()
+            except (ValueError, RecursionError):
+                raise AnnualAccountsError.invalid_input() from None
+            result = await session.import_tt02_evidence(ImportAnnualAccountsEvidence(
+                actor_id=session.actor_id, company_id=CompanyId(str(body.company_id)),
+                evidence=evidence, evidence_url=body.evidence_url,
+            ))
+            return AnnualAccountsEvidenceImportWire(
+                record_id=UUID(str(result.record_id)), test_reference=result.test_reference,
+            )
+        return await annual_accounts_call(execute)
 
     @application.post(
         "/api/v1/company-tax/tt02-evidence-imports",

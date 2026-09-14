@@ -1,0 +1,77 @@
+{
+  "status": "PASS",
+  "count": 14,
+  "cases": [
+    {
+      "case": "fresh_exact",
+      "accepted": true,
+      "expected": true
+    },
+    {
+      "case": "missing_auto",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "extra_recipient",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "wrong_grantor",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "inherited_access",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "set_access",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "extra_unrelated",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "existing_exact",
+      "accepted": true,
+      "expected": true
+    },
+    {
+      "case": "existing_mutated",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "mixed_exact",
+      "accepted": true,
+      "expected": true
+    },
+    {
+      "case": "superuser_exact",
+      "accepted": true,
+      "expected": true
+    },
+    {
+      "case": "superuser_extra",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "not_createrole",
+      "accepted": false,
+      "expected": false
+    },
+    {
+      "case": "wrong_bootstrap",
+      "accepted": false,
+      "expected": false
+    }
+  ],
+  "scope": "Exact Python assertion only; synthetic catalog results, no database execution."
+}

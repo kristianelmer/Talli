@@ -1,0 +1,18 @@
+[
+  {
+    "depth": 1,
+    "jsonRoundTrip": "PASS",
+    "publicImmutableProjection": "PASS",
+    "thaw": "PASS",
+    "httpStatus": 200,
+    "body": "complete workspace"
+  },
+  {
+    "depth": 600,
+    "jsonRoundTrip": "PASS",
+    "publicImmutableProjection": "PASS",
+    "thaw": "PASS",
+    "httpStatus": 500,
+    "body": "{\"type\":\"https://talli.no/problems/internal-server-error\",\"title\":\"Internal server error\",\"status\":500,\"detail\":\"An unexpected error occurred.\",\"instance\":\"/api/v1/annual-accounts/filing-workspace\",\"code\":\"INTERNAL_SERVER_ERROR\",\"requestId\":\"a46437a6-b7ce-4e8d-b6b4-7d60b10d512f\"}"
+  }
+]

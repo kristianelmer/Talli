@@ -1,0 +1,13 @@
+{
+  "observedAt": "2026-09-14T19:24:36.741530+00:00",
+  "profile": "talli",
+  "action": "colima start --profile talli (existing instance)",
+  "dockerVersion": "29.5.2",
+  "disk": "Filesystem      Size  Used Avail Use% Mounted on\n/dev/vdb1        30G   26G  2.4G  92% /var/lib/docker",
+  "sourceRevision": "f1e6316c4cac895c43be88aef776c88cc97db204",
+  "reason": "Complete gate launch Investments required Docker; prior colima status reported profile not running.",
+  "limits": [
+    "No claim about why the VM stopped.",
+    "No provider or hosted change, no volumes or database content removed."
+  ]
+}

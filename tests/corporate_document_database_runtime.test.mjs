@@ -127,6 +127,6 @@ test("corporate lifecycle RPCs pass a fresh PostgreSQL rehearsal", { timeout: 12
     );
     assert.match(output, /database_rehearsal_ok/);
   } finally {
-    docker(["rm", "--force", containerName]);
+    docker(["rm", "--force", "--volumes", containerName]);
   }
 });

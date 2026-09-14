@@ -1,0 +1,236 @@
+{
+  "frozenAt": "2026-09-14T10:51:32.654897+00:00",
+  "head": "5279d43e297d3a3c2949c61d8466ca79c20651cb",
+  "sources": {
+    "supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql": {
+      "sha256": "0d8a50cd22ec0859ba87dc075a7c4357edad77024ad27623036456fe6bd1d0a1",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql",
+      "lines": 105
+    },
+    "supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql": {
+      "sha256": "9b6468aa12075b2dff687e936b45bc2e47f9663bb11865c09bda2650642402bd",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql",
+      "lines": 333
+    },
+    "supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql": {
+      "sha256": "9f4a89374a4945841f8f3610de2390884db3faa527e2c7374e5a4a3df6cad401",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql",
+      "lines": 87
+    },
+    "supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql": {
+      "sha256": "25c9cbc6faf7bf246fca33402227ee75024cdc3ceda852b7dee55dfa3f910eef",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql",
+      "lines": 190
+    },
+    "supabase/rollback/20260914101842_annual_accounts_filing_contract.sql": {
+      "sha256": "ea5a272c6a29bae8e1371a4fd1ec954ca7e3e1e2dcfa0af3ea2af2c6987646f1",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/supabase/rollback/20260914101842_annual_accounts_filing_contract.sql",
+      "lines": 121
+    }
+  },
+  "evidence": {
+    "probe-accounts-cutover.py": {
+      "sha256": "ba4aeb62c06a89f7c2a19dd7abd916e0e45d89fce79514ad26e7f9df8372fe62",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/evidence/probe-accounts-cutover.py"
+    },
+    "probe-accounts-contract.py": {
+      "sha256": "2781ce323cce683df4065f6484378800a5c552734b8699182d5594fc9fba33e4",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/evidence/probe-accounts-contract.py"
+    },
+    "probe-accounts-latest-recutover.py": {
+      "sha256": "f0da6c432fa188abcb4a561008590915a8bd574770305f8e51f8a0e37aa815bb",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/evidence/probe-accounts-latest-recutover.py"
+    },
+    "probe-accounts-cutover-rejections.py": {
+      "sha256": "7cee3347e3ef1855a9007940e7dea555c396a3ab172d8b37414ace872c4928dc",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/evidence/probe-accounts-cutover-rejections.py"
+    },
+    "cutover-database-results.json": {
+      "sha256": "4f3a9eaaff9e0a71647f0f0c045ca7553876eb1c72ed7c26a000c3e178a1d6b8",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/evidence/cutover-database-results.json",
+      "status": "PASS",
+      "mode": "ROLLBACK_ONLY_REAL_CUTOVER_SYNTHETIC_ROWS",
+      "caseCount": 47,
+      "phaseCount": 0,
+      "sourceMatches": {
+        "supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql": true,
+        "supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql": false
+      }
+    },
+    "contract-database-results.json": {
+      "sha256": "6aef7c6ed5b950b4be7747984ca36cdf99ea6d2b10900ebbdbe5ea35087221d7",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/evidence/contract-database-results.json",
+      "status": "PASS",
+      "mode": "ROLLBACK_ONLY_REAL_CONTRACT_SYNTHETIC_ROWS",
+      "caseCount": 0,
+      "phaseCount": 8,
+      "sourceMatches": {
+        "supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql": true,
+        "supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql": false,
+        "supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql": false,
+        "supabase/rollback/20260914101842_annual_accounts_filing_contract.sql": true
+      }
+    },
+    "latest-state-recutover-results.json": {
+      "sha256": "0300792854d29a564fdf79d694e7c39b7772b24549650ccc02493f08e9f66ea6",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/evidence/latest-state-recutover-results.json",
+      "status": "PASS",
+      "mode": "ROLLBACK_ONLY_REAL_FULL_ROLLBACK_SYNTHETIC_ROWS",
+      "caseCount": 0,
+      "phaseCount": 11,
+      "sourceMatches": {
+        "supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql": true,
+        "supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql": true,
+        "supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql": true,
+        "supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql": true,
+        "supabase/rollback/20260914101842_annual_accounts_filing_contract.sql": true
+      }
+    },
+    "cutover-rejection-results.json": {
+      "sha256": "9e998ebf41b0b60c8e0ccc0034239afb7fe067886cc3bddf8cb85cbc316190a3",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/evidence/cutover-rejection-results.json",
+      "status": "PASS",
+      "mode": "ROLLBACK_ONLY_NEGATIVE_CUTOVER",
+      "caseCount": 3,
+      "phaseCount": 0,
+      "sourceMatches": {
+        "supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql": true,
+        "supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql": true
+      }
+    }
+  },
+  "baselineBindings": {
+    "AGENTS.md": {
+      "sha256": "c4530bac3939f37053438b48a3dad2ea6e99d04481480ef61bee71d3dc81d4af",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/baseline/AGENTS.md"
+    },
+    "CONTEXT.md": {
+      "sha256": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/baseline/CONTEXT.md"
+    },
+    "docs/agents/domain.md": {
+      "sha256": "0b66c33560f91373a7b268f3acf2c3d992e6a77cf5dc60acdc66efb4dc34a982",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/baseline/docs/agents/domain.md"
+    },
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": {
+      "sha256": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/baseline/docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md"
+    },
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": {
+      "sha256": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/baseline/docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md"
+    },
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": {
+      "sha256": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/baseline/docs/adr/0013-enforce-the-architecture-and-migrate-serially.md"
+    },
+    "architecture/COMPATIBILITY.md": {
+      "sha256": "0aba38232b847b1b9843fdd9c04a34ce5cffe220951dd25fb4333e5c97d5c2dc",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/baseline/architecture/COMPATIBILITY.md"
+    },
+    "architecture/BACKEND-SYSTEM.md": {
+      "sha256": "e2246ab623632fbe81970303e29065360653307db12c645401e6a5f053d5545f",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/baseline/architecture/BACKEND-SYSTEM.md"
+    },
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md": {
+      "sha256": "5a3464f610cd907e4638e3e06ecae691306891098d194a2787a4325520509705",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/baseline/apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md"
+    },
+    "apps/backend/tests/accounts_database_fixtures.py": {
+      "sha256": "987bd221fb2776982f0d0dc4352e6b93c64e3e83f25a4e7be74fc45ddd89114d",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/baseline/apps/backend/tests/accounts_database_fixtures.py"
+    }
+  },
+  "reviewAxis": "Standards",
+  "verdict": "FINDING",
+  "report": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-review-wip.md",
+  "reportSha256": "36bee110be5b3b7c9d949eed49fc8788970d1f68fd6b9183579d5f2cdd36d8e2",
+  "reviewCompletedAt": "2026-09-14T10:53:59.811228+00:00",
+  "findings": [
+    {
+      "id": "STD-153-PHYSICAL-1",
+      "priority": 2,
+      "kind": "documented-standard behavior preservation",
+      "file": "supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql",
+      "lines": [
+        66,
+        68,
+        165,
+        170
+      ],
+      "title": "Reject changed shell triggers before restoring the legacy writer",
+      "evidenceType": "independent static source review; no database reproduction by Standards",
+      "standard": {
+        "file": "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md",
+        "lines": [
+          40,
+          44
+        ]
+      },
+      "status": "open on frozen bytes; later parent correction excluded"
+    }
+  ],
+  "withdrawnCandidates": [
+    {
+      "title": "same-ID changed payload rejected on recutover",
+      "reason": "source_rows primary key includes source_sha256; current latest-state probe updates existing comment and recuts over successfully"
+    }
+  ],
+  "checks": [
+    {
+      "command": "git rev-parse 5279d43e; git show 5279d43e:<standard or fixture path>",
+      "result": "resolved full baseline and extracted exact committed reference bytes"
+    },
+    {
+      "command": "SHA-256 over each frozen private SQL copy; compare probe artifacts maps",
+      "result": "five source copies match; latest-state result matches all five; three rejection cases match cutover; older standalone cutover/contract receipts explicitly historical"
+    },
+    {
+      "command": "read five SQL artifacts, four retained SQL producer scripts, ADR0011/0012/0013 and module/system standards",
+      "result": "one actionable rollback trigger finding; no additional heuristic findings"
+    }
+  ],
+  "limits": [
+    "Read-only shared checkout and database; private artifact writes only.",
+    "SQL probes were inspected, not executed by Standards.",
+    "No committed concurrency, actual HTTP/JWT, browser, provider, hosted, complete-gate or stage-exit credit.",
+    "Untracked artifacts compared against absence at pinned HEAD; normal git diff excludes untracked bytes, hence explicit frozen file bindings.",
+    "Later schema/RLS attestation fixes excluded."
+  ],
+  "relatedSpecEvidence": {
+    "physical-sql-spec-target-rls-probe.py": {
+      "sha256": "46c8565760a7bf8f250f6531ebc6fc265af63e37aadd0834b63e48687a2a5cd0",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/evidence/physical-sql-spec-target-rls-probe.py",
+      "executedBy": "Spec reviewer; not Standards"
+    },
+    "physical-sql-spec-target-rls-results.json": {
+      "sha256": "96b4a59debaa2f57294f27f5ea8a82b086f184dd9efefda868b09d9dbe5be11d",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/evidence/physical-sql-spec-target-rls-results.json",
+      "executedBy": "Spec reviewer; not Standards"
+    },
+    "physical-sql-spec-target-rls.log": {
+      "sha256": "96b4a59debaa2f57294f27f5ea8a82b086f184dd9efefda868b09d9dbe5be11d",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/evidence/physical-sql-spec-target-rls.log",
+      "executedBy": "Spec reviewer; not Standards"
+    },
+    "physical-sql-spec-public-rls-probe.py": {
+      "sha256": "f051e6db20f7e039f375dfbbab04691f8810e45cdc49ba7ece62dbff0073514f",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/evidence/physical-sql-spec-public-rls-probe.py",
+      "executedBy": "Spec reviewer; not Standards"
+    },
+    "physical-sql-spec-public-rls-results.json": {
+      "sha256": "8f1a7c5da4aacd0dcbdaab9d1931002b00af3c576f6ba50f198660efb49456af",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/evidence/physical-sql-spec-public-rls-results.json",
+      "executedBy": "Spec reviewer; not Standards"
+    },
+    "physical-sql-spec-public-rls.log": {
+      "sha256": "8f1a7c5da4aacd0dcbdaab9d1931002b00af3c576f6ba50f198660efb49456af",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-wip/evidence/physical-sql-spec-public-rls.log",
+      "executedBy": "Spec reviewer; not Standards"
+    }
+  },
+  "crossAxisFindings": [
+    "SPEC-153-PHYSICAL-1: target FORCE RLS drift; reproduced by Spec",
+    "SPEC-153-PHYSICAL-2: public RLS drift on rollback; reproduced by Spec; related missing structural attestation"
+  ]
+}

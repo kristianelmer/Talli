@@ -1,0 +1,1820 @@
+{
+  "producerQuerySha256": "0f2c7a52cad268805073e33e805ca6aef286c794275bfdbd89eaf9baff6768bf",
+  "artifacts": {
+    "20260914090244_annual_accounts_filing_expand.sql": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea",
+    "20260914092018_annual_accounts_filing_read_contracts.sql": "7c9366ed41cdbcb4cddb9d748d4e987d370b9a04be2f74890f7fa446174fdb29",
+    "20260914092924_annual_accounts_filing_preparation_contracts.sql": "ba67f1fdcbf314b0ed545eaf040b11ca411d342d2dccf3960ce3a6c9b9aaa6c8",
+    "20260914093204_annual_accounts_filing_import_contract.sql": "b3644149be001e768d8d497e248b438631ecb38a2589965108ab47d60d53fc48",
+    "20260914101625_annual_accounts_filing_dependency_contracts.sql": "0d8a50cd22ec0859ba87dc075a7c4357edad77024ad27623036456fe6bd1d0a1"
+  },
+  "targets": {
+    "filing_previews": {
+      "definition": {
+        "acl": [
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "MAINTAIN"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "UPDATE"
+          }
+        ],
+        "rls": true,
+        "kind": "r",
+        "owner": "annual_accounts_filing_store_owner",
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "company_id",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "setup_id",
+            "type": "uuid",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "income_year",
+            "type": "integer",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "filing",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "issues",
+            "type": "jsonb",
+            "default": "'[]'::jsonb",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "preview",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "hovedskjema_xml",
+            "type": "text",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "underskjema_xml",
+            "type": "jsonb",
+            "default": "'{}'::jsonb",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "source",
+            "type": "text",
+            "default": "'python_rf1086_engine'::text",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "created_by",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          }
+        ],
+        "indexes": [
+          {
+            "name": "filing_previews_company_id_income_year_idx",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE INDEX filing_previews_company_id_income_year_idx ON annual_accounts_filing.filing_previews USING btree (company_id, income_year)"
+          },
+          {
+            "name": "filing_previews_pkey",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE UNIQUE INDEX filing_previews_pkey ON annual_accounts_filing.filing_previews USING btree (id)"
+          }
+        ],
+        "forceRls": true,
+        "policies": [
+          {
+            "name": "annual_accounts_member_read",
+            "check": null,
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_member_v1(company_id))",
+            "command": "r",
+            "permissive": true
+          },
+          {
+            "name": "annual_accounts_owner_preview_lock",
+            "check": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_owner_v1(company_id))",
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_owner_v1(company_id))",
+            "command": "w",
+            "permissive": true
+          }
+        ],
+        "triggers": [],
+        "ownerRole": {
+          "login": false,
+          "super": false,
+          "inherit": false,
+          "createDb": false,
+          "bypassRls": false,
+          "createRole": false
+        },
+        "constraints": [
+          {
+            "name": "annual_accounts_preview_obligation",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((filing = '\u00e5rsregnskap'::text))"
+          },
+          {
+            "name": "filing_previews_company_id_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_previews_created_by_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_previews_income_year_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK (((income_year >= 2000) AND (income_year <= 2100)))"
+          },
+          {
+            "name": "filing_previews_pkey",
+            "type": "p",
+            "validated": true,
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "filing_previews_setup_id_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (setup_id) REFERENCES shareholder_register_filing.opening_balance_setups(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_previews_status_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((status = ANY (ARRAY['ready'::text, 'blocked'::text, 'warning'::text])))"
+          },
+          {
+            "name": "tax152_legacy_writer_retired",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((filing <> 'skattemelding for AS'::text))"
+          }
+        ]
+      },
+      "sha256": "9679621eedf3e27969d7a73fcfd38cfb04ad86911e8dd20a865069fb1e94d997"
+    },
+    "authority_test_runs": {
+      "definition": {
+        "acl": [
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "MAINTAIN"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "UPDATE"
+          }
+        ],
+        "rls": true,
+        "kind": "r",
+        "owner": "annual_accounts_filing_store_owner",
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "company_id",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "obligation",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "environment",
+            "type": "text",
+            "default": "'test'::text",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "test_reference",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "feedback_summary",
+            "type": "text",
+            "default": "''::text",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "receipt_reference",
+            "type": "text",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "archive_reference",
+            "type": "text",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "evidence_url",
+            "type": "text",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "payload_hash",
+            "type": "text",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "recorded_by",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "recorded_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          }
+        ],
+        "indexes": [
+          {
+            "name": "authority_test_runs_company_id_obligation_environment_test__idx",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE UNIQUE INDEX authority_test_runs_company_id_obligation_environment_test__idx ON annual_accounts_filing.authority_test_runs USING btree (company_id, obligation, environment, test_reference) WHERE ((obligation = 'skattemelding'::text) AND (environment = 'test'::text) AND (status = 'pending'::text) AND (test_reference ~ '^tt02:[0-9]+/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text) AND (feedback_summary = 'validertOK; personbekreftelse fullf\u00f8rt; offisiell tilbakemelding mottatt; myndighetsutfall venter p\u00e5 klassifisering.'::text) AND (receipt_reference ~ '^https://platform[.]tt02[.]altinn[.]no/storage/api/v1/instances/[0-9]+/[0-9a-f-]{36}/data/[0-9a-f-]{36}$'::text) AND (archive_reference ~ '^https://platform[.]tt02[.]altinn[.]no/storage/api/v1/instances/[0-9]+/[0-9a-f-]{36}$'::text) AND (payload_hash ~ '^sha256:[0-9a-f]{64}$'::text))"
+          },
+          {
+            "name": "authority_test_runs_company_id_obligation_recorded_at_idx",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE INDEX authority_test_runs_company_id_obligation_recorded_at_idx ON annual_accounts_filing.authority_test_runs USING btree (company_id, obligation, recorded_at DESC)"
+          },
+          {
+            "name": "authority_test_runs_pkey",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE UNIQUE INDEX authority_test_runs_pkey ON annual_accounts_filing.authority_test_runs USING btree (id)"
+          }
+        ],
+        "forceRls": true,
+        "policies": [
+          {
+            "name": "accounts153_support_read",
+            "check": null,
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": "public.company_access_has_open_support_case_v1(public.company_access_current_support_case_id_v1(), company_id, 'authority'::text)",
+            "command": "r",
+            "permissive": true
+          },
+          {
+            "name": "annual_accounts_member_read",
+            "check": null,
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_member_v1(company_id))",
+            "command": "r",
+            "permissive": true
+          },
+          {
+            "name": "annual_accounts_owner_evidence_insert",
+            "check": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_owner_v1(company_id) AND (recorded_by = public.company_access_auth_uid_v1()))",
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": null,
+            "command": "a",
+            "permissive": true
+          }
+        ],
+        "triggers": [],
+        "ownerRole": {
+          "login": false,
+          "super": false,
+          "inherit": false,
+          "createDb": false,
+          "bypassRls": false,
+          "createRole": false
+        },
+        "constraints": [
+          {
+            "name": "annual_accounts_test_obligation",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((obligation = 'aarsregnskap'::text))"
+          },
+          {
+            "name": "authority_test_runs_company_id_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "authority_test_runs_environment_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((environment = ANY (ARRAY['test'::text, 'manual_evidence'::text])))"
+          },
+          {
+            "name": "authority_test_runs_obligation_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((obligation = ANY (ARRAY['aksjonaerregisteroppgaven'::text, 'skattemelding'::text, 'aarsregnskap'::text])))"
+          },
+          {
+            "name": "authority_test_runs_pkey",
+            "type": "p",
+            "validated": true,
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "authority_test_runs_recorded_by_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (recorded_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "authority_test_runs_status_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((status = ANY (ARRAY['accepted'::text, 'rejected'::text, 'blocked'::text, 'pending'::text])))"
+          },
+          {
+            "name": "authority_test_runs_test_reference_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((test_reference <> ''::text))"
+          },
+          {
+            "name": "tax152_legacy_writer_retired",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((obligation <> 'skattemelding'::text))"
+          }
+        ]
+      },
+      "sha256": "b696af6d16e6d243bab20125ce1ff4d65ebd7ee76d8bfc1af9424f0b09bb9370"
+    },
+    "authority_permissions": {
+      "definition": {
+        "acl": [
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "MAINTAIN"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "UPDATE"
+          }
+        ],
+        "rls": true,
+        "kind": "r",
+        "owner": "annual_accounts_filing_store_owner",
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "company_id",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "obligation",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "submitter_user_id",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "confirmed_by",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "confirmed_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "production_enabled",
+            "type": "boolean",
+            "default": "false",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          }
+        ],
+        "indexes": [
+          {
+            "name": "authority_permissions_company_id_obligation_idx",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE INDEX authority_permissions_company_id_obligation_idx ON annual_accounts_filing.authority_permissions USING btree (company_id, obligation)"
+          },
+          {
+            "name": "authority_permissions_company_id_obligation_key",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE UNIQUE INDEX authority_permissions_company_id_obligation_key ON annual_accounts_filing.authority_permissions USING btree (company_id, obligation)"
+          },
+          {
+            "name": "authority_permissions_pkey",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE UNIQUE INDEX authority_permissions_pkey ON annual_accounts_filing.authority_permissions USING btree (id)"
+          }
+        ],
+        "forceRls": true,
+        "policies": [
+          {
+            "name": "accounts153_support_read",
+            "check": null,
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": "public.company_access_has_open_support_case_v1(public.company_access_current_support_case_id_v1(), company_id, 'authority'::text)",
+            "command": "r",
+            "permissive": true
+          },
+          {
+            "name": "annual_accounts_member_read",
+            "check": null,
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_member_v1(company_id))",
+            "command": "r",
+            "permissive": true
+          },
+          {
+            "name": "annual_accounts_owner_permission_insert",
+            "check": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_owner_v1(company_id) AND (confirmed_by = public.company_access_auth_uid_v1()) AND (submitter_user_id = public.company_access_auth_uid_v1()))",
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": null,
+            "command": "a",
+            "permissive": true
+          },
+          {
+            "name": "annual_accounts_owner_permission_update",
+            "check": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_owner_v1(company_id) AND (confirmed_by = public.company_access_auth_uid_v1()) AND (submitter_user_id = public.company_access_auth_uid_v1()))",
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_owner_v1(company_id))",
+            "command": "w",
+            "permissive": true
+          }
+        ],
+        "triggers": [],
+        "ownerRole": {
+          "login": false,
+          "super": false,
+          "inherit": false,
+          "createDb": false,
+          "bypassRls": false,
+          "createRole": false
+        },
+        "constraints": [
+          {
+            "name": "annual_accounts_permission_obligation",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((obligation = 'aarsregnskap'::text))"
+          },
+          {
+            "name": "authority_permissions_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((submitter_user_id = confirmed_by))"
+          },
+          {
+            "name": "authority_permissions_company_id_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "authority_permissions_company_id_obligation_key",
+            "type": "u",
+            "validated": true,
+            "definition": "UNIQUE (company_id, obligation)"
+          },
+          {
+            "name": "authority_permissions_confirmed_by_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "authority_permissions_obligation_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((obligation = ANY (ARRAY['aksjonaerregisteroppgaven'::text, 'skattemelding'::text, 'aarsregnskap'::text])))"
+          },
+          {
+            "name": "authority_permissions_pkey",
+            "type": "p",
+            "validated": true,
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "authority_permissions_submitter_user_id_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (submitter_user_id) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "tax152_legacy_writer_retired",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((obligation <> 'skattemelding'::text))"
+          }
+        ]
+      },
+      "sha256": "994c858346e96ed230e992a358b954915e8008efe84b6d7a24cadc248285265c"
+    },
+    "filing_submissions": {
+      "definition": {
+        "acl": [
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "MAINTAIN"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "UPDATE"
+          }
+        ],
+        "rls": true,
+        "kind": "r",
+        "owner": "annual_accounts_filing_store_owner",
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "preview_id",
+            "type": "uuid",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "company_id",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "setup_id",
+            "type": "uuid",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "income_year",
+            "type": "integer",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "filing",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "mode",
+            "type": "text",
+            "default": "'simulation'::text",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "adapter_mode",
+            "type": "text",
+            "default": "'simulation'::text",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "payload_hash",
+            "type": "text",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "idempotency_key",
+            "type": "text",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "authority_confirmed_by",
+            "type": "uuid",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "authority_confirmed_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "preview_confirmed_by",
+            "type": "uuid",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "preview_confirmed_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "calls",
+            "type": "jsonb",
+            "default": "'[]'::jsonb",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "receipt_id",
+            "type": "text",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "feedback_document_ids",
+            "type": "jsonb",
+            "default": "'[]'::jsonb",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "feedback_items",
+            "type": "jsonb",
+            "default": "'[]'::jsonb",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "receipt_metadata",
+            "type": "jsonb",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "submitted_payload_ref",
+            "type": "jsonb",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "submitted_payload",
+            "type": "jsonb",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "failure_code",
+            "type": "text",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "failure_message",
+            "type": "text",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "created_by",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "submitted_by",
+            "type": "uuid",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "authority_test_run_id",
+            "type": "uuid",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          }
+        ],
+        "indexes": [
+          {
+            "name": "filing_submissions_authority_test_run_id_idx",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE UNIQUE INDEX filing_submissions_authority_test_run_id_idx ON annual_accounts_filing.filing_submissions USING btree (authority_test_run_id)"
+          },
+          {
+            "name": "filing_submissions_company_id_income_year_idx",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE INDEX filing_submissions_company_id_income_year_idx ON annual_accounts_filing.filing_submissions USING btree (company_id, income_year)"
+          },
+          {
+            "name": "filing_submissions_idempotency_key_idx",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE UNIQUE INDEX filing_submissions_idempotency_key_idx ON annual_accounts_filing.filing_submissions USING btree (idempotency_key) WHERE ((idempotency_key IS NOT NULL) AND (mode = 'test_authority'::text))"
+          },
+          {
+            "name": "filing_submissions_pkey",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE UNIQUE INDEX filing_submissions_pkey ON annual_accounts_filing.filing_submissions USING btree (id)"
+          },
+          {
+            "name": "filing_submissions_preview_id_key",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE UNIQUE INDEX filing_submissions_preview_id_key ON annual_accounts_filing.filing_submissions USING btree (preview_id)"
+          }
+        ],
+        "forceRls": true,
+        "policies": [
+          {
+            "name": "accounts153_document_reference_read",
+            "check": null,
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": "(current_setting('role'::text, true) = 'documents_executor'::text)",
+            "command": "r",
+            "permissive": true
+          },
+          {
+            "name": "accounts153_support_read",
+            "check": null,
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": "public.company_access_has_open_support_case_v1(public.company_access_current_support_case_id_v1(), company_id, 'filing'::text)",
+            "command": "r",
+            "permissive": true
+          },
+          {
+            "name": "annual_accounts_member_read",
+            "check": null,
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_member_v1(company_id))",
+            "command": "r",
+            "permissive": true
+          }
+        ],
+        "triggers": [],
+        "ownerRole": {
+          "login": false,
+          "super": false,
+          "inherit": false,
+          "createDb": false,
+          "bypassRls": false,
+          "createRole": false
+        },
+        "constraints": [
+          {
+            "name": "annual_accounts_submission_obligation",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((filing = '\u00e5rsregnskap'::text))"
+          },
+          {
+            "name": "filing_submissions_adapter_mode_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((adapter_mode = ANY (ARRAY['simulation'::text, 'test_authority'::text, 'production'::text])))"
+          },
+          {
+            "name": "filing_submissions_authority_confirmed_by_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (authority_confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_authority_mode_shape_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((((mode = 'simulation'::text) AND (preview_id IS NOT NULL) AND (authority_test_run_id IS NULL)) OR ((mode = 'test_authority'::text) AND (preview_id IS NULL) AND (authority_test_run_id IS NOT NULL))))"
+          },
+          {
+            "name": "filing_submissions_authority_test_run_id_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (authority_test_run_id) REFERENCES annual_accounts_filing.authority_test_runs(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_company_id_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_submissions_created_by_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_income_year_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK (((income_year >= 2000) AND (income_year <= 2100)))"
+          },
+          {
+            "name": "filing_submissions_mode_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((mode = ANY (ARRAY['simulation'::text, 'test_authority'::text])))"
+          },
+          {
+            "name": "filing_submissions_pkey",
+            "type": "p",
+            "validated": true,
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "filing_submissions_preview_confirmed_by_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (preview_confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_preview_id_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (preview_id) REFERENCES annual_accounts_filing.filing_previews(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_submissions_preview_id_key",
+            "type": "u",
+            "validated": true,
+            "definition": "UNIQUE (preview_id)"
+          },
+          {
+            "name": "filing_submissions_setup_id_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (setup_id) REFERENCES shareholder_register_filing.opening_balance_setups(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_status_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((status = ANY (ARRAY['ready'::text, 'authority_confirmed'::text, 'preview_confirmed'::text, 'submitting'::text, 'submitted'::text, 'feedback_ready'::text, 'receipt_stored'::text, 'failed_retryable'::text, 'failed_blocked'::text])))"
+          },
+          {
+            "name": "filing_submissions_submitted_by_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (submitted_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "tax152_legacy_writer_retired",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((filing <> 'skattemelding for AS'::text))"
+          }
+        ]
+      },
+      "sha256": "818255a7189e789e8c61135261f9467784634b6ce3ff6840c9ae8131098ae2b7"
+    },
+    "filing_overrides": {
+      "definition": {
+        "acl": [
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "MAINTAIN"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "UPDATE"
+          }
+        ],
+        "rls": true,
+        "kind": "r",
+        "owner": "annual_accounts_filing_store_owner",
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "preview_id",
+            "type": "uuid",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "company_id",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "income_year",
+            "type": "integer",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "filing",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "field_target",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "old_value",
+            "type": "text",
+            "default": "''::text",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "new_value",
+            "type": "text",
+            "default": "''::text",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "reason",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "risk_level",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "owner_confirmed_by",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "owner_confirmed_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "created_by",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          }
+        ],
+        "indexes": [
+          {
+            "name": "filing_overrides_company_id_income_year_idx",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE INDEX filing_overrides_company_id_income_year_idx ON annual_accounts_filing.filing_overrides USING btree (company_id, income_year)"
+          },
+          {
+            "name": "filing_overrides_pkey",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE UNIQUE INDEX filing_overrides_pkey ON annual_accounts_filing.filing_overrides USING btree (id)"
+          },
+          {
+            "name": "filing_overrides_preview_id_idx",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE INDEX filing_overrides_preview_id_idx ON annual_accounts_filing.filing_overrides USING btree (preview_id)"
+          }
+        ],
+        "forceRls": true,
+        "policies": [
+          {
+            "name": "annual_accounts_member_read",
+            "check": null,
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_member_v1(company_id))",
+            "command": "r",
+            "permissive": true
+          },
+          {
+            "name": "annual_accounts_owner_override_insert",
+            "check": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_owner_v1(company_id) AND (created_by = public.company_access_auth_uid_v1()) AND (owner_confirmed_by = public.company_access_auth_uid_v1()))",
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": null,
+            "command": "a",
+            "permissive": true
+          }
+        ],
+        "triggers": [],
+        "ownerRole": {
+          "login": false,
+          "super": false,
+          "inherit": false,
+          "createDb": false,
+          "bypassRls": false,
+          "createRole": false
+        },
+        "constraints": [
+          {
+            "name": "annual_accounts_override_obligation",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((filing = '\u00e5rsregnskap'::text))"
+          },
+          {
+            "name": "filing_overrides_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK (((old_value <> ''::text) OR (new_value <> ''::text)))"
+          },
+          {
+            "name": "filing_overrides_company_id_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_overrides_created_by_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_overrides_field_target_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((field_target <> ''::text))"
+          },
+          {
+            "name": "filing_overrides_filing_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((filing <> ''::text))"
+          },
+          {
+            "name": "filing_overrides_income_year_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK (((income_year >= 2000) AND (income_year <= 2100)))"
+          },
+          {
+            "name": "filing_overrides_owner_confirmed_by_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (owner_confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_overrides_pkey",
+            "type": "p",
+            "validated": true,
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "filing_overrides_preview_id_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (preview_id) REFERENCES annual_accounts_filing.filing_previews(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_overrides_reason_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((reason <> ''::text))"
+          },
+          {
+            "name": "filing_overrides_risk_level_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((risk_level = ANY (ARRAY['advisory'::text, 'warning'::text, 'block'::text])))"
+          },
+          {
+            "name": "tax152_legacy_writer_retired",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK (((filing <> 'skattemelding for AS'::text) AND (field_target !~~ 'skattemelding.%'::text)))"
+          }
+        ]
+      },
+      "sha256": "2ddd16222c4257dd6c1247e59fbcac485b566dbf0adc4dba0b40f2f0dd67c38d"
+    },
+    "filing_review_comments": {
+      "definition": {
+        "acl": [
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "DELETE"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "INSERT"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "MAINTAIN"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "REFERENCES"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "SELECT"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "TRIGGER"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "TRUNCATE"
+          },
+          {
+            "grantee": "annual_accounts_filing_store_owner",
+            "grantor": "annual_accounts_filing_store_owner",
+            "grantable": false,
+            "privilege": "UPDATE"
+          }
+        ],
+        "rls": true,
+        "kind": "r",
+        "owner": "annual_accounts_filing_store_owner",
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "preview_id",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "company_id",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "target",
+            "type": "text",
+            "default": "'rf1086_preview'::text",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "severity",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "body",
+            "type": "text",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "created_by",
+            "type": "uuid",
+            "default": null,
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "acknowledged_by",
+            "type": "uuid",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "acknowledged_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "notNull": false,
+            "identity": "",
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "notNull": true,
+            "identity": "",
+            "generated": ""
+          }
+        ],
+        "indexes": [
+          {
+            "name": "filing_review_comments_pkey",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE UNIQUE INDEX filing_review_comments_pkey ON annual_accounts_filing.filing_review_comments USING btree (id)"
+          },
+          {
+            "name": "filing_review_comments_preview_id_created_at_idx",
+            "ready": true,
+            "valid": true,
+            "definition": "CREATE INDEX filing_review_comments_preview_id_created_at_idx ON annual_accounts_filing.filing_review_comments USING btree (preview_id, created_at)"
+          }
+        ],
+        "forceRls": true,
+        "policies": [
+          {
+            "name": "annual_accounts_member_read",
+            "check": null,
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_member_v1(company_id))",
+            "command": "r",
+            "permissive": true
+          },
+          {
+            "name": "annual_accounts_owner_comment_update",
+            "check": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_owner_v1(company_id) AND (acknowledged_by = public.company_access_auth_uid_v1()))",
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_is_accepted_owner_v1(company_id))",
+            "command": "w",
+            "permissive": true
+          },
+          {
+            "name": "annual_accounts_reviewer_comment_insert",
+            "check": "((annual_accounts_filing.filing_phase_v1() = ANY (ARRAY['cutover'::text, 'contracted'::text])) AND public.company_access_can_review_filing_v1(company_id) AND (created_by = public.company_access_auth_uid_v1()))",
+            "roles": [
+              "annual_accounts_filing_store_owner"
+            ],
+            "using": null,
+            "command": "a",
+            "permissive": true
+          }
+        ],
+        "triggers": [],
+        "ownerRole": {
+          "login": false,
+          "super": false,
+          "inherit": false,
+          "createDb": false,
+          "bypassRls": false,
+          "createRole": false
+        },
+        "constraints": [
+          {
+            "name": "filing_review_comments_acknowledged_by_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (acknowledged_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_review_comments_body_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((body <> ''::text))"
+          },
+          {
+            "name": "filing_review_comments_company_id_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_review_comments_created_by_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_review_comments_pkey",
+            "type": "p",
+            "validated": true,
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "filing_review_comments_preview_id_fkey",
+            "type": "f",
+            "validated": true,
+            "definition": "FOREIGN KEY (preview_id) REFERENCES annual_accounts_filing.filing_previews(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_review_comments_severity_check",
+            "type": "c",
+            "validated": true,
+            "definition": "CHECK ((severity = ANY (ARRAY['advisory'::text, 'hard_block'::text])))"
+          }
+        ]
+      },
+      "sha256": "18812d1c88803d2d880718b2aa73adc54f32964ad1ef614e89216a7544434db2"
+    }
+  }
+}

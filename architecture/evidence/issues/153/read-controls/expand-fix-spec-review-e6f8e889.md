@@ -1,0 +1,9 @@
+Spec follow-up: **PASS; SPEC-153-EXPAND-1 closed**, no new actionable finding.
+
+Reviewed the single commit in `git diff 04e682b69e5426408932233d05328134e8e997f8...e6f8e889852e9c26057d80f75930dc5a34ad5729`. The approved expansion requires records to “positively match Accounts and matching referenced company/year/obligation.” Exact SQL SHA: `c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea`.
+
+The fix snapshots only referenced RF opening-setup IDs and company/year, under the source owner and a write-blocking lock. Its temporary SELECT policy is removed within the migration transaction. Non-null preview/submission setup references now require a matching snapshot; null references remain supported. Child classification recursively checks the preview’s classification, so submissions, overrides and comments follow a quarantined parent. This closes both the provenance gap and the dependent-FK hazard identified in the original review.
+
+I independently inspected committed source and producer/results, without running SQL. The exact-SQL reproduction records **six quarantined conflicts/dependents**, matching and null preview/submission controls, **six successful count/hash reconciliations**, unchanged legacy rows, and restored RF ACL/policies/global memberships. The separate recorded **60 access probes**, seven classifier probes and two-row unknown-parent quarantine lane also pass with the same SQL hash. The retained first fixture failure is explained by the existing unique preview/submission constraint.
+
+All **14 manifest hashes** and four adopted original review/probe files verified byte-for-byte. Original six criterion texts and pending states are unchanged; the executable delta is only the bounded migration correction. These are reviewed recorded database results, not an independent SQL rerun. No current database state, web/contract cutover, full gate or stage exit is certified. The SQL slot was left untouched.

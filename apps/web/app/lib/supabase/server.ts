@@ -321,10 +321,10 @@ export type FilingSubmissionRow = {
   feedback_document_ids: string[];
   feedback_items: FilingSubmissionFeedbackItem[];
   receipt_metadata:
-    Rf1086ReceiptMetadata | CompanyTaxReturnReceiptMetadata | null;
+    Rf1086ReceiptMetadata | CompanyTaxReturnReceiptMetadata | Record<string, unknown> | null;
   submitted_payload_ref:
-    Rf1086SubmittedPayloadReference | CompanyTaxReturnPayloadReference | null;
-  submitted_payload: Rf1086SubmittedPayloadSnapshot | null;
+    Rf1086SubmittedPayloadReference | CompanyTaxReturnPayloadReference | Record<string, unknown> | null;
+  submitted_payload: Rf1086SubmittedPayloadSnapshot | Record<string, unknown> | null;
   authority_confirmed_at: string | null;
   preview_confirmed_at: string | null;
   created_at: string;
@@ -866,40 +866,6 @@ export async function listCorporateDocumentLifecycle(companyIds: string[]) {
   }
 }
 
-export async function listFilingPreviews(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { previews: [] as FilingPreviewRow[], error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("filing_previews")
-    .select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at")
-    .in("company_id", companyIds)
-    .order("created_at", { ascending: false });
-
-  return {
-    previews: (data ?? []) as FilingPreviewRow[],
-    error: error?.message ?? null,
-  };
-}
-
-export async function listFilingSubmissions(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { submissions: [] as FilingSubmissionRow[], error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("filing_submissions")
-    .select("id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by")
-    .in("company_id", companyIds)
-    .order("updated_at", { ascending: false });
-
-  return {
-    submissions: (data ?? []) as FilingSubmissionRow[],
-    error: error?.message ?? null,
-  };
-}
-
 export async function listSystemUserRequests(
   supabase: SupabaseClient,
   companyIds: string[],
@@ -951,23 +917,6 @@ export async function listProductionFilingState(companyIds: string[]) {
   } catch (error) {
     return { ...empty, error: rf1086ActionErrorMessage(error) };
   }
-}
-
-export async function listFilingOverrides(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { overrides: [] as FilingOverrideRow[], error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("filing_overrides")
-    .select("id, preview_id, company_id, income_year, filing, field_target, old_value, new_value, reason, risk_level, owner_confirmed_by, owner_confirmed_at, created_by, created_at")
-    .in("company_id", companyIds)
-    .order("created_at", { ascending: false });
-
-  return {
-    overrides: (data ?? []) as FilingOverrideRow[],
-    error: error?.message ?? null,
-  };
 }
 
 export async function listBankTransactions(companyIds: string[]) {
@@ -1052,57 +1001,6 @@ export async function listFilingReadinessSnapshots(companyIds: string[]) {
 
   return {
     readinessSnapshots: (data ?? []) as FilingReadinessSnapshotRow[],
-    error: error?.message ?? null,
-  };
-}
-
-export async function listFilingReviewComments(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { comments: [] as FilingReviewCommentRow[], error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("filing_review_comments")
-    .select("id, preview_id, company_id, target, severity, body, created_by, acknowledged_by, acknowledged_at, created_at")
-    .in("company_id", companyIds)
-    .order("created_at", { ascending: false });
-
-  return {
-    comments: (data ?? []) as FilingReviewCommentRow[],
-    error: error?.message ?? null,
-  };
-}
-
-export async function listAuthorityPermissions(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { authorityPermissions: [] as AuthorityPermissionRow[], error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("authority_permissions")
-    .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at")
-    .in("company_id", companyIds)
-    .order("updated_at", { ascending: false });
-
-  return {
-    authorityPermissions: (data ?? []) as AuthorityPermissionRow[],
-    error: error?.message ?? null,
-  };
-}
-
-export async function listAuthorityTestRuns(companyIds: string[]) {
-  if (!hasSupabaseEnv() || companyIds.length === 0) {
-    return { authorityTestRuns: [] as AuthorityTestRunRow[], error: null };
-  }
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("authority_test_runs")
-    .select("id, company_id, obligation, environment, status, test_reference, feedback_summary, receipt_reference, archive_reference, evidence_url, payload_hash, recorded_by, recorded_at")
-    .in("company_id", companyIds)
-    .order("recorded_at", { ascending: false });
-
-  return {
-    authorityTestRuns: (data ?? []) as AuthorityTestRunRow[],
     error: error?.message ?? null,
   };
 }

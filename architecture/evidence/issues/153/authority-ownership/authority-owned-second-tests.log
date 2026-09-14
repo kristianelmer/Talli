@@ -1,0 +1,54 @@
+..........................................................F............. [ 34%]
+........................................................................ [ 68%]
+.................................................................        [100%]
+=================================== FAILURES ===================================
+__ test_fixed_generator_child_environment_has_no_credential_or_node_injection __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109b1ce90>
+
+    def test_fixed_generator_child_environment_has_no_credential_or_node_injection(monkeypatch):
+        captured = {}
+        def spawn(*args, **kwargs):
+            captured.update(kwargs)
+            return subprocess.CompletedProcess(args[0], 0, '{"result":"validertOK"}', '')
+        monkeypatch.setattr(subprocess, "run", spawn)
+        monkeypatch.setenv("TALLI_MASKINPORTEN_PRIVATE_KEY_PATH", "/private/key")
+        monkeypatch.setenv("NODE_OPTIONS", "--require /private/inject")
+>       assert payload("annual_accounts", {"synthetic": True}) == {"result": "validertOK"}
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+apps/backend/tests/test_authority_filing_tools.py:314: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+operation = 'annual_accounts', value = {'synthetic': True}
+
+    def payload(operation: str, value: dict[str, Any]):
+        if operation not in {"annual_accounts", "company_tax", "company_tax_envelope",
+                             "company_tax_validation_envelope", "company_tax_validation_summary"}:
+            raise ValueError("Unknown fixed payload operation.")
+        try:
+            encoded = json.dumps({"operation": operation, "input": value})
+            if len(encoded.encode()) > MAX_RESPONSE_BYTES:
+                raise ValueError()
+            # Preserve the predecessor JSON boundary, including rejected constants.
+            source = _parse_json(encoded)['input']
+            if operation == "annual_accounts":
+                from .annual_accounts_payload import generate
+                result = generate(source)
+            else:
+                from .company_tax_payload import generate
+                result = generate(operation, source)
+            # JSON.stringify emits compact UTF-8 and escapes lone UTF-16 surrogates.
+            output = json.dumps(result, ensure_ascii=False, separators=(",", ":")).encode(
+                "utf-8", errors="backslashreplace")
+            if len(output) > MAX_RESPONSE_BYTES:
+                raise ValueError()
+            return result
+        except Exception:
+>           raise ValueError("Local authority payload generation failed.") from None
+E           ValueError: Local authority payload generation failed.
+
+apps/backend/src/talli_backend/authority_tools/_filing.py:211: ValueError
+=========================== short test summary info ============================
+FAILED apps/backend/tests/test_authority_filing_tools.py::test_fixed_generator_child_environment_has_no_credential_or_node_injection
+1 failed, 208 passed in 2.89s

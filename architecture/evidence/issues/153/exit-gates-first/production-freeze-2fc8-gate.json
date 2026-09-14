@@ -1,0 +1,16 @@
+{
+  "checkedAt": "2026-09-14 20:59:34 UTC",
+  "deploymentId": "dpl_HuHzBsgpcgBVTGsFiFLEEy3PqN5f",
+  "revision": "d331ee2717d1eeacef0d81db42b9d4fb5848b408",
+  "state": "READY",
+  "target": "production",
+  "aliases": [
+    "talli.no",
+    "www.talli.no",
+    "talli-web.vercel.app",
+    "talli-web-kristianelmers-projects.vercel.app",
+    "talli-web-git-main-kristianelmers-projects.vercel.app"
+  ],
+  "projectId": "prj_1JJkOqzGBhn438IKHYADWiRbVGeZ",
+  "source": "vercel_get_deployment(talli.no)"
+}

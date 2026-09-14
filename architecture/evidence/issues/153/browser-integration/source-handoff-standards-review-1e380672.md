@@ -1,0 +1,11 @@
+Bounded Standards review: `9ba2a33a2214b398ca0d62e1bad6bd3fc1674fe3...1e38067282e144996b455e428c267f6be3534421`, one commit, private immutable snapshot.
+
+**P2 — STD-153-SOURCE-1: validate document identities before projecting them.** `apps/backend/src/talli_backend/modules/annual_accounts_filing/source_facts.py:148` uses `tuple(row.get('feedback_document_ids') or ())`. A retained JSON string becomes individual character IDs; an object becomes its keys; numeric zero becomes an empty list. The public projector and real FastAPI route both return these fabricated facts with HTTP 200 and `historyCoverage.status="complete"`. This violates the module’s published recorded-history contract (`MODULE.md:188–210`) and ADR0011’s owned public factual boundary, rather than representing a heuristic smell. Accept only the declared null/sequence-of-text shapes and return source unavailable for malformed values before constructing facts.
+
+I reproduced string/object/zero cases with the pinned projector and FastAPI using local session fakes; null and array controls preserve expected behavior. Spec independently reproduced the same finding against real retained predecessor JSONB through exact expansion/cutover/contract, with four transactions rolled back and environment restoration verified. Its SQL evidence is separately attributed and hash-bound. The parent’s forthcoming fix is outside this review.
+
+No additional actionable standards or heuristic finding. Actor/company/year scope, registered owner ports, repeatable snapshots, immutable row/coverage copies and iterative evidence hashing follow the documented boundaries. Production-labelled history stays unknown/incomplete; the source never certifies Corporate close, signing prerequisites, commercial eligibility or production activation.
+
+Independent checks passed **29 backend projector/adapter/HTTP tests** and **3 generated-client tests** on Python 3.12.12 and Node v24.20.0. All **39 manifest references**, **four prior-review adoptions** and **eight captured SQL bindings** match. Parsed OpenAPI preserves **158 prior paths and 436 schemas**, adding one path and seven schemas.
+
+No shared implementation edits, database execution by Standards, hosted/provider operations, full-gate or stage-exit credit. Later browser/source fixes are excluded.

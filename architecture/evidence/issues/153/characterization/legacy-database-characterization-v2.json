@@ -1,0 +1,818 @@
+{
+  "baselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "scope": "Disposable clone; actual unchanged PostgreSQL RLS with synthetic SQL claims. No verified HTTP/MFA/browser/provider evidence.",
+  "transaction": "ROLLBACK_ONLY",
+  "cases": [
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "filing_previews",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "filing_previews",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "filing_overrides",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "filing_overrides",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "authority_permissions",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "authority_permissions",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "authority_test_runs",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "authority_test_runs",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "second",
+      "aal": "aal2",
+      "table": "filing_previews",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "second",
+      "aal": "aal2",
+      "table": "filing_previews",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "second",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "second",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "second",
+      "aal": "aal2",
+      "table": "filing_overrides",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "second",
+      "aal": "aal2",
+      "table": "filing_overrides",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "second",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "second",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "second",
+      "aal": "aal2",
+      "table": "authority_permissions",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "second",
+      "aal": "aal2",
+      "table": "authority_permissions",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "second",
+      "aal": "aal2",
+      "table": "authority_test_runs",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "second",
+      "aal": "aal2",
+      "table": "authority_test_runs",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "reviewer",
+      "aal": "aal2",
+      "table": "filing_previews",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "reviewer",
+      "aal": "aal2",
+      "table": "filing_previews",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"filing_previews\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "reviewer",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "reviewer",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"filing_submissions\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "reviewer",
+      "aal": "aal2",
+      "table": "filing_overrides",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "reviewer",
+      "aal": "aal2",
+      "table": "filing_overrides",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"filing_overrides\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "reviewer",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "reviewer",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "reviewer",
+      "aal": "aal2",
+      "table": "authority_permissions",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "reviewer",
+      "aal": "aal2",
+      "table": "authority_permissions",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"authority_permissions\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "reviewer",
+      "aal": "aal2",
+      "table": "authority_test_runs",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "reviewer",
+      "aal": "aal2",
+      "table": "authority_test_runs",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"authority_test_runs\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "unaccepted",
+      "aal": "aal2",
+      "table": "filing_previews",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "unaccepted",
+      "aal": "aal2",
+      "table": "filing_previews",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "unaccepted",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "unaccepted",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "unaccepted",
+      "aal": "aal2",
+      "table": "filing_overrides",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "unaccepted",
+      "aal": "aal2",
+      "table": "filing_overrides",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "unaccepted",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "unaccepted",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "unaccepted",
+      "aal": "aal2",
+      "table": "authority_permissions",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "unaccepted",
+      "aal": "aal2",
+      "table": "authority_permissions",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "unaccepted",
+      "aal": "aal2",
+      "table": "authority_test_runs",
+      "operation": "select",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "unaccepted",
+      "aal": "aal2",
+      "table": "authority_test_runs",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000100"
+      }
+    },
+    {
+      "actor": "outsider",
+      "aal": "aal2",
+      "table": "filing_previews",
+      "operation": "select",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "outsider",
+      "aal": "aal2",
+      "table": "filing_previews",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"filing_previews\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "outsider",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "select",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "outsider",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"filing_submissions\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "outsider",
+      "aal": "aal2",
+      "table": "filing_overrides",
+      "operation": "select",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "outsider",
+      "aal": "aal2",
+      "table": "filing_overrides",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"filing_overrides\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "outsider",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "select",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "outsider",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"filing_review_comments\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "outsider",
+      "aal": "aal2",
+      "table": "authority_permissions",
+      "operation": "select",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "outsider",
+      "aal": "aal2",
+      "table": "authority_permissions",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"authority_permissions\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "outsider",
+      "aal": "aal2",
+      "table": "authority_test_runs",
+      "operation": "select",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "outsider",
+      "aal": "aal2",
+      "table": "authority_test_runs",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"authority_test_runs\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "anonymous",
+      "aal": "aal2",
+      "table": "filing_previews",
+      "operation": "select",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "anonymous",
+      "aal": "aal2",
+      "table": "filing_previews",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"filing_previews\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "anonymous",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "select",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "anonymous",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"filing_submissions\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "anonymous",
+      "aal": "aal2",
+      "table": "filing_overrides",
+      "operation": "select",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "anonymous",
+      "aal": "aal2",
+      "table": "filing_overrides",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"filing_overrides\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "anonymous",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "select",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "anonymous",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"filing_review_comments\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "anonymous",
+      "aal": "aal2",
+      "table": "authority_permissions",
+      "operation": "select",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "anonymous",
+      "aal": "aal2",
+      "table": "authority_permissions",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"authority_permissions\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "anonymous",
+      "aal": "aal2",
+      "table": "authority_test_runs",
+      "operation": "select",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "anonymous",
+      "aal": "aal2",
+      "table": "authority_test_runs",
+      "operation": "insert",
+      "output": {
+        "error": "new row violates row-level security policy for table \"authority_test_runs\"",
+        "sqlstate": "42501"
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal1",
+      "table": "filing_previews",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000101"
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal1",
+      "table": "filing_submissions",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000101"
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal1",
+      "table": "filing_overrides",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000101"
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal1",
+      "table": "filing_review_comments",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000101"
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal1",
+      "table": "authority_permissions",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000101"
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal1",
+      "table": "authority_test_runs",
+      "operation": "insert",
+      "output": {
+        "value": "15300000-0000-4000-8000-000000000101"
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "duplicate-preview",
+      "output": {
+        "error": "duplicate key value violates unique constraint \"filing_submissions_preview_id_key\"",
+        "sqlstate": "23505"
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "acknowledge",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "owner",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "update",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "second",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "acknowledge",
+      "output": {
+        "value": 1
+      }
+    },
+    {
+      "actor": "second",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "update",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "reviewer",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "acknowledge",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "reviewer",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "update",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "outsider",
+      "aal": "aal2",
+      "table": "filing_review_comments",
+      "operation": "acknowledge",
+      "output": {
+        "value": 0
+      }
+    },
+    {
+      "actor": "outsider",
+      "aal": "aal2",
+      "table": "filing_submissions",
+      "operation": "update",
+      "output": {
+        "value": 0
+      }
+    }
+  ],
+  "seededRowCounts": {
+    "filing_previews": 1,
+    "filing_submissions": 1,
+    "filing_overrides": 1,
+    "filing_review_comments": 1,
+    "authority_permissions": 1,
+    "authority_test_runs": 1
+  },
+  "status": "PASS_CAPTURED",
+  "fixtureRollbackVerified": true
+}

@@ -1,0 +1,34 @@
+{
+  "status": "PASS_ADDITIONAL_ACCOUNTS_RUNTIME_EXTENT_VERIFICATION",
+  "revision": "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6",
+  "transcriptDigest": "sha256:e2ec05a2fe5d0dbe40fb2a3594888219fe8548d63a4ccb0942e92e911ea3bd06",
+  "orderedMandatoryPhases": [
+    "test:supabase-predecessor",
+    "test:supabase-rf-workspace",
+    "test:browser-owner",
+    "test:ledger-hosted-migration-authority",
+    "test:corporate-governance-database-lifecycle",
+    "test:billing-database-lifecycle",
+    "test:authority-connections-database",
+    "test:company-tax-database",
+    "test:annual-accounts-database",
+    "test:browser-owner-annual",
+    "test:supabase-rf-feedback",
+    "test:browser-authority-connections",
+    "test:browser-shareholder-register-filing",
+    "test:browser-company-tax",
+    "test:browser-annual-accounts"
+  ],
+  "accountsSqlCases": 41,
+  "accountsBrowser": "REAL_OWNER_LOGIN_TOTP_HTTP_RESTRICTED_SQL_PASS",
+  "finalAccountsAdvisors": "EXECUTED_BETWEEN_ACCOUNTS_ACTIVATION_AND_FINAL_OWNER_LANES",
+  "sourceBindings": {
+    "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+    "scripts/rehearse-accounts-topology.mjs": "39e78f93e1b39bbe7cf58b2741c1bdff8c4bcff98166e48dc08a4c68a91efd9b",
+    "tests/browser_annual_accounts_filing.mjs": "06e5735299c9bdba7c7fffb83df781ff7617c23979a54fd13a536646baf84be0",
+    "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "c077cd74f6b98f52c264d5f10050fb0e4c11e783250f70e545d657ee6ea564c2"
+  },
+  "limits": [
+    "Synthetic retained test evidence and no provider egress; no genuine authority or production filing claim."
+  ]
+}

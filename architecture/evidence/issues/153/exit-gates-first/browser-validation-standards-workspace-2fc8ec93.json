@@ -1,0 +1,14 @@
+{
+  "snapshot": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-browservalidation-standards-145n6pjn",
+  "candidate": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+  "base": "5915af48277c4074556ba2b750c93e523ffeb85a",
+  "command": [
+    "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+    "--test",
+    "tests/annual_accounts_client.test.mjs",
+    "tests/annual_accounts_workspace_composition.test.mjs",
+    "tests/browser_process_lifecycle.test.mjs",
+    "tests/rf1086_workspace_fixture_safety.test.mjs",
+    "tests/shareholder_register_browser_fixture_safety.test.mjs"
+  ]
+}

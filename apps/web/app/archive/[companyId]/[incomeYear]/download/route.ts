@@ -1,3 +1,4 @@
+import { loadPresentedAnnualAccountsSource } from "../../../../lib/annual-accounts-workspace-source";
 import { loadPresentedCompanyTaxSource } from "../../../../lib/company-tax-workspace-source";
 import { loadTaxSettlementArchiveSource } from "../../../../../features/company-tax-filing";
 import { createHash } from "node:crypto";
@@ -82,9 +83,9 @@ async function loadArchiveRf1086(accessToken: string, companyId: string, incomeY
   }
 }
 
-function mergeArchiveRfRows<T extends { id: string }>(existing: readonly T[], owned: readonly T[]): T[] {
+function mergeArchiveRfRows<A extends { id: string }, B extends { id: string }>(existing: readonly A[], owned: readonly B[]): (A | B)[] {
   // The overlap projection may still contain the same immutable row identity.
-  const rows = new Map(existing.map((row) => [row.id, row]));
+  const rows = new Map<string, A | B>(existing.map((row) => [row.id, row]));
   for (const row of owned) rows.set(row.id, row);
   return [...rows.values()];
 }
@@ -333,14 +334,14 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     return new Response("Fant ikke arkivet", { status: 404 });
   }
 
-  const { data: submissions, error: submissionError } = await supabase
-    .from("filing_submissions")
-    .select("id, preview_id, authority_test_run_id, company_id, income_year, filing, mode, adapter_mode, payload_hash, idempotency_key, status, calls, receipt_id, feedback_document_ids, feedback_items, receipt_metadata, submitted_payload_ref, submitted_payload, authority_confirmed_at, preview_confirmed_at, created_at, updated_at, submitted_by")
-    .eq("company_id", companyId)
-    .eq("income_year", incomeYear);
-  if (submissionError) {
-    return new Response("Kunne ikke lese innsendingsgrunnlaget", { status: 500 });
-  }
+  // Company-wide comments and permissions remain in the archive. The owned
+  // source validates their preview links before year-bound rows are selected.
+  const accountsSource = await loadPresentedAnnualAccountsSource(accessToken, [companyId]);
+  if (accountsSource.error) return new Response("Kunne ikke lese innsendingsgrunnlaget", { status: 500 });
+  const submissions = accountsSource.submissions.filter(row => row.income_year === incomeYear);
+  const previews = accountsSource.previews.filter(row => row.income_year === incomeYear);
+  const authorityPermissions = accountsSource.authorityPermissions;
+  const reviewComments = accountsSource.comments;
   const rf1086 = await loadArchiveRf1086(accessToken, companyId, incomeYear);
   const taxSource = await loadPresentedCompanyTaxSource(accessToken, [companyId], incomeYear);
   if (taxSource.error) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
@@ -356,15 +357,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
       .map((submission) => submission.authority_test_run_id)
       .filter((id): id is string => Boolean(id)),
   )];
-  const { data: authorityTestRuns, error: authorityTestRunsError } = authorityTestRunIds.length
-    ? await supabase
-        .from("authority_test_runs")
-        .select("id, company_id, obligation, environment, status, test_reference, feedback_summary, receipt_reference, archive_reference, evidence_url, payload_hash, recorded_by, recorded_at")
-        .in("id", authorityTestRunIds)
-    : { data: [], error: null };
-  if (authorityTestRunsError) {
-    return new Response("Kunne ikke lese myndighetsdokumentasjonen", { status: 500 });
-  }
+  const authorityTestRuns = accountsSource.authorityTestRuns.filter(row => authorityTestRunIds.includes(row.id));
 
   if (rf1086.error) {
     return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
@@ -373,21 +366,8 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
       loadArchiveOpeningSnapshots(accessToken, companyId, incomeYear),
       loadArchiveLedgerEntries(accessToken, companyId, incomeYear),
       loadArchiveDocuments(accessToken, companyId, incomeYear),
-      supabase
-        .from("filing_previews")
-        .select("id, company_id, setup_id, income_year, filing, status, issues, preview, hovedskjema_xml, underskjema_xml, source, created_at")
-        .eq("company_id", companyId)
-        .eq("income_year", incomeYear),
       loadTaxSettlementArchiveSource(accessToken, companyId, incomeYear),
       loadArchiveBilling(accessToken, companyId),
-      supabase
-        .from("authority_permissions")
-        .select("id, company_id, obligation, submitter_user_id, confirmed_by, confirmed_at, production_enabled, updated_at")
-        .eq("company_id", companyId),
-      supabase
-        .from("filing_review_comments")
-        .select("id, preview_id, company_id, target, severity, body, created_by, acknowledged_by, acknowledged_at, created_at")
-        .eq("company_id", companyId),
       supabase
         .from("audit_events")
         .select("id, company_id, actor_id, category, action, message, created_at")
@@ -403,9 +383,9 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
   }
   const [
-    { data: setups, shareholders }, { data: ledgerEntries }, { data: documents, projection: documentBackupProjection }, { data: previews },
-    { data: holdingActions }, { data: billingAccounts }, { data: authorityPermissions },
-    { data: reviewComments }, { data: auditEvents }, { data: investments },
+    { data: setups, shareholders }, { data: ledgerEntries }, { data: documents, projection: documentBackupProjection },
+    { data: holdingActions }, { data: billingAccounts },
+    { data: auditEvents }, { data: investments },
     { data: bankSuggestionAcceptances },
     { data: corporateLifecycle },
   ] = sourceResults;

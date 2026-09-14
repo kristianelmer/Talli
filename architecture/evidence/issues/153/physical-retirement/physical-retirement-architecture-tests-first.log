@@ -1,0 +1,173 @@
+✔ Python architecture inspection consumes one framed request without waiting for EOF (85.893167ms)
+✖ architecture manifests, scoped documentation, and dependency evidence agree (17576.42275ms)
+✔ architecture evidence is deterministic and committed output is current (16749.702708ms)
+✔ legacy facades cannot shrink without current-source deletion proof (2.411167ms)
+✔ resource-owner deletion-only shrink may change only the affected operation (5.127541ms)
+✔ ledger #139 may relocate only the owner-approved atomic coordinator scopes (4.203417ms)
+✔ #150 RF relocation permits only both exact coordinators with all ten scopes (5.207375ms)
+✔ #192 retirement permits only all four exact frozen deletions and all three whole actions (13.879667ms)
+✔ pending foundation recovery blocks facade and migration changes (1.61675ms)
+✔ the frozen baseline is traceable to the pre-existing compatibility registry (1.609375ms)
+✔ legacy source proofs reject added writers and changed future operations (1.459375ms)
+✔ legacy facades block stage exit and fail after their capability has exited (1.458ms)
+✔ completed stages require two consecutive complete-gate attestations (1.634042ms)
+✔ active-stage debt keeps the fourteen-day, stable-release, and one-successor limits (1.173292ms)
+✔ compatibility records cannot suppress authorization or other non-suppressible failures (0.831209ms)
+✔ active-stage debt requires bounded expiry and a removal condition (0.904709ms)
+✔ active-stage debt must expire strictly after the controlled current time (1.434125ms)
+✔ active-stage debt cannot outlive fourteen days or the next stable release (0.84575ms)
+✔ active-stage debt rejects semantically impossible timestamps (0.695541ms)
+✔ a fabricated release revision is rejected against the real tag target (52809.587208ms)
+✔ a lightweight customer-ready tag is rejected as a stable release (48402.787042ms)
+✔ reachable annotated releases with equal tagger timestamps fail closed (49269.885042ms)
+✔ a stale release selection is rejected after a later reachable tag (49282.031375ms)
+✔ a real stable customer-ready release after approval revokes active-stage debt (50104.826584ms)
+✔ module test evidence cannot assign one path to multiple ownership categories (14763.59675ms)
+✔ schema constraints and declared public exports are enforced (15005.652167ms)
+✔ backend workflow routes and public request exports reconcile in both directions (15042.031417ms)
+✔ database catalog and declared public import paths are authoritative (14342.002792ms)
+✔ database compatibility resources are globally unambiguous (47768.293125ms)
+✔ staged contract table retirement requires an empty-table preflight and rollback (54221.364ms)
+✔ multiline web persistence requires an explicit rule-scoped exception (26586.629125ms)
+✔ web persistence exceptions match exact path, rule, AST-derived resource, and operation (26706.423791ms)
+✔ compatibility operations map to their serialized future tickets (0.964125ms)
+✖ the immutable frozen inventory remains exact while the active registry is a proven subset (2.62375ms)
+✔ #192 keeps the immutable four-scope inventory and rejects stale clients, moved writers and dynamic additions (15162.794792ms)
+✔ #200 removes the exact six support-search scopes atomically without changing the frozen baseline (15221.741333ms)
+✔ company cancellation lifecycle is capability-owned with no direct-web compatibility (1.458792ms)
+✔ anonymous object methods fail closed without merging separate call sites (14658.524209ms)
+✔ compatibility scopes match the exact enclosing operation (14779.156958ms)
+✔ compatibility scopes cannot overlap across future tickets (14868.150417ms)
+✔ compatibility registry is complete in both directions (14841.217084ms)
+✔ web boundary detection follows client provenance without flagging ordinary from methods (15255.287875ms)
+✔ web boundary analysis follows compiler bindings, type aliases, and callable aliases (15214.404041ms)
+✔ web boundary analysis preserves persistence and fetch provenance across imports and re-exports (14718.213042ms)
+✔ web boundary analysis permits local fetch bindings and non-import generated-client text (14750.349542ms)
+✔ generated-client deep imports are detected from every executable module-specifier form (15164.008291ms)
+✔ generated-client deep imports reject ambiguous same-ticket exceptions (14790.622166ms)
+✔ adapter bindings require source registration against the declared port (14376.505458ms)
+✔ company access declares and injects its persistence and company-registry adapters (5.159584ms)
+✔ adapter registration resolves decorator and port bindings to their declared public symbols (14701.991666ms)
+✔ adapter registration accepts legitimate aliases of the declared public symbols (14282.704666ms)
+✔ adapter registration validates the final effective top-level binding (28108.971834ms)
+✔ backend composition, rule-scoped exceptions, documentation inventories, and shared kernel are enforced (14096.907ms)
+✔ architecture checker rejects representative forbidden boundary violations (14058.449916ms)
+✔ #151 amendment permits only twelve exact handoffs and four exact read retirements (78.061166ms)
+✖ #151 bounded retirement compositions remain enforced after RF exits (162.025916ms)
+✔ preserved Tax retirement requires exact artifact bytes, source restoration and exclusive ownership (58905.711167ms)
+✖ #152 mixed actions retain exact Accounts/Audit chains and cannot inherit permission for another edit (7712.910875ms)
+ℹ tests 58
+ℹ suites 0
+ℹ pass 54
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 778420.479292
+
+✖ failing tests:
+
+test at tests/architecture_foundation.test.mjs:211:1
+✖ architecture manifests, scoped documentation, and dependency evidence agree (17576.42275ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    [
+      'backend-system:marketing_measurement',
+      'backend-system:system_boundary',
+      'backend-system:validation_observation',
+  +   'backend:annual_accounts_filing',
+  +   'backend:audit',
+      'backend:authority_connections',
+      'backend:banking',
+      'backend:billing',
+      'backend:company_access',
+      'backend:company_tax_filing',
+  ...
+      'backend:shareholder_register_filing',
+  +   'web:annual-accounts-filing',
+      'web:authority-connections',
+      'web:banking',
+      'web:billing',
+      'web:company-access',
+      'web:company-tax-filing',
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/architecture_foundation.test.mjs:215:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'backend-system:marketing_measurement', 'backend-system:system_boundary', 'backend-system:validation_observation', 'backend:annual_accounts_filing', 'backend:audit', 'backend:authority_connections', 'backend:banking', 'backend:billing', 'backend:company_access', 'backend:company_tax_filing', 'backend:corporate_governance', 'backend:documents', 'backend:investments', 'backend:ledger', 'backend:shareholder_register_filing', 'web:annual-accounts-filing', 'web:authority-connections', 'web:banking', 'web:billing', 'web:company-access', 'web:company-tax-filing', 'web:corporate-governance', 'web:documents', 'web:investments', 'web:ledger', 'web:operator-controls', 'web:public-acquisition', 'web:shareholder-register-filing', 'web:system-boundary' ],
+    expected: [ 'backend-system:marketing_measurement', 'backend-system:system_boundary', 'backend-system:validation_observation', 'backend:authority_connections', 'backend:banking', 'backend:billing', 'backend:company_access', 'backend:company_tax_filing', 'backend:corporate_governance', 'backend:documents', 'backend:investments', 'backend:ledger', 'backend:shareholder_register_filing', 'web:authority-connections', 'web:banking', 'web:billing', 'web:company-access', 'web:company-tax-filing', 'web:corporate-governance', 'web:documents', 'web:investments', 'web:ledger', 'web:operator-controls', 'web:public-acquisition', 'web:shareholder-register-filing', 'web:system-boundary' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/architecture_foundation.test.mjs:2331:1
+✖ the immutable frozen inventory remains exact while the active registry is a proven subset (2.62375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  4 !== 6
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/architecture_foundation.test.mjs:2377:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 4,
+    expected: 6,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/architecture_foundation.test.mjs:3423:1
+✖ #151 bounded retirement compositions remain enforced after RF exits (162.025916ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+  + [
+  +   'Tax source composition requires its exact body and unchanged sibling persistence chains: apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts operation:GET',
+  +   'RF compatibility amendment retirement differs from its bounded composition: apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts operation:GET'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/architecture_foundation.test.mjs:3462:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'Tax source composition requires its exact body and unchanged sibling persistence chains: apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts operation:GET', 'RF compatibility amendment retirement differs from its bounded composition: apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts operation:GET' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/company_tax_architecture.test.mjs:44:1
+✖ #152 mixed actions retain exact Accounts/Audit chains and cannot inherit permission for another edit (7712.910875ms)
+  AssertionError [ERR_ASSERTION]: addFilingOverride
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/company_tax_architecture.test.mjs:93:16)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

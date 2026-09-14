@@ -1,0 +1,4514 @@
+[
+  {
+    "id": 0,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": 0,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "12",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 1,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": 0,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": 0,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 3,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": 0,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 4,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": 999999999999999900000,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": 999999999999999900000,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 5,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": null,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": null,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "12",
+            "value"
+          ],
+          "kind": "Infinity"
+        },
+        {
+          "path": [
+            "fields",
+            "13",
+            "value"
+          ],
+          "kind": "Infinity"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 6,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": null,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": null,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "12",
+            "value"
+          ],
+          "kind": "-Infinity"
+        },
+        {
+          "path": [
+            "fields",
+            "13",
+            "value"
+          ],
+          "kind": "-Infinity"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 7,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": 45035996273704.96,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": 45035996273704.96,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 8,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": 45035996273704.96,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": 45035996273704.96,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 9,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": null,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": null,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "12",
+            "value"
+          ],
+          "kind": "NaN"
+        },
+        {
+          "path": [
+            "fields",
+            "13",
+            "value"
+          ],
+          "kind": "NaN"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 10,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": 1,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": 1,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 11,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": null,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": null,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "12",
+            "value"
+          ],
+          "kind": "NaN"
+        },
+        {
+          "path": [
+            "fields",
+            "13",
+            "value"
+          ],
+          "kind": "NaN"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 12,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": null,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": null,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "12",
+            "value"
+          ],
+          "kind": "NaN"
+        },
+        {
+          "path": [
+            "fields",
+            "13",
+            "value"
+          ],
+          "kind": "NaN"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 13,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": null,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": null,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "12",
+            "value"
+          ],
+          "kind": "NaN"
+        },
+        {
+          "path": [
+            "fields",
+            "13",
+            "value"
+          ],
+          "kind": "NaN"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 14,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": 0,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 15,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": 0,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 16,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": 2,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": 2,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 17,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": null,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": null,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "12",
+            "value"
+          ],
+          "kind": "NaN"
+        },
+        {
+          "path": [
+            "fields",
+            "13",
+            "value"
+          ],
+          "kind": "NaN"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 18,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": null,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": null,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "12",
+            "value"
+          ],
+          "kind": "Infinity"
+        },
+        {
+          "path": [
+            "fields",
+            "13",
+            "value"
+          ],
+          "kind": "Infinity"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  },
+  {
+    "id": 19,
+    "output": {
+      "value": {
+        "schemaType": "aarsregnskap-vanlig-202406",
+        "hovedskjemaDataFormatId": "1266",
+        "hovedskjemaDataFormatVersion": "51820",
+        "selskapsregnskapDataFormatId": "758",
+        "selskapsregnskapDataFormatVersion": "51980",
+        "notes": {
+          "annualFullTimeEquivalents": 0
+        },
+        "fields": [
+          {
+            "tag": "regnskapsaar",
+            "orid": "17102",
+            "value": 2025,
+            "source": "company.income_year"
+          },
+          {
+            "tag": "regnskapsstart",
+            "orid": "17103",
+            "value": "2025-01-01",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "regnskapsslutt",
+            "orid": "17104",
+            "value": "2025-12-31",
+            "source": "calendar_year"
+          },
+          {
+            "tag": "valuta",
+            "orid": "34984",
+            "value": "NOK",
+            "source": "launch_currency"
+          },
+          {
+            "tag": "sumDriftskostnad/aarets",
+            "orid": "17126",
+            "value": 0,
+            "source": "ledger.expense_accounts"
+          },
+          {
+            "tag": "sumFinansinntekter/aarets",
+            "orid": "153",
+            "value": 0,
+            "source": "ledger.8070_8050"
+          },
+          {
+            "tag": "sumFinanskostnader/aarets",
+            "orid": "17130",
+            "value": 0,
+            "source": "ledger.8090"
+          },
+          {
+            "tag": "resultatFoerSkattekostnad/aarets",
+            "orid": "167",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "skattekostnad/aarets",
+            "orid": "11835",
+            "value": 0,
+            "source": "ledger.8300"
+          },
+          {
+            "tag": "aarsresultat/aarets",
+            "orid": "172",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "investeringAksjerAndeler/aarets",
+            "orid": "7100",
+            "value": 0,
+            "source": "ledger.1300_1310_1350_1800_1810_1815"
+          },
+          {
+            "tag": "sumFinansielleAnleggsmidler/aarets",
+            "orid": "5267",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "sumBankinnskuddKontanter/aarets",
+            "orid": "29042",
+            "value": null,
+            "source": "ledger.1920"
+          },
+          {
+            "tag": "sumEiendeler/aarets",
+            "orid": "219",
+            "value": null,
+            "source": "derived"
+          },
+          {
+            "tag": "sumInnskuttEgenkapital/aarets",
+            "orid": "3730",
+            "value": 0,
+            "source": "ledger.2000"
+          },
+          {
+            "tag": "annenEgenkapital/aarets",
+            "orid": "3274",
+            "value": 0,
+            "source": "ledger.2050_and_result"
+          },
+          {
+            "tag": "sumEgenkapital/aarets",
+            "orid": "250",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "betalbarSkatt/aarets",
+            "orid": "2483",
+            "value": 0,
+            "source": "ledger.2500"
+          },
+          {
+            "tag": "sumKortsiktigGjeld/aarets",
+            "orid": "85",
+            "value": 0,
+            "source": "ledger.2255_2500"
+          },
+          {
+            "tag": "sumGjeld/aarets",
+            "orid": "1119",
+            "value": 0,
+            "source": "derived"
+          },
+          {
+            "tag": "antallAarsverk",
+            "orid": "37467",
+            "value": 0,
+            "source": "annual_accounts.notes"
+          }
+        ],
+        "feedback": []
+      },
+      "numericSpecials": [
+        {
+          "path": [
+            "fields",
+            "5",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "7",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "9",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "12",
+            "value"
+          ],
+          "kind": "-Infinity"
+        },
+        {
+          "path": [
+            "fields",
+            "13",
+            "value"
+          ],
+          "kind": "-Infinity"
+        },
+        {
+          "path": [
+            "fields",
+            "14",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "15",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "16",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "17",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "18",
+            "value"
+          ],
+          "kind": "-0"
+        },
+        {
+          "path": [
+            "fields",
+            "19",
+            "value"
+          ],
+          "kind": "-0"
+        }
+      ]
+    }
+  }
+]

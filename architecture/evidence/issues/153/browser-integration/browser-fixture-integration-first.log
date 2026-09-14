@@ -1,0 +1,50 @@
+✔ authority fixture admits only exact local addresses and existing fixed owner provider requests (231.311875ms)
+✔ authority fixture socket guard rejects external DNS and connections before network I/O (244.497416ms)
+✔ mandatory authority browser uses real generated HTTP, backend-owned callback proof and scoped cleanup (1.381042ms)
+✔ historical RF fixture admits two fixed GET templates and rejects business mutations (103.794875ms)
+✔ Supabase browser fixtures only accept loopback URLs (1.038708ms)
+✔ browser database fixtures only accept loopback PostgreSQL URLs (0.155042ms)
+✔ owner browser harness stops before remote fixture creation (566.51ms)
+✔ owner browser harness rejects a remote database mixed with local Supabase (316.503708ms)
+✖ retained annual browser seeds canonical historical RF/AU facts without replacing the live simulation (3.354917ms)
+✔ fresh RF fixture permits only its five exact method templates and loopback egress (189.399208ms)
+✔ fresh local RF mock preserves request identity and emits relationship-bound feedback (139.481875ms)
+✔ fresh browser starts without a preview or approval and verifies the complete durable result (11.048042ms)
+✔ ambiguous fresh mock response records the original mutation before disconnecting (19.339375ms)
+✔ fresh RF browser uses finite fixture authority while preserving foreign keys and signoff storage (0.544625ms)
+✔ fresh RF basis binds every opening row to its existing owner without seeding filing success (1.887834ms)
+✔ fresh RF cleanup removes scoped public mirrors before openings (success) (3.973583ms)
+✔ fresh RF cleanup removes scoped public mirrors before openings (failure preserved) (1.553042ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (success) (30.667125ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (seed) (9.104084ms)
+✔ fresh signoff fixture restores exact prior rows and USER triggers (restore) (1.535084ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 19
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 974.657167
+
+✖ failing tests:
+
+test at tests/browser_fixture_safety.test.mjs:100:1
+✖ retained annual browser seeds canonical historical RF/AU facts without replacing the live simulation (3.354917ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + undefined
+  - true
+  
+      at seedAnnualLoop (evalmachine.<anonymous>:165:12)
+      at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_fixture_safety.test.mjs:122:3)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

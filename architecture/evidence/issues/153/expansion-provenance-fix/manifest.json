@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0",
+  "status": "EXPANSION_PROVENANCE_FIX_REVIEW_PENDING",
+  "reviewedRevision": "04e682b69e5426408932233d05328134e8e997f8",
+  "fixedFinding": "SPEC-153-EXPAND-1",
+  "artifacts": {
+    "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-setup-provenance.py": "95b16d73fd8e8df954190ea522544beef93b4a1e96fddf7ba9d5188da4497465",
+    "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-populated-results.json": "864817ec7c2fc9ce3a69dd396fe8cbdd6b7640783e0f80b409e1e5c6e09094eb",
+    "architecture/evidence/issues/153/expansion-provenance-fix/expand-spec-setup-provenance-04e682b6.py": "4efeea66b2d53736aa725d77b77982b9e024f6c90fefe2a70e452da31a6a27cb",
+    "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-setup-provenance-first-fixture-failure.json": "a715d6a214552d78870aa8ed61ebecbb5cb17f6132ac2eb79d7563b3f082c09a",
+    "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-clone.py": "0843f4b662c13092291b9fa51f345a02f8b1908f66cb855b5e4b2c5809909370",
+    "architecture/evidence/issues/153/expansion-provenance-fix/verification.md": "8a198650d801e854f40bfe235f0935ecb1cf117a06b98534de0c0dde84843681",
+    "architecture/evidence/issues/153/expansion-provenance-fix/expand-spec-review-04e682b6.md": "29e64cde87d12d67b12c7e035de3119f67bb68e8c32b5419a29698737794d671",
+    "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-clone-restore-04e682b6.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "architecture/evidence/issues/153/expansion-provenance-fix/expand-spec-review-04e682b6.json": "9cb547103b4de6b73b25cd77154a2a76e9b58319ead6ce17efebd1bdd79156db",
+    "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-quarantine-results.json": "eb1d7e1fa8a13a25861f1191d07a9f0ebfa1465083019ccf0ef9e09ca943e6bc",
+    "architecture/evidence/issues/153/expansion-provenance-fix/expand-fix-setup-provenance-results.json": "9a7bb2105dc32c90d7220924942009e06b16b6b6fc4c0de30cdf7acb9045fe8c",
+    "architecture/evidence/issues/153/expansion-provenance-fix/expand-spec-setup-provenance-results-04e682b6.json": "d56ec09dc760ef7f8add7677b0ac92b572f4ab988af1b893c169752488ec3e73",
+    "architecture/evidence/issues/153/expansion-provenance-fix/probe-accounts-fix-populated-expand.py": "abfd0c04c048e18bfd280ba4092af2f01c87e442976fc9b256f01ad7334f1fbc",
+    "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea"
+  }
+}

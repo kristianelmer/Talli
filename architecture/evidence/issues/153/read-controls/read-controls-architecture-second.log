@@ -1,0 +1,1 @@
+architecture: architecture/backend-system.json: documentation inventory is missing transportDependencies talli_backend.adapters.postgres_annual_accounts, talli_backend.application.annual_accounts_session, talli_backend.modules.annual_accounts_filing.public

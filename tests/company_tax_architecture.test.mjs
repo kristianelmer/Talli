@@ -110,8 +110,8 @@ test("#152 mixed actions retain exact Accounts/Audit chains and cannot inherit p
       const start = original.indexOf(`export async function ${operation}(`);
       const head = original.slice(0, start), body = original.slice(start);
       for (const mutated of [
-        body.replace('.from("filing_submissions")', '.from(dynamicFilingTable)'),
-        body.replace('.from("filing_submissions")', '.from("other_submissions")'),
+        body.replace('  const taxSource =', '  await supabase.from(dynamicFilingTable).select();\n  const taxSource ='),
+        body.replace('  const taxSource =', '  await supabase.from("other_submissions").select();\n  const taxSource ='),
         body.replace('  const taxSource =', '  await supabase.from("filing_submissions").delete();\n  const taxSource ='),
         body.replace('  const taxSource =', '  await unexpectedBusinessOperation();\n  const taxSource ='),
       ]) {
@@ -120,7 +120,21 @@ test("#152 mixed actions retain exact Accounts/Audit chains and cannot inherit p
       }
       const earlierRead = structuredClone(registry);
       earlierRead.migration.currentIssue = "#146";
-      assert.ok(readCheck(original, earlierRead).length > 0, `${operation} requires #152`);
+      assert.ok(readCheck(original, earlierRead).length > 0, `${operation} requires its authorized filing stage`);
+      const beforeAccounts = structuredClone(registry);
+      beforeAccounts.migration.currentCapability = "company_tax_filing";
+      beforeAccounts.migration.currentIssue = "#152";
+      assert.ok(readCheck(original, beforeAccounts).length > 0, `${operation} cannot retire Accounts during Tax`);
+      const restoredAccounts = structuredClone(registry);
+      restoredAccounts.records.push(baseline.records.find(record => record.id === "compat-annual-accounts-persistence"));
+      assert.ok(readCheck(original, restoredAccounts).length > 0, `${operation} requires retired Accounts facade`);
+      for (const family of ["filing_previews", "filing_submissions", "filing_overrides", "filing_review_comments", "authority_permissions", "authority_test_runs"]) {
+        const resource = `table:${family}`;
+        const owner = owners.get(resource);
+        owners.set(resource, "backend:annual_compliance");
+        assert.ok(readCheck().length > 0, `${operation} requires exclusive Accounts ownership of ${family}`);
+        owners.set(resource, owner);
+      }
       const restoredRead = structuredClone(registry);
       restoredRead.records.push(baseline.records.find(record => record.id === "compat-company-tax-persistence"));
       assert.ok(readCheck(original, restoredRead).length > 0, `${operation} requires retired Tax facade`);

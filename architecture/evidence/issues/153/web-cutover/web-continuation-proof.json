@@ -1,0 +1,152 @@
+{
+  "baseline": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "path": "apps/web/app/actions.ts",
+  "sourceSha256": "f1ec0ca68b4bce714333bf28eeb5681f1424e43bd4f78af617f9414eca124763",
+  "status": "PASS",
+  "results": [
+    {
+      "name": "addFilingOverride",
+      "original": [
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: preview.company_id,\n    actor_id: user.id,\n    category: \"filing\",\n    action: \"filing_override_added\",\n    message: `Filing-overstyring lagt til for ${override.fieldTarget}: ${override.riskLevel}.`,\n})"
+        }
+      ],
+      "actual": [
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: preview.company_id,\n    actor_id: user.id,\n    category: \"filing\",\n    action: \"filing_override_added\",\n    message: `Filing-overstyring lagt til for ${override.fieldTarget}: ${override.riskLevel}.`,\n})"
+        }
+      ],
+      "equal": true
+    },
+    {
+      "name": "addFilingReviewComment",
+      "original": [
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: preview.company_id,\n    actor_id: user.id,\n    category: \"review\",\n    action: \"filing_review_comment_created\",\n    message: `Review-kommentar lagt til: ${severity}.`,\n})"
+        }
+      ],
+      "actual": [
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: preview.company_id,\n    actor_id: user.id,\n    category: \"review\",\n    action: \"filing_review_comment_created\",\n    message: `Review-kommentar lagt til: ${severity}.`,\n})"
+        }
+      ],
+      "equal": true
+    },
+    {
+      "name": "acknowledgeFilingReviewComment",
+      "original": [
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: comment.company_id,\n    actor_id: user.id,\n    category: \"review\",\n    action: \"filing_review_comment_acknowledged\",\n    message: \"Advisory review-kommentar acknowledged av eier.\",\n})"
+        }
+      ],
+      "actual": [
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: comment.company_id,\n    actor_id: user.id,\n    category: \"review\",\n    action: \"filing_review_comment_acknowledged\",\n    message: \"Advisory review-kommentar acknowledged av eier.\",\n})"
+        }
+      ],
+      "equal": true
+    },
+    {
+      "name": "confirmAuthorityPermission",
+      "original": [
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: companyId,\n    actor_id: user.id,\n    category: \"submission\",\n    action: \"authority_permission_confirmed\",\n    message: `Innsendingsrett bekreftet for ${obligation}. Produksjonsgate: ${productionEnabled ? \"aktiv\" : \"av\"}.`,\n})"
+        }
+      ],
+      "actual": [
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: companyId,\n    actor_id: user.id,\n    category: \"submission\",\n    action: \"authority_permission_confirmed\",\n    message: `Innsendingsrett bekreftet for ${obligation}. Produksjonsgate: ${productionEnabled ? \"aktiv\" : \"av\"}.`,\n})"
+        }
+      ],
+      "equal": true
+    },
+    {
+      "name": "recordAuthorityTestEvidence",
+      "original": [
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: companyId,\n    actor_id: user.id,\n    category: \"submission\",\n    action: \"authority_test_evidence_recorded\",\n    message: `${obligation} test-evidens registrert som ${status} med ref ${record.test_reference}.`,\n})"
+        }
+      ],
+      "actual": [
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: companyId,\n    actor_id: user.id,\n    category: \"submission\",\n    action: \"authority_test_evidence_recorded\",\n    message: `${obligation} test-evidens registrert som ${status} med ref ${record.test_reference}.`,\n})"
+        }
+      ],
+      "equal": true
+    },
+    {
+      "name": "recordAnnualAccountsTt02Evidence",
+      "original": [
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: companyId,\n    actor_id: user.id,\n    category: \"submission\",\n    action: \"annual_accounts_tt02_evidence_imported\",\n    message: `Årsregnskap TT02-evidens importert som pending med ref ${record.test_reference}.`,\n})"
+        }
+      ],
+      "actual": [
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: companyId,\n    actor_id: user.id,\n    category: \"submission\",\n    action: \"annual_accounts_tt02_evidence_imported\",\n    message: `Årsregnskap TT02-evidens importert som pending med ref ${record.test_reference}.`,\n})"
+        }
+      ],
+      "equal": true
+    },
+    {
+      "name": "refreshAnnualReadinessSnapshots",
+      "original": [
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: companyId,\n    actor_id: user.id,\n    category: \"filing\",\n    action: \"annual_readiness_refreshed\",\n    message: `Annual loop readiness oppdatert for ${incomeYear}.`,\n})"
+        }
+      ],
+      "actual": [
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: companyId,\n    actor_id: user.id,\n    category: \"filing\",\n    action: \"annual_readiness_refreshed\",\n    message: `Annual loop readiness oppdatert for ${incomeYear}.`,\n})"
+        }
+      ],
+      "equal": true
+    },
+    {
+      "name": "queueDeadlineReminders",
+      "original": [
+        {
+          "resource": "notification_outbox",
+          "source": "supabase.from(\"notification_outbox\").select(\"template, payload, status\").eq(\"company_id\", companyId)"
+        },
+        {
+          "resource": "notification_outbox",
+          "source": "supabase.from(\"notification_outbox\").insert(queueable.map((candidate) => ({\n    company_id: companyId,\n    recipient_email: user.email!.toLowerCase(),\n    template: \"deadline_reminder\",\n    payload: {\n        dedupeKey: candidate.dedupeKey,\n        filing: candidate.filing,\n        obligation: candidate.obligation,\n        incomeYear: candidate.incomeYear,\n        deadline: candidate.deadline,\n        reminderKind: candidate.reminderKind,\n        subject: candidate.subject,\n        body: candidate.body,\n        readinessPath: candidate.readinessPath,\n    },\n    created_by: user.id,\n})))"
+        },
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: companyId,\n    actor_id: user.id,\n    category: \"filing\",\n    action: \"deadline_reminders_queued\",\n    message: `${queueable.length} fristvarsler køet for ${incomeYear}.`,\n})"
+        }
+      ],
+      "actual": [
+        {
+          "resource": "notification_outbox",
+          "source": "supabase.from(\"notification_outbox\").select(\"template, payload, status\").eq(\"company_id\", companyId)"
+        },
+        {
+          "resource": "notification_outbox",
+          "source": "supabase.from(\"notification_outbox\").insert(queueable.map((candidate) => ({\n    company_id: companyId,\n    recipient_email: user.email!.toLowerCase(),\n    template: \"deadline_reminder\",\n    payload: {\n        dedupeKey: candidate.dedupeKey,\n        filing: candidate.filing,\n        obligation: candidate.obligation,\n        incomeYear: candidate.incomeYear,\n        deadline: candidate.deadline,\n        reminderKind: candidate.reminderKind,\n        subject: candidate.subject,\n        body: candidate.body,\n        readinessPath: candidate.readinessPath,\n    },\n    created_by: user.id,\n})))"
+        },
+        {
+          "resource": "audit_events",
+          "source": "supabase.from(\"audit_events\").insert({\n    company_id: companyId,\n    actor_id: user.id,\n    category: \"filing\",\n    action: \"deadline_reminders_queued\",\n    message: `${queueable.length} fristvarsler køet for ${incomeYear}.`,\n})"
+        }
+      ],
+      "equal": true
+    }
+  ]
+}

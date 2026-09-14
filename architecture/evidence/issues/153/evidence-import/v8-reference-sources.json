@@ -1,0 +1,26 @@
+{
+  "dateparser.h": {
+    "url": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/dateparser.h",
+    "sha256": "8c4dd28958ac3781d99c038f3fcc9ae70814c34377e314c4867642d5b3466665"
+  },
+  "dateparser-inl.h": {
+    "url": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/dateparser-inl.h",
+    "sha256": "f4d6751423c17f671f383aa4bfa9f8c8158a09fc28f7bc860c71edc2cb01fb73"
+  },
+  "dateparser.cc": {
+    "url": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/dateparser.cc",
+    "sha256": "64ae6bae3ba2438a8a9323a0a1010da285f51bcbab1e02adf753fbbdaffaf461"
+  },
+  "LICENSE": {
+    "url": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/LICENSE",
+    "sha256": "6ab33af8774a0f396ee3aeeb761e3229057682d6f9fa7f572e390c2cb3a6e509"
+  },
+  "date.h": {
+    "url": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/date.h",
+    "sha256": "dbf631fc2c2f2c26491b3123e0b27f2a6b98af5811edc2a576eff6bfb7b8b9a3"
+  },
+  "date.cc": {
+    "url": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/date.cc",
+    "sha256": "5394ed9dc2e001dbf1ed0cc32382d1ba12c33c39e09e08cdc9e1253b16e2066a"
+  }
+}

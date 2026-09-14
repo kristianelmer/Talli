@@ -1,0 +1,103 @@
+{
+  "artifact": "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+  "sha256": "ea3c0601ec92539a5c9d672b5254a7342e6e63e4c4147e0ed7e6abec74ea7caa",
+  "database": "accounts153_lifecycle_d060",
+  "transaction": "ROLLBACK_ONLY",
+  "cases": [
+    {
+      "classificationProbe": "filing_previews",
+      "alteration": {
+        "filing": "unknown_obligation"
+      },
+      "result": "quarantine"
+    },
+    {
+      "classificationProbe": "authority_test_runs",
+      "alteration": {
+        "obligation": "unknown"
+      },
+      "result": "quarantine"
+    },
+    {
+      "classificationProbe": "filing_review_comments",
+      "alteration": {
+        "preview_id": null
+      },
+      "result": "quarantine"
+    },
+    {
+      "classificationProbe": "filing_overrides",
+      "alteration": {
+        "field_target": "skattemelding.field"
+      },
+      "result": "quarantine"
+    },
+    {
+      "classificationProbe": "filing_submissions",
+      "alteration": {
+        "company_id": "15300000-0000-4000-8000-000000000014"
+      },
+      "result": "quarantine"
+    },
+    {
+      "classificationProbe": "filing_submissions",
+      "alteration": {
+        "income_year": 2024
+      },
+      "result": "quarantine"
+    },
+    {
+      "classificationProbe": "filing_submissions",
+      "alteration": {
+        "authority_test_run_id": "15300000-0000-4000-8000-000000000014"
+      },
+      "result": "quarantine"
+    }
+  ],
+  "quarantineRowsPreserved": 2,
+  "reconciliations": [
+    [
+      "authority_permissions",
+      1,
+      1,
+      true
+    ],
+    [
+      "authority_test_runs",
+      1,
+      1,
+      true
+    ],
+    [
+      "filing_overrides",
+      1,
+      1,
+      true
+    ],
+    [
+      "filing_previews",
+      1,
+      1,
+      true
+    ],
+    [
+      "filing_review_comments",
+      1,
+      1,
+      true
+    ],
+    [
+      "filing_submissions",
+      2,
+      2,
+      true
+    ]
+  ],
+  "legacyRowsUnchanged": true,
+  "existingRoleMembershipsUnchanged": true,
+  "roleProbeSetup": "Temporary test-only SET after membership restoration check; rolled back.",
+  "legacyWriterStillActive": true,
+  "status": "PASS",
+  "fixtureRollbackVerified": true,
+  "schemaRollbackVerified": true
+}

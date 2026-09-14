@@ -1,0 +1,602 @@
+{
+  "status": "ENTRY_SOURCE_AND_CATALOG_ENUMERATED_CHARACTERIZATION_PENDING",
+  "revision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "sourceFiles": {
+    "apps/web/app/lib/annual-accounts.ts": {
+      "baselineSha256": "91796975e407b260a9c028f3c7a3fb37ac525aae10a5306140418082e7041a33",
+      "groups": [
+        "legacy_accounts_policy_and_authority"
+      ]
+    },
+    "apps/web/app/lib/annual-accounts-xml.ts": {
+      "baselineSha256": "6be42f2b588188cd536edd264ef12597c80f91295424fd9da68bd2c89849eab6",
+      "groups": [
+        "legacy_accounts_policy_and_authority"
+      ]
+    },
+    "apps/web/app/lib/authority-test-evidence.ts": {
+      "baselineSha256": "3288e82a19ec640fa3b7142bac88f7d5262be957592303a1e41f6db057302d9d",
+      "groups": [
+        "legacy_accounts_policy_and_authority"
+      ]
+    },
+    "apps/web/app/lib/annual-readiness.ts": {
+      "baselineSha256": "6e9dfde2b151cb0bdf96cf14774c2c7140db278f8a5e598419285b82858a7817",
+      "groups": [
+        "legacy_accounts_policy_and_authority",
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/backend/src/talli_backend/authority_tools/annual_accounts_test.py": {
+      "baselineSha256": "992865dff025ccb40745fe4a8a1fef33603e5c51dd44ef469760d156d9171975",
+      "groups": [
+        "legacy_accounts_policy_and_authority"
+      ]
+    },
+    "apps/backend/src/talli_backend/authority_tools/annual_accounts_transport.py": {
+      "baselineSha256": "0cf6f0d4972ccfe9b9c452c23752ccaccad52e4bdc0983c8bd8c9962bfb480bb",
+      "groups": [
+        "legacy_accounts_policy_and_authority"
+      ]
+    },
+    "apps/backend/src/talli_backend/authority_tools/_filing.py": {
+      "baselineSha256": "c1d41d3633b49ea300ed13d7e2ae25f5a923515641505607395ca3e0dcb659a0",
+      "groups": [
+        "legacy_accounts_policy_and_authority"
+      ]
+    },
+    "scripts/authority-tool-payload.mjs": {
+      "baselineSha256": "d7232070f18843a688e6799fcb032bafeda7430b91a4150d5ccf15742b88ee9f",
+      "groups": [
+        "legacy_accounts_policy_and_authority"
+      ]
+    },
+    "apps/web/app/actions.ts": {
+      "baselineSha256": "457a6919488f6f87dcb579d041d52d694ca2e55172ec2aa5bbde874267d40856",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/lib/supabase/server.ts": {
+      "baselineSha256": "5e5f768f0dc6bbebe0e622e62ddb7c9d9409aa29b7d04da2ecdff6b9e9b962fd",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/lib/workspace-data.ts": {
+      "baselineSha256": "202d710136cee399f070aebcd8384200d11ecec4a797f51e0888449ff4c1ef53",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/lib/workspace.mjs": {
+      "baselineSha256": "8438b540ac18ca3d926e2921fbaf0a0a6d424123362cb84a0d52a42290a7403c",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/lib/annual-workspace.ts": {
+      "baselineSha256": "7ec589de5678e596ff51ecfca8dfed359fc726285439a57266fb377f39a0656f",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/lib/annual-workspace-server.ts": {
+      "baselineSha256": "dc46e54d9bcfaf1fa819eff6397d9da7a1a26c985c0a353f0ccf4627003cead7",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/lib/filing-overrides.ts": {
+      "baselineSha256": "b6ce7c62eb22c65b3dcf1ba58ee1c3d3176ed17e3ba9cd63d812d70a2cdf5599",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/lib/review.ts": {
+      "baselineSha256": "832d2c193eae5780ffc547ae6b6307a84ef374af28b3cf38ebc5bd2a1e9c5149",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/lib/authority-permission.ts": {
+      "baselineSha256": "14f51f3eb95a99cc771f511add9f631d0b211bf7e511c2a08cb7116553465671",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/lib/filing-release-gate.ts": {
+      "baselineSha256": "2e78e7668eeae408391cfaa0c05f90cd594731e7f05ba774510ed77a96a1a64d",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/(owner)/workspace/page.tsx": {
+      "baselineSha256": "302896b3dadaa306ccdbbe5d8d7969bd49d7cddc3396d9fe19f2e28a6ed627bd",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/(owner)/filing/[obligation]/page.tsx": {
+      "baselineSha256": "541b27b0f7270c48310f84930e82a66c0d40f16b60a603f2402bff99e7916a76",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/(owner)/filing/_readiness.ts": {
+      "baselineSha256": "9ab2763e54e48440aaf3a3d70bc0a69fa73b08dfcc448d994011dd44f2e0cd6f",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/(owner)/filing/_presentation.ts": {
+      "baselineSha256": "f2caa7802be7e84d4abb02eea56b1c19e4c612cabc3993bc0222199c480ef620",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/(owner)/filing/_submission-presentation.ts": {
+      "baselineSha256": "0ed402ff87d53957299368540c0c1ef2f322795e4760d353030df627a168e162",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": {
+      "baselineSha256": "3431d8b8e174baf7315f3b2e75a392007b5b9519e02b3e0fe0ae2682dbc90516",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/components/annual-workspace/ObligationWorkspace.tsx": {
+      "baselineSha256": "373c692f85cd402359cf0715e3aaad29e7250b53b318d7dd06ae6a101dcafc75",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/web/app/components/annual-workspace/ObligationRow.tsx": {
+      "baselineSha256": "a624d8e0ac1548c402eb77508258d7cef8ebc43b53c3805760728a3ca62be28e",
+      "groups": [
+        "complete_owner_and_archive_consumers"
+      ]
+    },
+    "apps/backend/src/talli_backend/modules/company_access/public.py": {
+      "baselineSha256": "96d2e28192df2e0aed9ecf1a3242b1f6d7e30df76d3c62ad63e741e1e793bf87",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "apps/backend/src/talli_backend/modules/ledger/public.py": {
+      "baselineSha256": "31ca029a2b63b05f0e89fa1768becf8cfdd737589a5ab96b14ec1c00476103e8",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "apps/backend/src/talli_backend/modules/corporate_governance/public.py": {
+      "baselineSha256": "e0e0139255b8a0108b964ce333a7646a361319290855994afad55eea1560e94d",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "apps/backend/src/talli_backend/modules/documents/public.py": {
+      "baselineSha256": "a40d122e48c5f500453dc21ebf30a9b15e9145be92f23b24e58e7a087c55f248",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "apps/backend/src/talli_backend/modules/authority_connections/public.py": {
+      "baselineSha256": "7d3fe14e0fff77314d96a8db2576239ed0a79776a7ca773a72f0d369a678248c",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "apps/backend/src/talli_backend/modules/billing/public.py": {
+      "baselineSha256": "b17b208f02abd2f2f5069d77c786567f53bfcd32621902e75a18678e235ab23a",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "apps/backend/src/talli_backend/modules/audit/public.py": {
+      "baselineSha256": "8f70becbce9eb1ac3b5cc75638040aa2f551db9803f0158ef71ebc5c966c7518",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "apps/backend/src/talli_backend/application/annual_data_compatibility.py": {
+      "baselineSha256": "4762ae1eea8ed7d9546cfd6e22e9e8911aa7b500538aabf806802c011e95c673",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "apps/backend/src/talli_backend/application/launch_signoffs.py": {
+      "baselineSha256": "6c3b8e1656b25be34c41c68db2e997271a25129426272779492413a9b2d8bcf0",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "apps/web/app/lib/annual-data.ts": {
+      "baselineSha256": "60beab30fb5e7e2f3cd0ff41253d868b6b3229f0344ddb45960e5de66f995008",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "apps/web/app/lib/deadlines.ts": {
+      "baselineSha256": "f9e1271ee9c02baa0ebc3bd40aa1da3d9fd6e09ba741991d270ec6811dde7eb1",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "holding_core/annual.py": {
+      "baselineSha256": "08159462bee6fbf71ed62a7808a768e8340dd0e0baa74edb2cfb41587a732da2",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "holding_core/workspace.py": {
+      "baselineSha256": "82faf355650c243c96378fcb50c0c31934728b0d8d04c6c4723cc085237fdbb4",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "holding_core/validation.py": {
+      "baselineSha256": "3c6ea168c1e063a76b095fba496727404dc8de68110a3d2bd858ff057d514cf5",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "holding_cli/main.py": {
+      "baselineSha256": "9131c8ff8d0534ab1dd748576b2f81c4ecffa748ce9b71b7515c362a39fee545",
+      "groups": [
+        "upstream_contracts_and_preserved_annual_or_offline_model"
+      ]
+    },
+    "supabase/migrations/0001_authenticated_workspace.sql": {
+      "baselineSha256": "efa28a79444eea498e526d26912f3bb3f60b044b1ab0209602296e9cee6ad0ca",
+      "groups": [
+        "predecessor_schema_and_retirement_assets"
+      ]
+    },
+    "supabase/migrations/0005_company_tax_feedback_persistence.sql": {
+      "baselineSha256": "15b7544c94453a56c4a7264fd286b217e039c6a72c03b176522a1c45a3219eb1",
+      "groups": [
+        "predecessor_schema_and_retirement_assets"
+      ]
+    },
+    "supabase/migrations/20260715084507_trusted_aal2_boundary.sql": {
+      "baselineSha256": "d096bc8cea4d31770435636c47f1561ef53aa4d2c65d5a5b4057a25302de6641",
+      "groups": [
+        "predecessor_schema_and_retirement_assets"
+      ]
+    },
+    "supabase/migrations/20260715180000_controlled_production_beta.sql": {
+      "baselineSha256": "e4ebf5a35731795f75c1c2b2ba1843162694e1bc5fa3cf9668f180fa50fdc0ae",
+      "groups": [
+        "predecessor_schema_and_retirement_assets"
+      ]
+    },
+    "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql": {
+      "baselineSha256": "fa29bbe4b4c7a498554e18bf3f71ede4146d616e414e48b9290815d52fc99e15",
+      "groups": [
+        "predecessor_schema_and_retirement_assets"
+      ]
+    },
+    "supabase/migrations/20260901233000_documents_capability.sql": {
+      "baselineSha256": "a567413db6913c0bdd644d88dfd49059285991e41c4bb8ad0afd41f86b34109d",
+      "groups": [
+        "predecessor_schema_and_retirement_assets"
+      ]
+    },
+    "supabase/migrations/20260902090000_corporate_governance_annual_close.sql": {
+      "baselineSha256": "14b2f130fe974bcaf00ed50a8666590cc473af1cb037d6c21d6a2fded6294c6d",
+      "groups": [
+        "predecessor_schema_and_retirement_assets"
+      ]
+    },
+    "supabase/contract-migrations/20260914200000_company_tax_return_expand.sql": {
+      "baselineSha256": "ce0a4b9ab6fc7f90ea4cd851e9a2cff2da113db9c461dc5911bd6c7abfc96281",
+      "groups": [
+        "predecessor_schema_and_retirement_assets"
+      ]
+    },
+    "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql": {
+      "baselineSha256": "d192b105d87287ba59e7b88278c1c25d51e6620d19b1b5d5e34fc416ef21597c",
+      "groups": [
+        "predecessor_schema_and_retirement_assets"
+      ]
+    },
+    "supabase/contract-migrations/20260914012930_company_tax_return_contract.sql": {
+      "baselineSha256": "84269749fd846de1e3cf272427b244431c62f6a41d46f6824e880a0ef5090158",
+      "groups": [
+        "predecessor_schema_and_retirement_assets"
+      ]
+    },
+    "supabase/rollback/20260914012503_company_tax_return_cutover.sql": {
+      "baselineSha256": "0808d9ef883fce1dee19bcd1330f1579682481c1596e522b2b5d5c73fc9e9f07",
+      "groups": [
+        "predecessor_schema_and_retirement_assets"
+      ]
+    },
+    "supabase/rollback/20260914012930_company_tax_return_contract.sql": {
+      "baselineSha256": "b8f7f2190e748a8a9e9a88787b68c46f64e08a9f201cc4eb1b9ed9d5c475ed8c",
+      "groups": [
+        "predecessor_schema_and_retirement_assets"
+      ]
+    },
+    "tests/annual_accounts_payload.test.mjs": {
+      "baselineSha256": "c542d7a32a2635c01b4124d60f94d01551ddb93077cd2fe818a0920ec1b48e22",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/annual_accounts_xml.test.mjs": {
+      "baselineSha256": "944255975041f519566cce86229b78ce07edfc57cf00ac64dfe57775fbb2ad47",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/annual_accounts_authority_evidence_import.test.mjs": {
+      "baselineSha256": "28593c44449b1204cc60682bd202d11dccbe7d743c6af4968e87524fed97d43d",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/annual_accounts_tt02_evidence.test.mjs": {
+      "baselineSha256": "5d9b9f9a61d8639c608f42d10fa881b16eb6c6387efbb6934827c0fd9d47d877",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/authority_test_evidence.test.mjs": {
+      "baselineSha256": "a6d1066df2d511028407e91959abca7b065d90d944290487bf70fec2fbef8dd7",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/authority_tool_payload.test.mjs": {
+      "baselineSha256": "71aaa6f693eba6adc4556ef08227ebc06bbfc5c84d79b726894874ba9bde570e",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/annual_readiness_gates.test.mjs": {
+      "baselineSha256": "8009aff1f4afcbce42a15d7722bb9a3b4ea16e1012ca217f5fc51df61e9eabd5",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/annual_corporate_documents.test.mjs": {
+      "baselineSha256": "d37188721cf3a81c2041eab99fc999246bfa89da39f0f2bef612dc29c8896714",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/investments_cross_output_reconciliation.test.mjs": {
+      "baselineSha256": "83b9c5b6bbb1c46083c780bf612c700bc71be4009ad34e537eafaf3c8b0dd322",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/corporate_governance_cross_output_reconciliation.test.mjs": {
+      "baselineSha256": "80cb9e7548966c41b70f8dff085e9c8a6608aef3490fcf035cb937f3f2e0fe36",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/annual_workspace_view_model.test.mjs": {
+      "baselineSha256": "ca691e34b6c5815a589f6cc10374877e06ff50b2c2c060a12643eabf92bdc4ab",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/archive_export.test.mjs": {
+      "baselineSha256": "205b908c5e7640aaffebb03d27daa20266105e584889bf6079438ec7954710e1",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/rf1086_mixed_actions.test.mjs": {
+      "baselineSha256": "d2eba35b29bfb51f3f610d3de0989b9f38009678d3b859fb9f807b15d470eb52",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/company_tax_workspace_composition.test.mjs": {
+      "baselineSha256": "bd796ee41f73a89b50cbc1d685734240e25106400efaf9aabb988b03095b819f",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/browser_owner_annual_loop.mjs": {
+      "baselineSha256": "07e7c865260b07659f667f2af57a207b96086e5000fbb63d5d0859018e6c9eee",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/browser_fixture_safety.test.mjs": {
+      "baselineSha256": "b222829ba7c496fde97c0b8f17fe2b7c158ff22e14dbe6223f16ffd8797a3182",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/support/browser-owner-cleanup.mjs": {
+      "baselineSha256": "e862c23361e4a0cb6f7d0a38fe3cefc1cc6345df81b819d8cc4ef5ca457b8be9",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/browser_process_lifecycle.test.mjs": {
+      "baselineSha256": "677de2a71543141724a6dcc07093f89df2f5e13f64e6c067fd4cf4c85f41f513",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/fixtures/authority/annual-accounts-simple-holding-2025.json": {
+      "baselineSha256": "2eb43fbb57dc0e6d0b05c07bd3d907c1b869b3255deefd36e9794a577a78ca6f",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/fixtures/corporate_documents/annual_close.json": {
+      "baselineSha256": "bd7c76630db612f163360c80bf1dde1cee50aec5311363159fe0ed30016fc268",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "apps/backend/tests/test_authority_filing_tools.py": {
+      "baselineSha256": "e04da56326f8921b87541fb6aafa369dc960b7507cb495b4548e62aa837ba9fd",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "apps/backend/tests/test_authority_filing_transports.py": {
+      "baselineSha256": "2a38015cabb460a6d9772f53b52bf068b4b7a6caa3a5ea8c5c7edfddd9e3092a",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "apps/backend/tests/test_company_tax_return_lifecycle.py": {
+      "baselineSha256": "5a7a188333932e74d58fb1d201dd02414b2d649be6d25dc07b0517bc3084f302",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/test_annual.py": {
+      "baselineSha256": "02aef5c7802704f586c88f5f0766eade3a0443c8b749e9b4f9327879f7973dc4",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "tests/test_annual_validation.py": {
+      "baselineSha256": "363b01147b06982645d35461ce55fdcd7e666b0a7318e98ca23533412fab9b30",
+      "groups": [
+        "existing_tests_and_fixtures"
+      ]
+    },
+    "docs/filing/annual-accounts-rr0002-evidence-register.md": {
+      "baselineSha256": "77dcc7128d6c3559ad1dafd09bad249e298cc47d8c4f1563f9eb770c82316cb2",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    },
+    "docs/filing/annual-accounts-authority-map.md": {
+      "baselineSha256": "cfbe00540f18ff234ab94ab2b1dc7993e88b2f8ee702149ed2e42129040640dc",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    },
+    "docs/filing/evidence/annual-accounts-tt02-2026-07-14.json": {
+      "baselineSha256": "0672ddc28c9f8e131ff9faac0b7c74b1bd8bb94b1d439c39e697c391df196d51",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    },
+    "docs/filing/evidence/annual-accounts-tt02-2026-07-14.md": {
+      "baselineSha256": "d7753648e90b6b4d429aa242274885f3b5a01eef765aad6277d6435dd48ee1fe",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    },
+    "package.json": {
+      "baselineSha256": "5b28d7603475d0cf0f3a54a646fc0185a87ea60fbab1bb34bca6c85938dc14cb",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    },
+    "pyproject.toml": {
+      "baselineSha256": "c4d43e59008aa2414a345d4fb52b50f5100e003ab7e1468b29f8ef268de6cb2e",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    },
+    "apps/backend/pyproject.toml": {
+      "baselineSha256": "acef4faf616fa1678a922159955655d1f8a011b0fc05558e0a49a70220096b53",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    },
+    "scripts/test-supabase-local.sh": {
+      "baselineSha256": "8a009312a445888353458d5fa768b987d686d9e29a78cf595ee52b143373b7f6",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    },
+    "scripts/rehearse-tax-topology.mjs": {
+      "baselineSha256": "aa722cbe8cd33245879e81ff6ea5f0232608ff1f229d7f9a15756f8fbd76ba5c",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    },
+    "scripts/run-customer-ready-gate.mjs": {
+      "baselineSha256": "0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    },
+    "scripts/check-architecture.mjs": {
+      "baselineSha256": "2f71ed1d36618d6badb8a803312a29e516d92f4129aff4395a957cd144ecffb3",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    },
+    "architecture/company-archive-sources.json": {
+      "baselineSha256": "9d36640141b7353301a6d54d513f07c1915082fbafb004a5275544e681f185a4",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    },
+    "architecture/database-catalog.json": {
+      "baselineSha256": "8b477547b13da11d10ac176459c7c73821c4095444437309f8722d2d41d7ef1a",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    },
+    "architecture/backend-system.json": {
+      "baselineSha256": "04c814a8c1d7af238e324d80278959e6aaa45c1491e884e2fc31174c24aabbee",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    },
+    "architecture/compatibility-baseline.json": {
+      "baselineSha256": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+      "groups": [
+        "evidence_docs_and_gate_integration"
+      ]
+    }
+  },
+  "rowFamilies": {
+    "public.filing_previews": "filing = 'årsregnskap'",
+    "public.filing_submissions": "filing = 'årsregnskap'",
+    "public.filing_overrides": "filing = 'årsregnskap'",
+    "public.filing_review_comments": "preview_id belongs to an Accounts preview; preserve legacy target rf1086_preview",
+    "public.authority_permissions": "obligation = 'aarsregnskap'",
+    "public.authority_test_runs": "obligation = 'aarsregnskap'"
+  },
+  "catalog": "entry/database-catalog.json",
+  "catalogScope": "six tables: exact columns/defaults/constraints/policies/grants/indexes/triggers/inbound FKs; 37 referencing business function identities/owners/ACLs and definition hashes; private dump restores into accounts153_lifecycle_d060",
+  "entryPoints": [
+    "RR0002 payload and XML pure calls and fixed CLI dispatcher",
+    "annualAccountsPayloadFeedback / aarsregnskapIssues consumed by existing Annual aggregator",
+    "recordAnnualAccountsTt02Evidence raw JSON import (512KiB)",
+    "addFilingOverride / addFilingReviewComment / acknowledgeFilingReviewComment Accounts fallback",
+    "confirmAuthorityPermission / recordAuthorityTestEvidence Accounts branch",
+    "refreshAnnualReadinessSnapshots / queueDeadlineReminders remaining shared Accounts reads",
+    "six workspace list functions and current owner/obligation presentation",
+    "Archive five generic filing source reads plus begin/complete lifecycle",
+    "Python annual_accounts_test.run prepare, resume and person-signing/receipt polling"
+  ],
+  "preserve": [
+    "Frozen original TT02 fixture bytes and current RR0002 schema/field/output/error order.",
+    "Pending import classification is not authority acceptance.",
+    "Current auth/MFA/Audit continuation order; legacy review target label remains rf1086_preview.",
+    "Corporate Governance/Document facts and signed-artifact readiness remain dependency-owned; no new document or ledger writer.",
+    "Annual common aggregation, annual_data and filing_readiness_snapshots remain #149-owned.",
+    "Older holding_core annual simulation/validation is an existing distinct offline model and preserved at entry; no silent substitution of RR0002 runtime semantics. Inventory review must confirm its boundary disposition before exit.",
+    "RF and Tax owned contracts/data stay unchanged; missing source reads fail closed.",
+    "Exact sixteen approved Annual mixed scopes retire as their last Accounts source moves. Adjacent eight Audit/two Notification continuation effects stay in place.",
+    "Archived schema evidence is historical, no current provider acceptance or production activation claimed."
+  ],
+  "rollback": {
+    "asset": "entry/database-catalog.json#rollbackAsset",
+    "plan": "Expand inert owned schema/contracts, exact count/hash reconciliation, cut over a single writer, contract only after protocol rehearsal, then rehearse contract-only rollback/full latest-state restoration and re-cutover. Unknown/unclassified source rows cannot be silently assigned or dropped."
+  },
+  "sourceHandoff": "Publish immutable company/year/obligation readiness and positively covered Talli-recorded history, source version/digest/time/attribution, terminal/unknown outcomes, corrections and source-owned incidents. Absent/incomplete source stays unavailable; Billing alone owns classification/refund policy. Existing disabled production remains decisive until separately approved source-backed activation."
+}

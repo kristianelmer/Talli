@@ -1,0 +1,902 @@
+[
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `shareholder_register_filing.production_feedback_artifacts` has a row level security policy `rf151_documents_reference_read` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "production_feedback_artifacts",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "auth_rls_init_plan_shareholder_register_filing_production_feedback_artifacts_rf151_documents_reference_read"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `company_tax_filing.filing_submissions` has a row level security policy `tax152_documents_reference_read` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "filing_submissions",
+      "type": "table",
+      "schema": "company_tax_filing"
+    },
+    "cache_key": "auth_rls_init_plan_company_tax_filing_filing_submissions_tax152_documents_reference_read"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `corporate_governance.annual_close_events` has a row level security policy `governance_owner_creates_annual_close_events` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "annual_close_events",
+      "type": "table",
+      "schema": "corporate_governance"
+    },
+    "cache_key": "auth_rls_init_plan_corporate_governance_annual_close_events_governance_owner_creates_annual_close_events"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `corporate_governance.annual_close_artifacts` has a row level security policy `governance_owner_creates_annual_close_artifacts` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "annual_close_artifacts",
+      "type": "table",
+      "schema": "corporate_governance"
+    },
+    "cache_key": "auth_rls_init_plan_corporate_governance_annual_close_artifacts_governance_owner_creates_annual_close_artifacts"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `corporate_governance.annual_close_decisions` has a row level security policy `governance_owner_creates_annual_close_decisions` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "annual_close_decisions",
+      "type": "table",
+      "schema": "corporate_governance"
+    },
+    "cache_key": "auth_rls_init_plan_corporate_governance_annual_close_decisions_governance_owner_creates_annual_close_decisions"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `corporate_governance.owner_dividend_decisions` has a row level security policy `governance_owner_creates_decisions` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "owner_dividend_decisions",
+      "type": "table",
+      "schema": "corporate_governance"
+    },
+    "cache_key": "auth_rls_init_plan_corporate_governance_owner_dividend_decisions_governance_owner_creates_decisions"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `corporate_governance.annual_close_finalizations` has a row level security policy `governance_owner_creates_annual_close_finalizations` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "annual_close_finalizations",
+      "type": "table",
+      "schema": "corporate_governance"
+    },
+    "cache_key": "auth_rls_init_plan_corporate_governance_annual_close_finalizations_governance_owner_creates_annual_close_finalizations"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `corporate_governance.owner_dividend_finalizations` has a row level security policy `governance_owner_creates_finalizations` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "owner_dividend_finalizations",
+      "type": "table",
+      "schema": "corporate_governance"
+    },
+    "cache_key": "auth_rls_init_plan_corporate_governance_owner_dividend_finalizations_governance_owner_creates_finalizations"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `corporate_governance.owner_dividend_events` has a row level security policy `governance_owner_creates_events` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "owner_dividend_events",
+      "type": "table",
+      "schema": "corporate_governance"
+    },
+    "cache_key": "auth_rls_init_plan_corporate_governance_owner_dividend_events_governance_owner_creates_events"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `corporate_governance.owner_dividend_artifacts` has a row level security policy `governance_owner_creates_artifacts` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "owner_dividend_artifacts",
+      "type": "table",
+      "schema": "corporate_governance"
+    },
+    "cache_key": "auth_rls_init_plan_corporate_governance_owner_dividend_artifacts_governance_owner_creates_artifacts"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `corporate_governance.supported_events` has a row level security policy `governance_owner_creates_supported_events` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "supported_events",
+      "type": "table",
+      "schema": "corporate_governance"
+    },
+    "cache_key": "auth_rls_init_plan_corporate_governance_supported_events_governance_owner_creates_supported_events"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `corporate_governance.owner_dividend_payments` has a row level security policy `governance_owner_creates_payments` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "owner_dividend_payments",
+      "type": "table",
+      "schema": "corporate_governance"
+    },
+    "cache_key": "auth_rls_init_plan_corporate_governance_owner_dividend_payments_governance_owner_creates_payments"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `corporate_governance.shareholder_loans` has a row level security policy `governance_owner_creates_shareholder_loans` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "shareholder_loans",
+      "type": "table",
+      "schema": "corporate_governance"
+    },
+    "cache_key": "auth_rls_init_plan_corporate_governance_shareholder_loans_governance_owner_creates_shareholder_loans"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `shareholder_register_filing.filing_submissions` has a row level security policy `rf151_documents_reference_read` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "filing_submissions",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "auth_rls_init_plan_shareholder_register_filing_filing_submissions_rf151_documents_reference_read"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `public.documents` has a row level security policy `documents_tax_binding_lock` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "documents",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "auth_rls_init_plan_public_documents_documents_tax_binding_lock"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `public.documents` has a row level security policy `documents_tax_binding_read` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "documents",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "auth_rls_init_plan_public_documents_documents_tax_binding_read"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `billing.production_pilot_entitlements` has a row level security policy `billing_rf_pilot_owner_lock` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "production_pilot_entitlements",
+      "type": "table",
+      "schema": "billing"
+    },
+    "cache_key": "auth_rls_init_plan_billing_production_pilot_entitlements_billing_rf_pilot_owner_lock"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `billing.production_pilot_entitlements` has a row level security policy `billing_rf_pilot_owner_read` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "production_pilot_entitlements",
+      "type": "table",
+      "schema": "billing"
+    },
+    "cache_key": "auth_rls_init_plan_billing_production_pilot_entitlements_billing_rf_pilot_owner_read"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `public.notification_outbox` has a row level security policy `company access recovery creates own delivery evidence` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "notification_outbox",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "auth_rls_init_plan_public_notification_outbox_company access recovery creates own delivery evidence"
+  },
+  {
+    "name": "auth_rls_initplan",
+    "title": "Auth RLS Initialization Plan",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if calls to `current_setting()` and `auth.<function>()` in RLS policies are being unnecessarily re-evaluated for each row",
+    "detail": "Table `annual_accounts_filing.filing_submissions` has a row level security policy `accounts153_document_reference_read` that re-evaluates current_setting() or auth.<function>() for each row. This produces suboptimal query performance at scale. Resolve the issue by replacing `auth.<function>()` with `(select auth.<function>())`. See [docs](https://supabase.com/docs/guides/database/postgres/row-level-security#call-functions-with-select) for more info.",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0003_auth_rls_initplan",
+    "metadata": {
+      "name": "filing_submissions",
+      "type": "table",
+      "schema": "annual_accounts_filing"
+    },
+    "cache_key": "auth_rls_init_plan_annual_accounts_filing_filing_submissions_accounts153_document_reference_read"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `annual_accounts_filing.authority_permissions` has multiple permissive policies for role `annual_accounts_filing_store_owner` for action `SELECT`. Policies include `{accounts153_support_read,annual_accounts_member_read}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "authority_permissions",
+      "type": "table",
+      "schema": "annual_accounts_filing"
+    },
+    "cache_key": "multiple_permissive_policies_annual_accounts_filing_authority_permissions_annual_accounts_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `annual_accounts_filing.authority_test_runs` has multiple permissive policies for role `annual_accounts_filing_store_owner` for action `SELECT`. Policies include `{accounts153_support_read,annual_accounts_member_read}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "authority_test_runs",
+      "type": "table",
+      "schema": "annual_accounts_filing"
+    },
+    "cache_key": "multiple_permissive_policies_annual_accounts_filing_authority_test_runs_annual_accounts_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `annual_accounts_filing.filing_submissions` has multiple permissive policies for role `annual_accounts_filing_store_owner` for action `SELECT`. Policies include `{accounts153_document_reference_read,accounts153_support_read,annual_accounts_member_read}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "filing_submissions",
+      "type": "table",
+      "schema": "annual_accounts_filing"
+    },
+    "cache_key": "multiple_permissive_policies_annual_accounts_filing_filing_submissions_annual_accounts_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `authority_connections.authority_operations` has multiple permissive policies for role `authority_connections_store_owner` for action `SELECT`. Policies include `{authority_operations_admin_read,authority_operations_callback_read}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "authority_operations",
+      "type": "table",
+      "schema": "authority_connections"
+    },
+    "cache_key": "multiple_permissive_policies_authority_connections_authority_operations_authority_connections_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `authority_connections.system_user_requests` has multiple permissive policies for role `authority_connections_store_owner` for action `SELECT`. Policies include `{authority_requests_admin_projection_read,authority_requests_owner_read,authority_requests_owner_write,authority_requests_support_projection_read}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "system_user_requests",
+      "type": "table",
+      "schema": "authority_connections"
+    },
+    "cache_key": "multiple_permissive_policies_authority_connections_system_user_requests_authority_connections_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `authority_connections.system_user_requests` has multiple permissive policies for role `authority_connections_store_owner` for action `UPDATE`. Policies include `{authority_requests_admin_projection_lock,authority_requests_owner_write}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "system_user_requests",
+      "type": "table",
+      "schema": "authority_connections"
+    },
+    "cache_key": "multiple_permissive_policies_authority_connections_system_user_requests_authority_connections_store_owner_UPDATE"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `billing.production_pilot_entitlements` has multiple permissive policies for role `billing_store_owner` for action `SELECT`. Policies include `{billing_pilot_entitlements_backend_admin_write,billing_rf_pilot_owner_read}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "production_pilot_entitlements",
+      "type": "table",
+      "schema": "billing"
+    },
+    "cache_key": "multiple_permissive_policies_billing_production_pilot_entitlements_billing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `billing.production_pilot_entitlements` has multiple permissive policies for role `billing_store_owner` for action `UPDATE`. Policies include `{billing_pilot_entitlements_backend_admin_write,billing_rf_pilot_owner_lock}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "production_pilot_entitlements",
+      "type": "table",
+      "schema": "billing"
+    },
+    "cache_key": "multiple_permissive_policies_billing_production_pilot_entitlements_billing_store_owner_UPDATE"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `company_tax_filing.filing_submissions` has multiple permissive policies for role `company_tax_filing_store_owner` for action `SELECT`. Policies include `{tax152_documents_reference_read,tax_return_member_read}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "filing_submissions",
+      "type": "table",
+      "schema": "company_tax_filing"
+    },
+    "cache_key": "multiple_permissive_policies_company_tax_filing_filing_submissions_company_tax_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `public.audit_events` has multiple permissive policies for role `investments_store_owner` for action `INSERT`. Policies include `{\"investments append audit\",investments_supported_patterns_overlap_audit_insert}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "audit_events",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "multiple_permissive_policies_public_audit_events_investments_store_owner_INSERT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `public.company_memberships` has multiple permissive policies for role `authenticated` for action `INSERT`. Policies include `{\"company creator can add owner membership\",\"invited users can accept company memberships\",\"owners can invite company members\"}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "company_memberships",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "multiple_permissive_policies_public_company_memberships_authenticated_INSERT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `public.company_memberships` has multiple permissive policies for role `company_access_executor` for action `INSERT`. Policies include `{\"company access commands accept memberships\",\"company access onboarding creates owner membership\"}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "company_memberships",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "multiple_permissive_policies_public_company_memberships_company_access_executor_INSERT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `public.documents` has multiple permissive policies for role `company_access_executor` for action `SELECT`. Policies include `{\"company access lifecycle reads documents\",support_case_read_documents}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "documents",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "multiple_permissive_policies_public_documents_company_access_executor_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `public.documents` has multiple permissive policies for role `documents_store_owner` for action `SELECT`. Policies include `{documents_store_reads_visible_documents,documents_tax_binding_read}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "documents",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "multiple_permissive_policies_public_documents_documents_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `public.documents` has multiple permissive policies for role `documents_store_owner` for action `UPDATE`. Policies include `{documents_store_updates_owner_documents,documents_tax_binding_lock}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "documents",
+      "type": "table",
+      "schema": "public"
+    },
+    "cache_key": "multiple_permissive_policies_public_documents_documents_store_owner_UPDATE"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.authority_permissions` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `SELECT`. Policies include `{rf151_member_read,rf151_owner_write,rf151_support_read}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "authority_permissions",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_authority_permissions_shareholder_register_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.authority_test_runs` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `SELECT`. Policies include `{rf151_member_read,rf151_owner_write,rf151_support_read}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "authority_test_runs",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_authority_test_runs_shareholder_register_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.filing_approval_snapshots` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `SELECT`. Policies include `{rf151_function_owner,rf151_support_read}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "filing_approval_snapshots",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_filing_approval_snapshots_shareholder_register_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.filing_overrides` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `SELECT`. Policies include `{rf151_member_read,rf151_owner_write}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "filing_overrides",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_filing_overrides_shareholder_register_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.filing_previews` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `SELECT`. Policies include `{rf151_member_read,rf151_owner_write}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "filing_previews",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_filing_previews_shareholder_register_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.filing_review_comments` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `DELETE`. Policies include `{rf151_owner_write,rf151_review_write}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "filing_review_comments",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_filing_review_comments_shareholder_register_filing_store_owner_DELETE"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.filing_review_comments` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `INSERT`. Policies include `{rf151_owner_write,rf151_review_write}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "filing_review_comments",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_filing_review_comments_shareholder_register_filing_store_owner_INSERT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.filing_review_comments` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `SELECT`. Policies include `{rf151_member_read,rf151_owner_write,rf151_review_write}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "filing_review_comments",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_filing_review_comments_shareholder_register_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.filing_review_comments` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `UPDATE`. Policies include `{rf151_owner_write,rf151_review_write}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "filing_review_comments",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_filing_review_comments_shareholder_register_filing_store_owner_UPDATE"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.filing_submissions` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `SELECT`. Policies include `{rf151_documents_reference_read,rf151_member_read,rf151_owner_write}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "filing_submissions",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_filing_submissions_shareholder_register_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.opening_balance_setups` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `SELECT`. Policies include `{rf151_member_read,rf151_owner_write}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "opening_balance_setups",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_opening_balance_setups_shareholder_register_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.opening_shareholders` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `SELECT`. Policies include `{rf151_member_read,rf151_owner_write}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "opening_shareholders",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_opening_shareholders_shareholder_register_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.production_feedback_artifacts` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `SELECT`. Policies include `{rf151_documents_reference_read,rf151_function_owner,rf151_support_read}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "production_feedback_artifacts",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_production_feedback_artifacts_shareholder_register_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.production_filing_events` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `SELECT`. Policies include `{rf151_function_owner,rf151_support_read}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "production_filing_events",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_production_filing_events_shareholder_register_filing_store_owner_SELECT"
+  },
+  {
+    "name": "multiple_permissive_policies",
+    "title": "Multiple Permissive Policies",
+    "level": "WARN",
+    "facing": "EXTERNAL",
+    "categories": [
+      "PERFORMANCE"
+    ],
+    "description": "Detects if multiple permissive row level security policies are present on a table for the same `role` and `action` (e.g. insert). Multiple permissive policies are suboptimal for performance as each policy must be executed for every relevant query.",
+    "detail": "Table `shareholder_register_filing.production_filing_submissions` has multiple permissive policies for role `shareholder_register_filing_store_owner` for action `SELECT`. Policies include `{rf151_function_owner,rf151_support_read}`",
+    "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0006_multiple_permissive_policies",
+    "metadata": {
+      "name": "production_filing_submissions",
+      "type": "table",
+      "schema": "shareholder_register_filing"
+    },
+    "cache_key": "multiple_permissive_policies_shareholder_register_filing_production_filing_submissions_shareholder_register_filing_store_owner_SELECT"
+  }
+]

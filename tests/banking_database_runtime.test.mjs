@@ -596,6 +596,6 @@ test("banking authority survives reconciliation, contract, rollback, security, a
       from banking.connections connection where connection.id = '${connectionId}';
     `), "REVOKED:t:4:3:2");
   } finally {
-    docker(["rm", "-f", containerName]);
+    docker(["rm", "-f", "--volumes", containerName]);
   }
 });

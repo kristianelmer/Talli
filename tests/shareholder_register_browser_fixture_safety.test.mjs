@@ -112,7 +112,7 @@ test("ambiguous fresh mock response records the original mutation before disconn
 test("fresh RF browser uses finite fixture authority while preserving foreign keys and signoff storage", () => {
   const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
   assert.doesNotMatch(source, /session_replication_role|no force row level security|disable trigger/iu);
-  assert.match(source, /return fixtureTableTransaction\(database, RF_FIXTURE_RELATIONS, operation\)/u);
+  assert.match(source, /return fixtureTableTransaction\(database, \[\.\.\.RF_FIXTURE_RELATIONS, \.\.\.await rfPublicProjectionRelations\(database\)\], operation\)/u);
   assert.match(source, /await deleteRfFixtureCompanies\(database, companyIds\)/u);
   assert.doesNotMatch(source, /backend_system\.launch_signoffs/u);
   const cleanup = source.slice(source.indexOf("async function cleanupFixture("), source.indexOf("async function login("));
@@ -148,14 +148,14 @@ test("fresh RF basis binds every opening row to its existing owner without seedi
   assert.doesNotMatch(writes.map(({ statement }) => statement).join("\n"), /insert into [^\n]*(?:filing_previews|filing_approval_snapshots|production_filing|production_feedback)/u);
 });
 
-for (const failCleanup of [false, true]) test(`fresh RF cleanup removes scoped public mirrors before openings (${failCleanup ? "failure preserved" : "success"})`, async () => {
+for (const retired of [false, true]) for (const failCleanup of [false, true]) test(`fresh RF cleanup handles ${retired ? "retired" : "present"} public mirrors (${failCleanup ? "failure preserved" : "success"})`, async () => {
   const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
   const cleanup = source.slice(source.indexOf("async function cleanupFixture("), source.indexOf("async function login("));
   const constants = source.slice(source.indexOf("const RF_TABLES ="), source.indexOf("async function rfFixtureTransaction("));
   const company = "10000000-0000-4000-8000-000000000001";
   const otherCompany = "20000000-0000-4000-8000-000000000002";
   const mirrors = ["filing_review_comments", "filing_overrides", "filing_submissions", "authority_test_runs", "authority_permissions", "filing_previews"].map(name => `public.${name}`);
-  const original = Object.fromEntries(mirrors.map(table => [table, [company, otherCompany]]));
+  const original = Object.fromEntries((retired ? [] : mirrors).map(table => [table, [company, otherCompany]]));
   let rows = structuredClone(original);
   const statements = [];
   let declared;
@@ -165,6 +165,7 @@ for (const failCleanup of [false, true]) test(`fresh RF cleanup removes scoped p
     statements.push(statement);
     const mirror = mirrors.find(table => statement.startsWith(`delete from ${table} `));
     if (mirror) {
+      assert.equal(retired, false, "retired public table must not be queried");
       assert.ok(declared.includes(mirror), `missing finite fixture authority for ${mirror}`);
       assert.ok(statement.endsWith("where company_id=any($1::uuid[])"));
       assert.deepEqual(parameters[0], [company]);
@@ -174,12 +175,14 @@ for (const failCleanup of [false, true]) test(`fresh RF cleanup removes scoped p
     if (statement.startsWith("delete from shareholder_register_filing.opening_balance_setups ")) {
       // Model the retained projection setup FKs: each selected mirror must
       // already be gone before its canonical parent can be removed.
-      assert.ok(mirrors.every(table => !rows[table].includes(company)), "retained public projection still references the RF opening");
+      assert.ok(retired || mirrors.every(table => !rows[table].includes(company)), "retained public projection still references the RF opening");
       reachedOpening = true;
     }
+    if (retired && failCleanup && statement.startsWith("delete from shareholder_register_filing.filing_submissions ")) throw failure;
     return { rows: [] };
   } };
   const cleanupFixture = vm.runInNewContext(`${constants}\n${cleanup}\ncleanupFixture`, {
+    rfPublicProjectionRelations: async client => { assert.equal(client, database); return retired ? [] : mirrors; },
     fixtureTableTransaction: async (client, relations, operation) => {
       assert.equal(client, database);
       declared = relations;
@@ -199,7 +202,8 @@ for (const failCleanup of [false, true]) test(`fresh RF cleanup removes scoped p
   } else {
     await cleanupFixture(database, [company], ["synthetic-user"]);
     assert.equal(reachedOpening, true);
-    for (const table of mirrors) {
+    if (retired) assert.ok(mirrors.every(table => !declared.includes(table)));
+    for (const table of retired ? [] : mirrors) {
       assert.deepEqual(rows[table], [otherCompany]);
       assert.ok(declared.includes(table));
       assert.ok(statements.findIndex(statement => statement.startsWith(`delete from ${table} `))

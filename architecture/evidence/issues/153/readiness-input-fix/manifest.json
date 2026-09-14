@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "status": "READINESS_INPUT_FIX_REVIEW_PENDING",
+  "baseRevision": "d36a6af7d4a8f3cff49b27f07e9570dd045fac72",
+  "fixedFinding": "STD-153-READINESS-1",
+  "artifacts": {
+    "apps/backend/src/talli_backend/main.py": "cf62cced32c5d9f319a2368fae37c37263feae221706e42990310d9a59f2ac9e",
+    "apps/backend/tests/test_annual_accounts_readiness_api.py": "4aa7da266639f3e513c934d1a1d5b8aaf59a256e7cd4ef08b3804a8c038ecda6",
+    "architecture/evidence/issues/153/readiness-input-fix/response-readiness-standards-review-d36a6af7.md": "e56baf4a2c55cadc22eb14c798883354edce6015d980ca0534589cfb414e8244",
+    "architecture/evidence/issues/153/readiness-input-fix/readiness-input-fix-tests.log": "8299652be859aca06c266062f3c822fe648d5d7cb041c9993e50eab88bf16c47",
+    "architecture/evidence/issues/153/readiness-input-fix/response-readiness-spec-review-d36a6af7.md": "ed20ecde0914fb1c0e0f9d4fd37c1de30fc519f248523c1049cc5fe8f1afb099",
+    "architecture/evidence/issues/153/readiness-input-fix/verification.md": "29370440287b571dd4be7de706eabfaf7bcba622e2909092a425db5b5b97aaf9",
+    "architecture/evidence/issues/153/readiness-input-fix/read-controls-spec-review-af5c6523.md": "428b74ee6a6e24104fdd3069a2ca4fc34cdd05033306511abd4733c1ce831b83",
+    "architecture/evidence/issues/153/readiness-input-fix/read-controls-spec-review-af5c6523.json": "7cd2009d78bda01fffae1b7e47e1118352b6d174c6447211208f8f25223cde3d",
+    "architecture/evidence/issues/153/readiness-input-fix/response-readiness-standards-review-d36a6af7.json": "48f3e0dde80dfb06659dcfa169e9300d27891a3a5f6ac9978f086bbd0440566a",
+    "architecture/evidence/issues/153/readiness-input-fix/response-readiness-spec-review-d36a6af7.json": "c2bd7a8adcb491fff1abd400e591b8c58269f7043f94406846c8eddc0c9a9509"
+  }
+}

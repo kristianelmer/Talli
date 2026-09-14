@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#153",
+  "baseRevision": "006469373fc79f16c20dfec75bbc0d3ecd51ff6c",
+  "status": "MODEL_PASS_REAL_RUNTIME_AND_REVIEW_PENDING",
+  "artifacts": [
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/rf-projection-fixture-combined.log",
+      "sha256": "66d9abde6ce65fb01063fbf4d7251f5b97cc627bb1791e5deda4033aeabfaf65",
+      "bytes": 5097
+    },
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/rf-projection-fixture-green.log",
+      "sha256": "22e7ed09785b8c8f851782fe9e07932f92f036b384cbd5cdc78be47eb0e0a06a",
+      "bytes": 1730
+    },
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/rf-projection-fixture-red.log",
+      "sha256": "1d11328879a202b97c22cd140be41ecef3e70761ce63c157e9dd966fcffec2d8",
+      "bytes": 4874
+    },
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-bindings-00646937.json",
+      "sha256": "9ced4ac684d2c5d26771efc9faab5fe212234705d7f873650802955560ae45a1",
+      "bytes": 11028
+    },
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-probe-00646937.json",
+      "sha256": "b2e2c761485262c8125876519c3394a8ca5cd7564b88fd90d3cb7192211905bf",
+      "bytes": 1452
+    },
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-probe-00646937.py",
+      "sha256": "562ea20a3cae64c7614c72996acb81f587a9a52e67fcee8afdaa03854db1501a",
+      "bytes": 3368
+    },
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-review-00646937.json",
+      "sha256": "d020d222153c8ee2c5bc4c536a4985301f227dfa4d25f2cd4ca8e3660954c47e",
+      "bytes": 15929
+    },
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/role-creation-spec-review-00646937.md",
+      "sha256": "950c3dcf5055d8a2252b0ae8adec24164e4b0c2dafd9d74d724eee678b256995",
+      "bytes": 2362
+    },
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-artifact-checks-00646937.json",
+      "sha256": "d7f766b57c87397641b7b4f4af7c5e137800239df0d094d194b07d170dca6d6b",
+      "bytes": 12026
+    },
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-oracle-probe-00646937.py",
+      "sha256": "6b6ca5b77466629f3163f0eb22171244d0d8c0953ad2ebf21ea7b3274bacec0b",
+      "bytes": 3799
+    },
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-oracle-results-00646937.json",
+      "sha256": "9b529325e394c08e21ee7f49e90934c62893262be2406186f7efb8788471fb54",
+      "bytes": 3076
+    },
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-review-00646937.json",
+      "sha256": "dcbfb9df7817f493a300ca11d2546a7ac0adbaae19759119bfad3d075af22da8",
+      "bytes": 6236
+    },
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-review-00646937.md",
+      "sha256": "91b234f0d7287188c28e863f8ec3aae41c2bf1efde3083a3a95bd758e3c34f6b",
+      "bytes": 2432
+    },
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/role-creation-standards-workspace-00646937.json",
+      "sha256": "c1ca3873f3382b5e5cb6b6673f89bf42a6c3770d1d2ee2a4339357950c7e8df8",
+      "bytes": 218
+    },
+    {
+      "path": "architecture/evidence/issues/153/rf-projection-fixture/verification.md",
+      "sha256": "414ebad38f644ab47953b2ac804f3dde80a761da39ed304d19fc86db3daa1584",
+      "bytes": 2153
+    },
+    {
+      "path": "architecture/evidence/customer-ready-gates/006469373fc79f16c20dfec75bbc0d3ecd51ff6c.log",
+      "sha256": "d4805e7250abb7228adcba912a58c8cd9fe6f4e6632f604bd810f676f02f8b07",
+      "bytes": 311652
+    }
+  ]
+}

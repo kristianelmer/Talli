@@ -1,0 +1,300 @@
+{
+  "axis": "Standards",
+  "verdict": "PASS_FIRST_COMPLETE_GATE_ONLY",
+  "testedRevision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+  "storageRevision": "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6",
+  "evidencePath": "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.json",
+  "evidenceDigest": "sha256:3229c1b2f25f743db2f0523346349c5c414c5492fb7a107d95683c0edbcfef62",
+  "evidenceRawDigest": "sha256:f809a0546ce25369638ac0a032d71b6db74216b9424deea2cb023ad8cfa20f28",
+  "transcriptDigest": "sha256:d50809fc01ac6f1999a1d2c306aaf871e9a25fb67467dc2d8b7dd06b9575dbe3",
+  "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+  "startedAt": "2026-09-14T20:46:44.947Z",
+  "executedAt": "2026-09-14T21:08:46.575Z",
+  "previousPassingRevision": null,
+  "findings": [],
+  "independentVerification": {
+    "status": "PASS_FIRST_COMPLETE_GATE_AND_EVIDENCE_ADOPTION",
+    "testedRevision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+    "storageRevision": "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6",
+    "evidencePath": "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.json",
+    "evidenceRawSha256": "f809a0546ce25369638ac0a032d71b6db74216b9424deea2cb023ad8cfa20f28",
+    "canonicalDigest": "3229c1b2f25f743db2f0523346349c5c414c5492fb7a107d95683c0edbcfef62",
+    "transcriptDigest": "d50809fc01ac6f1999a1d2c306aaf871e9a25fb67467dc2d8b7dd06b9575dbe3",
+    "producerDigest": "0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+    "schemaValid": true,
+    "producerCommandAstMatches": true,
+    "checkCount": 11,
+    "startedAt": "2026-09-14T20:46:44.947Z",
+    "executedAt": "2026-09-14T21:08:46.575Z",
+    "previousPassingRevision": null,
+    "orderedRuntimePhases": [
+      {
+        "phase": "test:ledger-database-lifecycle",
+        "line": 3131
+      },
+      {
+        "phase": "test:banking-database-lifecycle",
+        "line": 3213
+      },
+      {
+        "phase": "test:investments-database-lifecycle",
+        "line": 3246
+      },
+      {
+        "phase": "test:documents-database-lifecycle",
+        "line": 3291
+      },
+      {
+        "phase": "test:marketing-measurement-database",
+        "line": 3306
+      },
+      {
+        "phase": "test:validation-observation",
+        "line": 3320
+      },
+      {
+        "phase": "test:supabase-predecessor",
+        "line": 3335
+      },
+      {
+        "phase": "test:supabase-rf-workspace",
+        "line": 3403
+      },
+      {
+        "phase": "test:browser-owner",
+        "line": 3416
+      },
+      {
+        "phase": "test:ledger-hosted-migration-authority",
+        "line": 3458
+      },
+      {
+        "phase": "test:corporate-governance-database-lifecycle",
+        "line": 3471
+      },
+      {
+        "phase": "test:billing-database-lifecycle",
+        "line": 3517
+      },
+      {
+        "phase": "test:authority-connections-database",
+        "line": 3542
+      },
+      {
+        "phase": "test:company-tax-database",
+        "line": 3549
+      },
+      {
+        "phase": "test:annual-accounts-database",
+        "line": 3563
+      },
+      {
+        "phase": "test:browser-owner-annual",
+        "line": 3575
+      },
+      {
+        "phase": "test:supabase-rf-feedback",
+        "line": 3588
+      },
+      {
+        "phase": "test:browser-authority-connections",
+        "line": 3613
+      },
+      {
+        "phase": "test:browser-shareholder-register-filing",
+        "line": 3636
+      },
+      {
+        "phase": "test:browser-company-tax",
+        "line": 3662
+      },
+      {
+        "phase": "test:browser-annual-accounts",
+        "line": 3676
+      }
+    ],
+    "requiredFinalLaneResults": {
+      "test:browser-owner-annual": {
+        "passed": 1,
+        "skipped": 0
+      },
+      "test:supabase-rf-feedback": {
+        "passed": 13,
+        "skipped": 0
+      },
+      "test:browser-authority-connections": {
+        "passed": 11,
+        "skipped": 0
+      },
+      "test:browser-shareholder-register-filing": {
+        "passed": 14,
+        "skipped": 0
+      },
+      "test:browser-company-tax": {
+        "passed": 2,
+        "skipped": 0
+      },
+      "test:browser-annual-accounts": {
+        "passed": 1,
+        "skipped": 0
+      }
+    },
+    "accountsSqlCases": 41,
+    "billingSqlCases": 699,
+    "backendPassed": 5831,
+    "backendSkipped": 2,
+    "validationObservationSkipped": 1,
+    "advisors": {
+      "blocking": 0,
+      "earlyWarnings": 60,
+      "finalWarnings": 53
+    },
+    "manifestArtifacts": 17,
+    "adoptionEvidenceOnly": true,
+    "testedSourceBindings": {
+      "scripts/run-customer-ready-gate.mjs": "0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "architecture/customer-ready-gate-evidence.schema.json": "b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+      "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+      "scripts/rehearse-accounts-topology.mjs": "39e78f93e1b39bbe7cf58b2741c1bdff8c4bcff98166e48dc08a4c68a91efd9b",
+      "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "c077cd74f6b98f52c264d5f10050fb0e4c11e783250f70e545d657ee6ea564c2",
+      "tests/browser_annual_accounts_filing.mjs": "06e5735299c9bdba7c7fffb83df781ff7617c23979a54fd13a536646baf84be0",
+      "tests/support/tax-browser-fixture.mjs": "84b2fe6420190772cf9d121c1320aaf8c9961fa553e6dbf799e3eedae7836704",
+      "scripts/check-clean-worktree.sh": "81b79c93e44af4a535198a94fe7304f2891a3dd094b426bb9773fba9542d45dc"
+    },
+    "changedPaths": [
+      "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.json",
+      "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.log",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-bindings-2fc8ec93.json",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-review-2fc8ec93.json",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-review-2fc8ec93.md",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-artifact-checks-2fc8ec93.json",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-harness-diff-2fc8ec93.txt",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-models-2fc8ec93.log",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-review-2fc8ec93.json",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-review-2fc8ec93.md",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-workspace-2fc8ec93.json",
+      "architecture/evidence/issues/153/exit-gates-first/first-exit-gate-2fc8ec93-accounts-runtime.json",
+      "architecture/evidence/issues/153/exit-gates-first/first-exit-gate-2fc8ec93-verified.json",
+      "architecture/evidence/issues/153/exit-gates-first/manifest.json",
+      "architecture/evidence/issues/153/exit-gates-first/production-freeze-2fc8-gate.json",
+      "architecture/evidence/issues/153/exit-gates-first/verification.md",
+      "architecture/evidence/issues/153/exit-gates-first/verify-accounts-runtime-gate.py",
+      "architecture/evidence/issues/153/exit-gates-first/verify-exit-gates.py"
+    ],
+    "limits": [
+      "Receipt verification only; no runtime rerun",
+      "First gate only; second/pair/integration pending"
+    ]
+  },
+  "adoptionVerification": {
+    "byteExactPrivateAdoptions": [
+      {
+        "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-spec-bindings-2fc8ec93.json",
+        "sha256": "19909bb6cd0d64eeab62f24dd6e8ee5951674482d22e41545b5ab82deb680d03"
+      },
+      {
+        "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-spec-review-2fc8ec93.json",
+        "sha256": "4635ad6f05fd9b7c28c79c2f1e3d3cfd9436d4b510b70e18766a8ccb04a2c03c"
+      },
+      {
+        "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-spec-review-2fc8ec93.md",
+        "sha256": "01315fb6b514643a363ac2ddf7550134384b69377cfd60176af19ebdcb2fc784"
+      },
+      {
+        "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-standards-artifact-checks-2fc8ec93.json",
+        "sha256": "1c5e0af77fe60dda1ac32858e2fb5ce99c2dbe41aec78ecffe52eb3b13119eb1"
+      },
+      {
+        "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-standards-harness-diff-2fc8ec93.txt",
+        "sha256": "b9047d7c5364605dced21d67f551779059fcf70854fd5b25d887726336f7d51e"
+      },
+      {
+        "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-standards-models-2fc8ec93.log",
+        "sha256": "dac7d39c4c7408ecf66d5a7249cac3bdf88647a484f173b38f093d3a0c971cb6"
+      },
+      {
+        "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-standards-review-2fc8ec93.json",
+        "sha256": "b07ea9e7d48b900c6430532eda577f65903499269a0ab4c7d773c36e68c813a8"
+      },
+      {
+        "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-standards-review-2fc8ec93.md",
+        "sha256": "10943b903d931c9326bcb563f8305a4175f186f97f927d43d8ca81016059a66d"
+      },
+      {
+        "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-standards-workspace-2fc8ec93.json",
+        "sha256": "b5752b37e2277eb24bd2c581c3991e7ca94bc210b1c06f2997b2bac288ce38fe"
+      },
+      {
+        "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/first-exit-gate-2fc8ec93-accounts-runtime.json",
+        "sha256": "779521ed26881f5743afdcb21c935f068773e01a887628a412757a2bd416ca1f"
+      },
+      {
+        "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/first-exit-gate-2fc8ec93-verified.json",
+        "sha256": "699b0972ff7e58abbebd0813abe5ec565956d721530c040bcb8db8a66e0015fa"
+      },
+      {
+        "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/production-freeze-2fc8-gate.json",
+        "sha256": "4c726895d79d53d1e9168699faef12e0bf7ca169d836244b5c788f28d88da471"
+      },
+      {
+        "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/verify-accounts-runtime-gate.py",
+        "sha256": "6d07e7004718ed00f6f7e4cdefd1a59361805c40405e2b376da944a934dfafbb"
+      }
+    ],
+    "rawUnifiedDiff": {
+      "path": "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-harness-diff-2fc8ec93.txt",
+      "sha256": "b9047d7c5364605dced21d67f551779059fcf70854fd5b25d887726336f7d51e",
+      "contextBlankLineNumbers": [
+        19,
+        26,
+        35,
+        44,
+        48,
+        53,
+        89,
+        98,
+        106
+      ],
+      "reason": "A unified diff encodes unchanged blank context with one leading space; preserve original bytes.",
+      "genericPatchWhitespaceCheckExit": 2,
+      "notSourceWhitespace": true,
+      "currentGateCheck": "git diff HEAD --check checks working changes; already committed evidence does not create this failure."
+    },
+    "unchangedControls": {
+      "architecture/compatibility.json": "e06ddbbc974bbaa7f418eced549bef1c02e3b29d4e12a6851ed503428aa83e10",
+      "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+      "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+      "scripts/check-clean-worktree.sh": "81b79c93e44af4a535198a94fe7304f2891a3dd094b426bb9773fba9542d45dc",
+      "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+      "package.json": "47b34c14544e0ee80570af051555d1f87e8633576fcef98e74cb9208b2ec9339"
+    }
+  },
+  "standardsBindings": {
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/COMPATIBILITY.md": "7683810e3f0b816fcc166c428faba245060f91c86ae7e0750b39803730c57ab7",
+    "scripts/check-architecture.mjs": "03bd3acc876d2fe9c9ae77e538f8446f3478c3735e8540422655913d60d813d1",
+    "architecture/customer-ready-gate-evidence.schema.json": "b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced"
+  },
+  "privateArtifacts": {
+    "first-gate-standards-verifier-2fc8ec93.mjs": "11729441a68e40d385a8b0ddf8363947a838ad7fb6229262598f5eb61c7e2363",
+    "first-gate-standards-verifier-results-2fc8ec93.json": "a3e2436a8b1552e1b2fd4ad1f5e7a4536fe25f26c598871a6341d1650ecb7eb9",
+    "first-gate-standards-adoption-checks-2fc8ec93.json": "b7587914470bf0fe819729f3bf5136128f63b9871693198b4e7744291cac5f90",
+    "first-gate-standards-evidence-whitespace-2fc8ec93.log": "588a4f34f07781f45c0ac7027265a65ba7e4d7043f040ac562315dc950ac6d6f"
+  },
+  "verifierCommand": [
+    "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/first-gate-standards-verifier-2fc8ec93.mjs",
+    "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting"
+  ],
+  "verificationScope": "Immutable git-show sources and committed transcript, no rerun",
+  "verifierDevelopmentNotes": [
+    "Python jsonschema unavailable; actual repository Ajv2020 used without installation.",
+    "Initial whole-transcript uniqueness check encountered repeated earlier Investments invocation; corrected to validate ordered runtime phase uniqueness within database-isolation section. No product failure inferred."
+  ],
+  "reportSha256": "fbc7b0d050872734dc510b34f13f3f4fc994d6b809d3d8d003b827133989acfb",
+  "limits": [
+    "First complete gate only; no second receipt/pair certification",
+    "Synthetic local authority/browser fixtures; no genuine provider/production filing",
+    "Final metadata and protected integration remain pending"
+  ]
+}

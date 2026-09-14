@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Standards",
+  "verdict": "PASS_BOUNDED_TT02_EVIDENCE_PROJECTION",
+  "baseRevision": "e412ebcceba83399f26f283d879b67118bfe697a",
+  "candidateRevision": "57df4221ba8341ae2b7c5e9942eb946e2e557088",
+  "diffCommand": "git diff e412ebcceba83399f26f283d879b67118bfe697a...57df4221ba8341ae2b7c5e9942eb946e2e557088",
+  "findings": [],
+  "reportSha256": "62a8ee50882cc4f94c4d68a7f9dfde9f6dbf0a49ef9dd0d17d1468aabcacd7a6",
+  "changedArtifactBindings": {
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md": "8fc2b5f0831ba643845942ded79d7bfcc4932c527fb9050419331a1c9ffe9458",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/V8-LICENSE": "6ab33af8774a0f396ee3aeeb761e3229057682d6f9fa7f572e390c2cb3a6e509",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/date_parse.py": "a7b4cb590c607e0a246b6c44098861dd3171f800af22a521850f5598838a64b6",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/evidence.py": "a6be36e7b61699f5e91b463b9ba23dfdbfe6f1fd57d32d141060122dd1fdc69e",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json": "aa10d5afe0c3769dd5136e0e8e8f1e6b4986af0a6681381374de86516c6cdaee",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py": "5ed31725891678bbbe82b29af17c92fd4cf02d76c396cfed4b8a3be73f19aa9e",
+    "apps/backend/tests/test_annual_accounts_evidence.py": "5c931c47e57dce1c18599b05248559d6b45e954d3af8feaf3e36ab6ecd18a41f",
+    "architecture/evidence/issues/153/evidence-import/capture-date-parse.mjs": "2da921df81d83b246c63cf2c644e497b2146d2e96115efe1fb1e48b7b6bfe469",
+    "architecture/evidence/issues/153/evidence-import/capture-import-dates.mjs": "65afaf3df4923d7eaa8e4711429d36f937c8c6a5cc901232b993dd27cb2082b4",
+    "architecture/evidence/issues/153/evidence-import/date-parse-first-comparison.json": "c4a9bfec40a6aee5d4fc6c035e916dfbb6ecc9ea399efc1aa1c56ed75eebb404",
+    "architecture/evidence/issues/153/evidence-import/date-parse-second-comparison.json": "0f5452989c48982cde2a618cff601a40fdde98e69b2e0a6ce5e97e656e10acf3",
+    "architecture/evidence/issues/153/evidence-import/evidence-architecture.log": "2c610bb808ef428dfd5e850d2a906b846422542b8c6c297372a11a60256116f9",
+    "architecture/evidence/issues/153/evidence-import/evidence-first-tests.log": "ddb14e3eaf6853858fc78049bfd35f35935db17046bc8bdc186a46d4b13fcb5e",
+    "architecture/evidence/issues/153/evidence-import/evidence-second-tests.log": "479d26475389d96a617e29023ee30c17b1a8e97c17d0cc7db09138cad83cd7d5",
+    "architecture/evidence/issues/153/evidence-import/legacy-date-parse.json": "2d282f129fb996249eb79908ad53495623a1d41d6ced3f8aee1e193603e42dc4",
+    "architecture/evidence/issues/153/evidence-import/legacy-import-dates.json": "224402da9a7590157553e8dd1739e98fc1b7acc3c3c80405abe042a658422fb2",
+    "architecture/evidence/issues/153/evidence-import/manifest.json": "8c79c5ca966ce4dbea2e3400a63c11767fb5260687ec1cb3d0c724e351b037df",
+    "architecture/evidence/issues/153/evidence-import/offline-spec-review-e412ebcc.json": "c9f3c58cdb9ced94c10155cb65d869a0468c4f4a09b43dff4a5c805413ab6118",
+    "architecture/evidence/issues/153/evidence-import/offline-spec-review-e412ebcc.md": "c2a60b4f7729fcd86c8003edd4251884486af0b70ede7590a523cd62a834df3e",
+    "architecture/evidence/issues/153/evidence-import/offline-standards-review-e412ebcc.json": "01f64a6343fcbdd3ded2c118175a7df585761f1f472e8862c5efb3c63b5bf687",
+    "architecture/evidence/issues/153/evidence-import/offline-standards-review-e412ebcc.md": "b0f4dc8ce06cd80c1654239c2df5702b9987b897963c17c3d0f87fbb249bf032",
+    "architecture/evidence/issues/153/evidence-import/v8-reference-sources.json": "2689ba4e6e08c850d41fd825f9ff8b8677c9b673becc4ed1c1cc0621472d1be8",
+    "architecture/evidence/issues/153/evidence-import/verification.md": "95485fab3e5a7463e4ed9533226b61931bf71bc0d208bc6c75fee18e75e7b189"
+  },
+  "unchangedBindings": {
+    "architecture/compatibility.json": "66ee4c62b8a32443adf43d167bd3f5da4b7f1f387bd46f4a0f6ddbab5de8b556",
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+    "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+    "architecture/evidence/issues/153/characterization/manifest.json": "e6441fa44a449801ed7a58f817ac8397c38e3bbe571983f6a62049b02ecc43ee",
+    "architecture/evidence/issues/153/offline-profile/manifest.json": "e49659dd966b5f4f018117f02b8dc248279744bc76fbf2e3de4b4dd26c5da74e",
+    "apps/backend/pyproject.toml": "acef4faf616fa1678a922159955655d1f8a011b0fc05558e0a49a70220096b53",
+    "uv.lock": "f9511008745b497b8d8f6f0a296e53e9b209654cb5a8d4f939f9d06829df1c1f",
+    "apps/backend/uv.lock": "eb504b9620c33040797d3564a74437cce504928357d94acd5473acf5af28ce52"
+  },
+  "standardsBindings": {
+    "AGENTS.md": "c4530bac3939f37053438b48a3dad2ea6e99d04481480ef61bee71d3dc81d4af",
+    "CONTEXT.md": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9",
+    "docs/agents/domain.md": "0b66c33560f91373a7b268f3acf2c3d992e6a77cf5dc60acdc66efb4dc34a982",
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/COMPATIBILITY.md": "0aba38232b847b1b9843fdd9c04a34ce5cffe220951dd25fb4333e5c97d5c2dc"
+  },
+  "privateCheckBindings": {
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-standards-tests-57df4221.log": "531d85fb8a381cc6e8fd72272d6be9ffa1ad9c4020c52326ddc0e657bafe5712",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-standards-workspace-57df4221.json": "6f3ae7330397a1c03b18e9b43d3f390c89fa85a9905df687a27e40df3096c0e1",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-standards-capture-57df4221.log": "e8131e9b7113dbb0ba0bedbaf013886b4e129510531a8ee8189414d4b3bd3360",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-standards-capture-57df4221.json": "224402da9a7590157553e8dd1739e98fc1b7acc3c3c80405abe042a658422fb2",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-standards-fuzz-new-57df4221.json": "f6c9099c9ecb450226b730ef58b736caaedd0124e4b40ec02c604c9dca63dbfc",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-standards-fuzz-differences-57df4221.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-standards-fuzz-57df4221.py": "c4f7322e72dfa83f2e69b91f46db38b2e517d1b5db3f93eeeb95576cab8a27a3",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-standards-wheel-57df4221.log": "8d59d2dbbc9f06d9786c13498bac51cfa0966555dd2c9b14f37c2abbcb9a8886",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-standards-fuzz-57df4221.mjs": "ad001effc0718bb2323b8640280118ea17ddc7d9b7bd64c346d3eca56ecda955",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-standards-fuzz-inputs-57df4221.json": "d04bdb7904b2cce2146e32871712349cb694d317f2179199b2b2de3ab3e52298",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/evidence-standards-fuzz-old-57df4221.json": "1e49311f3165c435394176b1ab8ff612dbab4e8e3a14d5b77d41b3ea9cc1dea6"
+  },
+  "v8ReferenceBindings": {
+    "dateparser.h": {
+      "url": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/dateparser.h",
+      "sha256": "8c4dd28958ac3781d99c038f3fcc9ae70814c34377e314c4867642d5b3466665"
+    },
+    "dateparser-inl.h": {
+      "url": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/dateparser-inl.h",
+      "sha256": "f4d6751423c17f671f383aa4bfa9f8c8158a09fc28f7bc860c71edc2cb01fb73"
+    },
+    "dateparser.cc": {
+      "url": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/dateparser.cc",
+      "sha256": "64ae6bae3ba2438a8a9323a0a1010da285f51bcbab1e02adf753fbbdaffaf461"
+    },
+    "LICENSE": {
+      "url": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/LICENSE",
+      "sha256": "6ab33af8774a0f396ee3aeeb761e3229057682d6f9fa7f572e390c2cb3a6e509"
+    },
+    "date.h": {
+      "url": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/date.h",
+      "sha256": "dbf631fc2c2f2c26491b3123e0b27f2a6b98af5811edc2a576eff6bfb7b8b9a3"
+    },
+    "date.cc": {
+      "url": "https://raw.githubusercontent.com/nodejs/node/v24.20.0/deps/v8/src/date/date.cc",
+      "sha256": "5394ed9dc2e001dbf1ed0cc32382d1ba12c33c39e09e08cdc9e1253b16e2066a"
+    }
+  },
+  "wheel": {
+    "path": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-evidence-standards-64ar9ip6/apps/backend/dist/talli_backend-0.1.0-py3-none-any.whl",
+    "sha256": "d1fae73d0d35c973ec5a117afc078009ad67b5b07cc56b243940443f8f610c3f",
+    "builder": "hatchling1.27.0 from existing local read-only cache; no download",
+    "includedLicense": "talli_backend/modules/annual_accounts_filing/V8-LICENSE",
+    "licenseSha256": "6ab33af8774a0f396ee3aeeb761e3229057682d6f9fa7f572e390c2cb3a6e509"
+  },
+  "checks": {
+    "manifestReferenceCount": 29,
+    "privateReviewAdoptions": 4,
+    "v8ReferenceFiles": 6,
+    "publicExportsMatchManifest": true,
+    "pytestPassed": 2112,
+    "actualImporterDateCaptureByteIdentical": true,
+    "ordinaryDateInputs": 1804,
+    "timezoneBoundaryInputs": 4320,
+    "timezoneGroups": 6,
+    "additionalDifferentialInputs": 15955,
+    "additionalDifferences": 0
+  },
+  "commands": [
+    "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python -B -m pytest -q -p no:cacheprovider apps/backend/tests/test_annual_accounts_filing.py apps/backend/tests/test_annual_accounts_evidence.py",
+    "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node architecture/evidence/issues/153/evidence-import/capture-import-dates.mjs PRIVATE_OUTPUT",
+    "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python -B -c \"import hatchling.build; hatchling.build.build_wheel(\"dist\")\" (private apps/backend directory; cached build dependencies in task-local PYTHONPATH)",
+    "Pinned Node and Python execute bound evidence-standards-fuzz-57df4221.mjs/.py over bound inputs"
+  ],
+  "limits": [
+    "Private snapshot only; no shared source/DB/browser/provider operations.",
+    "Architecture evidence inspected, not rerun.",
+    "Additional differential parser check is bounded, not exhaustive.",
+    "No stage-exit acceptance."
+  ]
+}

@@ -1,0 +1,489 @@
+........................................................................ [ 26%]
+........................................................................ [ 53%]
+........................................................................ [ 79%]
+........................................FFFFFFFFFF...FF                  [100%]
+=================================== FAILURES ===================================
+_ AnnualAccountsOfflineMigrationTest.test_original_cli_json_text_exit_and_errors _
+
+self = <test_annual_accounts_offline_migration.AnnualAccountsOfflineMigrationTest testMethod=test_original_cli_json_text_exit_and_errors>
+
+    def test_original_cli_json_text_exit_and_errors(self):
+        captured = json.loads((EVIDENCE / 'pure-calculation/legacy-cli-characterization.json').read_text())
+        for case in captured['cases']:
+            with self.subTest(args=case['args']):
+                result = subprocess.run([sys.executable, '-m', 'holding_cli.main', *case['args']], cwd=ROOT,
+                    env={'PATH': str(Path(sys.executable).parent) + ':/usr/bin:/bin',
+                         'PYTHONPATH': str(ROOT) + ':' + str(ROOT/'apps/backend/src')},
+                    capture_output=True, text=True, check=False)
+>               self.assertEqual(result.returncode, case['exitCode'])
+E               AssertionError: 1 != 0
+
+tests/test_annual_accounts_offline_migration.py:33: AssertionError
+_ AnnualAccountsOfflineMigrationTest.test_original_offline_payload_readiness_and_simulation _
+
+self = <test_annual_accounts_offline_migration.AnnualAccountsOfflineMigrationTest testMethod=test_original_offline_payload_readiness_and_simulation>
+
+    def test_original_offline_payload_readiness_and_simulation(self):
+        captured = json.loads((EVIDENCE / 'characterization/legacy-offline-characterization.json').read_text())
+        for case in captured['cases']:
+            with self.subTest(case=case['id']):
+                source = AnnualData.model_validate(case['input'])
+>               actual = {'payload': build_annual_accounts_payload(source).model_dump(mode='json'),
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    'readiness': assess_annual_accounts_readiness(source).model_dump(mode='json'),
+                    'simulation': simulate_annual_accounts(source).model_dump(mode='json')}
+
+tests/test_annual_accounts_offline_migration.py:20: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+holding_core/annual.py:270: in build_annual_accounts_payload
+    return AnnualAccountsPayload.model_validate(_offline_json(build_annual_accounts_offline_payload(_accounts_offline_source(data))))
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:166: in build_annual_accounts_offline_payload
+    return _freeze(build_payload(source))
+                   ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:32: in build_payload
+    'attachment_decisions': _annual_accounts_attachment_decisions(data),
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: in _annual_accounts_attachment_decisions
+    if not any(decision.required for decision in decisions):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <list_iterator object at 0x1082e3b50>
+
+>   if not any(decision.required for decision in decisions):
+               ^^^^^^^^^^^^^^^^^
+E   AttributeError: 'dict' object has no attribute 'required'
+
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: AttributeError
+__ AnnualSimulationTest.test_annual_accounts_blocks_audit_and_non_small_cases __
+
+self = <test_annual.AnnualSimulationTest testMethod=test_annual_accounts_blocks_audit_and_non_small_cases>
+
+    def test_annual_accounts_blocks_audit_and_non_small_cases(self) -> None:
+        data = _simple_annual_data(audit_required=True, small_enterprise=False, annual_report_required=True)
+    
+        readiness = assess_annual_accounts_readiness(data)
+>       payload = build_annual_accounts_payload(data)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_annual.py:158: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+holding_core/annual.py:270: in build_annual_accounts_payload
+    return AnnualAccountsPayload.model_validate(_offline_json(build_annual_accounts_offline_payload(_accounts_offline_source(data))))
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:166: in build_annual_accounts_offline_payload
+    return _freeze(build_payload(source))
+                   ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:32: in build_payload
+    'attachment_decisions': _annual_accounts_attachment_decisions(data),
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: in _annual_accounts_attachment_decisions
+    if not any(decision.required for decision in decisions):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <list_iterator object at 0x10123e9e0>
+
+>   if not any(decision.required for decision in decisions):
+               ^^^^^^^^^^^^^^^^^
+E   AttributeError: 'dict' object has no attribute 'required'
+
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: AttributeError
+______ AnnualSimulationTest.test_annual_accounts_blocks_missing_note_data ______
+
+self = <test_annual.AnnualSimulationTest testMethod=test_annual_accounts_blocks_missing_note_data>
+
+    def test_annual_accounts_blocks_missing_note_data(self) -> None:
+        data = _simple_annual_data(annual_full_time_equivalents=None)
+    
+        readiness = assess_annual_accounts_readiness(data)
+>       payload = build_annual_accounts_payload(data)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_annual.py:148: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+holding_core/annual.py:270: in build_annual_accounts_payload
+    return AnnualAccountsPayload.model_validate(_offline_json(build_annual_accounts_offline_payload(_accounts_offline_source(data))))
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:166: in build_annual_accounts_offline_payload
+    return _freeze(build_payload(source))
+                   ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:32: in build_payload
+    'attachment_decisions': _annual_accounts_attachment_decisions(data),
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: in _annual_accounts_attachment_decisions
+    if not any(decision.required for decision in decisions):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <list_iterator object at 0x1082e2080>
+
+>   if not any(decision.required for decision in decisions):
+               ^^^^^^^^^^^^^^^^^
+E   AttributeError: 'dict' object has no attribute 'required'
+
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: AttributeError
+_ AnnualSimulationTest.test_annual_accounts_blocks_unapproved_general_meeting __
+
+self = <test_annual.AnnualSimulationTest testMethod=test_annual_accounts_blocks_unapproved_general_meeting>
+
+    def test_annual_accounts_blocks_unapproved_general_meeting(self) -> None:
+        data = _simple_annual_data(
+            interview=_interview(general_meeting_approved=False),
+        )
+    
+>       simulation = simulate_annual_accounts(data)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_annual.py:171: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+holding_core/annual.py:263: in simulate_annual_accounts
+    result = simulate_annual_accounts_offline(_accounts_offline_source(data, include_common=True))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:176: in simulate_annual_accounts_offline
+    return simulate(source)
+           ^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:43: in simulate
+    payload = build_payload(data)
+              ^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:32: in build_payload
+    'attachment_decisions': _annual_accounts_attachment_decisions(data),
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: in _annual_accounts_attachment_decisions
+    if not any(decision.required for decision in decisions):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <list_iterator object at 0x1082e1300>
+
+>   if not any(decision.required for decision in decisions):
+               ^^^^^^^^^^^^^^^^^
+E   AttributeError: 'dict' object has no attribute 'required'
+
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: AttributeError
+_ AnnualSimulationTest.test_annual_accounts_no_activity_payload_uses_zero_aarsverk_and_supported_attachments _
+
+self = <test_annual.AnnualSimulationTest testMethod=test_annual_accounts_no_activity_payload_uses_zero_aarsverk_and_supported_attachments>
+
+    def test_annual_accounts_no_activity_payload_uses_zero_aarsverk_and_supported_attachments(self) -> None:
+        data = _simple_annual_data(interview=_interview(received_dividends=False, paid_costs=False))
+>       payload = build_annual_accounts_payload(data)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_annual.py:139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+holding_core/annual.py:270: in build_annual_accounts_payload
+    return AnnualAccountsPayload.model_validate(_offline_json(build_annual_accounts_offline_payload(_accounts_offline_source(data))))
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:166: in build_annual_accounts_offline_payload
+    return _freeze(build_payload(source))
+                   ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:32: in build_payload
+    'attachment_decisions': _annual_accounts_attachment_decisions(data),
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: in _annual_accounts_attachment_decisions
+    if not any(decision.required for decision in decisions):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <list_iterator object at 0x1082e15a0>
+
+>   if not any(decision.required for decision in decisions):
+               ^^^^^^^^^^^^^^^^^
+E   AttributeError: 'dict' object has no attribute 'required'
+
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: AttributeError
+_ AnnualSimulationTest.test_annual_accounts_payload_maps_verified_rr0002_fields _
+
+self = <test_annual.AnnualSimulationTest testMethod=test_annual_accounts_payload_maps_verified_rr0002_fields>
+
+    def test_annual_accounts_payload_maps_verified_rr0002_fields(self) -> None:
+>       payload = build_annual_accounts_payload(_simple_annual_data())
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_annual.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+holding_core/annual.py:270: in build_annual_accounts_payload
+    return AnnualAccountsPayload.model_validate(_offline_json(build_annual_accounts_offline_payload(_accounts_offline_source(data))))
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:166: in build_annual_accounts_offline_payload
+    return _freeze(build_payload(source))
+                   ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:32: in build_payload
+    'attachment_decisions': _annual_accounts_attachment_decisions(data),
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: in _annual_accounts_attachment_decisions
+    if not any(decision.required for decision in decisions):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <list_iterator object at 0x1082e1900>
+
+>   if not any(decision.required for decision in decisions):
+               ^^^^^^^^^^^^^^^^^
+E   AttributeError: 'dict' object has no attribute 'required'
+
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: AttributeError
+___ AnnualSimulationTest.test_annual_accounts_simulation_preview_and_receipt ___
+
+self = <test_annual.AnnualSimulationTest testMethod=test_annual_accounts_simulation_preview_and_receipt>
+
+    def test_annual_accounts_simulation_preview_and_receipt(self) -> None:
+>       simulation = simulate_annual_accounts(_simple_annual_data())
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_annual.py:50: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+holding_core/annual.py:263: in simulate_annual_accounts
+    result = simulate_annual_accounts_offline(_accounts_offline_source(data, include_common=True))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:176: in simulate_annual_accounts_offline
+    return simulate(source)
+           ^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:43: in simulate
+    payload = build_payload(data)
+              ^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:32: in build_payload
+    'attachment_decisions': _annual_accounts_attachment_decisions(data),
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: in _annual_accounts_attachment_decisions
+    if not any(decision.required for decision in decisions):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <list_iterator object at 0x1082e2b60>
+
+>   if not any(decision.required for decision in decisions):
+               ^^^^^^^^^^^^^^^^^
+E   AttributeError: 'dict' object has no attribute 'required'
+
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: AttributeError
+_ AnnualSimulationTest.test_annual_totals_include_interest_system_cost_and_share_loss _
+
+self = <test_annual.AnnualSimulationTest testMethod=test_annual_totals_include_interest_system_cost_and_share_loss>
+
+    def test_annual_totals_include_interest_system_cost_and_share_loss(self) -> None:
+        data = _simple_annual_data()
+        additions = (
+            PostedEntry(
+                id="interest",
+                company_id=data.company_id,
+                entry_date=date(2025, 6, 1),
+                memo="Bank interest",
+                source="bank_rule:deposit_interest",
+                lines=(
+                    LedgerLine(account="1920", description="Bank", debit=125.5),
+                    LedgerLine(account="8050", description="Interest", credit=125.5),
+                ),
+            ),
+            PostedEntry(
+                id="system-cost",
+                company_id=data.company_id,
+                entry_date=date(2025, 7, 1),
+                memo="System subscription",
+                source="bank_rule:system_subscription",
+                lines=(
+                    LedgerLine(account="6700", description="System", debit=990),
+                    LedgerLine(account="1920", description="Bank", credit=990),
+                ),
+            ),
+            PostedEntry(
+                id="share-loss",
+                company_id=data.company_id,
+                entry_date=date(2025, 8, 1),
+                memo="Share sale loss",
+                source="holding_action:share_sale:tax:fritaksmetoden",
+                lines=(
+                    LedgerLine(account="8090", description="Share sale loss", debit=5000),
+                    LedgerLine(account="1800", description="Investment", credit=5000),
+                ),
+            ),
+        )
+        data = data.model_copy(update={"posted_entries": data.posted_entries + additions})
+>       fields = {field.tag: field for field in build_annual_accounts_payload(data).fields}
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_annual.py:126: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+holding_core/annual.py:270: in build_annual_accounts_payload
+    return AnnualAccountsPayload.model_validate(_offline_json(build_annual_accounts_offline_payload(_accounts_offline_source(data))))
+                                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:166: in build_annual_accounts_offline_payload
+    return _freeze(build_payload(source))
+                   ^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:32: in build_payload
+    'attachment_decisions': _annual_accounts_attachment_decisions(data),
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: in _annual_accounts_attachment_decisions
+    if not any(decision.required for decision in decisions):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <list_iterator object at 0x1082e3370>
+
+>   if not any(decision.required for decision in decisions):
+               ^^^^^^^^^^^^^^^^^
+E   AttributeError: 'dict' object has no attribute 'required'
+
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: AttributeError
+_ AnnualSimulationTest.test_archive_export_contains_ledger_documents_previews_and_missing_document_marker _
+
+self = <test_annual.AnnualSimulationTest testMethod=test_archive_export_contains_ledger_documents_previews_and_missing_document_marker>
+
+    def test_archive_export_contains_ledger_documents_previews_and_missing_document_marker(self) -> None:
+        data = _simple_annual_data(
+            documents=(
+                DocumentRecord(id="doc-1", document_type="bank_statement", name="Bank.pdf", status="attached"),
+                DocumentRecord(
+                    id="doc-2",
+                    document_type="receipt",
+                    name="Missing receipt",
+                    status="missing_accepted_warning",
+                ),
+            )
+        )
+>       annual = simulate_annual_accounts(data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_annual.py:224: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+holding_core/annual.py:263: in simulate_annual_accounts
+    result = simulate_annual_accounts_offline(_accounts_offline_source(data, include_common=True))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:176: in simulate_annual_accounts_offline
+    return simulate(source)
+           ^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:43: in simulate
+    payload = build_payload(data)
+              ^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:32: in build_payload
+    'attachment_decisions': _annual_accounts_attachment_decisions(data),
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: in _annual_accounts_attachment_decisions
+    if not any(decision.required for decision in decisions):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <list_iterator object at 0x1082e3880>
+
+>   if not any(decision.required for decision in decisions):
+               ^^^^^^^^^^^^^^^^^
+E   AttributeError: 'dict' object has no attribute 'required'
+
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: AttributeError
+_ AnnualComplianceValidationTest.test_annual_compliance_validation_classifies_public_synthetic_cases _
+
+self = <test_annual_validation.AnnualComplianceValidationTest testMethod=test_annual_compliance_validation_classifies_public_synthetic_cases>
+
+    def test_annual_compliance_validation_classifies_public_synthetic_cases(self) -> None:
+>       report = run_annual_compliance_validation(
+            [
+                FIXTURE_DIR / "simple_holding_pass.json",
+                FIXTURE_DIR / "simple_holding_mismatch.json",
+                FIXTURE_DIR / "simple_holding_blocked.json",
+                FIXTURE_DIR / "unsupported_group_contribution.json",
+            ]
+        )
+
+tests/test_annual_validation.py:17: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+holding_core/validation.py:65: in run_annual_compliance_validation
+    results = [_run_annual_case(Path(path)) for path in case_paths]
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+holding_core/validation.py:114: in _run_annual_case
+    annual = simulate_annual_accounts(fixture.annual_data)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+holding_core/annual.py:263: in simulate_annual_accounts
+    result = simulate_annual_accounts_offline(_accounts_offline_source(data, include_common=True))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py:176: in simulate_annual_accounts_offline
+    return simulate(source)
+           ^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:43: in simulate
+    payload = build_payload(data)
+              ^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:32: in build_payload
+    'attachment_decisions': _annual_accounts_attachment_decisions(data),
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: in _annual_accounts_attachment_decisions
+    if not any(decision.required for decision in decisions):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = <list_iterator object at 0x1082e0f40>
+
+>   if not any(decision.required for decision in decisions):
+               ^^^^^^^^^^^^^^^^^
+E   AttributeError: 'dict' object has no attribute 'required'
+
+apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py:123: AttributeError
+__ AnnualComplianceValidationTest.test_cli_annual_public_data_validation_json __
+
+self = <test_annual_validation.AnnualComplianceValidationTest testMethod=test_cli_annual_public_data_validation_json>
+
+    def test_cli_annual_public_data_validation_json(self) -> None:
+        result = subprocess.run(
+            [
+                "python3",
+                "-m",
+                "holding_cli.main",
+                "validate-annual-public-data",
+                "--case",
+                str(FIXTURE_DIR / "simple_holding_pass.json"),
+                "--case",
+                str(FIXTURE_DIR / "simple_holding_mismatch.json"),
+                "--json",
+            ],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    
+        self.assertEqual(result.returncode, 1)
+>       payload = json.loads(result.stdout)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_annual_validation.py:57: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/__init__.py:346: in loads
+    return _default_decoder.decode(s)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/decoder.py:338: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <json.decoder.JSONDecoder object at 0x100432510>, s = '', idx = 0
+
+    def raw_decode(self, s, idx=0):
+        """Decode a JSON document from ``s`` (a ``str`` beginning with
+        a JSON document) and return a 2-tuple of the Python
+        representation and the index in ``s`` where the document ended.
+    
+        This can be used to decode a JSON document from a string that may
+        have extraneous data at the end.
+    
+        """
+        try:
+            obj, end = self.scan_once(s, idx)
+        except StopIteration as err:
+>           raise JSONDecodeError("Expecting value", s, err.value) from None
+E           json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+../../../issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/json/decoder.py:356: JSONDecodeError
+=========================== short test summary info ============================
+FAILED tests/test_annual_accounts_offline_migration.py::AnnualAccountsOfflineMigrationTest::test_original_cli_json_text_exit_and_errors
+FAILED tests/test_annual_accounts_offline_migration.py::AnnualAccountsOfflineMigrationTest::test_original_offline_payload_readiness_and_simulation
+FAILED tests/test_annual.py::AnnualSimulationTest::test_annual_accounts_blocks_audit_and_non_small_cases
+FAILED tests/test_annual.py::AnnualSimulationTest::test_annual_accounts_blocks_missing_note_data
+FAILED tests/test_annual.py::AnnualSimulationTest::test_annual_accounts_blocks_unapproved_general_meeting
+FAILED tests/test_annual.py::AnnualSimulationTest::test_annual_accounts_no_activity_payload_uses_zero_aarsverk_and_supported_attachments
+FAILED tests/test_annual.py::AnnualSimulationTest::test_annual_accounts_payload_maps_verified_rr0002_fields
+FAILED tests/test_annual.py::AnnualSimulationTest::test_annual_accounts_simulation_preview_and_receipt
+FAILED tests/test_annual.py::AnnualSimulationTest::test_annual_totals_include_interest_system_cost_and_share_loss
+FAILED tests/test_annual.py::AnnualSimulationTest::test_archive_export_contains_ledger_documents_previews_and_missing_document_marker
+FAILED tests/test_annual_validation.py::AnnualComplianceValidationTest::test_annual_compliance_validation_classifies_public_synthetic_cases
+FAILED tests/test_annual_validation.py::AnnualComplianceValidationTest::test_cli_annual_public_data_validation_json
+12 failed, 259 passed in 1.34s

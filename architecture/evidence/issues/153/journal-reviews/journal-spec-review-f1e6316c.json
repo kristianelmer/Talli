@@ -1,0 +1,64 @@
+{
+  "verdict": "PASS_BOUNDED_SPEC_FOLLOWUP",
+  "base": "10e6698efdcad2726f5ca9f7dcdb7352317ceb11",
+  "candidate": "f1e6316c4cac895c43be88aef776c88cc97db204",
+  "findingDispositions": [
+    {
+      "id": "STD-153-JOURNAL-1",
+      "status": "CLOSED",
+      "source": "apps/backend/src/talli_backend/modules/annual_accounts_filing/rehearsal.py:81",
+      "adapter": "apps/backend/src/talli_backend/adapters/local_annual_accounts_rehearsal.py:23",
+      "evidence": "Actual same-file, directory-alias and file-symlink CLI concurrency rejects before secondconnect; 1create/1lock and read-only laterresume. Child-process/atomic-replace/death and exceptionrelease tests pass."
+    }
+  ],
+  "newFindings": [],
+  "independentChecks": {
+    "pythonPassed": 282,
+    "processCleanupPassed": 22,
+    "fixturePassed": 5,
+    "runtimeDbSkipped": 1,
+    "additionalCliFileProbeCases": 3
+  },
+  "commands": [
+    "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=apps/backend/src:apps/backend/tests <pinned-python3.12.12> -m pytest -q -c /dev/null --rootdir=. -p no:cacheprovider apps/backend/tests/test_annual_accounts_rehearsal_ownership.py apps/backend/tests/test_annual_accounts_rehearsal_recovery.py apps/backend/tests/test_annual_accounts_validation_response.py apps/backend/tests/test_annual_accounts_authority_ownership.py apps/backend/tests/test_authority_filing_tools.py apps/backend/tests/test_authority_filing_transports.py",
+    "<pinned-node24.20.0> --test tests/browser_process_lifecycle.test.mjs",
+    "<pinned-node24.20.0> --test tests/browser_fixture_safety.test.mjs",
+    "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=apps/backend/src:apps/backend/tests <pinned-python3.12.12> <private>/journal-spec-probe-f1e6316c.py"
+  ],
+  "runtime": {
+    "python": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+    "node": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+    "snapshot": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-journal-f1e6316c"
+  },
+  "manifestChecks": {
+    "journal-ownership": 35,
+    "browser-cleanup-model": 7
+  },
+  "adoptionChecks": {
+    "authority-safety-spec-concurrent-10e6698e.json": true,
+    "authority-safety-spec-concurrent-cli-10e6698e.json": true,
+    "authority-safety-spec-probe-10e6698e.json": true,
+    "authority-safety-spec-probe-10e6698e.py": true,
+    "authority-safety-spec-review-10e6698e.json": true,
+    "authority-safety-spec-review-10e6698e.md": true
+  },
+  "sourceBindingsArtifact": "journal-spec-bindings-f1e6316c.json",
+  "artifacts": {
+    "journal-spec-bindings-f1e6316c.json": "af87536ffb0a3844a3220f3a61d593de77591316e251def311917abe73989e29",
+    "journal-spec-tests-f1e6316c.log": "fa9bda7c831754a57ab8011aeb4199bda7bd00524493f71a2d97ae853e72d970",
+    "journal-spec-cleanup-f1e6316c.log": "bef7cd079b75c0acdf01feee0b5d0dc98d09e4a5b97aeb9e7fcaddfefb432b77",
+    "journal-spec-fixture-f1e6316c.log": "4cfa34d870ce891c443017943cc35b32ce7fecf373183ede606d28435ae00422",
+    "journal-spec-probe-f1e6316c.py": "ca28b1696f494c61b490773726b63840f090b6a8cce4ef3c6f39d2e579e3df08",
+    "journal-spec-probe-f1e6316c.json": "4242c1eb69df2ed188c0fef2ce1d83cc2769d203f54e68ba470cfae88e529a0d",
+    "authority-safety-standards-concurrent-cli-10e6698e.py": "3617322d99cd832e7dc3f51dba46730f441a8f02f0c73dbdb94f332cbccfae0b",
+    "authority-safety-spec-concurrent-cli-10e6698e.json": "f9699f762b686cba9355f82dd17b041970f595c2d5f2098d1eea141b06f604b6"
+  },
+  "reportSha256": "57a0aaa383af3ad15091d35564a2fa6559249e6011c6162b67707df4bfd5e98d",
+  "limits": [
+    "Private source snapshot and private temporary fixture files/processes only",
+    "No sharedsource/SQL/DB/Docker/browser/provider mutation",
+    "No distributedfilesystem/powerloss guarantee",
+    "No independent architecture rerun; retained proper CLI pass distinguished from invalid first harness",
+    "Full gates and live local Accounts browser required; no full-stage or successor credit"
+  ]
+}

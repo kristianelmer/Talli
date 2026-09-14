@@ -1,0 +1,77 @@
+{
+  "verdict": "NARROW_POSITIVE_ROLE_CREATION_DELTA_DESIGN_SUPPORTED_PENDING_REAL_VALIDATION",
+  "candidate": "55f5abbdcb0f4d638f26aea093db13722ef922c5",
+  "issue": "#153",
+  "sourceBindings": {
+    "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "5a4b7c8766e93fcd283ab256a26fc965c1b74e691f330860abdf020775db062b",
+    "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea"
+  },
+  "failureEvidence": {
+    "path": "architecture/evidence/customer-ready-gates/55f5abbdcb0f4d638f26aea093db13722ef922c5.log",
+    "sha256": "5623972e48ced8f20f875890a924d2cb37312b388d3ae825e8e192cbfd80ed5f",
+    "bytes": 352636,
+    "storage": "Working-tree generated failed gate transcript; not asserted committed",
+    "accountsSetupErrors": 28,
+    "assertion": "test_annual_accounts_filing_lifecycle.py:55 exact membership equality",
+    "observedFirstExtra": [
+      110531,
+      16384,
+      10,
+      true,
+      false,
+      false
+    ]
+  },
+  "primarySource": {
+    "url": "https://www.postgresql.org/docs/17/role-attributes.html",
+    "section": "21.2 role creation and final paragraphs",
+    "readVia": "web.open",
+    "retrievedAt": "2026-09-14T19:48:20.335016+00:00"
+  },
+  "design": {
+    "allowedOnlyArtifact": "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+    "candidateRoleNames": [
+      "annual_accounts_filing_store_owner",
+      "annual_accounts_filing_workflow_executor"
+    ],
+    "preconditions": [
+      "Role positively absent immediately before explicit expansion",
+      "Captured actual creating principal is non-superuser CREATEROLE",
+      "New role OID maps to exact expected name and restricted attributes",
+      "Grantor is verified bootstrap superuser, not any arbitrary superuser"
+    ],
+    "expectedTuple": [
+      "new_role_oid",
+      "creator_oid",
+      "bootstrap_grantor_oid",
+      true,
+      false,
+      false
+    ],
+    "invariant": "Full after membership set equals before union exactly expected engine creation tuples; no subtraction or broad filtering.",
+    "strictCases": [
+      "All preexisting grants/options/grantors",
+      "Every temporary borrowed membership",
+      "Existing-role reuse and other migration artifacts",
+      "Superuser creation (no automatic delta)",
+      "Outer rollback global memberships and newly created role removal"
+    ],
+    "privilegeDisclosure": "Creator ADMIN is real administration capability and can grant runtime access; no immediate SET/INHERIT access is not equivalent to no authority."
+  },
+  "requiredValidation": [
+    "Fresh absent roles under actual non-superuser Supabase CREATEROLE",
+    "Mixed existing/new role",
+    "Both roles already exist",
+    "Superuser fresh creation",
+    "Reject extra role/recipient/grantor/options and preexisting-row changes",
+    "Outer rollback exact restoration",
+    "All28 Accounts lifecycle cases in mandatory gate"
+  ],
+  "spec": "#132 compatibility exceptions may not hide failed authorization/RLS; #153 preserves bounded role/access behavior.",
+  "reportSha256": "77a417c0299826d178f99578d580f75e2bb4d0e7d5a3748d44b71d81f7d638ed",
+  "limits": [
+    "Read-only source/log review and official documentation lookup",
+    "No DB/Docker/provider operation",
+    "Design assessment only; no implementation or passing gate claim"
+  ]
+}

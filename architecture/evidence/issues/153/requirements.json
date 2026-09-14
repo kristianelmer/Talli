@@ -1,0 +1,242 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#153",
+  "source": "https://github.com/kristianelmer/Talli/issues/153",
+  "status": "LOCAL_ACCEPTANCE_PASS_PENDING_PROTECTED_INTEGRATION",
+  "baselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "predecessor": {
+    "issue": "#152",
+    "state": "CLOSED",
+    "closedAt": "2026-09-14T05:51:21Z",
+    "receipt": "https://github.com/kristianelmer/Talli/issues/152#issuecomment-5659595000",
+    "independentPublishedReread": "PASS",
+    "rereadSha256": "0fa4aecee381a7b0641733f73c4d20a66ac9ddf3bf793621ca3de7e8cb17af69"
+  },
+  "criteria": [
+    {
+      "id": "GH-153-A1",
+      "requirement": "Supported annual-accounts cases produce outputs identical to current schema and TT02 evidence.",
+      "status": "LOCAL_PASS_PENDING_PROTECTED_INTEGRATION",
+      "evidence": [
+        "characterization/manifest.json",
+        "pure-calculation/manifest.json",
+        "evidence-import/manifest.json",
+        "offline-profile/manifest.json",
+        "authority-ownership/manifest.json",
+        "duplicate-retirement/manifest.json",
+        "authority-safety/manifest.json",
+        "journal-ownership/manifest.json",
+        "journal-reviews/manifest.json",
+        "exit-gates-first/manifest.json",
+        "gate-pair/manifest.json",
+        "verification.md"
+      ]
+    },
+    {
+      "id": "GH-153-A2",
+      "requirement": "Corporate-close facts and signed-artifact readiness remain required.",
+      "status": "LOCAL_PASS_PENDING_PROTECTED_INTEGRATION",
+      "evidence": [
+        "characterization/manifest.json",
+        "readiness-input-fix/manifest.json",
+        "response-readiness/manifest.json",
+        "web-cutover/manifest.json",
+        "exit-gates-first/manifest.json",
+        "gate-pair/manifest.json",
+        "verification.md"
+      ]
+    },
+    {
+      "id": "GH-153-A3",
+      "requirement": "Hybrid signing, submission, feedback, and receipt states remain fail closed and auditable.",
+      "status": "LOCAL_PASS_PENDING_PROTECTED_INTEGRATION",
+      "evidence": [
+        "authority-ownership/manifest.json",
+        "authority-review-fixes/manifest.json",
+        "read-controls/manifest.json",
+        "physical-retirement/manifest.json",
+        "gate-follow-up/manifest.json",
+        "dependency-integration/manifest.json",
+        "authority-safety/manifest.json",
+        "journal-ownership/manifest.json",
+        "journal-reviews/manifest.json",
+        "role-creation/manifest.json",
+        "rf-projection-fixture/manifest.json",
+        "browser-validation/manifest.json",
+        "exit-gates-first/manifest.json",
+        "gate-pair/manifest.json",
+        "verification.md"
+      ]
+    },
+    {
+      "id": "GH-153-A4",
+      "requirement": "The complete owner workflow uses FastAPI and the generated client.",
+      "status": "LOCAL_PASS_PENDING_PROTECTED_INTEGRATION",
+      "evidence": [
+        "read-controls/manifest.json",
+        "web-cutover/manifest.json",
+        "browser-integration/manifest.json",
+        "source-handoff/manifest.json",
+        "dependency-integration/manifest.json",
+        "authority-safety/manifest.json",
+        "browser-cleanup-model/manifest.json",
+        "rf-projection-fixture/manifest.json",
+        "browser-validation/manifest.json",
+        "exit-gates-first/manifest.json",
+        "gate-pair/manifest.json",
+        "verification.md"
+      ]
+    },
+    {
+      "id": "GH-153-A5",
+      "requirement": "Obligation-specific generic rows, duplicate TypeScript calculations, and active-stage compatibility code are removed.",
+      "status": "LOCAL_PASS_PENDING_PROTECTED_INTEGRATION",
+      "evidence": [
+        "duplicate-retirement/manifest.json",
+        "physical-retirement/manifest.json",
+        "source-handoff/manifest.json",
+        "browser-cleanup-model/manifest.json",
+        "role-creation/manifest.json",
+        "rf-projection-fixture/manifest.json",
+        "browser-validation/manifest.json",
+        "exit-gates-first/manifest.json",
+        "gate-pair/manifest.json",
+        "verification.md"
+      ]
+    },
+    {
+      "id": "GH-153-A6",
+      "requirement": "The complete `annual_accounts_filing` stage exit criteria from issue #132 pass before annual-compliance migration begins.",
+      "status": "LOCAL_PASS_PENDING_PROTECTED_INTEGRATION",
+      "evidence": [
+        "entry/manifest.json",
+        "entry-inventory/manifest.json",
+        "physical-retirement/manifest.json",
+        "gate-follow-up/manifest.json",
+        "dependency-integration/manifest.json",
+        "publication-follow-up/manifest.json",
+        "authority-safety/manifest.json",
+        "journal-ownership/manifest.json",
+        "browser-cleanup-model/manifest.json",
+        "journal-reviews/manifest.json",
+        "role-creation/manifest.json",
+        "rf-projection-fixture/manifest.json",
+        "browser-validation/manifest.json",
+        "exit-gates-first/manifest.json",
+        "gate-pair/manifest.json",
+        "verification.md"
+      ]
+    }
+  ],
+  "sourceHandoff": {
+    "evidence": "source-handoff/manifest.json",
+    "hardening": "browser-integration/manifest.json",
+    "meaning": "Immutable company/year/obligation evidence, positive completeness coverage, unknown outcomes, correction links and incident facts. Production remains blocked; Billing owns all commercial classification."
+  },
+  "stageExit": {
+    "deploymentOrder": "PASS_17_STORAGE_PHASE_AND_7_EXACT_PREDECESSOR_HTTP_CHECKS",
+    "independentReview": "PASS_SPEC_AND_STANDARDS_IMPLEMENTATION_AND_LINKED_GATE_PAIR",
+    "gatePair": [
+      {
+        "revision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+        "canonicalDigest": "sha256:3229c1b2f25f743db2f0523346349c5c414c5492fb7a107d95683c0edbcfef62",
+        "transcriptDigest": "sha256:d50809fc01ac6f1999a1d2c306aaf871e9a25fb67467dc2d8b7dd06b9575dbe3",
+        "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+        "startedAt": "2026-09-14T20:46:44.947Z",
+        "executedAt": "2026-09-14T21:08:46.575Z",
+        "checkCount": 11,
+        "previousPassingRevision": null
+      },
+      {
+        "revision": "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6",
+        "canonicalDigest": "sha256:34d667a23ba3cc3ffe72ef9a5ba7317f93142d945f4dfff2442127aef276f935",
+        "transcriptDigest": "sha256:e2ec05a2fe5d0dbe40fb2a3594888219fe8548d63a4ccb0942e92e911ea3bd06",
+        "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+        "startedAt": "2026-09-14T21:09:40.409Z",
+        "executedAt": "2026-09-14T21:31:49.080Z",
+        "checkCount": 11,
+        "previousPassingRevision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19"
+      }
+    ],
+    "protectedIntegration": "PENDING_EXACT_HEAD_AND_MAIN_CI_PREVIEW_AND_PUBLISHED_RECEIPT",
+    "productionObservation": "NOT_APPLICABLE_NO_PRODUCTION_PATH_ACTIVATED",
+    "targetedFinalRuntime": "PASS_BOTH_COMPLETE_GATES_41_ACCOUNTS_SQL_AND_ALL_MANDATORY_BROWSER_LANES",
+    "subsequentWork": "#193 RF, then Tax, then Accounts; #149 and #208 precede #192 final. No successor implementation or production completion is claimed.",
+    "reviewEvidence": [
+      "gate-pair/gate-pair-spec-review-153.json",
+      "gate-pair/gate-pair-standards-review-153.json"
+    ]
+  },
+  "limits": [
+    "No hosted migration, provider activation, genuine filing, paid operation or production promotion.",
+    "Corporate close and signed-artifact facts remain Corporate/Document owned. Preview inputs do not certify durable authorization.",
+    "No annual-compliance or final Billing implementation before the approved serial prerequisites."
+  ],
+  "safetyCorrections": {
+    "evidence": "authority-safety/manifest.json",
+    "requirements": "#132 no ambiguous effect retries; #153 fail closed hybrid signing",
+    "changes": [
+      "durable create/lock operation marker and reconciliation-required retry guard",
+      "strict positive validation shape/severity and signing task checks",
+      "confirmed lock resumes through read-only submission evidence",
+      "exclusive canonical local journal ownership across reads, awaits and all checkpoints"
+    ],
+    "parity": "Frozen statutory payload/XML and successful requests unchanged; ambiguous failures intentionally tightened"
+  },
+  "stageEntry": {
+    "revision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+    "canonicalDigest": "sha256:681ba7da16c0f8b2fdc4f7b0c7a5897ede814ada9de3f9c7f543d8e3c13c9582",
+    "transcriptDigest": "sha256:0ffbfdd0827b2a6c960c7a0df548e068a28ae78b81f2895931221442c80dd676",
+    "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+    "startedAt": "2026-09-14T05:23:50.702Z",
+    "executedAt": "2026-09-14T05:44:22.652Z",
+    "checkCount": 11,
+    "previousPassingRevision": "a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2",
+    "status": "PASS_11_OF_11_INDEPENDENTLY_VERIFIED",
+    "evidencePath": "architecture/evidence/customer-ready-gates/5b74340ca75f215b43d754c6bf0fc49ef5974b0b.json",
+    "note": "Separate exact-main baseline gate; neither #153 exit pass. Ran as exact-main verification before predecessor closure; adopted only after predecessor published receipt reread and closure."
+  },
+  "claim": "https://github.com/kristianelmer/Talli/issues/153#issuecomment-5659621764",
+  "sqlCorrection": {
+    "revision": "006469373fc79f16c20dfec75bbc0d3ecd51ff6c",
+    "evidence": "role-creation/manifest.json",
+    "targetedLifecycleCases": 41,
+    "status": "PASS_41_REAL_SQL_AND_INDEPENDENT_REVIEWS"
+  },
+  "entryInventory": {
+    "status": "PASS_ENUMERATED_AND_CHARACTERIZED",
+    "source": "source-inventory.json",
+    "catalog": "entry/database-catalog.json",
+    "rollbackRestore": "PASS_DISPOSABLE_LOCAL_CLONE",
+    "characterization": "characterization/manifest.json"
+  },
+  "constraints": [
+    "One Annual Accounts Filing owner only; Annual aggregation remains #149.",
+    "Preserve exact approved sibling scopes until their last source moves; remove all such filing scopes at Accounts exit.",
+    "Immutable source handoff preserves company/year/obligation identity/version/digest/coverage/timing/attribution/outcomes/corrections/incidents. Billing alone applies commercial/refund policy.",
+    "No provider interaction, genuine filing, hosted migration, paid operation or production promotion.",
+    "Keep release/production frozen and #192 implementation paused through approved source prerequisites."
+  ],
+  "exitGates": [
+    {
+      "revision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+      "canonicalDigest": "sha256:3229c1b2f25f743db2f0523346349c5c414c5492fb7a107d95683c0edbcfef62",
+      "transcriptDigest": "sha256:d50809fc01ac6f1999a1d2c306aaf871e9a25fb67467dc2d8b7dd06b9575dbe3",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "startedAt": "2026-09-14T20:46:44.947Z",
+      "executedAt": "2026-09-14T21:08:46.575Z",
+      "checkCount": 11,
+      "previousPassingRevision": null
+    },
+    {
+      "revision": "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6",
+      "canonicalDigest": "sha256:34d667a23ba3cc3ffe72ef9a5ba7317f93142d945f4dfff2442127aef276f935",
+      "transcriptDigest": "sha256:e2ec05a2fe5d0dbe40fb2a3594888219fe8548d63a4ccb0942e92e911ea3bd06",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "startedAt": "2026-09-14T21:09:40.409Z",
+      "executedAt": "2026-09-14T21:31:49.080Z",
+      "checkCount": 11,
+      "previousPassingRevision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19"
+    }
+  ]
+}

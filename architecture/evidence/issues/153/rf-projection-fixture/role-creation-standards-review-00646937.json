@@ -1,0 +1,83 @@
+{
+  "axis": "Standards",
+  "verdict": "PASS_BOUNDED_CORRECTION",
+  "baseRevision": "55f5abbdcb0f4d638f26aea093db13722ef922c5",
+  "candidateRevision": "006469373fc79f16c20dfec75bbc0d3ecd51ff6c",
+  "diffCommand": "git diff 55f5abbdcb0f4d638f26aea093db13722ef922c5...006469373fc79f16c20dfec75bbc0d3ecd51ff6c",
+  "commits": [
+    "006469373fc79f16c20dfec75bbc0d3ecd51ff6c fix(accounts): preserve exact role creation and grant options"
+  ],
+  "snapshot": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-role-standards-5ffy7kjd",
+  "findings": [],
+  "sourceBindings": {
+    "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql": "ed5d4d52bad62e2286d1bc3d26b3bdf2458e26d5bdab6a79aef9b8cee2ad2c15",
+    "supabase/contract-migrations/20260914092018_annual_accounts_filing_read_contracts.sql": "270f6398a1b591a19e0144a8bf7c23ced14ef35c38b0643f65f3a48ffcfdaf70",
+    "supabase/contract-migrations/20260914092924_annual_accounts_filing_preparation_contracts.sql": "4ce6f7690fa16c9beeffccb2c53e9a9c4a8bfaef95c15ae25f2b88598f85df5d",
+    "supabase/contract-migrations/20260914093204_annual_accounts_filing_import_contract.sql": "7699238cc4ecd60ae1ef851b5d2ab247a7f896de2c7188558a217178fcb02d94",
+    "supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql": "ccdc8b4547fdf703345929a754587b5541c4d3fcde55ddaa7d5a0b7368324112",
+    "supabase/contract-migrations/20260914110840_annual_accounts_filing_source_contract.sql": "77f7e41bb45f71855673ff3acbe6d7146ad13723d377c7821d336ebac0b17afc",
+    "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "c077cd74f6b98f52c264d5f10050fb0e4c11e783250f70e545d657ee6ea564c2",
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md": "8f7a6e4494ae73ae40ac78b2092bebeaa19057bb94ead6e24a60fa9e1aa86235"
+  },
+  "standardsBindings": {
+    "AGENTS.md": "c4530bac3939f37053438b48a3dad2ea6e99d04481480ef61bee71d3dc81d4af",
+    "CONTEXT.md": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9",
+    "docs/agents/domain.md": "0b66c33560f91373a7b268f3acf2c3d992e6a77cf5dc60acdc66efb4dc34a982",
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/COMPATIBILITY.md": "7683810e3f0b816fcc166c428faba245060f91c86ae7e0750b39803730c57ab7"
+  },
+  "unchangedControls": {
+    "architecture/compatibility.json": "e06ddbbc974bbaa7f418eced549bef1c02e3b29d4e12a6851ed503428aa83e10",
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+    "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+    "supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql": "3f4495c1d75644413171150b71f2048f34ef100dcf3492bcc28005f5c31f064b",
+    "supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql": "9f4a89374a4945841f8f3610de2390884db3faa527e2c7374e5a4a3df6cad401",
+    "supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql": "6f31c93d658a9acd54b549f132b651ef9e5186cfb99041f9fc85efb8114d3271",
+    "supabase/rollback/20260914101842_annual_accounts_filing_contract.sql": "ea5a272c6a29bae8e1371a4fd1ec954ca7e3e1e2dcfa0af3ea2af2c6987646f1"
+  },
+  "manifestBinding": {
+    "path": "architecture/evidence/issues/153/role-creation/manifest.json",
+    "sha256": "33b4abb73e16d1224863482106ffdb7434b77e9791669a9a4d98486d8dfcd67f",
+    "artifactsVerified": 28,
+    "privateAdoptionsVerified": 16
+  },
+  "independentProbe": {
+    "mode": "Pinned actual apply() with deterministic catalog stub; no PostgreSQL",
+    "passed": 21,
+    "runtime": "CPython3.12.12",
+    "command": [
+      "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+      "-B",
+      "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/role-creation-standards-oracle-probe-00646937.py",
+      "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-role-standards-5ffy7kjd"
+    ],
+    "environment": {
+      "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    "initialInvocation": "One incorrect snapshot-path invocation failed before import; excluded, corrected command exited0."
+  },
+  "sqlReview": {
+    "changedArtifactCount": 6,
+    "exactPermittedDelta": "Remove ::boolean casts on catalog-generated admin/inherit/set JSON text; expansion adds SET LOCAL createrole_self_grant empty before role creation",
+    "otherSqlBytesUnchanged": true,
+    "runtimeTests": "41 PASS retained complete log; not independently rerun",
+    "permissionSemantics": "Only exact automatic bootstrap creator administration accepted; borrowed execution memberships remain exact"
+  },
+  "privateArtifacts": {
+    "role-creation-standards-workspace-00646937.json": "c1ca3873f3382b5e5cb6b6673f89bf42a6c3770d1d2ee2a4339357950c7e8df8",
+    "role-creation-standards-oracle-probe-00646937.py": "6b6ca5b77466629f3163f0eb22171244d0d8c0953ad2ebf21ea7b3274bacec0b",
+    "role-creation-standards-oracle-results-00646937.json": "9b529325e394c08e21ee7f49e90934c62893262be2406186f7efb8788471fb54",
+    "role-creation-standards-artifact-checks-00646937.json": "d7f766b57c87397641b7b4f4af7c5e137800239df0d094d194b07d170dca6d6b",
+    "role-creation-standards-design-55f5abbd.md": "4cc9a8f1068703fb7197d0f49f1c3aec234e9760b295cf006e793c7b45c15060",
+    "role-creation-standards-design-55f5abbd.json": "2fed27c48be23ff43bffc08637248c30747f9362a0dc31cab767dbee149b08fe"
+  },
+  "reportSha256": "91b234f0d7287188c28e863f8ec3aae41c2bf1efde3083a3a95bd758e3c34f6b",
+  "limits": [
+    "No shared writes, SQL/Docker/provider operation or complete gate execution",
+    "Catalog-stub proof does not certify real PostgreSQL privilege restoration",
+    "Retained 41 SQL results assessed with source/evidence bindings",
+    "No full-stage or protected-integration acceptance"
+  ]
+}

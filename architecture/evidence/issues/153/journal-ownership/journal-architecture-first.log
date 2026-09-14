@@ -1,0 +1,779 @@
+{
+  "errors": [
+    "apps/web/app/(account)/billing/page.tsx: undeclared public feature entry point ../../../features/billing",
+    "apps/web/app/(operator)/operator/annual-billing-support.tsx: undeclared public feature entry point ../../../features/billing",
+    "apps/web/app/(operator)/operator/marketing/page.tsx: undeclared public feature entry point ../../../../features/public-acquisition/server.ts",
+    "apps/web/app/(owner)/actions/[type]/page.tsx: undeclared public feature entry point ../../../../features/investments",
+    "apps/web/app/(owner)/actions/[type]/page.tsx: undeclared public feature entry point ../../../../features/corporate-governance",
+    "apps/web/app/(owner)/actions/_components/OwnerDividendWizard.tsx: undeclared public feature entry point ../../../../features/corporate-governance",
+    "apps/web/app/(owner)/actions/_components/ShareSaleWizard.tsx: undeclared public feature entry point ../../../../features/investments",
+    "apps/web/app/(owner)/actions/_components/ShareholderLoanWizard.tsx: undeclared public feature entry point ../../../../features/corporate-governance",
+    "apps/web/app/(owner)/actions/_components/SupportedCorporateEventWizard.tsx: undeclared public feature entry point ../../../../features/corporate-governance",
+    "apps/web/app/(owner)/bank/callback/route.ts: undeclared public feature entry point ../../../../features/banking",
+    "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx: undeclared public feature entry point ../../../../features/corporate-governance",
+    "apps/web/app/(owner)/corporate-decisions/[decisionId]/page.tsx: undeclared public feature entry point ../../../../features/corporate-governance",
+    "apps/web/app/(owner)/onboarding/actions.ts: undeclared public feature entry point ../../../features/company-access",
+    "apps/web/app/(owner)/selskapsgrense/actions.ts: undeclared public feature entry point ../../../features/company-access/index.ts",
+    "apps/web/app/(owner)/selskapsgrense/actions.ts: undeclared public feature entry point ../../../features/company-access/index.ts",
+    "apps/web/app/(owner)/selskapsgrense/page.tsx: undeclared public feature entry point ../../../features/company-access/index.ts",
+    "apps/web/app/(owner)/transactions/BankConnections.tsx: undeclared public feature entry point ../../../features/banking",
+    "apps/web/app/(owner)/transactions/page.tsx: undeclared public feature entry point ../../../features/banking",
+    "apps/web/app/(owner)/workspace/page.tsx: undeclared public feature entry point ../../../features/investments",
+    "apps/web/app/(owner)/year-end/CorporateAnnualDecisionForm.tsx: undeclared public feature entry point ../../../features/corporate-governance",
+    "apps/web/app/(owner)/year-end/page.tsx: undeclared public feature entry point ../../../features/investments",
+    "apps/web/app/actions.ts: undeclared public feature entry point ../features/annual-accounts-filing/index.ts",
+    "apps/web/app/actions.ts: undeclared public feature entry point ../features/company-tax-filing",
+    "apps/web/app/actions.ts: undeclared public feature entry point ../features/company-access",
+    "apps/web/app/actions.ts: undeclared public feature entry point ../features/billing",
+    "apps/web/app/actions.ts: undeclared public feature entry point ../features/banking",
+    "apps/web/app/actions.ts: undeclared public feature entry point ../features/ledger",
+    "apps/web/app/actions.ts: undeclared public feature entry point ../features/investments",
+    "apps/web/app/actions.ts: undeclared public feature entry point ../features/documents",
+    "apps/web/app/actions.ts: undeclared public feature entry point ../features/corporate-governance",
+    "apps/web/app/actions.ts: undeclared public feature entry point ../features/operator-controls",
+    "apps/web/app/actions.ts: undeclared public feature entry point ../features/shareholder-register-filing",
+    "apps/web/app/actions.ts: undeclared public feature entry point ../features/authority-connections",
+    "apps/web/app/actions.ts: undeclared public feature entry point ../features/company-tax-filing",
+    "apps/web/app/api/marketing-events/route.ts: undeclared public feature entry point ../../../features/public-acquisition/server.ts",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts: undeclared public feature entry point ../../../../../features/company-tax-filing",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts: undeclared public feature entry point ../../../../../features/ledger",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts: undeclared public feature entry point ../../../../../features/investments",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts: undeclared public feature entry point ../../../../../features/documents",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts: undeclared public feature entry point ../../../../../features/corporate-governance",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts: undeclared public feature entry point ../../../../../features/shareholder-register-filing",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts: undeclared public feature entry point ../../../../../features/billing",
+    "apps/web/app/auth/systembruker/confirm/route.ts: undeclared public feature entry point ../../../../features/authority-connections/index.ts",
+    "apps/web/app/components/billing/AnnualBillingView.tsx: undeclared public feature entry point ../../../features/billing",
+    "apps/web/app/components/billing/AnnualCheckoutControl.tsx: undeclared public feature entry point ../../../features/billing",
+    "apps/web/app/documents/[documentId]/download/route.ts: undeclared public feature entry point ../../../../features/documents",
+    "apps/web/app/documents/[documentId]/preview/route.ts: undeclared public feature entry point ../../../../features/documents",
+    "apps/web/app/health/ready/route.ts: undeclared public feature entry point ../../../features/system-boundary/index.ts",
+    "apps/web/app/hjelp/page.tsx: undeclared public feature entry point ../../features/public-acquisition/PublicPage",
+    "apps/web/app/invite/accept/page.tsx: undeclared public feature entry point ../../../features/company-access",
+    "apps/web/app/lib/annual-accounts-assessment-source.ts: undeclared public feature entry point ../../features/annual-accounts-filing/index.ts",
+    "apps/web/app/lib/annual-accounts-workspace-source.ts: undeclared public feature entry point ../../features/annual-accounts-filing/index.ts",
+    "apps/web/app/lib/annual-billing-cleanup.ts: undeclared public feature entry point ../../features/billing",
+    "apps/web/app/lib/annual-checkout-observation.ts: undeclared public feature entry point ../../features/billing",
+    "apps/web/app/lib/annual-checkout-request.ts: undeclared public feature entry point ../../features/billing",
+    "apps/web/app/lib/annual-readiness.ts: undeclared public feature entry point ../../features/annual-accounts-filing/index.ts",
+    "apps/web/app/lib/annual-readiness.ts: undeclared public feature entry point ../../features/billing",
+    "apps/web/app/lib/annual-readiness.ts: undeclared public feature entry point ../../features/company-tax-filing/index.ts",
+    "apps/web/app/lib/annual-refund-recovery.ts: undeclared public feature entry point ../../features/billing",
+    "apps/web/app/lib/annual-support-cleanup-recovery.ts: undeclared public feature entry point ../../features/billing",
+    "apps/web/app/lib/annual-support-refund-recovery.ts: undeclared public feature entry point ../../features/billing",
+    "apps/web/app/lib/annual-workspace-server.ts: undeclared public feature entry point ../../features/investments",
+    "apps/web/app/lib/annual-workspace-server.ts: undeclared public feature entry point ../../features/billing",
+    "apps/web/app/lib/archive.ts: undeclared public feature entry point ../../features/investments",
+    "apps/web/app/lib/archive.ts: undeclared public feature entry point ../../features/documents",
+    "apps/web/app/lib/archive.ts: undeclared public feature entry point ../../features/corporate-governance",
+    "apps/web/app/lib/company-access-administration.ts: undeclared public feature entry point ../../features/company-access",
+    "apps/web/app/lib/company-access-cancellation.ts: undeclared public feature entry point ../../features/company-access",
+    "apps/web/app/lib/company-access-context.ts: undeclared public feature entry point ../../features/company-access/index.ts",
+    "apps/web/app/lib/company-tax-assessment-source.ts: undeclared public feature entry point ../../features/company-tax-filing/index.ts",
+    "apps/web/app/lib/company-tax-workspace-source.ts: undeclared public feature entry point ../../features/company-tax-filing/index.ts",
+    "apps/web/app/lib/company-year-eligibility-gate.ts: undeclared public feature entry point ../../features/company-access/index.ts",
+    "apps/web/app/lib/company-year-eligibility-gate.ts: undeclared public feature entry point ../../features/company-access/index.ts",
+    "apps/web/app/lib/company-year-eligibility-gate.ts: undeclared public feature entry point ../../features/company-access/index.ts",
+    "apps/web/app/lib/eligibility-continuation.ts: undeclared public feature entry point ../../features/company-access",
+    "apps/web/app/lib/filing-release-gate.ts: undeclared public feature entry point ../../features/billing",
+    "apps/web/app/lib/rf1086-workspace-source.ts: undeclared public feature entry point ../../features/shareholder-register-filing",
+    "apps/web/app/lib/supabase/server.ts: undeclared public feature entry point ../../../features/shareholder-register-filing",
+    "apps/web/app/lib/supabase/server.ts: undeclared public feature entry point ../../../features/operator-controls",
+    "apps/web/app/lib/supabase/server.ts: undeclared public feature entry point ../../../features/authority-connections",
+    "apps/web/app/lib/supabase/server.ts: undeclared public feature entry point ../../../features/billing",
+    "apps/web/app/lib/supabase/server.ts: undeclared public feature entry point ../../../features/banking",
+    "apps/web/app/lib/supabase/server.ts: undeclared public feature entry point ../../../features/company-access",
+    "apps/web/app/lib/supabase/server.ts: undeclared public feature entry point ../../../features/ledger",
+    "apps/web/app/lib/supabase/server.ts: undeclared public feature entry point ../../../features/corporate-governance",
+    "apps/web/app/lib/supabase/server.ts: undeclared public feature entry point ../../../features/documents",
+    "apps/web/app/lib/workspace-data.ts: undeclared public feature entry point ../../features/investments",
+    "apps/web/app/lib/workspace-data.ts: undeclared public feature entry point ../../features/corporate-governance",
+    "apps/web/app/lib/workspace-data.ts: undeclared public feature entry point ../../features/billing",
+    "apps/web/app/page.tsx: undeclared public feature entry point ../features/public-acquisition",
+    "apps/web/app/page.tsx: undeclared public feature entry point ../features/public-acquisition/MarketingConsent",
+    "apps/web/app/passer-talli/page.tsx: undeclared public feature entry point ../../features/public-acquisition/PublicPage",
+    "apps/web/app/pris/page.tsx: undeclared public feature entry point ../../features/public-acquisition/PublicPage",
+    "apps/web/app/pris/page.tsx: undeclared public feature entry point ../../features/public-acquisition",
+    "apps/web/app/sikkerhet/page.tsx: undeclared public feature entry point ../../features/public-acquisition/PublicPage",
+    "apps/web/app/sjekk-selskapet/EligibilityChecker.tsx: undeclared public feature entry point ../../features/company-access",
+    "apps/web/app/sjekk-selskapet/EligibilityChecker.tsx: undeclared public feature entry point ../../features/public-acquisition/MarketingEvent",
+    "apps/web/app/sjekk-selskapet/EligibilityChecker.tsx: undeclared public feature entry point ../../features/public-acquisition/measurement-client",
+    "apps/web/app/sjekk-selskapet/actions.ts: undeclared public feature entry point ../../features/company-access",
+    "apps/web/app/sjekk-selskapet/actions.ts: undeclared public feature entry point ../../features/company-access",
+    "apps/web/app/status/page.tsx: undeclared public feature entry point ../../features/public-acquisition/PublicPage",
+    "apps/web/app/system-boundary/page.tsx: undeclared public feature entry point ../../features/system-boundary",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 602629f7a8d3ce28a49de9a5e280162405b617e3 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 602629f7a8d3ce28a49de9a5e280162405b617e3 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate c41c11561455e117f0fc8d0fefe6083033c26ed5 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate c41c11561455e117f0fc8d0fefe6083033c26ed5 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 65ea378dd74225a56f15ace603e1343b00dbac31 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 65ea378dd74225a56f15ace603e1343b00dbac31 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate de35d1ead93ea28e9f9878b3cb57d460c7583c33 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate de35d1ead93ea28e9f9878b3cb57d460c7583c33 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 70c843018069caeaabf6b95eb33c72852397b89e evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 70c843018069caeaabf6b95eb33c72852397b89e transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 21a6c0bcdadeecfcc316e794f5c928a1533e86e3 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 21a6c0bcdadeecfcc316e794f5c928a1533e86e3 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 1f5d81526f4d9a41fdca072c3893baee3cf05163 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 1f5d81526f4d9a41fdca072c3893baee3cf05163 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate fbcbd5b5b33f5b1a247e8fa790c7e281258437e1 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate fbcbd5b5b33f5b1a247e8fa790c7e281258437e1 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 027254ab93c35b102d9429b3965fcbbbb4f033a8 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 027254ab93c35b102d9429b3965fcbbbb4f033a8 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate abfa5c767bb1453ea3ec02af0ca463884887e63c evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate abfa5c767bb1453ea3ec02af0ca463884887e63c transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 32dcb77890d92c655ee589e7c6c603f27c27c625 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 32dcb77890d92c655ee589e7c6c603f27c27c625 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 9c8904703f738ce2d0ba3513cf2850e33cf0abd5 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 9c8904703f738ce2d0ba3513cf2850e33cf0abd5 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate cb5f01202793035447403078029f6a77671e3b21 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate cb5f01202793035447403078029f6a77671e3b21 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 1cc236e90ea746fd9b13345c73e99c574e22bc16 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 1cc236e90ea746fd9b13345c73e99c574e22bc16 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 2716429a6699ae1b280524d960f97233736c715a evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 2716429a6699ae1b280524d960f97233736c715a transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate b137088c5cb6d6abd66761c05b332e318ab8b05d evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate b137088c5cb6d6abd66761c05b332e318ab8b05d transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate ed7c3c4000f910e10a5d90dd91be5885bccc9a94 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate ed7c3c4000f910e10a5d90dd91be5885bccc9a94 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 538a99b387a504a3b99e9e8e77e3d57d8376e3c6 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 538a99b387a504a3b99e9e8e77e3d57d8376e3c6 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate dd1a7dba8192746f5e882d5b119d895bf7730ce1 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate dd1a7dba8192746f5e882d5b119d895bf7730ce1 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate c8a8f3dd79ebe990136bda63bcfc126432104d6d evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate c8a8f3dd79ebe990136bda63bcfc126432104d6d transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 7c9b3caae3cd278bbe381589308cf302142b58a5 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate 7c9b3caae3cd278bbe381589308cf302142b58a5 transcript must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2 evidence must be committed and unmodified",
+    "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/journal-fix-10e6698e/architecture/compatibility.json: gate a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2 transcript must be committed and unmodified"
+  ],
+  "evidence": {
+    "edges": [
+      {
+        "from": "backend-system:accounting-document-lifecycle",
+        "imports": [
+          "talli_backend.modules.documents.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:documents"
+      },
+      {
+        "from": "backend-system:annual-accounts-filing-preparation",
+        "imports": [
+          "talli_backend.modules.annual_accounts_filing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:annual_accounts_filing"
+      },
+      {
+        "from": "backend-system:annual-accounts-filing-reads",
+        "imports": [
+          "talli_backend.modules.annual_accounts_filing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:annual_accounts_filing"
+      },
+      {
+        "from": "backend-system:annual-accounts-readiness-preview",
+        "imports": [
+          "talli_backend.modules.annual_accounts_filing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:annual_accounts_filing"
+      },
+      {
+        "from": "backend-system:annual-accounts-source-facts",
+        "imports": [
+          "talli_backend.modules.annual_accounts_filing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:annual_accounts_filing"
+      },
+      {
+        "from": "backend-system:annual-accounts-tt02-evidence-import",
+        "imports": [
+          "talli_backend.modules.annual_accounts_filing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:annual_accounts_filing"
+      },
+      {
+        "from": "backend-system:annual-agreement-cleanup",
+        "imports": [
+          "talli_backend.modules.billing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:billing"
+      },
+      {
+        "from": "backend-system:annual-billing-reads-and-cancellation",
+        "imports": [
+          "talli_backend.modules.billing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:billing"
+      },
+      {
+        "from": "backend-system:annual-billing-support",
+        "imports": [
+          "talli_backend.modules.billing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:billing"
+      },
+      {
+        "from": "backend-system:annual-provider-notification-intake",
+        "imports": [
+          "talli_backend.modules.billing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:billing"
+      },
+      {
+        "from": "backend-system:annual-refund-recovery",
+        "imports": [
+          "talli_backend.modules.billing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:billing"
+      },
+      {
+        "from": "backend-system:annual-support-agreement-cleanup-recovery",
+        "imports": [
+          "talli_backend.modules.billing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:billing"
+      },
+      {
+        "from": "backend-system:annual-support-refund-recovery",
+        "imports": [
+          "talli_backend.modules.billing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:billing"
+      },
+      {
+        "from": "backend-system:authority-connections-owner-lifecycle",
+        "imports": [
+          "talli_backend.modules.authority_connections.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:authority_connections"
+      },
+      {
+        "from": "backend-system:authority-connections-owner-lifecycle",
+        "imports": [
+          "talli_backend.modules.company_access.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:company_access"
+      },
+      {
+        "from": "backend-system:authority-connections-state",
+        "imports": [
+          "talli_backend.modules.authority_connections.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:authority_connections"
+      },
+      {
+        "from": "backend-system:authority-connections-state",
+        "imports": [
+          "talli_backend.modules.billing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:billing"
+      },
+      {
+        "from": "backend-system:authority-operations",
+        "imports": [
+          "talli_backend.modules.authority_connections.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:authority_connections"
+      },
+      {
+        "from": "backend-system:banking-reconciliation",
+        "imports": [
+          "talli_backend.modules.banking.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:banking"
+      },
+      {
+        "from": "backend-system:billing-and-filing-entitlement",
+        "imports": [
+          "talli_backend.modules.billing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:billing"
+      },
+      {
+        "from": "backend-system:company-access-administration",
+        "imports": [
+          "talli_backend.modules.company_access.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:company_access"
+      },
+      {
+        "from": "backend-system:company-access-context",
+        "imports": [
+          "talli_backend.modules.company_access.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:company_access"
+      },
+      {
+        "from": "backend-system:company-access-onboarding-and-support",
+        "imports": [
+          "talli_backend.modules.company_access.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:company_access"
+      },
+      {
+        "from": "backend-system:company-tax-assessment-previews",
+        "imports": [
+          "talli_backend.modules.company_tax_filing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:company_tax_filing"
+      },
+      {
+        "from": "backend-system:company-tax-filing-preparation",
+        "imports": [
+          "talli_backend.modules.company_tax_filing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:company_tax_filing"
+      },
+      {
+        "from": "backend-system:company-tax-filing-reads",
+        "imports": [
+          "talli_backend.modules.company_tax_filing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:company_tax_filing"
+      },
+      {
+        "from": "backend-system:company-tax-settlement",
+        "imports": [
+          "talli_backend.modules.banking.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:banking"
+      },
+      {
+        "from": "backend-system:company-tax-settlement",
+        "imports": [
+          "talli_backend.modules.company_tax_filing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:company_tax_filing"
+      },
+      {
+        "from": "backend-system:company-tax-settlement",
+        "imports": [
+          "talli_backend.modules.documents.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:documents"
+      },
+      {
+        "from": "backend-system:company-tax-settlement",
+        "imports": [
+          "talli_backend.modules.ledger.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:ledger"
+      },
+      {
+        "from": "backend-system:company-tax-source-facts",
+        "imports": [
+          "talli_backend.modules.company_tax_filing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:company_tax_filing"
+      },
+      {
+        "from": "backend-system:company-tax-tt02-evidence-import",
+        "imports": [
+          "talli_backend.modules.audit.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:audit"
+      },
+      {
+        "from": "backend-system:company-tax-tt02-evidence-import",
+        "imports": [
+          "talli_backend.modules.company_tax_filing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:company_tax_filing"
+      },
+      {
+        "from": "backend-system:company-year-eligibility-and-admission",
+        "imports": [
+          "talli_backend.modules.company_access.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:company_access"
+      },
+      {
+        "from": "backend-system:corporate-governance",
+        "imports": [
+          "talli_backend.modules.banking.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:banking"
+      },
+      {
+        "from": "backend-system:corporate-governance",
+        "imports": [
+          "talli_backend.modules.company_access.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:company_access"
+      },
+      {
+        "from": "backend-system:corporate-governance",
+        "imports": [
+          "talli_backend.modules.corporate_governance.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:corporate_governance"
+      },
+      {
+        "from": "backend-system:corporate-governance",
+        "imports": [
+          "talli_backend.modules.documents.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:documents"
+      },
+      {
+        "from": "backend-system:corporate-governance",
+        "imports": [
+          "talli_backend.modules.ledger.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:ledger"
+      },
+      {
+        "from": "backend-system:investment-activity",
+        "imports": [
+          "talli_backend.modules.banking.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:banking"
+      },
+      {
+        "from": "backend-system:investment-activity",
+        "imports": [
+          "talli_backend.modules.investments.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:investments"
+      },
+      {
+        "from": "backend-system:investment-activity",
+        "imports": [
+          "talli_backend.modules.ledger.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:ledger"
+      },
+      {
+        "from": "backend-system:launch-signoff-records",
+        "imports": [
+          "talli_backend.modules.company_access.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:company_access"
+      },
+      {
+        "from": "backend-system:ledger-posting-and-period-control",
+        "imports": [
+          "talli_backend.modules.ledger.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:ledger"
+      },
+      {
+        "from": "backend-system:marketing-funnel-measurement",
+        "imports": [
+          "talli_backend.modules.marketing_measurement.public"
+        ],
+        "kind": "workflow",
+        "to": "backend-system:marketing_measurement"
+      },
+      {
+        "from": "backend-system:new-year-start",
+        "imports": [
+          "talli_backend.modules.ledger.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:ledger"
+      },
+      {
+        "from": "backend-system:new-year-start",
+        "imports": [
+          "talli_backend.modules.shareholder_register_filing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:shareholder_register_filing"
+      },
+      {
+        "from": "backend-system:passive-validation-observation",
+        "imports": [
+          "talli_backend.modules.validation_observation.public"
+        ],
+        "kind": "workflow",
+        "to": "backend-system:validation_observation"
+      },
+      {
+        "from": "backend-system:shareholder-register-filing",
+        "imports": [
+          "talli_backend.modules.billing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:billing"
+      },
+      {
+        "from": "backend-system:shareholder-register-filing",
+        "imports": [
+          "talli_backend.modules.company_access.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:company_access"
+      },
+      {
+        "from": "backend-system:shareholder-register-filing",
+        "imports": [
+          "talli_backend.modules.documents.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:documents"
+      },
+      {
+        "from": "backend-system:shareholder-register-filing",
+        "imports": [
+          "talli_backend.modules.shareholder_register_filing.public"
+        ],
+        "kind": "workflow",
+        "to": "backend:shareholder_register_filing"
+      },
+      {
+        "from": "backend-system:system-boundary-tracer",
+        "imports": [
+          "talli_backend.modules.system_boundary.public"
+        ],
+        "kind": "workflow",
+        "to": "backend-system:system_boundary"
+      }
+    ],
+    "generatedBy": "scripts/check-architecture.mjs",
+    "modules": [
+      "backend-system:marketing_measurement",
+      "backend-system:system_boundary",
+      "backend-system:validation_observation",
+      "backend:annual_accounts_filing",
+      "backend:audit",
+      "backend:authority_connections",
+      "backend:banking",
+      "backend:billing",
+      "backend:company_access",
+      "backend:company_tax_filing",
+      "backend:corporate_governance",
+      "backend:documents",
+      "backend:investments",
+      "backend:ledger",
+      "backend:shareholder_register_filing"
+    ],
+    "schemaVersion": "1.0",
+    "technicalOwnership": [
+      {
+        "owner": "backend-system",
+        "table": "annual_notification_inbox.receipts"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.annual_accounts_migration_inventory"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.annual_accounts_migration_state"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.annual_accounts_quarantine"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.annual_accounts_reconciliations"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.annual_accounts_source_rows"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.annual_checkout_observation_work"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.authority_connections_overlap_grants"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.banking_command_receipts"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.banking_migration_reconciliations"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.banking_migration_runs"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.banking_migration_source_rows"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.company_tax_return_migration_inventory"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.company_tax_return_migration_state"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.company_tax_return_quarantine"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.company_tax_return_reconciliations"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.company_tax_return_source_rows"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.ledger_command_receipts"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.ledger_cursor_signing_keys"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.ledger_migration_quarantine"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.ledger_migration_reconciliations"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.ledger_migration_runs"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.ledger_migration_source_rows"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.ledger_workflow_receipts"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.marketing_consent_actions"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.marketing_funnel_events"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.marketing_funnel_withdrawals"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.marketing_measurement_releases"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.tax_settlement_migration_inventory"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.tax_settlement_migration_state"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.tax_settlement_quarantine"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.tax_settlement_reconciliations"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.tax_settlement_source_rows"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.validation_observation_control"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.validation_observations"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.validation_pilot_entitlements"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.validation_reviewers"
+      },
+      {
+        "owner": "backend-system",
+        "table": "backend_system.validation_runs"
+      },
+      {
+        "owner": "backend-system",
+        "table": "billing.billing_command_receipts"
+      },
+      {
+        "owner": "backend-system",
+        "table": "public.company_access_command_receipts"
+      },
+      {
+        "owner": "backend-system",
+        "table": "public.launch_signoffs"
+      },
+      {
+        "owner": "backend-system",
+        "table": "public.notification_outbox"
+      },
+      {
+        "owner": "backend-system",
+        "table": "shareholder_register_filing.migration_inventory"
+      },
+      {
+        "owner": "backend-system",
+        "table": "shareholder_register_filing.migration_quarantine"
+      },
+      {
+        "owner": "backend-system",
+        "table": "shareholder_register_filing.migration_state"
+      }
+    ]
+  }
+}

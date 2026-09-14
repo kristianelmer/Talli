@@ -1,6 +1,6 @@
 import type { AuthorityObligation, AuthorityPermission } from "./authority-permission.ts";
 import { productionAuthorityGate } from "./authority-permission.ts";
-import { annualAccountsPayloadFeedback } from "./annual-accounts.ts";
+import type { AnnualAccountsReadinessPreviewWire } from "../../features/annual-accounts-filing/index.ts";
 import type { BillingEntitlementDecisionWire } from "../../features/billing";
 import type { CompanyTaxReadinessPreviewWire } from "../../features/company-tax-filing/index.ts";
 import type {
@@ -54,14 +54,7 @@ export type AnnualReadinessInput = {
   filingPreviews: FilingPreviewRow[];
   filingSubmissions: FilingSubmissionRow[];
   companyTaxReadiness?: CompanyTaxReadinessPreviewWire | null;
-  corporateDocuments?: {
-    enabled: boolean;
-    readiness: {
-      blockers: Array<{ code: string; message: string }>;
-      annualSubmissionReady: boolean;
-      state: string | null;
-    };
-  };
+  annualAccountsReadiness?: AnnualAccountsReadinessPreviewWire | null;
 };
 
 const obligations: AuthorityObligation[] = ["aksjonaerregisteroppgaven", "skattemelding", "aarsregnskap"];
@@ -215,50 +208,11 @@ function skattemeldingIssues(input: AnnualReadinessInput): AnnualReadinessIssue[
 }
 
 function aarsregnskapIssues(input: AnnualReadinessInput): AnnualReadinessIssue[] {
-  const issues: AnnualReadinessIssue[] = [];
-  if (input.corporateDocuments?.enabled) {
-    const readiness = input.corporateDocuments.readiness;
-    for (const blockerIssue of readiness.blockers) {
-      issues.push(block(blockerIssue.code, blockerIssue.message, "corporate_documents"));
-    }
+  const preview = input.annualAccountsReadiness;
+  if (!preview || preview.companyId !== input.company.id || preview.incomeYear !== input.incomeYear) {
+    return [block("annual_accounts_source_unavailable", "Årsregnskapsgrunnlaget kunne ikke vurderes. Prøv igjen.", "annual_accounts_filing")];
   }
-  const hasLedger = input.ledgerEntries.some(
-    (entry) => entry.company_id === input.company.id && entry.income_year === input.incomeYear,
-  );
-  if (!hasLedger) {
-    issues.push(block("ledger_missing", "Årsregnskap krever postert åpningsbalanse eller holdinghandlinger.", "ledger"));
-  }
-  if (input.annualData && !input.annualData.answers.general_meeting_approved) {
-    issues.push(block("general_meeting_not_approved", "Generalforsamling må godkjenne årsregnskapet.", "annual_data"));
-  }
-  for (const feedback of annualAccountsPayloadFeedback(input.annualData)) {
-    if (feedback.level === "block") {
-      issues.push(block(feedback.code, feedback.message, feedback.source));
-    } else {
-      issues.push(warning(feedback.code, feedback.message, feedback.source, false));
-    }
-  }
-  const unacceptedManualWarnings = input.ledgerEntries.filter(
-    (entry) =>
-      entry.company_id === input.company.id &&
-      entry.income_year === input.incomeYear &&
-      entry.risk_flags.length > 0 &&
-      !entry.warning_accepted_at,
-  );
-  if (unacceptedManualWarnings.length) {
-    issues.push(warning("manual_journal_warning_unaccepted", "Manuelle posteringer med filingadvarsel må aksepteres.", "ledger", false));
-  }
-  const acceptedManualWarnings = input.ledgerEntries.filter(
-    (entry) =>
-      entry.company_id === input.company.id &&
-      entry.income_year === input.incomeYear &&
-      entry.risk_flags.length > 0 &&
-      entry.warning_accepted_at,
-  );
-  if (acceptedManualWarnings.length) {
-    issues.push(warning("manual_journal_warning_accepted", "Manuell postering er akseptert som advarsel.", "ledger", true));
-  }
-  return issues;
+  return preview.issues.map(issue => ({ ...issue }));
 }
 
 function documentsForObligation(documents: DocumentRow[], obligation: AuthorityObligation, incomeYear: number) {

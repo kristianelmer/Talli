@@ -1,0 +1,155 @@
+{
+  "status": "PASS_SECOND_COMPLETE_GATE_EXECUTION",
+  "testedRevision": "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6",
+  "storageRevision": null,
+  "evidencePath": "architecture/evidence/customer-ready-gates/5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6.json",
+  "evidenceRawSha256": "5e3594d9af00931e6ac33f34b6f75e23646d4147b016721dc07d4fd886fe0f25",
+  "canonicalDigest": "34d667a23ba3cc3ffe72ef9a5ba7317f93142d945f4dfff2442127aef276f935",
+  "transcriptDigest": "e2ec05a2fe5d0dbe40fb2a3594888219fe8548d63a4ccb0942e92e911ea3bd06",
+  "producerDigest": "0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+  "schemaValid": true,
+  "producerCommandAstMatches": true,
+  "checkCount": 11,
+  "startedAt": "2026-09-14T21:09:40.409Z",
+  "executedAt": "2026-09-14T21:31:49.080Z",
+  "previousPassingRevision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+  "orderedRuntimePhases": [
+    {
+      "phase": "test:ledger-database-lifecycle",
+      "line": 3131
+    },
+    {
+      "phase": "test:banking-database-lifecycle",
+      "line": 3213
+    },
+    {
+      "phase": "test:investments-database-lifecycle",
+      "line": 3246
+    },
+    {
+      "phase": "test:documents-database-lifecycle",
+      "line": 3291
+    },
+    {
+      "phase": "test:marketing-measurement-database",
+      "line": 3306
+    },
+    {
+      "phase": "test:validation-observation",
+      "line": 3320
+    },
+    {
+      "phase": "test:supabase-predecessor",
+      "line": 3335
+    },
+    {
+      "phase": "test:supabase-rf-workspace",
+      "line": 3403
+    },
+    {
+      "phase": "test:browser-owner",
+      "line": 3416
+    },
+    {
+      "phase": "test:ledger-hosted-migration-authority",
+      "line": 3458
+    },
+    {
+      "phase": "test:corporate-governance-database-lifecycle",
+      "line": 3471
+    },
+    {
+      "phase": "test:billing-database-lifecycle",
+      "line": 3517
+    },
+    {
+      "phase": "test:authority-connections-database",
+      "line": 3542
+    },
+    {
+      "phase": "test:company-tax-database",
+      "line": 3549
+    },
+    {
+      "phase": "test:annual-accounts-database",
+      "line": 3563
+    },
+    {
+      "phase": "test:browser-owner-annual",
+      "line": 3575
+    },
+    {
+      "phase": "test:supabase-rf-feedback",
+      "line": 3588
+    },
+    {
+      "phase": "test:browser-authority-connections",
+      "line": 3613
+    },
+    {
+      "phase": "test:browser-shareholder-register-filing",
+      "line": 3636
+    },
+    {
+      "phase": "test:browser-company-tax",
+      "line": 3662
+    },
+    {
+      "phase": "test:browser-annual-accounts",
+      "line": 3676
+    }
+  ],
+  "requiredFinalLaneResults": {
+    "test:browser-owner-annual": {
+      "passed": 1,
+      "skipped": 0
+    },
+    "test:supabase-rf-feedback": {
+      "passed": 13,
+      "skipped": 0
+    },
+    "test:browser-authority-connections": {
+      "passed": 11,
+      "skipped": 0
+    },
+    "test:browser-shareholder-register-filing": {
+      "passed": 14,
+      "skipped": 0
+    },
+    "test:browser-company-tax": {
+      "passed": 2,
+      "skipped": 0
+    },
+    "test:browser-annual-accounts": {
+      "passed": 1,
+      "skipped": 0
+    }
+  },
+  "accountsSqlCases": 41,
+  "billingSqlCases": 699,
+  "backendPassed": 5831,
+  "backendSkipped": 2,
+  "validationObservationSkipped": 1,
+  "advisors": {
+    "blocking": 0,
+    "earlyWarnings": 60,
+    "finalWarnings": 53
+  },
+  "manifestArtifacts": 17,
+  "adoptionEvidenceOnly": true,
+  "testedSourceBindings": {
+    "scripts/run-customer-ready-gate.mjs": "0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+    "architecture/customer-ready-gate-evidence.schema.json": "b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+    "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+    "scripts/rehearse-accounts-topology.mjs": "39e78f93e1b39bbe7cf58b2741c1bdff8c4bcff98166e48dc08a4c68a91efd9b",
+    "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "c077cd74f6b98f52c264d5f10050fb0e4c11e783250f70e545d657ee6ea564c2",
+    "tests/browser_annual_accounts_filing.mjs": "06e5735299c9bdba7c7fffb83df781ff7617c23979a54fd13a536646baf84be0",
+    "tests/support/tax-browser-fixture.mjs": "84b2fe6420190772cf9d121c1320aaf8c9961fa553e6dbf799e3eedae7836704",
+    "scripts/check-clean-worktree.sh": "81b79c93e44af4a535198a94fe7304f2891a3dd094b426bb9773fba9542d45dc"
+  },
+  "changedPaths": [],
+  "limits": [
+    "Receipt verification only; no runtime rerun",
+    "Second receipt frozen from untracked output; storage adoption and protected integration pending"
+  ]
+}

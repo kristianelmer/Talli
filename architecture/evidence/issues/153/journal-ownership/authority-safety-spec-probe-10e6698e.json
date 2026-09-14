@@ -1,0 +1,83 @@
+{
+  "status": "PASS",
+  "count": 13,
+  "cases": [
+    {
+      "case": "original_lost_response_create_instance",
+      "effectCount": 1,
+      "rerunCalls": []
+    },
+    {
+      "case": "original_lost_response_lock_for_signing",
+      "effectCount": 1,
+      "rerunCalls": []
+    },
+    {
+      "case": "original_validation",
+      "body": "<html>upstream service failure</html>",
+      "error": "ANNUAL_ACCOUNTS_VALIDATION_RESPONSE_INVALID",
+      "lockCount": 0
+    },
+    {
+      "case": "original_validation",
+      "body": "{\"validationIssues\":\"not-an-array\"}",
+      "error": "ANNUAL_ACCOUNTS_VALIDATION_RESPONSE_INVALID",
+      "lockCount": 0
+    },
+    {
+      "case": "original_validation",
+      "body": "[]",
+      "error": null,
+      "lockCount": 1
+    },
+    {
+      "case": "actual_atomic_file_create_instance_before_pending",
+      "effectCount": 0,
+      "rerunCalls": [],
+      "fileMode": "0600"
+    },
+    {
+      "case": "actual_atomic_file_create_instance_after_pending",
+      "effectCount": 0,
+      "rerunCalls": [],
+      "fileMode": "0600"
+    },
+    {
+      "case": "actual_atomic_file_create_instance_before_success",
+      "effectCount": 1,
+      "rerunCalls": [],
+      "fileMode": "0600"
+    },
+    {
+      "case": "actual_atomic_file_create_instance_after_success",
+      "effectCount": 1,
+      "rerunCalls": [],
+      "fileMode": "0600"
+    },
+    {
+      "case": "actual_atomic_file_lock_for_signing_before_pending",
+      "effectCount": 0,
+      "rerunCalls": [],
+      "fileMode": "0600"
+    },
+    {
+      "case": "actual_atomic_file_lock_for_signing_after_pending",
+      "effectCount": 0,
+      "rerunCalls": [],
+      "fileMode": "0600"
+    },
+    {
+      "case": "actual_atomic_file_lock_for_signing_before_success",
+      "effectCount": 1,
+      "rerunCalls": [],
+      "fileMode": "0600"
+    },
+    {
+      "case": "actual_atomic_file_lock_for_signing_after_success",
+      "effectCount": 1,
+      "rerunCalls": [],
+      "fileMode": "0600"
+    }
+  ],
+  "limits": "Local fake ports and private temporary files only; no provider/DB/process-crash/power-loss claim."
+}

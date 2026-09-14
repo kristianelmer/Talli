@@ -1,0 +1,26 @@
+✔ preserved Tax retirement requires exact artifact bytes, source restoration and exclusive ownership (58546.757042ms)
+✖ #152 mixed actions retain exact Accounts/Audit chains and cannot inherit permission for another edit (7782.180834ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 1
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 66650.128292
+
+✖ failing tests:
+
+test at tests/company_tax_architecture.test.mjs:44:1
+✖ #152 mixed actions retain exact Accounts/Audit chains and cannot inherit permission for another edit (7782.180834ms)
+  AssertionError [ERR_ASSERTION]: addFilingOverride
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/company_tax_architecture.test.mjs:93:16)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

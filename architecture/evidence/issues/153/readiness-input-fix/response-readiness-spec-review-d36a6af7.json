@@ -1,0 +1,282 @@
+{
+  "baseRevision": "af5c6523f081707fc08818919717371af6dd4ec9",
+  "revision": "d36a6af7d4a8f3cff49b27f07e9570dd045fac72",
+  "manifest": {
+    "path": "architecture/evidence/issues/153/response-readiness/manifest.json",
+    "sha256": "58c9892c8c655dc3a5d4dd38b3f06ec665804c683028c1d7e8a2a1151fcdb267",
+    "verifiedArtifacts": 24
+  },
+  "sourceBindings": [
+    {
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "e83aea0f62c1a85520a8139d37e120a99add30a414605a7dcdd9ceb8c49aa6b0"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_workspace.py",
+      "sha256": "b92518157c370029ca85070dd2e2b7e58f3b0a312cd931978396c323e9d100b3"
+    },
+    {
+      "path": "architecture/BACKEND-SYSTEM.md",
+      "sha256": "e2246ab623632fbe81970303e29065360653307db12c645401e6a5f053d5545f"
+    },
+    {
+      "path": "architecture/backend-system.json",
+      "sha256": "5572b6de126037a72e5a530d52d33977a8e1b9f71cf599da577d7825f8786024"
+    },
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "dadff0a5b30a22e061f793b6e3d4c9f366c95690f0ee124f717b47b22403e248"
+    },
+    {
+      "path": "contracts/openapi/talli-v1.json",
+      "sha256": "1390ab63bb08a0b1332c1a789ad5702c646760e7dee836402281b26252ab5428"
+    },
+    {
+      "path": "packages/talli-api-client/src/generated/client.ts",
+      "sha256": "fa414bffcb1aac954e6101dda88916103c2680f55d6f711c77842096facff344"
+    },
+    {
+      "path": "scripts/generate-api-client.mjs",
+      "sha256": "cc13458a5bbee0bf58b0a1cc8c6141d84013aa56eaa9f3f439105f386a4eab53"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/json_transport.py",
+      "sha256": "bdb2b5b12ff9268a24c83cbff234077ab73853408e84f3832e6abe24e3d210c4"
+    },
+    {
+      "path": "apps/backend/tests/test_annual_accounts_readiness_api.py",
+      "sha256": "d5a08591f15cd1e0a0e7dd5f8dfa1030019954da69fe415d3f2363a1e1561eac"
+    },
+    {
+      "path": "apps/backend/tests/test_json_transport.py",
+      "sha256": "f153e95074376223b7b0d22c3493b495556703a9179b74f763ee48c374cd3c97"
+    },
+    {
+      "path": "architecture/evidence/issues/153/response-readiness/read-controls-standards-review-af5c6523.json",
+      "sha256": "62a24b12ddd7d77e63ddba7d531a2dccca5e0a124d3aee2f59542d01f72ef81d"
+    },
+    {
+      "path": "architecture/evidence/issues/153/response-readiness/read-controls-standards-deep-wire-af5c6523.py",
+      "sha256": "40e844edd0382ee86805d20b673a0888505b3bdf6cc9a9785cb47d3b25e65cc4"
+    },
+    {
+      "path": "architecture/evidence/issues/153/response-readiness/deep-wire-fixed-original-probe.log",
+      "sha256": "c4c783b0f852aeef8310b4a22fb05640114ee58c6b30785679fd73fc703c39c3"
+    },
+    {
+      "path": "architecture/evidence/issues/153/response-readiness/read-controls-standards-deep-wire-af5c6523.log",
+      "sha256": "4838d39d47cf452e2d4856bc3a99b0b952582f9ae7eff7a99da129933f23f157"
+    },
+    {
+      "path": "architecture/evidence/issues/153/response-readiness/read-controls-standards-review-af5c6523.md",
+      "sha256": "630bede593ab4139f28ce3760c7cc858c4ad8d1a4ea0ce3aab8ec537944d4b39"
+    },
+    {
+      "path": "architecture/evidence/issues/153/response-readiness/deep-wire-fix-tests.log",
+      "sha256": "82774856b69b7842a4d724de71bb309d41e128dadb143357ea44aab2e25015ba"
+    },
+    {
+      "path": "architecture/evidence/issues/153/response-readiness/read-controls-standards-deep-wire-trace-af5c6523.log",
+      "sha256": "a97bac3cde303b3006f41791a10a5aa322f817866ec5a4e78038cea789120796"
+    },
+    {
+      "path": "architecture/evidence/issues/153/response-readiness/read-controls-standards-deep-wire-trace-af5c6523.py",
+      "sha256": "ea4ed7b06fd60c570895fc07a50b7161cb1a78bc811045e5562b7dc2467e2d38"
+    },
+    {
+      "path": "architecture/evidence/issues/153/response-readiness/verification.md",
+      "sha256": "923e91ebba7fa6085c345932df5d1095e9c73c628d329927904080fea1408fa9"
+    },
+    {
+      "path": "architecture/evidence/issues/153/response-readiness/deep-wire-readiness-architecture.log",
+      "sha256": "dadff0a5b30a22e061f793b6e3d4c9f366c95690f0ee124f717b47b22403e248"
+    },
+    {
+      "path": "architecture/evidence/issues/153/response-readiness/readiness-api-first-constructor-failure.log",
+      "sha256": "6dc2d473d7962fd4a04c453b59bf6f01d20d01f3adfe5492fc49f490e5ce2c5d"
+    },
+    {
+      "path": "architecture/evidence/issues/153/response-readiness/readiness-api-tests.log",
+      "sha256": "1b8b27871678fd781d8602c1618e660dc68c84d66628e8146c24cf8ab49cb4a2"
+    },
+    {
+      "path": "architecture/evidence/issues/153/response-readiness/deep-wire-readiness-tests-final.log",
+      "sha256": "4956522027b50c9218cf5bf5a8b50ebce8335bf16ea4cbe81e9da2c1e29b9fcd"
+    }
+  ],
+  "unchangedSources": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/readiness.py",
+      "sha256": "07783baea9e4f2085b3ba3d3620f1c896b93045dba765c26f9c3dc44be2e2234"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py",
+      "sha256": "6d99932b222b5028d2b59fd26c6dd06085d7ce5054d9e5f38f7bee8411a7590a"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/calculation.py",
+      "sha256": "c579d40eb3ef800073219cc156e6bb6537d35dc10ed54e93274d72878d2532ec"
+    },
+    {
+      "path": "architecture/evidence/issues/153/characterization/legacy-pure-characterization.json",
+      "sha256": "879953277ecf92ae4bb6672cbe96218a46ef8385ac5f735add96a5584e4e3492"
+    },
+    {
+      "path": "architecture/evidence/issues/153/requirements.json",
+      "sha256": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc"
+    },
+    {
+      "path": "apps/web/app/lib/annual-readiness.ts",
+      "sha256": "6e9dfde2b151cb0bdf96cf14774c2c7140db278f8a5e598419285b82858a7817",
+      "byteIdenticalTo": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b"
+    },
+    {
+      "path": "apps/web/app/lib/annual-accounts.ts",
+      "sha256": "91796975e407b260a9c028f3c7a3fb37ac525aae10a5306140418082e7041a33",
+      "byteIdenticalTo": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b"
+    }
+  ],
+  "openapi": {
+    "paths": {
+      "before": 157,
+      "after": 158,
+      "added": [
+        "/api/v1/annual-accounts/readiness-previews"
+      ],
+      "removed": [],
+      "modified": []
+    },
+    "schemas": {
+      "before": 432,
+      "after": 436,
+      "added": [
+        "AnnualAccountsCorporateBlockerWire",
+        "AnnualAccountsReadinessIssueWire",
+        "AnnualAccountsReadinessPreviewRequest",
+        "AnnualAccountsReadinessPreviewWire"
+      ],
+      "removed": [],
+      "modified": []
+    }
+  },
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "diffCommand": "git diff af5c6523f081707fc08818919717371af6dd4ec9...d36a6af7d4a8f3cff49b27f07e9570dd045fac72",
+  "commits": [
+    "d36a6af7 fix(accounts): preserve nested responses and expose owned readiness"
+  ],
+  "verdict": "ONE_NEW_P2_PREVIOUS_FINDING_CLOSED",
+  "findingDispositions": [
+    {
+      "id": "STD-153-READ-1",
+      "disposition": "CLOSED_AT_D36A6AF7",
+      "independentProof": "Original unchanged depth600 HTTP probe returns200; committed both-route depth1/600/1200 tests pass."
+    }
+  ],
+  "findings": [
+    {
+      "id": "STD-153-READINESS-1",
+      "sharedFinding": true,
+      "severity": "P2",
+      "file": "apps/backend/src/talli_backend/main.py",
+      "lines": [
+        1142,
+        1156
+      ],
+      "specIds": [
+        "GH-153-A1",
+        "GH-153-A3"
+      ],
+      "specQuote": "Hybrid signing, submission, feedback, and receipt states remain fail closed and auditable.",
+      "inputMutation": "Frozen supported readiness case annualData.confirmations={}",
+      "legacyOutcome": "TypeError: annualData.confirmations.includes is not a function",
+      "httpOutcome": {
+        "status": 200,
+        "issues": []
+      },
+      "recommendation": "Validate consumed Annual confirmations collection at the HTTP boundary before unchanged policy.",
+      "disposition": "OPEN_AT_PIN"
+    }
+  ],
+  "independentChecks": {
+    "focusedPythonPassed": 81,
+    "focusedPythonSkipped": 0,
+    "authAndModelValidation": 8,
+    "clientTransportAndScopes": 6,
+    "oldNodeVsHttpMalformedComparisons": 4,
+    "originalDeepProbeRerun": "PASS",
+    "databaseExecuted": false
+  },
+  "runtime": {
+    "python": "3.12.12",
+    "pythonPath": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+    "node": "v24.20.0",
+    "nodePath": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node"
+  },
+  "commandCwd": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-response-readiness-d36a6af7",
+  "commands": [
+    "git log af5c6523..d36a6af7 --oneline",
+    "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=$PWD:$PWD/apps/backend/src:$PWD/apps/backend/tests <pythonPath> -m pytest -q -c /dev/null --rootdir=. -p no:cacheprovider apps/backend/tests/test_annual_accounts_workspace.py apps/backend/tests/test_annual_accounts_preparation.py apps/backend/tests/test_annual_accounts_import_workflow.py apps/backend/tests/test_annual_accounts_readiness_api.py apps/backend/tests/test_json_transport.py",
+    "<pythonPath> ../read-controls-standards-deep-wire-af5c6523.py",
+    "<pythonPath> ../response-readiness-spec-probe-d36a6af7.py",
+    "<nodePath> ../response-readiness-spec-client-d36a6af7.mjs",
+    "<pythonPath> ../response-readiness-spec-nested-d36a6af7.py"
+  ],
+  "probeNotes": [
+    "Legacy full aarsregnskapIssues is exposed by adding export and transpiling TypeScript; function body unchanged, local relative imports redirected to same pinned files.",
+    "Node emits the expected experimental stripTypeScriptTypes warning; comparisons completed.",
+    "No SQL or hosted/provider/browser operations. Only private archive/probe/report files written."
+  ],
+  "scopeLimits": [
+    "No review of uncommitted changes.",
+    "Preview receives caller facts; no durable authorization/completeness attestation.",
+    "All six stage criteria remain pending; no full-stage credit."
+  ],
+  "privateArtifacts": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-spec-bindings-d36a6af7.json",
+      "sha256": "e5e3ec8841cea487afad772611199835e2f40466dcb54a087df00f6cdb5f36b9"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-spec-tests-d36a6af7.log",
+      "sha256": "44de904acea2564fa6b0309917facef7d0e11e3bbe5139aabef7f94722ea550c"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/read-controls-standards-deep-wire-af5c6523.py",
+      "sha256": "40e844edd0382ee86805d20b673a0888505b3bdf6cc9a9785cb47d3b25e65cc4"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-spec-original-probe-d36a6af7.log",
+      "sha256": "c4c783b0f852aeef8310b4a22fb05640114ee58c6b30785679fd73fc703c39c3"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-spec-probe-d36a6af7.py",
+      "sha256": "611e0adac7bb2ba19021e21cb3e24c4648da41af8f514c60690471d919ea9a7f"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-spec-probe-d36a6af7.json",
+      "sha256": "a3060365656bc26a190f21fe8930e277abcaff0eb3264bbf05dfc32efb939be6"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-spec-client-d36a6af7.mjs",
+      "sha256": "f9fad229a0a1d051f5825af1369b48e2ba218a9a7fe6fa1c865bbc6f0cc2d04e"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-spec-client-d36a6af7.json",
+      "sha256": "59424d46093f7accbd234237a9f2fa78a1fc4c571685e804b08391c3b748d99d"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-spec-legacy-node-d36a6af7.mjs",
+      "sha256": "4ca849235b035820a83bbe3330a0e18e0d47e4deb6c9f3875d06b169ae622a0a"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-spec-nested-d36a6af7.py",
+      "sha256": "db15791255dd3f90162c7d8a04c39d191df5283e65c6e426df41a1ea1e8456c0"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/response-readiness-spec-nested-d36a6af7.json",
+      "sha256": "d442a179ecf9d45a63545cffd146c9491163eeda73de0b32a931923894ddba2b"
+    }
+  ],
+  "reportSha256": "ed20ecde0914fb1c0e0f9d4fd37c1de30fc519f248523c1049cc5fe8f1afb099"
+}

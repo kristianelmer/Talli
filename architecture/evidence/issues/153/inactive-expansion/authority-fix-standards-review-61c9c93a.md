@@ -1,0 +1,9 @@
+PASS — the two reviewed JSON-boundary regressions are corrected; no new actionable Standards or heuristic findings.
+
+Reviewed immutable `git diff 50bfe67a17faf3bab714a51372a85d7e16886671...61c9c93add0cfd0011bd55e8f71200eaf8a76a43`. Only the private fixed CLI mapper and its regression test change executable behavior. Normalizing Annual `false`, zero, negative zero and empty string to absence reproduces the released JavaScript boundary. Present arrays/objects remain present and fail with the original shapes; non-null Ledger values must be JSON arrays. This is technical input mapping, not a new Accounts defaulting or readiness rule. Public contracts, capability policy, workflow ordering, ports and HTTP adapter remain unchanged (ADR0011/0012).
+
+Independently passed all 236 authority tests in a private Python 3.12.12 snapshot. Replayed the ten retained controls through the actual predecessor Python-to-Node subprocess on pinned Node 24.20.0 and the fixed mapper: predecessor outcomes match the original fixture and every fixed result matches the predecessor. An additional 24 JSON-shape controls also match, including Annual empty arrays/objects, truthy scalars, whitespace and malformed Ledger collections. No overly broad normalization was observed.
+
+All eleven manifest references and four private review adoptions are byte-identical. The original Spec findings and red/green transcripts remain historical evidence; earlier manifests, registry, frozen baseline and all six pending criteria are unchanged. No SQL artifact is part of this immutable delta, and concurrent working-tree expansion was excluded.
+
+This review used only isolated local tests and subprocesses, with no shared-source edit, database, provider or browser operation. It does not certify full-stage, migration or release acceptance.

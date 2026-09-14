@@ -1,0 +1,55 @@
+architecture: Tax source composition requires its exact body and unchanged sibling persistence chains: apps/web/app/actions.ts operation:refreshAnnualReadinessSnapshots
+architecture: RF compatibility amendment requires unchanged sibling persistence chains: apps/web/app/actions.ts operation:addFilingOverride
+architecture: RF compatibility amendment requires unchanged sibling persistence chains: apps/web/app/actions.ts operation:addFilingReviewComment
+architecture: RF compatibility amendment requires unchanged sibling persistence chains: apps/web/app/actions.ts operation:confirmAuthorityPermission
+architecture: RF compatibility amendment requires unchanged sibling persistence chains: apps/web/app/actions.ts operation:recordAuthorityTestEvidence
+architecture: RF compatibility amendment requires unchanged sibling persistence chains: apps/web/app/actions.ts operation:queueDeadlineReminders
+architecture: RF compatibility amendment requires unchanged sibling persistence chains: apps/web/app/actions.ts operation:refreshAnnualReadinessSnapshots
+architecture: RF compatibility amendment requires unchanged sibling persistence chains: apps/web/app/lib/supabase/server.ts operation:listAuthorityPermissions
+architecture: RF compatibility amendment requires unchanged sibling persistence chains: apps/web/app/lib/supabase/server.ts operation:listAuthorityTestRuns
+architecture: RF compatibility amendment requires unchanged sibling persistence chains: apps/web/app/lib/supabase/server.ts operation:listFilingPreviews
+architecture: RF compatibility amendment requires unchanged sibling persistence chains: apps/web/app/lib/supabase/server.ts operation:listFilingSubmissions
+architecture: RF compatibility amendment requires unchanged sibling persistence chains: apps/web/app/actions.ts operation:acknowledgeFilingReviewComment
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:acknowledgeFilingReviewComment
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:addFilingOverride
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:addFilingReviewComment
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:refreshAnnualReadinessSnapshots
+architecture: compat-annual-compliance-persistence: scope has an added writer: apps/web/app/lib/supabase/server.ts direct-web-business-persistence table:filing_overrides operation:listFilingOverrides
+architecture: compat-annual-compliance-persistence: scope has an added writer: apps/web/app/lib/supabase/server.ts direct-web-business-persistence table:filing_review_comments operation:listFilingReviewComments
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:addFilingOverride
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:addFilingReviewComment
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:confirmAuthorityPermission
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:queueDeadlineReminders
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:recordAuthorityTestEvidence
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:refreshAnnualReadinessSnapshots
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:refreshAnnualReadinessSnapshots
+architecture: compat-annual-compliance-persistence: legacy operation changed: apps/web/app/actions.ts operation:refreshAnnualReadinessSnapshots
+architecture: compat-annual-compliance-persistence: scope has an added writer: apps/web/app/lib/supabase/server.ts direct-web-business-persistence table:authority_permissions operation:listAuthorityPermissions
+architecture: compat-annual-compliance-persistence: scope has an added writer: apps/web/app/lib/supabase/server.ts direct-web-business-persistence table:authority_test_runs operation:listAuthorityTestRuns
+architecture: compat-annual-compliance-persistence: scope has an added writer: apps/web/app/lib/supabase/server.ts direct-web-business-persistence table:filing_previews operation:listFilingPreviews
+architecture: compat-annual-compliance-persistence: scope has an added writer: apps/web/app/lib/supabase/server.ts direct-web-business-persistence table:filing_submissions operation:listFilingSubmissions
+architecture: compat-annual-accounts-persistence: legacy operation changed: apps/web/app/actions.ts operation:recordAnnualAccountsTt02Evidence
+architecture: compat-audit-persistence: legacy operation changed: apps/web/app/actions.ts operation:acknowledgeFilingReviewComment
+architecture: compat-audit-persistence: legacy operation changed: apps/web/app/actions.ts operation:addFilingOverride
+architecture: compat-audit-persistence: legacy operation changed: apps/web/app/actions.ts operation:addFilingReviewComment
+architecture: compat-audit-persistence: legacy operation changed: apps/web/app/actions.ts operation:confirmAuthorityPermission
+architecture: compat-audit-persistence: legacy operation changed: apps/web/app/actions.ts operation:recordAuthorityTestEvidence
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/actions.ts direct-web-business-persistence table:filing_review_comments operation:acknowledgeFilingReviewComment
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/actions.ts direct-web-business-persistence table:filing_overrides operation:addFilingOverride
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/actions.ts direct-web-business-persistence table:filing_review_comments operation:addFilingReviewComment
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/actions.ts direct-web-business-persistence table:filing_overrides operation:refreshAnnualReadinessSnapshots
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/lib/supabase/server.ts direct-web-business-persistence table:filing_overrides operation:listFilingOverrides
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/lib/supabase/server.ts direct-web-business-persistence table:filing_review_comments operation:listFilingReviewComments
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/actions.ts direct-web-business-persistence table:filing_previews operation:addFilingOverride
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/actions.ts direct-web-business-persistence table:filing_previews operation:addFilingReviewComment
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/actions.ts direct-web-business-persistence table:authority_permissions operation:confirmAuthorityPermission
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/actions.ts direct-web-business-persistence table:filing_submissions operation:queueDeadlineReminders
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/actions.ts direct-web-business-persistence table:authority_test_runs operation:recordAuthorityTestEvidence
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/actions.ts direct-web-business-persistence table:authority_permissions operation:refreshAnnualReadinessSnapshots
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/actions.ts direct-web-business-persistence table:filing_previews operation:refreshAnnualReadinessSnapshots
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/actions.ts direct-web-business-persistence table:filing_submissions operation:refreshAnnualReadinessSnapshots
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/lib/supabase/server.ts direct-web-business-persistence table:authority_permissions operation:listAuthorityPermissions
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/lib/supabase/server.ts direct-web-business-persistence table:authority_test_runs operation:listAuthorityTestRuns
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/lib/supabase/server.ts direct-web-business-persistence table:filing_previews operation:listFilingPreviews
+architecture: compat-annual-compliance-persistence: registered compatibility scope has no matching finding: apps/web/app/lib/supabase/server.ts direct-web-business-persistence table:filing_submissions operation:listFilingSubmissions
+architecture: compat-annual-accounts-persistence: registered compatibility scope has no matching finding: apps/web/app/actions.ts direct-web-business-persistence table:authority_test_runs operation:recordAnnualAccountsTt02Evidence

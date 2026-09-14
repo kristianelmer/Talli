@@ -1,0 +1,160 @@
+{
+  "schemaVersion": "1.0",
+  "sourceRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "runtime": "3.12.12 (main, Feb  4 2026, 01:57:59) [Clang 21.1.4 ]",
+  "sources": {
+    "holding_cli/main.py": "9131c8ff8d0534ab1dd748576b2f81c4ecffa748ce9b71b7515c362a39fee545",
+    "holding_core/annual.py": "08159462bee6fbf71ed62a7808a768e8340dd0e0baa74edb2cfb41587a732da2",
+    "holding_core/validation.py": "3c6ea168c1e063a76b095fba496727404dc8de68110a3d2bd858ff057d514cf5"
+  },
+  "scope": "Actual local CLI, public/synthetic fixtures only; no provider/environment credentials.",
+  "cases": [
+    {
+      "args": [
+        "validate-annual-public-data"
+      ],
+      "exitCode": 2,
+      "stdout": "",
+      "stderr": "usage: talli validate-annual-public-data [-h] --case CASE [--json]\ntalli validate-annual-public-data: error: the following arguments are required: --case\n"
+    },
+    {
+      "args": [
+        "validate-annual-public-data",
+        "--json"
+      ],
+      "exitCode": 2,
+      "stdout": "",
+      "stderr": "usage: talli validate-annual-public-data [-h] --case CASE [--json]\ntalli validate-annual-public-data: error: the following arguments are required: --case\n"
+    },
+    {
+      "args": [
+        "validate-annual-public-data",
+        "--case",
+        "tests/fixtures/annual_validation/simple_holding_pass.json"
+      ],
+      "exitCode": 0,
+      "stdout": "Validation report: årsregnskap + skattemelding for AS\nSource: public/synthetic\n\nAuthority maps:\n- docs/filing/annual-accounts-authority-map.md\n- docs/filing/company-tax-return-authority-map.md\n\nLimitations:\n- Public and synthetic data cannot prove voucher completeness.\n- Public and synthetic data cannot prove exact bank transaction classification.\n- Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads.\n- Annual accounts validation is mapped to public RR-0002 requirements, not production Altinn submission.\n- Company tax return validation is mapped to public Skatteetaten sources, not production submission payload parity.\n\nCases:\n- simple_holding_pass: pass (2 preview(s))\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "validate-annual-public-data",
+        "--case",
+        "tests/fixtures/annual_validation/simple_holding_pass.json",
+        "--json"
+      ],
+      "exitCode": 0,
+      "stdout": "{\n  \"filing\": \"årsregnskap + skattemelding for AS\",\n  \"source\": \"public/synthetic\",\n  \"authority_maps\": [\n    \"docs/filing/annual-accounts-authority-map.md\",\n    \"docs/filing/company-tax-return-authority-map.md\"\n  ],\n  \"limitations\": [\n    \"Public and synthetic data cannot prove voucher completeness.\",\n    \"Public and synthetic data cannot prove exact bank transaction classification.\",\n    \"Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads.\",\n    \"Annual accounts validation is mapped to public RR-0002 requirements, not production Altinn submission.\",\n    \"Company tax return validation is mapped to public Skatteetaten sources, not production submission payload parity.\"\n  ],\n  \"cases\": [\n    {\n      \"case_path\": \"tests/fixtures/annual_validation/simple_holding_pass.json\",\n      \"case_id\": \"simple_holding_pass\",\n      \"outcome\": \"pass\",\n      \"filings\": [\n        \"årsregnskap\",\n        \"skattemelding for AS\"\n      ],\n      \"assumptions\": [\n        \"Small Norwegian holding AS launch subset\",\n        \"No production authority submission\",\n        \"Authority maps define production blockers separately\"\n      ],\n      \"issues\": [],\n      \"mismatches\": [],\n      \"generated_previews\": 2\n    }\n  ]\n}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "validate-annual-public-data",
+        "--case",
+        "tests/fixtures/annual_validation/simple_holding_mismatch.json"
+      ],
+      "exitCode": 1,
+      "stdout": "Validation report: årsregnskap + skattemelding for AS\nSource: public/synthetic\n\nAuthority maps:\n- docs/filing/annual-accounts-authority-map.md\n- docs/filing/company-tax-return-authority-map.md\n\nLimitations:\n- Public and synthetic data cannot prove voucher completeness.\n- Public and synthetic data cannot prove exact bank transaction classification.\n- Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads.\n- Annual accounts validation is mapped to public RR-0002 requirements, not production Altinn submission.\n- Company tax return validation is mapped to public Skatteetaten sources, not production submission payload parity.\n\nCases:\n- simple_holding_mismatch: mismatch (2 preview(s))\n  - bank_balance: expected 99999.0, got 30000.0\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "validate-annual-public-data",
+        "--case",
+        "tests/fixtures/annual_validation/simple_holding_mismatch.json",
+        "--json"
+      ],
+      "exitCode": 1,
+      "stdout": "{\n  \"filing\": \"årsregnskap + skattemelding for AS\",\n  \"source\": \"public/synthetic\",\n  \"authority_maps\": [\n    \"docs/filing/annual-accounts-authority-map.md\",\n    \"docs/filing/company-tax-return-authority-map.md\"\n  ],\n  \"limitations\": [\n    \"Public and synthetic data cannot prove voucher completeness.\",\n    \"Public and synthetic data cannot prove exact bank transaction classification.\",\n    \"Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads.\",\n    \"Annual accounts validation is mapped to public RR-0002 requirements, not production Altinn submission.\",\n    \"Company tax return validation is mapped to public Skatteetaten sources, not production submission payload parity.\"\n  ],\n  \"cases\": [\n    {\n      \"case_path\": \"tests/fixtures/annual_validation/simple_holding_mismatch.json\",\n      \"case_id\": \"simple_holding_mismatch\",\n      \"outcome\": \"mismatch\",\n      \"filings\": [\n        \"årsregnskap\",\n        \"skattemelding for AS\"\n      ],\n      \"assumptions\": [\n        \"Small Norwegian holding AS launch subset\",\n        \"No production authority submission\",\n        \"Authority maps define production blockers separately\"\n      ],\n      \"issues\": [],\n      \"mismatches\": [\n        \"bank_balance: expected 99999.0, got 30000.0\"\n      ],\n      \"generated_previews\": 2\n    }\n  ]\n}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "validate-annual-public-data",
+        "--case",
+        "tests/fixtures/annual_validation/simple_holding_blocked.json"
+      ],
+      "exitCode": 1,
+      "stdout": "Validation report: årsregnskap + skattemelding for AS\nSource: public/synthetic\n\nAuthority maps:\n- docs/filing/annual-accounts-authority-map.md\n- docs/filing/company-tax-return-authority-map.md\n\nLimitations:\n- Public and synthetic data cannot prove voucher completeness.\n- Public and synthetic data cannot prove exact bank transaction classification.\n- Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads.\n- Annual accounts validation is mapped to public RR-0002 requirements, not production Altinn submission.\n- Company tax return validation is mapped to public Skatteetaten sources, not production submission payload parity.\n\nCases:\n- simple_holding_blocked: blocked (2 preview(s))\n  - Ubetalte poster er ikke støttet i enkel holdingselskapssimulering.\n  - Innsendingsrett må bekreftes før filing.\n  - Generalforsamling må godkjenne årsregnskapet før filing.\n  - Ubetalte poster er ikke støttet i enkel holdingselskapssimulering.\n  - Innsendingsrett må bekreftes før filing.\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "validate-annual-public-data",
+        "--case",
+        "tests/fixtures/annual_validation/simple_holding_blocked.json",
+        "--json"
+      ],
+      "exitCode": 1,
+      "stdout": "{\n  \"filing\": \"årsregnskap + skattemelding for AS\",\n  \"source\": \"public/synthetic\",\n  \"authority_maps\": [\n    \"docs/filing/annual-accounts-authority-map.md\",\n    \"docs/filing/company-tax-return-authority-map.md\"\n  ],\n  \"limitations\": [\n    \"Public and synthetic data cannot prove voucher completeness.\",\n    \"Public and synthetic data cannot prove exact bank transaction classification.\",\n    \"Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads.\",\n    \"Annual accounts validation is mapped to public RR-0002 requirements, not production Altinn submission.\",\n    \"Company tax return validation is mapped to public Skatteetaten sources, not production submission payload parity.\"\n  ],\n  \"cases\": [\n    {\n      \"case_path\": \"tests/fixtures/annual_validation/simple_holding_blocked.json\",\n      \"case_id\": \"simple_holding_blocked\",\n      \"outcome\": \"blocked\",\n      \"filings\": [\n        \"årsregnskap\",\n        \"skattemelding for AS\"\n      ],\n      \"assumptions\": [\n        \"Small Norwegian holding AS launch subset\",\n        \"No production authority submission\",\n        \"Authority maps define production blockers separately\"\n      ],\n      \"issues\": [\n        \"Ubetalte poster er ikke støttet i enkel holdingselskapssimulering.\",\n        \"Innsendingsrett må bekreftes før filing.\",\n        \"Generalforsamling må godkjenne årsregnskapet før filing.\",\n        \"Ubetalte poster er ikke støttet i enkel holdingselskapssimulering.\",\n        \"Innsendingsrett må bekreftes før filing.\"\n      ],\n      \"mismatches\": [],\n      \"generated_previews\": 2\n    }\n  ]\n}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "validate-annual-public-data",
+        "--case",
+        "tests/fixtures/annual_validation/unsupported_group_contribution.json"
+      ],
+      "exitCode": 1,
+      "stdout": "Validation report: årsregnskap + skattemelding for AS\nSource: public/synthetic\n\nAuthority maps:\n- docs/filing/annual-accounts-authority-map.md\n- docs/filing/company-tax-return-authority-map.md\n\nLimitations:\n- Public and synthetic data cannot prove voucher completeness.\n- Public and synthetic data cannot prove exact bank transaction classification.\n- Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads.\n- Annual accounts validation is mapped to public RR-0002 requirements, not production Altinn submission.\n- Company tax return validation is mapped to public Skatteetaten sources, not production submission payload parity.\n\nCases:\n- unsupported_group_contribution: unsupported (0 preview(s))\n  - Konsernbidrag er utenfor Talli launch subset.\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "validate-annual-public-data",
+        "--case",
+        "tests/fixtures/annual_validation/unsupported_group_contribution.json",
+        "--json"
+      ],
+      "exitCode": 1,
+      "stdout": "{\n  \"filing\": \"årsregnskap + skattemelding for AS\",\n  \"source\": \"public/synthetic\",\n  \"authority_maps\": [\n    \"docs/filing/annual-accounts-authority-map.md\",\n    \"docs/filing/company-tax-return-authority-map.md\"\n  ],\n  \"limitations\": [\n    \"Public and synthetic data cannot prove voucher completeness.\",\n    \"Public and synthetic data cannot prove exact bank transaction classification.\",\n    \"Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads.\",\n    \"Annual accounts validation is mapped to public RR-0002 requirements, not production Altinn submission.\",\n    \"Company tax return validation is mapped to public Skatteetaten sources, not production submission payload parity.\"\n  ],\n  \"cases\": [\n    {\n      \"case_path\": \"tests/fixtures/annual_validation/unsupported_group_contribution.json\",\n      \"case_id\": \"unsupported_group_contribution\",\n      \"outcome\": \"unsupported\",\n      \"filings\": [],\n      \"assumptions\": [\n        \"Small Norwegian holding AS launch subset\",\n        \"No production authority submission\",\n        \"Authority maps define production blockers separately\"\n      ],\n      \"issues\": [\n        \"Konsernbidrag er utenfor Talli launch subset.\"\n      ],\n      \"mismatches\": [],\n      \"generated_previews\": 0\n    }\n  ]\n}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "validate-annual-public-data",
+        "--case",
+        "tests/fixtures/annual_validation/simple_holding_pass.json",
+        "--case",
+        "tests/fixtures/annual_validation/simple_holding_mismatch.json"
+      ],
+      "exitCode": 1,
+      "stdout": "Validation report: årsregnskap + skattemelding for AS\nSource: public/synthetic\n\nAuthority maps:\n- docs/filing/annual-accounts-authority-map.md\n- docs/filing/company-tax-return-authority-map.md\n\nLimitations:\n- Public and synthetic data cannot prove voucher completeness.\n- Public and synthetic data cannot prove exact bank transaction classification.\n- Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads.\n- Annual accounts validation is mapped to public RR-0002 requirements, not production Altinn submission.\n- Company tax return validation is mapped to public Skatteetaten sources, not production submission payload parity.\n\nCases:\n- simple_holding_pass: pass (2 preview(s))\n- simple_holding_mismatch: mismatch (2 preview(s))\n  - bank_balance: expected 99999.0, got 30000.0\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "validate-annual-public-data",
+        "--case",
+        "tests/fixtures/annual_validation/simple_holding_pass.json",
+        "--case",
+        "tests/fixtures/annual_validation/simple_holding_mismatch.json",
+        "--json"
+      ],
+      "exitCode": 1,
+      "stdout": "{\n  \"filing\": \"årsregnskap + skattemelding for AS\",\n  \"source\": \"public/synthetic\",\n  \"authority_maps\": [\n    \"docs/filing/annual-accounts-authority-map.md\",\n    \"docs/filing/company-tax-return-authority-map.md\"\n  ],\n  \"limitations\": [\n    \"Public and synthetic data cannot prove voucher completeness.\",\n    \"Public and synthetic data cannot prove exact bank transaction classification.\",\n    \"Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads.\",\n    \"Annual accounts validation is mapped to public RR-0002 requirements, not production Altinn submission.\",\n    \"Company tax return validation is mapped to public Skatteetaten sources, not production submission payload parity.\"\n  ],\n  \"cases\": [\n    {\n      \"case_path\": \"tests/fixtures/annual_validation/simple_holding_pass.json\",\n      \"case_id\": \"simple_holding_pass\",\n      \"outcome\": \"pass\",\n      \"filings\": [\n        \"årsregnskap\",\n        \"skattemelding for AS\"\n      ],\n      \"assumptions\": [\n        \"Small Norwegian holding AS launch subset\",\n        \"No production authority submission\",\n        \"Authority maps define production blockers separately\"\n      ],\n      \"issues\": [],\n      \"mismatches\": [],\n      \"generated_previews\": 2\n    },\n    {\n      \"case_path\": \"tests/fixtures/annual_validation/simple_holding_mismatch.json\",\n      \"case_id\": \"simple_holding_mismatch\",\n      \"outcome\": \"mismatch\",\n      \"filings\": [\n        \"årsregnskap\",\n        \"skattemelding for AS\"\n      ],\n      \"assumptions\": [\n        \"Small Norwegian holding AS launch subset\",\n        \"No production authority submission\",\n        \"Authority maps define production blockers separately\"\n      ],\n      \"issues\": [],\n      \"mismatches\": [\n        \"bank_balance: expected 99999.0, got 30000.0\"\n      ],\n      \"generated_previews\": 2\n    }\n  ]\n}\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "validate-annual-public-data",
+        "--case",
+        "tests/fixtures/annual_validation/__accounts153_missing__.json"
+      ],
+      "exitCode": 1,
+      "stdout": "Validation report: årsregnskap + skattemelding for AS\nSource: public/synthetic\n\nAuthority maps:\n- docs/filing/annual-accounts-authority-map.md\n- docs/filing/company-tax-return-authority-map.md\n\nLimitations:\n- Public and synthetic data cannot prove voucher completeness.\n- Public and synthetic data cannot prove exact bank transaction classification.\n- Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads.\n- Annual accounts validation is mapped to public RR-0002 requirements, not production Altinn submission.\n- Company tax return validation is mapped to public Skatteetaten sources, not production submission payload parity.\n\nCases:\n- tests/fixtures/annual_validation/__accounts153_missing__.json: blocked (0 preview(s))\n  - Annual validation fixture failed: [Errno 2] No such file or directory: 'tests/fixtures/annual_validation/__accounts153_missing__.json'\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "validate-annual-public-data",
+        "--case",
+        "tests/fixtures/annual_validation/__accounts153_missing__.json",
+        "--json"
+      ],
+      "exitCode": 1,
+      "stdout": "{\n  \"filing\": \"årsregnskap + skattemelding for AS\",\n  \"source\": \"public/synthetic\",\n  \"authority_maps\": [\n    \"docs/filing/annual-accounts-authority-map.md\",\n    \"docs/filing/company-tax-return-authority-map.md\"\n  ],\n  \"limitations\": [\n    \"Public and synthetic data cannot prove voucher completeness.\",\n    \"Public and synthetic data cannot prove exact bank transaction classification.\",\n    \"Public and synthetic data cannot prove parity with Fiken or accountant-submitted payloads.\",\n    \"Annual accounts validation is mapped to public RR-0002 requirements, not production Altinn submission.\",\n    \"Company tax return validation is mapped to public Skatteetaten sources, not production submission payload parity.\"\n  ],\n  \"cases\": [\n    {\n      \"case_path\": \"tests/fixtures/annual_validation/__accounts153_missing__.json\",\n      \"case_id\": null,\n      \"outcome\": \"blocked\",\n      \"filings\": [],\n      \"assumptions\": [\n        \"Small Norwegian holding AS launch subset\",\n        \"No production authority submission\",\n        \"Authority maps define production blockers separately\"\n      ],\n      \"issues\": [\n        \"Annual validation fixture failed: [Errno 2] No such file or directory: 'tests/fixtures/annual_validation/__accounts153_missing__.json'\"\n      ],\n      \"mismatches\": [],\n      \"generated_previews\": 0\n    }\n  ]\n}\n",
+      "stderr": ""
+    }
+  ]
+}
