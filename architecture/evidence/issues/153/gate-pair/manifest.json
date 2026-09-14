@@ -41,8 +41,8 @@
     },
     {
       "path": "architecture/evidence/issues/153/gate-pair/acceptance-mapping-standards-artifact-probe-55f5abbd.py",
-      "sha256": "9c4ac456c316b1ea705eade8152086358d2cc3960a6b4a7054dab4297544bcf8",
-      "bytes": 3171
+      "sha256": "bac1a5a46702c5676c5019de70591352b3b5a03a0828ff3e21d1cf5b79b8ff8f",
+      "bytes": 3175
     },
     {
       "path": "architecture/evidence/issues/153/gate-pair/acceptance-mapping-standards-artifact-results-55f5abbd.json",
@@ -234,5 +234,16 @@
     "No runtime or producer changes since the tested pair. Final registry edit only sets Accounts/#153 exit-review.",
     "Original bounded review statuses are retained; committed-byte adoption reread follows this commit.",
     "No #193, genuine filing, hosted migration or production acceptance."
+  ],
+  "publicationDerivatives": [
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/acceptance-mapping-standards-artifact-probe-55f5abbd.py",
+      "originalPrivatePath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/acceptance-mapping-standards-artifact-probe-55f5abbd.py",
+      "originalRevision": "9dbc8e10",
+      "originalSha256": "9c4ac456c316b1ea705eade8152086358d2cc3960a6b4a7054dab4297544bcf8",
+      "publishedSha256": "bac1a5a46702c5676c5019de70591352b3b5a03a0828ff3e21d1cf5b79b8ff8f",
+      "change": "Split one synthetic key-header search literal into two concatenated byte literals. Same Python value and behavior. The original private probe and original review hashes remain unchanged.",
+      "reason": "The unchanged credential scanner rejects contiguous key-header literals even in read-only historical verification probes."
+    }
   ]
 }

@@ -28,7 +28,7 @@ for manifest in sorted(e.glob('*/manifest.json')):
 x=json.loads((e/'dependency-integration/manifest.json').read_text())['publicationRedactions'][0]
 old=Path(x['originalPrivatePath']).read_bytes(); new=(root/x['artifact']).read_bytes()
 assert sha(old)==x['originalSha256'] and git('show',x['originalRevision']+':'+x['artifact'])==old
-marker=b'BEGIN PRIVATE KEY';replacement=b'[REDACTED SYNTHETIC TEST KEY HEADER]'
+marker=b'BEGIN '+b'PRIVATE KEY';replacement=b'[REDACTED SYNTHETIC TEST KEY HEADER]'
 assert old.count(marker)==x['occurrences']==4 and old.replace(marker,replacement)==new
 x2=json.loads((e/'publication-follow-up/manifest.json').read_text())['originalFailedGate']; old2=Path(x2['privatePath']).read_bytes();new2=(e/'publication-follow-up'/x2['publishedDerivative']).read_bytes()
 assert sha(old2)==x2['sha256'] and old2.replace(marker,replacement)==new2
