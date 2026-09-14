@@ -14,7 +14,7 @@ import { SYSTEM_USER_COOKIE } from "../apps/web/app/lib/system-user-presentation
 import { installBrowserEgressGuard } from "./fixtures/system-user-authority-mock.mjs";
 import { allocateLoopbackPort, ownedProcessDiagnostics, startOwnedProcess, stopOwnedProcess, waitForOwnedReadiness } from "./support/owned-process-lifecycle.mjs";
 import { isLoopbackPostgresUrl, isLoopbackSupabaseUrl } from "./support/supabase_fixture_safety.mjs";
-import { fixtureTableTransaction, deleteRfFixtureCompanies } from "./support/rf1086-fixture-access.mjs";
+import { fixtureTableTransaction, deleteRfFixtureCompanies, rfPublicProjectionRelations } from "./support/rf1086-fixture-access.mjs";
 
 import { startRf1086FilingAuthorityMock } from "./fixtures/rf1086-filing-authority-mock.mjs";
 
@@ -412,8 +412,9 @@ async function seedCallbackAudit(database, actorId) {
 }
 
 async function cleanupFixture(database, companyIds, userIds) {
+  const projections = await rfPublicProjectionRelations(database);
   await fixtureTableTransaction(database, [
-    ...RF_FIXTURE_RELATIONS,
+    ...RF_FIXTURE_RELATIONS, ...projections,
     "authority_connections.system_user_requests", "authority_connections.authority_operations",
     "public.audit_events", "public.support_operators", "public.customer_agreement_acceptances",
     "public.company_memberships", "public.companies",
@@ -423,10 +424,9 @@ async function cleanupFixture(database, companyIds, userIds) {
     await database.query("delete from shareholder_register_filing.production_filing_events where submission_id in (select id from shareholder_register_filing.production_filing_submissions where company_id=any($1::uuid[]))", [companyIds]);
     await database.query("delete from shareholder_register_filing.production_filing_submissions where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from shareholder_register_filing.filing_approval_snapshots where company_id=any($1::uuid[])", [companyIds]);
-    // Normal RF writes keep these public projections. Their setup FKs still
-    // reference the canonical opening after contract, so remove children first.
-    for (const table of RF_PUBLIC_PROJECTION_TABLES)
-      await database.query(`delete from public.${table} where company_id=any($1::uuid[])`, [companyIds]);
+    // Before Accounts retirement, remove RF mirror children before openings.
+    for (const table of projections)
+      await database.query(`delete from ${table} where company_id=any($1::uuid[])`, [companyIds]);
     await database.query("delete from ledger.opening_bank_inputs where company_id=any($1::uuid[])", [companyIds]);
     for (const table of ["filing_review_comments", "filing_overrides", "filing_submissions", "authority_test_runs", "authority_permissions", "filing_previews", "opening_shareholders", "opening_balance_setups", "migration_inventory", "migration_quarantine"])
       await database.query(`delete from shareholder_register_filing.${table} where company_id=any($1::uuid[])`, [companyIds]);
@@ -490,20 +490,14 @@ const RF_TABLES = ["opening_balance_setups", "opening_shareholders", "filing_pre
   "filing_overrides", "filing_review_comments", "authority_permissions", "authority_test_runs", "filing_approval_snapshots",
   "production_filing_submissions", "production_filing_events", "production_feedback_artifacts", "migration_inventory", "migration_quarantine"];
 const SIGNOFF_KEYS = ["launch_legal_name_public_copy", "legal_policy_pack", "security_restore", "support_rollback", "founder_production_go_live", "rf1086_authority"];
-const RF_PUBLIC_PROJECTION_TABLES = Object.freeze([
-  "filing_review_comments", "filing_overrides", "filing_submissions",
-  "authority_test_runs", "authority_permissions", "filing_previews",
-]);
-
 const RF_FIXTURE_RELATIONS = Object.freeze([
   ...RF_TABLES.map((name) => `shareholder_register_filing.${name}`),
-  ...RF_PUBLIC_PROJECTION_TABLES.map((name) => `public.${name}`),
   "ledger.opening_bank_inputs", "billing.production_pilot_entitlements", "documents.evidence_references",
   "public.documents", "public.filing_readiness_snapshots", "public.company_archive_source_generations",
 ]);
 
 async function rfFixtureTransaction(database, operation) {
-  return fixtureTableTransaction(database, RF_FIXTURE_RELATIONS, operation);
+  return fixtureTableTransaction(database, [...RF_FIXTURE_RELATIONS, ...await rfPublicProjectionRelations(database)], operation);
 }
 
 async function seedFreshBasis(database, companyId, ownerId) {

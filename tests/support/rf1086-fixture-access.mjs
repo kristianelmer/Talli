@@ -155,6 +155,33 @@ const identifier = value => `"${value.replaceAll('"', '""')}"`;
 const qualified = value => value.split(".").map(identifier).join(".");
 const modes = Object.freeze({ O: "enable", D: "disable", R: "enable replica", A: "enable always" });
 
+const publicFilingProjections = Object.freeze(["filing_review_comments", "filing_overrides", "filing_submissions",
+  "authority_test_runs", "authority_permissions", "filing_previews"].map(name => `public.${name}`));
+
+// RF mirrors exist only until the final Accounts contract. Do not treat an
+// arbitrary missing table as retirement or borrow authority over sibling rows.
+export async function rfPublicProjectionRelations(database) {
+  assert.ok(["127.0.0.1", "localhost", "::1"].includes(database.connectionParameters?.host), "fixture requires loopback database");
+  const catalog = async relations => (await database.query(`select name,c.relkind from unnest($1::text[]) name
+    left join pg_class c on c.oid=pg_catalog.to_regclass(name)`, [relations])).rows;
+  const projections = await catalog(publicFilingProjections);
+  assert.equal(projections.length, publicFilingProjections.length);
+  const present = projections.filter(row => row.relkind !== null);
+  assert.ok(present.every(row => ["r", "p"].includes(row.relkind)), "unexpected RF projection relation kind");
+  const stateExists = (await database.query("select to_regclass('backend_system.annual_accounts_migration_state') is not null present")).rows[0].present;
+  const phase = stateExists ? (await database.query("select phase from backend_system.annual_accounts_migration_state where singleton")).rows[0]?.phase : null;
+  if (present.length === publicFilingProjections.length) {
+    assert.notEqual(phase, "contracted", "contracted Accounts retained generic filing projections");
+    return [...publicFilingProjections];
+  }
+  assert.equal(present.length, 0, "partial generic filing retirement");
+  assert.equal(phase, "contracted", "missing final Accounts contract");
+  const owned = await catalog(publicFilingProjections.map(name => name.replace("public.", "annual_accounts_filing.")));
+  assert.equal(owned.length, publicFilingProjections.length);
+  assert.ok(owned.every(row => ["r", "p"].includes(row.relkind)), "missing Accounts fixture family");
+  return [];
+}
+
 export async function fixtureTableTransaction(database, relations, operation) {
   assert.ok(["127.0.0.1", "localhost", "::1"].includes(database.connectionParameters?.host), "fixture requires loopback database");
   assert.ok(relations.length && new Set(relations).size === relations.length);

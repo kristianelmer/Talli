@@ -1,0 +1,25 @@
+✔ RF fixture uses its declared projection phase (legacy present) (3.207084ms)
+✔ RF fixture uses its declared projection phase (Accounts contracted) (0.414916ms)
+✔ RF fixture refuses partial retirement before fixture effects (0.562125ms)
+✔ RF fixture refuses missing owned family before fixture effects (0.100875ms)
+✔ RF fixture refuses uncontracted phase before fixture effects (0.264834ms)
+✔ workspace RF backend refuses hosted database before opening a listener (98.597625ms)
+✔ workspace RF backend refuses hosted Supabase before opening a listener (142.856042ms)
+✔ workspace RF backend refuses global RF activation before opening a listener (95.110584ms)
+✔ workspace RF backend refuses global operator activation before opening a listener (93.050375ms)
+✔ workspace RF backend refuses ambient credential before opening a listener (98.129125ms)
+✔ workspace API requests use the actual current Supabase session and exact denial statuses (2.734459ms)
+✔ feedback fixture refuses hosted databases and undeclared operations before actor or SQL effects (1.2335ms)
+✔ feedback fixture verifies the token owner before reading membership or connecting an actor database session (0.359208ms)
+✔ workspace RF assertions use canonical commands and preserve sibling tax and audit rehearsals (0.849416ms)
+✔ fixture access refuses external databases and undeclared relations before SQL (0.187ms)
+✔ fixture restores exact USER trigger modes on success without disabling foreign keys (0.499125ms)
+✔ fixture restores exact USER trigger modes on rollback without disabling foreign keys (0.189375ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 660.800417

@@ -1,0 +1,94 @@
+✔ RF fixture uses its declared projection phase (legacy present) (2.694375ms)
+✖ RF fixture uses its declared projection phase (Accounts contracted) (0.630125ms)
+✖ RF fixture refuses partial retirement before fixture effects (2.630583ms)
+✖ RF fixture refuses missing owned family before fixture effects (0.513875ms)
+✖ RF fixture refuses uncontracted phase before fixture effects (0.413792ms)
+✔ workspace RF backend refuses hosted database before opening a listener (162.664834ms)
+✔ workspace RF backend refuses hosted Supabase before opening a listener (96.145083ms)
+✔ workspace RF backend refuses global RF activation before opening a listener (94.275375ms)
+✔ workspace RF backend refuses global operator activation before opening a listener (95.883041ms)
+✔ workspace RF backend refuses ambient credential before opening a listener (94.820042ms)
+✔ workspace API requests use the actual current Supabase session and exact denial statuses (0.564125ms)
+✔ feedback fixture refuses hosted databases and undeclared operations before actor or SQL effects (1.727ms)
+✔ feedback fixture verifies the token owner before reading membership or connecting an actor database session (0.44875ms)
+✔ workspace RF assertions use canonical commands and preserve sibling tax and audit rehearsals (0.927333ms)
+✔ fixture access refuses external databases and undeclared relations before SQL (0.2255ms)
+✔ fixture restores exact USER trigger modes on success without disabling foreign keys (0.541417ms)
+✔ fixture restores exact USER trigger modes on rollback without disabling foreign keys (0.170041ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 13
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 678.734958
+
+✖ failing tests:
+
+test at tests/rf1086_workspace_fixture_safety.test.mjs:45:38
+✖ RF fixture uses its declared projection phase (Accounts contracted) (0.630125ms)
+  AssertionError [ERR_ASSERTION]: relation public.filing_review_comments does not exist
+      at Object.query (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/rf1086_workspace_fixture_safety.test.mjs:33:14)
+      at fixtureTableTransaction (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/support/rf1086-fixture-access.mjs:190:49)
+      at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/rf1086_workspace_fixture_safety.test.mjs:47:16)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/rf1086_workspace_fixture_safety.test.mjs:53:50
+✖ RF fixture refuses partial retirement before fixture effects (2.630583ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(!statements.includes("begin"))
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/rf1086_workspace_fixture_safety.test.mjs:58:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/rf1086_workspace_fixture_safety.test.mjs:53:50
+✖ RF fixture refuses missing owned family before fixture effects (0.513875ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(!statements.includes("begin"))
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/rf1086_workspace_fixture_safety.test.mjs:58:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at tests/rf1086_workspace_fixture_safety.test.mjs:53:50
+✖ RF fixture refuses uncontracted phase before fixture effects (0.413792ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(!statements.includes("begin"))
+  
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/rf1086_workspace_fixture_safety.test.mjs:58:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

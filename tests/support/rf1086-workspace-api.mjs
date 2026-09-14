@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { fixtureTableTransaction } from "./rf1086-fixture-access.mjs";
+import { fixtureTableTransaction, rfPublicProjectionRelations } from "./rf1086-fixture-access.mjs";
 import { randomUUID } from "node:crypto";
 import { createTalliApiClient, TalliApiError } from "../../packages/talli-api-client/src/index.ts";
 import { presentRf1086Preview, presentRf1086Simulation, presentRf1086Override,
@@ -133,10 +133,11 @@ export const RF_FIXTURE_TABLES = ["production_feedback_artifacts", "production_f
   "filing_review_comments", "filing_overrides", "filing_submissions", "authority_test_runs", "authority_permissions", "filing_previews",
   "opening_shareholders", "opening_balance_setups", "migration_inventory", "migration_quarantine"];
 export async function rfFixtureTransaction(database, operation, { feedbackSupport = false, openingProjection = false } = {}) {
+  const filingProjections = await rfPublicProjectionRelations(database);
   const projections = openingProjection && (await database.query("select to_regclass('public.opening_balance_setups') is not null present")).rows[0].present
     ? ["public.opening_balance_setups", "public.opening_shareholders"] : [];
   return fixtureTableTransaction(database, [...RF_FIXTURE_TABLES.map(name => `shareholder_register_filing.${name}`),
     "shareholder_register_filing.production_filing_events", "ledger.opening_bank_inputs", ...projections,
-    ...["filing_review_comments", "filing_overrides", "filing_submissions", "filing_previews", "authority_permissions", "authority_test_runs"].map(name => `public.${name}`),
+    ...filingProjections,
     ...(feedbackSupport ? ["billing.production_pilot_entitlements", "public.documents", "documents.evidence_references"] : [])], operation);
 }
