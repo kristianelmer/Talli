@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#153",
+  "testedRevision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+  "status": "FIRST_COMPLETE_11_OF_11_PASS_SECOND_AND_INTEGRATION_PENDING",
+  "artifacts": [
+    {
+      "path": "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.json",
+      "sha256": "f809a0546ce25369638ac0a032d71b6db74216b9424deea2cb023ad8cfa20f28",
+      "bytes": 2538
+    },
+    {
+      "path": "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.log",
+      "sha256": "d50809fc01ac6f1999a1d2c306aaf871e9a25fb67467dc2d8b7dd06b9575dbe3",
+      "bytes": 301608
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-bindings-2fc8ec93.json",
+      "sha256": "19909bb6cd0d64eeab62f24dd6e8ee5951674482d22e41545b5ab82deb680d03",
+      "bytes": 9755
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-review-2fc8ec93.json",
+      "sha256": "4635ad6f05fd9b7c28c79c2f1e3d3cfd9436d4b510b70e18766a8ccb04a2c03c",
+      "bytes": 12532
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-review-2fc8ec93.md",
+      "sha256": "01315fb6b514643a363ac2ddf7550134384b69377cfd60176af19ebdcb2fc784",
+      "bytes": 2362
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-artifact-checks-2fc8ec93.json",
+      "sha256": "1c5e0af77fe60dda1ac32858e2fb5ce99c2dbe41aec78ecffe52eb3b13119eb1",
+      "bytes": 5709
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-harness-diff-2fc8ec93.txt",
+      "sha256": "b9047d7c5364605dced21d67f551779059fcf70854fd5b25d887726336f7d51e",
+      "bytes": 4975
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-models-2fc8ec93.log",
+      "sha256": "dac7d39c4c7408ecf66d5a7249cac3bdf88647a484f173b38f093d3a0c971cb6",
+      "bytes": 6049
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-review-2fc8ec93.json",
+      "sha256": "b07ea9e7d48b900c6430532eda577f65903499269a0ab4c7d773c36e68c813a8",
+      "bytes": 6193
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-review-2fc8ec93.md",
+      "sha256": "10943b903d931c9326bcb563f8305a4175f186f97f927d43d8ca81016059a66d",
+      "bytes": 2395
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-workspace-2fc8ec93.json",
+      "sha256": "b5752b37e2277eb24bd2c581c3991e7ca94bc210b1c06f2997b2bac288ce38fe",
+      "bytes": 634
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/first-exit-gate-2fc8ec93-accounts-runtime.json",
+      "sha256": "779521ed26881f5743afdcb21c935f068773e01a887628a412757a2bd416ca1f",
+      "bytes": 1641
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/first-exit-gate-2fc8ec93-verified.json",
+      "sha256": "699b0972ff7e58abbebd0813abe5ec565956d721530c040bcb8db8a66e0015fa",
+      "bytes": 604
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/production-freeze-2fc8-gate.json",
+      "sha256": "4c726895d79d53d1e9168699faef12e0bf7ca169d836244b5c788f28d88da471",
+      "bytes": 497
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/verification.md",
+      "sha256": "7b7696171507c41af78ee67649382000f1eae068dd9a73d545a5c544e3545617",
+      "bytes": 1866
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/verify-accounts-runtime-gate.py",
+      "sha256": "6d07e7004718ed00f6f7e4cdefd1a59361805c40405e2b376da944a934dfafbb",
+      "bytes": 2558
+    },
+    {
+      "path": "architecture/evidence/issues/153/exit-gates-first/verify-exit-gates.py",
+      "sha256": "c310dc4265d6bb02c4d83272b094428aef873bbee1ff3e90ccca72181c32fda8",
+      "bytes": 1983
+    }
+  ]
+}

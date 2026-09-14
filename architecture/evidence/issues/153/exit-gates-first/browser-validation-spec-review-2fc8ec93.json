@@ -1,0 +1,167 @@
+{
+  "verdict": "PASS_BOUNDED_SPEC_REVIEW",
+  "axis": "Spec",
+  "base": "5915af48277c4074556ba2b750c93e523ffeb85a",
+  "candidate": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+  "reviewedAtUtc": "2026-09-14T20:48:37.508146+00:00",
+  "findings": [],
+  "bindings": {
+    "base": "5915af48277c4074556ba2b750c93e523ffeb85a",
+    "candidate": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+    "log": [
+      "2fc8ec93eb4eeb818e5273481801ec1be0079b19 test(accounts): verify rendered evidence and read outages"
+    ],
+    "diffSha256": "08eae03201fd7a8af3ce9842dd2a6235372398839b6593ac28bc6b2af2784005",
+    "sourceBindings": {
+      "architecture/evidence/issues/153/browser-validation/accounts-browser-correction-models.log": "98512b6d634aeb1c801d1ec020bbb5dfcdb01bc7238cccb26dbd04946c936660",
+      "architecture/evidence/issues/153/browser-validation/accounts-browser-focused-corrected.log": "3df8caf192cd7f8f6db5b3349eb562f8db96b724263dc65b39e3ccdbb34bfcab",
+      "architecture/evidence/issues/153/browser-validation/accounts-browser-focused-first.log": "da59769e10f3ba89960add5292b4b75c2f6ab49f193d5d59b1bafe28ad054ba1",
+      "architecture/evidence/issues/153/browser-validation/manifest.json": "3df9fcd1312d323857afe5cb7bfc4fbc2749f58a4a37536c75728d0c7eabab2e",
+      "architecture/evidence/issues/153/browser-validation/rf-post-accounts-focused-first.log": "cbca4d13598291a49d6a2e85ef32df3fef18c031dc9fae2d65d8d4b0c963cc0b",
+      "architecture/evidence/issues/153/browser-validation/rf-post-accounts-focused-scope.json": "cb300e0ed3643241b5a4c5294b4a4c978ab6b14eae994bc7e759fb2f4deff1ef",
+      "architecture/evidence/issues/153/browser-validation/rf-projection-spec-bindings-5915af48.json": "a1466d84e0c70a254df2559952aee5921d07ab42b9468a5cb2101cc10cd01dbd",
+      "architecture/evidence/issues/153/browser-validation/rf-projection-spec-probe-5915af48.json": "82d00f6a857e1459998259d396481a3491f4ca80fda617f1a21c982063087742",
+      "architecture/evidence/issues/153/browser-validation/rf-projection-spec-probe-5915af48.mjs": "bbbe03970d7a8cd9c4c8d21792581a44931b67f46ade2cd2bd96a9579494413c",
+      "architecture/evidence/issues/153/browser-validation/rf-projection-spec-review-5915af48.json": "c5c2671eaf7acf477abdd4145dee943a5c5c37e87bdca4ee79fb307cfd927721",
+      "architecture/evidence/issues/153/browser-validation/rf-projection-spec-review-5915af48.md": "903c55cad1a759dc76484d06a8d1565ba2fdf8980cd5197c51e6c248e93f379d",
+      "architecture/evidence/issues/153/browser-validation/rf-projection-spec-tests-5915af48.log": "d22bd355cad3dfec1980c8d4cd27f8173b1b7d54a655b8b4213af6d6c4d2b891",
+      "architecture/evidence/issues/153/browser-validation/rf-projection-spec-workspace-5915af48.json": "ab427095c5d91ae5af2c78b6a48ec1e87307910d05adfa644b177d6d3939bf8f",
+      "architecture/evidence/issues/153/browser-validation/rf-projection-standards-artifact-checks-5915af48.json": "1dd8824d3df475bd27a9dba1a4135f97caa10a53337d957884e03852bbba9c15",
+      "architecture/evidence/issues/153/browser-validation/rf-projection-standards-review-5915af48.json": "8ed88a8918aa838a82cfb3d3d59ae584a4627ba5f49cc6b517c74a672f480a1d",
+      "architecture/evidence/issues/153/browser-validation/rf-projection-standards-review-5915af48.md": "5f3a3406a56361dba8bde09be76671cd04b3c085750ff260c589494a26c7203a",
+      "architecture/evidence/issues/153/browser-validation/rf-projection-standards-selector-probe-5915af48.mjs": "b5342f2837994340d6fd8a5fcaf970c3632df1420b160a089b48e45a7d870979",
+      "architecture/evidence/issues/153/browser-validation/rf-projection-standards-selector-results-5915af48.json": "b90b01c94c118e98a4c137958251a8bb192f216fda9fc14c3d25a66efad32a0f",
+      "architecture/evidence/issues/153/browser-validation/rf-projection-standards-tests-5915af48.log": "7a94bae5b0b5815cde023d57c336d144e09b9333ed61d0aa2211992b728d70d7",
+      "architecture/evidence/issues/153/browser-validation/rf-projection-standards-workspace-5915af48.json": "eba6b3b3524b7eb2028db6f157596c1eaaee1de31c8c178ee21742f1a31ff925",
+      "architecture/evidence/issues/153/browser-validation/run-accounts-browser-corrected.py": "6bbe75128c52008365f5417da7301d14eeb69121e9810d0c37855607accf2af3",
+      "architecture/evidence/issues/153/browser-validation/run-accounts-browser-focused.py": "c9a60d6706b6e59918621ed7bef1242dd8c6aa6ae665bf39144d1cccebf2e51e",
+      "architecture/evidence/issues/153/browser-validation/run-accounts-browser-focused.sh": "b6cf18f4d30b25842ba622416e682265625c4b85eb8386fb0d8b5aa2e9eb0dae",
+      "architecture/evidence/issues/153/browser-validation/run-rf-post-accounts-focused.py": "fbcf23660ce8e3eb685f74f7e666fe3690d0a927f9e78348b146b3bdafdf1405",
+      "architecture/evidence/issues/153/browser-validation/run-rf-post-accounts-focused.sh": "d8c06061274890920c99ed28a59faf6b752e8a94f4c32a37efe7346df69a6190",
+      "architecture/evidence/issues/153/browser-validation/runtime-source-bindings.json": "91f09eb0f004078e256b3d6f1a6a10ba90f7bef8e55871b04e85ac1d00f24b42",
+      "architecture/evidence/issues/153/browser-validation/verification.md": "8f03235238bedf67c8e0f0651707ecfe83192c9c03f33a632965cf0db0db6eb3",
+      "tests/browser_annual_accounts_filing.mjs": "06e5735299c9bdba7c7fffb83df781ff7617c23979a54fd13a536646baf84be0",
+      "tests/support/tax-browser-fixture.mjs": "84b2fe6420190772cf9d121c1320aaf8c9961fa553e6dbf799e3eedae7836704"
+    },
+    "manifestChecks": {
+      "architecture/evidence/issues/153/browser-validation/accounts-browser-correction-models.log": true,
+      "architecture/evidence/issues/153/browser-validation/accounts-browser-focused-corrected.log": true,
+      "architecture/evidence/issues/153/browser-validation/accounts-browser-focused-first.log": true,
+      "architecture/evidence/issues/153/browser-validation/rf-post-accounts-focused-first.log": true,
+      "architecture/evidence/issues/153/browser-validation/rf-post-accounts-focused-scope.json": true,
+      "architecture/evidence/issues/153/browser-validation/rf-projection-spec-bindings-5915af48.json": true,
+      "architecture/evidence/issues/153/browser-validation/rf-projection-spec-probe-5915af48.json": true,
+      "architecture/evidence/issues/153/browser-validation/rf-projection-spec-probe-5915af48.mjs": true,
+      "architecture/evidence/issues/153/browser-validation/rf-projection-spec-review-5915af48.json": true,
+      "architecture/evidence/issues/153/browser-validation/rf-projection-spec-review-5915af48.md": true,
+      "architecture/evidence/issues/153/browser-validation/rf-projection-spec-tests-5915af48.log": true,
+      "architecture/evidence/issues/153/browser-validation/rf-projection-spec-workspace-5915af48.json": true,
+      "architecture/evidence/issues/153/browser-validation/rf-projection-standards-artifact-checks-5915af48.json": true,
+      "architecture/evidence/issues/153/browser-validation/rf-projection-standards-review-5915af48.json": true,
+      "architecture/evidence/issues/153/browser-validation/rf-projection-standards-review-5915af48.md": true,
+      "architecture/evidence/issues/153/browser-validation/rf-projection-standards-selector-probe-5915af48.mjs": true,
+      "architecture/evidence/issues/153/browser-validation/rf-projection-standards-selector-results-5915af48.json": true,
+      "architecture/evidence/issues/153/browser-validation/rf-projection-standards-tests-5915af48.log": true,
+      "architecture/evidence/issues/153/browser-validation/rf-projection-standards-workspace-5915af48.json": true,
+      "architecture/evidence/issues/153/browser-validation/run-accounts-browser-corrected.py": true,
+      "architecture/evidence/issues/153/browser-validation/run-accounts-browser-focused.py": true,
+      "architecture/evidence/issues/153/browser-validation/run-accounts-browser-focused.sh": true,
+      "architecture/evidence/issues/153/browser-validation/run-rf-post-accounts-focused.py": true,
+      "architecture/evidence/issues/153/browser-validation/run-rf-post-accounts-focused.sh": true,
+      "architecture/evidence/issues/153/browser-validation/runtime-source-bindings.json": true,
+      "architecture/evidence/issues/153/browser-validation/verification.md": true
+    },
+    "runtimeSourceChecks": {
+      "tests/browser_annual_accounts_filing.mjs": true,
+      "tests/support/tax-browser-fixture.mjs": true,
+      "tests/support/rf1086-fixture-access.mjs": true,
+      "tests/support/rf1086-workspace-api.mjs": true,
+      "tests/browser_shareholder_register_filing.mjs": true,
+      "scripts/test-supabase-local.sh": true
+    },
+    "adoptedOriginalChecks": {
+      "rf-projection-spec-bindings-5915af48.json": true,
+      "rf-projection-spec-probe-5915af48.json": true,
+      "rf-projection-spec-probe-5915af48.mjs": true,
+      "rf-projection-spec-review-5915af48.json": true,
+      "rf-projection-spec-review-5915af48.md": true,
+      "rf-projection-spec-tests-5915af48.log": true,
+      "rf-projection-spec-workspace-5915af48.json": true,
+      "rf-projection-standards-artifact-checks-5915af48.json": true,
+      "rf-projection-standards-review-5915af48.json": true,
+      "rf-projection-standards-review-5915af48.md": true,
+      "rf-projection-standards-selector-probe-5915af48.mjs": true,
+      "rf-projection-standards-selector-results-5915af48.json": true,
+      "rf-projection-standards-tests-5915af48.log": true,
+      "rf-projection-standards-workspace-5915af48.json": true
+    },
+    "allOriginalBrowserAssertionsPreserved": true,
+    "browserDiffExactlyTwoWaitReplacements": true,
+    "sixCriterionTextsUnchangedInPrivateProposal": true,
+    "privateProposalSha256": "4b9baf44d2d012b4bb961704159210d1f6d4ad45bfd7c1ae8dc7a32e201d9288",
+    "privateProposalStageExit": {
+      "deploymentOrder": "PASS_17_STORAGE_PHASE_AND_7_EXACT_PREDECESSOR_HTTP_CHECKS",
+      "independentReview": "BOTH_AXES_PASS_THROUGH_5915AF48_BROWSER_CORRECTION_REVIEW_PENDING",
+      "gatePair": [],
+      "protectedIntegration": "PENDING",
+      "productionObservation": "NOT_APPLICABLE_NO_PRODUCTION_PATH_ACTIVATED",
+      "targetedFinalRuntime": "PASS_FINAL_BROWSER_LANES_IN_TARGETED_DISPOSABLE_RUNS_COMPLETE_GATES_PENDING"
+    },
+    "nonEvidencePaths": [
+      "tests/browser_annual_accounts_filing.mjs",
+      "tests/support/tax-browser-fixture.mjs"
+    ]
+  },
+  "independentChecks": {
+    "allOriginalAssertionStatementsPreserved": true,
+    "exactTwoWaitReplacementsReconstructed": true,
+    "unchangedUiLabelsAndStatusConditionRead": true,
+    "manifestArtifacts": 26,
+    "runtimeSources": 6,
+    "adoptedOriginalFiles": 14,
+    "realSqlOrBrowserRerunByReviewer": false
+  },
+  "inspectedRuntimeEvidence": {
+    "firstTargetedRun": {
+      "rfFeedback": 13,
+      "authorityBrowser": 11,
+      "rfBrowser": 14,
+      "taxBrowser": 2,
+      "listedGroupSkips": 0,
+      "accounts": "failed at original standalone locator"
+    },
+    "secondAccountsRun": "failed at original detailed helper-message locator after earlier assertions",
+    "finalAccountsRun": {
+      "sqlPassed": 41,
+      "sqlSeconds": 17.18,
+      "blockingAdvisors": 0,
+      "performanceWarnings": 50,
+      "browserPassed": 1,
+      "browserSkipped": 0,
+      "journeyMilliseconds": 26172.442833
+    },
+    "models": {
+      "passed": 62,
+      "optionalDatabaseSkipped": 1
+    },
+    "scope": "Separate targeted runs, not a complete immutable gate"
+  },
+  "acceptanceMetadataFollowup": [
+    "Adopt final six-criterion evidence mapping without altering original requirement text",
+    "Replace stale committed entry inventory/characterization status",
+    "Bind verified pair revisions, receipt/schema/transcript/producer digests, committed storage and independent reviews",
+    "Advance registry and remove active compatibility only under the existing exit rules after required evidence",
+    "Keep protected final-head/main verification, published reread and successor unclaimed until their prerequisites hold"
+  ],
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-spec-review-2fc8ec93.md",
+  "reportSha256": "01315fb6b514643a363ac2ddf7550134384b69377cfd60176af19ebdcb2fc784",
+  "privateBindingArtifact": {
+    "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-spec-bindings-2fc8ec93.json",
+    "sha256": "19909bb6cd0d64eeab62f24dd6e8ee5951674482d22e41545b5ab82deb680d03"
+  },
+  "limitations": [
+    "No shared runtime mutations or additional browser/SQL tests",
+    "No immutable complete-gate or stage-exit credit",
+    "Source remains production disabled; no genuine authority/provider claim"
+  ]
+}

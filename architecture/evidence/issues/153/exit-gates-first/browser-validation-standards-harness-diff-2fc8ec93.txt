@@ -1,0 +1,108 @@
+--- original
++++ rf-focused
+@@ -96,18 +96,18 @@
+ # Frozen support and sibling rehearsals require their original table/RPC
+ # topology. Unwind RF151 before its #150 predecessor; neither is the final lane.
+ DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs rollback
+-npm run test:ledger-database-lifecycle
+-npm run test:banking-database-lifecycle
+-npm run test:investments-database-lifecycle
+-DATABASE_URL="$DB_URL" npm run test:documents-database-lifecycle
+-npm run test:marketing-measurement-database
+-npm run test:validation-observation
++true # focused fixture verification: test:ledger-database-lifecycle omitted
++true # focused fixture verification: test:banking-database-lifecycle omitted
++true # focused fixture verification: test:investments-database-lifecycle omitted
++DATABASE_URL="$DB_URL" true # focused fixture verification: test:documents-database-lifecycle omitted
++true # focused fixture verification: test:marketing-measurement-database omitted
++true # focused fixture verification: test:validation-observation omitted
+ 
+ SUPABASE_URL="$API_URL" \
+ SUPABASE_ANON_KEY="$local_anon_key" \
+ SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+ DATABASE_URL="$DB_URL" \
+-npm run test:supabase-predecessor
++true # focused fixture verification: test:supabase-predecessor omitted
+ 
+ # Only the retained RF workspace/current owner UI move to canonical RF overlap.
+ # Ledger remains at ordinary expansion for the unchanged sibling Ledger cases.
+@@ -117,7 +117,7 @@
+ SUPABASE_ANON_KEY="$local_anon_key" \
+ SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+ DATABASE_URL="$DB_URL" \
+-npm run test:supabase-rf-workspace
++true # focused fixture verification: test:supabase-rf-workspace omitted
+ 
+ NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
+ NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \
+@@ -125,7 +125,7 @@
+ SUPABASE_ANON_KEY="$local_anon_key" \
+ SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+ DATABASE_URL="$DB_URL" \
+-npm run test:browser-owner
++true # focused fixture verification: test:browser-owner omitted
+ 
+ # Restore published predecessor definitions before their unchanged lifecycle
+ # rehearsals. The Ledger authority test then establishes the final Ledger contract.
+@@ -141,13 +141,13 @@
+ 
+ # The shipped #150 rollback retains Billing's verified-request projection while
+ # its unchanged lifecycle runs against the physical predecessor request table.
+-DATABASE_URL="$DB_URL" npm run test:billing-database-lifecycle
++DATABASE_URL="$DB_URL" node --test --test-concurrency=1 tests/billing_database_runtime.test.mjs
+ 
+ # Require the already established Ledger contract before the RF final contract.
+ # Every final database, feedback and hydrated owner lane uses private RF storage;
+ # no authority provider is called.
+ DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs recutover
+-DATABASE_URL="$DB_URL" npm run test:authority-connections-database
++DATABASE_URL="$DB_URL" true # focused fixture verification: test:authority-connections-database omitted
+ DATABASE_URL="$DB_URL" npm run test:company-tax-database
+ DATABASE_URL="$DB_URL" npm run test:annual-accounts-database
+ TALLI_SUPABASE_WORKDIR="$isolated_workdir" npm run test:supabase-advisors
+@@ -159,7 +159,7 @@
+ SUPABASE_ANON_KEY="$local_anon_key" \
+ SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+ DATABASE_URL="$DB_URL" \
+-npm run test:browser-owner-annual
++true # focused fixture verification: test:browser-owner-annual omitted
+ SUPABASE_URL="$API_URL" \
+ SUPABASE_ANON_KEY="$local_anon_key" \
+ SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+
+--- rf-focused
++++ accounts-focused
+@@ -164,14 +164,14 @@
+ SUPABASE_ANON_KEY="$local_anon_key" \
+ SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+ DATABASE_URL="$DB_URL" \
+-npm run test:supabase-rf-feedback
++true # completed in prior focused run: test:supabase-rf-feedback
+ NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
+ NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \
+ SUPABASE_URL="$API_URL" \
+ SUPABASE_ANON_KEY="$local_anon_key" \
+ SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+ DATABASE_URL="$DB_URL" \
+-npm run test:browser-authority-connections
++true # completed in prior focused run: test:browser-authority-connections
+ 
+ # The fresh RF journey must create its own preview, approval and filing journal.
+ NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
+@@ -180,14 +180,14 @@
+ SUPABASE_ANON_KEY="$local_anon_key" \
+ SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+ DATABASE_URL="$DB_URL" \
+-npm run test:browser-shareholder-register-filing
++true # completed in prior focused run: test:browser-shareholder-register-filing
+ 
+ # Tax uses the final private storage and the normal owner login/MFA flow.
+ SUPABASE_URL="$API_URL" \
+ SUPABASE_ANON_KEY="$local_anon_key" \
+ SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+ DATABASE_URL="$DB_URL" \
+-npm run test:browser-company-tax
++true # completed in prior focused run: test:browser-company-tax
+ 
+ NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
+ NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \

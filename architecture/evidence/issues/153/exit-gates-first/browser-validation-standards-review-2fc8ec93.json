@@ -1,0 +1,104 @@
+{
+  "axis": "Standards",
+  "verdict": "PASS_BOUNDED_BROWSER_ASSERTION_CORRECTION",
+  "baseRevision": "5915af48277c4074556ba2b750c93e523ffeb85a",
+  "candidateRevision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+  "diffCommand": "git diff 5915af48277c4074556ba2b750c93e523ffeb85a...2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+  "commits": [
+    "2fc8ec93eb4eeb818e5273481801ec1be0079b19 test(accounts): verify rendered evidence and read outages"
+  ],
+  "findings": [],
+  "sourceBindings": {
+    "tests/browser_annual_accounts_filing.mjs": "06e5735299c9bdba7c7fffb83df781ff7617c23979a54fd13a536646baf84be0",
+    "tests/support/tax-browser-fixture.mjs": "84b2fe6420190772cf9d121c1320aaf8c9961fa553e6dbf799e3eedae7836704",
+    "tests/support/rf1086-fixture-access.mjs": "b91fdf5b688b180a703642b70b91567154400cace12bebd292e6c9927a38a362",
+    "tests/support/rf1086-workspace-api.mjs": "cff638bfe761732ddb513683be516a522dbb5ca57df985acd9dba3e9e22b68a4",
+    "tests/browser_shareholder_register_filing.mjs": "f91b8c24b27fd2e9ee618987f5a5e591b08f8f8a9e13c39dbda26b9b194c7146",
+    "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d"
+  },
+  "standardsBindings": {
+    "AGENTS.md": "c4530bac3939f37053438b48a3dad2ea6e99d04481480ef61bee71d3dc81d4af",
+    "CONTEXT.md": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9",
+    "docs/agents/domain.md": "0b66c33560f91373a7b268f3acf2c3d992e6a77cf5dc60acdc66efb4dc34a982",
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/COMPATIBILITY.md": "7683810e3f0b816fcc166c428faba245060f91c86ae7e0750b39803730c57ab7"
+  },
+  "unchangedControls": {
+    "architecture/compatibility.json": "e06ddbbc974bbaa7f418eced549bef1c02e3b29d4e12a6851ed503428aa83e10",
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+    "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+    "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+    "package.json": "47b34c14544e0ee80570af051555d1f87e8633576fcef98e74cb9208b2ec9339",
+    "apps/web/app/(owner)/workspace/page.tsx": "806edef6866d70005699fb34e795bddd70bcdedce538aa0727a249decd592107"
+  },
+  "artifactVerification": {
+    "manifest": "architecture/evidence/issues/153/browser-validation/manifest.json",
+    "manifestSha256": "3df9fcd1312d323857afe5cb7bfc4fbc2749f58a4a37536c75728d0c7eabab2e",
+    "artifacts": 26,
+    "exactPrivateAdoptions": 14,
+    "runtimeSourceBindings": 6
+  },
+  "independentValidation": {
+    "command": [
+      "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+      "--test",
+      "tests/annual_accounts_client.test.mjs",
+      "tests/annual_accounts_workspace_composition.test.mjs",
+      "tests/browser_process_lifecycle.test.mjs",
+      "tests/rf1086_workspace_fixture_safety.test.mjs",
+      "tests/shareholder_register_browser_fixture_safety.test.mjs"
+    ],
+    "cwd": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-browservalidation-standards-145n6pjn",
+    "runtime": "Node24.20.0",
+    "passed": 62,
+    "skipped": 1,
+    "skipReason": "Optional real-DB cleanup test; no database configured",
+    "databaseEnvironmentRemoved": true,
+    "browserRuntimeNotRepeated": true
+  },
+  "retainedRuntime": {
+    "source": "architecture/evidence/issues/153/browser-validation/accounts-browser-focused-corrected.log",
+    "sqlPassed": 41,
+    "blockingAdvisors": 0,
+    "performanceWarnings": 50,
+    "browserPassed": 1,
+    "browserDurationMs": 26172.442833,
+    "scope": "Abbreviated targeted runtime, not complete gate; earlier lanes separately retained"
+  },
+  "evidenceScope": {
+    "status": "TARGETED_RUNTIME_HARNESS_NOT_COMPLETE_GATE",
+    "source": "scripts/test-supabase-local.sh",
+    "sourceSha256": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+    "omittedTestCommands": [
+      "test:ledger-database-lifecycle",
+      "test:banking-database-lifecycle",
+      "test:investments-database-lifecycle",
+      "test:documents-database-lifecycle",
+      "test:marketing-measurement-database",
+      "test:validation-observation",
+      "test:supabase-predecessor",
+      "test:supabase-rf-workspace",
+      "test:browser-owner",
+      "test:authority-connections-database",
+      "test:browser-owner-annual"
+    ],
+    "billing": "Original node contract/rollback/recutover suite only; previously passing 699 Python tests omitted",
+    "preserved": "original isolated-stack startup, topology transformations, Ledger authority, Corporate lifecycle, Billing contract, Tax and Accounts full SQL/activation, advisors, RF feedback and four final filing browser commands, teardown",
+    "harnessSha256": "d8c06061274890920c99ed28a59faf6b752e8a94f4c32a37efe7346df69a6190"
+  },
+  "privateArtifacts": {
+    "browser-validation-standards-workspace-2fc8ec93.json": "b5752b37e2277eb24bd2c581c3991e7ca94bc210b1c06f2997b2bac288ce38fe",
+    "browser-validation-standards-models-2fc8ec93.log": "dac7d39c4c7408ecf66d5a7249cac3bdf88647a484f173b38f093d3a0c971cb6",
+    "browser-validation-standards-artifact-checks-2fc8ec93.json": "1c5e0af77fe60dda1ac32858e2fb5ce99c2dbe41aec78ecffe52eb3b13119eb1",
+    "browser-validation-standards-harness-diff-2fc8ec93.txt": "b9047d7c5364605dced21d67f551779059fcf70854fd5b25d887726336f7d51e"
+  },
+  "reportSha256": "10943b903d931c9326bcb563f8305a4175f186f97f927d43d8ca81016059a66d",
+  "limits": [
+    "No shared source/evidence edits",
+    "No Docker, SQL, external provider or browser operations",
+    "Independent model tests do not replace actual browser runtime",
+    "No complete immutable gate pair, protected integration or stage-exit certification"
+  ]
+}

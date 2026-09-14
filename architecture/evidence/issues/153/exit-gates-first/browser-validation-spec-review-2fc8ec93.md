@@ -1,0 +1,11 @@
+PASS — bounded Spec review; no actionable finding.
+
+Reviewed `5915af48277c4074556ba2b750c93e523ffeb85a...2fc8ec93eb4eeb818e5273481801ec1be0079b19` against #153’s “complete owner workflow” and “fail closed and auditable” requirements. Only two test files change outside evidence; application, SQL and UI copy remain unchanged.
+
+The import assertion now scopes to the Accounts readiness row, uses its existing prefixed label and requires the exact imported TT02 reference. This is more specific than the incorrect standalone locator. The outage assertion binds an injected current-company GET503 to the existing Status/Feil presentation and verifies that Accounts evidence and reference disappear. It does not substitute a successful empty state for failure. The fixture records only path/status. All original assertion statements—including AAL1 rejection, owner controls, persisted counts, audit, conservative source history, retained-JWT revocation and egress—remain verbatim. Independent source reconstruction confirms exactly two wait replacements.
+
+Verified 26 manifest artifact hashes/sizes, six runtime source hashes and 14 adopted original review/probe files. Original logs independently show RF feedback13, Authority11, RF14 and Tax2 passed with zero skips, followed by the first Accounts locator failure. The separate final Accounts run records41 SQL passes, zero blocking advisor findings with50 performance warnings, and one complete26.17-second Accounts journey with zero skips. Intermediate Accounts outage-locator failure remains preserved. The model log’s62 passes/one optional DB skip is separately scoped. I inspected these proofs without rerunning browser or SQL.
+
+No implementation gap emerges from this correction. After a verified pair, acceptance adoption must replace stale entry/characterization metadata, retain the six unchanged criteria, bind exact tested/storage revisions and receipt/review digests, and map the final runtime evidence. The private proposal already distinguishes these pending gates from protected integration. Registry/compatibility advancement must follow the existing exit rules; final-head/main verification and published reread remain separate.
+
+This is a bounded correction pass, not complete-gate or #153 exit credit. No shared files, database, Docker, browser or provider state were changed.
