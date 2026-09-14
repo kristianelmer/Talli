@@ -2964,6 +2964,45 @@ export interface BillingUnsupportedWire {
 
 export type ProductionPilotStatus = "pending" | "active" | "suspended" | "completed" | "revoked";
 
+export interface CompanyTaxAssessmentFactsRequest {
+  annualData?: Record<string, unknown> | null;
+  holdingActions: Record<string, unknown>[];
+  ledgerEntries: Record<string, unknown>[];
+}
+
+export interface CompanyTaxReadinessPreviewRequest {
+  annualData?: Record<string, unknown> | null;
+  companyId: string;
+  holdingActions: Record<string, unknown>[];
+  incomeYear: number;
+  ledgerEntries: Record<string, unknown>[];
+}
+
+export interface CompanyTaxReadinessIssueWire {
+  accepted?: false;
+  code: string;
+  level: "block" | "warning";
+  message: string;
+  source: string;
+}
+
+export interface CompanyTaxReadinessPreviewWire {
+  companyId: string;
+  incomeYear: number;
+  issues: CompanyTaxReadinessIssueWire[];
+}
+
+export interface CompanyTaxAnnualEstimateWire {
+  adminCosts: number;
+  deductibleShareSaleLoss: number;
+  estimatedTax: number;
+  fritaksmetodenAddBack: number;
+  interestIncome: number;
+  status: "payable" | "zero";
+  taxBasis: number;
+  taxableShareSaleGain: number;
+}
+
 export interface CompanyTaxRecordedWire {
   companyId: string;
   incomeYear: number | null;
@@ -7620,6 +7659,65 @@ function isProductionPilotStatus(value: unknown): value is ProductionPilotStatus
   return value === "pending" || value === "active" || value === "suspended" || value === "completed" || value === "revoked";
 }
 
+function isCompanyTaxAssessmentFactsRequest(value: unknown): value is CompanyTaxAssessmentFactsRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["annualData","holdingActions","ledgerEntries"]) &&
+    (value.annualData === undefined || (isRecord(value.annualData) || value.annualData === null)) &&
+    Array.isArray(value.holdingActions) && value.holdingActions.every((item) => isRecord(item)) &&
+    Array.isArray(value.ledgerEntries) && value.ledgerEntries.every((item) => isRecord(item))
+  );
+}
+
+function isCompanyTaxReadinessPreviewRequest(value: unknown): value is CompanyTaxReadinessPreviewRequest {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["annualData","companyId","holdingActions","incomeYear","ledgerEntries"]) &&
+    (value.annualData === undefined || (isRecord(value.annualData) || value.annualData === null)) &&
+    isUuid(value.companyId) &&
+    Array.isArray(value.holdingActions) && value.holdingActions.every((item) => isRecord(item)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    Array.isArray(value.ledgerEntries) && value.ledgerEntries.every((item) => isRecord(item))
+  );
+}
+
+function isCompanyTaxReadinessIssueWire(value: unknown): value is CompanyTaxReadinessIssueWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accepted","code","level","message","source"]) &&
+    (value.accepted === undefined || value.accepted === false) &&
+    typeof value.code === "string" &&
+    (value.level === "block" || value.level === "warning") &&
+    typeof value.message === "string" &&
+    typeof value.source === "string"
+  );
+}
+
+function isCompanyTaxReadinessPreviewWire(value: unknown): value is CompanyTaxReadinessPreviewWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","issues"]) &&
+    isUuid(value.companyId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    Array.isArray(value.issues) && value.issues.every((item) => isCompanyTaxReadinessIssueWire(item))
+  );
+}
+
+function isCompanyTaxAnnualEstimateWire(value: unknown): value is CompanyTaxAnnualEstimateWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["adminCosts","deductibleShareSaleLoss","estimatedTax","fritaksmetodenAddBack","interestIncome","status","taxBasis","taxableShareSaleGain"]) &&
+    typeof value.adminCosts === "number" && Number.isFinite(value.adminCosts) &&
+    typeof value.deductibleShareSaleLoss === "number" && Number.isFinite(value.deductibleShareSaleLoss) &&
+    typeof value.estimatedTax === "number" && Number.isFinite(value.estimatedTax) &&
+    typeof value.fritaksmetodenAddBack === "number" && Number.isFinite(value.fritaksmetodenAddBack) &&
+    typeof value.interestIncome === "number" && Number.isFinite(value.interestIncome) &&
+    (value.status === "payable" || value.status === "zero") &&
+    typeof value.taxBasis === "number" && Number.isFinite(value.taxBasis) &&
+    typeof value.taxableShareSaleGain === "number" && Number.isFinite(value.taxableShareSaleGain)
+  );
+}
+
 function isCompanyTaxRecordedWire(value: unknown): value is CompanyTaxRecordedWire {
   return (
     isRecord(value) &&
@@ -10123,6 +10221,26 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return executeJson(
         `${baseUrl}/api/v1/company-tax/tt02-evidence-imports`,
         "POST", request, body, isCompanyTaxEvidenceImportWire,
+      );
+    },
+
+    async companyTaxPreviewReadiness(
+      body: CompanyTaxReadinessPreviewRequest, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxReadinessPreviewWire> {
+      const result = await executeJson(
+        `${baseUrl}/api/v1/company-tax/readiness-previews`,
+        "POST", request, body, isCompanyTaxReadinessPreviewWire,
+      );
+      if (result.companyId !== body.companyId || result.incomeYear !== body.incomeYear) throw new TalliApiError(502, undefined);
+      return result;
+    },
+
+    async companyTaxPreviewAnnualEstimate(
+      body: CompanyTaxAssessmentFactsRequest, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxAnnualEstimateWire> {
+      return executeJson(
+        `${baseUrl}/api/v1/company-tax/annual-estimate-previews`,
+        "POST", request, body, isCompanyTaxAnnualEstimateWire,
       );
     },
 

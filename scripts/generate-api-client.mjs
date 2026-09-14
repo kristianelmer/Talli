@@ -277,6 +277,8 @@ const bankingOperations = {
   ],
 };
 const companyTaxOperations = {
+  readinessPreview: ["/api/v1/company-tax/readiness-previews", "post", "companyTaxPreviewReadiness"],
+  annualEstimatePreview: ["/api/v1/company-tax/annual-estimate-previews", "post", "companyTaxPreviewAnnualEstimate"],
   getPreview: ["/api/v1/company-tax/previews/{preview_id}", "get", "companyTaxGetPreview"],
   override: ["/api/v1/company-tax/overrides", "post", "companyTaxRecordOverride"],
   review: ["/api/v1/company-tax/review-comments", "post", "companyTaxAddReviewComment"],
@@ -853,6 +855,8 @@ const bankingSchemas = Object.fromEntries([
   "StartBankConnectionWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const companyTaxSchemas = Object.fromEntries([
+  "CompanyTaxAssessmentFactsRequest", "CompanyTaxReadinessPreviewRequest", "CompanyTaxReadinessIssueWire",
+  "CompanyTaxReadinessPreviewWire", "CompanyTaxAnnualEstimateWire",
   "CompanyTaxRecordedWire", "CompanyTaxOverrideRequest", "CompanyTaxReviewRequest", "CompanyTaxPermissionRequest", "CompanyTaxTestEvidenceRequest",
   "CompanyTaxEvidenceImportRequest", "CompanyTaxEvidenceImportWire",
   "CompanyTaxWorkspaceWire", "CompanyTaxPreviewWire", "CompanyTaxSubmissionWire",
@@ -2627,6 +2631,26 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       return executeJson(
         \`\${baseUrl}/api/v1/company-tax/tt02-evidence-imports\`,
         "POST", request, body, isCompanyTaxEvidenceImportWire,
+      );
+    },
+
+    async companyTaxPreviewReadiness(
+      body: CompanyTaxReadinessPreviewRequest, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxReadinessPreviewWire> {
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/company-tax/readiness-previews\`,
+        "POST", request, body, isCompanyTaxReadinessPreviewWire,
+      );
+      if (result.companyId !== body.companyId || result.incomeYear !== body.incomeYear) throw new TalliApiError(502, undefined);
+      return result;
+    },
+
+    async companyTaxPreviewAnnualEstimate(
+      body: CompanyTaxAssessmentFactsRequest, request: TalliRequestOptions = {},
+    ): Promise<CompanyTaxAnnualEstimateWire> {
+      return executeJson(
+        \`\${baseUrl}/api/v1/company-tax/annual-estimate-previews\`,
+        "POST", request, body, isCompanyTaxAnnualEstimateWire,
       );
     },
 

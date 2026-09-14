@@ -1,0 +1,40 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
+const root = process.cwd();
+const require = createRequire(`${root}/package.json`);
+const ts = require('typescript');
+const revision = '054740b81692e0e59b99a76fff085f322f1968b4';
+const sourcePath = 'apps/web/app/lib/annual-readiness.ts';
+const source = execFileSync('git', ['show', `${revision}:${sourcePath}`], { encoding: 'utf8' });
+const feedbackPath = 'apps/web/app/lib/company-tax-return.ts';
+const feedbackSource = execFileSync('git', ['show', `${revision}:${feedbackPath}`], { encoding: 'utf8' });
+if (feedbackSource !== readFileSync(feedbackPath, 'utf8')) throw new Error('Legacy feedback changed before capture');
+const { companyTaxReturnPayloadFeedback } = await import(pathToFileURL(`${root}/${feedbackPath}`));
+const ast = ts.createSourceFile(sourcePath, source, ts.ScriptTarget.Latest, true);
+const names = ['skattemeldingIssues', 'block', 'warning'];
+const functions = ast.statements.filter(node => ts.isFunctionDeclaration(node) && names.includes(node.name?.text));
+if (functions.length !== 3) throw new Error('Missing legacy readiness functions');
+const compiled = ts.transpileModule(functions.map(node => node.getText(ast)).join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+const assess = new Function('companyTaxReturnPayloadFeedback', `${compiled}\nreturn skattemeldingIssues;`)(companyTaxReturnPayloadFeedback);
+const frozen = ['legacy-characterization.json', 'legacy-review-boundaries.json'].flatMap(name => JSON.parse(readFileSync(`architecture/evidence/issues/152/${name}`, 'utf8')).cases);
+const cases = frozen.map(item => ({ id: item.id, input: { company: { id: 'company-id' }, ...item.input } }));
+const seed = structuredClone(cases[0].input);
+for (const [id, overrides] of [
+  ['selected-company-block', { holdingActions: [{ id:'action', company_id:'company-id', income_year:2025, action_type:'tax_settlement', risk_level:'block', payload:{} }] }],
+  ['foreign-company-block', { holdingActions: [{ id:'action', company_id:'other', income_year:2025, action_type:'tax_settlement', risk_level:'block', payload:{} }] }],
+  ['other-year-block', { holdingActions: [{ id:'action', company_id:'company-id', income_year:2024, action_type:'tax_settlement', risk_level:'block', payload:{} }] }],
+  ['selected-company-settlement', { holdingActions: [{ id:'action', company_id:'company-id', income_year:2025, action_type:'tax_settlement', risk_level:'info', payload:{} }] }],
+  ['foreign-company-settlement', { holdingActions: [{ id:'action', company_id:'other', income_year:2025, action_type:'tax_settlement', risk_level:'info', payload:{} }] }],
+  ['other-year-settlement', { holdingActions: [{ id:'action', company_id:'company-id', income_year:2024, action_type:'tax_settlement', risk_level:'info', payload:{} }] }],
+  ['no-activity-without-settlement', { annualData: { ...seed.annualData, no_activity_confirmed:true }, holdingActions:[], ledgerEntries:[] }],
+  ['annual-data-absent', { annualData:null, holdingActions:[], ledgerEntries:[] }],
+]) cases.push({ id, input:{ ...structuredClone(seed), ...overrides } });
+for (const value of cases) value.output = assess(value.input);
+const sha = value => createHash('sha256').update(value).digest('hex');
+writeFileSync('architecture/evidence/issues/152/legacy-tax-readiness.json', JSON.stringify({ schemaVersion:'1.0', sourceRevision:revision, runtime:process.version,
+  sources:{ [sourcePath]:sha(source), [feedbackPath]:sha(feedbackSource) },
+  scope:'Exact private skattemeldingIssues and helpers, invoking the unchanged legacy payload-feedback implementation. Annual common gates and snapshot timestamps excluded.', cases }, null, 2)+'\n');
+console.log(JSON.stringify({ cases:cases.length, sources:{ [sourcePath]:sha(source), [feedbackPath]:sha(feedbackSource) } }));

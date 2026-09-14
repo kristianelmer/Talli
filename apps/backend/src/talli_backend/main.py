@@ -73,6 +73,7 @@ from talli_backend.adapters.supabase_ledger import compose_ledger_application
 from talli_backend.adapters.postgres_company_tax_filing import compose_company_tax_application
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
 from talli_backend.modules.company_tax_filing.public import (
+    AnnualTaxEstimateSource, CompanyTaxReturnSource, assess_company_tax_readiness, estimate_annual_tax,
     CompanyTaxError, RecordTaxSettlementCommand, TaxSettlementId,
     TaxSettlementInput, TaxSettlementValidationError, TaxSettlementArchiveQuery, normalize_tax_settlement,
     BankTransactionReference, DocumentReference, TaxSettlementDocumentStatus,
@@ -1041,6 +1042,55 @@ class CompanyTaxSubmissionWire(TransportModel):
     submitted_by: UUID | None
     created_at: datetime
     updated_at: datetime
+
+
+class CompanyTaxAssessmentFactsRequest(TransportModel):
+    """Caller-supplied preview facts, never an attestation of stored completeness."""
+    annual_data: dict[str, Any] | None = None
+    ledger_entries: list[dict[str, Any]]
+    holding_actions: list[dict[str, Any]]
+
+    @model_validator(mode="after")
+    def bounded_json_facts(self):
+        facts = {"annualData": self.annual_data, "ledgerEntries": self.ledger_entries,
+                 "holdingActions": self.holding_actions}
+        try:
+            size = len(json.dumps(facts, ensure_ascii=True, allow_nan=False).encode("utf-8"))
+        except RecursionError:
+            raise ValueError("Tax preview facts are too deeply nested.") from None
+        if size > 8 * 1024 * 1024:
+            raise ValueError("Tax preview facts exceed the size limit.")
+        return self
+
+
+class CompanyTaxReadinessPreviewRequest(CompanyTaxAssessmentFactsRequest):
+    company_id: UUID
+    income_year: Annotated[int, Field(strict=True, ge=2000, le=2100)]
+
+
+class CompanyTaxReadinessIssueWire(TransportModel):
+    level: Literal["block", "warning"]
+    code: str
+    message: str
+    source: str
+    accepted: Literal[False] = False
+
+
+class CompanyTaxReadinessPreviewWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    issues: list[CompanyTaxReadinessIssueWire]
+
+
+class CompanyTaxAnnualEstimateWire(TransportModel):
+    admin_costs: Annotated[float, Field(allow_inf_nan=False)]
+    interest_income: Annotated[float, Field(allow_inf_nan=False)]
+    fritaksmetoden_add_back: Annotated[float, Field(allow_inf_nan=False)]
+    taxable_share_sale_gain: Annotated[float, Field(allow_inf_nan=False)]
+    deductible_share_sale_loss: Annotated[float, Field(allow_inf_nan=False)]
+    tax_basis: Annotated[float, Field(allow_inf_nan=False)]
+    estimated_tax: Annotated[float, Field(allow_inf_nan=False)]
+    status: Literal["payable", "zero"]
 
 
 class CompanyTaxRecordedWire(TransportModel):
@@ -9987,6 +10037,55 @@ def create_app(
                 authority_test_run_id=UUID(str(result.authority_test_run_id)),
                 filing_submission_id=UUID(str(result.filing_submission_id)), created=result.created,
             )
+        return await company_tax_call(execute)
+
+    @application.post(
+        "/api/v1/company-tax/readiness-previews",
+        operation_id="companyTaxPreviewReadiness", response_model=CompanyTaxReadinessPreviewWire,
+        responses=ledger_errors, tags=["company-tax"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def preview_company_tax_readiness(
+        facts: CompanyTaxReadinessPreviewRequest,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxReadinessPreviewWire:
+        async def execute() -> CompanyTaxReadinessPreviewWire:
+            await company_tax_application.session(bearer_token(credentials))
+            try:
+                source = CompanyTaxReturnSource("", facts.income_year, facts.annual_data,
+                                                facts.ledger_entries, facts.holding_actions)
+                issues = assess_company_tax_readiness(source, company_id=str(facts.company_id))
+                return CompanyTaxReadinessPreviewWire(company_id=facts.company_id, income_year=facts.income_year,
+                    issues=[CompanyTaxReadinessIssueWire(level=item.level, code=item.code,
+                        message=item.message, source=item.source, accepted=item.accepted) for item in issues])
+            except (KeyError, TypeError, ValueError, OverflowError, AttributeError):
+                raise CompanyTaxError.invalid_input() from None
+        return await company_tax_call(execute)
+
+    @application.post(
+        "/api/v1/company-tax/annual-estimate-previews",
+        operation_id="companyTaxPreviewAnnualEstimate", response_model=CompanyTaxAnnualEstimateWire,
+        responses=ledger_errors, tags=["company-tax"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def preview_company_tax_annual_estimate(
+        facts: CompanyTaxAssessmentFactsRequest,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> CompanyTaxAnnualEstimateWire:
+        async def execute() -> CompanyTaxAnnualEstimateWire:
+            await company_tax_application.session(bearer_token(credentials))
+            try:
+                # Organization, year and AnnualData do not participate in this
+                # existing cross-company/all-year estimate; preserve input order.
+                source = AnnualTaxEstimateSource(facts.ledger_entries, facts.holding_actions)
+                value = estimate_annual_tax(source)
+                return CompanyTaxAnnualEstimateWire(admin_costs=value.admin_costs, interest_income=value.interest_income,
+                    fritaksmetoden_add_back=value.participation_exemption_add_back,
+                    taxable_share_sale_gain=value.taxable_share_sale_gain,
+                    deductible_share_sale_loss=value.deductible_share_sale_loss,
+                    tax_basis=value.tax_basis, estimated_tax=value.estimated_tax, status=value.status)
+            except (KeyError, TypeError, ValueError, OverflowError, AttributeError):
+                raise CompanyTaxError.invalid_input() from None
         return await company_tax_call(execute)
 
     @application.get(

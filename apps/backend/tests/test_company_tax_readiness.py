@@ -1,0 +1,107 @@
+"""Tax-only annual readiness matches the unchanged predecessor's exact issues."""
+from dataclasses import asdict, FrozenInstanceError
+import json
+from pathlib import Path
+
+import pytest
+
+from talli_backend.modules.company_tax_filing.public import CompanyTaxReturnSource, assess_company_tax_readiness
+
+CAPTURE = json.loads((Path(__file__).resolve().parents[3] / 'architecture/evidence/issues/152/legacy-tax-readiness.json').read_text())
+
+
+def source(value):
+    return CompanyTaxReturnSource(
+        organization_number=value['companyOrgNumber'], income_year=value['incomeYear'],
+        annual_data=value['annualData'], ledger_entries=value['ledgerEntries'], holding_actions=value['holdingActions'],
+    )
+
+
+@pytest.mark.parametrize('case', CAPTURE['cases'], ids=lambda case: case['id'])
+def test_owned_tax_readiness_preserves_exact_codes_messages_order_and_acceptance(case):
+    issues = assess_company_tax_readiness(source(case['input']), company_id=case['input']['company']['id'])
+    assert [asdict(issue) for issue in issues] == case['output']
+
+
+def test_tax_readiness_snapshot_is_immutable_and_does_not_mutate_source():
+    value = json.loads(json.dumps(CAPTURE['cases'][0]['input']))
+    snapshot = source(value)
+    expected = assess_company_tax_readiness(snapshot, company_id=value['company']['id'])
+    value['annualData']['no_activity_confirmed'] = True
+    value['holdingActions'].clear()
+    assert assess_company_tax_readiness(snapshot, company_id=value['company']['id']) == expected
+    with pytest.raises(FrozenInstanceError):
+        expected[0].accepted = True
+
+from fastapi.testclient import TestClient
+from talli_backend.main import create_app
+from talli_backend.application.ledger_session import LedgerAuthenticationError
+from talli_backend.shared.kernel import ActorId, ActorKind, UserId
+
+COMPANY = '00000000-0000-0000-0000-000000000152'
+
+
+class PreviewSessions:
+    actor_id = ActorId(ActorKind.USER, UserId('00000000-0000-0000-0000-000000000153'))
+
+    async def session(self, token):
+        if token != 'fixture':
+            raise LedgerAuthenticationError()
+        return self
+
+    def transaction(self):
+        raise AssertionError('A caller-supplied assessment preview must not persist or attest source history.')
+
+
+@pytest.fixture(scope='module')
+def preview_client():
+    return TestClient(create_app(company_tax_session_factory=PreviewSessions()))
+
+
+@pytest.mark.parametrize('case', CAPTURE['cases'], ids=lambda case: case['id'])
+def test_generated_readiness_route_preserves_the_scoped_preview_issues(preview_client, case):
+    value = json.loads(json.dumps(case['input']).replace('company-id', COMPANY))
+    body = {key: value[key] for key in ('annualData', 'ledgerEntries', 'holdingActions')}
+    body.update(companyId=COMPANY, incomeYear=int(value['incomeYear']))
+    response = preview_client.post('/api/v1/company-tax/readiness-previews', json=body, headers={'Authorization': 'Bearer fixture'})
+    assert response.status_code == 200, response.text
+    assert response.json() == {'companyId': COMPANY, 'incomeYear': body['incomeYear'], 'issues': case['output']}
+
+
+PURE_CASES = sum((json.loads((Path(__file__).resolve().parents[3] / f'architecture/evidence/issues/152/{name}').read_text())['cases']
+                  for name in ('legacy-characterization.json', 'legacy-review-boundaries.json')), [])
+
+
+@pytest.mark.parametrize('case', PURE_CASES, ids=lambda case: case['id'])
+def test_generated_estimate_route_preserves_ordered_cross_company_aggregation(preview_client, case):
+    body = {key: case['input'][key] for key in ('ledgerEntries', 'holdingActions')}
+    expected = case['output']['annualEstimate']['value']
+    response = preview_client.post('/api/v1/company-tax/annual-estimate-previews', json=body, headers={'Authorization': 'Bearer fixture'})
+    if any(value is None for value in expected.values()):
+        # Nonfinite legacy values cannot be displayed as monetary estimates.
+        assert response.status_code == 422
+        assert response.json()['code'] == 'COMPANY_TAX_INVALID_INPUT'
+    else:
+        assert response.status_code == 200, response.text
+        assert response.json() == expected
+
+
+@pytest.mark.parametrize('path,body', [
+    ('readiness-previews', {'companyId': COMPANY, 'incomeYear': 2025, 'annualData': None, 'ledgerEntries': [], 'holdingActions': []}),
+    ('annual-estimate-previews', {'ledgerEntries': [], 'holdingActions': []}),
+])
+def test_assessment_preview_requires_authentication_without_any_persistence(preview_client, path, body):
+    for headers in ({}, {'Authorization': 'Bearer invalid'}):
+        response = preview_client.post(f'/api/v1/company-tax/{path}', json=body, headers=headers)
+        assert response.status_code == 401
+
+
+@pytest.mark.parametrize('change', [
+    {'ledgerEntries': {}}, {'holdingActions': 'invalid'},
+    {'ledgerEntries': [{'entry_type': 'admin_cost', 'lines': None}]},
+    {'holdingActions': [{'action_type': 'share_sale', 'payload': None}]},
+])
+def test_malformed_preview_facts_are_rejected(preview_client, change):
+    response = preview_client.post('/api/v1/company-tax/annual-estimate-previews',
+        json={'ledgerEntries': [], 'holdingActions': [], **change}, headers={'Authorization': 'Bearer fixture'})
+    assert response.status_code == 422

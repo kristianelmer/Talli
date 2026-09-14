@@ -259,6 +259,23 @@ class CompanyTaxReturnSource:
 
 
 @dataclass(frozen=True, slots=True)
+class CompanyTaxReadinessIssue:
+    level: str
+    code: str
+    message: str
+    source: str
+    accepted: bool = False
+
+
+def assess_company_tax_readiness(
+    source: CompanyTaxReturnSource, *, company_id: str,
+) -> tuple[CompanyTaxReadinessIssue, ...]:
+    """Tax policy only; Annual owns common gates and Billing owns entitlement."""
+    from .readiness import assess
+    return assess(source, company_id)
+
+
+@dataclass(frozen=True, slots=True)
 class CompanyTaxReturnCandidate:
     schema: Mapping[str, object]
     derived: Mapping[str, object]
@@ -267,6 +284,16 @@ class CompanyTaxReturnCandidate:
 
     def __post_init__(self) -> None:
         for name in ('schema', 'derived', 'fields', 'feedback'):
+            object.__setattr__(self, name, _freeze_return_fact(getattr(self, name)))
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualTaxEstimateSource:
+    ledger_entries: tuple[Mapping[str, object], ...]
+    holding_actions: tuple[Mapping[str, object], ...]
+
+    def __post_init__(self) -> None:
+        for name in ('ledger_entries', 'holding_actions'):
             object.__setattr__(self, name, _freeze_return_fact(getattr(self, name)))
 
 
@@ -308,9 +335,9 @@ def build_company_tax_return(source: CompanyTaxReturnSource) -> CompanyTaxReturn
     return CompanyTaxReturnCandidate(**build(_calculation_source(source)))
 
 
-def estimate_annual_tax(source: CompanyTaxReturnSource) -> AnnualTaxEstimate:
+def estimate_annual_tax(source: CompanyTaxReturnSource | AnnualTaxEstimateSource) -> AnnualTaxEstimate:
     from .calculation import estimate
-    value = estimate(_calculation_source(source))
+    value = estimate({'ledgerEntries': source.ledger_entries, 'holdingActions': source.holding_actions})
     return AnnualTaxEstimate(
         admin_costs=value['adminCosts'], interest_income=value['interestIncome'],
         participation_exemption_add_back=value['fritaksmetodenAddBack'],
@@ -536,6 +563,7 @@ __all__ = [
     "CompanyTaxValidationSummary", "summarize_company_tax_validation",
     "CompanyTaxEvidenceInput", "CompanyTaxEvidenceProjection", "project_company_tax_evidence",
     "CompanyTaxReturnSource", "CompanyTaxReturnCandidate", "AnnualTaxEstimate",
+    "AnnualTaxEstimateSource", "CompanyTaxReadinessIssue", "assess_company_tax_readiness",
     "CompanyTaxReturnDocuments", "CompanyTaxEnvelopeInput", "build_company_tax_return",
     "estimate_annual_tax", "render_company_tax_return", "render_company_tax_envelope",
     "TaxSettlementArchiveQuery", "TaxSettlementArchivePersistence",

@@ -1,0 +1,89 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_READ_CONSUMERS_AFTER_909BD28D",
+  "baseRevision": "6ab578f8d2afb02544a23ab685800d120764a5cc",
+  "reviewedRevision": "f5a9f41f79ff54c5d2a4b9d58b8ab67d77419115",
+  "followupRevision": "909bd28daea26f9eb130aeff7cf9ab8e86faab74",
+  "findings": [
+    {
+      "id": "SPEC-152-READ-CONSUMER-1",
+      "priority": 2,
+      "file": "apps/web/app/lib/workspace-data.ts",
+      "lines": [
+        99,
+        101
+      ],
+      "initialStatus": "REPRODUCED at f5a9f41f: authenticated company scope, token null, error null, no Tax call",
+      "status": "CLOSED at909bd28d",
+      "closure": "Original unchanged real-workspace probe returns explicit unavailable error and no API call."
+    }
+  ],
+  "independentVerification": {
+    "node": "v24.20.0",
+    "initialConsumerArchivePass": 20,
+    "initialGuardMatrixPass": 1,
+    "initialGuardDurationMs": 52352.494416,
+    "followupConsumerArchivePass": 21,
+    "followupDurationMs": 354.223875,
+    "originalWorkspaceProbeUnchanged": true,
+    "frozenSuccessfulReceipts": 4,
+    "artifactHashesVerified": {
+      "f5a9f41f79ff54c5d2a4b9d58b8ab67d77419115": 7,
+      "909bd28daea26f9eb130aeff7cf9ab8e86faab74": 2
+    },
+    "frozenBaselineRegistryAndCriteriaUnchanged": true,
+    "historical146DigestsUnchanged": true
+  },
+  "initialSourceBindings": {
+    "apps/web/app/actions.ts": "9a61b8e8347e280581879e9e1f499da5cad80c117cdeb84dd93529a6850ab7b5",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": "3431d8b8e174baf7315f3b2e75a392007b5b9519e02b3e0fe0ae2682dbc90516",
+    "apps/web/app/lib/annual-workspace-server.ts": "dc46e54d9bcfaf1fa819eff6397d9da7a1a26c985c0a353f0ccf4627003cead7",
+    "apps/web/app/lib/company-tax-workspace-source.ts": "bcc3bd41c288c152656bf5ef451e5a367bf0d8fa4816179232e27dd4202645d1",
+    "apps/web/app/lib/workspace-data.ts": "a87c9d4d4513c3acc43947bebf0857b349b3dac83c953a76ec669c7fe25a8068",
+    "apps/web/features/company-tax-filing/index.ts": "fe5553a409942405e39146be7732442c6b183cc1932cfed9c631f7dd6edd1b90",
+    "apps/web/features/company-tax-filing/presentation.ts": "757aa22b5eded22ef59df0efedc4aac800a617c6e6e97a587da503d4018c5e53",
+    "architecture/COMPATIBILITY.md": "0aba38232b847b1b9843fdd9c04a34ce5cffe220951dd25fb4333e5c97d5c2dc",
+    "architecture/evidence/issues/152/read-consumers/manifest.json": "46c5e228c93addcb1b05ddc3bb1ce84ed4261cbed104b761e2b0c2f959de53be",
+    "architecture/evidence/issues/152/read-consumers/owner-actions-spec-review-6ab578f8.json": "ec276773ad2581adcbd882c04b5dd204fdf740f871f1d3369feaf2624f8da2df",
+    "architecture/evidence/issues/152/read-consumers/owner-actions-spec-review-6ab578f8.md": "7b2b76befb195f6412a6a5992d6ba15acc9bc3604adc0862fda71a689be88932",
+    "architecture/evidence/issues/152/read-consumers/owner-actions-standards-review-6ab578f8.json": "84a396752d3942dc68cee45cd50c9ec841c4b69e50b89dbd9509916a1e7472a3",
+    "architecture/evidence/issues/152/read-consumers/owner-actions-standards-review-6ab578f8.md": "c3b5b13438342a2fb408e459093b3808bf37b92010cba68f0476cd1c5a580ea9",
+    "architecture/evidence/issues/152/read-consumers/tax-source-consumer-tests.log": "5305ef34a775b2eba99d4d49d9c361a057846b258793798439e3157340509aae",
+    "architecture/evidence/issues/152/read-consumers/tax-source-guard-tests-fixed.log": "28d305116d4cb310d45a38537ef6bfa114f4cb095b97d6f77e2ee372b23c2ae2",
+    "architecture/evidence/issues/152/read-consumers/tax-source-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "scripts/check-architecture.mjs": "c082a3de8be4f2c27448cf86575b6fa35a732731cde8337219315b0cf8d6f5c7",
+    "tests/archive_export.test.mjs": "205b908c5e7640aaffebb03d27daa20266105e584889bf6079438ec7954710e1",
+    "tests/company_tax_architecture.test.mjs": "09b8ffd2c9e347a7038acb7a771cfa5a1f16eedd30c30d5a25defbb86e29a05f",
+    "tests/company_tax_workspace_composition.test.mjs": "9dfc899bb4bb7ddd4194cfe7a902d44535c311b51a8d9e6b5b5971fce850924b",
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+    "architecture/compatibility.json": "5d426910e56c0fed393bcbd309a5d64ab858363483d2892ae2107cc45bd8c90b",
+    "architecture/evidence/issues/152/requirements.json": "cd4da5befa561f08dd35d1a62ba15e8b4ea3ade0873df6e1f16a680c62b7cdf6"
+  },
+  "followupSourceBindings": {
+    "apps/web/app/lib/company-tax-workspace-source.ts": "c75c86bfd8716987d7794cb896a8886046ace22590ddc08eee8c29d017c7ec95",
+    "apps/web/app/lib/workspace-data.ts": "e5598bf1fa8aa19c3805c3b7e3bc0e2a1a6303243651c394184cf435daaf7db6",
+    "architecture/evidence/issues/152/read-session-followup/manifest.json": "654fce27155a004d04ede54f5e8fbfa4cf84fc8745e9851c8b443abc3ce2e6bc",
+    "architecture/evidence/issues/152/read-session-followup/tax-source-session-tests.log": "a71aee23a143491036dcdd0952331d95775a56d62a64f157b13024eb2445faf6",
+    "architecture/evidence/issues/152/read-session-followup/tax-source-session-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "tests/company_tax_workspace_composition.test.mjs": "fa7acae8ef865f4513d1b7385cbd6ae9c0e877bf480f0f95ec7a635ec3f53ed3",
+    "scripts/check-architecture.mjs": "c082a3de8be4f2c27448cf86575b6fa35a732731cde8337219315b0cf8d6f5c7",
+    "apps/web/app/actions.ts": "9a61b8e8347e280581879e9e1f499da5cad80c117cdeb84dd93529a6850ab7b5",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": "3431d8b8e174baf7315f3b2e75a392007b5b9519e02b3e0fe0ae2682dbc90516",
+    "apps/web/features/company-tax-filing/presentation.ts": "757aa22b5eded22ef59df0efedc4aac800a617c6e6e97a587da503d4018c5e53",
+    "apps/web/app/lib/annual-workspace-server.ts": "dc46e54d9bcfaf1fa819eff6397d9da7a1a26c985c0a353f0ccf4627003cead7"
+  },
+  "privateArtifactBindings": {
+    "read-consumers-spec-f5a9f41f-red.log": "cf4b396fabad37368eb9b77557bdf9a35d2231f7cb2f6ba01954b4ecf4c3ad43",
+    "read-consumers-spec-f5a9f41f-tests.log": "c1163a2be890fb65b57b6ccf38bd4d6a97d9ff3f0c56bc7cab1817513d69ab2a",
+    "read-consumers-spec-f5a9f41f-guard.log": "a31515d8bea807531855e89b8c624a30a4e5fe176ca3455eaff15acf63357e85",
+    "read-consumers-spec-909bd28d-probe.log": "44fa563ff1ece60101c514cfa73345d04d7c666420ac213d705d92abbadf40ba",
+    "read-consumers-spec-909bd28d-tests.log": "c5f028459070e226827a6d4d36d0df06156559e5c4cb44e260b5ff29fc0213c7",
+    "spec-read-consumers-f5a9f41f/missing-token-spec-probe.mjs": "fd8320998315e7457423a43020be1dedb1ea92f323c869bd33e6acce1fef86c7"
+  },
+  "reportSha256": "0a774057f87859872aeb3f2c22330f2634dfbc1e833ffbdd3c0c614e643e8108",
+  "limits": [
+    "Real extracted functions with dependency doubles; no live HTTP/JWT/MFA/browser/provider proof.",
+    "Archive failure stops completion; original begin bookkeeping remains.",
+    "No SQL/shared mutation or full-stage acceptance."
+  ]
+}

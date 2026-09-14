@@ -1,0 +1,31 @@
+{
+  "status": "ASSESSMENT_PREVIEWS_ADDED_WEB_RETIREMENT_AND_CUTOVER_PENDING",
+  "baselineRevision": "909bd28daea26f9eb130aeff7cf9ab8e86faab74",
+  "backendTests": 349,
+  "webTransportTests": 27,
+  "webTypecheck": "PASS",
+  "frozenReadinessCases": 56,
+  "frozenReadinessSha256": "4bf8e55b8998dc48d73cf28fe744eca57e7c9de8ac28e1cc989cadcc0ffcb8be",
+  "openApi": "Two new paths and five new schemas; every existing parsed path and schema unchanged.",
+  "scope": "Own the legacy Tax-specific readiness rules and provide authenticated, non-persisting generated assessment preview routes over caller-supplied immutable facts. Preserve ordered aggregation and issue codes/messages/source/acceptance.",
+  "limits": [
+    "The preview does not certify stored completeness, company membership, production history, permission or an authority outcome.",
+    "Nonfinite monetary preview outputs are explicitly rejected; the underlying pure calculation retains its frozen nonfinite behavior.",
+    "No business-data read, durable migration, provider call, SQL cutover or stage exit.",
+    "Active web calculations, owned provider workflow and full source-backed filing history still require retirement/integration."
+  ],
+  "artifacts": {
+    "tax-assessment-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "read-consumers-standards-review-f5a9f41f.json": "ddcad47e1c0aa754f44922c980bdbcc8104f57cfc5021147caaba6d298a6aa61",
+    "capture-tax-readiness.mjs.txt": "f2b456d633b2b1337aab5d3864a59ec5b66a79e885a73a0699d42e567a0b81dd",
+    "read-session-standards-followup-909bd28d.md": "015384be246c2a8bf62980a7eb943874cf7b056b07ddae4fbcf7ab3e25abafe6",
+    "read-session-standards-followup-909bd28d.json": "79b08b3f6eb4e644cad1026b252dfbd19dab155821b0251e92b97bf2c2a97870",
+    "read-consumers-standards-review-f5a9f41f.md": "024925093b9be208b1c8e49cb08ac3f6a0f5bdea17426ede8d86d1ae914c5d7b",
+    "read-consumers-spec-review-f5a9f41f.json": "f7923596cbc816d89b913cd065206a4fe47864472154d8579f8b18a29e6c227b",
+    "tax-assessment-web-tests.log": "f381024f9d16c3e3fbbb4b6eb2cffb023a57656a8f3b67934ff6fe22d15f610a",
+    "tax-assessment-openapi-diff.json": "fd94155042112c6afd5f319e17ee17f77c200123370bdf46d2954981e69280d4",
+    "read-consumers-spec-review-f5a9f41f.md": "0a774057f87859872aeb3f2c22330f2634dfbc1e833ffbdd3c0c614e643e8108",
+    "tax-assessment-backend-tests.log": "e4bd30629f5309c150e3b0b14ff23d340ffda2821fa6bf3bb2d8e906a7cf8cba"
+  },
+  "architecture": "PASS"
+}

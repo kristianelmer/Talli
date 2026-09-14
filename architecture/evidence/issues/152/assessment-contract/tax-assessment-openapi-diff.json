@@ -1,0 +1,15 @@
+{
+  "existingPathsChanged": [],
+  "existingSchemasChanged": [],
+  "newPaths": [
+    "/api/v1/company-tax/annual-estimate-previews",
+    "/api/v1/company-tax/readiness-previews"
+  ],
+  "newSchemas": [
+    "CompanyTaxAnnualEstimateWire",
+    "CompanyTaxAssessmentFactsRequest",
+    "CompanyTaxReadinessIssueWire",
+    "CompanyTaxReadinessPreviewRequest",
+    "CompanyTaxReadinessPreviewWire"
+  ]
+}

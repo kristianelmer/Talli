@@ -46,7 +46,10 @@
       "CompanyTaxRecordedResult",
       "normalize_company_tax_override",
       "normalize_company_tax_review",
-      "normalize_company_tax_test_evidence"
+      "normalize_company_tax_test_evidence",
+      "CompanyTaxReadinessIssue",
+      "assess_company_tax_readiness",
+      "AnnualTaxEstimateSource"
     ],
     "events": [],
     "errors": [

@@ -195,3 +195,35 @@ test("TT02 import retains the missing-company message", async () => {
   const { taxEvidenceImportErrorMessage } = await import("../features/company-tax-filing/index.ts");
   assert.equal(taxEvidenceImportErrorMessage(new TalliApiError(404, { code: "COMPANY_TAX_NOT_FOUND" })), "Selskapet finnes ikke");
 });
+
+test("Tax assessment previews send ordered source facts unchanged through generated endpoints", async (t) => {
+  environment(t);
+  const { previewAnnualTaxEstimate, previewCompanyTaxReadiness } = await import("../features/company-tax-filing/index.ts");
+  const facts = { annualData: null, ledgerEntries: [{ entry_type: "admin_cost", lines: [{ account: "7770", debit: "1.005" }] }], holdingActions: [] };
+  const estimate = { adminCosts: 1, interestIncome: 0, fritaksmetodenAddBack: 0, taxableShareSaleGain: 0,
+    deductibleShareSaleLoss: 0, taxBasis: -1, estimatedTax: 0, status: "zero" };
+  const readiness = { companyId, incomeYear: 2024, issues: [{ level: "warning", code: "tax_settlement_missing", message: "Missing", source: "tax_settlement", accepted: false }] };
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (url, request) => {
+    const path = new URL(url).pathname; calls.push(path);
+    assert.equal(request.method, "POST"); assert.equal(request.headers.Authorization, "Bearer owner");
+    assert.equal(request.cache, "no-store");
+    assert.deepEqual(JSON.parse(request.body), path.endsWith("readiness-previews") ? { ...facts, companyId, incomeYear: 2024 } : facts);
+    return Response.json(path.endsWith("readiness-previews") ? readiness : estimate);
+  });
+  assert.deepEqual(await previewAnnualTaxEstimate("owner", facts), estimate);
+  assert.deepEqual(await previewCompanyTaxReadiness("owner", { ...facts, companyId, incomeYear: 2024 }), readiness);
+  assert.deepEqual(calls, ["/api/v1/company-tax/annual-estimate-previews", "/api/v1/company-tax/readiness-previews"]);
+});
+
+for (const corruption of [
+  { companyId: operationId }, { incomeYear: 2023 },
+  { issues: [{ level: "info", code: "x", message: "x", source: "tax", accepted: false }] },
+  { issues: [{ level: "warning", code: "x", message: "x", source: "tax", accepted: true }] },
+]) test("readiness transport rejects wrong scope or corrupt policy output", async (t) => {
+  environment(t);
+  const { previewCompanyTaxReadiness } = await import("../features/company-tax-filing/index.ts");
+  t.mock.method(globalThis, "fetch", async () => Response.json({ companyId, incomeYear: 2025, issues: [], ...corruption }));
+  await assert.rejects(previewCompanyTaxReadiness("owner", { companyId, incomeYear: 2025, annualData: null, ledgerEntries: [], holdingActions: [] }),
+    error => error instanceof TalliApiError && error.status === 502);
+});
