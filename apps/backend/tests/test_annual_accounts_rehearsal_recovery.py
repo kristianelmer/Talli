@@ -1,6 +1,7 @@
 """Ambiguous create/lock attempts cannot be repeated from persisted evidence."""
 import asyncio
 import copy
+from contextlib import nullcontext
 
 import pytest
 
@@ -18,6 +19,8 @@ class EvidenceIO:
         self.operation, self.failure = operation, failure
         self.saved, self.calls, self.at_effect = None, [], []
         self.failed = False
+
+    def exclusive_evidence(self): return nullcontext()  # Isolated in-memory journal per test.
 
     def load_case(self):
         return {'synthetic': True, 'environment': 'test', 'company': {'orgNumber': '310279617', 'incomeYear': 2025}, 'ledgerEntries': []}

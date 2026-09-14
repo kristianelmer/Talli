@@ -59,7 +59,7 @@ access definitions before returning authority to the legacy writer. Owned
 contracts fail closed during expansion and after rollback.
 No storage bucket is added.
 `AnnualAccountsAuthority` declares the fixed TT02 operations and
-`AnnualAccountsRehearsalIO` declares local file, clock, XML and credential seams.
+`AnnualAccountsRehearsalIO` declares exclusive evidence ownership, local file, clock, XML and credential seams.
 `annual_accounts_authority_adapter` registers implementations.
 `AnnualAccountsRehearsalConfiguration` holds nonsecret declarations, and
 `AnnualAccountsAuthorityError` carries sanitized failure metadata.
@@ -69,7 +69,14 @@ rehearsal guards, checkpoints, retries and human-signing continuation.
 `prepare_annual_accounts_for_signing` preserves create/upload/validate/lock/handoff
 order and refuses to lock after validation errors. Neither contract signs.
 The local CLI retains the exact explicit test gate, scopes, synthetic case and
-organization checks. It writes intent before credentials or provider work, reuses
+organization checks. A nonblocking lock on the canonical evidence path is held
+from before case/evidence reads through the final checkpoint. The local adapter
+locks a persistent sidecar so atomic evidence replacement cannot release ownership.
+Concurrent runs, including separate processes and directory aliases, fail before
+credentials; all exits and process termination release the lock. The sidecar must
+remain in place between runs. This contract coordinates the local POSIX filesystem;
+changing evidence paths is not authority reconciliation.
+It writes intent before credentials or provider work, reuses
 existing uploads, reads receipt state after human signing and replays completed
 evidence without constructing a provider. Credential setup remains outside the
 provider error-catching block. Before create-instance and signing-lock calls, a

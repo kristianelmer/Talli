@@ -1,0 +1,331 @@
+FFFFFFF                                                                  [100%]
+=================================== FAILURES ===================================
+_ test_concurrent_cli_rejects_before_credentials_and_preserves_one_instance[False] _
+
+_ = ({'TALLI_ANNUAL_ACCOUNTS_APPROVAL_DATE': '2026-06-30', 'TALLI_ANNUAL_ACCOUNTS_APPROVED_TEST_WRITE': 'true', 'TALLI_ANN...trene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': '', ...})
+
+    async def connect(*_):
+        connects.append(True)
+        entered.set()
+>       await release.wait()
+
+apps/backend/tests/test_annual_accounts_rehearsal_ownership.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.locks.Event object at 0x1096e6330 [set]>
+
+    async def wait(self):
+        """Block until the internal flag is true.
+    
+        If the internal flag is true on entry, return True
+        immediately.  Otherwise, block until another coroutine calls
+        set() to set the flag to true, then return True.
+        """
+        if self._value:
+            return True
+    
+        fut = self._get_loop().create_future()
+        self._waiters.append(fut)
+        try:
+>           await fut
+E           asyncio.exceptions.CancelledError
+
+../../runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/locks.py:212: CancelledError
+
+The above exception was the direct cause of the following exception:
+
+tmp_path = PosixPath('/private/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/pytest-of-kristianelmer/pytest-152/test_concurrent_cli_rejects_be0')
+alias = False
+
+    @pytest.mark.parametrize('alias', [False, True])
+    def test_concurrent_cli_rejects_before_credentials_and_preserves_one_instance(tmp_path, alias):
+        env = environment(tmp_path)
+        second_env = dict(env)
+        if alias:
+            linked = tmp_path / 'alias'
+            linked.symlink_to(tmp_path, target_is_directory=True)
+            second_env['TALLI_ANNUAL_ACCOUNTS_EVIDENCE_PATH'] = str(linked / 'evidence.json')
+        async def scenario():
+            entered, release = asyncio.Event(), asyncio.Event()
+            provider, connects = Provider(), []
+            async def connect(*_):
+                connects.append(True)
+                entered.set()
+                await release.wait()
+                return provider
+            kwargs = dict(client_factory=connect, generate=generated, validate=lambda *_: None)
+            first = asyncio.create_task(run(env, **kwargs))
+            await entered.wait()
+            try:
+                with pytest.raises(AnnualAccountsAuthorityError) as rejected:
+                    await asyncio.wait_for(run(second_env, **kwargs), timeout=1)
+                assert rejected.value.code == 'ANNUAL_ACCOUNTS_REHEARSAL_IN_PROGRESS'
+                assert not rejected.value.retryable
+                assert len(connects) == 1
+            finally:
+                release.set()
+                result = await first
+            assert provider.creates == provider.locks == 1
+            assert json.loads(Path(env['TALLI_ANNUAL_ACCOUNTS_EVIDENCE_PATH']).read_text())['instance']['id'] == result['instanceId']
+            # Ownership is released after success; the next run only reads status.
+            await run(env, **kwargs)
+            assert provider.creates == provider.locks == 1
+        with patch.object(local, 'git_commit', lambda: 'synthetic-revision'):
+>           asyncio.run(scenario())
+
+apps/backend/tests/test_annual_accounts_rehearsal_ownership.py:87: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+apps/backend/tests/test_annual_accounts_rehearsal_ownership.py:74: in scenario
+    await asyncio.wait_for(run(second_env, **kwargs), timeout=1)
+../../runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/tasks.py:519: in wait_for
+    async with timeouts.timeout(timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Timeout [expired]>
+exc_type = <class 'asyncio.exceptions.CancelledError'>
+exc_val = CancelledError(), exc_tb = <traceback object at 0x109696b00>
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> Optional[bool]:
+        assert self._state in (_State.ENTERED, _State.EXPIRING)
+    
+        if self._timeout_handler is not None:
+            self._timeout_handler.cancel()
+            self._timeout_handler = None
+    
+        if self._state is _State.EXPIRING:
+            self._state = _State.EXPIRED
+    
+            if self._task.uncancel() <= self._cancelling and exc_type is exceptions.CancelledError:
+                # Since there are no new cancel requests, we're
+                # handling this.
+>               raise TimeoutError from exc_val
+E               TimeoutError
+
+../../runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/timeouts.py:115: TimeoutError
+_ test_concurrent_cli_rejects_before_credentials_and_preserves_one_instance[True] _
+
+_ = ({'TALLI_ANNUAL_ACCOUNTS_APPROVAL_DATE': '2026-06-30', 'TALLI_ANNUAL_ACCOUNTS_APPROVED_TEST_WRITE': 'true', 'TALLI_ANN...trene RR0002 via Altinn TT02', 'caseFixture': 'case.json', 'codeCommit': 'synthetic-revision', 'companyName': '', ...})
+
+    async def connect(*_):
+        connects.append(True)
+        entered.set()
+>       await release.wait()
+
+apps/backend/tests/test_annual_accounts_rehearsal_ownership.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.locks.Event object at 0x1096e7ef0 [set]>
+
+    async def wait(self):
+        """Block until the internal flag is true.
+    
+        If the internal flag is true on entry, return True
+        immediately.  Otherwise, block until another coroutine calls
+        set() to set the flag to true, then return True.
+        """
+        if self._value:
+            return True
+    
+        fut = self._get_loop().create_future()
+        self._waiters.append(fut)
+        try:
+>           await fut
+E           asyncio.exceptions.CancelledError
+
+../../runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/locks.py:212: CancelledError
+
+The above exception was the direct cause of the following exception:
+
+tmp_path = PosixPath('/private/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/pytest-of-kristianelmer/pytest-152/test_concurrent_cli_rejects_be1')
+alias = True
+
+    @pytest.mark.parametrize('alias', [False, True])
+    def test_concurrent_cli_rejects_before_credentials_and_preserves_one_instance(tmp_path, alias):
+        env = environment(tmp_path)
+        second_env = dict(env)
+        if alias:
+            linked = tmp_path / 'alias'
+            linked.symlink_to(tmp_path, target_is_directory=True)
+            second_env['TALLI_ANNUAL_ACCOUNTS_EVIDENCE_PATH'] = str(linked / 'evidence.json')
+        async def scenario():
+            entered, release = asyncio.Event(), asyncio.Event()
+            provider, connects = Provider(), []
+            async def connect(*_):
+                connects.append(True)
+                entered.set()
+                await release.wait()
+                return provider
+            kwargs = dict(client_factory=connect, generate=generated, validate=lambda *_: None)
+            first = asyncio.create_task(run(env, **kwargs))
+            await entered.wait()
+            try:
+                with pytest.raises(AnnualAccountsAuthorityError) as rejected:
+                    await asyncio.wait_for(run(second_env, **kwargs), timeout=1)
+                assert rejected.value.code == 'ANNUAL_ACCOUNTS_REHEARSAL_IN_PROGRESS'
+                assert not rejected.value.retryable
+                assert len(connects) == 1
+            finally:
+                release.set()
+                result = await first
+            assert provider.creates == provider.locks == 1
+            assert json.loads(Path(env['TALLI_ANNUAL_ACCOUNTS_EVIDENCE_PATH']).read_text())['instance']['id'] == result['instanceId']
+            # Ownership is released after success; the next run only reads status.
+            await run(env, **kwargs)
+            assert provider.creates == provider.locks == 1
+        with patch.object(local, 'git_commit', lambda: 'synthetic-revision'):
+>           asyncio.run(scenario())
+
+apps/backend/tests/test_annual_accounts_rehearsal_ownership.py:87: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+../../runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/base_events.py:691: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+apps/backend/tests/test_annual_accounts_rehearsal_ownership.py:74: in scenario
+    await asyncio.wait_for(run(second_env, **kwargs), timeout=1)
+../../runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/tasks.py:519: in wait_for
+    async with timeouts.timeout(timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Timeout [expired]>
+exc_type = <class 'asyncio.exceptions.CancelledError'>
+exc_val = CancelledError(), exc_tb = <traceback object at 0x109c25d80>
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> Optional[bool]:
+        assert self._state in (_State.ENTERED, _State.EXPIRING)
+    
+        if self._timeout_handler is not None:
+            self._timeout_handler.cancel()
+            self._timeout_handler = None
+    
+        if self._state is _State.EXPIRING:
+            self._state = _State.EXPIRED
+    
+            if self._task.uncancel() <= self._cancelling and exc_type is exceptions.CancelledError:
+                # Since there are no new cancel requests, we're
+                # handling this.
+>               raise TimeoutError from exc_val
+E               TimeoutError
+
+../../runtime/python/cpython-3.12.12-macos-aarch64-none/lib/python3.12/asyncio/timeouts.py:115: TimeoutError
+_________ test_exclusive_ownership_released_on_every_exit[ValueError] __________
+
+tmp_path = PosixPath('/private/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/pytest-of-kristianelmer/pytest-152/test_exclusive_ownership_relea0')
+failure = <class 'ValueError'>
+
+    @pytest.mark.parametrize('failure', [ValueError, OSError, KeyboardInterrupt, asyncio.CancelledError])
+    def test_exclusive_ownership_released_on_every_exit(tmp_path, failure):
+        env = environment(tmp_path)
+        io = local.LocalAnnualAccountsRehearsal(env, client_factory=None, generate=generated, validate=None)
+        with pytest.raises(failure):
+>           with io.exclusive_evidence():
+                 ^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'LocalAnnualAccountsRehearsal' object has no attribute 'exclusive_evidence'
+
+apps/backend/tests/test_annual_accounts_rehearsal_ownership.py:95: AttributeError
+___________ test_exclusive_ownership_released_on_every_exit[OSError] ___________
+
+tmp_path = PosixPath('/private/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/pytest-of-kristianelmer/pytest-152/test_exclusive_ownership_relea1')
+failure = <class 'OSError'>
+
+    @pytest.mark.parametrize('failure', [ValueError, OSError, KeyboardInterrupt, asyncio.CancelledError])
+    def test_exclusive_ownership_released_on_every_exit(tmp_path, failure):
+        env = environment(tmp_path)
+        io = local.LocalAnnualAccountsRehearsal(env, client_factory=None, generate=generated, validate=None)
+        with pytest.raises(failure):
+>           with io.exclusive_evidence():
+                 ^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'LocalAnnualAccountsRehearsal' object has no attribute 'exclusive_evidence'
+
+apps/backend/tests/test_annual_accounts_rehearsal_ownership.py:95: AttributeError
+______ test_exclusive_ownership_released_on_every_exit[KeyboardInterrupt] ______
+
+tmp_path = PosixPath('/private/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/pytest-of-kristianelmer/pytest-152/test_exclusive_ownership_relea2')
+failure = <class 'KeyboardInterrupt'>
+
+    @pytest.mark.parametrize('failure', [ValueError, OSError, KeyboardInterrupt, asyncio.CancelledError])
+    def test_exclusive_ownership_released_on_every_exit(tmp_path, failure):
+        env = environment(tmp_path)
+        io = local.LocalAnnualAccountsRehearsal(env, client_factory=None, generate=generated, validate=None)
+        with pytest.raises(failure):
+>           with io.exclusive_evidence():
+                 ^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'LocalAnnualAccountsRehearsal' object has no attribute 'exclusive_evidence'
+
+apps/backend/tests/test_annual_accounts_rehearsal_ownership.py:95: AttributeError
+_______ test_exclusive_ownership_released_on_every_exit[CancelledError] ________
+
+tmp_path = PosixPath('/private/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/pytest-of-kristianelmer/pytest-152/test_exclusive_ownership_relea3')
+failure = <class 'asyncio.exceptions.CancelledError'>
+
+    @pytest.mark.parametrize('failure', [ValueError, OSError, KeyboardInterrupt, asyncio.CancelledError])
+    def test_exclusive_ownership_released_on_every_exit(tmp_path, failure):
+        env = environment(tmp_path)
+        io = local.LocalAnnualAccountsRehearsal(env, client_factory=None, generate=generated, validate=None)
+        with pytest.raises(failure):
+>           with io.exclusive_evidence():
+                 ^^^^^^^^^^^^^^^^^^^^^
+E           AttributeError: 'LocalAnnualAccountsRehearsal' object has no attribute 'exclusive_evidence'
+
+apps/backend/tests/test_annual_accounts_rehearsal_ownership.py:95: AttributeError
+_ test_process_lock_survives_atomic_replacement_and_releases_after_process_death _
+
+tmp_path = PosixPath('/private/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/pytest-of-kristianelmer/pytest-152/test_process_lock_survives_ato0')
+
+    def test_process_lock_survives_atomic_replacement_and_releases_after_process_death(tmp_path):
+        env = environment(tmp_path)
+        io = local.LocalAnnualAccountsRehearsal(env, client_factory=None, generate=generated, validate=None)
+        program = '''import json,sys,time
+    from talli_backend.adapters.local_annual_accounts_rehearsal import LocalAnnualAccountsRehearsal
+    io=LocalAnnualAccountsRehearsal(json.loads(sys.stdin.readline()),client_factory=None,generate=None,validate=None)
+    with io.exclusive_evidence():
+     io.load_case()
+     io.save_evidence({'pendingAuthorityOperation': {'operation': 'create_instance'}})
+     print('owned',flush=True)
+     time.sleep(60)
+    '''
+        child = subprocess.Popen([sys.executable, '-c', program], stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=os.environ.copy())
+        try:
+            child.stdin.write(json.dumps(env) + '\n'); child.stdin.flush()
+>           assert child.stdout.readline().strip() == 'owned'
+E           AssertionError: assert '' == 'owned'
+E             
+E             - owned
+
+apps/backend/tests/test_annual_accounts_rehearsal_ownership.py:119: AssertionError
+=========================== short test summary info ============================
+FAILED apps/backend/tests/test_annual_accounts_rehearsal_ownership.py::test_concurrent_cli_rejects_before_credentials_and_preserves_one_instance[False]
+FAILED apps/backend/tests/test_annual_accounts_rehearsal_ownership.py::test_concurrent_cli_rejects_before_credentials_and_preserves_one_instance[True]
+FAILED apps/backend/tests/test_annual_accounts_rehearsal_ownership.py::test_exclusive_ownership_released_on_every_exit[ValueError]
+FAILED apps/backend/tests/test_annual_accounts_rehearsal_ownership.py::test_exclusive_ownership_released_on_every_exit[OSError]
+FAILED apps/backend/tests/test_annual_accounts_rehearsal_ownership.py::test_exclusive_ownership_released_on_every_exit[KeyboardInterrupt]
+FAILED apps/backend/tests/test_annual_accounts_rehearsal_ownership.py::test_exclusive_ownership_released_on_every_exit[CancelledError]
+FAILED apps/backend/tests/test_annual_accounts_rehearsal_ownership.py::test_process_lock_survives_atomic_replacement_and_releases_after_process_death
+7 failed in 2.32s

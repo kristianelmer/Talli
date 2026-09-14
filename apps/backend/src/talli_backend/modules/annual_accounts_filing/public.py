@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Callable, Protocol, TypeVar
@@ -269,6 +270,7 @@ class AnnualAccountsRehearsalConfiguration:
 
 class AnnualAccountsRehearsalIO(Protocol):
     """Local file, clock, document and credential mechanisms for the workflow."""
+    def exclusive_evidence(self) -> AbstractContextManager[None]: ...
     def load_case(self) -> Mapping[str, object]: ...
     def load_evidence(self) -> dict[str, object] | None: ...
     def save_evidence(self, evidence: Mapping[str, object]) -> None: ...

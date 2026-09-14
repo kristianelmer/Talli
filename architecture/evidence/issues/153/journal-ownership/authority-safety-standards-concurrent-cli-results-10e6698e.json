@@ -1,0 +1,17 @@
+{
+  "status": "DUPLICATE_EFFECT_REPRODUCED",
+  "sameRealEvidenceFile": true,
+  "createEffects": 2,
+  "lockEffects": 2,
+  "returnedInstances": [
+    "instance-2",
+    "instance-1"
+  ],
+  "persistedInstance": "instance-2",
+  "returnedStatuses": [
+    "locked_for_person_signing",
+    "locked_for_person_signing"
+  ],
+  "mode": "ACTUAL_CLI_AND_LOCAL_FILE_IO_WITH_FAKE_PROVIDER",
+  "temporaryFilesRemovedAfterProbe": true
+}

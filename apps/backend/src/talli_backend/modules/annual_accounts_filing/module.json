@@ -162,7 +162,8 @@
     "uuid",
     "talli_backend.shared.kernel",
     "datetime",
-    "json"
+    "json",
+    "contextlib"
   ],
   "forbiddenResponsibilities": [
     "Ledger posting or account ownership",

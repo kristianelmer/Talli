@@ -1,0 +1,62 @@
+[
+  {
+    "operation": "create_instance",
+    "window": "persistent_post_effect_write",
+    "effectCount": 1,
+    "status": "PASS"
+  },
+  {
+    "operation": "create_instance",
+    "window": "interrupt_success_write",
+    "effectCount": 1,
+    "status": "PASS"
+  },
+  {
+    "operation": "create_instance",
+    "window": "pending_write_failure",
+    "effectCount": 0,
+    "status": "PASS"
+  },
+  {
+    "operation": "lock_for_signing",
+    "window": "persistent_post_effect_write",
+    "effectCount": 1,
+    "status": "PASS"
+  },
+  {
+    "operation": "lock_for_signing",
+    "window": "interrupt_success_write",
+    "effectCount": 1,
+    "status": "PASS"
+  },
+  {
+    "operation": "lock_for_signing",
+    "window": "pending_write_failure",
+    "effectCount": 0,
+    "status": "PASS"
+  },
+  {
+    "validationBody": "<html>upstream service failure</html>",
+    "lockCount": 0,
+    "error": "ANNUAL_ACCOUNTS_VALIDATION_RESPONSE_INVALID",
+    "status": "PASS"
+  },
+  {
+    "validationBody": "{\"validationIssues\":\"not-an-array\"}",
+    "lockCount": 0,
+    "error": "ANNUAL_ACCOUNTS_VALIDATION_RESPONSE_INVALID",
+    "status": "PASS"
+  },
+  {
+    "validationBody": "[{\"severity\":1,\"code\":\"BLOCK\"}]",
+    "lockCount": 0,
+    "error": "ANNUAL_ACCOUNTS_VALIDATION_FAILED",
+    "status": "PASS"
+  },
+  {
+    "validationBody": "[]",
+    "lockCount": 1,
+    "error": null,
+    "status": "PASS"
+  }
+]

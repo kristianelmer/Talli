@@ -78,6 +78,11 @@ async def run(configuration: AnnualAccountsRehearsalConfiguration, io: AnnualAcc
     scope = _required(configuration.scope, "TALLI_MASKINPORTEN_SCOPE")
     if scope != SCOPE:
         raise ValueError("The annual-accounts authority rehearsal requires its exact read/write scopes.")
+    with io.exclusive_evidence():
+        return await _run_owned(configuration, io, scope)
+
+
+async def _run_owned(configuration, io, scope):
     case = io.load_case()
     if case.get("synthetic") is not True or case.get("environment") != "test":
         raise ValueError("Annual-accounts rehearsal requires an explicitly synthetic test case.")
