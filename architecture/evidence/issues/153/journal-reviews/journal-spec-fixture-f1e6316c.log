@@ -1,0 +1,13 @@
+✔ Supabase browser fixtures only accept loopback URLs (0.461334ms)
+✔ browser database fixtures only accept loopback PostgreSQL URLs (0.101833ms)
+✔ owner browser harness stops before remote fixture creation (308.13425ms)
+✔ owner browser harness rejects a remote database mixed with local Supabase (308.260958ms)
+✔ retained annual browser seeds canonical historical RF/AU facts without replacing the live simulation (3.87625ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 676.224625

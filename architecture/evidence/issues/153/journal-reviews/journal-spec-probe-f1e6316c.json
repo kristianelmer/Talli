@@ -1,0 +1,34 @@
+{
+  "status": "PASS",
+  "count": 3,
+  "cases": [
+    {
+      "case": "same_path",
+      "rejectedBeforeSecondConnect": true,
+      "createEffects": 1,
+      "lockEffects": 1,
+      "onlyReturnedInstancePersisted": true,
+      "subsequentReadOnlyResume": true,
+      "persistentSidecarInode": true
+    },
+    {
+      "case": "directory_alias",
+      "rejectedBeforeSecondConnect": true,
+      "createEffects": 1,
+      "lockEffects": 1,
+      "onlyReturnedInstancePersisted": true,
+      "subsequentReadOnlyResume": true,
+      "persistentSidecarInode": true
+    },
+    {
+      "case": "file_symlink",
+      "rejectedBeforeSecondConnect": true,
+      "createEffects": 1,
+      "lockEffects": 1,
+      "onlyReturnedInstancePersisted": true,
+      "subsequentReadOnlyResume": true,
+      "persistentSidecarInode": true
+    }
+  ],
+  "limits": "Actual CLI/local files with fake provider and fixed clock/revision; no DB/provider/network."
+}
