@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_REPLAY_SUMMARY_IMMUTABILITY",
+  "baseRevision": "39b72c60ac941e92083dddfc503927a1653cb173",
+  "candidateRevision": "699f4dfa4cabb517529bc6bdc05aaf12eb5b3430",
+  "diffCommand": "git diff 39b72c60ac941e92083dddfc503927a1653cb173...699f4dfa4cabb517529bc6bdc05aaf12eb5b3430",
+  "findings": [],
+  "findingDisposition": "Nested mutable replay summary detached/frozen; CLI preserves structured JSON shape.",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/local_company_tax_rehearsal.py": "763ed61facd3d3b6114b56227de108f3e60dc13924be5f0db6ebecfb9d08603d",
+    "apps/backend/src/talli_backend/authority_tools/company_tax_test.py": "0b6b32ddb2664701e8776257c311e503102f6ffac12d0ec5b814cf025c2de3b9",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "dc9d71978f29ea25fecd5bc549dddc47d540aa012fccc64b16cdb131af4a036f",
+    "apps/backend/tests/test_company_tax_rehearsal.py": "dda93360d25188e9e67ad5b8270ffb5d51c9ac764e1ce4b7b4fde513ba7921e7",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-summary-freeze-tests.log": "6e229bf3fff28ead2ee29e54b60d5f28ce789dc51b1814e97bc357eedda8f56e",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-spec-review-39b72c60.json": "d89544b6f2bc22e87cbf1edc2a77ec9973f11b7ace177655107eac230240fe07",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-spec-review-39b72c60.md": "674f94cdcf1449514b39995ecfb24d3c1ba4286b5b3899b7002156402e88b5c1",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-standards-immutable-probe-39b72c60.log": "243230c8a1b4cff0a8aa2dc53cd9ab778662d9c3eff5ca62f8294e16c3e15ff8",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-standards-review-39b72c60.json": "ab3fa6eadfd37b1f3ae3b45f826e746cd5f0121128b9f155058389436218fe8c",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-standards-review-39b72c60.md": "7a5d25f90f7b8cb0ee2da9246d1e944b66db33759847f549113b682c0ec0b5bb",
+    "architecture/evidence/issues/152/authority-summary-immutability/manifest.json": "7e89cbd4e6b3022f1851e2d6de31db412e3d43f3d4d61c6d5d08b672f8fa3a6f"
+  },
+  "sourceManifestChecks": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": true,
+    "apps/backend/src/talli_backend/adapters/local_company_tax_rehearsal.py": true,
+    "apps/backend/src/talli_backend/authority_tools/company_tax_test.py": true,
+    "apps/backend/tests/test_company_tax_rehearsal.py": true
+  },
+  "evidenceManifestChecks": {
+    "authority-workflow-spec-review-39b72c60.md": true,
+    "authority-summary-freeze-tests.log": true,
+    "authority-workflow-spec-review-39b72c60.json": true,
+    "authority-workflow-standards-review-39b72c60.md": true,
+    "authority-workflow-standards-review-39b72c60.json": true,
+    "authority-workflow-standards-immutable-probe-39b72c60.log": true
+  },
+  "unchangedChecks": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/rehearsal.py": true,
+    "apps/backend/src/talli_backend/modules/company_tax_filing/authority_workflow.py": true,
+    "apps/backend/src/talli_backend/adapters/company_tax_authority.py": true,
+    "apps/backend/src/talli_backend/authority_tools/_filing.py": true,
+    "architecture/evidence/issues/152/requirements.json": true
+  },
+  "independentTests": {
+    "candidatePassed": 256,
+    "predecessorImmutabilityFailures": 1,
+    "predecessorCliCompatibilityPassed": 1,
+    "additionalDepth600Replay": "PASS both revisions; serializable summary",
+    "providerDatabaseBrowserCalls": 0,
+    "runtime": "CPython 3.12.12; Node 24.20.0; explicit private PYTHONPATH and pytest -c /dev/null"
+  },
+  "privateArtifactSha256": {
+    "authority-summary-spec-tests-699f4dfa.log": "aafedfd3ed9cf42866b62f0b090e4df9e889049836a3a3e81f69c9a2f1e2abfe",
+    "authority-summary-spec-red-39b72c60.log": "93f0b90bf6532f1af9fb969c3170e280cd5927b784b32814c7b063496421a6e1",
+    "authority-summary-depth-spec-probe.py": "0286bc7baf112c09e1e9c6ee21779075854cb5a83b5251cea50ccae00a93037b",
+    "authority-summary-depth-spec-699f4dfa.log": "bd6f9603991e5b7e0e3ae3240b40e257c9f8a5aaa30f4d9c019ff1023846e32c",
+    "authority-summary-depth-spec-39b72c60.log": "091e6d2c27748eed41898e2af03f7ff9c636e786f7b18b7ecebbf031ff7806be"
+  },
+  "reportSha256": "22e25fcec065dde07b925dcd41ffce0112c00e04440a80251acc338680f9e2ce",
+  "limits": [
+    "No uncommitted source review or shared mutation.",
+    "Bounded depth check only.",
+    "No full-stage/history-completeness/HTTP-browser/hosted/provider/gate/successor claim."
+  ]
+}

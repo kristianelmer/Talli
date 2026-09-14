@@ -1,0 +1,40 @@
+
+> talli-repository@0.1.0 test:browser-owner-annual
+> node --test tests/browser_owner_annual_loop.mjs
+
+✖ browser owner annual loop uses persisted state and survives reload (1177.192958ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1535.510708
+
+✖ failing tests:
+
+test at tests/browser_owner_annual_loop.mjs:42:1
+✖ browser owner annual loop uses persisted state and survives reload (1177.192958ms)
+  Error: ifError got unwanted exception: new row for relation "authority_permissions" violates check constraint "tax152_legacy_writer_retired"
+  web=not-started
+  backend=not-started
+      at TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_owner_annual_loop.mjs:346:25)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    [cause]: AssertionError [ERR_ASSERTION]: ifError got unwanted exception: new row for relation "authority_permissions" violates check constraint "tax152_legacy_writer_retired"
+        at assertNoError (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_owner_annual_loop.mjs:1125:10)
+        at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+        at async seedAnnualLoop (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_owner_annual_loop.mjs:912:3)
+        at async TestContext.<anonymous> (file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/tests/browser_owner_annual_loop.mjs:151:5)
+        at async Test.run (node:internal/test_runner/test:1404:7)
+        at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+      generatedMessage: false,
+      code: 'ERR_ASSERTION',
+      actual: { code: '23514', details: 'Failing row contains (9febe3b5-f61d-4d79-be79-8aa5b7ea70e3, 49053ca2-df43-4bb2-bb09-201969989ede, skattemelding, c94e4c33-dc08-408f-880c-97618111dcc8, c94e4c33-dc08-408f-880c-97618111dcc8, 2026-09-14 04:02:29.668743+00, t, 2026-09-14 04:02:29.668743+00).', hint: null, message: 'new row for relation "authority_permissions" violates check constraint "tax152_legacy_writer_retired"' },
+      expected: null,
+      operator: 'ifError',
+      diff: 'simple'
+    }
+  }

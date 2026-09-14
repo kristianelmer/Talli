@@ -1,0 +1,29 @@
+✔ preview sends original facts and returns authoritative normalized payload and account lines (14.593167ms)
+✔ capture keeps released path and stable identity without retrying an ambiguous outcome (0.916542ms)
+✔ generated preview guard rejects malformed backend output (0.395292ms)
+✔ generated preview guard rejects malformed backend output (0.316459ms)
+✔ generated preview guard rejects malformed backend output (0.356459ms)
+✔ Archive read preserves all source fields and conceals malformed or foreign output as a failed source (1.280416ms)
+✔ submission preserves the original coded validation redirect: bad-date-shape (0.080125ms)
+✔ submission preserves the original coded validation redirect: zero (0.040541ms)
+✔ submission preserves the original coded validation redirect: negative (0.042417ms)
+✔ submission preserves the original coded validation redirect: unknown-kind (0.11175ms)
+✔ submission preserves the original coded validation redirect: unknown-document-status (0.033542ms)
+✔ submission preserves the original coded validation redirect: payable-with-bank (0.038375ms)
+✔ submission preserves the original coded validation redirect: validation-order (0.039125ms)
+✔ unparseable amount text retains backend-owned validation: abc (0.416042ms)
+✔ unparseable amount text retains backend-owned validation: Infinity (0.29575ms)
+✔ unparseable amount text retains backend-owned validation: 1,5 (0.228541ms)
+✔ filing workspace keeps a failed source unavailable and checks returned scope (1.669208ms)
+✔ TT02 import preserves evidence bytes, IDs, replay and MFA presentation (0.405959ms)
+✔ TT02 presenter distinguishes projection validation from persistence rejection (0.0645ms)
+✔ Tax preparation sends generated commands and rejects foreign scope (0.506541ms)
+✔ Tax lookup and acknowledgement only return absence for an explicit owned not-found (0.604542ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 131.752125

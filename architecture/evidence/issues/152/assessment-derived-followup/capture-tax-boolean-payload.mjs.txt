@@ -1,0 +1,16 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { pathToFileURL } from 'node:url';
+const revision = '054740b81692e0e59b99a76fff085f322f1968b4';
+const sourcePath = 'apps/web/app/lib/company-tax-return.ts';
+const source = execFileSync('git', ['show', `${revision}:${sourcePath}`], { encoding:'utf8' });
+if (source !== readFileSync(sourcePath,'utf8')) throw new Error('Predecessor source changed');
+const { buildCompanyTaxReturnPayload } = await import(pathToFileURL(`${process.cwd()}/${sourcePath}`));
+const fixturePath = 'architecture/evidence/issues/152/legacy-tax-boolean-boundaries.json';
+const bytes = readFileSync(fixturePath);
+const fixtures = JSON.parse(bytes);
+const sha = value => createHash('sha256').update(value).digest('hex');
+const cases = fixtures.cases.map(value => ({id:value.id, candidate:buildCompanyTaxReturnPayload(value.input)}));
+writeFileSync('architecture/evidence/issues/152/legacy-tax-boolean-payloads.json', JSON.stringify({schemaVersion:'1.0',sourceRevision:revision,runtime:process.version,sourcePath,sourceSha256:sha(source),inputFixture:fixturePath,inputFixtureSha256:sha(bytes),cases},null,2)+'\n');
+console.log(JSON.stringify({cases:cases.length}));

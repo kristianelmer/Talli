@@ -1,0 +1,1041 @@
+{
+  "baselineRevision": "32c701e31ff83016342c47a74ab0951ba3eab05d",
+  "producerSourceSha256": "c1d41d3633b49ea300ed13d7e2ae25f5a923515641505607395ca3e0dcb659a0",
+  "cases": [
+    {
+      "id": "year-000",
+      "input": null,
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-001",
+      "input": false,
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-002",
+      "input": true,
+      "expected": {
+        "year": 1
+      }
+    },
+    {
+      "id": "year-003",
+      "input": 0,
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-004",
+      "input": -0.0,
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-005",
+      "input": 2025,
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-006",
+      "input": 2025.0,
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-007",
+      "input": 2025.5,
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-008",
+      "input": -2025,
+      "expected": {
+        "year": -2025
+      }
+    },
+    {
+      "id": "year-009",
+      "input": 1e+20,
+      "expected": {
+        "year": 100000000000000000000
+      }
+    },
+    {
+      "id": "year-010",
+      "input": 1e-07,
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-011",
+      "input": 10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-012",
+      "input": {},
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-013",
+      "input": {
+        "x": 2025
+      },
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-014",
+      "input": "",
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-015",
+      "input": " ",
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-016",
+      "input": "\ufeff2025\u2029",
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-017",
+      "input": "\u001c2025",
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-018",
+      "input": "2025",
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-019",
+      "input": "2025.0",
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-020",
+      "input": "+2025",
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-021",
+      "input": "2.025e3",
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-022",
+      "input": "2025junk",
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-023",
+      "input": "0x7e9",
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-024",
+      "input": "0b11111101001",
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-025",
+      "input": "0o3751",
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-026",
+      "input": "-0x7e9",
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-027",
+      "input": "Infinity",
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-028",
+      "input": "-Infinity",
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-029",
+      "input": "NaN",
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-030",
+      "input": "1e999",
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-031",
+      "input": "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999",
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-032",
+      "input": "\uff12\uff10\uff12\uff15",
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-033",
+      "input": "2_025",
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-034",
+      "input": [
+        null
+      ],
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-035",
+      "input": [
+        false
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-036",
+      "input": [
+        true
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-037",
+      "input": [
+        0
+      ],
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-038",
+      "input": [
+        -0.0
+      ],
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-039",
+      "input": [
+        2025
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-040",
+      "input": [
+        2025.0
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-041",
+      "input": [
+        2025.5
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-042",
+      "input": [
+        -2025
+      ],
+      "expected": {
+        "year": -2025
+      }
+    },
+    {
+      "id": "year-043",
+      "input": [
+        1e+20
+      ],
+      "expected": {
+        "year": 100000000000000000000
+      }
+    },
+    {
+      "id": "year-044",
+      "input": [
+        1e-07
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-045",
+      "input": [
+        10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-046",
+      "input": [
+        {}
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-047",
+      "input": [
+        {
+          "x": 2025
+        }
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-048",
+      "input": [
+        ""
+      ],
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-049",
+      "input": [
+        " "
+      ],
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-050",
+      "input": [
+        "\ufeff2025\u2029"
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-051",
+      "input": [
+        "\u001c2025"
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-052",
+      "input": [
+        "2025"
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-053",
+      "input": [
+        "2025.0"
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-054",
+      "input": [
+        "+2025"
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-055",
+      "input": [
+        "2.025e3"
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-056",
+      "input": [
+        "2025junk"
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-057",
+      "input": [
+        "0x7e9"
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-058",
+      "input": [
+        "0b11111101001"
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-059",
+      "input": [
+        "0o3751"
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-060",
+      "input": [
+        "-0x7e9"
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-061",
+      "input": [
+        "Infinity"
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-062",
+      "input": [
+        "-Infinity"
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-063",
+      "input": [
+        "NaN"
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-064",
+      "input": [
+        "1e999"
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-065",
+      "input": [
+        "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-066",
+      "input": [
+        "\uff12\uff10\uff12\uff15"
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-067",
+      "input": [
+        "2_025"
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-068",
+      "input": [
+        [
+          null
+        ]
+      ],
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-069",
+      "input": [
+        [
+          false
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-070",
+      "input": [
+        [
+          true
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-071",
+      "input": [
+        [
+          0
+        ]
+      ],
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-072",
+      "input": [
+        [
+          -0.0
+        ]
+      ],
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-073",
+      "input": [
+        [
+          2025
+        ]
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-074",
+      "input": [
+        [
+          2025.0
+        ]
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-075",
+      "input": [
+        [
+          2025.5
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-076",
+      "input": [
+        [
+          -2025
+        ]
+      ],
+      "expected": {
+        "year": -2025
+      }
+    },
+    {
+      "id": "year-077",
+      "input": [
+        [
+          1e+20
+        ]
+      ],
+      "expected": {
+        "year": 100000000000000000000
+      }
+    },
+    {
+      "id": "year-078",
+      "input": [
+        [
+          1e-07
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-079",
+      "input": [
+        [
+          10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-080",
+      "input": [
+        [
+          {}
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-081",
+      "input": [
+        [
+          {
+            "x": 2025
+          }
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-082",
+      "input": [
+        [
+          ""
+        ]
+      ],
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-083",
+      "input": [
+        [
+          " "
+        ]
+      ],
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-084",
+      "input": [
+        [
+          "\ufeff2025\u2029"
+        ]
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-085",
+      "input": [
+        [
+          "\u001c2025"
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-086",
+      "input": [
+        [
+          "2025"
+        ]
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-087",
+      "input": [
+        [
+          "2025.0"
+        ]
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-088",
+      "input": [
+        [
+          "+2025"
+        ]
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-089",
+      "input": [
+        [
+          "2.025e3"
+        ]
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-090",
+      "input": [
+        [
+          "2025junk"
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-091",
+      "input": [
+        [
+          "0x7e9"
+        ]
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-092",
+      "input": [
+        [
+          "0b11111101001"
+        ]
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-093",
+      "input": [
+        [
+          "0o3751"
+        ]
+      ],
+      "expected": {
+        "year": 2025
+      }
+    },
+    {
+      "id": "year-094",
+      "input": [
+        [
+          "-0x7e9"
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-095",
+      "input": [
+        [
+          "Infinity"
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-096",
+      "input": [
+        [
+          "-Infinity"
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-097",
+      "input": [
+        [
+          "NaN"
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-098",
+      "input": [
+        [
+          "1e999"
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-099",
+      "input": [
+        [
+          "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999"
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-100",
+      "input": [
+        [
+          "\uff12\uff10\uff12\uff15"
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-101",
+      "input": [
+        [
+          "2_025"
+        ]
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-102",
+      "input": [],
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-103",
+      "input": [
+        null,
+        null
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-104",
+      "input": [
+        2025,
+        0
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-105",
+      "input": [
+        [
+          null
+        ]
+      ],
+      "expected": {
+        "year": 0
+      }
+    },
+    {
+      "id": "year-106",
+      "input": [
+        "2025",
+        null
+      ],
+      "expected": {
+        "errorType": "ValueError",
+        "message": "Authority case income year is invalid."
+      }
+    },
+    {
+      "id": "year-107",
+      "input": [
+        [
+          []
+        ]
+      ],
+      "expected": {
+        "year": 0
+      }
+    }
+  ]
+}

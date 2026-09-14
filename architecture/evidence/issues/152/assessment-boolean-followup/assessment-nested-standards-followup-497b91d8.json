@@ -1,0 +1,52 @@
+{
+  "baselineRevision": "e2dfdf5475af3d051ad782650314839a47105451",
+  "candidateRevision": "497b91d8643b7639ff1157b66761fc8c2590b850",
+  "diffCommand": "git diff e2dfdf5475af3d051ad782650314839a47105451...497b91d8643b7639ff1157b66761fc8c2590b850",
+  "extraction": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-152-497b-standards-y2oo3xhf",
+  "changedSourceSha256": {
+    "apps/backend/src/talli_backend/main.py": "174bc0ce90b4b9598a6f482978299eebcd1c0650a78c0a476a2ffb8f14e722da",
+    "apps/backend/tests/test_company_tax_readiness.py": "82f75c77a7e57d7475e99c934375e78d1ab21764c73fdc26e2c5c90d618db054",
+    "architecture/evidence/issues/152/assessment-nested-facts-followup/manifest.json": "03cc4f4d3d810cb0c14e655ded1601d1827ae30ec9bd8ff61524108c2ff17dfe",
+    "architecture/evidence/issues/152/assessment-nested-facts-followup/tax-assessment-nested-facts-tests.log": "69a6564b89848ac347624bf0114f5de7515b87d93f82dd034483722daebc1111"
+  },
+  "artifactHashesVerified": {
+    "tax-assessment-nested-facts-tests.log": true
+  },
+  "openapiBytesUnchanged": true,
+  "status": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "priority": "P2",
+      "file": "apps/backend/src/talli_backend/main.py",
+      "line": 1057,
+      "title": "Validate the consumed ledger account discriminator",
+      "detail": "The new nested check accepts every dict line. Actual pinned FastAPI returns200/adminCosts0/taxBasis0 for an admin_cost line {debit:100,credit:0}; account7770 control returnsadminCosts100/taxBasis-100, while accountnull is also accepted. Require account string at HTTP boundary so malformed lines cannot silently disappear from estimates."
+    }
+  ],
+  "closedControls": [
+    "non-array lines and non-object line elements",
+    "non-Boolean Annual answer/no-activity flags",
+    "non-array readiness risk_flags"
+  ],
+  "independentVerification": {
+    "backendTestsPassed": 339,
+    "runtime": "standalone CPython3.12.12 venv; immutable source extraction; actual FastAPI and fake session factory, no persistence",
+    "originalPureCliTruthiness": "Excluded as requested; no direct pure/CLI behavior change reviewed"
+  },
+  "privateArtifactSha256": {
+    "assessment-nested-standards-tests-497b91d8.log": "b7f243f6c124cd4de2ca0edccfdf7368b4038fb824754d454dbceade8ad9b76c",
+    "assessment-nested-standards-probe-497b91d8.py": "08775d253121c784a16a482f7a6c8dc0b918abbb3fb51dce46a57dfa92f58e8e",
+    "assessment-nested-standards-probe-497b91d8.log": "7b9ae773648e0d7e71ebf3faf3794ce5ebf1c2a098e6d2c2847a9011df925f6b"
+  },
+  "additionalSourceSha256": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/calculation.py": "a28abdd602da04b251de3d00c3ac0153bd8f50e17b4f061ccdb6795304da2df4",
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "160d54030ec75f420222725529f25946e69020d7e910e5d47bdb9afafa33b0c2"
+  },
+  "limits": [
+    "No shared repo/runtime/Git/database/browser/provider mutation.",
+    "Uncommitted web consumers and separate pure/CLI truthiness work excluded.",
+    "No cutover, full-stage or release-gate acceptance."
+  ],
+  "reportSha256": "9ed54302354d144bcda70ab6cac9d023f51727d53712f18401a83145c2636484"
+}

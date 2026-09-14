@@ -27,9 +27,8 @@ test("the four standalone authority commands execute backend modules and retain 
   }
 });
 
-test("authority and RF facades are retired while later filing owners retain their frozen records", async () => {
+test("authority, RF and Tax facades are retired while Annual Accounts retains its frozen records", async () => {
   const registry = JSON.parse(await readFile(new URL("../architecture/compatibility.json", import.meta.url), "utf8"));
-  assert.ok(!registry.records.some(({ capability }) => ["authority_connections", "shareholder_register_filing"].includes(capability)));
-  for (const capability of ["company_tax_filing", "annual_accounts_filing"])
-    assert.ok(registry.records.some((record) => record.capability === capability && record.scopes.length), capability);
+  assert.ok(!registry.records.some(({ capability }) => ["authority_connections", "shareholder_register_filing", "company_tax_filing"].includes(capability)));
+  assert.ok(registry.records.some((record) => record.capability === "annual_accounts_filing" && record.scopes.length));
 });

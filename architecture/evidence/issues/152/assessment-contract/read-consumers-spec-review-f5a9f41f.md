@@ -1,0 +1,13 @@
+# #152 read-consumer Spec review: f5a9f41f, with 909bd28d correction
+
+**PASS for this bounded slice after the committed follow-up; one original finding independently closed.** Reviewed `6ab578f8d2afb02544a23ab685800d120764a5cc...f5a9f41f79ff54c5d2a4b9d58b8ab67d77419115`, then only `f5a9f41f...909bd28daea26f9eb130aeff7cf9ab8e86faab74`. Later backend policy work is excluded.
+
+**SPEC-152-READ-CONSUMER-1 (P2), closed at 909bd28d.** Original `workspace-data.ts:99–101` skipped Tax loading when the session token was missing and fabricated empty rows with `error:null`. An isolated execution of the real workspace function with an authenticated user and one company reproduced that false-success state, contrary to the source rule **“Missing source is unavailable.”** The helper now handles nullable tokens and the workspace always calls it. The exact unchanged probe now returns an explicit unavailable error with zero API calls. Empty company scope remains complete empty; annual workspace already redirects on missing authentication.
+
+The four frozen successful TT02 import projections and nested extension fields survive presentation exactly. Malformed receipt/call/feedback/reference data produces an explicit whole-source error; one failed company discards partial results. Generated-client scope checks remain the company/year boundary. Workspace leaves year omitted for all-year history; annual workspace, readiness and Archive pass the selected year. Canonical IDs replace matching legacy rows, preserving established sorting.
+
+Archive accepts Tax-only stored submissions and includes only Tax evidence linked by those selected-year submissions. Tax failure stops export construction/completion. Readiness failure stops evaluation, snapshot and Audit writes. Existing Archive begin-attempt behavior is unchanged; this is not a claim of zero earlier bookkeeping.
+
+The tightened architecture guard prevents older completed Archive deletions from authorizing arbitrary retained-body changes. Independent negative tests pass for exact bodies/retained original chains, dynamic resources, added writes, altered calls, earlier stage and restored facade. #146 digests, registry, baseline and six pending criteria remain unchanged.
+
+Independent Node 24.20.0 results: 20 consumer/Archive tests and the targeted guard matrix pass at f5a9f41f; 21 consumer/Archive tests plus the original workspace probe pass at 909bd28d. All seven initial and two follow-up artifact hashes match. These use real extracted functions with dependency doubles, not live HTTP/roles/browser/provider. No SQL/shared mutation or full-stage credit. Policy retirement, complete source handoff, durable cutover/rollback, deployment proof, full gates and protected integration remain pending.

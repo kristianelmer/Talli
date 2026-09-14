@@ -1,0 +1,122 @@
+{
+  "baselineRevision": "4c5404dfcedfbd5b858d76e1a7095ec2bd800247",
+  "candidateRevision": "b400103d2d7204c9a2154fd953a03ccb00041ad4",
+  "diffCommand": "git diff 4c5404dfcedfbd5b858d76e1a7095ec2bd800247...b400103d2d7204c9a2154fd953a03ccb00041ad4",
+  "commits": "b400103d feat(company-tax): own atomic TT02 evidence import contract (#152)\n",
+  "changedSourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py": "1f7fd38f0365e274287eaa09464cf9f5cb71c7f08f257f17775619dbe443ac70",
+    "apps/backend/src/talli_backend/application/company_tax_filing_session.py": "61aafe76b22cd2b43abfb768d02d7ab6a45b1b9f4e3c0bf8cd1e7cb778c8183c",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "0a2f62a67f5bbb455743f26b1453d32476ae5b51c24d141aaa3abd1cba8c94a2",
+    "apps/backend/src/talli_backend/main.py": "81404cdcd253768d47d88be51378b2f7fcfec0557163813f22ec5520dfafc14c",
+    "apps/backend/src/talli_backend/modules/audit/MODULE.md": "aed85fa47ed53b03cc0d0f6e307d7bb52db33a5b012822b01113a0715a6b66ec",
+    "apps/backend/src/talli_backend/modules/audit/__init__.py": "40130caaab02e8e68d8585d3a4f433e60d620f70f4de4cabc9893202933ff05e",
+    "apps/backend/src/talli_backend/modules/audit/module.json": "5d1d08bbf17bbaad65f661bd72cad531d66ce6baa1af2afd7870a46ed6cd2b01",
+    "apps/backend/src/talli_backend/modules/audit/public.py": "8f70becbce9eb1ac3b5cc75638040aa2f551db9803f0158ef71ebc5c966c7518",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "ad387d259c1ec97b345388563ec6f217c1ee10538a0b8579fd7fddc1a9a32a72",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "60df47f702e5971bc4b943a61658f8ada874f3c7b8f6906cdf9c54e359ebe19b",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "e942d88fb9acfe0a9ff650e3ca8db9532d0f8b9d9adc46417721fea1eb99502d",
+    "apps/backend/tests/test_company_tax_evidence_import.py": "b347129daa228208a9c760c56c294365ca3961b0362ec819b115f3e7980be7f5",
+    "apps/web/features/company-tax-filing/MODULE.md": "43637863621ac603ce2de5a4c7f43f80808313f1bc496276d386896847a6c357",
+    "apps/web/features/company-tax-filing/index.ts": "787fa4298250dd7855cd31c75780ffea2e69b7bc99479b50d0d1f1cc3d1d02fc",
+    "apps/web/features/company-tax-filing/module.json": "f965b91994086271f8832931f203e40d5a7344cab0dc421b77e05e325cb85c18",
+    "apps/web/features/company-tax-filing/transport.ts": "94c172e92c9d65b61f8a08b7d5cc5336020dc0cca1fabb973f8b1687a1116252",
+    "apps/web/tests/company-tax-transport.test.mjs": "56cfe7b70555fbdedfe55131d093098840dc6182711a50acf5ef1a99febe4bd6",
+    "architecture/BACKEND-SYSTEM.md": "0f1499db58481ce4024cde253048e6a3bd0e79c75d17f672e2418027e3515376",
+    "architecture/backend-system.json": "db441aa8f546817b0196f5eed8cc9de87a83b607ab4e5869b7948ba884a6713b",
+    "architecture/dependency-evidence.json": "b586cebb6720c088d633258f6b0f97fc8e0809426186ea93295b1d281eaa3250",
+    "architecture/evidence/issues/152/tt02-import-contract/import-backend-tests.log": "51f3d25ce8e69137d98eb31d8245bb2a2640bec2b12720c2289b010af7e03386",
+    "architecture/evidence/issues/152/tt02-import-contract/import-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "architecture/evidence/issues/152/tt02-import-contract/import-web-tests.log": "8a99db4a99ef8d32faff7af046c5328abe5ad9c5c3e13e5a3c5c0bf1411f2dbe",
+    "architecture/evidence/issues/152/tt02-import-contract/manifest.json": "534d46b4a4073827620766c47822568c5772cf4a758090a04b2b4c2a78826acc",
+    "architecture/evidence/issues/152/tt02-import-contract/owned-import-database-characterization.json": "4f34458a76a14e40b02347fab4cf6dcabdce75e7f764bc5edab8b9c02d07eef4",
+    "architecture/evidence/issues/152/tt02-import-contract/probe-owned-import.py.txt": "4d16c45ec927facbef9e69196cbaa2b5481b9a82ef742a2ee372c9327b0db854",
+    "architecture/evidence/issues/152/tt02-import-contract/read-spec-followup-4c5404df.json": "15efddf2352ba5dff73de773d3291b93c1a442d7386cbeaf59d60706aa9fc201",
+    "architecture/evidence/issues/152/tt02-import-contract/read-spec-followup-4c5404df.md": "c1110a4ed87df1b71eee0de021de306954ff8ef8d7b5d30b10525afdbcbb81be",
+    "architecture/evidence/issues/152/tt02-import-contract/read-standards-review-b1bf9e9f.json": "84d9427567773ed79f10bcef0d5d888f397cb1189c7f5836c506cd970b0abccf",
+    "architecture/evidence/issues/152/tt02-import-contract/read-standards-review-b1bf9e9f.md": "3c60e56e8eb6adb7bb1ce3ece75eaea73467669165984cd8a33602c22ae932ce",
+    "contracts/openapi/talli-v1.json": "e398b7eec569250016d580a1779223e50bfa53119234ef5d9ccf2f6ab198ba70",
+    "packages/talli-api-client/src/generated/client.ts": "0d2de181a1327efdee4a333b5a84d954dad2b1a2ff91a9dc2231f791fa8148de",
+    "scripts/generate-api-client.mjs": "1008cb8b496d4d44c603449d72d3d7174d817de6a49543fedd9c84883b0c779d",
+    "supabase/migrations/20260914202000_company_tax_return_import_contract.sql": "5b924cfe0d4771cc58723dcdc65f1c7f4612bd19bba7b0541f1ee0acd62d0cbb"
+  },
+  "extraction": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-152-b400-standards-1l8rnlix",
+  "artifactHashesVerified": {
+    "read-spec-followup-4c5404df.json": true,
+    "read-standards-review-b1bf9e9f.json": true,
+    "read-spec-followup-4c5404df.md": true,
+    "read-standards-review-b1bf9e9f.md": true,
+    "import-typecheck.log": true,
+    "import-backend-tests.log": true,
+    "probe-owned-import.py.txt": true,
+    "import-web-tests.log": true,
+    "owned-import-database-characterization.json": true
+  },
+  "sqlHashesVerified": {
+    "20260914200000_company_tax_return_expand.sql": true,
+    "20260914201000_company_tax_return_read_contracts.sql": true,
+    "20260914202000_company_tax_return_import_contract.sql": true
+  },
+  "openapiDelta": {
+    "schemas": {
+      "added": [
+        "CompanyTaxEvidenceImportRequest",
+        "CompanyTaxEvidenceImportWire"
+      ],
+      "removed": [],
+      "changed": []
+    },
+    "paths": {
+      "added": [
+        "/api/v1/company-tax/tt02-evidence-imports"
+      ],
+      "removed": [],
+      "changed": []
+    }
+  },
+  "standardsSha256": {
+    "AGENTS.md": "c4530bac3939f37053438b48a3dad2ea6e99d04481480ef61bee71d3dc81d4af",
+    "CONTEXT.md": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9",
+    "docs/agents/domain.md": "0b66c33560f91373a7b268f3acf2c3d992e6a77cf5dc60acdc66efb4dc34a982",
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/BACKEND-SYSTEM.md": "0f1499db58481ce4024cde253048e6a3bd0e79c75d17f672e2418027e3515376",
+    "apps/backend/src/talli_backend/modules/audit/MODULE.md": "aed85fa47ed53b03cc0d0f6e307d7bb52db33a5b012822b01113a0715a6b66ec",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "ad387d259c1ec97b345388563ec6f217c1ee10538a0b8579fd7fddc1a9a32a72"
+  },
+  "reviewAxis": "Standards",
+  "status": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "priority": "P2",
+      "file": "apps/backend/src/talli_backend/main.py",
+      "line": 9836,
+      "title": "Handle immutable conversion depth at the raw JSON boundary",
+      "reproduction": "Pinned FastAPI with existing fake session; valid fixture plus ignored 600-deep array, 3864 UTF-8 bytes, returns 500 INTERNAL_SERVER_ERROR, zero transaction events. 20/300-depth controls return200. Trace shows RecursionError in public.py recursive _freeze_return_fact."
+    }
+  ],
+  "independentTests": {
+    "backendImport": {
+      "passed": 17,
+      "runtime": "existing standalone CPython3.12.12 venv; extracted pinned source; fake sessions"
+    },
+    "webTransport": {
+      "passed": 18,
+      "runtime": "Node v24.20.0; extracted pinned generated client; mocked fetch"
+    }
+  },
+  "limits": [
+    "Read-only immutable source review and isolated pure/fake tests only.",
+    "19 rollback-only database cases were inspected and hash-verified, not independently rerun.",
+    "No shared repo/runtime/DB/browser/provider operations; no full-stage, UI, cutover, HTTP JWT/MFA or release-gate credit.",
+    "Later uncommitted fixes excluded."
+  ],
+  "privateArtifactSha256": {
+    "import-standards-tests-b400103d.log": "e398ed9401581cba9a56c18fa1ec6d499935481e11310bbdfb520e5275e61ab2",
+    "import-standards-web-b400103d.log": "ff44977f53bf227adb5ddf883fc5200b5f42e00bf854114481cc8e3fe74d3471",
+    "import-standards-depth-probe-b400103d.py": "f6ec8e0acf6f5770edef1aac7fda126b332aebb8681ade97fd63d8e56419bafd",
+    "import-standards-depth-probe-b400103d.log": "e83b1bae1451006b446c55378c39dacf76e0e9ddc31e256222546eba2171cda3",
+    "import-standards-depth-trace-b400103d.log": "d2466211816f542837810c3ac677658b4ee6fd7f2a56f8e43962da72148180d1"
+  },
+  "reportSha256": "a9d473bf1344fd812d42b4147f6e65b670be3d7ebdfe39c4280ccc8a22b4ad4f"
+}

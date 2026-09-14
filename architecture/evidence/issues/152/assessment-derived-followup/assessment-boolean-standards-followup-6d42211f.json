@@ -1,0 +1,79 @@
+{
+  "baselineRevision": "497b91d8643b7639ff1157b66761fc8c2590b850",
+  "candidateRevision": "6d42211fab713a73532c349aa6e7f1e60d625a97",
+  "diffCommand": "git diff 497b91d8643b7639ff1157b66761fc8c2590b850...6d42211fab713a73532c349aa6e7f1e60d625a97",
+  "extraction": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-152-6d42-standards-7p6eobvn",
+  "captureRerunByteEquivalent": true,
+  "changedSourceSha256": {
+    "apps/backend/src/talli_backend/main.py": "5ca39423f22a0243f332b4354f0283389a9535d7814349ef6199467a7c27a90c",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "7ac4e7ab5ed6b0bb01cc59bf076b8d0f26b097ed9463b6ec302d75e7e813627f",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/calculation.py": "627ebeaf277792cc9dc507e802e251d3327a80302b2e6168dc8f2a7befecefa2",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/numbers.py": "7edbaec5ccdf7e7389a2df17d19bddc318125f9e28ccfc895ae1a62b2f010918",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/readiness.py": "2875500525a37898ab486a6f0b2e3b4bb231f7574d8b869d6dade7cb1d258b23",
+    "apps/backend/tests/test_company_tax_readiness.py": "51d0782cd5c740d66f33c290af5a579e0705ba695ca612a299043e59e898c7c4",
+    "architecture/evidence/issues/152/assessment-boolean-followup/assessment-nested-standards-followup-497b91d8.json": "a5f8669c78b5c47f18ab0ff445396cdd5a4ec5d64ece54ebaffa22cd52017241",
+    "architecture/evidence/issues/152/assessment-boolean-followup/assessment-nested-standards-followup-497b91d8.md": "9ed54302354d144bcda70ab6cac9d023f51727d53712f18401a83145c2636484",
+    "architecture/evidence/issues/152/assessment-boolean-followup/assessment-spec-review-e2dfdf54.json": "98ae211d2a95b51e3a3df5c000b91277c59bb4d703b8e047225a2ca490b1df85",
+    "architecture/evidence/issues/152/assessment-boolean-followup/assessment-spec-review-e2dfdf54.md": "d1748c0c8eff584ee88e823de9908da3cf6038b1a4bc982467b739558a287fe1",
+    "architecture/evidence/issues/152/assessment-boolean-followup/assessment-standards-review-e2dfdf54.json": "c03e4fe3a0e4d61cda877f13578c9b3b1affc3f22187f1c4adfb30e2fd0f7d8b",
+    "architecture/evidence/issues/152/assessment-boolean-followup/assessment-standards-review-e2dfdf54.md": "010eb9e981aba81e5bc2d8b917f23bfe998a40ac9f87708a1839d9ac2aabbcad",
+    "architecture/evidence/issues/152/assessment-boolean-followup/capture-tax-booleans.mjs.txt": "cfa4d76c10614feda80b8e113460e97b873e3eaf327afa516cb578a63408d61a",
+    "architecture/evidence/issues/152/assessment-boolean-followup/manifest.json": "ceefdead9f137dab9909e249a1e4e0c06255e00ad9b1bbcafc1fe8cb4088d2ee",
+    "architecture/evidence/issues/152/assessment-boolean-followup/tax-boolean-followup-tests.log": "1a9426e0ed36a76344f9adb35a28e785f0cc668f4670e111dca12c85fd5677fb",
+    "architecture/evidence/issues/152/assessment-boolean-followup/tax-boolean-red.log": "a1cb4fc191fbd3016cf325b96feeb8ab74f15c7bfeb665de4531d5aa24caf162",
+    "architecture/evidence/issues/152/legacy-tax-boolean-boundaries.json": "ce098594a97b338d0c88795109d72f7f2686d0480a3bae0ec7a48d0da2a3155e"
+  },
+  "artifactHashesVerified": {
+    "assessment-spec-review-e2dfdf54.json": true,
+    "assessment-nested-standards-followup-497b91d8.json": true,
+    "assessment-nested-standards-followup-497b91d8.md": true,
+    "capture-tax-booleans.mjs.txt": true,
+    "tax-boolean-red.log": true,
+    "tax-boolean-followup-tests.log": true,
+    "assessment-standards-review-e2dfdf54.json": true,
+    "assessment-standards-review-e2dfdf54.md": true,
+    "assessment-spec-review-e2dfdf54.md": true
+  },
+  "status": "CHANGES_REQUESTED",
+  "closedFindings": [
+    "497b91d8 P2: missing/non-string HTTP ledger account silently hides admin costs"
+  ],
+  "findings": [
+    {
+      "priority": "P2",
+      "file": "apps/backend/src/talli_backend/modules/company_tax_filing/calculation.py",
+      "line": 205,
+      "title": "Preserve Boolean semantics in derived.noActivity too",
+      "detail": "no_activity_confirmed=[] or{} produces derived.noActivity=true from exact legacy TypeScript source but false from owned build_company_tax_return. Feedback/readiness now use truthy; derived output still uses bool. Add derived output to captured assertions and use the same conversion."
+    }
+  ],
+  "independentTests": {
+    "selectedBackend": 395,
+    "backendFiles": [
+      "test_company_tax_readiness.py",
+      "test_company_tax_return_characterization.py",
+      "test_company_tax_authority_payload.py"
+    ],
+    "booleanProducerCases": 45,
+    "booleanProducerByteExact": true,
+    "originalAccountProbe": "missing/null/empty dict lines422; account7770 control200/adminCosts100",
+    "runtimes": "standalone CPython3.12.12 venv; Node v24.20.0; immutable extracted source"
+  },
+  "reportedNotRerunInFull": {
+    "combinedBackendCharacterizationCli": 463
+  },
+  "privateArtifactSha256": {
+    "assessment-boolean-standards-tests-6d42211f.log": "50cc105bcb49208c23a3f67ef7f9427574fd0269b1a6c5b2c25dd27235fe9d11",
+    "assessment-boolean-standards-account-probe-6d42211f.log": "b26671d622ac6c746c3afffa1d45de33a2d481d564b10d65c1ac970c3342f6ea",
+    "assessment-boolean-standards-capture-6d42211f.log": "0fcd22b654a0552843c527b7c4885a981ce05eb7db544a229d03645f4291e386",
+    "assessment-boolean-standards-derived-node-6d42211f.log": "3c1cf128a1f358fd19036dbb8a999f989062f30d20490fda75a61941e43e747a",
+    "assessment-boolean-standards-derived-python-6d42211f.log": "efafc3dc2827bc59567b78138f7e7bfc0b20c94e0841e235b8b9aee3a87242b6",
+    "assessment-boolean-standards-derived-probes-6d42211f.json": "fb58840a960848ee0cee9063bc87566f561c76d036da704b14de30fdbe1e3462"
+  },
+  "limits": [
+    "Uncommitted web callers excluded.",
+    "No shared source/Git/runtime/database/browser/provider mutation.",
+    "No full-stage, cutover or release-gate acceptance."
+  ],
+  "reportSha256": "4f6f47919d4b81c0a25d5e5628ce1f3a2ad67d704f908caeff053bf5de62532c"
+}

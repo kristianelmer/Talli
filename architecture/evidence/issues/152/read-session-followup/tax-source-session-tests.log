@@ -1,0 +1,26 @@
+✔ stored Tax receipt remains byte-equivalent after wire presentation: synthetic-completed-pending-feedback (1.246375ms)
+✔ stored Tax receipt remains byte-equivalent after wire presentation: synthetic-blank-url (0.153625ms)
+✔ stored Tax receipt remains byte-equivalent after wire presentation: synthetic-second-owner (0.129459ms)
+✔ stored Tax receipt remains byte-equivalent after wire presentation: synthetic-explicit-recorded-time (0.118334ms)
+✔ nested receipt, call, feedback and payload-reference extension fields survive presentation (0.274542ms)
+✔ one query per company supplies the complete source and keeps omitted year unscoped (9.083333ms)
+✔ one unavailable company discards partial results and retains an explicit error (3.882208ms)
+✔ incomplete receipt type fails the whole source visibly (3.241542ms)
+✔ incomplete receipt hash fails the whole source visibly (4.252833ms)
+✔ incomplete feedback classification fails the whole source visibly (2.716917ms)
+✔ incomplete payload reference fails the whole source visibly (2.491292ms)
+✔ incomplete call chronology fails the whole source visibly (2.393ms)
+✔ incomplete unsupported raw payload fails the whole source visibly (2.7955ms)
+✔ Archive includes Tax-only submissions and only their linked evidence for the requested year (25.737125ms)
+✔ Archive source failure returns unavailable before building an archive or recording a receipt (8.218458ms)
+✔ readiness refresh uses every owned Tax readiness family (34.641958ms)
+✔ readiness refresh stops without snapshot or Audit writes on Tax failure (21.444584ms)
+✔ missing session token cannot turn an authorized company scope into complete empty Tax data (2.771208ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 374.381417

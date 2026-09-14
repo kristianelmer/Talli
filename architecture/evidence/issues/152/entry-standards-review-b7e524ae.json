@@ -1,0 +1,98 @@
+{
+  "verdict": "PASS_BOUNDED_ENTRY_CHARACTERIZATION_GAP_CLOSED",
+  "baseRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+  "candidateRevision": "b7e524ae2f7026a0fe91eaf55385d99065b62989",
+  "previousReviewedRevision": "252cf52a20a98074a2dbc875a59effbb0a278bfe",
+  "files": [
+    {
+      "path": "architecture/compatibility.json",
+      "sha256": "490618b3e5b0a24023b74256dab39789268f505175686e286a1a254521c5da76"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-capture.mjs.txt",
+      "sha256": "a75cee605c9550d5c959ebec0b4c6701ca00ca60b950eb271966a683944039fe"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-characterization.json",
+      "sha256": "2c50fe51fb47ea12e5890198966d4b5b460565056ecc9e9d5f188fc83c1b83a7"
+    },
+    {
+      "path": "architecture/evidence/issues/152/published-receipt-independent-reread-146.json",
+      "sha256": "a3ecb65e484d674d57285023388c7a56b06baf346758686d34073671e39cd96c"
+    },
+    {
+      "path": "architecture/evidence/issues/152/published-receipt-independent-reread-146.md",
+      "sha256": "cab5da886f84636352b1802a186ca22419a0b8b1e1b5a9e47c25885536242d24"
+    },
+    {
+      "path": "architecture/evidence/issues/152/requirements.json",
+      "sha256": "d8b932b86404e07960e192403ed38085ff574fbf18e52a11a33cc940febd60bb"
+    },
+    {
+      "path": "architecture/evidence/issues/152/source-inventory.json",
+      "sha256": "9d7a53bde5d9599f0f52781e61cd95a5cffd959408aa1a5dfdfc1c90e3a5f982"
+    }
+  ],
+  "inventoryHashesVerified": 52,
+  "sourceFiles": [
+    {
+      "path": "apps/web/app/lib/company-tax-return.ts",
+      "sha256": "765b82a633a859c4108e83cb6f30b18e3fd3ad491f56a53485453f6bc3ca6ec7"
+    },
+    {
+      "path": "apps/web/app/lib/tax-settlement.ts",
+      "sha256": "0712141c523700e51816353d78453558949ec1ed6416c59bfd7cc3a0e519e274"
+    },
+    {
+      "path": "apps/web/app/lib/company-tax-return-xml.ts",
+      "sha256": "80fe4c5c10daa3c67b6041b32fb2c6289fe91f8783f7d8b62077f0564c511f17"
+    },
+    {
+      "path": "apps/web/app/lib/company-tax-return-authority-payload.ts",
+      "sha256": "c68aa036c33c6dfacf235b9960d8d8f8e36c016cba4b72e12a71cd44566e99c1"
+    },
+    {
+      "path": "apps/web/app/lib/company-tax-return-submission.ts",
+      "sha256": "190077eabc091c9143c4223faee030047b09f85d1be2e0ca11dbe1be996b3ced"
+    },
+    {
+      "path": "apps/web/app/lib/authority-test-evidence.ts",
+      "sha256": "70b9ba9ebb978c4c40f90e428e29b388c7ede251fc3bcb4582c492c0790601f4"
+    },
+    {
+      "path": "tests/company_tax_return_payload.test.mjs",
+      "sha256": "236f00100fa8451fa0d13412ad0dd4cb32cf9c7e87e2b65fb3496faea81b87cd"
+    },
+    {
+      "path": "tests/company_tax_return_submission.test.mjs",
+      "sha256": "4cab66f33b5c28240cf6921e5ba19519cc53d3805e5c693861feeee3d8a0cf95"
+    },
+    {
+      "path": "docs/filing/evidence/company-tax-tt02-2026-07-14.json",
+      "sha256": "5588fef50ba237ae8247801fac5a57c685852c23f8cd1fea2017e317739936e2"
+    }
+  ],
+  "fixturePrefixSha256": "7421890a409f04e2d2f6d8509a60e7d8a7a20b33cd8837d9fa47c85a6a5b7d6d",
+  "pureRerun": {
+    "node": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+    "runtime": "v24.20.0",
+    "temporaryRoot": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-152-b7e524ae-pure-zdv7x6_d",
+    "byteExact": true,
+    "sha256": "2c50fe51fb47ea12e5890198966d4b5b460565056ecc9e9d5f188fc83c1b83a7",
+    "payloadCases": 32,
+    "summaryCases": 6,
+    "importCases": 24,
+    "successCases": 4,
+    "originalElevenNegativesUnchanged": true,
+    "positiveOutputsExcludeAllSentinels": true
+  },
+  "log": {
+    "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/entry-standards-pure-rerun-b7e524ae.log",
+    "sha256": "b6459dd87a8cddeafd113ae1e96bbbb48e6381eff5f2f2ccc25fbd164cb24d3b"
+  },
+  "limits": [
+    "Pure predecessor characterization only; no provider validation claimed",
+    "No database/browser/Next or tracked repository mutation",
+    "All six criteria and stateful characterization pending; no #152 gate/exit credit"
+  ]
+}

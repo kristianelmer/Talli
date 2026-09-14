@@ -4,11 +4,13 @@ version = "0.1.0"
 description = "Talli FastAPI production boundary"
 requires-python = ">=3.12,<3.14"
 dependencies = [
+  "ada-url==4.0.0",
   "cryptography==50.0.1",
   "fastapi==0.116.1",
   "httpx==0.28.1",
   "psycopg[binary]==3.2.9",
   "pydantic==2.11.7",
+  "pyicu==2.16.2",
   "reportlab==5.0.0",
   "uvicorn==0.35.0",
 ]

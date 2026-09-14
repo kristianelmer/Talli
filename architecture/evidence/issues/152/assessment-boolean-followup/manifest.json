@@ -1,0 +1,29 @@
+{
+  "baselineRevision": "497b91d8643b7639ff1157b66761fc8c2590b850",
+  "status": "ACCOUNT_DISCRIMINATOR_AND_PURE_BOOLEAN_PARITY_FIXED",
+  "tests": 463,
+  "frozenBooleanCases": 45,
+  "red": "10 failures before ECMAScript Boolean conversion; 35 existing-equivalent cases already passed.",
+  "changes": [
+    "HTTP line facts require a string account so absent/null account cannot hide an admin cost as zero.",
+    "Direct pure and CLI callers preserve JS truthiness: empty arrays/objects are true for annual answers/no-activity and warning acknowledgement conditions.",
+    "Tax CLI preparation remains blocked for malformed truthy shareholder-loan answers.",
+    "Annual estimate/fiscal payload tests remain unchanged and pass."
+  ],
+  "limits": [
+    "No business persistence, hosted migration, provider call, source-backed history or stage-exit claim.",
+    "Web caller migration remains uncommitted and outside this backend follow-up."
+  ],
+  "captureSha256": "ce098594a97b338d0c88795109d72f7f2686d0480a3bae0ec7a48d0da2a3155e",
+  "artifacts": {
+    "assessment-spec-review-e2dfdf54.json": "98ae211d2a95b51e3a3df5c000b91277c59bb4d703b8e047225a2ca490b1df85",
+    "assessment-nested-standards-followup-497b91d8.json": "a5f8669c78b5c47f18ab0ff445396cdd5a4ec5d64ece54ebaffa22cd52017241",
+    "assessment-nested-standards-followup-497b91d8.md": "9ed54302354d144bcda70ab6cac9d023f51727d53712f18401a83145c2636484",
+    "capture-tax-booleans.mjs.txt": "cfa4d76c10614feda80b8e113460e97b873e3eaf327afa516cb578a63408d61a",
+    "tax-boolean-red.log": "a1cb4fc191fbd3016cf325b96feeb8ab74f15c7bfeb665de4531d5aa24caf162",
+    "tax-boolean-followup-tests.log": "1a9426e0ed36a76344f9adb35a28e785f0cc668f4670e111dca12c85fd5677fb",
+    "assessment-standards-review-e2dfdf54.json": "c03e4fe3a0e4d61cda877f13578c9b3b1affc3f22187f1c4adfb30e2fd0f7d8b",
+    "assessment-standards-review-e2dfdf54.md": "010eb9e981aba81e5bc2d8b917f23bfe998a40ac9f87708a1839d9ac2aabbcad",
+    "assessment-spec-review-e2dfdf54.md": "d1748c0c8eff584ee88e823de9908da3cf6038b1a4bc982467b739558a287fe1"
+  }
+}

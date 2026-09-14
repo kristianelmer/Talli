@@ -1,0 +1,22 @@
+{
+  "reviewedRevision": "c3eb992c",
+  "fixes": [
+    "Preserve explicit-null reference presence at the CLI boundary.",
+    "Use ECMAScript numeric text for calendar dates, including JSON integral floats."
+  ],
+  "validation": {
+    "passed": 303,
+    "provider": "mocked only"
+  },
+  "independentFollowup": "PENDING",
+  "limits": [
+    "API/web/SQL/full-stage exit pending."
+  ],
+  "artifacts": {
+    "cli-spec-review-c3eb992c.md": "bb15d6c551fa41495e937848eacb36a35200c1133393cf8be7bb9831c58f89b4",
+    "cli-spec-review-c3eb992c.json": "ee418b9906080eff09f6b7d5bbb45a3dfda24d77260d1daea58bdf4fd50a975f",
+    "cli-standards-review-c3eb992c.md": "37e4b178370a632b21964c46223f916030caf6e8df51570453b0b21e92c956bc",
+    "cli-standards-review-c3eb992c.json": "1674f47c0ca6fd32600e617950d7a9fde611ddd533a65f87d644ec232232e29f",
+    "cli-followup-tests.log": "7a71dfe5336abc84cfccc8c4a87d394eb8c39582229b007f43339e8bb04ab126"
+  }
+}

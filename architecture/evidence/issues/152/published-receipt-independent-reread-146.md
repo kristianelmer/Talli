@@ -1,0 +1,11 @@
+# Published #146 completion receipt reread
+
+**PASS — no blocking Spec or evidence finding.** Independently fetched comment [5656456004](https://github.com/kristianelmer/Talli/issues/146#issuecomment-5656456004), the closed issue, PR #212, both Release runs/jobs and current main protection through GitHub. All six checked criterion texts equal the committed entry and final requirements; the receipt completes only the settlement slice.
+
+Actual merge `054740b81692e0e59b99a76fff085f322f1968b4` has ordered parents `20999f167084492bb4f9a5a50d0cbcd3a48333b3`, `c75be61c3d9727c65d0879dfd5676f61a96303dd`; its tree equals reviewed c75. Final-head Release 34783378272 passed before the protected merge. Its actual synthetic checkout `d0418da559963a2a98e2047eeae9645bf4f191f3` has those same parents/tree. Exact-main push Release 34784468140 passed on actual 054740b. Both have successful Application, Database isolation and Release gate; the workflow-dispatch-only Immutable evidence job is correctly disclosed as skipped.
+
+The published 50f→fd78 pair, timestamps, explicit link, ancestry and first storage revisions match committed receipts. Recomputed canonical, raw receipt/transcript, producer and tested-schema hashes preserve the previous independent 11-command/exit/duration and schema verification. All fourteen adopted artifact hashes match actual-main bytes; every published immutable blob link resolves. The cited private reread JSON hash matches, and its embedded Markdown is byte-exact and clearly historical. Tax 22+3 and all six browser lanes remain bound to the unchanged reviewed transcripts. Optional skips, advisor warnings and failed historical attempts are stated truthfully.
+
+Saved final-head/main Preview records bind READY deployments to the correct revisions. The production snapshot binds d331 at 22:01:19 UTC. These establish deployment identities only: the receipt expressly avoids hosted backend, provider, filing, promotion or production-observation claims. Its #152 language reserves full-capability work; this review neither claims nor implements that successor.
+
+No tests, database/browser operations or repository mutations were performed. Exact source and fetched-evidence bindings are in the companion JSON.

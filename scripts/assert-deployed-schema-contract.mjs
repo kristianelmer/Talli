@@ -10,7 +10,6 @@ export const REQUIRED_DEPLOYED_SCHEMA_PATHS = Object.freeze([
   "/rpc/append_production_filing_event",
   "/rpc/approve_production_filing",
   "/rpc/begin_production_filing",
-  "/rpc/import_company_tax_tt02_evidence",
   "/rpc/remove_unlinked_document",
   "/rpc/restore_unlinked_document_after_storage_failure",
 ]);
@@ -29,6 +28,7 @@ export const FORBIDDEN_DEPLOYED_SCHEMA_PATHS = Object.freeze([
   "/rpc/attest_corporate_signed_artifact",
   "/rpc/create_corporate_document_draft",
   "/rpc/finalize_corporate_decision",
+  "/rpc/import_company_tax_tt02_evidence",
   "/rpc/manage_production_pilot_entitlement",
   "/rpc/record_corporate_document_event",
   "/rpc/record_owner_dividend_payment",

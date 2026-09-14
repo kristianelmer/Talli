@@ -1,0 +1,11 @@
+PASS — two linked immutable local gates; no actionable Spec finding.
+
+Gate `7c9b3caae3cd278bbe381589308cf302142b58a5` passed 11/11 on 2026-09-14 04:14:02.889–04:33:51.099 UTC. Gate `a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2` passed 11/11 at 04:35:03.140–04:54:39.950 UTC and explicitly names the first as its predecessor. Git ancestry and the 72,041 ms inter-run gap verify the link and chronology.
+
+I independently validated each receipt against its tested revision’s schema, recomputed canonical sorted-JSON, raw transcript and tested-producer hashes, and matched every command, exit and duration to the transcript and producer. The schema checkout also succeeded. Each run has 32 Tax database passes (22 settlement lifecycle, three runtime, seven filing lifecycle) and six mandatory browser groups with 1/24/1/11/12/2 passes respectively; none failed, cancelled or skipped. The paired application, SQL, tests and lockfiles are identical. Their only intervening changes are evidence and Tax’s `active` → `exit-review` status.
+
+Both runs disclose two existing optional backend skips and one optional validation-observation Python skip; mandatory SQL observation coverage ran. Advisors report zero blocking findings and 60 performance warnings; both dependency audits report zero vulnerabilities. SQL role/grant notices, schema-tag resolution and CLI update notices remain in the transcripts.
+
+The 13 adoption-manifest artifact hashes match. Original six acceptance texts remain unchanged; the local-pass/protected-pending metadata, conservative blocked-only source facts and retained 16 Annual-owned tuples agree with the prior whole-stage review. No uncovered local implementation or exit-envelope requirement remains in this review’s scope.
+
+First receipt/transcript storage is committed at `a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2`; second storage and adoption changes are staged, not yet committed. Their committed-byte reread, final-head CI/Preview, protected integration, exact-main evidence and published closure remain pending. This accepts the local pair, not final #152 completion or #153 entry. Failed `9f5c5a5b`, `41bcead1`, `ac9b349a`, cancelled `849f81d4`, failed CI 34805023185 and historical #146 gates receive no #152 pair credit. No DB, browser or gate was rerun, and no hosted/provider or production-readiness claim is made.

@@ -63,7 +63,6 @@ import { buildLaunchSignoffGate, launchSignoffKeys, launchSignoffLabel } from ".
 import { buildDeadlineDashboard, buildDeadlineReminderPlan, deadlineStatusLabel, defaultReminderPreferences } from "../../lib/deadlines";
 import { invitationStatus, reviewChecklistStatus } from "../../lib/invitations";
 import { preProductionDirectFilingCopy, requiredNonAffiliationCopy } from "../../lib/launch-copy";
-import { estimateAnnualTax } from "../../lib/tax-settlement";
 import {
   getCurrentUser,
   hasSupabaseEnv,
@@ -959,7 +958,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     <input
                       name="amount"
                       inputMode="decimal"
-                      defaultValue={taxEstimate.estimatedTax > 0 ? taxEstimate.estimatedTax : undefined}
+                      defaultValue={taxEstimate && taxEstimate.estimatedTax > 0 ? taxEstimate.estimatedTax : undefined}
                       placeholder="0"
                       required
                     />
@@ -1001,13 +1000,19 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                 <div className="readinessGrid">
                   <div className="readinessItem">
                     <span>Estimert skatt</span>
-                    <strong data-status={taxEstimate.status === "payable" ? "warning" : "ready"}>
-                      {taxEstimate.estimatedTax.toFixed(2)} kr
-                    </strong>
-                    <p>Grunnlag: {taxEstimate.taxBasis.toFixed(2)} kr.</p>
-                    <p>
-                      Kostnader {taxEstimate.adminCosts.toFixed(2)} kr + fritaksmetoden {taxEstimate.fritaksmetodenAddBack.toFixed(2)} kr.
-                    </p>
+                    {taxEstimate ? (
+                      <>
+                        <strong data-status={taxEstimate.status === "payable" ? "warning" : "ready"}>
+                          {taxEstimate.estimatedTax.toFixed(2)} kr
+                        </strong>
+                        <p>Grunnlag: {taxEstimate.taxBasis.toFixed(2)} kr.</p>
+                        <p>
+                          Kostnader {taxEstimate.adminCosts.toFixed(2)} kr + fritaksmetoden {taxEstimate.fritaksmetodenAddBack.toFixed(2)} kr.
+                        </p>
+                      </>
+                    ) : (
+                      <p>Skatteestimatet er midlertidig utilgjengelig.</p>
+                    )}
                   </div>
                   <div className="readinessItem">
                     <span>Oppgjør</span>

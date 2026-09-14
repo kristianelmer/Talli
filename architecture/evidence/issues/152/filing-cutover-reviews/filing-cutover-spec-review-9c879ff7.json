@@ -1,0 +1,234 @@
+{
+  "baseRevision": "f9838c6096640d9810381d86ef64dd8177ee35ac",
+  "candidateRevision": "9c879ff78b5ec5aa3bb639e5de4a39ab38ef9cfc",
+  "sourceBindings": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": {
+      "status": "M",
+      "sha256": "1b102c7369be9f99c02b897c856e8282b0f247471338633f8222d16eb33c3cfb",
+      "baseSha256": "7ac4e7ab5ed6b0bb01cc59bf076b8d0f26b097ed9463b6ec302d75e7e813627f"
+    },
+    "apps/backend/tests/test_company_tax_return_lifecycle.py": {
+      "status": "A",
+      "sha256": "93ebda067cd97c726d16e059c7961a81449a4f041e58120caecd742ff9d64deb",
+      "baseSha256": null
+    },
+    "architecture/BACKEND-SYSTEM.md": {
+      "status": "M",
+      "sha256": "11afee9a9c1d8b348348776727412c3e1e0016cc4321599eb39eaef66bf87e47",
+      "baseSha256": "2b7d480b406c6cc2d98126f3d1b77e490d734655db8b8e451853bdd67f848855"
+    },
+    "architecture/backend-system.json": {
+      "status": "M",
+      "sha256": "6cfde2a261a5016871afb183479668bf34f853daa02cafd980538acd851594a6",
+      "baseSha256": "5b9e804b80f2930493d57a412842f7c4a91e41d7689c8aabd1049da9a9bbd079"
+    },
+    "architecture/evidence/issues/152/assessment-consumers-followup/assessment-consumers-spec-followup-f9838c60.json": {
+      "status": "A",
+      "sha256": "b9103c724630b23ddee097f078de105722a0be1a7518b8b42d4ef25e57556c1d",
+      "baseSha256": null
+    },
+    "architecture/evidence/issues/152/assessment-consumers-followup/assessment-consumers-spec-followup-f9838c60.md": {
+      "status": "A",
+      "sha256": "030e344bd964d18dbbd011414c80cd4aea84e7a1f712ccd861428bc27be2d3a4",
+      "baseSha256": null
+    },
+    "architecture/evidence/issues/152/assessment-consumers-followup/assessment-consumers-standards-followup-f9838c60.json": {
+      "status": "A",
+      "sha256": "7b0d7ab8180ac7a124a4cf63dae169a31299d8e646d156e654a46b59d3968734",
+      "baseSha256": null
+    },
+    "architecture/evidence/issues/152/assessment-consumers-followup/assessment-consumers-standards-followup-f9838c60.md": {
+      "status": "A",
+      "sha256": "71d543cf5eeb87c05dc5e354b1fcc6e6466d80b120230020f39ba2199075b4c2",
+      "baseSha256": null
+    },
+    "architecture/evidence/issues/152/filing-cutover-lifecycle/cutover-guard-tests.log": {
+      "status": "A",
+      "sha256": "1ca9ae31bf8d51cd596176c26ab1e4c6f3b54e3f2f6f4d4b854bf133e92cbcfe",
+      "baseSha256": null
+    },
+    "architecture/evidence/issues/152/filing-cutover-lifecycle/filing-cutover-races.json": {
+      "status": "A",
+      "sha256": "4fa07c2bdd1ea1a2634f4a5fabe5ee7060e45a3280bbab5e23a63616d9582b12",
+      "baseSha256": null
+    },
+    "architecture/evidence/issues/152/filing-cutover-lifecycle/filing-cutover-races.log": {
+      "status": "A",
+      "sha256": "dac26cd60696d6edaab5519c2c387a8db4155d60ee2e896b231ebcf92ac4ad70",
+      "baseSha256": null
+    },
+    "architecture/evidence/issues/152/filing-cutover-lifecycle/filing-lifecycle-tests.log": {
+      "status": "A",
+      "sha256": "8f0c5271c42e2ea169c1a163518021fbcb3bc89b72e922479c6b715bdf3071ee",
+      "baseSha256": null
+    },
+    "architecture/evidence/issues/152/filing-cutover-lifecycle/manifest.json": {
+      "status": "A",
+      "sha256": "f63bf33f2f2a56a9bbd240be145a90190813b1d790f3269f2686c453e4b01328",
+      "baseSha256": null
+    },
+    "architecture/evidence/issues/152/filing-cutover-lifecycle/probe-filing-cutover-races.py.txt": {
+      "status": "A",
+      "sha256": "a6e717685e8510509f6920ef484f6aa03f329ca820c260a92a637c5a578d55d9",
+      "baseSha256": null
+    },
+    "architecture/evidence/issues/152/filing-cutover-lifecycle/reset-owned-lifecycle-clone.py.txt": {
+      "status": "A",
+      "sha256": "dca2d9135fa01eae7f65ca7a7b18244caf638cfef31fa8b3871e473977f8cdb8",
+      "baseSha256": null
+    },
+    "package.json": {
+      "status": "M",
+      "sha256": "b89a906a31e4d86686fb9efb6da7c5f947d4c907b79a0be9bfd3f4f647556117",
+      "baseSha256": "c26a5c9b556e3842d027a4663ac56a47d596fb2235ddc5a8e4f20fe56fa54fbe"
+    },
+    "scripts/check-architecture.mjs": {
+      "status": "M",
+      "sha256": "2f71ed1d36618d6badb8a803312a29e516d92f4129aff4395a957cd144ecffb3",
+      "baseSha256": "662cba9fac5a22b6b4d2a0d96e61cf1031cebd90be1edbb4c5a9fa1f7b03696c"
+    },
+    "scripts/rehearse-tax-topology.mjs": {
+      "status": "M",
+      "sha256": "fd50f4d1f3fbb1f9b48c03418765226959b5787dad9b33a1866e9c8de7d173c8",
+      "baseSha256": "2e7c6488ae4a70db742304489c69814138fb7e7e544523996dfd714ab558440e"
+    },
+    "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql": {
+      "status": "A",
+      "sha256": "9d3d8641b19b4f1556088f57f7e319a584e3201c6af999c6d1db26e5cf3af4b5",
+      "baseSha256": null
+    },
+    "supabase/contract-migrations/20260914012930_company_tax_return_contract.sql": {
+      "status": "A",
+      "sha256": "84269749fd846de1e3cf272427b244431c62f6a41d46f6824e880a0ef5090158",
+      "baseSha256": null
+    },
+    "supabase/contract-migrations/20260914200000_company_tax_return_expand.sql": {
+      "status": "A",
+      "sha256": "ce0a4b9ab6fc7f90ea4cd851e9a2cff2da113db9c461dc5911bd6c7abfc96281",
+      "baseSha256": null
+    },
+    "supabase/contract-migrations/20260914201000_company_tax_return_read_contracts.sql": {
+      "status": "A",
+      "sha256": "24ebea4288c9f1357ecdd6b6c761b8b9e816fc188fcabd4e0671125996cc4ff5",
+      "baseSha256": null
+    },
+    "supabase/contract-migrations/20260914202000_company_tax_return_import_contract.sql": {
+      "status": "A",
+      "sha256": "5b924cfe0d4771cc58723dcdc65f1c7f4612bd19bba7b0541f1ee0acd62d0cbb",
+      "baseSha256": null
+    },
+    "supabase/contract-migrations/20260914203000_company_tax_return_preparation_contracts.sql": {
+      "status": "A",
+      "sha256": "af3ea6bdb42d353a38914359fbf98615281c41560d64ebf77df18d4a6fc74080",
+      "baseSha256": null
+    },
+    "supabase/migrations/20260914200000_company_tax_return_expand.sql": {
+      "status": "D",
+      "sha256": null,
+      "baseSha256": "ce0a4b9ab6fc7f90ea4cd851e9a2cff2da113db9c461dc5911bd6c7abfc96281"
+    },
+    "supabase/migrations/20260914201000_company_tax_return_read_contracts.sql": {
+      "status": "D",
+      "sha256": null,
+      "baseSha256": "24ebea4288c9f1357ecdd6b6c761b8b9e816fc188fcabd4e0671125996cc4ff5"
+    },
+    "supabase/migrations/20260914202000_company_tax_return_import_contract.sql": {
+      "status": "D",
+      "sha256": null,
+      "baseSha256": "5b924cfe0d4771cc58723dcdc65f1c7f4612bd19bba7b0541f1ee0acd62d0cbb"
+    },
+    "supabase/migrations/20260914203000_company_tax_return_preparation_contracts.sql": {
+      "status": "D",
+      "sha256": null,
+      "baseSha256": "af3ea6bdb42d353a38914359fbf98615281c41560d64ebf77df18d4a6fc74080"
+    },
+    "supabase/rollback/20260914012503_company_tax_return_cutover.sql": {
+      "status": "A",
+      "sha256": "0808d9ef883fce1dee19bcd1330f1579682481c1596e522b2b5d5c73fc9e9f07",
+      "baseSha256": null
+    },
+    "supabase/rollback/20260914012930_company_tax_return_contract.sql": {
+      "status": "A",
+      "sha256": "b8f7f2190e748a8a9e9a88787b68c46f64e08a9f201cc4eb1b9ed9d5c475ed8c",
+      "baseSha256": null
+    },
+    "tests/company_tax_architecture.test.mjs": {
+      "status": "M",
+      "sha256": "8717bff1f509e9eb727c4183a3f2b17226fa762c48760d48d0c497fbeca7e93b",
+      "baseSha256": "09b8ffd2c9e347a7038acb7a771cfa5a1f16eedd30c30d5a25defbb86e29a05f"
+    }
+  },
+  "manifestArtifactChecks": {
+    "filing-lifecycle-tests.log": true,
+    "reset-owned-lifecycle-clone.py.txt": true,
+    "probe-filing-cutover-races.py.txt": true,
+    "cutover-guard-tests.log": true,
+    "filing-cutover-races.json": true,
+    "filing-cutover-races.log": true
+  },
+  "sqlChecks": {
+    "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql": true,
+    "supabase/contract-migrations/20260914012930_company_tax_return_contract.sql": true,
+    "supabase/rollback/20260914012503_company_tax_return_cutover.sql": true,
+    "supabase/rollback/20260914012930_company_tax_return_contract.sql": true
+  },
+  "byteIdenticalRelocations": {
+    "supabase/contract-migrations/20260914200000_company_tax_return_expand.sql": true,
+    "supabase/contract-migrations/20260914201000_company_tax_return_read_contracts.sql": true,
+    "supabase/contract-migrations/20260914202000_company_tax_return_import_contract.sql": true,
+    "supabase/contract-migrations/20260914203000_company_tax_return_preparation_contracts.sql": true
+  },
+  "recordedDatabaseEvidence": {
+    "lifecycleScenarios": 6,
+    "raceChecks": 11,
+    "sqlBindingVerified": true,
+    "independentlyExecuted": false,
+    "scope": "Synthetic local PostgreSQL; no HTTP/JWT/browser/provider/full stage"
+  },
+  "raceSeedDependency": "Private probe-filing-cutover.py read by committed race probe; not bound in this manifest; parent notified.",
+  "requirementsUnchanged": true,
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "verdict": "ACKNOWLEDGED_ACL_PRESERVATION_FINDING_PENDING_CORRECTION",
+  "diffCommand": "git diff f9838c6096640d9810381d86ef64dd8177ee35ac...9c879ff78b5ec5aa3bb639e5de4a39ab38ef9cfc",
+  "findings": [
+    {
+      "id": "SPEC-152-CUTOVER-1",
+      "priority": "P2",
+      "state": "OPEN_AT_9C879FF7_PARENT_FIX_PENDING",
+      "file": "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql",
+      "lines": [
+        195,
+        197,
+        224,
+        226
+      ],
+      "spec": "Exact role/privilege preservation; MODULE.md temporary migration privileges restored",
+      "independentScope": "Static mechanism verified; DB reproduction reported by parent/Standards, not rerun."
+    }
+  ],
+  "independentStaticTest": {
+    "name": "preserved Tax retirement requires exact artifact bytes, source restoration and exclusive ownership",
+    "passed": 1,
+    "node": "24.20.0",
+    "pinnedSource": "spec-filing-cutover-9c879ff7",
+    "gitSourceContext": "GIT_DIR explicitly set read-only for original source resolution"
+  },
+  "executionAudit": {
+    "initialWorkspaceInvocation": "2 non-DB tests passed but not used as pinned review evidence; tests only mutate their temporary fixtures.",
+    "initialPrivateWholeFileInvocation": "Failed compatibility test because private archive lacks Git context; not a product finding.",
+    "decisiveInvocation": "Pinned catalog test with explicit GIT_DIR passed.",
+    "databaseBrowserSharedServerMutation": false
+  },
+  "privateArtifactSha256": {
+    "filing-cutover-spec-catalog-pinned-9c879ff7.log": "dffbabd67b4a860d8c431157dcb4acea2e1166bdb0789bc6ce13c3a058b01d32",
+    "filing-cutover-spec-static-pinned-9c879ff7.log": "f72ccec2f97f0bd1db1df9744e08ab613699b1687d02d74115c9bf765b942402",
+    "filing-cutover-spec-static-9c879ff7.log": "308119527b52321a9cb1aa50303231f4a6007b873dc673255648250619628c46"
+  },
+  "reportSha256": "c9bf5926ef7e5bf8a388a682d9f1ba3783be24f9ff437866da44a7f34f894aaa",
+  "limits": [
+    "No independently executed DB lifecycle/race/browser/provider work.",
+    "No shared implementation edits; isolated fixture tests only.",
+    "No full-stage/gate/integration/hosted/successor acceptance."
+  ]
+}

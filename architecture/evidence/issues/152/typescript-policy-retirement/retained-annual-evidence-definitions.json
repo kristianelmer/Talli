@@ -1,0 +1,41 @@
+{
+  "baseline": "6353c78c",
+  "source": "apps/web/app/lib/authority-test-evidence.ts",
+  "retainedDefinitions": [
+    "AuthorityTestRunStatus",
+    "AuthorityTestRunEnvironment",
+    "AuthorityTestEvidenceGateStatus",
+    "AuthorityTestRunInput",
+    "AuthorityTestRun",
+    "AuthorityTestEvidenceGate",
+    "AnnualAccountsAuthorityTestRunImportInput",
+    "required",
+    "optional",
+    "objectValue",
+    "evidenceString",
+    "buildAuthorityTestRun",
+    "buildAnnualAccountsAuthorityTestRunFromEvidence",
+    "authorityTestRunStatusLabel",
+    "authorityTestEvidenceGateStatusLabel",
+    "authorityTestEvidenceGate"
+  ],
+  "retainedBodyHashes": {
+    "AuthorityTestRunStatus": "fe642a26faec91eae78f26a5c0415c4abbbf5de8a40ac36bb761b7302031588a",
+    "AuthorityTestRunEnvironment": "8924fdfb5b6d822450d64c8527f8d19bdde766d07146c965cb502cb57689c99a",
+    "AuthorityTestEvidenceGateStatus": "814b6cfce0aac84ea52e2ffdcec7628be198f8e85023bde43a823a10a5eda964",
+    "AuthorityTestRunInput": "82ea0a5f60ae48055c3de510dbad470ed5049bee565e5d16432cb6d7ee6e7c02",
+    "AuthorityTestRun": "0e9c5b179fe30a57c8bac3ad2a9c58a2c53f7f8766e483f93860b04c9a590cb4",
+    "AuthorityTestEvidenceGate": "9b4e132c0a1706638e9a28d94faf4b1208107c4fd0c6f6f03109b6a65347c529",
+    "AnnualAccountsAuthorityTestRunImportInput": "6be9060e0eb435e2db97191272fb963e88c74efef7174762d56c1c54a987d48d",
+    "required": "c9404bd8f96e4fcf6e7125eadf6a942d3bc8efe94e9aae393b47af64cbf43335",
+    "optional": "81de4e7768b7f0c58f50f1f69beac4b70adbe31971d34fd5b904d2c9d2fa3a0f",
+    "objectValue": "c4695cb33ca89d0520c38721f3ca831f8c76085f6f0be6b71df39d43bd64f128",
+    "evidenceString": "618836ad713596fe53dd7e5e4f3d7431c50baf5ce8ab8c04e50551c2d2a294a7",
+    "buildAuthorityTestRun": "7f37205c7eefc5e0b76e75d076f442f9b6b192c468126aac3d17fa8cb5d60069",
+    "buildAnnualAccountsAuthorityTestRunFromEvidence": "41f4e515750c2b2fc55d2877a49e1409ab87b15a011fc8bf6334cb6281e88527",
+    "authorityTestRunStatusLabel": "41f313a1de4e8a9c72d48202395f422cc2be3740f551a0988a96c9cb52efb1e3",
+    "authorityTestEvidenceGateStatusLabel": "8dcfe73ff07e4bb6ce12e7e57a8de3f9cd6648572fae4b220cc1e7b44d276686",
+    "authorityTestEvidenceGate": "b4ea810b9dfe9c1fd52b09a37ffbeb045b9372c32cf23da34111823cd4a7b8ad"
+  },
+  "unchanged": true
+}

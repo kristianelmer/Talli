@@ -1,10 +1,6 @@
-// Fixed, credential-free subprocess for the frozen #152/#153 statutory generators.
+// Fixed, credential-free annual-accounts subprocess until its #153 migration.
 import { buildAnnualAccountsPayload } from "../apps/web/app/lib/annual-accounts.ts";
 import { renderAnnualAccountsXml } from "../apps/web/app/lib/annual-accounts-xml.ts";
-import { buildCompanyTaxReturnPayload } from "../apps/web/app/lib/company-tax-return.ts";
-import { renderCompanyTaxReturnXml } from "../apps/web/app/lib/company-tax-return-xml.ts";
-import { renderCompanyTaxReturnEnvelope, renderCompanyTaxReturnValidationEnvelope,
-  summarizeCompanyTaxReturnValidation } from "../apps/web/app/lib/company-tax-return-authority-payload.ts";
 
 export function authorityToolPayload(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)
@@ -19,15 +15,6 @@ export function authorityToolPayload(input) {
         approvalDate: value.approvalDate, confirmingRepresentative: value.confirmingRepresentative }),
       feedback: payload.feedback };
     }
-    case "company_tax": {
-      const payload = buildCompanyTaxReturnPayload(value);
-      const blocking = payload.feedback.filter((item) => item.level === "block");
-      if (blocking.length) throw new Error("payload_blocked");
-      return { ...renderCompanyTaxReturnXml(payload.fields), feedback: payload.feedback };
-    }
-    case "company_tax_envelope": return { envelopeXml: renderCompanyTaxReturnEnvelope(value) };
-    case "company_tax_validation_envelope": return { envelopeXml: renderCompanyTaxReturnValidationEnvelope(value) };
-    case "company_tax_validation_summary": return summarizeCompanyTaxReturnValidation(value.resultXml);
     default: throw new Error("payload_operation_invalid");
   }
 }

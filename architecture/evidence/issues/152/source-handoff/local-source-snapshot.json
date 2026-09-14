@@ -1,0 +1,360 @@
+{
+  "migrationSha256": "ae6e571b5c268a12d80ee43ca30931da9f277d303b6f5bc8dc7e38deb8b10db4",
+  "scope": "Owned synthetic clone; rollback only; no HTTP/provider/stage-exit credit",
+  "checks": [
+    "exact migration role memberships restored",
+    "inventoryValid",
+    "quarantineClear",
+    "sourceRowsValid",
+    "legacyFencesValid",
+    "modeChecksValid",
+    "declaredExtentValid",
+    "all six current families positively enumerated",
+    "nonempty retained synthetic filing history",
+    "zero-submission year still has positive coverage"
+  ],
+  "snapshot": {
+    "asOf": "2026-09-14T02:28:23.638749+00:00",
+    "coverage": {
+      "phase": "cutover",
+      "scope": "talli_recorded_company_tax",
+      "companyId": "00000000-0000-0000-0000-000000000152",
+      "inventory": {
+        "table:public.filing_previews": "256f12e4d2990a0f6ba3a4870c49e940bc58657ae36094db1af8a5550ad83974",
+        "table:public.filing_overrides": "22c41bac7d2cadf8ad437d69a0d30a2331bc72d6615515a561b4ac834223f12c",
+        "table:public.filing_submissions": "50227db27e100c8acc16fdd58c1c253b44298a9daf73376ea2d5da4ee3105d5b",
+        "table:public.authority_test_runs": "6c3f66ba310ce6fd2476cf58ca7c9a1df0fa56dad40f1e842f734c6b1afc2b77",
+        "table:public.authority_permissions": "6d7b9a73e177f69204cc34b87166ffd920330b6cea7b2e6cdbf63763bf8bc4fd",
+        "table:public.filing_review_comments": "5b0fc9d3d7ac5a4aeba978f927d7c904dbcc3a6c1000ade2614b497b34c078dd",
+        "function:documents.has_evidence_references_v1(uuid)": "8dbcebbcda60ca832e83a232e0a686abbfb4cff38506847b3bfae776d5450ab4",
+        "function:public.import_company_tax_tt02_evidence(jsonb)": "e58d276f95a70fd7e477e8c5236260ffaf2ed827b14a898065195711b925b6b7"
+      },
+      "incomeYear": 2025,
+      "familyCounts": {
+        "filing_previews": 2,
+        "filing_overrides": 1,
+        "filing_submissions": 1,
+        "authority_test_runs": 1,
+        "authority_permissions": 1,
+        "filing_review_comments": 2
+      },
+      "familyDigests": {
+        "filing_previews": "30e3c4263009a3d8fa34dc261caffd9f5814b022db3d0a29c7eeaa0f3c580e50",
+        "filing_overrides": "06ac93877785c780229bfed93c33afb7e08322ce5c2f0dcc553e726c0c7895e5",
+        "filing_submissions": "48450e567766362bf71d2f82ec5830a3ebf7975bc6f9eade6ab5366755d72ddf",
+        "authority_test_runs": "4434f712531ed1c628c55926189a4f082513fe7c44cbb29bf702acfb0dca27a3",
+        "authority_permissions": "c0998c46244c2ba39cd2fdc6cb1a3789798cad6fdc062b7dd750a215494ad22c",
+        "filing_review_comments": "81388e2627541734dfde86cb1f7c84ba8618245f8e19ff62a84ce6d764bfc917"
+      },
+      "inventoryValid": true,
+      "sourceRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+      "modeChecksValid": true,
+      "quarantineClear": true,
+      "sourceRowsValid": true,
+      "legacyFencesValid": true,
+      "reconciledFamilies": [
+        "authority_permissions",
+        "authority_test_runs",
+        "filing_overrides",
+        "filing_previews",
+        "filing_review_comments",
+        "filing_submissions"
+      ],
+      "declaredExtentValid": true,
+      "retainedSubmissionIds": [
+        "436c34c0-66b6-474f-9086-28eab2d5176a"
+      ]
+    },
+    "companyId": "00000000-0000-0000-0000-000000000152",
+    "workspace": {
+      "previews": [
+        {
+          "id": "00000000-0000-0000-0001-000000000002",
+          "filing": "skattemelding for AS",
+          "issues": [],
+          "source": "python_rf1086_engine",
+          "status": "ready",
+          "preview": "Legacy transaction committed during cutover",
+          "setup_id": null,
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "created_at": "2026-09-14T01:53:12.907074+00:00",
+          "created_by": "00000000-0000-0000-0000-000000000153",
+          "income_year": 2025,
+          "hovedskjema_xml": null,
+          "underskjema_xml": {}
+        },
+        {
+          "id": "00000000-0000-0000-0001-000000000000",
+          "filing": "skattemelding for AS",
+          "issues": [],
+          "source": "python_rf1086_engine",
+          "status": "ready",
+          "preview": "Synthetic preview",
+          "setup_id": null,
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "created_at": "2026-09-14T01:53:12.723571+00:00",
+          "created_by": "00000000-0000-0000-0000-000000000153",
+          "income_year": 2025,
+          "hovedskjema_xml": null,
+          "underskjema_xml": {}
+        }
+      ],
+      "overrides": [
+        {
+          "id": "43d3f328-e189-449e-9c02-d6ec3168adf1",
+          "filing": "skattemelding for AS",
+          "reason": "Synthetic reason",
+          "new_value": "new",
+          "old_value": "old",
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "created_at": "2026-09-14T01:53:12.723571+00:00",
+          "created_by": "00000000-0000-0000-0000-000000000153",
+          "preview_id": "00000000-0000-0000-0001-000000000000",
+          "risk_level": "advisory",
+          "income_year": 2025,
+          "field_target": "synthetic",
+          "owner_confirmed_at": "2026-09-14T01:53:12.723571+00:00",
+          "owner_confirmed_by": "00000000-0000-0000-0000-000000000153"
+        }
+      ],
+      "permissions": [
+        {
+          "id": "fcf190a9-6fe5-4152-a4ea-f3b77422ec52",
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "obligation": "skattemelding",
+          "updated_at": "2026-09-14T01:53:12.723571+00:00",
+          "confirmed_at": "2026-09-14T01:53:12.723571+00:00",
+          "confirmed_by": "00000000-0000-0000-0000-000000000153",
+          "submitter_user_id": "00000000-0000-0000-0000-000000000153",
+          "production_enabled": false
+        }
+      ],
+      "submissions": [
+        {
+          "id": "436c34c0-66b6-474f-9086-28eab2d5176a",
+          "mode": "test_authority",
+          "calls": [
+            {
+              "status": "validertOK",
+              "endpoint": "skatteetaten:company-tax-validation",
+              "body_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "created_at": "2026-07-14T12:20:00.000Z",
+              "idempotency_key": null
+            },
+            {
+              "status": "confirmation_prepared",
+              "endpoint": "altinn:owner-confirmation-handoff",
+              "body_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "created_at": "2026-07-14T12:21:00.000Z",
+              "idempotency_key": null
+            },
+            {
+              "status": "received",
+              "endpoint": "altinn:official-feedback-receipt",
+              "body_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "created_at": "2026-07-14T12:32:00.000Z",
+              "idempotency_key": null
+            }
+          ],
+          "filing": "skattemelding for AS",
+          "status": "feedback_ready",
+          "setup_id": null,
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "created_at": "2026-09-14T01:53:12.723571+00:00",
+          "created_by": "00000000-0000-0000-0000-000000000153",
+          "preview_id": null,
+          "receipt_id": "70beee03-d8c2-4584-b366-8231c6de6584",
+          "updated_at": "2026-07-14T12:32:00+00:00",
+          "income_year": 2025,
+          "adapter_mode": "test_authority",
+          "failure_code": null,
+          "payload_hash": "16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+          "submitted_by": null,
+          "feedback_items": [
+            {
+              "code": "COMPANY_TAX_AUTHORITY_OUTCOME_PENDING",
+              "message": "Offisiell tilbakemelding er mottatt, men myndighetsutfallet venter p\u00e5 klassifisering.",
+              "severity": "warning",
+              "documentId": "70beee03-d8c2-4584-b366-8231c6de6584"
+            }
+          ],
+          "failure_message": null,
+          "idempotency_key": "company-tax:00000000-0000-0000-0000-000000000152:2025:16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+          "receipt_metadata": {
+            "status": "feedback_ready",
+            "dataType": "tilbakemelding",
+            "authority": "skatteetaten",
+            "receiptId": "70beee03-d8c2-4584-b366-8231c6de6584",
+            "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584",
+            "archivedAt": "2026-07-14T12:31:00.000Z",
+            "byteLength": 527,
+            "receivedAt": "2026-07-14T12:32:00.000Z",
+            "contentType": "application/xml",
+            "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "processEndedAt": "2026-07-14T12:30:00.000Z",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "feedbackDocumentIds": [
+              "70beee03-d8c2-4584-b366-8231c6de6584"
+            ]
+          },
+          "submitted_payload": null,
+          "preview_confirmed_at": null,
+          "preview_confirmed_by": null,
+          "authority_test_run_id": "09a232b9-0afd-4ef5-8e69-b6401211b6fd",
+          "feedback_document_ids": [
+            "70beee03-d8c2-4584-b366-8231c6de6584"
+          ],
+          "submitted_payload_ref": {
+            "storedAt": "2026-07-14T12:32:00.000Z",
+            "incomeYear": 2025,
+            "payloadHash": "16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+            "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+            "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+            "companyOrgNumber": "310279617",
+            "skattemeldingHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "submissionEnvelopeHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "validationEnvelopeHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "naeringsspesifikasjonHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          },
+          "authority_confirmed_at": null,
+          "authority_confirmed_by": null
+        }
+      ],
+      "test_evidence": [
+        {
+          "id": "09a232b9-0afd-4ef5-8e69-b6401211b6fd",
+          "status": "pending",
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "obligation": "skattemelding",
+          "environment": "test",
+          "recorded_at": "2026-07-14T12:32:00+00:00",
+          "recorded_by": "00000000-0000-0000-0000-000000000153",
+          "evidence_url": "https://evidence.example/synthetic.json",
+          "payload_hash": "sha256:16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+          "test_reference": "tt02:51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "feedback_summary": "validertOK; personbekreftelse fullf\u00f8rt; offisiell tilbakemelding mottatt; myndighetsutfall venter p\u00e5 klassifisering.",
+          "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+        }
+      ],
+      "review_comments": [
+        {
+          "id": "28bc01b7-4793-45dd-894d-b29d7cc46cfe",
+          "body": "Committed owned comment",
+          "target": "rf1086_preview",
+          "severity": "advisory",
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "created_at": "2026-09-14T01:53:12.977715+00:00",
+          "created_by": "00000000-0000-0000-0000-000000000153",
+          "preview_id": "00000000-0000-0000-0001-000000000000",
+          "acknowledged_at": null,
+          "acknowledged_by": null
+        },
+        {
+          "id": "e31771ba-905c-485b-bb4c-b5c42d4fb99f",
+          "body": "Synthetic comment",
+          "target": "rf1086_preview",
+          "severity": "advisory",
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "created_at": "2026-09-14T01:53:12.723571+00:00",
+          "created_by": "00000000-0000-0000-0000-000000000153",
+          "preview_id": "00000000-0000-0000-0001-000000000000",
+          "acknowledged_at": null,
+          "acknowledged_by": null
+        }
+      ]
+    },
+    "incomeYear": 2025,
+    "completeEnumeration": true
+  },
+  "emptyYearSnapshot": {
+    "asOf": "2026-09-14T02:28:23.638749+00:00",
+    "coverage": {
+      "phase": "cutover",
+      "scope": "talli_recorded_company_tax",
+      "companyId": "00000000-0000-0000-0000-000000000152",
+      "inventory": {
+        "table:public.filing_previews": "256f12e4d2990a0f6ba3a4870c49e940bc58657ae36094db1af8a5550ad83974",
+        "table:public.filing_overrides": "22c41bac7d2cadf8ad437d69a0d30a2331bc72d6615515a561b4ac834223f12c",
+        "table:public.filing_submissions": "50227db27e100c8acc16fdd58c1c253b44298a9daf73376ea2d5da4ee3105d5b",
+        "table:public.authority_test_runs": "6c3f66ba310ce6fd2476cf58ca7c9a1df0fa56dad40f1e842f734c6b1afc2b77",
+        "table:public.authority_permissions": "6d7b9a73e177f69204cc34b87166ffd920330b6cea7b2e6cdbf63763bf8bc4fd",
+        "table:public.filing_review_comments": "5b0fc9d3d7ac5a4aeba978f927d7c904dbcc3a6c1000ade2614b497b34c078dd",
+        "function:documents.has_evidence_references_v1(uuid)": "8dbcebbcda60ca832e83a232e0a686abbfb4cff38506847b3bfae776d5450ab4",
+        "function:public.import_company_tax_tt02_evidence(jsonb)": "e58d276f95a70fd7e477e8c5236260ffaf2ed827b14a898065195711b925b6b7"
+      },
+      "incomeYear": 2024,
+      "familyCounts": {
+        "filing_previews": 0,
+        "filing_overrides": 0,
+        "filing_submissions": 0,
+        "authority_test_runs": 1,
+        "authority_permissions": 1,
+        "filing_review_comments": 0
+      },
+      "familyDigests": {
+        "filing_previews": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "filing_overrides": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "filing_submissions": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "authority_test_runs": "4434f712531ed1c628c55926189a4f082513fe7c44cbb29bf702acfb0dca27a3",
+        "authority_permissions": "c0998c46244c2ba39cd2fdc6cb1a3789798cad6fdc062b7dd750a215494ad22c",
+        "filing_review_comments": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "inventoryValid": true,
+      "sourceRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+      "modeChecksValid": true,
+      "quarantineClear": true,
+      "sourceRowsValid": true,
+      "legacyFencesValid": true,
+      "reconciledFamilies": [
+        "authority_permissions",
+        "authority_test_runs",
+        "filing_overrides",
+        "filing_previews",
+        "filing_review_comments",
+        "filing_submissions"
+      ],
+      "declaredExtentValid": true,
+      "retainedSubmissionIds": []
+    },
+    "companyId": "00000000-0000-0000-0000-000000000152",
+    "workspace": {
+      "previews": [],
+      "overrides": [],
+      "permissions": [
+        {
+          "id": "fcf190a9-6fe5-4152-a4ea-f3b77422ec52",
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "obligation": "skattemelding",
+          "updated_at": "2026-09-14T01:53:12.723571+00:00",
+          "confirmed_at": "2026-09-14T01:53:12.723571+00:00",
+          "confirmed_by": "00000000-0000-0000-0000-000000000153",
+          "submitter_user_id": "00000000-0000-0000-0000-000000000153",
+          "production_enabled": false
+        }
+      ],
+      "submissions": [],
+      "test_evidence": [
+        {
+          "id": "09a232b9-0afd-4ef5-8e69-b6401211b6fd",
+          "status": "pending",
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "obligation": "skattemelding",
+          "environment": "test",
+          "recorded_at": "2026-07-14T12:32:00+00:00",
+          "recorded_by": "00000000-0000-0000-0000-000000000153",
+          "evidence_url": "https://evidence.example/synthetic.json",
+          "payload_hash": "sha256:16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+          "test_reference": "tt02:51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "feedback_summary": "validertOK; personbekreftelse fullf\u00f8rt; offisiell tilbakemelding mottatt; myndighetsutfall venter p\u00e5 klassifisering.",
+          "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+        }
+      ],
+      "review_comments": []
+    },
+    "incomeYear": 2024,
+    "completeEnumeration": true
+  }
+}

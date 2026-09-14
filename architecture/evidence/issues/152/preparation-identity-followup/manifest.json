@@ -1,0 +1,17 @@
+{
+  "baselineRevision": "6e67ba3e0759641db845449756306df444a3a9b1",
+  "status": "ACKNOWLEDGEMENT_IDENTITY_FIX_VERIFIED_REVIEW_PENDING",
+  "tests": 25,
+  "change": "Reject a substituted acknowledgement record identity inside the application transaction, before commit. The API guard remains in place.",
+  "limits": [
+    "Persistence corruption is injected through a test double; this is not evidence of a current SQL identity defect.",
+    "No SQL/provider/cutover change or full-stage credit."
+  ],
+  "artifacts": {
+    "preparation-identity-fix-tests.log": "55480617a383d1d4ab91bc13c37599e9c5a650e2ed76f137b3e341d186eb7646",
+    "preparation-standards-review-6e67ba3e.md": "29b41755e7732c78572eb985349c4343ef967c5d1b7b41c73accebae3c79ec6d",
+    "preparation-spec-review-6e67ba3e.md": "ed85b6dcc07f2df33fca277c88adc5403558154cc68d9ced18c22a0b67bd6e42",
+    "preparation-standards-review-6e67ba3e.json": "264601aea0f17ecaaa787bc9eafadba7780ec104303ba529c8aa63bbef8f9375",
+    "preparation-spec-review-6e67ba3e.json": "cf7cd38e223c20ab0c2781e620939cc80f7c95cd816cf59660f78a56358d0cea"
+  }
+}

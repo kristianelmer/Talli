@@ -191,6 +191,38 @@ const RF_COMPATIBILITY_AMENDMENT = Object.freeze({
 // Later Tax-owned read seams preserve the approved RF compositions and every
 // retained sibling chain. Exact digests prevent this from permitting new behavior.
 const TAX_SOURCE_COMPOSITION_DIGESTS = new Map([["apps/web/app/actions.ts\u0000refreshAnnualReadinessSnapshots", "sha256:8d7b86fe06037a7ce5248c8770ffbae71c275b421f24a2315b9986c77492aed4"], ["apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts\u0000GET", "sha256:fd8e6f5546481fa9fe8c9a8fe4dd9efd681b9b708c8aa705d4ca3650f2616007"]]);
+// #152 routes Tax through its declared API while preserving every retained
+// Accounts and Audit chain. This pins behavior, not a new persistence exception.
+const TAX_RETURN_COMPOSITION_DIGESTS = new Map([
+  [
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts\u0000GET",
+    "sha256:04376bf0612dd248fb20d24709607315bf82f0f992fa71902b3a6774ce611f09"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000refreshAnnualReadinessSnapshots",
+    "sha256:9cf071a669f53fd1a19f96054143641e31581e68f43c1286844af2f3e236fd81"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000addFilingOverride",
+    "sha256:e27053ee548262be1ea95a207757b90a06987153e7667d85203e18e6864156a4"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000addFilingReviewComment",
+    "sha256:aad9741fdb3c7c4d5f1dcc235d460f4894db2a60b62aa4faa374441c9869a419"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000acknowledgeFilingReviewComment",
+    "sha256:eb4bc1e3f35ff9bd712480142f867cb91ea8d38fb561f50d7abe14137333704f"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000confirmAuthorityPermission",
+    "sha256:52dcba11b44765eacd352ec29abb389ddb18610fc9b1a894f335527c10ac9290"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000recordAuthorityTestEvidence",
+    "sha256:7399b5e1c0755371ec4290f3d2b2874aa68c1368261f6e512b0adce50ca72f13"
+  ]
+]);
 const RF_COMPOSITION_DIGESTS = new Map([
   [
     "apps/web/app/actions.ts\u0000addFilingOverride",
@@ -1434,7 +1466,11 @@ function validateSystemManifest(root, errors, schema) {
 
 function discoverMigrationTables(root) {
   const tables = new Set();
-  for (const path of walk(join(root, "supabase/migrations"), (candidate) => candidate.endsWith(".sql"))) {
+  // Explicitly ordered capability artifacts can create inert successor tables
+  // after a predecessor contract. They require the same ownership inventory.
+  const paths = ["supabase/migrations", "supabase/contract-migrations"].flatMap(directory =>
+    existsSync(join(root, directory)) ? walk(join(root, directory), candidate => candidate.endsWith(".sql")) : []);
+  for (const path of paths) {
     const source = readFileSync(path, "utf8");
     const statements = source.matchAll(
       /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z][a-z0-9_]*\.[a-z_]+)|alter\s+table\s+(?:if\s+exists\s+)?([a-z][a-z0-9_]*\.[a-z_]+)\s+set\s+schema\s+([a-z][a-z0-9_]*)|alter\s+table\s+(?:if\s+exists\s+)?([a-z][a-z0-9_]*\.[a-z_]+)\s+rename\s+to\s+([a-z_]+)/giu,
@@ -2180,10 +2216,39 @@ export function validateCompatibilityRegistry(path, {
       && resourceOwner?.("table:holding_actions") === "backend:company_tax_filing"
       && !activeLegacyScopeKeys.has(compatibilityScopeKey(scope.path, scope.rule, "table:holding_actions", scope.operation))
       && analysis?.state === "found"
-      && analysis.sourceDigest === TAX_SOURCE_COMPOSITION_DIGESTS.get(key)
+      && (analysis.sourceDigest === TAX_SOURCE_COMPOSITION_DIGESTS.get(key) || taxReturnComposition(scope))
       && (analysis.resourceOccurrences.get("table:holding_actions") ?? 0) === 0
       && (analysis.resourceOccurrences.get("table:*") ?? 0) === 0;
   };
+  const taxReturnComposition = (scope) => {
+    const key = compatibilityOperationKey(scope.path, scope.operation);
+    const analysis = currentOperationAnalysis(scope);
+    return ((currentCapability === "company_tax_filing" && registry.migration?.currentIssue === "#152")
+        || exitedCapabilities.has("company_tax_filing"))
+      && !registry.records.some((record) => record.id === "compat-company-tax-persistence")
+      && analysis?.state === "found"
+      && analysis.sourceDigest === TAX_RETURN_COMPOSITION_DIGESTS.get(key)
+      && (analysis.persistenceOccurrences.get("rpc:import_company_tax_tt02_evidence") ?? 0) === 0
+      && ![...analysis.persistenceOccurrences.keys()].some((resource) => resource.endsWith(":*"));
+  };
+  // Archive's older completed deletions must not authorize arbitrary edits to
+  // the retained sibling reads when adding the owned Tax source.
+  for (const operationKey of TAX_SOURCE_COMPOSITION_DIGESTS.keys()) {
+    const scopes = frozenScopesByOperation.get(operationKey) ?? [];
+    const scope = scopes[0];
+    if (!scope || !(currentCapability === "company_tax_filing" || exitedCapabilities.has("company_tax_filing"))
+        || resourceOwner?.("table:holding_actions") !== "backend:company_tax_filing") continue;
+    const retained = scopes.filter(item => activeLegacyScopeKeys.has(
+      compatibilityScopeKey(item.path, item.rule, item.resource, item.operation)));
+    if (!retained.length) continue;
+    const current = currentOperationAnalysis(scope);
+    const original = legacyOperationAnalysis(sourceAtRevision?.(scope.path), scope.path, scope.operation);
+    if (!taxOwnedSourceRetirement(scope) || original?.state !== "found"
+        || !retained.every(item => JSON.stringify(current.persistenceChains.get(item.resource))
+          === JSON.stringify(original.persistenceChains.get(item.resource)))) {
+      errors.push(`Tax source composition requires its exact body and unchanged sibling persistence chains: ${operationLabel(operationKey)}`);
+    }
+  }
   const removedRfReads = removedFrozenScopes.filter(({ record, scope }) => rfAmendmentRead(record, scope));
   const rfSimulationRemoved = removedRfReads.some(({ scope }) => scope.operation === "confirmSimulatedRf1086Submission");
   let rfSimulationAtomic = false;
@@ -2310,7 +2375,7 @@ export function validateCompatibilityRegistry(path, {
       const preserved = analysis?.state === "found" && original?.state === "found"
         && (analysis.sourceDigest === original.sourceDigest
           || analysis.sourceDigest === RF_COMPOSITION_DIGESTS.get(operationKey)
-          || taxOwnedSourceRetirement(scope))
+          || taxOwnedSourceRetirement(scope) || taxReturnComposition(scope))
         && retainedScopes.every((item) => JSON.stringify(analysis.persistenceChains.get(item.resource))
           === JSON.stringify(original.persistenceChains.get(item.resource)))
         && [...analysis.persistenceOccurrences].every(([resource, count]) => count === 0

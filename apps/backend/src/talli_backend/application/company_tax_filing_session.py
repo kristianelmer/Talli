@@ -2,15 +2,16 @@
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 
+from talli_backend.modules.audit.public import AuditInclusion
 from talli_backend.modules.banking.public import TaxSettlementBankingPersistence
-from talli_backend.modules.company_tax_filing.public import TaxSettlementPersistence, TaxSettlementArchivePersistence
+from talli_backend.modules.company_tax_filing.public import TaxSettlementPersistence, TaxSettlementArchivePersistence, CompanyTaxWorkspacePersistence, CompanyTaxReturnPersistence, CompanyTaxPreparationPersistence, CompanyTaxSourcePersistence
 from talli_backend.modules.documents.public import DocumentBindingPersistence
 from talli_backend.modules.ledger.public import LedgerPersistence
 from talli_backend.shared.kernel import ActorId
 
 
 class CompanyTaxTransaction(
-    TaxSettlementPersistence, TaxSettlementArchivePersistence, LedgerPersistence, TaxSettlementBankingPersistence,
+    TaxSettlementPersistence, TaxSettlementArchivePersistence, CompanyTaxWorkspacePersistence, CompanyTaxReturnPersistence, CompanyTaxPreparationPersistence, CompanyTaxSourcePersistence, AuditInclusion, LedgerPersistence, TaxSettlementBankingPersistence,
     DocumentBindingPersistence, Protocol,
 ):
     @property
@@ -21,7 +22,7 @@ class CompanyTaxSession(Protocol):
     @property
     def actor_id(self) -> ActorId: ...
 
-    def transaction(self) -> AbstractAsyncContextManager[CompanyTaxTransaction]: ...
+    def transaction(self, *, snapshot: bool = False) -> AbstractAsyncContextManager[CompanyTaxTransaction]: ...
 
 
 class CompanyTaxSessionFactory(Protocol):

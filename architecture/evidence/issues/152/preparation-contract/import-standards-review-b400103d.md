@@ -1,0 +1,11 @@
+# Standards review — TT02 import checkpoint
+
+**Changes requested: one P2 robustness finding.** Reviewed `4c5404dfcedfbd5b858d76e1a7095ec2bd800247...b400103d2d7204c9a2154fd953a03ccb00041ad4`, one commit, 34 changed files. Future working-tree changes are excluded.
+
+**P2 — Complete the raw-JSON failure boundary** (`apps/backend/src/talli_backend/main.py:9836`, immutable conversion in `modules/company_tax_filing/public.py`). The route catches `RecursionError` only while decoding, then constructs the recursively frozen command outside that handler. A valid fixture containing an ignored 600-level array, only 3,864 UTF-8 bytes, raises `RecursionError` and returns `500 INTERNAL_SERVER_ERROR` before any transaction. The 20/300-level controls return 200. Preserve accepted evidence through bounded/iterative conversion, or consistently reject unsupported nesting through the owned invalid-input contract; add the control and regression. This is a boundary-correctness issue against ADR0012’s governed typed API/error contract, not a Fowler smell judgment. No persistence effect or source echo occurred.
+
+No additional actionable Standards finding identified. The SQL body comparison preserves predecessor validation, replay identity, timestamps and attribution while replacing cross-owner reads with Company Access contracts. Phase-gated Tax writes and creation-only Audit inclusion remain in the same application transaction. Audit retains `public.audit_events` under the registered unmigrated dependency allowance; its restricted definer and exact event guard do not imply #155 completion. Borrowed migration role options and conditional schema-CREATE authority are restored. Frozen scopes and criteria remain unchanged.
+
+Independent isolated verification: **17 backend import tests and 18 Node24 transport tests passed**. Nine artifact hashes and three SQL hashes match. OpenAPI adds exactly two schemas and one path; every pre-existing schema/path is equal. The documented 214/17 counts are explicitly overlapping. The 19 rollback-only SQL cases were inspected, not rerun. No DB, provider, browser, cutover, owner-UI or full-stage acceptance is certified.
+
+Probe, trace and test transcripts are bound in the accompanying JSON. The parent’s later correction is outside this immutable review.

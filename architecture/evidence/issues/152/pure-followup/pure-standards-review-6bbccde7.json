@@ -1,0 +1,160 @@
+{
+  "verdict": "TWO_ACTIONABLE_PURE_PARITY_FINDINGS",
+  "baseRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+  "candidateRevision": "6bbccde76e4d7b47e0c6b2c83f21e46470118d3f",
+  "commits": [
+    "6bbccde76e4d7b47e0c6b2c83f21e46470118d3f feat(tax): add characterized backend calculation and TT02 projection contracts",
+    "b7e524ae2f7026a0fe91eaf55385d99065b62989 docs(tax): capture successful synthetic TT02 import projections",
+    "252cf52a20a98074a2dbc875a59effbb0a278bfe docs(tax): begin company tax filing characterization for #152"
+  ],
+  "diffSha256": "3b58c148188547778fce7b46e79b356d3d8b0719d7b97c7dc3a791fcfdfcf1fe",
+  "files": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md",
+      "sha256": "c57007cf480c6472d8a14ae297e64ce51c3030665835aad4091c836a6292e628"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/calculation.py",
+      "sha256": "7703052a22d67d129949b2ed1ffe090b24e995dde2fdcaa318e7128c41c09694"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/evidence.py",
+      "sha256": "f344acf3494afa201119ea8732b09b2dc996534fb42412fb64d2d4356dff64b1"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/module.json",
+      "sha256": "0c39d50476c445ebb23df0af438237c17d362e1523a3f238a11f3d4c6d85aa6c"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/numbers.py",
+      "sha256": "53230d7595656d7a62a502a51a02813ec1d49a3e866d4e75758da491b92dfbdb"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/public.py",
+      "sha256": "298d514ece4b0b668cc03df9902d9c744c0047f8cd40c6adc10a6a383e041ce2"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/rendering.py",
+      "sha256": "28a1891bbef3c8f2caeddbb04ddefda210aafbcae7414c094f6bc1ad1a992854"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_return_characterization.py",
+      "sha256": "593e633a6c75b8ab2cea28727994926633ef0990b8bacf72091d09edadc3fa04"
+    },
+    {
+      "path": "architecture/compatibility.json",
+      "sha256": "490618b3e5b0a24023b74256dab39789268f505175686e286a1a254521c5da76"
+    },
+    {
+      "path": "architecture/evidence/issues/152/entry-spec-review-b7e524ae.json",
+      "sha256": "43d6d9cc628163dd7f6f1a8f745db1ddc72255cd6eae726aa877400be7cfbef3"
+    },
+    {
+      "path": "architecture/evidence/issues/152/entry-spec-review-b7e524ae.md",
+      "sha256": "de398dd1f6cb4cb3449724b9a6176c3efb10ea37c2f4c95a78e8345021a53cd0"
+    },
+    {
+      "path": "architecture/evidence/issues/152/entry-standards-review-b7e524ae.json",
+      "sha256": "67a0f8a84071b7b7ba86cd7420b7bc8f51604d0566edd03b0f17f5be68c650db"
+    },
+    {
+      "path": "architecture/evidence/issues/152/entry-standards-review-b7e524ae.md",
+      "sha256": "b617d2cbc82c925ce6ef594e5ccb0d2eb6b83836d51760634693e7c71b1e9fb0"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-capture.mjs.txt",
+      "sha256": "a75cee605c9550d5c959ebec0b4c6701ca00ca60b950eb271966a683944039fe"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-characterization.json",
+      "sha256": "2c50fe51fb47ea12e5890198966d4b5b460565056ecc9e9d5f188fc83c1b83a7"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-database-capture.py.txt",
+      "sha256": "8ebf917db380282674bedd71ae76e3a5bc8a623763d00a2667103cf0fe9b22fc"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-database-characterization.json",
+      "sha256": "59809ac5f43fee05706066c19b6e7d9b891fe6b4a20f9b3e3c6ca8bbf9b6a201"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-import-boundaries-capture.mjs.txt",
+      "sha256": "856b900295a7a5792164acd857c843e5d34acdc0f41bc482b40aecb731636356"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-import-boundaries.json",
+      "sha256": "834ebca97082d477899954de1f2c4134c9551ea3e435536457a62879ebffe34f"
+    },
+    {
+      "path": "architecture/evidence/issues/152/published-receipt-independent-reread-146.json",
+      "sha256": "a3ecb65e484d674d57285023388c7a56b06baf346758686d34073671e39cd96c"
+    },
+    {
+      "path": "architecture/evidence/issues/152/published-receipt-independent-reread-146.md",
+      "sha256": "cab5da886f84636352b1802a186ca22419a0b8b1e1b5a9e47c25885536242d24"
+    },
+    {
+      "path": "architecture/evidence/issues/152/requirements.json",
+      "sha256": "3088ed19558c7245a055c50c6dfa24b6af18f2958d9ad673961b906e0f192589"
+    },
+    {
+      "path": "architecture/evidence/issues/152/source-inventory.json",
+      "sha256": "9d7a53bde5d9599f0f52781e61cd95a5cffd959408aa1a5dfdfc1c90e3a5f982"
+    }
+  ],
+  "findings": [
+    {
+      "priority": 2,
+      "file": "apps/backend/src/talli_backend/modules/company_tax_filing/evidence.py",
+      "line": 65,
+      "summary": "Noncanonical numeric hosts bypass predecessor canonical URL rejection",
+      "basis": "ADR0013 behavior equivalence; module strict sanitized projection contract"
+    },
+    {
+      "priority": 2,
+      "file": "apps/backend/src/talli_backend/modules/company_tax_filing/numbers.py",
+      "line": 8,
+      "summary": "Python-only numeric syntax and unhandled radix overflow alter predecessor output",
+      "basis": "ADR0013 statutory/calculation equivalence; retained binary64 contract"
+    }
+  ],
+  "isolatedTests": {
+    "passed": 169,
+    "newParity": 116,
+    "settlementRegressions": 53,
+    "temporaryRoot": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-152-pure-review-5mdaza15",
+    "pythonVersion": "Python 3.12.11",
+    "predecessorNode": "v24.20.0"
+  },
+  "artifacts": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/pure-standards-edge-probe-6bbccde7.mjs",
+      "sha256": "2a5ebefbab1326a83fd635e259b6a19daf12c81ae203cf5721c6ed812d350dd8"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/pure-standards-edge-probe-6bbccde7.py",
+      "sha256": "8e343458607e2edc0cd4f2bcc55d85e0183b7df25de0ff10169890a204cfa640"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/pure-standards-edge-expected-6bbccde7.json",
+      "sha256": "166f42f64a250bf23b01967df115cbc2b01afbd78e60b8ed0cea16ddd136e15e"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/pure-standards-edge-probe-6bbccde7.log",
+      "sha256": "37a88df60a8130ab7fb673e73eeab99527c359c4573f64e42f8106c87e9126bf"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/pure-standards-tests-6bbccde7.log",
+      "sha256": "456527d09a4f420b7d5e8c7ce551a9a6e9b6879bd83467b2e2d1875e268c2f3c"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/pure-standards-extraction-6bbccde7.txt",
+      "sha256": "1036e12bd07df3efaacf9ce768276bf1abfef0398bf0d3771c840fcd3dc50748"
+    }
+  ],
+  "limits": [
+    "No shared DB/browser/provider or tracked changes",
+    "No complete #152 gate or exit verification",
+    "New summary/ICU work after pinned checkpoint excluded"
+  ]
+}

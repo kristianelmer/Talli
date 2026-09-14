@@ -403,6 +403,63 @@
         "/api/v1/company-tax/settlement-previews",
         "/api/v1/company-tax/settlement-archive-source"
       ]
+    },
+    {
+      "name": "company-tax-filing-reads",
+      "purpose": "Returns immutable complete Tax filing rows for one authorized company and optional year; copied expansion and rolled-back sources fail closed.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "routes": [
+        "/api/v1/company-tax/filing-workspace"
+      ]
+    },
+    {
+      "name": "company-tax-tt02-evidence-import",
+      "purpose": "Authorizes and projects sanitized TT02 evidence, persists it idempotently through Company Tax, and includes Audit only on creation in one transaction over the canonical legacy Audit store.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public",
+        "talli_backend.modules.audit.public"
+      ],
+      "routes": [
+        "/api/v1/company-tax/tt02-evidence-imports"
+      ]
+    },
+    {
+      "name": "company-tax-filing-preparation",
+      "purpose": "Runs owned Tax override, review, acknowledgement, permission and manual-evidence controls with Company Access authorization; preserves existing external Audit continuations and performs no provider operation.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "routes": [
+        "/api/v1/company-tax/previews/{preview_id}",
+        "/api/v1/company-tax/overrides",
+        "/api/v1/company-tax/review-comments",
+        "/api/v1/company-tax/review-comments/{comment_id}/acknowledgements",
+        "/api/v1/company-tax/permissions",
+        "/api/v1/company-tax/test-evidence"
+      ]
+    },
+    {
+      "name": "company-tax-assessment-previews",
+      "purpose": "Authenticates the caller and evaluates supplied immutable Tax readiness and annual-estimate facts through the owned pure contracts. Preview labels do not attest stored completeness or authorize filing; no business read or mutation occurs.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "routes": [
+        "/api/v1/company-tax/readiness-previews",
+        "/api/v1/company-tax/annual-estimate-previews"
+      ]
+    },
+    {
+      "name": "company-tax-source-facts",
+      "purpose": "Publishes immutable owner-scoped Tax source evidence from one repeatable snapshot; requires positive history coverage and preserves production-disabled, unknown and test-only distinctions without Billing policy.",
+      "publicPackages": [
+        "talli_backend.modules.company_tax_filing.public"
+      ],
+      "routes": [
+        "/api/v1/company-tax/source-facts"
+      ]
     }
   ],
   "operationalControlState": {
@@ -427,6 +484,11 @@
       "backend_system.banking_migration_reconciliations",
       "backend_system.banking_migration_runs",
       "backend_system.banking_migration_source_rows",
+      "backend_system.company_tax_return_migration_inventory",
+      "backend_system.company_tax_return_migration_state",
+      "backend_system.company_tax_return_quarantine",
+      "backend_system.company_tax_return_reconciliations",
+      "backend_system.company_tax_return_source_rows",
       "backend_system.ledger_command_receipts",
       "backend_system.ledger_cursor_signing_keys",
       "backend_system.ledger_migration_quarantine",
@@ -502,7 +564,14 @@
       "supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql",
       "supabase/migrations/20260913171000_company_tax_settlement_expand.sql",
       "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
-      "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql"
+      "supabase/contract-migrations/20260913173000_company_tax_settlement_contract.sql",
+      "supabase/contract-migrations/20260914200000_company_tax_return_expand.sql",
+      "supabase/contract-migrations/20260914201000_company_tax_return_read_contracts.sql",
+      "supabase/contract-migrations/20260914202000_company_tax_return_import_contract.sql",
+      "supabase/contract-migrations/20260914203000_company_tax_return_preparation_contracts.sql",
+      "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql",
+      "supabase/contract-migrations/20260914012930_company_tax_return_contract.sql",
+      "supabase/contract-migrations/20260914022608_company_tax_return_source_contract.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },
@@ -801,6 +870,48 @@
       "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
       "owner": "backend-system",
       "mode": "one request-scoped settlement transaction; verified actor, restricted executor and public capability operations"
+    },
+    {
+      "port": "CompanyTaxWorkspacePersistence",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "one request-scoped read transaction with verified actor and phase-gated owned RLS"
+    },
+    {
+      "port": "CompanyTaxReturnPersistence",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "one request-scoped import transaction; Tax owns validated receipt persistence and Audit retains its canonical legacy append implementation"
+    },
+    {
+      "port": "AuditInclusion",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "one request-scoped import transaction; Tax owns validated receipt persistence and Audit retains its canonical legacy append implementation"
+    },
+    {
+      "port": "CompanyTaxPreparationPersistence",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "one verified phase-gated preparation transaction with Company Access accepted-role and fresh-MFA decisions"
+    },
+    {
+      "port": "CompanyTaxAuthority",
+      "adapter": "talli_backend.adapters.company_tax_authority.CompanyTaxTransport",
+      "owner": "backend-system",
+      "mode": "fixed TT02 transport; Company Tax owns polling decisions and human confirmation remains external"
+    },
+    {
+      "port": "CompanyTaxRehearsalIO",
+      "adapter": "talli_backend.adapters.local_company_tax_rehearsal.LocalCompanyTaxRehearsal",
+      "owner": "backend-system",
+      "mode": "local evidence and credential mechanisms; Company Tax owns durable rehearsal intent, prepare/resume guards and state transitions"
+    },
+    {
+      "port": "CompanyTaxSourcePersistence",
+      "adapter": "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction",
+      "owner": "backend-system",
+      "mode": "one verified owner repeatable snapshot; positive Tax migration coverage, complete enumeration and phase lock; no provider operation"
     }
   ],
   "allowedDependencies": {
@@ -874,7 +985,8 @@
       "talli_backend.shared.kernel",
       "time",
       "typing",
-      "uuid"
+      "uuid",
+      "json"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",
@@ -897,7 +1009,8 @@
       "talli_backend.modules.marketing_measurement.public",
       "talli_backend.modules.shareholder_register_filing.public",
       "talli_backend.modules.system_boundary.public",
-      "talli_backend.modules.validation_observation.public"
+      "talli_backend.modules.validation_observation.public",
+      "talli_backend.modules.audit.public"
     ],
     "adapters": [
       "__future__",
@@ -969,7 +1082,8 @@
       "typing",
       "urllib.error",
       "urllib.parse",
-      "urllib.request"
+      "urllib.request",
+      "talli_backend.modules.audit.public"
     ]
   }
 }

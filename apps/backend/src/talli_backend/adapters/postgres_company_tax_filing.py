@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 import json
+from datetime import datetime
 import os
 
 import psycopg
@@ -15,12 +16,21 @@ from talli_backend.adapters.supabase_ledger import (
 )
 from talli_backend.application.company_tax_filing_session import CompanyTaxSessionFactory
 from talli_backend.application.company_tax_filing_workflow import CompanyTaxApplication
+from talli_backend.modules.audit.public import AuditEventDraft, AuditInclusion, audit_inclusion_adapter
+from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, Timestamp
 from talli_backend.modules.banking.public import (
     TaxSettlementBankCommand, TaxSettlementBankingPersistence,
     bank_transaction_claim_persistence_adapter,
 )
 from talli_backend.modules.company_tax_filing.public import (
     AccountingEntryReference, CompanyTaxError, RecordTaxSettlementCommand,
+    CompanyTaxPreparationPersistence, CompanyTaxRecordQuery, RecordCompanyTaxOverride,
+    AddCompanyTaxReviewComment, ConfirmCompanyTaxPermission, RecordCompanyTaxTestEvidence,
+    CompanyTaxRecordedResult, TaxFilingRecordId,
+    CompanyTaxCompanyIdentity, CompanyTaxReturnPersistence, CompanyTaxEvidenceProjection,
+    ImportedCompanyTaxEvidence, TaxAuthorityEvidenceId, TaxFilingSubmissionId,
+    CompanyTaxWorkspaceQuery, CompanyTaxFilingRows, CompanyTaxWorkspacePersistence,
+    CompanyTaxSourceQuery, CompanyTaxSourceSnapshot, CompanyTaxSourcePersistence,
     TaxSettlementPersistence, TaxSettlementArchivePersistence, TaxSettlementArchiveQuery, tax_settlement_persistence_adapter,
 )
 from talli_backend.modules.documents.public import (
@@ -31,6 +41,35 @@ from talli_backend.modules.ledger.public import (
     PostTaxSettlementCommand, ledger_persistence_adapter,
 )
 from talli_backend.modules.ledger.service import LedgerService
+
+
+def _company_tax_database_error(error: psycopg.DatabaseError):
+    known = {
+        'company_tax_return_forbidden': CompanyTaxError.forbidden,
+        'company_tax_return_not_found': CompanyTaxError.not_found,
+        'company_tax_return_invalid_input': CompanyTaxError.invalid_input,
+        'company_tax_return_hard_review_block': CompanyTaxError.hard_review_block,
+        'company_tax_return_unavailable': CompanyTaxError.unavailable,
+    }
+    message = error.diag.message_primary or ''
+    if message == 'company_tax_evidence_mfa_required':
+        return CompanyTaxError.mfa_required()
+    if message in ('company_tax_evidence_authentication_required', 'company_tax_evidence_owner_required', 'company_access_forbidden'):
+        return CompanyTaxError.forbidden()
+    if message == 'company_access_not_found':
+        return CompanyTaxError.not_found()
+    if message in ('company_tax_evidence_invalid_payload', 'company_tax_evidence_forbidden_content', 'company_tax_evidence_conflict'):
+        return CompanyTaxError.evidence_persistence_rejected()
+    factory = known.get(message)
+    return factory() if factory else _map_database_error(str(error))
+
+
+def _json_value(value):
+    if isinstance(value, Mapping):
+        return {key: _json_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_value(item) for item in value]
+    return value
 
 
 def _request(command: RecordTaxSettlementCommand) -> dict[str, object]:
@@ -82,13 +121,15 @@ class PostgresCompanyTaxSession:
         return self._verified.actor_id
 
     @asynccontextmanager
-    async def transaction(self) -> AsyncIterator[PostgresCompanyTaxTransaction]:
+    async def transaction(self, *, snapshot: bool = False) -> AsyncIterator[PostgresCompanyTaxTransaction]:
         if not self._database_url:
             raise CompanyTaxError.unavailable()
         try:
             async with await psycopg.AsyncConnection.connect(
                 self._database_url, connect_timeout=5, row_factory=dict_row,
             ) as connection, connection.transaction():
+                if snapshot:
+                    await connection.execute('set transaction isolation level repeatable read')
                 await connection.execute('set local role company_tax_filing_workflow_executor')
                 await connection.execute("select set_config('talli.verified_actor_id', %s, true)", (str(self.actor_id.subject),))
                 await connection.execute("select set_config('talli.verified_actor_claims', %s, true)", (self._verified.claims_json,))
@@ -99,9 +140,14 @@ class PostgresCompanyTaxSession:
             raise CompanyTaxError.unavailable() from None
         except psycopg.DatabaseError as error:
             # Existing receipt, Ledger and input codes remain part of released v1.
-            raise _map_database_error(str(error)) from None
+            raise _company_tax_database_error(error) from None
 
 
+@tax_settlement_persistence_adapter(CompanyTaxSourcePersistence)
+@tax_settlement_persistence_adapter(CompanyTaxPreparationPersistence)
+@audit_inclusion_adapter(AuditInclusion)
+@tax_settlement_persistence_adapter(CompanyTaxReturnPersistence)
+@tax_settlement_persistence_adapter(CompanyTaxWorkspacePersistence)
 @tax_settlement_persistence_adapter(TaxSettlementArchivePersistence)
 @tax_settlement_persistence_adapter(TaxSettlementPersistence)
 @ledger_persistence_adapter(LedgerPersistence)
@@ -124,7 +170,7 @@ class PostgresCompanyTaxTransaction:
         except psycopg.OperationalError:
             raise CompanyTaxError.unavailable() from None
         except psycopg.DatabaseError as error:
-            raise _map_database_error(str(error)) from None
+            raise _company_tax_database_error(error) from None
 
     async def _one_idempotent_row(self, query: str, parameters: tuple[object, ...]):
         rows = await self._database_rows(query, parameters)
@@ -136,6 +182,153 @@ class PostgresCompanyTaxTransaction:
         return await self._database_rows(query, (
             json.dumps(dict(payload), separators=(',', ':')), str(self.actor_id.subject),
         ))
+
+    async def filing_preview(self, query: CompanyTaxRecordQuery) -> Mapping[str, object] | None:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(
+            'select company_tax_filing.read_preview_v1(%s::uuid,%s::text) as result',
+            (str(query.record_id), str(query.actor_id.subject)),
+        )
+        result = row.get('result')
+        if result is None:
+            return None
+        try:
+            if (not isinstance(result, Mapping) or result.get('id') != str(query.record_id)
+                    or not isinstance(result.get('company_id'), str) or type(result.get('income_year')) is not int):
+                raise ValueError()
+            snapshot = CompanyTaxFilingRows(CompanyId(result['company_id']), IncomeYear(result['income_year']),
+                previews=[result], submissions=[], overrides=[], review_comments=[], permissions=[], test_evidence=[])
+            return snapshot.previews[0]
+        except (KeyError, TypeError, ValueError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def _preparation_result(self, query: str, parameters: tuple[object, ...], actor_id: ActorId) -> CompanyTaxRecordedResult:
+        if actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(query, (*parameters, str(actor_id.subject)))
+        result = row.get('result')
+        try:
+            if (not isinstance(result, Mapping) or not isinstance(result.get('id'), str)
+                    or not isinstance(result.get('company_id'), str)
+                    or result.get('income_year') is not None and type(result.get('income_year')) is not int):
+                raise ValueError()
+            return CompanyTaxRecordedResult(TaxFilingRecordId(result['id']), CompanyId(result['company_id']),
+                IncomeYear(result['income_year']) if result.get('income_year') is not None else None)
+        except (KeyError, TypeError, ValueError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def record_override(self, command: RecordCompanyTaxOverride) -> CompanyTaxRecordedResult:
+        return await self._preparation_result(
+            'select company_tax_filing.record_override_v1(%s::uuid,%s::text,%s::text,%s::text,%s::text,%s::text,%s::boolean,%s::text) as result',
+            (str(command.preview_id), command.field_target, command.old_value, command.new_value,
+             command.reason, command.risk_level, command.owner_confirmed), command.actor_id,
+        )
+
+    async def add_review_comment(self, command: AddCompanyTaxReviewComment) -> CompanyTaxRecordedResult:
+        return await self._preparation_result(
+            'select company_tax_filing.add_review_comment_v1(%s::uuid,%s::text,%s::text,%s::text) as result',
+            (str(command.preview_id), command.severity, command.body), command.actor_id,
+        )
+
+    async def acknowledge_review_comment(self, query: CompanyTaxRecordQuery) -> CompanyTaxRecordedResult:
+        return await self._preparation_result(
+            'select company_tax_filing.acknowledge_review_comment_v1(%s::uuid,%s::text) as result',
+            (str(query.record_id),), query.actor_id,
+        )
+
+    async def confirm_filing_permission(self, command: ConfirmCompanyTaxPermission) -> CompanyTaxRecordedResult:
+        return await self._preparation_result(
+            'select company_tax_filing.confirm_filing_permission_v1(%s::uuid,%s::boolean,%s::text) as result',
+            (str(command.company_id), command.production_enabled), command.actor_id,
+        )
+
+    async def record_test_evidence(self, command: RecordCompanyTaxTestEvidence) -> CompanyTaxRecordedResult:
+        return await self._preparation_result(
+            'select company_tax_filing.record_test_evidence_v1(%s::uuid,%s::jsonb,%s::text) as result',
+            (str(command.company_id), json.dumps({key: getattr(command, key) for key in (
+                'environment', 'status', 'test_reference', 'feedback_summary', 'receipt_reference',
+                'archive_reference', 'evidence_url', 'payload_hash')}, ensure_ascii=True)), command.actor_id,
+        )
+
+    async def filing_company_identity(self, company_id: CompanyId, actor_id: ActorId) -> CompanyTaxCompanyIdentity:
+        if actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(
+            'select public.company_access_read_rf_company_identity_v1(%s::uuid,%s::text) as result',
+            (str(company_id), str(actor_id.subject)),
+        )
+        result = row.get('result')
+        if (not isinstance(result, Mapping) or result.get('id') != str(company_id)
+                or not isinstance(result.get('org_number'), str)):
+            raise CompanyTaxError.unavailable()
+        return CompanyTaxCompanyIdentity(company_id, result['org_number'])
+
+    async def import_return_evidence(self, projection: CompanyTaxEvidenceProjection, actor_id: ActorId) -> ImportedCompanyTaxEvidence:
+        if actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(
+            'select company_tax_filing.import_tt02_evidence_v1(%s::jsonb,%s::text) as result',
+            (json.dumps(_json_value({'authorityRun': projection.authority_run, 'submission': projection.submission}),
+                        ensure_ascii=True, allow_nan=False, separators=(',', ':')), str(actor_id.subject)),
+        )
+        result = row.get('result')
+        try:
+            if (not isinstance(result, Mapping) or type(result.get('created')) is not bool
+                    or not isinstance(result.get('authority_test_run_id'), str)
+                    or not isinstance(result.get('filing_submission_id'), str)):
+                raise ValueError()
+            return ImportedCompanyTaxEvidence(TaxAuthorityEvidenceId(result['authority_test_run_id']),
+                TaxFilingSubmissionId(result['filing_submission_id']), result['created'])
+        except (KeyError, TypeError, ValueError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def include_audit_event(self, event: AuditEventDraft) -> None:
+        if event.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        await self._database_rows(
+            'select public.audit_include_filing_event_v1(%s::uuid,%s::text,%s::text,%s::text,%s::text)',
+            (str(event.company_id), str(event.actor_id.subject), event.category, event.action, event.message),
+        )
+
+    async def filing_workspace(self, query: CompanyTaxWorkspaceQuery) -> CompanyTaxFilingRows:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(
+            'select company_tax_filing.read_workspace_v1(%s::uuid,%s::integer,%s::text) as result',
+            (str(query.company_id), int(query.income_year) if query.income_year is not None else None,
+             str(self.actor_id.subject)),
+        )
+        result = row.get('result')
+        try:
+            if not isinstance(result, Mapping):
+                raise ValueError()
+            return CompanyTaxFilingRows(query.company_id, query.income_year,
+                **{name: result[name] for name in ('previews', 'submissions', 'overrides',
+                                                  'review_comments', 'permissions', 'test_evidence')})
+        except (KeyError, TypeError, ValueError):
+            raise CompanyTaxError.unavailable() from None
+
+    async def filing_source_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot:
+        if query.actor_id != self.actor_id:
+            raise CompanyTaxError.forbidden()
+        row = await self._one_idempotent_row(
+            'select company_tax_filing.read_source_snapshot_v1(%s::uuid,%s::integer,%s::text) as result',
+            (str(query.company_id), int(query.income_year), str(self.actor_id.subject)),
+        )
+        value = row.get('result')
+        try:
+            if (not isinstance(value, Mapping) or value['companyId'] != str(query.company_id)
+                    or type(value['incomeYear']) is not int or value['incomeYear'] != int(query.income_year)
+                    or type(value['completeEnumeration']) is not bool):
+                raise ValueError()
+            rows = CompanyTaxFilingRows(query.company_id, query.income_year,
+                **{name: value['workspace'][name] for name in ('previews', 'submissions', 'overrides',
+                    'review_comments', 'permissions', 'test_evidence')})
+            return CompanyTaxSourceSnapshot(rows, value['coverage'],
+                Timestamp(datetime.fromisoformat(value['asOf'].replace('Z', '+00:00'))), value['completeEnumeration'])
+        except (KeyError, TypeError, ValueError, AttributeError):
+            raise CompanyTaxError.unavailable() from None
 
     async def archive_settlements(self, query: TaxSettlementArchiveQuery) -> tuple[Mapping[str, object], ...]:
         if query.actor_id != self.actor_id:

@@ -1,0 +1,36 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
+const root = process.cwd();
+const require = createRequire(`${root}/package.json`);
+const ts = require('typescript');
+const revision = '054740b81692e0e59b99a76fff085f322f1968b4';
+const sourcePath = 'apps/web/app/lib/annual-readiness.ts';
+const source = execFileSync('git', ['show', `${revision}:${sourcePath}`], { encoding: 'utf8' });
+const feedbackPath = 'apps/web/app/lib/company-tax-return.ts';
+const feedbackSource = execFileSync('git', ['show', `${revision}:${feedbackPath}`], { encoding: 'utf8' });
+if (feedbackSource !== readFileSync(feedbackPath, 'utf8')) throw new Error('Legacy feedback changed before capture');
+const { companyTaxReturnPayloadFeedback } = await import(pathToFileURL(`${root}/${feedbackPath}`));
+const ast = ts.createSourceFile(sourcePath, source, ts.ScriptTarget.Latest, true);
+const names = ['skattemeldingIssues', 'block', 'warning'];
+const functions = ast.statements.filter(node => ts.isFunctionDeclaration(node) && names.includes(node.name?.text));
+if (functions.length !== 3) throw new Error('Missing legacy readiness functions');
+const compiled = ts.transpileModule(functions.map(node => node.getText(ast)).join('\n'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+const assess = new Function('companyTaxReturnPayloadFeedback', `${compiled}\nreturn skattemeldingIssues;`)(companyTaxReturnPayloadFeedback);
+const seed = JSON.parse(readFileSync('architecture/evidence/issues/152/legacy-characterization.json','utf8')).cases[0].input;
+const cases = [];
+const values = [[], {}, '', 0, 1, null, false, true, 'false'];
+for (const field of ['shareholder_loans','declared_owner_dividends','bought_or_sold_shares','no_activity_confirmed','warning_accepted_at']) {
+  for (let index=0; index<values.length; index++) {
+    const input = { company:{id:'company-id'}, ...structuredClone(seed) };
+    if (field === 'no_activity_confirmed') input.annualData[field] = values[index];
+    else if (field === 'warning_accepted_at') { input.ledgerEntries[0].risk_flags = [{}]; input.ledgerEntries[0][field] = values[index]; }
+    else input.annualData.answers[field] = values[index];
+    cases.push({ id: `${field}-${index}`, input, output:{ readiness:assess(input), feedback:companyTaxReturnPayloadFeedback(input) } });
+  }
+}
+const sha = value => createHash('sha256').update(value).digest('hex');
+writeFileSync('architecture/evidence/issues/152/legacy-tax-boolean-boundaries.json', JSON.stringify({schemaVersion:'1.0',sourceRevision:revision,runtime:process.version,sources:{[sourcePath]:sha(source),[feedbackPath]:sha(feedbackSource)},scope:'Loose predecessor Boolean conditions through public pure/CLI inputs; HTTP preview rejects malformed Boolean fields separately.',cases},null,2)+'\n');
+console.log(JSON.stringify({cases:cases.length}));

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "1.0",
+  "kind": "backend-capability",
+  "name": "audit",
+  "path": "apps/backend/src/talli_backend/modules/audit",
+  "owner": "backend:audit",
+  "purpose": "Declare immutable Audit inclusion over the single canonical legacy store until stage #155; no Audit migration or second implementation.",
+  "documentation": "apps/backend/src/talli_backend/modules/audit/MODULE.md",
+  "publicEntryPoint": "talli_backend.modules.audit.public",
+  "exports": {
+    "commands": [
+      "AuditEventDraft"
+    ],
+    "queries": [],
+    "events": [],
+    "errors": [],
+    "identifiers": [
+      "AuditInclusion",
+      "audit_inclusion_adapter"
+    ]
+  },
+  "owns": {
+    "postgresSchemas": [],
+    "tables": [],
+    "storageBuckets": [],
+    "projections": [],
+    "migrations": "None"
+  },
+  "ports": [
+    {
+      "name": "AuditInclusion",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.audit.public.AuditInclusion",
+      "registrationDecorator": "talli_backend.modules.audit.public.audit_inclusion_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
+    }
+  ],
+  "dependencies": [],
+  "allowedImports": [
+    "collections.abc",
+    "dataclasses",
+    "typing",
+    "talli_backend.shared.kernel"
+  ],
+  "forbiddenResponsibilities": [
+    "Moving Audit persistence or retention before #155",
+    "Filing policy, source classification, transaction/retry coordination or provider operations"
+  ],
+  "tests": {
+    "architecture": "tests/architecture_foundation.test.mjs",
+    "workflow": "apps/backend/tests/test_company_tax_filing_workflow.py"
+  },
+  "compatibilityExceptions": [
+    "compat-audit-persistence"
+  ]
+}

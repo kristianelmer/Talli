@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "verdict": "PASS_ACL_FINDING_AND_SEED_BINDING_CLOSED",
+  "baseRevision": "9c879ff78b5ec5aa3bb639e5de4a39ab38ef9cfc",
+  "candidateRevision": "6353c78cdc32700b92c1431732d9e782fba5612a",
+  "diffCommand": "git diff 9c879ff78b5ec5aa3bb639e5de4a39ab38ef9cfc...6353c78cdc32700b92c1431732d9e782fba5612a",
+  "findings": [],
+  "closedFinding": {
+    "id": "SPEC-152-CUTOVER-1",
+    "state": "CLOSED",
+    "basis": "Direct-grant mutation removed; original role restoration retained; exact-ACL red/green evidence verified."
+  },
+  "raceSeedBindingClosed": true,
+  "seedSha256": "95600069c52208570cebe61a70f67c272131f7db66efcb72d616b08a3d8868c0",
+  "manifestArtifactChecks": {
+    "filing-lifecycle-archive-acl-tests.log": true,
+    "probe-archive-acl-red.py.txt": true,
+    "probe-filing-cutover.py.txt": true,
+    "archive-acl-races.log": true,
+    "archive-acl-red.log": true,
+    "probe-filing-cutover-races.py.txt": true,
+    "filing-cutover-races.json": true
+  },
+  "sourceChecks": {
+    "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql": true,
+    "apps/backend/tests/test_company_tax_return_lifecycle.py": true
+  },
+  "sourceSha256": {
+    "apps/backend/tests/test_company_tax_return_lifecycle.py": "cfe10d1862d77620667a761d4979746725f01c76dc8759dc1a6e3607cd17f26a",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/archive-acl-races.log": "dac26cd60696d6edaab5519c2c387a8db4155d60ee2e896b231ebcf92ac4ad70",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/archive-acl-red.log": "76fe0cb19f0ca96fb5059fa643c965429b1ddc454ca281ca8a76fa3293e78fad",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/filing-cutover-races.json": "6c6d285a124d7a388ed002d413782bc22d6ba2ad96aa8dd680c9e2008cc8c970",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/filing-lifecycle-archive-acl-tests.log": "f9598cef737c335184b693454e66f2838a511d59d3b3f5c0c1528461859b8296",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/manifest.json": "fc819ab00a91dd7ed59c31aaa31a3d5640c6735231da432c1ad863f08aa5c8b4",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/probe-archive-acl-red.py.txt": "2aa8a70d740567dc642fb05bdb4ef2b3321107b2471f60847c0ab8afe3b50792",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/probe-filing-cutover-races.py.txt": "5d1492910937e7aad5284f64b0a30ea14d3586e8327af661958f38054e58dfe9",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/probe-filing-cutover.py.txt": "95600069c52208570cebe61a70f67c272131f7db66efcb72d616b08a3d8868c0",
+    "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql": "d192b105d87287ba59e7b88278c1c25d51e6620d19b1b5d5e34fc416ef21597c"
+  },
+  "recordedValidation": {
+    "predecessorFailure": "archiveTriggerAcl unchanged",
+    "lifecycleScenariosPassed": 7,
+    "raceChecksPassed": 11,
+    "cutoverSha256": "d192b105d87287ba59e7b88278c1c25d51e6620d19b1b5d5e34fc416ef21597c",
+    "rollbackSha256": "0808d9ef883fce1dee19bcd1330f1579682481c1596e522b2b5d5c73fc9e9f07",
+    "independentlyReranDatabase": false
+  },
+  "originalManifestUnchanged": true,
+  "reportSha256": "5bbfe8a93fd370acf22da11c25c59d779942dec7dcd3ebe3159f99ca167faec2",
+  "limits": [
+    "Static source/evidence review only; no shared mutation or DB/browser execution.",
+    "No full-stage/gate/provider/hosted/successor credit."
+  ]
+}

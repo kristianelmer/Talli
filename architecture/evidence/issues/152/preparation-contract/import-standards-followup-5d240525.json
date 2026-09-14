@@ -1,0 +1,68 @@
+{
+  "baselineRevision": "b400103d2d7204c9a2154fd953a03ccb00041ad4",
+  "candidateRevision": "5d240525284e6aa92e2875940a638adb110421a6",
+  "diffCommand": "git diff b400103d2d7204c9a2154fd953a03ccb00041ad4...5d240525284e6aa92e2875940a638adb110421a6",
+  "changedSourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py": "0532c136c0acd2ed0a3ebdc6ccc84a0a3618a6f74e7eb6b971a1748b6837d52c",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "952f63879fa53330b8387ee0788937973bcbe79aae30974c241aea01fc74d0a4",
+    "apps/backend/tests/test_company_tax_evidence_import.py": "68a39749d101803424b5f32fa9394e175049acbfda37f687e97c3caf05301606",
+    "apps/web/features/company-tax-filing/transport.ts": "e828a605172678f3410a6e03f38afe5ed0325c2654fe625236a1ee12ccec0406",
+    "apps/web/tests/company-tax-transport.test.mjs": "68e64879b0deffb32397dfec63457ed9b6e93849ffac05c345881438899454f0",
+    "architecture/evidence/issues/152/import-review-followup/import-review-fix-tests.log": "98a13c741555e77f840d34a246a6f1441c8d1a78aec3cbbe9184ba7d5227ce19",
+    "architecture/evidence/issues/152/import-review-followup/import-review-web-tests.log": "9a5f407e3bb7de0fcd717e8d3a5562dd04fb5c259e4c0cf90c5e518c85581698",
+    "architecture/evidence/issues/152/import-review-followup/import-spec-review-b400103d.json": "a768d41831e1e3531267023e0f59def55deda34a26fbe1a860fa9d420bbf57f0",
+    "architecture/evidence/issues/152/import-review-followup/import-spec-review-b400103d.md": "89005d2256ddc1ee0adbda15b15922688242a6c40fb10472d68ad0bfcb6eea69",
+    "architecture/evidence/issues/152/import-review-followup/manifest.json": "8bd5c2d933278e554f95825777a11d379027c6e31cbfc172f225199ccf0ba4ed"
+  },
+  "extraction": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-152-5d240-standards-qv62bswo",
+  "artifactHashesVerified": {
+    "import-review-web-tests.log": true,
+    "import-spec-review-b400103d.md": true,
+    "import-spec-review-b400103d.json": true,
+    "import-review-fix-tests.log": true
+  },
+  "standardsSha256": {
+    "AGENTS.md": "c4530bac3939f37053438b48a3dad2ea6e99d04481480ef61bee71d3dc81d4af",
+    "CONTEXT.md": "e781ac1914abc8492435e6aa9bf2b96872f7f1941673892a3841c0b3e1c4d0c9",
+    "docs/agents/domain.md": "0b66c33560f91373a7b268f3acf2c3d992e6a77cf5dc60acdc66efb4dc34a982",
+    "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874",
+    "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482",
+    "architecture/BACKEND-SYSTEM.md": "0f1499db58481ce4024cde253048e6a3bd0e79c75d17f672e2418027e3515376",
+    "apps/backend/src/talli_backend/modules/audit/MODULE.md": "aed85fa47ed53b03cc0d0f6e307d7bb52db33a5b012822b01113a0715a6b66ec",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "ad387d259c1ec97b345388563ec6f217c1ee10538a0b8579fd7fddc1a9a32a72"
+  },
+  "sourceBindingsInheritedFrom": {
+    "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/import-standards-review-b400103d.json",
+    "sha256": "170a27d8cf1859271ea21351d6ca11827e5abeb43f70f18e868dbfb027e29afb"
+  },
+  "status": "PASS_BOUNDED_STANDARDS_FOLLOWUP",
+  "findings": [],
+  "closedFindings": [
+    "b400103d P2: recursive immutable conversion fails on deeply nested valid evidence"
+  ],
+  "independentVerification": {
+    "importAndWorkspaceTests": 32,
+    "pureCharacterizationTests": 157,
+    "webTransportTests": 19,
+    "backendTotalDisjoint": 189,
+    "runtime": "standalone CPython3.12.12 venv and pinned Node24.20.0; isolated pinned source and generated client; fake sessions/fetch",
+    "depthProbe": "Original unchanged probe: 20/300/600/1100 levels all200 with exact fixture projection and begin\u2192identity\u2192import\u2192Audit\u2192commit",
+    "immutabilityProbe": "Shared sibling references copied independently; original mutation leaves snapshot intact; mapping/list ancestor cycles rejected"
+  },
+  "limits": [
+    "No database/provider/browser/owner UI/phase cutover/release-gate or full-stage verification.",
+    "Uncommitted preparation work excluded.",
+    "No SQL or migration changes in reviewed delta."
+  ],
+  "privateArtifactSha256": {
+    "import-standards-tests-5d240525.log": "5fc7c1f014b898e64aa2b249d2217c098191bbeffcc6da0694d2d30e12e58eb5",
+    "import-standards-pure-5d240525.log": "3cce14ce8a038ded317cee089ca78a4efcd555d7d0102fbbd1a968218a74edce",
+    "import-standards-web-5d240525.log": "6efceb910231747fc00f0a8b4aad1f9f372d5a29621425754f7dff0722324b96",
+    "import-standards-depth-probe-b400103d.py": "f6ec8e0acf6f5770edef1aac7fda126b332aebb8681ade97fd63d8e56419bafd",
+    "import-standards-depth-probe-5d240525.log": "9940cbb00a676b5a7badf7fc21c185c0f4c34d3b6698f79da5aea0404e021bda",
+    "import-standards-immutability-probe-5d240525.py": "fee7aa766aeade03101ea982be1dd41086102ddbf30dedf846743f2837e1140f",
+    "import-standards-immutability-probe-5d240525.log": "4856621da7ab0b1a7165ae76cef89286df0fbae218040106feb594f6c936f4aa"
+  },
+  "reportSha256": "501bf4791f5baabfe57e29a11ecb12480c30fae20398f8fc8cd92c5cdc19dd7d"
+}

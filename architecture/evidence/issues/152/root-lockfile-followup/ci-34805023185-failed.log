@@ -1,0 +1,192 @@
+Application	Install deterministic dependencies	﻿2026-09-14T04:10:05.1091779Z ##[group]Run sudo apt-get update
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1092156Z [36;1msudo apt-get update[0m
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1092613Z [36;1msudo apt-get install --yes --no-install-recommends libxml2-utils pkg-config libicu-dev g++[0m
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1093075Z [36;1mpython -m pip install uv==0.10.2[0m
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1093339Z [36;1muv sync --locked[0m
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1093595Z [36;1muv sync --project apps/backend --locked[0m
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1093861Z [36;1mnpm ci[0m
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1228023Z shell: /usr/bin/bash -e {0}
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1228443Z env:
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1228630Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.14/x64
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1228979Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib/pkgconfig
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1229273Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1229499Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1229721Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1230233Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib
+Application	Install deterministic dependencies	2026-09-14T04:10:05.1230423Z ##[endgroup]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.2026675Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.2365638Z Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.2706643Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Application	Install deterministic dependencies	2026-09-14T04:10:05.2745275Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.2820219Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.2829418Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.3085045Z Get:7 https://dl.google.com/linux/chrome-stable/deb stable InRelease [2548 B]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.4221223Z Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [414 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.4369327Z Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [463 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.7447382Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1263 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.7579461Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [292 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.7646996Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [181 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.7677713Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1691 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.7831933Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [339 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.7886926Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [388 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.7930597Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1544 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.8072454Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [354 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.8142150Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.8143207Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [5772 B]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.8595468Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [12.6 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.8809645Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1006 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.8909527Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [213 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.8949828Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [46.4 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.8969160Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1206 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.9060853Z Get:25 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [242 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.9140417Z Get:26 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [76.3 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.9249905Z Get:27 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1445 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:05.9487414Z Get:28 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [336 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:06.0772345Z Get:29 https://dl.google.com/linux/chrome-stable/deb stable/main amd64 Packages [1413 B]
+Application	Install deterministic dependencies	2026-09-14T04:10:12.4499606Z Fetched 11.9 MB in 1s (7984 kB/s)
+Application	Install deterministic dependencies	2026-09-14T04:10:13.0354918Z Reading package lists...
+Application	Install deterministic dependencies	2026-09-14T04:10:13.0624358Z Reading package lists...
+Application	Install deterministic dependencies	2026-09-14T04:10:13.2415852Z Building dependency tree...
+Application	Install deterministic dependencies	2026-09-14T04:10:13.2422393Z Reading state information...
+Application	Install deterministic dependencies	2026-09-14T04:10:13.4540310Z pkg-config is already the newest version (1.8.1-2build1).
+Application	Install deterministic dependencies	2026-09-14T04:10:13.4541236Z libicu-dev is already the newest version (74.2-1ubuntu3.1).
+Application	Install deterministic dependencies	2026-09-14T04:10:13.4542343Z g++ is already the newest version (4:13.2.0-7ubuntu1).
+Application	Install deterministic dependencies	2026-09-14T04:10:13.4551903Z The following NEW packages will be installed:
+Application	Install deterministic dependencies	2026-09-14T04:10:13.4552432Z   libxml2-utils
+Application	Install deterministic dependencies	2026-09-14T04:10:13.4689130Z 0 upgraded, 1 newly installed, 0 to remove and 50 not upgraded.
+Application	Install deterministic dependencies	2026-09-14T04:10:13.4689781Z Need to get 39.4 kB of archives.
+Application	Install deterministic dependencies	2026-09-14T04:10:13.4690420Z After this operation, 189 kB of additional disk space will be used.
+Application	Install deterministic dependencies	2026-09-14T04:10:13.4691052Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Application	Install deterministic dependencies	2026-09-14T04:10:13.5384501Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libxml2-utils amd64 2.9.14+dfsg-1.3ubuntu3.8 [39.4 kB]
+Application	Install deterministic dependencies	2026-09-14T04:10:13.7664584Z Fetched 39.4 kB in 0s (488 kB/s)
+Application	Install deterministic dependencies	2026-09-14T04:10:13.7912280Z Selecting previously unselected package libxml2-utils.
+Application	Install deterministic dependencies	2026-09-14T04:10:13.8178547Z (Reading database ... 
+Application	Install deterministic dependencies	2026-09-14T04:10:13.8178874Z (Reading database ... 5%
+Application	Install deterministic dependencies	2026-09-14T04:10:13.8179110Z (Reading database ... 10%
+Application	Install deterministic dependencies	2026-09-14T04:10:13.8179336Z (Reading database ... 15%
+Application	Install deterministic dependencies	2026-09-14T04:10:13.8179556Z (Reading database ... 20%
+Application	Install deterministic dependencies	2026-09-14T04:10:13.8179820Z (Reading database ... 25%
+Application	Install deterministic dependencies	2026-09-14T04:10:13.8180038Z (Reading database ... 30%
+Application	Install deterministic dependencies	2026-09-14T04:10:13.8180260Z (Reading database ... 35%
+Application	Install deterministic dependencies	2026-09-14T04:10:13.8180575Z (Reading database ... 40%
+Application	Install deterministic dependencies	2026-09-14T04:10:13.8180801Z (Reading database ... 45%
+Application	Install deterministic dependencies	2026-09-14T04:10:13.8181018Z (Reading database ... 50%
+Application	Install deterministic dependencies	2026-09-14T04:10:13.8957978Z (Reading database ... 55%
+Application	Install deterministic dependencies	2026-09-14T04:10:14.3699243Z (Reading database ... 60%
+Application	Install deterministic dependencies	2026-09-14T04:10:14.7872172Z (Reading database ... 65%
+Application	Install deterministic dependencies	2026-09-14T04:10:15.1971642Z (Reading database ... 70%
+Application	Install deterministic dependencies	2026-09-14T04:10:15.5931021Z (Reading database ... 75%
+Application	Install deterministic dependencies	2026-09-14T04:10:16.0075821Z (Reading database ... 80%
+Application	Install deterministic dependencies	2026-09-14T04:10:16.5910458Z (Reading database ... 85%
+Application	Install deterministic dependencies	2026-09-14T04:10:17.0653129Z (Reading database ... 90%
+Application	Install deterministic dependencies	2026-09-14T04:10:17.5339365Z (Reading database ... 95%
+Application	Install deterministic dependencies	2026-09-14T04:10:17.5348931Z (Reading database ... 100%
+Application	Install deterministic dependencies	2026-09-14T04:10:17.5358780Z (Reading database ... 201818 files and directories currently installed.)
+Application	Install deterministic dependencies	2026-09-14T04:10:17.5389779Z Preparing to unpack .../libxml2-utils_2.9.14+dfsg-1.3ubuntu3.8_amd64.deb ...
+Application	Install deterministic dependencies	2026-09-14T04:10:17.5574102Z Unpacking libxml2-utils (2.9.14+dfsg-1.3ubuntu3.8) ...
+Application	Install deterministic dependencies	2026-09-14T04:10:18.0000869Z Setting up libxml2-utils (2.9.14+dfsg-1.3ubuntu3.8) ...
+Application	Install deterministic dependencies	2026-09-14T04:10:18.1147890Z Processing triggers for man-db (2.12.0-4build2) ...
+Application	Install deterministic dependencies	2026-09-14T04:10:18.1171378Z Not building database; man-db/auto-update is not 'true'.
+Application	Install deterministic dependencies	2026-09-14T04:10:18.6224485Z 
+Application	Install deterministic dependencies	2026-09-14T04:10:18.6225328Z Running kernel seems to be up-to-date.
+Application	Install deterministic dependencies	2026-09-14T04:10:18.6225717Z 
+Application	Install deterministic dependencies	2026-09-14T04:10:18.6225939Z No services need to be restarted.
+Application	Install deterministic dependencies	2026-09-14T04:10:18.6226183Z 
+Application	Install deterministic dependencies	2026-09-14T04:10:18.6226381Z No containers need to be restarted.
+Application	Install deterministic dependencies	2026-09-14T04:10:18.6226621Z 
+Application	Install deterministic dependencies	2026-09-14T04:10:18.6226856Z No user sessions are running outdated binaries.
+Application	Install deterministic dependencies	2026-09-14T04:10:18.6227122Z 
+Application	Install deterministic dependencies	2026-09-14T04:10:18.6227445Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+Application	Install deterministic dependencies	2026-09-14T04:10:21.3810736Z Collecting uv==0.10.2
+Application	Install deterministic dependencies	2026-09-14T04:10:21.4251021Z   Downloading uv-0.10.2-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (11 kB)
+Application	Install deterministic dependencies	2026-09-14T04:10:21.4369668Z Downloading uv-0.10.2-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (23.0 MB)
+Application	Install deterministic dependencies	2026-09-14T04:10:21.9428564Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 23.0/23.0 MB 46.4 MB/s  0:00:00
+Application	Install deterministic dependencies	2026-09-14T04:10:22.2293148Z Installing collected packages: uv
+Application	Install deterministic dependencies	2026-09-14T04:10:22.4156811Z Successfully installed uv-0.10.2
+Application	Install deterministic dependencies	2026-09-14T04:10:22.5366591Z Using CPython 3.12.14 interpreter at: /opt/hostedtoolcache/Python/3.12.14/x64/bin/python3
+Application	Install deterministic dependencies	2026-09-14T04:10:22.5367439Z Creating virtual environment at: .venv
+Application	Install deterministic dependencies	2026-09-14T04:10:22.7667306Z Resolved 28 packages in 227ms
+Application	Install deterministic dependencies	2026-09-14T04:10:22.7669237Z The lockfile at `uv.lock` needs to be updated, but `--locked` was provided. To update the lockfile, run `uv lock`.
+Application	Install deterministic dependencies	2026-09-14T04:10:22.7699504Z ##[error]Process completed with exit code 1.
+Database isolation	Install dependencies	﻿2026-09-14T04:10:01.8852467Z ##[group]Run sudo apt-get update
+Database isolation	Install dependencies	2026-09-14T04:10:01.8853066Z [36;1msudo apt-get update[0m
+Database isolation	Install dependencies	2026-09-14T04:10:01.8853795Z [36;1msudo apt-get install --yes --no-install-recommends pkg-config libicu-dev g++[0m
+Database isolation	Install dependencies	2026-09-14T04:10:01.8854582Z [36;1mpython -m pip install uv==0.10.2[0m
+Database isolation	Install dependencies	2026-09-14T04:10:01.8855064Z [36;1muv sync --locked[0m
+Database isolation	Install dependencies	2026-09-14T04:10:01.8855518Z [36;1muv sync --project apps/backend --locked[0m
+Database isolation	Install dependencies	2026-09-14T04:10:01.8856021Z [36;1mnpm ci[0m
+Database isolation	Install dependencies	2026-09-14T04:10:01.8856455Z [36;1mnpx playwright install --with-deps chromium[0m
+Database isolation	Install dependencies	2026-09-14T04:10:01.8931570Z shell: /usr/bin/bash -e {0}
+Database isolation	Install dependencies	2026-09-14T04:10:01.8932028Z env:
+Database isolation	Install dependencies	2026-09-14T04:10:01.8932494Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.14/x64
+Database isolation	Install dependencies	2026-09-14T04:10:01.8933243Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib/pkgconfig
+Database isolation	Install dependencies	2026-09-14T04:10:01.8933989Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+Database isolation	Install dependencies	2026-09-14T04:10:01.8934662Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+Database isolation	Install dependencies	2026-09-14T04:10:01.8935401Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.14/x64
+Database isolation	Install dependencies	2026-09-14T04:10:01.8936345Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.14/x64/lib
+Database isolation	Install dependencies	2026-09-14T04:10:01.8936914Z ##[endgroup]
+Database isolation	Install dependencies	2026-09-14T04:10:02.0624846Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Database isolation	Install dependencies	2026-09-14T04:10:02.1171554Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Database isolation	Install dependencies	2026-09-14T04:10:02.1185645Z Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+Database isolation	Install dependencies	2026-09-14T04:10:02.1232517Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.1480259Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.1579937Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.2898730Z Get:7 https://dl.google.com/linux/chrome-stable/deb stable InRelease [2548 B]
+Database isolation	Install dependencies	2026-09-14T04:10:02.4015767Z Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [414 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.4209970Z Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [463 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.4696032Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1263 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.4799867Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [292 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.4890321Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Components [181 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.4960326Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1691 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.5224541Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [339 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.5270511Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Components [388 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.5319860Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1544 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.5557737Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [354 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.5597523Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Components [940 B]
+Database isolation	Install dependencies	2026-09-14T04:10:02.5920200Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-backports/main amd64 Components [5772 B]
+Database isolation	Install dependencies	2026-09-14T04:10:02.6335291Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-backports/universe amd64 Components [12.6 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.6803836Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1006 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.6891417Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [213 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.6959882Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Components [46.4 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.6961427Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1206 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.7198827Z Get:25 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [242 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.7259707Z Get:26 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Components [76.3 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.7369728Z Get:27 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1445 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.7570183Z Get:28 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [336 kB]
+Database isolation	Install dependencies	2026-09-14T04:10:02.9133100Z Get:29 https://dl.google.com/linux/chrome-stable/deb stable/main amd64 Packages [1413 B]
+Database isolation	Install dependencies	2026-09-14T04:10:07.9272314Z Fetched 11.9 MB in 2s (6223 kB/s)
+Database isolation	Install dependencies	2026-09-14T04:10:08.8679244Z Reading package lists...
+Database isolation	Install dependencies	2026-09-14T04:10:08.9029766Z Reading package lists...
+Database isolation	Install dependencies	2026-09-14T04:10:09.1386797Z Building dependency tree...
+Database isolation	Install dependencies	2026-09-14T04:10:09.1395734Z Reading state information...
+Database isolation	Install dependencies	2026-09-14T04:10:09.3647523Z pkg-config is already the newest version (1.8.1-2build1).
+Database isolation	Install dependencies	2026-09-14T04:10:09.3658120Z libicu-dev is already the newest version (74.2-1ubuntu3.1).
+Database isolation	Install dependencies	2026-09-14T04:10:09.3659249Z g++ is already the newest version (4:13.2.0-7ubuntu1).
+Database isolation	Install dependencies	2026-09-14T04:10:09.3660385Z 0 upgraded, 0 newly installed, 0 to remove and 50 not upgraded.
+Database isolation	Install dependencies	2026-09-14T04:10:12.5347870Z Collecting uv==0.10.2
+Database isolation	Install dependencies	2026-09-14T04:10:12.6132684Z   Downloading uv-0.10.2-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (11 kB)
+Database isolation	Install dependencies	2026-09-14T04:10:12.6345387Z Downloading uv-0.10.2-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (23.0 MB)
+Database isolation	Install dependencies	2026-09-14T04:10:12.8404317Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 23.0/23.0 MB 136.4 MB/s  0:00:00
+Database isolation	Install dependencies	2026-09-14T04:10:12.9844320Z Installing collected packages: uv
+Database isolation	Install dependencies	2026-09-14T04:10:13.2440264Z Successfully installed uv-0.10.2
+Database isolation	Install dependencies	2026-09-14T04:10:13.3957116Z Using CPython 3.12.14 interpreter at: /opt/hostedtoolcache/Python/3.12.14/x64/bin/python3
+Database isolation	Install dependencies	2026-09-14T04:10:13.3958878Z Creating virtual environment at: .venv
+Database isolation	Install dependencies	2026-09-14T04:10:13.7249865Z Resolved 28 packages in 326ms
+Database isolation	Install dependencies	2026-09-14T04:10:13.7251892Z The lockfile at `uv.lock` needs to be updated, but `--locked` was provided. To update the lockfile, run `uv lock`.
+Database isolation	Install dependencies	2026-09-14T04:10:13.7317579Z ##[error]Process completed with exit code 1.
+Release gate	Require every readiness job	﻿2026-09-14T04:10:28.3246100Z ##[group]Run test "$APPLICATION_RESULT" = "success"
+Release gate	Require every readiness job	2026-09-14T04:10:28.3247398Z [36;1mtest "$APPLICATION_RESULT" = "success"[0m
+Release gate	Require every readiness job	2026-09-14T04:10:28.3248304Z [36;1mtest "$DATABASE_RESULT" = "success"[0m
+Release gate	Require every readiness job	2026-09-14T04:10:28.3251836Z [36;1mif [[ "$RECORD_EVIDENCE" = "true" ]]; then[0m
+Release gate	Require every readiness job	2026-09-14T04:10:28.3253066Z [36;1m  test "$EVIDENCE_RESULT" = "success"[0m
+Release gate	Require every readiness job	2026-09-14T04:10:28.3253985Z [36;1melse[0m
+Release gate	Require every readiness job	2026-09-14T04:10:28.3254838Z [36;1m  test "$EVIDENCE_RESULT" = "skipped"[0m
+Release gate	Require every readiness job	2026-09-14T04:10:28.3255712Z [36;1mfi[0m
+Release gate	Require every readiness job	2026-09-14T04:10:28.4131869Z shell: /usr/bin/bash -e {0}
+Release gate	Require every readiness job	2026-09-14T04:10:28.4133303Z env:
+Release gate	Require every readiness job	2026-09-14T04:10:28.4134004Z   APPLICATION_RESULT: failure
+Release gate	Require every readiness job	2026-09-14T04:10:28.4134749Z   DATABASE_RESULT: failure
+Release gate	Require every readiness job	2026-09-14T04:10:28.4135576Z   EVIDENCE_RESULT: skipped
+Release gate	Require every readiness job	2026-09-14T04:10:28.4136288Z   RECORD_EVIDENCE: 
+Release gate	Require every readiness job	2026-09-14T04:10:28.4136937Z ##[endgroup]
+Release gate	Require every readiness job	2026-09-14T04:10:28.5224305Z ##[error]Process completed with exit code 1.

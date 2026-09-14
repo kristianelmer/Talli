@@ -1,0 +1,34 @@
+Using CPython 3.12.12 interpreter at: /Users/kristianelmer/.codex/issue-192-private/runtime/python/cpython-3.12.12-macos-aarch64-none/bin/python3.12
+Creating virtual environment at: .venv
+Resolved 28 packages in 1ms
+   Building talli @ file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting
+      Built talli @ file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting
+Prepared 1 package in 740ms
+Installed 27 packages in 28ms
+ + ada-url==4.0.0
+ + annotated-types==0.7.0
+ + anyio==4.14.2
+ + certifi==2026.7.22
+ + cffi==2.1.1
+ + charset-normalizer==3.4.9
+ + click==8.5.0
+ + cryptography==50.0.1
+ + fastapi==0.116.1
+ + h11==0.16.0
+ + httpcore==1.0.9
+ + httpx==0.28.1
+ + idna==3.19
+ + pillow==12.3.0
+ + psycopg==3.2.9
+ + psycopg-binary==3.2.9
+ + pycparser==3.0
+ + pydantic==2.11.7
+ + pydantic-core==2.33.2
+ + pyicu==2.16.2
+ + reportlab==5.0.0
+ + starlette==0.47.3
+ + talli==0.1.0 (from file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting)
+ + talli-backend==0.1.0 (from file:///Users/kristianelmer/.codex/worktrees/d060/Holding%20accounting/apps/backend)
+ + typing-extensions==4.15.0
+ + typing-inspection==0.4.2
+ + uvicorn==0.35.0

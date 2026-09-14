@@ -1,0 +1,192 @@
+"""Rollback-only seeded expansion proof; no hosted or provider access."""
+import hashlib
+import json
+from pathlib import Path
+from urllib.parse import urlsplit
+
+import psycopg
+from psycopg.types.json import Jsonb
+
+ROOT=Path.cwd()
+PRIVATE=Path('/Users/kristianelmer/.codex/issue-192-private/issue152-entry')
+env=json.loads((PRIVATE.parent/'issue146-entry/local-environment-private.json').read_text())
+url=urlsplit(env['DB_URL']);assert url.hostname in ('localhost','127.0.0.1','::1') and url.port==52966
+migration=ROOT/'supabase/migrations/20260914200000_company_tax_return_expand.sql'
+script=migration.read_text();assert script.endswith('commit;\n')
+fixture=json.loads((ROOT/'architecture/evidence/issues/152/legacy-characterization.json').read_text())
+case=next(c for c in fixture['evidenceCases'] if c['id']=='synthetic-completed-pending-feedback')
+payload=case['output']['value'];company=payload['authorityRun']['company_id'];owner=payload['authorityRun']['recorded_by']
+families=('filing_previews','filing_submissions','filing_overrides','filing_review_comments','authority_permissions','authority_test_runs')
+report={'scope':'Local PostgreSQL rollback-only seeded expansion; no HTTP JWT/MFA, provider, cutover or full exit claim.','migrationSha256':hashlib.sha256(migration.read_bytes()).hexdigest(),'checks':[]}
+
+def check(label,value):
+ assert value,label
+ report['checks'].append(label)
+
+def snapshot(db):
+ return {f:db.execute(f"select coalesce(jsonb_agg(to_jsonb(r) order by id),'[]'::jsonb) from public.{f} r").fetchone()[0] for f in families}
+
+def environment_snapshot(db):
+ return db.execute("""select jsonb_build_object(
+ 'memberships',(select jsonb_agg(to_jsonb(m) order by roleid,member,grantor) from pg_auth_members m),
+ 'schemas',(select jsonb_agg(jsonb_build_object('name',nspname,'owner',nspowner,'acl',nspacl) order by nspname) from pg_namespace where nspname in ('backend_system','company_tax_filing','shareholder_register_filing')),
+ 'openingAcl',(select relacl from pg_class where oid='shareholder_register_filing.opening_balance_setups'::regclass),
+ 'archiveGenerations',(select jsonb_agg(to_jsonb(g) order by company_id,income_year) from public.company_archive_source_generations g),
+ 'audit',(select jsonb_agg(to_jsonb(a) order by id) from public.audit_events a),
+ 'legacyRpc',pg_get_functiondef('public.import_company_tax_tt02_evidence(jsonb)'::regprocedure))""").fetchone()[0]
+
+with psycopg.connect(env['DB_URL'],autocommit=True) as db:
+ try:
+  db.execute('begin')
+  db.execute('insert into auth.users(id) values(%s)',(owner,))
+  db.execute("insert into public.companies(id,org_number,name,entity_type,created_by) values(%s,%s,'Synthetic Tax152 expansion','AS',%s)",(company,case['input']['expectedCompanyOrgNumber'],owner))
+  db.execute("insert into public.company_memberships(company_id,user_id,role,accepted_at) values(%s,%s,'owner',now())",(company,owner))
+  db.execute("select set_config('request.jwt.claims',%s,true)",(json.dumps({'sub':owner,'role':'authenticated','aal':'aal2'}),))
+  db.execute('set local role authenticated')
+  db.execute('select public.import_company_tax_tt02_evidence(%s)',(Jsonb(payload),))
+  for index,(label,obligation) in enumerate((('skattemelding for AS','skattemelding'),('årsregnskap','aarsregnskap'))):
+   preview=f'00000000-0000-0000-0001-{index:012d}'
+   db.execute("insert into public.filing_previews(id,company_id,income_year,filing,status,preview,created_by) values(%s,%s,2025,%s,'ready','Synthetic preview',%s)",(preview,company,label,owner))
+   db.execute("insert into public.filing_overrides(preview_id,company_id,income_year,filing,field_target,old_value,new_value,reason,risk_level,owner_confirmed_by,owner_confirmed_at,created_by) values(%s,%s,2025,%s,'synthetic','old','new','Synthetic reason','advisory',%s,now(),%s)",(preview,company,label,owner,owner))
+   db.execute("insert into public.filing_review_comments(preview_id,company_id,target,severity,body,created_by) values(%s,%s,'rf1086_preview','advisory','Synthetic comment',%s)",(preview,company,owner))
+   db.execute("insert into public.authority_permissions(company_id,obligation,submitter_user_id,confirmed_by) values(%s,%s,%s,%s)",(company,obligation,owner,owner))
+   if index==1:
+    db.execute("insert into public.authority_test_runs(company_id,obligation,environment,status,test_reference,recorded_by) values(%s,%s,'manual_evidence','pending','synthetic-accounts',%s)",(company,obligation,owner))
+    db.execute("insert into public.filing_submissions(preview_id,company_id,income_year,filing,status,created_by) values(%s,%s,2025,%s,'ready',%s)",(preview,company,label,owner))
+  unknown='00000000-0000-0000-0001-000000000099'
+  db.execute("insert into public.filing_previews(id,company_id,income_year,filing,status,preview,created_by) values(%s,%s,2025,'unknown legacy obligation','ready','Ambiguous synthetic preview',%s)",(unknown,company,owner))
+  db.execute("insert into public.filing_review_comments(preview_id,company_id,target,severity,body,created_by) values(%s,%s,'rf1086_preview','advisory','Ambiguous synthetic comment',%s)",(unknown,company,owner))
+  db.execute("insert into public.filing_overrides(preview_id,company_id,income_year,filing,field_target,old_value,new_value,reason,risk_level,owner_confirmed_by,owner_confirmed_at,created_by) values('00000000-0000-0000-0001-000000000001',%s,2025,'årsregnskap','skattemelding.synthetic','old','new','Conflicting synthetic provenance','advisory',%s,now(),%s)",(company,owner,owner))
+  db.execute('reset role')
+  before=snapshot(db);environment=environment_snapshot(db)
+  db.execute(script.removesuffix('commit;\n'))
+  check('legacy rows remain byte-equivalent',before==snapshot(db))
+  check('role grants, schema grants, foreign references, archive generations, audit and legacy RPC unchanged',environment==environment_snapshot(db))
+  check('expanded phase only',db.execute("select phase from backend_system.company_tax_return_migration_state").fetchone()[0]=='expanded')
+  for family in families:
+   expected=[r for r in before[family] if (r.get('filing')=='skattemelding for AS' or r.get('obligation')=='skattemelding' or (family=='filing_review_comments' and r['preview_id']=='00000000-0000-0000-0001-000000000000'))]
+   actual=db.execute(f"select coalesce(jsonb_agg(to_jsonb(r) order by id),'[]'::jsonb) from company_tax_filing.{family} r").fetchone()[0]
+   check(f'{family}: exact Tax copy and no Accounts row',actual==expected and len(actual)==1)
+  check('six successful count/hash reconciliations',db.execute('select count(*) from backend_system.company_tax_return_reconciliations where source_count=target_count and source_digest=target_digest').fetchone()[0]==6)
+  check('complete inventory includes siblings and conflicting rows',db.execute('select count(*) from backend_system.company_tax_return_source_rows').fetchone()[0]==sum(map(len,before.values())))
+  check('three conflicting rows are quarantined without becoming Tax facts',db.execute('select count(*) from backend_system.company_tax_return_quarantine').fetchone()[0]==3)
+  # Real RLS execution: even a verified owner in the executor role has no access
+  # to inert expansion targets, and no bypass role was introduced.
+  for role in ('authenticated','company_tax_filing_workflow_executor','company_tax_filing_store_owner'):
+   for family in families:
+    db.execute('savepoint denied')
+    try:
+     db.execute(f'set local role {role}')
+     rows=db.execute(f'select count(*) from company_tax_filing.{family}').fetchone()[0]
+     check(f'{role} cannot read inert {family}',rows==0)
+    except psycopg.errors.InsufficientPrivilege:
+     db.execute('rollback to savepoint denied');report['checks'].append(f'{role} cannot read inert {family}')
+    db.execute('reset role');db.execute('release savepoint denied')
+  for family in ('filing_submissions','filing_overrides','filing_review_comments'):
+   source=next(r for r in before[family] if (r.get('filing')=='skattemelding for AS' or family=='filing_review_comments' and r['preview_id']=='00000000-0000-0000-0001-000000000000'))
+   wrong={**source,'preview_id':'00000000-0000-0000-0001-000000000001'}
+   expected='sibling' if family=='filing_review_comments' else 'quarantine'
+   check(f'{family}: referenced preview determines ownership',db.execute('select pg_temp.tax152_classify(%s,%s)',(family,Jsonb(wrong))).fetchone()[0]==expected)
+  contracts=ROOT/'supabase/migrations/20260914201000_company_tax_return_read_contracts.sql'
+  contract_sql=contracts.read_text();assert contract_sql.endswith('commit;\n')
+  db.execute(contract_sql.removesuffix('commit;\n'))
+  report['readContractSha256']=hashlib.sha256(contracts.read_bytes()).hexdigest()
+  db.execute('grant company_tax_filing_workflow_executor,company_tax_filing_store_owner to postgres with inherit false,set true')
+  def read(actor=owner,year=2025,error=None,claims_actor=None):
+   db.execute('savepoint read_attempt')
+   db.execute("select set_config('talli.verified_actor_id',%s,true)",(actor,))
+   db.execute("select set_config('talli.verified_actor_claims',%s,true)",(json.dumps({'sub':claims_actor or actor,'role':'authenticated','aal':'aal1'}),))
+   db.execute('set local role company_tax_filing_workflow_executor')
+   try:
+    value=db.execute('select company_tax_filing.read_workspace_v1(%s,%s,%s)',(company,year,actor)).fetchone()[0]
+    assert error is None
+    db.execute('reset role');db.execute('release savepoint read_attempt')
+    return value
+   except psycopg.Error as e:
+    db.execute('rollback to savepoint read_attempt');db.execute('release savepoint read_attempt')
+    assert e.diag.message_primary==error,(error,e.diag.message_primary)
+  read(error='company_tax_return_unavailable');report['checks'].append('expanded reads return unavailable rather than copied facts')
+  # Only this rollback-only test changes phase to exercise the read contract.
+  # It is not a cutover rehearsal and grants no second business writer.
+  db.execute('set local role company_tax_filing_store_owner')
+  db.execute("update backend_system.company_tax_return_migration_state set phase='cutover'")
+  db.execute('reset role')
+  result=read()
+  for api,family in [('previews','filing_previews'),('submissions','filing_submissions'),('overrides','filing_overrides'),('review_comments','filing_review_comments'),('permissions','authority_permissions'),('test_evidence','authority_test_runs')]:
+   check(f'authorized read preserves complete {family} row',len(result[api])==1 and result[api][0] in before[family])
+  from talli_backend.modules.company_tax_filing.public import CompanyTaxFilingRows
+  from talli_backend.shared.kernel import CompanyId,IncomeYear
+  CompanyTaxFilingRows(CompanyId(company),IncomeYear(2025),**result)
+  report['checks'].append('actual SQL result passes immutable public contract validation')
+  other_year=read(year=2024)
+  check('other year excludes yearly rows and preserves company-wide permissions/evidence',all(not other_year[k] for k in ('previews','submissions','overrides','review_comments')) and len(other_year['permissions'])==1 and len(other_year['test_evidence'])==1)
+  read(actor='00000000-0000-0000-0000-000000000199',error='company_tax_return_not_found');report['checks'].append('outsider is concealed')
+  read(claims_actor='00000000-0000-0000-0000-000000000199',error='company_tax_return_forbidden');report['checks'].append('mismatched verified context is rejected')
+  db.execute('set local role company_tax_filing_store_owner')
+  db.execute("update backend_system.company_tax_return_migration_state set phase='rolled_back'")
+  db.execute('reset role')
+  read(error='company_tax_return_unavailable');report['checks'].append('rolled-back source is unavailable')
+  import_contract=ROOT/'supabase/migrations/20260914202000_company_tax_return_import_contract.sql'
+  db.execute(import_contract.read_text().removesuffix('commit;\n'))
+  report['importContractSha256']=hashlib.sha256(import_contract.read_bytes()).hexdigest()
+  preparation=ROOT/'supabase/migrations/20260914203000_company_tax_return_preparation_contracts.sql'
+  preparation_sql=preparation.read_text();assert preparation_sql.endswith('commit;\n')
+  db.execute(preparation_sql.removesuffix('commit;\n'))
+  report['preparationContractSha256']=hashlib.sha256(preparation.read_bytes()).hexdigest()
+  db.execute('set local role company_tax_filing_store_owner')
+  db.execute("update backend_system.company_tax_return_migration_state set phase='cutover'")
+  db.execute('reset role')
+  reviewer='00000000-0000-0000-0000-000000000188'
+  db.execute('insert into auth.users(id) values(%s)',(reviewer,))
+  db.execute("insert into public.company_memberships(company_id,user_id,role,accepted_at) values(%s,%s,'reviewer',now())",(company,reviewer))
+  def mutate(function,values,actor=owner,aal='aal2',error=None):
+   db.execute('savepoint mutation_attempt');db.execute('reset role')
+   import time
+   claims={'sub':actor,'role':'authenticated','aal':aal,'amr':[{'method':'totp','timestamp':int(time.time())}]}
+   db.execute("select set_config('talli.verified_actor_id',%s,true)",(actor,))
+   db.execute("select set_config('talli.verified_actor_claims',%s,true)",(json.dumps(claims),))
+   db.execute('set local role company_tax_filing_workflow_executor')
+   try:
+    value=db.execute('select company_tax_filing.'+function+'('+','.join(['%s']*(len(values)+1))+')',(*values,actor)).fetchone()[0]
+    assert error is None,(function,error)
+    db.execute('reset role');db.execute('release savepoint mutation_attempt');return value
+   except psycopg.Error as e:
+    db.execute('rollback to savepoint mutation_attempt');db.execute('release savepoint mutation_attempt')
+    assert e.diag.message_primary==error,(function,error,e.diag.message_primary)
+  preview='00000000-0000-0000-0001-000000000000'
+  sibling='00000000-0000-0000-0001-000000000001'
+  check('Tax preview read preserves original row',mutate('read_preview_v1',(preview,))==next(r for r in before['filing_previews'] if r['id']==preview))
+  check('Accounts preview is absent from Tax read',mutate('read_preview_v1',(sibling,)) is None)
+  override=mutate('record_override_v1',(preview,'synthetic','old','new','reason','warning',True))
+  check('override binds source company year label and current owner',override['company_id']==company and override['income_year']==2025 and override['filing']=='skattemelding for AS' and override['created_by']==owner and override['owner_confirmed_by']==owner)
+  mutate('record_override_v1',(preview,'synthetic','old','new','reason','warning',False),error='company_tax_return_invalid_input');report['checks'].append('override requires explicit owner confirmation')
+  mutate('record_override_v1',(sibling,'synthetic','old','new','reason','warning',True),error='company_tax_return_not_found');report['checks'].append('cannot override sibling preview')
+  comment=mutate('add_review_comment_v1',(preview,'advisory','reviewed'),actor=reviewer)
+  check('accepted reviewer creates exact legacy target and attribution',comment['created_by']==reviewer and comment['target']=='rf1086_preview')
+  acknowledged=mutate('acknowledge_review_comment_v1',(comment['id'],))
+  check('owner acknowledgement preserves comment identity and author',acknowledged['id']==comment['id'] and acknowledged['created_by']==reviewer and acknowledged['acknowledged_by']==owner)
+  hard=mutate('add_review_comment_v1',(preview,'hard_block','stop'),actor=reviewer)
+  mutate('acknowledge_review_comment_v1',(hard['id'],),error='company_tax_return_hard_review_block');report['checks'].append('hard review block cannot be acknowledged')
+  mutate('confirm_filing_permission_v1',(company,True),aal='aal1',error='company_tax_evidence_mfa_required');report['checks'].append('permission requires fresh MFA')
+  permission=mutate('confirm_filing_permission_v1',(company,False))
+  repeated=mutate('confirm_filing_permission_v1',(company,True))
+  check('permission upsert keeps identity and updates exact flag without provider activation',repeated['id']==permission['id'] and repeated['production_enabled'] is True and repeated['confirmed_by']==owner)
+  data=dict(environment='manual_evidence',status='pending',test_reference='synthetic-manual',feedback_summary='',receipt_reference=None,archive_reference=None,evidence_url=None,payload_hash=None)
+  mutate('record_test_evidence_v1',(company,Jsonb(data)),aal='aal1',error='company_tax_evidence_mfa_required');report['checks'].append('manual evidence requires fresh MFA')
+  run=mutate('record_test_evidence_v1',(company,Jsonb(data)))
+  check('manual evidence binds current owner and Tax obligation',all(run[k]==v for k,v in data.items()) and run['company_id']==company and run['recorded_by']==owner and run['obligation']=='skattemelding')
+  mutate('record_test_evidence_v1',(company,Jsonb(data)),actor=reviewer,error='company_tax_return_forbidden');report['checks'].append('reviewer cannot record authority evidence')
+  check('all generic Tax and Accounts rows unchanged by owned controls',snapshot(db)==before)
+  db.execute('set local role company_tax_filing_store_owner')
+  db.execute("update backend_system.company_tax_return_migration_state set phase='rolled_back'")
+  db.execute('reset role')
+  mutate('add_review_comment_v1',(preview,'advisory','after rollback'),error='company_tax_return_unavailable');report['checks'].append('rolled-back mutation is unavailable')
+  report['status']='PASS' 
+ except psycopg.Error as error:
+  report['status']='FAIL';report['error']={'message':error.diag.message_primary,'context':error.diag.context}
+  print(json.dumps(report['error']));raise SystemExit(1)
+ finally:
+  db.execute('rollback')
+  report['rollbackVerified']=db.execute("select to_regclass('backend_system.company_tax_return_migration_state') is null and not exists(select 1 from public.companies where id=%s)",(company,)).fetchone()[0]
+  (PRIVATE/'filing-preparation-contract-seeded.json').write_text(json.dumps(report,indent=2,default=str)+'\n')
+print(json.dumps({'status':report['status'],'checks':len(report['checks']),'rollbackVerified':report['rollbackVerified']}))

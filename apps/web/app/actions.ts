@@ -1,5 +1,7 @@
 "use server";
 
+import { previewCompanyTaxReadiness } from "../features/company-tax-filing";
+import { loadPresentedCompanyTaxSource } from "./lib/company-tax-workspace-source";
 import { loadPresentedRf1086Source, composeFilingSources } from "./lib/rf1086-workspace-source";
 
 import type { AnnualSupportRefundRecoveryActionState, AnnualSupportRefundIdentity } from "./lib/annual-support-refund-recovery";
@@ -30,7 +32,6 @@ import {
 } from "./lib/authority-test-evidence";
 import { validateAuthorityObligation } from "./lib/authority-permission";
 
-import { buildCompanyTaxReturnEvidencePersistence } from "./lib/company-tax-return-submission";
 import { evaluateAnnualReadinessGates } from "./lib/annual-readiness";
 import { annualConfirmations, buildYearEndInterviewAnswers, noActivityConfirmed, yearEndAnswerKeys } from "./lib/annual-data";
 import { buildDeadlineReminderPlan, defaultReminderPreferences } from "./lib/deadlines";
@@ -213,7 +214,7 @@ import {
   listOpeningSetups,
   listPeriodLocks,
 } from "./lib/supabase/server";
-import { loadTaxSettlementArchiveSource, previewTaxSettlement, postTaxSettlement, taxPreviewErrorMessage, taxSubmissionErrorMessage, type TaxSettlementPreviewInputWire } from "../features/company-tax-filing";
+import { findCompanyTaxPreview, acknowledgeOwnedCompanyTaxComment, companyTaxActionErrorMessage, companyTaxRecordOverride, companyTaxAddReviewComment, companyTaxConfirmPermission, companyTaxRecordTestEvidence, importCompanyTaxTt02Evidence, taxEvidenceImportErrorMessage, loadTaxSettlementArchiveSource, previewTaxSettlement, postTaxSettlement, taxPreviewErrorMessage, taxSubmissionErrorMessage, type TaxSettlementPreviewInputWire } from "../features/company-tax-filing";
 
 function formString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -1326,9 +1327,16 @@ export async function addFilingOverride(formData: FormData) {
   let rfPreview;
   try { rfPreview = await findRf1086Preview(accessToken, previewId); }
   catch (error) { redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`); }
+  let taxPreview;
+  if (!rfPreview) {
+    try { taxPreview = await findCompanyTaxPreview(accessToken, previewId); }
+    catch (error) { redirect(`/workspace?error=${encodeURIComponent(companyTaxActionErrorMessage(error))}`); }
+  }
   let preview;
   if (rfPreview) {
     preview = presentRf1086Preview(rfPreview);
+  } else if (taxPreview) {
+    preview = { id: taxPreview.id, company_id: taxPreview.companyId, income_year: taxPreview.incomeYear, filing: taxPreview.filing };
   } else {
   const { data: legacyPreview, error: previewError } = await supabase
     .from("filing_previews")
@@ -1366,6 +1374,13 @@ export async function addFilingOverride(formData: FormData) {
         ownerConfirmed: formData.get("ownerConfirmed") === "on",
       });
     } catch (error) { redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`); }
+  } else if (taxPreview) {
+    try { await companyTaxRecordOverride(accessToken, {
+      previewId, fieldTarget: override.fieldTarget, oldValue: override.oldValue,
+      newValue: override.newValue, reason: override.reason, riskLevel: override.riskLevel,
+      ownerConfirmed: formData.get("ownerConfirmed") === "on",
+    }); }
+    catch (error) { redirect(`/workspace?error=${encodeURIComponent(companyTaxActionErrorMessage(error))}`); }
   } else {
   const { error } = await supabase.from("filing_overrides").insert({
     preview_id: preview.id,
@@ -1588,9 +1603,16 @@ export async function addFilingReviewComment(formData: FormData) {
   let rfPreview;
   try { rfPreview = await findRf1086Preview(accessToken, previewId); }
   catch (error) { redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`); }
+  let taxPreview;
+  if (!rfPreview) {
+    try { taxPreview = await findCompanyTaxPreview(accessToken, previewId); }
+    catch (error) { redirect(`/workspace?error=${encodeURIComponent(companyTaxActionErrorMessage(error))}`); }
+  }
   let preview;
   if (rfPreview) {
     preview = presentRf1086Preview(rfPreview);
+  } else if (taxPreview) {
+    preview = { id: taxPreview.id, company_id: taxPreview.companyId, income_year: taxPreview.incomeYear, filing: taxPreview.filing };
   } else {
   const { data: legacyPreview, error: previewError } = await supabase
     .from("filing_previews")
@@ -1608,6 +1630,9 @@ export async function addFilingReviewComment(formData: FormData) {
       previewId, severity: severity as "advisory" | "hard_block", body,
     }); }
     catch (error) { redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`); }
+  } else if (taxPreview) {
+    try { await companyTaxAddReviewComment(accessToken, { previewId, severity, body }); }
+    catch (error) { redirect(`/workspace?error=${encodeURIComponent(companyTaxActionErrorMessage(error))}`); }
   } else {
   const { error } = await supabase.from("filing_review_comments").insert({
     preview_id: preview.id,
@@ -1652,9 +1677,15 @@ export async function acknowledgeFilingReviewComment(formData: FormData) {
   let ownedComment;
   try { ownedComment = await acknowledgeOwnedRf1086Comment(accessToken, commentId); }
   catch (error) { redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`); }
+  let taxComment;
+  if (!ownedComment) {
+    try { taxComment = await acknowledgeOwnedCompanyTaxComment(accessToken, commentId); }
+    catch (error) { redirect(`/workspace?error=${encodeURIComponent(companyTaxActionErrorMessage(error))}`); }
+  }
+  const acknowledgedComment = ownedComment ?? taxComment;
   let comment;
-  if (ownedComment) {
-    comment = { id: ownedComment.recordId, company_id: ownedComment.companyId, severity: "advisory" };
+  if (acknowledgedComment) {
+    comment = { id: acknowledgedComment.recordId, company_id: acknowledgedComment.companyId, severity: "advisory" };
   } else {
   const { data: legacyComment, error: commentError } = await supabase
     .from("filing_review_comments")
@@ -4657,6 +4688,9 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
   const rfSource = await loadPresentedRf1086Source(accessToken, [companyId], incomeYear);
   if (rfSource.error) redirect(`/workspace?error=${encodeURIComponent(rfSource.error)}`);
 
+  const taxSource = await loadPresentedCompanyTaxSource(accessToken, [companyId], incomeYear);
+  if (taxSource.error) redirect(`/workspace?error=${encodeURIComponent(taxSource.error)}`);
+
   const holdingActions = [
     ...(legacyHoldingActions ?? []).filter(
       (action) => ![
@@ -4685,6 +4719,15 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
       error instanceof Error ? error.message : "Dokumentstatus kunne ikke leses.",
     )}`);
   }
+  let companyTaxReadiness;
+  try {
+    companyTaxReadiness = await previewCompanyTaxReadiness(accessToken, {
+      companyId, incomeYear, annualData: annualData ?? null,
+      ledgerEntries: ledgerEntries ?? [], holdingActions: holdingActions.map(action => ({ ...action })),
+    });
+  } catch {
+    redirect(`/workspace?error=${encodeURIComponent("Skattegrunnlaget kunne ikke vurderes. Prøv igjen.")}`);
+  }
   const snapshots = evaluateAnnualReadinessGates({
     company,
     incomeYear,
@@ -4693,13 +4736,14 @@ export async function refreshAnnualReadinessSnapshots(formData: FormData) {
     holdingActions,
     bankTransactions: bankTransactions ?? [],
     documents: documents ?? [],
-    overrides: composeFilingSources(overrides ?? [], rfSource.overrides),
+    overrides: composeFilingSources(composeFilingSources(overrides ?? [], rfSource.overrides), taxSource.overrides),
     locks: locks ?? [],
     annualData: annualData ?? null,
     billingEntitlements,
-    authorityPermissions: [...(authorityPermissions ?? []).filter((row) => !rfSource.authorityPermissions.some((owned) => owned.company_id === row.company_id && owned.obligation === row.obligation)), ...rfSource.authorityPermissions],
-    filingPreviews: composeFilingSources(filingPreviews ?? [], rfSource.previews),
-    filingSubmissions: composeFilingSources(filingSubmissions ?? [], rfSource.submissions),
+    authorityPermissions: [...(authorityPermissions ?? []).filter((row) => ![...rfSource.authorityPermissions, ...taxSource.authorityPermissions].some((owned) => owned.company_id === row.company_id && owned.obligation === row.obligation)), ...rfSource.authorityPermissions, ...taxSource.authorityPermissions],
+    filingPreviews: composeFilingSources(composeFilingSources(filingPreviews ?? [], rfSource.previews), taxSource.previews),
+    filingSubmissions: composeFilingSources(composeFilingSources(filingSubmissions ?? [], rfSource.submissions), taxSource.submissions),
+    companyTaxReadiness,
     corporateDocuments: {
       enabled: process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true",
       readiness: corporateReadiness,
@@ -4830,6 +4874,11 @@ export async function confirmAuthorityPermission(formData: FormData) {
     if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
     try { await confirmRf1086PermissionThroughApi(accessToken, { companyId, productionEnabled }); }
     catch (error) { redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`); }
+  } else if (obligation === "skattemelding") {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
+    try { await companyTaxConfirmPermission(accessToken, { companyId, productionEnabled }); }
+    catch (error) { redirect(`/workspace?error=${encodeURIComponent(companyTaxActionErrorMessage(error))}`); }
   } else {
   const { error } = await supabase.from("authority_permissions").upsert(
     {
@@ -4915,6 +4964,15 @@ export async function recordAuthorityTestEvidence(formData: FormData) {
         payloadHash: record.payload_hash,
       }); }
     catch (error) { redirect(`/workspace?error=${encodeURIComponent(rf1086ActionErrorMessage(error))}`); }
+  } else if (obligation === "skattemelding") {
+    const accessToken = await getCurrentSessionAccessToken();
+    if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
+    try { await companyTaxRecordTestEvidence(accessToken, {
+      companyId, environment, status, testReference: record.test_reference,
+      feedbackSummary: record.feedback_summary, receiptReference: record.receipt_reference,
+      archiveReference: record.archive_reference, evidenceUrl: record.evidence_url, payloadHash: record.payload_hash,
+    }); }
+    catch (error) { redirect(`/workspace?error=${encodeURIComponent(companyTaxActionErrorMessage(error))}`); }
   } else {
   const { error } = await supabase.from("authority_test_runs").insert(record);
   if (error) {
@@ -5019,40 +5077,18 @@ export async function recordCompanyTaxReturnTt02Evidence(formData: FormData) {
     redirect("/workspace?error=Velg%20en%20gyldig%20skattemelding-evidensfil%20i%20JSON-format");
   }
 
-  let evidence;
+  const evidenceJson = await evidenceFile.text();
+  try { JSON.parse(evidenceJson); }
+  catch { redirect("/workspace?error=TT02-evidensfilen%20er%20ikke%20gyldig%20JSON"); }
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) redirect("/workspace?error=Innlogging%20kreves");
   try {
-    evidence = JSON.parse(await evidenceFile.text());
-  } catch {
-    redirect("/workspace?error=TT02-evidensfilen%20er%20ikke%20gyldig%20JSON");
-  }
-
-  const company = await loadAcceptedMembershipCompany(companyId);
-  if (!company) {
-    redirect(`/workspace?error=${encodeURIComponent("Selskapet finnes ikke")}`);
-  }
-
-  let persistence;
-  try {
-    persistence = buildCompanyTaxReturnEvidencePersistence({
-      companyId,
-      expectedCompanyOrgNumber: company.org_number,
-      expectedIncomeYear: Number(formString(formData, "incomeYear")),
-      evidence,
-      evidenceUrl: formString(formData, "evidenceUrl"),
-      recordedBy: user.id,
+    await importCompanyTaxTt02Evidence(accessToken, {
+      companyId, incomeYear: Number(formString(formData, "incomeYear")),
+      evidenceJson, evidenceUrl: formString(formData, "evidenceUrl"),
     });
-  } catch {
-    redirect(`/workspace?error=${encodeURIComponent("Ugyldig TT02-evidens")}`);
-  }
-
-  const { error } = await supabase.rpc("import_company_tax_tt02_evidence", {
-    p_payload: persistence,
-  });
-  if (error) {
-    const message = error.message.includes("company_tax_evidence_mfa_required")
-      ? "Ekstra identitetsbekreftelse med tofaktorautentisering kreves."
-      : "TT02-evidensen kunne ikke lagres.";
-    redirect(`/workspace?error=${encodeURIComponent(message)}`);
+  } catch (error) {
+    redirect(`/workspace?error=${encodeURIComponent(taxEvidenceImportErrorMessage(error))}`);
   }
 
   revalidatePath("/");

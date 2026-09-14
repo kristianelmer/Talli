@@ -1,0 +1,12 @@
+{
+  "reviewedRevision": "b1bf9e9f",
+  "finding": "SPEC-152-READ-1",
+  "fix": "Require each collection to be a list or tuple before recursive freezing and row validation.",
+  "tests": 38,
+  "followupReview": "PENDING",
+  "artifacts": {
+    "read-spec-review-b1bf9e9f.md": "cedae388360aa03b2aa2f146bf2de1bdda1ff3a6265071d260296055f9a09466",
+    "read-spec-review-b1bf9e9f.json": "270b270c26bd7b4039beb4685ca293b020be174cf041015a98a640ad203264b6",
+    "read-shape-followup-tests.log": "5ff96436ba12b50043be11629968b73fe3bb0bc8ee9419792242290eac8f2e64"
+  }
+}

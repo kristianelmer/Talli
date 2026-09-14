@@ -1,0 +1,26 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {pathToFileURL} from 'node:url';
+import {resolve} from 'node:path';
+const lib=name=>import(pathToFileURL(resolve('apps/web/app/lib',name)).href);
+const {buildCompanyTaxReturnPayload}=await lib('company-tax-return.ts');
+const {estimateAnnualTax}=await lib('tax-settlement.ts');
+const {renderCompanyTaxReturnXml}=await lib('company-tax-return-xml.ts');
+const {buildCompanyTaxReturnEvidencePersistence}=await lib('company-tax-return-submission.ts');
+const frozen=JSON.parse(readFileSync('architecture/evidence/issues/152/legacy-characterization.json','utf8'));
+const capture=fn=>{try{return {value:fn()};}catch(error){return {error:{name:error.name,message:error.message}};}};
+const cases=[];
+for(const [i,value] of ['\ufeff1000','1_000','١٠٠٠','\u00851000','0x'+'f'.repeat(300),'123.45','0x10','0b11','0o10','+1.5e2',' 1000 ',null,true,[],['1000'],[['1000']]].entries()){
+  const input=structuredClone(frozen.cases[0].input);
+  input.holdingActions[0].payload.gross_amount=value;
+  input.holdingActions[0].payload.taxable_add_back=value;
+  const payload=capture(()=>buildCompanyTaxReturnPayload(input));
+  const output={payload,annualEstimate:capture(()=>estimateAnnualTax(input))};
+  if(payload.value)output.xml=capture(()=>renderCompanyTaxReturnXml(payload.value.fields));
+  cases.push({id:'numeric-'+i,input,output});
+}
+const base=frozen.evidenceCases.find(c=>c.id==='synthetic-completed-pending-feedback').input;
+const evidenceCases=['https://127.1/','https://2130706433/','https://0x7f000001/','https://0177.0.0.1/','https://127.0.0.1/','https://example..com/evidence.json','https://%65vidence.example/path','https://example.123/path','https://evidence.<invalid/path','https://[::1]/path','https://xn--bcher-kva.example/path'].map((evidenceUrl,i)=>{const input={...structuredClone(base),evidenceUrl};return {id:'host-'+i,input,output:capture(()=>buildCompanyTaxReturnEvidencePersistence(input))};});
+const json=JSON.stringify({sourceRevision:frozen.sourceRevision,runtime:process.version,ada:process.versions.ada,scope:'Additional unchanged predecessor boundary captures prompted by independent 6bbccde7 reviews.',cases,evidenceCases},null,2)+'\n';
+writeFileSync('architecture/evidence/issues/152/legacy-review-boundaries.json',json);
+console.log(JSON.stringify({payloadCases:cases.length,evidenceCases:evidenceCases.length,sha256:createHash('sha256').update(json).digest('hex')}));

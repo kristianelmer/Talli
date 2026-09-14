@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { buildPersistedCompanyArchive } from "../apps/web/app/lib/archive.ts";
-import { buildCompanyTaxReturnPayload } from "../apps/web/app/lib/company-tax-return.ts";
+import { buildCompanyTaxReturnPayload } from "./support/company_tax_public.mjs";
 import { evaluateAnnualReadinessGates } from "../apps/web/app/lib/annual-readiness.ts";
 
 const readyBillingEntitlements = Object.fromEntries([
@@ -282,6 +282,7 @@ test("persists tax return payload feedback into skattemelding readiness", () => 
       created_at: "2026-01-01T00:00:00Z",
     },
     incomeYear: 2025,
+    companyTaxReadiness: { companyId: "company-id", incomeYear: 2025, issues: [{ level: "block", code: "tax_return_unclear_fritaksmetoden", message: "Kun sikker fritaksmetodebehandling støttes i første skattemelding-løype.", source: "company_tax_return_payload", accepted: false }] },
     setups: [{ id: "setup-id", company_id: "company-id", income_year: 2025, bank_balance: 1, share_capital: 1, share_count: 1, nominal_value: 1, locked_at: "2026-01-01T00:00:00Z", created_by: "owner" }],
     ledgerEntries,
     holdingActions: [{ ...dividendAction, payload: { ...dividendAction.payload, tax_treatment: "needs_accountant" } }],

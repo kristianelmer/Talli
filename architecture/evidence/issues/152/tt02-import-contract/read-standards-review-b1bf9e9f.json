@@ -1,0 +1,180 @@
+{
+  "verdict": "PASS_BOUNDED_FILING_READ_STANDARDS",
+  "baseRevision": "bcc8dc490a451e9afc181fd9c061afe3da06d120",
+  "candidateRevision": "b1bf9e9f7b5697226815a603743dc58e2b751e83",
+  "commits": [
+    "b1bf9e9f7b5697226815a603743dc58e2b751e83 feat(tax): publish phase-gated filing workspace read contracts (#152)"
+  ],
+  "diffSha256": "51b2511f2fb6a93c1a8910433ba2004b187acea96daea4f84f39f187591c2024",
+  "files": [
+    {
+      "path": "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py",
+      "sha256": "fce798bc91d8381d45d247d3dfa5c2cf141af85b08068963e2d6681a05ec22b1"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/company_tax_filing_session.py",
+      "sha256": "d79ff45665c86350d2e808dbb3ef258dd9d9a05d604c6a3b5d88d41d4c839f7b"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py",
+      "sha256": "6da0d3ad4bcf0356a98cf84dddae1dd7bceb087d202226d912baa3539db2568a"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "cf0236e870d7ab7ed42bf656de203b602f4ea34890d93d2577e903124b560fbc"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md",
+      "sha256": "9b3506d4ea13e24d3e16455c8217a4bb66b9ca5f7dd9aa787989e29bd8e763d7"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/module.json",
+      "sha256": "aa2b585e5d9ff4d9c592c574ed082eaf380a581f6f9675eea0a7300f54fac94d"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/public.py",
+      "sha256": "48266f4f350ba39a582d4683b48c1b5191efd9cd15cfc4f4be2f30af37f27bf6"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/workspace.py",
+      "sha256": "481c0c4ce351d465a00880cf4770005691447a4b1ba2f86152ab9b754b148d47"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_filing_api.py",
+      "sha256": "1662c12c3d610ef7f69ccdc747326cfe519386bbcc76cfe56647e31084e0bba1"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_workspace.py",
+      "sha256": "b34a28656747e9113fd635a92a1f82f3c2d89b4d881b0c8e135d191fb079d997"
+    },
+    {
+      "path": "apps/web/features/company-tax-filing/MODULE.md",
+      "sha256": "02856a287cd84303e9d09cf60840dbba1053c3579f6f0d7366cc49d99f3cb84f"
+    },
+    {
+      "path": "apps/web/features/company-tax-filing/index.ts",
+      "sha256": "57aaddd4d1b2b535ee34f8d6564cab3bfa02abc410728c8e298886940fca8ba2"
+    },
+    {
+      "path": "apps/web/features/company-tax-filing/module.json",
+      "sha256": "f253e5b0c937a481fd43058a588250f78294546d88018d9072cc3cec217e81a7"
+    },
+    {
+      "path": "apps/web/features/company-tax-filing/transport.ts",
+      "sha256": "3ed46f996f52fdfc37f623f0bf446d5195d831b77fbc7fba60741271e07a759c"
+    },
+    {
+      "path": "apps/web/tests/company-tax-transport.test.mjs",
+      "sha256": "50674b91bdd714f057599a3362aaa1ba95759efbdf4545ef4b018a4f9ada0419"
+    },
+    {
+      "path": "architecture/BACKEND-SYSTEM.md",
+      "sha256": "e8f9fccbe7da06c29d6ee80b8a68c27b205299a24c6dec6458b5ddea4d598713"
+    },
+    {
+      "path": "architecture/backend-system.json",
+      "sha256": "85652a1e483894bab576d6975cb4ed76c23ff5cb4f9e438b49c287ad59ef1648"
+    },
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "7e6ad9c5c0f2a343e11e3dd2b0759759b58f629cfb0ad51ce2af7613126c98ce"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-read-contract/expansion-spec-review-bcc8dc49.json",
+      "sha256": "64cc716c2fa6a68fb409139685ba83d744638011e1fd65bdba8d3c540cbf8c77"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-read-contract/expansion-spec-review-bcc8dc49.md",
+      "sha256": "54e630ee6c259e1c5643d1afa7d28bcadedcc3b993a36dd42de0e28ffc4651c1"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-read-contract/expansion-standards-review-bcc8dc49.json",
+      "sha256": "72b6a4fe0da5c4a167f99828dcc523ed95888b500b830e137757517c74beb612"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-read-contract/expansion-standards-review-bcc8dc49.md",
+      "sha256": "f3eee2b9b742296f21a645f8417b3c22617b3216b0457669fd79664928fda1ea"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-read-contract/filing-read-contract-seeded.json",
+      "sha256": "4efbf787fab3cdc5bb21259f7697f921418fa9cf58894ef07063d3bbd2bc74ca"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-read-contract/filing-read-contract-tests.log",
+      "sha256": "0321ed59a0973f2e50769074c40d5c122aa6caa66a0156f55cd3d48e74cef59a"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-read-contract/filing-read-typecheck.log",
+      "sha256": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-read-contract/filing-read-web-tests.log",
+      "sha256": "f77b576157f158d9b34b265eeacd1eec0472f89b0d866f899e181f6dca5447c1"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-read-contract/manifest.json",
+      "sha256": "bda672da2432bfd45d72022cc40cf28c24c2d33ed88ecf058b8c00d16abf4e50"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-read-contract/probe-filing-read-contract.py.txt",
+      "sha256": "07c7b83c9bebf72e76f584ab26c81392a10b22eb0f780a87ecff3a4019b81a55"
+    },
+    {
+      "path": "architecture/evidence/issues/152/requirements.json",
+      "sha256": "cd4da5befa561f08dd35d1a62ba15e8b4ea3ade0873df6e1f16a680c62b7cdf6"
+    },
+    {
+      "path": "contracts/openapi/talli-v1.json",
+      "sha256": "d658b4c2c069a4f71c63f051d92c89ed6c66d1e8960e7813230dded4b226e681"
+    },
+    {
+      "path": "packages/talli-api-client/src/generated/client.ts",
+      "sha256": "67a109b6631fd366fb2285b07608c427eb84e13b0988001691e5dd886b11d6de"
+    },
+    {
+      "path": "scripts/generate-api-client.mjs",
+      "sha256": "58e90d3676fff7b23a8f9ba97ab1c94ad8ae664670c6d5c60f18865bd12d7734"
+    },
+    {
+      "path": "supabase/migrations/20260914201000_company_tax_return_read_contracts.sql",
+      "sha256": "24ebea4288c9f1357ecdd6b6c761b8b9e816fc188fcabd4e0671125996cc4ff5"
+    }
+  ],
+  "verification": {
+    "independentBackendTests": 220,
+    "independentNodeTransportTests": 17,
+    "allExistingOpenApiObjectsUnchanged": true,
+    "newOpenApiSchemas": 7,
+    "newOpenApiPaths": 1,
+    "artifactHashesVerified": 9,
+    "sqlHashesVerified": 2,
+    "recordedRollbackOnlySqlChecks": 45,
+    "databaseIndependentlyRerun": false,
+    "architectureAndTypecheckIndependentlyRerun": false
+  },
+  "artifacts": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/read-standards-tests-b1bf9e9f.log",
+      "sha256": "b470291047e9fa12e38cc55884be0546b8d03f669db657739e5fd08b98364373"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/read-standards-web-b1bf9e9f.log",
+      "sha256": "c4412b41a42a3b47a044228af95741c856d85f630a9193bc750b99de9de9b8d5"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/read-standards-static-b1bf9e9f.json",
+      "sha256": "49ac3b73227af324b79e40111795a5c1b33120db52f34619f801e2b270990865"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/read-standards-extraction-b1bf9e9f.txt",
+      "sha256": "ec6b6c147b495bf82760b4acd001496b6b90163c34fcb51fae4b495719cd3b0d"
+    }
+  ],
+  "findings": [],
+  "limits": [
+    "Reads only; mutations/UI/production source completeness/full stage pending",
+    "No shared DB/browser/configuration or tracked mutation",
+    "No complete gate or #152 exit credit",
+    "Uncommitted mutation implementation excluded"
+  ]
+}

@@ -1,0 +1,13 @@
+> talli-repository@0.1.0 test:browser-company-tax
+> node --test --test-concurrency=1 tests/browser_tax_settlement.mjs tests/browser_tax_filing.mjs
+
+✔ Tax owner imports pending TT02 feedback, recovers a lost response and reads complete scoped history (23927.494791ms)
+✔ owner captures every settlement kind through wizard and workspace and retries without duplicate effects (35357.977875ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 59809.554834

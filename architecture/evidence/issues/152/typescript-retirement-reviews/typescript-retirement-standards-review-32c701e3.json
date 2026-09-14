@@ -1,0 +1,71 @@
+{
+  "base": "6353c78cdc32700b92c1431732d9e782fba5612a",
+  "candidate": "32c701e31ff83016342c47a74ab0951ba3eab05d",
+  "isolatedArchive": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-tax-retirement-standards-ns3txrdk",
+  "node": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+  "nodeVersion": "v24.20.0",
+  "python": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+  "schemaRevision": "7ac8c6a32238dd0d53e7ac01a6949bb3376f2bba",
+  "schemaPath": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/skattemeldingen-v1.62.47/src/resources/xsd",
+  "testExitCode": 0,
+  "transcript": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/typescript-retirement-standards-tests-complete-32c701e3.log",
+  "transcriptSha256": "e581b0392001b7ad3cab4d8ca452e2f5c2b6e77d02a44e4d4e33a4036224e066",
+  "verifiedManifestBindings": {
+    "apps/web/app/lib/company-tax-return.ts": "765b82a633a859c4108e83cb6f30b18e3fd3ad491f56a53485453f6bc3ca6ec7",
+    "apps/web/app/lib/company-tax-return-xml.ts": "80fe4c5c10daa3c67b6041b32fb2c6289fe91f8783f7d8b62077f0564c511f17",
+    "apps/web/app/lib/company-tax-return-authority-payload.ts": "c68aa036c33c6dfacf235b9960d8d8f8e36c016cba4b72e12a71cd44566e99c1",
+    "apps/web/app/lib/company-tax-return-submission.ts": "190077eabc091c9143c4223faee030047b09f85d1be2e0ca11dbe1be996b3ced",
+    "apps/web/app/lib/tax-settlement.ts": "0712141c523700e51816353d78453558949ec1ed6416c59bfd7cc3a0e519e274",
+    "architecture/evidence/issues/152/typescript-policy-retirement/owned-tax-ts-retirement-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "architecture/evidence/issues/152/typescript-policy-retirement/retained-annual-evidence-definitions.json": "aa3b6b6695b524f725577e58844e6310901542461a3c3b6726416ff86dc0e50b",
+    "architecture/evidence/issues/152/typescript-policy-retirement/owned-tax-ts-retirement-xsd-tests.log": "fd533a3a5d245970fc1721d2913f37dfdcefa7dcf5b0b2afa95bb0cc448c8846"
+  },
+  "initialHarnessSetupFailure": {
+    "reason": "Missing isolated @talli/talli-api-client symlink; added symlink to pinned extracted package, not shared source.",
+    "transcript": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/typescript-retirement-standards-tests-32c701e3.log",
+    "transcriptSha256": "fa439771802f89f9fa03878d6b15915d98418a9b6acae9f6fead7a65b33ebd63"
+  },
+  "astProbe": {
+    "exitCode": 0,
+    "transcript": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/typescript-retirement-standards-ast-32c701e3.log",
+    "sha256": "9b0a9f9d1e3b956e5fbc3e64a1c804c4346b929faf4e5524ac76aece08037f98"
+  },
+  "verdict": "PASS_BOUNDED_STANDARDS_REVIEW",
+  "findings": [],
+  "sourceHashes": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "b0832517b137f68b33bd3372d1450a698cc451effd61c5fdd639fa7bf159db1e",
+    "apps/web/app/lib/authority-test-evidence.ts": "3288e82a19ec640fa3b7142bac88f7d5262be957592303a1e41f6db057302d9d",
+    "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-spec-followup-6353c78c.json": "a640b5eb808553fc965fd131520f4e8034413839df139ee6082fcccc11e99cd8",
+    "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-spec-followup-6353c78c.md": "5bbfe8a93fd370acf22da11c25c59d779942dec7dcd3ebe3159f99ca167faec2",
+    "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-spec-review-9c879ff7.json": "99e16f17404846fc9d9bf40ad927fc2a378464e8d1b3d908d2e79dd9836825fb",
+    "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-spec-review-9c879ff7.md": "c9bf5926ef7e5bf8a388a682d9f1ba3783be24f9ff437866da44a7f34f894aaa",
+    "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-standards-followup-6353c78c.json": "c8f21209368070b1e162f2c0cd13609d9d5f7902f996fea6f261f36134e1b99c",
+    "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-standards-followup-6353c78c.md": "ca5db3e05075c7cda30ff2b72b5a1993cfabd34453cbc89f4237889e9762fc54",
+    "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-standards-review-9c879ff7.json": "69a43222ab794037b81ce116d4d0e5693f821350b5bfdf9c79dfb43bf302fa25",
+    "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-standards-review-9c879ff7.md": "66055f97acdf229beef9650a7af37f264fa67b8f7ff322dc7986d6428a52b787",
+    "architecture/evidence/issues/152/typescript-policy-retirement/manifest.json": "ae3d9b7a482ec148b55c1d4b5adc61806863bf0a5bb42ae4aec3995f55e08ff0",
+    "architecture/evidence/issues/152/typescript-policy-retirement/owned-tax-ts-retirement-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "architecture/evidence/issues/152/typescript-policy-retirement/owned-tax-ts-retirement-xsd-tests.log": "fd533a3a5d245970fc1721d2913f37dfdcefa7dcf5b0b2afa95bb0cc448c8846",
+    "architecture/evidence/issues/152/typescript-policy-retirement/retained-annual-evidence-definitions.json": "aa3b6b6695b524f725577e58844e6310901542461a3c3b6726416ff86dc0e50b",
+    "tests/authority_test_evidence.test.mjs": "a6d1066df2d511028407e91959abca7b065d90d944290487bf70fec2fbef8dd7",
+    "tests/company_tax_return_authority_evidence_import.test.mjs": "cc4d1a72fbf47102f28c1748fe0816ac2e5ea84823f4d78615e1aa127675644d",
+    "tests/company_tax_return_payload.test.mjs": "ba0fe07b397d0ca3369559e0865d79fbc8241d41eabc98226eb83ee4b0ec31a1",
+    "tests/company_tax_return_submission.test.mjs": "e1030ddf5be381d8d65a6c605a8023c11f175929128c3c71531560b583449f37",
+    "tests/company_tax_return_xml.test.mjs": "0bfbf6f26ece4f64218358ad4432543c46fdd248d6ef370e01811dda9155f323",
+    "tests/investments_cross_output_reconciliation.test.mjs": "83b9c5b6bbb1c46083c780bf612c700bc71be4009ad34e537eafaf3c8b0dd322",
+    "tests/supabase_workspace.test.mjs": "3843bff3413afa1f721ab9092362844cbfcd65646f7bead93d520bcf6a194636",
+    "tests/support/company_tax_public.mjs": "b1c93ddd361198e552d85edf8539a8b92abeb3c109c26e79d12bc5e058bea485",
+    "tests/support/company_tax_public_driver.py": "857987e08ffda3d160cddb80f1ada9593529493dcd29966d52df157fbe6d4406",
+    "tests/tax_settlement.test.mjs": "e46efd6f048f7b81e692a1d32367c305a992a00f4380dcdea2ef0f93bab47170"
+  },
+  "diffSha256": "bfa7349715572c7e9e576c46529fa84daabb972263211685782868c090dc13be",
+  "independentTests": {
+    "passed": 41,
+    "failed": 0,
+    "skipped": 0,
+    "retainedDefinitionsByteIdentical": 16
+  },
+  "xsdWorkingTreeMatchesPinnedCommit": true,
+  "runtimeLimits": "No shared source/config writes, database/browser/provider operations, production bridge, or full-stage/gate verification. Isolated test outputs and private artifacts only.",
+  "reportSha256": "a710913d9c2209989a5bc0bc3aab317d1bc80de978eea0d57d5c0d9e087f0ed0"
+}

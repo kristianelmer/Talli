@@ -1,0 +1,120 @@
+{
+  "axis": "Spec",
+  "verdict": "FINDINGS_IN_BOUNDED_IMPORT_CONTRACT",
+  "baseRevision": "4c5404dfcedfbd5b858d76e1a7095ec2bd800247",
+  "candidateRevision": "b400103d2d7204c9a2154fd953a03ccb00041ad4",
+  "diffCommand": "git diff 4c5404dfcedfbd5b858d76e1a7095ec2bd800247...b400103d2d7204c9a2154fd953a03ccb00041ad4",
+  "findings": [
+    {
+      "id": "SPEC-152-IMPORT-1",
+      "priority": 2,
+      "file": "apps/backend/src/talli_backend/main.py",
+      "lines": [
+        9836,
+        9839
+      ],
+      "summary": "Valid legacy deep ignored JSON overflows recursive command freezing; HTTP500 before transaction.",
+      "reproduction": "Pinned legacy accepts same 3864-byte fixture with exact projection; independent current API expected200 regression fails with500."
+    },
+    {
+      "id": "SPEC-152-IMPORT-2",
+      "priority": 2,
+      "file": "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py",
+      "lines": [
+        55,
+        56
+      ],
+      "summary": "SQL failures become projection-invalid/422 and change legacy persistence failure message.",
+      "reproduction": "Three mapped SQL errors through actual API then exact extracted presenter differ from pinned old action message. UI remains legacy."
+    }
+  ],
+  "independentVerification": {
+    "focusedTests": "17 passed in 2.03s",
+    "legacyNode": "v24.20.0 pinned 054740b8 sources",
+    "newSqlExecuted": false,
+    "artifactHashesVerified": 9,
+    "migrationHashesVerified": 3,
+    "legacySqlBodyHashVerified": true,
+    "requirementsByteIdentical": true,
+    "openapiSemanticDelta": {
+      "schemas": {
+        "added": [
+          "CompanyTaxEvidenceImportRequest",
+          "CompanyTaxEvidenceImportWire"
+        ],
+        "removed": [],
+        "changed": []
+      },
+      "paths": {
+        "added": [
+          "/api/v1/company-tax/tt02-evidence-imports"
+        ],
+        "removed": [],
+        "changed": []
+      }
+    }
+  },
+  "recordedSqlEvidence": {
+    "cases": 19,
+    "status": "PASS",
+    "scope": "Rollback-only synthetic SQL claims and temporary cutover phase, not independent SQL execution, concurrent sessions, JWT/MFA or provider proof."
+  },
+  "sourceBindings": {
+    "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py": "1f7fd38f0365e274287eaa09464cf9f5cb71c7f08f257f17775619dbe443ac70",
+    "apps/backend/src/talli_backend/application/company_tax_filing_session.py": "61aafe76b22cd2b43abfb768d02d7ab6a45b1b9f4e3c0bf8cd1e7cb778c8183c",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "0a2f62a67f5bbb455743f26b1453d32476ae5b51c24d141aaa3abd1cba8c94a2",
+    "apps/backend/src/talli_backend/main.py": "81404cdcd253768d47d88be51378b2f7fcfec0557163813f22ec5520dfafc14c",
+    "apps/backend/src/talli_backend/modules/audit/MODULE.md": "aed85fa47ed53b03cc0d0f6e307d7bb52db33a5b012822b01113a0715a6b66ec",
+    "apps/backend/src/talli_backend/modules/audit/__init__.py": "40130caaab02e8e68d8585d3a4f433e60d620f70f4de4cabc9893202933ff05e",
+    "apps/backend/src/talli_backend/modules/audit/module.json": "5d1d08bbf17bbaad65f661bd72cad531d66ce6baa1af2afd7870a46ed6cd2b01",
+    "apps/backend/src/talli_backend/modules/audit/public.py": "8f70becbce9eb1ac3b5cc75638040aa2f551db9803f0158ef71ebc5c966c7518",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "ad387d259c1ec97b345388563ec6f217c1ee10538a0b8579fd7fddc1a9a32a72",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "60df47f702e5971bc4b943a61658f8ada874f3c7b8f6906cdf9c54e359ebe19b",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "e942d88fb9acfe0a9ff650e3ca8db9532d0f8b9d9adc46417721fea1eb99502d",
+    "apps/backend/tests/test_company_tax_evidence_import.py": "b347129daa228208a9c760c56c294365ca3961b0362ec819b115f3e7980be7f5",
+    "apps/web/features/company-tax-filing/MODULE.md": "43637863621ac603ce2de5a4c7f43f80808313f1bc496276d386896847a6c357",
+    "apps/web/features/company-tax-filing/index.ts": "787fa4298250dd7855cd31c75780ffea2e69b7bc99479b50d0d1f1cc3d1d02fc",
+    "apps/web/features/company-tax-filing/module.json": "f965b91994086271f8832931f203e40d5a7344cab0dc421b77e05e325cb85c18",
+    "apps/web/features/company-tax-filing/transport.ts": "94c172e92c9d65b61f8a08b7d5cc5336020dc0cca1fabb973f8b1687a1116252",
+    "apps/web/tests/company-tax-transport.test.mjs": "56cfe7b70555fbdedfe55131d093098840dc6182711a50acf5ef1a99febe4bd6",
+    "architecture/BACKEND-SYSTEM.md": "0f1499db58481ce4024cde253048e6a3bd0e79c75d17f672e2418027e3515376",
+    "architecture/backend-system.json": "db441aa8f546817b0196f5eed8cc9de87a83b607ab4e5869b7948ba884a6713b",
+    "architecture/dependency-evidence.json": "b586cebb6720c088d633258f6b0f97fc8e0809426186ea93295b1d281eaa3250",
+    "architecture/evidence/issues/152/tt02-import-contract/import-backend-tests.log": "51f3d25ce8e69137d98eb31d8245bb2a2640bec2b12720c2289b010af7e03386",
+    "architecture/evidence/issues/152/tt02-import-contract/import-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "architecture/evidence/issues/152/tt02-import-contract/import-web-tests.log": "8a99db4a99ef8d32faff7af046c5328abe5ad9c5c3e13e5a3c5c0bf1411f2dbe",
+    "architecture/evidence/issues/152/tt02-import-contract/manifest.json": "534d46b4a4073827620766c47822568c5772cf4a758090a04b2b4c2a78826acc",
+    "architecture/evidence/issues/152/tt02-import-contract/owned-import-database-characterization.json": "4f34458a76a14e40b02347fab4cf6dcabdce75e7f764bc5edab8b9c02d07eef4",
+    "architecture/evidence/issues/152/tt02-import-contract/probe-owned-import.py.txt": "4d16c45ec927facbef9e69196cbaa2b5481b9a82ef742a2ee372c9327b0db854",
+    "architecture/evidence/issues/152/tt02-import-contract/read-spec-followup-4c5404df.json": "15efddf2352ba5dff73de773d3291b93c1a442d7386cbeaf59d60706aa9fc201",
+    "architecture/evidence/issues/152/tt02-import-contract/read-spec-followup-4c5404df.md": "c1110a4ed87df1b71eee0de021de306954ff8ef8d7b5d30b10525afdbcbb81be",
+    "architecture/evidence/issues/152/tt02-import-contract/read-standards-review-b1bf9e9f.json": "84d9427567773ed79f10bcef0d5d888f397cb1189c7f5836c506cd970b0abccf",
+    "architecture/evidence/issues/152/tt02-import-contract/read-standards-review-b1bf9e9f.md": "3c60e56e8eb6adb7bb1ce3ece75eaea73467669165984cd8a33602c22ae932ce",
+    "contracts/openapi/talli-v1.json": "e398b7eec569250016d580a1779223e50bfa53119234ef5d9ccf2f6ab198ba70",
+    "packages/talli-api-client/src/generated/client.ts": "0d2de181a1327efdee4a333b5a84d954dad2b1a2ff91a9dc2231f791fa8148de",
+    "scripts/generate-api-client.mjs": "1008cb8b496d4d44c603449d72d3d7174d817de6a49543fedd9c84883b0c779d",
+    "supabase/migrations/20260914202000_company_tax_return_import_contract.sql": "5b924cfe0d4771cc58723dcdc65f1c7f4612bd19bba7b0541f1ee0acd62d0cbb",
+    "architecture/evidence/issues/152/requirements.json": "cd4da5befa561f08dd35d1a62ba15e8b4ea3ade0873df6e1f16a680c62b7cdf6",
+    "054740b81692e0e59b99a76fff085f322f1968b4:apps/web/app/actions.ts": "a859be4f46dd66491c99be1e4fa811c413b531958426932b5929c1a287967f61",
+    "054740b81692e0e59b99a76fff085f322f1968b4:apps/web/app/lib/company-tax-return-submission.ts": "190077eabc091c9143c4223faee030047b09f85d1be2e0ca11dbe1be996b3ced",
+    "054740b81692e0e59b99a76fff085f322f1968b4:apps/web/app/lib/authority-test-evidence.ts": "70b9ba9ebb978c4c40f90e428e29b388c7ede251fc3bcb4582c492c0790601f4"
+  },
+  "privateArtifacts": {
+    "import-spec-deep-b400103d.json": "6cfe024b16d52e9ae51a412244e5b9e0329ad425379139caaeb43310af480115",
+    "import-spec-legacy-b400103d.mjs": "6649b1d049c761f3eaa2345f131c838151a9bf530486e6c87a3b7c38a502352a",
+    "import-spec-legacy-b400103d.log": "26fe085da57e1f2206967f7d237bd55e3f74537f3ccb73d0a57122d0dad373de",
+    "test_import_spec_b400103d.py": "801aa52f4ad3cd22cc7bdc4f11af6a2ed81c868e16b579855f5b797a6c523a64",
+    "import-spec-b400103d-red.log": "f82475d907da5165d4bed4f736140403e06a14c47c3b85284273d8db682c7dfa",
+    "import-spec-persistence-b400103d.py": "4fa6c4a4ee7a878131320a1bc39df8009fc74e81946b06821989a30c99b2a101",
+    "import-spec-persistence-b400103d.json": "e72be5a2b844d5b32a4ea988aebae74e007452781d0e77b905843e1397b69a02",
+    "import-spec-presenter-b400103d.mts": "d7cb6bf7fc23c460be8d3846af3f44dfcfbe7eed0b276766212ec3d572f3ff01",
+    "import-spec-presenter-b400103d.log": "5db69b2e153ba6995d6ebba3161f1cae9dc22bd841829ffa7b200fbf6cc2f437",
+    "import-spec-b400103d-tests.log": "768d5aced9a8c36163324b4d6b7a1f42f30f6e110cf8af2b2eff4a2daab49161",
+    "import-spec-sql-body-delta-b400103d.diff": "3c24488fe31bc6751d2a71bd6dd5e47a5ec142d2ff827c80c90f8c3ec8a832d4"
+  },
+  "reportSha256": "89005d2256ddc1ee0adbda15b15922688242a6c40fb10472d68ad0bfcb6eea69",
+  "limits": [
+    "No shared repository/database/browser/configuration mutation.",
+    "No cutover, full-stage acceptance or Audit migration credit."
+  ]
+}

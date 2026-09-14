@@ -1,0 +1,233 @@
+{
+  "verdict": "PASS_BOUNDED_PURE_IMPLEMENTATION_STANDARDS",
+  "baseRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+  "candidateRevision": "8b3e0cb340d962c8140b1ac72ceada59d4d4aea7",
+  "previousReviewedRevision": "6bbccde76e4d7b47e0c6b2c83f21e46470118d3f",
+  "closedFindings": [
+    "WHATWG numeric host canonicalization",
+    "ECMAScript numeric syntax/radix overflow"
+  ],
+  "commits": [
+    "8b3e0cb340d962c8140b1ac72ceada59d4d4aea7 fix(tax): preserve numeric coercion and standard URL and Norwegian ordering rules",
+    "6bbccde76e4d7b47e0c6b2c83f21e46470118d3f feat(tax): add characterized backend calculation and TT02 projection contracts",
+    "b7e524ae2f7026a0fe91eaf55385d99065b62989 docs(tax): capture successful synthetic TT02 import projections",
+    "252cf52a20a98074a2dbc875a59effbb0a278bfe docs(tax): begin company tax filing characterization for #152"
+  ],
+  "diffSha256": "7c3aeb5dfa600b6cf0cb4c26680a46bb94d64accd67cdb2dbbec72a0de48635c",
+  "files": [
+    {
+      "path": ".github/workflows/release-gate.yml",
+      "sha256": "58e1d6d869a63961876f7f0234b39784d736ad00a89d2a7866eeb1751f1d43f1"
+    },
+    {
+      "path": "apps/backend/README.md",
+      "sha256": "e8656d51c1a22194223c3e47874d211de4307ae27b4c6bd3218e6c3231273df9"
+    },
+    {
+      "path": "apps/backend/pyproject.toml",
+      "sha256": "acef4faf616fa1678a922159955655d1f8a011b0fc05558e0a49a70220096b53"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md",
+      "sha256": "6ef4839f5286a47c81328c52950282511fdd522393b6b7e6dab789b53b287c11"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/calculation.py",
+      "sha256": "e1655ac807151151557bc4e14e5aa1e5f3da3f54e8895e8bd32528913c8d50aa"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/evidence.py",
+      "sha256": "0b9ff2aaf0cf016fbea8d7e1a07b0d9cd6f73c3a0c18aac6c47f9c2536ba468a"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/module.json",
+      "sha256": "ee002eaea21ba25d7342e0a2d8532ac77e243f14d42d9916c6c7b2db0ff2ded1"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/numbers.py",
+      "sha256": "96da02012ac092de436faf76ac6a15a8eb610b6cb79479a2d7c4e4dafcc87af3"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/public.py",
+      "sha256": "d3ce3afacb009347a5c750b748e611a173d4f1222997a7092ab3d76880547119"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/rendering.py",
+      "sha256": "28a1891bbef3c8f2caeddbb04ddefda210aafbcae7414c094f6bc1ad1a992854"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/validation.py",
+      "sha256": "2ad537de75ac4913d6bbe23887e736b67c25ce88f31a92a2b567e74adc5a8839"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_return_characterization.py",
+      "sha256": "6cced01b6ff0f0b81a73f3cc76c5bbff0ae47943cb6b48a764b51b8235a238a3"
+    },
+    {
+      "path": "apps/backend/uv.lock",
+      "sha256": "eb504b9620c33040797d3564a74437cce504928357d94acd5473acf5af28ce52"
+    },
+    {
+      "path": "architecture/compatibility.json",
+      "sha256": "490618b3e5b0a24023b74256dab39789268f505175686e286a1a254521c5da76"
+    },
+    {
+      "path": "architecture/evidence/issues/152/capture-review-boundaries.mjs.txt",
+      "sha256": "8d5d3ee3c4bde2b9ac3298dc0f5e2b6ddb74f50d91f9d17bf140c5905dc951da"
+    },
+    {
+      "path": "architecture/evidence/issues/152/capture-validation-summary.mjs.txt",
+      "sha256": "c5aed6add5a5b01a8c6ee1ec355fd8750e319e0ca55815e0c0e5ec95ce981a42"
+    },
+    {
+      "path": "architecture/evidence/issues/152/entry-spec-review-b7e524ae.json",
+      "sha256": "43d6d9cc628163dd7f6f1a8f745db1ddc72255cd6eae726aa877400be7cfbef3"
+    },
+    {
+      "path": "architecture/evidence/issues/152/entry-spec-review-b7e524ae.md",
+      "sha256": "de398dd1f6cb4cb3449724b9a6176c3efb10ea37c2f4c95a78e8345021a53cd0"
+    },
+    {
+      "path": "architecture/evidence/issues/152/entry-standards-review-b7e524ae.json",
+      "sha256": "67a0f8a84071b7b7ba86cd7420b7bc8f51604d0566edd03b0f17f5be68c650db"
+    },
+    {
+      "path": "architecture/evidence/issues/152/entry-standards-review-b7e524ae.md",
+      "sha256": "b617d2cbc82c925ce6ef594e5ccb0d2eb6b83836d51760634693e7c71b1e9fb0"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-capture.mjs.txt",
+      "sha256": "a75cee605c9550d5c959ebec0b4c6701ca00ca60b950eb271966a683944039fe"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-characterization.json",
+      "sha256": "2c50fe51fb47ea12e5890198966d4b5b460565056ecc9e9d5f188fc83c1b83a7"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-database-capture.py.txt",
+      "sha256": "8ebf917db380282674bedd71ae76e3a5bc8a623763d00a2667103cf0fe9b22fc"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-database-characterization.json",
+      "sha256": "59809ac5f43fee05706066c19b6e7d9b891fe6b4a20f9b3e3c6ca8bbf9b6a201"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-import-boundaries-capture.mjs.txt",
+      "sha256": "856b900295a7a5792164acd857c843e5d34acdc0f41bc482b40aecb731636356"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-import-boundaries.json",
+      "sha256": "834ebca97082d477899954de1f2c4134c9551ea3e435536457a62879ebffe34f"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-review-boundaries.json",
+      "sha256": "663d2477a7a9be112c726bc80648a9c2fc0677b2c6bde8b2f60129a65311457c"
+    },
+    {
+      "path": "architecture/evidence/issues/152/legacy-validation-summary.json",
+      "sha256": "af594941d10aa79dbe7fc23a283f1f6dd833ab622ce6be6fc6c9a5178c7f1a86"
+    },
+    {
+      "path": "architecture/evidence/issues/152/published-receipt-independent-reread-146.json",
+      "sha256": "a3ecb65e484d674d57285023388c7a56b06baf346758686d34073671e39cd96c"
+    },
+    {
+      "path": "architecture/evidence/issues/152/published-receipt-independent-reread-146.md",
+      "sha256": "cab5da886f84636352b1802a186ca22419a0b8b1e1b5a9e47c25885536242d24"
+    },
+    {
+      "path": "architecture/evidence/issues/152/pure-followup/legacy-authority-tools-characterization.log",
+      "sha256": "16c0f133b61e124b394b0d615a941180b68268dcc9bf764eaa7a9f469d7ec27b"
+    },
+    {
+      "path": "architecture/evidence/issues/152/pure-followup/linux-pure-final-tests.log",
+      "sha256": "c91042241123f162173eba70a4c2acde287a3a812e32e16597e0a0191319ac9b"
+    },
+    {
+      "path": "architecture/evidence/issues/152/pure-followup/manifest.json",
+      "sha256": "ebeb9aab4bd83ca4611d74664231c3494a8b4ad514ce6b72dc8c1a267ff94432"
+    },
+    {
+      "path": "architecture/evidence/issues/152/pure-followup/pure-followup-credentials.log",
+      "sha256": "0b6e9e0478ec9b7975907a49cd761e980dc14ceea038b4dd8eaec642222f805c"
+    },
+    {
+      "path": "architecture/evidence/issues/152/pure-followup/pure-followup-tests.log",
+      "sha256": "14cd7c948641440b52d90a8b4ecb88887ec6be64dc5e0acabdc90cca9bdfc3d4"
+    },
+    {
+      "path": "architecture/evidence/issues/152/pure-followup/pure-spec-review-6bbccde7.json",
+      "sha256": "51a9e6f3874df076ece537a19247be125d628c46137fbccf3bd0b55d09e6b70f"
+    },
+    {
+      "path": "architecture/evidence/issues/152/pure-followup/pure-spec-review-6bbccde7.md",
+      "sha256": "b24dc8c29c7a6229e8c8cf0d7adbc4667fa40ce928527e6ecc648e44ce61f13d"
+    },
+    {
+      "path": "architecture/evidence/issues/152/pure-followup/pure-standards-review-6bbccde7.json",
+      "sha256": "0c44fd4690b4370a839c13946c07897916ca1d5e91f256dc851eda59a0135bde"
+    },
+    {
+      "path": "architecture/evidence/issues/152/pure-followup/pure-standards-review-6bbccde7.md",
+      "sha256": "06a7c83ae91192eec41ba25c7347e14ed9379f20d995875444b2922494ce0070"
+    },
+    {
+      "path": "architecture/evidence/issues/152/requirements.json",
+      "sha256": "5f69ea9c33b04f40b87311f9f6a7bee21121b9e441dbe415a294bba716d9a89d"
+    },
+    {
+      "path": "architecture/evidence/issues/152/source-inventory.json",
+      "sha256": "9d7a53bde5d9599f0f52781e61cd95a5cffd959408aa1a5dfdfc1c90e3a5f982"
+    }
+  ],
+  "validation": {
+    "pureTests": 157,
+    "settlementRegressions": 53,
+    "total": 210,
+    "python": "3.12.12 standalone",
+    "icu": "78.2",
+    "PyICU": "2.16.2",
+    "adaUrl": "4.0.0",
+    "predecessorCaptureNode": "v24.20.0",
+    "additionalCaptureFilesReproduced": 2,
+    "sourceDigestsVerified": 10,
+    "artifactDigestsVerified": 8,
+    "linuxEvidenceInspectedOnly": true
+  },
+  "artifacts": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/pure-standards-edge-probe-8b3e0cb3.log",
+      "sha256": "83b3b18c9754cf3df3d0f39b4479c56798105b408d7eeda3e1382af4a0cba59f"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/pure-standards-tests-8b3e0cb3.log",
+      "sha256": "9a718240dfa43d58008e6303aa5e15db0d6c33b07913fcbe035e99f388d11d41"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/pure-standards-provenance-8b3e0cb3.log",
+      "sha256": "11a34ef0e06d74e99a5f0083fbb220924f0e79bb5c1b0cf8ff3d8082217db442"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/pure-standards-extraction-8b3e0cb3.txt",
+      "sha256": "caec9b069cf7f00d1b10a03eaaaa2b140610c758a87ba2307095e176e79b03c8"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/pure-standards-edge-probe-6bbccde7.mjs",
+      "sha256": "2a5ebefbab1326a83fd635e259b6a19daf12c81ae203cf5721c6ed812d350dd8"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/pure-standards-edge-probe-6bbccde7.py",
+      "sha256": "8e343458607e2edc0cd4f2bcc55d85e0183b7df25de0ff10169890a204cfa640"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/pure-standards-edge-expected-6bbccde7.json",
+      "sha256": "166f42f64a250bf23b01967df115cbc2b01afbd78e60b8ed0cea16ddd136e15e"
+    }
+  ],
+  "limits": [
+    "No complete gate or #152 exit verification",
+    "No shared DB/browser/runtime configuration or tracked mutations",
+    "CLI bridge after candidate excluded",
+    "ICU equivalence bounded to captured cases/tested versions"
+  ]
+}

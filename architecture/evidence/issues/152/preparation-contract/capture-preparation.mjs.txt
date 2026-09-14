@@ -1,0 +1,21 @@
+import { pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+const load = path => import(pathToFileURL(resolve(path)).href);
+const { validateFilingOverride } = await load('apps/web/app/lib/filing-overrides.ts');
+const { assertAdvisoryCanBeAcknowledged } = await load('apps/web/app/lib/review.ts');
+const { buildAuthorityTestRun } = await load('apps/web/app/lib/authority-test-evidence.ts');
+const output = fn => { try { return { value: fn() ?? null }; } catch (error) { return { error: error.message }; } };
+const override = { fieldTarget: ' tax.field ', oldValue: ' old ', newValue: ' new ', reason: ' reason ', riskLevel: 'advisory' };
+const evidence = { companyId: '00000000-0000-0000-0000-000000000152', obligation: 'skattemelding', environment: 'test', status: 'pending', testReference: ' reference ', feedbackSummary: ' summary ', recordedBy: '00000000-0000-0000-0000-000000000153', recordedAt: '2026-09-14T12:00:00.000Z' };
+const cases = [];
+for (const change of [{}, {riskLevel:'warning'}, {riskLevel:'block'}, {fieldTarget:''},{oldValue:'',newValue:''},{reason:''},{riskLevel:'unknown'},{fieldTarget:'\ufeff\u00a0tax.field\u3000'},{fieldTarget:'\u001c'},{oldValue:'',newValue:'replacement'}]) {
+ const input={...override,...change};cases.push({operation:'override',input,output:output(()=>validateFilingOverride(input))});
+}
+for (const severity of ['advisory','hard_block']) cases.push({operation:'acknowledge',input:{severity},output:output(()=>assertAdvisoryCanBeAcknowledged({severity}))});
+for(const change of [{},{status:'accepted'},{status:'rejected'},{status:'blocked'},{status:'unknown'},{testReference:''},{receiptReference:' ',evidenceUrl:'\ufeff https://evidence.example/a \ufeff',payloadHash:null},{environment:'manual_evidence',archiveReference:' archive ',feedbackSummary:'\ufeff summary \u3000'}]) {
+ const input={...evidence,...change};cases.push({operation:'evidence',input,output:output(()=>buildAuthorityTestRun(input))});
+}
+const files=['apps/web/app/lib/filing-overrides.ts','apps/web/app/lib/review.ts','apps/web/app/lib/authority-test-evidence.ts'];
+writeFileSync('architecture/evidence/issues/152/legacy-preparation-controls.json',JSON.stringify({scope:'Unchanged legacy pure filing-control normalization, errors and fixed-clock projection. No database/provider or stage-exit evidence.',sourceRevision:'054740b81692e0e59b99a76fff085f322f1968b4',sourceHashes:Object.fromEntries(files.map(path=>[path,createHash('sha256').update(readFileSync(path)).digest('hex')])),cases},null,2)+'\n');

@@ -1,0 +1,11 @@
+PASS — bounded Spec follow-up; no actionable findings.
+
+Reviewed `ac9b349ab58b89bdd0efa4810ef382844be5c6fa...849f81d4cb8a9405504138928539f8026d665852`. Only four test/support files change executable behavior. Product API, SQL, policy, generated client and original requirements are unchanged, so the prior whole-stage implementation review remains applicable.
+
+The annual fixture now requires contracted Tax filing state and seeds the same company, obligation, submitter, confirmer and `production_enabled=true` value in the owned permission table. It verifies no legacy Tax mirror. This preserves the original fixture premise while respecting #132’s “generic filing storage cannot remain authoritative”; it neither enables production transport nor weakens a browser assertion. The Accounts permission, RF fixture and actual annual journey assertions remain unchanged.
+
+Cleanup adds only the six explicitly named Tax filing families. Deletes remain restricted to the fixture company and run child-first, before company removal. The existing finite-access helper, physical-table discovery, internal foreign-key enforcement and exact grant/USER-trigger restoration remain unchanged. Views and absent earlier-phase tables remain outside deletion.
+
+Independent pinned Node 24.20.0 checks: 22 fixture/process tests pass, with the existing optional live-DB test skipped because no database was supplied. Both strengthened regression checks reject exact predecessor seed/cleanup sources when substituted privately; restored current sources pass. All 13 manifest artifact hashes match, including the prior independent review copies.
+
+Inspected raw failed-gate evidence records 22+3+7 Tax DB passes, followed by the genuine retired-writer constraint failure. The focused red repeats that failure; recorded green shows one complete annual journey with zero skips. Remaining browser logs retain their separate passing lane results. These are recorded database/browser evidence, not rerun here. The failed ac9b349a gate earns no complete-gate credit; 849f81d4’s running gate is not accepted by this review. No shared-tree/database/browser mutation, hosted/provider action, full-stage completion or successor credit.

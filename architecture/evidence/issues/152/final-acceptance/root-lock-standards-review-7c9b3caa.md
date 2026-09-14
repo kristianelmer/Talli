@@ -1,0 +1,7 @@
+**PASS — no actionable Standards finding** in `849f81d4cb8a9405504138928539f8026d665852...7c9b3caae3cd278bbe381589308cf302142b58a5`.
+
+The root lock now records the backend’s already-declared Ada URL 4.0.0 and PyICU 2.16.2 dependencies. Parsed comparison confirms both complete package records—including artifact hashes—equal the backend lock. All 25 other existing package records and top-level lock metadata are unchanged; only `talli-backend` dependency metadata changes and now matches its backend lock. This repairs deterministic CI dependency installation without changing application policy or SQL. No material Fowler heuristic concern applies.
+
+Independently ran `uv 0.10.2 lock --check --offline` in a pinned private archive with an empty private cache and explicit CPython 3.12.12: exit 0, 28 packages resolved. The command left the lockfile byte-identical and performed no installation or provider access. All thirteen evidence-manifest hashes match; the adopted prior Standards MD/JSON are byte-identical to their private originals.
+
+The retained CI failure, isolated red/green check, successful root locked sync and deliberate local-gate cancellation are accurately described. Prior implementation reviews remain applicable. This review does not rerun dependency installation, application tests or full gates; running CI/gate, full-stage exit and protected integration remain unverified here. No shared checkout, environment, database or process was changed.

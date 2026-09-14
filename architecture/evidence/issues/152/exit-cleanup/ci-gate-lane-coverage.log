@@ -1,0 +1,68 @@
+
+> talli-repository@0.1.0 test:ci-gate
+> node --test tests/ci_release_gate.test.mjs tests/mass_market_execution_control_plane.test.mjs
+
+✔ release gate covers pull requests and main with least privilege (20.081334ms)
+✔ release gate runs every customer-readiness check before promotion (1.019541ms)
+✔ manual release gates can retain linked immutable evidence (0.200584ms)
+✔ database isolation uses the locked Python renderer environment (0.156458ms)
+✔ database isolation runs the complete ledger contract lifecycle (0.543042ms)
+✔ local immutable gate rejects tracked, staged, and untracked drift (779.241ms)
+✔ local immutable gate normalizes terminal output before recording it (0.266542ms)
+✔ database harness restores generated drift and preserves failure semantics (6364.906ms)
+✔ browser owner rehearsal includes executable owned-process lifecycle coverage (1.315625ms)
+✔ Vercel deploys the Next output near the owner-designated database (0.521416ms)
+✔ backend boundary partitions every test across the ordinary, Billing, Authority and Company Tax mandatory lanes (14010.319709ms)
+✔ mandatory Billing and Authority lifecycles refuse missing DB configuration before any test runner (23.008667ms)
+✔ mandatory local lane preserves every predecessor before Billing and final Authority verification (1666.945625ms)
+✔ rollback RF=false AU=v restores dependency order (0.422875ms)
+✔ rollback RF=true AU=v restores dependency order (0.088792ms)
+✔ rollback RF=false AU=null restores dependency order (0.082125ms)
+✔ rollback RF=true AU=null restores dependency order (0.05875ms)
+✔ workspace rollback followed by final recutover restores signoff policy topology (0.146167ms)
+✔ RF rollback failure prevents all predecessor mutations (0.3305ms)
+✔ workspace retains AU and Ledger overlap for Billing and sibling consumers (0.091125ms)
+✔ workspace refuses wrong Ledger topology {"ledger_kind":null,"ledger_setup":false} (0.06225ms)
+✔ workspace refuses wrong Ledger topology {"ledger_kind":"r"} (0.037917ms)
+✔ workspace refuses wrong Ledger topology {"ledger_setup":false} (0.050375ms)
+✔ workspace refuses wrong Ledger topology {"opening_kind":null} (0.044375ms)
+✔ final RF contract follows explicit final Ledger guard and owner recutover (0.350375ms)
+✔ final refuses incomplete Ledger contract {"ledger_kind":"v","ledger_setup":true} (0.089583ms)
+✔ final refuses incomplete Ledger contract {"ledger_kind":null,"ledger_setup":true} (0.057792ms)
+✔ final refuses incomplete Ledger contract {"ledger_kind":"v","ledger_setup":false} (0.039958ms)
+✔ dependency failure stops final sequence at migrations/20260909125113_legacy_rf1086_authority_relocation.sql (0.098375ms)
+✔ dependency failure stops final sequence at migrations/20260909190548_shareholder_register_filing_capability.sql (0.076583ms)
+✔ dependency failure stops final sequence at migrations/20260909190905_shareholder_register_filing_cutover.sql (0.074083ms)
+✔ dependency failure stops final sequence at contract-migrations/20260909190955_shareholder_register_filing_contract.sql (0.055625ms)
+✔ success is refused if SQL does not establish target state (0.077584ms)
+✔ unexpected earlier owner topology fails before mutation (0.047834ms)
+✔ unknown direction fails before even probing the database (0.061958ms)
+✔ package partition retains every original file once (0.475833ms)
+✔ complete local runner requires the fresh RF browser after historical recovery (0.155417ms)
+✔ real shell stops at success and restores owned generated files (843.921416ms)
+✔ real shell stops at topology:workspace and restores owned generated files (462.154667ms)
+✔ real shell stops at npm:test:supabase-rf-workspace and restores owned generated files (542.459167ms)
+✔ real shell stops at npm:test:browser-owner and restores owned generated files (636.956958ms)
+✔ real shell stops at topology:rollback:2 and restores owned generated files (468.7055ms)
+✔ real shell stops at npm:test:ledger-hosted-migration-authority and restores owned generated files (519.702708ms)
+✔ real shell stops at npm:test:billing-database-lifecycle and restores owned generated files (493.601416ms)
+✔ real shell stops at topology:recutover and restores owned generated files (556.751167ms)
+✔ real shell stops at npm:test:supabase-rf-feedback and restores owned generated files (501.162916ms)
+✔ real shell stops at npm:test:company-tax-database and restores owned generated files (545.138958ms)
+✔ real shell stops at npm:test:browser-owner-annual and restores owned generated files (515.588916ms)
+✔ real shell stops at npm:test:browser-shareholder-register-filing and restores owned generated files (526.822ms)
+✔ real shell stops at npm:test:browser-company-tax and restores owned generated files (559.569542ms)
+✔ the live execution control plane pins the complete route and sole clearance (3.239625ms)
+✔ all #179 lanes, signoffs, freshness, and independent controls are explicit (0.999083ms)
+✔ #188 has a complete executable planned criterion ledger before claim (0.522292ms)
+✔ #140 has a complete executable planned criterion ledger before product edits (0.166625ms)
+✔ the control plane blocks premature banking, validation, spend, and external effects (0.247084ms)
+✔ approved billing split preserves source order and both completion barriers (0.263584ms)
+ℹ tests 56
+ℹ suites 0
+ℹ pass 56
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 30113.423625

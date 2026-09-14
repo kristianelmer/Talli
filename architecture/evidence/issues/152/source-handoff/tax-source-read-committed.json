@@ -1,0 +1,6 @@
+{
+  "status": "PASS",
+  "check": "READ COMMITTED cannot produce positive source coverage",
+  "migrationSha256": "ae6e571b5c268a12d80ee43ca30931da9f277d303b6f5bc8dc7e38deb8b10db4",
+  "scope": "Owned local synthetic clone; transaction rolled back; no HTTP/provider claim"
+}

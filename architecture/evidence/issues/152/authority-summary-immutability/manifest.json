@@ -1,0 +1,24 @@
+{
+  "baselineRevision": "39b72c60ac941e92083dddfc503927a1653cb173",
+  "finding": "Standards P2: structured completed replay summary aliased mutable IO-owned evidence",
+  "resolution": "Recursively detached immutable public result; CLI explicitly restores predecessor nested JSON shape",
+  "checks": {
+    "tests": 256,
+    "providerCalls": 0,
+    "stageExit": false
+  },
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "dc9d71978f29ea25fecd5bc549dddc47d540aa012fccc64b16cdb131af4a036f",
+    "apps/backend/src/talli_backend/adapters/local_company_tax_rehearsal.py": "763ed61facd3d3b6114b56227de108f3e60dc13924be5f0db6ebecfb9d08603d",
+    "apps/backend/src/talli_backend/authority_tools/company_tax_test.py": "0b6b32ddb2664701e8776257c311e503102f6ffac12d0ec5b814cf025c2de3b9",
+    "apps/backend/tests/test_company_tax_rehearsal.py": "dda93360d25188e9e67ad5b8270ffb5d51c9ac764e1ce4b7b4fde513ba7921e7"
+  },
+  "evidenceSha256": {
+    "authority-workflow-spec-review-39b72c60.md": "674f94cdcf1449514b39995ecfb24d3c1ba4286b5b3899b7002156402e88b5c1",
+    "authority-summary-freeze-tests.log": "6e229bf3fff28ead2ee29e54b60d5f28ce789dc51b1814e97bc357eedda8f56e",
+    "authority-workflow-spec-review-39b72c60.json": "d89544b6f2bc22e87cbf1edc2a77ec9973f11b7ace177655107eac230240fe07",
+    "authority-workflow-standards-review-39b72c60.md": "7a5d25f90f7b8cb0ee2da9246d1e944b66db33759847f549113b682c0ec0b5bb",
+    "authority-workflow-standards-review-39b72c60.json": "ab3fa6eadfd37b1f3ae3b45f826e746cd5f0121128b9f155058389436218fe8c",
+    "authority-workflow-standards-immutable-probe-39b72c60.log": "243230c8a1b4cff0a8aa2dc53cd9ab778662d9c3eff5ca62f8294e16c3e15ff8"
+  }
+}

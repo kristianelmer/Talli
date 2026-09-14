@@ -1,0 +1,86 @@
+{
+  "verdict": "PASS_BOUNDED_INERT_EXPANSION_STANDARDS",
+  "baseRevision": "af95066f0655733b8ea76ef1490b3178864aced7",
+  "candidateRevision": "bcc8dc490a451e9afc181fd9c061afe3da06d120",
+  "commits": [
+    "bcc8dc490a451e9afc181fd9c061afe3da06d120 feat(tax): expand inert owned filing storage with reconciliation (#152)"
+  ],
+  "diffSha256": "08a674b5754a3c049cfbdf1a0bc80c3d443e5de455c8ba41114ce5146e17bd9e",
+  "files": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md",
+      "sha256": "95cc4f1df0f1f7a46d484d12a857e3e88c48ab3d07834a8d7135ec56737c3d33"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/module.json",
+      "sha256": "b408790df92088a563f48087c94955b489c6a6a264bcbbe519890386b38a4fa1"
+    },
+    {
+      "path": "architecture/BACKEND-SYSTEM.md",
+      "sha256": "29052d9a805c48b88c602288fbd57140a81cae062e81c752189bc1ffb785d891"
+    },
+    {
+      "path": "architecture/backend-system.json",
+      "sha256": "d7b56678428b5e490869855c225107a1f9c37598ad4ba1b9025641be923d96c1"
+    },
+    {
+      "path": "architecture/database-catalog.json",
+      "sha256": "8b477547b13da11d10ac176459c7c73821c4095444437309f8722d2d41d7ef1a"
+    },
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "990d6f59d433e07ed443e8e24e3ba94525d7c879d51d0449c1f6d56f2ca14222"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-expansion/cli-spec-followup-af95066f.json",
+      "sha256": "b88e0efe538b4fa336aa55997151fed92a7f6a12dc93cadab4fd6482103d184a"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-expansion/cli-spec-followup-af95066f.md",
+      "sha256": "3ef88fed1e66f0c35bf1228bf8841c276bb2962a71f5136b40dcd5f5d8a9a782"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-expansion/cli-standards-followup-af95066f.json",
+      "sha256": "4d27c1e19d1d1fe9a92d71326fbc0019c57daf246e3c19389907572130e8b4f8"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-expansion/cli-standards-followup-af95066f.md",
+      "sha256": "be32e2605b1c6ac26c39287f3765f5777ef59d7eb7b6473833d45781b08ea1f0"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-expansion/filing-expand-seeded.json",
+      "sha256": "92a05412793fd0930e9b84b05acf687ea6cb5738cb7646c88471b239c7b5c07d"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-expansion/manifest.json",
+      "sha256": "2b6926e1806f61d23186176f4c7f6812a30f066f59fb162db2ffee15abe8f091"
+    },
+    {
+      "path": "architecture/evidence/issues/152/filing-expansion/probe-filing-expand-seeded.py.txt",
+      "sha256": "d5cee4ae050f77bf76bcdc7026fcefd122c692814e13772d6b01ee2315cefa8c"
+    },
+    {
+      "path": "architecture/evidence/issues/152/requirements.json",
+      "sha256": "f9afea01d2c3b14fb24076431e20f6e160a4baf9e431fcbb26837ad4c8f79fed"
+    },
+    {
+      "path": "supabase/migrations/20260914200000_company_tax_return_expand.sql",
+      "sha256": "ce0a4b9ab6fc7f90ea4cd851e9a2cff2da113db9c461dc5911bd6c7abfc96281"
+    }
+  ],
+  "verification": {
+    "kind": "Independent source and artifact consistency review",
+    "migrationDigestVerified": true,
+    "adoptedArtifactDigestsVerified": 6,
+    "recordedProbeChecks": 33,
+    "recordedProbeRollbackVerified": true,
+    "databaseProbeIndependentlyRerun": false
+  },
+  "findings": [],
+  "limits": [
+    "Inert expansion only; cutover/contract/reversal pending",
+    "No shared DB/browser/configuration or tracked mutation",
+    "No complete gate or #152 exit credit",
+    "Uncommitted later work excluded"
+  ]
+}

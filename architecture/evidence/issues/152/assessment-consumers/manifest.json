@@ -1,0 +1,30 @@
+{
+  "baselineRevision": "c9c2b30e27f8e630c27a2901b60b936a2a7811d1",
+  "status": "WEB_USES_OWNED_TAX_ASSESSMENTS_LEGACY_FILES_AND_CUTOVER_PENDING",
+  "consumerTests": 77,
+  "webTypecheck": "PASS",
+  "architecture": "PASS",
+  "guardTests": "Expanded #152 exact-composition and mutation matrix passes. Only the current readiness-refresh digest changed; historical #146 and other #152 pins retained.",
+  "changes": [
+    "Owner workspace uses generated Tax estimate/readiness preview calls, preserving global ordered estimate facts and primary-company/all-loaded-years readiness facts.",
+    "Missing session or unavailable input source yields no estimate and no clear readiness. One failed assessment discards partial success.",
+    "Annual consumes a company/year-bound Tax assessment; absent or wrong-scope preview blocks readiness. Common Annual/Billing decisions remain unchanged.",
+    "Refresh keeps its original selected-year input arrays and stops before snapshot/Audit writes if assessment fails.",
+    "Workspace shows an unavailable estimate explicitly and leaves the amount default empty instead of substituting zero.",
+    "New Tax consumer tests run in the standard web boundary test command."
+  ],
+  "limits": [
+    "Dependency-double source and real-function tests; no browser/live HTTP/real-role/deployment or stage-exit claim.",
+    "Dead predecessor TypeScript calculation files and their test imports still require retirement.",
+    "Owned provider workflow and filing SQL cutover/rollback/full gates remain pending."
+  ],
+  "artifacts": {
+    "assessment-derived-standards-followup-c9c2b30e.md": "6b67e14b4ee868e781065487887176027cbdbab534fa0b3b0d8fc57d638b443a",
+    "tax-assessment-consumer-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "assessment-derived-spec-followup-c9c2b30e.json": "c7409ac7feb770ffaee7ae9a334ec8769b3419a57247f42e56c0e8f9c06854b6",
+    "tax-assessment-consumer-combined-tests.log": "4ebeef630e4f3dfdd7f54c2d043ec074aef0976ee74a11c0b1216a32d92360c4",
+    "assessment-derived-standards-followup-c9c2b30e.json": "ce66e1f7c3b8542ebb673e44d3aa1ea3613d55cfbab6cc72e380364a8096fb8d",
+    "assessment-derived-spec-followup-c9c2b30e.md": "e04b63edfad6f2a530c1e7d4ba99f627b6cab1003942321a1c0c100c52de3e0f",
+    "tax-assessment-consumer-guard.log": "65b1858b945dadb4b6a2e5d80645bf6f32d6b94c21a1cc5a7cc5cfb0d6b9977a"
+  }
+}

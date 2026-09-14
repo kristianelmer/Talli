@@ -1,0 +1,80 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_FOLLOWUP",
+  "baseRevision": "497b91d8643b7639ff1157b66761fc8c2590b850",
+  "candidateRevision": "6d42211fab713a73532c349aa6e7f1e60d625a97",
+  "diffCommand": "git diff 497b91d8643b7639ff1157b66761fc8c2590b850...6d42211fab713a73532c349aa6e7f1e60d625a97",
+  "commits": [
+    "6d42211f fix(company-tax): preserve Boolean gates and reject missing accounts (#152)"
+  ],
+  "findings": [],
+  "closure": "Direct pure/CLI Boolean conversion at reviewed Tax conditions, and HTTP missing/null-account rejection verified.",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/main.py": "5ca39423f22a0243f332b4354f0283389a9535d7814349ef6199467a7c27a90c",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "7ac4e7ab5ed6b0bb01cc59bf076b8d0f26b097ed9463b6ec302d75e7e813627f",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/calculation.py": "627ebeaf277792cc9dc507e802e251d3327a80302b2e6168dc8f2a7befecefa2",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/numbers.py": "7edbaec5ccdf7e7389a2df17d19bddc318125f9e28ccfc895ae1a62b2f010918",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/readiness.py": "2875500525a37898ab486a6f0b2e3b4bb231f7574d8b869d6dade7cb1d258b23",
+    "apps/backend/tests/test_company_tax_readiness.py": "51d0782cd5c740d66f33c290af5a579e0705ba695ca612a299043e59e898c7c4",
+    "architecture/evidence/issues/152/assessment-boolean-followup/assessment-nested-standards-followup-497b91d8.json": "a5f8669c78b5c47f18ab0ff445396cdd5a4ec5d64ece54ebaffa22cd52017241",
+    "architecture/evidence/issues/152/assessment-boolean-followup/assessment-nested-standards-followup-497b91d8.md": "9ed54302354d144bcda70ab6cac9d023f51727d53712f18401a83145c2636484",
+    "architecture/evidence/issues/152/assessment-boolean-followup/assessment-spec-review-e2dfdf54.json": "98ae211d2a95b51e3a3df5c000b91277c59bb4d703b8e047225a2ca490b1df85",
+    "architecture/evidence/issues/152/assessment-boolean-followup/assessment-spec-review-e2dfdf54.md": "d1748c0c8eff584ee88e823de9908da3cf6038b1a4bc982467b739558a287fe1",
+    "architecture/evidence/issues/152/assessment-boolean-followup/assessment-standards-review-e2dfdf54.json": "c03e4fe3a0e4d61cda877f13578c9b3b1affc3f22187f1c4adfb30e2fd0f7d8b",
+    "architecture/evidence/issues/152/assessment-boolean-followup/assessment-standards-review-e2dfdf54.md": "010eb9e981aba81e5bc2d8b917f23bfe998a40ac9f87708a1839d9ac2aabbcad",
+    "architecture/evidence/issues/152/assessment-boolean-followup/capture-tax-booleans.mjs.txt": "cfa4d76c10614feda80b8e113460e97b873e3eaf327afa516cb578a63408d61a",
+    "architecture/evidence/issues/152/assessment-boolean-followup/manifest.json": "ceefdead9f137dab9909e249a1e4e0c06255e00ad9b1bbcafc1fe8cb4088d2ee",
+    "architecture/evidence/issues/152/assessment-boolean-followup/tax-boolean-followup-tests.log": "1a9426e0ed36a76344f9adb35a28e785f0cc668f4670e111dca12c85fd5677fb",
+    "architecture/evidence/issues/152/assessment-boolean-followup/tax-boolean-red.log": "a1cb4fc191fbd3016cf325b96feeb8ab74f15c7bfeb665de4531d5aa24caf162",
+    "architecture/evidence/issues/152/legacy-tax-boolean-boundaries.json": "ce098594a97b338d0c88795109d72f7f2686d0480a3bae0ec7a48d0da2a3155e"
+  },
+  "manifestArtifactChecks": {
+    "assessment-spec-review-e2dfdf54.json": true,
+    "assessment-nested-standards-followup-497b91d8.json": true,
+    "assessment-nested-standards-followup-497b91d8.md": true,
+    "capture-tax-booleans.mjs.txt": true,
+    "tax-boolean-red.log": true,
+    "tax-boolean-followup-tests.log": true,
+    "assessment-standards-review-e2dfdf54.json": true,
+    "assessment-standards-review-e2dfdf54.md": true,
+    "assessment-spec-review-e2dfdf54.md": true
+  },
+  "capture": {
+    "cases": 45,
+    "byteExact": true,
+    "sha256": "ce098594a97b338d0c88795109d72f7f2686d0480a3bae0ec7a48d0da2a3155e",
+    "predecessorRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+    "sourceSha256": {
+      "apps/web/app/lib/annual-readiness.ts": "23bb49c6c57e69c68418747ca35cb164ea2122892f39de5f9c4ef6e7acccce37",
+      "apps/web/app/lib/company-tax-return.ts": "765b82a633a859c4108e83cb6f30b18e3fd3ad491f56a53485453f6bc3ca6ec7"
+    }
+  },
+  "independentTests": {
+    "pinnedPredecessorFailures": 10,
+    "pinnedPredecessorPasses": 35,
+    "candidatePassed": 390,
+    "additionalNodeBooleanComparisonPassed": 21,
+    "runtime": "Node 24.20.0; workspace CPython 3.12.12",
+    "pytestIsolation": "-c /dev/null --rootdir=private; PYTHONPATH fixed private archive; no bytecode/cache",
+    "databaseBrowserProviderExecuted": false
+  },
+  "requirementsUnchanged": true,
+  "requirementsSha256": "cd4da5befa561f08dd35d1a62ba15e8b4ea3ade0873df6e1f16a680c62b7cdf6",
+  "privateArtifactSha256": {
+    "assessment-boolean-spec-tests-6d42211f.log": "0fdcad1bff20b1d1d71506931bdcb8439db1a09493b6e977950ed6c690e21685",
+    "assessment-boolean-spec-red-497b91d8.log": "31b44b069177e9e5d894ffb3e371673588c40662360fb4f2cb87be2346211399",
+    "assessment-boolean-spec-capture-6d42211f.log": "09c9072d8eead9a3c04d88d7b24256d8be2c6b455a7d832eaf2b447e2be3ff9c",
+    "assessment-boolean-reproduced-6d42211f.json": "ce098594a97b338d0c88795109d72f7f2686d0480a3bae0ec7a48d0da2a3155e",
+    "assessment-boolean-independent-6d42211f.py": "1ae06b257071f7a9690765bc3630867bc23823e8318b9eb7a79ea52725a6c841",
+    "assessment-boolean-independent-6d42211f.log": "96b48e812bb4f462006ae881a7460bb475c56852ea4767636002d44819e889fe",
+    "spec-assessment-6d42211f/capture-booleans-private.mjs": "3487c36c86943fbd45b0f8e486c93d70f30bca08d59445e90143fbc791efb1b9",
+    "test_assessment_spec_e2dfdf54.py": "99faccee591dc10bea24bf72ac216f4b1115607c637d8ab189ef783f22b543c3"
+  },
+  "reportSha256": "813360566261a501586f4a3d7298891b9c2679c86ed78e60b1374b381395df49",
+  "limits": [
+    "No shared checkout/database/browser/config mutation.",
+    "Public preparation contract verification, no end-to-end CLI/provider execution.",
+    "No uncommitted web review or full-stage/gate/source-completeness/hosted/successor credit."
+  ]
+}

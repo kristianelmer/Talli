@@ -1,0 +1,90 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_SOURCE_HANDOFF",
+  "baselineRevision": "0b3b8c1e9cf2e154f48951f290c0b448b8f868bf",
+  "reviewedRevision": "5a0634ac5db27f63ab2e05e437f24712c282fd7a",
+  "commitCount": 1,
+  "findings": [],
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/source-handoff-spec-review-5a0634ac.md",
+  "reportSha256": "3186f407e9733efce47c7e106b17c4e5292ec5fa52844302770cfb88b724f962",
+  "sourceBindings": {
+    "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py": "1b4945e344782181323d0a0abb32af6dc19854d747bb29cef081592b23ce63b2",
+    "apps/backend/src/talli_backend/application/company_tax_filing_session.py": "1ec688d2eb3ce80a146a3b0fbd56c3bb2fdd9f93a7bd48918c6216fc8a2ca3d7",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "9e4083d88f399f98c4206ad412296e86be416d2983bdc7a12198a5772b5d9132",
+    "apps/backend/src/talli_backend/main.py": "2f9e433de941b9c990bf75ef3ddb4d5cec2412bb3227bf665d5e91f765b81fd2",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "7854dc56974998e4a284c291a3fa9a3c6ccd5f49cb68deb45213524b1fc43381",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "bb2e2e3168beff3071977af6d48bb8124e4945df62a76c8062b3b7895102504f",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "485a0f0f94f64b688a616dc39a6420c4513a0cc7285904b1b6dbe9490e358fe8",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/source_facts.py": "caefd447ef1dbea432f5e47c64d4e1b7e34e7db997cca5a64109771de4d78b4a",
+    "apps/backend/tests/test_company_tax_return_lifecycle.py": "5a7a188333932e74d58fb1d201dd02414b2d649be6d25dc07b0517bc3084f302",
+    "apps/backend/tests/test_company_tax_source_facts.py": "adab6b51b319d43bc0455e67aab230c41ca0140c4d8a636ef1900de5e41edf02",
+    "apps/web/tests/company-tax-transport.test.mjs": "e0ce7222cb6931f43bdadbd8fa576b733e96a4ca70a3e11ca5482fef0185d52a",
+    "architecture/BACKEND-SYSTEM.md": "e633ae982033359d515840fc0cdb9b70fa84c73075f4a441113bb9ac8680991d",
+    "architecture/backend-system.json": "04c814a8c1d7af238e324d80278959e6aaa45c1491e884e2fc31174c24aabbee",
+    "architecture/dependency-evidence.json": "15971d5758d99d522d6a2dc7544e9610e0e20b8187ae5857efc986a3a7dbb9f4",
+    "architecture/evidence/issues/152/authority-summary-reviews/authority-summary-spec-review-699f4dfa.json": "66a7479b906c722076a7f8837cd6eb9a7780e56f6ffcf1b86645a71a1231873f",
+    "architecture/evidence/issues/152/authority-summary-reviews/authority-summary-spec-review-699f4dfa.md": "22e25fcec065dde07b925dcd41ffce0112c00e04440a80251acc338680f9e2ce",
+    "architecture/evidence/issues/152/authority-summary-reviews/authority-summary-standards-review-699f4dfa.json": "82c635e2c402995c13ee2272f8ec1c02ccaf7238b099d28a94ec9a5e5b0141e8",
+    "architecture/evidence/issues/152/authority-summary-reviews/authority-summary-standards-review-699f4dfa.md": "5f2efeba322251b2e76bcac4f7946fc103010dff771c0f160ae1d7ff2cf5ef34",
+    "architecture/evidence/issues/152/source-handoff/local-source-snapshot.json": "9f1906f83c75b1be95d78609beb2302cb9fd9ee7d06001609203db2d705829ac",
+    "architecture/evidence/issues/152/source-handoff/manifest.json": "5dc5806f1f2ce5ce75157cdc8ebc6b8c93c02454e34ace73123381b5ae5bf5e1",
+    "architecture/evidence/issues/152/source-handoff/probe-tax-source-read-committed.py": "c978e6a0d80739d2fb8dbaaf083a87987134460dd7eb3bbf85ec55f7b8d62a93",
+    "architecture/evidence/issues/152/source-handoff/probe-tax-source-snapshot.py": "417f9d94da0afd7032b943d1d241c10778350d75df726c5f38ef4441e2ab1f0e",
+    "architecture/evidence/issues/152/source-handoff/source-handoff-final-architecture.log": "15971d5758d99d522d6a2dc7544e9610e0e20b8187ae5857efc986a3a7dbb9f4",
+    "architecture/evidence/issues/152/source-handoff/source-handoff-generated-client.log": "90308bedb0b25dd98184bdc970ca93acfdd79a8dfb81f52c2f6a1f608ff9c2c9",
+    "architecture/evidence/issues/152/source-handoff/source-handoff-lifecycle.log": "0e0177d95805cd7e9ccb1859b562b7fe1d8ffaed73559d85239e8afb6ed7a331",
+    "architecture/evidence/issues/152/source-handoff/source-handoff-openapi-equivalence.json": "42765e2bc79a82ee65d4d6bcc44b8abe6ceb24e16467dff589b40444d758c0cb",
+    "architecture/evidence/issues/152/source-handoff/source-handoff-typecheck.log": "315123929689ba827898fc4db391ec107ae78059288a79a22c591e870a84391e",
+    "architecture/evidence/issues/152/source-handoff/source-handoff-unit-api.log": "910f89e1f4174d589140c732403f59a418b5a5ed7c46b98220ddd26fc36728a0",
+    "architecture/evidence/issues/152/source-handoff/tax-source-read-committed.json": "d789590f0d66397f9c4d70b83e1e3bead9b203cc5c72d2fe81caf0683851aef2",
+    "contracts/openapi/talli-v1.json": "f4dacf4b2f07d123e2e9d2fa05d673a20eb135d290436ffa755956f7eb27e1d1",
+    "packages/talli-api-client/src/generated/client.ts": "d0633f6b41f8fa04568d6cc6ea00891144b42b9b1ba25a7d6e6c8f6c6472d955",
+    "scripts/generate-api-client.mjs": "02ac9fd4d32ef3d799d69c41987b4ca965e0bc101da6e4c2ed09250782c0f32f",
+    "scripts/rehearse-tax-topology.mjs": "aa722cbe8cd33245879e81ff6ea5f0232608ff1f229d7f9a15756f8fbd76ba5c",
+    "supabase/contract-migrations/20260914022608_company_tax_return_source_contract.sql": "ae6e571b5c268a12d80ee43ca30931da9f277d303b6f5bc8dc7e38deb8b10db4",
+    "architecture/evidence/issues/152/requirements.json": "cd4da5befa561f08dd35d1a62ba15e8b4ea3ade0873df6e1f16a680c62b7cdf6",
+    "supabase/contract-migrations/20260914201000_company_tax_return_read_contracts.sql": "24ebea4288c9f1357ecdd6b6c761b8b9e816fc188fcabd4e0671125996cc4ff5",
+    "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql": "d192b105d87287ba59e7b88278c1c25d51e6620d19b1b5d5e34fc416ef21597c"
+  },
+  "independentChecks": {
+    "sourceWorkspaceUnitApi": {
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0,
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=<private pin>/apps/backend/src:<private pin>/apps/backend/tests <owned Python> -m pytest -c /dev/null --rootdir=. -q -p no:cacheprovider apps/backend/tests/test_company_tax_source_facts.py apps/backend/tests/test_company_tax_workspace.py"
+    },
+    "generatedTransport": {
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "command": "<pinned Node 24.20.0> --test apps/web/tests/company-tax-transport.test.mjs",
+      "resolution": "Private apps/web/node_modules/@talli/talli-api-client resolves to private pinned package; shared third-party node_modules only."
+    },
+    "manifestSourceHashes": 18,
+    "manifestEvidenceHashes": 10,
+    "unchangedExistingOpenApiPaths": 148,
+    "unchangedExistingOpenApiSchemas": 411,
+    "requirementsByteIdentical": true,
+    "gitDiffCheckExit": 0
+  },
+  "reviewedRecordedEvidence": {
+    "lifecycleScenarios": 7,
+    "positiveSqlChecks": 10,
+    "readCommittedRejection": true,
+    "independentlyReranDatabase": false
+  },
+  "artifacts": {
+    "source-handoff-spec-unit-5a0634ac.log": "b8afaac604684643529f9b19f4d28c99dad39e13301bde535efdff17c5064e43",
+    "source-handoff-spec-client-5a0634ac.log": "f8be2e4e842d1ccfe0b0337722c8017b7cac9da6d128566d609e2241c22a0995",
+    "source-handoff-spec-bindings-5a0634ac.json": "4e11bea10be3553399243ab80fe909c55070d93bfeb85a4adf7467c01c267d8c"
+  },
+  "limits": [
+    "No shared repository/database/browser/provider mutations.",
+    "No full current durable prerequisite readiness certification.",
+    "Talli-recorded extent only; no external authority completeness or production success attribution.",
+    "No full #152 exit or successor credit."
+  ],
+  "harnessNotes": [
+    "Auxiliary git diff check initially ran in the private archive without Git metadata and exited 129; repeated read-only in the actual Git repository, exit 0. Test results were unaffected."
+  ]
+}

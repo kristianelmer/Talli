@@ -1,0 +1,61 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_IMPORT_CORRECTIONS",
+  "baseRevision": "b400103d2d7204c9a2154fd953a03ccb00041ad4",
+  "candidateRevision": "5d240525284e6aa92e2875940a638adb110421a6",
+  "closedFindings": [
+    "SPEC-152-IMPORT-1",
+    "SPEC-152-IMPORT-2"
+  ],
+  "newFindings": [],
+  "independentTests": {
+    "originalFixtureAndProbesUnchanged": true,
+    "backendPasses": 190,
+    "seconds": 2.7,
+    "persistenceMapperPresenterCases": 3,
+    "projectionAndMfaPresenterControls": 2,
+    "sharedFactsCycleAndImmutabilityControls": "PASS",
+    "legacyNode": "v24.20.0",
+    "initialSetupAttempt": "Wrong private characterization test filename; no tests ran. Corrected committed filename passes."
+  },
+  "adoptedArtifactHashesVerified": 4,
+  "sourceBindings": {
+    "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py": "0532c136c0acd2ed0a3ebdc6ccc84a0a3618a6f74e7eb6b971a1748b6837d52c",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "952f63879fa53330b8387ee0788937973bcbe79aae30974c241aea01fc74d0a4",
+    "apps/backend/tests/test_company_tax_evidence_import.py": "68a39749d101803424b5f32fa9394e175049acbfda37f687e97c3caf05301606",
+    "apps/web/features/company-tax-filing/transport.ts": "e828a605172678f3410a6e03f38afe5ed0325c2654fe625236a1ee12ccec0406",
+    "apps/web/tests/company-tax-transport.test.mjs": "68e64879b0deffb32397dfec63457ed9b6e93849ffac05c345881438899454f0",
+    "architecture/evidence/issues/152/import-review-followup/import-review-fix-tests.log": "98a13c741555e77f840d34a246a6f1441c8d1a78aec3cbbe9184ba7d5227ce19",
+    "architecture/evidence/issues/152/import-review-followup/import-review-web-tests.log": "9a5f407e3bb7de0fcd717e8d3a5562dd04fb5c259e4c0cf90c5e518c85581698",
+    "architecture/evidence/issues/152/import-review-followup/import-spec-review-b400103d.json": "a768d41831e1e3531267023e0f59def55deda34a26fbe1a860fa9d420bbf57f0",
+    "architecture/evidence/issues/152/import-review-followup/import-spec-review-b400103d.md": "89005d2256ddc1ee0adbda15b15922688242a6c40fb10472d68ad0bfcb6eea69",
+    "architecture/evidence/issues/152/import-review-followup/manifest.json": "8bd5c2d933278e554f95825777a11d379027c6e31cbfc172f225199ccf0ba4ed",
+    "architecture/evidence/issues/152/requirements.json": "cd4da5befa561f08dd35d1a62ba15e8b4ea3ade0873df6e1f16a680c62b7cdf6",
+    "supabase/migrations/20260914202000_company_tax_return_import_contract.sql": "5b924cfe0d4771cc58723dcdc65f1c7f4612bd19bba7b0541f1ee0acd62d0cbb",
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "0a2f62a67f5bbb455743f26b1453d32476ae5b51c24d141aaa3abd1cba8c94a2",
+    "apps/backend/src/talli_backend/main.py": "81404cdcd253768d47d88be51378b2f7fcfec0557163813f22ec5520dfafc14c",
+    "apps/backend/src/talli_backend/modules/audit/public.py": "8f70becbce9eb1ac3b5cc75638040aa2f551db9803f0158ef71ebc5c966c7518",
+    "packages/talli-api-client/src/generated/client.ts": "0d2de181a1327efdee4a333b5a84d954dad2b1a2ff91a9dc2231f791fa8148de",
+    "contracts/openapi/talli-v1.json": "e398b7eec569250016d580a1779223e50bfa53119234ef5d9ccf2f6ab198ba70"
+  },
+  "privateArtifactBindings": {
+    "test_import_spec_b400103d.py": "801aa52f4ad3cd22cc7bdc4f11af6a2ed81c868e16b579855f5b797a6c523a64",
+    "import-spec-deep-b400103d.json": "6cfe024b16d52e9ae51a412244e5b9e0329ad425379139caaeb43310af480115",
+    "import-spec-legacy-b400103d.mjs": "6649b1d049c761f3eaa2345f131c838151a9bf530486e6c87a3b7c38a502352a",
+    "import-spec-persistence-b400103d.py": "4fa6c4a4ee7a878131320a1bc39df8009fc74e81946b06821989a30c99b2a101",
+    "import-spec-legacy-5d240525.log": "26fe085da57e1f2206967f7d237bd55e3f74537f3ccb73d0a57122d0dad373de",
+    "import-spec-5d240525-tests.log": "2f636702613498e5b0eafac94e74835d388f7d44ce624852c582cd7a65d12ffb",
+    "import-spec-persistence-5d240525.json": "ec1b7ee86e62de8d0125b2696b8206a95f9681261e4c0f6f4da81bd88a79a3bc",
+    "import-spec-presenter-5d240525.mts": "6083e8f62e2830515924cd86d0e5adf2bb17d719999ed258a657a4579fe73717",
+    "import-spec-presenter-5d240525.log": "9533959ca189bf983d88a533ae2cb5b878dc632a386a369ea1abcaaf4b42d6bd",
+    "import-spec-freeze-controls-5d240525.py": "d053185a589e6e9e221fd97dd14e0156c7152451c10310a60231ac93ef1ee812",
+    "import-spec-freeze-controls-5d240525.log": "39ca759f6c0b169507f1dda03eb072a3824fe1e98ab85eb616249d2d33b8f279"
+  },
+  "reportSha256": "3186b49329fed24fba642c7de4cf0f92c47e4e114984a7f5283a471399c7b29a",
+  "limits": [
+    "No shared mutation or SQL/browser/provider execution.",
+    "Bounds original 600-level fixture; not exhaustive arbitrary-depth JSON equivalence.",
+    "Recorded prior19 SQL cases retain synthetic rollback-only scope.",
+    "No full-stage or Audit migration credit."
+  ]
+}

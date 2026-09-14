@@ -1,0 +1,122 @@
+{
+  "verdict": "ONE_ACTIONABLE_CLI_BOUNDARY_FINDING",
+  "baseRevision": "8b3e0cb340d962c8140b1ac72ceada59d4d4aea7",
+  "candidateRevision": "c3eb992c30531f7402a31ceb830164fa4fda1654",
+  "commits": [
+    "c3eb992c30531f7402a31ceb830164fa4fda1654 refactor(tax): route authority payload tools through owned contracts (#152)"
+  ],
+  "diffSha256": "45027a2680c094f4d8f68e7bebb689c033514562adc80d2134b050990d425cfb",
+  "files": [
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/_filing.py",
+      "sha256": "c1d41d3633b49ea300ed13d7e2ae25f5a923515641505607395ca3e0dcb659a0"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/authority_tools/company_tax_payload.py",
+      "sha256": "b7f281a97b0d3cb0a00338f52f85ef045fb3565beafac9eb8825f92afb440d45"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md",
+      "sha256": "8f613ed9baa964573ffbfd7e5bc3341538aa8763848ef1a9adbc4220cda59541"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/module.json",
+      "sha256": "60c4720008da6a154d021aa27c5a72245032e4cce5404e1e0ccd46979f27b335"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/public.py",
+      "sha256": "6d714ffd95c95d0fa3fff8366645f188ae49887389488601b2eead72b9822832"
+    },
+    {
+      "path": "apps/backend/tests/test_authority_filing_tools.py",
+      "sha256": "3cc2ae82d1e2b367d09102b0d9fc5b8b254b4b56026d821641f1f0215db97e74"
+    },
+    {
+      "path": "apps/backend/tests/test_company_tax_authority_payload.py",
+      "sha256": "94024413b79f74acebeeb36be49bd73c0bc3f2b808a6bb2f4aa3906f0d1be835"
+    },
+    {
+      "path": "architecture/evidence/issues/152/owned-authority-payload/manifest.json",
+      "sha256": "9110df489cdb534fc0b586586179c43cf64c9ae9a8b2b6815310dee55483c0c7"
+    },
+    {
+      "path": "architecture/evidence/issues/152/owned-authority-payload/owned-authority-tools-tests.log",
+      "sha256": "bc4e037ad6ae73d3affaf170d9f4bf408c1f95e150407a59f2323360ebce2611"
+    },
+    {
+      "path": "architecture/evidence/issues/152/owned-authority-payload/owned-authority-web-dispatch-tests.log",
+      "sha256": "56123519550bbccfd2d529fe3241b6c40c5e3bea50cbc9d705808ceada9facea"
+    },
+    {
+      "path": "architecture/evidence/issues/152/owned-authority-payload/pure-spec-review-8b3e0cb3.json",
+      "sha256": "3864b0008165e748c143a50012dcd822d4e770ea1c91eb7d6a415ed029082d48"
+    },
+    {
+      "path": "architecture/evidence/issues/152/owned-authority-payload/pure-spec-review-8b3e0cb3.md",
+      "sha256": "3829029a3725c17b35ca899bbb3bed128a8d99f9db3518f151ee083e62c56a8d"
+    },
+    {
+      "path": "architecture/evidence/issues/152/owned-authority-payload/pure-standards-review-8b3e0cb3.json",
+      "sha256": "4c184e9c4b0508f212a4a3d6cf3820cecace30b19b9d2a7b3e04d53dc0499fac"
+    },
+    {
+      "path": "architecture/evidence/issues/152/owned-authority-payload/pure-standards-review-8b3e0cb3.md",
+      "sha256": "9aa309288b6e165607234dab996792469ad1acdc8128f5c6007305a847ac8723"
+    },
+    {
+      "path": "architecture/evidence/issues/152/requirements.json",
+      "sha256": "5c33d759b95f678e327e429f851f222ee605ae7b108bb987a15ed76ee86f242f"
+    },
+    {
+      "path": "scripts/authority-tool-payload.mjs",
+      "sha256": "d7232070f18843a688e6799fcb032bafeda7430b91a4150d5ccf15742b88ee9f"
+    },
+    {
+      "path": "tests/authority_tool_payload.test.mjs",
+      "sha256": "71aaa6f693eba6adc4556ef08227ebc06bbfc5c84d79b726894874ba9bde570e"
+    }
+  ],
+  "findings": [
+    {
+      "priority": 2,
+      "file": "apps/backend/src/talli_backend/authority_tools/company_tax_payload.py",
+      "line": 24,
+      "summary": "Explicit null document reference becomes omitted and bypasses predecessor rejection",
+      "basis": "ADR0013 behavior equivalence"
+    }
+  ],
+  "verification": {
+    "independentPythonTests": 81,
+    "independentNodeTests": 2,
+    "exactProbeCases": 8,
+    "annualAccountsMechanicsUnchanged": true,
+    "adoptedArtifactHashesVerified": 6
+  },
+  "artifacts": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/cli-standards-probe-c3eb992c.py",
+      "sha256": "0e2560255e932e715e99a6d0b4093632fc06863fae2113f9ef0d2a4d0cfb3296"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/cli-standards-probe-c3eb992c.log",
+      "sha256": "fb8c735b188ada943feca3d992782042b4795eb1241e32234bb512d28a34e4fd"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/cli-standards-node-c3eb992c.log",
+      "sha256": "85cc31e1b442cc2f0ce7c64418551b5a622c310671e18153fd21d68a29ac73e5"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/cli-standards-tests-c3eb992c.log",
+      "sha256": "5d5f3f46235757b83b1876cfdb8c20c7909bf45bd7dee806aff4020a119d38aa"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/cli-standards-extraction-c3eb992c.txt",
+      "sha256": "e1051ab5ca2c58366795ccc6bdafbed67232f400776082128cde50aa59df36c6"
+    }
+  ],
+  "limits": [
+    "No complete gate, API/web/SQL or #152 exit credit",
+    "Root143testresult not independently rerun in full",
+    "No shared DB/browser/configuration or tracked mutation"
+  ]
+}

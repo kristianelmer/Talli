@@ -1,0 +1,32 @@
+{
+  "status": "OWNED_READ_CONSUMERS_ROUTED_CUTOVER_AND_POLICY_RETIREMENT_PENDING",
+  "baselineRevision": "6ab578f8d2afb02544a23ab685800d120764a5cc",
+  "consumerTests": 48,
+  "guardTests": 1,
+  "guardCases": "Five owner actions \u00d7 four mutants plus earlier stage/restored facade; two read compositions \u00d7 four mutants plus earlier stage/restored facade.",
+  "webTypecheck": "PASS",
+  "architecture": "PASS",
+  "behavior": [
+    "One complete generated API read per company supplies all six owned Tax filing families.",
+    "Workspace and annual workspace merge by immutable row ID and preserve current ordering; source error remains explicit.",
+    "Archive and readiness stop before producing their result when the Tax source is unavailable.",
+    "Archive retains only authority evidence referenced by selected-year Tax submissions.",
+    "Four frozen successful imports preserve every receipt, call, feedback and payload-reference field; unknown JSON extension fields are retained."
+  ],
+  "guardFinding": "Negative tests found older completed Archive deletions could authorize a changed function body. An explicit source-composition check now requires the exact reviewed #146/#152 body and every retained original persistence chain.",
+  "compatibility": "No registry or frozen baseline changes. Historical #146 digests preserved; two #152 read digests added to the existing stage-scoped map.",
+  "limits": [
+    "Consumer tests execute the real functions with dependency doubles. No real HTTP/role/browser/deployment claim.",
+    "No SQL change, durable migration, provider call, cutover, stage-exit or #153 entry credit.",
+    "Tax calculation/readiness policy retirement, provider workflow ownership and physical filing-table cutover remain pending."
+  ],
+  "artifacts": {
+    "tax-source-guard-tests-fixed.log": "28d305116d4cb310d45a38537ef6bfa114f4cb095b97d6f77e2ee372b23c2ae2",
+    "owner-actions-standards-review-6ab578f8.json": "84a396752d3942dc68cee45cd50c9ec841c4b69e50b89dbd9509916a1e7472a3",
+    "owner-actions-spec-review-6ab578f8.md": "7b2b76befb195f6412a6a5992d6ba15acc9bc3604adc0862fda71a689be88932",
+    "owner-actions-spec-review-6ab578f8.json": "ec276773ad2581adcbd882c04b5dd204fdf740f871f1d3369feaf2624f8da2df",
+    "tax-source-consumer-tests.log": "5305ef34a775b2eba99d4d49d9c361a057846b258793798439e3157340509aae",
+    "tax-source-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "owner-actions-standards-review-6ab578f8.md": "c3b5b13438342a2fb408e459093b3808bf37b92010cba68f0476cd1c5a580ea9"
+  }
+}

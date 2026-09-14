@@ -3,12 +3,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Protocol, TypeVar
+from types import MappingProxyType
 
 from talli_backend.shared.kernel import (
     ActorId, CompanyId, CorrelationId, DomainError, ErrorCategory,
-    IdempotencyKey, IncomeYear, LocalDate, Money,
+    IdempotencyKey, IncomeYear, LocalDate, Money, Timestamp,
 )
 
 
@@ -89,8 +90,25 @@ class AccountingEntryReference(_UuidReference):
 
 class CompanyTaxError(DomainError):
     @classmethod
-    def invalid_input(cls) -> CompanyTaxError:
-        return cls(code="COMPANY_TAX_INVALID_INPUT", category=ErrorCategory.INVALID_INPUT)
+    def hard_review_block(cls) -> CompanyTaxError:
+        return cls(code="COMPANY_TAX_HARD_REVIEW_BLOCK", category=ErrorCategory.FORBIDDEN,
+            message="Hard review-blokk kan ikke acknowledges som advisory.")
+
+    @classmethod
+    def evidence_persistence_rejected(cls) -> CompanyTaxError:
+        return cls(code="COMPANY_TAX_EVIDENCE_PERSISTENCE_REJECTED", category=ErrorCategory.INVALID_INPUT)
+
+    @classmethod
+    def mfa_required(cls) -> CompanyTaxError:
+        return cls(code="COMPANY_TAX_MFA_REQUIRED", category=ErrorCategory.FORBIDDEN)
+
+    @classmethod
+    def not_found(cls) -> CompanyTaxError:
+        return cls(code="COMPANY_TAX_NOT_FOUND", category=ErrorCategory.NOT_FOUND)
+
+    @classmethod
+    def invalid_input(cls, message: str = "") -> CompanyTaxError:
+        return cls(code="COMPANY_TAX_INVALID_INPUT", category=ErrorCategory.INVALID_INPUT, message=message)
 
     @classmethod
     def forbidden(cls) -> CompanyTaxError:
@@ -160,7 +178,631 @@ class TaxSettlementArchivePersistence(Protocol):
         ...
 
 
+@dataclass(frozen=True, slots=True)
+class CompanyTaxWorkspaceQuery:
+    actor_id: ActorId
+    company_id: CompanyId
+    income_year: IncomeYear | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxFilingRows:
+    """Complete immutable predecessor row projections, scoped to one company.
+
+    Permissions and authority test evidence are company-wide in the predecessor;
+    their lack of an income year must not be interpreted as year completeness.
+    """
+    company_id: CompanyId
+    income_year: IncomeYear | None
+    previews: tuple[Mapping[str, object], ...]
+    submissions: tuple[Mapping[str, object], ...]
+    overrides: tuple[Mapping[str, object], ...]
+    review_comments: tuple[Mapping[str, object], ...]
+    permissions: tuple[Mapping[str, object], ...]
+    test_evidence: tuple[Mapping[str, object], ...]
+
+    def __post_init__(self) -> None:
+        for name in ('previews', 'submissions', 'overrides', 'review_comments', 'permissions', 'test_evidence'):
+            if not isinstance(getattr(self, name), (list, tuple)):
+                raise CompanyTaxError.unavailable()
+            object.__setattr__(self, name, _freeze_return_fact(getattr(self, name)))
+        from .workspace import validate_rows
+        validate_rows(self)
+
+
+class CompanyTaxWorkspacePersistence(Protocol):
+    async def filing_workspace(self, query: CompanyTaxWorkspaceQuery) -> CompanyTaxFilingRows: ...
+
+
+def _freeze_return_fact(value: object) -> object:
+    # Iteration preserves valid deeply nested ignored JSON fields without using
+    # Python's call stack. Only ancestor cycles are rejected; shared facts copy.
+    result = [None]
+    stack = [(False, value, result, 0)]
+    ancestors = set()
+    while stack:
+        finishing, source, parent, key = stack.pop()
+        if finishing:
+            copied, original_id = source
+            ancestors.remove(original_id)
+            parent[key] = MappingProxyType(copied) if isinstance(copied, dict) else tuple(copied)
+        elif isinstance(source, (Mapping, tuple, list)):
+            if id(source) in ancestors:
+                raise ValueError('Cyclic source facts are invalid.')
+            ancestors.add(id(source))
+            copied = {} if isinstance(source, Mapping) else [None] * len(source)
+            stack.append((True, (copied, id(source)), parent, key))
+            children = source.items() if isinstance(source, Mapping) else enumerate(source)
+            stack.extend((False, child, copied, child_key) for child_key, child in reversed(list(children)))
+        else:
+            parent[key] = source
+    return result[0]
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxReturnSource:
+    """Annual/Ledger/holding facts supplied by the named application workflow.
+
+    Taking a snapshot copies and recursively freezes nested source values. Tax
+    never receives a repository handle or discovers another owner's data here.
+    """
+    organization_number: str
+    income_year: int
+    annual_data: Mapping[str, object] | None
+    ledger_entries: tuple[Mapping[str, object], ...]
+    holding_actions: tuple[Mapping[str, object], ...]
+    party_number: str | None = None
+
+    def __post_init__(self) -> None:
+        for name in ('annual_data', 'ledger_entries', 'holding_actions'):
+            object.__setattr__(self, name, _freeze_return_fact(getattr(self, name)))
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxReadinessIssue:
+    level: str
+    code: str
+    message: str
+    source: str
+    accepted: bool = False
+
+
+def assess_company_tax_readiness(
+    source: CompanyTaxReturnSource, *, company_id: str,
+) -> tuple[CompanyTaxReadinessIssue, ...]:
+    """Tax policy only; Annual owns common gates and Billing owns entitlement."""
+    from .readiness import assess
+    return assess(source, company_id)
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxReturnCandidate:
+    schema: Mapping[str, object]
+    derived: Mapping[str, object]
+    fields: tuple[Mapping[str, object], ...]
+    feedback: tuple[Mapping[str, object], ...]
+
+    def __post_init__(self) -> None:
+        for name in ('schema', 'derived', 'fields', 'feedback'):
+            object.__setattr__(self, name, _freeze_return_fact(getattr(self, name)))
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualTaxEstimateSource:
+    ledger_entries: tuple[Mapping[str, object], ...]
+    holding_actions: tuple[Mapping[str, object], ...]
+
+    def __post_init__(self) -> None:
+        for name in ('ledger_entries', 'holding_actions'):
+            object.__setattr__(self, name, _freeze_return_fact(getattr(self, name)))
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualTaxEstimate:
+    admin_costs: float
+    interest_income: float
+    participation_exemption_add_back: float
+    taxable_share_sale_gain: float
+    deductible_share_sale_loss: float
+    tax_basis: float
+    estimated_tax: float
+    status: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxReturnDocuments:
+    tax_return_xml: str
+    business_specification_xml: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxEnvelopeInput:
+    documents: CompanyTaxReturnDocuments
+    organization_number: str
+    income_year: int
+    created_by: str
+    current_document_reference: str | None = None
+
+
+def _calculation_source(source: CompanyTaxReturnSource) -> Mapping[str, object]:
+    return {'companyOrgNumber': source.organization_number, 'companyPartyNumber': source.party_number,
+            'incomeYear': source.income_year, 'annualData': source.annual_data,
+            'ledgerEntries': source.ledger_entries, 'holdingActions': source.holding_actions}
+
+
+def build_company_tax_return(source: CompanyTaxReturnSource) -> CompanyTaxReturnCandidate:
+    from .calculation import build
+    return CompanyTaxReturnCandidate(**build(_calculation_source(source)))
+
+
+def estimate_annual_tax(source: CompanyTaxReturnSource | AnnualTaxEstimateSource) -> AnnualTaxEstimate:
+    from .calculation import estimate
+    value = estimate({'ledgerEntries': source.ledger_entries, 'holdingActions': source.holding_actions})
+    return AnnualTaxEstimate(
+        admin_costs=value['adminCosts'], interest_income=value['interestIncome'],
+        participation_exemption_add_back=value['fritaksmetodenAddBack'],
+        taxable_share_sale_gain=value['taxableShareSaleGain'], deductible_share_sale_loss=value['deductibleShareSaleLoss'],
+        tax_basis=value['taxBasis'], estimated_tax=value['estimatedTax'], status=value['status'],
+    )
+
+
+def render_company_tax_return(candidate: CompanyTaxReturnCandidate) -> CompanyTaxReturnDocuments:
+    from .rendering import render
+    value = render(candidate.fields)
+    return CompanyTaxReturnDocuments(value['skattemeldingXml'], value['naeringsspesifikasjonXml'])
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedCompanyTaxReturn:
+    documents: CompanyTaxReturnDocuments
+    feedback: tuple[Mapping[str, object], ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'feedback', _freeze_return_fact(self.feedback))
+
+
+def prepare_company_tax_return(source: CompanyTaxReturnSource) -> PreparedCompanyTaxReturn:
+    """Retain the authority-tool blocking gate before producing sendable XML."""
+    candidate = build_company_tax_return(source)
+    if any(item['level'] == 'block' for item in candidate.feedback):
+        raise CompanyTaxError(code='COMPANY_TAX_PAYLOAD_BLOCKED', category=ErrorCategory.PRECONDITION_FAILED)
+    return PreparedCompanyTaxReturn(render_company_tax_return(candidate), candidate.feedback)
+
+
+def render_company_tax_envelope(input: CompanyTaxEnvelopeInput) -> str:
+    from .rendering import envelope
+    value = {'skattemeldingXml': input.documents.tax_return_xml,
+             'naeringsspesifikasjonXml': input.documents.business_specification_xml,
+             'companyOrgNumber': input.organization_number, 'incomeYear': input.income_year,
+             'createdBy': input.created_by}
+    if input.current_document_reference is not None:
+        value['currentDocumentReference'] = input.current_document_reference
+    return envelope(value)
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxEvidenceInput:
+    company_id: str
+    expected_organization_number: str
+    expected_income_year: int
+    evidence: Mapping[str, object]
+    recorded_by: str
+    evidence_url: str | None = None
+    recorded_at: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'evidence', _freeze_return_fact(self.evidence))
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxEvidenceProjection:
+    authority_run: Mapping[str, object]
+    submission: Mapping[str, object]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'authority_run', _freeze_return_fact(self.authority_run))
+        object.__setattr__(self, 'submission', _freeze_return_fact(self.submission))
+
+
+def project_company_tax_evidence(input: CompanyTaxEvidenceInput) -> CompanyTaxEvidenceProjection:
+    from .evidence import project
+    source = {'companyId': input.company_id, 'expectedCompanyOrgNumber': input.expected_organization_number,
+              'expectedIncomeYear': input.expected_income_year, 'evidence': input.evidence,
+              'recordedBy': input.recorded_by, 'evidenceUrl': input.evidence_url}
+    if input.recorded_at is not None:
+        source['recordedAt'] = input.recorded_at
+    result = project(source)
+    return CompanyTaxEvidenceProjection(result['authorityRun'], result['submission'])
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxValidationSummary:
+    result: str
+    deviation_codes: tuple[str, ...]
+    guidance_codes: tuple[str, ...]
+    failure_reasons: tuple[str, ...]
+
+
+def summarize_company_tax_validation(result_xml: str) -> CompanyTaxValidationSummary:
+    from .validation import summarize
+    value = summarize(result_xml)
+    return CompanyTaxValidationSummary(value['result'], tuple(value['deviationCodes']),
+                                       tuple(value['guidanceCodes']), tuple(value['failureReasons']))
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxCompanyIdentity:
+    company_id: CompanyId
+    organization_number: str
+
+
+@dataclass(frozen=True, slots=True)
+class ImportCompanyTaxReturnEvidence:
+    actor_id: ActorId
+    company_id: CompanyId
+    income_year: IncomeYear
+    evidence: Mapping[str, object]
+    evidence_url: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'evidence', _freeze_return_fact(self.evidence))
+
+
+class TaxAuthorityEvidenceId(_UuidReference):
+    pass
+
+
+class TaxFilingSubmissionId(_UuidReference):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class ImportedCompanyTaxEvidence:
+    authority_test_run_id: TaxAuthorityEvidenceId
+    filing_submission_id: TaxFilingSubmissionId
+    created: bool
+
+
+class CompanyTaxReturnPersistence(Protocol):
+    async def filing_company_identity(self, company_id: CompanyId, actor_id: ActorId) -> CompanyTaxCompanyIdentity: ...
+
+    async def import_return_evidence(self, projection: CompanyTaxEvidenceProjection, actor_id: ActorId) -> ImportedCompanyTaxEvidence: ...
+
+
+class TaxFilingRecordId(_UuidReference):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxRecordQuery:
+    actor_id: ActorId
+    record_id: TaxFilingRecordId
+
+
+@dataclass(frozen=True, slots=True)
+class RecordCompanyTaxOverride:
+    actor_id: ActorId
+    preview_id: TaxFilingRecordId
+    field_target: str
+    old_value: str
+    new_value: str
+    reason: str
+    risk_level: str
+    owner_confirmed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class AddCompanyTaxReviewComment:
+    actor_id: ActorId
+    preview_id: TaxFilingRecordId
+    severity: str
+    body: str
+
+
+@dataclass(frozen=True, slots=True)
+class ConfirmCompanyTaxPermission:
+    actor_id: ActorId
+    company_id: CompanyId
+    production_enabled: bool
+
+
+@dataclass(frozen=True, slots=True)
+class RecordCompanyTaxTestEvidence:
+    actor_id: ActorId
+    company_id: CompanyId
+    environment: str
+    status: str
+    test_reference: str
+    feedback_summary: str
+    receipt_reference: str | None = None
+    archive_reference: str | None = None
+    evidence_url: str | None = None
+    payload_hash: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxRecordedResult:
+    record_id: TaxFilingRecordId
+    company_id: CompanyId
+    income_year: IncomeYear | None
+
+
+class CompanyTaxPreparationPersistence(Protocol):
+    async def filing_preview(self, query: CompanyTaxRecordQuery) -> Mapping[str, object] | None: ...
+    async def record_override(self, command: RecordCompanyTaxOverride) -> CompanyTaxRecordedResult: ...
+    async def add_review_comment(self, command: AddCompanyTaxReviewComment) -> CompanyTaxRecordedResult: ...
+    async def acknowledge_review_comment(self, query: CompanyTaxRecordQuery) -> CompanyTaxRecordedResult: ...
+    async def confirm_filing_permission(self, command: ConfirmCompanyTaxPermission) -> CompanyTaxRecordedResult: ...
+    async def record_test_evidence(self, command: RecordCompanyTaxTestEvidence) -> CompanyTaxRecordedResult: ...
+
+
+def normalize_company_tax_override(command: RecordCompanyTaxOverride) -> RecordCompanyTaxOverride:
+    from .preparation import normalize_override
+    return normalize_override(command)
+
+
+def normalize_company_tax_review(command: AddCompanyTaxReviewComment) -> AddCompanyTaxReviewComment:
+    from .preparation import normalize_review
+    return normalize_review(command)
+
+
+def normalize_company_tax_test_evidence(command: RecordCompanyTaxTestEvidence) -> RecordCompanyTaxTestEvidence:
+    from .preparation import normalize_test_evidence
+    return normalize_test_evidence(command)
+
+
+class CompanyTaxReturnAuthorityError(Exception):
+    """Stable sanitized authority failure; no provider response or credentials."""
+    def __init__(self, message: str, *, code: str, status: int | None = None,
+                 retryable: bool = False, validation_codes: list[str] | None = None):
+        super().__init__(message)
+        self.code, self.status, self.retryable = code, status, retryable
+        self.correlation_id = None
+        self.validation_codes = validation_codes or []
+
+    def evidence(self) -> Mapping[str, object]:
+        return {"code": self.code, "status": self.status, "correlationId": None,
+                "retryable": self.retryable, "message": str(self)}
+
+
+class CompanyTaxAuthority(Protocol):
+    """Existing test authority operations; human confirmation has no operation."""
+    async def fetch_current(self, *, income_year: int, company_org_number: str) -> Mapping[str, object]: ...
+    async def validate_test(self, *, income_year: int, company_org_number: str, envelope_xml: str) -> Mapping[str, object]: ...
+    async def create_instance(self, *, income_year: int, company_org_number: str) -> Mapping[str, object]: ...
+    async def upload_envelope(self, *, instance_id: str, envelope_xml: str) -> Mapping[str, object]: ...
+    async def replace_envelope(self, *, instance_id: str, data_id: str, envelope_xml: str) -> Mapping[str, object]: ...
+    async def get_envelope_scan(self, *, instance_id: str) -> Mapping[str, object]: ...
+    async def get_instance(self, *, instance_id: str) -> Mapping[str, object]: ...
+    async def advance_to_confirmation(self, *, instance_id: str) -> Mapping[str, object]: ...
+    def get_owner_confirmation_url(self, *, instance_id: str) -> str: ...
+    async def get_feedback_receipt(self, *, instance_id: str) -> Mapping[str, object]: ...
+    async def start_validation(self, *, income_year: int, company_org_number: str, instance_id: str) -> Mapping[str, object]: ...
+    async def get_validation_status(self, *, income_year: int, company_org_number: str, job_id: str) -> Mapping[str, object]: ...
+    async def get_validation_result(self, *, income_year: int, company_org_number: str, job_id: str) -> Mapping[str, object]: ...
+
+
+AuthorityAdapter = TypeVar("AuthorityAdapter", bound=type[object])
+
+
+def company_tax_authority_adapter(
+    contract: type[object],
+) -> Callable[[AuthorityAdapter], AuthorityAdapter]:
+    def declare(adapter: AuthorityAdapter) -> AuthorityAdapter:
+        _ = contract
+        return adapter
+    return declare
+
+
+async def wait_for_company_tax_validation(client: CompanyTaxAuthority, *, attempts: int = 20, sleep: Callable[[float], Awaitable[None]], **values) -> Mapping[str, object]:
+    from .authority_workflow import wait_for_validation
+    return await wait_for_validation(client, attempts=attempts, sleep=sleep, **values)
+
+
+async def wait_for_company_tax_feedback(client: CompanyTaxAuthority, *, instance_id: str, attempts: int = 30, sleep: Callable[[float], Awaitable[None]]) -> Mapping[str, object]:
+    from .authority_workflow import wait_for_feedback
+    return await wait_for_feedback(client, instance_id=instance_id, attempts=attempts, sleep=sleep)
+
+
+async def wait_for_company_tax_clean_envelope(client: CompanyTaxAuthority, instance_id: str, *, attempts: int = 30, sleep: Callable[[float], Awaitable[None]]) -> Mapping[str, object]:
+    from .authority_workflow import wait_for_clean_envelope
+    return await wait_for_clean_envelope(client, instance_id, attempts=attempts, sleep=sleep)
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxRehearsalConfiguration:
+    """Nonsecret CLI declarations; validation retains the original ordered guards."""
+    approved_test_write: str = ""
+    authority_environment: str = ""
+    mode: str = ""
+    scope: str = ""
+    system_user_org: str = ""
+    external_reference: str = ""
+
+
+class CompanyTaxRehearsalIO(Protocol):
+    """Local evidence, schema and credential mechanisms for the owned workflow."""
+    def select_evidence(self) -> None: ...
+    def load_evidence(self) -> dict[str, object] | None: ...
+    def load_case(self) -> Mapping[str, object]: ...
+    def save_evidence(self, evidence: Mapping[str, object]) -> None: ...
+    def evidence_filename(self) -> str: ...
+    def case_filename(self) -> str: ...
+    def revision(self) -> str: ...
+    def timestamp(self) -> str: ...
+    def prepare_credentials(self) -> None: ...
+    async def connect(self, evidence: Mapping[str, object]) -> CompanyTaxAuthority: ...
+    def generate(self, operation: str, values: Mapping[str, object]) -> Mapping[str, object]: ...
+    def validate_documents(self, documents: Mapping[str, object], envelope: str, schemas: tuple[str, ...]) -> None: ...
+
+
+async def rehearse_company_tax_return(
+    configuration: CompanyTaxRehearsalConfiguration, io: CompanyTaxRehearsalIO,
+    *, sleep: Callable[[float], Awaitable[None]],
+) -> Mapping[str, object]:
+    from .rehearsal import run
+    return _freeze_return_fact(await run(configuration, io, sleep=sleep))
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxSourceQuery:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxSourceSnapshot:
+    """One authorized repeatable snapshot of the declared recorded Tax extent."""
+    rows: CompanyTaxFilingRows
+    coverage: Mapping[str, object] | None
+    as_of: Timestamp
+    complete_enumeration: bool
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "coverage", _freeze_return_fact(self.coverage))
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxSourceEvidence:
+    company_id: CompanyId
+    income_year: IncomeYear
+    reference: str
+    version: str
+    digest: str
+    evaluated_at: Timestamp
+    obligation: str = "skattemelding"
+    scope: str = "talli_recorded_company_tax"
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxHistoryCoverage:
+    status: str
+    reasons: tuple[str, ...]
+    evidence_reference: str | None
+    as_of: Timestamp
+    submission_count: int
+    scope: str = "talli_recorded_company_tax"
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxSubmissionFact:
+    source_id: str
+    source_mode: str
+    adapter_mode: str
+    state: str
+    effect_status: str
+    observed_at: str | None
+    created_by: str | None
+    submitted_by: str | None
+    authority_confirmed_by: str | None
+    authority_confirmed_at: str | None
+    preview_confirmed_by: str | None
+    preview_confirmed_at: str | None
+    payload_hash: str | None
+    receipt_reference: str | None
+    feedback_document_ids: tuple[str, ...]
+    source_digest: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxIncidentFact:
+    source_id: str
+    source_mode: str
+    adapter_mode: str
+    failure_code: str | None
+    observed_at: str | None
+    actor_id: str | None
+    source_digest: str
+    attribution: str = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxOutcomeFact:
+    source_id: str
+    source_mode: str
+    adapter_mode: str
+    recorded_state: str
+    outcome: str
+    observed_at: str | None
+    source_digest: str
+    attribution: str = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxCorrectionLink:
+    source_id: str
+    supersedes_source_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompanyTaxSourceFacts:
+    evidence: CompanyTaxSourceEvidence
+    readiness_status: str
+    hard_blocks: tuple[str, ...]
+    history_coverage: CompanyTaxHistoryCoverage
+    recorded_submissions: tuple[CompanyTaxSubmissionFact, ...]
+    production_attempts: tuple[CompanyTaxSubmissionFact, ...]
+    correction_links: tuple[CompanyTaxCorrectionLink, ...]
+    incidents: tuple[CompanyTaxIncidentFact, ...]
+    outcomes: tuple[CompanyTaxOutcomeFact, ...]
+
+
+class CompanyTaxSourcePersistence(Protocol):
+    async def filing_source_snapshot(self, query: CompanyTaxSourceQuery) -> CompanyTaxSourceSnapshot: ...
+
+
+def project_company_tax_source(query: CompanyTaxSourceQuery, snapshot: CompanyTaxSourceSnapshot) -> CompanyTaxSourceFacts:
+    from .source_facts import project
+    return project(query, snapshot)
+
+
+def verify_company_tax_source(
+    query: CompanyTaxSourceQuery, evidence: CompanyTaxSourceEvidence, snapshot: CompanyTaxSourceSnapshot,
+) -> bool:
+    from .source_facts import verify
+    return verify(query, evidence, snapshot)
+
+
 __all__ = [
+    "CompanyTaxSourceQuery",
+    "CompanyTaxSourceSnapshot",
+    "CompanyTaxSourceEvidence",
+    "CompanyTaxHistoryCoverage",
+    "CompanyTaxSubmissionFact",
+    "CompanyTaxIncidentFact",
+    "CompanyTaxOutcomeFact",
+    "CompanyTaxCorrectionLink",
+    "CompanyTaxSourceFacts",
+    "CompanyTaxSourcePersistence",
+    "project_company_tax_source",
+    "verify_company_tax_source",
+
+    "CompanyTaxRehearsalConfiguration",
+    "CompanyTaxRehearsalIO",
+    "rehearse_company_tax_return",
+
+    "CompanyTaxReturnAuthorityError",
+    "CompanyTaxAuthority",
+    "company_tax_authority_adapter",
+    "wait_for_company_tax_validation",
+    "wait_for_company_tax_feedback",
+    "wait_for_company_tax_clean_envelope",
+
+    "TaxFilingRecordId", "CompanyTaxRecordQuery", "RecordCompanyTaxOverride", "AddCompanyTaxReviewComment",
+    "ConfirmCompanyTaxPermission", "RecordCompanyTaxTestEvidence", "CompanyTaxRecordedResult",
+    "CompanyTaxPreparationPersistence", "normalize_company_tax_override", "normalize_company_tax_review",
+    "normalize_company_tax_test_evidence",
+    "CompanyTaxCompanyIdentity", "ImportCompanyTaxReturnEvidence", "TaxAuthorityEvidenceId",
+    "TaxFilingSubmissionId", "ImportedCompanyTaxEvidence", "CompanyTaxReturnPersistence",
+    "CompanyTaxWorkspaceQuery", "CompanyTaxFilingRows", "CompanyTaxWorkspacePersistence",
+    "PreparedCompanyTaxReturn", "prepare_company_tax_return",
+    "CompanyTaxValidationSummary", "summarize_company_tax_validation",
+    "CompanyTaxEvidenceInput", "CompanyTaxEvidenceProjection", "project_company_tax_evidence",
+    "CompanyTaxReturnSource", "CompanyTaxReturnCandidate", "AnnualTaxEstimate",
+    "AnnualTaxEstimateSource", "CompanyTaxReadinessIssue", "assess_company_tax_readiness",
+    "CompanyTaxReturnDocuments", "CompanyTaxEnvelopeInput", "build_company_tax_return",
+    "estimate_annual_tax", "render_company_tax_return", "render_company_tax_envelope",
     "TaxSettlementArchiveQuery", "TaxSettlementArchivePersistence",
     "NormalizedTaxSettlement",
     "TaxSettlementDocumentStatus",

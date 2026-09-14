@@ -1,0 +1,22 @@
+{
+  "baselineRevision": "39b72c60ac941e92083dddfc503927a1653cb173",
+  "status": "STALE_TAX_COMPATIBILITY_EXPECTATION_REPLACED",
+  "change": "Require Authority, RF and Company Tax facade absence; retain Annual Accounts frozen scope requirement",
+  "checks": {
+    "webTransport": 240,
+    "webComposition": 75,
+    "backendPassed": 3426,
+    "backendSkipped": 2,
+    "backendDeselected": 861,
+    "fullStageGate": false
+  },
+  "scopeNote": "Broad backend collection began at 39b72c60 before the separately tested immutable-summary follow-up; this is discovery evidence, not an exact-revision full gate. Database-marked tests were excluded and two database-dependent tests skipped without DATABASE_URL.",
+  "sourceSha256": {
+    "tests/authority_connections_retirement.test.mjs": "ef206e8f0ec7371b243065ef7e8405b0cf287acc30fbfa3321ff9a0b897b0a5c"
+  },
+  "evidenceSha256": {
+    "company-tax-boundary-web-audit.log": "af4b5d62d826380a0353276cceaba9a600f24147d33623d611b03c501d7cc866",
+    "authority-ownership-backend-suite.log": "0f6322ee06da2ceff22b47b383fed3ed873ce53a7e892c6efd96e412a9b0ba06",
+    "company-tax-boundary-web-fixed.log": "5c2bfff1029d82de40615b9b1527b989b07ed7dcbb8c51c344e738344423cc6f"
+  }
+}

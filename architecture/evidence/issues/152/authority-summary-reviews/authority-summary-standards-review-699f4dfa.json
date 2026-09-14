@@ -1,0 +1,82 @@
+{
+  "base": "39b72c60ac941e92083dddfc503927a1653cb173",
+  "candidate": "699f4dfa4cabb517529bc6bdc05aaf12eb5b3430",
+  "isolatedArchive": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-authority-summary-standards-xppl8fb5",
+  "python": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+  "node": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+  "checks": [
+    {
+      "label": "tests",
+      "exitCode": 0,
+      "transcript": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/authority-summary-standards-tests-699f4dfa.log",
+      "sha256": "d8478fd460262c4ad044528f50239e3374918a708ae8cffee5fc681be4420b8f"
+    },
+    {
+      "label": "original-probe",
+      "exitCode": 1,
+      "transcript": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/authority-summary-standards-original-probe-699f4dfa.log",
+      "sha256": "2ba21fdd9094b5d4bd18cc9d5ce21752651056588baaaabf36a130aa3f99ff06"
+    }
+  ],
+  "deepCliProbe": {
+    "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/authority-summary-standards-deep-cli-probe-699f4dfa.py",
+    "sha256": "da1db0d5dc49d92bb5f4eac571b7c177f0e9952308a54c90ec194f3a062136f9",
+    "results": [
+      {
+        "label": "predecessor",
+        "exitCode": 0,
+        "transcript": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/authority-summary-standards-deep-cli-predecessor-699f4dfa.log",
+        "sha256": "202cd90ae3fc8ab48a4d9108e3edb181e574d8c17192267b9d31edaf40dc20d9"
+      },
+      {
+        "label": "candidate",
+        "exitCode": 0,
+        "transcript": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/authority-summary-standards-deep-cli-candidate-699f4dfa.log",
+        "sha256": "202cd90ae3fc8ab48a4d9108e3edb181e574d8c17192267b9d31edaf40dc20d9"
+      }
+    ]
+  },
+  "verdict": "PASS_BOUNDED_FOLLOWUP",
+  "closedFindings": [
+    {
+      "priority": 2,
+      "title": "Public summary aliased mutable replay evidence",
+      "closedAt": "699f4dfa4cabb517529bc6bdc05aaf12eb5b3430"
+    }
+  ],
+  "findings": [],
+  "verifiedManifestBindings": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "dc9d71978f29ea25fecd5bc549dddc47d540aa012fccc64b16cdb131af4a036f",
+    "apps/backend/src/talli_backend/adapters/local_company_tax_rehearsal.py": "763ed61facd3d3b6114b56227de108f3e60dc13924be5f0db6ebecfb9d08603d",
+    "apps/backend/src/talli_backend/authority_tools/company_tax_test.py": "0b6b32ddb2664701e8776257c311e503102f6ffac12d0ec5b814cf025c2de3b9",
+    "apps/backend/tests/test_company_tax_rehearsal.py": "dda93360d25188e9e67ad5b8270ffb5d51c9ac764e1ce4b7b4fde513ba7921e7",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-spec-review-39b72c60.md": "674f94cdcf1449514b39995ecfb24d3c1ba4286b5b3899b7002156402e88b5c1",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-summary-freeze-tests.log": "6e229bf3fff28ead2ee29e54b60d5f28ce789dc51b1814e97bc357eedda8f56e",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-spec-review-39b72c60.json": "d89544b6f2bc22e87cbf1edc2a77ec9973f11b7ace177655107eac230240fe07",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-standards-review-39b72c60.md": "7a5d25f90f7b8cb0ee2da9246d1e944b66db33759847f549113b682c0ec0b5bb",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-standards-review-39b72c60.json": "ab3fa6eadfd37b1f3ae3b45f826e746cd5f0121128b9f155058389436218fe8c",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-standards-immutable-probe-39b72c60.log": "243230c8a1b4cff0a8aa2dc53cd9ab778662d9c3eff5ca62f8294e16c3e15ff8"
+  },
+  "sourceHashes": {
+    "apps/backend/src/talli_backend/adapters/local_company_tax_rehearsal.py": "763ed61facd3d3b6114b56227de108f3e60dc13924be5f0db6ebecfb9d08603d",
+    "apps/backend/src/talli_backend/authority_tools/company_tax_test.py": "0b6b32ddb2664701e8776257c311e503102f6ffac12d0ec5b814cf025c2de3b9",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "dc9d71978f29ea25fecd5bc549dddc47d540aa012fccc64b16cdb131af4a036f",
+    "apps/backend/tests/test_company_tax_rehearsal.py": "dda93360d25188e9e67ad5b8270ffb5d51c9ac764e1ce4b7b4fde513ba7921e7",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-summary-freeze-tests.log": "6e229bf3fff28ead2ee29e54b60d5f28ce789dc51b1814e97bc357eedda8f56e",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-spec-review-39b72c60.json": "d89544b6f2bc22e87cbf1edc2a77ec9973f11b7ace177655107eac230240fe07",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-spec-review-39b72c60.md": "674f94cdcf1449514b39995ecfb24d3c1ba4286b5b3899b7002156402e88b5c1",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-standards-immutable-probe-39b72c60.log": "243230c8a1b4cff0a8aa2dc53cd9ab778662d9c3eff5ca62f8294e16c3e15ff8",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-standards-review-39b72c60.json": "ab3fa6eadfd37b1f3ae3b45f826e746cd5f0121128b9f155058389436218fe8c",
+    "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-standards-review-39b72c60.md": "7a5d25f90f7b8cb0ee2da9246d1e944b66db33759847f549113b682c0ec0b5bb",
+    "architecture/evidence/issues/152/authority-summary-immutability/manifest.json": "7e89cbd4e6b3022f1851e2d6de31db412e3d43f3d4d61c6d5d08b672f8fa3a6f"
+  },
+  "diffSha256": "e2c24b1c1d94353c22328173f4ba3b3466943e682dab0a3a8a745f1c667fb624",
+  "testResults": {
+    "passed": 256,
+    "failed": 0,
+    "originalProbe": "Expected TypeError on nested assignment, closes reproduction",
+    "nestedCliControl": "Exact predecessor 600-level nested metadata preserves depth, leaf and serialized shape"
+  },
+  "limits": "Isolated pure/mocked checks only. No shared edits, database/provider/browser operations or full-stage/gate credit.",
+  "reportSha256": "5f2efeba322251b2e76bcac4f7946fc103010dff771c0f160ae1d7ff2cf5ef34"
+}

@@ -1,0 +1,405 @@
+{
+  "scope": "Unchanged legacy pure filing-control normalization, errors and fixed-clock projection. No database/provider or stage-exit evidence.",
+  "sourceRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+  "sourceHashes": {
+    "apps/web/app/lib/filing-overrides.ts": "b6ce7c62eb22c65b3dcf1ba58ee1c3d3176ed17e3ba9cd63d812d70a2cdf5599",
+    "apps/web/app/lib/review.ts": "832d2c193eae5780ffc547ae6b6307a84ef374af28b3cf38ebc5bd2a1e9c5149",
+    "apps/web/app/lib/authority-test-evidence.ts": "70b9ba9ebb978c4c40f90e428e29b388c7ede251fc3bcb4582c492c0790601f4"
+  },
+  "cases": [
+    {
+      "operation": "override",
+      "input": {
+        "fieldTarget": " tax.field ",
+        "oldValue": " old ",
+        "newValue": " new ",
+        "reason": " reason ",
+        "riskLevel": "advisory"
+      },
+      "output": {
+        "value": {
+          "fieldTarget": "tax.field",
+          "oldValue": "old",
+          "newValue": "new",
+          "reason": "reason",
+          "riskLevel": "advisory"
+        }
+      }
+    },
+    {
+      "operation": "override",
+      "input": {
+        "fieldTarget": " tax.field ",
+        "oldValue": " old ",
+        "newValue": " new ",
+        "reason": " reason ",
+        "riskLevel": "warning"
+      },
+      "output": {
+        "value": {
+          "fieldTarget": "tax.field",
+          "oldValue": "old",
+          "newValue": "new",
+          "reason": "reason",
+          "riskLevel": "warning"
+        }
+      }
+    },
+    {
+      "operation": "override",
+      "input": {
+        "fieldTarget": " tax.field ",
+        "oldValue": " old ",
+        "newValue": " new ",
+        "reason": " reason ",
+        "riskLevel": "block"
+      },
+      "output": {
+        "value": {
+          "fieldTarget": "tax.field",
+          "oldValue": "old",
+          "newValue": "new",
+          "reason": "reason",
+          "riskLevel": "block"
+        }
+      }
+    },
+    {
+      "operation": "override",
+      "input": {
+        "fieldTarget": "",
+        "oldValue": " old ",
+        "newValue": " new ",
+        "reason": " reason ",
+        "riskLevel": "advisory"
+      },
+      "output": {
+        "error": "Feltmål mangler for filing-overstyring."
+      }
+    },
+    {
+      "operation": "override",
+      "input": {
+        "fieldTarget": " tax.field ",
+        "oldValue": "",
+        "newValue": "",
+        "reason": " reason ",
+        "riskLevel": "advisory"
+      },
+      "output": {
+        "error": "Gammel eller ny verdi må fylles ut for filing-overstyring."
+      }
+    },
+    {
+      "operation": "override",
+      "input": {
+        "fieldTarget": " tax.field ",
+        "oldValue": " old ",
+        "newValue": " new ",
+        "reason": "",
+        "riskLevel": "advisory"
+      },
+      "output": {
+        "error": "Begrunnelse mangler for filing-overstyring."
+      }
+    },
+    {
+      "operation": "override",
+      "input": {
+        "fieldTarget": " tax.field ",
+        "oldValue": " old ",
+        "newValue": " new ",
+        "reason": " reason ",
+        "riskLevel": "unknown"
+      },
+      "output": {
+        "error": "Ugyldig risikonivå for filing-overstyring."
+      }
+    },
+    {
+      "operation": "override",
+      "input": {
+        "fieldTarget": "﻿ tax.field　",
+        "oldValue": " old ",
+        "newValue": " new ",
+        "reason": " reason ",
+        "riskLevel": "advisory"
+      },
+      "output": {
+        "value": {
+          "fieldTarget": "tax.field",
+          "oldValue": "old",
+          "newValue": "new",
+          "reason": "reason",
+          "riskLevel": "advisory"
+        }
+      }
+    },
+    {
+      "operation": "override",
+      "input": {
+        "fieldTarget": "\u001c",
+        "oldValue": " old ",
+        "newValue": " new ",
+        "reason": " reason ",
+        "riskLevel": "advisory"
+      },
+      "output": {
+        "value": {
+          "fieldTarget": "\u001c",
+          "oldValue": "old",
+          "newValue": "new",
+          "reason": "reason",
+          "riskLevel": "advisory"
+        }
+      }
+    },
+    {
+      "operation": "override",
+      "input": {
+        "fieldTarget": " tax.field ",
+        "oldValue": "",
+        "newValue": "replacement",
+        "reason": " reason ",
+        "riskLevel": "advisory"
+      },
+      "output": {
+        "value": {
+          "fieldTarget": "tax.field",
+          "oldValue": "",
+          "newValue": "replacement",
+          "reason": "reason",
+          "riskLevel": "advisory"
+        }
+      }
+    },
+    {
+      "operation": "acknowledge",
+      "input": {
+        "severity": "advisory"
+      },
+      "output": {
+        "value": null
+      }
+    },
+    {
+      "operation": "acknowledge",
+      "input": {
+        "severity": "hard_block"
+      },
+      "output": {
+        "error": "Hard review-blokk kan ikke acknowledges som advisory."
+      }
+    },
+    {
+      "operation": "evidence",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "obligation": "skattemelding",
+        "environment": "test",
+        "status": "pending",
+        "testReference": " reference ",
+        "feedbackSummary": " summary ",
+        "recordedBy": "00000000-0000-0000-0000-000000000153",
+        "recordedAt": "2026-09-14T12:00:00.000Z"
+      },
+      "output": {
+        "value": {
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "obligation": "skattemelding",
+          "environment": "test",
+          "status": "pending",
+          "test_reference": "reference",
+          "feedback_summary": "summary",
+          "receipt_reference": null,
+          "archive_reference": null,
+          "evidence_url": null,
+          "payload_hash": null,
+          "recorded_by": "00000000-0000-0000-0000-000000000153",
+          "recorded_at": "2026-09-14T12:00:00.000Z"
+        }
+      }
+    },
+    {
+      "operation": "evidence",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "obligation": "skattemelding",
+        "environment": "test",
+        "status": "accepted",
+        "testReference": " reference ",
+        "feedbackSummary": " summary ",
+        "recordedBy": "00000000-0000-0000-0000-000000000153",
+        "recordedAt": "2026-09-14T12:00:00.000Z"
+      },
+      "output": {
+        "value": {
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "obligation": "skattemelding",
+          "environment": "test",
+          "status": "accepted",
+          "test_reference": "reference",
+          "feedback_summary": "summary",
+          "receipt_reference": null,
+          "archive_reference": null,
+          "evidence_url": null,
+          "payload_hash": null,
+          "recorded_by": "00000000-0000-0000-0000-000000000153",
+          "recorded_at": "2026-09-14T12:00:00.000Z"
+        }
+      }
+    },
+    {
+      "operation": "evidence",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "obligation": "skattemelding",
+        "environment": "test",
+        "status": "rejected",
+        "testReference": " reference ",
+        "feedbackSummary": " summary ",
+        "recordedBy": "00000000-0000-0000-0000-000000000153",
+        "recordedAt": "2026-09-14T12:00:00.000Z"
+      },
+      "output": {
+        "value": {
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "obligation": "skattemelding",
+          "environment": "test",
+          "status": "rejected",
+          "test_reference": "reference",
+          "feedback_summary": "summary",
+          "receipt_reference": null,
+          "archive_reference": null,
+          "evidence_url": null,
+          "payload_hash": null,
+          "recorded_by": "00000000-0000-0000-0000-000000000153",
+          "recorded_at": "2026-09-14T12:00:00.000Z"
+        }
+      }
+    },
+    {
+      "operation": "evidence",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "obligation": "skattemelding",
+        "environment": "test",
+        "status": "blocked",
+        "testReference": " reference ",
+        "feedbackSummary": " summary ",
+        "recordedBy": "00000000-0000-0000-0000-000000000153",
+        "recordedAt": "2026-09-14T12:00:00.000Z"
+      },
+      "output": {
+        "value": {
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "obligation": "skattemelding",
+          "environment": "test",
+          "status": "blocked",
+          "test_reference": "reference",
+          "feedback_summary": "summary",
+          "receipt_reference": null,
+          "archive_reference": null,
+          "evidence_url": null,
+          "payload_hash": null,
+          "recorded_by": "00000000-0000-0000-0000-000000000153",
+          "recorded_at": "2026-09-14T12:00:00.000Z"
+        }
+      }
+    },
+    {
+      "operation": "evidence",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "obligation": "skattemelding",
+        "environment": "test",
+        "status": "unknown",
+        "testReference": " reference ",
+        "feedbackSummary": " summary ",
+        "recordedBy": "00000000-0000-0000-0000-000000000153",
+        "recordedAt": "2026-09-14T12:00:00.000Z"
+      },
+      "output": {
+        "error": "Ugyldig teststatus."
+      }
+    },
+    {
+      "operation": "evidence",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "obligation": "skattemelding",
+        "environment": "test",
+        "status": "pending",
+        "testReference": "",
+        "feedbackSummary": " summary ",
+        "recordedBy": "00000000-0000-0000-0000-000000000153",
+        "recordedAt": "2026-09-14T12:00:00.000Z"
+      },
+      "output": {
+        "error": "Testreferanse mangler."
+      }
+    },
+    {
+      "operation": "evidence",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "obligation": "skattemelding",
+        "environment": "test",
+        "status": "pending",
+        "testReference": " reference ",
+        "feedbackSummary": " summary ",
+        "recordedBy": "00000000-0000-0000-0000-000000000153",
+        "recordedAt": "2026-09-14T12:00:00.000Z",
+        "receiptReference": " ",
+        "evidenceUrl": "﻿ https://evidence.example/a ﻿",
+        "payloadHash": null
+      },
+      "output": {
+        "value": {
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "obligation": "skattemelding",
+          "environment": "test",
+          "status": "pending",
+          "test_reference": "reference",
+          "feedback_summary": "summary",
+          "receipt_reference": null,
+          "archive_reference": null,
+          "evidence_url": "https://evidence.example/a",
+          "payload_hash": null,
+          "recorded_by": "00000000-0000-0000-0000-000000000153",
+          "recorded_at": "2026-09-14T12:00:00.000Z"
+        }
+      }
+    },
+    {
+      "operation": "evidence",
+      "input": {
+        "companyId": "00000000-0000-0000-0000-000000000152",
+        "obligation": "skattemelding",
+        "environment": "manual_evidence",
+        "status": "pending",
+        "testReference": " reference ",
+        "feedbackSummary": "﻿ summary 　",
+        "recordedBy": "00000000-0000-0000-0000-000000000153",
+        "recordedAt": "2026-09-14T12:00:00.000Z",
+        "archiveReference": " archive "
+      },
+      "output": {
+        "value": {
+          "company_id": "00000000-0000-0000-0000-000000000152",
+          "obligation": "skattemelding",
+          "environment": "manual_evidence",
+          "status": "pending",
+          "test_reference": "reference",
+          "feedback_summary": "summary",
+          "receipt_reference": null,
+          "archive_reference": "archive",
+          "evidence_url": null,
+          "payload_hash": null,
+          "recorded_by": "00000000-0000-0000-0000-000000000153",
+          "recorded_at": "2026-09-14T12:00:00.000Z"
+        }
+      }
+    }
+  ]
+}

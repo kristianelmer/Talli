@@ -1,0 +1,1958 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_WHOLE_STAGE_IMPLEMENTATION_REVIEW_NOT_EXIT_ACCEPTANCE",
+  "baselineRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+  "reviewedRevision": "ac9b349ab58b89bdd0efa4810ef382844be5c6fa",
+  "diffCommand": "git diff 054740b81692e0e59b99a76fff085f322f1968b4...ac9b349ab58b89bdd0efa4810ef382844be5c6fa",
+  "commits": [
+    "ac9b349ab58b89bdd0efa4810ef382844be5c6fa test(tax): retain filing lifecycle in mandatory lane coverage",
+    "41bcead181bc26f9c2e540ca5fbf53a8114e0120 test(company-tax): close Archive and deployment contract gaps (#152)",
+    "9f5c5a5b15971de69327c3e242a603c32c7c4b20 test(company-tax): rehearse owned Tax filing through real owner browser (#152)",
+    "5a0634ac5db27f63ab2e05e437f24712c282fd7a feat(company-tax): publish evidence-bound recorded source facts (#152)",
+    "0b3b8c1e9cf2e154f48951f290c0b448b8f868bf test(company-tax): require retired Tax compatibility facade (#152)",
+    "699f4dfa4cabb517529bc6bdc05aaf12eb5b3430 fix(company-tax): detach immutable rehearsal summaries (#152)",
+    "39b72c60ac941e92083dddfc503927a1653cb173 refactor(company-tax): own authority polling and rehearsal workflow (#152)",
+    "32c701e31ff83016342c47a74ab0951ba3eab05d refactor(company-tax): remove duplicate TypeScript filing policy",
+    "6353c78cdc32700b92c1431732d9e782fba5612a fix(company-tax): restore archive trigger permissions exactly",
+    "9c879ff78b5ec5aa3bb639e5de4a39ab38ef9cfc feat(company-tax): rehearse reversible filing ownership cutover",
+    "f9838c6096640d9810381d86ef64dd8177ee35ac fix(company-tax): preserve Next server action directive",
+    "862964d24f56e8be86e75a20b3a8fdedb0dd0058 refactor(company-tax): consume owned readiness and estimate previews (#152)",
+    "c9c2b30e27f8e630c27a2901b60b936a2a7811d1 fix(company-tax): preserve derived Boolean payload flags (#152)",
+    "6d42211fab713a73532c349aa6e7f1e60d625a97 fix(company-tax): preserve Boolean gates and reject missing accounts (#152)",
+    "497b91d8643b7639ff1157b66761fc8c2590b850 fix(company-tax): reject malformed nested assessment facts (#152)",
+    "e2dfdf5475af3d051ad782650314839a47105451 feat(company-tax): expose owned assessment preview contracts (#152)",
+    "909bd28daea26f9eb130aeff7cf9ab8e86faab74 fix(company-tax): fail visibly when scoped source lacks a session (#152)",
+    "f5a9f41f79ff54c5d2a4b9d58b8ab67d77419115 refactor(company-tax): compose owned filing read consumers (#152)",
+    "6ab578f8d2afb02544a23ab685800d120764a5cc feat(company-tax): route owner filing actions through owned API (#152)",
+    "8af134bf673ea0969f31856b84bde2246d615835 fix(company-tax): validate acknowledgement before commit (#152)",
+    "6e67ba3e0759641db845449756306df444a3a9b1 feat(company-tax): own filing preparation controls (#152)",
+    "5d240525284e6aa92e2875940a638adb110421a6 fix(company-tax): preserve deep evidence and persistence errors (#152)",
+    "b400103d2d7204c9a2154fd953a03ccb00041ad4 feat(company-tax): own atomic TT02 evidence import contract (#152)",
+    "4c5404dfcedfbd5b858d76e1a7095ec2bd800247 fix(tax): reject malformed filing row collections at public boundary (#152)",
+    "b1bf9e9f7b5697226815a603743dc58e2b751e83 feat(tax): publish phase-gated filing workspace read contracts (#152)",
+    "bcc8dc490a451e9afc181fd9c061afe3da06d120 feat(tax): expand inert owned filing storage with reconciliation (#152)",
+    "af95066f0655733b8ea76ef1490b3178864aced7 fix(tax): preserve CLI reference presence and numeric year XML (#152)",
+    "c3eb992c30531f7402a31ceb830164fa4fda1654 refactor(tax): route authority payload tools through owned contracts (#152)",
+    "8b3e0cb340d962c8140b1ac72ceada59d4d4aea7 fix(tax): preserve numeric coercion and standard URL and Norwegian ordering rules",
+    "6bbccde76e4d7b47e0c6b2c83f21e46470118d3f feat(tax): add characterized backend calculation and TT02 projection contracts",
+    "b7e524ae2f7026a0fe91eaf55385d99065b62989 docs(tax): capture successful synthetic TT02 import projections",
+    "252cf52a20a98074a2dbc875a59effbb0a278bfe docs(tax): begin company tax filing characterization for #152"
+  ],
+  "findings": [],
+  "reportSha256": "4a60ce5ef8d3aa387badf4e47475e4d667b17cc459e0f79a34abf37b04e6220f",
+  "changedFileBindings": [
+    {
+      "status": "M",
+      "path": ".github/workflows/release-gate.yml",
+      "sha256": "58e1d6d869a63961876f7f0234b39784d736ad00a89d2a7866eeb1751f1d43f1"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/README.md",
+      "sha256": "e8656d51c1a22194223c3e47874d211de4307ae27b4c6bd3218e6c3231273df9"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/pyproject.toml",
+      "sha256": "acef4faf616fa1678a922159955655d1f8a011b0fc05558e0a49a70220096b53"
+    },
+    {
+      "status": "R082",
+      "path": "apps/backend/src/talli_backend/adapters/company_tax_authority.py",
+      "sha256": "c6527d89d422f07de999b2c02df2fc7e8e189aeb5cc54a381acbffdb2e6089b4"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/adapters/local_company_tax_rehearsal.py",
+      "sha256": "763ed61facd3d3b6114b56227de108f3e60dc13924be5f0db6ebecfb9d08603d"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py",
+      "sha256": "1b4945e344782181323d0a0abb32af6dc19854d747bb29cef081592b23ce63b2"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/src/talli_backend/application/company_tax_filing_session.py",
+      "sha256": "1ec688d2eb3ce80a146a3b0fbd56c3bb2fdd9f93a7bd48918c6216fc8a2ca3d7"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py",
+      "sha256": "9e4083d88f399f98c4206ad412296e86be416d2983bdc7a12198a5772b5d9132"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/src/talli_backend/authority_tools/_filing.py",
+      "sha256": "c1d41d3633b49ea300ed13d7e2ae25f5a923515641505607395ca3e0dcb659a0"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/authority_tools/company_tax_payload.py",
+      "sha256": "e6f2db858922714d205a3922d97fdbed7a96a031cf608d43c4e3519690ec57e5"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/src/talli_backend/authority_tools/company_tax_test.py",
+      "sha256": "0b6b32ddb2664701e8776257c311e503102f6ffac12d0ec5b814cf025c2de3b9"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "2f9e433de941b9c990bf75ef3ddb4d5cec2412bb3227bf665d5e91f765b81fd2"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/audit/MODULE.md",
+      "sha256": "aed85fa47ed53b03cc0d0f6e307d7bb52db33a5b012822b01113a0715a6b66ec"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/audit/__init__.py",
+      "sha256": "40130caaab02e8e68d8585d3a4f433e60d620f70f4de4cabc9893202933ff05e"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/audit/module.json",
+      "sha256": "5d1d08bbf17bbaad65f661bd72cad531d66ce6baa1af2afd7870a46ed6cd2b01"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/audit/public.py",
+      "sha256": "8f70becbce9eb1ac3b5cc75638040aa2f551db9803f0158ef71ebc5c966c7518"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md",
+      "sha256": "f94e53ccce5ce61e927be28e374d67c3d356a17620206107c204ef016f6a41b6"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/authority_workflow.py",
+      "sha256": "f2d6eabe70e7711f0acf98f01e975341b3c574899fb1be8d48395ca5ae3aa95a"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/calculation.py",
+      "sha256": "af99d890c19d3dc1f6cb74239cc045d95e064b9adfb667a2cec6c5076ef3f41a"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/evidence.py",
+      "sha256": "0b9ff2aaf0cf016fbea8d7e1a07b0d9cd6f73c3a0c18aac6c47f9c2536ba468a"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/module.json",
+      "sha256": "297e6bf7b7a1ee3f99cb72757628c56c2af0cf320055d637c9c128b9b3163f35"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/numbers.py",
+      "sha256": "7edbaec5ccdf7e7389a2df17d19bddc318125f9e28ccfc895ae1a62b2f010918"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/preparation.py",
+      "sha256": "4a6fb855f6f5bbba6cae8ac2120e258d5b2ac77e68361ec06fe7bd663265efeb"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/public.py",
+      "sha256": "485a0f0f94f64b688a616dc39a6420c4513a0cc7285904b1b6dbe9490e358fe8"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/readiness.py",
+      "sha256": "2875500525a37898ab486a6f0b2e3b4bb231f7574d8b869d6dade7cb1d258b23"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/rehearsal.py",
+      "sha256": "3084413656a598a48d2e05a5cc5f12bc9eccefb7606402d6c78a58afe373aa7c"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/rendering.py",
+      "sha256": "28a1891bbef3c8f2caeddbb04ddefda210aafbcae7414c094f6bc1ad1a992854"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/source_facts.py",
+      "sha256": "caefd447ef1dbea432f5e47c64d4e1b7e34e7db997cca5a64109771de4d78b4a"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/validation.py",
+      "sha256": "2ad537de75ac4913d6bbe23887e736b67c25ce88f31a92a2b567e74adc5a8839"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/workspace.py",
+      "sha256": "481c0c4ce351d465a00880cf4770005691447a4b1ba2f86152ab9b754b148d47"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/tests/test_authority_filing_tools.py",
+      "sha256": "e04da56326f8921b87541fb6aafa369dc960b7507cb495b4548e62aa837ba9fd"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/tests/test_authority_filing_transports.py",
+      "sha256": "2a38015cabb460a6d9772f53b52bf068b4b7a6caa3a5ea8c5c7edfddd9e3092a"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/tests/test_company_tax_authority_payload.py",
+      "sha256": "739bef3c19f9d83491c4930554aa77fda4089e92beef597ff5bb5dedb673a59f"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/tests/test_company_tax_evidence_import.py",
+      "sha256": "68a39749d101803424b5f32fa9394e175049acbfda37f687e97c3caf05301606"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/tests/test_company_tax_filing_api.py",
+      "sha256": "1662c12c3d610ef7f69ccdc747326cfe519386bbcc76cfe56647e31084e0bba1"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/tests/test_company_tax_preparation.py",
+      "sha256": "597fa58df3a15db6467134f653a53ec1133f5abc2e6ddc85b1630fc14e3d0c81"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/tests/test_company_tax_readiness.py",
+      "sha256": "70f7300fe0de9504fb132b1464b7eb23eb31d77c9e01d733ec248420fb7632fb"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/tests/test_company_tax_rehearsal.py",
+      "sha256": "dda93360d25188e9e67ad5b8270ffb5d51c9ac764e1ce4b7b4fde513ba7921e7"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/tests/test_company_tax_return_characterization.py",
+      "sha256": "6cced01b6ff0f0b81a73f3cc76c5bbff0ae47943cb6b48a764b51b8235a238a3"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/tests/test_company_tax_return_lifecycle.py",
+      "sha256": "5a7a188333932e74d58fb1d201dd02414b2d649be6d25dc07b0517bc3084f302"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/tests/test_company_tax_source_facts.py",
+      "sha256": "adab6b51b319d43bc0455e67aab230c41ca0140c4d8a636ef1900de5e41edf02"
+    },
+    {
+      "status": "A",
+      "path": "apps/backend/tests/test_company_tax_workspace.py",
+      "sha256": "e724c4ad9b541bd6345b8f9de62deff9d559633ce53cc839179dc816551fe677"
+    },
+    {
+      "status": "M",
+      "path": "apps/backend/uv.lock",
+      "sha256": "eb504b9620c33040797d3564a74437cce504928357d94acd5473acf5af28ce52"
+    },
+    {
+      "status": "M",
+      "path": "apps/web/app/(owner)/filing/_readiness.ts",
+      "sha256": "9ab2763e54e48440aaf3a3d70bc0a69fa73b08dfcc448d994011dd44f2e0cd6f"
+    },
+    {
+      "status": "M",
+      "path": "apps/web/app/(owner)/workspace/page.tsx",
+      "sha256": "302896b3dadaa306ccdbbe5d8d7969bd49d7cddc3396d9fe19f2e28a6ed627bd"
+    },
+    {
+      "status": "M",
+      "path": "apps/web/app/actions.ts",
+      "sha256": "457a6919488f6f87dcb579d041d52d694ca2e55172ec2aa5bbde874267d40856"
+    },
+    {
+      "status": "M",
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "sha256": "3431d8b8e174baf7315f3b2e75a392007b5b9519e02b3e0fe0ae2682dbc90516"
+    },
+    {
+      "status": "M",
+      "path": "apps/web/app/lib/annual-readiness.ts",
+      "sha256": "6e9dfde2b151cb0bdf96cf14774c2c7140db278f8a5e598419285b82858a7817"
+    },
+    {
+      "status": "M",
+      "path": "apps/web/app/lib/annual-workspace-server.ts",
+      "sha256": "dc46e54d9bcfaf1fa819eff6397d9da7a1a26c985c0a353f0ccf4627003cead7"
+    },
+    {
+      "status": "M",
+      "path": "apps/web/app/lib/authority-test-evidence.ts",
+      "sha256": "3288e82a19ec640fa3b7142bac88f7d5262be957592303a1e41f6db057302d9d"
+    },
+    {
+      "status": "A",
+      "path": "apps/web/app/lib/company-tax-assessment-source.ts",
+      "sha256": "c9d7e9e6cde671377b5586297c10ff7e5587e7500ff9dd71bfd25368edaf9e4b"
+    },
+    {
+      "status": "D",
+      "path": "apps/web/app/lib/company-tax-return-authority-payload.ts",
+      "baselineSha256": "c68aa036c33c6dfacf235b9960d8d8f8e36c016cba4b72e12a71cd44566e99c1"
+    },
+    {
+      "status": "D",
+      "path": "apps/web/app/lib/company-tax-return-submission.ts",
+      "baselineSha256": "190077eabc091c9143c4223faee030047b09f85d1be2e0ca11dbe1be996b3ced"
+    },
+    {
+      "status": "D",
+      "path": "apps/web/app/lib/company-tax-return-xml.ts",
+      "baselineSha256": "80fe4c5c10daa3c67b6041b32fb2c6289fe91f8783f7d8b62077f0564c511f17"
+    },
+    {
+      "status": "D",
+      "path": "apps/web/app/lib/company-tax-return.ts",
+      "baselineSha256": "765b82a633a859c4108e83cb6f30b18e3fd3ad491f56a53485453f6bc3ca6ec7"
+    },
+    {
+      "status": "A",
+      "path": "apps/web/app/lib/company-tax-workspace-source.ts",
+      "sha256": "c75c86bfd8716987d7794cb896a8886046ace22590ddc08eee8c29d017c7ec95"
+    },
+    {
+      "status": "D",
+      "path": "apps/web/app/lib/tax-settlement.ts",
+      "baselineSha256": "0712141c523700e51816353d78453558949ec1ed6416c59bfd7cc3a0e519e274"
+    },
+    {
+      "status": "M",
+      "path": "apps/web/app/lib/workspace-data.ts",
+      "sha256": "202d710136cee399f070aebcd8384200d11ecec4a797f51e0888449ff4c1ef53"
+    },
+    {
+      "status": "M",
+      "path": "apps/web/features/company-tax-filing/MODULE.md",
+      "sha256": "fa5a4ee22a95bcabc8157d1c25e929d01a6484cea23789f1f4f1f3c2fd61a818"
+    },
+    {
+      "status": "M",
+      "path": "apps/web/features/company-tax-filing/index.ts",
+      "sha256": "cc358655b16ded3515085ef4b5bc1747209a89df87014efc19edce32d96026ca"
+    },
+    {
+      "status": "M",
+      "path": "apps/web/features/company-tax-filing/module.json",
+      "sha256": "8b29d96db0bc7d018f57df20b657adcf4f79d342806c3d8786e0c881573543c4"
+    },
+    {
+      "status": "A",
+      "path": "apps/web/features/company-tax-filing/presentation.ts",
+      "sha256": "757aa22b5eded22ef59df0efedc4aac800a617c6e6e97a587da503d4018c5e53"
+    },
+    {
+      "status": "M",
+      "path": "apps/web/features/company-tax-filing/transport.ts",
+      "sha256": "f718d7ad3b8b29aab15cfb2568e2ea3e19e0c957826ffcf5ca0b4602421d5124"
+    },
+    {
+      "status": "M",
+      "path": "apps/web/tests/archive-rf1086-source.test.mjs",
+      "sha256": "94de39f38c624057384a7364d7c39246b793c6449f65154f4a9a0ef2178fa6c5"
+    },
+    {
+      "status": "M",
+      "path": "apps/web/tests/company-tax-transport.test.mjs",
+      "sha256": "e0ce7222cb6931f43bdadbd8fa576b733e96a4ca70a3e11ca5482fef0185d52a"
+    },
+    {
+      "status": "M",
+      "path": "architecture/BACKEND-SYSTEM.md",
+      "sha256": "e633ae982033359d515840fc0cdb9b70fa84c73075f4a441113bb9ac8680991d"
+    },
+    {
+      "status": "M",
+      "path": "architecture/COMPATIBILITY.md",
+      "sha256": "0aba38232b847b1b9843fdd9c04a34ce5cffe220951dd25fb4333e5c97d5c2dc"
+    },
+    {
+      "status": "M",
+      "path": "architecture/backend-system.json",
+      "sha256": "04c814a8c1d7af238e324d80278959e6aaa45c1491e884e2fc31174c24aabbee"
+    },
+    {
+      "status": "M",
+      "path": "architecture/company-archive-sources.json",
+      "sha256": "9d36640141b7353301a6d54d513f07c1915082fbafb004a5275544e681f185a4"
+    },
+    {
+      "status": "M",
+      "path": "architecture/compatibility.json",
+      "sha256": "5d426910e56c0fed393bcbd309a5d64ab858363483d2892ae2107cc45bd8c90b"
+    },
+    {
+      "status": "M",
+      "path": "architecture/database-catalog.json",
+      "sha256": "8b477547b13da11d10ac176459c7c73821c4095444437309f8722d2d41d7ef1a"
+    },
+    {
+      "status": "M",
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "15971d5758d99d522d6a2dc7544e9610e0e20b8187ae5857efc986a3a7dbb9f4"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/customer-ready-gates/41bcead181bc26f9c2e540ca5fbf53a8114e0120.log",
+      "sha256": "13f7e39f93497abe6d59ac8976e9d8c496627d55a6e407cbbf4764030f563048"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/customer-ready-gates/9f5c5a5b15971de69327c3e242a603c32c7c4b20.log",
+      "sha256": "a11078806439814f301413ac4fddf30023bd23e5bb45079f27566b33c9f00398"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/archive-trigger-acl-followup/archive-acl-races.log",
+      "sha256": "dac26cd60696d6edaab5519c2c387a8db4155d60ee2e896b231ebcf92ac4ad70"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/archive-trigger-acl-followup/archive-acl-red.log",
+      "sha256": "76fe0cb19f0ca96fb5059fa643c965429b1ddc454ca281ca8a76fa3293e78fad"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/archive-trigger-acl-followup/filing-cutover-races.json",
+      "sha256": "6c6d285a124d7a388ed002d413782bc22d6ba2ad96aa8dd680c9e2008cc8c970"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/archive-trigger-acl-followup/filing-lifecycle-archive-acl-tests.log",
+      "sha256": "f9598cef737c335184b693454e66f2838a511d59d3b3f5c0c1528461859b8296"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/archive-trigger-acl-followup/manifest.json",
+      "sha256": "fc819ab00a91dd7ed59c31aaa31a3d5640c6735231da432c1ad863f08aa5c8b4"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/archive-trigger-acl-followup/probe-archive-acl-red.py.txt",
+      "sha256": "2aa8a70d740567dc642fb05bdb4ef2b3321107b2471f60847c0ab8afe3b50792"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/archive-trigger-acl-followup/probe-filing-cutover-races.py.txt",
+      "sha256": "5d1492910937e7aad5284f64b0a30ea14d3586e8327af661958f38054e58dfe9"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/archive-trigger-acl-followup/probe-filing-cutover.py.txt",
+      "sha256": "95600069c52208570cebe61a70f67c272131f7db66efcb72d616b08a3d8868c0"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-boolean-followup/assessment-nested-standards-followup-497b91d8.json",
+      "sha256": "a5f8669c78b5c47f18ab0ff445396cdd5a4ec5d64ece54ebaffa22cd52017241"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-boolean-followup/assessment-nested-standards-followup-497b91d8.md",
+      "sha256": "9ed54302354d144bcda70ab6cac9d023f51727d53712f18401a83145c2636484"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-boolean-followup/assessment-spec-review-e2dfdf54.json",
+      "sha256": "98ae211d2a95b51e3a3df5c000b91277c59bb4d703b8e047225a2ca490b1df85"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-boolean-followup/assessment-spec-review-e2dfdf54.md",
+      "sha256": "d1748c0c8eff584ee88e823de9908da3cf6038b1a4bc982467b739558a287fe1"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-boolean-followup/assessment-standards-review-e2dfdf54.json",
+      "sha256": "c03e4fe3a0e4d61cda877f13578c9b3b1affc3f22187f1c4adfb30e2fd0f7d8b"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-boolean-followup/assessment-standards-review-e2dfdf54.md",
+      "sha256": "010eb9e981aba81e5bc2d8b917f23bfe998a40ac9f87708a1839d9ac2aabbcad"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-boolean-followup/capture-tax-booleans.mjs.txt",
+      "sha256": "cfa4d76c10614feda80b8e113460e97b873e3eaf327afa516cb578a63408d61a"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-boolean-followup/manifest.json",
+      "sha256": "ceefdead9f137dab9909e249a1e4e0c06255e00ad9b1bbcafc1fe8cb4088d2ee"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-boolean-followup/tax-boolean-followup-tests.log",
+      "sha256": "1a9426e0ed36a76344f9adb35a28e785f0cc668f4670e111dca12c85fd5677fb"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-boolean-followup/tax-boolean-red.log",
+      "sha256": "a1cb4fc191fbd3016cf325b96feeb8ab74f15c7bfeb665de4531d5aa24caf162"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-consumers-followup/assessment-consumers-spec-followup-f9838c60.json",
+      "sha256": "b9103c724630b23ddee097f078de105722a0be1a7518b8b42d4ef25e57556c1d"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-consumers-followup/assessment-consumers-spec-followup-f9838c60.md",
+      "sha256": "030e344bd964d18dbbd011414c80cd4aea84e7a1f712ccd861428bc27be2d3a4"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-consumers-followup/assessment-consumers-standards-followup-f9838c60.json",
+      "sha256": "7b0d7ab8180ac7a124a4cf63dae169a31299d8e646d156e654a46b59d3968734"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-consumers-followup/assessment-consumers-standards-followup-f9838c60.md",
+      "sha256": "71d543cf5eeb87c05dc5e354b1fcc6e6466d80b120230020f39ba2199075b4c2"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-consumers/assessment-derived-spec-followup-c9c2b30e.json",
+      "sha256": "c7409ac7feb770ffaee7ae9a334ec8769b3419a57247f42e56c0e8f9c06854b6"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-consumers/assessment-derived-spec-followup-c9c2b30e.md",
+      "sha256": "e04b63edfad6f2a530c1e7d4ba99f627b6cab1003942321a1c0c100c52de3e0f"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-consumers/assessment-derived-standards-followup-c9c2b30e.json",
+      "sha256": "ce66e1f7c3b8542ebb673e44d3aa1ea3613d55cfbab6cc72e380364a8096fb8d"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-consumers/assessment-derived-standards-followup-c9c2b30e.md",
+      "sha256": "6b67e14b4ee868e781065487887176027cbdbab534fa0b3b0d8fc57d638b443a"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-consumers/manifest.json",
+      "sha256": "d0f469ec3e6d718ed73874bd69f32236112adf99bba4431fb81992f2a07b3824"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-consumers/tax-assessment-consumer-combined-tests.log",
+      "sha256": "4ebeef630e4f3dfdd7f54c2d043ec074aef0976ee74a11c0b1216a32d92360c4"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-consumers/tax-assessment-consumer-guard.log",
+      "sha256": "65b1858b945dadb4b6a2e5d80645bf6f32d6b94c21a1cc5a7cc5cfb0d6b9977a"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-consumers/tax-assessment-consumer-typecheck.log",
+      "sha256": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-contract/capture-tax-readiness.mjs.txt",
+      "sha256": "f2b456d633b2b1337aab5d3864a59ec5b66a79e885a73a0699d42e567a0b81dd"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-contract/manifest.json",
+      "sha256": "39297aad46d8397fb09b5562a584ef123b9e3b85584a189174e89bb66a52b325"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-contract/read-consumers-spec-review-f5a9f41f.json",
+      "sha256": "f7923596cbc816d89b913cd065206a4fe47864472154d8579f8b18a29e6c227b"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-contract/read-consumers-spec-review-f5a9f41f.md",
+      "sha256": "0a774057f87859872aeb3f2c22330f2634dfbc1e833ffbdd3c0c614e643e8108"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-contract/read-consumers-standards-review-f5a9f41f.json",
+      "sha256": "ddcad47e1c0aa754f44922c980bdbcc8104f57cfc5021147caaba6d298a6aa61"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-contract/read-consumers-standards-review-f5a9f41f.md",
+      "sha256": "024925093b9be208b1c8e49cb08ac3f6a0f5bdea17426ede8d86d1ae914c5d7b"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-contract/read-session-standards-followup-909bd28d.json",
+      "sha256": "79b08b3f6eb4e644cad1026b252dfbd19dab155821b0251e92b97bf2c2a97870"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-contract/read-session-standards-followup-909bd28d.md",
+      "sha256": "015384be246c2a8bf62980a7eb943874cf7b056b07ddae4fbcf7ab3e25abafe6"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-contract/tax-assessment-backend-tests.log",
+      "sha256": "e4bd30629f5309c150e3b0b14ff23d340ffda2821fa6bf3bb2d8e906a7cf8cba"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-contract/tax-assessment-openapi-diff.json",
+      "sha256": "fd94155042112c6afd5f319e17ee17f77c200123370bdf46d2954981e69280d4"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-contract/tax-assessment-typecheck.log",
+      "sha256": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-contract/tax-assessment-web-tests.log",
+      "sha256": "f381024f9d16c3e3fbbb4b6eb2cffb023a57656a8f3b67934ff6fe22d15f610a"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-derived-followup/assessment-boolean-spec-followup-6d42211f.json",
+      "sha256": "3df509dfae73b6675151558a60794d48e006a6824efa6a908b6f39dd90162c57"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-derived-followup/assessment-boolean-spec-followup-6d42211f.md",
+      "sha256": "813360566261a501586f4a3d7298891b9c2679c86ed78e60b1374b381395df49"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-derived-followup/assessment-boolean-standards-followup-6d42211f.json",
+      "sha256": "535ad0fcf05a31e645791cc8a662ab8a6dfec4180392a44110f13eaa9787b8dd"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-derived-followup/assessment-boolean-standards-followup-6d42211f.md",
+      "sha256": "4f6f47919d4b81c0a25d5e5628ce1f3a2ad67d704f908caeff053bf5de62532c"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-derived-followup/capture-tax-boolean-payload.mjs.txt",
+      "sha256": "fc90ea854a793003a7bc0ff70c3c3943311035fc154883983a3459f189e6b037"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-derived-followup/manifest.json",
+      "sha256": "2f5ea577cb45fc097f5e7e1e6d0e7ef7e03d9da0bc2e1e504c24cc517b371619"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-derived-followup/tax-boolean-payload-tests.log",
+      "sha256": "919ff4acf6e5b7d65177b96a0fa4a497d3ea53c3e8ed6cc14eb7222d88e9bf35"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-nested-facts-followup/manifest.json",
+      "sha256": "03cc4f4d3d810cb0c14e655ded1601d1827ae30ec9bd8ff61524108c2ff17dfe"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/assessment-nested-facts-followup/tax-assessment-nested-facts-tests.log",
+      "sha256": "69a6564b89848ac347624bf0114f5de7515b87d93f82dd034483722daebc1111"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-summary-immutability/authority-summary-freeze-tests.log",
+      "sha256": "6e229bf3fff28ead2ee29e54b60d5f28ce789dc51b1814e97bc357eedda8f56e"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-spec-review-39b72c60.json",
+      "sha256": "d89544b6f2bc22e87cbf1edc2a77ec9973f11b7ace177655107eac230240fe07"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-spec-review-39b72c60.md",
+      "sha256": "674f94cdcf1449514b39995ecfb24d3c1ba4286b5b3899b7002156402e88b5c1"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-standards-immutable-probe-39b72c60.log",
+      "sha256": "243230c8a1b4cff0a8aa2dc53cd9ab778662d9c3eff5ca62f8294e16c3e15ff8"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-standards-review-39b72c60.json",
+      "sha256": "ab3fa6eadfd37b1f3ae3b45f826e746cd5f0121128b9f155058389436218fe8c"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-summary-immutability/authority-workflow-standards-review-39b72c60.md",
+      "sha256": "7a5d25f90f7b8cb0ee2da9246d1e944b66db33759847f549113b682c0ec0b5bb"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-summary-immutability/manifest.json",
+      "sha256": "7e89cbd4e6b3022f1851e2d6de31db412e3d43f3d4d61c6d5d08b672f8fa3a6f"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-summary-reviews/authority-summary-spec-review-699f4dfa.json",
+      "sha256": "66a7479b906c722076a7f8837cd6eb9a7780e56f6ffcf1b86645a71a1231873f"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-summary-reviews/authority-summary-spec-review-699f4dfa.md",
+      "sha256": "22e25fcec065dde07b925dcd41ffce0112c00e04440a80251acc338680f9e2ce"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-summary-reviews/authority-summary-standards-review-699f4dfa.json",
+      "sha256": "82c635e2c402995c13ee2272f8ec1c02ccaf7238b099d28a94ec9a5e5b0141e8"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-summary-reviews/authority-summary-standards-review-699f4dfa.md",
+      "sha256": "5f2efeba322251b2e76bcac4f7946fc103010dff771c0f160ae1d7ff2cf5ef34"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-workflow-ownership/authority-ownership-architecture.log",
+      "sha256": "73a972f5677c86235fef074a3c7acd6c782ff2173c4318bac103899e7bfb8510"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-workflow-ownership/authority-ownership-tests.log",
+      "sha256": "ff27ecf1e6522031ec623119ad3e2d713613e764052211ff6cd6c9bc523a031d"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-workflow-ownership/capture-rehearsal-years.py",
+      "sha256": "b624b5810912e433d1c297f5c556c1e759424a50f46507c9495354023b6d9ba9"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-workflow-ownership/legacy-case-years.json",
+      "sha256": "a9b6598aee51e9e245abacdb4f5c4ea04f09016211a4e16d60fb9924b8ec1934"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-workflow-ownership/manifest.json",
+      "sha256": "fb3bfa714cad4862563f1c92448321515bf8b5cd52b1ffb062cd6d30f3649484"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/authority-workflow-ownership/retained-authority-definitions.json",
+      "sha256": "ab3235084b0c4ceb156639c980862c47e8095c79c1808cd977fe73d850cd36cb"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/capture-review-boundaries.mjs.txt",
+      "sha256": "8d5d3ee3c4bde2b9ac3298dc0f5e2b6ddb74f50d91f9d17bf140c5905dc951da"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/capture-validation-summary.mjs.txt",
+      "sha256": "c5aed6add5a5b01a8c6ee1ec355fd8750e319e0ca55815e0c0e5ec95ce981a42"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/cli-followup/cli-followup-tests.log",
+      "sha256": "7a71dfe5336abc84cfccc8c4a87d394eb8c39582229b007f43339e8bb04ab126"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/cli-followup/cli-spec-review-c3eb992c.json",
+      "sha256": "ee418b9906080eff09f6b7d5bbb45a3dfda24d77260d1daea58bdf4fd50a975f"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/cli-followup/cli-spec-review-c3eb992c.md",
+      "sha256": "bb15d6c551fa41495e937848eacb36a35200c1133393cf8be7bb9831c58f89b4"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/cli-followup/cli-standards-review-c3eb992c.json",
+      "sha256": "1674f47c0ca6fd32600e617950d7a9fde611ddd533a65f87d644ec232232e29f"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/cli-followup/cli-standards-review-c3eb992c.md",
+      "sha256": "37e4b178370a632b21964c46223f916030caf6e8df51570453b0b21e92c956bc"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/cli-followup/manifest.json",
+      "sha256": "8e65db31573ea2aa2a71e3ee0a89f6583e3c81f7944f8fa772670ebf24151483"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/entry-spec-review-b7e524ae.json",
+      "sha256": "43d6d9cc628163dd7f6f1a8f745db1ddc72255cd6eae726aa877400be7cfbef3"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/entry-spec-review-b7e524ae.md",
+      "sha256": "de398dd1f6cb4cb3449724b9a6176c3efb10ea37c2f4c95a78e8345021a53cd0"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/entry-standards-review-b7e524ae.json",
+      "sha256": "67a0f8a84071b7b7ba86cd7420b7bc8f51604d0566edd03b0f17f5be68c650db"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/entry-standards-review-b7e524ae.md",
+      "sha256": "b617d2cbc82c925ce6ef594e5ccb0d2eb6b83836d51760634693e7c71b1e9fb0"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/exit-cleanup/ci-gate-lane-coverage.log",
+      "sha256": "51bd10d38b279009797d35f223192a4046a99d0ec8b5b0971036028771a49185"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/exit-cleanup/exit-cleanup-spec-review-41bcead1.json",
+      "sha256": "c00ad9e342e052751ea50352c821ff5c98f6d87a017d76151ecf81e685d75226"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/exit-cleanup/exit-cleanup-spec-review-41bcead1.md",
+      "sha256": "f468218e4f6780f0948059ceaff090a67e1b3a5d11b7b1fc4a8110500118d8e2"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/exit-cleanup/exit-cleanup-standards-review-41bcead1.json",
+      "sha256": "81fa8c4daede976dface65c66ccbb6165906af8f054899711c09fb6f29d91979"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/exit-cleanup/exit-cleanup-standards-review-41bcead1.md",
+      "sha256": "be577d9294aa615c5baf7695320a781f3ec2abd56611d0cac3f0f0cc50c53b58"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/exit-cleanup/exit-cleanup-targeted.log",
+      "sha256": "fea0cc1df510e1e07ccdb2ad3d2e9152c811286591faf8f3ba0f01fee3d077dd"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/exit-cleanup/filing-deployment-order.json",
+      "sha256": "29e740d35f00c20b9b6e65d36c6d71217d0c92435cf3e2a61a098eb7ab021924"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/exit-cleanup/filing-deployment-order.log",
+      "sha256": "6d7ebe9c63a40052e994b0eb6fb9967df47f2b47dab87d20f2d93681331c3e94"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/exit-cleanup/manifest.json",
+      "sha256": "0453444032263705defe9c35e99c5388a1c7711120c8858d8dd6fa30f63c82f2"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/exit-cleanup/owner-browser-spec-review-9f5c5a5b.json",
+      "sha256": "daeee096cc944f88aa4dd47218d24b9400f0ab7f642589df1697000508e482c5"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/exit-cleanup/owner-browser-spec-review-9f5c5a5b.md",
+      "sha256": "c1e01fea160d20ee6f1e7e0796e30be86cd9db7aaa274cedaab8f782883dd346"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/exit-cleanup/owner-browser-standards-review-9f5c5a5b.json",
+      "sha256": "68b7924af7eee10ad6bcad88fedcd31a50ef48734a723ea63d652bc0e3fb16fc"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/exit-cleanup/owner-browser-standards-review-9f5c5a5b.md",
+      "sha256": "b3768983c72eccf229d4325d20fc74e5df4fbc47fc4efa2b5a341ec606ba5f58"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/exit-cleanup/probe-filing-deployment-order.py.txt",
+      "sha256": "dd2a44775e711cc8d25e2202b4dbe0686b646c5a718f8b2e76e2479705b3a420"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-lifecycle/cutover-guard-tests.log",
+      "sha256": "1ca9ae31bf8d51cd596176c26ab1e4c6f3b54e3f2f6f4d4b854bf133e92cbcfe"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-lifecycle/filing-cutover-races.json",
+      "sha256": "4fa07c2bdd1ea1a2634f4a5fabe5ee7060e45a3280bbab5e23a63616d9582b12"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-lifecycle/filing-cutover-races.log",
+      "sha256": "dac26cd60696d6edaab5519c2c387a8db4155d60ee2e896b231ebcf92ac4ad70"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-lifecycle/filing-lifecycle-tests.log",
+      "sha256": "8f0c5271c42e2ea169c1a163518021fbcb3bc89b72e922479c6b715bdf3071ee"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-lifecycle/manifest.json",
+      "sha256": "f63bf33f2f2a56a9bbd240be145a90190813b1d790f3269f2686c453e4b01328"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-lifecycle/probe-filing-cutover-races.py.txt",
+      "sha256": "a6e717685e8510509f6920ef484f6aa03f329ca820c260a92a637c5a578d55d9"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-lifecycle/reset-owned-lifecycle-clone.py.txt",
+      "sha256": "dca2d9135fa01eae7f65ca7a7b18244caf638cfef31fa8b3871e473977f8cdb8"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-spec-followup-6353c78c.json",
+      "sha256": "a640b5eb808553fc965fd131520f4e8034413839df139ee6082fcccc11e99cd8"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-spec-followup-6353c78c.md",
+      "sha256": "5bbfe8a93fd370acf22da11c25c59d779942dec7dcd3ebe3159f99ca167faec2"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-spec-review-9c879ff7.json",
+      "sha256": "99e16f17404846fc9d9bf40ad927fc2a378464e8d1b3d908d2e79dd9836825fb"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-spec-review-9c879ff7.md",
+      "sha256": "c9bf5926ef7e5bf8a388a682d9f1ba3783be24f9ff437866da44a7f34f894aaa"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-standards-followup-6353c78c.json",
+      "sha256": "c8f21209368070b1e162f2c0cd13609d9d5f7902f996fea6f261f36134e1b99c"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-standards-followup-6353c78c.md",
+      "sha256": "ca5db3e05075c7cda30ff2b72b5a1993cfabd34453cbc89f4237889e9762fc54"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-standards-review-9c879ff7.json",
+      "sha256": "69a43222ab794037b81ce116d4d0e5693f821350b5bfdf9c79dfb43bf302fa25"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-cutover-reviews/filing-cutover-standards-review-9c879ff7.md",
+      "sha256": "66055f97acdf229beef9650a7af37f264fa67b8f7ff322dc7986d6428a52b787"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-expansion/cli-spec-followup-af95066f.json",
+      "sha256": "b88e0efe538b4fa336aa55997151fed92a7f6a12dc93cadab4fd6482103d184a"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-expansion/cli-spec-followup-af95066f.md",
+      "sha256": "3ef88fed1e66f0c35bf1228bf8841c276bb2962a71f5136b40dcd5f5d8a9a782"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-expansion/cli-standards-followup-af95066f.json",
+      "sha256": "4d27c1e19d1d1fe9a92d71326fbc0019c57daf246e3c19389907572130e8b4f8"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-expansion/cli-standards-followup-af95066f.md",
+      "sha256": "be32e2605b1c6ac26c39287f3765f5777ef59d7eb7b6473833d45781b08ea1f0"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-expansion/filing-expand-seeded.json",
+      "sha256": "92a05412793fd0930e9b84b05acf687ea6cb5738cb7646c88471b239c7b5c07d"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-expansion/manifest.json",
+      "sha256": "2b6926e1806f61d23186176f4c7f6812a30f066f59fb162db2ffee15abe8f091"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-expansion/probe-filing-expand-seeded.py.txt",
+      "sha256": "d5cee4ae050f77bf76bcdc7026fcefd122c692814e13772d6b01ee2315cefa8c"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-read-contract/expansion-spec-review-bcc8dc49.json",
+      "sha256": "64cc716c2fa6a68fb409139685ba83d744638011e1fd65bdba8d3c540cbf8c77"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-read-contract/expansion-spec-review-bcc8dc49.md",
+      "sha256": "54e630ee6c259e1c5643d1afa7d28bcadedcc3b993a36dd42de0e28ffc4651c1"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-read-contract/expansion-standards-review-bcc8dc49.json",
+      "sha256": "72b6a4fe0da5c4a167f99828dcc523ed95888b500b830e137757517c74beb612"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-read-contract/expansion-standards-review-bcc8dc49.md",
+      "sha256": "f3eee2b9b742296f21a645f8417b3c22617b3216b0457669fd79664928fda1ea"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-read-contract/filing-read-contract-seeded.json",
+      "sha256": "4efbf787fab3cdc5bb21259f7697f921418fa9cf58894ef07063d3bbd2bc74ca"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-read-contract/filing-read-contract-tests.log",
+      "sha256": "0321ed59a0973f2e50769074c40d5c122aa6caa66a0156f55cd3d48e74cef59a"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-read-contract/filing-read-typecheck.log",
+      "sha256": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-read-contract/filing-read-web-tests.log",
+      "sha256": "f77b576157f158d9b34b265eeacd1eec0472f89b0d866f899e181f6dca5447c1"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-read-contract/manifest.json",
+      "sha256": "bda672da2432bfd45d72022cc40cf28c24c2d33ed88ecf058b8c00d16abf4e50"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/filing-read-contract/probe-filing-read-contract.py.txt",
+      "sha256": "07c7b83c9bebf72e76f584ab26c81392a10b22eb0f780a87ecff3a4019b81a55"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/import-review-followup/import-review-fix-tests.log",
+      "sha256": "98a13c741555e77f840d34a246a6f1441c8d1a78aec3cbbe9184ba7d5227ce19"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/import-review-followup/import-review-web-tests.log",
+      "sha256": "9a5f407e3bb7de0fcd717e8d3a5562dd04fb5c259e4c0cf90c5e518c85581698"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/import-review-followup/import-spec-review-b400103d.json",
+      "sha256": "a768d41831e1e3531267023e0f59def55deda34a26fbe1a860fa9d420bbf57f0"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/import-review-followup/import-spec-review-b400103d.md",
+      "sha256": "89005d2256ddc1ee0adbda15b15922688242a6c40fb10472d68ad0bfcb6eea69"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/import-review-followup/manifest.json",
+      "sha256": "8bd5c2d933278e554f95825777a11d379027c6e31cbfc172f225199ccf0ba4ed"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/legacy-capture.mjs.txt",
+      "sha256": "a75cee605c9550d5c959ebec0b4c6701ca00ca60b950eb271966a683944039fe"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/legacy-characterization.json",
+      "sha256": "2c50fe51fb47ea12e5890198966d4b5b460565056ecc9e9d5f188fc83c1b83a7"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/legacy-database-capture.py.txt",
+      "sha256": "8ebf917db380282674bedd71ae76e3a5bc8a623763d00a2667103cf0fe9b22fc"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/legacy-database-characterization.json",
+      "sha256": "59809ac5f43fee05706066c19b6e7d9b891fe6b4a20f9b3e3c6ca8bbf9b6a201"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/legacy-import-boundaries-capture.mjs.txt",
+      "sha256": "856b900295a7a5792164acd857c843e5d34acdc0f41bc482b40aecb731636356"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/legacy-import-boundaries.json",
+      "sha256": "834ebca97082d477899954de1f2c4134c9551ea3e435536457a62879ebffe34f"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/legacy-preparation-controls.json",
+      "sha256": "e230e65b3c4246ad4bbfac864780d6cbe49568ac122a5a0848b206d40c7aa13d"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/legacy-review-boundaries.json",
+      "sha256": "663d2477a7a9be112c726bc80648a9c2fc0677b2c6bde8b2f60129a65311457c"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/legacy-tax-boolean-boundaries.json",
+      "sha256": "ce098594a97b338d0c88795109d72f7f2686d0480a3bae0ec7a48d0da2a3155e"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/legacy-tax-boolean-payloads.json",
+      "sha256": "c9deb9d6dc58e42652fbe6450b881b97995e4740bfe18eaa948926309f0f68cf"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/legacy-tax-readiness.json",
+      "sha256": "4bf8e55b8998dc48d73cf28fe744eca57e7c9de8ac28e1cc989cadcc0ffcb8be"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/legacy-validation-summary.json",
+      "sha256": "af594941d10aa79dbe7fc23a283f1f6dd833ab622ce6be6fc6c9a5178c7f1a86"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owned-authority-payload/manifest.json",
+      "sha256": "9110df489cdb534fc0b586586179c43cf64c9ae9a8b2b6815310dee55483c0c7"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owned-authority-payload/owned-authority-tools-tests.log",
+      "sha256": "bc4e037ad6ae73d3affaf170d9f4bf408c1f95e150407a59f2323360ebce2611"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owned-authority-payload/owned-authority-web-dispatch-tests.log",
+      "sha256": "56123519550bbccfd2d529fe3241b6c40c5e3bea50cbc9d705808ceada9facea"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owned-authority-payload/pure-spec-review-8b3e0cb3.json",
+      "sha256": "3864b0008165e748c143a50012dcd822d4e770ea1c91eb7d6a415ed029082d48"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owned-authority-payload/pure-spec-review-8b3e0cb3.md",
+      "sha256": "3829029a3725c17b35ca899bbb3bed128a8d99f9db3518f151ee083e62c56a8d"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owned-authority-payload/pure-standards-review-8b3e0cb3.json",
+      "sha256": "4c184e9c4b0508f212a4a3d6cf3820cecace30b19b9d2a7b3e04d53dc0499fac"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owned-authority-payload/pure-standards-review-8b3e0cb3.md",
+      "sha256": "9aa309288b6e165607234dab996792469ad1acdc8128f5c6007305a847ac8723"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owner-actions/manifest.json",
+      "sha256": "8b3f6095d8b774b8cefc4dd0db15e4a494bcc00daa21f64d3d8127703c08cf1a"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owner-actions/preparation-spec-followup-8af134bf.json",
+      "sha256": "7175820fc598d9eeec849305fc94e47b11e8bcce1e58793260475a2636919922"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owner-actions/preparation-spec-followup-8af134bf.md",
+      "sha256": "d05df680d6f8d7f7b619e8080d0833f72ef2ed309314e33127da6bf68a7024b7"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owner-actions/tax-action-composition-digests.json",
+      "sha256": "ce38aef6f5dc238b1c6cc1d63b1c9df50d42a0c1f8a2f5084ef19af6cc81bb66"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owner-actions/tax-actions-guard-tests.log",
+      "sha256": "4a77aa0a67883b4f3289ec7f6889daf362ab69a791587fbbc8e8d7844b55a718"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owner-actions/tax-actions-mixed-tests.log",
+      "sha256": "bf91da91ad747db45f3f63b1c3a0d1986ce00d12795341b344c064aa07cbd73d"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owner-actions/tax-actions-original-guard-tests.log",
+      "sha256": "1487989a4a12d7e79e3c33a2a09d7b43bea75d54e56f6488a2d8a1a2a75df2b1"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owner-actions/tax-actions-typecheck.log",
+      "sha256": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owner-actions/tax-actions-web-tests.log",
+      "sha256": "c6c9deea9f0ce1ebef4a8ed56925249fdcadbd1e1b99b8225ad447ae3f3eabbd"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owner-browser/complete-tax-owner-browser.log",
+      "sha256": "b86d2e2fa9861b76e3f85ab601e5c22cfe8af1d622b6b3ec0bb847bb66fd562d"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owner-browser/manifest.json",
+      "sha256": "a588e7fdd8fef3e136d40d720610877840cc6c298a530663b0ee8137e3568523"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/owner-browser/prepare-owner-browser.log",
+      "sha256": "2619b835df558e3c4737d8610d37c13e64cade74c8fa829e48337a012862a2f4"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-contract/capture-preparation.mjs.txt",
+      "sha256": "514c3e292320412d9f7dd53ea9804f07e0d591601fe55c805372f1db0715743b"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-contract/filing-preparation-contract-seeded.json",
+      "sha256": "031d88c2b9e0a5947491d7fbb919e61ce41906911e2cd53f1bb56a10cc719fc6"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-contract/import-spec-followup-5d240525.json",
+      "sha256": "65583afb9d7103faf2716c3179a1fcdea6523e02a82334702896ecc582111a61"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-contract/import-spec-followup-5d240525.md",
+      "sha256": "3186b49329fed24fba642c7de4cf0f92c47e4e114984a7f5283a471399c7b29a"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-contract/import-standards-followup-5d240525.json",
+      "sha256": "f73e94a45a665dde148a18b12521b2cd1e6550fa2f4c912a0c837e542de73815"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-contract/import-standards-followup-5d240525.md",
+      "sha256": "501bf4791f5baabfe57e29a11ecb12480c30fae20398f8fc8cd92c5cdc19dd7d"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-contract/import-standards-review-b400103d.json",
+      "sha256": "170a27d8cf1859271ea21351d6ca11827e5abeb43f70f18e868dbfb027e29afb"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-contract/import-standards-review-b400103d.md",
+      "sha256": "a9d473bf1344fd812d42b4147f6e65b670be3d7ebdfe39c4280ccc8a22b4ad4f"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-contract/manifest.json",
+      "sha256": "389779e8d0fe05d46455ba78ecd960694fe1b05bd774446c3f38ad31a08846ac"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-contract/preparation-backend-tests.log",
+      "sha256": "eee808bfd16a42957de4be6ff7e8dcefd9e4024777ee7ea3fdc852c7e81348ea"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-contract/preparation-typecheck.log",
+      "sha256": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-contract/preparation-web-tests.log",
+      "sha256": "33a37571431e0144435969584dba4ff6212a33dd90621ebb66571489eda1da35"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-contract/probe-filing-preparation-contract.py.txt",
+      "sha256": "1d1117aa1c7460543e0ee344406268753947a85060bf234d571a6edd35b455f0"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-identity-followup/manifest.json",
+      "sha256": "60062df11108f818b01cafd966e12669bb8dc55816467bb4a11890c298d57494"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-identity-followup/preparation-identity-fix-tests.log",
+      "sha256": "55480617a383d1d4ab91bc13c37599e9c5a650e2ed76f137b3e341d186eb7646"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-identity-followup/preparation-spec-review-6e67ba3e.json",
+      "sha256": "cf7cd38e223c20ab0c2781e620939cc80f7c95cd816cf59660f78a56358d0cea"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-identity-followup/preparation-spec-review-6e67ba3e.md",
+      "sha256": "ed85b6dcc07f2df33fca277c88adc5403558154cc68d9ced18c22a0b67bd6e42"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-identity-followup/preparation-standards-review-6e67ba3e.json",
+      "sha256": "264601aea0f17ecaaa787bc9eafadba7780ec104303ba529c8aa63bbef8f9375"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/preparation-identity-followup/preparation-standards-review-6e67ba3e.md",
+      "sha256": "29b41755e7732c78572eb985349c4343ef967c5d1b7b41c73accebae3c79ec6d"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/published-receipt-independent-reread-146.json",
+      "sha256": "a3ecb65e484d674d57285023388c7a56b06baf346758686d34073671e39cd96c"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/published-receipt-independent-reread-146.md",
+      "sha256": "cab5da886f84636352b1802a186ca22419a0b8b1e1b5a9e47c25885536242d24"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/pure-followup/legacy-authority-tools-characterization.log",
+      "sha256": "16c0f133b61e124b394b0d615a941180b68268dcc9bf764eaa7a9f469d7ec27b"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/pure-followup/linux-pure-final-tests.log",
+      "sha256": "c91042241123f162173eba70a4c2acde287a3a812e32e16597e0a0191319ac9b"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/pure-followup/manifest.json",
+      "sha256": "ebeb9aab4bd83ca4611d74664231c3494a8b4ad514ce6b72dc8c1a267ff94432"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/pure-followup/pure-followup-credentials.log",
+      "sha256": "0b6e9e0478ec9b7975907a49cd761e980dc14ceea038b4dd8eaec642222f805c"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/pure-followup/pure-followup-tests.log",
+      "sha256": "14cd7c948641440b52d90a8b4ecb88887ec6be64dc5e0acabdc90cca9bdfc3d4"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/pure-followup/pure-spec-review-6bbccde7.json",
+      "sha256": "51a9e6f3874df076ece537a19247be125d628c46137fbccf3bd0b55d09e6b70f"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/pure-followup/pure-spec-review-6bbccde7.md",
+      "sha256": "b24dc8c29c7a6229e8c8cf0d7adbc4667fa40ce928527e6ecc648e44ce61f13d"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/pure-followup/pure-standards-review-6bbccde7.json",
+      "sha256": "0c44fd4690b4370a839c13946c07897916ca1d5e91f256dc851eda59a0135bde"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/pure-followup/pure-standards-review-6bbccde7.md",
+      "sha256": "06a7c83ae91192eec41ba25c7347e14ed9379f20d995875444b2922494ce0070"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-consumers/manifest.json",
+      "sha256": "46c5e228c93addcb1b05ddc3bb1ce84ed4261cbed104b761e2b0c2f959de53be"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-consumers/owner-actions-spec-review-6ab578f8.json",
+      "sha256": "ec276773ad2581adcbd882c04b5dd204fdf740f871f1d3369feaf2624f8da2df"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-consumers/owner-actions-spec-review-6ab578f8.md",
+      "sha256": "7b2b76befb195f6412a6a5992d6ba15acc9bc3604adc0862fda71a689be88932"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-consumers/owner-actions-standards-review-6ab578f8.json",
+      "sha256": "84a396752d3942dc68cee45cd50c9ec841c4b69e50b89dbd9509916a1e7472a3"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-consumers/owner-actions-standards-review-6ab578f8.md",
+      "sha256": "c3b5b13438342a2fb408e459093b3808bf37b92010cba68f0476cd1c5a580ea9"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-consumers/tax-source-consumer-tests.log",
+      "sha256": "5305ef34a775b2eba99d4d49d9c361a057846b258793798439e3157340509aae"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-consumers/tax-source-guard-tests-fixed.log",
+      "sha256": "28d305116d4cb310d45a38537ef6bfa114f4cb095b97d6f77e2ee372b23c2ae2"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-consumers/tax-source-typecheck.log",
+      "sha256": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-session-followup/manifest.json",
+      "sha256": "654fce27155a004d04ede54f5e8fbfa4cf84fc8745e9851c8b443abc3ce2e6bc"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-session-followup/tax-source-session-tests.log",
+      "sha256": "a71aee23a143491036dcdd0952331d95775a56d62a64f157b13024eb2445faf6"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-session-followup/tax-source-session-typecheck.log",
+      "sha256": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-shape-followup/manifest.json",
+      "sha256": "b59c5b78854ff77c300d76b5b5a38c9231babd04eb52f5fe24a0550574a77561"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-shape-followup/read-shape-followup-tests.log",
+      "sha256": "5ff96436ba12b50043be11629968b73fe3bb0bc8ee9419792242290eac8f2e64"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-shape-followup/read-spec-review-b1bf9e9f.json",
+      "sha256": "270b270c26bd7b4039beb4685ca293b020be174cf041015a98a640ad203264b6"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/read-shape-followup/read-spec-review-b1bf9e9f.md",
+      "sha256": "cedae388360aa03b2aa2f146bf2de1bdda1ff3a6265071d260296055f9a09466"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/requirements.json",
+      "sha256": "9da6178a82ca8c76f1f00597eb98c4866d5a2afbefa938475f05650a32074c63"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/retirement-boundary-audit/authority-ownership-backend-suite.log",
+      "sha256": "0f6322ee06da2ceff22b47b383fed3ed873ce53a7e892c6efd96e412a9b0ba06"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/retirement-boundary-audit/company-tax-boundary-web-audit.log",
+      "sha256": "af4b5d62d826380a0353276cceaba9a600f24147d33623d611b03c501d7cc866"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/retirement-boundary-audit/company-tax-boundary-web-fixed.log",
+      "sha256": "5c2bfff1029d82de40615b9b1527b989b07ed7dcbb8c51c344e738344423cc6f"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/retirement-boundary-audit/manifest.json",
+      "sha256": "5ee98e0a8fd45d52b3b0b0ed579b562edbda27c72fd5a9852cd2a388b547265b"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff-reviews/source-handoff-spec-review-5a0634ac.json",
+      "sha256": "4de72dfd4ce14d438d18ff6cb6368649128ae1758f75fa5f31356102fea4b2a1"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff-reviews/source-handoff-spec-review-5a0634ac.md",
+      "sha256": "3186f407e9733efce47c7e106b17c4e5292ec5fa52844302770cfb88b724f962"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff-reviews/source-handoff-standards-review-5a0634ac.json",
+      "sha256": "e70f9bc6067fa99d5fedf845f8579c9424302cd39b7ed61a8c20279f2ff4ba6c"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff-reviews/source-handoff-standards-review-5a0634ac.md",
+      "sha256": "108b4c08f8d8f624b2af547f601b223207337ccb8ac53dd426b3761912320272"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff/local-source-snapshot.json",
+      "sha256": "9f1906f83c75b1be95d78609beb2302cb9fd9ee7d06001609203db2d705829ac"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff/manifest.json",
+      "sha256": "5dc5806f1f2ce5ce75157cdc8ebc6b8c93c02454e34ace73123381b5ae5bf5e1"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff/probe-tax-source-read-committed.py",
+      "sha256": "c978e6a0d80739d2fb8dbaaf083a87987134460dd7eb3bbf85ec55f7b8d62a93"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff/probe-tax-source-snapshot.py",
+      "sha256": "417f9d94da0afd7032b943d1d241c10778350d75df726c5f38ef4441e2ab1f0e"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff/source-handoff-final-architecture.log",
+      "sha256": "15971d5758d99d522d6a2dc7544e9610e0e20b8187ae5857efc986a3a7dbb9f4"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff/source-handoff-generated-client.log",
+      "sha256": "90308bedb0b25dd98184bdc970ca93acfdd79a8dfb81f52c2f6a1f608ff9c2c9"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff/source-handoff-lifecycle.log",
+      "sha256": "0e0177d95805cd7e9ccb1859b562b7fe1d8ffaed73559d85239e8afb6ed7a331"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff/source-handoff-openapi-equivalence.json",
+      "sha256": "42765e2bc79a82ee65d4d6bcc44b8abe6ceb24e16467dff589b40444d758c0cb"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff/source-handoff-typecheck.log",
+      "sha256": "315123929689ba827898fc4db391ec107ae78059288a79a22c591e870a84391e"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff/source-handoff-unit-api.log",
+      "sha256": "910f89e1f4174d589140c732403f59a418b5a5ed7c46b98220ddd26fc36728a0"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-handoff/tax-source-read-committed.json",
+      "sha256": "d789590f0d66397f9c4d70b83e1e3bead9b203cc5c72d2fe81caf0683851aef2"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/source-inventory.json",
+      "sha256": "9d7a53bde5d9599f0f52781e61cd95a5cffd959408aa1a5dfdfc1c90e3a5f982"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/tt02-import-contract/import-backend-tests.log",
+      "sha256": "51f3d25ce8e69137d98eb31d8245bb2a2640bec2b12720c2289b010af7e03386"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/tt02-import-contract/import-typecheck.log",
+      "sha256": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/tt02-import-contract/import-web-tests.log",
+      "sha256": "8a99db4a99ef8d32faff7af046c5328abe5ad9c5c3e13e5a3c5c0bf1411f2dbe"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/tt02-import-contract/manifest.json",
+      "sha256": "534d46b4a4073827620766c47822568c5772cf4a758090a04b2b4c2a78826acc"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/tt02-import-contract/owned-import-database-characterization.json",
+      "sha256": "4f34458a76a14e40b02347fab4cf6dcabdce75e7f764bc5edab8b9c02d07eef4"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/tt02-import-contract/probe-owned-import.py.txt",
+      "sha256": "4d16c45ec927facbef9e69196cbaa2b5481b9a82ef742a2ee372c9327b0db854"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/tt02-import-contract/read-spec-followup-4c5404df.json",
+      "sha256": "15efddf2352ba5dff73de773d3291b93c1a442d7386cbeaf59d60706aa9fc201"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/tt02-import-contract/read-spec-followup-4c5404df.md",
+      "sha256": "c1110a4ed87df1b71eee0de021de306954ff8ef8d7b5d30b10525afdbcbb81be"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/tt02-import-contract/read-standards-review-b1bf9e9f.json",
+      "sha256": "84d9427567773ed79f10bcef0d5d888f397cb1189c7f5836c506cd970b0abccf"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/tt02-import-contract/read-standards-review-b1bf9e9f.md",
+      "sha256": "3c60e56e8eb6adb7bb1ce3ece75eaea73467669165984cd8a33602c22ae932ce"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/typescript-policy-retirement/manifest.json",
+      "sha256": "ae3d9b7a482ec148b55c1d4b5adc61806863bf0a5bb42ae4aec3995f55e08ff0"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/typescript-policy-retirement/owned-tax-ts-retirement-typecheck.log",
+      "sha256": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/typescript-policy-retirement/owned-tax-ts-retirement-xsd-tests.log",
+      "sha256": "fd533a3a5d245970fc1721d2913f37dfdcefa7dcf5b0b2afa95bb0cc448c8846"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/typescript-policy-retirement/retained-annual-evidence-definitions.json",
+      "sha256": "aa3b6b6695b524f725577e58844e6310901542461a3c3b6726416ff86dc0e50b"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/typescript-retirement-reviews/typescript-retirement-spec-review-32c701e3.json",
+      "sha256": "ba9bca118c0851c94c120d2359fda275a915155ecc1daf8abdfcf47018993f61"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/typescript-retirement-reviews/typescript-retirement-spec-review-32c701e3.md",
+      "sha256": "2ee2eb6988bd2381b6dde2beac97e850f217b9eccc7c2c8d627c129979a71c64"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/typescript-retirement-reviews/typescript-retirement-standards-review-32c701e3.json",
+      "sha256": "86622cc58fb21be5d7738de22f4b7ed38f5a63de1209901376b34254d9735fb8"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/typescript-retirement-reviews/typescript-retirement-standards-review-32c701e3.md",
+      "sha256": "a710913d9c2209989a5bc0bc3aab317d1bc80de978eea0d57d5c0d9e087f0ed0"
+    },
+    {
+      "status": "A",
+      "path": "architecture/evidence/issues/152/verification.md",
+      "sha256": "643b2abf91555a8cf8e718f8b524ab8feca633006ff1e3889c20d08800720370"
+    },
+    {
+      "status": "M",
+      "path": "contracts/openapi/talli-v1.json",
+      "sha256": "f4dacf4b2f07d123e2e9d2fa05d673a20eb135d290436ffa755956f7eb27e1d1"
+    },
+    {
+      "status": "M",
+      "path": "package.json",
+      "sha256": "5b28d7603475d0cf0f3a54a646fc0185a87ea60fbab1bb34bca6c85938dc14cb"
+    },
+    {
+      "status": "M",
+      "path": "packages/talli-api-client/src/generated/client.ts",
+      "sha256": "d0633f6b41f8fa04568d6cc6ea00891144b42b9b1ba25a7d6e6c8f6c6472d955"
+    },
+    {
+      "status": "M",
+      "path": "scripts/assert-deployed-schema-contract.mjs",
+      "sha256": "5e38fdc84f27e9290b267ada30b0d574ddcbefb4e5777df0799579f1392af5e7"
+    },
+    {
+      "status": "M",
+      "path": "scripts/authority-tool-payload.mjs",
+      "sha256": "d7232070f18843a688e6799fcb032bafeda7430b91a4150d5ccf15742b88ee9f"
+    },
+    {
+      "status": "M",
+      "path": "scripts/check-architecture.mjs",
+      "sha256": "2f71ed1d36618d6badb8a803312a29e516d92f4129aff4395a957cd144ecffb3"
+    },
+    {
+      "status": "M",
+      "path": "scripts/generate-api-client.mjs",
+      "sha256": "02ac9fd4d32ef3d799d69c41987b4ca965e0bc101da6e4c2ed09250782c0f32f"
+    },
+    {
+      "status": "M",
+      "path": "scripts/rehearse-tax-topology.mjs",
+      "sha256": "aa722cbe8cd33245879e81ff6ea5f0232608ff1f229d7f9a15756f8fbd76ba5c"
+    },
+    {
+      "status": "A",
+      "path": "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql",
+      "sha256": "d192b105d87287ba59e7b88278c1c25d51e6620d19b1b5d5e34fc416ef21597c"
+    },
+    {
+      "status": "A",
+      "path": "supabase/contract-migrations/20260914012930_company_tax_return_contract.sql",
+      "sha256": "84269749fd846de1e3cf272427b244431c62f6a41d46f6824e880a0ef5090158"
+    },
+    {
+      "status": "A",
+      "path": "supabase/contract-migrations/20260914022608_company_tax_return_source_contract.sql",
+      "sha256": "ae6e571b5c268a12d80ee43ca30931da9f277d303b6f5bc8dc7e38deb8b10db4"
+    },
+    {
+      "status": "A",
+      "path": "supabase/contract-migrations/20260914200000_company_tax_return_expand.sql",
+      "sha256": "ce0a4b9ab6fc7f90ea4cd851e9a2cff2da113db9c461dc5911bd6c7abfc96281"
+    },
+    {
+      "status": "A",
+      "path": "supabase/contract-migrations/20260914201000_company_tax_return_read_contracts.sql",
+      "sha256": "24ebea4288c9f1357ecdd6b6c761b8b9e816fc188fcabd4e0671125996cc4ff5"
+    },
+    {
+      "status": "A",
+      "path": "supabase/contract-migrations/20260914202000_company_tax_return_import_contract.sql",
+      "sha256": "5b924cfe0d4771cc58723dcdc65f1c7f4612bd19bba7b0541f1ee0acd62d0cbb"
+    },
+    {
+      "status": "A",
+      "path": "supabase/contract-migrations/20260914203000_company_tax_return_preparation_contracts.sql",
+      "sha256": "af3ea6bdb42d353a38914359fbf98615281c41560d64ebf77df18d4a6fc74080"
+    },
+    {
+      "status": "A",
+      "path": "supabase/rollback/20260914012503_company_tax_return_cutover.sql",
+      "sha256": "0808d9ef883fce1dee19bcd1330f1579682481c1596e522b2b5d5c73fc9e9f07"
+    },
+    {
+      "status": "A",
+      "path": "supabase/rollback/20260914012930_company_tax_return_contract.sql",
+      "sha256": "b8f7f2190e748a8a9e9a88787b68c46f64e08a9f201cc4eb1b9ed9d5c475ed8c"
+    },
+    {
+      "status": "M",
+      "path": "tests/annual_readiness_gates.test.mjs",
+      "sha256": "8009aff1f4afcbce42a15d7722bb9a3b4ea16e1012ca217f5fc51df61e9eabd5"
+    },
+    {
+      "status": "M",
+      "path": "tests/archive_export.test.mjs",
+      "sha256": "205b908c5e7640aaffebb03d27daa20266105e584889bf6079438ec7954710e1"
+    },
+    {
+      "status": "M",
+      "path": "tests/authority_connections_retirement.test.mjs",
+      "sha256": "ef206e8f0ec7371b243065ef7e8405b0cf287acc30fbfa3321ff9a0b897b0a5c"
+    },
+    {
+      "status": "M",
+      "path": "tests/authority_test_evidence.test.mjs",
+      "sha256": "a6d1066df2d511028407e91959abca7b065d90d944290487bf70fec2fbef8dd7"
+    },
+    {
+      "status": "M",
+      "path": "tests/authority_tool_payload.test.mjs",
+      "sha256": "71aaa6f693eba6adc4556ef08227ebc06bbfc5c84d79b726894874ba9bde570e"
+    },
+    {
+      "status": "A",
+      "path": "tests/browser_tax_filing.mjs",
+      "sha256": "4e6c0df67d5d246e358323be5ebd81ff0594a8b3f5cb8d46726e60418e0fd867"
+    },
+    {
+      "status": "M",
+      "path": "tests/browser_tax_settlement.mjs",
+      "sha256": "9ab259e17342acf89d4ef47a317de9b0280a3481a428db97ac9a3d79b5736133"
+    },
+    {
+      "status": "M",
+      "path": "tests/ci_release_gate.test.mjs",
+      "sha256": "3270ac9c2717fdd01ed1ca9ff46db9717576e1c17fe6b62b9128b5b995c240ed"
+    },
+    {
+      "status": "M",
+      "path": "tests/company_access_cancellation_schema.test.mjs",
+      "sha256": "08347cbe49a455dc08941493f1d9ba1cef5f2c1c45fd82fb60ab2de1d8308337"
+    },
+    {
+      "status": "M",
+      "path": "tests/company_tax_architecture.test.mjs",
+      "sha256": "8717bff1f509e9eb727c4183a3f2b17226fa762c48760d48d0c497fbeca7e93b"
+    },
+    {
+      "status": "M",
+      "path": "tests/company_tax_return_authority_evidence_import.test.mjs",
+      "sha256": "cc4d1a72fbf47102f28c1748fe0816ac2e5ea84823f4d78615e1aa127675644d"
+    },
+    {
+      "status": "M",
+      "path": "tests/company_tax_return_payload.test.mjs",
+      "sha256": "ba0fe07b397d0ca3369559e0865d79fbc8241d41eabc98226eb83ee4b0ec31a1"
+    },
+    {
+      "status": "M",
+      "path": "tests/company_tax_return_submission.test.mjs",
+      "sha256": "e1030ddf5be381d8d65a6c605a8023c11f175929128c3c71531560b583449f37"
+    },
+    {
+      "status": "M",
+      "path": "tests/company_tax_return_xml.test.mjs",
+      "sha256": "0bfbf6f26ece4f64218358ad4432543c46fdd248d6ef370e01811dda9155f323"
+    },
+    {
+      "status": "A",
+      "path": "tests/company_tax_workspace_composition.test.mjs",
+      "sha256": "bd796ee41f73a89b50cbc1d685734240e25106400efaf9aabb988b03095b819f"
+    },
+    {
+      "status": "M",
+      "path": "tests/deployed_schema_contract.test.mjs",
+      "sha256": "f1990d158f5e684b652dedbbedf68566eb50f2b8571fcc6fb5640e9057d8c5ea"
+    },
+    {
+      "status": "M",
+      "path": "tests/fixtures/seed_tax_browser_company.py",
+      "sha256": "81c574c61ce6acd6e952f370b272cda240ef18173d5de01772e44fdeae9a0493"
+    },
+    {
+      "status": "M",
+      "path": "tests/investments_cross_output_reconciliation.test.mjs",
+      "sha256": "83b9c5b6bbb1c46083c780bf612c700bc71be4009ad34e537eafaf3c8b0dd322"
+    },
+    {
+      "status": "M",
+      "path": "tests/rf1086_mixed_actions.test.mjs",
+      "sha256": "d2eba35b29bfb51f3f610d3de0989b9f38009678d3b859fb9f807b15d470eb52"
+    },
+    {
+      "status": "M",
+      "path": "tests/supabase_workspace.test.mjs",
+      "sha256": "3843bff3413afa1f721ab9092362844cbfcd65646f7bead93d520bcf6a194636"
+    },
+    {
+      "status": "A",
+      "path": "tests/support/company_tax_public.mjs",
+      "sha256": "b1c93ddd361198e552d85edf8539a8b92abeb3c109c26e79d12bc5e058bea485"
+    },
+    {
+      "status": "A",
+      "path": "tests/support/company_tax_public_driver.py",
+      "sha256": "857987e08ffda3d160cddb80f1ada9593529493dcd29966d52df157fbe6d4406"
+    },
+    {
+      "status": "M",
+      "path": "tests/support/rf1086-fixture-access.mjs",
+      "sha256": "8ad2b40268f9413e7e49ea7c8cbb9c1e8e38eb70ca3a22ea0d25f284996adc9f"
+    },
+    {
+      "status": "A",
+      "path": "tests/support/tax-browser-auth.mjs",
+      "sha256": "d0de9aed624d3112cf7c33200812674b9f94a955dd3a20f0e988592b868e97d0"
+    },
+    {
+      "status": "M",
+      "path": "tests/support/tax-browser-fixture.mjs",
+      "sha256": "9d0d3b23433f9ec1e5008c1093d3550745ef92a5a0a2487f88144e10d4a82a5a"
+    },
+    {
+      "status": "M",
+      "path": "tests/support/tax-fixture-cleanup.mjs",
+      "sha256": "68d4681e094b13a462a52abeb48f639118f20f8c66e99738f9d5817fc9964072"
+    },
+    {
+      "status": "M",
+      "path": "tests/tax_settlement.test.mjs",
+      "sha256": "e46efd6f048f7b81e692a1d32367c305a992a00f4380dcdea2ef0f93bab47170"
+    }
+  ],
+  "originalSourceInventoryVerifiedCount": 52,
+  "originalSixCriteriaUnchanged": true,
+  "liveIssueState": "open",
+  "criteriaAllPending": true,
+  "activeTaxCompatibilityRecords": 0,
+  "officialTt02EvidenceByteIdentical": true,
+  "independentCurrentChecks": {
+    "taxMandatoryFileList": [
+      "apps/backend/tests/test_company_tax_filing_database.py",
+      "apps/backend/tests/test_company_tax_filing_runtime.py",
+      "apps/backend/tests/test_company_tax_return_lifecycle.py"
+    ],
+    "taxMandatoryCollectionEqualsMarkedCollection": true,
+    "taxCollected": 32,
+    "databaseTestsExecuted": 0
+  },
+  "priorReviewApplicability": {
+    "runtimeSourceUnchangedSinceLastBoundedReview": "41bcead181bc26f9c2e540ca5fbf53a8114e0120",
+    "lastDelta": "CI file-list assertion plus module/evidence/status metadata only",
+    "closedFindings": [
+      "numeric/URL/Boolean/derived parity",
+      "CLI null reference and float year",
+      "collection shape",
+      "deep import JSON and persistence error",
+      "acknowledgement transaction identity",
+      "missing-token source",
+      "nested assessment shape",
+      "Next server directive",
+      "Archive function ACL",
+      "nested authority summary immutability",
+      "retired deployed Tax RPC",
+      "Archive canonical trigger/read inventory"
+    ]
+  },
+  "criterionMapping": {
+    "GH-152-A1": {
+      "requirement": "Supported company-tax cases produce outputs identical to current schema and TT02 evidence.",
+      "implementationAssessment": "No actionable gap found",
+      "finalAcceptance": "PENDING"
+    },
+    "GH-152-A2": {
+      "requirement": "Participation-exemption reconciliation and attachment gates remain deterministic and fail closed.",
+      "implementationAssessment": "No actionable gap found",
+      "finalAcceptance": "PENDING"
+    },
+    "GH-152-A3": {
+      "requirement": "Confirmation, submission, feedback, and receipt transitions remain authorized and idempotent.",
+      "implementationAssessment": "No actionable gap found",
+      "finalAcceptance": "PENDING"
+    },
+    "GH-152-A4": {
+      "requirement": "The complete owner workflow uses FastAPI and the generated client.",
+      "implementationAssessment": "No actionable gap found",
+      "finalAcceptance": "PENDING"
+    },
+    "GH-152-A5": {
+      "requirement": "Generic company-tax rows, duplicate TypeScript calculations, and active-stage compatibility code are removed.",
+      "implementationAssessment": "No actionable gap found",
+      "finalAcceptance": "PENDING"
+    },
+    "GH-152-A6": {
+      "requirement": "The complete `company_tax_filing` stage exit criteria from issue #132 pass before annual-accounts migration begins.",
+      "implementationAssessment": "No actionable gap found",
+      "finalAcceptance": "PENDING"
+    }
+  },
+  "sourceScope": "Talli-recorded company/year/obligation facts with positive coverage; disabled production; no durable prerequisite readiness certification",
+  "recordedEvidenceLimits": [
+    "Seven SQL lifecycle scenarios and eleven race checks inspected through accumulated pinned reviews; not rerun here.",
+    "Two current local browser journeys are synthetic TT02 plus real local Auth/TOTP, not provider or hosted effects.",
+    "21-check deployment matrix uses synthetic JWT PostgREST and actual ASGI/restricted SQL; not complete mixed-version browser operation.",
+    "Official XSD/golden evidence from prior scoped checks, not a fresh provider validation."
+  ],
+  "pendingProcess": [
+    "Two complete linked immutable #152 gates",
+    "Independent receipt validation and registry exit adoption",
+    "Protected integration",
+    "Exact-main CI/Preview and published receipt reread"
+  ],
+  "privateArtifacts": {
+    "issue152-final-spec-source-ac9b349a.json": "56e788fb7bc92b0fc95407eb568aec057ae9ec4bb9a4586e7197c4d0521fbfee",
+    "issue132-spec-exit-comments.json": "1cb177a3491b34e125c80bd4520dea0e52e35380613797afe34a694e40391aff",
+    "final-spec-lane-collection-ac9b349a.log": "1a9d863ab798a33a5a63efe385ab2bb5026cb97f076a3445954784e41b78ba2f",
+    "final-spec-marked-collection-ac9b349a.log": "5f64e19d8771557d7b2f0cba56ce9f31e2e6bae9b90cfc1ae5f758a495e49645",
+    "final-spec-lane-check-ac9b349a.json": "87e11ed78a5d0a1e85fd72d3563b6193d62398b16bc879d813ad284c40ce1bfa"
+  },
+  "noSharedMutation": true,
+  "noDatabaseBrowserProviderOperation": true
+}

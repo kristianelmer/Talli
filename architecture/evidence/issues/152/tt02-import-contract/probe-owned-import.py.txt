@@ -1,0 +1,156 @@
+"""Actual legacy SQL/RLS characterization, isolated rollback-only synthetic fixture.
+
+The authenticated role and JWT claims are supplied at the SQL fixture boundary;
+this is not a verified HTTP JWT, real MFA ceremony, browser or provider test.
+"""
+import copy
+import hashlib
+import json
+from pathlib import Path
+from urllib.parse import urlsplit
+
+import psycopg
+from psycopg.types.json import Jsonb
+
+ROOT = Path.cwd()
+PRIVATE = Path('/Users/kristianelmer/.codex/issue-192-private/issue152-entry')
+env = json.loads(Path('/Users/kristianelmer/.codex/issue-192-private/issue146-entry/local-environment-private.json').read_text())
+url = urlsplit(env['DB_URL'])
+assert url.hostname in ('localhost', '127.0.0.1', '::1') and url.port == 52966
+fixture = json.loads((ROOT / 'architecture/evidence/issues/152/legacy-characterization.json').read_text())
+case = next(c for c in fixture['evidenceCases'] if c['id'] == 'synthetic-completed-pending-feedback')
+payload = case['output']['value']
+company = payload['authorityRun']['company_id']
+owner = payload['authorityRun']['recorded_by']
+second = '00000000-0000-0000-0000-000000000154'
+outsider = '00000000-0000-0000-0000-000000000155'
+reviewer = '00000000-0000-0000-0000-000000000156'
+unaccepted = '00000000-0000-0000-0000-000000000157'
+report = {
+    'sourceRevision': fixture['sourceRevision'],
+    'fixtureSha256': hashlib.sha256((ROOT / 'architecture/evidence/issues/152/legacy-characterization.json').read_bytes()).hexdigest(),
+    'scope': 'Owned import SQL and canonical legacy Audit in one rollback-only transaction; synthetic SQL claims and temporary phase activation, not cutover, HTTP JWT/MFA, browser, provider or stage exit evidence.',
+    'transaction': 'ROLLBACK_ONLY', 'cases': [],
+}
+db = psycopg.connect(env['DB_URL'], autocommit=True)
+
+
+def claims(actor=owner, aal='aal2'):
+    db.execute('reset role')
+    db.execute("select set_config('request.jwt.claims', %s, true)", (json.dumps({'sub': actor, 'role': 'authenticated', 'aal': aal}),))
+    db.execute("select set_config('talli.verified_actor_id', %s, true)", (actor or '',))
+    db.execute("select set_config('talli.verified_actor_claims', %s, true)", (json.dumps({'sub': actor, 'role': 'authenticated', 'aal': aal}),))
+    db.execute('set local role company_tax_filing_workflow_executor')
+
+
+def call(label, data=None, actor=owner, aal='aal2', expected=None):
+    db.execute('savepoint attempt')
+    claims(actor, aal)
+    try:
+        candidate=payload if data is None else data
+        value = db.execute('select company_tax_filing.import_tt02_evidence_v1(%s,%s)', (Jsonb(candidate),actor)).fetchone()[0]
+        if value['created']:
+            db.execute('select public.audit_include_filing_event_v1(%s,%s,%s,%s,%s)',(company,actor,'submission','company_tax_tt02_evidence_imported','Skattemelding TT02-evidens importert og venter på klassifisering med ref '+candidate['authorityRun']['test_reference']+'.'))
+    except psycopg.Error as error:
+        outcome = {'error': error.diag.message_primary, 'sqlstate': error.sqlstate}
+        db.execute('rollback to savepoint attempt')
+        assert expected is not None and expected in outcome['error'], (label, outcome)
+    else:
+        assert expected is None, (label, value)
+        outcome = {'value': value}
+    db.execute('release savepoint attempt')
+    report['cases'].append({'id': label, 'actor': actor, 'aal': aal, 'output': outcome})
+    return outcome.get('value')
+
+
+def rows():
+    db.execute('reset role')
+    return {
+        name: db.execute(f'select coalesce(jsonb_agg(to_jsonb(t) order by id),\'[]\'::jsonb) from {('public' if name=='audit_events' else 'company_tax_filing')}.{name} t where company_id=%s', (company,)).fetchone()[0]
+        for name in ('authority_test_runs', 'filing_submissions', 'audit_events')
+    }
+
+
+try:
+    db.execute('begin')
+    report['databaseVersion'] = db.execute('show server_version').fetchone()[0]
+    definition = db.execute("select pg_get_functiondef('public.import_company_tax_tt02_evidence(jsonb)'::regprocedure)").fetchone()[0]
+    original = (ROOT / 'supabase/migrations/0005_company_tax_feedback_persistence.sql').read_text().split('as $$\n', 1)[1].split('\n$$;', 1)[0]
+    actual_body = definition.split('AS $function$\n', 1)[1].split('\n$function$', 1)[0]
+    assert actual_body == original, 'Legacy RPC body differs from pinned migration'
+    report['legacyRpcBodySha256'] = hashlib.sha256(actual_body.encode()).hexdigest()
+    report['catalog'] = db.execute("""select jsonb_build_object('schema',n.nspname,'table',c.relname,'rls',c.relrowsecurity,'forceRls',c.relforcerowsecurity,'constraints',coalesce((select jsonb_agg(jsonb_build_object('name',conname,'definition',pg_get_constraintdef(oid)) order by conname) from pg_constraint where conrelid=c.oid),'[]'::jsonb)) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('public','shareholder_register_filing','company_tax_filing') and c.relkind='r' and (c.relname in ('filing_previews','filing_submissions','filing_overrides','filing_review_comments','authority_permissions','authority_test_runs','settlements') or c.relname like 'production_%') order by n.nspname,c.relname""").fetchall()
+    for actor in (owner, second, outsider, reviewer, unaccepted):
+        db.execute('insert into auth.users(id) values (%s)', (actor,))
+    db.execute("insert into public.companies(id,org_number,name,entity_type,created_by) values (%s,%s,'Synthetic Tax152 characterization','AS',%s)", (company, case['input']['expectedCompanyOrgNumber'], owner))
+    for actor, role, accepted in ((owner, 'owner', True), (second, 'owner', True), (reviewer, 'reviewer', True), (unaccepted, 'owner', False)):
+        db.execute("insert into public.company_memberships(company_id,user_id,role,accepted_at) values (%s,%s,%s,case when %s then now() else null end)", (company, actor, role, accepted))
+    for migration in ('20260914200000_company_tax_return_expand.sql','20260914201000_company_tax_return_read_contracts.sql','20260914202000_company_tax_return_import_contract.sql'):
+        source=ROOT/'supabase/migrations'/migration
+        db.execute(source.read_text().removesuffix('commit;\n'))
+        report.setdefault('migrationHashes',{})[migration]=hashlib.sha256(source.read_bytes()).hexdigest()
+    db.execute('grant company_tax_filing_workflow_executor,company_tax_filing_store_owner to postgres with inherit false,set true')
+    call('expanded-unavailable',expected='company_tax_return_unavailable')
+    db.execute('reset role')
+    db.execute('set local role company_tax_filing_store_owner')
+    db.execute("update backend_system.company_tax_return_migration_state set phase='cutover'")
+    db.execute('reset role')
+    call('unauthenticated', actor=None, expected='company_tax_return_forbidden')
+    call('owner-aal1', aal='aal1', expected='mfa_required')
+    for actor, label in ((outsider, 'outsider'), (reviewer, 'reviewer'), (unaccepted, 'unaccepted-owner')):
+        candidate = copy.deepcopy(payload)
+        candidate['authorityRun']['recorded_by'] = actor
+        candidate['submission']['created_by'] = actor
+        call(label, candidate, actor=actor, expected='owner_required')
+    db.execute('reset role')
+    db.execute("create function pg_temp.tax152_reject_audit() returns trigger language plpgsql as $$ begin if new.action='company_tax_tt02_evidence_imported' then raise exception 'synthetic_tax152_audit_failure'; end if; return new; end $$")
+    db.execute('create trigger tax152_characterization_audit_failure before insert on public.audit_events for each row execute function pg_temp.tax152_reject_audit()')
+    call('audit-failure-rolls-back-import', expected='synthetic_tax152_audit_failure')
+    assert all(not value for value in rows().values())
+    db.execute('drop trigger tax152_characterization_audit_failure on public.audit_events')
+    report['auditFailureLeavesNoAuthoritySubmissionOrAuditRow'] = True
+    first = call('owner-import')
+    assert first['created'] is True
+    original_rows = rows()
+    assert all(len(v) == 1 for v in original_rows.values())
+    assert original_rows['audit_events'][0]['actor_id'] == owner
+    assert original_rows['audit_events'][0]['action'] == 'company_tax_tt02_evidence_imported'
+    repeat = call('same-owner-replay')
+    assert repeat == {**first, 'created': False}
+    candidate = copy.deepcopy(payload)
+    candidate['authorityRun']['recorded_by'] = second
+    candidate['submission']['created_by'] = second
+    assert call('second-owner-replay', candidate, actor=second) == repeat
+    assert rows() == original_rows
+    candidate = copy.deepcopy(payload)
+    candidate['authorityRun']['evidence_url'] = 'https://evidence.example/different.json'
+    call('same-identity-conflict', candidate, expected='conflict')
+    for label, mutate, error in (
+        ('unsafe-url', lambda p: p['authorityRun'].update(evidence_url='https://evidence.example/path?secret=x'), 'invalid_payload'),
+        ('raw-content', lambda p: p['submission']['feedback_items'][0].update(message='<skattemelding>synthetic</skattemelding>'), 'forbidden_content'),
+        ('missing-receipt-hash', lambda p: p['submission']['receipt_metadata'].pop('contentSha256'), 'invalid_payload'),
+        ('wrong-company-binding', lambda p: p['submission']['submitted_payload_ref'].update(companyOrgNumber='999999999'), 'invalid_payload'),
+        ('timestamp-infinity', lambda p: p['submission']['calls'][0].update(created_at='infinity'), 'invalid_payload'),
+        ('timestamp-seven-fractions', lambda p: p['submission']['calls'][0].update(created_at='2026-07-14T12:20:00.0000001Z'), 'invalid_payload'),
+        ('authority-status-upgrade', lambda p: p['authorityRun'].update(status='accepted'), 'invalid_payload'),
+        ('production-mode', lambda p: p['submission'].update(mode='production', adapter_mode='production'), 'invalid_payload'),
+    ):
+        candidate = copy.deepcopy(payload)
+        mutate(candidate)
+        call(label, candidate, expected=error)
+    assert rows() == original_rows
+    claims(outsider)
+    db.execute('set local role company_tax_filing_store_owner')
+    for table in ('authority_test_runs', 'filing_submissions'):
+        assert db.execute(f'select count(*) from company_tax_filing.{table} where company_id=%s', (company,)).fetchone()[0] == 0
+    report['outsiderRlsVisibleRows'] = 0
+    report['persistedRows'] = original_rows
+    report['replayAndRejectedRequestsPreserveExactRows'] = True
+    report['status'] = 'PASS'
+finally:
+    db.execute('rollback')
+    assert db.execute('select count(*) from public.companies where id=%s', (company,)).fetchone()[0] == 0
+    db.close()
+    report['fixtureRollbackVerified'] = True
+    (PRIVATE / 'owned-import-database-characterization.json').write_text(json.dumps(report, indent=2, default=str, ensure_ascii=False) + '\n')
+print(json.dumps({'status': report.get('status', 'FAILED'), 'cases': len(report['cases']), 'fixtureRollbackVerified': True}))

@@ -36,6 +36,11 @@ const taxCutoverPath = new URL(
   import.meta.url,
 );
 
+const taxFilingCutoverPath = new URL(
+  "../supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql",
+  import.meta.url,
+);
+
 function sql(path) {
   return readFileSync(path, "utf8");
 }
@@ -95,6 +100,7 @@ test("archive route and generation triggers share one complete source inventory"
   const billingCapability = sql(billingCapabilityPath);
   const rfCutover = sql(rfCutoverPath);
   const taxCutover = sql(taxCutoverPath);
+  const taxFilingCutover = sql(taxFilingCutoverPath);
   const inventory = JSON.parse(sql(archiveInventoryPath));
   const declared = new Map(inventory.sources.map((item) => [item.table, item.scope]));
   const routeTables = new Set([...route.matchAll(/\.from\("([a-z0-9_]+)"\)/gu)].map((match) => match[1]));
@@ -107,6 +113,11 @@ test("archive route and generation triggers share one complete source inventory"
     "ledger_entries",
     // Tax settlements come from their owned Archive projection after cutover.
     "company_tax_filing.settlements",
+    "company_tax_filing.filing_previews",
+    "company_tax_filing.filing_submissions",
+    "company_tax_filing.filing_review_comments",
+    "company_tax_filing.authority_permissions",
+    "company_tax_filing.authority_test_runs",
     // Opening shares and bank amounts come from their separate owners. The
     // other RF sources supplement the retained sibling filing table reads.
     "shareholder_register_filing.opening_balance_setups",
@@ -185,8 +196,18 @@ test("archive route and generation triggers share one complete source inventory"
       /\('((?:owner_dividend|annual_close)_[a-z0-9_]+|shareholder_loans)',\s*'(year|company)',\s*'company_id'\)/gu,
     )].map((match) => [`corporate_governance.${match[1]}`, match[2]]),
   );
+  const taxArchiveBlock = taxFilingCutover.match(/do \$archive\$([\s\S]*?)end; \$archive\$;/u)?.[1] ?? "";
+  assert.match(taxArchiveBlock, /create trigger company_archive_track_tax152_%I before insert or update or delete on company_tax_filing\.%I for each row execute function public\.company_archive_track_source_write_v1/u);
+  const taxArchiveTables = taxArchiveBlock.match(/foreach f in array array\[([^\]]+)\] loop/u)?.[1] ?? "";
+  const taxYearTables = taxArchiveBlock.match(/scope:=case when f in \(([^)]+)\) then 'year' else 'company' end/u)?.[1] ?? "";
+  const tableNames = text => [...text.matchAll(/'([a-z_]+)'/gu)].map(match => match[1]);
+  const canonicalTaxFilingTriggers = tableNames(taxArchiveTables).map(table => [
+    `company_tax_filing.${table}`, tableNames(taxYearTables).includes(table) ? "year" : "company",
+  ]);
+  assert.equal(canonicalTaxFilingTriggers.length, 5);
   const triggerInventory = new Map([
     ...legacyTriggerInventory,
+    ...canonicalTaxFilingTriggers,
     ...canonicalInvestmentTriggerInventory,
     ...canonicalCorporateTriggerInventory,
     ...[...taxCutover.matchAll(
@@ -217,6 +238,7 @@ test("archive route and generation triggers share one complete source inventory"
     "loadArchiveOpeningSnapshots(accessToken, companyId, incomeYear)",
     "loadArchiveRf1086(accessToken, companyId, incomeYear)",
     "loadTaxSettlementArchiveSource(accessToken, companyId, incomeYear)",
+    "loadPresentedCompanyTaxSource(accessToken, [companyId], incomeYear)",
   ]) {
     assert.ok(route.indexOf(read) > route.indexOf('"company_archive_begin_export"'));
     assert.ok(route.indexOf(read) < route.indexOf('"company_archive_complete_export"'));

@@ -1,0 +1,48 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_ACKNOWLEDGEMENT_IDENTITY_CORRECTION",
+  "baseRevision": "6e67ba3e0759641db845449756306df444a3a9b1",
+  "candidateRevision": "8af134bf673ea0969f31856b84bde2246d615835",
+  "closedFindings": [
+    "SPEC-152-PREP-1"
+  ],
+  "newFindings": [],
+  "independentVerification": {
+    "originalProbeUnchanged": true,
+    "originalProbe": "PASS: HTTP503 with begin/acknowledgement-write/rollback, no commit",
+    "committedPreparationCases": 25,
+    "combinedPassed": 26,
+    "seconds": 2.41,
+    "adoptedArtifactHashesVerified": 5,
+    "apiIdentityGuardRetained": true,
+    "requirementsAndWebActionsByteIdentical": true
+  },
+  "sourceBindings": {
+    "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py": "e192649510df0c1cab9e4644f6514d6f00f07420bba78562c2304221b6292f95",
+    "apps/backend/tests/test_company_tax_preparation.py": "597fa58df3a15db6467134f653a53ec1133f5abc2e6ddc85b1630fc14e3d0c81",
+    "architecture/evidence/issues/152/preparation-identity-followup/manifest.json": "60062df11108f818b01cafd966e12669bb8dc55816467bb4a11890c298d57494",
+    "architecture/evidence/issues/152/preparation-identity-followup/preparation-identity-fix-tests.log": "55480617a383d1d4ab91bc13c37599e9c5a650e2ed76f137b3e341d186eb7646",
+    "architecture/evidence/issues/152/preparation-identity-followup/preparation-spec-review-6e67ba3e.json": "cf7cd38e223c20ab0c2781e620939cc80f7c95cd816cf59660f78a56358d0cea",
+    "architecture/evidence/issues/152/preparation-identity-followup/preparation-spec-review-6e67ba3e.md": "ed85b6dcc07f2df33fca277c88adc5403558154cc68d9ced18c22a0b67bd6e42",
+    "architecture/evidence/issues/152/preparation-identity-followup/preparation-standards-review-6e67ba3e.json": "264601aea0f17ecaaa787bc9eafadba7780ec104303ba529c8aa63bbef8f9375",
+    "architecture/evidence/issues/152/preparation-identity-followup/preparation-standards-review-6e67ba3e.md": "29b41755e7732c78572eb985349c4343ef967c5d1b7b41c73accebae3c79ec6d",
+    "apps/backend/src/talli_backend/main.py": "e7d94c8eb210b63985b91d150e814e866a5a69a84c02433ec4b1e74d7c2d29a1",
+    "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py": "ad4c2f8161c50a5f43e889b22b31633a3ca78a2784775da35e48579e87009057",
+    "supabase/migrations/20260914203000_company_tax_return_preparation_contracts.sql": "af3ea6bdb42d353a38914359fbf98615281c41560d64ebf77df18d4a6fc74080",
+    "apps/web/features/company-tax-filing/transport.ts": "05252fbe1cb8b5dec52b4e40c32d123f48d38ba40cd12587de32feca99874053",
+    "apps/web/app/actions.ts": "a859be4f46dd66491c99be1e4fa811c413b531958426932b5929c1a287967f61",
+    "contracts/openapi/talli-v1.json": "55f85ed43c3b8ae6c2c26a6186de48f111bc26f5e40a19af1f8cb320831946cb",
+    "packages/talli-api-client/src/generated/client.ts": "b8498db6702ebe4388c3bcf503bba9db50486d6cb950aa72b648413d19efabfe",
+    "architecture/evidence/issues/152/requirements.json": "cd4da5befa561f08dd35d1a62ba15e8b4ea3ade0873df6e1f16a680c62b7cdf6"
+  },
+  "privateArtifactBindings": {
+    "test_preparation_spec_6e67ba3e.py": "00a119b827c7617c5d0302e85beadfa5bb79442ac5802aac4bd0cb6ddf782c11",
+    "preparation-spec-8af134bf-tests.log": "7d27ffc748597127611528fc0dd998e4b9cfe83af1ea166e4947a605c82fe7b5"
+  },
+  "reportSha256": "d05df680d6f8d7f7b619e8080d0833f72ef2ed309314e33127da6bf68a7024b7",
+  "limits": [
+    "No shared mutation or SQL/browser/provider execution.",
+    "Injected malformed-result test, not observed wrong SQL-produced identity.",
+    "Prior SQL checks remain synthetic rollback-only evidence; no full-stage acceptance."
+  ]
+}

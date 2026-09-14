@@ -3,6 +3,33 @@ revision = 3
 requires-python = ">=3.12, <3.14"
 
 [[package]]
+name = "ada-url"
+version = "4.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cffi" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/98/4e/f62ef579f693298f62a4657a0429823444025f342161d53f5c1f7bd629c6/ada_url-4.0.0.tar.gz", hash = "sha256:9f399ec867349800a4c2d3aa8df8c533c340494b04d34b1f082b97d9a8b76a07", size = 265328, upload-time = "2026-07-28T19:29:53.846Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/49/6e/13bd71c47fa7096a3c74ae6536a8b465c2defedca43135e2881e3c590ccd/ada_url-4.0.0-cp312-cp312-macosx_10_15_universal2.whl", hash = "sha256:909658402abad0c35422b3306d1464131c25b926cd203399b18bc1667f0778d4", size = 706191, upload-time = "2026-07-28T19:29:16.919Z" },
+    { url = "https://files.pythonhosted.org/packages/9a/aa/6718ba57b57090db0b2f675d78a3762318e0f2c477ba718f76c6d8ec7e30/ada_url-4.0.0-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:75785fb7242411d1d0ada6e6abbe5cedcb87bee7d38272a1fd8beb5fc512bc2d", size = 488395, upload-time = "2026-07-28T19:29:18.284Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/8e/65fac4fa8846bffdc3d8c4e17294ee435385fcc8980ba141ed3b6f03b224/ada_url-4.0.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:b3c6fd8148c1efde18f71a7c241d3e0ea98de36091a12940656cfa545a84da14", size = 483727, upload-time = "2026-07-28T19:29:19.929Z" },
+    { url = "https://files.pythonhosted.org/packages/26/3e/5d931d6eba90657470f0ee9d4049685f177e34a452a1805aad5fe1c8885e/ada_url-4.0.0-cp312-cp312-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:d85ab449fe23d2ac612d34a869dd6a0b5968b45819ebcae40d6307c7f951db69", size = 1830343, upload-time = "2026-07-28T19:29:21.514Z" },
+    { url = "https://files.pythonhosted.org/packages/23/7c/144b315890c7c6bc6367bcd9101bd29f4343bc2a93a944bc5815dafbf48a/ada_url-4.0.0-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:da1510328ffbb5a505815f322061137527946a3698bbb70dc53ec086b8086e21", size = 1861921, upload-time = "2026-07-28T19:29:23.129Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/f3/ed5f9b121dc460c2cc555393394e0d14a660bb1ed753abc0f1d60de04297/ada_url-4.0.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:8e975816ec664690d78f26b479f41098f6cb1e3142b42821eef9eb9ee199f287", size = 2768370, upload-time = "2026-07-28T19:29:24.626Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/22/6a5d890f541266f5b7c345947c633bdb686a856c734502131161c52e3ccc/ada_url-4.0.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:4608f6aa98fc736a4edd751dd017c9f146b8d3d86e08d86bfc0df5cb7f3eae8b", size = 2877324, upload-time = "2026-07-28T19:29:26.276Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/fe/13e01dbdc2ab9d7b9d150c386437d68ce0db9f3c3d2028130613cc10949b/ada_url-4.0.0-cp312-cp312-win_amd64.whl", hash = "sha256:d5ab0c75e227d46dca70376193eb70387c605eb43866cf425a03df9655e02303", size = 434129, upload-time = "2026-07-28T19:29:28.129Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/74/426e9a200d80dbc368c26441e5978e8b2ebc7e3d9af08726d36439ef584e/ada_url-4.0.0-cp313-cp313-macosx_10_15_universal2.whl", hash = "sha256:da4040f51e6c17cf827f38031d3546e4a940c1440523ec0d0319048da21de174", size = 706191, upload-time = "2026-07-28T19:29:29.622Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/6b/4357e137aa0c894671ddbe975d4056dc2855626f0d1e09398c4e4a81fbea/ada_url-4.0.0-cp313-cp313-macosx_10_15_x86_64.whl", hash = "sha256:e1abb7c8bf5acbee94a5bb0b2e3100dcaf0aa3b4294e31e17c5645c85f473595", size = 488396, upload-time = "2026-07-28T19:29:30.948Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/19/6f881a4c36ac84f7ab12426594a12fc2155e82976bf2ff7ea1d080779ad7/ada_url-4.0.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:be53094f4cf0d435b51cf738486de8decaeafdc465d0b24a1462ecf88fbb2f58", size = 483727, upload-time = "2026-07-28T19:29:32.306Z" },
+    { url = "https://files.pythonhosted.org/packages/88/ac/d02f27798ed2b15067d25e62cec97b6d1626cf9cc9ac8b3d3a45877a830c/ada_url-4.0.0-cp313-cp313-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:0f691beab142575e6546a37cac142e3abfe3bb7d0b586b648fc56917b5b88ec3", size = 1830312, upload-time = "2026-07-28T19:29:33.605Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/67/525a42ce8f4de030423c497b1a70261921f0347070cb3b22f9ae6ce6a14a/ada_url-4.0.0-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:bdb9e57c9f2d2c4c29dc2b49eeb7c370a8c9550fcd95a44d8434444e236537a2", size = 1861928, upload-time = "2026-07-28T19:29:35.193Z" },
+    { url = "https://files.pythonhosted.org/packages/91/0c/4e7d2ae2c72c963d1c0ee004a88a088ee8c0c669c9910947ea722e144eaa/ada_url-4.0.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:4bc8c4f6cdc816379c14d49ae987a9e35bb5e8ee35517735a49afed08fd16e9e", size = 2768337, upload-time = "2026-07-28T19:29:36.868Z" },
+    { url = "https://files.pythonhosted.org/packages/02/66/a673c258d4aa76b888758d5a468f231bb12686dc3c10ee51c2e5c2dffd7e/ada_url-4.0.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:6f13b0cff78ad3ff48c4179f2eafaa0231be1ca1a4f52d841565a69dd3c7ceeb", size = 2877325, upload-time = "2026-07-28T19:29:38.637Z" },
+    { url = "https://files.pythonhosted.org/packages/25/39/498e9e2a848a8fc0744c2d3fd36436de837bc0bd58a99041ddee832e37ea/ada_url-4.0.0-cp313-cp313-win_amd64.whl", hash = "sha256:5563001339c7f19586df57d832238c45ab065c012c7d884cfd5ed73db8be46d6", size = 434130, upload-time = "2026-07-28T19:29:40.087Z" },
+]
+
+[[package]]
 name = "annotated-types"
 version = "0.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -429,6 +456,12 @@ wheels = [
 ]
 
 [[package]]
+name = "pyicu"
+version = "2.16.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b7/d5/354eb1bf84dcf4ab0bfa46f0620ecf68fe313bb082c26872ceb7a5021f94/pyicu-2.16.2.tar.gz", hash = "sha256:006d51e24b5ec76df6ec2130f3dde269c51db8b8cfebb7d45a427dde0d10aa52", size = 268223, upload-time = "2026-03-20T21:58:30.794Z" }
+
+[[package]]
 name = "pytest"
 version = "8.4.1"
 source = { registry = "https://pypi.org/simple" }
@@ -475,11 +508,13 @@ name = "talli-backend"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "ada-url" },
     { name = "cryptography" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
+    { name = "pyicu" },
     { name = "reportlab" },
     { name = "uvicorn" },
 ]
@@ -491,11 +526,13 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ada-url", specifier = "==4.0.0" },
     { name = "cryptography", specifier = "==50.0.1" },
     { name = "fastapi", specifier = "==0.116.1" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.2.9" },
     { name = "pydantic", specifier = "==2.11.7" },
+    { name = "pyicu", specifier = "==2.16.2" },
     { name = "reportlab", specifier = "==5.0.0" },
     { name = "uvicorn", specifier = "==0.35.0" },
 ]

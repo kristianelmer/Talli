@@ -1,0 +1,187 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_EXIT_CLEANUP",
+  "baselineRevision": "9f5c5a5b15971de69327c3e242a603c32c7c4b20",
+  "reviewedRevision": "41bcead181bc26f9c2e540ca5fbf53a8114e0120",
+  "findings": [],
+  "closedFindings": [
+    "SPEC-152-EXIT-DEPLOY",
+    "SPEC-152-EXIT-ARCHIVE"
+  ],
+  "priorDeploymentEvidenceGap": "CLOSED_FOR_DECLARED_SQL_HTTP_PROTOCOL_ROLLOUT",
+  "reportSha256": "f468218e4f6780f0948059ceaff090a67e1b3a5d11b7b1fc4a8110500118d8e2",
+  "changedFileBindings": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "f94e53ccce5ce61e927be28e374d67c3d356a17620206107c204ef016f6a41b6",
+    "apps/web/tests/archive-rf1086-source.test.mjs": "94de39f38c624057384a7364d7c39246b793c6449f65154f4a9a0ef2178fa6c5",
+    "architecture/company-archive-sources.json": "9d36640141b7353301a6d54d513f07c1915082fbafb004a5275544e681f185a4",
+    "architecture/evidence/customer-ready-gates/9f5c5a5b15971de69327c3e242a603c32c7c4b20.log": "a11078806439814f301413ac4fddf30023bd23e5bb45079f27566b33c9f00398",
+    "architecture/evidence/issues/152/exit-cleanup/exit-cleanup-targeted.log": "fea0cc1df510e1e07ccdb2ad3d2e9152c811286591faf8f3ba0f01fee3d077dd",
+    "architecture/evidence/issues/152/exit-cleanup/filing-deployment-order.json": "29e740d35f00c20b9b6e65d36c6d71217d0c92435cf3e2a61a098eb7ab021924",
+    "architecture/evidence/issues/152/exit-cleanup/filing-deployment-order.log": "6d7ebe9c63a40052e994b0eb6fb9967df47f2b47dab87d20f2d93681331c3e94",
+    "architecture/evidence/issues/152/exit-cleanup/manifest.json": "0453444032263705defe9c35e99c5388a1c7711120c8858d8dd6fa30f63c82f2",
+    "architecture/evidence/issues/152/exit-cleanup/owner-browser-spec-review-9f5c5a5b.json": "daeee096cc944f88aa4dd47218d24b9400f0ab7f642589df1697000508e482c5",
+    "architecture/evidence/issues/152/exit-cleanup/owner-browser-spec-review-9f5c5a5b.md": "c1e01fea160d20ee6f1e7e0796e30be86cd9db7aaa274cedaab8f782883dd346",
+    "architecture/evidence/issues/152/exit-cleanup/owner-browser-standards-review-9f5c5a5b.json": "68b7924af7eee10ad6bcad88fedcd31a50ef48734a723ea63d652bc0e3fb16fc",
+    "architecture/evidence/issues/152/exit-cleanup/owner-browser-standards-review-9f5c5a5b.md": "b3768983c72eccf229d4325d20fc74e5df4fbc47fc4efa2b5a341ec606ba5f58",
+    "architecture/evidence/issues/152/exit-cleanup/probe-filing-deployment-order.py.txt": "dd2a44775e711cc8d25e2202b4dbe0686b646c5a718f8b2e76e2479705b3a420",
+    "scripts/assert-deployed-schema-contract.mjs": "5e38fdc84f27e9290b267ada30b0d574ddcbefb4e5777df0799579f1392af5e7",
+    "tests/company_access_cancellation_schema.test.mjs": "08347cbe49a455dc08941493f1d9ba1cef5f2c1c45fd82fb60ab2de1d8308337",
+    "tests/deployed_schema_contract.test.mjs": "f1990d158f5e684b652dedbbedf68566eb50f2b8571fcc6fb5640e9057d8c5ea"
+  },
+  "manifestBindings": [
+    {
+      "path": "apps/backend/src/talli_backend/adapters/postgres_company_tax_filing.py",
+      "sha256": "1b4945e344782181323d0a0abb32af6dc19854d747bb29cef081592b23ce63b2"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "2f9e433de941b9c990bf75ef3ddb4d5cec2412bb3227bf665d5e91f765b81fd2"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/company_tax_filing_workflow.py",
+      "sha256": "9e4083d88f399f98c4206ad412296e86be416d2983bdc7a12198a5772b5d9132"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/public.py",
+      "sha256": "485a0f0f94f64b688a616dc39a6420c4513a0cc7285904b1b6dbe9490e358fe8"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/evidence.py",
+      "sha256": "0b9ff2aaf0cf016fbea8d7e1a07b0d9cd6f73c3a0c18aac6c47f9c2536ba468a"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/source_facts.py",
+      "sha256": "caefd447ef1dbea432f5e47c64d4e1b7e34e7db997cca5a64109771de4d78b4a"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md",
+      "sha256": "f94e53ccce5ce61e927be28e374d67c3d356a17620206107c204ef016f6a41b6"
+    },
+    {
+      "path": "apps/web/tests/archive-rf1086-source.test.mjs",
+      "sha256": "94de39f38c624057384a7364d7c39246b793c6449f65154f4a9a0ef2178fa6c5"
+    },
+    {
+      "path": "architecture/company-archive-sources.json",
+      "sha256": "9d36640141b7353301a6d54d513f07c1915082fbafb004a5275544e681f185a4"
+    },
+    {
+      "path": "scripts/assert-deployed-schema-contract.mjs",
+      "sha256": "5e38fdc84f27e9290b267ada30b0d574ddcbefb4e5777df0799579f1392af5e7"
+    },
+    {
+      "path": "tests/company_access_cancellation_schema.test.mjs",
+      "sha256": "08347cbe49a455dc08941493f1d9ba1cef5f2c1c45fd82fb60ab2de1d8308337"
+    },
+    {
+      "path": "tests/deployed_schema_contract.test.mjs",
+      "sha256": "f1990d158f5e684b652dedbbedf68566eb50f2b8571fcc6fb5640e9057d8c5ea"
+    },
+    {
+      "path": "supabase/migrations/0005_company_tax_feedback_persistence.sql",
+      "sha256": "15b7544c94453a56c4a7264fd286b217e039c6a72c03b176522a1c45a3219eb1"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914022608_company_tax_return_source_contract.sql",
+      "sha256": "ae6e571b5c268a12d80ee43ca30931da9f277d303b6f5bc8dc7e38deb8b10db4"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914201000_company_tax_return_read_contracts.sql",
+      "sha256": "24ebea4288c9f1357ecdd6b6c761b8b9e816fc188fcabd4e0671125996cc4ff5"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914203000_company_tax_return_preparation_contracts.sql",
+      "sha256": "af3ea6bdb42d353a38914359fbf98615281c41560d64ebf77df18d4a6fc74080"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql",
+      "sha256": "d192b105d87287ba59e7b88278c1c25d51e6620d19b1b5d5e34fc416ef21597c"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914012930_company_tax_return_contract.sql",
+      "sha256": "84269749fd846de1e3cf272427b244431c62f6a41d46f6824e880a0ef5090158"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914200000_company_tax_return_expand.sql",
+      "sha256": "ce0a4b9ab6fc7f90ea4cd851e9a2cff2da113db9c461dc5911bd6c7abfc96281"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914202000_company_tax_return_import_contract.sql",
+      "sha256": "5b924cfe0d4771cc58723dcdc65f1c7f4612bd19bba7b0541f1ee0acd62d0cbb"
+    },
+    {
+      "path": "supabase/rollback/20260914012503_company_tax_return_cutover.sql",
+      "sha256": "0808d9ef883fce1dee19bcd1330f1579682481c1596e522b2b5d5c73fc9e9f07"
+    },
+    {
+      "path": "supabase/rollback/20260914012930_company_tax_return_contract.sql",
+      "sha256": "b8f7f2190e748a8a9e9a88787b68c46f64e08a9f201cc4eb1b9ed9d5c475ed8c"
+    },
+    {
+      "path": "architecture/evidence/issues/152/exit-cleanup/owner-browser-standards-review-9f5c5a5b.md",
+      "sha256": "b3768983c72eccf229d4325d20fc74e5df4fbc47fc4efa2b5a341ec606ba5f58"
+    },
+    {
+      "path": "architecture/evidence/issues/152/exit-cleanup/filing-deployment-order.log",
+      "sha256": "6d7ebe9c63a40052e994b0eb6fb9967df47f2b47dab87d20f2d93681331c3e94"
+    },
+    {
+      "path": "architecture/evidence/issues/152/exit-cleanup/owner-browser-standards-review-9f5c5a5b.json",
+      "sha256": "68b7924af7eee10ad6bcad88fedcd31a50ef48734a723ea63d652bc0e3fb16fc"
+    },
+    {
+      "path": "architecture/evidence/issues/152/exit-cleanup/owner-browser-spec-review-9f5c5a5b.json",
+      "sha256": "daeee096cc944f88aa4dd47218d24b9400f0ab7f642589df1697000508e482c5"
+    },
+    {
+      "path": "architecture/evidence/issues/152/exit-cleanup/probe-filing-deployment-order.py.txt",
+      "sha256": "dd2a44775e711cc8d25e2202b4dbe0686b646c5a718f8b2e76e2479705b3a420"
+    },
+    {
+      "path": "architecture/evidence/issues/152/exit-cleanup/filing-deployment-order.json",
+      "sha256": "29e740d35f00c20b9b6e65d36c6d71217d0c92435cf3e2a61a098eb7ab021924"
+    },
+    {
+      "path": "architecture/evidence/issues/152/exit-cleanup/exit-cleanup-targeted.log",
+      "sha256": "fea0cc1df510e1e07ccdb2ad3d2e9152c811286591faf8f3ba0f01fee3d077dd"
+    },
+    {
+      "path": "architecture/evidence/issues/152/exit-cleanup/owner-browser-spec-review-9f5c5a5b.md",
+      "sha256": "c1e01fea160d20ee6f1e7e0796e30be86cd9db7aaa274cedaab8f782883dd346"
+    }
+  ],
+  "independentChecks": {
+    "targetedTestsPassed": 43,
+    "targetedTestsFailed": 0,
+    "targetedTestsSkipped": 0,
+    "retiredRpcAbsenceAccepted": true,
+    "restoredRpcRejected": true,
+    "fiveArchiveTriggersRemovedMutantRejected": true,
+    "frozenRequestProjectionEquivalent": true,
+    "apiSqlWebRuntimeGeneratedClientUnchanged": true,
+    "sixIssueCriteriaUnchanged": true
+  },
+  "recordedDeploymentEvidence": {
+    "checks": 21,
+    "sourceRevision": "9f5c5a5b15971de69327c3e242a603c32c7c4b20",
+    "legacyRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+    "verifiedBySourceInspectionAndHash": true,
+    "independentDatabaseRerun": false,
+    "scope": "Real loopback PostgREST dedicated synthetic JWT; current FastAPI ASGI restricted SQL; SQL phase/receipt matrix. Not a full mixed-version browser rollout."
+  },
+  "privateArtifacts": {
+    "exit-cleanup-spec-bindings-41bcead1.json": "fde81224426c9a4c1b159918f547de5cc2547635b962b46417286513fe78215d",
+    "exit-cleanup-spec-probe-41bcead1.mjs": "c89867f0dbeef6c04662ac02fadce742b6be7a9a493e2ffafde62c720b67d3aa",
+    "exit-cleanup-spec-probe-41bcead1.log": "67b027fd58a39392820df19c416a3d221ba086155194176dc422dfaf3271f344",
+    "exit-cleanup-spec-tests-41bcead1.log": "9bf2178ee72b0badcc20c48457fdad3f2393bd9a1de1cae4b09ac453f9d0b7b0",
+    "exit-cleanup-spec-projection-41bcead1.py": "47676fc1e2e43692a7689fe134c702071eb4445edae62599335b7c8bd123a0c7",
+    "exit-cleanup-spec-projection-41bcead1.log": "10399c24d708bc19462a439eef9dda6cbc329e8dc9a344e68e46452d4c13e049",
+    "exit-cleanup-spec-unscoped-static-41bcead1.log": "ef1dd6dfcddfdad23549086eb515f40e6688bf74f3ec8537b178cf3f42bb6993"
+  },
+  "executionDisclosure": "An initial read-only 43-test invocation accidentally used the shared cwd. It completed without DB/browser/product writes. Excluded from acceptance; repeated all 43 tests in the pinned private archive. Its outside-repository transcript was moved to the private directory and separately bound. All mutations for probes were private and restored.",
+  "limits": [
+    "No database, browser or provider rerun.",
+    "No full #152 exit/gate/integration/registry or successor acceptance.",
+    "Failed 9f5c5a5b full gate retains zero exit credit."
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "base": "862964d24f56e8be86e75a20b3a8fdedb0dd0058",
+  "candidate": "f9838c6096640d9810381d86ef64dd8177ee35ac",
+  "extraction": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-152-standards-f9838c60-2xpag4z0",
+  "node": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+  "nodeVersion": "v24.20.0",
+  "nextVersion": "16.3.4",
+  "files": {
+    "apps/web/app/actions.ts": "457a6919488f6f87dcb579d041d52d694ca2e55172ec2aa5bbde874267d40856",
+    "tests/company_tax_workspace_composition.test.mjs": "bd796ee41f73a89b50cbc1d685734240e25106400efaf9aabb988b03095b819f"
+  },
+  "checks": [
+    {
+      "label": "tests",
+      "exitCode": 0,
+      "transcript": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/assessment-consumers-standards-tests-f9838c60.log",
+      "sha256": "d333d0206b19d2ddbf6f256bce4ebbd3a807f7c0f23dc97c675c74563ad4d2c8"
+    },
+    {
+      "label": "directive",
+      "exitCode": 0,
+      "transcript": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/assessment-consumers-standards-directive-f9838c60.log",
+      "sha256": "d2489e0e75cdcb16e71f720e1358c82fa893788272ad162e135de2628898a2d8"
+    },
+    {
+      "label": "predecessor SWC regression control",
+      "exitCode": 0,
+      "transcript": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/assessment-consumers-standards-swc-negative-f9838c60.log",
+      "sha256": "5e25cda5a0435c36b327bddf3073b5ab0ab491636f917ae4b74bc2560c1ebab0"
+    }
+  ],
+  "nextCompilerBindings": {
+    "node_modules/next/package.json": "c4ef8a1c8da320a162485f96d35df7745da90e6becc36882d6e81be9df66eec1",
+    "node_modules/next/dist/build/swc/index.js": "a67492d822f9362ea9667afd78e1122900fbb8663d1424c163dbff3b23b82b44",
+    "node_modules/next/dist/server/typescript/utils.js": "330567b68cc2eb8942746d07fc4d47a4ee787f033c66caf7a43d675a67f20949"
+  },
+  "verdict": "PASS_BOUNDED_FOLLOWUP",
+  "closedFindings": [
+    "P1 actions.ts displaced use server directive"
+  ],
+  "findings": [],
+  "scope": "Two-file immutable delta only; no full Next build, browser, database, compatibility guard rerun or full-stage/exit verification."
+}

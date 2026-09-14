@@ -6,7 +6,7 @@ import { isLoopbackPostgresUrl } from "../tests/support/supabase_fixture_safety.
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl || !isLoopbackPostgresUrl(databaseUrl)) throw new Error("tax_rehearsal_requires_owned_loopback_database");
 const direction = process.argv[2];
-if (!["prepare", "contract"].includes(direction)) throw new Error("invalid_tax_rehearsal_direction");
+if (!["prepare", "contract", "filing-expand", "filing-contract"].includes(direction)) throw new Error("invalid_tax_rehearsal_direction");
 const database = new pg.Client({ connectionString: databaseUrl });
 await database.connect();
 const apply = async (path) => database.query(await readFile(new URL(`../supabase/${path}`, import.meta.url), "utf8"));
@@ -33,9 +33,22 @@ try {
     }
     const state = (await database.query("select phase from backend_system.tax_settlement_migration_state where singleton")).rows[0]?.phase;
     if (["expanded", "rolled_back"].includes(state)) await apply("migrations/20260913171000_company_tax_settlement_expand.sql");
-  } else {
+  } else if (direction === "contract") {
     await apply("contract-migrations/20260913172000_company_tax_settlement_cutover.sql");
     await apply("contract-migrations/20260913173000_company_tax_settlement_contract.sql");
+  } else {
+    const settlement = (await database.query("select phase from backend_system.tax_settlement_migration_state where singleton")).rows[0]?.phase;
+    if (settlement !== "contracted") throw new Error("filing_rehearsal_requires_settlement_contract");
+    if (direction === "filing-expand") {
+      for (const name of ["20260914200000_company_tax_return_expand.sql", "20260914201000_company_tax_return_read_contracts.sql",
+        "20260914202000_company_tax_return_import_contract.sql", "20260914203000_company_tax_return_preparation_contracts.sql",
+        "20260914022608_company_tax_return_source_contract.sql"]) {
+        await apply(`contract-migrations/${name}`);
+      }
+    } else {
+      await apply("contract-migrations/20260914012503_company_tax_return_cutover.sql");
+      await apply("contract-migrations/20260914012930_company_tax_return_contract.sql");
+    }
   }
   console.log(`Company Tax local topology ${direction} completed`);
 } finally {

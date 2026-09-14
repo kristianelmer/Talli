@@ -1,0 +1,42 @@
+{
+  "base": "9c879ff78b5ec5aa3bb639e5de4a39ab38ef9cfc",
+  "candidate": "6353c78cdc32700b92c1431732d9e782fba5612a",
+  "verdict": "PASS_BOUNDED_FOLLOWUP",
+  "closedFindings": [
+    {
+      "priority": 2,
+      "title": "Temporary Archive direct EXECUTE grant persisted",
+      "closedAt": "6353c78cdc32700b92c1431732d9e782fba5612a"
+    }
+  ],
+  "findings": [],
+  "diffSha256": "392c8898d0200f369411449a540e1b20dca75007f4b602ef171005931f6e3c00",
+  "changedFileSha256": {
+    "apps/backend/tests/test_company_tax_return_lifecycle.py": "cfe10d1862d77620667a761d4979746725f01c76dc8759dc1a6e3607cd17f26a",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/archive-acl-races.log": "dac26cd60696d6edaab5519c2c387a8db4155d60ee2e896b231ebcf92ac4ad70",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/archive-acl-red.log": "76fe0cb19f0ca96fb5059fa643c965429b1ddc454ca281ca8a76fa3293e78fad",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/filing-cutover-races.json": "6c6d285a124d7a388ed002d413782bc22d6ba2ad96aa8dd680c9e2008cc8c970",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/filing-lifecycle-archive-acl-tests.log": "f9598cef737c335184b693454e66f2838a511d59d3b3f5c0c1528461859b8296",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/manifest.json": "fc819ab00a91dd7ed59c31aaa31a3d5640c6735231da432c1ad863f08aa5c8b4",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/probe-archive-acl-red.py.txt": "2aa8a70d740567dc642fb05bdb4ef2b3321107b2471f60847c0ab8afe3b50792",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/probe-filing-cutover-races.py.txt": "5d1492910937e7aad5284f64b0a30ea14d3586e8327af661958f38054e58dfe9",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/probe-filing-cutover.py.txt": "95600069c52208570cebe61a70f67c272131f7db66efcb72d616b08a3d8868c0",
+    "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql": "d192b105d87287ba59e7b88278c1c25d51e6620d19b1b5d5e34fc416ef21597c"
+  },
+  "verifiedManifestBindings": {
+    "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql": "d192b105d87287ba59e7b88278c1c25d51e6620d19b1b5d5e34fc416ef21597c",
+    "apps/backend/tests/test_company_tax_return_lifecycle.py": "cfe10d1862d77620667a761d4979746725f01c76dc8759dc1a6e3607cd17f26a",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/filing-lifecycle-archive-acl-tests.log": "f9598cef737c335184b693454e66f2838a511d59d3b3f5c0c1528461859b8296",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/probe-archive-acl-red.py.txt": "2aa8a70d740567dc642fb05bdb4ef2b3321107b2471f60847c0ab8afe3b50792",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/probe-filing-cutover.py.txt": "95600069c52208570cebe61a70f67c272131f7db66efcb72d616b08a3d8868c0",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/archive-acl-races.log": "dac26cd60696d6edaab5519c2c387a8db4155d60ee2e896b231ebcf92ac4ad70",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/archive-acl-red.log": "76fe0cb19f0ca96fb5059fa643c965429b1ddc454ca281ca8a76fa3293e78fad",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/probe-filing-cutover-races.py.txt": "5d1492910937e7aad5284f64b0a30ea14d3586e8327af661958f38054e58dfe9",
+    "architecture/evidence/issues/152/archive-trigger-acl-followup/filing-cutover-races.json": "6c6d285a124d7a388ed002d413782bc22d6ba2ad96aa8dd680c9e2008cc8c970"
+  },
+  "raceChecksInspected": 11,
+  "lifecycleScenariosInspected": 7,
+  "runtimeTestsIndependentlyRerun": false,
+  "noSharedMutations": true,
+  "reportSha256": "ca5db3e05075c7cda30ff2b72b5a1993cfabd34453cbc89f4237889e9762fc54"
+}

@@ -1,0 +1,55 @@
+{
+  "baselineRevision": "f9838c6096640d9810381d86ef64dd8177ee35ac",
+  "status": "LOCAL_FILING_LIFECYCLE_AND_CONCURRENCY_PASS_FULL_STAGE_PENDING",
+  "pytestScenarios": 6,
+  "raceChecks": 11,
+  "relocations": [
+    {
+      "originalPath": "supabase/migrations/20260914200000_company_tax_return_expand.sql",
+      "path": "supabase/contract-migrations/20260914200000_company_tax_return_expand.sql",
+      "sha256": "ce0a4b9ab6fc7f90ea4cd851e9a2cff2da113db9c461dc5911bd6c7abfc96281"
+    },
+    {
+      "originalPath": "supabase/migrations/20260914201000_company_tax_return_read_contracts.sql",
+      "path": "supabase/contract-migrations/20260914201000_company_tax_return_read_contracts.sql",
+      "sha256": "24ebea4288c9f1357ecdd6b6c761b8b9e816fc188fcabd4e0671125996cc4ff5"
+    },
+    {
+      "originalPath": "supabase/migrations/20260914202000_company_tax_return_import_contract.sql",
+      "path": "supabase/contract-migrations/20260914202000_company_tax_return_import_contract.sql",
+      "sha256": "5b924cfe0d4771cc58723dcdc65f1c7f4612bd19bba7b0541f1ee0acd62d0cbb"
+    },
+    {
+      "originalPath": "supabase/migrations/20260914203000_company_tax_return_preparation_contracts.sql",
+      "path": "supabase/contract-migrations/20260914203000_company_tax_return_preparation_contracts.sql",
+      "sha256": "af3ea6bdb42d353a38914359fbf98615281c41560d64ebf77df18d4a6fc74080"
+    }
+  ],
+  "sql": {
+    "supabase/contract-migrations/20260914012503_company_tax_return_cutover.sql": "9d3d8641b19b4f1556088f57f7e319a584e3201c6af999c6d1db26e5cf3af4b5",
+    "supabase/contract-migrations/20260914012930_company_tax_return_contract.sql": "84269749fd846de1e3cf272427b244431c62f6a41d46f6824e880a0ef5090158",
+    "supabase/rollback/20260914012503_company_tax_return_cutover.sql": "0808d9ef883fce1dee19bcd1330f1579682481c1596e522b2b5d5c73fc9e9f07",
+    "supabase/rollback/20260914012930_company_tax_return_contract.sql": "b8f7f2190e748a8a9e9a88787b68c46f64e08a9f201cc4eb1b9ed9d5c475ed8c"
+  },
+  "changes": [
+    "Explicit migration ordering follows contracted RF and Tax settlement. Four existing artifact contents are unchanged; the shared startup topology remains available for predecessor lanes.",
+    "Six Tax families transfer with exact row hashes, original Accounts tuples, trigger modes, roles and generations preserved.",
+    "Static legacy writer fences, a shared runtime phase lock, contract-only rollback, latest-row full rollback and re-cutover are exercised.",
+    "Documents retention sees owned Tax receipts through a public Tax boolean contract.",
+    "Architecture discovery includes deferred CREATE TABLE statements, with an unowned-table negative test.",
+    "The standard Company Tax database command includes the six-scenario lifecycle test before activating the filing tables."
+  ],
+  "limits": [
+    "Only local synthetic PostgreSQL tests. No hosted migration, provider call, genuine filing, HTTP or browser credit.",
+    "The commit/race probe uses an isolated restored database on the retained owned local server; PostgreSQL catalog locks prove actual blocking.",
+    "Full release gates, full stage review, obsolete TypeScript retirement, provider workflow ownership and source handoffs remain pending."
+  ],
+  "artifacts": {
+    "filing-lifecycle-tests.log": "8f0c5271c42e2ea169c1a163518021fbcb3bc89b72e922479c6b715bdf3071ee",
+    "reset-owned-lifecycle-clone.py.txt": "dca2d9135fa01eae7f65ca7a7b18244caf638cfef31fa8b3871e473977f8cdb8",
+    "probe-filing-cutover-races.py.txt": "a6e717685e8510509f6920ef484f6aa03f329ca820c260a92a637c5a578d55d9",
+    "cutover-guard-tests.log": "1ca9ae31bf8d51cd596176c26ab1e4c6f3b54e3f2f6f4d4b854bf133e92cbcfe",
+    "filing-cutover-races.json": "4fa07c2bdd1ea1a2634f4a5fabe5ee7060e45a3280bbab5e23a63616d9582b12",
+    "filing-cutover-races.log": "dac26cd60696d6edaab5519c2c387a8db4155d60ee2e896b231ebcf92ac4ad70"
+  }
+}

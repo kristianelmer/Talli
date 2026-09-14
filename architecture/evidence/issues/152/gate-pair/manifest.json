@@ -1,0 +1,22 @@
+{
+  "status": "LOCAL_PAIR_PASS_PROTECTED_INTEGRATION_PENDING",
+  "gates": [
+    "7c9b3caae3cd278bbe381589308cf302142b58a5",
+    "a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2"
+  ],
+  "artifacts": {
+    "architecture/evidence/issues/152/gate-pair/first-adoption-standards-review-a20b1065.json": "9501748f47b40497fcc6c770bd59171244b4ba2917d6da63f7466bd0699a84fd",
+    "architecture/evidence/issues/152/gate-pair/first-gate-spec-review-7c9b3caa.json": "eb8f7ba17ddc9ae1154c8c239f64e888c12c79ebe295aab41a245a1602d823ee",
+    "architecture/evidence/issues/152/gate-pair/root-verification.json": "3ee0f33c52edab57d901a394d2d5f9e5711f94e040162841f56127198f535a88",
+    "architecture/evidence/issues/152/gate-pair/ci-34805266478-verified.json": "85c04f390e3494099737faaa3fe99b9ef682b90f60138c121ddb16be085ce60c",
+    "architecture/evidence/issues/152/gate-pair/preview-7c9b3caa.json": "4f68231b56e591fe8601f4c3664c4ec0540bd83c60d3570d76275ca17194c481",
+    "architecture/evidence/issues/152/gate-pair/first-gate-spec-review-7c9b3caa.md": "ee155c299747bd486c5c90c662fd3cf80d19557a3906b4a02c3e3e416278ab74",
+    "architecture/evidence/issues/152/gate-pair/first-adoption-standards-review-a20b1065.md": "20571910e871145be8ddb7e5536c13770fb19a229bd4045b910b8cb07bd36db1",
+    "architecture/evidence/issues/152/requirements.json": "4ceda90c09669e73cff3275eadae9bbe7723f3ea3fc7442b6a8ae9850669802e",
+    "architecture/evidence/issues/152/verification.md": "3bfb955ed672a1185e41bf69fcee76f9d87a5718ce25265b55de050fced10b3c",
+    "architecture/evidence/customer-ready-gates/7c9b3caae3cd278bbe381589308cf302142b58a5.json": "2274e6219629a14f0e6e7a4750b02db059f1eaba27213037af454f0472d33164",
+    "architecture/evidence/customer-ready-gates/7c9b3caae3cd278bbe381589308cf302142b58a5.log": "c0a6774d82439cafbc528bf5996955a3017e3aeb7dd8c197b6a7f15b144d8622",
+    "architecture/evidence/customer-ready-gates/a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2.json": "f8c6251b66e40427ea8ea010a03b45fd6ea6a11057d8e899e269bd9ab4eae0cc",
+    "architecture/evidence/customer-ready-gates/a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2.log": "b298c307c93e11ac3d16afcad13da664113766247f3195f0893e7fd6582f5212"
+  }
+}

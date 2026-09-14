@@ -1,0 +1,190 @@
+{
+  "schemaVersion": "1.0",
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_AUTHORITY_WORKFLOW_OWNERSHIP",
+  "baseRevision": "32c701e31ff83016342c47a74ab0951ba3eab05d",
+  "candidateRevision": "39b72c60ac941e92083dddfc503927a1653cb173",
+  "diffCommand": "git diff 32c701e31ff83016342c47a74ab0951ba3eab05d...39b72c60ac941e92083dddfc503927a1653cb173",
+  "commits": [
+    "39b72c60 refactor(company-tax): own authority polling and rehearsal workflow (#152)"
+  ],
+  "findings": [],
+  "sourceBindings": {
+    "apps/backend/src/talli_backend/adapters/company_tax_authority.py": {
+      "status": "A",
+      "sha256": "c6527d89d422f07de999b2c02df2fc7e8e189aeb5cc54a381acbffdb2e6089b4"
+    },
+    "apps/backend/src/talli_backend/adapters/local_company_tax_rehearsal.py": {
+      "status": "A",
+      "sha256": "5941d26360ac8068ce6dff61fcbf84b5eea5250c539e3929b316331168fbaf69"
+    },
+    "apps/backend/src/talli_backend/authority_tools/company_tax_test.py": {
+      "status": "M",
+      "sha256": "dfee89e9f4f0f20715b1a4f0084c91d913c46c94cb64252960233cb1fccfae69"
+    },
+    "apps/backend/src/talli_backend/authority_tools/company_tax_transport.py": {
+      "status": "D",
+      "sha256": "2885643310b8d6ce324551115e3d187b1aebf73e120c396d0bd12be35f6c4f5f"
+    },
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": {
+      "status": "M",
+      "sha256": "9382bf4645cf71c99173e8a8e2e0d5c3b3e8fbb40fe83660fecc39cb83668858"
+    },
+    "apps/backend/src/talli_backend/modules/company_tax_filing/authority_workflow.py": {
+      "status": "A",
+      "sha256": "f2d6eabe70e7711f0acf98f01e975341b3c574899fb1be8d48395ca5ae3aa95a"
+    },
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": {
+      "status": "M",
+      "sha256": "5efdae1f5926f7eab524c7bc610bdf63a794e73e22a5ebcfde6b22bed3327e60"
+    },
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": {
+      "status": "M",
+      "sha256": "99c5d5609374f1fc589dad9cc9134237b9ad1a2bc9c8e6a1ccbd8e7e9779dcbe"
+    },
+    "apps/backend/src/talli_backend/modules/company_tax_filing/rehearsal.py": {
+      "status": "A",
+      "sha256": "3084413656a598a48d2e05a5cc5f12bc9eccefb7606402d6c78a58afe373aa7c"
+    },
+    "apps/backend/tests/test_authority_filing_tools.py": {
+      "status": "M",
+      "sha256": "e04da56326f8921b87541fb6aafa369dc960b7507cb495b4548e62aa837ba9fd"
+    },
+    "apps/backend/tests/test_authority_filing_transports.py": {
+      "status": "M",
+      "sha256": "2a38015cabb460a6d9772f53b52bf068b4b7a6caa3a5ea8c5c7edfddd9e3092a"
+    },
+    "apps/backend/tests/test_company_tax_rehearsal.py": {
+      "status": "A",
+      "sha256": "7682fec2495b83735052bce3cdaccc96b6f64c32bbb3a5a27fff89d814dfff04"
+    },
+    "architecture/BACKEND-SYSTEM.md": {
+      "status": "M",
+      "sha256": "603e69a804e968466e901a7d1e7932cc2d59f4a5e50edc57ac074231fb1c2467"
+    },
+    "architecture/backend-system.json": {
+      "status": "M",
+      "sha256": "3e8bee2ed87bb091d8549883abcf508647c06a24792dbfa7d3b280f8d194a960"
+    },
+    "architecture/evidence/issues/152/authority-workflow-ownership/authority-ownership-architecture.log": {
+      "status": "A",
+      "sha256": "73a972f5677c86235fef074a3c7acd6c782ff2173c4318bac103899e7bfb8510"
+    },
+    "architecture/evidence/issues/152/authority-workflow-ownership/authority-ownership-tests.log": {
+      "status": "A",
+      "sha256": "ff27ecf1e6522031ec623119ad3e2d713613e764052211ff6cd6c9bc523a031d"
+    },
+    "architecture/evidence/issues/152/authority-workflow-ownership/capture-rehearsal-years.py": {
+      "status": "A",
+      "sha256": "b624b5810912e433d1c297f5c556c1e759424a50f46507c9495354023b6d9ba9"
+    },
+    "architecture/evidence/issues/152/authority-workflow-ownership/legacy-case-years.json": {
+      "status": "A",
+      "sha256": "a9b6598aee51e9e245abacdb4f5c4ea04f09016211a4e16d60fb9924b8ec1934"
+    },
+    "architecture/evidence/issues/152/authority-workflow-ownership/manifest.json": {
+      "status": "A",
+      "sha256": "fb3bfa714cad4862563f1c92448321515bf8b5cd52b1ffb062cd6d30f3649484"
+    },
+    "architecture/evidence/issues/152/authority-workflow-ownership/retained-authority-definitions.json": {
+      "status": "A",
+      "sha256": "ab3235084b0c4ceb156639c980862c47e8095c79c1808cd977fe73d850cd36cb"
+    },
+    "architecture/evidence/issues/152/typescript-retirement-reviews/typescript-retirement-spec-review-32c701e3.json": {
+      "status": "A",
+      "sha256": "ba9bca118c0851c94c120d2359fda275a915155ecc1daf8abdfcf47018993f61"
+    },
+    "architecture/evidence/issues/152/typescript-retirement-reviews/typescript-retirement-spec-review-32c701e3.md": {
+      "status": "A",
+      "sha256": "2ee2eb6988bd2381b6dde2beac97e850f217b9eccc7c2c8d627c129979a71c64"
+    },
+    "architecture/evidence/issues/152/typescript-retirement-reviews/typescript-retirement-standards-review-32c701e3.json": {
+      "status": "A",
+      "sha256": "86622cc58fb21be5d7738de22f4b7ed38f5a63de1209901376b34254d9735fb8"
+    },
+    "architecture/evidence/issues/152/typescript-retirement-reviews/typescript-retirement-standards-review-32c701e3.md": {
+      "status": "A",
+      "sha256": "a710913d9c2209989a5bc0bc3aab317d1bc80de978eea0d57d5c0d9e087f0ed0"
+    }
+  },
+  "sourceManifestChecks": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": true,
+    "apps/backend/src/talli_backend/modules/company_tax_filing/authority_workflow.py": true,
+    "apps/backend/src/talli_backend/modules/company_tax_filing/rehearsal.py": true,
+    "apps/backend/src/talli_backend/adapters/company_tax_authority.py": true,
+    "apps/backend/src/talli_backend/adapters/local_company_tax_rehearsal.py": true,
+    "apps/backend/src/talli_backend/authority_tools/company_tax_test.py": true,
+    "apps/backend/tests/test_company_tax_rehearsal.py": true,
+    "apps/backend/tests/test_authority_filing_tools.py": true,
+    "apps/backend/tests/test_authority_filing_transports.py": true
+  },
+  "evidenceManifestChecks": {
+    "legacy-case-years.json": true,
+    "authority-ownership-architecture.log": true,
+    "capture-rehearsal-years.py": true,
+    "authority-ownership-tests.log": true,
+    "retained-authority-definitions.json": true
+  },
+  "retainedAstDefinitions": {
+    "__init__": true,
+    "_altinn_token": true,
+    "_url": true,
+    "_case": true,
+    "_job": true,
+    "fetch_current": true,
+    "validate_test": true,
+    "create_instance": true,
+    "upload_envelope": true,
+    "replace_envelope": true,
+    "get_envelope_scan": true,
+    "get_instance": true,
+    "advance_to_confirmation": true,
+    "get_owner_confirmation_url": true,
+    "get_feedback_receipt": true,
+    "start_validation": true,
+    "get_validation_status": true,
+    "get_validation_result": true,
+    "wait_for_validation": true,
+    "wait_for_feedback": true,
+    "wait_for_clean_envelope": true,
+    "_element": true,
+    "exchange_maskinporten_for_altinn_token": true,
+    "_client": true,
+    "main": true,
+    "safe_summary": true
+  },
+  "sharedAndCriteriaUnchanged": {
+    "apps/backend/src/talli_backend/authority_tools/_filing.py": true,
+    "apps/backend/src/talli_backend/authority_tools/annual_accounts_test.py": true,
+    "apps/backend/src/talli_backend/authority_tools/annual_accounts_transport.py": true,
+    "apps/backend/src/talli_backend/authority_tools/company_tax_payload.py": true,
+    "architecture/evidence/issues/152/requirements.json": true
+  },
+  "independentTests": {
+    "authorityToolsTransportsRehearsalPassed": 246,
+    "payloadPassed": 8,
+    "totalPassed": 254,
+    "providerDatabaseBrowserCalls": 0,
+    "isolation": "Private exact archive; explicit PYTHONPATH; pytest -c /dev/null; bytecode/cache disabled; Node 24.20.0 on PATH"
+  },
+  "yearCapture": {
+    "byteExact": true,
+    "cases": 108,
+    "sha256": "a9b6598aee51e9e245abacdb4f5c4ea04f09016211a4e16d60fb9924b8ec1934",
+    "producerSourceSha256": "c1d41d3633b49ea300ed13d7e2ae25f5a923515641505607395ca3e0dcb659a0"
+  },
+  "privateArtifactSha256": {
+    "authority-workflow-spec-tests-39b72c60.log": "f53975ec1c2b5c5f2243d86af84aa1b95eb51f696422e97284fab9519bb3b77a",
+    "authority-workflow-spec-payload-tests-39b72c60.log": "4389b56885d24ad3c0212124adcac5049cd8550cd047de2185842dbf63b1bd56",
+    "authority-workflow-spec-capture-39b72c60.log": "ce678067b339bdf19e0ed36e1f3a8c007439b2135a412cfda3ea1169e32dd1fc",
+    "authority-workflow-spec-ast-39b72c60.json": "6846d24a897119bf5f4df8af22f73d5af5f0ccf11ab4f9da37ebc0384ff6ec2d",
+    "spec-authority-workflow-39b72c60/capture-years-private.py": "cdf7862fa5a02da01d3c30f07651ada8b0457df590c3a51184e145c397581942",
+    "spec-authority-workflow-39b72c60/private-capture/legacy-case-years.json": "a9b6598aee51e9e245abacdb4f5c4ea04f09016211a4e16d60fb9924b8ec1934"
+  },
+  "reportSha256": "674f94cdcf1449514b39995ecfb24d3c1ba4286b5b3899b7002156402e88b5c1",
+  "limits": [
+    "Mocked HTTP transport and private synthetic file fixtures only.",
+    "No shared implementation edits, database/provider/browser execution.",
+    "No full-stage/history-completeness/HTTP-browser gate/provider-activation/hosted/successor acceptance."
+  ]
+}

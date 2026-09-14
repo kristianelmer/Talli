@@ -131,6 +131,14 @@ const requiredCleanupRelations = Object.freeze([
   "documents.evidence_references"
 ]);
 const canonicalGovernanceCleanupRelations = Object.freeze(["corporate_governance.owner_dividend_payments", "corporate_governance.owner_dividend_finalizations", "corporate_governance.owner_dividend_events", "corporate_governance.owner_dividend_artifacts", "corporate_governance.owner_dividend_decisions", "corporate_governance.annual_close_finalizations", "corporate_governance.annual_close_events", "corporate_governance.annual_close_artifacts", "corporate_governance.annual_close_decisions", "corporate_governance.shareholder_loans"]);
+const canonicalTaxFilingCleanupRelations = Object.freeze([
+  "company_tax_filing.filing_submissions",
+  "company_tax_filing.filing_review_comments",
+  "company_tax_filing.filing_overrides",
+  "company_tax_filing.filing_previews",
+  "company_tax_filing.authority_test_runs",
+  "company_tax_filing.authority_permissions",
+]);
 const rolloutCleanupRelations = Object.freeze([
   "public.bank_suggestion_acceptances",
   "public.corporate_document_events",
@@ -141,6 +149,7 @@ const rolloutCleanupRelations = Object.freeze([
   "public.holding_actions",
   "public.bank_transactions",
   "company_tax_filing.settlements",
+  ...canonicalTaxFilingCleanupRelations,
   ...canonicalGovernanceCleanupRelations,
   "public.investment_lot_allocations",
   "public.investment_lots",
@@ -229,6 +238,7 @@ async function deleteBrowserOwnerCompanySources(database, companyId) {
     const remove = async (relation) => {
       if (present.has(relation)) await database.query(`delete from ${relation} where company_id = $1`, [companyId]);
     };
+    for (const relation of canonicalTaxFilingCleanupRelations) await remove(relation);
     await remove("company_tax_filing.settlements");
     for (const relation of canonicalGovernanceCleanupRelations) await remove(relation);
     // Corporate finalizations/holding actions and bank links precede the Ledger

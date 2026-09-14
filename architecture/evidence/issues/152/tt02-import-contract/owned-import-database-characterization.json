@@ -1,0 +1,1172 @@
+{
+  "sourceRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+  "fixtureSha256": "2c50fe51fb47ea12e5890198966d4b5b460565056ecc9e9d5f188fc83c1b83a7",
+  "scope": "Owned import SQL and canonical legacy Audit in one rollback-only transaction; synthetic SQL claims and temporary phase activation, not cutover, HTTP JWT/MFA, browser, provider or stage exit evidence.",
+  "transaction": "ROLLBACK_ONLY",
+  "cases": [
+    {
+      "id": "expanded-unavailable",
+      "actor": "00000000-0000-0000-0000-000000000153",
+      "aal": "aal2",
+      "output": {
+        "error": "company_tax_return_unavailable",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "unauthenticated",
+      "actor": null,
+      "aal": "aal2",
+      "output": {
+        "error": "company_tax_return_forbidden",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "owner-aal1",
+      "actor": "00000000-0000-0000-0000-000000000153",
+      "aal": "aal1",
+      "output": {
+        "error": "company_tax_evidence_mfa_required",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "outsider",
+      "actor": "00000000-0000-0000-0000-000000000155",
+      "aal": "aal2",
+      "output": {
+        "error": "company_tax_evidence_owner_required",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "reviewer",
+      "actor": "00000000-0000-0000-0000-000000000156",
+      "aal": "aal2",
+      "output": {
+        "error": "company_tax_evidence_owner_required",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "unaccepted-owner",
+      "actor": "00000000-0000-0000-0000-000000000157",
+      "aal": "aal2",
+      "output": {
+        "error": "company_tax_evidence_owner_required",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "audit-failure-rolls-back-import",
+      "actor": "00000000-0000-0000-0000-000000000153",
+      "aal": "aal2",
+      "output": {
+        "error": "synthetic_tax152_audit_failure",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "owner-import",
+      "actor": "00000000-0000-0000-0000-000000000153",
+      "aal": "aal2",
+      "output": {
+        "value": {
+          "created": true,
+          "filing_submission_id": "8f9ad79f-87b3-482a-a352-07e3bc6e73da",
+          "authority_test_run_id": "a49d7d4a-4daa-443e-bd03-8dd352e83ddd"
+        }
+      }
+    },
+    {
+      "id": "same-owner-replay",
+      "actor": "00000000-0000-0000-0000-000000000153",
+      "aal": "aal2",
+      "output": {
+        "value": {
+          "created": false,
+          "filing_submission_id": "8f9ad79f-87b3-482a-a352-07e3bc6e73da",
+          "authority_test_run_id": "a49d7d4a-4daa-443e-bd03-8dd352e83ddd"
+        }
+      }
+    },
+    {
+      "id": "second-owner-replay",
+      "actor": "00000000-0000-0000-0000-000000000154",
+      "aal": "aal2",
+      "output": {
+        "value": {
+          "created": false,
+          "filing_submission_id": "8f9ad79f-87b3-482a-a352-07e3bc6e73da",
+          "authority_test_run_id": "a49d7d4a-4daa-443e-bd03-8dd352e83ddd"
+        }
+      }
+    },
+    {
+      "id": "same-identity-conflict",
+      "actor": "00000000-0000-0000-0000-000000000153",
+      "aal": "aal2",
+      "output": {
+        "error": "company_tax_evidence_conflict",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "unsafe-url",
+      "actor": "00000000-0000-0000-0000-000000000153",
+      "aal": "aal2",
+      "output": {
+        "error": "company_tax_evidence_invalid_payload",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "raw-content",
+      "actor": "00000000-0000-0000-0000-000000000153",
+      "aal": "aal2",
+      "output": {
+        "error": "company_tax_evidence_forbidden_content",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "missing-receipt-hash",
+      "actor": "00000000-0000-0000-0000-000000000153",
+      "aal": "aal2",
+      "output": {
+        "error": "company_tax_evidence_invalid_payload",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "wrong-company-binding",
+      "actor": "00000000-0000-0000-0000-000000000153",
+      "aal": "aal2",
+      "output": {
+        "error": "company_tax_evidence_invalid_payload",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "timestamp-infinity",
+      "actor": "00000000-0000-0000-0000-000000000153",
+      "aal": "aal2",
+      "output": {
+        "error": "company_tax_evidence_invalid_payload",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "timestamp-seven-fractions",
+      "actor": "00000000-0000-0000-0000-000000000153",
+      "aal": "aal2",
+      "output": {
+        "error": "company_tax_evidence_invalid_payload",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "authority-status-upgrade",
+      "actor": "00000000-0000-0000-0000-000000000153",
+      "aal": "aal2",
+      "output": {
+        "error": "company_tax_evidence_invalid_payload",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "id": "production-mode",
+      "actor": "00000000-0000-0000-0000-000000000153",
+      "aal": "aal2",
+      "output": {
+        "error": "company_tax_evidence_invalid_payload",
+        "sqlstate": "P0001"
+      }
+    }
+  ],
+  "databaseVersion": "17.6",
+  "legacyRpcBodySha256": "5146cfe25ed01c5cc6c6061c7902f33bc954404c6f7805baa96791b62f8d247d",
+  "catalog": [
+    [
+      {
+        "rls": true,
+        "table": "settlements",
+        "schema": "company_tax_filing",
+        "forceRls": true,
+        "constraints": [
+          {
+            "name": "settlements_action_type_check",
+            "definition": "CHECK ((action_type = 'tax_settlement'::text))"
+          },
+          {
+            "name": "settlements_income_year_check",
+            "definition": "CHECK (((income_year >= 2000) AND (income_year <= 2100)))"
+          },
+          {
+            "name": "settlements_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "settlements_risk_level_check",
+            "definition": "CHECK ((risk_level = ANY (ARRAY['ready'::text, 'warning'::text, 'block'::text])))"
+          },
+          {
+            "name": "tax_settlement_actor_fk",
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "tax_settlement_bank_fk",
+            "definition": "FOREIGN KEY (bank_transaction_id) REFERENCES banking.transactions(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "tax_settlement_company_fk",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "tax_settlement_document_fk",
+            "definition": "FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE SET NULL"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "authority_permissions",
+        "schema": "public",
+        "forceRls": false,
+        "constraints": [
+          {
+            "name": "authority_permissions_check",
+            "definition": "CHECK ((submitter_user_id = confirmed_by))"
+          },
+          {
+            "name": "authority_permissions_company_id_fkey",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "authority_permissions_company_id_obligation_key",
+            "definition": "UNIQUE (company_id, obligation)"
+          },
+          {
+            "name": "authority_permissions_confirmed_by_fkey",
+            "definition": "FOREIGN KEY (confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "authority_permissions_obligation_check",
+            "definition": "CHECK ((obligation = ANY (ARRAY['aksjonaerregisteroppgaven'::text, 'skattemelding'::text, 'aarsregnskap'::text])))"
+          },
+          {
+            "name": "authority_permissions_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "authority_permissions_submitter_user_id_fkey",
+            "definition": "FOREIGN KEY (submitter_user_id) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "authority_test_runs",
+        "schema": "public",
+        "forceRls": false,
+        "constraints": [
+          {
+            "name": "authority_test_runs_company_id_fkey",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "authority_test_runs_environment_check",
+            "definition": "CHECK ((environment = ANY (ARRAY['test'::text, 'manual_evidence'::text])))"
+          },
+          {
+            "name": "authority_test_runs_obligation_check",
+            "definition": "CHECK ((obligation = ANY (ARRAY['aksjonaerregisteroppgaven'::text, 'skattemelding'::text, 'aarsregnskap'::text])))"
+          },
+          {
+            "name": "authority_test_runs_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "authority_test_runs_recorded_by_fkey",
+            "definition": "FOREIGN KEY (recorded_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "authority_test_runs_status_check",
+            "definition": "CHECK ((status = ANY (ARRAY['accepted'::text, 'rejected'::text, 'blocked'::text, 'pending'::text])))"
+          },
+          {
+            "name": "authority_test_runs_test_reference_check",
+            "definition": "CHECK ((test_reference <> ''::text))"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "filing_overrides",
+        "schema": "public",
+        "forceRls": false,
+        "constraints": [
+          {
+            "name": "filing_overrides_check",
+            "definition": "CHECK (((old_value <> ''::text) OR (new_value <> ''::text)))"
+          },
+          {
+            "name": "filing_overrides_company_id_fkey",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_overrides_created_by_fkey",
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_overrides_field_target_check",
+            "definition": "CHECK ((field_target <> ''::text))"
+          },
+          {
+            "name": "filing_overrides_filing_check",
+            "definition": "CHECK ((filing <> ''::text))"
+          },
+          {
+            "name": "filing_overrides_income_year_check",
+            "definition": "CHECK (((income_year >= 2000) AND (income_year <= 2100)))"
+          },
+          {
+            "name": "filing_overrides_owner_confirmed_by_fkey",
+            "definition": "FOREIGN KEY (owner_confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_overrides_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "filing_overrides_preview_id_fkey",
+            "definition": "FOREIGN KEY (preview_id) REFERENCES filing_previews(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_overrides_reason_check",
+            "definition": "CHECK ((reason <> ''::text))"
+          },
+          {
+            "name": "filing_overrides_risk_level_check",
+            "definition": "CHECK ((risk_level = ANY (ARRAY['advisory'::text, 'warning'::text, 'block'::text])))"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "filing_previews",
+        "schema": "public",
+        "forceRls": false,
+        "constraints": [
+          {
+            "name": "filing_previews_company_id_fkey",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_previews_created_by_fkey",
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_previews_income_year_check",
+            "definition": "CHECK (((income_year >= 2000) AND (income_year <= 2100)))"
+          },
+          {
+            "name": "filing_previews_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "filing_previews_setup_id_fkey",
+            "definition": "FOREIGN KEY (setup_id) REFERENCES shareholder_register_filing.opening_balance_setups(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_previews_status_check",
+            "definition": "CHECK ((status = ANY (ARRAY['ready'::text, 'blocked'::text, 'warning'::text])))"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "filing_review_comments",
+        "schema": "public",
+        "forceRls": false,
+        "constraints": [
+          {
+            "name": "filing_review_comments_acknowledged_by_fkey",
+            "definition": "FOREIGN KEY (acknowledged_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_review_comments_body_check",
+            "definition": "CHECK ((body <> ''::text))"
+          },
+          {
+            "name": "filing_review_comments_company_id_fkey",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_review_comments_created_by_fkey",
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_review_comments_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "filing_review_comments_preview_id_fkey",
+            "definition": "FOREIGN KEY (preview_id) REFERENCES filing_previews(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_review_comments_severity_check",
+            "definition": "CHECK ((severity = ANY (ARRAY['advisory'::text, 'hard_block'::text])))"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "filing_submissions",
+        "schema": "public",
+        "forceRls": false,
+        "constraints": [
+          {
+            "name": "filing_submissions_adapter_mode_check",
+            "definition": "CHECK ((adapter_mode = ANY (ARRAY['simulation'::text, 'test_authority'::text, 'production'::text])))"
+          },
+          {
+            "name": "filing_submissions_authority_confirmed_by_fkey",
+            "definition": "FOREIGN KEY (authority_confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_authority_mode_shape_check",
+            "definition": "CHECK ((((mode = 'simulation'::text) AND (preview_id IS NOT NULL) AND (authority_test_run_id IS NULL)) OR ((mode = 'test_authority'::text) AND (preview_id IS NULL) AND (authority_test_run_id IS NOT NULL))))"
+          },
+          {
+            "name": "filing_submissions_authority_test_run_id_fkey",
+            "definition": "FOREIGN KEY (authority_test_run_id) REFERENCES authority_test_runs(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_company_id_fkey",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_submissions_created_by_fkey",
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_income_year_check",
+            "definition": "CHECK (((income_year >= 2000) AND (income_year <= 2100)))"
+          },
+          {
+            "name": "filing_submissions_mode_check",
+            "definition": "CHECK ((mode = ANY (ARRAY['simulation'::text, 'test_authority'::text])))"
+          },
+          {
+            "name": "filing_submissions_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "filing_submissions_preview_confirmed_by_fkey",
+            "definition": "FOREIGN KEY (preview_confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_preview_id_fkey",
+            "definition": "FOREIGN KEY (preview_id) REFERENCES filing_previews(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_submissions_preview_id_key",
+            "definition": "UNIQUE (preview_id)"
+          },
+          {
+            "name": "filing_submissions_setup_id_fkey",
+            "definition": "FOREIGN KEY (setup_id) REFERENCES shareholder_register_filing.opening_balance_setups(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_status_check",
+            "definition": "CHECK ((status = ANY (ARRAY['ready'::text, 'authority_confirmed'::text, 'preview_confirmed'::text, 'submitting'::text, 'submitted'::text, 'feedback_ready'::text, 'receipt_stored'::text, 'failed_retryable'::text, 'failed_blocked'::text])))"
+          },
+          {
+            "name": "filing_submissions_submitted_by_fkey",
+            "definition": "FOREIGN KEY (submitted_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "authority_permissions",
+        "schema": "shareholder_register_filing",
+        "forceRls": true,
+        "constraints": [
+          {
+            "name": "authority_permissions_check",
+            "definition": "CHECK ((submitter_user_id = confirmed_by))"
+          },
+          {
+            "name": "authority_permissions_company_id_fkey",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "authority_permissions_company_id_obligation_key",
+            "definition": "UNIQUE (company_id, obligation)"
+          },
+          {
+            "name": "authority_permissions_confirmed_by_fkey",
+            "definition": "FOREIGN KEY (confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "authority_permissions_obligation_check",
+            "definition": "CHECK ((obligation = ANY (ARRAY['aksjonaerregisteroppgaven'::text, 'skattemelding'::text, 'aarsregnskap'::text])))"
+          },
+          {
+            "name": "authority_permissions_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "authority_permissions_submitter_user_id_fkey",
+            "definition": "FOREIGN KEY (submitter_user_id) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "rf151_owned_obligation",
+            "definition": "CHECK ((obligation = 'aksjonaerregisteroppgaven'::text))"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "authority_test_runs",
+        "schema": "shareholder_register_filing",
+        "forceRls": true,
+        "constraints": [
+          {
+            "name": "authority_test_runs_company_id_fkey",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "authority_test_runs_environment_check",
+            "definition": "CHECK ((environment = ANY (ARRAY['test'::text, 'manual_evidence'::text])))"
+          },
+          {
+            "name": "authority_test_runs_obligation_check",
+            "definition": "CHECK ((obligation = ANY (ARRAY['aksjonaerregisteroppgaven'::text, 'skattemelding'::text, 'aarsregnskap'::text])))"
+          },
+          {
+            "name": "authority_test_runs_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "authority_test_runs_recorded_by_fkey",
+            "definition": "FOREIGN KEY (recorded_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "authority_test_runs_status_check",
+            "definition": "CHECK ((status = ANY (ARRAY['accepted'::text, 'rejected'::text, 'blocked'::text, 'pending'::text])))"
+          },
+          {
+            "name": "authority_test_runs_test_reference_check",
+            "definition": "CHECK ((test_reference <> ''::text))"
+          },
+          {
+            "name": "rf151_owned_obligation",
+            "definition": "CHECK ((obligation = 'aksjonaerregisteroppgaven'::text))"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "filing_overrides",
+        "schema": "shareholder_register_filing",
+        "forceRls": true,
+        "constraints": [
+          {
+            "name": "filing_overrides_check",
+            "definition": "CHECK (((old_value <> ''::text) OR (new_value <> ''::text)))"
+          },
+          {
+            "name": "filing_overrides_company_id_fkey",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_overrides_created_by_fkey",
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_overrides_field_target_check",
+            "definition": "CHECK ((field_target <> ''::text))"
+          },
+          {
+            "name": "filing_overrides_filing_check",
+            "definition": "CHECK ((filing <> ''::text))"
+          },
+          {
+            "name": "filing_overrides_income_year_check",
+            "definition": "CHECK (((income_year >= 2000) AND (income_year <= 2100)))"
+          },
+          {
+            "name": "filing_overrides_owner_confirmed_by_fkey",
+            "definition": "FOREIGN KEY (owner_confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_overrides_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "filing_overrides_preview_id_fkey",
+            "definition": "FOREIGN KEY (preview_id) REFERENCES shareholder_register_filing.filing_previews(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_overrides_reason_check",
+            "definition": "CHECK ((reason <> ''::text))"
+          },
+          {
+            "name": "filing_overrides_risk_level_check",
+            "definition": "CHECK ((risk_level = ANY (ARRAY['advisory'::text, 'warning'::text, 'block'::text])))"
+          },
+          {
+            "name": "rf151_owned_label",
+            "definition": "CHECK ((filing = ANY (ARRAY['aksjonærregisteroppgaven'::text, 'aksjonaerregisteroppgaven'::text])))"
+          },
+          {
+            "name": "rf151_preview_scope_binding",
+            "definition": "FOREIGN KEY (preview_id, company_id, income_year) REFERENCES shareholder_register_filing.filing_previews(id, company_id, income_year)"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "filing_previews",
+        "schema": "shareholder_register_filing",
+        "forceRls": true,
+        "constraints": [
+          {
+            "name": "filing_previews_company_id_fkey",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_previews_created_by_fkey",
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_previews_income_year_check",
+            "definition": "CHECK (((income_year >= 2000) AND (income_year <= 2100)))"
+          },
+          {
+            "name": "filing_previews_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "filing_previews_setup_id_fkey",
+            "definition": "FOREIGN KEY (setup_id) REFERENCES shareholder_register_filing.opening_balance_setups(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_previews_status_check",
+            "definition": "CHECK ((status = ANY (ARRAY['ready'::text, 'blocked'::text, 'warning'::text])))"
+          },
+          {
+            "name": "rf151_owned_label",
+            "definition": "CHECK ((filing = ANY (ARRAY['aksjonærregisteroppgaven'::text, 'aksjonaerregisteroppgaven'::text])))"
+          },
+          {
+            "name": "rf151_preview_company",
+            "definition": "UNIQUE (id, company_id)"
+          },
+          {
+            "name": "rf151_preview_identity",
+            "definition": "UNIQUE (id, company_id, income_year)"
+          },
+          {
+            "name": "rf151_preview_opening_binding",
+            "definition": "FOREIGN KEY (setup_id, company_id, income_year) REFERENCES shareholder_register_filing.opening_balance_setups(id, company_id, income_year)"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "filing_review_comments",
+        "schema": "shareholder_register_filing",
+        "forceRls": true,
+        "constraints": [
+          {
+            "name": "filing_review_comments_acknowledged_by_fkey",
+            "definition": "FOREIGN KEY (acknowledged_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_review_comments_body_check",
+            "definition": "CHECK ((body <> ''::text))"
+          },
+          {
+            "name": "filing_review_comments_company_id_fkey",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_review_comments_created_by_fkey",
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_review_comments_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "filing_review_comments_preview_id_fkey",
+            "definition": "FOREIGN KEY (preview_id) REFERENCES shareholder_register_filing.filing_previews(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_review_comments_severity_check",
+            "definition": "CHECK ((severity = ANY (ARRAY['advisory'::text, 'hard_block'::text])))"
+          },
+          {
+            "name": "rf151_owned_target",
+            "definition": "CHECK ((target = 'rf1086_preview'::text))"
+          },
+          {
+            "name": "rf151_review_preview_binding",
+            "definition": "FOREIGN KEY (preview_id, company_id) REFERENCES shareholder_register_filing.filing_previews(id, company_id)"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "filing_submissions",
+        "schema": "shareholder_register_filing",
+        "forceRls": true,
+        "constraints": [
+          {
+            "name": "filing_submissions_adapter_mode_check",
+            "definition": "CHECK ((adapter_mode = ANY (ARRAY['simulation'::text, 'test_authority'::text, 'production'::text])))"
+          },
+          {
+            "name": "filing_submissions_authority_confirmed_by_fkey",
+            "definition": "FOREIGN KEY (authority_confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_authority_mode_shape_check",
+            "definition": "CHECK ((((mode = 'simulation'::text) AND (preview_id IS NOT NULL) AND (authority_test_run_id IS NULL)) OR ((mode = 'test_authority'::text) AND (preview_id IS NULL) AND (authority_test_run_id IS NOT NULL))))"
+          },
+          {
+            "name": "filing_submissions_authority_test_run_id_fkey",
+            "definition": "FOREIGN KEY (authority_test_run_id) REFERENCES shareholder_register_filing.authority_test_runs(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_company_id_fkey",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_submissions_created_by_fkey",
+            "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_income_year_check",
+            "definition": "CHECK (((income_year >= 2000) AND (income_year <= 2100)))"
+          },
+          {
+            "name": "filing_submissions_mode_check",
+            "definition": "CHECK ((mode = ANY (ARRAY['simulation'::text, 'test_authority'::text])))"
+          },
+          {
+            "name": "filing_submissions_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "filing_submissions_preview_confirmed_by_fkey",
+            "definition": "FOREIGN KEY (preview_confirmed_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_preview_id_fkey",
+            "definition": "FOREIGN KEY (preview_id) REFERENCES shareholder_register_filing.filing_previews(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "filing_submissions_preview_id_key",
+            "definition": "UNIQUE (preview_id)"
+          },
+          {
+            "name": "filing_submissions_setup_id_fkey",
+            "definition": "FOREIGN KEY (setup_id) REFERENCES shareholder_register_filing.opening_balance_setups(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "filing_submissions_status_check",
+            "definition": "CHECK ((status = ANY (ARRAY['ready'::text, 'authority_confirmed'::text, 'preview_confirmed'::text, 'submitting'::text, 'submitted'::text, 'feedback_ready'::text, 'receipt_stored'::text, 'failed_retryable'::text, 'failed_blocked'::text])))"
+          },
+          {
+            "name": "filing_submissions_submitted_by_fkey",
+            "definition": "FOREIGN KEY (submitted_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "rf151_owned_label",
+            "definition": "CHECK ((filing = ANY (ARRAY['aksjonærregisteroppgaven'::text, 'aksjonaerregisteroppgaven'::text])))"
+          },
+          {
+            "name": "rf151_preview_scope_binding",
+            "definition": "FOREIGN KEY (preview_id, company_id, income_year) REFERENCES shareholder_register_filing.filing_previews(id, company_id, income_year)"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "production_feedback_artifacts",
+        "schema": "shareholder_register_filing",
+        "forceRls": true,
+        "constraints": [
+          {
+            "name": "production_feedback_artifacts_authority_reference_check",
+            "definition": "CHECK (((length(TRIM(BOTH FROM authority_reference)) >= 1) AND (length(TRIM(BOTH FROM authority_reference)) <= 500)))"
+          },
+          {
+            "name": "production_feedback_artifacts_byte_length_check",
+            "definition": "CHECK (((byte_length >= 1) AND (byte_length <= 10485760)))"
+          },
+          {
+            "name": "production_feedback_artifacts_classification_check",
+            "definition": "CHECK ((classification = ANY (ARRAY['accepted'::text, 'rejected'::text, 'action_required'::text])))"
+          },
+          {
+            "name": "production_feedback_artifacts_company_id_fkey",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "production_feedback_artifacts_content_type_check",
+            "definition": "CHECK ((content_type = ANY (ARRAY['application/xml'::text, 'text/xml'::text, 'application/pdf'::text, 'text/plain'::text, 'application/octet-stream'::text])))"
+          },
+          {
+            "name": "production_feedback_artifacts_document_id_fkey",
+            "definition": "FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "production_feedback_artifacts_document_id_key",
+            "definition": "UNIQUE (document_id)"
+          },
+          {
+            "name": "production_feedback_artifacts_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "production_feedback_artifacts_sha256_check",
+            "definition": "CHECK ((sha256 ~ '^[a-f0-9]{64}$'::text))"
+          },
+          {
+            "name": "production_feedback_artifacts_submission_id_fkey",
+            "definition": "FOREIGN KEY (submission_id) REFERENCES shareholder_register_filing.production_filing_submissions(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "production_feedback_artifacts_submission_id_sha256_key",
+            "definition": "UNIQUE (submission_id, sha256)"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "production_filing_events",
+        "schema": "shareholder_register_filing",
+        "forceRls": true,
+        "constraints": [
+          {
+            "name": "production_filing_events_attempt_check",
+            "definition": "CHECK (((attempt >= 1) AND (attempt <= 20)))"
+          },
+          {
+            "name": "production_filing_events_authority_reference_check",
+            "definition": "CHECK (((authority_reference IS NULL) OR (length(authority_reference) <= 500)))"
+          },
+          {
+            "name": "production_filing_events_body_hash_check",
+            "definition": "CHECK (((body_hash IS NULL) OR (body_hash ~ '^[0-9a-f]{64}$'::text)))"
+          },
+          {
+            "name": "production_filing_events_check",
+            "definition": "CHECK (((operation_state <> 'prepared'::text) OR (authority_reference IS NULL)))"
+          },
+          {
+            "name": "production_filing_events_check1",
+            "definition": "CHECK (((operation_state <> ALL (ARRAY['failed'::text, 'unknown'::text])) OR (failure_class IS NOT NULL)))"
+          },
+          {
+            "name": "production_filing_events_correlation_id_check",
+            "definition": "CHECK (((correlation_id IS NULL) OR (correlation_id ~ '^[A-Za-z0-9._:-]{1,200}$'::text)))"
+          },
+          {
+            "name": "production_filing_events_failure_class_check",
+            "definition": "CHECK (((failure_class IS NULL) OR (failure_class = ANY (ARRAY['retryable'::text, 'blocked'::text, 'unknown'::text]))))"
+          },
+          {
+            "name": "production_filing_events_operation_name_check",
+            "definition": "CHECK (((length(TRIM(BOTH FROM operation_name)) >= 1) AND (length(TRIM(BOTH FROM operation_name)) <= 120)))"
+          },
+          {
+            "name": "production_filing_events_operation_state_check",
+            "definition": "CHECK ((operation_state = ANY (ARRAY['prepared'::text, 'succeeded'::text, 'failed'::text, 'unknown'::text])))"
+          },
+          {
+            "name": "production_filing_events_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "production_filing_events_resulting_status_check",
+            "definition": "CHECK ((resulting_status = ANY (ARRAY['approved'::text, 'sending'::text, 'received'::text, 'processing'::text, 'accepted'::text, 'rejected'::text, 'action_required'::text, 'unknown'::text])))"
+          },
+          {
+            "name": "production_filing_events_safe_error_code_check",
+            "definition": "CHECK (((safe_error_code IS NULL) OR (safe_error_code ~ '^[A-Z0-9_]{1,100}$'::text)))"
+          },
+          {
+            "name": "production_filing_events_submission_id_fkey",
+            "definition": "FOREIGN KEY (submission_id) REFERENCES shareholder_register_filing.production_filing_submissions(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "production_filing_events_submission_id_operation_name_attem_key",
+            "definition": "UNIQUE (submission_id, operation_name, attempt, operation_state)"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "rls": true,
+        "table": "production_filing_submissions",
+        "schema": "shareholder_register_filing",
+        "forceRls": true,
+        "constraints": [
+          {
+            "name": "production_filing_submissions_adapter_version_check",
+            "definition": "CHECK (((length(TRIM(BOTH FROM adapter_version)) >= 1) AND (length(TRIM(BOTH FROM adapter_version)) <= 100)))"
+          },
+          {
+            "name": "production_filing_submissions_approval_id_fkey",
+            "definition": "FOREIGN KEY (approval_id) REFERENCES shareholder_register_filing.filing_approval_snapshots(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "production_filing_submissions_approval_id_key",
+            "definition": "UNIQUE (approval_id)"
+          },
+          {
+            "name": "production_filing_submissions_authority_references_check",
+            "definition": "CHECK ((jsonb_typeof(authority_references) = 'object'::text))"
+          },
+          {
+            "name": "production_filing_submissions_case_profile_check",
+            "definition": "CHECK ((case_profile = 'rf1086_no_activity_v1'::text))"
+          },
+          {
+            "name": "production_filing_submissions_check",
+            "definition": "CHECK ((submitted_by = user_id))"
+          },
+          {
+            "name": "production_filing_submissions_company_id_fkey",
+            "definition": "FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE"
+          },
+          {
+            "name": "production_filing_submissions_entitlement_id_fkey",
+            "definition": "FOREIGN KEY (entitlement_id) REFERENCES billing.production_pilot_entitlements(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "production_filing_submissions_environment_check",
+            "definition": "CHECK ((environment = 'production'::text))"
+          },
+          {
+            "name": "production_filing_submissions_feedback_artifact_count_check",
+            "definition": "CHECK ((feedback_artifact_count >= 0))"
+          },
+          {
+            "name": "production_filing_submissions_feedback_correlation_id_check",
+            "definition": "CHECK (((feedback_correlation_id IS NULL) OR (feedback_correlation_id ~ '^[A-Za-z0-9._:-]{1,200}$'::text)))"
+          },
+          {
+            "name": "production_filing_submissions_feedback_safe_error_code_check",
+            "definition": "CHECK (((feedback_safe_error_code IS NULL) OR (feedback_safe_error_code ~ '^[A-Z0-9_]{1,100}$'::text)))"
+          },
+          {
+            "name": "production_filing_submissions_feedback_state_check",
+            "definition": "CHECK ((feedback_state = ANY (ARRAY['sent'::text, 'processing'::text, 'accepted'::text, 'rejected'::text, 'action_required'::text, 'unknown'::text])))"
+          },
+          {
+            "name": "production_filing_submissions_income_year_check",
+            "definition": "CHECK (((income_year >= 2000) AND (income_year <= 2100)))"
+          },
+          {
+            "name": "production_filing_submissions_obligation_check",
+            "definition": "CHECK ((obligation = 'aksjonaerregisteroppgaven'::text))"
+          },
+          {
+            "name": "production_filing_submissions_payload_hash_check",
+            "definition": "CHECK ((payload_hash ~ '^[0-9a-f]{64}$'::text))"
+          },
+          {
+            "name": "production_filing_submissions_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "production_filing_submissions_status_check",
+            "definition": "CHECK ((status = ANY (ARRAY['approved'::text, 'sending'::text, 'received'::text, 'processing'::text, 'accepted'::text, 'rejected'::text, 'action_required'::text, 'unknown'::text])))"
+          },
+          {
+            "name": "production_filing_submissions_submitted_by_fkey",
+            "definition": "FOREIGN KEY (submitted_by) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "production_filing_submissions_supersedes_submission_id_fkey",
+            "definition": "FOREIGN KEY (supersedes_submission_id) REFERENCES shareholder_register_filing.production_filing_submissions(id) ON DELETE RESTRICT"
+          },
+          {
+            "name": "production_filing_submissions_user_id_fkey",
+            "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE RESTRICT"
+          }
+        ]
+      }
+    ]
+  ],
+  "migrationHashes": {
+    "20260914200000_company_tax_return_expand.sql": "ce0a4b9ab6fc7f90ea4cd851e9a2cff2da113db9c461dc5911bd6c7abfc96281",
+    "20260914201000_company_tax_return_read_contracts.sql": "24ebea4288c9f1357ecdd6b6c761b8b9e816fc188fcabd4e0671125996cc4ff5",
+    "20260914202000_company_tax_return_import_contract.sql": "5b924cfe0d4771cc58723dcdc65f1c7f4612bd19bba7b0541f1ee0acd62d0cbb"
+  },
+  "auditFailureLeavesNoAuthoritySubmissionOrAuditRow": true,
+  "outsiderRlsVisibleRows": 0,
+  "persistedRows": {
+    "authority_test_runs": [
+      {
+        "id": "a49d7d4a-4daa-443e-bd03-8dd352e83ddd",
+        "status": "pending",
+        "company_id": "00000000-0000-0000-0000-000000000152",
+        "obligation": "skattemelding",
+        "environment": "test",
+        "recorded_at": "2026-07-14T12:32:00+00:00",
+        "recorded_by": "00000000-0000-0000-0000-000000000153",
+        "evidence_url": "https://evidence.example/synthetic.json",
+        "payload_hash": "sha256:16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+        "test_reference": "tt02:51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+        "feedback_summary": "validertOK; personbekreftelse fullført; offisiell tilbakemelding mottatt; myndighetsutfall venter på klassifisering.",
+        "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+        "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584"
+      }
+    ],
+    "filing_submissions": [
+      {
+        "id": "8f9ad79f-87b3-482a-a352-07e3bc6e73da",
+        "mode": "test_authority",
+        "calls": [
+          {
+            "status": "validertOK",
+            "endpoint": "skatteetaten:company-tax-validation",
+            "body_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "created_at": "2026-07-14T12:20:00.000Z",
+            "idempotency_key": null
+          },
+          {
+            "status": "confirmation_prepared",
+            "endpoint": "altinn:owner-confirmation-handoff",
+            "body_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "created_at": "2026-07-14T12:21:00.000Z",
+            "idempotency_key": null
+          },
+          {
+            "status": "received",
+            "endpoint": "altinn:official-feedback-receipt",
+            "body_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "created_at": "2026-07-14T12:32:00.000Z",
+            "idempotency_key": null
+          }
+        ],
+        "filing": "skattemelding for AS",
+        "status": "feedback_ready",
+        "setup_id": null,
+        "company_id": "00000000-0000-0000-0000-000000000152",
+        "created_at": "2026-09-13T23:49:07.352382+00:00",
+        "created_by": "00000000-0000-0000-0000-000000000153",
+        "preview_id": null,
+        "receipt_id": "70beee03-d8c2-4584-b366-8231c6de6584",
+        "updated_at": "2026-07-14T12:32:00+00:00",
+        "income_year": 2025,
+        "adapter_mode": "test_authority",
+        "failure_code": null,
+        "payload_hash": "16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+        "submitted_by": null,
+        "feedback_items": [
+          {
+            "code": "COMPANY_TAX_AUTHORITY_OUTCOME_PENDING",
+            "message": "Offisiell tilbakemelding er mottatt, men myndighetsutfallet venter på klassifisering.",
+            "severity": "warning",
+            "documentId": "70beee03-d8c2-4584-b366-8231c6de6584"
+          }
+        ],
+        "failure_message": null,
+        "idempotency_key": "company-tax:00000000-0000-0000-0000-000000000152:2025:16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+        "receipt_metadata": {
+          "status": "feedback_ready",
+          "dataType": "tilbakemelding",
+          "authority": "skatteetaten",
+          "receiptId": "70beee03-d8c2-4584-b366-8231c6de6584",
+          "reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108/data/70beee03-d8c2-4584-b366-8231c6de6584",
+          "archivedAt": "2026-07-14T12:31:00.000Z",
+          "byteLength": 527,
+          "receivedAt": "2026-07-14T12:32:00.000Z",
+          "contentType": "application/xml",
+          "contentSha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "processEndedAt": "2026-07-14T12:30:00.000Z",
+          "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "feedbackDocumentIds": [
+            "70beee03-d8c2-4584-b366-8231c6de6584"
+          ]
+        },
+        "submitted_payload": null,
+        "preview_confirmed_at": null,
+        "preview_confirmed_by": null,
+        "authority_test_run_id": "a49d7d4a-4daa-443e-bd03-8dd352e83ddd",
+        "feedback_document_ids": [
+          "70beee03-d8c2-4584-b366-8231c6de6584"
+        ],
+        "submitted_payload_ref": {
+          "storedAt": "2026-07-14T12:32:00.000Z",
+          "incomeYear": 2025,
+          "payloadHash": "16b354c7f61dca594b94083aa422f6fa5d711c7fead0f85ba1e09ee3c9b14488",
+          "envelopeDataId": "7bbb17d7-5af0-4a17-9ed6-0647bcc845b5",
+          "archiveReference": "https://platform.tt02.altinn.no/storage/api/v1/instances/51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108",
+          "companyOrgNumber": "310279617",
+          "skattemeldingHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "submissionEnvelopeHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "validationEnvelopeHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "naeringsspesifikasjonHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "currentDocumentReferenceHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        },
+        "authority_confirmed_at": null,
+        "authority_confirmed_by": null
+      }
+    ],
+    "audit_events": [
+      {
+        "id": "e82ff960-f53f-4977-b8d8-9dbb0e88080e",
+        "action": "company_tax_tt02_evidence_imported",
+        "message": "Skattemelding TT02-evidens importert og venter på klassifisering med ref tt02:51549454/60d6fdca-9e11-49d4-b55d-73b8bb5a2108.",
+        "actor_id": "00000000-0000-0000-0000-000000000153",
+        "category": "submission",
+        "company_id": "00000000-0000-0000-0000-000000000152",
+        "created_at": "2026-09-13T23:49:07.352382+00:00"
+      }
+    ]
+  },
+  "replayAndRejectedRequestsPreserveExactRows": true,
+  "status": "PASS",
+  "fixtureRollbackVerified": true
+}

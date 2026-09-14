@@ -1,0 +1,22 @@
+{
+  "baselineRevision": "6d42211fab713a73532c349aa6e7f1e60d625a97",
+  "status": "FULL_BOOLEAN_PAYLOAD_PARITY_RESTORED",
+  "finding": "One remaining Python bool conversion affected derived.noActivity even after feedback and readiness used ECMAScript conversion.",
+  "change": "Use the same truthy conversion for the derived flag. Expand the exact predecessor captures to all candidate schema, derived, fields and feedback for the existing 45 input cases.",
+  "tests": 388,
+  "priorInputFixtureUnchanged": true,
+  "extendedCapture": "architecture/evidence/issues/152/legacy-tax-boolean-payloads.json",
+  "extendedCaptureSha256": "c9deb9d6dc58e42652fbe6450b881b97995e4740bfe18eaa948926309f0f68cf",
+  "limits": [
+    "Pure/preview behavior only; no provider, business write, durable cutover or stage-exit credit.",
+    "Web consumer work remains separate and uncommitted."
+  ],
+  "artifacts": {
+    "tax-boolean-payload-tests.log": "919ff4acf6e5b7d65177b96a0fa4a497d3ea53c3e8ed6cc14eb7222d88e9bf35",
+    "assessment-boolean-standards-followup-6d42211f.json": "535ad0fcf05a31e645791cc8a662ab8a6dfec4180392a44110f13eaa9787b8dd",
+    "assessment-boolean-standards-followup-6d42211f.md": "4f6f47919d4b81c0a25d5e5628ce1f3a2ad67d704f908caeff053bf5de62532c",
+    "assessment-boolean-spec-followup-6d42211f.md": "813360566261a501586f4a3d7298891b9c2679c86ed78e60b1374b381395df49",
+    "capture-tax-boolean-payload.mjs.txt": "fc90ea854a793003a7bc0ff70c3c3943311035fc154883983a3459f189e6b037",
+    "assessment-boolean-spec-followup-6d42211f.json": "3df509dfae73b6675151558a60794d48e006a6824efa6a908b6f39dd90162c57"
+  }
+}

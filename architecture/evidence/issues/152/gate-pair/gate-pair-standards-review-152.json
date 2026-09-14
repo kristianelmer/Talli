@@ -1,0 +1,48 @@
+{
+  "baseRevision": "a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2",
+  "reviewedState": "uncommitted local gate-pair adoption; exact file hashes bind this review",
+  "status": "PASS_BOUNDED_LOCAL_EXIT_ENVELOPE_ADOPTION",
+  "findings": [],
+  "changedAndUntrackedFileSha256": {
+    "architecture/evidence/customer-ready-gates/a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2.json": "f8c6251b66e40427ea8ea010a03b45fd6ea6a11057d8e899e269bd9ab4eae0cc",
+    "architecture/evidence/customer-ready-gates/a20b1065163ee8ddb2cf1bb6e29d7d3cf8d1d3a2.log": "b298c307c93e11ac3d16afcad13da664113766247f3195f0893e7fd6582f5212",
+    "architecture/evidence/issues/152/gate-pair/ci-34805266478-verified.json": "85c04f390e3494099737faaa3fe99b9ef682b90f60138c121ddb16be085ce60c",
+    "architecture/evidence/issues/152/gate-pair/first-adoption-standards-review-a20b1065.json": "9501748f47b40497fcc6c770bd59171244b4ba2917d6da63f7466bd0699a84fd",
+    "architecture/evidence/issues/152/gate-pair/first-adoption-standards-review-a20b1065.md": "20571910e871145be8ddb7e5536c13770fb19a229bd4045b910b8cb07bd36db1",
+    "architecture/evidence/issues/152/gate-pair/first-gate-spec-review-7c9b3caa.json": "eb8f7ba17ddc9ae1154c8c239f64e888c12c79ebe295aab41a245a1602d823ee",
+    "architecture/evidence/issues/152/gate-pair/first-gate-spec-review-7c9b3caa.md": "ee155c299747bd486c5c90c662fd3cf80d19557a3906b4a02c3e3e416278ab74",
+    "architecture/evidence/issues/152/gate-pair/manifest.json": "5f209c1eddff38e8dada2268c00b8ebfb3d2b1c5d2f3fe3bba7ad0d15e470665",
+    "architecture/evidence/issues/152/gate-pair/preview-7c9b3caa.json": "4f68231b56e591fe8601f4c3664c4ec0540bd83c60d3570d76275ca17194c481",
+    "architecture/evidence/issues/152/gate-pair/root-verification.json": "3ee0f33c52edab57d901a394d2d5f9e5711f94e040162841f56127198f535a88",
+    "architecture/evidence/issues/152/requirements.json": "4ceda90c09669e73cff3275eadae9bbe7723f3ea3fc7442b6a8ae9850669802e",
+    "architecture/evidence/issues/152/verification.md": "3bfb955ed672a1185e41bf69fcee76f9d87a5718ce25265b55de050fced10b3c"
+  },
+  "manifestArtifactCount": 13,
+  "byteExactPrivateAdoptions": {
+    "architecture/evidence/issues/152/gate-pair/first-adoption-standards-review-a20b1065.json": "9501748f47b40497fcc6c770bd59171244b4ba2917d6da63f7466bd0699a84fd",
+    "architecture/evidence/issues/152/gate-pair/first-gate-spec-review-7c9b3caa.json": "eb8f7ba17ddc9ae1154c8c239f64e888c12c79ebe295aab41a245a1602d823ee",
+    "architecture/evidence/issues/152/gate-pair/ci-34805266478-verified.json": "85c04f390e3494099737faaa3fe99b9ef682b90f60138c121ddb16be085ce60c",
+    "architecture/evidence/issues/152/gate-pair/preview-7c9b3caa.json": "4f68231b56e591fe8601f4c3664c4ec0540bd83c60d3570d76275ca17194c481",
+    "architecture/evidence/issues/152/gate-pair/first-gate-spec-review-7c9b3caa.md": "ee155c299747bd486c5c90c662fd3cf80d19557a3906b4a02c3e3e416278ab74",
+    "architecture/evidence/issues/152/gate-pair/first-adoption-standards-review-a20b1065.md": "20571910e871145be8ddb7e5536c13770fb19a229bd4045b910b8cb07bd36db1"
+  },
+  "privateOriginalsNotLocatedByBasename": [
+    "architecture/evidence/issues/152/gate-pair/root-verification.json"
+  ],
+  "registryExitReviewByteUnchanged": true,
+  "sixOriginalCriteriaPreserved": true,
+  "allCriteriaLocalPassPendingProtectedIntegration": true,
+  "onlyEvidenceChanged": true,
+  "gateSummaryCrossChecks": true,
+  "receiptPairFullVerification": "Separately owned by Spec; no replacement certification from this metadata review",
+  "historicalCiPreviewPinnedToFirstGateOnly": true,
+  "stableDuringReview": true,
+  "noRerunsOrSharedMutations": true,
+  "reportSha256": "f50513853c05043fccd57aae387d8e8ac3fcc87af1848605c1db20ba573b2acf",
+  "limits": [
+    "Uncommitted evidence snapshot, not an immutable integration revision.",
+    "No full pair-verification substitution for independent Spec review.",
+    "No final-head/main CI, integration, publication, stage closure or successor authority.",
+    "No shared source/runtime mutation or test rerun."
+  ]
+}

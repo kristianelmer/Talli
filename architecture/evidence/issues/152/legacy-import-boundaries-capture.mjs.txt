@@ -1,0 +1,58 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
+
+const sourceRevision = '054740b81692e0e59b99a76fff085f322f1968b4';
+const { buildCompanyTaxReturnEvidencePersistence } = await import(pathToFileURL(resolve('apps/web/app/lib/company-tax-return-submission.ts')).href);
+const prior = JSON.parse(readFileSync('architecture/evidence/issues/152/legacy-characterization.json', 'utf8'));
+const base = prior.evidenceCases.find(c => c.id === 'synthetic-completed-pending-feedback').input;
+const cases = [];
+function add(id, mutate) {
+  const input = structuredClone(base);
+  mutate(input);
+  let output;
+  try { output = { value: buildCompanyTaxReturnEvidencePersistence(input) }; }
+  catch (error) { output = { error: { name: error.name, message: error.message } }; }
+  cases.push({ id, input, output });
+}
+for (const [i, url] of [
+  'data:text/plain,secret', 'https:///missing-host', 'https://evidence.example',
+  'https://user:password@evidence.example/company-tax.json', 'https://evidence.example:443/company-tax.json',
+  'https://evidence.example/company-tax.json?token=secret', 'https://evidence.example/company-tax.json#secret',
+  'https://evidence.example/archive/../company-tax.json', 'https://evidence.example/archive/%2e%2e/company-tax.json',
+  ' https://evidence.example/company-tax.json', 'https://evidence.example/company tax.json',
+  'https://evidence.example/company-tax.json\nignored', 'https://evidence.example/CuRrEnT_DoCuMeNt_ReFeReNcE_SeNtInEl.json',
+  `https://evidence.example/${'a'.repeat(2048)}`, '   ', null,
+  'https://evidence.example/static/company-tax-2025.json', 'https://[::1]/synthetic.json',
+  'https://evidence.example/a%20b.json', 'https://evidence.example/a[b]^c|d.json',
+  'https://evidence.example/a`b{c}.json',
+].entries()) add(`url-${i}`, x => x.evidenceUrl = url);
+for (const [i, timestamp] of [
+  '2026-02-30T12:20:00Z', '2026-07-14T12:20:00', '2026-07-14T12:22:00Z',
+  '2026-07-14T12:20:00Z', '2026-07-14T12:20:00.1Z', '2026-07-14T12:20:00.123456Z',
+  '2026-07-14T12:20:00.1234567Z', '2026-07-14T24:00:00Z', '2026-07-14T12:20:00+24:00',
+  '2026-07-14T14:20:00+02:00', '2024-02-29T12:20:00Z', '0000-01-01T00:00:00Z',
+].entries()) add(`timestamp-${i}`, x => x.evidence.validatedAt = timestamp);
+add('reversed-microseconds', x => { x.evidence.validatedAt = '2026-07-14T12:20:00.000002Z'; x.evidence.confirmationPreparedAt = '2026-07-14T12:20:00.000001Z'; });
+add('process-after-archive', x => x.evidence.submission.processEndedAt = '2026-07-14T12:31:01Z');
+add('receipt-before-archive', x => x.evidence.receiptRetrievedAt = '2026-07-14T12:30:59Z');
+add('recorded-seven-fractions', x => x.recordedAt = '2026-07-14T12:32:00.1234567Z');
+for (const [key, value] of [
+  ['confirmationPrepared', false], ['envelopeUploaded', false], ['fileScanResult', 'Pending'],
+  ['processTask', 'signing'], ['envelopeDataId', 'invalid'], ['id', 'invalid'],
+]) add(`instance-${key}`, x => x.evidence.instance[key] = value);
+for (const [key, value] of [
+  ['byteLength', 0], ['byteLength', true], ['byteLength', '527'], ['byteLength', 1.2],
+  ['contentType', 'text/xml'], ['contentType', 'application/pdf'], ['dataType', 'other'],
+  ['contentSha256', 'invalid'], ['dataId', 'invalid'], ['reference', 'https://example.invalid/receipt'],
+].entries()) add(`receipt-${key}`, x => x.evidence.receipt[value[0]] = value[1]);
+add('archive-incomplete', x => x.evidence.submission.archived = false);
+add('handoff-link-mismatch', x => x.evidence.confirmationUrl = 'https://example.invalid/confirmation');
+add('missing-local-schema', x => x.evidence.localSchemaValidation.schemas.pop());
+add('extra-non-string-local-schema', x => x.evidence.localSchemaValidation.schemas.push(42));
+add('missing-authority-failure-list', x => delete x.evidence.authorityValidation.failureReasons);
+add('uppercase-instance', x => x.evidence.instance.id = x.evidence.instance.id.toUpperCase());
+const json = JSON.stringify({ sourceRevision, runtime: process.version, scope: 'Unchanged predecessor pure import boundary, synthetic inputs only.', cases }, null, 2) + '\n';
+writeFileSync('architecture/evidence/issues/152/legacy-import-boundaries.json', json);
+console.log(JSON.stringify({ cases: cases.length, successful: cases.filter(c => c.output.value).length, sha256: createHash('sha256').update(json).digest('hex') }));

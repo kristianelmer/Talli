@@ -2,6 +2,21 @@
 
 Independent FastAPI application for Talli's production HTTP boundary.
 
+Company Tax preserves WHATWG URL parsing with `ada-url==4.0.0` (the Ada version
+used by the pinned predecessor Node runtime) and Norwegian collation with
+`PyICU==2.16.2`. On Debian/Ubuntu install `pkg-config libicu-dev g++` before
+`uv sync`. On macOS install `pkg-config icu4c` and expose ICU's `bin` and
+`lib/pkgconfig` directories during the build. Use standalone CPython with one
+consistent compiler/library environment; a Conda interpreter can mix its older
+C++/ICU runtime with Homebrew headers. Existing environments must rebuild PyICU
+when changing the underlying ICU runtime.
+
+These libraries perform local parsing/sorting and make no network requests.
+See the [Ada Python documentation](https://ada-url.readthedocs.io/) and
+[PyICU installation instructions](https://pypi.org/project/pyicu/). The frozen
+Company Tax tests cover URL canonicalization, Norwegian text ordering, stable
+collation ties and UTF-16 truncation.
+
 ```bash
 uv sync --project apps/backend --locked
 uv run --project apps/backend uvicorn talli_backend.main:app \

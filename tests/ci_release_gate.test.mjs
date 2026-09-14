@@ -406,7 +406,11 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
   assert.deepEqual(authorityMarked, authority, "every excluded Authority/RF/signoff case must be in its mandatory lane");
   assert.ok(authority.size >= 36, "owner, operator and technical signoff cases must remain collected");
   const taxFiles = packageJson.scripts["test:company-tax-database"].match(/apps\/backend\/tests\/test_\w+\.py/gu);
-  assert.equal(taxFiles.length, 2);
+  assert.deepEqual(taxFiles, [
+    "apps/backend/tests/test_company_tax_filing_database.py",
+    "apps/backend/tests/test_company_tax_filing_runtime.py",
+    "apps/backend/tests/test_company_tax_return_lifecycle.py",
+  ], "Tax must retain settlement expansion/runtime and filing lifecycle coverage");
   const tax = collect(`${pytest} ${taxFiles.join(" ")}`);
   assert.deepEqual(collect(`${pytest} apps/backend/tests -m company_tax_database`), tax);
   assert.ok(tax.size >= 21);

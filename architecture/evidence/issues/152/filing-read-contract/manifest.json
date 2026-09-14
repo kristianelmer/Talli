@@ -1,0 +1,47 @@
+{
+  "status": "READ_CONTRACT_VERIFIED_CUTOVER_PENDING",
+  "baselineRevision": "bcc8dc49",
+  "databaseChecks": 45,
+  "backendTests": 220,
+  "webTests": 17,
+  "webTypecheck": "PASS",
+  "architecture": "PASS",
+  "openapiDelta": {
+    "schemas": {
+      "added": [
+        "CompanyTaxOverrideWire",
+        "CompanyTaxPermissionWire",
+        "CompanyTaxPreviewWire",
+        "CompanyTaxReviewCommentWire",
+        "CompanyTaxSubmissionWire",
+        "CompanyTaxTestEvidenceWire",
+        "CompanyTaxWorkspaceWire"
+      ],
+      "removed": [],
+      "changed": []
+    },
+    "paths": {
+      "added": [
+        "/api/v1/company-tax/filing-workspace"
+      ],
+      "removed": [],
+      "changed": []
+    }
+  },
+  "limits": [
+    "Database claims are synthetic SQL context; API authentication is a test double.",
+    "Only the rollback-only fixture temporarily changes phase to exercise reads. This is not a writer cutover or rollback rehearsal.",
+    "Owner UI, canonical mutations, production source completeness and full stage exit remain pending."
+  ],
+  "artifacts": {
+    "filing-read-contract-seeded.json": "4efbf787fab3cdc5bb21259f7697f921418fa9cf58894ef07063d3bbd2bc74ca",
+    "filing-read-contract-tests.log": "0321ed59a0973f2e50769074c40d5c122aa6caa66a0156f55cd3d48e74cef59a",
+    "filing-read-web-tests.log": "f77b576157f158d9b34b265eeacd1eec0472f89b0d866f899e181f6dca5447c1",
+    "filing-read-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "expansion-spec-review-bcc8dc49.md": "54e630ee6c259e1c5643d1afa7d28bcadedcc3b993a36dd42de0e28ffc4651c1",
+    "expansion-spec-review-bcc8dc49.json": "64cc716c2fa6a68fb409139685ba83d744638011e1fd65bdba8d3c540cbf8c77",
+    "expansion-standards-review-bcc8dc49.md": "f3eee2b9b742296f21a645f8417b3c22617b3216b0457669fd79664928fda1ea",
+    "expansion-standards-review-bcc8dc49.json": "72b6a4fe0da5c4a167f99828dcc523ed95888b500b830e137757517c74beb612",
+    "probe-filing-read-contract.py.txt": "07c7b83c9bebf72e76f584ab26c81392a10b22eb0f780a87ecff3a4019b81a55"
+  }
+}

@@ -1,0 +1,30 @@
+✔ preview sends original facts and returns authoritative normalized payload and account lines (16.657875ms)
+✔ capture keeps released path and stable identity without retrying an ambiguous outcome (1.008666ms)
+✔ generated preview guard rejects malformed backend output (0.428083ms)
+✔ generated preview guard rejects malformed backend output (0.312291ms)
+✔ generated preview guard rejects malformed backend output (0.355417ms)
+✔ Archive read preserves all source fields and conceals malformed or foreign output as a failed source (1.297416ms)
+✔ submission preserves the original coded validation redirect: bad-date-shape (0.234584ms)
+✔ submission preserves the original coded validation redirect: zero (0.058125ms)
+✔ submission preserves the original coded validation redirect: negative (0.049333ms)
+✔ submission preserves the original coded validation redirect: unknown-kind (0.082542ms)
+✔ submission preserves the original coded validation redirect: unknown-document-status (0.052875ms)
+✔ submission preserves the original coded validation redirect: payable-with-bank (0.034834ms)
+✔ submission preserves the original coded validation redirect: validation-order (0.058292ms)
+✔ unparseable amount text retains backend-owned validation: abc (0.439209ms)
+✔ unparseable amount text retains backend-owned validation: Infinity (0.304333ms)
+✔ unparseable amount text retains backend-owned validation: 1,5 (0.222792ms)
+✔ filing workspace keeps a failed source unavailable and checks returned scope (2.015125ms)
+✔ TT02 import preserves evidence bytes, IDs, replay and MFA presentation (0.462958ms)
+✔ TT02 presenter distinguishes projection validation from persistence rejection (0.067875ms)
+✔ Tax preparation sends generated commands and rejects foreign scope (0.5755ms)
+✔ Tax lookup and acknowledgement only return absence for an explicit owned not-found (0.6725ms)
+✔ TT02 import retains the missing-company message (0.058ms)
+ℹ tests 22
+ℹ suites 0
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 138.31725

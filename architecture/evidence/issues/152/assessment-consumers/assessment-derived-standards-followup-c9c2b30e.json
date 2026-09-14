@@ -1,0 +1,66 @@
+{
+  "baselineRevision": "6d42211fab713a73532c349aa6e7f1e60d625a97",
+  "candidateRevision": "c9c2b30e27f8e630c27a2901b60b936a2a7811d1",
+  "diffCommand": "git diff 6d42211fab713a73532c349aa6e7f1e60d625a97...c9c2b30e27f8e630c27a2901b60b936a2a7811d1",
+  "extraction": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-152-c9c2-standards-u6npi80i",
+  "changedSourceSha256": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/calculation.py": "af99d890c19d3dc1f6cb74239cc045d95e064b9adfb667a2cec6c5076ef3f41a",
+    "apps/backend/tests/test_company_tax_readiness.py": "70f7300fe0de9504fb132b1464b7eb23eb31d77c9e01d733ec248420fb7632fb",
+    "architecture/evidence/issues/152/assessment-derived-followup/assessment-boolean-spec-followup-6d42211f.json": "3df509dfae73b6675151558a60794d48e006a6824efa6a908b6f39dd90162c57",
+    "architecture/evidence/issues/152/assessment-derived-followup/assessment-boolean-spec-followup-6d42211f.md": "813360566261a501586f4a3d7298891b9c2679c86ed78e60b1374b381395df49",
+    "architecture/evidence/issues/152/assessment-derived-followup/assessment-boolean-standards-followup-6d42211f.json": "535ad0fcf05a31e645791cc8a662ab8a6dfec4180392a44110f13eaa9787b8dd",
+    "architecture/evidence/issues/152/assessment-derived-followup/assessment-boolean-standards-followup-6d42211f.md": "4f6f47919d4b81c0a25d5e5628ce1f3a2ad67d704f908caeff053bf5de62532c",
+    "architecture/evidence/issues/152/assessment-derived-followup/capture-tax-boolean-payload.mjs.txt": "fc90ea854a793003a7bc0ff70c3c3943311035fc154883983a3459f189e6b037",
+    "architecture/evidence/issues/152/assessment-derived-followup/manifest.json": "2f5ea577cb45fc097f5e7e1e6d0e7ef7e03d9da0bc2e1e504c24cc517b371619",
+    "architecture/evidence/issues/152/assessment-derived-followup/tax-boolean-payload-tests.log": "919ff4acf6e5b7d65177b96a0fa4a497d3ea53c3e8ed6cc14eb7222d88e9bf35",
+    "architecture/evidence/issues/152/legacy-tax-boolean-payloads.json": "c9deb9d6dc58e42652fbe6450b881b97995e4740bfe18eaa948926309f0f68cf"
+  },
+  "captureRerunByteExact": true,
+  "artifactHashesVerified": {
+    "tax-boolean-payload-tests.log": true,
+    "assessment-boolean-standards-followup-6d42211f.json": true,
+    "assessment-boolean-standards-followup-6d42211f.md": true,
+    "assessment-boolean-spec-followup-6d42211f.md": true,
+    "capture-tax-boolean-payload.mjs.txt": true,
+    "assessment-boolean-spec-followup-6d42211f.json": true
+  },
+  "extendedCaptureHashVerified": true,
+  "unchangedHistoricalBytes": {
+    "architecture/evidence/issues/152/legacy-tax-boolean-boundaries.json": true,
+    "architecture/evidence/issues/152/assessment-boolean-followup/manifest.json": true
+  },
+  "originalInputFixtureHashVerified": true,
+  "legacySourceHashVerified": true,
+  "status": "PASS_BOUNDED_STANDARDS_FOLLOWUP",
+  "closedFindings": [
+    "6d42211f P2: derived.noActivity retained Python bool semantics"
+  ],
+  "findings": [],
+  "independentVerification": {
+    "backendTests": 388,
+    "testFiles": [
+      "test_company_tax_readiness.py",
+      "test_company_tax_return_characterization.py"
+    ],
+    "fullCandidateCases": 45,
+    "originalDerivedProbe": "Node and Python now agree: [] and{} true; false false; true true",
+    "runtimes": "standalone CPython3.12.12 venv and pinned Node v24.20.0; complete immutable extraction",
+    "testHelperCorrection": "companyPartyNumber now passed as party_number, preserving the captured candidate field identity"
+  },
+  "privateArtifactSha256": {
+    "assessment-derived-standards-tests-c9c2b30e.log": "60a53ccb086838f5c6ec662b9dc3f8cb2d02a162c8ec03172ca53a4bf8d08d9a",
+    "assessment-derived-standards-node-c9c2b30e.log": "3c1cf128a1f358fd19036dbb8a999f989062f30d20490fda75a61941e43e747a",
+    "assessment-derived-standards-python-c9c2b30e.log": "6c1bd624f11a54e8b9b639a084f781509a625ec958103ffe614a65c81f18d2e8",
+    "assessment-derived-standards-capture-c9c2b30e.log": "0fcd22b654a0552843c527b7c4885a981ce05eb7db544a229d03645f4291e386"
+  },
+  "originalProbeBinding": {
+    "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/assessment-boolean-standards-derived-probes-6d42211f.json",
+    "sha256": "fb58840a960848ee0cee9063bc87566f561c76d036da704b14de30fdbe1e3462"
+  },
+  "limits": [
+    "Uncommitted web callers excluded.",
+    "No shared source/Git/runtime/database/browser/provider mutation.",
+    "Pure/fake-session verification only; no cutover, full-stage or release-gate acceptance."
+  ],
+  "reportSha256": "6b67e14b4ee868e781065487887176027cbdbab534fa0b3b0d8fc57d638b443a"
+}

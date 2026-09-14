@@ -1,0 +1,86 @@
+{
+  "base": "32c701e31ff83016342c47a74ab0951ba3eab05d",
+  "candidate": "39b72c60ac941e92083dddfc503927a1653cb173",
+  "isolatedArchive": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/talli-authority-standards-j9hcnrhm",
+  "python": "/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python",
+  "node": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+  "testExitCode": 0,
+  "transcript": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/authority-workflow-standards-tests-39b72c60.log",
+  "transcriptSha256": "d46e1ceddd911629d6d5d4554dbd1fba77181db21ab94e3f1d7e62c60823e782",
+  "verifiedManifestBindings": {
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "99c5d5609374f1fc589dad9cc9134237b9ad1a2bc9c8e6a1ccbd8e7e9779dcbe",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/authority_workflow.py": "f2d6eabe70e7711f0acf98f01e975341b3c574899fb1be8d48395ca5ae3aa95a",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/rehearsal.py": "3084413656a598a48d2e05a5cc5f12bc9eccefb7606402d6c78a58afe373aa7c",
+    "apps/backend/src/talli_backend/adapters/company_tax_authority.py": "c6527d89d422f07de999b2c02df2fc7e8e189aeb5cc54a381acbffdb2e6089b4",
+    "apps/backend/src/talli_backend/adapters/local_company_tax_rehearsal.py": "5941d26360ac8068ce6dff61fcbf84b5eea5250c539e3929b316331168fbaf69",
+    "apps/backend/src/talli_backend/authority_tools/company_tax_test.py": "dfee89e9f4f0f20715b1a4f0084c91d913c46c94cb64252960233cb1fccfae69",
+    "apps/backend/tests/test_company_tax_rehearsal.py": "7682fec2495b83735052bce3cdaccc96b6f64c32bbb3a5a27fff89d814dfff04",
+    "apps/backend/tests/test_authority_filing_tools.py": "e04da56326f8921b87541fb6aafa369dc960b7507cb495b4548e62aa837ba9fd",
+    "apps/backend/tests/test_authority_filing_transports.py": "2a38015cabb460a6d9772f53b52bf068b4b7a6caa3a5ea8c5c7edfddd9e3092a",
+    "architecture/evidence/issues/152/authority-workflow-ownership/legacy-case-years.json": "a9b6598aee51e9e245abacdb4f5c4ea04f09016211a4e16d60fb9924b8ec1934",
+    "architecture/evidence/issues/152/authority-workflow-ownership/authority-ownership-architecture.log": "73a972f5677c86235fef074a3c7acd6c782ff2173c4318bac103899e7bfb8510",
+    "architecture/evidence/issues/152/authority-workflow-ownership/capture-rehearsal-years.py": "b624b5810912e433d1c297f5c556c1e759424a50f46507c9495354023b6d9ba9",
+    "architecture/evidence/issues/152/authority-workflow-ownership/authority-ownership-tests.log": "ff27ecf1e6522031ec623119ad3e2d713613e764052211ff6cd6c9bc523a031d",
+    "architecture/evidence/issues/152/authority-workflow-ownership/retained-authority-definitions.json": "ab3235084b0c4ceb156639c980862c47e8095c79c1808cd977fe73d850cd36cb"
+  },
+  "independentRetainedMethods": 18,
+  "independentRetainedPollingBodies": 3,
+  "immutabilityProbe": {
+    "path": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/authority-workflow-standards-immutable-probe-39b72c60.py",
+    "sha256": "4ae3370445b3e46e012a4b12b8fd8c4463b0d67b311c480c46f7aaaa507899a4",
+    "exitCode": 0,
+    "transcript": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/authority-workflow-standards-immutable-probe-39b72c60.log",
+    "transcriptSha256": "243230c8a1b4cff0a8aa2dc53cd9ab778662d9c3eff5ca62f8294e16c3e15ff8"
+  },
+  "independentYearCapture": {
+    "cases": 108,
+    "byteIdentical": true,
+    "transcript": "/Users/kristianelmer/.codex/issue-192-private/issue152-entry/authority-workflow-standards-capture-39b72c60.log",
+    "sha256": "ce678067b339bdf19e0ed36e1f3a8c007439b2135a412cfda3ea1169e32dd1fc"
+  },
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "priority": 2,
+      "path": "apps/backend/src/talli_backend/modules/company_tax_filing/public.py",
+      "line": 644,
+      "title": "Detach and deeply freeze the public rehearsal summary",
+      "trigger": "Completed replay with structured metadata accepted by the local evidence loader",
+      "status": "reproduced_without_provider_or_database"
+    }
+  ],
+  "sourceHashes": {
+    "apps/backend/src/talli_backend/adapters/company_tax_authority.py": "c6527d89d422f07de999b2c02df2fc7e8e189aeb5cc54a381acbffdb2e6089b4",
+    "apps/backend/src/talli_backend/adapters/local_company_tax_rehearsal.py": "5941d26360ac8068ce6dff61fcbf84b5eea5250c539e3929b316331168fbaf69",
+    "apps/backend/src/talli_backend/authority_tools/company_tax_test.py": "dfee89e9f4f0f20715b1a4f0084c91d913c46c94cb64252960233cb1fccfae69",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md": "9382bf4645cf71c99173e8a8e2e0d5c3b3e8fbb40fe83660fecc39cb83668858",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/authority_workflow.py": "f2d6eabe70e7711f0acf98f01e975341b3c574899fb1be8d48395ca5ae3aa95a",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/module.json": "5efdae1f5926f7eab524c7bc610bdf63a794e73e22a5ebcfde6b22bed3327e60",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/public.py": "99c5d5609374f1fc589dad9cc9134237b9ad1a2bc9c8e6a1ccbd8e7e9779dcbe",
+    "apps/backend/src/talli_backend/modules/company_tax_filing/rehearsal.py": "3084413656a598a48d2e05a5cc5f12bc9eccefb7606402d6c78a58afe373aa7c",
+    "apps/backend/tests/test_authority_filing_tools.py": "e04da56326f8921b87541fb6aafa369dc960b7507cb495b4548e62aa837ba9fd",
+    "apps/backend/tests/test_authority_filing_transports.py": "2a38015cabb460a6d9772f53b52bf068b4b7a6caa3a5ea8c5c7edfddd9e3092a",
+    "apps/backend/tests/test_company_tax_rehearsal.py": "7682fec2495b83735052bce3cdaccc96b6f64c32bbb3a5a27fff89d814dfff04",
+    "architecture/BACKEND-SYSTEM.md": "603e69a804e968466e901a7d1e7932cc2d59f4a5e50edc57ac074231fb1c2467",
+    "architecture/backend-system.json": "3e8bee2ed87bb091d8549883abcf508647c06a24792dbfa7d3b280f8d194a960",
+    "architecture/evidence/issues/152/authority-workflow-ownership/authority-ownership-architecture.log": "73a972f5677c86235fef074a3c7acd6c782ff2173c4318bac103899e7bfb8510",
+    "architecture/evidence/issues/152/authority-workflow-ownership/authority-ownership-tests.log": "ff27ecf1e6522031ec623119ad3e2d713613e764052211ff6cd6c9bc523a031d",
+    "architecture/evidence/issues/152/authority-workflow-ownership/capture-rehearsal-years.py": "b624b5810912e433d1c297f5c556c1e759424a50f46507c9495354023b6d9ba9",
+    "architecture/evidence/issues/152/authority-workflow-ownership/legacy-case-years.json": "a9b6598aee51e9e245abacdb4f5c4ea04f09016211a4e16d60fb9924b8ec1934",
+    "architecture/evidence/issues/152/authority-workflow-ownership/manifest.json": "fb3bfa714cad4862563f1c92448321515bf8b5cd52b1ffb062cd6d30f3649484",
+    "architecture/evidence/issues/152/authority-workflow-ownership/retained-authority-definitions.json": "ab3235084b0c4ceb156639c980862c47e8095c79c1808cd977fe73d850cd36cb",
+    "architecture/evidence/issues/152/typescript-retirement-reviews/typescript-retirement-spec-review-32c701e3.json": "ba9bca118c0851c94c120d2359fda275a915155ecc1daf8abdfcf47018993f61",
+    "architecture/evidence/issues/152/typescript-retirement-reviews/typescript-retirement-spec-review-32c701e3.md": "2ee2eb6988bd2381b6dde2beac97e850f217b9eccc7c2c8d627c129979a71c64",
+    "architecture/evidence/issues/152/typescript-retirement-reviews/typescript-retirement-standards-review-32c701e3.json": "86622cc58fb21be5d7738de22f4b7ed38f5a63de1209901376b34254d9735fb8",
+    "architecture/evidence/issues/152/typescript-retirement-reviews/typescript-retirement-standards-review-32c701e3.md": "a710913d9c2209989a5bc0bc3aab317d1bc80de978eea0d57d5c0d9e087f0ed0"
+  },
+  "diffSha256": "e647f47684212898bb1542de4a2fe3cbc5291576ad51852739b26828a84b84bf",
+  "tests": {
+    "passed": 254,
+    "failed": 0,
+    "providerCalls": 0,
+    "databaseCalls": 0
+  },
+  "limits": "Bounded source and isolated mock/pure tests only; no shared source/config/DB/browser/provider mutation, full gate, or stage exit.",
+  "reportSha256": "7a5d25f90f7b8cb0ee2da9246d1e944b66db33759847f549113b682c0ec0b5bb"
+}

@@ -1,0 +1,186 @@
+{
+  "sourceRevision": "054740b81692e0e59b99a76fff085f322f1968b4",
+  "runtime": "v24.20.0",
+  "icu": "78.3",
+  "cldr": "48.0",
+  "sourceSha256": "c68aa036c33c6dfacf235b9960d8d8f8e36c016cba4b72e12a71cd44566e99c1",
+  "cases": [
+    {
+      "id": "summary-0",
+      "input": "<r><avvikstype>a</avvikstype><avvikstype>A</avvikstype><avvikstype>å</avvikstype><avvikstype>Å</avvikstype><avvikstype>ø</avvikstype><avvikstype>Ø</avvikstype><avvikstype>æ</avvikstype><avvikstype>Æ</avvikstype><avvikstype>z</avvikstype><avvikstype>Z</avvikstype><avvikstype>aa</avvikstype><avvikstype>Aa</avvikstype><avvikstype>AA</avvikstype><avvikstype>aA</avvikstype></r>",
+      "output": {
+        "value": {
+          "result": "unknown",
+          "deviationCodes": [
+            "a",
+            "A",
+            "aA",
+            "z",
+            "Z",
+            "æ",
+            "Æ",
+            "ø",
+            "Ø",
+            "å",
+            "Å",
+            "aa",
+            "Aa",
+            "AA"
+          ],
+          "guidanceCodes": [],
+          "failureReasons": []
+        }
+      }
+    },
+    {
+      "id": "summary-1",
+      "input": "<r><avvikstype>é</avvikstype><avvikstype>e</avvikstype><avvikstype>E</avvikstype><avvikstype>ë</avvikstype><avvikstype>é</avvikstype><avvikstype>É</avvikstype><avvikstype>ü</avvikstype><avvikstype>u</avvikstype><avvikstype>Y</avvikstype><avvikstype>y</avvikstype><avvikstype>Ü</avvikstype><avvikstype>ö</avvikstype><avvikstype>o</avvikstype><avvikstype>Ö</avvikstype><avvikstype>ä</avvikstype><avvikstype>Ä</avvikstype><avvikstype>æ</avvikstype><avvikstype>Æ</avvikstype></r>",
+      "output": {
+        "value": {
+          "result": "unknown",
+          "deviationCodes": [
+            "e",
+            "E",
+            "é",
+            "é",
+            "É",
+            "ë",
+            "o",
+            "u",
+            "y",
+            "Y",
+            "ü",
+            "Ü",
+            "æ",
+            "Æ",
+            "ä",
+            "Ä",
+            "ö",
+            "Ö"
+          ],
+          "guidanceCodes": [],
+          "failureReasons": []
+        }
+      }
+    },
+    {
+      "id": "summary-2",
+      "input": "<r><avvikstype>A2</avvikstype><avvikstype>A10</avvikstype><avvikstype>A1</avvikstype><avvikstype>a1</avvikstype><avvikstype>A-1</avvikstype><avvikstype>A_1</avvikstype><avvikstype>A 1</avvikstype><avvikstype>A.1</avvikstype><avvikstype>A/1</avvikstype><avvikstype>B2</avvikstype></r>",
+      "output": {
+        "value": {
+          "result": "unknown",
+          "deviationCodes": [
+            "A 1",
+            "A_1",
+            "A-1",
+            "A.1",
+            "A/1",
+            "a1",
+            "A1",
+            "A10",
+            "A2",
+            "B2"
+          ],
+          "guidanceCodes": [],
+          "failureReasons": []
+        }
+      }
+    },
+    {
+      "id": "summary-3",
+      "input": "<r><avvikstype>Z</avvikstype><avvikstype>🦊</avvikstype><avvikstype>😀</avvikstype><avvikstype></avvikstype><avvikstype>中</avvikstype><avvikstype>α</avvikstype><avvikstype>я</avvikstype><avvikstype>א</avvikstype><avvikstype>ع</avvikstype><avvikstype>あ</avvikstype><avvikstype>a</avvikstype><avvikstype>Æ</avvikstype></r>",
+      "output": {
+        "value": {
+          "result": "unknown",
+          "deviationCodes": [
+            "🦊",
+            "😀",
+            "a",
+            "Z",
+            "Æ",
+            "α",
+            "я",
+            "א",
+            "ع",
+            "あ",
+            "中",
+            ""
+          ],
+          "guidanceCodes": [],
+          "failureReasons": []
+        }
+      }
+    },
+    {
+      "id": "summary-4",
+      "input": "<r><avvikstype>  many\n spaces\t here  </avvikstype><avvikstype>not-JS-space</avvikstype><avvikstype>\u001fcontrol</avvikstype><avvikstype>﻿BOM</avvikstype><avvikstype> NBSP</avvikstype><avvikstype> line</avvikstype></r>",
+      "output": {
+        "value": {
+          "result": "unknown",
+          "deviationCodes": [
+            "not-JS-space",
+            "BOM",
+            "control",
+            "line",
+            "many spaces here",
+            "NBSP"
+          ],
+          "guidanceCodes": [],
+          "failureReasons": []
+        }
+      }
+    },
+    {
+      "id": "summary-5",
+      "input": "<r><avvikstype>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</avvikstype><avvikstype>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀</avvikstype><avvikstype>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀</avvikstype><avvikstype>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😃</avvikstype></r>",
+      "output": {
+        "value": {
+          "result": "unknown",
+          "deviationCodes": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😃",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\ud83d",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "guidanceCodes": [],
+          "failureReasons": []
+        }
+      }
+    },
+    {
+      "id": "summary-6",
+      "input": "<r><avvikstype>A&amp;B</avvikstype><avvikstype>A&B</avvikstype><avvikstype>A&#197;</avvikstype><avvikstype>Å</avvikstype><avvikstype>A&lt;B</avvikstype></r>",
+      "output": {
+        "value": {
+          "result": "unknown",
+          "deviationCodes": [
+            "A&#197;",
+            "A&amp;B",
+            "A&B",
+            "A&lt;B",
+            "Å"
+          ],
+          "guidanceCodes": [],
+          "failureReasons": []
+        }
+      }
+    },
+    {
+      "id": "summary-7",
+      "input": "<r><resultatAvValidering>validertOK</resultatAvValidering><resultatAvValidering>validertMedFeil</resultatAvValidering><x:veiledningstype a=\"b\">Å1</x:veiledningstype><y:veiledningstype>Æ1</y:veiledningstype><aarsakTilValidertMedFeil>Først</aarsakTilValidertMedFeil></r>",
+      "output": {
+        "value": {
+          "result": "validertOK",
+          "deviationCodes": [],
+          "guidanceCodes": [
+            "Æ1",
+            "Å1"
+          ],
+          "failureReasons": [
+            "Først"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "status": "EXPANSION_REHEARSAL_PASS_CUTOVER_PENDING",
+  "migration": "supabase/migrations/20260914200000_company_tax_return_expand.sql",
+  "migrationSha256": "ce0a4b9ab6fc7f90ea4cd851e9a2cff2da113db9c461dc5911bd6c7abfc96281",
+  "checks": 33,
+  "database": "owned local PostgreSQL17.6, rollback-only synthetic fixture",
+  "cliReview": "PASS_BOTH_AXES_AF95066F",
+  "limits": [
+    "No durable local schema change yet.",
+    "No canonical writer/API/web cutover or full-stage exit.",
+    "No hosted changes or provider operations."
+  ],
+  "artifacts": {
+    "probe-filing-expand-seeded.py.txt": "d5cee4ae050f77bf76bcdc7026fcefd122c692814e13772d6b01ee2315cefa8c",
+    "cli-standards-followup-af95066f.json": "4d27c1e19d1d1fe9a92d71326fbc0019c57daf246e3c19389907572130e8b4f8",
+    "cli-spec-followup-af95066f.json": "b88e0efe538b4fa336aa55997151fed92a7f6a12dc93cadab4fd6482103d184a",
+    "filing-expand-seeded.json": "92a05412793fd0930e9b84b05acf687ea6cb5738cb7646c88471b239c7b5c07d",
+    "cli-spec-followup-af95066f.md": "3ef88fed1e66f0c35bf1228bf8841c276bb2962a71f5136b40dcd5f5d8a9a782",
+    "cli-standards-followup-af95066f.md": "be32e2605b1c6ac26c39287f3765f5777ef59d7eb7b6473833d45781b08ea1f0"
+  }
+}

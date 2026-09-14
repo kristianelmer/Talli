@@ -1,0 +1,42 @@
+{
+  "baselineRevision": "5a0634ac5db27f63ab2e05e437f24712c282fd7a",
+  "status": "REAL_OWNER_BROWSER_API_SQL_PASS",
+  "checks": {
+    "browserJourneys": 2,
+    "skipped": 0,
+    "failed": 0,
+    "realSupabasePasswordAndTotp": true,
+    "aal1ImportDenied": true,
+    "wrongYearRejected": true,
+    "committedResponseLostReplayIdentityPreserved": true,
+    "singleImportedSubmissionAndAudit": true,
+    "ownedPermissionAndManualEvidence": true,
+    "scopedHistoryCompletePositiveProof": true,
+    "productionDisabled": true,
+    "revokedOwnerJwtDenied": true,
+    "legacyTaxRows": 0,
+    "providerCalls": 0,
+    "hostedChanges": 0
+  },
+  "fixture": "Random synthetic company and real local Auth user; 2026 admission for settlement; legacy company with current agreement for supported 2025 evidence import. No 2025 admission fabricated, no filing output or authority effect seeded. Copied historical synthetic metadata contains sentinel fields whose omission is asserted in persisted evidence.",
+  "topology": "Owner-designated retained local Supabase DB, privately backed up before ordered filing expansion/cutover/contract; six owned Tax families contracted. All fixture rows/users removed; temporary role LOGIN and borrowed relation ACL/trigger states restored.",
+  "sourceSha256": {
+    "tests/browser_tax_filing.mjs": "4e6c0df67d5d246e358323be5ebd81ff0594a8b3f5cb8d46726e60418e0fd867",
+    "tests/browser_tax_settlement.mjs": "9ab259e17342acf89d4ef47a317de9b0280a3481a428db97ac9a3d79b5736133",
+    "tests/support/tax-browser-fixture.mjs": "9d0d3b23433f9ec1e5008c1093d3550745ef92a5a0a2487f88144e10d4a82a5a",
+    "tests/support/tax-browser-auth.mjs": "d0de9aed624d3112cf7c33200812674b9f94a955dd3a20f0e988592b868e97d0",
+    "tests/support/tax-fixture-cleanup.mjs": "68d4681e094b13a462a52abeb48f639118f20f8c66e99738f9d5817fc9964072",
+    "tests/support/rf1086-fixture-access.mjs": "8ad2b40268f9413e7e49ea7c8cbb9c1e8e38eb70ca3a22ea0d25f284996adc9f",
+    "tests/fixtures/seed_tax_browser_company.py": "81c574c61ce6acd6e952f370b272cda240ef18173d5de01772e44fdeae9a0493",
+    "package.json": "5b28d7603475d0cf0f3a54a646fc0185a87ea60fbab1bb34bca6c85938dc14cb"
+  },
+  "evidenceSha256": {
+    "complete-tax-owner-browser.log": "b86d2e2fa9861b76e3f85ab601e5c22cfe8af1d622b6b3ec0bb847bb66fd562d",
+    "prepare-owner-browser.log": "2619b835df558e3c4737d8610d37c13e64cade74c8fa829e48337a012862a2f4"
+  },
+  "limits": [
+    "Offline synthetic TT02 metadata; no actual authority confirmation/submission or production acceptance.",
+    "No full stage exit or successor credit.",
+    "Initial fixture tried a 2025 admission and correctly failed the existing 2026 constraint; fixture changed to the valid legacy-company path. Unauthorized company access correctly conceals existence with 404."
+  ]
+}

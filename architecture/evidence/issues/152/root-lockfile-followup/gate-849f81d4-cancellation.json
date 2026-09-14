@@ -1,0 +1,7 @@
+{
+  "revision": "849f81d4cb8a9405504138928539f8026d665852",
+  "status": "CANCELLED_ZERO_EXIT_CREDIT",
+  "reason": "Protected Linux CI 34805023185 proves stale root lockfile; reproduced uv lock --check failure. A dependency-lock correction is required before eligible complete gates.",
+  "ownedProcessGroup": 95380,
+  "isolatedDatabaseStageNotStarted": true
+}

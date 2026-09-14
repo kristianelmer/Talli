@@ -4,24 +4,74 @@
   "name": "company_tax_filing",
   "path": "apps/backend/src/talli_backend/modules/company_tax_filing",
   "owner": "backend:company_tax_filing",
-  "purpose": "Own company tax settlement capture facts and normalization; annual estimate and filing migrate in the next slice.",
+  "purpose": "Own Tax settlement capture, deterministic company-tax readiness/calculation/XML, authorized filing preparation and sanitized TT02 receipts, the preserved human-confirmed local authority rehearsal, and positively covered recorded Tax source facts.",
   "documentation": "apps/backend/src/talli_backend/modules/company_tax_filing/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.company_tax_filing.public",
   "exports": {
     "commands": [
-      "RecordTaxSettlementCommand"
+      "RecordTaxSettlementCommand",
+      "ImportCompanyTaxReturnEvidence",
+      "RecordCompanyTaxOverride",
+      "AddCompanyTaxReviewComment",
+      "ConfirmCompanyTaxPermission",
+      "RecordCompanyTaxTestEvidence",
+      "CompanyTaxRehearsalConfiguration",
+      "rehearse_company_tax_return"
     ],
     "queries": [
       "NormalizedTaxSettlement",
       "TaxSettlementInput",
       "normalize_tax_settlement",
       "validate_new_tax_settlement",
-      "TaxSettlementArchiveQuery"
+      "TaxSettlementArchiveQuery",
+      "CompanyTaxReturnSource",
+      "CompanyTaxReturnCandidate",
+      "AnnualTaxEstimate",
+      "CompanyTaxReturnDocuments",
+      "CompanyTaxEnvelopeInput",
+      "build_company_tax_return",
+      "estimate_annual_tax",
+      "render_company_tax_return",
+      "render_company_tax_envelope",
+      "CompanyTaxEvidenceInput",
+      "CompanyTaxEvidenceProjection",
+      "project_company_tax_evidence",
+      "CompanyTaxValidationSummary",
+      "summarize_company_tax_validation",
+      "PreparedCompanyTaxReturn",
+      "prepare_company_tax_return",
+      "CompanyTaxWorkspaceQuery",
+      "CompanyTaxFilingRows",
+      "CompanyTaxCompanyIdentity",
+      "ImportedCompanyTaxEvidence",
+      "CompanyTaxRecordQuery",
+      "CompanyTaxRecordedResult",
+      "normalize_company_tax_override",
+      "normalize_company_tax_review",
+      "normalize_company_tax_test_evidence",
+      "CompanyTaxReadinessIssue",
+      "assess_company_tax_readiness",
+      "AnnualTaxEstimateSource",
+      "wait_for_company_tax_validation",
+      "wait_for_company_tax_feedback",
+      "wait_for_company_tax_clean_envelope",
+      "CompanyTaxSourceQuery",
+      "CompanyTaxSourceSnapshot",
+      "CompanyTaxSourceEvidence",
+      "CompanyTaxHistoryCoverage",
+      "CompanyTaxSubmissionFact",
+      "CompanyTaxIncidentFact",
+      "CompanyTaxOutcomeFact",
+      "CompanyTaxCorrectionLink",
+      "CompanyTaxSourceFacts",
+      "project_company_tax_source",
+      "verify_company_tax_source"
     ],
     "events": [],
     "errors": [
       "CompanyTaxError",
-      "TaxSettlementValidationError"
+      "TaxSettlementValidationError",
+      "CompanyTaxReturnAuthorityError"
     ],
     "identifiers": [
       "AccountingEntryReference",
@@ -32,7 +82,17 @@
       "TaxSettlementKind",
       "TaxSettlementPersistence",
       "tax_settlement_persistence_adapter",
-      "TaxSettlementArchivePersistence"
+      "TaxSettlementArchivePersistence",
+      "CompanyTaxWorkspacePersistence",
+      "TaxAuthorityEvidenceId",
+      "TaxFilingSubmissionId",
+      "CompanyTaxReturnPersistence",
+      "TaxFilingRecordId",
+      "CompanyTaxPreparationPersistence",
+      "CompanyTaxAuthority",
+      "company_tax_authority_adapter",
+      "CompanyTaxRehearsalIO",
+      "CompanyTaxSourcePersistence"
     ]
   },
   "owns": {
@@ -40,11 +100,17 @@
       "company_tax_filing"
     ],
     "tables": [
-      "company_tax_filing.settlements"
+      "company_tax_filing.settlements",
+      "company_tax_filing.filing_previews",
+      "company_tax_filing.filing_submissions",
+      "company_tax_filing.filing_overrides",
+      "company_tax_filing.filing_review_comments",
+      "company_tax_filing.authority_permissions",
+      "company_tax_filing.authority_test_runs"
     ],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/migrations/20260913171000_company_tax_settlement_expand.sql"
+    "migrations": "supabase/migrations"
   },
   "ports": [
     {
@@ -64,27 +130,90 @@
       "adapters": [
         "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
       ]
+    },
+    {
+      "name": "CompanyTaxWorkspacePersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxWorkspacePersistence",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
+    },
+    {
+      "name": "CompanyTaxReturnPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxReturnPersistence",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
+    },
+    {
+      "name": "CompanyTaxPreparationPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxPreparationPersistence",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
+    },
+    {
+      "name": "CompanyTaxAuthority",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxAuthority",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.company_tax_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.company_tax_authority.CompanyTaxTransport"
+      ]
+    },
+    {
+      "name": "CompanyTaxRehearsalIO",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxRehearsalIO",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.company_tax_authority_adapter",
+      "adapters": [
+        "talli_backend.adapters.local_company_tax_rehearsal.LocalCompanyTaxRehearsal"
+      ]
+    },
+    {
+      "name": "CompanyTaxSourcePersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.company_tax_filing.public.CompanyTaxSourcePersistence",
+      "registrationDecorator": "talli_backend.modules.company_tax_filing.public.tax_settlement_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
+      ]
     }
   ],
   "dependencies": [],
   "allowedImports": [
     "__future__",
+    "ada_url",
+    "base64",
+    "calendar",
     "collections.abc",
     "dataclasses",
+    "decimal",
     "enum",
+    "hashlib",
+    "icu",
     "math",
     "re",
     "talli_backend.modules.company_tax_filing.public",
     "talli_backend.modules.company_tax_filing.service",
     "talli_backend.shared.kernel",
+    "types",
     "typing",
-    "uuid"
+    "uuid",
+    "datetime",
+    "json"
   ],
   "forbiddenResponsibilities": [
     "Ledger account selection and posting policy",
     "Bank matching and document storage ownership",
-    "Provider operations, annual tax estimates and filing before slice 2",
-    "Transport or database types in the public contract"
+    "Transport or database types in the public contract",
+    "Enabling production or broadening the approved test-only, human-confirmed filing scope"
   ],
   "tests": {
     "policy": "apps/backend/tests/test_company_tax_filing.py",

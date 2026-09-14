@@ -12,7 +12,7 @@ const migration = await readFile(
   "utf8",
 ).catch(() => "");
 
-test("migration links test-authority submissions without opening the direct-write policy", () => {
+test("legacy predecessor migration links test-authority submissions without opening the direct-write policy", () => {
   assert.match(migration, /add column if not exists authority_test_run_id uuid/u);
   assert.match(
     migration,
@@ -45,7 +45,7 @@ test("migration links test-authority submissions without opening the direct-writ
   assert.match(updatePolicyUsing, /and mode = 'simulation'/u);
 });
 
-test("migration exposes one authenticated owner-AAL2-protected atomic import RPC", () => {
+test("legacy predecessor migration exposes one authenticated owner-AAL2-protected atomic import RPC", () => {
   assert.match(
     migration,
     /create or replace function public\.import_company_tax_tt02_evidence\(p_payload jsonb\)/u,
@@ -211,44 +211,18 @@ test("RPC retries compare evidence content without replacing the original actors
   assert.doesNotMatch(migration, /Skattemelding TT02-evidens importert som pending/u);
 });
 
-test("runtime imports completed company-tax TT02 evidence through exactly one atomic RPC", () => {
-  assert.match(actions, /buildCompanyTaxReturnEvidencePersistence/u);
-  assert.match(actions, /export async function recordCompanyTaxReturnTt02Evidence/u);
-  assert.match(actions, /formData\.get\("evidenceFile"\)/u);
-  assert.match(actions, /expectedIncomeYear: Number\(formString\(formData, "incomeYear"\)\)/u);
-  assert.match(actions, /loadAcceptedMembershipCompany/u);
-  assert.match(actions, /expectedCompanyOrgNumber: company\.org_number/u);
-
+test("owner evidence import uses the authenticated Company Tax API and stable errors", () => {
   const actionBody = actions.match(
     /export async function recordCompanyTaxReturnTt02Evidence[\s\S]*?\n\}\n/u,
   )?.[0] ?? "";
-  assert.match(actionBody, /loadAcceptedMembershipCompany\(companyId\)/u);
-  assert.doesNotMatch(actionBody, /\.from\("companies"\)/u);
-  assert.match(
-    actionBody,
-    /persistence = buildCompanyTaxReturnEvidencePersistence\(/u,
-  );
-  assert.match(
-    actionBody,
-    /supabase\.rpc\("import_company_tax_tt02_evidence", \{\s*p_payload: persistence,\s*\}\)/u,
-  );
-  assert.equal(actionBody.match(/supabase\.rpc\(/gu)?.length, 1);
-  assert.doesNotMatch(actionBody, /requireSensitiveActionStepUp/u);
-  assert.doesNotMatch(actionBody, /\.from\("authority_test_runs"\)\.insert/u);
-  assert.doesNotMatch(actionBody, /\.from\("audit_events"\)\.insert/u);
-  assert.match(actionBody, /try \{[\s\S]*buildCompanyTaxReturnEvidencePersistence/u);
-  assert.match(actionBody, /Ugyldig TT02-evidens/u);
-  assert.match(actionBody, /company_tax_evidence_mfa_required/u);
-  assert.match(
-    actionBody,
-    /Ekstra identitetsbekreftelse med tofaktorautentisering kreves\./u,
-  );
-  assert.doesNotMatch(actionBody, /MFA\/step-up/u);
-  assert.doesNotMatch(actionBody, /encodeURIComponent\(error\.message\)/u);
-  assert.doesNotMatch(
-    actionBody,
-    /production_enabled|authority_permissions|launch_signoffs/u,
-  );
+  assert.match(actionBody, /evidenceJson = await evidenceFile\.text\(\)/u);
+  assert.match(actionBody, /getCurrentSessionAccessToken\(\)/u);
+  assert.match(actionBody, /await importCompanyTaxTt02Evidence\(accessToken, \{/u);
+  assert.match(actionBody, /companyId, incomeYear: Number\(formString\(formData, "incomeYear"\)\)/u);
+  assert.match(actionBody, /evidenceJson, evidenceUrl: formString\(formData, "evidenceUrl"\)/u);
+  assert.match(actionBody, /taxEvidenceImportErrorMessage\(error\)/u);
+  assert.doesNotMatch(actionBody, /supabase\.rpc|\.from\(|buildCompanyTaxReturnEvidencePersistence|encodeURIComponent\(error\.message\)/u);
+  assert.doesNotMatch(actionBody, /production_enabled|authority_permissions|launch_signoffs/u);
 });
 
 test("workspace offers a company-tax JSON evidence import bound to the active year", () => {

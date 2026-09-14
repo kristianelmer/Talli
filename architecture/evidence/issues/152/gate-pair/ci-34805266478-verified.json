@@ -1,0 +1,43 @@
+{
+  "status": "PASS_EXACT_TESTED_TREE",
+  "checkedAt": "2026-09-14T04:36:52.338206+00:00",
+  "runId": 34805266478,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/34805266478",
+  "event": "pull_request",
+  "headRevision": "7c9b3caae3cd278bbe381589308cf302142b58a5",
+  "headTree": "29896c3b0f4579b3f1cbd8aa92364bc71cd7a77b",
+  "actualCheckoutCommits": [
+    {
+      "sha": "93b06fcc26b9f6d5a48c0657c2affa2199a7cda9",
+      "tree": "29896c3b0f4579b3f1cbd8aa92364bc71cd7a77b",
+      "parents": [
+        "054740b81692e0e59b99a76fff085f322f1968b4",
+        "7c9b3caae3cd278bbe381589308cf302142b58a5"
+      ]
+    }
+  ],
+  "checkoutOccurrences": 2,
+  "jobs": [
+    {
+      "name": "Application",
+      "conclusion": "success",
+      "url": "https://github.com/kristianelmer/Talli/actions/runs/34805266478/job/103855815676"
+    },
+    {
+      "name": "Database isolation",
+      "conclusion": "success",
+      "url": "https://github.com/kristianelmer/Talli/actions/runs/34805266478/job/103855815724"
+    },
+    {
+      "name": "Immutable evidence",
+      "conclusion": "skipped",
+      "url": "https://github.com/kristianelmer/Talli/actions/runs/34805266478/job/103855816696"
+    },
+    {
+      "name": "Release gate",
+      "conclusion": "success",
+      "url": "https://github.com/kristianelmer/Talli/actions/runs/34805266478/job/103859695887"
+    }
+  ],
+  "rawLogSha256": "309d6501a0fd84c18354cd0dd550137c342c94759d62235e142e1480df87b028"
+}

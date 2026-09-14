@@ -41,6 +41,7 @@ export function buildReadinessInput(data: WorkspaceData): AnnualReadinessInput |
     authorityPermissions: data.primaryAuthorityPermissions,
     filingPreviews: scope(data.previews),
     filingSubmissions: scope(data.submissions),
+    companyTaxReadiness: data.primaryTaxReadiness,
     corporateDocuments: {
       enabled: process.env.TALLI_CORPORATE_DOCUMENTS_ENABLED === "true",
       readiness: data.primaryCorporateDecisionReadiness ?? {
