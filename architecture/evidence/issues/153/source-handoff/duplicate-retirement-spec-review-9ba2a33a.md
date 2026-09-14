@@ -1,0 +1,11 @@
+PASS — bounded Spec review of `baac7f6ef0c90ed20cfb29d33b80a1c85ef506d1...9ba2a33a2214b398ca0d62e1bad6bd3fc1674fe3`; no actionable finding.
+
+The change removes the two unused web payload/XML implementations and only Accounts-specific importer/type/helpers from shared authority evidence. Runtime reference searches across apps, scripts and packages find no remaining consumer of the retired files or symbols. Six retained functions and six retained shared type definitions are byte-identical to the fixed predecessor. No policy, HTTP, SQL, authorization, or provider mechanics are introduced by this slice.
+
+Existing payload/XML/import and Investments cross-output fixtures now execute the actual Accounts Python public contracts through fixed test-only operation dispatch. The driver maps transport names and immutable values; it contains no replacement filing calculation, evidence validation, XML rules or readiness policy. Its readiness fixture obtains the owned assessment required by the already-migrated aggregator. All 138 existing assertion call bodies across the four changed test files remain byte-identical.
+
+Independently ran those four files using pinned Node 24.20.0 and Python 3.12.12 in a private archive of the exact candidate: **22 passed, zero skipped**. Independently reconstructed the retained-definition proof from explicit base/head Git objects; it matches the committed six-function hashes. All 15 manifest artifact hashes verify. Frozen characterization/producers, the original six requirements and compatibility registry are unchanged.
+
+This supports #153's “Supported annual-accounts cases produce outputs identical to current schema and TT02 evidence” and removal of “duplicate TypeScript calculations” within the reviewed retirement slice. It does not establish full equivalence from 22 examples alone. The retained 2,112-test parity, typecheck and architecture logs are parent-run evidence; I did not rerun those lanes. The recorded initial driver keyword-argument failure is retained and accurately distinguished from the corrected pass.
+
+No shared source, database, browser or provider mutation occurred. Later source-handoff work is excluded. Full owner hydration, source completeness, final topology and the complete #132 release/exit envelope remain pending; no stage-exit or successor credit.

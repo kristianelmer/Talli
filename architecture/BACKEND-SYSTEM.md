@@ -705,3 +705,16 @@ and use iterative transport encoding to preserve deeply nested opaque metadata.
 <!-- architecture-inventory
 {"workflows": ["annual-accounts-readiness-preview"], "workflowPurposes": ["annual-accounts-readiness-preview=>Presents Accounts-owned readiness for supplied immutable Annual, Ledger and Corporate facts; a preview grants no durable filing authorization."], "publicPackages": ["talli_backend.modules.annual_accounts_filing.public"], "routes": ["/api/v1/annual-accounts/readiness-previews"], "transportDependencies": ["talli_backend.json_transport"]}
 -->
+
+
+## Annual Accounts source handoff
+
+The source query publishes owner-scoped immutable Accounts facts from one
+repeatable snapshot. Missing coverage stays unavailable; unknown production
+labels retain unknown outcomes and attribution. Billing remains the commercial
+policy owner. Production-disabled cannot be lifted by stored permission or a
+TT02 receipt.
+
+<!-- architecture-inventory
+{"workflows": ["annual-accounts-source-facts"], "workflowPurposes": ["annual-accounts-source-facts=>Publishes immutable owner-scoped Accounts source evidence from one repeatable snapshot; positive history coverage preserves production-disabled, unknown and test-only distinctions without Billing policy."], "routes": ["/api/v1/annual-accounts/source-facts"], "ports": ["AnnualAccountsSourcePersistence"], "adapterBindings": ["AnnualAccountsSourcePersistence=>talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction"], "adapterBindingOwners": ["AnnualAccountsSourcePersistence=>backend-system"], "adapterBindingModes": ["AnnualAccountsSourcePersistence=>one verified owner repeatable snapshot; positive Accounts migration coverage, complete enumeration and phase lock; no provider operation"], "technicalMigrations": ["supabase/contract-migrations/20260914110840_annual_accounts_filing_source_contract.sql"]}
+-->

@@ -44,7 +44,18 @@
       "normalize_annual_accounts_review",
       "normalize_annual_accounts_test_evidence",
       "AnnualAccountsWorkspaceQuery",
-      "AnnualAccountsFilingRows"
+      "AnnualAccountsFilingRows",
+      "AnnualAccountsSourceQuery",
+      "AnnualAccountsSourceSnapshot",
+      "AnnualAccountsSourceEvidence",
+      "AnnualAccountsHistoryCoverage",
+      "AnnualAccountsSubmissionFact",
+      "AnnualAccountsIncidentFact",
+      "AnnualAccountsOutcomeFact",
+      "AnnualAccountsCorrectionLink",
+      "AnnualAccountsSourceFacts",
+      "project_annual_accounts_source",
+      "verify_annual_accounts_source"
     ],
     "events": [],
     "errors": [
@@ -59,7 +70,8 @@
       "AnnualAccountsRecordId",
       "AnnualAccountsPreparationPersistence",
       "AnnualAccountsWorkspacePersistence",
-      "annual_accounts_persistence_adapter"
+      "annual_accounts_persistence_adapter",
+      "AnnualAccountsSourcePersistence"
     ]
   },
   "owns": {
@@ -123,6 +135,15 @@
       "adapters": [
         "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction"
       ]
+    },
+    {
+      "name": "AnnualAccountsSourcePersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.annual_accounts_filing.public.AnnualAccountsSourcePersistence",
+      "registrationDecorator": "talli_backend.modules.annual_accounts_filing.public.annual_accounts_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction"
+      ]
     }
   ],
   "dependencies": [],
@@ -139,7 +160,9 @@
     "icu",
     "typing",
     "uuid",
-    "talli_backend.shared.kernel"
+    "talli_backend.shared.kernel",
+    "datetime",
+    "json"
   ],
   "forbiddenResponsibilities": [
     "Ledger posting or account ownership",

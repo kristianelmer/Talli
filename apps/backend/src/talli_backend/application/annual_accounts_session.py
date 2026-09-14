@@ -2,11 +2,11 @@
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 
-from talli_backend.modules.annual_accounts_filing.public import AnnualAccountsEvidencePersistence, AnnualAccountsWorkspacePersistence, AnnualAccountsPreparationPersistence
+from talli_backend.modules.annual_accounts_filing.public import AnnualAccountsEvidencePersistence, AnnualAccountsWorkspacePersistence, AnnualAccountsPreparationPersistence, AnnualAccountsSourcePersistence
 from talli_backend.shared.kernel import ActorId
 
 
-class AnnualAccountsTransaction(AnnualAccountsEvidencePersistence, AnnualAccountsWorkspacePersistence, AnnualAccountsPreparationPersistence, Protocol):
+class AnnualAccountsTransaction(AnnualAccountsEvidencePersistence, AnnualAccountsWorkspacePersistence, AnnualAccountsPreparationPersistence, AnnualAccountsSourcePersistence, Protocol):
     @property
     def actor_id(self) -> ActorId: ...
 

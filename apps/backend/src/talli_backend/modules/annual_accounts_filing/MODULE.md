@@ -1,7 +1,7 @@
 # Annual Accounts Filing
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["annual_accounts_filing.authority_permissions","annual_accounts_filing.authority_test_runs","annual_accounts_filing.filing_overrides","annual_accounts_filing.filing_previews","annual_accounts_filing.filing_review_comments","annual_accounts_filing.filing_submissions"],"ports":["AnnualAccountsAuthority","AnnualAccountsRehearsalIO","AnnualAccountsWorkspacePersistence","AnnualAccountsPreparationPersistence","AnnualAccountsEvidencePersistence"],"publicEntryPoints":["talli_backend.modules.annual_accounts_filing.public"]}
+{"dependencies":[],"ownedTables":["annual_accounts_filing.authority_permissions","annual_accounts_filing.authority_test_runs","annual_accounts_filing.filing_overrides","annual_accounts_filing.filing_previews","annual_accounts_filing.filing_review_comments","annual_accounts_filing.filing_submissions"],"ports":["AnnualAccountsAuthority","AnnualAccountsRehearsalIO","AnnualAccountsWorkspacePersistence","AnnualAccountsPreparationPersistence","AnnualAccountsEvidencePersistence","AnnualAccountsSourcePersistence"],"publicEntryPoints":["talli_backend.modules.annual_accounts_filing.public"]}
 -->
 
 ## Purpose
@@ -182,3 +182,35 @@ Only those four inventoried callers are rebound. The revoked historical
 historical definitions; neither is a live Accounts consumer. These artifacts are
 explicit release steps; adding them to the repository does not apply them to a
 hosted database or authorize production filing.
+
+## Immutable source handoff
+
+`AnnualAccountsSourceQuery` binds a company, year and verified owner to one
+repeatable-read `AnnualAccountsSourceSnapshot`. `AnnualAccountsSourcePersistence`
+returns complete owned rows, technical migration coverage and observation time.
+`project_annual_accounts_source` publishes immutable `AnnualAccountsSourceFacts`:
+evidence identity/version/digest, readiness, history coverage, recorded submissions,
+potential production attempts, correction links, incidents and outcomes. The
+source HTTP query and generated client expose that public factual contract.
+`AnnualAccountsSourceEvidence` binds identity, version, digest and observation time.
+`AnnualAccountsHistoryCoverage` states the proven extent and missing evidence.
+`AnnualAccountsSubmissionFact`, `AnnualAccountsIncidentFact`,
+`AnnualAccountsOutcomeFact` and `AnnualAccountsCorrectionLink` retain recorded
+history without inferring external effects or commercial eligibility.
+`verify_annual_accounts_source` rechecks the same scope and evidence against a
+later complete snapshot; changed state, future evidence or missing coverage fails.
+
+Coverage is limited to Talli-recorded Accounts company/year history. Complete
+history requires all six declared families, valid preserved source/inventory
+hashes, reconciliation, retained submission identities, exact writer fences or
+verified final generic retirement, original mode constraints and complete current
+enumeration. Absent coverage is unavailable; other incomplete evidence never
+proves no production. A production-labelled or unknown mode remains an unknown
+attempt. Local timestamps remain observation times, incident attribution remains
+unknown, and test receipts are never authority acceptance for production.
+
+Production-disabled is a decisive Accounts-owned readiness block. This source
+contract does not certify missing Corporate close or signed-artifact prerequisites,
+and a stored permission or TT02 receipt cannot lift it. Billing alone applies
+commercial classification, charges and refunds. Raw caller-supplied readiness
+previews are separate from this durable snapshot and never certify history.

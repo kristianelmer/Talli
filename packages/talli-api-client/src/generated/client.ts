@@ -3158,6 +3158,84 @@ export interface AnnualAccountsTestEvidenceWire {
   testReference: string;
 }
 
+export interface AnnualAccountsSourceEvidenceWire {
+  companyId: string;
+  digest: string;
+  evaluatedAt: string;
+  incomeYear: number;
+  obligation: "aarsregnskap";
+  reference: string;
+  scope: "talli_recorded_annual_accounts";
+  version: string;
+}
+
+export interface AnnualAccountsHistoryCoverageWire {
+  asOf: string;
+  evidenceReference: string | null;
+  reasons: string[];
+  scope: "talli_recorded_annual_accounts";
+  status: "complete" | "incomplete" | "unavailable";
+  submissionCount: number;
+}
+
+export interface AnnualAccountsSubmissionFactWire {
+  adapterMode: string;
+  authorityConfirmedAt: string | null;
+  authorityConfirmedBy: string | null;
+  createdBy: string | null;
+  effectStatus: "unknown" | "not_production";
+  feedbackDocumentIds: string[];
+  observedAt: string | null;
+  payloadHash: string | null;
+  previewConfirmedAt: string | null;
+  previewConfirmedBy: string | null;
+  receiptReference: string | null;
+  sourceDigest: string;
+  sourceId: string;
+  sourceMode: string;
+  state: string;
+  submittedBy: string | null;
+}
+
+export interface AnnualAccountsIncidentFactWire {
+  actorId: string | null;
+  adapterMode: string;
+  attribution: "unknown";
+  failureCode: string | null;
+  observedAt: string | null;
+  sourceDigest: string;
+  sourceId: string;
+  sourceMode: string;
+}
+
+export interface AnnualAccountsOutcomeFactWire {
+  adapterMode: string;
+  attribution: "unknown";
+  observedAt: string | null;
+  outcome: "unknown" | "test_or_simulation";
+  recordedState: string;
+  sourceDigest: string;
+  sourceId: string;
+  sourceMode: string;
+}
+
+export interface AnnualAccountsCorrectionLinkWire {
+  sourceId: string;
+  supersedesSourceId: string;
+}
+
+export interface AnnualAccountsSourceFactsWire {
+  correctionLinks: AnnualAccountsCorrectionLinkWire[];
+  evidence: AnnualAccountsSourceEvidenceWire;
+  hardBlocks: string[];
+  historyCoverage: AnnualAccountsHistoryCoverageWire;
+  incidents: AnnualAccountsIncidentFactWire[];
+  outcomes: AnnualAccountsOutcomeFactWire[];
+  productionAttempts: AnnualAccountsSubmissionFactWire[];
+  readinessStatus: "blocked" | "unavailable";
+  recordedSubmissions: AnnualAccountsSubmissionFactWire[];
+}
+
 export interface CompanyTaxSourceEvidenceWire {
   companyId: string;
   digest: string;
@@ -8197,6 +8275,112 @@ function isAnnualAccountsTestEvidenceWire(value: unknown): value is AnnualAccoun
   );
 }
 
+function isAnnualAccountsSourceEvidenceWire(value: unknown): value is AnnualAccountsSourceEvidenceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","digest","evaluatedAt","incomeYear","obligation","reference","scope","version"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.digest === "string" && new RegExp("^[0-9a-f]{64}$", "u").test(value.digest)) &&
+    isDateTime(value.evaluatedAt) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    value.obligation === "aarsregnskap" &&
+    typeof value.reference === "string" &&
+    value.scope === "talli_recorded_annual_accounts" &&
+    typeof value.version === "string"
+  );
+}
+
+function isAnnualAccountsHistoryCoverageWire(value: unknown): value is AnnualAccountsHistoryCoverageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["asOf","evidenceReference","reasons","scope","status","submissionCount"]) &&
+    isDateTime(value.asOf) &&
+    (typeof value.evidenceReference === "string" || value.evidenceReference === null) &&
+    Array.isArray(value.reasons) && value.reasons.every((item) => typeof item === "string") &&
+    value.scope === "talli_recorded_annual_accounts" &&
+    (value.status === "complete" || value.status === "incomplete" || value.status === "unavailable") &&
+    typeof value.submissionCount === "number" && Number.isInteger(value.submissionCount)
+  );
+}
+
+function isAnnualAccountsSubmissionFactWire(value: unknown): value is AnnualAccountsSubmissionFactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["adapterMode","authorityConfirmedAt","authorityConfirmedBy","createdBy","effectStatus","feedbackDocumentIds","observedAt","payloadHash","previewConfirmedAt","previewConfirmedBy","receiptReference","sourceDigest","sourceId","sourceMode","state","submittedBy"]) &&
+    typeof value.adapterMode === "string" &&
+    (typeof value.authorityConfirmedAt === "string" || value.authorityConfirmedAt === null) &&
+    (typeof value.authorityConfirmedBy === "string" || value.authorityConfirmedBy === null) &&
+    (typeof value.createdBy === "string" || value.createdBy === null) &&
+    (value.effectStatus === "unknown" || value.effectStatus === "not_production") &&
+    Array.isArray(value.feedbackDocumentIds) && value.feedbackDocumentIds.every((item) => typeof item === "string") &&
+    (typeof value.observedAt === "string" || value.observedAt === null) &&
+    (typeof value.payloadHash === "string" || value.payloadHash === null) &&
+    (typeof value.previewConfirmedAt === "string" || value.previewConfirmedAt === null) &&
+    (typeof value.previewConfirmedBy === "string" || value.previewConfirmedBy === null) &&
+    (typeof value.receiptReference === "string" || value.receiptReference === null) &&
+    typeof value.sourceDigest === "string" &&
+    isUuid(value.sourceId) &&
+    typeof value.sourceMode === "string" &&
+    typeof value.state === "string" &&
+    (typeof value.submittedBy === "string" || value.submittedBy === null)
+  );
+}
+
+function isAnnualAccountsIncidentFactWire(value: unknown): value is AnnualAccountsIncidentFactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["actorId","adapterMode","attribution","failureCode","observedAt","sourceDigest","sourceId","sourceMode"]) &&
+    (typeof value.actorId === "string" || value.actorId === null) &&
+    typeof value.adapterMode === "string" &&
+    value.attribution === "unknown" &&
+    (typeof value.failureCode === "string" || value.failureCode === null) &&
+    (typeof value.observedAt === "string" || value.observedAt === null) &&
+    typeof value.sourceDigest === "string" &&
+    isUuid(value.sourceId) &&
+    typeof value.sourceMode === "string"
+  );
+}
+
+function isAnnualAccountsOutcomeFactWire(value: unknown): value is AnnualAccountsOutcomeFactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["adapterMode","attribution","observedAt","outcome","recordedState","sourceDigest","sourceId","sourceMode"]) &&
+    typeof value.adapterMode === "string" &&
+    value.attribution === "unknown" &&
+    (typeof value.observedAt === "string" || value.observedAt === null) &&
+    (value.outcome === "unknown" || value.outcome === "test_or_simulation") &&
+    typeof value.recordedState === "string" &&
+    typeof value.sourceDigest === "string" &&
+    isUuid(value.sourceId) &&
+    typeof value.sourceMode === "string"
+  );
+}
+
+function isAnnualAccountsCorrectionLinkWire(value: unknown): value is AnnualAccountsCorrectionLinkWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["sourceId","supersedesSourceId"]) &&
+    isUuid(value.sourceId) &&
+    isUuid(value.supersedesSourceId)
+  );
+}
+
+function isAnnualAccountsSourceFactsWire(value: unknown): value is AnnualAccountsSourceFactsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["correctionLinks","evidence","hardBlocks","historyCoverage","incidents","outcomes","productionAttempts","readinessStatus","recordedSubmissions"]) &&
+    Array.isArray(value.correctionLinks) && value.correctionLinks.every((item) => isAnnualAccountsCorrectionLinkWire(item)) &&
+    isAnnualAccountsSourceEvidenceWire(value.evidence) &&
+    Array.isArray(value.hardBlocks) && value.hardBlocks.every((item) => typeof item === "string") &&
+    isAnnualAccountsHistoryCoverageWire(value.historyCoverage) &&
+    Array.isArray(value.incidents) && value.incidents.every((item) => isAnnualAccountsIncidentFactWire(item)) &&
+    Array.isArray(value.outcomes) && value.outcomes.every((item) => isAnnualAccountsOutcomeFactWire(item)) &&
+    Array.isArray(value.productionAttempts) && value.productionAttempts.every((item) => isAnnualAccountsSubmissionFactWire(item)) &&
+    (value.readinessStatus === "blocked" || value.readinessStatus === "unavailable") &&
+    Array.isArray(value.recordedSubmissions) && value.recordedSubmissions.every((item) => isAnnualAccountsSubmissionFactWire(item))
+  );
+}
+
 function isCompanyTaxSourceEvidenceWire(value: unknown): value is CompanyTaxSourceEvidenceWire {
   return (
     isRecord(value) &&
@@ -10878,6 +11062,23 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         "POST", request, body, isAnnualAccountsEvidenceImportWire,
       );
     },
+
+    async annualAccountsGetSourceFacts(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<AnnualAccountsSourceFactsWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const result = await executeJson(
+        `${baseUrl}/api/v1/annual-accounts/source-facts?${query}`,
+        "GET", request, undefined, isAnnualAccountsSourceFactsWire,
+      );
+      if (result.evidence.companyId !== companyId || result.evidence.incomeYear !== incomeYear
+          || (result.historyCoverage.status === "complete"
+            && result.historyCoverage.evidenceReference !== result.evidence.reference)) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
 
     async annualAccountsGetFilingWorkspace(
       companyId: string, incomeYear: number | null = null, request: TalliRequestOptions = {},

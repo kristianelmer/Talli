@@ -23,6 +23,7 @@ EXPANSION = (
     '20260914092924_annual_accounts_filing_preparation_contracts.sql',
     '20260914093204_annual_accounts_filing_import_contract.sql',
     '20260914101625_annual_accounts_filing_dependency_contracts.sql',
+    '20260914110840_annual_accounts_filing_source_contract.sql',
 )
 CUTOVER = '20260914101805_annual_accounts_filing_cutover.sql'
 CONTRACT = '20260914101842_annual_accounts_filing_contract.sql'
@@ -198,6 +199,20 @@ def test_real_authorization_and_phase_contracts(database, phase):
         apply(db, CONTRACT)
     for name in ACTORS:
         with actor(db, name) as identity:
+            def read_source():
+                return db.execute('select annual_accounts_filing.read_source_snapshot_v1(%s,2025,%s)', (COMPANY, identity)).fetchone()[0]
+            if name not in ('owner', 'second'):
+                expect_error(db, 'annual_accounts_not_found', read_source)
+            elif phase == 'expanded':
+                expect_error(db, 'annual_accounts_unavailable', read_source)
+            else:
+                result = read_source()
+                assert all(result['coverage'][flag] is True for flag in (
+                    'inventoryValid', 'quarantineClear', 'sourceRowsValid', 'legacyFencesValid', 'modeChecksValid', 'declaredExtentValid'))
+                expect_error(db, 'annual_accounts_forbidden', lambda: db.execute(
+                    'select annual_accounts_filing.read_source_snapshot_v1(%s,2025,%s)', (COMPANY, ACTORS['outsider'])))
+    for name in ACTORS:
+        with actor(db, name) as identity:
             def read():
                 return db.execute('select annual_accounts_filing.read_workspace_v1(%s,2025,%s)', (COMPANY, identity)).fetchone()[0]
             if name in ('unaccepted', 'outsider'):
@@ -214,6 +229,31 @@ def test_real_authorization_and_phase_contracts(database, phase):
         with actor(db, fresh=fresh, aal=aal) as identity:
             expect_error(db, 'annual_accounts_unavailable' if phase == 'expanded' else 'annual_accounts_mfa_required',
                          lambda: db.execute('select annual_accounts_filing.confirm_filing_permission_v1(%s,false,%s)', (COMPANY, identity)))
+
+
+@pytest.mark.parametrize('mutation,flag,owned', [
+    ('alter table public.filing_submissions drop constraint accounts153_legacy_writer_retired', 'legacyFencesValid', False),
+    ('alter table annual_accounts_filing.filing_submissions drop constraint filing_submissions_mode_check', 'modeChecksValid', True),
+    ('create table annual_accounts_filing.uncovered_source_probe(id integer)', 'declaredExtentValid', True),
+    ("update backend_system.annual_accounts_migration_inventory set definition_sha256=repeat('0',64)", 'inventoryValid', True),
+    ("update backend_system.annual_accounts_source_rows set source_sha256=repeat('0',64) where ctid=(select ctid from backend_system.annual_accounts_source_rows order by family,source_id,source_sha256 limit 1)", 'sourceRowsValid', True),
+])
+def test_source_history_detects_real_database_coverage_drift(database, mutation, flag, owned):
+    db = database
+    apply(db, CUTOVER)
+    runner = db.execute('select current_user').fetchone()[0]
+    if owned:
+        db.execute(sql.SQL('grant annual_accounts_filing_store_owner to {} with set true granted by {}').format(sql.Identifier(runner), sql.Identifier(runner)))
+        db.execute('set local role annual_accounts_filing_store_owner')
+    db.execute(mutation)
+    db.execute('reset role')
+    with actor(db) as identity:
+        result = db.execute('select annual_accounts_filing.read_source_snapshot_v1(%s,2025,%s)', (COMPANY, identity)).fetchone()[0]
+        assert result['coverage'][flag] is False
+        from test_annual_accounts_source_facts import parse
+        from talli_backend.modules.annual_accounts_filing.public import project_annual_accounts_source
+        query, snapshot = parse(result)
+        assert project_annual_accounts_source(query, snapshot).history_coverage.status == 'incomplete'
 
 
 @pytest.mark.parametrize('mutation', [

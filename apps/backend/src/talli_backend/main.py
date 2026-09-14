@@ -74,6 +74,7 @@ from talli_backend.json_transport import json_value, model_json_response
 from talli_backend.adapters.postgres_annual_accounts import compose_annual_accounts_application
 from talli_backend.application.annual_accounts_session import AnnualAccountsSessionFactory
 from talli_backend.modules.annual_accounts_filing.public import (
+    AnnualAccountsSourceQuery,
     AnnualAccountsSource, AnnualAccountsCorporateReadiness, AnnualAccountsReadinessIssue, assess_annual_accounts_readiness,
     ImportAnnualAccountsEvidence, AnnualAccountsError, AnnualAccountsWorkspaceQuery, AnnualAccountsRecordQuery, AnnualAccountsRecordId,
     RecordAnnualAccountsOverride, AddAnnualAccountsReviewComment, ConfirmAnnualAccountsPermission,
@@ -1024,6 +1025,84 @@ class CompanyTaxSourceFactsWire(TransportModel):
     correction_links: list[CompanyTaxCorrectionLinkWire]
     incidents: list[CompanyTaxIncidentFactWire]
     outcomes: list[CompanyTaxOutcomeFactWire]
+
+
+class AnnualAccountsSourceEvidenceWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    obligation: Literal["aarsregnskap"]
+    scope: Literal["talli_recorded_annual_accounts"]
+    reference: str
+    version: str
+    digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    evaluated_at: datetime
+
+
+class AnnualAccountsHistoryCoverageWire(TransportModel):
+    status: Literal["complete", "incomplete", "unavailable"]
+    reasons: list[str]
+    evidence_reference: str | None
+    as_of: datetime
+    submission_count: int
+    scope: Literal["talli_recorded_annual_accounts"]
+
+
+class AnnualAccountsSubmissionFactWire(TransportModel):
+    source_id: UUID
+    source_mode: str
+    adapter_mode: str
+    state: str
+    effect_status: Literal["unknown", "not_production"]
+    observed_at: str | None
+    created_by: str | None
+    submitted_by: str | None
+    authority_confirmed_by: str | None
+    authority_confirmed_at: str | None
+    preview_confirmed_by: str | None
+    preview_confirmed_at: str | None
+    payload_hash: str | None
+    receipt_reference: str | None
+    feedback_document_ids: list[str]
+    source_digest: str
+
+
+class AnnualAccountsIncidentFactWire(TransportModel):
+    source_id: UUID
+    source_mode: str
+    adapter_mode: str
+    failure_code: str | None
+    observed_at: str | None
+    actor_id: str | None
+    source_digest: str
+    attribution: Literal["unknown"]
+
+
+class AnnualAccountsOutcomeFactWire(TransportModel):
+    source_id: UUID
+    source_mode: str
+    adapter_mode: str
+    recorded_state: str
+    outcome: Literal["unknown", "test_or_simulation"]
+    observed_at: str | None
+    source_digest: str
+    attribution: Literal["unknown"]
+
+
+class AnnualAccountsCorrectionLinkWire(TransportModel):
+    source_id: UUID
+    supersedes_source_id: UUID
+
+
+class AnnualAccountsSourceFactsWire(TransportModel):
+    evidence: AnnualAccountsSourceEvidenceWire
+    readiness_status: Literal["blocked", "unavailable"]
+    hard_blocks: list[str]
+    history_coverage: AnnualAccountsHistoryCoverageWire
+    recorded_submissions: list[AnnualAccountsSubmissionFactWire]
+    production_attempts: list[AnnualAccountsSubmissionFactWire]
+    correction_links: list[AnnualAccountsCorrectionLinkWire]
+    incidents: list[AnnualAccountsIncidentFactWire]
+    outcomes: list[AnnualAccountsOutcomeFactWire]
 
 
 class AnnualAccountsPreviewWire(TransportModel):
@@ -10398,6 +10477,42 @@ def create_app(
                         source=issue.source,accepted=issue.accepted) for issue in issues])
             except (KeyError, TypeError, ValueError, OverflowError, AttributeError):
                 raise AnnualAccountsError.invalid_input() from None
+        return await annual_accounts_call(execute)
+
+    @application.get(
+        "/api/v1/annual-accounts/source-facts",
+        operation_id="annualAccountsGetSourceFacts", response_model=AnnualAccountsSourceFactsWire,
+        responses=ledger_errors, tags=["annual-accounts"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def annual_accounts_source_facts(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> AnnualAccountsSourceFactsWire:
+        async def execute() -> AnnualAccountsSourceFactsWire:
+            session = await annual_accounts_application.session(bearer_token(credentials))
+            result = await session.filing_source_facts(AnnualAccountsSourceQuery(
+                CompanyId(str(company_id)), IncomeYear(income_year), session.actor_id,
+            ))
+            try:
+                evidence, coverage = result.evidence, result.history_coverage
+                return AnnualAccountsSourceFactsWire(
+                    evidence=AnnualAccountsSourceEvidenceWire(company_id=str(evidence.company_id), income_year=int(evidence.income_year),
+                        obligation=evidence.obligation, scope=evidence.scope, reference=evidence.reference, version=evidence.version,
+                        digest=evidence.digest, evaluated_at=evidence.evaluated_at.value),
+                    readiness_status=result.readiness_status, hard_blocks=list(result.hard_blocks),
+                    history_coverage=AnnualAccountsHistoryCoverageWire(status=coverage.status, reasons=list(coverage.reasons),
+                        evidence_reference=coverage.evidence_reference, as_of=coverage.as_of.value,
+                        submission_count=coverage.submission_count, scope=coverage.scope),
+                    recorded_submissions=[AnnualAccountsSubmissionFactWire.model_validate(row, from_attributes=True) for row in result.recorded_submissions],
+                    production_attempts=[AnnualAccountsSubmissionFactWire.model_validate(row, from_attributes=True) for row in result.production_attempts],
+                    correction_links=[AnnualAccountsCorrectionLinkWire.model_validate(row, from_attributes=True) for row in result.correction_links],
+                    incidents=[AnnualAccountsIncidentFactWire.model_validate(row, from_attributes=True) for row in result.incidents],
+                    outcomes=[AnnualAccountsOutcomeFactWire.model_validate(row, from_attributes=True) for row in result.outcomes],
+                )
+            except ValidationError:
+                raise AnnualAccountsError.unavailable() from None
         return await annual_accounts_call(execute)
 
     @application.get(

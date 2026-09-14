@@ -397,6 +397,26 @@
         "title": "AnnualAccountsCorporateBlockerWire",
         "type": "object"
       },
+      "AnnualAccountsCorrectionLinkWire": {
+        "properties": {
+          "sourceId": {
+            "format": "uuid",
+            "title": "Sourceid",
+            "type": "string"
+          },
+          "supersedesSourceId": {
+            "format": "uuid",
+            "title": "Supersedessourceid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceId",
+          "supersedesSourceId"
+        ],
+        "title": "AnnualAccountsCorrectionLinkWire",
+        "type": "object"
+      },
       "AnnualAccountsEvidenceImportRequest": {
         "properties": {
           "companyId": {
@@ -446,6 +466,193 @@
           "testReference"
         ],
         "title": "AnnualAccountsEvidenceImportWire",
+        "type": "object"
+      },
+      "AnnualAccountsHistoryCoverageWire": {
+        "properties": {
+          "asOf": {
+            "format": "date-time",
+            "title": "Asof",
+            "type": "string"
+          },
+          "evidenceReference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidencereference"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "scope": {
+            "const": "talli_recorded_annual_accounts",
+            "title": "Scope",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "complete",
+              "incomplete",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "submissionCount": {
+            "title": "Submissioncount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "reasons",
+          "evidenceReference",
+          "asOf",
+          "submissionCount",
+          "scope"
+        ],
+        "title": "AnnualAccountsHistoryCoverageWire",
+        "type": "object"
+      },
+      "AnnualAccountsIncidentFactWire": {
+        "properties": {
+          "actorId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actorid"
+          },
+          "adapterMode": {
+            "title": "Adaptermode",
+            "type": "string"
+          },
+          "attribution": {
+            "const": "unknown",
+            "title": "Attribution",
+            "type": "string"
+          },
+          "failureCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failurecode"
+          },
+          "observedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observedat"
+          },
+          "sourceDigest": {
+            "title": "Sourcedigest",
+            "type": "string"
+          },
+          "sourceId": {
+            "format": "uuid",
+            "title": "Sourceid",
+            "type": "string"
+          },
+          "sourceMode": {
+            "title": "Sourcemode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceId",
+          "sourceMode",
+          "adapterMode",
+          "failureCode",
+          "observedAt",
+          "actorId",
+          "sourceDigest",
+          "attribution"
+        ],
+        "title": "AnnualAccountsIncidentFactWire",
+        "type": "object"
+      },
+      "AnnualAccountsOutcomeFactWire": {
+        "properties": {
+          "adapterMode": {
+            "title": "Adaptermode",
+            "type": "string"
+          },
+          "attribution": {
+            "const": "unknown",
+            "title": "Attribution",
+            "type": "string"
+          },
+          "observedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observedat"
+          },
+          "outcome": {
+            "enum": [
+              "unknown",
+              "test_or_simulation"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "recordedState": {
+            "title": "Recordedstate",
+            "type": "string"
+          },
+          "sourceDigest": {
+            "title": "Sourcedigest",
+            "type": "string"
+          },
+          "sourceId": {
+            "format": "uuid",
+            "title": "Sourceid",
+            "type": "string"
+          },
+          "sourceMode": {
+            "title": "Sourcemode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceId",
+          "sourceMode",
+          "adapterMode",
+          "recordedState",
+          "outcome",
+          "observedAt",
+          "sourceDigest",
+          "attribution"
+        ],
+        "title": "AnnualAccountsOutcomeFactWire",
         "type": "object"
       },
       "AnnualAccountsOverrideRequest": {
@@ -1025,6 +1232,291 @@
           "body"
         ],
         "title": "AnnualAccountsReviewRequest",
+        "type": "object"
+      },
+      "AnnualAccountsSourceEvidenceWire": {
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "digest": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Digest",
+            "type": "string"
+          },
+          "evaluatedAt": {
+            "format": "date-time",
+            "title": "Evaluatedat",
+            "type": "string"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "obligation": {
+            "const": "aarsregnskap",
+            "title": "Obligation",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "scope": {
+            "const": "talli_recorded_annual_accounts",
+            "title": "Scope",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "obligation",
+          "scope",
+          "reference",
+          "version",
+          "digest",
+          "evaluatedAt"
+        ],
+        "title": "AnnualAccountsSourceEvidenceWire",
+        "type": "object"
+      },
+      "AnnualAccountsSourceFactsWire": {
+        "properties": {
+          "correctionLinks": {
+            "items": {
+              "$ref": "#/components/schemas/AnnualAccountsCorrectionLinkWire"
+            },
+            "title": "Correctionlinks",
+            "type": "array"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/AnnualAccountsSourceEvidenceWire"
+          },
+          "hardBlocks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Hardblocks",
+            "type": "array"
+          },
+          "historyCoverage": {
+            "$ref": "#/components/schemas/AnnualAccountsHistoryCoverageWire"
+          },
+          "incidents": {
+            "items": {
+              "$ref": "#/components/schemas/AnnualAccountsIncidentFactWire"
+            },
+            "title": "Incidents",
+            "type": "array"
+          },
+          "outcomes": {
+            "items": {
+              "$ref": "#/components/schemas/AnnualAccountsOutcomeFactWire"
+            },
+            "title": "Outcomes",
+            "type": "array"
+          },
+          "productionAttempts": {
+            "items": {
+              "$ref": "#/components/schemas/AnnualAccountsSubmissionFactWire"
+            },
+            "title": "Productionattempts",
+            "type": "array"
+          },
+          "readinessStatus": {
+            "enum": [
+              "blocked",
+              "unavailable"
+            ],
+            "title": "Readinessstatus",
+            "type": "string"
+          },
+          "recordedSubmissions": {
+            "items": {
+              "$ref": "#/components/schemas/AnnualAccountsSubmissionFactWire"
+            },
+            "title": "Recordedsubmissions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "evidence",
+          "readinessStatus",
+          "hardBlocks",
+          "historyCoverage",
+          "recordedSubmissions",
+          "productionAttempts",
+          "correctionLinks",
+          "incidents",
+          "outcomes"
+        ],
+        "title": "AnnualAccountsSourceFactsWire",
+        "type": "object"
+      },
+      "AnnualAccountsSubmissionFactWire": {
+        "properties": {
+          "adapterMode": {
+            "title": "Adaptermode",
+            "type": "string"
+          },
+          "authorityConfirmedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authorityconfirmedat"
+          },
+          "authorityConfirmedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authorityconfirmedby"
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdby"
+          },
+          "effectStatus": {
+            "enum": [
+              "unknown",
+              "not_production"
+            ],
+            "title": "Effectstatus",
+            "type": "string"
+          },
+          "feedbackDocumentIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Feedbackdocumentids",
+            "type": "array"
+          },
+          "observedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observedat"
+          },
+          "payloadHash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payloadhash"
+          },
+          "previewConfirmedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previewconfirmedat"
+          },
+          "previewConfirmedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previewconfirmedby"
+          },
+          "receiptReference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receiptreference"
+          },
+          "sourceDigest": {
+            "title": "Sourcedigest",
+            "type": "string"
+          },
+          "sourceId": {
+            "format": "uuid",
+            "title": "Sourceid",
+            "type": "string"
+          },
+          "sourceMode": {
+            "title": "Sourcemode",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "submittedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submittedby"
+          }
+        },
+        "required": [
+          "sourceId",
+          "sourceMode",
+          "adapterMode",
+          "state",
+          "effectStatus",
+          "observedAt",
+          "createdBy",
+          "submittedBy",
+          "authorityConfirmedBy",
+          "authorityConfirmedAt",
+          "previewConfirmedBy",
+          "previewConfirmedAt",
+          "payloadHash",
+          "receiptReference",
+          "feedbackDocumentIds",
+          "sourceDigest"
+        ],
+        "title": "AnnualAccountsSubmissionFactWire",
         "type": "object"
       },
       "AnnualAccountsSubmissionWire": {
@@ -26982,6 +27474,470 @@
           }
         ],
         "summary": "Annual Accounts Acknowledge Review Comment",
+        "tags": [
+          "annual-accounts"
+        ]
+      }
+    },
+    "/api/v1/annual-accounts/source-facts": {
+      "get": {
+        "operationId": "annualAccountsGetSourceFacts",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "companyId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Companyid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "incomeYear",
+            "required": true,
+            "schema": {
+              "maximum": 2100,
+              "minimum": 2000,
+              "title": "Incomeyear",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualAccountsSourceFactsWire"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Ledger request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Annual Accounts Source Facts",
         "tags": [
           "annual-accounts"
         ]

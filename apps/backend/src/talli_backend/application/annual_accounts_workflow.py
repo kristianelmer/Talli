@@ -11,6 +11,7 @@ from talli_backend.modules.annual_accounts_filing.public import (
     ConfirmAnnualAccountsPermission, RecordAnnualAccountsTestEvidence, AnnualAccountsRecordedResult,
     normalize_annual_accounts_override, normalize_annual_accounts_review, normalize_annual_accounts_test_evidence,
     AnnualAccountsError, AnnualAccountsFilingRows, AnnualAccountsWorkspaceQuery,
+    AnnualAccountsSourceQuery, AnnualAccountsSourceEvidence, AnnualAccountsSourceFacts, project_annual_accounts_source, verify_annual_accounts_source,
 )
 
 
@@ -38,6 +39,18 @@ class AuthenticatedAnnualAccounts:
             if result.company_id != query.company_id or result.income_year != query.income_year:
                 raise AnnualAccountsError.unavailable()
             return result
+
+    async def filing_source_facts(self, query: AnnualAccountsSourceQuery) -> AnnualAccountsSourceFacts:
+        if query.actor_id != self.actor_id:
+            raise AnnualAccountsError.forbidden()
+        async with self._session.transaction(snapshot=True) as transaction:
+            return project_annual_accounts_source(query, await transaction.filing_source_snapshot(query))
+
+    async def verify_filing_source(self, query: AnnualAccountsSourceQuery, evidence: AnnualAccountsSourceEvidence) -> bool:
+        if query.actor_id != self.actor_id:
+            raise AnnualAccountsError.forbidden()
+        async with self._session.transaction(snapshot=True) as transaction:
+            return verify_annual_accounts_source(query, evidence, await transaction.filing_source_snapshot(query))
 
     async def filing_preview(self, query: AnnualAccountsRecordQuery) -> Mapping[str, object] | None:
         if query.actor_id != self.actor_id:

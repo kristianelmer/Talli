@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 import os
 import json
 from dataclasses import asdict
+from datetime import datetime
 
 import psycopg
 from psycopg.rows import dict_row
@@ -16,6 +17,7 @@ from talli_backend.adapters.supabase_ledger import (
 from talli_backend.application.annual_accounts_session import AnnualAccountsSessionFactory
 from talli_backend.application.annual_accounts_workflow import AnnualAccountsApplication
 from talli_backend.modules.annual_accounts_filing.public import (
+    AnnualAccountsSourceQuery, AnnualAccountsSourceSnapshot, AnnualAccountsSourcePersistence,
     AnnualAccountsCompanyIdentity, AnnualAccountsEvidencePersistence, AnnualAccountsEvidenceProjection,
     AnnualAccountsRecordId, AnnualAccountsRecordQuery, RecordAnnualAccountsOverride, AddAnnualAccountsReviewComment,
     ConfirmAnnualAccountsPermission, RecordAnnualAccountsTestEvidence, AnnualAccountsRecordedResult,
@@ -24,7 +26,7 @@ from talli_backend.modules.annual_accounts_filing.public import (
     AnnualAccountsFilingRows, annual_accounts_persistence_adapter,
 )
 from talli_backend.modules.ledger.public import LedgerError
-from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear
+from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, Timestamp
 
 
 def _accounts_database_error(error: psycopg.DatabaseError):
@@ -88,6 +90,7 @@ class PostgresAnnualAccountsSession:
             raise _accounts_database_error(error) from None
 
 
+@annual_accounts_persistence_adapter(AnnualAccountsSourcePersistence)
 @annual_accounts_persistence_adapter(AnnualAccountsEvidencePersistence)
 @annual_accounts_persistence_adapter(AnnualAccountsWorkspacePersistence)
 @annual_accounts_persistence_adapter(AnnualAccountsPreparationPersistence)
@@ -129,6 +132,27 @@ class PostgresAnnualAccountsTransaction:
                 **{name: result[name] for name in ('previews', 'submissions', 'overrides',
                                                   'review_comments', 'permissions', 'test_evidence')})
         except (KeyError, TypeError, ValueError):
+            raise AnnualAccountsError.unavailable() from None
+
+    async def filing_source_snapshot(self, query: AnnualAccountsSourceQuery) -> AnnualAccountsSourceSnapshot:
+        if query.actor_id != self.actor_id:
+            raise AnnualAccountsError.forbidden()
+        row = await self._one_row(
+            'select annual_accounts_filing.read_source_snapshot_v1(%s::uuid,%s::integer,%s::text) as result',
+            (str(query.company_id), int(query.income_year), str(self.actor_id.subject)),
+        )
+        value = row.get('result')
+        try:
+            if (not isinstance(value, Mapping) or value['companyId'] != str(query.company_id)
+                    or type(value['incomeYear']) is not int or value['incomeYear'] != int(query.income_year)
+                    or type(value['completeEnumeration']) is not bool):
+                raise ValueError()
+            rows = AnnualAccountsFilingRows(query.company_id, query.income_year,
+                **{name: value['workspace'][name] for name in ('previews', 'submissions', 'overrides',
+                    'review_comments', 'permissions', 'test_evidence')})
+            return AnnualAccountsSourceSnapshot(rows, value['coverage'],
+                Timestamp(datetime.fromisoformat(value['asOf'].replace('Z', '+00:00'))), value['completeEnumeration'])
+        except (KeyError, TypeError, ValueError, AttributeError):
             raise AnnualAccountsError.unavailable() from None
 
     async def filing_preview(self, query: AnnualAccountsRecordQuery) -> Mapping[str, object] | None:

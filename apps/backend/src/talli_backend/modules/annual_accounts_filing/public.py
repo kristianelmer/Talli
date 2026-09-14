@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Callable, Protocol, TypeVar
 
-from talli_backend.shared.kernel import ActorId, CompanyId, DomainError, ErrorCategory, IncomeYear
+from talli_backend.shared.kernel import ActorId, CompanyId, DomainError, ErrorCategory, IncomeYear, Timestamp
 
 
 def _freeze(value):
@@ -492,7 +492,140 @@ class AnnualAccountsEvidencePersistence(Protocol):
     async def import_tt02_evidence(self, projection: AnnualAccountsEvidenceProjection, actor_id: ActorId) -> AnnualAccountsRecordId: ...
 
 
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsSourceQuery:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsSourceSnapshot:
+    """One authorized repeatable snapshot of the declared recorded Accounts extent."""
+    rows: AnnualAccountsFilingRows
+    coverage: Mapping[str, object] | None
+    as_of: Timestamp
+    complete_enumeration: bool
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "coverage", _freeze(self.coverage))
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsSourceEvidence:
+    company_id: CompanyId
+    income_year: IncomeYear
+    reference: str
+    version: str
+    digest: str
+    evaluated_at: Timestamp
+    obligation: str = "aarsregnskap"
+    scope: str = "talli_recorded_annual_accounts"
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsHistoryCoverage:
+    status: str
+    reasons: tuple[str, ...]
+    evidence_reference: str | None
+    as_of: Timestamp
+    submission_count: int
+    scope: str = "talli_recorded_annual_accounts"
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsSubmissionFact:
+    source_id: str
+    source_mode: str
+    adapter_mode: str
+    state: str
+    effect_status: str
+    observed_at: str | None
+    created_by: str | None
+    submitted_by: str | None
+    authority_confirmed_by: str | None
+    authority_confirmed_at: str | None
+    preview_confirmed_by: str | None
+    preview_confirmed_at: str | None
+    payload_hash: str | None
+    receipt_reference: str | None
+    feedback_document_ids: tuple[str, ...]
+    source_digest: str
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsIncidentFact:
+    source_id: str
+    source_mode: str
+    adapter_mode: str
+    failure_code: str | None
+    observed_at: str | None
+    actor_id: str | None
+    source_digest: str
+    attribution: str = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsOutcomeFact:
+    source_id: str
+    source_mode: str
+    adapter_mode: str
+    recorded_state: str
+    outcome: str
+    observed_at: str | None
+    source_digest: str
+    attribution: str = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsCorrectionLink:
+    source_id: str
+    supersedes_source_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class AnnualAccountsSourceFacts:
+    evidence: AnnualAccountsSourceEvidence
+    readiness_status: str
+    hard_blocks: tuple[str, ...]
+    history_coverage: AnnualAccountsHistoryCoverage
+    recorded_submissions: tuple[AnnualAccountsSubmissionFact, ...]
+    production_attempts: tuple[AnnualAccountsSubmissionFact, ...]
+    correction_links: tuple[AnnualAccountsCorrectionLink, ...]
+    incidents: tuple[AnnualAccountsIncidentFact, ...]
+    outcomes: tuple[AnnualAccountsOutcomeFact, ...]
+
+
+class AnnualAccountsSourcePersistence(Protocol):
+    async def filing_source_snapshot(self, query: AnnualAccountsSourceQuery) -> AnnualAccountsSourceSnapshot: ...
+
+
+def project_annual_accounts_source(query: AnnualAccountsSourceQuery, snapshot: AnnualAccountsSourceSnapshot) -> AnnualAccountsSourceFacts:
+    from .source_facts import project
+    return project(query, snapshot)
+
+
+def verify_annual_accounts_source(
+    query: AnnualAccountsSourceQuery, evidence: AnnualAccountsSourceEvidence, snapshot: AnnualAccountsSourceSnapshot,
+) -> bool:
+    from .source_facts import verify
+    return verify(query, evidence, snapshot)
+
+
 __all__ = [
+    "AnnualAccountsSourceQuery",
+    "AnnualAccountsSourceSnapshot",
+    "AnnualAccountsSourceEvidence",
+    "AnnualAccountsHistoryCoverage",
+    "AnnualAccountsSubmissionFact",
+    "AnnualAccountsIncidentFact",
+    "AnnualAccountsOutcomeFact",
+    "AnnualAccountsCorrectionLink",
+    "AnnualAccountsSourceFacts",
+    "AnnualAccountsSourcePersistence",
+    "project_annual_accounts_source",
+    "verify_annual_accounts_source",
+
     "ImportAnnualAccountsEvidence", "AnnualAccountsCompanyIdentity", "ImportedAnnualAccountsEvidence",
     "AnnualAccountsEvidencePersistence",
     'AnnualAccountsSource', 'AnnualAccountsCandidate', 'AnnualAccountsRenderInput',

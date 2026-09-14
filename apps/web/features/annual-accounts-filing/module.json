@@ -25,7 +25,8 @@
     "annualAccountsAcknowledgeReviewComment",
     "annualAccountsConfirmPermission",
     "annualAccountsRecordTestEvidence",
-    "annualAccountsPreviewReadiness"
+    "annualAccountsPreviewReadiness",
+    "annualAccountsGetSourceFacts"
   ],
   "dependencies": [],
   "allowedImports": [

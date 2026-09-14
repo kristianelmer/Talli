@@ -1,0 +1,222 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED",
+  "findings": [],
+  "baseRevision": "baac7f6ef0c90ed20cfb29d33b80a1c85ef506d1",
+  "candidateRevision": "9ba2a33a2214b398ca0d62e1bad6bd3fc1674fe3",
+  "nonemptyDiff": true,
+  "commitCount": 1,
+  "sourceBindings": [
+    {
+      "path": "apps/web/app/lib/annual-accounts-xml.ts",
+      "beforeSha256": "6be42f2b588188cd536edd264ef12597c80f91295424fd9da68bd2c89849eab6",
+      "afterSha256": null
+    },
+    {
+      "path": "apps/web/app/lib/annual-accounts.ts",
+      "beforeSha256": "91796975e407b260a9c028f3c7a3fb37ac525aae10a5306140418082e7041a33",
+      "afterSha256": null
+    },
+    {
+      "path": "apps/web/app/lib/authority-test-evidence.ts",
+      "beforeSha256": "3288e82a19ec640fa3b7142bac88f7d5262be957592303a1e41f6db057302d9d",
+      "afterSha256": "fb2c386e22fac885b7644443dc6de4ff8f59023fbf37d6ac0d7f36e4f605c1d6"
+    },
+    {
+      "path": "architecture/evidence/issues/153/duplicate-retirement/duplicate-retirement-architecture.log",
+      "beforeSha256": null,
+      "afterSha256": "4349931dfd72104c0962b76194f1874af018b550b570940a5f1c0f21cedc896f"
+    },
+    {
+      "path": "architecture/evidence/issues/153/duplicate-retirement/duplicate-retirement-first-tests.log",
+      "beforeSha256": null,
+      "afterSha256": "84e93be539f79b5bd32b035bea95a797ad35e4b7eb60c6454c03f48798fda0c2"
+    },
+    {
+      "path": "architecture/evidence/issues/153/duplicate-retirement/duplicate-retirement-fixed-tests.log",
+      "beforeSha256": null,
+      "afterSha256": "b7dbfc4c6d2668b244aa7a96627e7621b14c9b3fad6b568c0e7034631ccd8f75"
+    },
+    {
+      "path": "architecture/evidence/issues/153/duplicate-retirement/duplicate-retirement-frozen-parity.log",
+      "beforeSha256": null,
+      "afterSha256": "4d6832cfcd4559dcbe2883a8826cded07c9906b53d6eb647b7181ce8e3aa86c4"
+    },
+    {
+      "path": "architecture/evidence/issues/153/duplicate-retirement/duplicate-retirement-retained-functions.json",
+      "beforeSha256": null,
+      "afterSha256": "7d7112e485306b4949b64aa733d36a75358de0ede9f62794a185c1114ea0450b"
+    },
+    {
+      "path": "architecture/evidence/issues/153/duplicate-retirement/duplicate-retirement-typecheck.log",
+      "beforeSha256": null,
+      "afterSha256": "b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e"
+    },
+    {
+      "path": "architecture/evidence/issues/153/duplicate-retirement/manifest.json",
+      "beforeSha256": null,
+      "afterSha256": "cd249599df21ff749f0ae8b81f5121afc99c331b2ca498d5295a9758b24f7f1b"
+    },
+    {
+      "path": "architecture/evidence/issues/153/duplicate-retirement/verification.md",
+      "beforeSha256": null,
+      "afterSha256": "8d3f385bf104ecf961ba0c82ec18cffb1341bf08fd3204b1272150f2075aab7a"
+    },
+    {
+      "path": "architecture/evidence/issues/153/duplicate-retirement/verify-retained-functions.mjs",
+      "beforeSha256": null,
+      "afterSha256": "d0d65f5ffd0ecb1b2cec959422673aef86e46a33e2915aca5319fdeb38681d5e"
+    },
+    {
+      "path": "tests/annual_accounts_payload.test.mjs",
+      "beforeSha256": "c542d7a32a2635c01b4124d60f94d01551ddb93077cd2fe818a0920ec1b48e22",
+      "afterSha256": "88e126a2da2b8da27f39726171620f986eadd76318ea9244e60dd933fbe46d8c"
+    },
+    {
+      "path": "tests/annual_accounts_xml.test.mjs",
+      "beforeSha256": "944255975041f519566cce86229b78ce07edfc57cf00ac64dfe57775fbb2ad47",
+      "afterSha256": "93bf7cf7b4c6c93d58e1c86f16bfcc701bdbba52cf21bfe6eab4c9160ba2df35"
+    },
+    {
+      "path": "tests/authority_test_evidence.test.mjs",
+      "beforeSha256": "a6d1066df2d511028407e91959abca7b065d90d944290487bf70fec2fbef8dd7",
+      "afterSha256": "6ea5711cbf0d1dd7d020f313754ef90809887a3dd626a869b04b4071b1de98e5"
+    },
+    {
+      "path": "tests/investments_cross_output_reconciliation.test.mjs",
+      "beforeSha256": "83b9c5b6bbb1c46083c780bf612c700bc71be4009ad34e537eafaf3c8b0dd322",
+      "afterSha256": "7862161d9f854fd679105af671c0303f670a0ca0740154149ced6cba561cf3b6"
+    },
+    {
+      "path": "tests/support/annual_accounts_public.mjs",
+      "beforeSha256": null,
+      "afterSha256": "e98100e2784c614f75e6d1977580b89f2d96c3b64da8095e06d7f3d5e5b7af6c"
+    },
+    {
+      "path": "tests/support/annual_accounts_public_driver.py",
+      "beforeSha256": null,
+      "afterSha256": "86fff154f9e5e81fd6ecdc93763b2070f8d7d4f9365fb059d482816449da2393"
+    }
+  ],
+  "canonicalAccountsSourceBindings": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/__init__.py",
+      "sha256": "bbf344ff2db22c18f7f3081b331c1939f7b49daa110fa97ed2b6a49113c8b726"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/authority_workflow.py",
+      "sha256": "6cc14a38c9d0879b568d144a55ba2af1f92ec993dab0e9e8819c418260237e3f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/calculation.py",
+      "sha256": "c579d40eb3ef800073219cc156e6bb6537d35dc10ed54e93274d72878d2532ec"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/date_parse.py",
+      "sha256": "a7b4cb590c607e0a246b6c44098861dd3171f800af22a521850f5598838a64b6"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/evidence.py",
+      "sha256": "a6be36e7b61699f5e91b463b9ba23dfdbfe6f1fd57d32d141060122dd1fdc69e"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/numbers.py",
+      "sha256": "9a9bc64da8087e312af6c21887682489b74c1883434d0077ec78d374e552c694"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py",
+      "sha256": "c7b8996391bf831d9530cfe9717d8353231126167ba2d0aed19e52efd764ceaf"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/preparation.py",
+      "sha256": "54645f74a531f0df987e3057e984e282886eb931a297216b55aa559c3c748ed3"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/public.py",
+      "sha256": "6d99932b222b5028d2b59fd26c6dd06085d7ce5054d9e5f38f7bee8411a7590a"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/readiness.py",
+      "sha256": "07783baea9e4f2085b3ba3d3620f1c896b93045dba765c26f9c3dc44be2e2234"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/rehearsal.py",
+      "sha256": "07c19c3061bed8364a59aa580f7f380cb6f35e6cb3794a06844c741d5c77874f"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/rendering.py",
+      "sha256": "222fac8e3a0adaaa1b985cb320dd374f52511dc2c46a818b6b8141624e1ddbc3"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing/workspace.py",
+      "sha256": "d2313feff725c07db289a3ce99806f28a51bc2a16bfc4a42166e08c0e1efbb2f"
+    }
+  ],
+  "privateArchive": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-duplicate-retirement-9ba2a33a",
+  "manifest": {
+    "path": "architecture/evidence/issues/153/duplicate-retirement/manifest.json",
+    "sha256": "cd249599df21ff749f0ae8b81f5121afc99c331b2ca498d5295a9758b24f7f1b",
+    "artifactCount": 15,
+    "allHashesVerified": true
+  },
+  "checks": {
+    "retainedDefinitionsByteIdentical": 12,
+    "retainedFunctionsMatchCommittedProof": 6,
+    "unchangedAssertionCalls": 138,
+    "productionRetiredReferences": 0,
+    "originalCriteriaAndRegistryUnchanged": true,
+    "frozenCharacterizationAndProducersUnchanged": true
+  },
+  "independentCommands": [
+    {
+      "command": "TALLI_PYTHON_BIN='/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python' '/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node' --test tests/annual_accounts_payload.test.mjs tests/annual_accounts_xml.test.mjs tests/authority_test_evidence.test.mjs tests/investments_cross_output_reconciliation.test.mjs",
+      "cwd": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-duplicate-retirement-9ba2a33a",
+      "exitCode": 0,
+      "tests": 22,
+      "passed": 22,
+      "skipped": 0
+    },
+    {
+      "command": "node-v24.20.0/bin/node /Users/kristianelmer/.codex/issue-192-private/issue153-entry/duplicate-retirement-spec-ast-9ba2a33a.mjs",
+      "exitCode": 0,
+      "scope": "explicit immutable base/head source and assertion AST comparison"
+    }
+  ],
+  "evidenceBindings": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/duplicate-retirement-spec-tests-9ba2a33a.log",
+      "sha256": "0517cca4feb9a22ba44dd9059c4faeda31ddd88473bff8cd19bd54f71f71bffc"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/duplicate-retirement-spec-ast-9ba2a33a.mjs",
+      "sha256": "cae08237f38dfed9b9bbf00b56b416d1fc8231990b4bf73e1b93ba0a2ca9039c"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/duplicate-retirement-spec-ast-9ba2a33a.json",
+      "sha256": "e7f529706e173ef97f9c3d4523b74d484dd52c7bbb27f4cd0647978d80c1aac1"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/duplicate-retirement-spec-ast-9ba2a33a.log",
+      "sha256": "e7f529706e173ef97f9c3d4523b74d484dd52c7bbb27f4cd0647978d80c1aac1"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/duplicate-retirement-spec-runtime-references-9ba2a33a.log",
+      "sha256": "069c3063dad7ead0f0b6e9872d28e92ab838a914507476d982c41fbd87dd23c3"
+    }
+  ],
+  "retainedNotRerun": [
+    "2112 frozen backend tests",
+    "typecheck",
+    "architecture"
+  ],
+  "limitations": [
+    "Bounded retirement only",
+    "No universal parity inference from22 cases",
+    "No DB/browser/provider operations",
+    "Later sourcehandoff excluded",
+    "No fullstage or successor credit"
+  ],
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/duplicate-retirement-spec-review-9ba2a33a.md",
+  "reportSha256": "312f8cd2c2d6f3f19c2e1d81e750d96888ced72ddd7a26d96d8cfaee35a3a960",
+  "wordCount": 298
+}

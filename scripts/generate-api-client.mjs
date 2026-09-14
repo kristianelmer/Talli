@@ -277,6 +277,7 @@ const bankingOperations = {
   ],
 };
 const annualAccountsOperations = {
+  sourceFacts: ["/api/v1/annual-accounts/source-facts", "get", "annualAccountsGetSourceFacts"],
   readinessPreview: ["/api/v1/annual-accounts/readiness-previews", "post", "annualAccountsPreviewReadiness"],
   getPreview: ["/api/v1/annual-accounts/previews/{preview_id}", "get", "annualAccountsGetPreview"],
   override: ["/api/v1/annual-accounts/overrides", "post", "annualAccountsRecordOverride"],
@@ -880,6 +881,8 @@ const annualAccountsSchemas = Object.fromEntries([
   "AnnualAccountsOverrideWire", "AnnualAccountsReviewCommentWire", "AnnualAccountsPermissionWire", "AnnualAccountsTestEvidenceWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const companyTaxSchemas = Object.fromEntries([
+  "AnnualAccountsSourceEvidenceWire", "AnnualAccountsHistoryCoverageWire", "AnnualAccountsSubmissionFactWire",
+  "AnnualAccountsIncidentFactWire", "AnnualAccountsOutcomeFactWire", "AnnualAccountsCorrectionLinkWire", "AnnualAccountsSourceFactsWire",
   "CompanyTaxSourceEvidenceWire", "CompanyTaxHistoryCoverageWire", "CompanyTaxSubmissionFactWire",
   "CompanyTaxIncidentFactWire", "CompanyTaxOutcomeFactWire", "CompanyTaxCorrectionLinkWire", "CompanyTaxSourceFactsWire",
   "CompanyTaxAssessmentFactsRequest", "CompanyTaxReadinessPreviewRequest", "CompanyTaxReadinessIssueWire",
@@ -2675,6 +2678,23 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         "POST", request, body, isAnnualAccountsEvidenceImportWire,
       );
     },
+
+    async annualAccountsGetSourceFacts(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<AnnualAccountsSourceFactsWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const result = await executeJson(
+        \`\${baseUrl}/api/v1/annual-accounts/source-facts?\${query}\`,
+        "GET", request, undefined, isAnnualAccountsSourceFactsWire,
+      );
+      if (result.evidence.companyId !== companyId || result.evidence.incomeYear !== incomeYear
+          || (result.historyCoverage.status === "complete"
+            && result.historyCoverage.evidenceReference !== result.evidence.reference)) {
+        throw new TalliApiError(502, undefined);
+      }
+      return result;
+    },
+
 
     async annualAccountsGetFilingWorkspace(
       companyId: string, incomeYear: number | null = null, request: TalliRequestOptions = {},

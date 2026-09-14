@@ -1,0 +1,6 @@
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared AnnualAccountsSourceEvidence
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared AnnualAccountsHistoryCoverage
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared AnnualAccountsSubmissionFact
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared AnnualAccountsIncidentFact
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared AnnualAccountsOutcomeFact
+architecture: apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json: documentation omits declared AnnualAccountsCorrectionLink

@@ -9,5 +9,9 @@ unknown metadata as successful authority acceptance. Requests are uncached and
 bounded by a timeout. Audit remains the existing post-write action continuation.
 
 <!-- architecture-inventory
-{"apiOperations": ["annualAccountsGetFilingWorkspace", "annualAccountsImportTt02Evidence", "annualAccountsGetPreview", "annualAccountsRecordOverride", "annualAccountsAddReviewComment", "annualAccountsAcknowledgeReviewComment", "annualAccountsConfirmPermission", "annualAccountsRecordTestEvidence", "annualAccountsPreviewReadiness"], "dependencies": [], "publicEntryPoints": ["@/features/annual-accounts-filing", "apps/web/features/annual-accounts-filing", "apps/web/features/annual-accounts-filing/index.ts"], "routes": ["/workspace", "/filing/[obligation]"]}
+{"apiOperations": ["annualAccountsGetFilingWorkspace", "annualAccountsImportTt02Evidence", "annualAccountsGetPreview", "annualAccountsRecordOverride", "annualAccountsAddReviewComment", "annualAccountsAcknowledgeReviewComment", "annualAccountsConfirmPermission", "annualAccountsRecordTestEvidence", "annualAccountsPreviewReadiness", "annualAccountsGetSourceFacts"], "dependencies": [], "publicEntryPoints": ["@/features/annual-accounts-filing", "apps/web/features/annual-accounts-filing", "apps/web/features/annual-accounts-filing/index.ts"], "routes": ["/workspace", "/filing/[obligation]"]}
 -->
+
+`loadAnnualAccountsSourceFacts` presents the durable owner-scoped source handoff
+through generated transport. It preserves evidence version, coverage and unknown
+states and applies no commercial classification.

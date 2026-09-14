@@ -70,3 +70,7 @@ export function annualAccountsRecordTestEvidence(accessToken: string, input: Ann
 export function previewAnnualAccountsReadiness(accessToken: string, facts: AnnualAccountsReadinessPreviewRequest) {
   return client(accessToken).annualAccountsPreviewReadiness(facts, { signal: AbortSignal.timeout(10_000) });
 }
+
+export function loadAnnualAccountsSourceFacts(accessToken: string, companyId: string, incomeYear: number) {
+  return client(accessToken).annualAccountsGetSourceFacts(companyId, incomeYear, { signal: AbortSignal.timeout(10_000) });
+}
