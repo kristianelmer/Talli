@@ -135,7 +135,7 @@
   },
   "stageExit": {
     "deploymentOrder": "PASS_17_STORAGE_PHASE_AND_7_EXACT_PREDECESSOR_HTTP_CHECKS",
-    "independentReview": "PASS_SPEC_AND_STANDARDS_IMPLEMENTATION_AND_LINKED_GATE_PAIR",
+    "independentReview": "PAIR_REVIEW_IN_PROGRESS",
     "gatePair": [
       {
         "revision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
@@ -161,11 +161,7 @@
     "protectedIntegration": "PENDING_EXACT_HEAD_AND_MAIN_CI_PREVIEW_AND_PUBLISHED_RECEIPT",
     "productionObservation": "NOT_APPLICABLE_NO_PRODUCTION_PATH_ACTIVATED",
     "targetedFinalRuntime": "PASS_BOTH_COMPLETE_GATES_41_ACCOUNTS_SQL_AND_ALL_MANDATORY_BROWSER_LANES",
-    "subsequentWork": "#193 RF, then Tax, then Accounts; #149 and #208 precede #192 final. No successor implementation or production completion is claimed.",
-    "reviewEvidence": [
-      "gate-pair/gate-pair-spec-review-153.json",
-      "gate-pair/gate-pair-standards-review-153.json"
-    ]
+    "subsequentWork": "#193 RF, then Tax, then Accounts; #149 and #208 precede #192 final. No successor implementation or production completion is claimed."
   },
   "limits": [
     "No hosted migration, provider activation, genuine filing, paid operation or production promotion.",

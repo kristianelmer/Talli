@@ -1,0 +1,83 @@
+{
+  "byteExactPrivateAdoptions": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-spec-bindings-2fc8ec93.json",
+      "sha256": "19909bb6cd0d64eeab62f24dd6e8ee5951674482d22e41545b5ab82deb680d03"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-spec-review-2fc8ec93.json",
+      "sha256": "4635ad6f05fd9b7c28c79c2f1e3d3cfd9436d4b510b70e18766a8ccb04a2c03c"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-spec-review-2fc8ec93.md",
+      "sha256": "01315fb6b514643a363ac2ddf7550134384b69377cfd60176af19ebdcb2fc784"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-standards-artifact-checks-2fc8ec93.json",
+      "sha256": "1c5e0af77fe60dda1ac32858e2fb5ce99c2dbe41aec78ecffe52eb3b13119eb1"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-standards-harness-diff-2fc8ec93.txt",
+      "sha256": "b9047d7c5364605dced21d67f551779059fcf70854fd5b25d887726336f7d51e"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-standards-models-2fc8ec93.log",
+      "sha256": "dac7d39c4c7408ecf66d5a7249cac3bdf88647a484f173b38f093d3a0c971cb6"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-standards-review-2fc8ec93.json",
+      "sha256": "b07ea9e7d48b900c6430532eda577f65903499269a0ab4c7d773c36e68c813a8"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-standards-review-2fc8ec93.md",
+      "sha256": "10943b903d931c9326bcb563f8305a4175f186f97f927d43d8ca81016059a66d"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/browser-validation-standards-workspace-2fc8ec93.json",
+      "sha256": "b5752b37e2277eb24bd2c581c3991e7ca94bc210b1c06f2997b2bac288ce38fe"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/first-exit-gate-2fc8ec93-accounts-runtime.json",
+      "sha256": "779521ed26881f5743afdcb21c935f068773e01a887628a412757a2bd416ca1f"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/first-exit-gate-2fc8ec93-verified.json",
+      "sha256": "699b0972ff7e58abbebd0813abe5ec565956d721530c040bcb8db8a66e0015fa"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/production-freeze-2fc8-gate.json",
+      "sha256": "4c726895d79d53d1e9168699faef12e0bf7ca169d836244b5c788f28d88da471"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/verify-accounts-runtime-gate.py",
+      "sha256": "6d07e7004718ed00f6f7e4cdefd1a59361805c40405e2b376da944a934dfafbb"
+    }
+  ],
+  "rawUnifiedDiff": {
+    "path": "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-harness-diff-2fc8ec93.txt",
+    "sha256": "b9047d7c5364605dced21d67f551779059fcf70854fd5b25d887726336f7d51e",
+    "contextBlankLineNumbers": [
+      19,
+      26,
+      35,
+      44,
+      48,
+      53,
+      89,
+      98,
+      106
+    ],
+    "reason": "A unified diff encodes unchanged blank context with one leading space; preserve original bytes.",
+    "genericPatchWhitespaceCheckExit": 2,
+    "notSourceWhitespace": true,
+    "currentGateCheck": "git diff HEAD --check checks working changes; already committed evidence does not create this failure."
+  },
+  "unchangedControls": {
+    "architecture/compatibility.json": "e06ddbbc974bbaa7f418eced549bef1c02e3b29d4e12a6851ed503428aa83e10",
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab",
+    "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc",
+    "scripts/check-clean-worktree.sh": "81b79c93e44af4a535198a94fe7304f2891a3dd094b426bb9773fba9542d45dc",
+    "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+    "package.json": "47b34c14544e0ee80570af051555d1f87e8633576fcef98e74cb9208b2ec9339"
+  }
+}

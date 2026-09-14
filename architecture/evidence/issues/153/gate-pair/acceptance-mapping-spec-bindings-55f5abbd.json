@@ -1,0 +1,395 @@
+{
+  "baseline": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "candidate": "55f5abbdcb0f4d638f26aea093db13722ef922c5",
+  "proposedRequirementsSha256": "e94da69165a7dcb63b1dfd9ad675aa7f78f3b5c212e52cafe13fa87a0f304b21",
+  "proposedRequirements": {
+    "schemaVersion": "1.0",
+    "issue": "#153",
+    "source": "https://github.com/kristianelmer/Talli/issues/153",
+    "status": "IMPLEMENTED_LOCAL_EXIT_GATES_PENDING",
+    "baselineRevision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+    "predecessor": {
+      "issue": "#152",
+      "state": "CLOSED",
+      "receipt": "https://github.com/kristianelmer/Talli/issues/152#issuecomment-5659595000"
+    },
+    "criteria": [
+      {
+        "id": "GH-153-A1",
+        "requirement": "Supported annual-accounts cases produce outputs identical to current schema and TT02 evidence.",
+        "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+        "evidence": [
+          "characterization/manifest.json",
+          "pure-calculation/manifest.json",
+          "evidence-import/manifest.json",
+          "offline-profile/manifest.json",
+          "authority-ownership/manifest.json",
+          "duplicate-retirement/manifest.json",
+          "authority-safety/manifest.json",
+          "journal-ownership/manifest.json",
+          "journal-reviews/manifest.json"
+        ]
+      },
+      {
+        "id": "GH-153-A2",
+        "requirement": "Corporate-close facts and signed-artifact readiness remain required.",
+        "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+        "evidence": [
+          "characterization/manifest.json",
+          "readiness-input-fix/manifest.json",
+          "response-readiness/manifest.json",
+          "web-cutover/manifest.json"
+        ]
+      },
+      {
+        "id": "GH-153-A3",
+        "requirement": "Hybrid signing, submission, feedback, and receipt states remain fail closed and auditable.",
+        "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+        "evidence": [
+          "authority-ownership/manifest.json",
+          "authority-review-fixes/manifest.json",
+          "read-controls/manifest.json",
+          "physical-retirement/manifest.json",
+          "gate-follow-up/manifest.json",
+          "dependency-integration/manifest.json",
+          "authority-safety/manifest.json",
+          "journal-ownership/manifest.json",
+          "journal-reviews/manifest.json"
+        ]
+      },
+      {
+        "id": "GH-153-A4",
+        "requirement": "The complete owner workflow uses FastAPI and the generated client.",
+        "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+        "evidence": [
+          "read-controls/manifest.json",
+          "web-cutover/manifest.json",
+          "browser-integration/manifest.json",
+          "source-handoff/manifest.json",
+          "dependency-integration/manifest.json",
+          "authority-safety/manifest.json",
+          "browser-cleanup-model/manifest.json"
+        ]
+      },
+      {
+        "id": "GH-153-A5",
+        "requirement": "Obligation-specific generic rows, duplicate TypeScript calculations, and active-stage compatibility code are removed.",
+        "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+        "evidence": [
+          "duplicate-retirement/manifest.json",
+          "physical-retirement/manifest.json",
+          "source-handoff/manifest.json",
+          "browser-cleanup-model/manifest.json"
+        ]
+      },
+      {
+        "id": "GH-153-A6",
+        "requirement": "The complete `annual_accounts_filing` stage exit criteria from issue #132 pass before annual-compliance migration begins.",
+        "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+        "evidence": [
+          "entry/manifest.json",
+          "entry-inventory/manifest.json",
+          "physical-retirement/manifest.json",
+          "gate-follow-up/manifest.json",
+          "dependency-integration/manifest.json",
+          "publication-follow-up/manifest.json",
+          "authority-safety/manifest.json",
+          "journal-ownership/manifest.json",
+          "browser-cleanup-model/manifest.json",
+          "journal-reviews/manifest.json"
+        ]
+      }
+    ],
+    "sourceHandoff": {
+      "evidence": "source-handoff/manifest.json",
+      "hardening": "browser-integration/manifest.json",
+      "meaning": "Immutable company/year/obligation evidence, positive completeness coverage, unknown outcomes, correction links and incident facts. Production remains blocked; Billing owns all commercial classification."
+    },
+    "stageExit": {
+      "deploymentOrder": "PASS_17_STORAGE_PHASE_AND_7_EXACT_PREDECESSOR_HTTP_CHECKS",
+      "independentReview": "F1E_BOTH_AXES_PASS_STANDARDS_ADOPTION_PENDING",
+      "gatePair": [],
+      "protectedIntegration": "PENDING",
+      "productionObservation": "NOT_APPLICABLE_NO_PRODUCTION_PATH_ACTIVATED"
+    },
+    "limits": [
+      "No hosted migration, provider activation, genuine filing, paid operation or production promotion.",
+      "Corporate close and signed-artifact facts remain Corporate/Document owned. Preview inputs do not certify durable authorization.",
+      "No annual-compliance or final Billing implementation before the approved serial prerequisites."
+    ],
+    "safetyCorrections": {
+      "evidence": "authority-safety/manifest.json",
+      "requirements": "#132 no ambiguous effect retries; #153 fail closed hybrid signing",
+      "changes": [
+        "durable create/lock operation marker and reconciliation-required retry guard",
+        "strict positive validation shape/severity and signing task checks",
+        "confirmed lock resumes through read-only submission evidence",
+        "exclusive canonical local journal ownership across reads, awaits and all checkpoints"
+      ],
+      "parity": "Frozen statutory payload/XML and successful requests unchanged; ambiguous failures intentionally tightened"
+    },
+    "stageEntry": {
+      "revision": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+      "evidencePath": "architecture/evidence/customer-ready-gates/5b74340ca75f215b43d754c6bf0fc49ef5974b0b.json",
+      "status": "PASS_11_OF_11_ENTRY_ONLY"
+    },
+    "claim": {
+      "branch": "codex/issue-153-annual-accounts-d060",
+      "url": "https://github.com/kristianelmer/Talli/issues/153#issuecomment-5659621764"
+    }
+  },
+  "selectedManifestBindings": {
+    "authority-ownership/manifest.json": {
+      "sha256": "0869b6dc43bf492ff4b80ca3bec4dd7fcf4628ee0cba08dbd768d505cb22ecc2",
+      "status": "AUTHORITY_OWNERSHIP_REVIEW_PENDING",
+      "baseline": null,
+      "verification": {
+        "path": "architecture/evidence/issues/153/authority-ownership/verification.md",
+        "sha256": "91622c56723e368901d89706cb3334621a51dd84f2d9c7102fd70b77a4bac569",
+        "text": "# Accounts authority ownership\n\nAccounts now owns test rehearsal guards, intent/checkpoint state, preparation order,\nresume decisions and sanitized workflow failures. Local files, XML validation,\nclock, revision and credentials stay behind the declared IO port. The fixed HTTP\nadapter is registered against the Accounts authority port; it retains exact TT02\nrequest construction and response normalization. Production transport is disabled.\nThe original credential-construction failure boundary stays before the try block.\n\nThe public rehearsal and preparation results recursively freeze nested values.\nThe CLI detaches those results to its original JSON shape. The old transport file\nand final Node payload subprocess are removed. Python CLI mapping calls the owned\ncalculation and renderer. Existing size, JSON syntax and sanitized failure limits\nremain. No arbitrary module or endpoint dispatch is added.\n\nVerification: 226 tests pass: the existing 138 authority checks (one child-process\nmechanism test now proves no process is created), 67 frozen Node payload outcomes,\n17 exact old/new checkpoint traces, three invalid-dispatch cases, and nested public\nresult immutability. Baseline traces execute the original 57df4221 run body with\nonly its relocated transport import redirected; provider/file/clock/revision seams\nare substituted. Existing tests separately exercise real atomic local file writes.\nTraces cover interrupted uploads, failed validation, connection and operation\nfailures, checkpoint failures, read-only receipt resume and completed replay.\n\nThe first relocation suite passed 138 tests. After Node retirement, one old\nsubprocess-stub test failed because no subprocess exists; it was replaced with\na test requiring a real owned payload and refusing any subprocess. The initial\narchitecture check required three newly declared contracts in MODULE.md; the\ncorrected architecture check passes. All raw failed/passed logs are retained.\n\nThe payload producer accepts a readonly 57df4221 checkout as its third argument;\nthat checkout retains the retired Node bridge. The stored capture was generated\nbefore bridge deletion. The original 67 payload source inputs are unchanged.\nThe evidence-import independent reviews are adopted byte-exact from private reports.\n\nThis is a bounded ownership slice, not a complete #153 exit. Live web policy,\ncanonical database authorization and rows, source handoff, generated workflow,\nArchive generations and full migration/release gates remain pending. No provider\nrequest, hosted migration or production operation was performed.\n"
+      }
+    },
+    "authority-review-fixes/manifest.json": {
+      "sha256": "cd8cf4dfe6cbf87946ef188dffd44cfe2fb2cc29a4761a789bd3df6c60999c5c",
+      "status": "AUTHORITY_PARITY_FIX_REVIEW_PENDING",
+      "baseline": null,
+      "verification": {
+        "path": "architecture/evidence/issues/153/authority-review-fixes/verification.md",
+        "sha256": "bb4854357b4ac756173c37f5a410b4d4f0b39003dd80e9d24eb0e793a3173b75",
+        "text": "# Authority review follow-up\n\nSpec review found two P2 input-boundary regressions in 50bfe67a. The removed Node\nbridge accepted false, zero, negative zero and empty-string Annual data as absent.\nThe new Python mapping now preserves those scalar cases while leaving nonempty\nvalues and empty arrays/objects subject to the original shape failures. The\noriginal bridge rejected a non-array ledger value; the new mapping now rejects\nevery non-null, non-list JSON value before entering the typed source contract.\n\nThe reviewer reproduced both findings through the actual old Python-to-Node\nsubprocess and retained ten full old/new outcomes. Those exact results now drive\nregression tests. Both review reports remain unchanged, with findings retained.\nThe first regression test run used the wrong error-capture wrapper for two old\nfailures; correcting only that wrapper made all ten match. The full 236-test\nAccounts/Tax authority suite passes, including the previous 226 checks.\n\nNo workflow guard, checkpoint order, HTTP body, credential path, persistence or\nlive web caller changed in this fix. Database expansion is separately under\nconstruction and is not included in this revision. All six stage criteria remain\npending; this is not an exit receipt.\n"
+      }
+    },
+    "authority-safety/manifest.json": {
+      "sha256": "92a34cc750c979b00cfe5e604bb164d5c967b4091decb86403fcfa8891bf9ee3",
+      "status": "AUTHORITY_SAFETY_CORRECTED_REVIEW_AND_EXIT_PENDING",
+      "baseline": "eb7d312054c32a8e94dd9d0c8bf9f22dcf9a12fa",
+      "verification": {
+        "path": "architecture/evidence/issues/153/authority-safety/verification.md",
+        "sha256": "fd72337470c71b871ac71e5ed5b0d173415a5c9dc24f271226642fd6a7bc9af7",
+        "text": "# Accounts authority safety and deployment evidence\n\nBase: eb7d312054c32a8e94dd9d0c8bf9f22dcf9a12fa. Full stage exit remains pending.\n\nBoth whole-stage review axes independently reproduced two inherited P2 failures: lost create/lock responses could replay consequential operations (STD-153-REPLAY-1), and malformed HTTP200 validation could authorize lock (STD-153-VALIDATION-1). Those behaviors conflict with #132 despite predecessor parity. Original reports and probes remain unchanged.\n\nCreate and lock now persist operation identity, instance binding and time before the effect. Success clears the marker only with its saved checkpoint. Lost/malformed responses, interruption and checkpoint failure leave an unresolved marker; rerun stops before provider construction. Legacy ambiguous states require reconciliation too. No automatic new evidence path or repeated create/lock resolves an unknown outcome. Confirmed lock resumes by reading submission state after a lost handoff. Known data-ID uploads preserve same-payload PUT behavior. The evidence guard deliberately changes ambiguous failure status to reconciliation_required with a nonretryable error.\n\nValidation requires an actual list (direct or validationIssues), explicit recognized severities, and positive signing task before handoff. Official Altinn numeric severity1 blocks;2\u20135 and existing string aliases retain documented nonblocking meaning. The primary model and enum are pinned by URL/revision/hash in altinn-validation-primary-sources.json. The original valid XML, payloads and HTTP method/body/order are unchanged. Three adapter methods have intentional validation/signing safety corrections; earlier transport identity claims remain historical.\n\n275 focused authority/rehearsal/transport/CLI/ownership tests pass. New regressions include lost responses, malformed response objects, interruption, failed success checkpoint, legacy ambiguity, HTML/null/wrong-shaped validation, numeric errors, recognized soft/empty validation, unknown signing states, and confirmed-lock read-only recovery. Original traces remain immutable; comparison removes only added journal metadata/pending saves and explicitly asserts the changed create/lock error cases. The first red runs, intermediate harness errors and final passing logs are retained.\n\nThe full eb7 gate passed schema, credential scan, typecheck, architecture, backend/web/API boundaries, both builds, boundary smoke, launch rehearsal and dependency audit. Database isolation failed on a stale static Archive source inventory before final owner browser lanes. Its original transcript is preserved. The corrected inventory test maps the five original Archive trigger scopes to Accounts ownership and retains the complete inventory assertion; all 16 tests pass.\n\nDeployment compatibility is separately proven by 17 actual local legacy-PostgREST/current-FastAPI/SQL checks across predecessor, expansion, cutover, contract, contract rollback, full rollback and recutover. All five evidence generations survive. Seven further checks run the current generated consumer against exact predecessor5b FastAPI HTTP: missing routes reject, lookup/ack do not hide raw404 as absence, and source composition remains unavailable. The old-app first harness incorrectly polled disabled OpenAPI; corrected health/live polling passes. Both proofs use fixture credentials, not genuine authority actions or real Auth/TOTP; their owned containers/databases/logins/server are removed and roles restored. Parent source bindings and Spec verification bind exact eb7 consumed bytes.\n\nNo hosted change, provider call, production activation or successor-stage credit is claimed. Real full owner/browser integration, the complete two-revision exit pair and protected integration remain pending.\n"
+      }
+    },
+    "browser-cleanup-model/manifest.json": {
+      "sha256": "b2839100d6dd5b7dc11b2fbb15fa888913a02a68505bc2b89e5a11541da7cd1b",
+      "status": "TARGETED_PASS_FULL_EXIT_PENDING",
+      "baseline": "ee0a6d862759c47ecdb0679300280095e8324359",
+      "verification": {
+        "path": "architecture/evidence/issues/153/browser-cleanup-model/verification.md",
+        "sha256": "a47773329df9f3363d9d517f733495e555ce4660693a94c2534e9acbea214e78",
+        "text": "# Browser cleanup catalog model follows Accounts ownership\n\nThe exact10e6698efdcad2726f5ca9f7dcdb7352317ceb11 complete gate passed all phases preceding database isolation. In that lane the real owner-onboarding browser scenario passed, but seven existing cleanup model tests failed because their catalog treated undeclared Accounts relations as present and lacked the Accounts schema owner. No Accounts browser lane or complete exit credit is claimed. The original complete transcript is committed at architecture/evidence/customer-ready-gates/10e6698efdcad2726f5ca9f7dcdb7352317ceb11.log.\n\nThe fixture catalog now explicitly models absent Accounts relations in earlier phases, present canonical Accounts tables during expansion, and final removal of all six generic tables during contract. The exact schema owner is declared. Original77-family coverage remains before each phase-specific mapping, original role/ACL/FORCE-RLS/trigger restoration assertions remain, and final Accounts deletion order is checked. Three new negative models reject missing Accounts family, partial generic retirement and non-contracted phase before any source deletion. Production cleanup implementation is unchanged.\n\nThe tight pre-fix invocation reproduces seven failures. After correction all15 focused cleanup checks pass. The broader fixture/process suite passes27 checks with one real database test explicitly skipped because that targeted invocation has no local Supabase runtime. The complete gate will run that mandatory test against its owned local database. The282 Accounts authority tests also pass on the root worktree after fast-forwarding the exact isolated journal-ownership commit ee0a6d862759c47ecdb0679300280095e8324359. Independent correction reviews and the complete gate pair remain pending. No hosted/provider/production effects occurred.\n"
+      }
+    },
+    "browser-integration/manifest.json": {
+      "sha256": "f304c5f822a837261f053103de4c9984e41de29d02c7ffcbc3ff1526b540b18c",
+      "status": "BROWSER_INTEGRATION_IMPLEMENTED_HYDRATED_GATE_PENDING",
+      "baseline": "1e38067282e144996b455e428c267f6be3534421",
+      "verification": {
+        "path": "architecture/evidence/issues/153/browser-integration/verification.md",
+        "sha256": "2c280c5b7348002608025e39c747cbd4e6e9ccaca52420f61fcf53c08bfcc92b",
+        "text": "# Accounts browser integration and source review correction\n\nThe independent source review pair found STD-153-SOURCE-1: retained malformed\nfeedback metadata could be projected as invented document identities while\nhistory was complete. Original reports and reproductions are adopted unchanged.\nThe projector now accepts null or an array of text references and fails unavailable\nfor other shapes. Public and authenticated HTTP regressions pass.\n\nAn explicit post-cutover migration binds the restricted backend login to the\nAccounts workflow executor with SET and without inheritance or administration.\nIts rollback removes the binding. Real rollback-only database verification checks\npre-cutover denial, exact membership, no store-owner access and removal.\n\nBrowser fixture seeding and cleanup now use owned Accounts, Tax and RF stores;\nthe final owner journey verifies the generic filing tables are absent. A new\nAccounts browser journey covers pending TT02 evidence import, permission/manual\nevidence controls, source scope, source outage and current-role revocation.\nIt is wired into the complete disposable-stack gate. It has not yet been run.\n\n23 database lifecycle tests,29 source projector/adapter/HTTP tests,20 fixture\nsafety tests and architecture validation pass. Full architecture tests, real\nbrowser execution, final advisors, independent follow-up reviews and the full\nprotected stage-exit pair remain pending. No stage-exit credit is claimed.\n"
+      }
+    },
+    "characterization/manifest.json": {
+      "sha256": "e6441fa44a449801ed7a58f817ac8397c38e3bbe571983f6a62049b02ecc43ee",
+      "status": "LEGACY_CHARACTERIZATION_REVIEW_PENDING",
+      "baseline": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+      "verification": {
+        "path": "architecture/evidence/issues/153/characterization/verification.md",
+        "sha256": "ae57e54eb0064ec9ea50c5edb243ad25927a8f2aa8346b4af28cfecfa719ca40",
+        "text": "# Accounts legacy characterization\n\nBoth independent inventory axes passed revision `20747014`. The entry inventory\nand requirements are historical evidence at that revision; this directory records\nthe subsequent characterization phase. All six original issue criteria remain\npending. No application or SQL implementation has changed.\n\nThe live profile has 67 payload, 175 XML, 43 evidence-import and 11 Accounts-only\nreadiness cases. The capture imports the unchanged baseline implementation on\nNode 24.20.0. The private readiness function is exposed by adding an export and\nmaking imports absolute; its body is unchanged. Inputs, full outputs, ordered\nerrors, XML bytes and non-finite/negative-zero diagnostics are retained. XML\ncaptures include every required field's absence, duplicate and ORID mismatch,\nwhole-integer/negative/consistency failures, UTF-16 lengths, escaping and dates.\n\nThe distinct offline profile has 46 Python 3.12.12 cases plus the existing public\nvalidation fixture report. Its 22-field projection, Python rounding, account\ncoverage, attachment decisions, readiness and simulation receipts stay separate\nfrom the live 21-field projection. Before replacing policy, Accounts-specific\noffline behavior must receive a canonical owner and explicit public contract\nprofile. Common AnnualData, Tax and Archive behavior remains outside this stage.\n\nThe 61 exact-body Server Action executions use deterministic time and synthetic\ndependencies. They establish call order and payloads, not real authentication,\nSQL or transport. The original import always records signed-and-archived TT02\nevidence as pending. Its Audit continuation occurs after the evidence insert;\na returned Audit error is currently ignored while a thrown exception escapes.\nThat distinction is captured, not reclassified as transactional atomicity.\n\nThe disposable local database clone supplies 87 populated RLS probes. All data\nand updates are rolled back, including synthetic users and company. A preliminary\n86-case capture encountered the existing unique submission-per-preview constraint\nbefore isolating insert access. The final capture uses fresh synthetic previews\nfor insert probes and separately records that duplicate rejection. There is no\nretained business fixture, hosted mutation or populated migration/rollback claim.\n\nThe legacy direct RLS admits an unaccepted owner and AAL1 writes; the server\nactions separately enforce fresh MFA for permission/evidence operations. These\nare observed baseline limitations, not permission to reproduce an authorization\nbypass in the canonical backend. The new request boundary must enforce current\naccepted membership and applicable action-time MFA before the owned writer.\nNegative authorization cases remain mandatory before stage exit.\n\nExisting checks passed: 138 no-provider authority workflow/transport tests and 46\nweb Accounts/evidence/mixed-action tests, with no failures or skips. Neither these\nchecks nor the captures count as an immutable complete exit gate.\n\nRemaining before exit: canonical implementation, authenticated generated-client\nworkflow, populated migration reconciliation, single-writer deployment protocol,\nrollback/recutover and RLS, legacy retirement, source handoff, independent reviews,\nand two consecutive complete immutable gates. No provider interaction, genuine\nfiling, production activation or promotion is included.\n"
+      }
+    },
+    "dependency-integration/manifest.json": {
+      "sha256": "163d20b8263a60f562d551d4b84c0c3915e0e5785febc70a9ab603e0f7c20c60",
+      "status": "DEPENDENCY_INTEGRATION_VERIFIED_STAGE_EXIT_PENDING",
+      "baseline": "9a3d8d8068749635b64645936f2d7398e0bc11c9",
+      "verification": {
+        "path": "architecture/evidence/issues/153/dependency-integration/verification.md",
+        "sha256": "973707f63cf76c245ba810a0767a40bf324740c1d87e6993871bdd44ffd98238",
+        "text": "# Accounts dependency integration\n\nBase: 9a3d8d8068749635b64645936f2d7398e0bc11c9. Stage exit remains pending.\n\nThe full gate reached launch rehearsal and failed at an Archive assertion expecting retired public tables. Its original transcript is preserved. The Archive VM harness also needed the owned Accounts dependency and the explicit five-table retirement. Original frozen mixed chains remain unchanged; Audit and Banking chains remain byte-equivalent. Added actual route assertions retain requested-year Accounts submissions/previews, company-wide older comments and permissions, linked evidence, original nested payload identity and archive generation order. The evidence presenter rejects extra payload/token properties by explicit projection.\n\nThe backup test now expects all six qualified Accounts tables and preserved reference-before-submission restore order. The CI partition test includes the Accounts marker and requires every backend case to appear in exactly one mandatory lane. Shell execution checks include Accounts lifecycle and browser success/failure phases. No application behavior changed in this checkpoint.\n\nValidation: Archive 24 passed; backup 9 passed in the second rehearsal-tail log; remaining tail commands reached CI, whose stale lane expectations are preserved as failures. Corrected CI suite passed (see exact retained count in log). All 28 Accounts lifecycle tests passed on the owned loopback clone, rolling back schema, rows and global memberships. Added RF checks prove warning permits and block denies readiness, and outsider access fails. Support checks use a nonmember operator with actual grant/open/read/revoke calls across filing, authority, and combined scopes; exact returned fields, unopened case, wrong case, stale MFA and revoked access are asserted. Existing Documents receipt/feedback retention test remains; a temporary duplicate parametrized probe was removed after its passing result (first dependency log is bounded probe evidence, not final test count).\n\nBoth independent 9a environment recovery reviews are adopted unchanged. No full gate success, stage exit, hosted change, provider action, or production activation is claimed here.\n"
+      }
+    },
+    "duplicate-retirement/manifest.json": {
+      "sha256": "cd249599df21ff749f0ae8b81f5121afc99c331b2ca498d5295a9758b24f7f1b",
+      "status": "DUPLICATE_POLICY_RETIRED_STAGE_EXIT_PENDING",
+      "baseline": "baac7f6ef0c90ed20cfb29d33b80a1c85ef506d1",
+      "verification": {
+        "path": "architecture/evidence/issues/153/duplicate-retirement/verification.md",
+        "sha256": "8d3f385bf104ecf961ba0c82ec18cffb1341bf08fd3204b1272150f2075aab7a",
+        "text": "# Accounts duplicate policy retirement\n\nThe web payload and XML implementations and Accounts TT02 importer are removed.\nThe remaining shared evidence normalizer, presentation labels and common gate\nretain exact function definitions. Existing cross-output tests call fixed,\ntest-only Python public-contract drivers, preserving their assertions while\nremoving the second policy implementation. The readiness fixture supplies the\nowned assessment consumed by the migrated Annual aggregator.\n\n22 cross-output/payload/XML/evidence tests and 2,112 frozen backend parity tests\npass. TypeScript and the architecture checker pass. The initial test-driver\nkeyword-argument error and corrected pass are retained. Earlier characterization\nproducers remain immutable and are run against their recorded predecessor\nrevisions; they are not rewritten to manufacture fresh reference output.\n\nThis bounded checkpoint does not complete #153. Source handoff, hydrated workflow,\nfinal topology/advisors and full protected stage-exit gates remain pending.\n"
+      }
+    },
+    "entry-inventory/manifest.json": {
+      "sha256": "14354bf198f216053cfe22c6324b6bd13ea8e5672cdc97112032758fa5158dd5",
+      "status": "ENTRY_INVENTORY_REVIEW_PENDING",
+      "baseline": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+      "verification": null
+    },
+    "entry/manifest.json": {
+      "sha256": "988a097f791059241ae448437f08f40f068c1cea746ba987d7873a8d8353895d",
+      "status": "BASELINE_AND_PREDECESSOR_VERIFIED",
+      "baseline": null,
+      "verification": null
+    },
+    "evidence-import/manifest.json": {
+      "sha256": "8c79c5ca966ce4dbea2e3400a63c11767fb5260687ec1cb3d0c724e351b037df",
+      "status": "PURE_EVIDENCE_REVIEW_PENDING",
+      "baseline": null,
+      "verification": {
+        "path": "architecture/evidence/issues/153/evidence-import/verification.md",
+        "sha256": "95485fab3e5a7463e4ed9533226b61931bf71bc0d208bc6c75fee18e75e7b189",
+        "text": "# Accounts TT02 evidence projection\n\nThe canonical pure importer preserves all 43 frozen predecessor outputs and ordered\nfailures. Imported evidence stays pending. Identity authorization, database writes,\nAudit continuation, provider-state ownership and web cutover remain pending.\n\nThe input copies nested data and requires the workflow to supply recording time.\nThe existing web wrapper remains authoritative and still supplies the clock.\n\nThe standalone date capture contains 1,804 finite Date.parse cases. The first\npublic importer test run had one fixture mismatch: the importer first trims\nECMAScript whitespace, unlike raw Date.parse. The corrected producer invokes the\nunchanged released importer directly, capturing exact acceptance and rejection\nmessages for all 1,804 inputs plus 4,320 TimeClip boundary cases in six timezones.\nAll 2,112 parametrized tests pass, including all prior 258 Accounts pure tests.\nThe six timezone tests each execute 720 frozen boundary inputs.\n\nThe local date parser is adapted from pinned V8 source under its included BSD\nlicense. Existing PyICU supplies timezone offsets at TimeClip endpoints because\nmacOS libc rejects negative civil years that V8 accepts. No new dependency or\nprovider operation is introduced. The earlier date comparison logs preserve the\noriginal two libc early-year failures and intermediate correction; the final\npublic importer test log verifies the ICU implementation.\n\nBoth independent reviews of e412ebcc passed, resolving the offline ownership and\npure numeric/deep-metadata findings. Those exact reports are adopted here without\nrewriting the previous phase's manifest. This is not a #153 stage-exit receipt;\nall six original acceptance criteria remain pending.\n"
+      }
+    },
+    "gate-follow-up/manifest.json": {
+      "sha256": "1d6ef27cf4894ea4f7c104c889a192dd5a21bdb945578304e20353367b91a19a",
+      "status": "REVIEW_AND_GATE_FAILURES_FIXED_STAGE_EXIT_PENDING",
+      "baseline": "900472a0ecfbf5e8d7fc4996f4f641e33575103c",
+      "verification": {
+        "path": "architecture/evidence/issues/153/gate-follow-up/verification.md",
+        "sha256": "ce90e9557e4e04358b694e297049e984922cef4e1b5e89428221f7f1e811c6ba",
+        "text": "# Accounts gate follow-up\n\nThe complete gate at900472a0 passed credential scanning, TypeScript,\narchitecture and5,785 backend tests (two existing skips;884 database cases\nreserved for the isolated database lane). It stopped on two stale web checks\nthat expected retained generic filing rows. The updated checks require owned\nAccounts reads, failure handling and removal of all filing facade records.\nTen focused web checks pass. The original complete-gate failure is retained.\n\nBoth independent reviews close STD-153-SOURCE-1 and identify\nSTD-153-BINDING-1: rerunning the binding retained a prior ADMINtrue membership.\nThe grant now explicitly sets ADMINfalse. The real rollback-only test verifies\nfresh grant, prior-administration rerun and exact membership restoration.\nOriginal reports and SQL reproduction are preserved byte-for-byte.\n\nThree independent-connection probes on a separately created disposable clone\nconfirm source read/rollback serialization, stale repeatable snapshot rejection\nand unavailable reads after rollback. The clone was dropped and all global\nmemberships restored. Final physical-topology advisors report zero blocking\nsecurity/error findings and50 performance warnings. Accounts has one existing\nper-row authorization warning and three multiple-policy warnings from its\nseparate factual access policies; these do not alter authorization. The CLI\nneeded explicit sslmode=disable for the loopback server; initial connection\nfailures and the corrected producer/result are retained. Final-topology advisors\nare now required in the complete local gate after Accounts activation.\n\nBrowser execution, complete stage-exit gates and protected integration remain\npending. These checks do not constitute a stage exit or production authority.\n"
+      }
+    },
+    "journal-ownership/manifest.json": {
+      "sha256": "158d38f821615dfcc4528e32a4507e43d36910911aa33a06f28879c9dbf6ba43",
+      "status": "IMPLEMENTED_TARGETED_VERIFIED_FULL_EXIT_PENDING",
+      "baseline": "10e6698efdcad2726f5ca9f7dcdb7352317ceb11",
+      "verification": {
+        "path": "architecture/evidence/issues/153/journal-ownership/verification.md",
+        "sha256": "0ea8da8b55f9bb1c884ff88f220e3c3fd0f789791ef956491d7e18c239243aaa",
+        "text": "# Exclusive Accounts rehearsal journal ownership\n\nBoth independent review axes close the earlier sequential retry and malformed-validation findings at10e6698efdcad2726f5ca9f7dcdb7352317ceb11, but establish residual P2 STD-153-JOURNAL-1. Actual concurrent CLI invocations sharing one real JSON journal create and lock two separate instances and retain only one. Original reports, mock-provider reproductions and independent output bindings are unchanged here.\n\nThe Accounts workflow now requires exclusive evidence ownership before case/evidence reads and holds it through every await and final checkpoint. Its registered local adapter uses a nonblocking POSIX flock on a canonical-path sidecar. A persistent sidecar retains the lock across atomic JSON replacement; it is never unlinked. A concurrent invocation receives nonretryable ANNUAL_ACCOUNTS_REHEARSAL_IN_PROGRESS before credentials. Descriptor closure releases ownership on success, exception, interruption and process termination. Pending operation evidence survives process death, preserving the existing reconciliation requirement. The lock coordinates this local filesystem; choosing another journal does not reconcile an authority outcome.\n\nSeven new regressions fail before the fix and pass afterwards: actual concurrent CLI calls with identical and directory-aliased evidence paths; four exception/cancellation release controls; and a real child process proving exclusion across atomic replacement and release after termination. The focused regression command runs 282 tests successfully. The original successful effect traces remain unchanged. An isolated in-memory test IO explicitly supplies a no-op ownership context; the real adapter is always exercised by the concurrency tests.\n\nThe first private archive architecture harness was invalid: symlinked feature paths and committed receipts produced errors, and its wrapper incorrectly examined violations instead of errors when setting exit status. Its full output is retained without success credit. A proper detached Git worktree at the exact base with only the seven changed paths passes the actual architecture CLI; all282 focused tests also pass there. No scanner rule or architecture assertion was relaxed.\n\nThe root10e full gate is still running against unchanged committed inputs. It cannot provide final exit credit while this finding remains in its source revision. This fix still needs independent review, complete immutable gate pair and protected integration. No provider, hosted database or production action occurred.\n"
+      }
+    },
+    "journal-reviews/manifest.json": {
+      "sha256": "27dbc3da2e798ba2c3aaa557c55d124722525ced56de24d73f93fc6c4616b11d",
+      "status": "SPEC_PASS_RUNTIME_RECOVERED_FULL_EXIT_PENDING",
+      "baseline": "f1e6316c4cac895c43be88aef776c88cc97db204",
+      "verification": {
+        "path": "architecture/evidence/issues/153/journal-reviews/verification.md",
+        "sha256": "d4d1a4e15dfc86f90513ad75ac5bf86e8335301160ae6b306982e7cda2ceb1a4",
+        "text": "# Journal ownership review and local runtime recovery\n\nThe Spec axis independently closes STD-153-JOURNAL-1 at f1e6316c4cac895c43be88aef776c88cc97db204, with282Python checks,27fixture/process checks and three extra actual CLI/file concurrency probes. Its one real-database fixture test is explicitly skipped only in this targeted run; the full gate must execute it. Exact original files and bindings are preserved. Standards review evidence is adopted separately when finalized.\n\nThe f1e complete gate passed all steps preceding launch rehearsal, then stopped because Docker was unavailable. Direct `colima status --profile talli` confirmed that the existing local VM was not running. Its original failed transcript has zero gate credit; the cause of the VM shutdown is not inferred. Restarting the same existing profile restored Docker29.5.2 with2.4GBfree. The unchanged mandatory Investments runtime test then passed against its own disposable PostgreSQL container. No volumes or persistent database contents were removed. No hosted or provider actions occurred.\n\nThe complete gate pair, final Accounts browser lanes and protected integration remain pending.\n"
+      }
+    },
+    "offline-profile/manifest.json": {
+      "sha256": "e49659dd966b5f4f018117f02b8dc248279744bc76fbf2e3de4b4dd26c5da74e",
+      "status": "OFFLINE_PROFILE_AND_PURE_FIX_REVIEW_PENDING",
+      "baseline": null,
+      "verification": null
+    },
+    "physical-retirement/manifest.json": {
+      "sha256": "1a3570c0a34c56a979b727cbb68e940b06b87cf3e8802d5a42d3da6ea231e79b",
+      "status": "PHYSICAL_RETIREMENT_VERIFIED_LOCAL_STAGE_EXIT_PENDING",
+      "baseline": "5279d43e297d3a3c2949c61d8466ca79c20651cb",
+      "verification": {
+        "path": "architecture/evidence/issues/153/physical-retirement/verification.md",
+        "sha256": "e30da97e4966e0d7dd1907b9885d4be8613480a41128650e33d21de993a5713f",
+        "text": "# Accounts physical retirement and final shared reads\n\nThis bounded checkpoint adds explicit dependency, cutover, contract and paired\nrollback artifacts for the six remaining generic filing families. It moves the\nArchive reads to the Accounts generated client while retaining company-wide\ncomments and permissions, requested-year filings and linked evidence. The\ncatalog proves deletion of all six public tables before their compatibility\naliases identify the Accounts owner. Exactly 24 active scopes are removed from\nthe prior 60; the immutable 237-scope baseline is unchanged. Eight Audit and two\nNotification continuations retain their original persistence chains. Eight\nbounded action/Archive AST pins and retained-sibling checks remain enforced even\nafter the last reattributed RF scope is removed.\n\n## Database proof and corrections\n\nAll database checks used the owned loopback disposable clone and rolled back\nfixtures, schema changes and global memberships. No hosted migration, provider\noperation or production change occurred. The local gate now declares the\nAccounts lifecycle lane and explicit activation after the final Tax topology;\nthat entire integrated gate has not yet run for this checkpoint.\n\nThe final SQL passes 17 permanent lifecycle cases, 47 real authorization/control\ncases and 48 direct API role/function privilege denials. The final eleven-phase\nrehearsal preserves a new evidence row and an acknowledgement on an existing\ncomment through contract rollback, full rollback, re-cutover and contraction.\nThe permanent lane additionally verifies Documents receipt/feedback retention\nwithout caller membership, Tax coverage after public tables disappear, source\nand target drift, old-writer fences and first-index-inventory preservation.\n\nThe original Spec review reproduced two P2s: missing FORCE RLS on an inactive\nowned table could expose a foreign preview after cutover, and disabled public\nRLS could expose restored rows after full rollback. Standards found the related\npublic trigger-drift branch. The original SQL, reports and reproductions are\nretained. The corrected cutover attests exact reviewed target structures before\nits temporary migration policy. Full rollback compares original public owner,\nACL, RLS, columns, constraints, policies and triggers before copying or restoring\nwrites. Only separately verified rollback fences are normalized. Independent\nfollow-up reviews bind the corrected bytes; original failures are not replaced.\n\nThe target fingerprint JSON is a complete reviewable clean-schema capture from\nthe five named pre-cutover artifacts. Its query normalizes role names and covers\neffective ACLs, owner privileges, relation kind, columns/defaults, constraints,\nindexes, RLS/FORCE RLS, policies and triggers. The capture's producer/query/input\nhashes are retained. Historical private reproducers retain their original path\nreferences; the permanent repository lifecycle test is the portable gate entry.\n\nInitial permanent-harness failures retain the SQL CASE syntax error and its fix,\nthen corrected harness expectations for membership-before-phase errors, the RF\nlegacy trigger rejecting before CHECK(false), Tax's repeatable-read requirement,\nand receipt fixture placement before cutover. The final pass does not relax\nthose runtime guards. Earlier standalone probe hashes remain historical; final\ncurrent-byte authorization and eleven-phase receipts are separately bound.\n\n## Web and architecture verification\n\n35 focused workspace, Archive and generated-client tests pass. The exact action\nmutation test, immutable-inventory and completed-RF retirement tests pass, and\nthe manifest/dependency test and architecture checker pass. The first complete\narchitecture test run exposed stale expected inventories and a real gap where\nmixed-action enforcement ended when the last handoff disappeared. The corrected\nchecker keeps that enforcement while sibling calls remain. The original failed\nrun and targeted passing follow-ups are retained. This is not a claim that the\ncomplete architecture suite or complete customer-ready gate has passed at this\ncheckpoint.\n\nThe previous bounded web Spec and Standards PASS reviews at 5279d43e are adopted\nbyte-for-byte. No original acceptance criterion or stage-exit status is marked\ncomplete here. Durable source handoff, duplicate TypeScript retirement, complete\nhydrated workflow verification, final advisors, protected integration and the\nfull two-revision stage-exit envelope remain required before #193 and #149.\n"
+      }
+    },
+    "publication-follow-up/manifest.json": {
+      "sha256": "d45ebdc1d1f635dc8f943d4503f2b2e66db32faec46c177953ff10bf56195ddc",
+      "status": "PUBLICATION_AND_MFA_CONTROLS_VERIFIED_STAGE_EXIT_PENDING",
+      "baseline": "53b3ae3e5e3dcaf020e25113a5a31f9b8ca65701",
+      "verification": {
+        "path": "architecture/evidence/issues/153/publication-follow-up/verification.md",
+        "sha256": "363fd8240d84b6ac2cdc44865d789dad3238874e4c8bc54823281a40cb991279",
+        "text": "# Publication and final documentation follow-up\n\n53b3ae3e full gate failed at credential scanning because a retained pytest collection failure printed synthetic PEM headers in test identifiers. The published rehearsal-tail-second log now redacts only those header bytes; its manifest explicitly records the exact original SHA, private path and published transformation. The original remains unchanged privately and at commit 53b3ae3e. The scanner is unchanged. The failed full gate transcript is published as an explicitly redacted derivative, never canonical passing evidence.\n\nAdded a genuine expired-TOTP timestamp control alongside the existing AAL1 control, closing STD-153-DEPENDENCY-1. All three Support scope cases pass with both controls, actual grant/open/read/revoke and rollback cleanup. The original Standards finding is adopted unchanged. Updated Accounts module prose to describe its implemented cutover, rollback, generated web boundary and durable source coverage. Full stage exit and protected integration remain pending.\n\nCredential checks and architecture validation pass. No provider/hosted/production action.\n"
+      }
+    },
+    "pure-calculation/manifest.json": {
+      "sha256": "0d48e5bc37875257a353cee74b8b6ad42dc0d5994a90bf67fac71ee5e95b6927",
+      "status": "PURE_CALCULATION_REVIEW_PENDING",
+      "baseline": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+      "verification": null
+    },
+    "read-controls/manifest.json": {
+      "sha256": "d2ca80cdb65377c7ecd559127bf7d7dd1353b52d7fd0aceb5a7b4262906eeaad",
+      "status": "READ_CONTROLS_REVIEW_PENDING",
+      "baseline": "e6f8e889852e9c26057d80f75930dc5a34ad5729",
+      "verification": {
+        "path": "architecture/evidence/issues/153/read-controls/verification.md",
+        "sha256": "124613ea406af5bd12c76832e578b78e070f1ca3ca41c97e384641f6073d729a",
+        "text": "# Accounts authenticated read and preparation contracts\n\nEight additive HTTP endpoints now bind the verified actor to Accounts-owned\nworkspace, preview, override, review, acknowledgement, permission, manual test\nevidence and TT02 import operations. Fourteen wire schemas and the generated\nclient preserve every pre-existing OpenAPI schema and path unchanged. The\nworkspace returns complete immutable company/year rows, rejecting wrong\nobligations, duplicate IDs, missing links and scope conflicts. Sensitive routes\nsend no-store responses; generated reads also reject foreign result scope.\n\nThree CLI-created SQL artifacts add read, preparation and import contracts after\nexpansion. Every business entry point requires cutover/contracted phase. Company\nAccess retains accepted membership, owner/reviewer and fresh MFA decisions.\nThe TT02 importer retains the original single authority_test_runs INSERT with\npending status; it adds neither Tax submission persistence nor replay deduplication\nnor atomic Audit. The web action's existing subsequent Audit insert is still\nunchanged, and its cutover to the new client remains pending. Projection time is\nsupplied by the application clock and actor/organization come from verified\nsession and Company Access identity. No provider operation is introduced.\n\nForty-seven synthetic SQL cases pass on accounts153_setup_fix_d060, plus 36\nnegative execute-privilege checks across anon/authenticated/service_role. The\nprobe changes phase only inside its rolled-back transaction, not through a real\ncutover. It covers accepted owners/reviewers, unaccepted membership, outsiders,\nstale MFA/AAL1, inactive reads/writes and malformed TT02 projections. Global\nmemberships, schema and fixtures restore after rollback. The first expectation\nassumed reviewer-forbidden for locked owner-only records; FORCE RLS correctly\nconceals those records as not-found, and that failed expectation is retained.\n\nSixty-two focused Python tests pass, including 41 frozen TT02 HTTP cases, actor\nbinding, immutable workspace scope/link checks and persistence rollback. The\nbroader Accounts suite passes 2,272 tests. Initial HTTP checks identified the\nmissing no-store header, which is fixed. Two generated-client tests pass; TypeScript\nchecking and both generation drift checks pass. Architecture checks pass after\ncompleting the declared interface and composition inventories; failed intermediate\ninventory checks are preserved. No full-stage or actual JWT ceremony credit is\nclaimed. Web cutover, canonical source handoff, contract/rollback, Archive integration\nand the complete #153 stage exit remain pending.\n\nThe original 04e682b6 Standards PASS and both e6f8e889 setup-provenance fix PASS\nreports are adopted byte-exact. Their earlier evidence remains unchanged.\n"
+      }
+    },
+    "readiness-input-fix/manifest.json": {
+      "sha256": "2fb3d65117442bb43e70c74c698a552b5ba279de171ec3c2193090fa8b2e6069",
+      "status": "READINESS_INPUT_FIX_REVIEW_PENDING",
+      "baseline": "d36a6af7d4a8f3cff49b27f07e9570dd045fac72",
+      "verification": {
+        "path": "architecture/evidence/issues/153/readiness-input-fix/verification.md",
+        "sha256": "29370440287b571dd4be7de706eabfaf7bcba622e2909092a425db5b5b97aaf9",
+        "text": "# Accounts readiness input correction\n\nThe two independent reviews of d36a6af7 close STD-153-READ-1 and identify STD-153-READINESS-1. Their original reports and bindings are adopted unchanged. Malformed consumed Annual and Ledger facts now fail at the HTTP boundary, including object confirmations, nonboolean answers, malformed employee equivalents, and foreign Annual scope. The frozen pure calculation remains unchanged.\n\nThe focused run passes 21 cases: 11 frozen readiness examples and 10 malformed or scope regressions. This is a bounded fix, not stage-exit evidence. Web cutover remains in progress and is excluded from this commit. No database or provider actions occurred.\n"
+      }
+    },
+    "response-readiness/manifest.json": {
+      "sha256": "58c9892c8c655dc3a5d4dd38b3f06ec665804c683028c1d7e8a2a1151fcdb267",
+      "status": "RESPONSE_READINESS_REVIEW_PENDING",
+      "baseline": "af5c6523f081707fc08818919717371af6dd4ec9",
+      "verification": {
+        "path": "architecture/evidence/issues/153/response-readiness/verification.md",
+        "sha256": "923e91ebba7fa6085c345932df5d1095e9c73c628d329927904080fea1408fa9",
+        "text": "# Accounts response preservation and readiness preview\n\nStandards review of af5c6523 identified STD-153-READ-1: an immutable valid\nworkspace containing 600-level JSON metadata passed row/model validation but\nPydantic failed after endpoint return, producing an internal 500. The original\nprobe and traceback are adopted unchanged. Accounts preview/workspace routes\nstill construct and validate their typed wire models, then use iterative JSON\nencoding to preserve opaque metadata without the serializer depth limit.\nDetaching immutable mappings is iterative too. Tests cover both routes at depths\n1, 600 and 1200, complete metadata retention, ordinary Pydantic-compatible aliases,\nUUID/timestamp/scalar formatting, and explicit cycle rejection. The original\nreviewer probe now returns 200 for both shallow and 600-level responses.\n\nThe additive Accounts readiness-preview endpoint calls the already owned Python\nrules with immutable Annual/Ledger facts and Corporate blockers. It preserves\nall 11 frozen legacy ordered readiness cases, including disabled/enabled Corporate\nchecks and accepted/unaccepted manual warnings. It grants no durable permission\nand adds no production operation. The generated client exposes the endpoint.\nThe initial route incorrectly supplied a fourth positional source argument;\nits failed test log is retained and the route now uses explicit named fields.\n\nAll 81 focused Python tests pass, and architecture enforcement passes. The web\ntransport/presentation scaffold is being prepared separately and is excluded\nfrom this bounded commit. Web caller cutover, positive source handoff, physical\ncontract/rollback and full #153 exit remain pending. Original af5c6523 Spec review\nis still running and will be adopted when finalized. This is not full-stage credit.\n"
+      }
+    },
+    "source-handoff/manifest.json": {
+      "sha256": "fa90767b4f92435bb0e257a4c4ee11d8c8d5d7cf2c0891aaf0ad81519a1cbc84",
+      "status": "SOURCE_HANDOFF_IMPLEMENTED_STAGE_EXIT_PENDING",
+      "baseline": "9ba2a33a2214b398ca0d62e1bad6bd3fc1674fe3",
+      "verification": {
+        "path": "architecture/evidence/issues/153/source-handoff/verification.md",
+        "sha256": "3f5bb0d84eb00fc7289ddcfc19bc655283b73ae6ce0f021902bfda8e2bfc746f",
+        "text": "# Accounts immutable source handoff\n\nOne authenticated, accepted-owner repeatable database snapshot provides Accounts\ncompany/year history and positive migration coverage. The generated HTTP client\nbinds complete history to the source evidence. Missing coverage is unavailable;\ndrift or unknown production-labelled history is incomplete. Correction links,\nincidents and outcomes preserve recorded identities without inferring acceptance\nor commercial eligibility. Production remains decisively disabled; this contract\ndoes not certify Corporate close or signed-artifact prerequisites.\n\nValidation: 29 projector/HTTP/adapter tests, three generated-client tests, and\n22 real PostgreSQL lifecycle tests pass. Populated and empty-year snapshots were\ncaptured on the explicitly owned loopback clone with all schema, fixtures and\nrole grants rolled back. TypeScript and architecture validation pass. Initial\nsyntax/documentation failures and their corrected results are preserved.\nThe preceding duplicate-retirement review pair is adopted byte-for-byte.\n\nThis checkpoint does not complete #153. Independent source reviews, complete\nbrowser integration, final topology/advisors and protected stage-exit gates remain\npending. No hosted migration or authority provider was contacted.\n"
+      }
+    },
+    "web-cutover/manifest.json": {
+      "sha256": "5436f07313cf82ecb51e625e7c3b5aba2a5334988acc0372afb3df3dc8577856",
+      "status": "WEB_CUTOVER_IN_PROGRESS_ARCHITECTURE_BLOCKED",
+      "baseline": "bd3c487a7247925ce56def2498ac1f8f728f9619",
+      "verification": {
+        "path": "architecture/evidence/issues/153/web-cutover/verification.md",
+        "sha256": "dee7f0280815b17a7e9410a211a18d067ef7234b921aa09039a1383992e6ff77",
+        "text": "# Accounts web consumer cutover in progress\n\nThe owner workspace, Annual workspace, override/review/acknowledgement actions, permission/manual evidence actions, TT02 import, readiness refresh and reminder reads now use the owned Accounts generated client alongside the unchanged RF and Tax contracts. The Annual aggregator composes Accounts readiness; Corporate document status remains visible. Missing or failed source reads remain unavailable.\n\n89 focused web tests pass. TypeScript passes. Exact AST persistence-chain comparison against main baseline 5b74340ca75f215b43d754c6bf0fc49ef5974b0b preserves eight Audit and two Notification chains, including one import followed by the original returned-error/thrown-error Audit behavior. The two preceding readiness input reviews pass and are adopted unchanged.\n\nThis is not a releasable or stage-exit candidate. The architecture guard intentionally remains failing until physical source retirement and its catalog proof permit deletion of the now-obsolete scopes and the source composition is bound. The proposed 19 deleted-call scopes are captured, but the active registry is unchanged in this checkpoint. Do not bypass the guard. Archive remains on its prior reads; duplicate pure TypeScript and import code retirement, source handoff, physical cutover/contract/rollback, browser verification and full exit gates are pending. No database/provider/production changes occurred in this web slice.\n"
+      }
+    }
+  },
+  "evidenceOnlyDeltaSinceF1e": [
+    "architecture/evidence/customer-ready-gates/f1e6316c4cac895c43be88aef776c88cc97db204.log",
+    "architecture/evidence/issues/153/journal-reviews/docker-restart-health.json",
+    "architecture/evidence/issues/153/journal-reviews/docker-restart-investments-runtime.log",
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-bindings-f1e6316c.json",
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-cleanup-f1e6316c.log",
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-fixture-f1e6316c.log",
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-probe-f1e6316c.json",
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-probe-f1e6316c.py",
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-review-f1e6316c.json",
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-review-f1e6316c.md",
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-tests-f1e6316c.log",
+    "architecture/evidence/issues/153/journal-reviews/manifest.json",
+    "architecture/evidence/issues/153/journal-reviews/verification.md"
+  ],
+  "committedJournalAdoptionChecks": {
+    "architecture/evidence/customer-ready-gates/f1e6316c4cac895c43be88aef776c88cc97db204.log": true,
+    "architecture/evidence/issues/153/journal-reviews/docker-restart-health.json": true,
+    "architecture/evidence/issues/153/journal-reviews/docker-restart-investments-runtime.log": true,
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-bindings-f1e6316c.json": true,
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-cleanup-f1e6316c.log": true,
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-fixture-f1e6316c.log": true,
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-probe-f1e6316c.json": true,
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-probe-f1e6316c.py": true,
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-review-f1e6316c.json": true,
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-review-f1e6316c.md": true,
+    "architecture/evidence/issues/153/journal-reviews/journal-spec-tests-f1e6316c.log": true,
+    "architecture/evidence/issues/153/journal-reviews/verification.md": true
+  },
+  "originalSixCriteriaExact": true,
+  "criterionStatuses": [
+    "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+    "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+    "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+    "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+    "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+    "IMPLEMENTED_EXIT_VERIFICATION_PENDING"
+  ]
+}

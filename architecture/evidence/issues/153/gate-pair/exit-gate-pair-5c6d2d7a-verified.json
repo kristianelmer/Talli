@@ -1,0 +1,25 @@
+{
+  "status": "PASS_ROOT_COMPLETE_GATE_VERIFICATION",
+  "gates": [
+    {
+      "revision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+      "canonicalDigest": "sha256:3229c1b2f25f743db2f0523346349c5c414c5492fb7a107d95683c0edbcfef62",
+      "transcriptDigest": "sha256:d50809fc01ac6f1999a1d2c306aaf871e9a25fb67467dc2d8b7dd06b9575dbe3",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "startedAt": "2026-09-14T20:46:44.947Z",
+      "executedAt": "2026-09-14T21:08:46.575Z",
+      "checkCount": 11,
+      "previousPassingRevision": null
+    },
+    {
+      "revision": "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6",
+      "canonicalDigest": "sha256:34d667a23ba3cc3ffe72ef9a5ba7317f93142d945f4dfff2442127aef276f935",
+      "transcriptDigest": "sha256:e2ec05a2fe5d0dbe40fb2a3594888219fe8548d63a4ccb0942e92e911ea3bd06",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "startedAt": "2026-09-14T21:09:40.409Z",
+      "executedAt": "2026-09-14T21:31:49.080Z",
+      "checkCount": 11,
+      "previousPassingRevision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19"
+    }
+  ]
+}

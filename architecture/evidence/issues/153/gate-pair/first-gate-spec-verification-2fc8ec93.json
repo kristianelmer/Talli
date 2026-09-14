@@ -1,0 +1,219 @@
+{
+  "verdict": "PASS_FIRST_COMPLETE_IMMUTABLE_GATE",
+  "base": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+  "storage": "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6",
+  "firstStorage": "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6",
+  "evidencePath": "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.json",
+  "canonicalDigest": "3229c1b2f25f743db2f0523346349c5c414c5492fb7a107d95683c0edbcfef62",
+  "receiptBytesSha256": "f809a0546ce25369638ac0a032d71b6db74216b9424deea2cb023ad8cfa20f28",
+  "transcriptDigest": "d50809fc01ac6f1999a1d2c306aaf871e9a25fb67467dc2d8b7dd06b9575dbe3",
+  "producerDigest": "0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+  "schemaDigest": "b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+  "schemaValid": true,
+  "ajvVersion": "8.17.1",
+  "checks": [
+    {
+      "name": "credential-scan",
+      "command": "npm run test:credential-scan",
+      "exitCode": 0,
+      "durationMs": 1258
+    },
+    {
+      "name": "typecheck",
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "durationMs": 1212
+    },
+    {
+      "name": "architecture",
+      "command": "npm run check:architecture",
+      "exitCode": 0,
+      "durationMs": 17543
+    },
+    {
+      "name": "boundary",
+      "command": "npm run test:boundary",
+      "exitCode": 0,
+      "durationMs": 182390
+    },
+    {
+      "name": "build-web",
+      "command": "TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built",
+      "exitCode": 0,
+      "durationMs": 9481
+    },
+    {
+      "name": "build-backend",
+      "command": "npm run build:backend",
+      "exitCode": 0,
+      "durationMs": 1497
+    },
+    {
+      "name": "boundary-smoke",
+      "command": "npm run test:boundary-smoke",
+      "exitCode": 0,
+      "durationMs": 7377
+    },
+    {
+      "name": "launch-rehearsal",
+      "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal",
+      "exitCode": 0,
+      "durationMs": 256270
+    },
+    {
+      "name": "production-dependency-audit",
+      "command": "npm audit --omit=dev --audit-level=high && npm audit --prefix apps/web --omit=dev --audit-level=high",
+      "exitCode": 0,
+      "durationMs": 1296
+    },
+    {
+      "name": "database-isolation",
+      "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python npm run test:supabase:local",
+      "exitCode": 0,
+      "durationMs": 826458
+    },
+    {
+      "name": "whitespace",
+      "command": "bash scripts/check-clean-worktree.sh",
+      "exitCode": 0,
+      "durationMs": 81
+    }
+  ],
+  "startedAt": "2026-09-14T20:46:44.947Z",
+  "executedAt": "2026-09-14T21:08:46.575Z",
+  "elapsedMs": 1321628,
+  "totalRecordedDurationMs": 1321627,
+  "groups": {
+    "test:browser-owner": {
+      "passes": [
+        29
+      ],
+      "skips": [
+        0
+      ]
+    },
+    "test:browser-owner-annual": {
+      "passes": [
+        1
+      ],
+      "skips": [
+        0
+      ]
+    },
+    "test:supabase-rf-feedback": {
+      "passes": [
+        13
+      ],
+      "skips": [
+        0
+      ]
+    },
+    "test:browser-authority-connections": {
+      "passes": [
+        11
+      ],
+      "skips": [
+        0
+      ]
+    },
+    "test:browser-shareholder-register-filing": {
+      "passes": [
+        14
+      ],
+      "skips": [
+        0
+      ]
+    },
+    "test:browser-company-tax": {
+      "passes": [
+        2
+      ],
+      "skips": [
+        0
+      ]
+    },
+    "test:browser-annual-accounts": {
+      "passes": [
+        1
+      ],
+      "skips": [
+        0
+      ]
+    }
+  },
+  "backend": {
+    "passed": 5831,
+    "optionalSkipped": 2
+  },
+  "billing": {
+    "passed": 699
+  },
+  "accounts": {
+    "passed": 41,
+    "skipped": 0
+  },
+  "validationObservation": {
+    "pythonPassed": 17,
+    "optionalPythonSkipped": 1,
+    "mandatoryNodeSqlRan": true
+  },
+  "advisors": {
+    "blocking": 0,
+    "earlyPerformanceWarnings": 60,
+    "finalPerformanceWarnings": 53
+  },
+  "delta": [
+    "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.json",
+    "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.log",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-bindings-2fc8ec93.json",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-review-2fc8ec93.json",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-review-2fc8ec93.md",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-artifact-checks-2fc8ec93.json",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-harness-diff-2fc8ec93.txt",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-models-2fc8ec93.log",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-review-2fc8ec93.json",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-review-2fc8ec93.md",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-workspace-2fc8ec93.json",
+    "architecture/evidence/issues/153/exit-gates-first/first-exit-gate-2fc8ec93-accounts-runtime.json",
+    "architecture/evidence/issues/153/exit-gates-first/first-exit-gate-2fc8ec93-verified.json",
+    "architecture/evidence/issues/153/exit-gates-first/manifest.json",
+    "architecture/evidence/issues/153/exit-gates-first/production-freeze-2fc8-gate.json",
+    "architecture/evidence/issues/153/exit-gates-first/verification.md",
+    "architecture/evidence/issues/153/exit-gates-first/verify-accounts-runtime-gate.py",
+    "architecture/evidence/issues/153/exit-gates-first/verify-exit-gates.py"
+  ],
+  "manifestArtifactChecks": {
+    "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.json": "f809a0546ce25369638ac0a032d71b6db74216b9424deea2cb023ad8cfa20f28",
+    "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.log": "d50809fc01ac6f1999a1d2c306aaf871e9a25fb67467dc2d8b7dd06b9575dbe3",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-bindings-2fc8ec93.json": "19909bb6cd0d64eeab62f24dd6e8ee5951674482d22e41545b5ab82deb680d03",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-review-2fc8ec93.json": "4635ad6f05fd9b7c28c79c2f1e3d3cfd9436d4b510b70e18766a8ccb04a2c03c",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-review-2fc8ec93.md": "01315fb6b514643a363ac2ddf7550134384b69377cfd60176af19ebdcb2fc784",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-artifact-checks-2fc8ec93.json": "1c5e0af77fe60dda1ac32858e2fb5ce99c2dbe41aec78ecffe52eb3b13119eb1",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-harness-diff-2fc8ec93.txt": "b9047d7c5364605dced21d67f551779059fcf70854fd5b25d887726336f7d51e",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-models-2fc8ec93.log": "dac7d39c4c7408ecf66d5a7249cac3bdf88647a484f173b38f093d3a0c971cb6",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-review-2fc8ec93.json": "b07ea9e7d48b900c6430532eda577f65903499269a0ab4c7d773c36e68c813a8",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-review-2fc8ec93.md": "10943b903d931c9326bcb563f8305a4175f186f97f927d43d8ca81016059a66d",
+    "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-workspace-2fc8ec93.json": "b5752b37e2277eb24bd2c581c3991e7ca94bc210b1c06f2997b2bac288ce38fe",
+    "architecture/evidence/issues/153/exit-gates-first/first-exit-gate-2fc8ec93-accounts-runtime.json": "779521ed26881f5743afdcb21c935f068773e01a887628a412757a2bd416ca1f",
+    "architecture/evidence/issues/153/exit-gates-first/first-exit-gate-2fc8ec93-verified.json": "699b0972ff7e58abbebd0813abe5ec565956d721530c040bcb8db8a66e0015fa",
+    "architecture/evidence/issues/153/exit-gates-first/production-freeze-2fc8-gate.json": "4c726895d79d53d1e9168699faef12e0bf7ca169d836244b5c788f28d88da471",
+    "architecture/evidence/issues/153/exit-gates-first/verification.md": "7b7696171507c41af78ee67649382000f1eae068dd9a73d545a5c544e3545617",
+    "architecture/evidence/issues/153/exit-gates-first/verify-accounts-runtime-gate.py": "6d07e7004718ed00f6f7e4cdefd1a59361805c40405e2b376da944a934dfafbb",
+    "architecture/evidence/issues/153/exit-gates-first/verify-exit-gates.py": "c310dc4265d6bb02c4d83272b094428aef873bbee1ff3e90ccca72181c32fda8"
+  },
+  "adoptionChecks": {
+    "browser-validation-spec-bindings-2fc8ec93.json": "19909bb6cd0d64eeab62f24dd6e8ee5951674482d22e41545b5ab82deb680d03",
+    "browser-validation-spec-review-2fc8ec93.json": "4635ad6f05fd9b7c28c79c2f1e3d3cfd9436d4b510b70e18766a8ccb04a2c03c",
+    "browser-validation-spec-review-2fc8ec93.md": "01315fb6b514643a363ac2ddf7550134384b69377cfd60176af19ebdcb2fc784",
+    "browser-validation-standards-artifact-checks-2fc8ec93.json": "1c5e0af77fe60dda1ac32858e2fb5ce99c2dbe41aec78ecffe52eb3b13119eb1",
+    "browser-validation-standards-harness-diff-2fc8ec93.txt": "b9047d7c5364605dced21d67f551779059fcf70854fd5b25d887726336f7d51e",
+    "browser-validation-standards-models-2fc8ec93.log": "dac7d39c4c7408ecf66d5a7249cac3bdf88647a484f173b38f093d3a0c971cb6",
+    "browser-validation-standards-review-2fc8ec93.json": "b07ea9e7d48b900c6430532eda577f65903499269a0ab4c7d773c36e68c813a8",
+    "browser-validation-standards-review-2fc8ec93.md": "10943b903d931c9326bcb563f8305a4175f186f97f927d43d8ca81016059a66d",
+    "browser-validation-standards-workspace-2fc8ec93.json": "b5752b37e2277eb24bd2c581c3991e7ca94bc210b1c06f2997b2bac288ce38fe"
+  },
+  "limitations": [
+    "First gate only; second result and protected integration unverified",
+    "No test, database or browser reruns"
+  ]
+}

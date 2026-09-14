@@ -1,0 +1,170 @@
+{
+  "verdict": "PASS_SCOPED_ACCEPTANCE_MAPPING_NOT_STAGE_ACCEPTANCE",
+  "baseline": "5b74340ca75f215b43d754c6bf0fc49ef5974b0b",
+  "candidate": "55f5abbdcb0f4d638f26aea093db13722ef922c5",
+  "findings": [],
+  "mappingCorrectionClosed": "Revised proposal now links journal-reviews forA1/A3/A6 and reports F1E_BOTH_AXES_PASS_STANDARDS_ADOPTION_PENDING.",
+  "proposedRequirementsSha256": "e94da69165a7dcb63b1dfd9ad675aa7f78f3b5c212e52cafe13fa87a0f304b21",
+  "criteriaMapping": [
+    {
+      "id": "GH-153-A1",
+      "originalRequirement": "Supported annual-accounts cases produce outputs identical to current schema and TT02 evidence.",
+      "assessment": "SUPPORTED_IMPLEMENTATION_PENDING_INTEGRATED_ACCEPTANCE",
+      "supportedScope": "Fixed legacy live/offline outputs, golden XML/errors/date cases, actual CLI capture and canonical comparisons; safety tightening explicit.",
+      "limits": "No live provider equivalence/complete gate implied.",
+      "selectedEvidence": [
+        "characterization/manifest.json",
+        "pure-calculation/manifest.json",
+        "evidence-import/manifest.json",
+        "offline-profile/manifest.json",
+        "authority-ownership/manifest.json",
+        "duplicate-retirement/manifest.json",
+        "authority-safety/manifest.json",
+        "journal-ownership/manifest.json",
+        "journal-reviews/manifest.json"
+      ],
+      "currentSourceBindings": {
+        "apps/backend/src/talli_backend/modules/annual_accounts_filing/calculation.py": "c579d40eb3ef800073219cc156e6bb6537d35dc10ed54e93274d72878d2532ec",
+        "apps/backend/src/talli_backend/modules/annual_accounts_filing/rendering.py": "222fac8e3a0adaaa1b985cb320dd374f52511dc2c46a818b6b8141624e1ddbc3",
+        "apps/backend/src/talli_backend/modules/annual_accounts_filing/evidence.py": "a6be36e7b61699f5e91b463b9ba23dfdbfe6f1fd57d32d141060122dd1fdc69e",
+        "apps/backend/src/talli_backend/modules/annual_accounts_filing/offline.py": "c7b8996391bf831d9530cfe9717d8353231126167ba2d0aed19e52efd764ceaf"
+      }
+    },
+    {
+      "id": "GH-153-A2",
+      "originalRequirement": "Corporate-close facts and signed-artifact readiness remain required.",
+      "assessment": "SUPPORTED_PRESERVED_BOUNDARY_PENDING_BROWSER",
+      "supportedScope": "Corporate/Document-owned blockers remain supplied to owned readiness, generated client and web; signed-artifact rules preserved.",
+      "limits": "Caller-fact preview and production-disabled source are not durable prerequisite attestation.",
+      "selectedEvidence": [
+        "characterization/manifest.json",
+        "readiness-input-fix/manifest.json",
+        "response-readiness/manifest.json",
+        "web-cutover/manifest.json"
+      ],
+      "currentSourceBindings": {
+        "apps/backend/src/talli_backend/modules/annual_accounts_filing/readiness.py": "07783baea9e4f2085b3ba3d3620f1c896b93045dba765c26f9c3dc44be2e2234",
+        "apps/web/app/lib/annual-accounts-assessment-source.ts": "54ebc29f546fa6a2eb2d9cfa43724e4507306adef49a89cffe872c3fdf4db300",
+        "apps/web/app/lib/workspace-data.ts": "239a8613e5a28057ae6e68793f3b370ecb337501d2f36ae32e9a87cc7b5c1691",
+        "apps/web/app/actions.ts": "f1ec0ca68b4bce714333bf28eeb5681f1424e43bd4f78af617f9414eca124763"
+      }
+    },
+    {
+      "id": "GH-153-A3",
+      "originalRequirement": "Hybrid signing, submission, feedback, and receipt states remain fail closed and auditable.",
+      "assessment": "SUPPORTED_AFTER_THREE_REVIEW_CORRECTIONS",
+      "supportedScope": "Original effect ordering, import/persistence roles, source identity and conservative outcomes; REPLAY/VALIDATION/JOURNAL corrections closed.",
+      "limits": "Pure fake-provider/rollback fixtures and direct SQL do not prove live provider result or full integrated journey.",
+      "selectedEvidence": [
+        "authority-ownership/manifest.json",
+        "authority-review-fixes/manifest.json",
+        "read-controls/manifest.json",
+        "physical-retirement/manifest.json",
+        "gate-follow-up/manifest.json",
+        "dependency-integration/manifest.json",
+        "authority-safety/manifest.json",
+        "journal-ownership/manifest.json",
+        "journal-reviews/manifest.json"
+      ],
+      "currentSourceBindings": {
+        "apps/backend/src/talli_backend/modules/annual_accounts_filing/rehearsal.py": "5705ab94619c688e5c16233e623aa9235e43527169f0ed293afba945a3bcaa27",
+        "apps/backend/src/talli_backend/adapters/local_annual_accounts_rehearsal.py": "8c235aadd4063bb2398ef81b4711759521a34be91d8893530a6d5b82fe10eea7",
+        "apps/backend/src/talli_backend/adapters/annual_accounts_authority.py": "3780ff51a4b3847d831f593e62c1deb5391c4aaf26bf9d0f30d7a032c4219b0b",
+        "apps/backend/src/talli_backend/modules/annual_accounts_filing/source_facts.py": "f4ce835fddb00cbb646e793bf7b33525449e9a81ef395b1d92b540920bebe84f"
+      }
+    },
+    {
+      "id": "GH-153-A4",
+      "originalRequirement": "The complete owner workflow uses FastAPI and the generated client.",
+      "assessment": "IMPLEMENTED_RUNTIME_ACCEPTANCE_PENDING",
+      "supportedScope": "Registered authenticated app/SQL ports and generated transport used by workspace, Annual, controls/import and Archive.",
+      "limits": "Browser fixture/model evidence is not actual browser pass; complete mandatory runtime not yet proved.",
+      "selectedEvidence": [
+        "read-controls/manifest.json",
+        "web-cutover/manifest.json",
+        "browser-integration/manifest.json",
+        "source-handoff/manifest.json",
+        "dependency-integration/manifest.json",
+        "authority-safety/manifest.json",
+        "browser-cleanup-model/manifest.json"
+      ],
+      "currentSourceBindings": {
+        "apps/backend/src/talli_backend/main.py": "93ce56a4e2a91c9eb8eb051a78adf9a8e2c8a7a7e2964aa4f3814018c6ba72bb",
+        "apps/backend/src/talli_backend/application/annual_accounts_workflow.py": "e602ed24b11d4586112461624a7d0334029a779d525eb5868c6bbbc1947332c9",
+        "apps/web/features/annual-accounts-filing/transport.ts": "4eee7df7c9aadc50d265bf90ce5f0b40123939b85ca81321605d48559a051926",
+        "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": "f11c087e9063f1dc90b15a78bc1ff43310b042ed65ed6891c4a77fc427d1f737"
+      }
+    },
+    {
+      "id": "GH-153-A5",
+      "originalRequirement": "Obligation-specific generic rows, duplicate TypeScript calculations, and active-stage compatibility code are removed.",
+      "assessment": "IMPLEMENTED_FINAL_INTEGRATED_CONTRACTION_PENDING",
+      "supportedScope": "Six canonical families, strict physical contract/fences/reconciliation and latest-state rollback; exact24active scope removal and deadTS/Node bridge retired.",
+      "limits": "Isolated migration proof does not substitute for final integrated topology/RLS/retention/advisors; cleanup models are supporting evidence.",
+      "selectedEvidence": [
+        "duplicate-retirement/manifest.json",
+        "physical-retirement/manifest.json",
+        "source-handoff/manifest.json",
+        "browser-cleanup-model/manifest.json"
+      ],
+      "currentSourceBindings": {
+        "supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql": "3f4495c1d75644413171150b71f2048f34ef100dcf3492bcc28005f5c31f064b",
+        "supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql": "9f4a89374a4945841f8f3610de2390884db3faa527e2c7374e5a4a3df6cad401",
+        "supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql": "6f31c93d658a9acd54b549f132b651ef9e5186cfb99041f9fc85efb8114d3271",
+        "architecture/compatibility.json": "e06ddbbc974bbaa7f418eced549bef1c02e3b29d4e12a6851ed503428aa83e10"
+      }
+    },
+    {
+      "id": "GH-153-A6",
+      "originalRequirement": "The complete `annual_accounts_filing` stage exit criteria from issue #132 pass before annual-compliance migration begins.",
+      "assessment": "PENDING_FULL_EXIT_ENVELOPE",
+      "supportedScope": "Entrybaseline and deployment proofs are correctly scoped; complete gatePair remains empty, protectedIntegration pending.",
+      "limits": "No exit or next-stage claim allowed before concrete full envelope passes.",
+      "selectedEvidence": [
+        "entry/manifest.json",
+        "entry-inventory/manifest.json",
+        "physical-retirement/manifest.json",
+        "gate-follow-up/manifest.json",
+        "dependency-integration/manifest.json",
+        "publication-follow-up/manifest.json",
+        "authority-safety/manifest.json",
+        "journal-ownership/manifest.json",
+        "browser-cleanup-model/manifest.json",
+        "journal-reviews/manifest.json"
+      ],
+      "currentSourceBindings": {
+        "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+        "tests/browser_annual_accounts_filing.mjs": "4fc75a37aefc7b95e4226765dfa4456ae1dc74ebac3dd3856ef041342ef53c95",
+        "architecture/evidence/issues/153/requirements.json": "736108ce5bd66d19e61e59ab70bc741beb3ed6c624afb4141d54fc799cf465fc"
+      }
+    }
+  ],
+  "sourceHandoffScope": {
+    "evidence": "source-handoff/manifest.json",
+    "hardening": "browser-integration/manifest.json",
+    "meaning": "Immutable company/year/obligation evidence, positive completeness coverage, unknown outcomes, correction links and incident facts. Production remains blocked; Billing owns all commercial classification."
+  },
+  "pendingActualProof": [
+    "Real Accounts hydrated browser and required predecessor browser lanes",
+    "Integrated complete SQL/RLS/retention/advisor evidence",
+    "Two passing consecutive linked immutable complete gates",
+    "Final current metadata/registry and evidence adoption",
+    "Protected final-head/mainCI, exact-revisionPreview and merge"
+  ],
+  "evidenceScopeNotes": [
+    "Selected manifests are historical checkpoints: source hashes and counts describe their recorded revision, not automatic current integrated passes.",
+    "Frozen statutory results and successful request semantics retained; invalid/ambiguous authority behavior intentionally hardened.",
+    "Predecessor entry gate and failed/interrupted capability gates are not either exit pass.",
+    "17storagephase+7exactoldbackend protocol proof uses synthetic/local authentication, no provider effect.",
+    "Source production history is limited to recordedTalli extent, with unknownlabels conservative and productiondisabled; Billing policy excluded."
+  ],
+  "bindingsArtifact": "acceptance-mapping-spec-bindings-55f5abbd.json",
+  "bindingsSha256": "259aa19320ac35b4e66dbffc3dd1b77c1af6aff5d9dfa5aac6378192fa0d7eee",
+  "reportSha256": "a74c32ed76a76869fbfcd7339a3591fa6a94b1c770002700320f24005cba1df1",
+  "noImplementationGapIdentifiedAfterCorrections": true,
+  "limits": [
+    "Read-only audit; no rerun suites/SQL/Docker/provider",
+    "Original6criteria status pending concreteexitreceipts",
+    "No production/genuineauthority/hosted/successorcredit"
+  ]
+}

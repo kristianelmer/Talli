@@ -1,0 +1,421 @@
+{
+  "status": "PASS_TWO_LINKED_IMMUTABLE_GATE_EXECUTIONS_AND_DRAFT_LOCAL_ACCEPTANCE",
+  "gates": [
+    {
+      "status": "PASS_FIRST_COMPLETE_GATE_AND_EVIDENCE_ADOPTION",
+      "testedRevision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+      "storageRevision": "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6",
+      "evidencePath": "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.json",
+      "evidenceRawSha256": "f809a0546ce25369638ac0a032d71b6db74216b9424deea2cb023ad8cfa20f28",
+      "canonicalDigest": "3229c1b2f25f743db2f0523346349c5c414c5492fb7a107d95683c0edbcfef62",
+      "transcriptDigest": "d50809fc01ac6f1999a1d2c306aaf871e9a25fb67467dc2d8b7dd06b9575dbe3",
+      "producerDigest": "0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "schemaValid": true,
+      "producerCommandAstMatches": true,
+      "checkCount": 11,
+      "startedAt": "2026-09-14T20:46:44.947Z",
+      "executedAt": "2026-09-14T21:08:46.575Z",
+      "previousPassingRevision": null,
+      "orderedRuntimePhases": [
+        {
+          "phase": "test:ledger-database-lifecycle",
+          "line": 3131
+        },
+        {
+          "phase": "test:banking-database-lifecycle",
+          "line": 3213
+        },
+        {
+          "phase": "test:investments-database-lifecycle",
+          "line": 3246
+        },
+        {
+          "phase": "test:documents-database-lifecycle",
+          "line": 3291
+        },
+        {
+          "phase": "test:marketing-measurement-database",
+          "line": 3306
+        },
+        {
+          "phase": "test:validation-observation",
+          "line": 3320
+        },
+        {
+          "phase": "test:supabase-predecessor",
+          "line": 3335
+        },
+        {
+          "phase": "test:supabase-rf-workspace",
+          "line": 3403
+        },
+        {
+          "phase": "test:browser-owner",
+          "line": 3416
+        },
+        {
+          "phase": "test:ledger-hosted-migration-authority",
+          "line": 3458
+        },
+        {
+          "phase": "test:corporate-governance-database-lifecycle",
+          "line": 3471
+        },
+        {
+          "phase": "test:billing-database-lifecycle",
+          "line": 3517
+        },
+        {
+          "phase": "test:authority-connections-database",
+          "line": 3542
+        },
+        {
+          "phase": "test:company-tax-database",
+          "line": 3549
+        },
+        {
+          "phase": "test:annual-accounts-database",
+          "line": 3563
+        },
+        {
+          "phase": "test:browser-owner-annual",
+          "line": 3575
+        },
+        {
+          "phase": "test:supabase-rf-feedback",
+          "line": 3588
+        },
+        {
+          "phase": "test:browser-authority-connections",
+          "line": 3613
+        },
+        {
+          "phase": "test:browser-shareholder-register-filing",
+          "line": 3636
+        },
+        {
+          "phase": "test:browser-company-tax",
+          "line": 3662
+        },
+        {
+          "phase": "test:browser-annual-accounts",
+          "line": 3676
+        }
+      ],
+      "requiredFinalLaneResults": {
+        "test:browser-owner-annual": {
+          "passed": 1,
+          "skipped": 0
+        },
+        "test:supabase-rf-feedback": {
+          "passed": 13,
+          "skipped": 0
+        },
+        "test:browser-authority-connections": {
+          "passed": 11,
+          "skipped": 0
+        },
+        "test:browser-shareholder-register-filing": {
+          "passed": 14,
+          "skipped": 0
+        },
+        "test:browser-company-tax": {
+          "passed": 2,
+          "skipped": 0
+        },
+        "test:browser-annual-accounts": {
+          "passed": 1,
+          "skipped": 0
+        }
+      },
+      "accountsSqlCases": 41,
+      "billingSqlCases": 699,
+      "backendPassed": 5831,
+      "backendSkipped": 2,
+      "validationObservationSkipped": 1,
+      "advisors": {
+        "blocking": 0,
+        "earlyWarnings": 60,
+        "finalWarnings": 53
+      },
+      "manifestArtifacts": 17,
+      "adoptionEvidenceOnly": true,
+      "testedSourceBindings": {
+        "scripts/run-customer-ready-gate.mjs": "0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+        "architecture/customer-ready-gate-evidence.schema.json": "b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+        "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+        "scripts/rehearse-accounts-topology.mjs": "39e78f93e1b39bbe7cf58b2741c1bdff8c4bcff98166e48dc08a4c68a91efd9b",
+        "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "c077cd74f6b98f52c264d5f10050fb0e4c11e783250f70e545d657ee6ea564c2",
+        "tests/browser_annual_accounts_filing.mjs": "06e5735299c9bdba7c7fffb83df781ff7617c23979a54fd13a536646baf84be0",
+        "tests/support/tax-browser-fixture.mjs": "84b2fe6420190772cf9d121c1320aaf8c9961fa553e6dbf799e3eedae7836704",
+        "scripts/check-clean-worktree.sh": "81b79c93e44af4a535198a94fe7304f2891a3dd094b426bb9773fba9542d45dc"
+      },
+      "changedPaths": [
+        "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.json",
+        "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.log",
+        "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-bindings-2fc8ec93.json",
+        "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-review-2fc8ec93.json",
+        "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-review-2fc8ec93.md",
+        "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-artifact-checks-2fc8ec93.json",
+        "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-harness-diff-2fc8ec93.txt",
+        "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-models-2fc8ec93.log",
+        "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-review-2fc8ec93.json",
+        "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-review-2fc8ec93.md",
+        "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-workspace-2fc8ec93.json",
+        "architecture/evidence/issues/153/exit-gates-first/first-exit-gate-2fc8ec93-accounts-runtime.json",
+        "architecture/evidence/issues/153/exit-gates-first/first-exit-gate-2fc8ec93-verified.json",
+        "architecture/evidence/issues/153/exit-gates-first/manifest.json",
+        "architecture/evidence/issues/153/exit-gates-first/production-freeze-2fc8-gate.json",
+        "architecture/evidence/issues/153/exit-gates-first/verification.md",
+        "architecture/evidence/issues/153/exit-gates-first/verify-accounts-runtime-gate.py",
+        "architecture/evidence/issues/153/exit-gates-first/verify-exit-gates.py"
+      ],
+      "limits": [
+        "Receipt verification only; no runtime rerun",
+        "First gate only; second/pair/integration pending"
+      ]
+    },
+    {
+      "status": "PASS_SECOND_COMPLETE_GATE_EXECUTION",
+      "testedRevision": "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6",
+      "storageRevision": null,
+      "evidencePath": "architecture/evidence/customer-ready-gates/5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6.json",
+      "evidenceRawSha256": "5e3594d9af00931e6ac33f34b6f75e23646d4147b016721dc07d4fd886fe0f25",
+      "canonicalDigest": "34d667a23ba3cc3ffe72ef9a5ba7317f93142d945f4dfff2442127aef276f935",
+      "transcriptDigest": "e2ec05a2fe5d0dbe40fb2a3594888219fe8548d63a4ccb0942e92e911ea3bd06",
+      "producerDigest": "0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "schemaValid": true,
+      "producerCommandAstMatches": true,
+      "checkCount": 11,
+      "startedAt": "2026-09-14T21:09:40.409Z",
+      "executedAt": "2026-09-14T21:31:49.080Z",
+      "previousPassingRevision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+      "orderedRuntimePhases": [
+        {
+          "phase": "test:ledger-database-lifecycle",
+          "line": 3131
+        },
+        {
+          "phase": "test:banking-database-lifecycle",
+          "line": 3213
+        },
+        {
+          "phase": "test:investments-database-lifecycle",
+          "line": 3246
+        },
+        {
+          "phase": "test:documents-database-lifecycle",
+          "line": 3291
+        },
+        {
+          "phase": "test:marketing-measurement-database",
+          "line": 3306
+        },
+        {
+          "phase": "test:validation-observation",
+          "line": 3320
+        },
+        {
+          "phase": "test:supabase-predecessor",
+          "line": 3335
+        },
+        {
+          "phase": "test:supabase-rf-workspace",
+          "line": 3403
+        },
+        {
+          "phase": "test:browser-owner",
+          "line": 3416
+        },
+        {
+          "phase": "test:ledger-hosted-migration-authority",
+          "line": 3458
+        },
+        {
+          "phase": "test:corporate-governance-database-lifecycle",
+          "line": 3471
+        },
+        {
+          "phase": "test:billing-database-lifecycle",
+          "line": 3517
+        },
+        {
+          "phase": "test:authority-connections-database",
+          "line": 3542
+        },
+        {
+          "phase": "test:company-tax-database",
+          "line": 3549
+        },
+        {
+          "phase": "test:annual-accounts-database",
+          "line": 3563
+        },
+        {
+          "phase": "test:browser-owner-annual",
+          "line": 3575
+        },
+        {
+          "phase": "test:supabase-rf-feedback",
+          "line": 3588
+        },
+        {
+          "phase": "test:browser-authority-connections",
+          "line": 3613
+        },
+        {
+          "phase": "test:browser-shareholder-register-filing",
+          "line": 3636
+        },
+        {
+          "phase": "test:browser-company-tax",
+          "line": 3662
+        },
+        {
+          "phase": "test:browser-annual-accounts",
+          "line": 3676
+        }
+      ],
+      "requiredFinalLaneResults": {
+        "test:browser-owner-annual": {
+          "passed": 1,
+          "skipped": 0
+        },
+        "test:supabase-rf-feedback": {
+          "passed": 13,
+          "skipped": 0
+        },
+        "test:browser-authority-connections": {
+          "passed": 11,
+          "skipped": 0
+        },
+        "test:browser-shareholder-register-filing": {
+          "passed": 14,
+          "skipped": 0
+        },
+        "test:browser-company-tax": {
+          "passed": 2,
+          "skipped": 0
+        },
+        "test:browser-annual-accounts": {
+          "passed": 1,
+          "skipped": 0
+        }
+      },
+      "accountsSqlCases": 41,
+      "billingSqlCases": 699,
+      "backendPassed": 5831,
+      "backendSkipped": 2,
+      "validationObservationSkipped": 1,
+      "advisors": {
+        "blocking": 0,
+        "earlyWarnings": 60,
+        "finalWarnings": 53
+      },
+      "manifestArtifacts": 17,
+      "adoptionEvidenceOnly": true,
+      "testedSourceBindings": {
+        "scripts/run-customer-ready-gate.mjs": "0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+        "architecture/customer-ready-gate-evidence.schema.json": "b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+        "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+        "scripts/rehearse-accounts-topology.mjs": "39e78f93e1b39bbe7cf58b2741c1bdff8c4bcff98166e48dc08a4c68a91efd9b",
+        "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "c077cd74f6b98f52c264d5f10050fb0e4c11e783250f70e545d657ee6ea564c2",
+        "tests/browser_annual_accounts_filing.mjs": "06e5735299c9bdba7c7fffb83df781ff7617c23979a54fd13a536646baf84be0",
+        "tests/support/tax-browser-fixture.mjs": "84b2fe6420190772cf9d121c1320aaf8c9961fa553e6dbf799e3eedae7836704",
+        "scripts/check-clean-worktree.sh": "81b79c93e44af4a535198a94fe7304f2891a3dd094b426bb9773fba9542d45dc"
+      },
+      "changedPaths": [],
+      "limits": [
+        "Receipt verification only; no runtime rerun",
+        "Second receipt frozen from untracked output; storage adoption and protected integration pending"
+      ]
+    }
+  ],
+  "chronologyAndAncestry": true,
+  "testedImplementationSourceBindingsEqual": true,
+  "originalSixCriteriaUnchanged": true,
+  "entryReceiptAndConstraintsUnchanged": true,
+  "registryDeltaOnly": "annual_accounts_filing/#153 active -> exit-review",
+  "draftBindings": {
+    "architecture/compatibility.json": "7d973f22609439486f5dda1be39c55c4e075e5e6d1ea106097eabd536d36d67c",
+    "architecture/evidence/issues/153/requirements.json": "382da53d36f0088b1506848d7e276116d2803fa5f25e3d9d8750aaa39a5d49ec",
+    "architecture/evidence/issues/153/verification.md": "f99e02a816188266e54985b9e2ba382dee16a81a2cb1677f84761d278e63f485"
+  },
+  "draftFrozenCopies": {
+    "architecture/compatibility.json": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/gate-pair-standards-draft-compatibility.json",
+    "architecture/evidence/issues/153/requirements.json": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/gate-pair-standards-draft-requirements.json",
+    "architecture/evidence/issues/153/verification.md": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/gate-pair-standards-draft-verification.md"
+  },
+  "unchangedControls": {
+    "architecture/compatibility-baseline.json": "b8731da45dbf69baafba4e1101dc9a86dcc4ccf11057ebc1fac9b4b059c819ab"
+  },
+  "criterionEvidenceRefs": [
+    "authority-ownership/manifest.json",
+    "authority-review-fixes/manifest.json",
+    "authority-safety/manifest.json",
+    "browser-cleanup-model/manifest.json",
+    "browser-integration/manifest.json",
+    "browser-validation/manifest.json",
+    "characterization/manifest.json",
+    "dependency-integration/manifest.json",
+    "duplicate-retirement/manifest.json",
+    "entry-inventory/manifest.json",
+    "entry/manifest.json",
+    "evidence-import/manifest.json",
+    "exit-gates-first/manifest.json",
+    "gate-follow-up/manifest.json",
+    "gate-pair/manifest.json",
+    "journal-ownership/manifest.json",
+    "journal-reviews/manifest.json",
+    "offline-profile/manifest.json",
+    "physical-retirement/manifest.json",
+    "publication-follow-up/manifest.json",
+    "pure-calculation/manifest.json",
+    "read-controls/manifest.json",
+    "readiness-input-fix/manifest.json",
+    "response-readiness/manifest.json",
+    "rf-projection-fixture/manifest.json",
+    "role-creation/manifest.json",
+    "source-handoff/manifest.json",
+    "verification.md",
+    "web-cutover/manifest.json"
+  ],
+  "pendingManifestRefs": [
+    "gate-pair/manifest.json"
+  ],
+  "trackedDelta": [
+    "architecture/compatibility.json",
+    "architecture/evidence/issues/153/requirements.json"
+  ],
+  "limits": [
+    "Second receipt/log frozen from untracked output, not yet committed; storageRevision null accurately reflects review time.",
+    "Pair report/manifest and final committed metadata adoption require exact-byte reread.",
+    "No protected integration, hosted operation, production activation, #193 or successor completion credit.",
+    "No gate/runtime rerun; independent schema, digest, producer AST, transcript phase/assertion and metadata verification."
+  ],
+  "independentCommands": [
+    {
+      "command": "pinned Node v24.20.0 first-gate-standards-verifier-2fc8ec93.mjs REPO",
+      "exitCode": 0,
+      "output": "gate-pair-standards-first-results.json"
+    },
+    {
+      "command": "pinned Node v24.20.0 gate-pair-standards-second-verifier.mjs REPO PRIVATE",
+      "exitCode": 0,
+      "output": "gate-pair-standards-second-results.json"
+    },
+    {
+      "command": "Python read-only metadata comparison: six criteria, entry receipt, constraints, pair fields, exact registry delta and evidence references",
+      "exitCode": 0
+    }
+  ],
+  "probeBindings": {
+    "first-gate-standards-verifier-2fc8ec93.mjs": "11729441a68e40d385a8b0ddf8363947a838ad7fb6229262598f5eb61c7e2363",
+    "gate-pair-standards-second-verifier.mjs": "5201ab37635df7b7207c18887656c8d91bbf4a93903df15f2fd29c858ccd8653",
+    "gate-pair-standards-first-results.json": "a3e2436a8b1552e1b2fd4ad1f5e7a4536fe25f26c598871a6341d1650ecb7eb9",
+    "gate-pair-standards-second-results.json": "7e9c2e1215f17e5a17568e8c2c651d9cc3fadabee6e9cb7a86a5c8114696aaae",
+    "gate-pair-standards-frozen-second.json": "5e3594d9af00931e6ac33f34b6f75e23646d4147b016721dc07d4fd886fe0f25",
+    "gate-pair-standards-frozen-second.log": "e2ec05a2fe5d0dbe40fb2a3594888219fe8548d63a4ccb0942e92e911ea3bd06"
+  },
+  "reportSha256": "e6c6f192287f5fb38e675532e2690a2b2e51891ad39cb09bc0b88981dbb86059"
+}

@@ -1,0 +1,238 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#153",
+  "status": "TWO_COMPLETE_LOCAL_GATES_AND_BOTH_REVIEWS_PASS_PROTECTED_INTEGRATION_PENDING",
+  "testedRevisions": [
+    "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+    "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6"
+  ],
+  "firstReceiptStorageRevision": "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6",
+  "storageNote": "This commit first stores the second canonical receipt and transcript. Resolve storage from git history; final protected integration is recorded in the published issue receipt.",
+  "artifacts": [
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/acceptance-mapping-requirements-reviewed-55f5abbd.json",
+      "sha256": "e94da69165a7dcb63b1dfd9ad675aa7f78f3b5c212e52cafe13fa87a0f304b21",
+      "bytes": 5748
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/acceptance-mapping-spec-55f5abbd.json",
+      "sha256": "3496733a5836e0658d45bbaba6fa89299a0401038cfe065091f88600ec890bd0",
+      "bytes": 10916
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/acceptance-mapping-spec-55f5abbd.md",
+      "sha256": "a74c32ed76a76869fbfcd7339a3591fa6a94b1c770002700320f24005cba1df1",
+      "bytes": 2818
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/acceptance-mapping-spec-bindings-55f5abbd.json",
+      "sha256": "259aa19320ac35b4e66dbffc3dd1b77c1af6aff5d9dfa5aac6378192fa0d7eee",
+      "bytes": 57762
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/acceptance-mapping-standards-55f5abbd.json",
+      "sha256": "4d300fc778405d357990ddc6726b41aec583527005d59e7b4bb3070276ee92fe",
+      "bytes": 26672
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/acceptance-mapping-standards-55f5abbd.md",
+      "sha256": "b8b335599dbd974305b691f1902154dd19325dee62278137ea6a0764ac0e6381",
+      "bytes": 2674
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/acceptance-mapping-standards-artifact-probe-55f5abbd.py",
+      "sha256": "9c4ac456c316b1ea705eade8152086358d2cc3960a6b4a7054dab4297544bcf8",
+      "bytes": 3171
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/acceptance-mapping-standards-artifact-results-55f5abbd.json",
+      "sha256": "55d6473d2a178c156945dcfab72beb0a56fe7fa21448a33f1d917f92aaa5615a",
+      "bytes": 238766
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/acceptance-mapping-standards-checks-55f5abbd.json",
+      "sha256": "fd5d2dacbb3a941a2a2a5b6f2959d0b85ef033c8147e6bccf169d73d6741c5eb",
+      "bytes": 3690
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/acceptance-mapping-standards-workspace-55f5abbd.json",
+      "sha256": "65bf6110bfa294278adfbd285c29790ac3164cab921a2ec9ea246adc1331088e",
+      "bytes": 111
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/exit-gate-pair-5c6d2d7a-verified.json",
+      "sha256": "e122a7498f88acf5e3832c74922d28e56801f6b7761f6d66c7ea1a514b6de1ae",
+      "bytes": 1174
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/final-exit-review-architecture.log",
+      "sha256": "23091325e26ea3bbb93531a2dafd538355890112315f0b6bcc130fa06bec06be",
+      "bytes": 17427
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/first-gate-spec-review-2fc8ec93.json",
+      "sha256": "9abbe6b7f6f6b07efffc404cff4f180d2cee889e311c02d9fd1e1229a2e70ba7",
+      "bytes": 11611
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/first-gate-spec-review-2fc8ec93.md",
+      "sha256": "9da72b1eaa5faf0140ae58110a6c641987ec0a32dc9687c1b60545bb01610b68",
+      "bytes": 2153
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/first-gate-spec-verification-2fc8ec93.json",
+      "sha256": "7491e2d6f764135b4a124c87dc5df76c1ae752eb6ad618d95bf8306bd58f168a",
+      "bytes": 10023
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/first-gate-spec-verifier-2fc8ec93.mjs",
+      "sha256": "d8fb880f2b26339fdcf3df395f4218f2f04a3f287e24e5222ea223483dd44d0d",
+      "bytes": 6315
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/first-gate-standards-adoption-checks-2fc8ec93.json",
+      "sha256": "b7587914470bf0fe819729f3bf5136128f63b9871693198b4e7744291cac5f90",
+      "bytes": 4257
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/first-gate-standards-evidence-whitespace-2fc8ec93.log",
+      "sha256": "588a4f34f07781f45c0ac7027265a65ba7e4d7043f040ac562315dc950ac6d6f",
+      "bytes": 1198
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/first-gate-standards-review-2fc8ec93.json",
+      "sha256": "ac76eb4c10dc5d8943c053ea59510703b2ce90e5dbb2cbff48dfe8a66df8a7c1",
+      "bytes": 14062
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/first-gate-standards-review-2fc8ec93.md",
+      "sha256": "fbc7b0d050872734dc510b34f13f3f4fc994d6b809d3d8d003b827133989acfb",
+      "bytes": 2462
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/first-gate-standards-verifier-2fc8ec93.mjs",
+      "sha256": "11729441a68e40d385a8b0ddf8363947a838ad7fb6229262598f5eb61c7e2363",
+      "bytes": 7088
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/first-gate-standards-verifier-results-2fc8ec93.json",
+      "sha256": "a3e2436a8b1552e1b2fd4ad1f5e7a4536fe25f26c598871a6341d1650ecb7eb9",
+      "bytes": 6301
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/gate-pair-spec-review-153.json",
+      "sha256": "a27a53bab0169664bac3a0f814c56abd1e7074f9f3e5c573cce68f4ed57f91ae",
+      "bytes": 29948
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/gate-pair-spec-review-153.md",
+      "sha256": "1f09051b89e4d52e9c1904c4d4df8a5c8ca0493979f8c6d72ff107835afcbb5c",
+      "bytes": 2896
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/gate-pair-spec-verification-153.json",
+      "sha256": "f0d5e80897f1d705b32997756bc82ae10786e0b21024e87b9aaca7577e60ffa8",
+      "bytes": 21683
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/gate-pair-spec-verifier-153.mjs",
+      "sha256": "2a0babd1b9370f1b1fe535873d987597c00b50c29adf0a93cf5b179b45b06117",
+      "bytes": 8240
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/gate-pair-standards-draft-compatibility.json",
+      "sha256": "7d973f22609439486f5dda1be39c55c4e075e5e6d1ea106097eabd536d36d67c",
+      "bytes": 21480
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/gate-pair-standards-draft-requirements.json",
+      "sha256": "382da53d36f0088b1506848d7e276116d2803fa5f25e3d9d8750aaa39a5d49ec",
+      "bytes": 11380
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/gate-pair-standards-draft-verification.md",
+      "sha256": "f99e02a816188266e54985b9e2ba382dee16a81a2cb1677f84761d278e63f485",
+      "bytes": 4546
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/gate-pair-standards-first-results.json",
+      "sha256": "a3e2436a8b1552e1b2fd4ad1f5e7a4536fe25f26c598871a6341d1650ecb7eb9",
+      "bytes": 6301
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/gate-pair-standards-frozen-second.json",
+      "sha256": "5e3594d9af00931e6ac33f34b6f75e23646d4147b016721dc07d4fd886fe0f25",
+      "bytes": 2576
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/gate-pair-standards-frozen-second.log",
+      "sha256": "e2ec05a2fe5d0dbe40fb2a3594888219fe8548d63a4ccb0942e92e911ea3bd06",
+      "bytes": 301666
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/gate-pair-standards-review-153.json",
+      "sha256": "bee2d10130649478ab9170170c982ac3f00e4237b84a3a0a53888b6a4a2192e0",
+      "bytes": 16762
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/gate-pair-standards-review-153.md",
+      "sha256": "e6c6f192287f5fb38e675532e2690a2b2e51891ad39cb09bc0b88981dbb86059",
+      "bytes": 2225
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/gate-pair-standards-second-results.json",
+      "sha256": "7e9c2e1215f17e5a17568e8c2c651d9cc3fadabee6e9cb7a86a5c8114696aaae",
+      "bytes": 4581
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/gate-pair-standards-second-verifier.mjs",
+      "sha256": "5201ab37635df7b7207c18887656c8d91bbf4a93903df15f2fd29c858ccd8653",
+      "bytes": 7305
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/production-freeze-final-preintegration.json",
+      "sha256": "69c59d4b708b9b0225705a76f7edd3a31041ce4aca28f728c3ad6978062ad9e6",
+      "bytes": 449
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/protection-final-preintegration.json",
+      "sha256": "fea9a67f377f22b42d64afb1cb870f806f7a367134116028653f8e2707b472e3",
+      "bytes": 595
+    },
+    {
+      "path": "architecture/evidence/issues/153/gate-pair/second-exit-gate-5c6d2d7a-accounts-runtime.json",
+      "sha256": "fd4f06780cda16e10fa9eb1f1ee6d5fefc92f1fc8dc801eaaa6765e956f5c1e9",
+      "bytes": 1641
+    },
+    {
+      "path": "architecture/evidence/customer-ready-gates/5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6.json",
+      "sha256": "5e3594d9af00931e6ac33f34b6f75e23646d4147b016721dc07d4fd886fe0f25",
+      "bytes": 2576
+    },
+    {
+      "path": "architecture/evidence/customer-ready-gates/5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6.log",
+      "sha256": "e2ec05a2fe5d0dbe40fb2a3594888219fe8548d63a4ccb0942e92e911ea3bd06",
+      "bytes": 301666
+    },
+    {
+      "path": "architecture/evidence/issues/153/requirements.json",
+      "sha256": "8516944c7baa2b32c34c9a5b6a1bdcd35db6b0bce6b88958db4bc5169221ba9c",
+      "bytes": 11551
+    },
+    {
+      "path": "architecture/evidence/issues/153/verification.md",
+      "sha256": "f99e02a816188266e54985b9e2ba382dee16a81a2cb1677f84761d278e63f485",
+      "bytes": 4546
+    },
+    {
+      "path": "architecture/compatibility.json",
+      "sha256": "7d973f22609439486f5dda1be39c55c4e075e5e6d1ea106097eabd536d36d67c",
+      "bytes": 21480
+    }
+  ],
+  "limits": [
+    "No runtime or producer changes since the tested pair. Final registry edit only sets Accounts/#153 exit-review.",
+    "Original bounded review statuses are retained; committed-byte adoption reread follows this commit.",
+    "No #193, genuine filing, hosted migration or production acceptance."
+  ]
+}

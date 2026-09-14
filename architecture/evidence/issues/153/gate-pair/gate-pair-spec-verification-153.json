@@ -1,0 +1,496 @@
+{
+  "verdict": "PASS_TWO_LINKED_IMMUTABLE_GATES",
+  "gates": [
+    {
+      "revision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+      "evidencePath": "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.json",
+      "evidenceDigest": "sha256:3229c1b2f25f743db2f0523346349c5c414c5492fb7a107d95683c0edbcfef62",
+      "storageRevision": "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6",
+      "storageStatus": "COMMITTED",
+      "receiptBytesSha256": "f809a0546ce25369638ac0a032d71b6db74216b9424deea2cb023ad8cfa20f28",
+      "transcriptPath": "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.log",
+      "transcriptDigest": "sha256:d50809fc01ac6f1999a1d2c306aaf871e9a25fb67467dc2d8b7dd06b9575dbe3",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "schemaDigest": "sha256:b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+      "schemaValid": true,
+      "previousPassingRevision": null,
+      "startedAt": "2026-09-14T20:46:44.947Z",
+      "executedAt": "2026-09-14T21:08:46.575Z",
+      "elapsedMs": 1321628,
+      "sumRecordedDurationMs": 1321627,
+      "checks": [
+        {
+          "name": "credential-scan",
+          "command": "npm run test:credential-scan",
+          "exitCode": 0,
+          "durationMs": 1258
+        },
+        {
+          "name": "typecheck",
+          "command": "npm run typecheck",
+          "exitCode": 0,
+          "durationMs": 1212
+        },
+        {
+          "name": "architecture",
+          "command": "npm run check:architecture",
+          "exitCode": 0,
+          "durationMs": 17543
+        },
+        {
+          "name": "boundary",
+          "command": "npm run test:boundary",
+          "exitCode": 0,
+          "durationMs": 182390
+        },
+        {
+          "name": "build-web",
+          "command": "TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built",
+          "exitCode": 0,
+          "durationMs": 9481
+        },
+        {
+          "name": "build-backend",
+          "command": "npm run build:backend",
+          "exitCode": 0,
+          "durationMs": 1497
+        },
+        {
+          "name": "boundary-smoke",
+          "command": "npm run test:boundary-smoke",
+          "exitCode": 0,
+          "durationMs": 7377
+        },
+        {
+          "name": "launch-rehearsal",
+          "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal",
+          "exitCode": 0,
+          "durationMs": 256270
+        },
+        {
+          "name": "production-dependency-audit",
+          "command": "npm audit --omit=dev --audit-level=high && npm audit --prefix apps/web --omit=dev --audit-level=high",
+          "exitCode": 0,
+          "durationMs": 1296
+        },
+        {
+          "name": "database-isolation",
+          "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python npm run test:supabase:local",
+          "exitCode": 0,
+          "durationMs": 826458
+        },
+        {
+          "name": "whitespace",
+          "command": "bash scripts/check-clean-worktree.sh",
+          "exitCode": 0,
+          "durationMs": 81
+        }
+      ],
+      "groups": {
+        "test:browser-owner": {
+          "pass": 29,
+          "fail": 0,
+          "skip": 0
+        },
+        "test:browser-owner-annual": {
+          "pass": 1,
+          "fail": 0,
+          "skip": 0
+        },
+        "test:supabase-rf-feedback": {
+          "pass": 13,
+          "fail": 0,
+          "skip": 0
+        },
+        "test:browser-authority-connections": {
+          "pass": 11,
+          "fail": 0,
+          "skip": 0
+        },
+        "test:browser-shareholder-register-filing": {
+          "pass": 14,
+          "fail": 0,
+          "skip": 0
+        },
+        "test:browser-company-tax": {
+          "pass": 2,
+          "fail": 0,
+          "skip": 0
+        },
+        "test:browser-annual-accounts": {
+          "pass": 1,
+          "fail": 0,
+          "skip": 0
+        }
+      },
+      "orderedMandatoryPhases": [
+        "test:supabase-predecessor",
+        "test:supabase-rf-workspace",
+        "test:browser-owner",
+        "test:ledger-hosted-migration-authority",
+        "test:corporate-governance-database-lifecycle",
+        "test:billing-database-lifecycle",
+        "test:authority-connections-database",
+        "test:company-tax-database",
+        "test:annual-accounts-database",
+        "test:browser-owner-annual",
+        "test:supabase-rf-feedback",
+        "test:browser-authority-connections",
+        "test:browser-shareholder-register-filing",
+        "test:browser-company-tax",
+        "test:browser-annual-accounts"
+      ],
+      "accountsSql": 41,
+      "billingSql": 699,
+      "backend": {
+        "passed": 5831,
+        "optionalSkipped": 2,
+        "partitionDeselected": 902
+      },
+      "validationObservation": {
+        "pythonPassed": 17,
+        "optionalPythonSkipped": 1,
+        "mandatoryNodeSqlPassed": 1
+      },
+      "advisors": [
+        {
+          "blocking": 0,
+          "performance": 60
+        },
+        {
+          "blocking": 0,
+          "performance": 53
+        }
+      ]
+    },
+    {
+      "revision": "5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6",
+      "evidencePath": "architecture/evidence/customer-ready-gates/5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6.json",
+      "evidenceDigest": "sha256:34d667a23ba3cc3ffe72ef9a5ba7317f93142d945f4dfff2442127aef276f935",
+      "storageRevision": null,
+      "storageStatus": "REVIEWED_UNCOMMITTED_SECOND_RECEIPT",
+      "receiptBytesSha256": "5e3594d9af00931e6ac33f34b6f75e23646d4147b016721dc07d4fd886fe0f25",
+      "transcriptPath": "architecture/evidence/customer-ready-gates/5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6.log",
+      "transcriptDigest": "sha256:e2ec05a2fe5d0dbe40fb2a3594888219fe8548d63a4ccb0942e92e911ea3bd06",
+      "producerDigest": "sha256:0528b969d8d715a8276aa93beb0d30dc2879c5ee270ce7726fcd2e152cd3253c",
+      "schemaDigest": "sha256:b86a1ae4a8d522b252e79a01b1798eb160d18e87222f9c7a92d79b56ee773ced",
+      "schemaValid": true,
+      "previousPassingRevision": "2fc8ec93eb4eeb818e5273481801ec1be0079b19",
+      "startedAt": "2026-09-14T21:09:40.409Z",
+      "executedAt": "2026-09-14T21:31:49.080Z",
+      "elapsedMs": 1328671,
+      "sumRecordedDurationMs": 1328669,
+      "checks": [
+        {
+          "name": "credential-scan",
+          "command": "npm run test:credential-scan",
+          "exitCode": 0,
+          "durationMs": 1264
+        },
+        {
+          "name": "typecheck",
+          "command": "npm run typecheck",
+          "exitCode": 0,
+          "durationMs": 1217
+        },
+        {
+          "name": "architecture",
+          "command": "npm run check:architecture",
+          "exitCode": 0,
+          "durationMs": 17494
+        },
+        {
+          "name": "boundary",
+          "command": "npm run test:boundary",
+          "exitCode": 0,
+          "durationMs": 181935
+        },
+        {
+          "name": "build-web",
+          "command": "TALLI_BACKEND_URL=http://127.0.0.1:8000 TALLI_MARKETING_MEASUREMENT_INTERNAL_KEY=<local-only> npm run build:web && npm run test:browser-public-acquisition:built",
+          "exitCode": 0,
+          "durationMs": 9184
+        },
+        {
+          "name": "build-backend",
+          "command": "npm run build:backend",
+          "exitCode": 0,
+          "durationMs": 1518
+        },
+        {
+          "name": "boundary-smoke",
+          "command": "npm run test:boundary-smoke",
+          "exitCode": 0,
+          "durationMs": 7346
+        },
+        {
+          "name": "launch-rehearsal",
+          "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python TALLI_SKATTE_XSD_DIR=<pinned-v1.62.47> npm run test:launch-rehearsal",
+          "exitCode": 0,
+          "durationMs": 255147
+        },
+        {
+          "name": "production-dependency-audit",
+          "command": "npm audit --omit=dev --audit-level=high && npm audit --prefix apps/web --omit=dev --audit-level=high",
+          "exitCode": 0,
+          "durationMs": 1182
+        },
+        {
+          "name": "database-isolation",
+          "command": "TALLI_PYTHON_BIN=apps/backend/.venv/bin/python npm run test:supabase:local",
+          "exitCode": 0,
+          "durationMs": 830632
+        },
+        {
+          "name": "whitespace",
+          "command": "bash scripts/check-clean-worktree.sh",
+          "exitCode": 0,
+          "durationMs": 84
+        }
+      ],
+      "groups": {
+        "test:browser-owner": {
+          "pass": 29,
+          "fail": 0,
+          "skip": 0
+        },
+        "test:browser-owner-annual": {
+          "pass": 1,
+          "fail": 0,
+          "skip": 0
+        },
+        "test:supabase-rf-feedback": {
+          "pass": 13,
+          "fail": 0,
+          "skip": 0
+        },
+        "test:browser-authority-connections": {
+          "pass": 11,
+          "fail": 0,
+          "skip": 0
+        },
+        "test:browser-shareholder-register-filing": {
+          "pass": 14,
+          "fail": 0,
+          "skip": 0
+        },
+        "test:browser-company-tax": {
+          "pass": 2,
+          "fail": 0,
+          "skip": 0
+        },
+        "test:browser-annual-accounts": {
+          "pass": 1,
+          "fail": 0,
+          "skip": 0
+        }
+      },
+      "orderedMandatoryPhases": [
+        "test:supabase-predecessor",
+        "test:supabase-rf-workspace",
+        "test:browser-owner",
+        "test:ledger-hosted-migration-authority",
+        "test:corporate-governance-database-lifecycle",
+        "test:billing-database-lifecycle",
+        "test:authority-connections-database",
+        "test:company-tax-database",
+        "test:annual-accounts-database",
+        "test:browser-owner-annual",
+        "test:supabase-rf-feedback",
+        "test:browser-authority-connections",
+        "test:browser-shareholder-register-filing",
+        "test:browser-company-tax",
+        "test:browser-annual-accounts"
+      ],
+      "accountsSql": 41,
+      "billingSql": 699,
+      "backend": {
+        "passed": 5831,
+        "optionalSkipped": 2,
+        "partitionDeselected": 902
+      },
+      "validationObservation": {
+        "pythonPassed": 17,
+        "optionalPythonSkipped": 1,
+        "mandatoryNodeSqlPassed": 1
+      },
+      "advisors": [
+        {
+          "blocking": 0,
+          "performance": 60
+        },
+        {
+          "blocking": 0,
+          "performance": 53
+        }
+      ]
+    }
+  ],
+  "sourceDelta": {
+    "evidenceOnly": true,
+    "paths": [
+      "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.json",
+      "architecture/evidence/customer-ready-gates/2fc8ec93eb4eeb818e5273481801ec1be0079b19.log",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-bindings-2fc8ec93.json",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-review-2fc8ec93.json",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-spec-review-2fc8ec93.md",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-artifact-checks-2fc8ec93.json",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-harness-diff-2fc8ec93.txt",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-models-2fc8ec93.log",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-review-2fc8ec93.json",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-review-2fc8ec93.md",
+      "architecture/evidence/issues/153/exit-gates-first/browser-validation-standards-workspace-2fc8ec93.json",
+      "architecture/evidence/issues/153/exit-gates-first/first-exit-gate-2fc8ec93-accounts-runtime.json",
+      "architecture/evidence/issues/153/exit-gates-first/first-exit-gate-2fc8ec93-verified.json",
+      "architecture/evidence/issues/153/exit-gates-first/manifest.json",
+      "architecture/evidence/issues/153/exit-gates-first/production-freeze-2fc8-gate.json",
+      "architecture/evidence/issues/153/exit-gates-first/verification.md",
+      "architecture/evidence/issues/153/exit-gates-first/verify-accounts-runtime-gate.py",
+      "architecture/evidence/issues/153/exit-gates-first/verify-exit-gates.py"
+    ]
+  },
+  "sourceBindings": {
+    "scripts/test-supabase-local.sh": "fc23db97f265a7699b52590dd6258fb90cc8fdfeb7c3db4e5c9536a25215957d",
+    "scripts/rehearse-accounts-topology.mjs": "39e78f93e1b39bbe7cf58b2741c1bdff8c4bcff98166e48dc08a4c68a91efd9b",
+    "tests/browser_annual_accounts_filing.mjs": "06e5735299c9bdba7c7fffb83df781ff7617c23979a54fd13a536646baf84be0",
+    "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "c077cd74f6b98f52c264d5f10050fb0e4c11e783250f70e545d657ee6ea564c2",
+    "architecture/compatibility.json": "e06ddbbc974bbaa7f418eced549bef1c02e3b29d4e12a6851ed503428aa83e10",
+    "architecture/evidence/issues/192/approved-amendments-2026-09-09.json": "67e98dc5d64158a06794f5625487d3fb0f05352cc8c76de71574cade80b910a4",
+    "architecture/evidence/issues/192/final-source-handoff-map-2026-09-09.md": "cee64bf9bbd8f71259b100dc0b6d22ba17fa7f6ab9319a1ec015b610dc1827b3",
+    "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482"
+  },
+  "proposalSha256": "4b9baf44d2d012b4bb961704159210d1f6d4ad45bfd7c1ae8dc7a32e201d9288",
+  "criteria": [
+    {
+      "id": "GH-153-A1",
+      "requirement": "Supported annual-accounts cases produce outputs identical to current schema and TT02 evidence.",
+      "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+      "evidence": [
+        "characterization/manifest.json",
+        "pure-calculation/manifest.json",
+        "evidence-import/manifest.json",
+        "offline-profile/manifest.json",
+        "authority-ownership/manifest.json",
+        "duplicate-retirement/manifest.json",
+        "authority-safety/manifest.json",
+        "journal-ownership/manifest.json",
+        "journal-reviews/manifest.json"
+      ]
+    },
+    {
+      "id": "GH-153-A2",
+      "requirement": "Corporate-close facts and signed-artifact readiness remain required.",
+      "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+      "evidence": [
+        "characterization/manifest.json",
+        "readiness-input-fix/manifest.json",
+        "response-readiness/manifest.json",
+        "web-cutover/manifest.json"
+      ]
+    },
+    {
+      "id": "GH-153-A3",
+      "requirement": "Hybrid signing, submission, feedback, and receipt states remain fail closed and auditable.",
+      "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+      "evidence": [
+        "authority-ownership/manifest.json",
+        "authority-review-fixes/manifest.json",
+        "read-controls/manifest.json",
+        "physical-retirement/manifest.json",
+        "gate-follow-up/manifest.json",
+        "dependency-integration/manifest.json",
+        "authority-safety/manifest.json",
+        "journal-ownership/manifest.json",
+        "journal-reviews/manifest.json",
+        "role-creation/manifest.json",
+        "rf-projection-fixture/manifest.json",
+        "browser-validation/manifest.json"
+      ]
+    },
+    {
+      "id": "GH-153-A4",
+      "requirement": "The complete owner workflow uses FastAPI and the generated client.",
+      "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+      "evidence": [
+        "read-controls/manifest.json",
+        "web-cutover/manifest.json",
+        "browser-integration/manifest.json",
+        "source-handoff/manifest.json",
+        "dependency-integration/manifest.json",
+        "authority-safety/manifest.json",
+        "browser-cleanup-model/manifest.json",
+        "rf-projection-fixture/manifest.json",
+        "browser-validation/manifest.json"
+      ]
+    },
+    {
+      "id": "GH-153-A5",
+      "requirement": "Obligation-specific generic rows, duplicate TypeScript calculations, and active-stage compatibility code are removed.",
+      "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+      "evidence": [
+        "duplicate-retirement/manifest.json",
+        "physical-retirement/manifest.json",
+        "source-handoff/manifest.json",
+        "browser-cleanup-model/manifest.json",
+        "role-creation/manifest.json",
+        "rf-projection-fixture/manifest.json",
+        "browser-validation/manifest.json"
+      ]
+    },
+    {
+      "id": "GH-153-A6",
+      "requirement": "The complete `annual_accounts_filing` stage exit criteria from issue #132 pass before annual-compliance migration begins.",
+      "status": "IMPLEMENTED_EXIT_VERIFICATION_PENDING",
+      "evidence": [
+        "entry/manifest.json",
+        "entry-inventory/manifest.json",
+        "physical-retirement/manifest.json",
+        "gate-follow-up/manifest.json",
+        "dependency-integration/manifest.json",
+        "publication-follow-up/manifest.json",
+        "authority-safety/manifest.json",
+        "journal-ownership/manifest.json",
+        "browser-cleanup-model/manifest.json",
+        "journal-reviews/manifest.json",
+        "role-creation/manifest.json",
+        "rf-projection-fixture/manifest.json",
+        "browser-validation/manifest.json"
+      ]
+    }
+  ],
+  "criterionManifestHashes": {
+    "architecture/evidence/issues/153/characterization/manifest.json": "e6441fa44a449801ed7a58f817ac8397c38e3bbe571983f6a62049b02ecc43ee",
+    "architecture/evidence/issues/153/pure-calculation/manifest.json": "0d48e5bc37875257a353cee74b8b6ad42dc0d5994a90bf67fac71ee5e95b6927",
+    "architecture/evidence/issues/153/evidence-import/manifest.json": "8c79c5ca966ce4dbea2e3400a63c11767fb5260687ec1cb3d0c724e351b037df",
+    "architecture/evidence/issues/153/offline-profile/manifest.json": "e49659dd966b5f4f018117f02b8dc248279744bc76fbf2e3de4b4dd26c5da74e",
+    "architecture/evidence/issues/153/authority-ownership/manifest.json": "0869b6dc43bf492ff4b80ca3bec4dd7fcf4628ee0cba08dbd768d505cb22ecc2",
+    "architecture/evidence/issues/153/duplicate-retirement/manifest.json": "cd249599df21ff749f0ae8b81f5121afc99c331b2ca498d5295a9758b24f7f1b",
+    "architecture/evidence/issues/153/authority-safety/manifest.json": "92a34cc750c979b00cfe5e604bb164d5c967b4091decb86403fcfa8891bf9ee3",
+    "architecture/evidence/issues/153/journal-ownership/manifest.json": "158d38f821615dfcc4528e32a4507e43d36910911aa33a06f28879c9dbf6ba43",
+    "architecture/evidence/issues/153/journal-reviews/manifest.json": "27dbc3da2e798ba2c3aaa557c55d124722525ced56de24d73f93fc6c4616b11d",
+    "architecture/evidence/issues/153/readiness-input-fix/manifest.json": "2fb3d65117442bb43e70c74c698a552b5ba279de171ec3c2193090fa8b2e6069",
+    "architecture/evidence/issues/153/response-readiness/manifest.json": "58c9892c8c655dc3a5d4dd38b3f06ec665804c683028c1d7e8a2a1151fcdb267",
+    "architecture/evidence/issues/153/web-cutover/manifest.json": "5436f07313cf82ecb51e625e7c3b5aba2a5334988acc0372afb3df3dc8577856",
+    "architecture/evidence/issues/153/authority-review-fixes/manifest.json": "cd8cf4dfe6cbf87946ef188dffd44cfe2fb2cc29a4761a789bd3df6c60999c5c",
+    "architecture/evidence/issues/153/read-controls/manifest.json": "d2ca80cdb65377c7ecd559127bf7d7dd1353b52d7fd0aceb5a7b4262906eeaad",
+    "architecture/evidence/issues/153/physical-retirement/manifest.json": "1a3570c0a34c56a979b727cbb68e940b06b87cf3e8802d5a42d3da6ea231e79b",
+    "architecture/evidence/issues/153/gate-follow-up/manifest.json": "1d6ef27cf4894ea4f7c104c889a192dd5a21bdb945578304e20353367b91a19a",
+    "architecture/evidence/issues/153/dependency-integration/manifest.json": "163d20b8263a60f562d551d4b84c0c3915e0e5785febc70a9ab603e0f7c20c60",
+    "architecture/evidence/issues/153/role-creation/manifest.json": "33b4abb73e16d1224863482106ffdb7434b77e9791669a9a4d98486d8dfcd67f",
+    "architecture/evidence/issues/153/rf-projection-fixture/manifest.json": "0721ba8afa47ca90ae994a9263a000499f64923db05d02ec0bcf8c34ac6a6198",
+    "architecture/evidence/issues/153/browser-validation/manifest.json": "3df9fcd1312d323857afe5cb7bfc4fbc2749f58a4a37536c75728d0c7eabab2e",
+    "architecture/evidence/issues/153/browser-integration/manifest.json": "f304c5f822a837261f053103de4c9984e41de29d02c7ffcbc3ff1526b540b18c",
+    "architecture/evidence/issues/153/source-handoff/manifest.json": "fa90767b4f92435bb0e257a4c4ee11d8c8d5d7cf2c0891aaf0ad81519a1cbc84",
+    "architecture/evidence/issues/153/browser-cleanup-model/manifest.json": "b2839100d6dd5b7dc11b2fbb15fa888913a02a68505bc2b89e5a11541da7cd1b",
+    "architecture/evidence/issues/153/entry/manifest.json": "988a097f791059241ae448437f08f40f068c1cea746ba987d7873a8d8353895d",
+    "architecture/evidence/issues/153/entry-inventory/manifest.json": "14354bf198f216053cfe22c6324b6bd13ea8e5672cdc97112032758fa5158dd5",
+    "architecture/evidence/issues/153/publication-follow-up/manifest.json": "d45ebdc1d1f635dc8f943d4503f2b2e66db32faec46c177953ff10bf56195ddc"
+  },
+  "gitStatusAtReview": " M architecture/compatibility.json\n M architecture/evidence/issues/153/requirements.json\n?? architecture/evidence/customer-ready-gates/5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6.json\n?? architecture/evidence/customer-ready-gates/5c6d2d7a0de1c40f9d8f132363da4b76b53da5a6.log\n?? architecture/evidence/issues/153/gate-pair/\n",
+  "limitations": [
+    "Second receipt is not yet committed in reviewed snapshot",
+    "Final metadata/registry storage and protected integration remain pending",
+    "No #193, provider, production or successor acceptance",
+    "No full suite or runtime rerun by reviewer"
+  ]
+}
