@@ -1,0 +1,43 @@
+✔ Accounts workspace uses authenticated uncached transport and rejects foreign scope (29.8845ms)
+✔ Accounts import posts original evidence once and validates the inserted reference result (0.46125ms)
+✔ Accounts reads exactly once per company and preserves an omitted or explicit year (9.625542ms)
+✔ a failed company discards partial results and an absent token never reads (4.231875ms)
+✔ Accounts presentation preserves opaque nested receipt, payload and call extensions (0.425042ms)
+✔ Accounts assessment sends scoped original facts and preserves owned Corporate issues (4.554292ms)
+✔ unavailable readiness facts never become an empty clear assessment (3.124125ms)
+✔ unavailable readiness facts never become an empty clear assessment (2.728708ms)
+✔ assessment transport failure returns explicit unavailable state (2.396834ms)
+✔ owner actions compile as a Next server-action module (73.680792ms)
+✔ stored Tax receipt remains byte-equivalent after wire presentation: synthetic-completed-pending-feedback (1.131709ms)
+✔ stored Tax receipt remains byte-equivalent after wire presentation: synthetic-blank-url (0.142208ms)
+✔ stored Tax receipt remains byte-equivalent after wire presentation: synthetic-second-owner (0.1335ms)
+✔ stored Tax receipt remains byte-equivalent after wire presentation: synthetic-explicit-recorded-time (0.131583ms)
+✔ nested receipt, call, feedback and payload-reference extension fields survive presentation (0.270125ms)
+✔ one query per company supplies the complete source and keeps omitted year unscoped (8.551209ms)
+✔ one unavailable company discards partial results and retains an explicit error (4.3915ms)
+✔ incomplete receipt type fails the whole source visibly (4.429416ms)
+✔ incomplete receipt hash fails the whole source visibly (3.159ms)
+✔ incomplete feedback classification fails the whole source visibly (2.957083ms)
+✔ incomplete payload reference fails the whole source visibly (3.198834ms)
+✔ incomplete call chronology fails the whole source visibly (3.087ms)
+✔ incomplete unsupported raw payload fails the whole source visibly (2.925917ms)
+✔ Archive includes Tax-only submissions and only their linked evidence for the requested year (26.762625ms)
+✔ Archive source failure returns unavailable before building an archive or recording a receipt (8.70675ms)
+✔ readiness refresh uses every owned Tax readiness family (35.945666ms)
+✔ readiness refresh stops without snapshot or Audit writes on Tax failure (24.440583ms)
+✔ missing session token cannot turn an authorized company scope into complete empty Tax data (2.361584ms)
+✔ readiness preview failure stops the real refresh before any snapshot or Audit write (17.934792ms)
+✔ workspace assessment preserves portfolio estimate ordering and primary-company readiness scope (3.285584ms)
+✔ missing Tax assessment dependencies never yield zero or clear previews (2.018709ms)
+✔ missing Tax assessment dependencies never yield zero or clear previews (1.635167ms)
+✔ one failed assessment query discards partial success and preserves an explicit source error (1.706792ms)
+✔ Archive keeps company-wide Accounts comments but selects requested-year submissions and linked evidence (5.80175ms)
+✔ Accounts Archive failure cannot publish a partial sibling archive or complete its receipt (5.880791ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 528.50975

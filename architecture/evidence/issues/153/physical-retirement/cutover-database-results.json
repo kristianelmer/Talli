@@ -1,0 +1,1336 @@
+{
+  "database": "accounts153_setup_fix_d060",
+  "mode": "ROLLBACK_ONLY_REAL_CUTOVER_SYNTHETIC_ROWS",
+  "artifacts": {
+    "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea",
+    "supabase/contract-migrations/20260914092018_annual_accounts_filing_read_contracts.sql": "7c9366ed41cdbcb4cddb9d748d4e987d370b9a04be2f74890f7fa446174fdb29",
+    "supabase/contract-migrations/20260914092924_annual_accounts_filing_preparation_contracts.sql": "ba67f1fdcbf314b0ed545eaf040b11ca411d342d2dccf3960ce3a6c9b9aaa6c8",
+    "supabase/contract-migrations/20260914093204_annual_accounts_filing_import_contract.sql": "b3644149be001e768d8d497e248b438631ecb38a2589965108ab47d60d53fc48",
+    "supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql": "0d8a50cd22ec0859ba87dc075a7c4357edad77024ad27623036456fe6bd1d0a1",
+    "supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql": "3f4495c1d75644413171150b71f2048f34ef100dcf3492bcc28005f5c31f064b"
+  },
+  "cases": [
+    {
+      "name": "inactive read",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_unavailable",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "workspace",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "previews": [
+            {
+              "id": "15300000-0000-4000-8000-000000000020",
+              "filing": "årsregnskap",
+              "issues": [],
+              "source": "python_rf1086_engine",
+              "status": "ready",
+              "preview": "Synthetic Accounts migration",
+              "setup_id": null,
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "income_year": 2025,
+              "hovedskjema_xml": null,
+              "underskjema_xml": {}
+            }
+          ],
+          "overrides": [
+            {
+              "id": "15300000-0000-4000-8000-000000000024",
+              "filing": "årsregnskap",
+              "reason": "Synthetic reason",
+              "new_value": "After",
+              "old_value": "Before",
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "preview_id": "15300000-0000-4000-8000-000000000020",
+              "risk_level": "warning",
+              "income_year": 2025,
+              "field_target": "aarsregnskap.company.name",
+              "owner_confirmed_at": "2026-07-14T12:00:00+00:00",
+              "owner_confirmed_by": "15300000-0000-4000-8000-000000000010"
+            }
+          ],
+          "permissions": [
+            {
+              "id": "15300000-0000-4000-8000-000000000022",
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "obligation": "aarsregnskap",
+              "updated_at": "2026-09-14T10:59:47.201655+00:00",
+              "confirmed_at": "2026-09-14T10:59:47.201655+00:00",
+              "confirmed_by": "15300000-0000-4000-8000-000000000010",
+              "submitter_user_id": "15300000-0000-4000-8000-000000000010",
+              "production_enabled": false
+            }
+          ],
+          "submissions": [
+            {
+              "id": "15300000-0000-4000-8000-000000000023",
+              "mode": "simulation",
+              "calls": [],
+              "filing": "årsregnskap",
+              "status": "ready",
+              "setup_id": null,
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "preview_id": "15300000-0000-4000-8000-000000000020",
+              "receipt_id": null,
+              "updated_at": "2026-09-14T10:59:47.201655+00:00",
+              "income_year": 2025,
+              "adapter_mode": "simulation",
+              "failure_code": null,
+              "payload_hash": null,
+              "submitted_by": null,
+              "feedback_items": [],
+              "failure_message": null,
+              "idempotency_key": null,
+              "receipt_metadata": null,
+              "submitted_payload": null,
+              "preview_confirmed_at": null,
+              "preview_confirmed_by": null,
+              "authority_test_run_id": null,
+              "feedback_document_ids": [],
+              "submitted_payload_ref": null,
+              "authority_confirmed_at": null,
+              "authority_confirmed_by": null
+            },
+            {
+              "id": "15300000-0000-4000-8000-000000000026",
+              "mode": "test_authority",
+              "calls": [],
+              "filing": "årsregnskap",
+              "status": "ready",
+              "setup_id": null,
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "preview_id": null,
+              "receipt_id": null,
+              "updated_at": "2026-09-14T10:59:47.201655+00:00",
+              "income_year": 2025,
+              "adapter_mode": "test_authority",
+              "failure_code": null,
+              "payload_hash": null,
+              "submitted_by": null,
+              "feedback_items": [],
+              "failure_message": null,
+              "idempotency_key": null,
+              "receipt_metadata": null,
+              "submitted_payload": null,
+              "preview_confirmed_at": null,
+              "preview_confirmed_by": null,
+              "authority_test_run_id": "15300000-0000-4000-8000-000000000021",
+              "feedback_document_ids": [],
+              "submitted_payload_ref": null,
+              "authority_confirmed_at": null,
+              "authority_confirmed_by": null
+            }
+          ],
+          "test_evidence": [
+            {
+              "id": "15300000-0000-4000-8000-000000000021",
+              "status": "pending",
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "obligation": "aarsregnskap",
+              "environment": "test",
+              "recorded_at": "2026-09-14T10:59:47.201655+00:00",
+              "recorded_by": "15300000-0000-4000-8000-000000000010",
+              "evidence_url": null,
+              "payload_hash": null,
+              "test_reference": "synthetic-accounts153",
+              "feedback_summary": "",
+              "archive_reference": null,
+              "receipt_reference": null
+            }
+          ],
+          "review_comments": [
+            {
+              "id": "15300000-0000-4000-8000-000000000025",
+              "body": "Synthetic review",
+              "target": "rf1086_preview",
+              "severity": "advisory",
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "preview_id": "15300000-0000-4000-8000-000000000020",
+              "acknowledged_at": null,
+              "acknowledged_by": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "workspace",
+      "actor": "second",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "previews": [
+            {
+              "id": "15300000-0000-4000-8000-000000000020",
+              "filing": "årsregnskap",
+              "issues": [],
+              "source": "python_rf1086_engine",
+              "status": "ready",
+              "preview": "Synthetic Accounts migration",
+              "setup_id": null,
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "income_year": 2025,
+              "hovedskjema_xml": null,
+              "underskjema_xml": {}
+            }
+          ],
+          "overrides": [
+            {
+              "id": "15300000-0000-4000-8000-000000000024",
+              "filing": "årsregnskap",
+              "reason": "Synthetic reason",
+              "new_value": "After",
+              "old_value": "Before",
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "preview_id": "15300000-0000-4000-8000-000000000020",
+              "risk_level": "warning",
+              "income_year": 2025,
+              "field_target": "aarsregnskap.company.name",
+              "owner_confirmed_at": "2026-07-14T12:00:00+00:00",
+              "owner_confirmed_by": "15300000-0000-4000-8000-000000000010"
+            }
+          ],
+          "permissions": [
+            {
+              "id": "15300000-0000-4000-8000-000000000022",
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "obligation": "aarsregnskap",
+              "updated_at": "2026-09-14T10:59:47.201655+00:00",
+              "confirmed_at": "2026-09-14T10:59:47.201655+00:00",
+              "confirmed_by": "15300000-0000-4000-8000-000000000010",
+              "submitter_user_id": "15300000-0000-4000-8000-000000000010",
+              "production_enabled": false
+            }
+          ],
+          "submissions": [
+            {
+              "id": "15300000-0000-4000-8000-000000000023",
+              "mode": "simulation",
+              "calls": [],
+              "filing": "årsregnskap",
+              "status": "ready",
+              "setup_id": null,
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "preview_id": "15300000-0000-4000-8000-000000000020",
+              "receipt_id": null,
+              "updated_at": "2026-09-14T10:59:47.201655+00:00",
+              "income_year": 2025,
+              "adapter_mode": "simulation",
+              "failure_code": null,
+              "payload_hash": null,
+              "submitted_by": null,
+              "feedback_items": [],
+              "failure_message": null,
+              "idempotency_key": null,
+              "receipt_metadata": null,
+              "submitted_payload": null,
+              "preview_confirmed_at": null,
+              "preview_confirmed_by": null,
+              "authority_test_run_id": null,
+              "feedback_document_ids": [],
+              "submitted_payload_ref": null,
+              "authority_confirmed_at": null,
+              "authority_confirmed_by": null
+            },
+            {
+              "id": "15300000-0000-4000-8000-000000000026",
+              "mode": "test_authority",
+              "calls": [],
+              "filing": "årsregnskap",
+              "status": "ready",
+              "setup_id": null,
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "preview_id": null,
+              "receipt_id": null,
+              "updated_at": "2026-09-14T10:59:47.201655+00:00",
+              "income_year": 2025,
+              "adapter_mode": "test_authority",
+              "failure_code": null,
+              "payload_hash": null,
+              "submitted_by": null,
+              "feedback_items": [],
+              "failure_message": null,
+              "idempotency_key": null,
+              "receipt_metadata": null,
+              "submitted_payload": null,
+              "preview_confirmed_at": null,
+              "preview_confirmed_by": null,
+              "authority_test_run_id": "15300000-0000-4000-8000-000000000021",
+              "feedback_document_ids": [],
+              "submitted_payload_ref": null,
+              "authority_confirmed_at": null,
+              "authority_confirmed_by": null
+            }
+          ],
+          "test_evidence": [
+            {
+              "id": "15300000-0000-4000-8000-000000000021",
+              "status": "pending",
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "obligation": "aarsregnskap",
+              "environment": "test",
+              "recorded_at": "2026-09-14T10:59:47.201655+00:00",
+              "recorded_by": "15300000-0000-4000-8000-000000000010",
+              "evidence_url": null,
+              "payload_hash": null,
+              "test_reference": "synthetic-accounts153",
+              "feedback_summary": "",
+              "archive_reference": null,
+              "receipt_reference": null
+            }
+          ],
+          "review_comments": [
+            {
+              "id": "15300000-0000-4000-8000-000000000025",
+              "body": "Synthetic review",
+              "target": "rf1086_preview",
+              "severity": "advisory",
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "preview_id": "15300000-0000-4000-8000-000000000020",
+              "acknowledged_at": null,
+              "acknowledged_by": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "workspace",
+      "actor": "reviewer",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "previews": [
+            {
+              "id": "15300000-0000-4000-8000-000000000020",
+              "filing": "årsregnskap",
+              "issues": [],
+              "source": "python_rf1086_engine",
+              "status": "ready",
+              "preview": "Synthetic Accounts migration",
+              "setup_id": null,
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "income_year": 2025,
+              "hovedskjema_xml": null,
+              "underskjema_xml": {}
+            }
+          ],
+          "overrides": [
+            {
+              "id": "15300000-0000-4000-8000-000000000024",
+              "filing": "årsregnskap",
+              "reason": "Synthetic reason",
+              "new_value": "After",
+              "old_value": "Before",
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "preview_id": "15300000-0000-4000-8000-000000000020",
+              "risk_level": "warning",
+              "income_year": 2025,
+              "field_target": "aarsregnskap.company.name",
+              "owner_confirmed_at": "2026-07-14T12:00:00+00:00",
+              "owner_confirmed_by": "15300000-0000-4000-8000-000000000010"
+            }
+          ],
+          "permissions": [
+            {
+              "id": "15300000-0000-4000-8000-000000000022",
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "obligation": "aarsregnskap",
+              "updated_at": "2026-09-14T10:59:47.201655+00:00",
+              "confirmed_at": "2026-09-14T10:59:47.201655+00:00",
+              "confirmed_by": "15300000-0000-4000-8000-000000000010",
+              "submitter_user_id": "15300000-0000-4000-8000-000000000010",
+              "production_enabled": false
+            }
+          ],
+          "submissions": [
+            {
+              "id": "15300000-0000-4000-8000-000000000023",
+              "mode": "simulation",
+              "calls": [],
+              "filing": "årsregnskap",
+              "status": "ready",
+              "setup_id": null,
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "preview_id": "15300000-0000-4000-8000-000000000020",
+              "receipt_id": null,
+              "updated_at": "2026-09-14T10:59:47.201655+00:00",
+              "income_year": 2025,
+              "adapter_mode": "simulation",
+              "failure_code": null,
+              "payload_hash": null,
+              "submitted_by": null,
+              "feedback_items": [],
+              "failure_message": null,
+              "idempotency_key": null,
+              "receipt_metadata": null,
+              "submitted_payload": null,
+              "preview_confirmed_at": null,
+              "preview_confirmed_by": null,
+              "authority_test_run_id": null,
+              "feedback_document_ids": [],
+              "submitted_payload_ref": null,
+              "authority_confirmed_at": null,
+              "authority_confirmed_by": null
+            },
+            {
+              "id": "15300000-0000-4000-8000-000000000026",
+              "mode": "test_authority",
+              "calls": [],
+              "filing": "årsregnskap",
+              "status": "ready",
+              "setup_id": null,
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "preview_id": null,
+              "receipt_id": null,
+              "updated_at": "2026-09-14T10:59:47.201655+00:00",
+              "income_year": 2025,
+              "adapter_mode": "test_authority",
+              "failure_code": null,
+              "payload_hash": null,
+              "submitted_by": null,
+              "feedback_items": [],
+              "failure_message": null,
+              "idempotency_key": null,
+              "receipt_metadata": null,
+              "submitted_payload": null,
+              "preview_confirmed_at": null,
+              "preview_confirmed_by": null,
+              "authority_test_run_id": "15300000-0000-4000-8000-000000000021",
+              "feedback_document_ids": [],
+              "submitted_payload_ref": null,
+              "authority_confirmed_at": null,
+              "authority_confirmed_by": null
+            }
+          ],
+          "test_evidence": [
+            {
+              "id": "15300000-0000-4000-8000-000000000021",
+              "status": "pending",
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "obligation": "aarsregnskap",
+              "environment": "test",
+              "recorded_at": "2026-09-14T10:59:47.201655+00:00",
+              "recorded_by": "15300000-0000-4000-8000-000000000010",
+              "evidence_url": null,
+              "payload_hash": null,
+              "test_reference": "synthetic-accounts153",
+              "feedback_summary": "",
+              "archive_reference": null,
+              "receipt_reference": null
+            }
+          ],
+          "review_comments": [
+            {
+              "id": "15300000-0000-4000-8000-000000000025",
+              "body": "Synthetic review",
+              "target": "rf1086_preview",
+              "severity": "advisory",
+              "company_id": "15300000-0000-4000-8000-000000000001",
+              "created_at": "2026-09-14T10:59:47.201655+00:00",
+              "created_by": "15300000-0000-4000-8000-000000000010",
+              "preview_id": "15300000-0000-4000-8000-000000000020",
+              "acknowledged_at": null,
+              "acknowledged_by": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "workspace",
+      "actor": "unaccepted",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_not_found",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "workspace",
+      "actor": "outsider",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_not_found",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "override",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "id": "9d69913e-b265-48a8-af83-2f3583323ca8",
+          "filing": "årsregnskap",
+          "reason": "reason",
+          "new_value": "after",
+          "old_value": "before",
+          "company_id": "15300000-0000-4000-8000-000000000001",
+          "created_at": "2026-09-14T10:59:47.201655+00:00",
+          "created_by": "15300000-0000-4000-8000-000000000010",
+          "preview_id": "15300000-0000-4000-8000-000000000020",
+          "risk_level": "warning",
+          "income_year": 2025,
+          "field_target": "company.name",
+          "owner_confirmed_at": "2026-09-14T10:59:47.702+00:00",
+          "owner_confirmed_by": "15300000-0000-4000-8000-000000000010"
+        }
+      }
+    },
+    {
+      "name": "override",
+      "actor": "second",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "id": "676a7923-93c8-4c0d-82a8-73b64c844cf6",
+          "filing": "årsregnskap",
+          "reason": "reason",
+          "new_value": "after",
+          "old_value": "before",
+          "company_id": "15300000-0000-4000-8000-000000000001",
+          "created_at": "2026-09-14T10:59:47.201655+00:00",
+          "created_by": "15300000-0000-4000-8000-000000000011",
+          "preview_id": "15300000-0000-4000-8000-000000000020",
+          "risk_level": "warning",
+          "income_year": 2025,
+          "field_target": "company.name",
+          "owner_confirmed_at": "2026-09-14T10:59:47.709+00:00",
+          "owner_confirmed_by": "15300000-0000-4000-8000-000000000011"
+        }
+      }
+    },
+    {
+      "name": "override",
+      "actor": "reviewer",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_not_found",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "override",
+      "actor": "unaccepted",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_not_found",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "override",
+      "actor": "outsider",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_not_found",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "review",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "id": "c6bb7bd0-19cc-48f6-97a5-aacaa6b2f9b3",
+          "body": "review",
+          "target": "rf1086_preview",
+          "severity": "advisory",
+          "company_id": "15300000-0000-4000-8000-000000000001",
+          "created_at": "2026-09-14T10:59:47.201655+00:00",
+          "created_by": "15300000-0000-4000-8000-000000000010",
+          "preview_id": "15300000-0000-4000-8000-000000000020",
+          "acknowledged_at": null,
+          "acknowledged_by": null
+        }
+      }
+    },
+    {
+      "name": "review",
+      "actor": "second",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "id": "cd09e2d0-392d-476c-ad98-3dfd04687dc2",
+          "body": "review",
+          "target": "rf1086_preview",
+          "severity": "advisory",
+          "company_id": "15300000-0000-4000-8000-000000000001",
+          "created_at": "2026-09-14T10:59:47.201655+00:00",
+          "created_by": "15300000-0000-4000-8000-000000000011",
+          "preview_id": "15300000-0000-4000-8000-000000000020",
+          "acknowledged_at": null,
+          "acknowledged_by": null
+        }
+      }
+    },
+    {
+      "name": "review",
+      "actor": "reviewer",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "id": "cb37892a-5d36-4450-aa1c-e3132f598608",
+          "body": "review",
+          "target": "rf1086_preview",
+          "severity": "advisory",
+          "company_id": "15300000-0000-4000-8000-000000000001",
+          "created_at": "2026-09-14T10:59:47.201655+00:00",
+          "created_by": "15300000-0000-4000-8000-000000000012",
+          "preview_id": "15300000-0000-4000-8000-000000000020",
+          "acknowledged_at": null,
+          "acknowledged_by": null
+        }
+      }
+    },
+    {
+      "name": "review",
+      "actor": "unaccepted",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_not_found",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "review",
+      "actor": "outsider",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_not_found",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "acknowledge",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "id": "15300000-0000-4000-8000-000000000025",
+          "body": "Synthetic review",
+          "target": "rf1086_preview",
+          "severity": "advisory",
+          "company_id": "15300000-0000-4000-8000-000000000001",
+          "created_at": "2026-09-14T10:59:47.201655+00:00",
+          "created_by": "15300000-0000-4000-8000-000000000010",
+          "preview_id": "15300000-0000-4000-8000-000000000020",
+          "acknowledged_at": "2026-09-14T10:59:47.768+00:00",
+          "acknowledged_by": "15300000-0000-4000-8000-000000000010"
+        }
+      }
+    },
+    {
+      "name": "acknowledge",
+      "actor": "second",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "id": "15300000-0000-4000-8000-000000000025",
+          "body": "Synthetic review",
+          "target": "rf1086_preview",
+          "severity": "advisory",
+          "company_id": "15300000-0000-4000-8000-000000000001",
+          "created_at": "2026-09-14T10:59:47.201655+00:00",
+          "created_by": "15300000-0000-4000-8000-000000000010",
+          "preview_id": "15300000-0000-4000-8000-000000000020",
+          "acknowledged_at": "2026-09-14T10:59:47.776+00:00",
+          "acknowledged_by": "15300000-0000-4000-8000-000000000011"
+        }
+      }
+    },
+    {
+      "name": "acknowledge",
+      "actor": "reviewer",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_not_found",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "acknowledge",
+      "actor": "unaccepted",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_not_found",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "acknowledge",
+      "actor": "outsider",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_not_found",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "permission",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "id": "15300000-0000-4000-8000-000000000022",
+          "company_id": "15300000-0000-4000-8000-000000000001",
+          "obligation": "aarsregnskap",
+          "updated_at": "2026-09-14T10:59:47.801+00:00",
+          "confirmed_at": "2026-09-14T10:59:47.801+00:00",
+          "confirmed_by": "15300000-0000-4000-8000-000000000010",
+          "submitter_user_id": "15300000-0000-4000-8000-000000000010",
+          "production_enabled": false
+        }
+      }
+    },
+    {
+      "name": "permission",
+      "actor": "second",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "id": "15300000-0000-4000-8000-000000000022",
+          "company_id": "15300000-0000-4000-8000-000000000001",
+          "obligation": "aarsregnskap",
+          "updated_at": "2026-09-14T10:59:47.809+00:00",
+          "confirmed_at": "2026-09-14T10:59:47.809+00:00",
+          "confirmed_by": "15300000-0000-4000-8000-000000000011",
+          "submitter_user_id": "15300000-0000-4000-8000-000000000011",
+          "production_enabled": false
+        }
+      }
+    },
+    {
+      "name": "permission",
+      "actor": "reviewer",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_forbidden",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "permission",
+      "actor": "unaccepted",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_not_found",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "permission",
+      "actor": "outsider",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_not_found",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "permission stale MFA",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": false,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_mfa_required",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "permission AAL1",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal1",
+      "outcome": {
+        "error": "annual_accounts_mfa_required",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "manual evidence",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "id": "c1759a3a-91e6-45ee-8e8d-e870a5bc2f41",
+          "status": "pending",
+          "company_id": "15300000-0000-4000-8000-000000000001",
+          "obligation": "aarsregnskap",
+          "environment": "manual_evidence",
+          "recorded_at": "2026-09-14T10:59:47.849+00:00",
+          "recorded_by": "15300000-0000-4000-8000-000000000010",
+          "evidence_url": null,
+          "payload_hash": null,
+          "test_reference": "synthetic-read-control",
+          "feedback_summary": "",
+          "archive_reference": null,
+          "receipt_reference": null
+        }
+      }
+    },
+    {
+      "name": "manual evidence",
+      "actor": "second",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "id": "79576aa3-4992-4c1e-9bef-0c0454a379c3",
+          "status": "pending",
+          "company_id": "15300000-0000-4000-8000-000000000001",
+          "obligation": "aarsregnskap",
+          "environment": "manual_evidence",
+          "recorded_at": "2026-09-14T10:59:47.856+00:00",
+          "recorded_by": "15300000-0000-4000-8000-000000000011",
+          "evidence_url": null,
+          "payload_hash": null,
+          "test_reference": "synthetic-read-control",
+          "feedback_summary": "",
+          "archive_reference": null,
+          "receipt_reference": null
+        }
+      }
+    },
+    {
+      "name": "manual evidence",
+      "actor": "reviewer",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_forbidden",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "manual evidence",
+      "actor": "unaccepted",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_not_found",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "manual evidence",
+      "actor": "outsider",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_not_found",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "manual evidence stale MFA",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": false,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_mfa_required",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "manual evidence AAL1",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal1",
+      "outcome": {
+        "error": "annual_accounts_mfa_required",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "TT02 import",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "value": {
+          "id": "2556f324-fe50-4ed4-ac3a-707d2ba3a946",
+          "status": "pending",
+          "company_id": "15300000-0000-4000-8000-000000000001",
+          "obligation": "aarsregnskap",
+          "environment": "test",
+          "recorded_at": "2026-09-14T09:00:00+00:00",
+          "recorded_by": "15300000-0000-4000-8000-000000000010",
+          "evidence_url": "legacy non-https value",
+          "payload_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "test_reference": "tt02:153/11111111-1111-4111-8111-111111111111",
+          "feedback_summary": "Synthetic pending",
+          "archive_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/153/11111111-1111-4111-8111-111111111111",
+          "receipt_reference": "https://platform.tt02.altinn.no/storage/api/v1/instances/153/11111111-1111-4111-8111-111111111111/data/22222222-2222-4222-8222-222222222222"
+        }
+      }
+    },
+    {
+      "name": "TT02 stale MFA",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": false,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_mfa_required",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "TT02 invalid status",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_invalid_input",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "TT02 invalid recorded_by",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_invalid_input",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "TT02 invalid obligation",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_invalid_input",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "TT02 invalid archive_reference",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_invalid_input",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "inactive override",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_unavailable",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "inactive review",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_unavailable",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "inactive acknowledge",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_unavailable",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "inactive permission",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_unavailable",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "inactive manual evidence",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_unavailable",
+        "sqlstate": "P0001"
+      }
+    },
+    {
+      "name": "inactive TT02",
+      "actor": "owner",
+      "role": "annual_accounts_filing_workflow_executor",
+      "fresh": true,
+      "aal": "aal2",
+      "outcome": {
+        "error": "annual_accounts_unavailable",
+        "sqlstate": "P0001"
+      }
+    }
+  ],
+  "functionPrivileges": [
+    {
+      "role": "anon",
+      "function": "acknowledge_review_comment_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "add_review_comment_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "assert_filing_available_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "assert_preparation_access_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "confirm_filing_permission_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "filing_phase_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "generic_store_retired_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "has_blocking_override_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "has_document_reference_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "import_tt02_evidence_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "read_preview_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "read_support_filing_history_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "read_workspace_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "record_override_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "record_test_evidence_v1",
+      "execute": false
+    },
+    {
+      "role": "anon",
+      "function": "verified_filing_actor_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "acknowledge_review_comment_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "add_review_comment_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "assert_filing_available_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "assert_preparation_access_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "confirm_filing_permission_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "filing_phase_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "generic_store_retired_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "has_blocking_override_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "has_document_reference_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "import_tt02_evidence_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "read_preview_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "read_support_filing_history_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "read_workspace_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "record_override_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "record_test_evidence_v1",
+      "execute": false
+    },
+    {
+      "role": "authenticated",
+      "function": "verified_filing_actor_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "acknowledge_review_comment_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "add_review_comment_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "assert_filing_available_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "assert_preparation_access_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "confirm_filing_permission_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "filing_phase_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "generic_store_retired_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "has_blocking_override_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "has_document_reference_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "import_tt02_evidence_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "read_preview_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "read_support_filing_history_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "read_workspace_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "record_override_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "record_test_evidence_v1",
+      "execute": false
+    },
+    {
+      "role": "service_role",
+      "function": "verified_filing_actor_v1",
+      "execute": false
+    }
+  ],
+  "status": "PASS",
+  "schemaRollbackVerified": true,
+  "fixtureRollbackVerified": true,
+  "globalMembershipsRestored": true
+}

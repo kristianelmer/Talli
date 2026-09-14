@@ -162,3 +162,22 @@ unavailable. Archive includes only evidence referenced by selected-year Tax
 submissions. The #146 composition pins remain unchanged and cannot authorize
 these #152 bodies at an earlier stage.
 The frozen #185 baseline and #151 twelve-tuple attribution are unchanged.
+
+The #153 final Accounts cutover deletes the remaining six generic filing table
+reads and writes. Its empty-table contract is paired with schema restoration,
+latest-state rollback, and re-cutover artifacts. Catalog aliases now identify
+the Accounts successor only after those six public sources have deletion proof.
+The 24 removed web scopes comprise 18 Annual mixed calls, the Accounts TT02
+import, and five Archive reads. Eight Audit calls and two Notification calls
+remain in place; their original persistence chains and counts are preserved.
+
+`ACCOUNTS_SOURCE_COMPOSITION_DIGESTS` pins the eight changed action and Archive
+compositions. The exception requires #153 or a completed Accounts stage, removal
+of the Accounts import facade, owned catalog proof for all six sources, no
+remaining generic filing calls in the operation, and no dynamic persistence. The
+existing Tax guard continues checking every retained sibling persistence chain.
+The immutable baseline and earlier RF/Tax pins are unchanged.
+
+The bounded mixed-action checks remain active after the last reattributed RF
+scope is removed, while any Audit or Notification sibling remains. Retirement
+does not grant permission to change those continuations.

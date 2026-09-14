@@ -1,0 +1,67 @@
+{
+  "database": "accounts153_setup_fix_d060",
+  "mode": "ROLLBACK_ONLY_REAL_FULL_ROLLBACK_SYNTHETIC_ROWS",
+  "artifacts": {
+    "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea",
+    "supabase/contract-migrations/20260914092018_annual_accounts_filing_read_contracts.sql": "7c9366ed41cdbcb4cddb9d748d4e987d370b9a04be2f74890f7fa446174fdb29",
+    "supabase/contract-migrations/20260914092924_annual_accounts_filing_preparation_contracts.sql": "ba67f1fdcbf314b0ed545eaf040b11ca411d342d2dccf3960ce3a6c9b9aaa6c8",
+    "supabase/contract-migrations/20260914093204_annual_accounts_filing_import_contract.sql": "b3644149be001e768d8d497e248b438631ecb38a2589965108ab47d60d53fc48",
+    "supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql": "0d8a50cd22ec0859ba87dc075a7c4357edad77024ad27623036456fe6bd1d0a1",
+    "supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql": "3f4495c1d75644413171150b71f2048f34ef100dcf3492bcc28005f5c31f064b",
+    "supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql": "9f4a89374a4945841f8f3610de2390884db3faa527e2c7374e5a4a3df6cad401",
+    "supabase/rollback/20260914101842_annual_accounts_filing_contract.sql": "ea5a272c6a29bae8e1371a4fd1ec954ca7e3e1e2dcfa0af3ea2af2c6987646f1",
+    "supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql": "6f31c93d658a9acd54b549f132b651ef9e5186cfb99041f9fc85efb8114d3271"
+  },
+  "phases": [
+    {
+      "artifact": "supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+      "genericPresent": true
+    },
+    {
+      "artifact": "supabase/contract-migrations/20260914092018_annual_accounts_filing_read_contracts.sql",
+      "genericPresent": true
+    },
+    {
+      "artifact": "supabase/contract-migrations/20260914092924_annual_accounts_filing_preparation_contracts.sql",
+      "genericPresent": true
+    },
+    {
+      "artifact": "supabase/contract-migrations/20260914093204_annual_accounts_filing_import_contract.sql",
+      "genericPresent": true
+    },
+    {
+      "artifact": "supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql",
+      "genericPresent": true
+    },
+    {
+      "artifact": "supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql",
+      "genericPresent": true
+    },
+    {
+      "artifact": "supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql",
+      "genericPresent": false
+    },
+    {
+      "artifact": "supabase/rollback/20260914101842_annual_accounts_filing_contract.sql",
+      "genericPresent": true
+    },
+    {
+      "artifact": "supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql",
+      "genericPresent": true
+    },
+    {
+      "artifact": "supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql",
+      "genericPresent": true
+    },
+    {
+      "artifact": "supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql",
+      "genericPresent": false
+    }
+  ],
+  "latestRecordId": "d6390a7e-a3bc-4179-8002-39661d7b7ab9",
+  "latestRowsRestored": true,
+  "status": "PASS",
+  "schemaRollbackVerified": true,
+  "fixtureRollbackVerified": true,
+  "globalMembershipsRestored": true
+}

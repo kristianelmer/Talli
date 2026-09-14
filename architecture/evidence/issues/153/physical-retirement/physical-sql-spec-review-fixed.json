@@ -1,0 +1,230 @@
+{
+  "axis": "Spec",
+  "verdict": "PASS_BOUNDED_FOLLOWUP",
+  "reviewedKind": "UNCOMMITTED_FROZEN_WIP",
+  "baseRevision": "5279d43e297d3a3c2949c61d8466ca79c20651cb",
+  "frozenAt": "2026-09-14T10:56:14.890169+00:00",
+  "sourceBindings": [
+    {
+      "path": "supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql",
+      "sha256": "0d8a50cd22ec0859ba87dc075a7c4357edad77024ad27623036456fe6bd1d0a1",
+      "bytes": 8375,
+      "snapshot": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql",
+      "sha256": "3f4495c1d75644413171150b71f2048f34ef100dcf3492bcc28005f5c31f064b",
+      "bytes": 32582,
+      "snapshot": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql"
+    },
+    {
+      "path": "supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql",
+      "sha256": "9f4a89374a4945841f8f3610de2390884db3faa527e2c7374e5a4a3df6cad401",
+      "bytes": 6845,
+      "snapshot": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql"
+    },
+    {
+      "path": "supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql",
+      "sha256": "6f31c93d658a9acd54b549f132b651ef9e5186cfb99041f9fc85efb8114d3271",
+      "bytes": 16878,
+      "snapshot": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql"
+    },
+    {
+      "path": "supabase/rollback/20260914101842_annual_accounts_filing_contract.sql",
+      "sha256": "ea5a272c6a29bae8e1371a4fd1ec954ca7e3e1e2dcfa0af3ea2af2c6987646f1",
+      "bytes": 9736,
+      "snapshot": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/supabase/rollback/20260914101842_annual_accounts_filing_contract.sql"
+    }
+  ],
+  "findingDispositions": [
+    {
+      "id": "SPEC-153-PHYSICAL-1",
+      "status": "CLOSED_ON_FROZEN_FIXED_BYTES",
+      "check": {
+        "case": "target",
+        "result": "PASS_EXPECTED_DRIFT_REJECTION",
+        "error": "annual_accounts_target_schema_changed",
+        "allRollbackRestorationChecks": true
+      }
+    },
+    {
+      "id": "SPEC-153-PHYSICAL-2",
+      "status": "CLOSED_ON_FROZEN_FIXED_BYTES",
+      "check": {
+        "case": "public",
+        "result": "PASS_EXPECTED_DRIFT_REJECTION",
+        "error": "annual_accounts_rollback_source_schema_changed",
+        "allRollbackRestorationChecks": true
+      }
+    }
+  ],
+  "newFindings": [],
+  "priorReviewBindings": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-spec-review-wip.md",
+      "sha256": "c14dbbe564c39fcf4cdc572e4bda4f6568d1c0e1a57f6d0ed6aad9c51a07a9e7"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-spec-review-wip.json",
+      "sha256": "93a2290cd8105249d7b24ca64650883a5b237f8e171ceea708dd3a614aaf5951"
+    }
+  ],
+  "evidenceBindings": [
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-spec-fixed-target-rls-probe.py",
+      "sha256": "d4da1d84be0cc62d64b4e8d0e50068f8a1918a4257b6bd96e197b442f3e1a6c3"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-spec-fixed-target-rls-results.json",
+      "sha256": "5895736b2bb6e31783180bd451fdcbacc881cd90ae6c8d4853429dc33fb0b488"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-spec-fixed-target-rls.log",
+      "sha256": "5895736b2bb6e31783180bd451fdcbacc881cd90ae6c8d4853429dc33fb0b488"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-spec-fixed-public-rls-probe.py",
+      "sha256": "cf61210ff13a34e5462d6ee0d5699b9a1aa08135c21c95227ad2175d95e66044"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-spec-fixed-public-rls-results.json",
+      "sha256": "1539f91b9eaaf644f070bc87f04f9e156d8a1745e86516bb631a4afa84ec793b"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-spec-fixed-public-rls.log",
+      "sha256": "1539f91b9eaaf644f070bc87f04f9e156d8a1745e86516bb631a4afa84ec793b"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/accounts-target-structure.json",
+      "sha256": "d6fe5ff9ebffe550a9e2cee4537fc321be5af044bbbfdea6a9abf019ea918ea9"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/accounts-target-structure.sql",
+      "sha256": "0f2c7a52cad268805073e33e805ca6aef286c794275bfdbd89eaf9baff6768bf"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/apps/backend/tests/accounts_database_fixtures.py",
+      "sha256": "987bd221fb2776982f0d0dc4352e6b93c64e3e83f25a4e7be74fc45ddd89114d"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/apps/backend/tests/test_annual_accounts_filing_lifecycle.py",
+      "sha256": "95600e016f1aaa62916ed6a79b718c158742d517ee9a0f84b7ed4f71f76e3b15"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/capture-accounts-target-structure.py",
+      "sha256": "eff2308d34dd2157186f0d8c2bcf9a4555bdbb606cd791bf0c8a2abc88a7fd70"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/fingerprint-independent-checks.json",
+      "sha256": "877c7d8ef3d1b23eef2f17bc9fbe1a2fc65b8ddf282729d07f90657a51a0bf3e"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/permanent-accounts-lifecycle-fourth.log",
+      "sha256": "9ea94445a93f9ec094a35a93095b8c555e136f37b284aa67d7aa4c6e66be2b6a"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/supabase/contract-migrations/20260914090244_annual_accounts_filing_expand.sql",
+      "sha256": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/supabase/contract-migrations/20260914092018_annual_accounts_filing_read_contracts.sql",
+      "sha256": "7c9366ed41cdbcb4cddb9d748d4e987d370b9a04be2f74890f7fa446174fdb29"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/supabase/contract-migrations/20260914092924_annual_accounts_filing_preparation_contracts.sql",
+      "sha256": "ba67f1fdcbf314b0ed545eaf040b11ca411d342d2dccf3960ce3a6c9b9aaa6c8"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/supabase/contract-migrations/20260914093204_annual_accounts_filing_import_contract.sql",
+      "sha256": "b3644149be001e768d8d497e248b438631ecb38a2589965108ab47d60d53fc48"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql",
+      "sha256": "0d8a50cd22ec0859ba87dc075a7c4357edad77024ad27623036456fe6bd1d0a1"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql",
+      "sha256": "3f4495c1d75644413171150b71f2048f34ef100dcf3492bcc28005f5c31f064b"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql",
+      "sha256": "9f4a89374a4945841f8f3610de2390884db3faa527e2c7374e5a4a3df6cad401"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql",
+      "sha256": "6f31c93d658a9acd54b549f132b651ef9e5186cfb99041f9fc85efb8114d3271"
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/supabase/rollback/20260914101842_annual_accounts_filing_contract.sql",
+      "sha256": "ea5a272c6a29bae8e1371a4fd1ec954ca7e3e1e2dcfa0af3ea2af2c6987646f1"
+    }
+  ],
+  "independentCommands": [
+    {
+      "command": "'/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python' /Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-spec-fixed-target-rls-probe.py",
+      "exitCode": 0,
+      "scope": "original drift reproducer, expected rejection updated only, private fixed snapshot, outer rollback"
+    },
+    {
+      "command": "'/Users/kristianelmer/.codex/worktrees/d060/Holding accounting/apps/backend/.venv/bin/python' /Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-spec-fixed-public-rls-probe.py",
+      "exitCode": 0,
+      "scope": "original drift reproducer, expected rejection updated only, private fixed snapshot, outer rollback"
+    }
+  ],
+  "independentFingerprintChecks": {
+    "producerQueryMatchesGuard": true,
+    "fiveCleanProducerSourcesMatchSnapshot": true,
+    "sixJsonbHashesRecomputedWithoutDatabase": [
+      {
+        "family": "filing_previews",
+        "jsonbDefinitionSha256": "9679621eedf3e27969d7a73fcfd38cfb04ad86911e8dd20a865069fb1e94d997",
+        "matchesFixedSql": true
+      },
+      {
+        "family": "authority_test_runs",
+        "jsonbDefinitionSha256": "b696af6d16e6d243bab20125ce1ff4d65ebd7ee76d8bfc1af9424f0b09bb9370",
+        "matchesFixedSql": true
+      },
+      {
+        "family": "authority_permissions",
+        "jsonbDefinitionSha256": "994c858346e96ed230e992a358b954915e8008efe84b6d7a24cadc248285265c",
+        "matchesFixedSql": true
+      },
+      {
+        "family": "filing_submissions",
+        "jsonbDefinitionSha256": "818255a7189e789e8c61135261f9467784634b6ce3ff6840c9ae8131098ae2b7",
+        "matchesFixedSql": true
+      },
+      {
+        "family": "filing_overrides",
+        "jsonbDefinitionSha256": "2ddd16222c4257dd6c1247e59fbcac485b566dbf0adc4dba0b40f2f0dd67c38d",
+        "matchesFixedSql": true
+      },
+      {
+        "family": "filing_review_comments",
+        "jsonbDefinitionSha256": "18812d1c88803d2d880718b2aa73adc54f32964ad1ef614e89216a7544434db2",
+        "matchesFixedSql": true
+      }
+    ],
+    "producerAppliesOnlyExpansionReadPreparationImportDependency": true,
+    "note": "JSONB key ordering independently reproduced for these concrete scalar/object/array definitions, no generic numeric serializer claim."
+  },
+  "parentRetainedLifecycleEvidence": {
+    "passed": 15,
+    "durationSeconds": 5.4,
+    "independentlyRerun": false,
+    "log": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/permanent-accounts-lifecycle-fourth.log",
+    "source": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/spec-physical-sql-fixed/apps/backend/tests/test_annual_accounts_filing_lifecycle.py"
+  },
+  "sqlSlotReleased": true,
+  "limitations": [
+    "No full-stage acceptance",
+    "Later source changes excluded",
+    "No full lifecycle or race rerun",
+    "No genuine JWT/MFA ceremony",
+    "No provider/hosted/browser action"
+  ],
+  "reportPath": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-spec-review-fixed.md",
+  "reportSha256": "b00fdaa6b461076b470ccfa290a92548ac86d157b0bbd5a55bf8770cd31c02ed",
+  "wordCount": 276
+}

@@ -256,3 +256,34 @@ test("one failed assessment query discards partial success and preserves an expl
   const result = await assessmentSource(async () => ({ status: "zero" }), async () => { throw new Error("Private failure"); })(assessmentInput);
   assert.equal(result.estimate, null); assert.equal(result.readiness, null); assert.ok(result.error);
 });
+
+test("Archive keeps company-wide Accounts comments but selects requested-year submissions and linked evidence", async () => {
+  const { effects, dependencies } = consumerSetup();
+  dependencies.loadPresentedCompanyTaxSource = async () => ({ error: null, previews: [], submissions: [], comments: [], overrides: [], authorityPermissions: [], authorityTestRuns: [] });
+  const selected = { id: "accounts-2024", income_year: 2024, mode: "test_authority", authority_test_run_id: "selected-evidence" };
+  const old = { id: "accounts-2023", income_year: 2023, mode: "test_authority", authority_test_run_id: "older-evidence" };
+  const comments = [{ id: "comment-2023" }, { id: "comment-2024" }];
+  dependencies.loadPresentedAnnualAccountsSource = async (...args) => {
+    assert.deepEqual(args, ["token", ["company"]]);
+    return { error: null, submissions: [old, selected], previews: [{ id: "old", income_year: 2023 }, { id: "selected", income_year: 2024 }],
+      comments, authorityPermissions: [{ id: "permission" }], authorityTestRuns: [{ id: "older-evidence" }, { id: "selected-evidence" }, { id: "unlinked-evidence" }] };
+  };
+  const get = functionFrom("../apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts", "GET", dependencies);
+  const response = await get(new Request("https://example.test/archive"), { params: Promise.resolve({ companyId: "company", incomeYear: "2024" }) });
+  assert.equal(response.status, 200);
+  const archive = effects.find(row => row.name === "archive").body;
+  assert.deepEqual(archive.filingSubmissions, [selected]);
+  assert.deepEqual(archive.filingPreviews, [{ id: "selected", income_year: 2024 }]);
+  assert.deepEqual(archive.reviewComments, comments);
+  assert.deepEqual(archive.authorityTestRuns, [{ id: "selected-evidence" }]);
+  assert.equal(effects.filter(row => row.name === "company_archive_begin_export").length, 1);
+  assert.equal(effects.filter(row => row.name === "company_archive_complete_export").length, 1);
+});
+test("Accounts Archive failure cannot publish a partial sibling archive or complete its receipt", async () => {
+  const { effects, dependencies } = consumerSetup();
+  dependencies.loadPresentedAnnualAccountsSource = async () => ({ error: "Accounts unavailable" });
+  const get = functionFrom("../apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts", "GET", dependencies);
+  const response = await get(new Request("https://example.test/archive"), { params: Promise.resolve({ companyId: "company", incomeYear: "2024" }) });
+  assert.equal(response.status, 500);
+  assert.equal(effects.some(row => ["archive", "company_archive_complete_export"].includes(row.name)), false);
+});

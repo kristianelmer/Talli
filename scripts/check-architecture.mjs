@@ -223,6 +223,42 @@ const TAX_RETURN_COMPOSITION_DIGESTS = new Map([
     "sha256:7399b5e1c0755371ec4290f3d2b2874aa68c1368261f6e512b0adce50ca72f13"
   ]
 ]);
+// #153 final generic source retirement. All six physical sources must have
+// deletion-proven Accounts catalog ownership before these exact compositions apply.
+const ACCOUNTS_SOURCE_COMPOSITION_DIGESTS = new Map([
+  [
+    "apps/web/app/actions.ts\u0000addFilingOverride",
+    "sha256:51326738cb19d98ae2b2c6f65b70dc49fc8b8ee13e0d90aee72f18da8e80ad59"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000addFilingReviewComment",
+    "sha256:0b603a043e3b7a181592ee8cf08eeb05908022e95a5c7d72135ffa849a75fbfe"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000acknowledgeFilingReviewComment",
+    "sha256:f60a0a61e301c0de18ba68afb106296478f96709bbe41cdcc8fdd23038aa8ef7"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000confirmAuthorityPermission",
+    "sha256:a6e27306516b2fbfdf3f7b2e3e4d9dd51f55469b283cd6be54d666ddceddb3c2"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000recordAuthorityTestEvidence",
+    "sha256:4a2a94974780e6e52cd2d786d2d469ba0582de0ad219862a609d372078bb1393"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000queueDeadlineReminders",
+    "sha256:c17c03884db329746dcf5a7be9d9229415e4ebb86418e8a5872a1a585e15cf4d"
+  ],
+  [
+    "apps/web/app/actions.ts\u0000refreshAnnualReadinessSnapshots",
+    "sha256:8c960471164d79b688b7a3fd4ac555f1f47d9da00a1b6e66baf5f82a3dc7fb6b"
+  ],
+  [
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts\u0000GET",
+    "sha256:29ce470acc1e4d41ee92fcd45881af89e7558ff63be8440e0548a40d2c6e16a0"
+  ]
+]);
 const RF_COMPOSITION_DIGESTS = new Map([
   [
     "apps/web/app/actions.ts\u0000addFilingOverride",
@@ -2216,7 +2252,7 @@ export function validateCompatibilityRegistry(path, {
       && resourceOwner?.("table:holding_actions") === "backend:company_tax_filing"
       && !activeLegacyScopeKeys.has(compatibilityScopeKey(scope.path, scope.rule, "table:holding_actions", scope.operation))
       && analysis?.state === "found"
-      && (analysis.sourceDigest === TAX_SOURCE_COMPOSITION_DIGESTS.get(key) || taxReturnComposition(scope))
+      && (analysis.sourceDigest === TAX_SOURCE_COMPOSITION_DIGESTS.get(key) || taxReturnComposition(scope) || accountsSourceComposition(scope))
       && (analysis.resourceOccurrences.get("table:holding_actions") ?? 0) === 0
       && (analysis.resourceOccurrences.get("table:*") ?? 0) === 0;
   };
@@ -2230,6 +2266,20 @@ export function validateCompatibilityRegistry(path, {
       && analysis.sourceDigest === TAX_RETURN_COMPOSITION_DIGESTS.get(key)
       && (analysis.persistenceOccurrences.get("rpc:import_company_tax_tt02_evidence") ?? 0) === 0
       && ![...analysis.persistenceOccurrences.keys()].some((resource) => resource.endsWith(":*"));
+  };
+  const accountsSourceComposition = (scope) => {
+    const key = compatibilityOperationKey(scope.path, scope.operation);
+    const analysis = currentOperationAnalysis(scope);
+    const resources = ["filing_previews", "filing_submissions", "filing_overrides",
+      "filing_review_comments", "authority_permissions", "authority_test_runs"].map(name => `table:${name}`);
+    return ((currentCapability === "annual_accounts_filing" && registry.migration?.currentIssue === "#153")
+        || exitedCapabilities.has("annual_accounts_filing"))
+      && !registry.records.some(record => ["compat-annual-accounts-persistence", "compat-company-tax-persistence"].includes(record.id))
+      && analysis?.state === "found"
+      && analysis.sourceDigest === ACCOUNTS_SOURCE_COMPOSITION_DIGESTS.get(key)
+      && resources.every(resource => resourceOwner?.(resource) === "backend:annual_accounts_filing"
+        && (analysis.persistenceOccurrences.get(resource) ?? 0) === 0)
+      && ![...analysis.persistenceOccurrences.keys()].some(resource => resource.endsWith(":*"));
   };
   // Archive's older completed deletions must not authorize arbitrary edits to
   // the retained sibling reads when adding the owned Tax source.
@@ -2355,7 +2405,8 @@ export function validateCompatibilityRegistry(path, {
     return true;
   };
   const rfCompositionOperations = new Set();
-  if (rfAmendmentAvailable && reattributedRfScopes.length) {
+  if (rfAmendmentAvailable && (reattributedRfScopes.length
+      || currentCapability === "annual_accounts_filing" || exitedCapabilities.has("annual_accounts_filing"))) {
     const approvedOperations = new Set([
       ...[...RF_COMPATIBILITY_AMENDMENT.handoffs].map((key) => {
         const [path, , , operation] = key.split("\0");
@@ -2375,7 +2426,7 @@ export function validateCompatibilityRegistry(path, {
       const preserved = analysis?.state === "found" && original?.state === "found"
         && (analysis.sourceDigest === original.sourceDigest
           || analysis.sourceDigest === RF_COMPOSITION_DIGESTS.get(operationKey)
-          || taxOwnedSourceRetirement(scope) || taxReturnComposition(scope))
+          || taxOwnedSourceRetirement(scope) || taxReturnComposition(scope) || accountsSourceComposition(scope))
         && retainedScopes.every((item) => JSON.stringify(analysis.persistenceChains.get(item.resource))
           === JSON.stringify(original.persistenceChains.get(item.resource)))
         && [...analysis.persistenceOccurrences].every(([resource, count]) => count === 0

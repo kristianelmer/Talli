@@ -1,0 +1,191 @@
+{
+  "baseline": "5279d43e297d3a3c2949c61d8466ca79c20651cb",
+  "frozenAt": "2026-09-14T10:56:23.745286+00:00",
+  "files": {
+    "apps/backend/pyproject.toml": {
+      "sha256": "758c85cdb20e25d0edbaad99e674c3033435cfbd95e76f6ca76ea0390273fc53",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/apps/backend/pyproject.toml"
+    },
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md": {
+      "sha256": "53c6c9d05492fba20df9cc90cd8690c3e8f97910e177c25d120861fcda3374fe",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md"
+    },
+    "apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json": {
+      "sha256": "ea114c869516b4e4c279188617fdf310302fac834169236edffdc3d5ec23cb0d",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/apps/backend/src/talli_backend/modules/annual_accounts_filing/module.json"
+    },
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": {
+      "sha256": "f11c087e9063f1dc90b15a78bc1ff43310b042ed65ed6891c4a77fc427d1f737",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts"
+    },
+    "apps/web/app/lib/backup-restore.ts": {
+      "sha256": "e903e5e114cc069d7acaaba074e4b6535c269ed7372cc5822fdde8737334e94f",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/apps/web/app/lib/backup-restore.ts"
+    },
+    "apps/web/features/annual-accounts-filing/transport.ts": {
+      "sha256": "56cd04d9199295de46433458c975614285fe74b6edb323e26d1be199e0864394",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/apps/web/features/annual-accounts-filing/transport.ts"
+    },
+    "architecture/COMPATIBILITY.md": {
+      "sha256": "7683810e3f0b816fcc166c428faba245060f91c86ae7e0750b39803730c57ab7",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/architecture/COMPATIBILITY.md"
+    },
+    "architecture/company-archive-sources.json": {
+      "sha256": "b7df4dc0209e311c7e2dbcb7c95dda92b871a4eb8f780dc99eacce9d51b1d325",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/architecture/company-archive-sources.json"
+    },
+    "architecture/compatibility.json": {
+      "sha256": "e06ddbbc974bbaa7f418eced549bef1c02e3b29d4e12a6851ed503428aa83e10",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/architecture/compatibility.json"
+    },
+    "architecture/database-catalog.json": {
+      "sha256": "a1eba68ce31461101ccfa3e7e5ed063c53baf97db0d7092f6265416c1a1b44dc",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/architecture/database-catalog.json"
+    },
+    "architecture/dependency-evidence.json": {
+      "sha256": "4349931dfd72104c0962b76194f1874af018b550b570940a5f1c0f21cedc896f",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/architecture/dependency-evidence.json"
+    },
+    "package.json": {
+      "sha256": "7112947868e5f491a9153fca379d0053d5553f2f96da25d4d004a4c14bc5923e",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/package.json"
+    },
+    "scripts/check-architecture.mjs": {
+      "sha256": "03bd3acc876d2fe9c9ae77e538f8446f3478c3735e8540422655913d60d813d1",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/scripts/check-architecture.mjs"
+    },
+    "tests/architecture_foundation.test.mjs": {
+      "sha256": "865f0b3476297827ab4b601d056bc3f0686bdc630ce80ffca3473ff0b0a4afe4",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/tests/architecture_foundation.test.mjs"
+    },
+    "tests/company_tax_architecture.test.mjs": {
+      "sha256": "c6eea89a26fc59808780ceb5fbe3941a7769016a22f587c8857d280b42cc3fd5",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/tests/company_tax_architecture.test.mjs"
+    },
+    "tests/company_tax_workspace_composition.test.mjs": {
+      "sha256": "431e2ee07efcb19ca0b4ae78b387d24249a63bd1cf254a3f53c0ef40b5427b8d",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/tests/company_tax_workspace_composition.test.mjs"
+    },
+    "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": {
+      "sha256": "95600e016f1aaa62916ed6a79b718c158742d517ee9a0f84b7ed4f71f76e3b15",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/apps/backend/tests/test_annual_accounts_filing_lifecycle.py"
+    },
+    "supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql": {
+      "sha256": "0d8a50cd22ec0859ba87dc075a7c4357edad77024ad27623036456fe6bd1d0a1",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/supabase/contract-migrations/20260914101625_annual_accounts_filing_dependency_contracts.sql"
+    },
+    "supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql": {
+      "sha256": "3f4495c1d75644413171150b71f2048f34ef100dcf3492bcc28005f5c31f064b",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/supabase/contract-migrations/20260914101805_annual_accounts_filing_cutover.sql"
+    },
+    "supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql": {
+      "sha256": "9f4a89374a4945841f8f3610de2390884db3faa527e2c7374e5a4a3df6cad401",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/supabase/contract-migrations/20260914101842_annual_accounts_filing_contract.sql"
+    },
+    "supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql": {
+      "sha256": "6f31c93d658a9acd54b549f132b651ef9e5186cfb99041f9fc85efb8114d3271",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql"
+    },
+    "supabase/rollback/20260914101842_annual_accounts_filing_contract.sql": {
+      "sha256": "ea5a272c6a29bae8e1371a4fd1ec954ca7e3e1e2dcfa0af3ea2af2c6987646f1",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/supabase/rollback/20260914101842_annual_accounts_filing_contract.sql"
+    }
+  },
+  "evidence": {
+    "accounts-target-structure.sql": {
+      "sha256": "0f2c7a52cad268805073e33e805ca6aef286c794275bfdbd89eaf9baff6768bf",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/evidence/accounts-target-structure.sql"
+    },
+    "accounts-target-structure.json": {
+      "sha256": "d6fe5ff9ebffe550a9e2cee4537fc321be5af044bbbfdea6a9abf019ea918ea9",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/evidence/accounts-target-structure.json"
+    },
+    "capture-accounts-target-structure.py": {
+      "sha256": "eff2308d34dd2157186f0d8c2bcf9a4555bdbb606cd791bf0c8a2abc88a7fd70",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/evidence/capture-accounts-target-structure.py"
+    },
+    "accounts-target-structure-capture.log": {
+      "sha256": "4a30ca491f99088992c694d4041cf8a897b57a15ec20dcccffcaa30edc761b68",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/evidence/accounts-target-structure-capture.log"
+    },
+    "permanent-accounts-lifecycle-fourth.log": {
+      "sha256": "9ea94445a93f9ec094a35a93095b8c555e136f37b284aa67d7aa4c6e66be2b6a",
+      "privateCopy": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/evidence/permanent-accounts-lifecycle-fourth.log"
+    }
+  },
+  "reviewAxis": "Standards",
+  "verdict": "PASS_BOUNDED_FOLLOWUP",
+  "completedAt": "2026-09-14T11:01:26.409931+00:00",
+  "findings": [],
+  "closedFindings": [
+    {
+      "id": "STD-153-PHYSICAL-1",
+      "closure": "Original public shell structure, including every trigger definition/mode, attested under locks before copy or reactivation",
+      "file": "supabase/rollback/20260914101805_annual_accounts_filing_cutover.sql",
+      "lines": [
+        44,
+        58
+      ],
+      "sha256": "6f31c93d658a9acd54b549f132b651ef9e5186cfb99041f9fc85efb8114d3271"
+    }
+  ],
+  "reportSha256": "22e18ae96840e9135aac84e253acfe33e345697b7fc60412999e714e9ac2a743",
+  "runtime": {
+    "independentNode": "v24.20.0",
+    "nodePath": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node",
+    "independentDatabaseExecution": false
+  },
+  "checks": [
+    {
+      "command": "node --test --test-name-pattern=\"#152 mixed actions|#151 bounded retirement compositions remain enforced after RF exits\" tests/company_tax_architecture.test.mjs tests/architecture_foundation.test.mjs",
+      "cwd": "/var/folders/xh/8bj3tmcx7gs4j0qxzkcf9rw00000gn/T/accounts153-physical-standards-npg2tznh",
+      "result": "2 passed, 0 failed, 0 skipped",
+      "log": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/independent-node-tests.log"
+    },
+    {
+      "command": "node --test --test-name-pattern=\"#152 mixed actions\" tests/physical-standards-extra-mutations.mjs",
+      "result": "1 passed, 0 failed, 0 skipped; private extension covers queueDeadlineReminders and refreshAnnualReadinessSnapshots",
+      "log": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/independent-extra-mutations.log"
+    },
+    {
+      "command": "python3 verify-frozen-fingerprints.py",
+      "result": "6 independently canonicalized PostgreSQL JSONB definition hashes match SQL constants; all frozen file hashes match"
+    },
+    {
+      "command": "Static map and source artifact comparisons; results in independent-static-checks.json",
+      "result": "RF, Tax-source and Tax-return composition maps byte-identical; frozen baseline unchanged; 5 capture source bindings match"
+    }
+  ],
+  "limits": [
+    "Five SQL artifacts and selected checker/catalog/tests/docs individually frozen; later shared edits excluded.",
+    "No SQL/browser/provider/hosted execution by Standards.",
+    "Retained 15-pass SQL log inspected, not an independent runtime execution.",
+    "No full architecture scan, committed concurrency, complete gate or stage exit claimed."
+  ],
+  "independentArtifacts": {
+    "independent-node-tests.log": {
+      "sha256": "a4c0ee0ce1778385b4f31cdc90797a341e91a8180dacc301b089a383a2ccb165",
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/independent-node-tests.log"
+    },
+    "independent-extra-mutations.log": {
+      "sha256": "11f308ea2bcdfe7676d576e87a8f3ef8f844034da907a6a40001fbf38d0110de",
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/independent-extra-mutations.log"
+    },
+    "independent-extra-mutations.mjs": {
+      "sha256": "2121951affabf89fe669899b26eeb7ecc51b99c915624ee4214fad93c1968a49",
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/independent-extra-mutations.mjs"
+    },
+    "independent-static-checks.json": {
+      "sha256": "92ae53efff9dca61b51aec8e31bcb1f6e2b21ddba3fc9a9f5845e93a1eef90a3",
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/independent-static-checks.json"
+    },
+    "verify-frozen-fingerprints.py": {
+      "sha256": "e4bb8c93905ad467d87fbd9b5b21034cd2fb51c0fab564fa44991fd820cffdb7",
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/verify-frozen-fingerprints.py"
+    },
+    "workspace.json": {
+      "sha256": "90ca8f47e3bad5ca1ca11e26719ef8fbef69e83df7b6784b9746651e02744ce2",
+      "path": "/Users/kristianelmer/.codex/issue-192-private/issue153-entry/physical-sql-standards-fixed/workspace.json"
+    }
+  }
+}

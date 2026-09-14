@@ -44,7 +44,7 @@ manual warnings retain their original order. Common Annual gates remain separate
 
 ## Data and effects
 
-Six inert successor tables in `annual_accounts_filing` are declared and owned:
+Six successor tables in `annual_accounts_filing` are declared and owned:
 `authority_permissions`, `authority_test_runs`, `filing_overrides`,
 `filing_previews`, `filing_review_comments`, and `filing_submissions`.
 They have FORCE RLS. Read and preparation policies require cutover or contracted
@@ -67,8 +67,8 @@ organization checks. It writes intent before credentials or provider work, reuse
 existing uploads, reads receipt state after human signing and replays completed
 evidence without constructing a provider. Credential setup remains outside the
 original provider error-catching block. Validation-failed status and sanitized
-retryable/blocked errors retain their original behavior. The canonical persistence/authorization boundary and
-generated client are pending. The old direct RLS observations do not authorize
+retryable/blocked errors retain their original behavior. The generated client and authenticated persistence boundary enforce accepted
+membership and fresh MFA where required. The old direct RLS observations do not authorize
 unaccepted membership or skipping fresh MFA in the future request boundary.
 
 ## Compatibility and failures
@@ -127,8 +127,10 @@ and Archive tests remain active. `test_annual_accounts_evidence.py` checks 43 fr
 evidence results, 1,804 actual importer date cases, 4,320 TimeClip cases across six
 timezones, and immutable inputs/results. The old standalone transport path and final Node payload subprocess are retired.
 The CLI maps directly to the owned Python calculation and XML contracts.
-Generated web workflow,
-data migration/RLS/rollback and full stage-exit gates remain pending.
+The generated web workflow reads and writes through the owned boundary. Explicit
+cutover, contract and paired rollback artifacts preserve source provenance,
+latest state and the Archive invalidation behavior. Full stage-exit gates and
+durable source attestation remain pending.
 
 ## Authenticated filing boundary
 
@@ -144,7 +146,8 @@ inserts the pure TT02 projection once per request. Audit remains the existing
 subsequent web continuation; no provider call or Tax-style combined submission
 or deduplication is added. The verified application session binds every actor;
 PostgreSQL functions run only via the restricted executor with phase-gated RLS.
-The generated HTTP boundary is installed before the web writer is switched.
+Web workspace, Annual and Archive composition use the generated HTTP boundary;
+Audit and Notification continuations retain their existing persistence chains.
 
 `AnnualAccountsRecordId` and `AnnualAccountsRecordQuery` identify an owned record.
 `RecordAnnualAccountsOverride`, `AddAnnualAccountsReviewComment`,
@@ -159,3 +162,23 @@ operations. `annual_accounts_persistence_adapter` declares the registered adapte
 `AnnualAccountsCompanyIdentity` carries Company Access's organization, and
 `ImportedAnnualAccountsEvidence` returns the inserted ID and TT02 reference for
 the subsequent Audit continuation.
+
+## Explicit physical cutover
+
+The cutover requires exact source structures and inventoried function definitions,
+positive Accounts provenance and six matching count/digest reconciliations. It
+rejects quarantine and untraceable successor rows, then fences the empty generic
+tables before enabling owned writes. The contract drops those six empty tables.
+Contract rollback restores their schema, access, indexes and triggers with the
+write fences intact. Full rollback restores the latest owned rows, including new
+evidence and acknowledgements, and fences owned writes before returning authority
+to the generic store. Migration phases are transactionally locked.
+
+RF blocking-override checks, Documents evidence retention and Company Access
+support history call restricted Accounts-owned factual contracts. Tax's
+predecessor-retirement coverage accepts the verified final generic retirement.
+Only those four inventoried callers are rebound. The revoked historical
+`public.remove_unlinked_document` and migration-only RF legacy classifier remain
+historical definitions; neither is a live Accounts consumer. These artifacts are
+explicit release steps; adding them to the repository does not apply them to a
+hosted database or authorize production filing.

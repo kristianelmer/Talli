@@ -1,0 +1,21 @@
+{
+  "database": "accounts153_setup_fix_d060",
+  "mode": "ROLLBACK_ONLY_FROZEN_WIP_PUBLIC_RLS_ROLLBACK_DRIFT",
+  "artifacts": {
+    "20260914090244_annual_accounts_filing_expand.sql": "c1358d77a13a2d6e3d7345c487290fdf10220f3bbd984c6ff5d4983ababe1bea",
+    "20260914092018_annual_accounts_filing_read_contracts.sql": "7c9366ed41cdbcb4cddb9d748d4e987d370b9a04be2f74890f7fa446174fdb29",
+    "20260914092924_annual_accounts_filing_preparation_contracts.sql": "ba67f1fdcbf314b0ed545eaf040b11ca411d342d2dccf3960ce3a6c9b9aaa6c8",
+    "20260914093204_annual_accounts_filing_import_contract.sql": "b3644149be001e768d8d497e248b438631ecb38a2589965108ab47d60d53fc48",
+    "20260914101625_annual_accounts_filing_dependency_contracts.sql": "0d8a50cd22ec0859ba87dc075a7c4357edad77024ad27623036456fe6bd1d0a1",
+    "20260914101805_annual_accounts_filing_cutover.sql": "3f4495c1d75644413171150b71f2048f34ef100dcf3492bcc28005f5c31f064b"
+  },
+  "cases": [],
+  "rollbackSha256": "6f31c93d658a9acd54b549f132b651ef9e5186cfb99041f9fc85efb8114d3271",
+  "status": "PASS_EXPECTED_DRIFT_REJECTION",
+  "error": "annual_accounts_rollback_source_schema_changed\nCONTEXT:  PL/pgSQL function inline_code_block line 12 at RAISE",
+  "sqlstate": "P0001",
+  "schemaRollbackVerified": true,
+  "fixtureRollbackVerified": true,
+  "globalMembershipsRestored": true,
+  "sourceSchemaAclRestored": true
+}

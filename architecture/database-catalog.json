@@ -7,32 +7,50 @@
     {
       "name": "annual_accounts_filing.authority_permissions",
       "kind": "capability-business",
-      "owner": "backend:annual_accounts_filing"
+      "owner": "backend:annual_accounts_filing",
+      "compatibilityResources": [
+        "table:authority_permissions"
+      ]
     },
     {
       "name": "annual_accounts_filing.authority_test_runs",
       "kind": "capability-business",
-      "owner": "backend:annual_accounts_filing"
+      "owner": "backend:annual_accounts_filing",
+      "compatibilityResources": [
+        "table:authority_test_runs"
+      ]
     },
     {
       "name": "annual_accounts_filing.filing_overrides",
       "kind": "capability-business",
-      "owner": "backend:annual_accounts_filing"
+      "owner": "backend:annual_accounts_filing",
+      "compatibilityResources": [
+        "table:filing_overrides"
+      ]
     },
     {
       "name": "annual_accounts_filing.filing_previews",
       "kind": "capability-business",
-      "owner": "backend:annual_accounts_filing"
+      "owner": "backend:annual_accounts_filing",
+      "compatibilityResources": [
+        "table:filing_previews"
+      ]
     },
     {
       "name": "annual_accounts_filing.filing_review_comments",
       "kind": "capability-business",
-      "owner": "backend:annual_accounts_filing"
+      "owner": "backend:annual_accounts_filing",
+      "compatibilityResources": [
+        "table:filing_review_comments"
+      ]
     },
     {
       "name": "annual_accounts_filing.filing_submissions",
       "kind": "capability-business",
-      "owner": "backend:annual_accounts_filing"
+      "owner": "backend:annual_accounts_filing",
+      "compatibilityResources": [
+        "table:filing_submissions"
+      ]
     },
     {
       "name": "annual_notification_inbox.receipts",
@@ -695,14 +713,6 @@
       "kind": "legacy-business"
     },
     {
-      "name": "public.authority_permissions",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.authority_test_runs",
-      "kind": "legacy-business"
-    },
-    {
       "name": "public.companies",
       "kind": "capability-business",
       "owner": "backend:company_access"
@@ -769,23 +779,7 @@
       "owner": "backend:documents"
     },
     {
-      "name": "public.filing_overrides",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.filing_previews",
-      "kind": "legacy-business"
-    },
-    {
       "name": "public.filing_readiness_snapshots",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.filing_review_comments",
-      "kind": "legacy-business"
-    },
-    {
-      "name": "public.filing_submissions",
       "kind": "legacy-business"
     },
     {

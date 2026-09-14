@@ -4,7 +4,7 @@
   "name": "annual_accounts_filing",
   "path": "apps/backend/src/talli_backend/modules/annual_accounts_filing",
   "owner": "backend:annual_accounts_filing",
-  "purpose": "Own Annual Accounts calculation, XML, readiness, evidence, rehearsal and phase-gated filing persistence; live web cutover remains pending.",
+  "purpose": "Own Annual Accounts calculation, XML, readiness, evidence, rehearsal and phase-gated filing persistence through the generated web boundary.",
   "documentation": "apps/backend/src/talli_backend/modules/annual_accounts_filing/MODULE.md",
   "publicEntryPoint": "talli_backend.modules.annual_accounts_filing.public",
   "exports": {

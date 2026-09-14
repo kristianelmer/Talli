@@ -1,0 +1,622 @@
+FFFFFFFFFFFFFFF                                                          [100%]
+=================================== FAILURES ===================================
+_______ test_latest_state_survives_contract_full_rollback_and_recutover ________
+
+database = <psycopg.Connection [INERROR] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x109263440>
+
+    def test_latest_state_survives_contract_full_rollback_and_recutover(database):
+        db = database
+        original = rows(db, 'public')
+        before = environment(db)
+>       apply(db, CUTOVER)
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:112: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:53: in apply
+    db.execute(raw.replace('begin;\n', '', 1).removesuffix('commit;\n'), prepare=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [INERROR] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x109263440>
+query = "-- #153 CUTOVER: reconcile the final generic filing source and activate one owner.\n-- Apply only after expansion and...rrent_user,r.prior->>'admin',r.prior->>'inherit',r.prior->>'set',current_user); end if;\n end loop;\nend; $restore$;\n"
+params = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.SyntaxError: syntax error at end of input
+E           LINE 124:    when 'filing_previews' then '9679621eedf3e27969d7a73fcfd3...
+E                                              ^
+
+apps/backend/.venv/lib/python3.12/site-packages/psycopg/connection.py:257: SyntaxError
+_ test_cutover_rejects_source_drift_without_mutation[insert into public.filing_previews(company_id,income_year,filing,status,preview,created_by) values('15300000-0000-4000-8000-000000000001',2025,'unclassified','ready','Synthetic unknown','15300000-0000-4000-8000-000000000010')-annual_accounts_cutover_quarantine] _
+
+database = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a4d2b70>
+mutation = "insert into public.filing_previews(company_id,income_year,filing,status,preview,created_by) values('15300000-0000-4000-8000-000000000001',2025,'unclassified','ready','Synthetic unknown','15300000-0000-4000-8000-000000000010')"
+message = 'annual_accounts_cutover_quarantine'
+
+    @pytest.mark.parametrize('mutation,message', [
+        ("insert into public.filing_previews(company_id,income_year,filing,status,preview,created_by) values('15300000-0000-4000-8000-000000000001',2025,'unclassified','ready','Synthetic unknown','15300000-0000-4000-8000-000000000010')", 'annual_accounts_cutover_quarantine'),
+        ('alter table public.filing_previews add column unexpected_accounts_probe text', 'annual_accounts_source_schema_changed'),
+        ('alter table public.filing_previews disable trigger company_archive_track_filing_previews', 'annual_accounts_source_schema_changed'),
+    ])
+    def test_cutover_rejects_source_drift_without_mutation(database, mutation, message):
+        db = database
+        db.execute(mutation)
+        before = rows(db, 'public')
+        state = environment(db)
+>       expect_error(db, message, lambda: apply(db, CUTOVER))
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:174: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+db = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a4d2b70>
+message = 'annual_accounts_cutover_quarantine'
+operation = <function test_cutover_rejects_source_drift_without_mutation.<locals>.<lambda> at 0x10a4da660>
+
+    def expect_error(db, message, operation):
+        with pytest.raises(psycopg.Error) as caught:
+            with db.transaction():
+                operation()
+>       assert caught.value.diag.message_primary == message
+E       AssertionError: assert 'syntax error at end of input' == 'annual_accou...er_quarantine'
+E         
+E         - annual_accounts_cutover_quarantine
+E         + syntax error at end of input
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:105: AssertionError
+_ test_cutover_rejects_source_drift_without_mutation[alter table public.filing_previews add column unexpected_accounts_probe text-annual_accounts_source_schema_changed] _
+
+database = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a4d2e40>
+mutation = 'alter table public.filing_previews add column unexpected_accounts_probe text'
+message = 'annual_accounts_source_schema_changed'
+
+    @pytest.mark.parametrize('mutation,message', [
+        ("insert into public.filing_previews(company_id,income_year,filing,status,preview,created_by) values('15300000-0000-4000-8000-000000000001',2025,'unclassified','ready','Synthetic unknown','15300000-0000-4000-8000-000000000010')", 'annual_accounts_cutover_quarantine'),
+        ('alter table public.filing_previews add column unexpected_accounts_probe text', 'annual_accounts_source_schema_changed'),
+        ('alter table public.filing_previews disable trigger company_archive_track_filing_previews', 'annual_accounts_source_schema_changed'),
+    ])
+    def test_cutover_rejects_source_drift_without_mutation(database, mutation, message):
+        db = database
+        db.execute(mutation)
+        before = rows(db, 'public')
+        state = environment(db)
+>       expect_error(db, message, lambda: apply(db, CUTOVER))
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:174: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+db = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a4d2e40>
+message = 'annual_accounts_source_schema_changed'
+operation = <function test_cutover_rejects_source_drift_without_mutation.<locals>.<lambda> at 0x10a4dade0>
+
+    def expect_error(db, message, operation):
+        with pytest.raises(psycopg.Error) as caught:
+            with db.transaction():
+                operation()
+>       assert caught.value.diag.message_primary == message
+E       AssertionError: assert 'syntax error at end of input' == 'annual_accou...chema_changed'
+E         
+E         - annual_accounts_source_schema_changed
+E         + syntax error at end of input
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:105: AssertionError
+_ test_cutover_rejects_source_drift_without_mutation[alter table public.filing_previews disable trigger company_archive_track_filing_previews-annual_accounts_source_schema_changed] _
+
+database = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a540bc0>
+mutation = 'alter table public.filing_previews disable trigger company_archive_track_filing_previews'
+message = 'annual_accounts_source_schema_changed'
+
+    @pytest.mark.parametrize('mutation,message', [
+        ("insert into public.filing_previews(company_id,income_year,filing,status,preview,created_by) values('15300000-0000-4000-8000-000000000001',2025,'unclassified','ready','Synthetic unknown','15300000-0000-4000-8000-000000000010')", 'annual_accounts_cutover_quarantine'),
+        ('alter table public.filing_previews add column unexpected_accounts_probe text', 'annual_accounts_source_schema_changed'),
+        ('alter table public.filing_previews disable trigger company_archive_track_filing_previews', 'annual_accounts_source_schema_changed'),
+    ])
+    def test_cutover_rejects_source_drift_without_mutation(database, mutation, message):
+        db = database
+        db.execute(mutation)
+        before = rows(db, 'public')
+        state = environment(db)
+>       expect_error(db, message, lambda: apply(db, CUTOVER))
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:174: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+db = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a540bc0>
+message = 'annual_accounts_source_schema_changed'
+operation = <function test_cutover_rejects_source_drift_without_mutation.<locals>.<lambda> at 0x10a4db420>
+
+    def expect_error(db, message, operation):
+        with pytest.raises(psycopg.Error) as caught:
+            with db.transaction():
+                operation()
+>       assert caught.value.diag.message_primary == message
+E       AssertionError: assert 'syntax error at end of input' == 'annual_accou...chema_changed'
+E         
+E         - annual_accounts_source_schema_changed
+E         + syntax error at end of input
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:105: AssertionError
+________________ test_contract_preserves_first_index_inventory _________________
+
+database = <psycopg.Connection [INERROR] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a541ee0>
+
+    def test_contract_preserves_first_index_inventory(database):
+        db = database
+>       apply(db, CUTOVER)
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:182: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:53: in apply
+    db.execute(raw.replace('begin;\n', '', 1).removesuffix('commit;\n'), prepare=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [INERROR] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a541ee0>
+query = "-- #153 CUTOVER: reconcile the final generic filing source and activate one owner.\n-- Apply only after expansion and...rrent_user,r.prior->>'admin',r.prior->>'inherit',r.prior->>'set',current_user); end if;\n end loop;\nend; $restore$;\n"
+params = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.SyntaxError: syntax error at end of input
+E           LINE 124:    when 'filing_previews' then '9679621eedf3e27969d7a73fcfd3...
+E                                              ^
+
+apps/backend/.venv/lib/python3.12/site-packages/psycopg/connection.py:257: SyntaxError
+____________ test_real_authorization_and_phase_contracts[expanded] _____________
+
+database = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a4d1ca0>
+phase = 'expanded'
+
+    @pytest.mark.parametrize('phase', ['expanded', 'cutover', 'contracted'])
+    def test_real_authorization_and_phase_contracts(database, phase):
+        db = database
+        if phase != 'expanded':
+            apply(db, CUTOVER)
+        if phase == 'contracted':
+            apply(db, CONTRACT)
+        for name in ACTORS:
+            with actor(db, name) as identity:
+                def read():
+                    return db.execute('select annual_accounts_filing.read_workspace_v1(%s,2025,%s)', (COMPANY, identity)).fetchone()[0]
+                if phase == 'expanded':
+>                   expect_error(db, 'annual_accounts_unavailable', read)
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:203: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+db = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a4d1ca0>
+message = 'annual_accounts_unavailable'
+operation = <function test_real_authorization_and_phase_contracts.<locals>.read at 0x10a4db1a0>
+
+    def expect_error(db, message, operation):
+        with pytest.raises(psycopg.Error) as caught:
+            with db.transaction():
+                operation()
+>       assert caught.value.diag.message_primary == message
+E       AssertionError: assert 'annual_accounts_not_found' == 'annual_accounts_unavailable'
+E         
+E         - annual_accounts_unavailable
+E         + annual_accounts_not_found
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:105: AssertionError
+_____________ test_real_authorization_and_phase_contracts[cutover] _____________
+
+database = <psycopg.Connection [INERROR] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x1096e7bf0>
+phase = 'cutover'
+
+    @pytest.mark.parametrize('phase', ['expanded', 'cutover', 'contracted'])
+    def test_real_authorization_and_phase_contracts(database, phase):
+        db = database
+        if phase != 'expanded':
+>           apply(db, CUTOVER)
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:195: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:53: in apply
+    db.execute(raw.replace('begin;\n', '', 1).removesuffix('commit;\n'), prepare=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [INERROR] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x1096e7bf0>
+query = "-- #153 CUTOVER: reconcile the final generic filing source and activate one owner.\n-- Apply only after expansion and...rrent_user,r.prior->>'admin',r.prior->>'inherit',r.prior->>'set',current_user); end if;\n end loop;\nend; $restore$;\n"
+params = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.SyntaxError: syntax error at end of input
+E           LINE 124:    when 'filing_previews' then '9679621eedf3e27969d7a73fcfd3...
+E                                              ^
+
+apps/backend/.venv/lib/python3.12/site-packages/psycopg/connection.py:257: SyntaxError
+___________ test_real_authorization_and_phase_contracts[contracted] ____________
+
+database = <psycopg.Connection [INERROR] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x1096e7620>
+phase = 'contracted'
+
+    @pytest.mark.parametrize('phase', ['expanded', 'cutover', 'contracted'])
+    def test_real_authorization_and_phase_contracts(database, phase):
+        db = database
+        if phase != 'expanded':
+>           apply(db, CUTOVER)
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:195: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:53: in apply
+    db.execute(raw.replace('begin;\n', '', 1).removesuffix('commit;\n'), prepare=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [INERROR] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x1096e7620>
+query = "-- #153 CUTOVER: reconcile the final generic filing source and activate one owner.\n-- Apply only after expansion and...rrent_user,r.prior->>'admin',r.prior->>'inherit',r.prior->>'set',current_user); end if;\n end loop;\nend; $restore$;\n"
+params = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.SyntaxError: syntax error at end of input
+E           LINE 124:    when 'filing_previews' then '9679621eedf3e27969d7a73fcfd3...
+E                                              ^
+
+apps/backend/.venv/lib/python3.12/site-packages/psycopg/connection.py:257: SyntaxError
+_ test_cutover_rejects_target_protection_drift[alter table annual_accounts_filing.filing_previews no force row level security] _
+
+database = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x109720ef0>
+mutation = 'alter table annual_accounts_filing.filing_previews no force row level security'
+
+    @pytest.mark.parametrize('mutation', [
+        'alter table annual_accounts_filing.filing_previews no force row level security',
+        'alter table annual_accounts_filing.filing_previews disable row level security',
+        'create policy accounts_probe_unscoped on annual_accounts_filing.filing_previews for select to annual_accounts_filing_store_owner using(true)',
+        'alter table annual_accounts_filing.filing_submissions drop constraint filing_submissions_mode_check',
+        'grant select on annual_accounts_filing.filing_previews to authenticated',
+    ])
+    def test_cutover_rejects_target_protection_drift(database, mutation):
+        db = database
+        runner = db.execute('select current_user').fetchone()[0]
+        db.execute(sql.SQL('grant annual_accounts_filing_store_owner to {} with set true granted by {}').format(sql.Identifier(runner), sql.Identifier(runner)))
+        db.execute('set local role annual_accounts_filing_store_owner')
+        db.execute(mutation)
+        db.execute('reset role')
+        before = rows(db, 'public')
+>       expect_error(db, 'annual_accounts_target_schema_changed', lambda: apply(db, CUTOVER))
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:233: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+db = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x109720ef0>
+message = 'annual_accounts_target_schema_changed'
+operation = <function test_cutover_rejects_target_protection_drift.<locals>.<lambda> at 0x10a4db2e0>
+
+    def expect_error(db, message, operation):
+        with pytest.raises(psycopg.Error) as caught:
+            with db.transaction():
+                operation()
+>       assert caught.value.diag.message_primary == message
+E       AssertionError: assert 'syntax error at end of input' == 'annual_accou...chema_changed'
+E         
+E         - annual_accounts_target_schema_changed
+E         + syntax error at end of input
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:105: AssertionError
+_ test_cutover_rejects_target_protection_drift[alter table annual_accounts_filing.filing_previews disable row level security] _
+
+database = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10974a8d0>
+mutation = 'alter table annual_accounts_filing.filing_previews disable row level security'
+
+    @pytest.mark.parametrize('mutation', [
+        'alter table annual_accounts_filing.filing_previews no force row level security',
+        'alter table annual_accounts_filing.filing_previews disable row level security',
+        'create policy accounts_probe_unscoped on annual_accounts_filing.filing_previews for select to annual_accounts_filing_store_owner using(true)',
+        'alter table annual_accounts_filing.filing_submissions drop constraint filing_submissions_mode_check',
+        'grant select on annual_accounts_filing.filing_previews to authenticated',
+    ])
+    def test_cutover_rejects_target_protection_drift(database, mutation):
+        db = database
+        runner = db.execute('select current_user').fetchone()[0]
+        db.execute(sql.SQL('grant annual_accounts_filing_store_owner to {} with set true granted by {}').format(sql.Identifier(runner), sql.Identifier(runner)))
+        db.execute('set local role annual_accounts_filing_store_owner')
+        db.execute(mutation)
+        db.execute('reset role')
+        before = rows(db, 'public')
+>       expect_error(db, 'annual_accounts_target_schema_changed', lambda: apply(db, CUTOVER))
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:233: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+db = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10974a8d0>
+message = 'annual_accounts_target_schema_changed'
+operation = <function test_cutover_rejects_target_protection_drift.<locals>.<lambda> at 0x10a4db9c0>
+
+    def expect_error(db, message, operation):
+        with pytest.raises(psycopg.Error) as caught:
+            with db.transaction():
+                operation()
+>       assert caught.value.diag.message_primary == message
+E       AssertionError: assert 'syntax error at end of input' == 'annual_accou...chema_changed'
+E         
+E         - annual_accounts_target_schema_changed
+E         + syntax error at end of input
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:105: AssertionError
+_ test_cutover_rejects_target_protection_drift[create policy accounts_probe_unscoped on annual_accounts_filing.filing_previews for select to annual_accounts_filing_store_owner using(true)] _
+
+database = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a4d0650>
+mutation = 'create policy accounts_probe_unscoped on annual_accounts_filing.filing_previews for select to annual_accounts_filing_store_owner using(true)'
+
+    @pytest.mark.parametrize('mutation', [
+        'alter table annual_accounts_filing.filing_previews no force row level security',
+        'alter table annual_accounts_filing.filing_previews disable row level security',
+        'create policy accounts_probe_unscoped on annual_accounts_filing.filing_previews for select to annual_accounts_filing_store_owner using(true)',
+        'alter table annual_accounts_filing.filing_submissions drop constraint filing_submissions_mode_check',
+        'grant select on annual_accounts_filing.filing_previews to authenticated',
+    ])
+    def test_cutover_rejects_target_protection_drift(database, mutation):
+        db = database
+        runner = db.execute('select current_user').fetchone()[0]
+        db.execute(sql.SQL('grant annual_accounts_filing_store_owner to {} with set true granted by {}').format(sql.Identifier(runner), sql.Identifier(runner)))
+        db.execute('set local role annual_accounts_filing_store_owner')
+        db.execute(mutation)
+        db.execute('reset role')
+        before = rows(db, 'public')
+>       expect_error(db, 'annual_accounts_target_schema_changed', lambda: apply(db, CUTOVER))
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:233: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+db = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a4d0650>
+message = 'annual_accounts_target_schema_changed'
+operation = <function test_cutover_rejects_target_protection_drift.<locals>.<lambda> at 0x10a4dbd80>
+
+    def expect_error(db, message, operation):
+        with pytest.raises(psycopg.Error) as caught:
+            with db.transaction():
+                operation()
+>       assert caught.value.diag.message_primary == message
+E       AssertionError: assert 'syntax error at end of input' == 'annual_accou...chema_changed'
+E         
+E         - annual_accounts_target_schema_changed
+E         + syntax error at end of input
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:105: AssertionError
+_ test_cutover_rejects_target_protection_drift[alter table annual_accounts_filing.filing_submissions drop constraint filing_submissions_mode_check] _
+
+database = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a4d0260>
+mutation = 'alter table annual_accounts_filing.filing_submissions drop constraint filing_submissions_mode_check'
+
+    @pytest.mark.parametrize('mutation', [
+        'alter table annual_accounts_filing.filing_previews no force row level security',
+        'alter table annual_accounts_filing.filing_previews disable row level security',
+        'create policy accounts_probe_unscoped on annual_accounts_filing.filing_previews for select to annual_accounts_filing_store_owner using(true)',
+        'alter table annual_accounts_filing.filing_submissions drop constraint filing_submissions_mode_check',
+        'grant select on annual_accounts_filing.filing_previews to authenticated',
+    ])
+    def test_cutover_rejects_target_protection_drift(database, mutation):
+        db = database
+        runner = db.execute('select current_user').fetchone()[0]
+        db.execute(sql.SQL('grant annual_accounts_filing_store_owner to {} with set true granted by {}').format(sql.Identifier(runner), sql.Identifier(runner)))
+        db.execute('set local role annual_accounts_filing_store_owner')
+        db.execute(mutation)
+        db.execute('reset role')
+        before = rows(db, 'public')
+>       expect_error(db, 'annual_accounts_target_schema_changed', lambda: apply(db, CUTOVER))
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:233: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+db = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a4d0260>
+message = 'annual_accounts_target_schema_changed'
+operation = <function test_cutover_rejects_target_protection_drift.<locals>.<lambda> at 0x10a5787c0>
+
+    def expect_error(db, message, operation):
+        with pytest.raises(psycopg.Error) as caught:
+            with db.transaction():
+                operation()
+>       assert caught.value.diag.message_primary == message
+E       AssertionError: assert 'syntax error at end of input' == 'annual_accou...chema_changed'
+E         
+E         - annual_accounts_target_schema_changed
+E         + syntax error at end of input
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:105: AssertionError
+_ test_cutover_rejects_target_protection_drift[grant select on annual_accounts_filing.filing_previews to authenticated] _
+
+database = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a541d90>
+mutation = 'grant select on annual_accounts_filing.filing_previews to authenticated'
+
+    @pytest.mark.parametrize('mutation', [
+        'alter table annual_accounts_filing.filing_previews no force row level security',
+        'alter table annual_accounts_filing.filing_previews disable row level security',
+        'create policy accounts_probe_unscoped on annual_accounts_filing.filing_previews for select to annual_accounts_filing_store_owner using(true)',
+        'alter table annual_accounts_filing.filing_submissions drop constraint filing_submissions_mode_check',
+        'grant select on annual_accounts_filing.filing_previews to authenticated',
+    ])
+    def test_cutover_rejects_target_protection_drift(database, mutation):
+        db = database
+        runner = db.execute('select current_user').fetchone()[0]
+        db.execute(sql.SQL('grant annual_accounts_filing_store_owner to {} with set true granted by {}').format(sql.Identifier(runner), sql.Identifier(runner)))
+        db.execute('set local role annual_accounts_filing_store_owner')
+        db.execute(mutation)
+        db.execute('reset role')
+        before = rows(db, 'public')
+>       expect_error(db, 'annual_accounts_target_schema_changed', lambda: apply(db, CUTOVER))
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:233: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+db = <psycopg.Connection [INTRANS] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a541d90>
+message = 'annual_accounts_target_schema_changed'
+operation = <function test_cutover_rejects_target_protection_drift.<locals>.<lambda> at 0x10a578fe0>
+
+    def expect_error(db, message, operation):
+        with pytest.raises(psycopg.Error) as caught:
+            with db.transaction():
+                operation()
+>       assert caught.value.diag.message_primary == message
+E       AssertionError: assert 'syntax error at end of input' == 'annual_accou...chema_changed'
+E         
+E         - annual_accounts_target_schema_changed
+E         + syntax error at end of input
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:105: AssertionError
+_ test_full_rollback_rejects_changed_source_protections[alter table public.filing_previews disable row level security] _
+
+database = <psycopg.Connection [INERROR] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a540260>
+mutation = 'alter table public.filing_previews disable row level security'
+
+    @pytest.mark.parametrize('mutation', [
+        'alter table public.filing_previews disable row level security',
+        'alter table public.filing_previews disable trigger company_archive_track_filing_previews',
+    ])
+    def test_full_rollback_rejects_changed_source_protections(database, mutation):
+        db = database
+>       apply(db, CUTOVER)
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:244: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:53: in apply
+    db.execute(raw.replace('begin;\n', '', 1).removesuffix('commit;\n'), prepare=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [INERROR] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a540260>
+query = "-- #153 CUTOVER: reconcile the final generic filing source and activate one owner.\n-- Apply only after expansion and...rrent_user,r.prior->>'admin',r.prior->>'inherit',r.prior->>'set',current_user); end if;\n end loop;\nend; $restore$;\n"
+params = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.SyntaxError: syntax error at end of input
+E           LINE 124:    when 'filing_previews' then '9679621eedf3e27969d7a73fcfd3...
+E                                              ^
+
+apps/backend/.venv/lib/python3.12/site-packages/psycopg/connection.py:257: SyntaxError
+_ test_full_rollback_rejects_changed_source_protections[alter table public.filing_previews disable trigger company_archive_track_filing_previews] _
+
+database = <psycopg.Connection [INERROR] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a542390>
+mutation = 'alter table public.filing_previews disable trigger company_archive_track_filing_previews'
+
+    @pytest.mark.parametrize('mutation', [
+        'alter table public.filing_previews disable row level security',
+        'alter table public.filing_previews disable trigger company_archive_track_filing_previews',
+    ])
+    def test_full_rollback_rejects_changed_source_protections(database, mutation):
+        db = database
+>       apply(db, CUTOVER)
+
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:244: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+apps/backend/tests/test_annual_accounts_filing_lifecycle.py:53: in apply
+    db.execute(raw.replace('begin;\n', '', 1).removesuffix('commit;\n'), prepare=False)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <psycopg.Connection [INERROR] (host=127.0.0.1 port=52966 user=postgres database=accounts153_setup_fix_d060) at 0x10a542390>
+query = "-- #153 CUTOVER: reconcile the final generic filing source and activate one owner.\n-- Apply only after expansion and...rrent_user,r.prior->>'admin',r.prior->>'inherit',r.prior->>'set',current_user); end if;\n end loop;\nend; $restore$;\n"
+params = None
+
+    def execute(
+        self,
+        query: Query,
+        params: Params | None = None,
+        *,
+        prepare: bool | None = None,
+        binary: bool = False,
+    ) -> Cursor[Row]:
+        """Execute a query and return a cursor to read its results."""
+        try:
+            cur = self.cursor()
+            if binary:
+                cur.format = BINARY
+    
+            return cur.execute(query, params, prepare=prepare)
+        except e._NO_TRACEBACK as ex:
+>           raise ex.with_traceback(None)
+E           psycopg.errors.SyntaxError: syntax error at end of input
+E           LINE 124:    when 'filing_previews' then '9679621eedf3e27969d7a73fcfd3...
+E                                              ^
+
+apps/backend/.venv/lib/python3.12/site-packages/psycopg/connection.py:257: SyntaxError
+=========================== short test summary info ============================
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_latest_state_survives_contract_full_rollback_and_recutover
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_source_drift_without_mutation[insert into public.filing_previews(company_id,income_year,filing,status,preview,created_by) values('15300000-0000-4000-8000-000000000001',2025,'unclassified','ready','Synthetic unknown','15300000-0000-4000-8000-000000000010')-annual_accounts_cutover_quarantine]
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_source_drift_without_mutation[alter table public.filing_previews add column unexpected_accounts_probe text-annual_accounts_source_schema_changed]
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_source_drift_without_mutation[alter table public.filing_previews disable trigger company_archive_track_filing_previews-annual_accounts_source_schema_changed]
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_contract_preserves_first_index_inventory
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_real_authorization_and_phase_contracts[expanded]
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_real_authorization_and_phase_contracts[cutover]
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_real_authorization_and_phase_contracts[contracted]
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_target_protection_drift[alter table annual_accounts_filing.filing_previews no force row level security]
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_target_protection_drift[alter table annual_accounts_filing.filing_previews disable row level security]
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_target_protection_drift[create policy accounts_probe_unscoped on annual_accounts_filing.filing_previews for select to annual_accounts_filing_store_owner using(true)]
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_target_protection_drift[alter table annual_accounts_filing.filing_submissions drop constraint filing_submissions_mode_check]
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_cutover_rejects_target_protection_drift[grant select on annual_accounts_filing.filing_previews to authenticated]
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_full_rollback_rejects_changed_source_protections[alter table public.filing_previews disable row level security]
+FAILED apps/backend/tests/test_annual_accounts_filing_lifecycle.py::test_full_rollback_rejects_changed_source_protections[alter table public.filing_previews disable trigger company_archive_track_filing_previews]
+15 failed in 2.93s
