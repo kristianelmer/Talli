@@ -64,6 +64,17 @@ def test_repeated_document_across_pages_cannot_hide_an_unread_document():
     assert result.state == 'action_required' and journal.artifacts == {}
 
 
+@pytest.mark.parametrize('entry', [feedback(), Rf1086DocumentReference(DOCUMENT)])
+def test_repeated_document_on_one_page_cannot_hide_an_unread_document(entry):
+    input, pages = fixture()
+    pages[1] = replace(pages[1], documents=(entry, entry))
+    authority = ReadOnlyArchive(pages)
+    result, journal = run(input, authority)
+    assert result.state == 'action_required' and result.safe_error_code == 'RF1086_ARCHIVE_SHAPE_INVALID'
+    assert journal.artifacts == {} and all(event.state != 'accepted' for event in journal.events)
+    assert [kind for kind, _ in authority.calls] == ['list', 'list']
+
+
 def test_later_page_network_failure_never_uses_earlier_success_feedback():
     input, pages = fixture()
     pages[0] = replace(pages[0], documents=(*pages[0].documents[:49], feedback()))
@@ -121,3 +132,53 @@ def test_referenced_document_budget_stops_before_persistence(monkeypatch):
     result, journal = run(RECONCILIATION, authority)
     assert result.safe_error_code == 'RF1086_ARCHIVE_SCAN_LIMIT' and result.state == 'action_required'
     assert [kind for kind, _ in authority.calls] == ['list', 'get'] and journal.artifacts == {}
+
+
+def test_late_document_timeout_stops_before_any_artifact_is_stored(monkeypatch):
+    class Slow(ReadOnlyArchive):
+        async def get_document(self, **arguments):
+            await asyncio.sleep(1)
+            raise AssertionError('deadline did not cancel the read')
+    monkeypatch.setattr(module, 'RF1086_ARCHIVE_SCAN_TIMEOUT_SECONDS', 0.001)
+    result, journal = run(RECONCILIATION, Slow([page([feedback(), Rf1086DocumentReference(DOCUMENT)])]))
+    assert result.state == 'unknown' and result.safe_error_code == 'RF1086_ARCHIVE_SCAN_TIMEOUT'
+    assert journal.artifacts == {}
+
+
+def test_scan_deadline_does_not_interrupt_finalized_receipt_link(monkeypatch):
+    from test_rf1086_authority import feedback_store, ARTIFACT_BYTES, COMPANY_ID, SUBMISSION_ID
+    from talli_backend.modules.shareholder_register_filing.public import Rf1086ReconciliationSnapshot
+
+    journal, documents, uploads, _, _ = feedback_store()
+    original_query = journal._session._rows
+    linked = []
+
+    async def delayed_link(statement, parameters=()):
+        if statement.startswith('select document_id,sha256') and linked:
+            return list(linked)
+        if statement.startswith('select id from shareholder_register_filing.record_production_feedback_artifact'):
+            await asyncio.sleep(0.04)
+            linked.append({'document_id': parameters[2], 'sha256': parameters[6]})
+        return await original_query(statement, parameters)
+
+    async def read():
+        return Rf1086ReconciliationSnapshot('processing')
+
+    events = []
+
+    async def append(event):
+        events.append(event)
+        return True
+
+    journal._session._rows = delayed_link
+    journal.read_reconciliation_state = read
+    journal.append_reconciliation = append
+    input = replace(RECONCILIATION, company_id=COMPANY_ID, submission_id=SUBMISSION_ID)
+    monkeypatch.setattr(module, 'RF1086_ARCHIVE_SCAN_TIMEOUT_SECONDS', 0.02)
+    for _ in range(2):
+        result, _ = run(input, ReadOnlyArchive([page([ARTIFACT_BYTES.decode()])]), journal)
+        assert result.artifact_count == 1
+        assert result.safe_error_code == 'RF1086_FEEDBACK_ACTION_REQUIRED'
+    assert len(documents.records) == 1 and len(uploads) == 1
+    assert len(linked) == 1 and linked[0]['document_id'] in documents.records
+    assert len(events) == 2

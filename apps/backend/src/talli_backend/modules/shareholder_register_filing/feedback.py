@@ -159,7 +159,7 @@ async def _complete_archive(authority: Rf1086ReadOnlyAuthority, input: Rf1086Rec
         for document in page.documents:
             raw = _js_utf8_bytes(document if isinstance(document, str) else document.reference)
             identity = ("inline" if isinstance(document, str) else "reference", _sha256(raw))
-            if identity in seen:
+            if identity in seen or identity in identities:
                 raise Rf1086AuthorityError("RF1086_ARCHIVE_SHAPE_INVALID", status=200)
             identities.add(identity)
             total_bytes += len(raw)
@@ -173,15 +173,10 @@ async def _complete_archive(authority: Rf1086ReadOnlyAuthority, input: Rf1086Rec
         page_index += 1
 
 
-async def _read_feedback_once(journal: Rf1086ProductionJournal, authority: Rf1086ReadOnlyAuthority,
-        input: Rf1086ReconciliationInput, submitted_hashes: set[str], artifact_hashes: set[str]) -> Rf1086ReconciliationSnapshot:
-    try:
-        documents = await _complete_archive(authority, input)
-    except Exception as error:
-        return _safe_reconciliation_failure(error)
-    if not documents:
-        return Rf1086ReconciliationSnapshot("processing")
-    classifications: list[Rf1086FeedbackClassification] = []
+async def _acquire_feedback(authority: Rf1086ReadOnlyAuthority,
+        input: Rf1086ReconciliationInput, submitted_hashes: set[str]) -> list[Rf1086ReconciliationArtifact]:
+    documents = await _complete_archive(authority, input)
+    artifacts = []
     processed_bytes = 0
     for archived in documents:
         if isinstance(archived, str):
@@ -189,24 +184,37 @@ async def _read_feedback_once(journal: Rf1086ProductionJournal, authority: Rf108
             content_type = "application/xml"
             reference = "inline:" + _sha256(bytes_value)
         else:
-            try:
-                document = await authority.get_document(income_year=input.income_year,
-                    forsendelse_id=input.forsendelse_id, document_id=archived.reference)
-                reference, content_type, bytes_value = document.reference, document.content_type, document.bytes
-            except Exception as error:
-                return _safe_reconciliation_failure(error)
+            document = await authority.get_document(income_year=input.income_year,
+                forsendelse_id=input.forsendelse_id, document_id=archived.reference)
+            reference, content_type, bytes_value = document.reference, document.content_type, document.bytes
         processed_bytes += len(bytes_value)
         if processed_bytes > RF1086_MAX_ARCHIVE_SCAN_BYTES:
-            return Rf1086ReconciliationSnapshot("action_required", safe_error_code="RF1086_ARCHIVE_SCAN_LIMIT")
+            raise Rf1086AuthorityError("RF1086_ARCHIVE_SCAN_LIMIT", status=200)
         digest = _sha256(bytes_value)
         if digest in submitted_hashes:
             continue
         feedback = (classify_rf1086_feedback(bytes_value, forsendelse_id=input.forsendelse_id, income_year=input.income_year)
             if content_type in {"application/xml", "text/xml"} else Rf1086FeedbackResult("action_required", "unknown", None))
-        classifications.append(feedback.classification)
+        artifacts.append(Rf1086ReconciliationArtifact(input.submission_id,
+            input.company_id, reference, content_type, bytes_value, len(bytes_value), digest, feedback.classification))
+    return artifacts
+
+
+async def _read_feedback_once(journal: Rf1086ProductionJournal, authority: Rf1086ReadOnlyAuthority,
+        input: Rf1086ReconciliationInput, submitted_hashes: set[str], artifact_hashes: set[str]) -> Rf1086ReconciliationSnapshot:
+    try:
+        # The provider scan deadline must never cancel a durable artifact write.
+        async with asyncio.timeout(RF1086_ARCHIVE_SCAN_TIMEOUT_SECONDS):
+            artifacts = await _acquire_feedback(authority, input, submitted_hashes)
+    except TimeoutError:
+        return Rf1086ReconciliationSnapshot("unknown", safe_error_code="RF1086_ARCHIVE_SCAN_TIMEOUT")
+    except Exception as error:
+        return _safe_reconciliation_failure(error)
+    classifications: list[Rf1086FeedbackClassification] = []
+    for artifact in artifacts:
+        classifications.append(artifact.classification)
         try:
-            persisted = await journal.record_artifact(Rf1086ReconciliationArtifact(input.submission_id,
-                input.company_id, reference, content_type, bytes_value, len(bytes_value), digest, feedback.classification))
+            persisted = await journal.record_artifact(artifact)
             artifact_hashes.add(persisted)
         except Exception as error:
             retryable = isinstance(error, Rf1086FeedbackArtifactPersistenceError) and error.retryable
@@ -236,11 +244,7 @@ async def reconcile_journaled_rf1086_production(journal: Rf1086ProductionJournal
     outcome = Rf1086ReconciliationSnapshot("processing")
     for attempt in range(1, maximum_reads + 1):
         archive_reads += 1
-        try:
-            async with asyncio.timeout(RF1086_ARCHIVE_SCAN_TIMEOUT_SECONDS):
-                outcome = await _read_feedback_once(journal, authority, input, submitted_hashes, artifact_hashes)
-        except TimeoutError:
-            outcome = Rf1086ReconciliationSnapshot("unknown", safe_error_code="RF1086_ARCHIVE_SCAN_TIMEOUT")
+        outcome = await _read_feedback_once(journal, authority, input, submitted_hashes, artifact_hashes)
         if outcome.state != "processing" or attempt == maximum_reads:
             break
         if sleep is not None:

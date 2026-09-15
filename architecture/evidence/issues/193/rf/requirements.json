@@ -48,7 +48,7 @@
     }
   ],
   "limits": [
-    "Local RF work is active. No provider action or RF acceptance yet.",
+    "Local RF work is active. The approved synthetic submission and archive are verified; final business acceptance and complete RF acceptance remain pending.",
     "RF must pass before Tax begins; Tax must pass before Accounts.",
     "The #172 accepted supported boundary cannot be silently narrowed.",
     "No #149/#208/#192 final/#194 progression without the approved prerequisites."
