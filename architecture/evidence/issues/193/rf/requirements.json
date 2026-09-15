@@ -56,5 +56,6 @@
   "claim": "https://github.com/kristianelmer/Talli/issues/193#issuecomment-5671808140",
   "localJournalVerification": "journal-verification.json",
   "testBaselineVerification": "provider-baseline-20260915.json",
-  "archiveRecoveryVerification": "archive-recovery-20260915.json"
+  "archiveRecoveryVerification": "archive-recovery-20260915.json",
+  "localPaginationVerification": "pagination-verification.json"
 }
