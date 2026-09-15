@@ -658,3 +658,18 @@ configured with `altinn:instances.read` and, after Altinn corrected an omitted
 production grant on 2026-07-16, `altinn:instances.write`. Digdir Selvbetjening
 confirmed the write scope was attached without a `Tilgang mangler` marker. This
 scope attachment does not enable the RF-1086 production filing switch.
+
+### Verified synthetic RF receipt — 2026-09-15
+
+The approved no-activity return for synthetic company `310279617`, income year
+2025, received a final `godkjent` decision, reference `AKRE22100`. The complete
+one-page PDF and XML agree. The receipt belongs to an Acceptance transmission
+related to the original Submission; its internal XML submission ID is distinct
+from the HTTP submission ID. See
+[`acceptance-receipt-20260915.json`](../../architecture/evidence/issues/193/rf/acceptance-receipt-20260915.json)
+for hashes, identity chain and the independent 52-check review.
+
+This establishes the synthetic baseline business decision. The current canonical
+classifier does not yet support its `ar_til_mag:v0_1` namespace, and canonical
+Dialogporten receipt discovery still needs implementation. Broader supported
+cases, complete RF gates and genuine-company production evidence remain pending.

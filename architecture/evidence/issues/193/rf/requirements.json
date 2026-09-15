@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#193",
   "slice": "RF-1086",
-  "status": "LOCAL_JOURNAL_PASS_SYNTHETIC_SUBMISSION_AND_ARCHIVE_VERIFIED",
+  "status": "SYNTHETIC_SUBMISSION_ARCHIVE_AND_FINAL_BUSINESS_ACCEPTANCE_VERIFIED",
   "source": "https://github.com/kristianelmer/Talli/issues/193",
   "predecessor": {
     "issue": "#153",
@@ -48,7 +48,7 @@
     }
   ],
   "limits": [
-    "Local RF work is active. The approved synthetic submission and archive are verified; final business acceptance and complete RF acceptance remain pending.",
+    "Local RF work is active. The approved synthetic submission, archive and final business acceptance are verified; canonical feedback integration and complete RF acceptance remain pending.",
     "RF must pass before Tax begins; Tax must pass before Accounts.",
     "The #172 accepted supported boundary cannot be silently narrowed.",
     "No #149/#208/#192 final/#194 progression without the approved prerequisites."
@@ -59,5 +59,6 @@
   "archiveRecoveryVerification": "archive-recovery-20260915.json",
   "localPaginationVerification": "pagination-verification.json",
   "finalFeedbackLookup": "feedback-lookup-20260915.json",
-  "dialogAccessRecovery": "dialog-access-recovery-20260915.json"
+  "dialogAccessRecovery": "dialog-access-recovery-20260915.json",
+  "finalBusinessReceipt": "acceptance-receipt-20260915.json"
 }
