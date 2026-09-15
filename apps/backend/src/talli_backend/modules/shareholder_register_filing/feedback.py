@@ -22,13 +22,20 @@ RF1086_ARCHIVE_PAGE_SIZE = 50
 RF1086_MAX_ARCHIVE_PAGES = 100
 RF1086_MAX_ARCHIVE_SCAN_BYTES = 32 * 1024 * 1024
 RF1086_ARCHIVE_SCAN_TIMEOUT_SECONDS = 60
+RF1086_AR_FEEDBACK_NAMESPACE = "urn:ske:fastsetting:innsamling:aksjonaeroppgave:ar_til_mag:v0_1"
 RF1086_FEEDBACK_NAMESPACES = {
     "urn:ske:fastsetting:innsamling:grunnlagsdata:tilbakemelding:innsendingstilbakemelding:v2": "innsendingstilbakemelding-v2",
     "urn:ske:fastsetting:innsamling:grunnlagsdata:tilbakemelding:leveransetilbakemelding:v2": "leveransetilbakemelding-v2",
 }
 
 
-def classify_rf1086_feedback(bytes_value: bytes, *, forsendelse_id: str, income_year: int) -> Rf1086FeedbackResult:
+def classify_rf1086_feedback(bytes_value: bytes, *, forsendelse_id: str, income_year: int,
+        organization_number: str | None = None, related_forsendelse_id: str | None = None) -> Rf1086FeedbackResult:
+    """Classify bytes only after the caller has established their transport identity.
+
+    AR receipts report an internal ID, not the HTTP submission ID. They require
+    an independently verified related-transmission ID and expected company.
+    """
     action_required = Rf1086FeedbackResult("action_required", "unknown", None)
     if (not isinstance(bytes_value, bytes) or not 1 <= len(bytes_value) <= RF1086_MAX_FEEDBACK_BYTES
             or not forsendelse_id or type(income_year) is not int):
@@ -44,6 +51,7 @@ def classify_rf1086_feedback(bytes_value: bytes, *, forsendelse_id: str, income_
     invalid = False
     stack: list[str] = []
     captures: dict[str, list[str]] = {}
+    paths: dict[str, int] = {}
     active: dict | None = None
     cdata = False
 
@@ -52,19 +60,36 @@ def classify_rf1086_feedback(bytes_value: bytes, *, forsendelse_id: str, income_
         uri, _, local = name.rpartition("|")
         if not stack:
             root_namespace = uri
-            schema = RF1086_FEEDBACK_NAMESPACES.get(uri, "unknown")
+            schema = ("aksjonaeroppgave-ar-til-mag-v0_1" if uri == RF1086_AR_FEEDBACK_NAMESPACE
+                      else RF1086_FEEDBACK_NAMESPACES.get(uri, "unknown"))
             if local != "tilbakemelding" or schema == "unknown":
                 invalid = True
         elif uri != root_namespace:
             invalid = True
         if active is not None:
             invalid = True
-        if local in {"leveransestatus", "forsendelseid", "inntektsaar"}:
-            expected = "tilbakemelding/innsending/forsendelseid" if local == "forsendelseid" else (
-                "tilbakemelding/leveranse/inntektsaar" if local == "inntektsaar" else
-                "tilbakemelding/leveranse/leveransestatus" if schema == "innsendingstilbakemelding-v2" else
-                "tilbakemelding/leveranseoppsummering/leveransestatus")
-            if schema == "unknown" or "/".join(stack + [local]) != expected:
+        if len(stack) >= 64:
+            raise ValueError("RF1086_FEEDBACK_DEPTH")
+        path = "/".join(stack + [local])
+        if path in {"tilbakemelding/leveranse", "tilbakemelding/leveranse/oppgavegiver",
+                    "tilbakemelding/leveranse/leveranseoppsummering"}:
+            paths[path] = paths.get(path, 0) + 1
+        if schema == "aksjonaeroppgave-ar-til-mag-v0_1":
+            expected_paths = {
+                "leveransestatus": "tilbakemelding/leveranse/leveranseoppsummering/leveransestatus",
+                "inntektsaar": "tilbakemelding/leveranse/inntektsaar",
+                "organisasjonsnummer": "tilbakemelding/leveranse/oppgavegiver/organisasjonsnummer",
+                "forsendelseid": "tilbakemelding/innsending/forsendelseid",
+            }
+        else:
+            expected_paths = {
+                "forsendelseid": "tilbakemelding/innsending/forsendelseid",
+                "inntektsaar": "tilbakemelding/leveranse/inntektsaar",
+                "leveransestatus": ("tilbakemelding/leveranse/leveransestatus" if schema == "innsendingstilbakemelding-v2"
+                    else "tilbakemelding/leveranseoppsummering/leveransestatus"),
+            }
+        if local in expected_paths:
+            if schema == "unknown" or path != expected_paths[local]:
                 invalid = True
             active = {"field": local, "depth": len(stack) + 1, "text": ""}
         stack.append(local)
@@ -108,6 +133,20 @@ def classify_rf1086_feedback(bytes_value: bytes, *, forsendelse_id: str, income_
     transmissions = captures.get("forsendelseid", [])
     years = captures.get("inntektsaar", [])
     transmission = transmissions[0] if len(transmissions) == 1 else None
+    if schema == "aksjonaeroppgave-ar-til-mag-v0_1":
+        # The verified Dialogporten relation supplies the submission binding.
+        # Never reinterpret innsendingsId as a forsendelse ID.
+        if (not isinstance(organization_number, str) or not re.fullmatch(r"[0-9]{9}", organization_number)
+                or not isinstance(forsendelse_id, str)
+                or not re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", forsendelse_id, re.I)
+                or not isinstance(related_forsendelse_id, str)
+                or related_forsendelse_id != forsendelse_id
+                or captures.get("organisasjonsnummer") != [organization_number]
+                or years != [str(income_year)] or transmissions
+                or any(paths.get(path) != 1 for path in (
+                    "tilbakemelding/leveranse", "tilbakemelding/leveranse/oppgavegiver",
+                    "tilbakemelding/leveranse/leveranseoppsummering"))):
+            invalid = True
     if (invalid or schema == "unknown" or stack or len(statuses) != 1 or statuses[0] not in {"godkjent", "avvist"}
             or len(transmissions) > 1 or len(years) > 1
             or (len(transmissions) == 1 and transmission != forsendelse_id)

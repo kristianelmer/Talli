@@ -60,5 +60,6 @@
   "localPaginationVerification": "pagination-verification.json",
   "finalFeedbackLookup": "feedback-lookup-20260915.json",
   "dialogAccessRecovery": "dialog-access-recovery-20260915.json",
-  "finalBusinessReceipt": "acceptance-receipt-20260915.json"
+  "finalBusinessReceipt": "acceptance-receipt-20260915.json",
+  "localArParserVerification": "ar-parser-verification.json"
 }
