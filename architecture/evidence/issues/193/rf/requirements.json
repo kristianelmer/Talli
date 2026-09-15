@@ -58,5 +58,6 @@
   "testBaselineVerification": "provider-baseline-20260915.json",
   "archiveRecoveryVerification": "archive-recovery-20260915.json",
   "localPaginationVerification": "pagination-verification.json",
-  "finalFeedbackLookup": "feedback-lookup-20260915.json"
+  "finalFeedbackLookup": "feedback-lookup-20260915.json",
+  "dialogAccessRecovery": "dialog-access-recovery-20260915.json"
 }

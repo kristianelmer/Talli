@@ -172,6 +172,7 @@ right *"Tilgang til testmiljøet for ID-porten/Maskinporten Selvbetjening"* was 
   - ✅ **Attached 2026-07-14:** `altinn:instances.read` / `altinn:instances.write`, required for the
     Altinn3 instance/upload legs of the skattemelding and annual-accounts flows. Digdir Selvbetjening
     confirmed both scopes were added to the client without a `Tilgang mangler` marker.
+  - ✅ **Active 2026-09-15:** `digdir:dialogporten` was added to this existing test client with explicit owner approval. The subsequent system-user token and exact Dialogporten GET for the synthetic RF submission returned HTTP 200. Only this scope was added; final feedback contents remain pending. Evidence: `architecture/evidence/issues/193/rf/dialog-access-recovery-20260915.json`.
   - ✅ **Active for vendor-initiated Step 4b (2026-07-01):**
     `altinn:authentication/systemuser.request.write` + `altinn:authentication/systemuser.request.read`.
     Altinn granted these to org 930835978, and after **adding both to the client** in the Digdir
