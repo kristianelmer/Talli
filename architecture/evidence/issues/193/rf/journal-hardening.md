@@ -63,3 +63,17 @@ completion work, not a permanent supported-scope exclusion.
 After these corrections, all 83 focused tests pass (18.64 seconds), including a
 partial archive followed by GET-only recovery. The original review failures remain
 preserved. Final independent rereview is pending; no complete RF gate is claimed.
+
+## Authorized test baseline — 15 September 2026
+
+The owner approved the prepared request. The existing test credential obtained
+HTTP200, followed by HTTP200 for each of the three exact approved filing POSTs.
+The durable confirmation is retained. Five approved archive GETs returned HTTP404;
+the final retained error is GLD_021. No filing POST was repeated and no mutation
+remains pending. The run stopped at its approved request bound.
+
+`provider-baseline-20260915.json` records SUBMISSION_CONFIRMED_ARCHIVE_PENDING.
+An independent review passed50 consistency checks. Archive verification and final
+business acceptance remain unproved. Further read-only recovery is prepared but
+requires an extension of the exhausted five-read authorization; no new filing,
+production action, credential activation or paid step is authorized by that plan.

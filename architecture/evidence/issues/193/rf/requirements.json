@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#193",
   "slice": "RF-1086",
-  "status": "LOCAL_JOURNAL_PASS_PROVIDER_AUTHORIZATION_PENDING",
+  "status": "LOCAL_JOURNAL_PASS_TEST_SUBMISSION_CONFIRMED_ARCHIVE_PENDING",
   "source": "https://github.com/kristianelmer/Talli/issues/193",
   "predecessor": {
     "issue": "#153",
@@ -54,5 +54,6 @@
     "No #149/#208/#192 final/#194 progression without the approved prerequisites."
   ],
   "claim": "https://github.com/kristianelmer/Talli/issues/193#issuecomment-5671808140",
-  "localJournalVerification": "journal-verification.json"
+  "localJournalVerification": "journal-verification.json",
+  "testBaselineVerification": "provider-baseline-20260915.json"
 }
