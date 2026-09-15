@@ -11,6 +11,7 @@ from datetime import datetime
 import hashlib
 import json
 import os
+import re
 from urllib.parse import quote, urlencode
 from uuid import uuid4
 
@@ -18,7 +19,8 @@ import httpx
 import psycopg
 from psycopg.rows import dict_row
 
-from talli_backend.adapters.maskinporten import MaskinportenClient, MaskinportenConfiguration, SYSTEM_USER_TAX_SCOPE
+from talli_backend.adapters.maskinporten import MaskinportenClient, MaskinportenConfiguration, SYSTEM_USER_TAX_SCOPE, SYSTEM_USER_DIALOGPORTEN_SCOPE
+from talli_backend.adapters.rf1086_dialogporten import Rf1086DialogportenAdapter
 from talli_backend.adapters.rf1086_authority import Rf1086AuthorityAdapter, Rf1086ReadOnlyAuthorityAdapter
 from talli_backend.adapters.supabase_ledger import LedgerSupabaseConfiguration, SupabaseLedgerAdapter, _VerifiedActor, _validated_origin
 from talli_backend.application.ledger_workflow import LedgerAuthenticationError
@@ -601,21 +603,36 @@ class PostgresShareholderRegisterFilingSession:
         return await self._maskinporten.request_token(SYSTEM_USER_TAX_SCOPE,
             system_user_org_number=company.org_number, system_user_external_ref=connection.external_ref)
 
-    async def bind_mutation_authority(self, company, connection):
+    async def _feedback_tokens(self, company, connection):
         token = await self._token(company, connection)
         try:
-            return Rf1086MutationBinding(Rf1086AuthorityAdapter(token, transport=self._rf_transport),
-                Rf1086ReadOnlyAuthorityAdapter(token, transport=self._rf_transport), token.discard)
+            dialog_token = await self._maskinporten.request_token(SYSTEM_USER_DIALOGPORTEN_SCOPE,
+                system_user_org_number=company.org_number, system_user_external_ref=connection.external_ref)
         except BaseException:
             token.discard()
             raise
+        def discard():
+            token.discard()
+            dialog_token.discard()
+        return token, dialog_token, discard
+
+    async def bind_mutation_authority(self, company, connection):
+        token, dialog_token, discard = await self._feedback_tokens(company, connection)
+        try:
+            return Rf1086MutationBinding(Rf1086AuthorityAdapter(token, transport=self._rf_transport),
+                Rf1086ReadOnlyAuthorityAdapter(token, transport=self._rf_transport), discard,
+                Rf1086DialogportenAdapter(dialog_token, transport=self._rf_transport))
+        except BaseException:
+            discard()
+            raise
 
     async def bind_read_only_authority(self, company, connection):
-        token = await self._token(company, connection)
+        token, dialog_token, discard = await self._feedback_tokens(company, connection)
         try:
-            return Rf1086ReadOnlyBinding(Rf1086ReadOnlyAuthorityAdapter(token, transport=self._rf_transport), token.discard)
+            return Rf1086ReadOnlyBinding(Rf1086ReadOnlyAuthorityAdapter(token, transport=self._rf_transport), discard,
+                Rf1086DialogportenAdapter(dialog_token, transport=self._rf_transport))
         except BaseException:
-            token.discard()
+            discard()
             raise
 
     async def begin_production_filing(self, approval_id):
@@ -637,6 +654,25 @@ class PostgresShareholderRegisterFilingSession:
         if not rows or rows[0]["feedback_forsendelse_id"] is None:
             raise Rf1086ProductionError("status_unavailable")
         return str(rows[0]["feedback_forsendelse_id"])
+
+    async def read_claimed_dialog_id(self, submission_id, lease_id):
+        rows = await self._rows("select e.authority_reference,s.feedback_forsendelse_id "
+            "from shareholder_register_filing.production_filing_submissions s "
+            "join shareholder_register_filing.production_filing_events e on e.submission_id=s.id "
+            "where s.id=%s::uuid and s.feedback_reconciliation_lease_id=%s::uuid "
+            "and e.operation_name='confirm' and e.operation_state='succeeded' "
+            "order by e.created_at desc,e.id desc limit 1", (submission_id, lease_id))
+        try:
+            row = rows[0]
+            confirmation = json.loads(row["authority_reference"])
+            if (not isinstance(confirmation, dict) or set(confirmation) != {"dialogId", "forsendelseId"}
+                    or confirmation["forsendelseId"] != str(row["feedback_forsendelse_id"])
+                    or not isinstance(confirmation["dialogId"], str)
+                    or not re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", confirmation["dialogId"], re.I)):
+                raise ValueError()
+            return confirmation["dialogId"]
+        except (IndexError, KeyError, TypeError, ValueError):
+            raise Rf1086ProductionError("status_unavailable") from None
 
     async def release_feedback_lease(self, submission_id, lease_id):
         try:

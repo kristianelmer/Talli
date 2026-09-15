@@ -1,7 +1,7 @@
 # Shareholder register filing
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
+{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
 -->
 
 ## Owned behavior
@@ -179,6 +179,8 @@ Values, identifiers and ports:
 - `Rf1086DocumentPage`
 - `Rf1086AuthorityDocument`
 - `Rf1086ReadOnlyAuthority`
+- `Rf1086FeedbackDiscovery`
+- `Rf1086FeedbackTransmission`
 - `Rf1086MutationAuthority`
 - `ProductionOperation`
 - `ProductionOperationFailure`
@@ -228,3 +230,20 @@ Values, identifiers and ports:
 - `Rf1086CodeDecision`
 
 The mandatory database lane also runs `apps/backend/tests/test_shareholder_register_filing_lifecycle.py` for real phase, role and retained-row regressions.
+
+## Related authority feedback
+
+RF feedback discovery binds the stored dialog and original submission to the
+company and RF service before returning any related transmission attachments.
+The backend uses a separate `digdir:dialogporten` system-user token; neither token
+nor dialog narrative/presentation URLs enters the public contract. All related
+receipt documents are acquired within the shared scan deadline before any
+persistence. A complete XML decision governs its accompanying PDF artifact;
+missing XML, unknown content and conflicting decisions require action. Exact
+Dialogporten IDs, provider creation time and expected company/year are retained
+in artifact metadata while Documents owns the unchanged receipt bytes. A final
+decision is appended only after every artifact has persisted.
+
+A deterministic owned XML provenance manifest preserves every attachment identity
+independently of content-hash deduplication; finalization also requires that
+manifest to be durable. Its reference distinguishes it from provider receipts.

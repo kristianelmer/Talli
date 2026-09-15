@@ -1,0 +1,11 @@
+PASS — bounded corrected Dialogporten integration Standards review. STD-193-RF-DIALOG-1 is closed; no remaining actionable Standards or material Fowler heuristic finding.
+
+The new deterministic Talli-owned provenance XML preserves every transmission/attachment identity, type, creation time, company/year, MIME type and content hash separately from provider-byte deduplication. Its explicit talli:rf1086-feedback-provenance:v1 reference distinguishes local evidence from an authority receipt. It is included in the artifact set and must persist before acceptance. This satisfies the module’s exact attribution contract without moving Documents ownership into RF.
+
+The adapted original reproduction uses actual public reconciliation and actual _FeedbackJournal.record_artifact with local SQL/Document storage fakes. Three attachment identities, including two XML attachments with identical bytes, now survive in one durable manifest alongside two unique provider documents. The result is accepted only after all three stored artifacts. The original red producer/output and source remain unchanged. Manifest-write failure and order-independent replay regressions also pass.
+
+The adapter retains a closed transmission-type enum; conflicting Acceptance/Rejection decisions and non-decision categories cannot finalize. Both tokens retain exact shared delegation, remain backend-only, and are discarded on cancellation/construction failures. Fixed endpoints, bounded acquisition, the parameterized lease-bound confirmation read and existing owner checks remain intact. No new SQL role or grant is introduced.
+
+Independent verification: 501 focused tests passed, including four additional token-lifecycle probes, plus the separate corrected attribution reproduction. The new real RF/Documents runtime test was reviewed statically: it checks wrong-lease rejection, stored hashes/status, durable manifest, replay identity and lease release. I did not execute it or certify the parent’s database transcript.
+
+Exact seventeen-file WIP snapshot is bound against c4d9fb2fe27b2d2c3e9be077f03146c0b391bfe2 in the accompanying JSON. This is local implementation review, not live provider conformance, a complete RF gate or #193 acceptance. No provider/browser/key/DB operations or shared source edits were performed.

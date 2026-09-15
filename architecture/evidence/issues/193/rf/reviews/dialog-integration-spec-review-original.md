@@ -1,0 +1,11 @@
+# Bounded Spec review — original Dialogporten integration
+
+Verdict: CHANGES_REQUIRED on frozen worktree bytes against `c4d9fb2fe27b2d2c3e9be077f03146c0b391bfe2`.
+
+**[P2] SPEC-193-RF-DIALOG-1 — discarded transmission type permits conflicting acceptance.** `rf1086_dialogporten.py:79–106` validates the original Submission type but discards the related response type. `dialog_feedback.py:46–53` consequently finalizes solely from XML. Through both actual HTTP adapters and the public reconciliation contract, an authorized directly related `Rejection` carrying `godkjent` XML records `accepted`. Unknown, null, boolean and object types also accept. Preserve and validate the closed provider category, and fail closed on contradictory or unrecognized terminal evidence. This concerns GH-193-RF-A2’s “feedback/correction, final decision/receipt, and archive” and A4’s “safe unknown-outcome reconciliation”; it does not infer rejection from category alone. The parent accepted this finding for a separate correction.
+
+The peer’s independently reproduced **STD-193-RF-DIALOG-1** remains another original-snapshot gap: SHA-only persistence loses distinct attachment identities for identical bytes. Its actual-adapter probe is cross-bound here; I did not rerun it or count it as my own reproduction.
+
+Independent verification: 229 focused existing tests pass. Ten additional hidden, malformed-late, empty-late, company/service and case-insensitive duplicate controls pass before any artifact persistence. Five decision-type regressions fail as described. A separate seven-case observation probe records the exact accepted outcomes. All probes use local HTTP mocks only. Frozen source hashes, commands and logs are in the paired JSON.
+
+The bounded design otherwise acquires all selected documents before persistence, keeps PDF-only/invalid XML nonterminal, and exposes read-only provider ports. Standards separately reviewed token/lease behavior. Neither these mocks nor prior private live receipts certify the new canonical integration against the provider. Current conformance, correction cases, source/XSD drift, production enablement and full RF acceptance remain pending. No provider, key, browser, DB or shared source operation occurred.

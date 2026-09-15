@@ -433,6 +433,73 @@ def test_real_documents_contract_stored_receipt_and_hash_drive_final_feedback_wi
     assert len(storage.objects) == 1
 
 
+def test_related_dialog_receipts_reconcile_through_real_rf_and_documents_storage(fixture):
+    from talli_backend.adapters.maskinporten import MaskinportenAccessToken, SYSTEM_USER_DIALOGPORTEN_SCOPE, SYSTEM_USER_TAX_SCOPE
+    from talli_backend.adapters.rf1086_authority import Rf1086ReadOnlyAuthorityAdapter
+    from talli_backend.adapters.rf1086_dialogporten import Rf1086DialogportenAdapter
+    from talli_backend.modules.shareholder_register_filing.public import Rf1086ReconciliationInput, reconcile_journaled_rf1086_production
+    from test_rf1086_ar_feedback import receipt
+    storage = LocalStorage()
+    session = store(fixture, documents=OwnedDocuments(fixture, storage), storage_transport=httpx.MockTransport(storage.upload))
+    submission, reference = confirmed(fixture, session)
+    lease = str(uuid4())
+    assert asyncio.run(session.claim_feedback_lease(submission, lease))
+    dialog_id = asyncio.run(session.read_claimed_dialog_id(submission, lease))
+    with pytest.raises(Rf1086ProductionError):
+        asyncio.run(session.read_claimed_dialog_id(submission, str(uuid4())))
+    organization = str(100000000 + fixture["company"].int % 899999999)
+    response_id, pdf_id, xml_id = (str(uuid4()) for _ in range(3))
+    documents = {pdf_id: ("application/pdf", b"%PDF-1.7 local companion"),
+        xml_id: ("application/xml", receipt().replace("310279617", organization).encode())}
+    seen = []
+    def transport(request):
+        seen.append(str(request.url))
+        assert request.method == "GET"
+        if request.url.host == "platform.tt02.altinn.no":
+            assert request.url.path.endswith("/dialogs/" + dialog_id)
+            return httpx.Response(200, json={"id": dialog_id,
+                "party": "urn:altinn:organization:identifier-no:" + organization,
+                "serviceResource": "urn:altinn:resource:ske-innrapportering-aksjonaerregisteroppgave",
+                "transmissions": [{"id": reference, "type": "Submission", "isAuthorized": True},
+                    {"id": response_id, "relatedTransmissionId": reference, "type": "Acceptance",
+                     "isAuthorized": True, "createdAt": "2026-09-15T05:09:44Z",
+                     "attachments": [{"id": pdf_id}, {"id": xml_id}]}]})
+        assert request.url.host == "api-test.sits.no" and "/forsendelser/" + response_id + "/dokumenter/" in request.url.path
+        kind, raw = documents[request.url.path.rsplit("/", 1)[1]]
+        return httpx.Response(200, content=raw, headers={"content-type": kind})
+    network = httpx.MockTransport(transport)
+    authority = Rf1086ReadOnlyAuthorityAdapter(MaskinportenAccessToken("local-rf", "Bearer", 120,
+        SYSTEM_USER_TAX_SCOPE, "test"), environment="test", transport=network)
+    discovery = Rf1086DialogportenAdapter(MaskinportenAccessToken("local-dialog", "Bearer", 120,
+        SYSTEM_USER_DIALOGPORTEN_SCOPE, "test"), environment="test", transport=network)
+    journal = session.feedback_journal(submission_id=submission, company_id=str(fixture["company"]),
+        income_year=2025, forsendelse_id=reference, lease_id=lease)
+    input = Rf1086ReconciliationInput(submission, str(fixture["company"]), 2025, reference,
+        MAIN_XML, {str(fixture["owner"]): SUB_XML}, organization, dialog_id)
+    try:
+        result = asyncio.run(reconcile_journaled_rf1086_production(journal, authority, input,
+            discovery=discovery, initial_poll=False))
+        assert result.state == "accepted" and result.artifact_count == 3
+        replay = asyncio.run(reconcile_journaled_rf1086_production(journal, authority, input,
+            discovery=discovery, initial_poll=False))
+        assert replay.artifact_hashes == result.artifact_hashes and not replay.changed
+        assert len(storage.objects) == 3 and len(seen) == 6
+        with psycopg.connect(DATABASE_URL) as db:
+            rows = db.execute("select a.authority_reference,a.sha256,d.content_sha256,d.status "
+                "from shareholder_register_filing.production_feedback_artifacts a "
+                "join public.documents d on d.id=a.document_id where a.submission_id=%s", (submission,)).fetchall()
+            assert len(rows) == 3
+            for metadata, digest, stored_digest, status in rows:
+                assert digest == stored_digest and status == "stored"
+                if metadata == "talli:rf1086-feedback-provenance:v1":
+                    continue
+                projection = json.loads(metadata)
+                assert projection["dialogId"] == dialog_id and projection["relatedTransmissionId"] == reference
+                assert projection["transmissionId"] == response_id and projection["organizationNumber"] == organization
+    finally:
+        asyncio.run(session.release_feedback_lease(submission, lease))
+
+
 def test_request_lock_is_acquired_before_billing_pilot_lock(fixture):
     async def check():
         session = store(fixture)

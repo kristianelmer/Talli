@@ -1,6 +1,9 @@
 """Production configuration parity at the canonical RF boundary."""
 
 from uuid import uuid4
+import asyncio
+import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -20,6 +23,68 @@ VALID = {
     "TALLI_PROD_MASKINPORTEN_PRIVATE_KEY_PEM": "-----BEGIN " "PRIVATE KEY-----\nZmFrZQ==\n-----END PRIVATE KEY-----",
     "TALLI_PROD_RF1086_SCOPE": SYSTEM_USER_TAX_SCOPE,
 }
+
+
+@pytest.mark.parametrize("mutation", [False, True])
+def test_rf_and_dialog_tokens_share_exact_delegation_and_are_both_discarded(mutation):
+    from talli_backend.adapters.maskinporten import MaskinportenAccessToken, SYSTEM_USER_DIALOGPORTEN_SCOPE
+    store = session(VALID.copy())
+    calls, tokens = [], []
+    class TokenClient:
+        async def request_token(self, scope, **delegation):
+            calls.append((scope, delegation))
+            token = MaskinportenAccessToken("local-" + str(len(calls)), "Bearer", 120, scope, "production")
+            tokens.append(token)
+            return token
+    store._maskinporten = TokenClient()
+    company, connection = SimpleNamespace(org_number="310279617"), SimpleNamespace(external_ref="A" * 43)
+    method = store.bind_mutation_authority if mutation else store.bind_read_only_authority
+    binding = asyncio.run(method(company, connection))
+    assert [scope for scope, _ in calls] == [SYSTEM_USER_TAX_SCOPE, SYSTEM_USER_DIALOGPORTEN_SCOPE]
+    assert all(delegation == {"system_user_org_number": "310279617", "system_user_external_ref": "A" * 43}
+        for _, delegation in calls)
+    assert binding.feedback_discovery is not None
+    binding.discard()
+    assert all(token.access_token == "" for token in tokens)
+
+
+def test_dialog_token_failure_discards_already_acquired_rf_token():
+    from talli_backend.adapters.maskinporten import MaskinportenAccessToken
+    store = session(VALID.copy())
+    token = MaskinportenAccessToken("local-rf", "Bearer", 120, SYSTEM_USER_TAX_SCOPE, "production")
+    class TokenClient:
+        async def request_token(self, scope, **_delegation):
+            if scope == SYSTEM_USER_TAX_SCOPE:
+                return token
+            raise RuntimeError("scope unavailable")
+    store._maskinporten = TokenClient()
+    with pytest.raises(RuntimeError):
+        asyncio.run(store.bind_mutation_authority(SimpleNamespace(org_number="310279617"),
+            SimpleNamespace(external_ref="A" * 43)))
+    assert token.access_token == ""
+
+
+@pytest.mark.parametrize("confirmation,expected", [
+    ({"dialogId": "20000000-0000-4000-8000-000000000002", "forsendelseId": "30000000-0000-4000-8000-000000000003"}, True),
+    ({"dialogId": "invalid", "forsendelseId": "30000000-0000-4000-8000-000000000003"}, False),
+    ({"dialogId": "20000000-0000-4000-8000-000000000002", "forsendelseId": "other"}, False),
+    ({"dialogId": True, "forsendelseId": "30000000-0000-4000-8000-000000000003"}, False),
+    ({}, False), ([], False),
+])
+def test_dialog_identity_comes_from_matching_leased_confirmation(confirmation, expected):
+    store = session({})
+    async def rows(sql, values):
+        assert "feedback_reconciliation_lease_id=%s::uuid" in sql
+        assert "e.operation_name='confirm'" in sql and "e.operation_state='succeeded'" in sql
+        assert values == ("submission", "lease")
+        return [{"authority_reference": json.dumps(confirmation),
+            "feedback_forsendelse_id": "30000000-0000-4000-8000-000000000003"}]
+    store._rows = rows
+    if expected:
+        assert asyncio.run(store.read_claimed_dialog_id("submission", "lease")) == confirmation["dialogId"]
+    else:
+        with pytest.raises(Rf1086ProductionError):
+            asyncio.run(store.read_claimed_dialog_id("submission", "lease"))
 
 
 def session(environment):

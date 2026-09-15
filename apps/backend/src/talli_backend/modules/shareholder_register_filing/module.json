@@ -164,7 +164,9 @@
       "Rf1086OfflineSimulationCall",
       "Rf1086ValidationInput",
       "Rf1086CodeVerificationStatus",
-      "Rf1086CodeDecision"
+      "Rf1086CodeDecision",
+      "Rf1086FeedbackDiscovery",
+      "Rf1086FeedbackTransmission"
     ]
   },
   "owns": {
@@ -246,6 +248,15 @@
       "registrationDecorator": "talli_backend.modules.shareholder_register_filing.public.rf1086_adapter",
       "adapters": [
         "talli_backend.adapters.rf1086_authority.Rf1086AuthorityAdapter"
+      ]
+    },
+    {
+      "name": "Rf1086FeedbackDiscovery",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.shareholder_register_filing.public.Rf1086FeedbackDiscovery",
+      "registrationDecorator": "talli_backend.modules.shareholder_register_filing.public.rf1086_adapter",
+      "adapters": [
+        "talli_backend.adapters.rf1086_dialogporten.Rf1086DialogportenAdapter"
       ]
     }
   ],

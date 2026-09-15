@@ -10,7 +10,7 @@ from xml.parsers import expat
 
 from .public import (
     Rf1086AuthorityError, Rf1086FeedbackArtifactPersistenceError, Rf1086FeedbackClassification,
-    Rf1086FeedbackResult, Rf1086ProductionJournal, Rf1086ReadOnlyAuthority,
+    Rf1086FeedbackResult, Rf1086FeedbackDiscovery, Rf1086ProductionJournal, Rf1086ReadOnlyAuthority,
     Rf1086ReconciliationArtifact, Rf1086ReconciliationInput, Rf1086ReconciliationResult,
     Rf1086ReconciliationSnapshot,
 )
@@ -240,11 +240,16 @@ async def _acquire_feedback(authority: Rf1086ReadOnlyAuthority,
 
 
 async def _read_feedback_once(journal: Rf1086ProductionJournal, authority: Rf1086ReadOnlyAuthority,
-        input: Rf1086ReconciliationInput, submitted_hashes: set[str], artifact_hashes: set[str]) -> Rf1086ReconciliationSnapshot:
+        input: Rf1086ReconciliationInput, submitted_hashes: set[str], artifact_hashes: set[str],
+        discovery: Rf1086FeedbackDiscovery | None) -> Rf1086ReconciliationSnapshot:
     try:
         # The provider scan deadline must never cancel a durable artifact write.
         async with asyncio.timeout(RF1086_ARCHIVE_SCAN_TIMEOUT_SECONDS):
-            artifacts = await _acquire_feedback(authority, input, submitted_hashes)
+            if discovery is None:
+                artifacts = await _acquire_feedback(authority, input, submitted_hashes)
+            else:
+                from .dialog_feedback import acquire_dialog_feedback
+                artifacts = await acquire_dialog_feedback(authority, discovery, input)
     except TimeoutError:
         return Rf1086ReconciliationSnapshot("unknown", safe_error_code="RF1086_ARCHIVE_SCAN_TIMEOUT")
     except Exception as error:
@@ -271,7 +276,7 @@ async def _read_feedback_once(journal: Rf1086ProductionJournal, authority: Rf108
 
 async def reconcile_journaled_rf1086_production(journal: Rf1086ProductionJournal,
         authority: Rf1086ReadOnlyAuthority, input: Rf1086ReconciliationInput, *,
-        initial_poll: bool | None = None, sleep: Callable[[int], Awaitable[None]] | None = None) -> Rf1086ReconciliationResult:
+        discovery: Rf1086FeedbackDiscovery | None = None, initial_poll: bool | None = None, sleep: Callable[[int], Awaitable[None]] | None = None) -> Rf1086ReconciliationResult:
     if (not input.submission_id or not input.company_id or not input.forsendelse_id or type(input.income_year) is not int
             or not input.hovedskjema_xml.strip() or not input.underskjema_xml):
         raise ValueError("RF1086_RECONCILIATION_RELATIONSHIP_REQUIRED")
@@ -283,7 +288,7 @@ async def reconcile_journaled_rf1086_production(journal: Rf1086ProductionJournal
     outcome = Rf1086ReconciliationSnapshot("processing")
     for attempt in range(1, maximum_reads + 1):
         archive_reads += 1
-        outcome = await _read_feedback_once(journal, authority, input, submitted_hashes, artifact_hashes)
+        outcome = await _read_feedback_once(journal, authority, input, submitted_hashes, artifact_hashes, discovery)
         if outcome.state != "processing" or attempt == maximum_reads:
             break
         if sleep is not None:

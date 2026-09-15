@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from talli_backend.modules.shareholder_register_filing.public import JournaledRf1086ProductionInput, ProductionOperation, Rf1086AuthorityCall, Rf1086AuthorityDocument, Rf1086AuthorityError, Rf1086BlockedProductionOperationError, Rf1086Confirmation, Rf1086DocumentPage, Rf1086DocumentReference, Rf1086FeedbackArtifactPersistenceError, Rf1086MainResponse, Rf1086PostResponse, Rf1086ReconciliationInput, Rf1086ReconciliationSnapshot, Rf1086UnknownProductionOutcomeError
+from talli_backend.modules.shareholder_register_filing.public import JournaledRf1086ProductionInput, ProductionOperation, Rf1086AuthorityCall, Rf1086AuthorityDocument, Rf1086AuthorityError, Rf1086BlockedProductionOperationError, Rf1086Confirmation, Rf1086DocumentPage, Rf1086DocumentReference, Rf1086FeedbackArtifactPersistenceError, Rf1086FeedbackTransmission, Rf1086MainResponse, Rf1086PostResponse, Rf1086ReconciliationInput, Rf1086ReconciliationSnapshot, Rf1086UnknownProductionOutcomeError
 from talli_backend.modules.shareholder_register_filing.feedback import RF1086_FEEDBACK_NAMESPACES, classify_rf1086_feedback, create_rf1086_feedback_artifact_persistence_error, reconcile_journaled_rf1086_production
 from talli_backend.modules.shareholder_register_filing.production import execute_journaled_rf1086_production, execute_rf1086_production_release, resume_production_operation
 
@@ -482,6 +482,12 @@ class BillingQueries:
         return self.decision
 
 
+class CoordinatorDiscovery:
+    async def read_feedback_transmissions(self, *, organization_number, dialog_id, forsendelse_id):
+        assert (organization_number, dialog_id, forsendelse_id) == ("310279617", DIALOG, TRANSMISSION)
+        return (Rf1086FeedbackTransmission(DIALOG, DOCUMENT, TRANSMISSION, NOW.isoformat(), (DOCUMENT,), "Acceptance"),)
+
+
 class CoordinatorSession:
     def __init__(self):
         self.events = []
@@ -501,7 +507,9 @@ class CoordinatorSession:
         self.operations = OperationJournal()
         self.journal = FeedbackJournal()
         self.mutation_authority = Authority()
-        self.read_only_authority = ReadOnlyArchive([page([feedback()])])
+        self.read_only_authority = ReadOnlyArchive([page([feedback()])],
+            {DOCUMENT: Rf1086AuthorityDocument(DOCUMENT, "application/xml", feedback().encode())})
+        self.discovery = CoordinatorDiscovery()
         self.failure = None
         self.busy = False
         self.reference = TRANSMISSION
@@ -539,10 +547,10 @@ class CoordinatorSession:
     async def bind_mutation_authority(self, company, connection):
         self.event("mutation_token")
         assert company == self.company and connection == self.connection
-        return Rf1086MutationBinding(self.mutation_authority, self.read_only_authority, self.discard)
+        return Rf1086MutationBinding(self.mutation_authority, self.read_only_authority, self.discard, self.discovery)
     async def bind_read_only_authority(self, company, connection):
         self.event("recovery_token")
-        return Rf1086ReadOnlyBinding(self.read_only_authority, self.discard)
+        return Rf1086ReadOnlyBinding(self.read_only_authority, self.discard, self.discovery)
     async def begin_production_filing(self, value):
         self.event("begin")
         assert value == APPROVAL
@@ -560,6 +568,10 @@ class CoordinatorSession:
         self.event("reference")
         assert submission_id == SUBMISSION and lease_id == self.lease
         return self.reference
+    async def read_claimed_dialog_id(self, submission_id, lease_id):
+        self.event("dialog")
+        assert submission_id == SUBMISSION and lease_id == self.lease
+        return DIALOG
     async def release_feedback_lease(self, submission_id, lease_id):
         self.event("release")
         assert submission_id == SUBMISSION and lease_id == self.lease
@@ -637,7 +649,7 @@ def test_recovery_preserves_expired_entitlement_invalidated_approval_without_new
     result = recover(session)
     assert result.state == "accepted" and result.error_code is None and not result.requires_manual_retry
     assert session.events == ["submission", "company", "approval", "billing_snapshot", "connection", "preview", "configuration",
-        "claim", "reference", "recovery_token", "feedback_journal", "discard", "release"]
+        "claim", "reference", "dialog", "recovery_token", "feedback_journal", "discard", "release"]
     assert not session.mutation_authority.calls
 
 

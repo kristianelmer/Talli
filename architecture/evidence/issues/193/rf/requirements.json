@@ -48,7 +48,7 @@
     }
   ],
   "limits": [
-    "Local RF work is active. The approved synthetic submission, archive and final business acceptance are verified; canonical feedback integration and complete RF acceptance remain pending.",
+    "Local RF work is active. The approved synthetic submission, archive and final business acceptance are verified; canonical feedback integration passes local tests, while live canonical conformance and complete RF acceptance remain pending.",
     "RF must pass before Tax begins; Tax must pass before Accounts.",
     "The #172 accepted supported boundary cannot be silently narrowed.",
     "No #149/#208/#192 final/#194 progression without the approved prerequisites."
@@ -61,5 +61,6 @@
   "finalFeedbackLookup": "feedback-lookup-20260915.json",
   "dialogAccessRecovery": "dialog-access-recovery-20260915.json",
   "finalBusinessReceipt": "acceptance-receipt-20260915.json",
-  "localArParserVerification": "ar-parser-verification.json"
+  "localArParserVerification": "ar-parser-verification.json",
+  "canonicalDialogIntegration": "dialog-integration-verification.json"
 }

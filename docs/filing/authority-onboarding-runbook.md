@@ -673,3 +673,18 @@ This establishes the synthetic baseline business decision. The current canonical
 classifier does not yet support its `ar_til_mag:v0_1` namespace, and canonical
 Dialogporten receipt discovery still needs implementation. Broader supported
 cases, complete RF gates and genuine-company production evidence remain pending.
+
+### Canonical related-feedback reader — local verification 2026-09-15
+
+The backend now discovers directly related Dialogporten receipt transmissions,
+checks company/service/submission identity, and retrieves exact Attachment IDs
+through the RF document endpoint. It recognizes the observed AR receipt XML and
+retains PDF/XML originals plus a Talli provenance manifest before finalizing.
+The manifest preserves all attachment relationships even for identical bytes.
+608 focused checks, 25 restricted-role SQL/Document runtime tests and independent
+Spec/Standards reviews pass. See
+[`dialog-integration-verification.json`](../../architecture/evidence/issues/193/rf/dialog-integration-verification.json).
+
+Live canonical conformance remains pending. The production binding requires
+`digdir:dialogporten` in addition to the RF scope; no production client scope or
+feature switch was changed by this implementation.
