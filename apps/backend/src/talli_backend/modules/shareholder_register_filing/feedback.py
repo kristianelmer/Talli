@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import re
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import replace
@@ -16,6 +17,11 @@ from .public import (
 from .production import _js_utf8_bytes, _pending_archive_error, _sha256
 
 RF1086_MAX_FEEDBACK_BYTES = 10 * 1024 * 1024
+RF1086_ARCHIVE_PAGE_SIZE = 50
+# Operational scan bounds fail closed; they do not define supported company scope.
+RF1086_MAX_ARCHIVE_PAGES = 100
+RF1086_MAX_ARCHIVE_SCAN_BYTES = 32 * 1024 * 1024
+RF1086_ARCHIVE_SCAN_TIMEOUT_SECONDS = 60
 RF1086_FEEDBACK_NAMESPACES = {
     "urn:ske:fastsetting:innsamling:grunnlagsdata:tilbakemelding:innsendingstilbakemelding:v2": "innsendingstilbakemelding-v2",
     "urn:ske:fastsetting:innsamling:grunnlagsdata:tilbakemelding:leveransetilbakemelding:v2": "leveransetilbakemelding-v2",
@@ -125,19 +131,59 @@ def _safe_reconciliation_failure(error: Exception) -> Rf1086ReconciliationSnapsh
     return Rf1086ReconciliationSnapshot("unknown", safe_error_code="RF1086_RECONCILIATION_READ_ERROR")
 
 
+async def _complete_archive(authority: Rf1086ReadOnlyAuthority, input: Rf1086ReconciliationInput):
+    documents = []
+    seen = set()
+    total_bytes = 0
+    expected_extent = None
+    page_index = 0
+    while True:
+        page = await authority.list_documents(income_year=input.income_year,
+            reference_id=input.forsendelse_id, page=page_index, size=RF1086_ARCHIVE_PAGE_SIZE)
+        extent = (page.total_items, page.total_pages)
+        if (not page.document_shape_valid or isinstance(page.current_page, bool) or page.current_page != page_index
+                or any(isinstance(value, bool) or not isinstance(value, (int, float))
+                       or not math.isfinite(value) or value < 0 or value != int(value) for value in extent)
+                or (expected_extent is not None and extent != expected_extent)):
+            raise Rf1086AuthorityError("RF1086_ARCHIVE_SHAPE_INVALID", status=200)
+        pages = int(page.total_pages)
+        expected_pages = (int(page.total_items) + RF1086_ARCHIVE_PAGE_SIZE - 1) // RF1086_ARCHIVE_PAGE_SIZE
+        if (pages != expected_pages and not (page.total_items == 0 and pages == 1)) or (pages == 0 and (page_index != 0 or page.documents)):
+            raise Rf1086AuthorityError("RF1086_ARCHIVE_SHAPE_INVALID", status=200)
+        if pages > RF1086_MAX_ARCHIVE_PAGES:
+            raise Rf1086AuthorityError("RF1086_ARCHIVE_SCAN_LIMIT", status=200)
+        expected_count = min(RF1086_ARCHIVE_PAGE_SIZE, int(page.total_items) - page_index * RF1086_ARCHIVE_PAGE_SIZE)
+        if len(page.documents) != expected_count:
+            raise Rf1086AuthorityError("RF1086_ARCHIVE_SHAPE_INVALID", status=200)
+        identities = set()
+        for document in page.documents:
+            raw = _js_utf8_bytes(document if isinstance(document, str) else document.reference)
+            identity = ("inline" if isinstance(document, str) else "reference", _sha256(raw))
+            if identity in seen:
+                raise Rf1086AuthorityError("RF1086_ARCHIVE_SHAPE_INVALID", status=200)
+            identities.add(identity)
+            total_bytes += len(raw)
+            if total_bytes > RF1086_MAX_ARCHIVE_SCAN_BYTES:
+                raise Rf1086AuthorityError("RF1086_ARCHIVE_SCAN_LIMIT", status=200)
+        seen.update(identities)
+        documents.extend(page.documents)
+        if pages == 0 or page_index == pages - 1:
+            return documents
+        expected_extent = extent
+        page_index += 1
+
+
 async def _read_feedback_once(journal: Rf1086ProductionJournal, authority: Rf1086ReadOnlyAuthority,
         input: Rf1086ReconciliationInput, submitted_hashes: set[str], artifact_hashes: set[str]) -> Rf1086ReconciliationSnapshot:
     try:
-        page = await authority.list_documents(income_year=input.income_year, reference_id=input.forsendelse_id, page=0, size=50)
+        documents = await _complete_archive(authority, input)
     except Exception as error:
         return _safe_reconciliation_failure(error)
-    if (not page.document_shape_valid or page.current_page != 0 or page.total_pages > 1
-            or page.total_items != len(page.documents)):
-        return Rf1086ReconciliationSnapshot("action_required", safe_error_code="RF1086_ARCHIVE_SHAPE_INVALID")
-    if not page.documents:
+    if not documents:
         return Rf1086ReconciliationSnapshot("processing")
     classifications: list[Rf1086FeedbackClassification] = []
-    for archived in page.documents:
+    processed_bytes = 0
+    for archived in documents:
         if isinstance(archived, str):
             bytes_value = _js_utf8_bytes(archived)
             content_type = "application/xml"
@@ -149,6 +195,9 @@ async def _read_feedback_once(journal: Rf1086ProductionJournal, authority: Rf108
                 reference, content_type, bytes_value = document.reference, document.content_type, document.bytes
             except Exception as error:
                 return _safe_reconciliation_failure(error)
+        processed_bytes += len(bytes_value)
+        if processed_bytes > RF1086_MAX_ARCHIVE_SCAN_BYTES:
+            return Rf1086ReconciliationSnapshot("action_required", safe_error_code="RF1086_ARCHIVE_SCAN_LIMIT")
         digest = _sha256(bytes_value)
         if digest in submitted_hashes:
             continue
@@ -187,7 +236,11 @@ async def reconcile_journaled_rf1086_production(journal: Rf1086ProductionJournal
     outcome = Rf1086ReconciliationSnapshot("processing")
     for attempt in range(1, maximum_reads + 1):
         archive_reads += 1
-        outcome = await _read_feedback_once(journal, authority, input, submitted_hashes, artifact_hashes)
+        try:
+            async with asyncio.timeout(RF1086_ARCHIVE_SCAN_TIMEOUT_SECONDS):
+                outcome = await _read_feedback_once(journal, authority, input, submitted_hashes, artifact_hashes)
+        except TimeoutError:
+            outcome = Rf1086ReconciliationSnapshot("unknown", safe_error_code="RF1086_ARCHIVE_SCAN_TIMEOUT")
         if outcome.state != "processing" or attempt == maximum_reads:
             break
         if sleep is not None:
