@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#193",
   "slice": "RF-1086",
-  "status": "LOCAL_JOURNAL_PASS_TEST_SUBMISSION_CONFIRMED_ARCHIVE_PENDING",
+  "status": "LOCAL_JOURNAL_PASS_SYNTHETIC_SUBMISSION_AND_ARCHIVE_VERIFIED",
   "source": "https://github.com/kristianelmer/Talli/issues/193",
   "predecessor": {
     "issue": "#153",
@@ -55,5 +55,6 @@
   ],
   "claim": "https://github.com/kristianelmer/Talli/issues/193#issuecomment-5671808140",
   "localJournalVerification": "journal-verification.json",
-  "testBaselineVerification": "provider-baseline-20260915.json"
+  "testBaselineVerification": "provider-baseline-20260915.json",
+  "archiveRecoveryVerification": "archive-recovery-20260915.json"
 }

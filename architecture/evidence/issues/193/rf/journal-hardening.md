@@ -77,3 +77,13 @@ An independent review passed50 consistency checks. Archive verification and fina
 business acceptance remain unproved. Further read-only recovery is prepared but
 requires an extension of the exhausted five-read authorization; no new filing,
 production action, credential activation or paid step is authorized by that plan.
+
+## Authorized archive recovery — 15 September 2026
+
+The owner approved read-only recovery. One test-token request and the first archive
+GET returned HTTP 200. Both returned XML hashes exactly match the approved main and
+shareholder documents. No filing POST occurred; the original confirmed journal is
+preserved byte for byte. An independent review passed 36 consistency checks.
+`archive-recovery-20260915.json` now records TEST_SUBMISSION_AND_ARCHIVE_VERIFIED
+for this synthetic no-activity baseline. Final business acceptance, broader RF
+profiles, genuine production evidence and full RF exit gates remain unproved.
