@@ -235,6 +235,18 @@ class Rf1086ShareholderSnapshot(_ImmutableRf1086Value):
     current_share_count: int
 
 
+class _ImmutableRf1086Event(_ImmutableRf1086Value):
+    __slots__ = ()
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        # Readiness and XML rendering must always identify the same variant.
+        # Literal annotations alone do not validate direct Python callers.
+        expected_type = next(item.default for item in fields(self) if item.name == "type")
+        if self.type != expected_type:
+            raise ValueError("RF-1086 event type must match its public event class")
+
+
 @dataclass(frozen=True, slots=True)
 class Rf1086FormationAllocation(_ImmutableRf1086Value):
     shareholder_id: str
@@ -243,7 +255,7 @@ class Rf1086FormationAllocation(_ImmutableRf1086Value):
 
 
 @dataclass(frozen=True, slots=True)
-class Rf1086FormationEvent(_ImmutableRf1086Value):
+class Rf1086FormationEvent(_ImmutableRf1086Event):
     timestamp: datetime
     issued_share_count: int
     share_count_after: int
@@ -254,7 +266,7 @@ class Rf1086FormationEvent(_ImmutableRf1086Value):
 
 
 @dataclass(frozen=True, slots=True)
-class Rf1086ShareSaleEvent(_ImmutableRf1086Value):
+class Rf1086ShareSaleEvent(_ImmutableRf1086Event):
     timestamp: datetime
     seller_shareholder_id: str
     buyer_shareholder_id: str
@@ -271,7 +283,7 @@ class Rf1086DividendAllocation(_ImmutableRf1086Value):
 
 
 @dataclass(frozen=True, slots=True)
-class Rf1086DividendEvent(_ImmutableRf1086Value):
+class Rf1086DividendEvent(_ImmutableRf1086Event):
     timestamp: datetime
     total_amount: float
     per_share_amount: float
@@ -280,7 +292,7 @@ class Rf1086DividendEvent(_ImmutableRf1086Value):
 
 
 @dataclass(frozen=True, slots=True)
-class Rf1086CashIssueEvent(_ImmutableRf1086Value):
+class Rf1086CashIssueEvent(_ImmutableRf1086Event):
     """Registered cash subscription; premium is the amount per new share."""
     timestamp: datetime
     issued_share_count: int
@@ -301,7 +313,7 @@ class Rf1086NominalIncreaseAllocation(_ImmutableRf1086Value):
 
 
 @dataclass(frozen=True, slots=True)
-class Rf1086CashNominalIncreaseEvent(_ImmutableRf1086Value):
+class Rf1086CashNominalIncreaseEvent(_ImmutableRf1086Event):
     """Registered cash contribution, retaining all existing shares."""
     timestamp: datetime
     capital_increase: float
@@ -314,7 +326,7 @@ class Rf1086CashNominalIncreaseEvent(_ImmutableRf1086Value):
 
 
 @dataclass(frozen=True, slots=True)
-class Rf1086LossCoveringReductionEvent(_ImmutableRf1086Value):
+class Rf1086LossCoveringReductionEvent(_ImmutableRf1086Event):
     """Registered loss cover without payout; no fund-issued capital is supported."""
     timestamp: datetime
     capital_reduction: float

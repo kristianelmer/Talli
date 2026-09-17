@@ -112,7 +112,7 @@ def _validate_capital_case(case) -> None:
         return value
 
     holders = {holder.id for holder in case.shareholders}
-    require(len(holders) == len(case.shareholders) and all(holders), "capital case shareholder ids must be unique and non-empty")
+    require(bool(holders) and len(holders) == len(case.shareholders) and all(holders), "capital case shareholder ids must be unique and non-empty")
     snapshots = {snapshot.shareholder_id: snapshot for snapshot in case.shareholder_snapshots}
     require(len(snapshots) == len(case.shareholder_snapshots) and set(snapshots) == holders, "capital case snapshots must match unique shareholders")
     shares = case.share_snapshot
@@ -124,6 +124,7 @@ def _validate_capital_case(case) -> None:
     premium = money(shares.previous_paid_in_premium)
     require(sum(holdings.values()) == share_count and capital == nominal * share_count, "capital case opening share capital and holdings must reconcile")
     last_timestamp = None
+    loss_coverage_seen = False
     for event in case.events:
         require(event.timestamp.tzinfo is None and event.timestamp.microsecond == 0 and event.timestamp.year == case.company.income_year,
                 "capital case timestamps must be local whole seconds in the income year")
@@ -177,6 +178,7 @@ def _validate_capital_case(case) -> None:
             require(money(event.nominal_value_after) == nominal - delta and nominal - delta > 0, "loss reduction must retain a positive reconciled nominal value")
             nominal -= delta
             capital -= amount
+            loss_coverage_seen = True
             # No shareholder repayment: tax paid-in capital and premium survive.
         elif event.type == "share_sale":
             require(event.seller_shareholder_id in holders and event.buyer_shareholder_id in holders and event.seller_shareholder_id != event.buyer_shareholder_id,
@@ -187,6 +189,10 @@ def _validate_capital_case(case) -> None:
             holdings[event.seller_shareholder_id] -= quantity
             holdings[event.buyer_shareholder_id] += quantity
         elif event.type == "dividend":
+            # Registration alone does not establish creditor notice or an
+            # exception to the three-year distribution restriction. The source
+            # contract does not yet carry independently verified clearance.
+            require(not loss_coverage_seen, "dividend after loss coverage requires verified distribution-restriction clearance")
             ids = [item.shareholder_id for item in event.allocations]
             active = {key for key, value in holdings.items() if value > 0}
             require(len(ids) == len(set(ids)) and set(ids) == active, "ordinary dividend requires every current shareholder exactly once")
@@ -196,6 +202,8 @@ def _validate_capital_case(case) -> None:
             require(money(event.total_amount) == rate * share_count, "dividend total must reconcile")
         else:
             raise ValueError("unsupported event in capital case")
+        require(capital >= 30000, "supported Norwegian AS must retain at least NOK 30000 registered capital")
+    require(share_count > 0 and capital >= 30000, "supported Norwegian AS requires shares and at least NOK 30000 registered capital")
     require(share_count == count(shares.current_share_count) and capital == money(shares.current_share_capital) and nominal == money(shares.current_nominal_value), "capital case closing registered capital must reconcile")
     require(paid_in == money(shares.current_paid_in_share_capital) and premium == money(shares.current_paid_in_premium), "capital case closing tax paid-in capital and premium must reconcile")
     require(all(holdings[key] == count(item.current_share_count) for key, item in snapshots.items()), "capital case closing shareholder holdings must reconcile")

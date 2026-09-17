@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "reviewAxis": "spec",
+  "reviewedHead": "81a37a3365d9de4bcaad16417dc0beaf444f8292",
+  "base": "7d2eca51abad4bd7a1e14cc903adbf9cdb5c331e",
+  "diffCommand": "git diff 7d2eca51abad4bd7a1e14cc903adbf9cdb5c331e...81a37a3365d9de4bcaad16417dc0beaf444f8292",
+  "commits": [
+    "81a37a3365d9de4bcaad16417dc0beaf444f8292"
+  ],
+  "status": "FINDINGS",
+  "findings": [
+    {
+      "id": "SPEC-01",
+      "priority": "P2",
+      "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/readiness.py",
+      "line": 132,
+      "title": "Reject class/discriminator disagreement before reconciliation",
+      "spec": "#193: complete readiness, preview, cross-output reconciliation",
+      "detail": "Reconciliation dispatches on event.type, whereas rendering dispatches on class. Rf1086CashIssueEvent built from the parsed stiftelse fixture event fields with type=formation and registration_confirmed=False passes readiness and emits N. It therefore bypasses confirmed registration and reconciles formation while reporting new issuance. Validate the public event class/discriminator pair before any dispatch.",
+      "reproduction": "Construct Rf1086CashIssueEvent(**{f.name: getattr(parsed_formation_event,f.name) for f in dataclasses.fields(parsed_formation_event)}, registration_confirmed=False); replace the parsed formation case events with that event; render_rf1086_preview returns ready with main 17670=N."
+    },
+    {
+      "id": "SPEC-02",
+      "priority": "P2",
+      "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/readiness.py",
+      "line": 177,
+      "title": "Do not admit a loss reduction below ordinary AS minimum",
+      "spec": "#172: registered capital reductions for loss coverage when the facts and treatment are clear; #193: complete readiness",
+      "detail": "The new happy-path loss-cover fixture reduces NOK 30,000 registered capital to NOK 20,000; readiness reports ready. Positive nominal value alone does not establish the ordinary Norwegian AS support boundary. Block this inconsistent registration assertion or require an explicit supported legal exception; use a legally plausible happy-path fixture. Historical reporting access must not imply supported readiness.",
+      "reproduction": "render_rf1086_preview(parse_rf1086_case(capital_case(\"loss_covering_reduction\"))).status is ready with closing share capital 20000.",
+      "sources": [
+        "https://www.brreg.no/aksjeselskap/aksjekapital/"
+      ]
+    },
+    {
+      "id": "SPEC-03",
+      "priority": "P2",
+      "file": "apps/backend/src/talli_backend/modules/shareholder_register_filing/readiness.py",
+      "line": 189,
+      "title": "Clarify dividend authority following loss cover",
+      "spec": "#172: Any uncertainty affecting ... legal approval ... is a hard block",
+      "detail": "Loss cover followed by dividend passes with no creditor-notice or statutory-exception facts. Br\u00f8nn\u00f8ysund states a loss reduction without creditor notice prevents dividends for three years. Arithmetic reconciliation cannot establish eligibility; block/clarify the later dividend until supported authoritative facts resolve this restriction.",
+      "reproduction": "Starting from cash_issue fixture (150 shares, NOK 45000 capital), append April loss reduction of NOK 15000 to nominal 200, then May dividend NOK 15000 at NOK 100/share; set closing capital30000/nominal200. Parsed preview returns ready.",
+      "sources": [
+        "https://www.brreg.no/aksjeselskap/aksjekapital/nedsettelse-av-aksjekapital/"
+      ]
+    }
+  ],
+  "verification": {
+    "focusedPytest": "36 passed in 0.31s",
+    "directValueReproduction": "ready, emitted N, registration_confirmed=False",
+    "lossMinimumReproduction": "ready, closing registered capital 20000",
+    "postLossDividendReproduction": "ready without creditor/exception facts"
+  },
+  "limitations": [
+    "Declared partial RF scope; all seven #193 full criteria remain pending.",
+    "No provider interactions or credentials. Public Bronnoysund guidance read only.",
+    "Hosted source integration, expanded conformance, genuine production evidence, and complete gates are not established by this review.",
+    "Original handoff temporary path no longer exists; reviewed committed requirements/evidence, issue #193 and accepted #172 comments instead."
+  ],
+  "immutable": true
+}

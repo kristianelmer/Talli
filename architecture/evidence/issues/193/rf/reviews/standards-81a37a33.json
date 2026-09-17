@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "axis": "standards",
+  "reviewedSha": "81a37a3365d9de4bcaad16417dc0beaf444f8292",
+  "baseSha": "7d2eca51abad4bd7a1e14cc903adbf9cdb5c331e",
+  "diffCommand": "git diff 7d2eca51abad4bd7a1e14cc903adbf9cdb5c331e...81a37a33",
+  "status": "PASS",
+  "findings": [],
+  "independentLocalTests": {"sourceCheckerPassed": 9, "rfCapitalMappingProductionPassed": 191},
+  "databaseTestsRerun": false,
+  "providerCalls": false,
+  "completeIssueAcceptance": false,
+  "report": "standards-81a37a33.md"
+}

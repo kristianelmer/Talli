@@ -14,6 +14,20 @@ from talli_backend.modules.shareholder_register_filing.public import (
 ROOT = Path(__file__).resolve().parents[3]
 
 
+@pytest.mark.parametrize('kind', ['cash_issue','cash_nominal_increase','loss_covering_reduction'])
+def test_public_event_cannot_disguise_its_variant_as_formation(kind):
+    event = parse_rf1086_case(capital_case(kind)).events[0]
+    with pytest.raises(ValueError, match='type must match'):
+        replace(event, type='formation', registration_confirmed=False)
+
+
+@pytest.mark.parametrize('name', ['stiftelse','share_sale','dividend'])
+def test_original_public_event_variants_also_reject_discriminator_mismatch(name):
+    case = parse_rf1086_case(json.loads((ROOT / f'tests/fixtures/rf1086/{name}.json').read_text()))
+    with pytest.raises(ValueError, match='type must match'):
+        replace(case.events[0], type='cash_issue')
+
+
 def capital_case(kind):
     raw = json.loads((ROOT / "tests/fixtures/rf1086/no_activity.json").read_text())
     # Existing synthetic fixture identifiers are used only in local tests.
@@ -29,8 +43,9 @@ def capital_case(kind):
                      allocations=[{"shareholder_id": "owner", "share_count_basis": 100, "capital_increase": 10000, "premium": 500}])
         shares.update(current_share_capital=40000, current_nominal_value=400, current_paid_in_share_capital=40000, current_paid_in_premium=500)
     else:
-        event.update(capital_reduction=10000, nominal_value_reduction=100, nominal_value_after=200, fund_issued_capital_before=0)
-        shares.update(current_share_capital=20000, current_nominal_value=200)
+        event.update(capital_reduction=10000, nominal_value_reduction=100, nominal_value_after=300, fund_issued_capital_before=0)
+        shares.update(previous_share_capital=40000, previous_nominal_value=400,
+                      previous_paid_in_share_capital=40000, current_paid_in_share_capital=40000)
     raw["events"] = [event]
     return raw
 
@@ -76,8 +91,8 @@ def test_nominal_cash_increase_uses_posts_15_and_29():
 def test_loss_cover_preserves_tax_paid_in_capital_without_shareholder_payout():
     result = generate_rf1086_documents(parse_rf1086_case(capital_case("loss_covering_reduction")))
     main, owner = fields(result.hovedskjema_xml), fields(result.underskjema_xml["owner"])
-    assert main["17717"] == "10000" and main["23961"] == "200"
-    assert main["87"] == "20000" and main["5867"] == "30000"
+    assert main["17717"] == "10000" and main["23961"] == "300"
+    assert main["87"] == "30000" and main["5867"] == "40000"
     assert "17722" not in main and "17761" not in owner and "22073" not in owner
     assert owner["17741"] == owner["29168"] == "100"
 
@@ -111,6 +126,31 @@ def test_direct_public_value_cannot_bypass_capital_reconciliation():
     assert not assess_rf1086_readiness(invalid).is_ready
     with pytest.raises(ValueError, match="tax paid-in"):
         generate_rf1086_documents(invalid)
+
+
+def test_registered_loss_cover_below_as_minimum_is_not_ready():
+    raw = capital_case('loss_covering_reduction')
+    raw['events'][0].update(capital_reduction=20000, nominal_value_reduction=200, nominal_value_after=200)
+    raw['share_snapshot'].update(current_share_capital=20000, current_nominal_value=200)
+    with pytest.raises(ValueError, match='at least NOK 30000'):
+        parse_rf1086_case(raw)
+
+
+def test_dividend_after_loss_coverage_requires_clearance_facts():
+    raw = capital_case('loss_covering_reduction')
+    raw['events'].append({'type':'dividend','timestamp':'2025-04-01T12:00:00',
+        'total_amount':1000,'per_share_amount':10,
+        'allocations':[{'shareholder_id':'owner','amount':1000,'share_count_basis':100}]})
+    with pytest.raises(ValueError, match='distribution-restriction clearance'):
+        parse_rf1086_case(raw)
+
+
+def test_empty_zero_capital_case_cannot_be_admitted_as_no_activity():
+    raw = capital_case('cash_issue')
+    raw.update(shareholders=[], shareholder_snapshots=[], events=[])
+    raw['share_snapshot'] = {key: 0 for key in raw['share_snapshot']}
+    with pytest.raises(ValueError, match='shareholder ids'):
+        parse_rf1086_case(raw)
 
 
 def test_multiple_registered_capital_changes_reconcile_in_event_time():
