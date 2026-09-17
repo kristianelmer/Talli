@@ -2,7 +2,7 @@
   "schemaVersion": "1.0",
   "issue": "#193",
   "slice": "RF-1086",
-  "status": "SYNTHETIC_SUBMISSION_ARCHIVE_AND_FINAL_BUSINESS_ACCEPTANCE_VERIFIED",
+  "status": "SYNTHETIC_ACCEPTANCE_AND_BOUNDED_CANONICAL_CONFORMANCE_VERIFIED",
   "source": "https://github.com/kristianelmer/Talli/issues/193",
   "predecessor": {
     "issue": "#153",
@@ -48,7 +48,7 @@
     }
   ],
   "limits": [
-    "Local RF work is active. The approved synthetic submission, archive and final business acceptance are verified; canonical feedback integration passes local tests, while live canonical conformance and complete RF acceptance remain pending.",
+    "Local RF work is active. The approved synthetic submission, archive, final business acceptance and bounded live canonical reader conformance are verified. Broader cases and all full RF acceptance criteria remain pending.",
     "RF must pass before Tax begins; Tax must pass before Accounts.",
     "The #172 accepted supported boundary cannot be silently narrowed.",
     "No #149/#208/#192 final/#194 progression without the approved prerequisites."
@@ -62,5 +62,6 @@
   "dialogAccessRecovery": "dialog-access-recovery-20260915.json",
   "finalBusinessReceipt": "acceptance-receipt-20260915.json",
   "localArParserVerification": "ar-parser-verification.json",
-  "canonicalDialogIntegration": "dialog-integration-verification.json"
+  "canonicalDialogIntegration": "dialog-integration-verification.json",
+  "canonicalLiveConformance": "canonical-conformance-20260917.json"
 }

@@ -669,10 +669,11 @@ from the HTTP submission ID. See
 [`acceptance-receipt-20260915.json`](../../architecture/evidence/issues/193/rf/acceptance-receipt-20260915.json)
 for hashes, identity chain and the independent 52-check review.
 
-This establishes the synthetic baseline business decision. The current canonical
-classifier does not yet support its `ar_til_mag:v0_1` namespace, and canonical
-Dialogporten receipt discovery still needs implementation. Broader supported
-cases, complete RF gates and genuine-company production evidence remain pending.
+This establishes the synthetic baseline business decision. At receipt retrieval,
+the canonical classifier did not support its `ar_til_mag:v0_1` namespace and
+Dialogporten receipt discovery was pending. The subsequent implementation and
+verification are recorded below. Broader supported cases, complete RF gates and
+genuine-company production evidence remain pending.
 
 ### Canonical related-feedback reader — local verification 2026-09-15
 
@@ -685,6 +686,23 @@ The manifest preserves all attachment relationships even for identical bytes.
 Spec/Standards reviews pass. See
 [`dialog-integration-verification.json`](../../architecture/evidence/issues/193/rf/dialog-integration-verification.json).
 
-Live canonical conformance remains pending. The production binding requires
+Live canonical conformance was pending at this local verification. The production binding requires
 `digdir:dialogporten` in addition to the RF scope; no production client scope or
 feature switch was changed by this implementation.
+
+### Canonical related-feedback reader — live verification 2026-09-17
+
+The separately approved check of the same synthetic 2025 submission completed
+through the canonical reader with state `accepted`. Two test token grants, one
+exact dialog read and two exact receipt reads returned HTTP 200. The original
+PDF/XML hashes matched, and both receipts plus the Talli provenance manifest were
+durably saved in a private local journal before final reconciliation. No filing
+POST occurred and the original submission journal remained unchanged. See
+[`canonical-conformance-20260917.json`](../../architecture/evidence/issues/193/rf/canonical-conformance-20260917.json)
+for the exact approved plan, trace, artifact hashes and independent reviews.
+
+This verifies the canonical reader against the existing accepted synthetic
+no-activity case. It does not establish hosted production persistence, broader
+case coverage or complete RF acceptance. The one-attempt approval is consumed;
+production remains disabled and no further provider interaction is authorized
+by this result.
