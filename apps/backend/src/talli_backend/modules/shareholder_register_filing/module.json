@@ -166,7 +166,11 @@
       "Rf1086CodeVerificationStatus",
       "Rf1086CodeDecision",
       "Rf1086FeedbackDiscovery",
-      "Rf1086FeedbackTransmission"
+      "Rf1086FeedbackTransmission",
+      "Rf1086CashIssueEvent",
+      "Rf1086NominalIncreaseAllocation",
+      "Rf1086CashNominalIncreaseEvent",
+      "Rf1086LossCoveringReductionEvent"
     ]
   },
   "owns": {
@@ -193,7 +197,7 @@
       "Rf1086SourceFacts",
       "Rf1086ArchiveSnapshot"
     ],
-    "migrations": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql; supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql; supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql"
+    "migrations": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql; supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql; supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql; supabase/migrations/20260917110951_rf1086_action_required_read_recovery.sql"
   },
   "ports": [
     {

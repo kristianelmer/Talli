@@ -160,6 +160,10 @@ Values, identifiers and ports:
 - `Rf1086ShareSaleEvent`
 - `Rf1086DividendAllocation`
 - `Rf1086DividendEvent`
+- `Rf1086CashIssueEvent`
+- `Rf1086NominalIncreaseAllocation`
+- `Rf1086CashNominalIncreaseEvent`
+- `Rf1086LossCoveringReductionEvent`
 - `Rf1086Case`
 - `Rf1086ReadinessIssue`
 - `Rf1086DocumentSet`
@@ -247,3 +251,16 @@ decision is appended only after every artifact has persisted.
 A deterministic owned XML provenance manifest preserves every attachment identity
 independently of content-hash deduplication; finalization also requires that
 manifest to be durable. Its reference distinguishes it from provider receipts.
+
+
+## Read-only action-required recovery
+
+An owner may explicitly recheck an `action_required` submission against its
+original confirmed transmission and dialog after repairing the reported problem.
+The existing owner, approval, entitlement identity, connection and lease checks
+still apply. This recheck never obtains a mutation binding or starts another
+submission; expired submission eligibility does not erase recovery access.
+Accepted and rejected decisions stay terminal. Receipt bytes and their recorded
+classifications remain immutable: a recheck cannot turn historical ambiguous or
+conflicting artifacts into acceptance. Such evidence requires separately designed
+adjudication/correction support; this recovery path does not authorize it.

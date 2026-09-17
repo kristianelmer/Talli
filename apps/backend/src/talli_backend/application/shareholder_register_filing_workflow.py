@@ -105,7 +105,7 @@ async def reconcile_rf1086_production(session: AuthenticatedShareholderRegisterF
                 or submission.case_profile != "rf1086_no_activity_v1" or submission.environment != "production"):
             raise Rf1086ProductionError("basis_unavailable")
         state = submission.feedback_state
-        if state in {"accepted", "rejected", "action_required"}:
+        if state in {"accepted", "rejected"}:
             return Rf1086OwnerReconciliationResult(state)
         company = await session.company_record(submission.company_id)
         approval = await session.read_approval(submission.approval_id)

@@ -180,3 +180,17 @@ test("owner production UI does not render operator-only RF-1086 diagnostics", ()
   assert.match(productionCopySource, /Last ned godkjent tilbakemelding/u);
   assert.doesNotMatch(productionCopySource, /Payload-hash|rf1086_no_activity_v1|HTTP-svar|database|Supabase/iu);
 });
+
+
+test("action-required recovery stays manual even after a successful status request", () => {
+  for (const options of [{}, { requiresManualRetry: false }, { requiresManualRetry: true }]) {
+    assert.deepEqual(buildRf1086OwnerReconciliationActionState("action_required", options), {
+      shouldPoll: false, errorCode: null, requiresManualRetry: true,
+    });
+  }
+  for (const state of ["accepted", "rejected"]) {
+    assert.deepEqual(buildRf1086OwnerReconciliationActionState(state), {
+      shouldPoll: false, errorCode: null, requiresManualRetry: false,
+    });
+  }
+});

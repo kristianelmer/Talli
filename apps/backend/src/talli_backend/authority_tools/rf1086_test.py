@@ -359,8 +359,10 @@ async def _run_owned(values, scope, evidence_path, *, token_transport, authority
     if company_org_number != required(values, "TALLI_MASKINPORTEN_SYSTEM_USER_ORG"):
         raise ValueError("RF-1086 case organization must equal the Maskinporten system-user organization.")
     events = case.get("events") if isinstance(case.get("events"), list) else []
-    if any(not isinstance(event, dict) or event.get("type") != "formation" for event in events):
-        raise ValueError("RF-1086 authority rehearsal is limited to no-activity or formation cases.")
+    supported_events = {"formation", "share_sale", "dividend", "cash_issue",
+                        "cash_nominal_increase", "loss_covering_reduction"}
+    if any(not isinstance(event, dict) or event.get("type") not in supported_events for event in events):
+        raise ValueError("RF-1086 authority rehearsal is limited to officially mapped supported events.")
     main_xml, under_xml = _prepare_xml(case, evidence_path, values)
     payload_hashes = {"hovedskjema": _sha256(main_xml),
                       "underskjema": {key: _sha256(xml) for key, xml in under_xml.items()}}

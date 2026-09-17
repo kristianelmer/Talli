@@ -499,8 +499,9 @@ const SIGN='20260909125250_backend_system_launch_signoffs_contract.sql';
 const RFX='20260909190548_shareholder_register_filing_capability.sql';
 const RFC='20260909190905_shareholder_register_filing_cutover.sql';
 const RFF='20260909190955_shareholder_register_filing_contract.sql';
+const RFR='20260917110951_rf1086_action_required_read_recovery.sql';
 const predecessor={rf_owned:false,authority_kind:'r',ledger_kind:'v',ledger_setup:true,opening_kind:'r'};
-const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`];
+const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${RFR}`];
 const workspaceForward=forward.filter(path=>path!==`contract-migrations/${AUC}`);
 function fake(initial,{fail,noEffect=false}={}) {
  const state={signoff_open:true,...initial},executed=[];
@@ -550,7 +551,7 @@ test('final RF contract follows explicit final Ledger guard and owner recutover'
 for(const wrong of [{ledger_kind:'v',ledger_setup:true},{ledger_kind:null,ledger_setup:true},{ledger_kind:'v',ledger_setup:false}])test(`final refuses incomplete Ledger contract ${JSON.stringify(wrong)}`,async()=>{
  const f=fake({...predecessor,...wrong});await assert.rejects(run('recutover',f),/final_rf_requires_ledger_contract/);assert.deepEqual(f.executed,[]);
 });
-for(const fail of [`migrations/${RF}`,`migrations/${RFX}`,`migrations/${RFC}`,`contract-migrations/${RFF}`])test(`dependency failure stops final sequence at ${fail}`,async()=>{
+for(const fail of [`migrations/${RF}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${RFR}`,`contract-migrations/${RFF}`])test(`dependency failure stops final sequence at ${fail}`,async()=>{
  const f=fake({...predecessor,ledger_kind:null,ledger_setup:false},{fail});await assert.rejects(run('recutover',f),/synthetic_dependency_failure/);
  const files=[...forward,`contract-migrations/${RFF}`];assert.deepEqual(f.executed,files.slice(0,files.indexOf(fail)+1));
 });

@@ -653,7 +653,7 @@ def test_recovery_preserves_expired_entitlement_invalidated_approval_without_new
     assert not session.mutation_authority.calls
 
 
-@pytest.mark.parametrize("state", ["accepted", "rejected", "action_required"])
+@pytest.mark.parametrize("state", ["accepted", "rejected"])
 def test_terminal_recovery_returns_stored_state_before_configuration_or_new_eligibility(state):
     session = CoordinatorSession()
     session.submission = replace(session.submission, feedback_state=state)
@@ -696,8 +696,10 @@ def test_recovery_failure_always_releases_only_claimed_lease_and_discards_acquir
     (lambda s: setattr(s, "preview", replace(s.preview, company_id=DOCUMENT)), "connection_unavailable"),
     (lambda s: setattr(s, "preview", replace(s.preview, income_year=2024)), "connection_unavailable"),
 ])
-def test_recovery_exact_relationship_mismatch_is_rejected_before_claim_or_token(change, code):
+@pytest.mark.parametrize("state", ["processing", "action_required"])
+def test_recovery_exact_relationship_mismatch_is_rejected_before_claim_or_token(change, code, state):
     session = CoordinatorSession()
+    session.submission = replace(session.submission, feedback_state=state)
     change(session)
     result = recover(session)
     assert result.error_code == code and result.requires_manual_retry
@@ -820,3 +822,27 @@ def test_approved_payload_is_recursively_immutable_without_changing_original_has
         session.preview.underskjema_xml[MAIN] = "<changed/>"
     assert rf1086_current_manifest_hash(session.preview, actor_id=OWNER, organization_number="310279617",
         approved_manifest=manifest) == session.approval.manifest_hash
+
+
+def test_action_required_recovers_only_by_reading_original_confirmation():
+    session = CoordinatorSession()
+    session.submission = replace(session.submission, feedback_state="action_required")
+    session.journal.snapshot = Rf1086ReconciliationSnapshot("action_required", safe_error_code="GLD_005")
+    session.approval = replace(session.approval, invalidated=True)
+    session.billing.pilot = replace(session.billing.pilot, status=ProductionPilotStatus.REVOKED)
+    result = recover(session)
+    assert result.state == "accepted" and result.error_code is None
+    assert "reference" in session.events and "dialog" in session.events
+    assert "recovery_token" in session.events and "mutation_token" not in session.events
+    assert "begin" not in session.events and not session.mutation_authority.calls
+    assert session.events[-2:] == ["discard", "release"]
+
+
+def test_action_required_recovery_failure_preserves_status_and_manual_retry():
+    session = CoordinatorSession()
+    session.submission = replace(session.submission, feedback_state="action_required")
+    session.failure = "configuration"
+    result = recover(session)
+    assert (result.state, result.error_code, result.requires_manual_retry) == (
+        "action_required", "configuration_unavailable", True)
+    assert "claim" not in session.events and not session.mutation_authority.calls

@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 from uuid import uuid4
 
 import httpx
@@ -42,6 +43,29 @@ SIGNOFFS = ("launch_legal_name_public_copy", "legal_policy_pack", "security_rest
 OBLIGATION = "aksjonaerregisteroppgaven"
 PROFILE = "rf1086_no_activity_v1"
 MAIN_XML, SUB_XML = "<H>original ø</H>", "<U>original</U>"
+
+
+def test_read_recovery_migration_restores_exact_admin_memberships_and_runtime_acls():
+    migration = Path(__file__).resolve().parents[3] / "supabase/migrations/20260917110951_rf1086_action_required_read_recovery.sql"
+    body = re.sub(r"(?m)^begin;\s*$", "", migration.read_text(), count=1)
+    body = re.sub(r"commit;\s*$", "", body)
+    with psycopg.connect(DATABASE_URL) as connection:
+        try:
+            memberships = connection.execute("select roleid,member,grantor,admin_option,inherit_option,set_option "
+                "from pg_auth_members order by roleid,member,grantor").fetchall()
+            schema_acl = connection.execute("select nspacl::text from pg_namespace where nspname='shareholder_register_filing'").fetchone()
+            functions = connection.execute("select p.oid,p.proowner,p.proacl::text,p.prosecdef,p.proconfig from pg_proc p "
+                "join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' "
+                "and p.proname in ('claim_production_feedback_reconciliation','append_production_feedback_reconciliation') order by p.oid").fetchall()
+            connection.execute(body)
+            assert connection.execute("select roleid,member,grantor,admin_option,inherit_option,set_option "
+                "from pg_auth_members order by roleid,member,grantor").fetchall() == memberships
+            assert connection.execute("select nspacl::text from pg_namespace where nspname='shareholder_register_filing'").fetchone() == schema_acl
+            assert connection.execute("select p.oid,p.proowner,p.proacl::text,p.prosecdef,p.proconfig from pg_proc p "
+                "join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' "
+                "and p.proname in ('claim_production_feedback_reconciliation','append_production_feedback_reconciliation') order by p.oid").fetchall() == functions
+        finally:
+            connection.rollback()
 
 
 def insert(connection, table, values):
@@ -564,3 +588,82 @@ def test_old_and_new_backend_journal_invocations_share_one_submission_during_ove
         with psycopg.connect(DATABASE_URL,autocommit=True) as admin:
             admin.execute(sql.SQL('revoke legacy_rf1086_executor from {}').format(sql.Identifier(login)))
             admin.execute(contract.read_text())
+
+
+@pytest.mark.parametrize("final_state", ["accepted", "rejected"])
+def test_action_required_read_recovery_preserves_original_mutations_and_final_decision(fixture, final_state):
+    storage = LocalStorage()
+    session = store(fixture, documents=OwnedDocuments(fixture, storage), storage_transport=httpx.MockTransport(storage.upload))
+    submission, reference = confirmed(fixture, session)
+    lease = str(uuid4())
+    assert asyncio.run(session.claim_feedback_lease(submission, lease))
+    journal = session.feedback_journal(submission_id=submission, company_id=str(fixture["company"]), income_year=2025,
+        forsendelse_id=reference, lease_id=lease)
+    assert asyncio.run(journal.append_reconciliation(Rf1086ReconciliationSnapshot("action_required", (), "GLD_005")))
+    asyncio.run(session.release_feedback_lease(submission, lease))
+    with pytest.raises(_PersistenceError):
+        asyncio.run(store(fixture, actor=fixture["outsider"]).claim_feedback_lease(submission, str(uuid4())))
+    with psycopg.connect(DATABASE_URL) as connection:
+        original = connection.execute("select id,operation_name,body_hash,idempotency_key,authority_reference from "
+            "shareholder_register_filing.production_filing_events where submission_id=%s "
+            "and operation_name not like 'reconciliation:%%' order by id", (submission,)).fetchall()
+    recovery_lease = str(uuid4())
+    assert asyncio.run(session.claim_feedback_lease(submission, recovery_lease))
+    assert not asyncio.run(session.claim_feedback_lease(submission, str(uuid4())))
+    assert asyncio.run(session.read_claimed_reference(submission, recovery_lease)) == reference
+    wrong_reference = session.feedback_journal(submission_id=submission, company_id=str(fixture["company"]), income_year=2025,
+        forsendelse_id=str(uuid4()), lease_id=recovery_lease)
+    with pytest.raises(_PersistenceError):
+        asyncio.run(wrong_reference.append_reconciliation(Rf1086ReconciliationSnapshot("processing", ())))
+    journal = session.feedback_journal(submission_id=submission, company_id=str(fixture["company"]), income_year=2025,
+        forsendelse_id=reference, lease_id=recovery_lease)
+    raw = ("<receipt>" + final_state + "</receipt>").encode()
+    digest = hashlib.sha256(raw).hexdigest()
+    artifact = Rf1086ReconciliationArtifact(submission, str(fixture["company"]), str(uuid4()), "application/xml",
+        raw, len(raw), digest, final_state)
+    assert asyncio.run(journal.record_artifact(artifact)) == digest
+    assert asyncio.run(journal.append_reconciliation(Rf1086ReconciliationSnapshot(final_state, (digest,), "RF1086_FEEDBACK_FINAL")))
+    with pytest.raises(_PersistenceError):
+        asyncio.run(journal.append_reconciliation(Rf1086ReconciliationSnapshot("processing", (digest,))))
+    asyncio.run(session.release_feedback_lease(submission, recovery_lease))
+    assert not asyncio.run(session.claim_feedback_lease(submission, str(uuid4())))
+    with psycopg.connect(DATABASE_URL) as connection:
+        after = connection.execute("select id,operation_name,body_hash,idempotency_key,authority_reference from "
+            "shareholder_register_filing.production_filing_events where submission_id=%s "
+            "and operation_name not like 'reconciliation:%%' order by id", (submission,)).fetchall()
+        assert after == original
+        decisions = connection.execute("select resulting_status from shareholder_register_filing.production_filing_events "
+            "where submission_id=%s and operation_name like 'reconciliation:%%' order by created_at,id", (submission,)).fetchall()
+        assert decisions == [("action_required",), (final_state,)]
+
+
+def test_action_required_recovery_cannot_reclassify_retained_ambiguous_artifact(fixture):
+    storage = LocalStorage()
+    session = store(fixture, documents=OwnedDocuments(fixture, storage), storage_transport=httpx.MockTransport(storage.upload))
+    submission, reference = confirmed(fixture, session)
+    lease = str(uuid4())
+    assert asyncio.run(session.claim_feedback_lease(submission, lease))
+    journal = session.feedback_journal(submission_id=submission, company_id=str(fixture["company"]), income_year=2025,
+        forsendelse_id=reference, lease_id=lease)
+    raw = b"<unknown>retained original</unknown>"
+    digest = hashlib.sha256(raw).hexdigest()
+    artifact = Rf1086ReconciliationArtifact(submission, str(fixture["company"]), str(uuid4()), "application/xml",
+        raw, len(raw), digest, "action_required")
+    assert asyncio.run(journal.record_artifact(artifact)) == digest
+    assert asyncio.run(journal.append_reconciliation(Rf1086ReconciliationSnapshot("action_required", (digest,), "RF1086_FEEDBACK_ACTION_REQUIRED")))
+    asyncio.run(session.release_feedback_lease(submission, lease))
+    recovery_lease = str(uuid4())
+    assert asyncio.run(session.claim_feedback_lease(submission, recovery_lease))
+    journal = session.feedback_journal(submission_id=submission, company_id=str(fixture["company"]), income_year=2025,
+        forsendelse_id=reference, lease_id=recovery_lease)
+    from dataclasses import replace
+    assert asyncio.run(journal.record_artifact(replace(artifact, classification="accepted"))) == digest
+    with pytest.raises(_PersistenceError):
+        asyncio.run(journal.append_reconciliation(Rf1086ReconciliationSnapshot("accepted", (digest,), "RF1086_FEEDBACK_ACCEPTED")))
+    assert asyncio.run(journal.read_reconciliation_state()).state == "action_required"
+    asyncio.run(session.release_feedback_lease(submission, recovery_lease))
+    with psycopg.connect(DATABASE_URL) as connection:
+        retained = connection.execute("select classification,sha256 from shareholder_register_filing.production_feedback_artifacts "
+            "where submission_id=%s", (submission,)).fetchall()
+        assert retained == [("action_required", digest)]
+    assert len(storage.objects) == 1

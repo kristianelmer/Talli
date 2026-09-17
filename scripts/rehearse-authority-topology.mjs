@@ -12,6 +12,7 @@ const SIGNOFF_CONTRACT = "20260909125250_backend_system_launch_signoffs_contract
 const RF151 = "20260909190548_shareholder_register_filing_capability.sql";
 const RF151_CUTOVER = "20260909190905_shareholder_register_filing_cutover.sql";
 const RF151_CONTRACT = "20260909190955_shareholder_register_filing_contract.sql";
+const RF193_READ_RECOVERY = "20260917110951_rf1086_action_required_read_recovery.sql";
 
 async function topology(database) {
   const { rows: [state] } = await database.query(`select
@@ -55,7 +56,7 @@ export async function rehearseAuthorityTopology({ direction, database, loadSql =
     await apply([`migrations/${AUTHORITY}`, `migrations/${OPERATIONS}`, `migrations/${RF}`,
       ...(direction === "recutover" ? [`contract-migrations/${CONTRACT}`] : []),
       `contract-migrations/${SIGNOFF_CONTRACT}`,
-      `migrations/${RF151}`, `migrations/${RF151_CUTOVER}`,
+      `migrations/${RF151}`, `migrations/${RF151_CUTOVER}`, `migrations/${RF193_READ_RECOVERY}`,
       ...(direction === "recutover" ? [`contract-migrations/${RF151_CONTRACT}`] : [])]);
   }
   const result = await topology(database);

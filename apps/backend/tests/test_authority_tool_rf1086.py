@@ -200,7 +200,7 @@ def test_unsupported_events_and_changed_payload_never_reuse_saved_intent(rf_envi
     saved = Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"]).read_bytes()
     case_path = Path(rf_environment["TALLI_RF1086_CASE_PATH"])
     case = json.loads(case_path.read_text())
-    case["events"] = [{"type": "dividend"}]
+    case["events"] = [{"type": "owner_capital_repayment"}]
     case_path.write_text(json.dumps(case))
     with pytest.raises(ValueError, match="limited"):
         execute(rf_environment)
@@ -236,18 +236,23 @@ def test_actual_canonical_generation_preserves_source_xml_bytes(rf_environment, 
     assert evidence(rf_environment)["payloadHashes"]["hovedskjema"] == hashlib.sha256(calls[1].content).hexdigest()
 
 
-@pytest.mark.parametrize("name", ["no_activity", "stiftelse", "stiftelse_two_founders"])
-def test_tool_generates_exact_pinned_predecessor_fixture_bytes_before_mock_send(rf_environment, name):
+@pytest.mark.parametrize("name", ["no_activity", "stiftelse", "stiftelse_two_founders", "share_sale", "dividend"])
+def test_tool_sends_current_validated_documents_without_changing_their_bytes(rf_environment, name):
     vectors = json.loads((Path(__file__).parent / "fixtures/rf1086_oracle/python-oracle.json").read_text())
     vector = next(row for row in vectors if row["name"] == name)
     Path(rf_environment["TALLI_RF1086_CASE_PATH"]).write_text(json.dumps(vector["input"]))
     rf_environment["TALLI_MASKINPORTEN_SYSTEM_USER_ORG"] = vector["input"]["company"]["org_number"]
     summary, calls = execute(rf_environment)
     assert summary["status"] == "accepted"
-    assert calls[1].content == vector["output"]["hovedskjemaXml"].encode("utf-8")
+    retained = Path(rf_environment['TALLI_RF1086_EVIDENCE_PATH'])
+    retained = retained.with_name(f'.{retained.name}.xml')
+    assert calls[1].content == (retained/'1086H.xml').read_bytes()
     children = [request.content for request in calls if request.url.path.endswith("/1086U")]
-    expected = vector["output"]["underskjemaXml"]
-    assert children == [expected[key].encode("utf-8") for key in tool._shareholder_write_order(list(expected), rf_environment)]
+    identifiers = [holder['id'] for holder in vector['input']['shareholders']]
+    assert children == [(retained/f'1086U-{key}.xml').read_bytes()
+                        for key in tool._shareholder_write_order(identifiers, rf_environment)]
+    if name == 'no_activity':
+        assert calls[1].content == vector['output']['hovedskjemaXml'].encode('utf-8')
 
 
 def test_missing_local_xml_validator_stops_before_token_or_existing_evidence_mutation(rf_environment):
