@@ -195,6 +195,31 @@ relevant decisions, events, signed evidence or amendments change. It is a source
 projection, not filing readiness, external-source lease or production authority.
 No filing capability dependency or new HTTP endpoint is introduced.
 
+Cash capital increases use their explicit `SupportedCorporateEventReference`,
+the same reference passed to Ledger's `CapitalIncreaseReferenceId`, to group
+available binding-subscription, restricted-payment and registration records.
+The registration remains the reportable receipt;
+`CorporateYearSupportedEvidence.lifecycle_events` retains every original phase,
+including prior-year anchors. All present phases must agree on economics,
+policy, chronology and distinct Ledger entries; payment and registration must
+also agree on bank evidence. A missing registration, conflicting originals, or
+any phase's correction or Ledger amendment remains a blocker. The reporting
+digest uses `corporate-reporting-year-2` and includes every retained original.
+
+A successful owned registration is the existing authority for Ledger's required
+subscription and payment prerequisites. An accepted `OpeningCapitalIncreaseComponent`
+may supply either or both predecessors without corresponding Governance rows.
+The projection therefore accepts coherent available subsets containing the
+registration, including the existing standalone-registered path; it never
+manufactures an opening record or treats missing Governance rows as proof of
+missing Ledger anchors. Full original opening-component provenance would require
+a separate Ledger-owned public evidence reader. In particular, amendments to an
+opening anchor cannot be connected here when its entry identity is absent from
+the Governance basis; that existing standalone-path limitation is not a claim
+of complete opening-anchor amendment coverage. This change admits no nominal-
+value increase and leaves loss-reduction first recognition unchanged.
+
+
 For the supported ordinary owner dividend, the reporting year uses the civil
 general-meeting decision date, not the annual accounts basis, payment date or
 persistence timestamp. [Skatteetaten's RF-1086 examples](https://www.skatteetaten.no/bedrift-og-organisasjon/rapportering-og-bransjer/aksjonarregisteroppgaven/eksempler-pa-utfylling-av-aksjonarregisteroppgaven/)

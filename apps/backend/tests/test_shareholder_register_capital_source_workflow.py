@@ -175,3 +175,68 @@ def test_cash_nominal_waits_for_an_authoritative_governance_variant():
     h.command=replace(h.command,case=case,event_evidence=(replace(h.command.event_evidence[0],event_sha256=rf1086_year_source_digest(event)),))
     with pytest.raises(Rf1086YearSourceError,match='governance_nominal_increase_unavailable'):h.capture()
     assert not h.saved
+
+
+def completed_capital_lifecycle(h):
+    from talli_backend.modules.corporate_governance.public import CorporateReportingYearBasis
+    from test_corporate_governance_reporting_year import lifecycle, cash_lifecycle
+    return CorporateReportingYearBasis(COMPANY,lifecycle(),
+        cash_lifecycle(h.view.supported_events[0].recorded,subscription_year=int(YEAR)))
+
+
+def test_completed_capital_lifecycle_can_capture_and_preview_with_verified_sources():
+    from talli_backend.modules.corporate_governance.public import build_reporting_year_evidence
+    from test_shareholder_register_source_preview_workflow import preview
+    h=setup();prepare_capital(h)
+    h.view=build_reporting_year_evidence(basis=completed_capital_lifecycle(h),income_year=YEAR,amendments=())
+    source=h.capture()
+    assert len(source.governance_receipts)==1
+    assert source.governance_receipts[0].receipt_id==RECEIPT
+    result=preview(h)
+    assert result.source_id==source.source_id
+    assert result.source_sha256==source.source_sha256
+    assert result.hovedskjema_xml
+
+
+@pytest.mark.parametrize('omitted_phase',[
+    SupportedCorporateEventPhase.BINDING_SUBSCRIPTION,
+    SupportedCorporateEventPhase.RESTRICTED_PAYMENT,
+])
+def test_registered_capital_retains_authority_with_available_predecessor_phases(omitted_phase):
+    from talli_backend.modules.corporate_governance.public import build_reporting_year_evidence
+    from test_shareholder_register_source_preview_workflow import preview
+    h=setup();prepare_capital(h);basis=completed_capital_lifecycle(h)
+    basis=replace(basis,supported_events=tuple(item for item in basis.supported_events
+        if item.event.phase!=omitted_phase))
+    h.view=build_reporting_year_evidence(basis=basis,income_year=YEAR,amendments=())
+    source=h.capture()
+    assert len(source.governance_receipts)==1
+    assert source.governance_receipts[0].receipt_id==RECEIPT
+    assert len(h.view.supported_events[0].lifecycle_events)==2
+    assert preview(h).source_id==source.source_id
+
+
+def test_capital_without_registration_still_blocks_source_capture():
+    from talli_backend.modules.corporate_governance.public import build_reporting_year_evidence
+    h=setup();prepare_capital(h);basis=completed_capital_lifecycle(h)
+    basis=replace(basis,supported_events=tuple(item for item in basis.supported_events
+        if item.event.phase!=SupportedCorporateEventPhase.REGISTERED))
+    h.view=build_reporting_year_evidence(basis=basis,income_year=YEAR,amendments=())
+    with pytest.raises(Rf1086YearSourceError,match='governance_unresolved'):
+        h.capture()
+    assert not h.saved
+
+
+def test_changed_earlier_capital_phase_invalidates_captured_source_preview():
+    from talli_backend.modules.corporate_governance.public import build_reporting_year_evidence
+    from test_shareholder_register_source_preview_workflow import preview
+    h=setup();prepare_capital(h);basis=completed_capital_lifecycle(h)
+    h.view=build_reporting_year_evidence(basis=basis,income_year=YEAR,amendments=())
+    h.capture()
+    original=basis.supported_events[0]
+    changed=replace(original,recorded_at=original.recorded_at-timedelta(seconds=1))
+    basis=replace(basis,supported_events=(changed,*basis.supported_events[1:]))
+    h.view=build_reporting_year_evidence(basis=basis,income_year=YEAR,amendments=())
+    with pytest.raises(Rf1086YearSourceError,match='source_changed'):
+        preview(h)
+    assert not h.previews

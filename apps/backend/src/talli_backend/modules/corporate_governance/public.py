@@ -1429,7 +1429,11 @@ class CorporateYearDividendEvidence:
 @dataclass(frozen=True, slots=True)
 class CorporateYearSupportedEvidence:
     recorded: RecordedSupportedCorporateEvent
-    status: Literal["recorded", "reversed", "corrected"]
+    status: Literal["recorded", "reversed", "corrected", "incomplete", "conflicting"]
+    lifecycle_events: tuple[RecordedSupportedCorporateEvent, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "lifecycle_events", tuple(self.lifecycle_events))
 
 
 @dataclass(frozen=True, slots=True)

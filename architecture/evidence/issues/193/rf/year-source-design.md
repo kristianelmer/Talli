@@ -91,3 +91,18 @@ conformance and security/recovery/load/browser/mobile validation. Tax and Accoun
 still wait for full RF acceptance. Genuine-company records, authority and final
 production evidence require a recruited AS; that dependency does not block these
 software tasks.
+
+
+## Capital lifecycle integration checkpoint
+
+The Governance reporting-year source now groups cash-capital phases by their
+explicit shared reference and retains all originals. A trusted registration is
+the reportable receipt; every available phase must be coherent. This preserves
+accepted opening-position paths where Ledger supplies earlier anchors outside
+Governance. Missing registration, conflicting evidence and visible amendments
+remain blocked. An earlier phase changing invalidates a captured source preview.
+
+This bounded fix passed 1,180 offline tests and independent scoped review. See
+`capital-lifecycle-integration-20260923.json` for bindings. It does not introduce
+visibility into amendments of absent Ledger opening anchors, nominal-increase
+support, production activation or full RF acceptance.
