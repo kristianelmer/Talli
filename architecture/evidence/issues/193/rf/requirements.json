@@ -110,5 +110,6 @@
   },
   "ciRegressionVerification": "ci-regressions-20260923.json",
   "capitalLifecycleSourceIntegration": "capital-lifecycle-integration-20260923.json",
-  "browserCleanupCiRepair": "browser-cleanup-ci-20260923.json"
+  "browserCleanupCiRepair": "browser-cleanup-ci-20260923.json",
+  "governanceRollbackCiRepair": "governance-rollback-ci-20260923.json"
 }

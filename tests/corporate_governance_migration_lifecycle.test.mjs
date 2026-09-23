@@ -23,6 +23,42 @@ const contractMigrationName =
   "20260902110000_corporate_governance_contract.sql";
 const supportedEventsMigrationName =
   "20260904220000_corporate_governance_supported_events.sql";
+const ledgerAmendmentReadMigrationName =
+  "20260923090824_ledger_reporting_amendment_read.sql";
+
+async function assertLedgerAmendmentReadAuthority(client) {
+  const { rows: [authority] } = await client.query(String.raw`
+    select owner.rolname as owner,
+      procedure.prosecdef as security_definer,
+      pg_catalog.has_function_privilege(
+        'ledger_executor', procedure.oid, 'EXECUTE'
+      ) as ledger_reads,
+      pg_catalog.has_function_privilege(
+        'corporate_governance_workflow_executor', procedure.oid, 'EXECUTE'
+      ) as governance_reads,
+      pg_catalog.has_function_privilege(
+        'anon', procedure.oid, 'EXECUTE'
+      ) as anonymous_reads,
+      pg_catalog.has_function_privilege(
+        'authenticated', procedure.oid, 'EXECUTE'
+      ) as browser_reads,
+      exists(select 1 from pg_catalog.aclexplode(procedure.proacl) acl
+        where acl.grantee = 0 and acl.privilege_type = 'EXECUTE') as public_reads
+    from pg_catalog.pg_proc procedure
+    join pg_catalog.pg_roles owner on owner.oid = procedure.proowner
+    where procedure.oid =
+      'ledger.list_entry_amendments_v1(uuid,text)'::regprocedure
+  `);
+  assert.deepEqual(authority, {
+    owner: "ledger_store_owner",
+    security_definer: true,
+    ledger_reads: true,
+    governance_reads: true,
+    anonymous_reads: false,
+    browser_reads: false,
+    public_reads: false,
+  });
+}
 
 function withoutTransactionWrapper(sql) {
   return sql
@@ -1123,6 +1159,8 @@ test(
       lifecycleRollback,
       supportedEventsForward,
       supportedEventsRollback,
+      ledgerAmendmentReadForward,
+      ledgerAmendmentReadRollback,
     ] =
       await Promise.all([
       readFile(
@@ -1195,6 +1233,14 @@ test(
           `../supabase/rollback/${supportedEventsMigrationName}`,
           import.meta.url,
         ),
+        "utf8",
+      ),
+      readFile(
+        new URL(`../supabase/migrations/${ledgerAmendmentReadMigrationName}`, import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL(`../supabase/rollback/${ledgerAmendmentReadMigrationName}`, import.meta.url),
         "utf8",
       ),
     ]);
@@ -1570,6 +1616,13 @@ test(
       await assertSupersededEvidence(client, true);
       await assertFinalizationEvidence(client, true);
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        await assertLedgerAmendmentReadAuthority(client);
+        // The newer Ledger-owned reader grants the workflow role EXECUTE.
+        // Unwind that additive dependency before the older rollback drops it.
+        await client.query(ledgerAmendmentReadRollback);
+        assert.equal((await client.query(`select pg_catalog.to_regprocedure(
+          'ledger.list_entry_amendments_v1(uuid,text)'
+        ) is null as absent`)).rows[0].absent, true);
         await client.query(supportedEventsRollback);
         await client.query(lifecycleRollback);
         await client.query(annualRollback);
@@ -1594,6 +1647,8 @@ test(
         await assertGovernanceRolesCannotInheritCompanyAccessExecutor(client);
         await client.query(lifecycleForward);
         await client.query(supportedEventsForward);
+        await client.query(ledgerAmendmentReadForward);
+        await assertLedgerAmendmentReadAuthority(client);
         assert.deepEqual(await state(client), {
           capability_schema: true,
           decision_table: true,
