@@ -107,5 +107,6 @@
     "persistence": "source-preview-persistence-runtime-20260923.json",
     "review": "review-source-preview.json",
     "remaining": "Customer source intake/review, source-bound approval/send and action-time freshness, correction admission and source lineage in archive remain pending."
-  }
+  },
+  "ciRegressionVerification": "ci-regressions-20260923.json"
 }

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_BOUNDED_CI_REGRESSIONS",
+  "baseCommit": "29bd7ca29e801dc0310ed7882da0f75e19415afd",
+  "sourceSha256": {
+    "apps/web/tests/shareholder-register-filing-transport.test.mjs": "0e0b0597337832644386c0a3c2779a9affdaf7e306729b9a8d84248774e9ac65",
+    "tests/company_tax_workspace_composition.test.mjs": "053a1acd106d5ac7142ebc93ba17f5e072a7abd42adfbe10938f090099e3b0fe",
+    "tests/corporate_governance_review_fixes.test.mjs": "bd5e7afa4e49f34522461ebc67764e889e550cb3774148ba12bca1a7e98cd4b1",
+    "tests/documents_database_runtime.test.mjs": "101f7a3bb1425d6e63ec11f3a25c172b418935df12ba6672b4bcb9f24c351eeb",
+    "tests/documents_migration_lifecycle.test.mjs": "b3c0a267f56ddc0e286e4e77ad033f6db4ca81a5dbe8d5d6dcf6a4770e9f83ce",
+    "tests/support/documents_retention_rehearsal.mjs": "5e1e1b8627bdac88b2f23a3ecace98ea0068fb9d76ba1b4724b043b1cd4caed6"
+  },
+  "verification": {
+    "webBoundary": {
+      "passed": 355,
+      "command": "npm run test:boundary-web"
+    },
+    "contractBoundary": {
+      "passed": 53,
+      "command": "npm run test:boundary-contract"
+    },
+    "documentsLifecycle": {
+      "passed": 3
+    },
+    "databasePredecessor": {
+      "passed": 55,
+      "environment": "Fresh owned isolated local Supabase instance with ordinary migrations; reset before green verification, removed afterward."
+    },
+    "architecture": "PASS npm run check:architecture",
+    "review": "Independent scoped review passed; exact migration inventory assertion additionally updated to include retained evidence migration."
+  },
+  "privateEvidenceSha256": {
+    "boundary-web-accepted.log": "2d1067e348f4dcf129a7ba1e5984fab6724f8461cd74d1a82adbc564f41a9ecb",
+    "boundary-contract-accepted.log": "ce09271000675df154952f165ae43afbaf86c03acb2f991118cfc6781d36e97b",
+    "source-binding-proof.json": "97760a8b736473706de0841abad3f63e1dfd5176ea9258583a81f0b9f51ca543"
+  },
+  "preservation": [
+    "Production migration and rollback SQL unchanged.",
+    "Retained evidence refuses disposable rehearsal teardown; originals, hashes, owner protections and deletion guards survive.",
+    "Archive consumer tests use the real RF original-receipt guard and reject missing originals."
+  ],
+  "limits": [
+    "Local regression repair; remote CI result is tracked separately on draft PR #216.",
+    "No production AS has been recruited; all seven full RF criteria remain pending."
+  ]
+}

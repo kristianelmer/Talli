@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import pg from "pg";
+import { emptyDocumentsRetentionTeardown } from "./support/documents_retention_rehearsal.mjs";
 
 const { Client } = pg;
 const databaseUrl = process.env.DATABASE_URL;
 const migrationName = "20260901233000_documents_capability.sql";
 const registryMigrationName =
   "20260902030000_documents_evidence_reference_registry.sql";
+const retentionMigrationName = "20260923102419_documents_verified_rf_evidence_retention.sql";
 const governanceLifecycleMigrationName =
   "20260902100000_corporate_governance_artifact_lifecycle.sql";
 
@@ -41,6 +43,7 @@ test(
       registryRollback,
       governanceForward,
       governanceRollback,
+      retentionForward,
     ] = await Promise.all([
       readFile(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/rollback/${migrationName}`, import.meta.url), "utf8"),
@@ -48,6 +51,7 @@ test(
       readFile(new URL(`../supabase/rollback/${registryMigrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/migrations/${governanceLifecycleMigrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/rollback/${governanceLifecycleMigrationName}`, import.meta.url), "utf8"),
+      readFile(new URL(`../supabase/migrations/${retentionMigrationName}`, import.meta.url), "utf8"),
     ]);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
@@ -58,6 +62,14 @@ test(
 
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
         await client.query(governanceRollback);
+        await client.query("begin");
+        try {
+          await client.query(emptyDocumentsRetentionTeardown);
+          await client.query("commit");
+        } catch (error) {
+          await client.query("rollback");
+          throw error;
+        }
         await client.query(registryRollback);
         await client.query(rollback);
         const predecessor = await state(client);
@@ -82,6 +94,7 @@ test(
         await client.query(forward);
         await client.query(registryForward);
         await client.query(governanceForward);
+        await client.query(retentionForward);
         const successor = await state(client);
         assert.deepEqual(
           {
@@ -109,6 +122,13 @@ test(
           ) as allowed
         `);
         assert.equal(workflowGrant.rows[0].allowed, true);
+        const retentionGrant = await client.query(`select
+          has_function_privilege('shareholder_register_filing_executor',
+            'documents.retain_verified_rf_evidence_v1(text,uuid,uuid,uuid,integer,text,text,bigint,text,uuid)',
+            'EXECUTE') as capture,
+          has_function_privilege('shareholder_register_filing_executor',
+            'documents.assert_retained_metadata_v1(text,text)', 'EXECUTE') as metadata`);
+        assert.deepEqual(retentionGrant.rows[0], { capture: true, metadata: true });
       }
     } finally {
       await client.end();
