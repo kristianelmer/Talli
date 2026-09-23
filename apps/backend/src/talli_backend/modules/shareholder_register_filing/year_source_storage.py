@@ -94,7 +94,7 @@ def parse(value):
         result = _decode(raw["snapshot"])
         rf.assert_rf1086_year_source_integrity(result)
         return result
-    except (ValueError, TypeError, KeyError, AttributeError, RecursionError):
+    except (ValueError, TypeError, KeyError, AttributeError, RecursionError, ArithmeticError):
         raise rf.Rf1086YearSourceError("rf1086_source_storage_invalid") from None
 
 
@@ -115,5 +115,5 @@ def parse_observation(value):
         result = _decode(raw["snapshot"])
         rf.assert_rf1086_register_observation_integrity(result)
         return result
-    except (ValueError, TypeError, KeyError, AttributeError, RecursionError):
+    except (ValueError, TypeError, KeyError, AttributeError, RecursionError, ArithmeticError):
         raise rf.Rf1086RegisterObservationError("rf1086_register_storage_invalid") from None

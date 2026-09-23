@@ -205,3 +205,29 @@ def test_callers_cannot_supply_trusted_context():
     with pytest.raises(TypeError):asyncio.run(h.workflow.capture_year_source('token',h.command,
         idempotency_key=IdempotencyKey('capture-context-forgery'),correlation_id=CorrelationId('forgery'),context=SimpleNamespace(accepted_owner=True)))
     assert not h.calls
+
+
+def test_dividend_cents_cannot_round_into_matching_rf_economics():
+    from decimal import localcontext
+    h=Harness('dividend');item=h.view.dividends[0]
+    facts=dict(item.decision.canonical_input);dividend=dict(facts['dividend'])
+    original_total=dividend['amountOre']
+    rows=[dict(row) for row in dividend['allocations']]
+    rows[0]['amountOre']+=1
+    dividend.update(amountOre=original_total+1,allocations=rows);facts['dividend']=dividend
+    h.view=replace(h.view,dividends=(replace(item,decision=replace(item.decision,canonical_input=facts)),))
+    with localcontext() as context:
+        context.prec=5
+        with pytest.raises(Rf1086YearSourceError):h.capture()
+    assert not h.saved
+
+
+def test_dividend_receipt_digest_does_not_depend_on_decimal_precision():
+    from decimal import localcontext, Rounded, Inexact
+    expected=Harness('dividend').capture().governance_receipts[0].economic_sha256
+    actual=Harness('dividend')
+    with localcontext() as context:
+        context.prec=5
+        context.traps[Rounded]=True
+        context.traps[Inexact]=True
+        assert actual.capture().governance_receipts[0].economic_sha256==expected

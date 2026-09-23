@@ -41,7 +41,7 @@ def _require(condition: bool, code: str) -> None:
 
 def _ore(value: object) -> Decimal:
     _require(type(value) is int and value > 0, 'rf1086_source_governance_economics_invalid')
-    return Decimal(value) / Decimal(100)
+    return Decimal((0, tuple(int(digit) for digit in str(value)), -2))
 
 
 def _document_projection(evidence: VerifiedDocumentEvidence) -> Rf1086YearDocumentEvidence:
@@ -95,7 +95,7 @@ def _dividend_receipts(view: CorporateGovernanceYearEvidence, verified_documents
             allocations = tuple(sorted(((row['shareholderId'], _ore(row['amountOre']), counts[row['shareholderId']])
                                         for row in dividend['allocations']), key=lambda row: row[0]))
             _require(len({row[0] for row in allocations}) == len(allocations)
-                     and sum(row[1] for row in allocations) == _ore(dividend['amountOre']),
+                     and sum(row['amountOre'] for row in dividend['allocations']) == dividend['amountOre'],
                      'rf1086_source_governance_economics_invalid')
             economics = {'event_type': 'dividend', 'event_date': item.reporting_date.value.isoformat(),
                          'amount': _ore(dividend['amountOre']), 'allocations': allocations}

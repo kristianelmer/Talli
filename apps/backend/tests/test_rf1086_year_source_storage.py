@@ -16,7 +16,7 @@ def test_storage_roundtrip_preserves_every_source_digest_and_exact_decimal(kind)
     assert rf.serialize_rf1086_year_source(decoded) == encoded
     assert decoded.command.paid_in.opening_premium == Decimal('2000')
 
-@pytest.mark.parametrize('mutation', ['unknown_record','changed_hash','missing_field','duplicate_field','nan','executable'])
+@pytest.mark.parametrize('mutation', ['unknown_record','changed_hash','missing_field','duplicate_field','nan','malformed_decimal','executable'])
 def test_storage_rejects_unknown_altered_or_ambiguous_records(mutation):
     command, context = basis(); raw=rf.serialize_rf1086_year_source(prepare(command,context))
     if mutation=='unknown_record': raw=raw.replace('Rf1086YearSourceSnapshot','ForeignRecord')
@@ -25,6 +25,7 @@ def test_storage_rejects_unknown_altered_or_ambiguous_records(mutation):
         value=json.loads(raw);del value['snapshot']['fields']['command'];raw=json.dumps(value)
     elif mutation=='duplicate_field':raw=raw.replace('"codec":','"codec":"invalid","codec":',1)
     elif mutation=='nan':raw=re.sub(r'"decimal":"[^"]+"', '"decimal":"NaN"', raw, count=1)
+    elif mutation=='malformed_decimal':raw=re.sub(r'"decimal":"[^"]+"', '"decimal":"invalid decimal"', raw, count=1)
     elif mutation=='executable':raw='{"codec":"rf1086-year-source-v1","snapshot":{"record":"eval","fields":{}}}'
     with pytest.raises(rf.Rf1086YearSourceError,match='storage_invalid'):rf.parse_rf1086_year_source(raw)
 

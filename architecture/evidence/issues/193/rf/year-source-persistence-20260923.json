@@ -1,5 +1,5 @@
 {
-  "status": "PASS",
+  "status": "SUPERSEDED_PRIVATE_BACKING_UNAVAILABLE",
   "scope": "immutable year-source persistence before Documents retention addition",
   "databaseTests": 9,
   "unitTests": 56,
@@ -42,5 +42,8 @@
     "No production or hosted operations",
     "Mandatory lane partition pending concurrent Governance test mapping",
     "Documents retention being added separately; rerun required after integration"
-  ]
+  ],
+  "originalReportedStatus": "PASS",
+  "verificationNotice": "The three private helper/log/result files named below were overwritten by later reruns. Their original bytes are unavailable, so this earlier receipt cannot be independently verified and must not supply acceptance credit. Recorded original hashes and counts remain historical only.",
+  "supersededBy": "source-retention-runtime-20260923.json"
 }

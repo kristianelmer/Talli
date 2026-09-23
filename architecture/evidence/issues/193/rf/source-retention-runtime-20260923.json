@@ -63,7 +63,9 @@
   },
   "priorCheckpoint": {
     "path": "architecture/evidence/issues/193/rf/year-source-persistence-20260923.json",
-    "sha256": "751f2ca18b172ea866bf76d819c1c5f04b9c848129e7123b19a09c3ca5919dd3"
+    "sha256": "751f2ca18b172ea866bf76d819c1c5f04b9c848129e7123b19a09c3ca5919dd3",
+    "commit": "bbdf8e818842095204f69e103094d0e83d041ef6",
+    "verificationStatus": "Historical receipt only; private backing unavailable. See current year-source-persistence-20260923.json notice."
   },
   "verified": [
     "current company/year authorization and owner revocation before replay",
