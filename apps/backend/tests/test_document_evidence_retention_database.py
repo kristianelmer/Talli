@@ -91,6 +91,7 @@ def test_multiple_originals_replay_and_correction_retain_all_originals(originals
 def test_changed_complete_metadata_fails_and_rolls_back_earlier_retention(originals,backend_url,column,value):
     from psycopg import sql
     first=command(originals);second=command(originals,1)
+    if column=='storage_key':value=f'{originals["company"]}/{value}'
     with psycopg.connect(DATABASE_URL) as db:
         db.execute('set local role documents_store_owner')
         db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.authorized_company_roles',%s,true)",(str(originals['owner']),json.dumps({str(originals['company']):'owner'})))
@@ -219,3 +220,58 @@ def test_legacy_registry_api_is_not_broadened_to_unverified_attached_documents(o
             db.execute("select documents.register_evidence_reference_v1('corporate_governance','legacy_record',%s,%s,%s,2025,null,'attached',%s,9,%s)",
                 (uuid4(),originals['documents'][0].document_id.value,originals['company'],'a'*64,originals['owner']))
     assert retained_count(originals)==0
+
+
+@pytest.mark.parametrize('same_company', [True, False])
+def test_ledger_memo_guard_is_company_scoped_and_unlinked_removal_still_works(originals, same_company):
+    """Exercise the published Ledger guard under Documents' restricted role."""
+    from psycopg import sql
+    with psycopg.connect(DATABASE_URL) as db:
+        try:
+            principal = db.execute('select current_user').fetchone()[0]
+            other_company = uuid4()
+            db.execute("insert into public.companies(id,org_number,name,entity_type,address,postal_code,city,status_text,source,created_by) values(%s,%s,'Other fixture AS','AS','Example 2','0150','Oslo','Active','test',%s)",
+                       (other_company,str(100000000+other_company.int%899999999),originals['owner']))
+            db.execute(sql.SQL('grant ledger_store_owner, documents_executor to {} with set true granted by {}').format(sql.Identifier(principal),sql.Identifier(principal)))
+            db.execute('set local role ledger_store_owner')
+            db.execute(sql.SQL('grant insert on ledger.entries to {}').format(sql.Identifier(principal)))
+            db.execute('reset role')
+            document_id = originals['documents'][0].document_id.value
+            db.execute("insert into ledger.entries(company_id,income_year,entry_kind,memo,lines,created_by,source_capability,source_record_id,correlation_id) values(%s,2025,'MANUAL_JOURNAL',%s,%s,%s,'LEDGER',%s,%s)",
+                       (originals['company'] if same_company else other_company,'Original '+document_id,Jsonb([{'account':'1920','description':'fixture','debit':1,'credit':0},{'account':'2000','description':'fixture','debit':0,'credit':1}]),originals['owner'],str(uuid4()),str(uuid4())))
+            db.execute('reset role')
+            db.execute('set local role documents_executor')
+            db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.authorized_company_roles',%s,true)",(str(originals['owner']),json.dumps({str(originals['company']):'owner'})))
+            db.execute('savepoint linked_removal')
+            if same_company:
+                with pytest.raises(psycopg.Error, match='documents_evidence_linked'):
+                    db.execute('select * from documents.mark_removed_v1(%s,%s,%s)',(document_id,'remove',str(originals['owner'])))
+                db.execute('rollback to savepoint linked_removal')
+            else:
+                db.execute('select * from documents.mark_removed_v1(%s,%s,%s)',(document_id,'remove',str(originals['owner'])))
+            db.execute('select * from documents.mark_removed_v1(%s,%s,%s)',(originals['documents'][1].document_id.value,'unlinked',str(originals['owner'])))
+        finally:
+            # Undo fixture rows, removals, and the temporary Ledger fixture role.
+            db.rollback()
+
+
+def test_ledger_guard_rollback_and_replay_preserve_all_other_predicates_and_privileges(originals):
+    migration='20260923125730_documents_ledger_evidence_guard.sql'
+    with psycopg.connect(DATABASE_URL) as db:
+        def state():
+            return (
+                db.execute("select pg_get_functiondef(oid),proowner,proacl,prosecdef,proconfig from pg_proc where oid='documents.has_evidence_references_v1(uuid)'::regprocedure").fetchone(),
+                db.execute("select nspacl from pg_namespace where nspname='documents'").fetchone(),
+                db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall(),
+            )
+        before=state()
+        assert 'public.ledger_entries' not in before[0][0]
+        assert 'ledger.has_document_memo_reference_v1' in before[0][0]
+        for _ in range(2):
+            db.execute((ROOT/'supabase/rollback'/migration).read_text())
+            assert state()==before
+            db.execute((ROOT/'supabase/migrations'/migration).read_text())
+            assert state()==before
+        for role in ('anon','authenticated','service_role','documents_executor','shareholder_register_filing_executor'):
+            assert not db.execute("select has_function_privilege(%s,'ledger.has_document_memo_reference_v1(uuid,uuid)','EXECUTE')",(role,)).fetchone()[0]
+        assert not db.execute("select has_table_privilege('documents_store_owner','ledger.entries','SELECT')").fetchone()[0]

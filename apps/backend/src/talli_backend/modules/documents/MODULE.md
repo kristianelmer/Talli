@@ -88,3 +88,11 @@ Rollback revokes new capture calls while preserving all registry rows, accepted
 statuses and existing document-removal guards. Metadata row locks close the
 verified-metadata-to-source-capture gap; no provider-object lock or external
 cross-capability lease is claimed.
+
+The removal guard uses Ledger's published `has_document_memo_reference_v1`
+lookup with the document's company identity. It does not depend on the retired
+`public.ledger_entries` predecessor relation. The additive Documents migration
+changes only that predicate, preserving every RF, Tax, Accounts and other
+reference branch and the existing function privileges. Replay it after a frozen
+RF cutover that restores the historical guard. Rollback retains the safety
+correction because restoring the retired-table read would break removal checks.

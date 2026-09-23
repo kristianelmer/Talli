@@ -44,6 +44,7 @@ test(
       governanceForward,
       governanceRollback,
       retentionForward,
+      ledgerGuardForward,
     ] = await Promise.all([
       readFile(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/rollback/${migrationName}`, import.meta.url), "utf8"),
@@ -52,6 +53,7 @@ test(
       readFile(new URL(`../supabase/migrations/${governanceLifecycleMigrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/rollback/${governanceLifecycleMigrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/migrations/${retentionMigrationName}`, import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql", import.meta.url), "utf8"),
     ]);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
@@ -95,6 +97,7 @@ test(
         await client.query(registryForward);
         await client.query(governanceForward);
         await client.query(retentionForward);
+        await client.query(ledgerGuardForward);
         const successor = await state(client);
         assert.deepEqual(
           {
