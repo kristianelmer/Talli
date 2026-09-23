@@ -306,6 +306,7 @@ const companyTaxOperations = {
   preview: ["/api/v1/company-tax/settlement-previews", "post", "companyTaxPreviewSettlement"],
 };
 const shareholderRegisterFilingOperations = {
+  sourceDocument: ["/api/v1/shareholder-register-filings/source-documents/{documentId}", "get", "rf1086ReadSourceDocument"],
   captureRegisterObservation: ["/api/v1/shareholder-register-filings/register-observations", "post", "rf1086CaptureRegisterObservation"],
   captureYearSource: ["/api/v1/shareholder-register-filings/year-sources", "post", "rf1086CaptureYearSource"],
   generateSourcePreview: ["/api/v1/shareholder-register-filings/source-previews", "post", "rf1086GenerateSourcePreview"],
@@ -3107,6 +3108,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async rf1086ReadSourceDocument(
+      documentId: string, companyId: string, request: TalliRequestOptions = {},
+    ): Promise<RfSourceDocumentWire> {
+      const query = new URLSearchParams({ companyId });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-documents/" + encodeURIComponent(documentId) + "?" + query,
+        "GET", request, undefined, isRfSourceDocumentWire);
     },
 
     async rf1086CaptureRegisterObservation(

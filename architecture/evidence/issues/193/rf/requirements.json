@@ -112,5 +112,6 @@
   "capitalLifecycleSourceIntegration": "capital-lifecycle-integration-20260923.json",
   "browserCleanupCiRepair": "browser-cleanup-ci-20260923.json",
   "governanceRollbackCiRepair": "governance-rollback-ci-20260923.json",
-  "sourceApiIntegration": "source-api-integration-20260923.json"
+  "sourceApiIntegration": "source-api-integration-20260923.json",
+  "sourceMetadataCompatibility": "source-metadata-compatibility-20260923.json"
 }

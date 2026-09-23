@@ -631,3 +631,40 @@ test("source preview client carries required company/year scope and capture idem
     assert.equal(init.body, JSON.stringify(body));
   }
 });
+
+test("source metadata uses a separate route while existing documents retain their exact shape", async () => {
+  const { createTalliApiClient } = await import(generatedClientPath.href);
+  const companyId = "11111111-1111-4111-8111-111111111111";
+  const previousDocument = {
+    id: "22222222-2222-4222-8222-222222222222", companyId, incomeYear: 2025,
+    documentType: "accounting_document", name: "Original.pdf", linkedTo: "workspace",
+    status: "attached", retentionYears: 5, storageKey: "synthetic/original.pdf",
+    contentType: "application/pdf", byteLength: 10, contentSha256: "a".repeat(64),
+    createdBy: "33333333-3333-4333-8333-333333333333", createdAt: "2025-01-01T12:00:00Z",
+    removedAt: null, removalReason: null,
+  };
+  const sourceDocument = {
+    documentId: previousDocument.id, companyId, sourceIncomeYear: 2024,
+    documentType: "accounting_document", integrityStatus: "attached", byteLength: 10,
+    contentVersionSha256: "a".repeat(64), contentSha256: "a".repeat(64),
+    metadataSha256: "b".repeat(64), createdAt: previousDocument.createdAt,
+  };
+  const requests = [];
+  const client = createTalliApiClient({
+    baseUrl: "https://backend.example",
+    fetch: async (url, init) => {
+      requests.push({ url: new URL(url), init });
+      const body = url.includes("/source-documents/") ? sourceDocument : { documents: [previousDocument] };
+      return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+    },
+  });
+  assert.deepEqual(await client.documentsList({ companyId }), { documents: [previousDocument] });
+  assert.deepEqual(await client.rf1086ReadSourceDocument(previousDocument.id, companyId,
+    { headers: { Authorization: "Bearer owner-token" } }), sourceDocument);
+  assert.deepEqual([...requests[1].url.searchParams], [["companyId", companyId]]);
+  assert.equal(requests[1].init.cache, "no-store");
+  assert.equal(requests[1].init.headers.Authorization, "Bearer owner-token");
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  assert.equal(contract.components.schemas.DocumentWire.properties.metadataSha256, undefined);
+  assert.ok(contract.components.schemas.RfSourceDocumentWire.required.includes("metadataSha256"));
+});

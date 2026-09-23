@@ -1683,7 +1683,6 @@ export interface DocumentWire {
   id: string;
   incomeYear: number;
   linkedTo: string;
-  metadataSha256: string;
   name: string;
   removalReason: string | null;
   removedAt: string | null;
@@ -6499,7 +6498,7 @@ function isDocumentUploadTransferWire(value: unknown): value is DocumentUploadTr
 function isDocumentWire(value: unknown): value is DocumentWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["byteLength","companyId","contentSha256","contentType","createdAt","createdBy","documentType","id","incomeYear","linkedTo","metadataSha256","name","removalReason","removedAt","retentionYears","status","storageKey"]) &&
+    hasOnlyProperties(value, ["byteLength","companyId","contentSha256","contentType","createdAt","createdBy","documentType","id","incomeYear","linkedTo","name","removalReason","removedAt","retentionYears","status","storageKey"]) &&
     (typeof value.byteLength === "number" && Number.isInteger(value.byteLength) || value.byteLength === null) &&
     isUuid(value.companyId) &&
     (typeof value.contentSha256 === "string" || value.contentSha256 === null) &&
@@ -6510,7 +6509,6 @@ function isDocumentWire(value: unknown): value is DocumentWire {
     isUuid(value.id) &&
     typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
     typeof value.linkedTo === "string" &&
-    typeof value.metadataSha256 === "string" &&
     typeof value.name === "string" &&
     (typeof value.removalReason === "string" || value.removalReason === null) &&
     (isDateTime(value.removedAt) || value.removedAt === null) &&
@@ -12179,6 +12177,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async rf1086ReadSourceDocument(
+      documentId: string, companyId: string, request: TalliRequestOptions = {},
+    ): Promise<RfSourceDocumentWire> {
+      const query = new URLSearchParams({ companyId });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-documents/" + encodeURIComponent(documentId) + "?" + query,
+        "GET", request, undefined, isRfSourceDocumentWire);
     },
 
     async rf1086CaptureRegisterObservation(

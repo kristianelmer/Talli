@@ -408,7 +408,6 @@ from talli_backend.modules.documents.public import (
     DocumentsSessionFactory,
     DocumentTransferKind,
     DocumentUploadTransfer,
-    document_metadata_sha256,
 )
 from talli_backend.modules.investments.public import (
     AcquisitionLotView,
@@ -4660,7 +4659,6 @@ class DocumentWire(TransportModel):
     content_type: str
     byte_length: int | None
     content_sha256: str | None
-    metadata_sha256: str
     created_by: UUID
     created_at: datetime
     removed_at: datetime | None
@@ -4731,7 +4729,6 @@ def _document_wire(value: DocumentRecord) -> DocumentWire:
         content_type=value.content_type,
         byte_length=value.byte_length,
         content_sha256=value.content_sha256,
-        metadata_sha256=document_metadata_sha256(value),
         created_by=UUID(str(value.created_by.subject)),
         created_at=value.created_at,
         removed_at=value.removed_at,
@@ -11843,6 +11840,27 @@ def create_app(
             except ValidationError:
                 raise ShareholderRegisterFilingError.unavailable() from None
         return await shareholder_register_filing_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/source-documents/{documentId}",
+        operation_id="rf1086ReadSourceDocument", response_model=RfSourceDocumentWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_read_source_document(
+        documentId: UUID,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfSourceDocumentWire:
+        async def execute():
+            source = await shareholder_register_source_workflow.read_source_document(bearer_token(credentials),
+                company_id=CompanyId(str(company_id)), document_id=DocumentId(str(documentId)))
+            return RfSourceDocumentWire(document_id=UUID(source.document_id), company_id=UUID(str(source.company_id)),
+                content_version_sha256=source.content_version_sha256, content_sha256=source.content_sha256,
+                document_type=source.document_type, integrity_status=source.integrity_status,
+                byte_length=source.byte_length, created_at=source.created_at, metadata_sha256=source.metadata_sha256,
+                source_income_year=int(source.source_income_year))
+        return await shareholder_register_source_call(execute)
 
     @application.post(
         "/api/v1/shareholder-register-filings/register-observations",

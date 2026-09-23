@@ -149,6 +149,25 @@ class ShareholderRegisterSourceWorkflow:
         self._documents = documents
         self._governance = governance
 
+    async def read_source_document(self, access_token: str, *, company_id: CompanyId,
+            document_id: DocumentId) -> Rf1086YearDocumentEvidence:
+        """Read verified source metadata for the current accepted AS owner.
+
+        This observation preserves the original document year and is not capture
+        authority: capture verifies the bytes and metadata again.
+        """
+        session = await self._rf_sessions.session(access_token)
+        company = (await self._company_access.company_record(access_token, company_id=str(company_id))).company
+        _require(company.id == str(company_id) and company.role == 'owner' and company.entity_type == 'AS'
+                 and company.identity_confirmed_at is not None and company.identity_locked_at is not None,
+                 'rf1086_source_owner_required')
+        documents = await self._documents.session(access_token)
+        _require(documents.actor_id == session.actor_id, 'rf1086_source_owner_required')
+        evidence = await documents.verify_document_evidence(document_id)
+        _require(evidence.document.company_id == company_id and evidence.document.document_id == document_id,
+                 'rf1086_source_document_not_found')
+        return _document_projection(evidence)
+
     async def _capital_receipts(self, session: AuthenticatedShareholderRegisterFilingSession,
             command: RecordRf1086YearSource, view: CorporateGovernanceYearEvidence,
             verified: tuple[Rf1086YearDocumentEvidence, ...]) -> tuple[Rf1086YearGovernanceReceipt, ...]:

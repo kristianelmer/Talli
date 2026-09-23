@@ -13,7 +13,8 @@ from fastapi.testclient import TestClient
 from talli_backend.main import create_app
 from talli_backend.application.shareholder_register_filing_session import ShareholderRegisterFilingAuthenticationError
 from talli_backend.modules.corporate_governance.public import CorporateReportingYearBasis, CorporateLifecycleSnapshot
-from talli_backend.modules.documents.public import document_metadata_sha256
+from talli_backend.modules.documents.public import document_metadata_sha256, DocumentId
+from talli_backend.shared.kernel import CompanyId
 from talli_backend.modules.shareholder_register_filing.public import Rf1086YearSourceId
 from test_shareholder_register_source_workflow import Harness
 from test_shareholder_register_capital_source_workflow import setup as capital_setup
@@ -85,6 +86,9 @@ class ApiHarness:
         return self.client.post(BASE+'/year-sources',json=body if body is not None else draft(self.h.command),headers=headers or HEADERS)
     def preview(self,source_id):
         return self.client.post(BASE+'/source-previews',json={'companyId':str(COMPANY),'incomeYear':int(YEAR),'sourceId':source_id},headers=HEADERS)
+    def source_document(self,**query):
+        return self.client.get(BASE+'/source-documents/'+DOCUMENT,
+            params={'companyId':str(COMPANY),**query},headers=HEADERS)
     def read(self,preview_id,**query):
         return self.client.get(BASE+'/source-previews/'+preview_id,
             params={'companyId':str(COMPANY),'incomeYear':int(YEAR),**query},headers=HEADERS)
@@ -200,15 +204,88 @@ def test_source_transport_openapi_has_exact_inputs_and_no_internal_context():
     assert models['RfYearSourceCaptureWire']['additionalProperties'] is False
     assert {'context','actorId','freshness','governanceReceipts'}.isdisjoint(models['RfYearSourceCaptureWire']['properties'])
     assert models['RfSourceCaseWire']['properties']['events']['items']['discriminator']['propertyName']=='type'
-    assert {'metadataSha256','contentSha256'}<=models['DocumentWire']['properties'].keys()
+    assert 'metadataSha256' not in models['DocumentWire']['properties']
+    assert models['RfSourceDocumentWire']['additionalProperties'] is False
+    operation=schema['paths'][BASE+'/source-documents/{documentId}']['get']
+    assert operation['operationId']=='rf1086ReadSourceDocument'
 
 
-def test_existing_document_projection_exposes_owned_metadata_digest_only():
+def test_existing_document_projection_retains_predecessor_response_shape():
     from talli_backend.main import _document_wire
     api=ApiHarness();wire=_document_wire(api.h.record).model_dump(mode='json',by_alias=True)
-    assert wire['metadataSha256']==document_metadata_sha256(api.h.record)
+    assert set(wire)=={'id','companyId','incomeYear','documentType','name','linkedTo','status',
+        'retentionYears','storageKey','contentType','byteLength','contentSha256','createdBy',
+        'createdAt','removedAt','removalReason'}
     assert wire['contentSha256']==api.h.record.content_sha256
-    assert 'content' not in wire and 'bytes' not in wire
+    models=api.app.openapi()['components']['schemas']
+    assert 'metadataSha256' not in models['DocumentWire']['properties']
+    for model in ('RfSourceDocumentWire','RfRegisterDocumentWire'):
+        assert 'metadataSha256' in models[model]['required']
+        assert models[model]['properties']['metadataSha256']['type']=='string'
+
+
+def test_verified_source_document_round_trips_into_capture_preserving_prior_year():
+    api=ApiHarness();response=api.source_document()
+    assert response.status_code==200,response.text
+    source=response.json()
+    assert set(source)=={'documentId','companyId','contentVersionSha256','contentSha256',
+        'documentType','integrityStatus','byteLength','createdAt','metadataSha256','sourceIncomeYear'}
+    assert source['metadataSha256']==document_metadata_sha256(api.h.record)
+    assert source['sourceIncomeYear']==2024 and int(YEAR)==2025
+    assert api.h.calls==['rf_auth','company_membership','verify_document']
+    assert not api.h.saved
+    body=draft(api.h.command);body['documents']=[source]
+    response=api.capture(body)
+    assert response.status_code==200,response.text
+    assert api.h.saved[0].command.documents==api.h.command.documents
+    assert api.h.calls.count('verify_document')==2
+
+
+@pytest.mark.parametrize('headers',[{}, {'Authorization':'Bearer wrong-token'}])
+def test_source_document_requires_authenticated_actor(headers):
+    api=ApiHarness()
+    response=api.client.get(BASE+'/source-documents/'+DOCUMENT,
+        params={'companyId':str(COMPANY)},headers=headers)
+    assert response.status_code==401 and 'verify_document' not in api.h.calls
+
+
+@pytest.mark.parametrize('problem',['reviewer','read_only','unconfirmed','unlocked','not_as','wrong_tenant','actor_mismatch'])
+def test_source_document_checks_current_owner_before_reading_original(problem):
+    api=ApiHarness();query={}
+    assert api.source_document().status_code==200
+    api.h.calls=[]
+    if problem in {'reviewer','read_only'}:api.h.company.role=problem
+    if problem=='unconfirmed':api.h.company.identity_confirmed_at=None
+    if problem=='unlocked':api.h.company.identity_locked_at=None
+    if problem=='not_as':api.h.company.entity_type='ENK'
+    if problem=='wrong_tenant':query['companyId']=str(uuid4())
+    if problem=='actor_mismatch':api.h.document_actor=replace(ACTOR,subject=str(uuid4()))
+    response=api.source_document(**query)
+    assert response.status_code in {403,404},response.text
+    assert 'verify_document' not in api.h.calls
+    assert api.h.record.name not in response.text and 'metadataSha256' not in response.text
+
+
+@pytest.mark.parametrize('problem',['wrong_document_tenant','wrong_document_id','invalid_bytes'])
+def test_source_document_never_returns_unverified_or_out_of_scope_metadata(problem):
+    api=ApiHarness()
+    if problem=='wrong_document_tenant':api.h.record=replace(api.h.record,company_id=CompanyId(str(uuid4())))
+    if problem=='wrong_document_id':api.h.record=replace(api.h.record,document_id=DocumentId(str(uuid4())))
+    if problem=='invalid_bytes':api.h.document_failure=True
+    response=api.source_document()
+    assert response.status_code in {404,409},response.text
+    assert 'metadataSha256' not in response.text and api.h.record.name not in response.text
+
+
+@pytest.mark.parametrize('problem',['bytes','metadata'])
+def test_source_capture_rechecks_observation_after_source_document_read(problem):
+    api=ApiHarness();source=api.source_document().json()
+    if problem=='bytes':api.h.record=replace(api.h.record,content_sha256='e'*64)
+    else:api.h.record=replace(api.h.record,name='Changed after read.pdf')
+    body=draft(api.h.command);body['documents']=[source]
+    response=api.capture(body)
+    assert response.status_code==409 and not api.h.saved
+    assert api.h.calls.count('verify_document')==2
 
 
 @pytest.mark.parametrize('timestamp', ['2025-06-01T12:00:00Z', '2025-06-01T12:00:00+02:00', '2025-06-01T12:00:00.123456'])
