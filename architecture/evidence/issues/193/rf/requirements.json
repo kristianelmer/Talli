@@ -109,5 +109,6 @@
     "remaining": "Customer source intake/review, source-bound approval/send and action-time freshness, correction admission and source lineage in archive remain pending."
   },
   "ciRegressionVerification": "ci-regressions-20260923.json",
-  "capitalLifecycleSourceIntegration": "capital-lifecycle-integration-20260923.json"
+  "capitalLifecycleSourceIntegration": "capital-lifecycle-integration-20260923.json",
+  "browserCleanupCiRepair": "browser-cleanup-ci-20260923.json"
 }
