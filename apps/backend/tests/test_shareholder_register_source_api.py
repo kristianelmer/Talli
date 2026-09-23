@@ -138,7 +138,7 @@ def test_current_nonowner_cannot_capture_or_review(role):
     assert len(api.h.saved)==1
 
 
-@pytest.mark.parametrize('field,value',[('actorId',str(uuid4())),('context',{'acceptedOwner':True}),
+@pytest.mark.parametrize('field,value',[('actorId','11111111-1111-4111-8111-111111111111'),('context',{'acceptedOwner':True}),
     ('acceptedOwner',True),('governanceReceipts',[]),('freshness',{}),('confirmedAt',NOW.isoformat())])
 def test_caller_cannot_supply_trusted_fields(field,value):
     api=ApiHarness();body=draft(api.h.command);body[field]=value
@@ -340,3 +340,57 @@ def test_civil_timestamp_schema_matches_local_whole_second_contract(model,field)
                     '2025-06-01T12:00:00.123456','2025-06-01 12:00:00'):
         assert re.fullmatch(schema['pattern'],invalid) is None
     assert models['RfSourceDocumentWire']['properties']['createdAt']['format']=='date-time'
+
+
+@pytest.mark.parametrize('kind',['formation','transfer'])
+@pytest.mark.parametrize('digest_input',['omitted','null','explicit'])
+def test_customer_event_evidence_uses_server_owned_canonical_hash(kind,digest_input):
+    api=ApiHarness(kind=kind);body=draft(api.h.command)
+    body['case']['share_snapshot'].update(previous_paid_in_premium='0',current_paid_in_premium='0')
+    expected=[row.event_sha256 for row in api.h.command.event_evidence]
+    for item in body['event_evidence']:
+        if digest_input=='omitted':item.pop('event_sha256')
+        elif digest_input=='null':item['event_sha256']=None
+    response=api.capture(body)
+    assert response.status_code==200,response.text
+    assert [row.event_sha256 for row in api.h.saved[0].command.event_evidence]==expected
+    preview=api.preview(response.json()['sourceId'])
+    assert preview.status_code==200 and preview.json()['readinessStatus']=='ready',preview.text
+
+
+def test_explicit_event_hash_mismatch_remains_a_domain_conflict():
+    api=ApiHarness(kind='transfer');body=draft(api.h.command)
+    body['case']['share_snapshot'].update(previous_paid_in_premium='0',current_paid_in_premium='0')
+    body['event_evidence'][0]['event_sha256']='f'*64
+    response=api.capture(body)
+    assert response.status_code==409 and response.json()['code']=='rf1086_source_event_evidence_mismatch'
+    assert not api.h.saved
+
+
+@pytest.mark.parametrize('problem',['duplicate','out_of_range','missing','negative','fractional','boolean'])
+@pytest.mark.parametrize('omit_hash',[True,False])
+def test_customer_event_evidence_does_not_bypass_index_or_coverage_checks(problem,omit_hash):
+    api=ApiHarness(kind='transfer');body=draft(api.h.command)
+    body['case']['share_snapshot'].update(previous_paid_in_premium='0',current_paid_in_premium='0')
+    if omit_hash:
+        for item in body['event_evidence']:item.pop('event_sha256')
+    if problem=='duplicate':body['event_evidence'].append(dict(body['event_evidence'][0]))
+    elif problem=='missing':body['event_evidence']=[]
+    else:
+        body['event_evidence'][0]['event_index']={
+            'out_of_range':len(body['case']['events']),'negative':-1,'fractional':0.5,'boolean':True}[problem]
+    response=api.capture(body)
+    assert response.status_code==(422 if problem in {'negative','fractional','boolean'} else 409),response.text
+    if response.status_code==409:
+        assert response.json()['code']=='rf1086_source_event_evidence_incomplete'
+    assert not api.h.saved
+
+
+def test_event_digest_is_optional_only_at_customer_input_boundary():
+    from talli_backend.modules.shareholder_register_filing.public import Rf1086YearEventEvidence, Rf1086YearSourceError
+    schema=ApiHarness().app.openapi()['components']['schemas']['RfSourceEventEvidenceWire']
+    assert 'eventSha256' not in schema['required']
+    assert {'eventIndex','documentIds'}<=set(schema['required'])
+    assert schema['additionalProperties'] is False
+    with pytest.raises(Rf1086YearSourceError):
+        Rf1086YearEventEvidence(0,None,(DOCUMENT,))

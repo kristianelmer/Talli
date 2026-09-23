@@ -22540,9 +22540,16 @@
             "type": "integer"
           },
           "eventSha256": {
-            "pattern": "^[a-f0-9]{64}$",
-            "title": "Eventsha256",
-            "type": "string"
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eventsha256"
           },
           "governanceReceiptId": {
             "anyOf": [
@@ -22559,7 +22566,6 @@
         },
         "required": [
           "eventIndex",
-          "eventSha256",
           "documentIds"
         ],
         "title": "RfSourceEventEvidenceWire",

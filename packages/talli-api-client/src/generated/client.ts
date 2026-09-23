@@ -3724,7 +3724,7 @@ export interface RfSourceDocumentWire {
 export interface RfSourceEventEvidenceWire {
   documentIds: string[];
   eventIndex: number;
-  eventSha256: string;
+  eventSha256?: string | null;
   governanceReceiptId?: string | null;
 }
 
@@ -9368,7 +9368,7 @@ function isRfSourceEventEvidenceWire(value: unknown): value is RfSourceEventEvid
     hasOnlyProperties(value, ["documentIds","eventIndex","eventSha256","governanceReceiptId"]) &&
     Array.isArray(value.documentIds) && value.documentIds.every((item) => isUuid(item)) &&
     (typeof value.eventIndex === "number" && Number.isInteger(value.eventIndex) && value.eventIndex >= 0) &&
-    (typeof value.eventSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.eventSha256)) &&
+    (value.eventSha256 === undefined || ((typeof value.eventSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.eventSha256)) || value.eventSha256 === null)) &&
     (value.governanceReceiptId === undefined || (isUuid(value.governanceReceiptId) || value.governanceReceiptId === null))
   );
 }

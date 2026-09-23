@@ -464,7 +464,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     Rf1086CashNominalIncreaseEvent, Rf1086LossCoveringReductionEvent, Rf1086ShareSaleEvent,
     Rf1086DividendAllocation, Rf1086DividendEvent, Rf1086Case, Rf1086PaidInSourceFacts,
     Rf1086YearDocumentEvidence, Rf1086YearEventEvidence, Rf1086RegisterHolding,
-    Rf1086RegisteredShareState, Rf1086RegisterDocumentEvidence,
+    Rf1086RegisteredShareState, Rf1086RegisterDocumentEvidence, rf1086_year_source_digest,
 )
 from talli_backend.modules.system_boundary.public import (
     SYSTEM_BOUNDARY_AVAILABLE,
@@ -1779,7 +1779,7 @@ class RfSourceDocumentWire(StrictTransportModel):
 
 class RfSourceEventEvidenceWire(StrictTransportModel):
     event_index: RfSourceCount
-    event_sha256: RfSourceHash
+    event_sha256: RfSourceHash | None = None
     document_ids: list[UUID]
     governance_receipt_id: UUID | None = None
 
@@ -1908,9 +1908,21 @@ def _rf_source_value(value: Any) -> Any:
 
 
 def _rf_source_command(body: RfYearSourceCaptureWire | RfRegisterObservationCaptureWire, actor_id: Any):
-    values = {name: _rf_source_value(getattr(body, name)) for name in type(body).model_fields}
+    values = {name: _rf_source_value(getattr(body, name)) for name in type(body).model_fields
+              if not (isinstance(body, RfYearSourceCaptureWire) and name == 'event_evidence')}
     values.update(company_id=CompanyId(values['company_id']), income_year=IncomeYear(values['income_year']), actor_id=actor_id)
     if isinstance(body, RfYearSourceCaptureWire):
+        evidence = []
+        for item in body.event_evidence:
+            if item.event_index >= len(values['case'].events):
+                raise Rf1086YearSourceError('rf1086_source_event_evidence_incomplete')
+            # Hash the parsed domain event, never the client's JSON spelling.
+            # Explicit hashes remain assertions and are checked by RF policy.
+            digest = item.event_sha256
+            if digest is None:
+                digest = rf1086_year_source_digest(values['case'].events[item.event_index])
+            evidence.append(_rf_source_value(item.model_copy(update={'event_sha256': digest})))
+        values['event_evidence'] = tuple(evidence)
         if values['supersedes_source_id'] is not None:
             values['supersedes_source_id'] = Rf1086YearSourceId(values['supersedes_source_id'])
         return RecordRf1086YearSource(**values)
