@@ -326,3 +326,16 @@ amount fails. The backend new-year transaction binds this write to the RF
 snapshot and existing opening posting, so a later failure rolls all effects back.
 
 `preview_tax_settlement_lines` exposes the same private account mapping used by posting. This pure query permits a zero preview; posting still requires a strictly positive amount and balanced lines.
+
+### Original amendment receipts
+
+`LedgerEntryAmendment` and `LedgerQueries.list_entry_amendments` expose the original
+append-only standalone reversals and replacement corrections for one accepted
+company member. The restricted owner RPC `ledger.list_entry_amendments_v1`
+combines `entry_reversals` and `entry_corrections`; it preserves original,
+reversal and optional replacement identities, reason, actor and timestamp.
+It does not filter by reporting year or hide historical receipts, so named
+application workflows can follow complete correction chains. Only the existing
+Ledger and Corporate Governance executors receive this read function; neither
+receives table grants. No writer, business row, RLS policy or capability dependency
+changes. Migration replay preserves pre-existing schema ACLs and role memberships.

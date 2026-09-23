@@ -20,6 +20,7 @@ from talli_backend.modules.documents.public import (
     DocumentsError,
     DocumentsPersistence,
     DocumentStatus,
+    VerifiedDocumentEvidence,
     DocumentTransferKind,
     DocumentUploadTransfer,
 )
@@ -186,6 +187,40 @@ class DocumentsService:
             if await self._persistence.actor_role(company_id) is None:
                 raise DocumentsError.forbidden()
         return await self._persistence.list_documents(company_ids)
+
+    async def verify_document_evidence(self, document_id: DocumentId) -> VerifiedDocumentEvidence:
+        """Verify private bytes for an authenticated backend consumer.
+
+        Object I/O happens outside a database transaction. Recheck metadata and
+        owner access after I/O; callers still need a separate freshness lease
+        for consequential cross-capability operations.
+        """
+        document = await self._persistence.get_document(document_id)
+        if document is None or document.status not in {
+            DocumentStatus.ATTACHED,
+            DocumentStatus.GENERATED_UNSIGNED,
+            DocumentStatus.SIGNED_OWNER_ATTESTED,
+            DocumentStatus.STORED,
+        }:
+            raise DocumentsError.not_found()
+        if await self._persistence.refresh_actor_role(document.company_id) != "owner":
+            raise DocumentsError.forbidden()
+        stored = await self._storage.read_object(
+            bucket=COMPANY_DOCUMENTS_BUCKET, storage_key=document.storage_key
+        )
+        if (not stored.content or len(stored.content) > MAX_DOCUMENT_UPLOAD_BYTES
+                or document.byte_length != len(stored.content)
+                or document.content_sha256 != sha256(stored.content).hexdigest()):
+            raise DocumentsError.integrity_failed()
+        current = await self._persistence.get_document(document_id)
+        if await self._persistence.refresh_actor_role(document.company_id) != "owner":
+            raise DocumentsError.forbidden()
+        if current != document:
+            raise DocumentsError.conflict()
+        return VerifiedDocumentEvidence(
+            document=document, content_sha256=document.content_sha256,
+            byte_length=document.byte_length, integrity_status=document.status,
+        )
 
     async def create_transfer(self, document_id: DocumentId, kind: DocumentTransferKind) -> DocumentObjectTransfer:
         document = await self._persistence.get_document(document_id)

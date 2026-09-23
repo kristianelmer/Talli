@@ -86,7 +86,30 @@ def validate_capital_case(case) -> None:
         raise ValueError("capital case contains malformed values") from error
 
 
-def _validate_capital_case(case) -> None:
+def _validate_capital_case(case, *, event_index=None):
+    from dataclasses import fields, is_dataclass
+    from decimal import Context, Decimal, localcontext
+
+    def width(value):
+        if is_dataclass(value):
+            return max((width(getattr(value, field.name)) for field in fields(value)), default=0)
+        if isinstance(value, (tuple, list)):
+            return max((width(item) for item in value), default=0)
+        if type(value) in (int, float, Decimal):
+            number = Decimal(str(value))
+            if not number.is_finite():
+                raise ValueError("capital case amounts must be finite")
+            return max(1, number.adjusted() + 1) + max(6, -number.as_tuple().exponent)
+        return 0
+
+    # Products, six-place quantization and accumulated events remain exact even
+    # when the caller changed Decimal precision, rounding or traps.
+    precision = max(28, 2 * width(case) + len(str(len(case.events))) + 8)
+    with localcontext(Context(prec=precision)):
+        return _replay_capital_case(case, event_index=event_index)
+
+
+def _replay_capital_case(case, *, event_index=None):
     """Reconcile the complete chronology before admitting a capital-event case.
 
     Shared by private parsing and public-value readiness for every RF case.
@@ -125,7 +148,20 @@ def _validate_capital_case(case) -> None:
     require(sum(holdings.values()) == share_count and capital == nominal * share_count, "capital case opening share capital and holdings must reconcile")
     last_timestamp = None
     loss_coverage_seen = False
-    for event in case.events:
+    projected = []
+
+    def capture_register():
+        from .public import Rf1086RegisterHolding, Rf1086RegisteredShareState
+        from .register_observation import state
+        return state(Rf1086RegisteredShareState(capital, share_count, nominal, tuple(
+            Rf1086RegisterHolding(holder.id, holder.name, holder.kind,
+                holder.national_id if holder.kind == "norwegian_person" else holder.org_number,
+                holdings[holder.id])
+            for holder in case.shareholders if holdings[holder.id] > 0)))
+
+    for index, event in enumerate(case.events):
+        if index == event_index:
+            projected.append(capture_register())
         require(event.timestamp.tzinfo is None and event.timestamp.microsecond == 0 and event.timestamp.year == case.company.income_year,
                 "capital case timestamps must be local whole seconds in the income year")
         require(last_timestamp is None or event.timestamp > last_timestamp, "capital case events must have distinct ascending timestamps")
@@ -203,7 +239,34 @@ def _validate_capital_case(case) -> None:
         else:
             raise ValueError("unsupported event in capital case")
         require(capital >= 30000, "supported Norwegian AS must retain at least NOK 30000 registered capital")
+        if index == event_index:
+            projected.append(capture_register())
     require(share_count > 0 and capital >= 30000, "supported Norwegian AS requires shares and at least NOK 30000 registered capital")
     require(share_count == count(shares.current_share_count) and capital == money(shares.current_share_capital) and nominal == money(shares.current_nominal_value), "capital case closing registered capital must reconcile")
     require(paid_in == money(shares.current_paid_in_share_capital) and premium == money(shares.current_paid_in_premium), "capital case closing tax paid-in capital and premium must reconcile")
     require(all(holdings[key] == count(item.current_share_count) for key, item in snapshots.items()), "capital case closing shareholder holdings must reconcile")
+    return tuple(projected)
+
+
+def event_register_states(case, event_index):
+    """Project one capital transition from the complete, validated RF replay."""
+    from .public import Rf1086RegisterObservationError
+    import re
+    try:
+        if (type(event_index) is not int or not 0 <= event_index < len(case.events)
+                or case.company.share_type != "01"
+                or case.events[event_index].type not in CAPITAL_EVENT_TYPES):
+            raise ValueError()
+        identities = set()
+        for holder in case.shareholders:
+            width = {"norwegian_person": 11, "norwegian_company": 9}.get(holder.kind)
+            identifier = holder.national_id if holder.kind == "norwegian_person" else holder.org_number
+            if (width is None or not isinstance(holder.name, str) or not holder.name.strip()
+                    or not isinstance(identifier, str)
+                    or re.fullmatch(r"[0-9]{" + str(width) + r"}", identifier) is None
+                    or (holder.kind, identifier) in identities):
+                raise ValueError()
+            identities.add((holder.kind, identifier))
+        return _validate_capital_case(case, event_index=event_index)
+    except (ValueError, TypeError, AttributeError, ArithmeticError, KeyError):
+        raise Rf1086RegisterObservationError("rf1086_register_case_projection_invalid") from None

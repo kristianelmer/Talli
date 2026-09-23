@@ -500,13 +500,18 @@ const RFX='20260909190548_shareholder_register_filing_capability.sql';
 const RFC='20260909190905_shareholder_register_filing_cutover.sql';
 const RFF='20260909190955_shareholder_register_filing_contract.sql';
 const RFR='20260917110951_rf1086_action_required_read_recovery.sql';
+const RFA='20260917114424_rf1086_production_archive_evidence.sql';
+const RFY='20260923091509_rf1086_immutable_year_source.sql';
+const RFO='20260923102314_rf1086_register_observation_store.sql';
 const predecessor={rf_owned:false,authority_kind:'r',ledger_kind:'v',ledger_setup:true,opening_kind:'r'};
-const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${RFR}`];
+const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${RFR}`,`migrations/${RFA}`,`migrations/${RFY}`,`migrations/${RFO}`];
 const workspaceForward=forward.filter(path=>path!==`contract-migrations/${AUC}`);
 function fake(initial,{fail,noEffect=false}={}) {
  const state={signoff_open:true,...initial},executed=[];
  return {state,executed,database:{async query(sql) {
   if(sql.startsWith('select\n')) return {rows:[{...state}]};
+  if(sql.startsWith('select exists(select 1 from shareholder_register_filing.register_observations)')) return {rows:[{retained_observations:state.retained_observations??false}]};
+  if(sql.startsWith('select exists(select 1 from shareholder_register_filing.year_source_versions)')) return {rows:[{retained_sources:state.retained_sources??false}]};
   executed.push(sql); if(sql===fail) throw new Error('synthetic_dependency_failure');
   if(!noEffect){
    if(sql===`contract-migrations/${SIGN}`){if(!state.signoff_open)throw new Error('launch_signoff_policy_missing');state.signoff_open=false;}
@@ -526,9 +531,19 @@ const run=(direction,fixture)=>rehearseAuthorityTopology({direction,database:fix
 for(const authority_kind of ['v',null]) for(const rf_owned of [false,true]) {
  test(`rollback RF=${rf_owned} AU=${authority_kind} restores dependency order`,async()=>{
   const fixture=fake({...predecessor,authority_kind,rf_owned});await run('rollback',fixture);
-  assert.deepEqual(fixture.executed,[...(rf_owned?[`rollback/${RFX}`]:[]),`rollback/${SIGN}`,...(authority_kind===null?[`rollback/${AUC}`]:[]),`rollback/${RF}`,`rollback/${OP}`,`rollback/${AU}`]);
+  assert.deepEqual(fixture.executed,[...(rf_owned?[`rollback/${RFA}`,`rollback/${RFX}`]:[]),`rollback/${SIGN}`,...(authority_kind===null?[`rollback/${AUC}`]:[]),`rollback/${RF}`,`rollback/${OP}`,`rollback/${AU}`]);
  });
 }
+test('retained independent register observations block full-schema rollback before any mutation',async()=>{
+ const f=fake({...predecessor,rf_owned:true,rf_register_observations:true,retained_observations:true,authority_kind:null});
+ await assert.rejects(run('rollback',f),/rf1086_retained_register_observations_block_full_schema_rollback/);
+ assert.deepEqual(f.executed,[]);
+});
+test('retained immutable RF year sources block full-schema rollback before any mutation',async()=>{
+ const f=fake({...predecessor,rf_owned:true,rf_year_sources:true,retained_sources:true,authority_kind:null});
+ await assert.rejects(run('rollback',f),/rf1086_retained_year_sources_block_full_schema_rollback/);
+ assert.deepEqual(f.executed,[]);
+});
 test('workspace rollback followed by final recutover restores signoff policy topology',async()=>{
  const f=fake(predecessor);await run('workspace',f);await run('rollback',f);
  f.state.ledger_kind=null;f.state.ledger_setup=false;
@@ -536,7 +551,7 @@ test('workspace rollback followed by final recutover restores signoff policy top
 });
 test('RF rollback failure prevents all predecessor mutations',async()=>{
  const f=fake({...predecessor,rf_owned:true,authority_kind:null},{fail:`rollback/${RFX}`});
- await assert.rejects(run('rollback',f),/synthetic_dependency_failure/);assert.deepEqual(f.executed,[`rollback/${RFX}`]);
+ await assert.rejects(run('rollback',f),/synthetic_dependency_failure/);assert.deepEqual(f.executed,[`rollback/${RFA}`,`rollback/${RFX}`]);
 });
 test('workspace retains AU and Ledger overlap for Billing and sibling consumers',async()=>{
  const f=fake(predecessor);await run('workspace',f);assert.deepEqual(f.executed,workspaceForward);

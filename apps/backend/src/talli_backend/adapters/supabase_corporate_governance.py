@@ -66,6 +66,7 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateGovernanceErrorCode,
     CorporateGovernancePersistence,
     CorporateLifecycleSnapshot,
+    CorporateReportingYearBasis,
     CorporateSourceReference,
     DocumentReference,
     FinalizeOwnerDividendCommand,
@@ -848,6 +849,12 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
             )
         except (KeyError, TypeError, ValueError):
             raise CorporateGovernanceError.unavailable() from None
+
+    async def read_reporting_year_basis(self, company_id: CompanyId) -> CorporateReportingYearBasis:
+        # The authenticated session owns one SERIALIZABLE transaction. Both
+        # existing owner RPCs therefore read the same coherent MVCC snapshot.
+        return CorporateReportingYearBasis(company_id,
+            await self.list_lifecycle((company_id,)), await self.list_supported_events((company_id,)))
 
     async def list_lifecycle(
         self,

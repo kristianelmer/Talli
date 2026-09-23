@@ -639,7 +639,8 @@
       "supabase/contract-migrations/20260914092924_annual_accounts_filing_preparation_contracts.sql",
       "supabase/contract-migrations/20260914110840_annual_accounts_filing_source_contract.sql",
       "supabase/contract-migrations/20260914112549_annual_accounts_filing_backend_binding.sql",
-      "supabase/rollback/20260914112549_annual_accounts_filing_backend_binding.sql"
+      "supabase/rollback/20260914112549_annual_accounts_filing_backend_binding.sql",
+      "supabase/migrations/20260923090824_ledger_reporting_amendment_read.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },
@@ -1004,6 +1005,24 @@
       "adapter": "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction",
       "owner": "backend-system",
       "mode": "one verified owner repeatable snapshot; positive Accounts migration coverage, complete enumeration and phase lock; no provider operation"
+    },
+    {
+      "port": "Rf1086YearSourcePersistence",
+      "adapter": "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession",
+      "owner": "backend-system",
+      "mode": "verified request-scoped RF capability binding"
+    },
+    {
+      "port": "Rf1086RegisterObservationPersistence",
+      "adapter": "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession",
+      "owner": "backend-system",
+      "mode": "verified request-scoped immutable register observations with current-lineage checks"
+    },
+    {
+      "port": "DocumentEvidenceRetentionPersistence",
+      "adapter": "talli_backend.adapters.postgres_document_evidence.PostgresDocumentEvidenceRetention",
+      "owner": "backend-system",
+      "mode": "Documents-owned exact metadata lock and retained original reference in the RF capture transaction"
     }
   ],
   "allowedDependencies": {
@@ -1179,7 +1198,9 @@
       "urllib.error",
       "urllib.parse",
       "urllib.request",
-      "talli_backend.modules.audit.public"
+      "talli_backend.modules.audit.public",
+      "talli_backend.adapters.postgres_document_evidence",
+      "talli_backend.adapters.supabase_documents"
     ]
   }
 }

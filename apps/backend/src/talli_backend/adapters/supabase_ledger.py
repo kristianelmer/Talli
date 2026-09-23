@@ -57,6 +57,7 @@ from talli_backend.modules.ledger.public import (
     LedgerCursor,
     LedgerEntryId,
     LedgerEntryKind,
+    LedgerEntryAmendment,
     LedgerEntryPage,
     LedgerEntryView,
     LedgerError,
@@ -1841,6 +1842,28 @@ class SupabaseLedgerSession:
             raise self._unavailable()
         try:
             return _company_year_close_assessment(rows[0])
+        except (KeyError, TypeError, ValueError):
+            raise self._unavailable() from None
+
+    async def list_entry_amendments(
+        self, *, actor_id: ActorId, company_id: CompanyId, correlation_id: CorrelationId,
+    ) -> tuple[LedgerEntryAmendment, ...]:
+        if actor_id != self.actor_id:
+            raise LedgerError.forbidden()
+        rows = await self._database_rows(
+            "select * from ledger.list_entry_amendments_v1(%s::uuid,%s::text)",
+            (str(company_id), str(actor_id.subject)),
+        )
+        try:
+            result = tuple(LedgerEntryAmendment(
+                LedgerEntryId(str(row['original_entry_id'])), LedgerEntryId(str(row['reversal_entry_id'])),
+                LedgerEntryId(str(row['replacement_entry_id'])) if row['replacement_entry_id'] is not None else None,
+                CompanyId(str(row['company_id'])), IncomeYear(row['income_year']), str(row['reason']),
+                _actor(row['amended_by']), _timestamp(row['amended_at']),
+            ) for row in rows)
+            if any(item.company_id != company_id for item in result):
+                raise ValueError('amendment scope mismatch')
+            return result
         except (KeyError, TypeError, ValueError):
             raise self._unavailable() from None
 

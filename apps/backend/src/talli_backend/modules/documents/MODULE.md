@@ -1,7 +1,7 @@
 # Documents backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["documents.evidence_references","public.documents"],"ports":["DocumentObjectStorage","DocumentsAuthorization","DocumentsPersistence"],"publicEntryPoints":["talli_backend.modules.documents.public"]}
+{"dependencies":[],"ownedTables":["documents.evidence_references","public.documents"],"ports":["DocumentEvidenceRetentionPersistence","DocumentObjectStorage","DocumentsAuthorization","DocumentsPersistence"],"publicEntryPoints":["talli_backend.modules.documents.public"]}
 -->
 
 `documents` owns accounting-document validation, the `public.documents` metadata
@@ -42,3 +42,49 @@ The settlement workflow uses `DocumentBindingQuery`, `DocumentBindingPersistence
 <!-- architecture-inventory
 {"ports":["DocumentBindingPersistence"]}
 -->
+
+`DocumentsSession.verify_document_evidence` publishes `VerifiedDocumentEvidence`
+for authenticated backend consumers. It rereads private object bytes, verifies
+length and SHA-256 against accepted metadata, and rechecks metadata and current
+owner access before and after object I/O using
+`DocumentsPersistence.refresh_actor_role`. The adapter re-reads accepted roles
+through the existing Documents authorization port, replaces its cached roles,
+and fails closed when fresh authorization is unavailable. Other operations
+retain their existing session behavior. The result carries metadata and hashes only;
+it preserves the existing integrity classification and does not upgrade an
+unsigned or restored document to signed evidence. It adds no browser route or
+signed download URL. This is a point-in-time observation, not a cross-capability
+lease: a consequential consumer still needs to close its freshness race.
+
+### Transactional retention of RF source originals
+
+`DocumentEvidenceRetentionCommand` identifies one RF source/observation and its
+verified original document, actual document income year, actual status, content
+hash/length and complete metadata digest. `document_metadata_sha256` owns the
+canonical hash of every `DocumentRecord` field, including storage key, creator,
+creation/removal timestamps, retention and linkage. Aware timestamps normalize
+to UTC. Content hashes are versions of original bytes; no integer document
+revision or signedness is invented.
+
+`DocumentEvidenceRetentionPersistence.retain_verified_evidence` is implemented
+by `PostgresDocumentEvidenceRetention`, registered through
+`document_evidence_retention_adapter`. It must receive the RF caller's existing
+transaction connection. `documents.retain_verified_rf_evidence_v1` checks the
+accepted owner, locks exact same-company/document-year metadata, verifies actual
+status/hash/length, registers a deterministic per-source/document reference and
+returns the complete locked row. The Documents adapter hashes that record and
+calls `documents.assert_retained_metadata_v1` while the lock is held. A mismatch
+aborts the SQL transaction, even if a caller mistakenly catches its exception.
+No RF adapter reads Documents tables directly.
+
+RF source insertion and every referenced original must commit in that same
+transaction. The new SQL API accepts only RF year sources and independent
+register observations. It preserves attached/stored/unsigned/owner-attested
+statuses unchanged. This retention operation is not independent-provenance
+attestation and cannot make filing-generated evidence suitable for register
+capture. Those source rules remain with the source owner and trusted workflow.
+Corrections create additional reference sets; original references are retained.
+Rollback revokes new capture calls while preserving all registry rows, accepted
+statuses and existing document-removal guards. Metadata row locks close the
+verified-metadata-to-source-capture gap; no provider-object lock or external
+cross-capability lease is claimed.

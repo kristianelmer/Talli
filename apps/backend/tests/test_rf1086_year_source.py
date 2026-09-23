@@ -51,7 +51,7 @@ def basis(kind="no_activity"):
     shares = case.share_snapshot
     paid_in = Rf1086PaidInSourceFacts(shares.previous_paid_in_share_capital, shares.current_paid_in_share_capital,
         shares.previous_paid_in_premium, shares.current_paid_in_premium)
-    doc = Rf1086YearDocumentEvidence(DOCUMENT, COMPANY, 1, "a" * 64, IncomeYear(2024))
+    doc = Rf1086YearDocumentEvidence(DOCUMENT, COMPANY, "a" * 64, "a" * 64, "shareholder_source", "stored", 100, NOW, "e" * 64, IncomeYear(2024))
     evidence = () if not case.events else (Rf1086YearEventEvidence(0, rf1086_year_source_digest(case.events[0]), (DOCUMENT,), RECEIPT),)
     receipts = () if not case.events else (Rf1086YearGovernanceReceipt(RECEIPT, COMPANY, YEAR, kind,
         rf1086_year_source_digest(rf1086_governance_economic_facts(case.events[0])), "b" * 64, (doc.content_sha256,), True,
@@ -123,11 +123,11 @@ def test_capital_finalization_cannot_depend_on_snapshot_being_created():
         prepare(command, replace(context, governance_receipts=(receipt,)))
 
 
-@pytest.mark.parametrize("change", ["no_documents", "wrong_revision", "cross_company", "no_paid_in_basis", "no_event_evidence", "changed_event_digest"])
+@pytest.mark.parametrize("change", ["no_documents", "wrong_metadata_version", "cross_company", "no_paid_in_basis", "no_event_evidence", "changed_event_digest"])
 def test_document_provenance_and_event_coverage_are_required(change):
     command, context = basis("dividend")
     if change == "no_documents": context = replace(context, documents=())
-    if change == "wrong_revision": context = replace(context, documents=(replace(context.documents[0], revision=2),))
+    if change == "wrong_metadata_version": context = replace(context, documents=(replace(context.documents[0], metadata_sha256="f" * 64),))
     if change == "cross_company":
         doc = replace(context.documents[0], company_id=CompanyId(str(UUID(int=10))))
         context = replace(context, documents=(doc,)); command = replace(command, documents=(doc,))
@@ -178,7 +178,7 @@ def test_full_freshness_vector_blocks_changed_sources(change):
     if change == "source_head": identifier = Rf1086YearSourceId(str(UUID(int=25)))
     if change == "source_digest": digest = "1" * 64
     if change == "company": context = replace(context, company_identity_sha256="e" * 64)
-    if change == "document": context = replace(context, documents=(replace(context.documents[0], revision=2),))
+    if change == "document": context = replace(context, documents=(replace(context.documents[0], metadata_sha256="f" * 64),))
     if change == "governance": context = replace(context, governance_receipts=(replace(context.governance_receipts[0], active=False),))
     if change == "enumeration": context = replace(context, governance_enumeration_sha256="e" * 64)
     if change == "new_receipt": context = replace(context, governance_receipts=(*context.governance_receipts, replace(context.governance_receipts[0], receipt_id=str(UUID(int=30)))))

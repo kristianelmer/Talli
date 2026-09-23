@@ -1386,11 +1386,89 @@ class PreparedSupportedCorporateEvent:
     replay: RecordedSupportedCorporateEvent | None
 
 
+@dataclass(frozen=True, slots=True)
+class CorporateReportingYearBasis:
+    company_id: CompanyId
+    lifecycle: CorporateLifecycleSnapshot
+    supported_events: tuple[RecordedSupportedCorporateEvent, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "supported_events", tuple(self.supported_events))
+        object.__setattr__(self, "lifecycle", CorporateLifecycleSnapshot(
+            tuple(self.lifecycle.decisions), tuple(self.lifecycle.document_sets), tuple(self.lifecycle.artifacts),
+            tuple(self.lifecycle.events), tuple(self.lifecycle.finalizations)))
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateLedgerAmendment:
+    original_entry_id: AccountingEntryReference
+    reversal_entry_id: AccountingEntryReference
+    replacement_entry_id: AccountingEntryReference | None
+    company_id: CompanyId
+    income_year: IncomeYear
+    reason: str
+    amended_by: ActorId
+    amended_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateYearDividendEvidence:
+    decision: CorporateDecisionRecord
+    reporting_date: LocalDate
+    status: Literal["pending", "finalized", "rejected", "superseded"]
+    document_sets: tuple[CorporateDocumentSetRecord, ...]
+    artifacts: tuple[CorporateArtifactRecord, ...]
+    events: tuple[CorporateEventRecord, ...]
+    finalizations: tuple[CorporateFinalizationRecord, ...]
+
+    def __post_init__(self) -> None:
+        for name in ("document_sets", "artifacts", "events", "finalizations"):
+            object.__setattr__(self, name, tuple(getattr(self, name)))
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateYearSupportedEvidence:
+    recorded: RecordedSupportedCorporateEvent
+    status: Literal["recorded", "reversed", "corrected"]
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateGovernanceYearEvidence:
+    """Complete owner dividend/capital enumeration from one database snapshot.
+
+    Pending/rejected/superseded records and original amendments remain evidence;
+    this query makes no filing-readiness or production-authorization decision.
+    """
+    company_id: CompanyId
+    income_year: IncomeYear
+    dividends: tuple[CorporateYearDividendEvidence, ...]
+    supported_events: tuple[CorporateYearSupportedEvidence, ...]
+    ledger_amendments: tuple[CorporateLedgerAmendment, ...]
+    enumeration_sha256: str
+
+    def __post_init__(self) -> None:
+        for name in ("dividends", "supported_events", "ledger_amendments"):
+            object.__setattr__(self, name, tuple(getattr(self, name)))
+        if SHA256_PATTERN.fullmatch(self.enumeration_sha256) is None:
+            raise CorporateGovernanceError.unavailable()
+
+
+def build_reporting_year_evidence(*, basis: CorporateReportingYearBasis, income_year: IncomeYear,
+        amendments: tuple[CorporateLedgerAmendment, ...]) -> CorporateGovernanceYearEvidence:
+    """Trusted application composition; amendments must be a complete owner read."""
+    from .reporting_year import build_reporting_year_evidence as build
+    return build(basis=basis, income_year=income_year, amendments=amendments)
+
+
 class CorporateGovernancePersistence(Protocol):
     @property
     def actor_id(self) -> ActorId: ...
 
     async def actor_role(self, company_id: CompanyId) -> str | None: ...
+
+    async def read_reporting_year_basis(
+        self, company_id: CompanyId,
+    ) -> CorporateReportingYearBasis: ...
 
     async def list_lifecycle(
         self,
@@ -1539,6 +1617,8 @@ SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 __all__ = [
+    "CorporateReportingYearBasis", "CorporateLedgerAmendment", "CorporateYearDividendEvidence",
+    "CorporateGovernanceYearEvidence", "CorporateYearSupportedEvidence", "build_reporting_year_evidence",
     "SHA256_PATTERN",
     "AccountingEntryReference",
     "BankLoanEventFacts",

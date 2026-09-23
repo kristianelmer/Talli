@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC
 import json
@@ -139,10 +140,12 @@ class SupabaseDocumentObjectStorage(DocumentObjectStorage):
 
 @documents_persistence_adapter(DocumentsPersistence)
 class SupabaseDocumentsPersistence(DocumentsPersistence):
-    def __init__(self, database_url: str, verified: Any, roles: dict[CompanyId, str]) -> None:
+    def __init__(self, database_url: str, verified: Any, roles: dict[CompanyId, str], *,
+                 role_refresher: Callable[[], Awaitable[Mapping[CompanyId, str]]] | None = None) -> None:
         self._database_url = database_url
         self._verified = verified
         self._roles = roles
+        self._role_refresher = role_refresher
 
     @property
     def actor_id(self) -> ActorId:
@@ -197,6 +200,15 @@ class SupabaseDocumentsPersistence(DocumentsPersistence):
             raise DocumentsError.storage_unavailable() from None
 
     async def actor_role(self, company_id: CompanyId) -> str | None:
+        return self._roles.get(company_id)
+
+    async def refresh_actor_role(self, company_id: CompanyId) -> str | None:
+        # Evidence verification explicitly requests live accepted membership.
+        # Never reuse a stale owner after a refresh fails or access is revoked.
+        self._roles = {}
+        if self._role_refresher is None:
+            raise DocumentsError.storage_unavailable()
+        self._roles = dict(await self._role_refresher())
         return self._roles.get(company_id)
 
     async def stage_upload(self, command: BeginDocumentUploadCommand, *, name: str, storage_key: str) -> DocumentRecord:
@@ -315,12 +327,15 @@ class SupabaseDocumentsAdapter(DocumentsSessionFactory):
             ledger_session = await self._authentication.session(access_token)
         except LedgerAuthenticationError:
             raise DocumentsError.forbidden() from None
-        roles = dict(await self._authorization.accepted_roles(access_token))
+        async def refresh_roles():
+            return await self._authorization.accepted_roles(access_token)
+        roles = dict(await refresh_roles())
         return DocumentsService(
             SupabaseDocumentsPersistence(
                 self._configuration.database_url,
                 ledger_session._verified,
                 roles,
+                role_refresher=refresh_roles,
             ),
             self._storage,
         )

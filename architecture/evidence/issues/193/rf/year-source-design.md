@@ -1,10 +1,10 @@
 # RF full-year source snapshot
 
-Status: proposed for issue #193; implementation and service conformance remain pending. This design does not narrow the accepted #172 launch boundary or claim any RF release criterion complete.
+Status: deterministic validation, immutable persistence and internal trusted capture are being integrated for issue #193; customer workflow and complete service conformance remain pending. This design does not narrow the accepted #172 launch boundary or claim any RF release criterion complete.
 
 ## Ownership and data flow
 
-RF owns the reporting company's shareholder identities, ownership movements, opening and closing share facts, and immutable full-year source versions. Corporate Governance continues to own corporate decisions and their finalization. Documents continues to own source-document bytes and revisions. Ledger continues to own accounting entries. RF never writes or reads another owner's tables.
+RF owns the reporting company's shareholder identities, ownership movements, opening and closing share facts, and immutable full-year source versions. Corporate Governance continues to own corporate decisions and their finalization. Documents continues to own source-document bytes, immutable content identities and current metadata. Ledger continues to own accounting entries. RF never writes or reads another owner's tables.
 
 A named application workflow reads immutable public projections from Company Access, Corporate Governance and Documents, validates the actor/company/year, and passes those projections into RF. The RF capability has no dependency on Corporate Governance, Documents, Ledger, or a future Annual Compliance implementation. No Annual Compliance writer is introduced. These application dependencies and adapter bindings require backend-system manifest and architecture-test updates under ADR-0011.
 
@@ -13,10 +13,10 @@ A named application workflow reads immutable public projections from Company Acc
 - `Rf1086YearSourceId`: UUID identity of one immutable snapshot.
 - `RecordRf1086YearSourceCommand`: company, actor, correlation and idempotency identities; income year; explicit complete case; owner completeness confirmations; source-document references; event evidence; optional predecessor snapshot and mandatory correction reason.
 - `Rf1086YearSourceSnapshot`: source ID, company/year, positive version, canonical case, canonical payload digest, source digest, owner confirmation identity/time, evidence digests, predecessor ID/digest and correction reason. All nested values are immutable. Creation timestamps come from the trusted persistence clock.
-- `Rf1086DocumentEvidence`: document UUID, company, revision, content SHA256 and document kind. Each reference must be corroborated by the Documents public projection before capture. No arbitrary URL or unverified browser hash serves as proof.
+- `Rf1086YearDocumentEvidence`: document UUID, company, original document year, content-version SHA256, content SHA256, document kind, status, byte length, creation time and complete metadata digest. Each reference must be corroborated by the Documents public projection before capture. No arbitrary URL or unverified browser hash serves as proof.
 - `Rf1086YearEventEvidence`: stable event index and event digest; document references; optional finalized governance event/decision receipt reference and hash. An index is scoped to one immutable source, not an identifier reused across corrections.
 - `Rf1086GovernanceCorroboration`: RF-owned input projection containing company/year, event type and civil timestamp, finalization ID/hash, exact economic facts/allocations digest, signed-document hashes and correction/reversal status. Its values are assembled from verified public Governance receipts by the workflow; they are never trusted from browser input.
-- `Rf1086YearSourceFreshness`: source ID/version/digest, company identity digest, Documents revision/content digests, Governance finalized evidence digest and complete year-enumeration digest. A changed, reversed, missing or newly added relevant event invalidates readiness.
+- `Rf1086YearSourceFreshness`: source ID/version/digest, company identity digest, Documents metadata/content digests, Governance finalized evidence digest and complete year-enumeration digest. A changed, reversed, missing or newly added relevant event invalidates readiness.
 
 The existing RF case format is reused for deterministic rendering. Its opening/closing registered share capital, share count and nominal value are independent from tax paid-in share capital and premium. All four paid-in values must be explicit inputs, including zero; neither nominal capital nor an omitted premium is a default for statutory paid-in facts. Every holder active at opening, during an event, or at closing must appear exactly once with an appropriate national/company identifier. Events remain civil local whole-second times in strict chronological order.
 
@@ -60,3 +60,9 @@ workflow binding has been installed by this foundation. Those outstanding seams
 above must be completed before this can capture a customer's source snapshot or
 change production admission. All #172 scope and #193 full completion claims
 remain pending.
+
+## September 23 integration checkpoint
+
+The internal authenticated capture workflow now derives trusted owner, company, original-document and Governance facts rather than accepting trusted context from a caller. Governance enumeration includes finalized dividends, pending and superseded decisions, registered capital events, and Ledger reversals/corrections within its coherent read. Immutable year-source storage uses exact-source idempotency, current-predecessor comparison and preserved historical versions. Independent register observations separately describe original registered before/after facts and cannot be replaced by a filing-year snapshot.
+
+Documents-owned retention runs inside each RF capture transaction to recheck verified metadata and protect original documents against deletion. Capture remains a point-in-time observation. Customer routes, cash-nominal Governance composition, complete preview/approval/send freshness and cross-owner action-time concurrency controls remain outstanding; these foundations do not enable production or narrow the accepted launch boundary.

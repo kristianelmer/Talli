@@ -174,3 +174,33 @@ projection without reviving a second writer; corrected recutover is repeatable.
 The additive hosted-shape parity migration first restores immutable event IDs and
 occurrence times that were absent from the already-deployed #144 table revision;
 it is a no-op for fresh databases created from the current migration chain.
+
+## Reporting-year evidence
+
+`CorporateReportingYearBasis` reads the existing lifecycle and supported-event
+public projections within one authenticated SERIALIZABLE transaction.
+`CorporateGovernanceApplication.read_reporting_year_evidence` composes that basis
+with Ledger's complete company-scoped `LedgerEntryAmendment` query in the same
+transaction. Governance never reads Ledger tables. This closes the historical
+case where `reverse_supported_event` returned a Ledger reversal without creating
+a separate Governance reversal row.
+
+The deterministic public `build_reporting_year_evidence` assembles these owner
+projections. The immutable `CorporateGovernanceYearEvidence` contains
+`CorporateYearDividendEvidence`, `CorporateYearSupportedEvidence`, and opaque
+`CorporateLedgerAmendment` receipts. It retains pending, rejected, superseded,
+reversed and corrected records, exact signed artifacts/finalizations, and
+connected replacement chains. Its deterministic enumeration digest changes when
+relevant decisions, events, signed evidence or amendments change. It is a source
+projection, not filing readiness, external-source lease or production authority.
+No filing capability dependency or new HTTP endpoint is introduced.
+
+For the supported ordinary owner dividend, the reporting year uses the civil
+general-meeting decision date, not the annual accounts basis, payment date or
+persistence timestamp. [Skatteetaten's RF-1086 examples](https://www.skatteetaten.no/bedrift-og-organisasjon/rapportering-og-bransjer/aksjonarregisteroppgaven/eksempler-pa-utfylling-av-aksjonarregisteroppgaven/)
+state that the general-meeting decision date determines dividend reporting time
+(verified 2026-09-23). Mapping the persisted canonical `generalMeeting.meetingDate`
+to that rule is the product inference. Registered capital facts retain their
+owned `event_date` and phase without deriving a new legal registration date.
+Corrections connected to selected-year records are retained even when their own
+date falls in another year; consumers must consider their status before mapping.

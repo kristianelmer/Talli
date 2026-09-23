@@ -23,7 +23,8 @@
       "ReconcileRf1086FeedbackCommand",
       "OpeningSnapshotCommands",
       "Rf1086PreparationOperations",
-      "RecordRf1086YearSource"
+      "RecordRf1086YearSource",
+      "RecordRf1086RegisterObservation"
     ],
     "queries": [
       "Rf1086ShareSnapshot",
@@ -85,7 +86,18 @@
       "assert_rf1086_year_source_integrity",
       "assert_rf1086_year_source_replay",
       "rf1086_year_source_digest",
-      "rf1086_governance_economic_facts"
+      "rf1086_governance_economic_facts",
+      "serialize_rf1086_year_source",
+      "parse_rf1086_year_source",
+      "Rf1086RegisterObservationMatchQuery",
+      "prepare_rf1086_register_observation",
+      "assert_rf1086_register_observation_integrity",
+      "verify_rf1086_register_observation",
+      "rf1086_register_observation_request_digest",
+      "Rf1086RegisterObservationPersistence",
+      "serialize_rf1086_register_observation",
+      "parse_rf1086_register_observation",
+      "rf1086_event_register_states"
     ],
     "events": [],
     "errors": [
@@ -96,7 +108,8 @@
       "Rf1086BlockedProductionOperationError",
       "Rf1086FeedbackArtifactPersistenceError",
       "Rf1086ProductionError",
-      "Rf1086YearSourceError"
+      "Rf1086YearSourceError",
+      "Rf1086RegisterObservationError"
     ],
     "identifiers": [
       "OpeningSnapshotId",
@@ -188,7 +201,14 @@
       "Rf1086YearGovernanceReceipt",
       "Rf1086VerifiedYearSourceContext",
       "Rf1086YearSourceFreshness",
-      "Rf1086YearSourceSnapshot"
+      "Rf1086YearSourceSnapshot",
+      "Rf1086YearSourcePersistence",
+      "Rf1086RegisterObservationId",
+      "Rf1086RegisterHolding",
+      "Rf1086RegisteredShareState",
+      "Rf1086RegisterDocumentEvidence",
+      "Rf1086VerifiedRegisterObservationContext",
+      "Rf1086RegisterObservationSnapshot"
     ]
   },
   "owns": {
@@ -207,7 +227,10 @@
       "shareholder_register_filing.opening_shareholders",
       "shareholder_register_filing.production_feedback_artifacts",
       "shareholder_register_filing.production_filing_events",
-      "shareholder_register_filing.production_filing_submissions"
+      "shareholder_register_filing.production_filing_submissions",
+      "shareholder_register_filing.year_source_versions",
+      "shareholder_register_filing.year_source_heads",
+      "shareholder_register_filing.register_observations"
     ],
     "storageBuckets": [],
     "projections": [
@@ -215,7 +238,7 @@
       "Rf1086SourceFacts",
       "Rf1086ArchiveSnapshot"
     ],
-    "migrations": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql; supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql; supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql; supabase/migrations/20260917110951_rf1086_action_required_read_recovery.sql; supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql"
+    "migrations": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql; supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql; supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql; supabase/migrations/20260917110951_rf1086_action_required_read_recovery.sql; supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql; supabase/migrations/20260923091509_rf1086_immutable_year_source.sql; supabase/migrations/20260923102314_rf1086_register_observation_store.sql"
   },
   "ports": [
     {
@@ -280,6 +303,24 @@
       "adapters": [
         "talli_backend.adapters.rf1086_dialogporten.Rf1086DialogportenAdapter"
       ]
+    },
+    {
+      "name": "Rf1086YearSourcePersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.shareholder_register_filing.public.Rf1086YearSourcePersistence",
+      "registrationDecorator": "talli_backend.modules.shareholder_register_filing.public.rf1086_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession"
+      ]
+    },
+    {
+      "name": "Rf1086RegisterObservationPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.shareholder_register_filing.public.Rf1086RegisterObservationPersistence",
+      "registrationDecorator": "talli_backend.modules.shareholder_register_filing.public.rf1086_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession"
+      ]
     }
   ],
   "dependencies": [],
@@ -326,7 +367,14 @@
     "database": "apps/backend/tests/test_rf1086_database_runtime.py",
     "lifecycle": "apps/backend/tests/test_shareholder_register_filing_lifecycle.py",
     "archiveSource": "apps/backend/tests/test_rf1086_archive_source.py",
-    "yearSource": "apps/backend/tests/test_rf1086_year_source.py"
+    "yearSource": "apps/backend/tests/test_rf1086_year_source.py",
+    "yearSourceStorage": "apps/backend/tests/test_rf1086_year_source_storage.py",
+    "yearSourceDatabase": "apps/backend/tests/test_rf1086_year_source_database.py",
+    "registerObservation": "apps/backend/tests/test_rf1086_register_observation.py",
+    "registerObservationStorage": "apps/backend/tests/test_rf1086_register_observation_storage.py",
+    "registerObservationDatabase": "apps/backend/tests/test_rf1086_register_observation_database.py",
+    "registerProjection": "apps/backend/tests/test_rf1086_register_projection.py",
+    "sourceWorkflow": "apps/backend/tests/test_shareholder_register_source_workflow.py"
   },
   "compatibilityExceptions": []
 }

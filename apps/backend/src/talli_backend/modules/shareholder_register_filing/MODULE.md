@@ -1,7 +1,7 @@
 # Shareholder register filing
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
+{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions","shareholder_register_filing.year_source_heads","shareholder_register_filing.year_source_versions","shareholder_register_filing.register_observations"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority","Rf1086YearSourcePersistence","Rf1086RegisterObservationPersistence"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
 -->
 
 ## Owned behavior
@@ -313,3 +313,88 @@ single-snapshot archive projection exposed by additive
 includes original preview lineage and all four production evidence collections.
 Clients must not treat the original response as evidence of absent production
 history. This explicit overlap supports either deployment order under ADR-0012.
+
+### Immutable full-year source persistence
+
+`Rf1086YearSourcePersistence` records a verified workflow command and reads current
+or historical sources. `serialize_rf1086_year_source` and
+`parse_rf1086_year_source` use a closed versioned codec retaining exact decimal
+facts and validate immutable source hashes. The restricted RF adapter locks the
+company/year, checks current Company Access owner/year admission, resolves
+actor-scoped identical idempotency and appends a new version with an exact current
+predecessor. `shareholder_register_filing.year_source_versions` retains immutable
+source/evidence snapshots; `shareholder_register_filing.year_source_heads` stores
+only their current pointers. Both use FORCE RLS; only the append function writes.
+The migration rollback revokes the new API without deleting retained evidence.
+Source capture grants no correction filing or retry of an unknown provider action.
+
+#### Year-source rollback runbook
+
+Stop source capture before reversing `20260923091509_rf1086_immutable_year_source.sql`.
+Its matching rollback revokes the new executor read/write API and leaves every
+immutable source and current head intact; reapplying the migration restores access.
+The old #151 full rollback drops the entire RF schema and must never run while
+any year-source row exists. The coordinated authority topology runner fails with
+`rf1086_retained_year_sources_block_full_schema_rollback` before predecessor
+mutations. Use the bounded API rollback and preserve evidence; a deeper rollback
+requires a separately reviewed, lossless source relocation. This guard assumes
+source capture is stopped, as required before runtime/schema rollback.
+
+### Independent registered-share observation foundation
+
+The public `RecordRf1086RegisterObservation` / `prepare_rf1086_register_observation`
+contract binds complete, owner-confirmed one-class before/after register states
+for cash issues, nominal cash increases and loss-cover reductions to independently
+verified original Documents references. Registered capital and nominal amounts
+use exact Decimals; tax paid-in facts remain separate. Corrections append a new
+UUID/version/hash with an exact predecessor. `assert_rf1086_register_observation_integrity`
+checks retained content; `verify_rf1086_register_observation` matches an exact
+Governance reference and full event economics through
+`Rf1086RegisterObservationMatchQuery`.
+
+This is deterministic source preparation only. Trusted capture must supply
+`Rf1086VerifiedRegisterObservationContext` after live owner and original-byte
+verification; browser input cannot assert it. There is no register-observation
+store, current-head/withdrawal query, cross-capability lease or production route
+in this foundation. Existing opening/source hashes and arbitrary Governance
+references do not become verified observations. The remaining integration and
+noncircular evidence dependency are recorded in
+`architecture/evidence/issues/193/rf/register-observation-design.md`.
+
+The immutable value contracts are `Rf1086RegisterObservationId`,
+`Rf1086RegisterHolding`, `Rf1086RegisteredShareState`,
+`Rf1086RegisterDocumentEvidence`, and `Rf1086RegisterObservationSnapshot`.
+`Rf1086RegisterObservationError` carries closed diagnostics without identifiers
+or source document contents.
+
+`rf1086_register_observation_request_digest` validates and normalizes request
+content for stable idempotency comparisons independent of input holder/document
+ordering. It does not issue a new observation identity.
+
+`rf1086_event_register_states` projects exact before/after registered capital and active holders for a selected capital event using the same complete chronological reconciliation as readiness. It includes preceding formation and ownership transfers, validates the entire year and rejects non-capital selections or malformed identities. It does not attest external register truth or tax paid-in balances.
+
+### Independent register observation persistence
+
+`Rf1086RegisterObservationPersistence` appends independent observations to
+`shareholder_register_filing.register_observations`. Multiple initial observations
+may exist for one company/year. Each correction names the exact previous immutable
+ID/hash and reason. A unique predecessor and the company/year transaction lock
+prevent forks. Exact current reads return no result for a superseded ID; historical
+reads preserve it. `serialize_rf1086_register_observation` and
+`parse_rf1086_register_observation` use a closed, versioned codec and verify the
+original facts before returning them. Identical normalized idempotency replays
+return the original snapshot, including after a correction; authorization is
+checked again under the database transaction lock.
+
+The RF adapter calls Documents-owned retention for each original in stable ID
+order within the same transaction. Complete current metadata, original document
+year, hash and byte length are checked while locking each document. A mismatch
+rolls back both retention and RF capture. Full-year capture checks retained
+register observations are still current under the same company/year lock.
+
+Migration `20260923102314_rf1086_register_observation_store.sql` and its bounded
+rollback preserve every immutable observation. Stop capture before API rollback.
+Full RF schema rollback fails with
+`rf1086_retained_register_observations_block_full_schema_rollback` when any original
+observation remains. A deeper reversal requires a separately reviewed lossless
+relocation, never deleting evidence to make the guard pass.

@@ -19,6 +19,8 @@ import httpx
 import psycopg
 from psycopg.rows import dict_row
 
+from talli_backend.adapters.postgres_document_evidence import PostgresDocumentEvidenceRetention
+from talli_backend.modules.documents.public import DocumentEvidenceRetentionCommand, DocumentId, DocumentStatus
 from talli_backend.adapters.maskinporten import MaskinportenClient, MaskinportenConfiguration, SYSTEM_USER_TAX_SCOPE, SYSTEM_USER_DIALOGPORTEN_SCOPE
 from talli_backend.adapters.rf1086_dialogporten import Rf1086DialogportenAdapter
 from talli_backend.adapters.rf1086_authority import Rf1086AuthorityAdapter, Rf1086ReadOnlyAuthorityAdapter
@@ -110,6 +112,8 @@ class PostgresShareholderRegisterFilingAdapter:
 
 
 @rf.rf1086_adapter(rf.Rf1086PreparationPersistence)
+@rf.rf1086_adapter(rf.Rf1086YearSourcePersistence)
+@rf.rf1086_adapter(rf.Rf1086RegisterObservationPersistence)
 class PostgresShareholderRegisterFilingSession:
     def __init__(self, configuration, verified: _VerifiedActor, *, access_token, billing, documents,
                  company_access, environment=None, maskinporten=None, rf_transport=None, storage_transport=None):
@@ -169,6 +173,12 @@ class PostgresShareholderRegisterFilingSession:
                 )
                 yield connection
         except psycopg.Error as error:
+            for code in ("rf1086_register_predecessor_mismatch", "rf1086_register_idempotency_conflict", "rf1086_register_storage_invalid"):
+                if code in str(error):
+                    raise rf.Rf1086RegisterObservationError(code) from None
+            for code in ("rf1086_source_predecessor_mismatch", "rf1086_source_idempotency_conflict", "rf1086_source_storage_invalid"):
+                if code in str(error):
+                    raise rf.Rf1086YearSourceError(code) from None
             if "rf1086_not_found" in str(error) or "production_preview_not_found" in str(error):
                 raise rf.ShareholderRegisterFilingError.not_found() from None
             if "rf1086_invalid_input" in str(error):
@@ -186,6 +196,190 @@ class PostgresShareholderRegisterFilingSession:
     def _command_actor(self, command):
         if command.actor_id != self.actor_id:
             raise rf.ShareholderRegisterFilingError.forbidden()
+
+    @staticmethod
+    def _year_source(row):
+        if row is None:
+            return None
+        source = rf.parse_rf1086_year_source(row["snapshot_text"])
+        if (source.source_id.value != str(row["id"]) or str(source.company_id) != str(row["company_id"])
+                or int(source.income_year) != row["income_year"] or source.version != row["version"]
+                or source.source_sha256 != row["source_sha256"]
+                or str(source.confirmed_by.subject) != str(row["actor_id"])
+                or source.confirmed_at != row["confirmed_at"]
+                or (source.command.supersedes_source_id.value if source.command.supersedes_source_id else None)
+                    != (str(row["predecessor_id"]) if row["predecessor_id"] else None)
+                or source.command.supersedes_source_sha256 != row["predecessor_sha256"]
+                or source.command.correction_reason != row["correction_reason"]
+                or rf.rf1086_year_source_digest(source.command) != row["request_sha256"]):
+            raise rf.Rf1086YearSourceError("rf1086_source_storage_invalid")
+        return source
+
+    async def _current_year_source(self, connection, company_id, income_year):
+        row = await (await connection.execute(
+            "select v.* from shareholder_register_filing.year_source_heads h "
+            "join shareholder_register_filing.year_source_versions v on v.id=h.source_id "
+            "where h.company_id=%s::uuid and h.income_year=%s", (str(company_id), int(income_year)),
+        )).fetchone()
+        return self._year_source(row)
+
+    async def read_current_year_source(self, query):
+        self._command_actor(query)
+        async with self._transaction(snapshot=True) as connection:
+            await connection.execute("select shareholder_register_filing.assert_member_v1(%s::uuid)", (str(query.company_id),))
+            return await self._current_year_source(connection, query.company_id, query.income_year)
+
+    async def read_year_source(self, query, source_id):
+        self._command_actor(query)
+        async with self._transaction(snapshot=True) as connection:
+            await connection.execute("select shareholder_register_filing.assert_member_v1(%s::uuid)", (str(query.company_id),))
+            row = await (await connection.execute(
+                "select * from shareholder_register_filing.year_source_versions "
+                "where id=%s::uuid and company_id=%s::uuid and income_year=%s",
+                (source_id.value, str(query.company_id), int(query.income_year)),
+            )).fetchone()
+            return self._year_source(row)
+
+    async def _retain_source_documents(self, connection, record_type, record_id, documents):
+        retention = PostgresDocumentEvidenceRetention(connection, self.actor_id)
+        # Stable ordering prevents two captures from taking document locks in
+        # opposite order. All references and the RF append commit together.
+        for document in sorted(documents, key=lambda item: item.document_id):
+            if document.source_income_year is None:
+                raise rf.Rf1086YearSourceError("rf1086_source_document_year_required")
+            await retention.retain_verified_evidence(DocumentEvidenceRetentionCommand(
+                source_record_type=record_type, source_record_id=record_id,
+                document_id=DocumentId(document.document_id), company_id=document.company_id,
+                source_income_year=document.source_income_year, status=DocumentStatus(document.integrity_status),
+                content_sha256=document.content_sha256, byte_length=document.byte_length,
+                metadata_sha256=document.metadata_sha256))
+
+    async def record_year_source(self, command, *, context, idempotency_key):
+        self._command_actor(command)
+        if (not isinstance(context, rf.Rf1086VerifiedYearSourceContext) or context.accepted_owner is not True
+                or context.actor_id != self.actor_id or context.company_id != command.company_id
+                or context.income_year != command.income_year):
+            raise rf.ShareholderRegisterFilingError.forbidden()
+        # The workflow obtained external projections before this short RF-only
+        # transaction. Capture is point-in-time; this is not a provider lease.
+        async with self._transaction() as connection:
+            await connection.execute("select shareholder_register_filing.lock_year_source_v1(%s::uuid,%s)",
+                (str(command.company_id), int(command.income_year)))
+            replay = await (await connection.execute(
+                "select * from shareholder_register_filing.year_source_versions where company_id=%s::uuid "
+                "and income_year=%s and actor_id=%s::uuid and idempotency_key=%s",
+                (str(command.company_id), int(command.income_year), str(self.actor_id.subject), str(idempotency_key)),
+            )).fetchone()
+            if replay:
+                original = self._year_source(replay)
+                rf.assert_rf1086_year_source_replay(original, command)
+                return original
+            previous = await self._current_year_source(connection, command.company_id, command.income_year)
+            now = (await (await connection.execute("select pg_catalog.clock_timestamp() as now")).fetchone())["now"]
+            source = rf.prepare_rf1086_year_source(command, context=context,
+                source_id=rf.Rf1086YearSourceId(str(uuid4())), confirmed_at=now, previous=previous)
+            for receipt in source.governance_receipts:
+                if receipt.register_observation_id is not None:
+                    observation = await self._read_register_observation(connection, command,
+                        rf.Rf1086RegisterObservationId(receipt.register_observation_id), current=True)
+                    if (observation is None or observation.fact_sha256 != receipt.register_observation_sha256
+                            or observation.confirmed_at >= source.confirmed_at):
+                        raise rf.Rf1086YearSourceError("rf1086_source_register_observation_stale")
+            await self._retain_source_documents(connection, "rf1086_year_source", source.source_id.value, source.command.documents)
+            encoded = rf.serialize_rf1086_year_source(source)
+            await connection.execute(
+                "select shareholder_register_filing.append_year_source_v1(%s::uuid,%s::uuid,%s,%s,%s,%s,%s,%s::uuid,%s,%s,%s,%s)",
+                (source.source_id.value, str(source.company_id), int(source.income_year), source.version,
+                 source.source_sha256, rf.rf1086_year_source_digest(command), str(idempotency_key),
+                 previous.source_id.value if previous else None, previous.source_sha256 if previous else None,
+                 command.correction_reason, encoded, now))
+            saved = await self._current_year_source(connection, command.company_id, command.income_year)
+            if saved is None or rf.rf1086_year_source_digest(saved) != rf.rf1086_year_source_digest(source):
+                raise rf.Rf1086YearSourceError("rf1086_source_storage_invalid")
+            return saved
+
+    @staticmethod
+    def _register_observation(row):
+        if row is None:
+            return None
+        snapshot = rf.parse_rf1086_register_observation(row["snapshot_text"])
+        command = snapshot.command
+        if (snapshot.observation_id.value != str(row["id"])
+                or str(command.company_id) != str(row["company_id"])
+                or int(command.income_year) != row["income_year"] or snapshot.version != row["version"]
+                or snapshot.fact_sha256 != row["fact_sha256"]
+                or str(command.actor_id.subject) != str(row["actor_id"])
+                or snapshot.confirmed_at != row["confirmed_at"]
+                or (command.supersedes_observation_id.value if command.supersedes_observation_id else None)
+                    != (str(row["predecessor_id"]) if row["predecessor_id"] else None)
+                or command.supersedes_observation_sha256 != row["predecessor_sha256"]
+                or command.correction_reason != row["correction_reason"]
+                or rf.rf1086_register_observation_request_digest(command) != row["request_sha256"]):
+            raise rf.Rf1086RegisterObservationError("rf1086_register_storage_invalid")
+        return snapshot
+
+    async def _read_register_observation(self, connection, query, observation_id, *, current=False):
+        row = await (await connection.execute(
+            "select v.* from shareholder_register_filing.register_observations v "
+            "where v.id=%s::uuid and v.company_id=%s::uuid and v.income_year=%s "
+            + ("and not exists(select 1 from shareholder_register_filing.register_observations successor "
+               "where successor.predecessor_id=v.id)" if current else ""),
+            (observation_id.value, str(query.company_id), int(query.income_year)),
+        )).fetchone()
+        return self._register_observation(row)
+
+    async def read_register_observation(self, query, observation_id):
+        self._command_actor(query)
+        async with self._transaction(snapshot=True) as connection:
+            await connection.execute("select shareholder_register_filing.assert_member_v1(%s::uuid)", (str(query.company_id),))
+            return await self._read_register_observation(connection, query, observation_id)
+
+    async def read_current_register_observation(self, query, observation_id):
+        self._command_actor(query)
+        async with self._transaction(snapshot=True) as connection:
+            await connection.execute("select shareholder_register_filing.assert_member_v1(%s::uuid)", (str(query.company_id),))
+            return await self._read_register_observation(connection, query, observation_id, current=True)
+
+    async def record_register_observation(self, command, *, context, idempotency_key):
+        self._command_actor(command)
+        if (not isinstance(context, rf.Rf1086VerifiedRegisterObservationContext) or context.accepted_owner is not True
+                or context.actor_id != self.actor_id or context.company_id != command.company_id
+                or context.income_year != command.income_year):
+            raise rf.ShareholderRegisterFilingError.forbidden()
+        request_sha = rf.rf1086_register_observation_request_digest(command)
+        async with self._transaction() as connection:
+            await connection.execute("select shareholder_register_filing.lock_year_source_v1(%s::uuid,%s)",
+                (str(command.company_id), int(command.income_year)))
+            row = await (await connection.execute(
+                "select * from shareholder_register_filing.register_observations where company_id=%s::uuid "
+                "and income_year=%s and actor_id=%s::uuid and idempotency_key=%s",
+                (str(command.company_id), int(command.income_year), str(self.actor_id.subject), str(idempotency_key)),
+            )).fetchone()
+            if row:
+                original = self._register_observation(row)
+                if row["request_sha256"] != request_sha:
+                    raise rf.Rf1086RegisterObservationError("rf1086_register_idempotency_conflict")
+                return original
+            previous = None
+            if command.supersedes_observation_id is not None:
+                previous = await self._read_register_observation(connection, command,
+                    command.supersedes_observation_id, current=True)
+                if previous is None:
+                    raise rf.Rf1086RegisterObservationError("rf1086_register_predecessor_mismatch")
+            now = (await (await connection.execute("select pg_catalog.clock_timestamp() as now")).fetchone())["now"]
+            snapshot = rf.prepare_rf1086_register_observation(command, context=context,
+                observation_id=rf.Rf1086RegisterObservationId(str(uuid4())), confirmed_at=now, previous=previous)
+            await self._retain_source_documents(connection, "rf1086_register_observation", snapshot.observation_id.value, snapshot.command.documents)
+            await connection.execute(
+                "select shareholder_register_filing.append_register_observation_v1(%s::uuid,%s::uuid,%s,%s,%s,%s,%s,%s::uuid,%s,%s,%s,%s)",
+                (snapshot.observation_id.value, str(command.company_id), int(command.income_year), snapshot.version,
+                 snapshot.fact_sha256, request_sha, str(idempotency_key),
+                 previous.observation_id.value if previous else None, previous.fact_sha256 if previous else None,
+                 snapshot.command.correction_reason, rf.serialize_rf1086_register_observation(snapshot), now))
+            saved = await self._read_register_observation(connection, command, snapshot.observation_id, current=True)
+            if saved != snapshot:
+                raise rf.Rf1086RegisterObservationError("rf1086_register_storage_invalid")
+            return saved
 
     async def _opening_inputs(self, connection, company_id, snapshot_id, *, lock=False):
         actor = str(self.actor_id.subject)

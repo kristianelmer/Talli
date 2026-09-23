@@ -52,8 +52,13 @@
       "CorporateDocumentSetRecord",
       "CorporateEventRecord",
       "CorporateFinalizationRecord",
+      "CorporateGovernanceYearEvidence",
+      "CorporateLedgerAmendment",
       "CorporateLifecycleSnapshot",
       "CorporateReadinessSource",
+      "CorporateReportingYearBasis",
+      "CorporateYearDividendEvidence",
+      "CorporateYearSupportedEvidence",
       "DerivedCorporateDecisionFacts",
       "GeneralMeeting",
       "GroupContributionEventFacts",
@@ -77,17 +82,21 @@
       "ProposedOwnerDividend",
       "RecordedShareholderLoan",
       "RecordedSupportedCorporateEvent",
-      "ReversedSupportedCorporateEvent",
       "RenderedCorporateArtifact",
+      "ReversedSupportedCorporateEvent",
       "ReviewedOwnerDividendFacts",
       "ReviewedShareholderFacts",
       "ShareholderBallot",
       "SupportedCorporateBankFact",
       "SupportedCorporateDocumentFact",
-      "SupportedCorporateSourceFact"
+      "SupportedCorporateSourceFact",
+      "build_reporting_year_evidence"
     ],
     "events": [],
-    "errors": ["CorporateGovernanceError", "CorporateGovernanceErrorCode"],
+    "errors": [
+      "CorporateGovernanceError",
+      "CorporateGovernanceErrorCode"
+    ],
     "identifiers": [
       "AccountingEntryReference",
       "BankTransactionReference",
@@ -118,7 +127,9 @@
     ]
   },
   "owns": {
-    "postgresSchemas": ["corporate_governance"],
+    "postgresSchemas": [
+      "corporate_governance"
+    ],
     "tables": [
       "corporate_governance.annual_close_artifacts",
       "corporate_governance.annual_close_decisions",

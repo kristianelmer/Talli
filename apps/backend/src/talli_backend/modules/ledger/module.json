@@ -32,10 +32,12 @@
     "queries": [
       "CompanyYearCloseAssessment",
       "CorrectedLedgerEntries",
+      "LedgerEntryAmendment",
       "LedgerEntryPage",
       "LedgerEntryView",
       "LedgerPage",
       "LedgerQueries",
+      "OpeningBankInput",
       "PeriodLock",
       "PeriodLockPage",
       "PostedLedgerEntry",
@@ -43,7 +45,6 @@
       "ReconstructionEconomicFactCandidates",
       "ReconstructionEconomicFactSnapshot",
       "ReversedLedgerEntry",
-      "OpeningBankInput",
       "preview_tax_settlement_lines"
     ],
     "events": [],

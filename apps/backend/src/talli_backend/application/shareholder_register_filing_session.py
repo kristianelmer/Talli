@@ -11,6 +11,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     ProductionOperationJournal, Rf1086Approval, Rf1086Connection, Rf1086PreparationPersistence,
     Rf1086MutationAuthority, Rf1086Preview, Rf1086ProductionJournal,
     Rf1086ReadOnlyAuthority, Rf1086FeedbackDiscovery, Rf1086Submission,
+    Rf1086YearSourcePersistence, Rf1086RegisterObservationPersistence,
 )
 from talli_backend.shared.kernel import ActorId
 
@@ -34,7 +35,8 @@ class Rf1086ReadOnlyBinding:
     feedback_discovery: Rf1086FeedbackDiscovery
 
 
-class AuthenticatedShareholderRegisterFilingSession(Rf1086PreparationPersistence, Protocol):
+class AuthenticatedShareholderRegisterFilingSession(Rf1086PreparationPersistence, Rf1086YearSourcePersistence,
+        Rf1086RegisterObservationPersistence, Protocol):
     @property
     def actor_id(self) -> ActorId: ...
     @property

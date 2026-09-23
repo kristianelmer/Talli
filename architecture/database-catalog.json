@@ -896,6 +896,24 @@
       "compatibilityResources": [
         "table:production_filing_submissions"
       ]
+    },
+    {
+      "name": "shareholder_register_filing.year_source_heads",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.year_source_versions",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.register_observations",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
     }
   ],
   "preservedSourceRetirements": [

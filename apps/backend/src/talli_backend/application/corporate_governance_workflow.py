@@ -36,6 +36,9 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
     CorporateLifecycleSnapshot,
+    CorporateGovernanceYearEvidence,
+    CorporateLedgerAmendment,
+    build_reporting_year_evidence,
     CorporateAccountMovementFacts,
     CorporateReadinessSource,
     CorporateSourceReference,
@@ -339,6 +342,20 @@ class CorporateGovernanceApplication:
         session = await self._session_factory.session(access_token)
         async with session.transaction() as transaction:
             return await transaction.list_lifecycle(company_ids)
+
+    async def read_reporting_year_evidence(self, access_token: str, *, company_id: CompanyId,
+            income_year: IncomeYear, correlation_id: CorrelationId) -> CorporateGovernanceYearEvidence:
+        session = await self._session_factory.session(access_token)
+        async with session.transaction() as transaction:
+            basis = await transaction.read_reporting_year_basis(company_id)
+            rows = await self._ledger_facade_factory(transaction).list_entry_amendments(
+                actor_id=session.actor_id, company_id=company_id, correlation_id=correlation_id)
+            return build_reporting_year_evidence(basis=basis, income_year=income_year, amendments=tuple(
+                CorporateLedgerAmendment(AccountingEntryReference(str(row.original_entry_id)),
+                    AccountingEntryReference(str(row.reversal_entry_id)),
+                    AccountingEntryReference(str(row.replacement_entry_id)) if row.replacement_entry_id else None,
+                    row.company_id, row.income_year, row.reason, row.amended_by, row.amended_at.value)
+                for row in rows))
 
     async def read_lifecycle(
         self,
