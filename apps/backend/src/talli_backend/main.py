@@ -19,8 +19,8 @@ from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError, model_validator
-from pydantic.json_schema import SkipJsonSchema
+from pydantic import AwareDatetime, NaiveDatetime, BeforeValidator, AfterValidator, BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic.json_schema import SkipJsonSchema, WithJsonSchema
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import ClientDisconnect
@@ -29,6 +29,7 @@ from talli_backend.application.shareholder_register_filing_session import (
     ShareholderRegisterFilingAuthenticationError, ShareholderRegisterFilingSessionFactory,
 )
 from talli_backend.application.shareholder_register_filing_workflow import ShareholderRegisterFilingWorkflow
+from talli_backend.application.shareholder_register_source_workflow import ShareholderRegisterSourceWorkflow
 from talli_backend.application.launch_signoffs import (
     LaunchSignoffAuthenticationError, LaunchSignoffError, LaunchSignoffKey,
     LaunchSignoffRecord, LaunchSignoffSessionFactory, LaunchSignoffStatus,
@@ -407,6 +408,7 @@ from talli_backend.modules.documents.public import (
     DocumentsSessionFactory,
     DocumentTransferKind,
     DocumentUploadTransfer,
+    document_metadata_sha256,
 )
 from talli_backend.modules.investments.public import (
     AcquisitionLotView,
@@ -455,6 +457,15 @@ from talli_backend.modules.shareholder_register_filing.public import (
     RecordRf1086OverrideCommand, RecordRf1086TestEvidenceCommand, ReviewCommentId,
     Rf1086ProductionError, Rf1086RecordedResult, Rf1086WorkspaceQuery,
     SendApprovedRf1086Command, ShareholderRegisterFilingError, SubmissionId,
+    RecordRf1086YearSource, RecordRf1086RegisterObservation, Rf1086YearSourceError,
+    Rf1086RegisterObservationError, Rf1086YearSourceId, Rf1086RegisterObservationId,
+    Rf1086SourcePreview, Rf1086Company, Rf1086ShareSnapshot, Rf1086Shareholder,
+    Rf1086ShareholderKind, Rf1086ShareholderSnapshot, Rf1086FormationAllocation,
+    Rf1086FormationEvent, Rf1086CashIssueEvent, Rf1086NominalIncreaseAllocation,
+    Rf1086CashNominalIncreaseEvent, Rf1086LossCoveringReductionEvent, Rf1086ShareSaleEvent,
+    Rf1086DividendAllocation, Rf1086DividendEvent, Rf1086Case, Rf1086PaidInSourceFacts,
+    Rf1086YearDocumentEvidence, Rf1086YearEventEvidence, Rf1086RegisterHolding,
+    Rf1086RegisteredShareState, Rf1086RegisterDocumentEvidence,
 )
 from talli_backend.modules.system_boundary.public import (
     SYSTEM_BOUNDARY_AVAILABLE,
@@ -1587,6 +1598,336 @@ def company_tax_json_wire(value: object) -> Any:
     if isinstance(value, (tuple, list)):
         return [company_tax_json_wire(child) for child in value]
     return value
+
+
+# Source intake is distinct from the legacy float-based case parser and storage
+# codecs. Decimal JSON strings are admitted exactly; trusted context is absent.
+def _rf_source_decimal(value: object) -> Decimal:
+    if type(value) is not str or re.fullmatch(r"(?:0|[1-9][0-9]*)(?:\.[0-9]+)?", value) is None:
+        raise ValueError("A nonnegative decimal string is required")
+    return Decimal(value)
+
+
+RF_SOURCE_CIVIL_TIME_PATTERN = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$"
+
+
+def _rf_source_civil_time_input(value: object) -> str:
+    if type(value) is not str or re.fullmatch(RF_SOURCE_CIVIL_TIME_PATTERN, value) is None:
+        raise ValueError("A local civil timestamp with whole seconds is required")
+    return value
+
+
+def _rf_source_civil_time(value: datetime) -> datetime:
+    if value.microsecond:
+        raise ValueError("A local civil timestamp with whole seconds is required")
+    return value
+
+
+RfSourceCivilTime = Annotated[
+    NaiveDatetime, BeforeValidator(_rf_source_civil_time_input), AfterValidator(_rf_source_civil_time),
+    WithJsonSchema({"type": "string", "pattern": RF_SOURCE_CIVIL_TIME_PATTERN}),
+    Field(description="Local civil time without a timezone, with whole seconds (YYYY-MM-DDTHH:mm:ss)."),
+]
+RfSourceDecimal = Annotated[Decimal, BeforeValidator(_rf_source_decimal, json_schema_input_type=str)]
+RfSourceCount = Annotated[int, Field(strict=True, ge=0)]
+RfSourceYear = Annotated[int, Field(strict=True, ge=2000, le=2100)]
+RfSourceBoolean = Annotated[bool, Field(strict=True)]
+RfSourceHash = Annotated[str, Field(strict=True, pattern=r"^[a-f0-9]{64}$")]
+
+
+class RfSourceCompanyWire(StrictTransportModel):
+    org_number: str = Field(pattern=r"^\d{9}$")
+    name: str
+    address: str
+    postal_code: str = Field(pattern=r"^\d{4}$")
+    city: str
+    income_year: RfSourceYear
+    share_type: str = "01"
+    contact_email: str | None = None
+
+
+class RfSourceSharesWire(StrictTransportModel):
+    previous_share_capital: RfSourceDecimal
+    current_share_capital: RfSourceDecimal
+    previous_nominal_value: RfSourceDecimal
+    current_nominal_value: RfSourceDecimal
+    previous_share_count: RfSourceCount
+    current_share_count: RfSourceCount
+    previous_paid_in_share_capital: RfSourceDecimal
+    current_paid_in_share_capital: RfSourceDecimal
+    previous_paid_in_premium: RfSourceDecimal
+    current_paid_in_premium: RfSourceDecimal
+
+
+class RfSourceShareholderWire(StrictTransportModel):
+    id: str
+    kind: Literal["norwegian_person", "norwegian_company"]
+    name: str
+    national_id: str | None = Field(default=None, pattern=r"^\d{11}$")
+    org_number: str | None = Field(default=None, pattern=r"^\d{9}$")
+
+
+class RfSourceShareholderSharesWire(StrictTransportModel):
+    shareholder_id: str
+    previous_share_count: RfSourceCount
+    current_share_count: RfSourceCount
+
+
+class RfSourceFormationAllocationWire(StrictTransportModel):
+    shareholder_id: str
+    share_count: RfSourceCount
+    acquisition_value: RfSourceDecimal
+
+
+class RfSourceFormationWire(StrictTransportModel):
+    type: Literal["formation"]
+    timestamp: RfSourceCivilTime
+    issued_share_count: RfSourceCount
+    share_count_after: RfSourceCount
+    nominal_value: RfSourceDecimal
+    allocations: list[RfSourceFormationAllocationWire]
+    premium: RfSourceDecimal
+
+
+class RfSourceCashIssueWire(RfSourceFormationWire):
+    type: Literal["cash_issue"]
+    registration_confirmed: RfSourceBoolean
+
+
+class RfSourceNominalAllocationWire(StrictTransportModel):
+    shareholder_id: str
+    share_count_basis: RfSourceCount
+    capital_increase: RfSourceDecimal
+    premium: RfSourceDecimal
+
+
+class RfSourceNominalIncreaseWire(StrictTransportModel):
+    type: Literal["cash_nominal_increase"]
+    timestamp: RfSourceCivilTime
+    capital_increase: RfSourceDecimal
+    nominal_value_increase: RfSourceDecimal
+    nominal_value_after: RfSourceDecimal
+    allocations: list[RfSourceNominalAllocationWire]
+    registration_confirmed: RfSourceBoolean
+    premium: RfSourceDecimal
+
+
+class RfSourceLossReductionWire(StrictTransportModel):
+    type: Literal["loss_covering_reduction"]
+    timestamp: RfSourceCivilTime
+    capital_reduction: RfSourceDecimal
+    nominal_value_reduction: RfSourceDecimal
+    nominal_value_after: RfSourceDecimal
+    registration_confirmed: RfSourceBoolean
+    fund_issued_capital_before: Annotated[int, Field(strict=True, ge=0, le=0)]
+
+
+class RfSourceShareSaleWire(StrictTransportModel):
+    type: Literal["share_sale"]
+    timestamp: RfSourceCivilTime
+    seller_shareholder_id: str
+    buyer_shareholder_id: str
+    share_count: RfSourceCount
+    consideration: RfSourceDecimal
+
+
+class RfSourceDividendAllocationWire(StrictTransportModel):
+    shareholder_id: str
+    amount: RfSourceDecimal
+    share_count_basis: RfSourceCount
+
+
+class RfSourceDividendWire(StrictTransportModel):
+    type: Literal["dividend"]
+    timestamp: RfSourceCivilTime
+    total_amount: RfSourceDecimal
+    per_share_amount: RfSourceDecimal
+    allocations: list[RfSourceDividendAllocationWire]
+
+
+RfSourceEventWire = Annotated[RfSourceFormationWire | RfSourceCashIssueWire | RfSourceNominalIncreaseWire
+    | RfSourceLossReductionWire | RfSourceShareSaleWire | RfSourceDividendWire, Field(discriminator="type")]
+
+
+class RfSourceCaseWire(StrictTransportModel):
+    case_id: str
+    company: RfSourceCompanyWire
+    share_snapshot: RfSourceSharesWire
+    shareholders: list[RfSourceShareholderWire]
+    shareholder_snapshots: list[RfSourceShareholderSharesWire]
+    events: list[RfSourceEventWire]
+
+
+class RfSourcePaidInWire(StrictTransportModel):
+    opening_capital: RfSourceDecimal
+    closing_capital: RfSourceDecimal
+    opening_premium: RfSourceDecimal
+    closing_premium: RfSourceDecimal
+
+
+class RfSourceDocumentWire(StrictTransportModel):
+    document_id: UUID
+    company_id: UUID
+    content_version_sha256: RfSourceHash
+    content_sha256: RfSourceHash
+    document_type: str
+    integrity_status: Literal["attached", "generated_unsigned", "signed_owner_attested", "stored"]
+    byte_length: Annotated[int, Field(strict=True, gt=0)]
+    created_at: AwareDatetime
+    metadata_sha256: RfSourceHash
+    source_income_year: RfSourceYear
+
+
+class RfSourceEventEvidenceWire(StrictTransportModel):
+    event_index: RfSourceCount
+    event_sha256: RfSourceHash
+    document_ids: list[UUID]
+    governance_receipt_id: UUID | None = None
+
+
+class RfYearSourceCaptureWire(StrictTransportModel):
+    company_id: UUID
+    income_year: RfSourceYear
+    case: RfSourceCaseWire
+    paid_in: RfSourcePaidInWire
+    documents: list[RfSourceDocumentWire] = Field(min_length=1)
+    opening_document_ids: list[UUID]
+    closing_document_ids: list[UUID]
+    paid_in_document_ids: list[UUID]
+    event_evidence: list[RfSourceEventEvidenceWire]
+    identities_reviewed: RfSourceBoolean
+    complete_year_confirmed: RfSourceBoolean
+    paid_in_reviewed: RfSourceBoolean
+    no_activity_confirmed: RfSourceBoolean
+    supersedes_source_id: UUID | None = None
+    supersedes_source_sha256: RfSourceHash | None = None
+    correction_reason: str | None = None
+
+
+class RfRegisterHoldingWire(StrictTransportModel):
+    shareholder_id: str
+    name: str
+    kind: Literal["norwegian_person", "norwegian_company"]
+    identifier: str
+    share_count: RfSourceCount
+
+
+class RfRegisteredSharesWire(StrictTransportModel):
+    share_capital: RfSourceDecimal
+    share_count: RfSourceCount
+    nominal_value: RfSourceDecimal
+    holdings: list[RfRegisterHoldingWire]
+
+
+class RfRegisterDocumentWire(RfSourceDocumentWire):
+    role: Literal["register_before", "register_after", "registration"]
+
+
+class RfRegisterObservationCaptureWire(StrictTransportModel):
+    company_id: UUID
+    income_year: RfSourceYear
+    effective_at: RfSourceCivilTime
+    event_kind: Literal["cash_issue", "cash_nominal_increase", "loss_covering_reduction"]
+    before: RfRegisteredSharesWire
+    after: RfRegisteredSharesWire
+    documents: list[RfRegisterDocumentWire] = Field(min_length=1)
+    complete_register_confirmed: RfSourceBoolean
+    registration_confirmed: RfSourceBoolean
+    single_share_class_confirmed: RfSourceBoolean
+    supersedes_observation_id: UUID | None = None
+    supersedes_observation_sha256: RfSourceHash | None = None
+    correction_reason: str | None = None
+
+
+class RfSourcePreviewRequestWire(StrictTransportModel):
+    company_id: UUID
+    income_year: RfSourceYear
+    source_id: UUID
+
+
+class RfYearSourceReceiptWire(TransportModel):
+    source_id: UUID
+    company_id: UUID
+    income_year: int
+    version: int
+    source_sha256: str
+    case_sha256: str
+    confirmed_at: datetime
+
+
+class RfRegisterObservationReceiptWire(TransportModel):
+    observation_id: UUID
+    company_id: UUID
+    income_year: int
+    version: int
+    fact_sha256: str
+    confirmed_at: datetime
+
+
+class RfSourcePreviewWire(TransportModel):
+    preview_id: UUID
+    company_id: UUID
+    income_year: int
+    source_id: UUID
+    source_sha256: str
+    case_sha256: str
+    readiness_status: Literal["ready", "blocked"]
+    readiness_issues: list[Rf1086IssueWire]
+    preview_text: str
+    hovedskjema_xml: str | None
+    underskjema_xml: dict[str, str] | None
+    rendering_profile: str
+
+
+def _rf_source_value(value: Any) -> Any:
+    """Explicit transport-to-public-value mapping, with no storage deserializer."""
+    types = {
+        RfSourceCompanyWire: Rf1086Company, RfSourceSharesWire: Rf1086ShareSnapshot,
+        RfSourceShareholderWire: Rf1086Shareholder, RfSourceShareholderSharesWire: Rf1086ShareholderSnapshot,
+        RfSourceFormationAllocationWire: Rf1086FormationAllocation, RfSourceFormationWire: Rf1086FormationEvent,
+        RfSourceCashIssueWire: Rf1086CashIssueEvent, RfSourceNominalAllocationWire: Rf1086NominalIncreaseAllocation,
+        RfSourceNominalIncreaseWire: Rf1086CashNominalIncreaseEvent, RfSourceLossReductionWire: Rf1086LossCoveringReductionEvent,
+        RfSourceShareSaleWire: Rf1086ShareSaleEvent, RfSourceDividendAllocationWire: Rf1086DividendAllocation,
+        RfSourceDividendWire: Rf1086DividendEvent, RfSourceCaseWire: Rf1086Case,
+        RfSourcePaidInWire: Rf1086PaidInSourceFacts, RfSourceDocumentWire: Rf1086YearDocumentEvidence,
+        RfSourceEventEvidenceWire: Rf1086YearEventEvidence, RfRegisterHoldingWire: Rf1086RegisterHolding,
+        RfRegisteredSharesWire: Rf1086RegisteredShareState, RfRegisterDocumentWire: Rf1086RegisterDocumentEvidence,
+    }
+    if type(value) in types:
+        values = {name: _rf_source_value(getattr(value, name)) for name in type(value).model_fields}
+        if isinstance(value, RfSourceDocumentWire):
+            values['company_id'] = CompanyId(values['company_id'])
+            values['source_income_year'] = IncomeYear(values['source_income_year'])
+        if isinstance(value, RfSourceShareholderWire):
+            values['kind'] = Rf1086ShareholderKind(values['kind'])
+        return types[type(value)](**values)
+    if isinstance(value, UUID):
+        return str(value)
+    if isinstance(value, list):
+        return tuple(_rf_source_value(item) for item in value)
+    return value
+
+
+def _rf_source_command(body: RfYearSourceCaptureWire | RfRegisterObservationCaptureWire, actor_id: Any):
+    values = {name: _rf_source_value(getattr(body, name)) for name in type(body).model_fields}
+    values.update(company_id=CompanyId(values['company_id']), income_year=IncomeYear(values['income_year']), actor_id=actor_id)
+    if isinstance(body, RfYearSourceCaptureWire):
+        if values['supersedes_source_id'] is not None:
+            values['supersedes_source_id'] = Rf1086YearSourceId(values['supersedes_source_id'])
+        return RecordRf1086YearSource(**values)
+    if values['supersedes_observation_id'] is not None:
+        values['supersedes_observation_id'] = Rf1086RegisterObservationId(values['supersedes_observation_id'])
+    return RecordRf1086RegisterObservation(**values)
+
+
+def _rf_source_preview_wire(preview: Rf1086SourcePreview) -> RfSourcePreviewWire:
+    return RfSourcePreviewWire(preview_id=UUID(preview.preview_id.value), company_id=UUID(str(preview.company_id)),
+        income_year=int(preview.income_year), source_id=UUID(preview.source_id.value), source_sha256=preview.source_sha256,
+        case_sha256=preview.case_sha256, readiness_status=preview.readiness_status,
+        readiness_issues=[Rf1086IssueWire.model_validate(item, from_attributes=True) for item in preview.readiness_issues],
+        preview_text=preview.preview_text, hovedskjema_xml=preview.hovedskjema_xml,
+        underskjema_xml=dict(preview.underskjema_xml) if preview.underskjema_xml is not None else None,
+        rendering_profile=preview.rendering_profile)
 
 
 class Rf1086PreviewWire(TransportModel):
@@ -4319,6 +4660,7 @@ class DocumentWire(TransportModel):
     content_type: str
     byte_length: int | None
     content_sha256: str | None
+    metadata_sha256: str
     created_by: UUID
     created_at: datetime
     removed_at: datetime | None
@@ -4389,6 +4731,7 @@ def _document_wire(value: DocumentRecord) -> DocumentWire:
         content_type=value.content_type,
         byte_length=value.byte_length,
         content_sha256=value.content_sha256,
+        metadata_sha256=document_metadata_sha256(value),
         created_by=UUID(str(value.created_by.subject)),
         created_at=value.created_at,
         removed_at=value.removed_at,
@@ -4590,6 +4933,11 @@ def create_app(
             billing_queries_factory=rf_billing_queries, documents_session_factory=documents_application,
             company_access_service=company_access_service,
         )
+
+    shareholder_register_source_workflow = ShareholderRegisterSourceWorkflow(
+        shareholder_register_filing_session_factory, company_access_service,
+        documents_application, corporate_governance_application,
+    )
 
     if launch_signoff_session_factory is None:
         from talli_backend.adapters.postgres_launch_signoffs import PostgresLaunchSignoffsAdapter
@@ -5083,6 +5431,38 @@ def create_app(
             raise ApiProblem(status=statuses[error.category], code=str(error.code),
                 title="RF-1086-handlingen kunne ikke fullføres",
                 detail="Handlingen kunne ikke bekreftes. Se lagret status før du prøver igjen.") from None
+
+    async def shareholder_register_source_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
+        try:
+            return await call()
+        except (ShareholderRegisterFilingAuthenticationError, CorporateGovernanceAuthenticationError):
+            raise ApiProblem(status=401, code="authentication_required", title="Innlogging kreves",
+                detail="En gyldig innlogging kreves.") from None
+        except Rf1086ProductionError as error:
+            status = 401 if error.code == "authentication_required" else 422 if error.code == "invalid_request" else (
+                503 if error.code in {"configuration_unavailable", "status_unavailable", "send_unavailable"} else 409)
+            raise ApiProblem(status=status, code=error.code, title="Kildegrunnlaget kunne ikke bekreftes",
+                detail="Tilgang og kildegrunnlag må bekreftes på nytt.") from None
+        except CompanyAccessError as error:
+            raise ApiProblem(status=error.status, code=error.code, title="Kildegrunnlaget kunne ikke bekreftes",
+                detail="Tilgang og kildegrunnlag må bekreftes på nytt.") from None
+        except (ShareholderRegisterFilingError, DocumentsError, CorporateGovernanceError, LedgerError) as error:
+            statuses = {ErrorCategory.INVALID_INPUT: 422, ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409, ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409, ErrorCategory.DEPENDENCY_UNAVAILABLE: 503}
+            raise ApiProblem(status=statuses[error.category], code=str(error.code),
+                title="Kildegrunnlaget kunne ikke bekreftes", detail="Tilgang og kildegrunnlag må bekreftes på nytt.") from None
+        except (Rf1086YearSourceError, Rf1086RegisterObservationError) as error:
+            code = str(error)
+            if re.fullmatch(r"rf1086_(?:source|register)_[a-z_]+", code) is None:
+                code = "rf1086_source_unavailable"
+            status = 403 if code.endswith("owner_required") else 404 if code.endswith("not_found") else (
+                503 if "storage_invalid" in code or code.endswith("unavailable") and code == "rf1086_source_unavailable" else 409)
+            raise ApiProblem(status=status, code=code, title="Kildegrunnlaget kunne ikke bekreftes",
+                detail="Tilgang og kildegrunnlag må bekreftes på nytt.") from None
+        except (ValidationError, ValueError):
+            raise ApiProblem(status=422, code="rf1086_source_invalid_request", title="Ugyldig kildegrunnlag",
+                detail="Forespørselen oppfyller ikke kildekontrakten.") from None
 
     async def shareholder_register_filing_workflow(
         credentials: HTTPAuthorizationCredentials | None,
@@ -11463,6 +11843,88 @@ def create_app(
             except ValidationError:
                 raise ShareholderRegisterFilingError.unavailable() from None
         return await shareholder_register_filing_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/register-observations",
+        operation_id="rf1086CaptureRegisterObservation", response_model=RfRegisterObservationReceiptWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_capture_register_observation(
+        body: RfRegisterObservationCaptureWire, request: Request,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255,
+            pattern=r"^[A-Za-z0-9._:-]+$")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfRegisterObservationReceiptWire:
+        async def execute():
+            token = bearer_token(credentials)
+            session = await shareholder_register_filing_session_factory.session(token)
+            command = _rf_source_command(body, session.actor_id)
+            result = await shareholder_register_source_workflow.capture_register_observation(token, command,
+                idempotency_key=IdempotencyKey(idempotency_key), correlation_id=CorrelationId(request.state.request_id))
+            return RfRegisterObservationReceiptWire(observation_id=UUID(result.observation_id.value),
+                company_id=UUID(str(result.command.company_id)), income_year=int(result.command.income_year),
+                version=result.version, fact_sha256=result.fact_sha256, confirmed_at=result.confirmed_at)
+        return await shareholder_register_source_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/year-sources",
+        operation_id="rf1086CaptureYearSource", response_model=RfYearSourceReceiptWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_capture_year_source(
+        body: RfYearSourceCaptureWire, request: Request,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255,
+            pattern=r"^[A-Za-z0-9._:-]+$")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfYearSourceReceiptWire:
+        async def execute():
+            token = bearer_token(credentials)
+            session = await shareholder_register_filing_session_factory.session(token)
+            command = _rf_source_command(body, session.actor_id)
+            result = await shareholder_register_source_workflow.capture_year_source(token, command,
+                idempotency_key=IdempotencyKey(idempotency_key), correlation_id=CorrelationId(request.state.request_id))
+            return RfYearSourceReceiptWire(source_id=UUID(result.source_id.value),
+                company_id=UUID(str(result.company_id)), income_year=int(result.income_year), version=result.version,
+                source_sha256=result.source_sha256, case_sha256=result.case_sha256, confirmed_at=result.confirmed_at)
+        return await shareholder_register_source_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/source-previews",
+        operation_id="rf1086GenerateSourcePreview", response_model=RfSourcePreviewWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_generate_source_preview(
+        body: RfSourcePreviewRequestWire, request: Request,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfSourcePreviewWire:
+        async def execute():
+            result = await shareholder_register_source_workflow.generate_source_preview(bearer_token(credentials),
+                company_id=CompanyId(str(body.company_id)), income_year=IncomeYear(body.income_year),
+                source_id=Rf1086YearSourceId(str(body.source_id)), correlation_id=CorrelationId(request.state.request_id))
+            return _rf_source_preview_wire(result)
+        return await shareholder_register_source_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/source-previews/{previewId}",
+        operation_id="rf1086ReadSourcePreview", response_model=RfSourcePreviewWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_read_source_preview(
+        previewId: UUID, request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfSourcePreviewWire:
+        async def execute():
+            result = await shareholder_register_source_workflow.read_source_preview(bearer_token(credentials),
+                company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year),
+                preview_id=PreviewId(str(previewId)), correlation_id=CorrelationId(request.state.request_id))
+            return _rf_source_preview_wire(result)
+        return await shareholder_register_source_call(execute)
 
     @application.get(
         "/api/v1/shareholder-register-filings/previews/{previewId}",

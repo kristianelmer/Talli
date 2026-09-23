@@ -106,3 +106,22 @@ This bounded fix passed 1,180 offline tests and independent scoped review. See
 `capital-lifecycle-integration-20260923.json` for bindings. It does not introduce
 visibility into amendments of absent Ledger opening anchors, nominal-increase
 support, production activation or full RF acceptance.
+
+## Authenticated source API checkpoint
+
+Owners can now capture independent register observations and complete year
+sources through explicit typed HTTP commands, then generate and reread exact
+source-backed previews. The backend derives authentication and evidence context;
+clients cannot supply trusted owner or verification claims. Source money uses
+exact decimal strings and economic timestamps use local whole-second strings.
+Document original metadata retains its timezone-aware identity.
+
+Preview review rechecks current ownership, original bytes, Governance evidence,
+current source identity and exact rendering. The generated client carries the
+required company/year scope and capture idempotency. Existing API paths remain
+compatible. See `source-api-integration-20260923.json` for bounded verification.
+
+This completes backend intake/review transport only. The customer UI, action-time
+approval/send consistency, corrections and archive integration, broader capital
+cases and full release evidence remain unfinished. All full RF criteria remain
+pending, independently of the unavailable genuine-company production pilot.

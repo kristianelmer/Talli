@@ -25,7 +25,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     Rf1086RegisterObservationSnapshot, Rf1086VerifiedRegisterObservationContext,
     Rf1086SourceQuery, Rf1086RegisterObservationId, Rf1086RegisterObservationMatchQuery,
     verify_rf1086_register_observation, rf1086_event_register_states,
-    Rf1086YearSourceId, Rf1086SourcePreview, GenerateRf1086SourcePreview,
+    Rf1086YearSourceId, Rf1086SourcePreview, GenerateRf1086SourcePreview, PreviewId,
     assert_rf1086_year_source_integrity, assert_rf1086_year_source_fresh,
     assert_rf1086_source_preview_matches, create_rf1086_preparation_service,
 )
@@ -274,10 +274,9 @@ class ShareholderRegisterSourceWorkflow:
         context = await self._verify_year_source_context(access_token, session, command, correlation_id=correlation_id)
         return await session.record_year_source(command, context=context, idempotency_key=idempotency_key)
 
-    async def generate_source_preview(self, access_token: str, *, company_id: CompanyId,
-            income_year: IncomeYear, source_id: Rf1086YearSourceId,
-            correlation_id: CorrelationId) -> Rf1086SourcePreview:
-        session = await self._rf_sessions.session(access_token)
+    async def _fresh_source(self, access_token: str, session: AuthenticatedShareholderRegisterFilingSession, *,
+            company_id: CompanyId, income_year: IncomeYear, source_id: Rf1086YearSourceId,
+            correlation_id: CorrelationId) -> Rf1086YearSourceSnapshot:
         query = Rf1086SourceQuery(company_id, income_year, session.actor_id)
         source = await session.read_year_source(query, source_id)
         _require(source is not None, 'rf1086_source_not_found')
@@ -291,10 +290,37 @@ class ShareholderRegisterSourceWorkflow:
         assert_rf1086_year_source_integrity(current)
         assert_rf1086_year_source_fresh(source, current_source_id=current.source_id,
             current_source_sha256=current.source_sha256, context=context)
+        return source
+
+    async def generate_source_preview(self, access_token: str, *, company_id: CompanyId,
+            income_year: IncomeYear, source_id: Rf1086YearSourceId,
+            correlation_id: CorrelationId) -> Rf1086SourcePreview:
+        session = await self._rf_sessions.session(access_token)
+        source = await self._fresh_source(access_token, session, company_id=company_id,
+            income_year=income_year, source_id=source_id, correlation_id=correlation_id)
         # Persistence rechecks the current source under the RF company/year lock
         # before append, covering supersession after these external owner reads.
         preview = await create_rf1086_preparation_service(session).generate_source_preview(
             GenerateRf1086SourcePreview(company_id=company_id, income_year=income_year, source=source))
+        assert_rf1086_source_preview_matches(preview, source)
+        return preview
+
+    async def read_source_preview(self, access_token: str, *, company_id: CompanyId,
+            income_year: IncomeYear, preview_id: PreviewId,
+            correlation_id: CorrelationId) -> Rf1086SourcePreview:
+        """Fresh owner review of a retained preview, without creating evidence.
+
+        This is a point-in-time review read, not a production authorization or
+        historical archive endpoint. Source corrections and changed originals
+        must be reviewed through a newly captured source.
+        """
+        session = await self._rf_sessions.session(access_token)
+        preview = await session.source_preview(preview_id)
+        _require(preview is not None and preview.preview_id == preview_id
+                 and preview.company_id == company_id and preview.income_year == income_year,
+                 'rf1086_source_preview_not_found')
+        source = await self._fresh_source(access_token, session, company_id=company_id,
+            income_year=income_year, source_id=preview.source_id, correlation_id=correlation_id)
         assert_rf1086_source_preview_matches(preview, source)
         return preview
 

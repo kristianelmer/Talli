@@ -403,6 +403,14 @@
     {
       "from": "backend-system:shareholder-register-filing",
       "imports": [
+        "talli_backend.modules.corporate_governance.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:corporate_governance"
+    },
+    {
+      "from": "backend-system:shareholder-register-filing",
+      "imports": [
         "talli_backend.modules.documents.public"
       ],
       "kind": "workflow",

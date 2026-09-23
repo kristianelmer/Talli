@@ -371,7 +371,8 @@
         "talli_backend.modules.billing.public",
         "talli_backend.modules.company_access.public",
         "talli_backend.modules.documents.public",
-        "talli_backend.modules.shareholder_register_filing.public"
+        "talli_backend.modules.shareholder_register_filing.public",
+        "talli_backend.modules.corporate_governance.public"
       ],
       "routes": [
         "/api/v1/legacy-rf1086/production-filings",
@@ -387,7 +388,11 @@
         "/api/v1/shareholder-register-filings/simulations",
         "/api/v1/shareholder-register-filings/filing-permissions",
         "/api/v1/shareholder-register-filings/test-evidence",
-        "/api/v1/shareholder-register-filings/production-approvals"
+        "/api/v1/shareholder-register-filings/production-approvals",
+        "/api/v1/shareholder-register-filings/register-observations",
+        "/api/v1/shareholder-register-filings/year-sources",
+        "/api/v1/shareholder-register-filings/source-previews",
+        "/api/v1/shareholder-register-filings/source-previews/{previewId}"
       ]
     },
     {
@@ -1107,7 +1112,8 @@
       "talli_backend.adapters.postgres_annual_accounts",
       "talli_backend.application.annual_accounts_session",
       "talli_backend.modules.annual_accounts_filing.public",
-      "talli_backend.json_transport"
+      "talli_backend.json_transport",
+      "talli_backend.application.shareholder_register_source_workflow"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",

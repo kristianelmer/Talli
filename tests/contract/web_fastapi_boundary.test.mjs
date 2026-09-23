@@ -600,3 +600,34 @@ test("annual checkout withdrawal uses the original accepted body and key with a 
   assert.deepEqual(fields.state.enum, ["existing", "withdrawn"]);
   assert.equal(contract.components.schemas.AnnualCheckoutCommandWire.additionalProperties, false);
 });
+
+test("source preview client carries required company/year scope and capture idempotency", async () => {
+  const { createTalliApiClient } = await import(generatedClientPath.href);
+  const requests = [];
+  const captured = new Error("request captured without network");
+  const client = createTalliApiClient({
+    baseUrl: "https://backend.example",
+    fetch: async (url, init) => {
+      requests.push({ url: new URL(url), init });
+      throw captured;
+    },
+  });
+  const companyId = "11111111-1111-4111-8111-111111111111";
+  await assert.rejects(client.rf1086ReadSourcePreview("preview/id", {
+    companyId, incomeYear: 2025, requestId: "source-review",
+    headers: { Authorization: "Bearer owner-token" },
+  }), (error) => error === captured);
+  assert.equal(requests[0].url.pathname,
+    "/api/v1/shareholder-register-filings/source-previews/preview%2Fid");
+  assert.deepEqual([...requests[0].url.searchParams], [["companyId", companyId], ["incomeYear", "2025"]]);
+  assert.equal(requests[0].init.headers.Authorization, "Bearer owner-token");
+  assert.equal(requests[0].init.cache, "no-store");
+  const body = { companyId, incomeYear: 2025, paidIn: { openingCapital: "9007199254740993.000001" } };
+  for (const operation of ["rf1086CaptureRegisterObservation", "rf1086CaptureYearSource"]) {
+    await assert.rejects(client[operation](body, { idempotencyKey: "source-capture-0001" }),
+      (error) => error === captured);
+    const { init } = requests.at(-1);
+    assert.equal(init.headers["Idempotency-Key"], "source-capture-0001");
+    assert.equal(init.body, JSON.stringify(body));
+  }
+});
