@@ -398,3 +398,34 @@ Full RF schema rollback fails with
 `rf1086_retained_register_observations_block_full_schema_rollback` when any original
 observation remains. A deeper reversal requires a separately reviewed lossless
 relocation, never deleting evidence to make the guard pass.
+
+### Source-backed full-year previews
+
+The internal source workflow re-verifies accepted ownership, retained original
+bytes, all relevant Governance receipts, and independent register observations
+before `GenerateRf1086SourcePreview`. Canonical full-year rendering includes
+supported events and an explicit review of tax paid-in capital and premium.
+`Rf1086SourcePreviewPreparation` persists the source id, source and case hashes,
+rendering profile, readiness, review text and exact XML in `source_previews`.
+
+Capture rechecks accepted ownership and the current source after acquiring the
+same company/year lock used by source corrections. Identical source/rendered
+content replays the same preview; corrected evidence creates a distinct preview
+even when XML is unchanged. Historical previews remain readable using their
+original stored rendering. The closed codec checks storage integrity without
+regenerating historical files. The migration and rollback preserve every preview;
+full RF rollback refuses to erase retained previews.
+
+This internal binding performs no provider operation. Customer routes, source
+review/approval/send integration and cross-owner action-time consistency remain
+pending. Existing legacy previews and production activation are unchanged.
+
+`Rf1086PreparedSourcePreview` binds the verified source to canonical rendering.
+`assert_rf1086_source_preview_matches` verifies new previews against that source.
+`serialize_rf1086_source_preview` and `parse_rf1086_source_preview` retain exact
+historical bytes and reject altered or unsupported storage. RF owns
+`shareholder_register_filing.source_previews`.
+
+<!-- architecture-inventory
+{"ownedTables":["shareholder_register_filing.source_previews"],"ports":["Rf1086SourcePreviewPreparation"]}
+-->

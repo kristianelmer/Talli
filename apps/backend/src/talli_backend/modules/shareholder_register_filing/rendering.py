@@ -355,9 +355,12 @@ def _value(value: object) -> str:
 
 
 def _amount(value: float) -> str:
-    if float(value).is_integer():
-        return f"{int(value)} kr"
-    return f"{value:.2f} kr"
+    from decimal import Decimal
+    # Filing amounts may have more than two decimal places. Preserve those
+    # digits and avoid ambient rounding or a lossy float conversion in review.
+    whole, _, fraction = format(Decimal(str(value)), "f").partition(".")
+    fraction = fraction.rstrip("0")
+    return (whole + "." + fraction.ljust(2, "0") if fraction else whole) + " kr"
 
 
 def _dt(value) -> str:

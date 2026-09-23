@@ -13,7 +13,7 @@ import json
 import os
 import re
 from urllib.parse import quote, urlencode
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 import httpx
 import psycopg
@@ -114,6 +114,7 @@ class PostgresShareholderRegisterFilingAdapter:
 @rf.rf1086_adapter(rf.Rf1086PreparationPersistence)
 @rf.rf1086_adapter(rf.Rf1086YearSourcePersistence)
 @rf.rf1086_adapter(rf.Rf1086RegisterObservationPersistence)
+@rf.rf1086_adapter(rf.Rf1086SourcePreviewPreparation)
 class PostgresShareholderRegisterFilingSession:
     def __init__(self, configuration, verified: _VerifiedActor, *, access_token, billing, documents,
                  company_access, environment=None, maskinporten=None, rf_transport=None, storage_transport=None):
@@ -176,7 +177,8 @@ class PostgresShareholderRegisterFilingSession:
             for code in ("rf1086_register_predecessor_mismatch", "rf1086_register_idempotency_conflict", "rf1086_register_storage_invalid"):
                 if code in str(error):
                     raise rf.Rf1086RegisterObservationError(code) from None
-            for code in ("rf1086_source_predecessor_mismatch", "rf1086_source_idempotency_conflict", "rf1086_source_storage_invalid"):
+            for code in ("rf1086_source_predecessor_mismatch", "rf1086_source_idempotency_conflict", "rf1086_source_storage_invalid",
+                         "rf1086_source_preview_stale", "rf1086_source_preview_storage_invalid"):
                 if code in str(error):
                     raise rf.Rf1086YearSourceError(code) from None
             if "rf1086_not_found" in str(error) or "production_preview_not_found" in str(error):
@@ -380,6 +382,81 @@ class PostgresShareholderRegisterFilingSession:
             if saved != snapshot:
                 raise rf.Rf1086RegisterObservationError("rf1086_register_storage_invalid")
             return saved
+
+    @staticmethod
+    def _source_preview(row):
+        if row is None:
+            raise rf.ShareholderRegisterFilingError.not_found()
+        preview = rf.parse_rf1086_source_preview(row["payload_text"])
+        source = rf.parse_rf1086_year_source(row["source_snapshot_text"])
+        if (str(preview.preview_id) != str(row["id"])
+                or str(preview.company_id) != str(row["company_id"])
+                or int(preview.income_year) != row["income_year"]
+                or preview.source_id.value != str(row["source_id"])
+                or preview.source_sha256 != row["source_sha256"]
+                or preview.case_sha256 != row["case_sha256"]
+                or row["profile"] != "rf1086-full-year-v1"
+                or row["profile"] != preview.rendering_profile
+                or hashlib.sha256(row["payload_text"].encode("utf-8")).hexdigest() != row["payload_sha256"]
+                or (preview.source_id, preview.source_sha256, preview.case_sha256,
+                    preview.company_id, preview.income_year)
+                    != (source.source_id, source.source_sha256, source.case_sha256,
+                        source.company_id, source.income_year)):
+            raise rf.Rf1086YearSourceError("rf1086_source_preview_storage_invalid")
+        # Historical previews retain their original renderer output. Do not
+        # rerender an old row using a future implementation when reading it.
+        return preview
+
+    async def _read_source_preview(self, connection, preview_id):
+        row = await (await connection.execute(
+            "select p.*,v.snapshot_text as source_snapshot_text "
+            "from shareholder_register_filing.source_previews p "
+            "join shareholder_register_filing.year_source_versions v on v.id=p.source_id "
+            "where p.id=%s::uuid", (str(preview_id),),
+        )).fetchone()
+        return self._source_preview(row)
+
+    async def source_preview(self, preview_id):
+        async with self._transaction(snapshot=True) as connection:
+            return await self._read_source_preview(connection, preview_id)
+
+    async def capture_source_preview(self, command, prepared):
+        source = prepared.source
+        rf.assert_rf1086_year_source_integrity(source)
+        if (command.company_id != source.company_id or command.income_year != source.income_year
+                or rf.rf1086_year_source_digest(command.source) != rf.rf1086_year_source_digest(source)):
+            raise rf.Rf1086YearSourceError("rf1086_source_preview_stale")
+        rendered = prepared.rendered
+        identity = "rf1086-source-preview:full-year-v1:" + source.source_id.value + ":" + source.source_sha256 + ":" + rf.rf1086_year_source_digest(rendered)
+        preview = rf.Rf1086SourcePreview(
+            preview_id=rf.PreviewId(str(uuid5(NAMESPACE_URL, identity))),
+            company_id=source.company_id, income_year=source.income_year, source_id=source.source_id,
+            source_sha256=source.source_sha256, case_sha256=source.case_sha256,
+            readiness_status=rendered.status, readiness_issues=rendered.issues, preview_text=rendered.preview,
+            hovedskjema_xml=rendered.hovedskjema_xml, underskjema_xml=rendered.underskjema_xml)
+        rf.assert_rf1086_source_preview_matches(preview, source)
+        encoded = rf.serialize_rf1086_source_preview(preview)
+        payload_sha = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+        async with self._transaction() as connection:
+            await connection.execute("select shareholder_register_filing.lock_year_source_v1(%s::uuid,%s)",
+                (str(source.company_id), int(source.income_year)))
+            current = await self._current_year_source(connection, source.company_id, source.income_year)
+            if current is None or rf.rf1086_year_source_digest(current) != rf.rf1086_year_source_digest(source):
+                raise rf.Rf1086YearSourceError("rf1086_source_preview_stale")
+            # The RPC repeats the current-head and owner checks under this same
+            # advisory lock, before either new insertion or identical replay.
+            saved = await (await connection.execute(
+                "select shareholder_register_filing.append_source_preview_v1("
+                "%s::uuid,%s::uuid,%s,%s::uuid,%s,%s,%s,%s) as id",
+                (str(preview.preview_id), str(source.company_id), int(source.income_year),
+                 source.source_id.value, source.source_sha256, source.case_sha256, payload_sha, encoded),
+            )).fetchone()
+            if saved is None or str(saved["id"]) != str(preview.preview_id):
+                raise rf.Rf1086YearSourceError("rf1086_source_preview_storage_invalid")
+            retained = await self._read_source_preview(connection, preview.preview_id)
+            if retained != preview:
+                raise rf.Rf1086YearSourceError("rf1086_source_preview_storage_invalid")
+            return retained
 
     async def _opening_inputs(self, connection, company_id, snapshot_id, *, lock=False):
         actor = str(self.actor_id.subject)

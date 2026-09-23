@@ -503,8 +503,9 @@ const RFR='20260917110951_rf1086_action_required_read_recovery.sql';
 const RFA='20260917114424_rf1086_production_archive_evidence.sql';
 const RFY='20260923091509_rf1086_immutable_year_source.sql';
 const RFO='20260923102314_rf1086_register_observation_store.sql';
+const RFP='20260923105912_rf1086_source_backed_preview.sql';
 const predecessor={rf_owned:false,authority_kind:'r',ledger_kind:'v',ledger_setup:true,opening_kind:'r'};
-const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${RFR}`,`migrations/${RFA}`,`migrations/${RFY}`,`migrations/${RFO}`];
+const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${RFR}`,`migrations/${RFA}`,`migrations/${RFY}`,`migrations/${RFO}`,`migrations/${RFP}`];
 const workspaceForward=forward.filter(path=>path!==`contract-migrations/${AUC}`);
 function fake(initial,{fail,noEffect=false}={}) {
  const state={signoff_open:true,...initial},executed=[];
@@ -534,6 +535,11 @@ for(const authority_kind of ['v',null]) for(const rf_owned of [false,true]) {
   assert.deepEqual(fixture.executed,[...(rf_owned?[`rollback/${RFA}`,`rollback/${RFX}`]:[]),`rollback/${SIGN}`,...(authority_kind===null?[`rollback/${AUC}`]:[]),`rollback/${RF}`,`rollback/${OP}`,`rollback/${AU}`]);
  });
 }
+test('empty source-preview API rolls back before source APIs and full RF schema',async()=>{
+ const f=fake({...predecessor,rf_owned:true,rf_source_previews:true,rf_register_observations:true,rf_year_sources:true,authority_kind:null});
+ await run('rollback',f);
+ assert.deepEqual(f.executed.slice(0,5),[`rollback/${RFP}`,`rollback/${RFO}`,`rollback/${RFY}`,`rollback/${RFA}`,`rollback/${RFX}`]);
+});
 test('retained independent register observations block full-schema rollback before any mutation',async()=>{
  const f=fake({...predecessor,rf_owned:true,rf_register_observations:true,retained_observations:true,authority_kind:null});
  await assert.rejects(run('rollback',f),/rf1086_retained_register_observations_block_full_schema_rollback/);

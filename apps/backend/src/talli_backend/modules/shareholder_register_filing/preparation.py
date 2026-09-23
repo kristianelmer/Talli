@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from uuid import UUID, NAMESPACE_URL, uuid5
 
 from .public import (
-    GenerateRf1086PreviewCommand, RecordRf1086OverrideCommand,
+    GenerateRf1086PreviewCommand, GenerateRf1086SourcePreview, Rf1086SourcePreview, RecordRf1086OverrideCommand,
     AddRf1086ReviewCommentCommand, AcknowledgeRf1086ReviewCommentCommand,
     ConfirmRf1086SimulationCommand, ConfirmRf1086FilingPermissionCommand,
     RecordRf1086TestEvidenceCommand, ApproveRf1086ProductionCommand,
@@ -226,6 +226,11 @@ class Rf1086PreparationService:
     def __init__(self, persistence: Rf1086PreparationPersistence, *, clock: Callable[[], str] = _utc_now):
         self._persistence = persistence
         self._clock = clock
+
+    async def generate_source_preview(self, command: GenerateRf1086SourcePreview) -> Rf1086SourcePreview:
+        from .source_preview import prepare
+        prepared = prepare(command)
+        return await self._persistence.capture_source_preview(command, prepared)
 
     async def generate_preview(self, command: GenerateRf1086PreviewCommand):
         basis = await self._persistence.load_opening(command)

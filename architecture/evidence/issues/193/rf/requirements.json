@@ -100,5 +100,12 @@
     "commit": "0375d02205cf2737375935cc90370863082fac58",
     "status": "PASS",
     "logSha256": "23091325e26ea3bbb93531a2dafd538355890112315f0b6bcc130fa06bec06be"
+  },
+  "sourceBackedPreview": {
+    "status": "PASS_BOUNDED_INTERNAL_BINDING",
+    "integration": "source-preview-integration-20260923.json",
+    "persistence": "source-preview-persistence-runtime-20260923.json",
+    "review": "review-source-preview.json",
+    "remaining": "Customer source intake/review, source-bound approval/send and action-time freshness, correction admission and source lineage in archive remain pending."
   }
 }

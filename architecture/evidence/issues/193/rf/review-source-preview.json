@@ -1,0 +1,58 @@
+{
+  "date": "2026-09-23",
+  "base_commit": "efbea434d07b5530618dabbeb8645d0208b554dd",
+  "reviewed_state": "uncommitted working-tree bytes bound by exact hashes",
+  "reviewer": "independent bounded source-preview reviewer; no implementation edits to this delta",
+  "result": "no remaining actionable scoped findings",
+  "scope": [
+    "Source/company/year/case/hash and canonical render binding",
+    "Fresh external owner checks plus current RF source lock",
+    "Immutable preview/history/correction and rollback behavior",
+    "Closed tagged codec and optional XML blocked-state support",
+    "Deterministic exact monetary review text"
+  ],
+  "resolved_findings": [
+    {
+      "issue": "Paid-in formatting depended on ambient Decimal rounding and hid supported precision",
+      "verification": "Original2000.005 ROUND_DOWN/ROUND_UP reproducer now identical and exact"
+    },
+    {
+      "issue": "Shared renderer registered-capital formatting retained same rounding dependency",
+      "verification": "Original30000.005 capital/300.00005 nominal reproducer now identical and exact"
+    }
+  ],
+  "tests": {
+    "passed": 224,
+    "seconds": 0.95,
+    "provider_calls": 0,
+    "database_calls_during_this_review": 0,
+    "git_diff_check": "passed"
+  },
+  "source_sha256": {
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "aed2e9a969e1e7a8f94b270e3b14363efc8f199ac61faa489ee8a1d5cafa9ac7",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_preview.py": "1a5ef0edbabb92abf2a0e78f705776e805c6c430c4086386e7c893c164348168",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py": "30a5aab22eb59d0a45f611eed9f92e2748cb50b63665e771bf0f27bc09810b0e",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/rendering.py": "f93d5988df1b024cecddec12e67ef3d04eed35e1e2667d8efd4ac1ed208c4ca0",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source_storage.py": "531dd01dd9870ce2fbbf963834dbfd30dffd5db9e2dbf8c89b4b233d90adefcb",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py": "ca3ad0c4206096a5d86f997cfea95dc5473d87ffc190742cd0eadaf53b44ace1",
+    "apps/backend/src/talli_backend/application/shareholder_register_filing_session.py": "aa8f79f35f5a385c90c09bef2310952ccee21f0eadd558819113248c5cf713e5",
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "2bb2f6fa177a49f540a5f2df3452b16a9f9820076d70d6e24fa19583e09bc730",
+    "supabase/migrations/20260923105912_rf1086_source_backed_preview.sql": "b601980eeb634cf469d924187c890c4909e8bcde694f93718aa6770bb7d5bea7",
+    "supabase/rollback/20260923105912_rf1086_source_backed_preview.sql": "2c277f06b3fca4adcd8bd6a24c7fa04e088b1637ee1f12f2f2e0b88541306f45",
+    "apps/backend/tests/test_rf1086_source_preview.py": "1229b52968e9779c865e707faae380e567511a8aca5c2c0aa329bee0bb6fc545",
+    "apps/backend/tests/test_shareholder_register_source_preview_workflow.py": "2be38e0e16b4daf8e5055fd3b0f7db6a8f4abd0e875b6555c14d47bba41b8255",
+    "apps/backend/tests/test_rf1086_source_preview_database.py": "cf6273d4e9ee8f21f95cf33afb26aeb450ee9739d069c8057f9832abcd177bc7",
+    "apps/backend/tests/test_rf1086_year_source_storage.py": "8e379f8d0f23f17a36ffb52be404fcd462a8ad4255a03d78c77106cfd7c6b963",
+    "apps/backend/tests/test_rf1086_preparation.py": "2ffcf1b70b02f49b7254516e3e660609ffde148041bad52db0ec05b87c3369d9",
+    "apps/backend/tests/test_shareholder_register_source_workflow.py": "fed5727db4625e968726584e280ee2990198a567417195c645911b020ff5b9b6",
+    "apps/backend/tests/test_shareholder_register_capital_source_workflow.py": "544454c471c47aaf0d5a0433e5b7d8588b01f40b7b19115624cfb0071b17450f",
+    "apps/backend/tests/test_rf1086_rule_equivalence.py": "13f6d7a87024194f680296e7ea1309e00efec4ab3339091f0928351100ceb0c0",
+    "apps/backend/tests/test_rf1086_offline_equivalence.py": "f5c6255451458e3325ffc4054a01a1f2f567ea87ced20c65389e1161aa0cf4fc"
+  },
+  "limits": [
+    "No provider, hosted database or genuine-company acceptance was performed.",
+    "Restricted-role runtime proof is owned by separate persistence review; DB code/tests were inspected here but not rerun.",
+    "No routes, approval/send activation, full archive integration or full RF acceptance is claimed.",
+    "Freshness is checked by owner public projections and RF current-head locking, not a cross-owner serializable lease."
+  ]
+}

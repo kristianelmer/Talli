@@ -66,3 +66,28 @@ remain pending.
 The internal authenticated capture workflow now derives trusted owner, company, original-document and Governance facts rather than accepting trusted context from a caller. Governance enumeration includes finalized dividends, pending and superseded decisions, registered capital events, and Ledger reversals/corrections within its coherent read. Immutable year-source storage uses exact-source idempotency, current-predecessor comparison and preserved historical versions. Independent register observations separately describe original registered before/after facts and cannot be replaced by a filing-year snapshot.
 
 Documents-owned retention runs inside each RF capture transaction to recheck verified metadata and protect original documents against deletion. Capture remains a point-in-time observation. Customer routes, cash-nominal Governance composition, complete preview/approval/send freshness and cross-owner action-time concurrency controls remain outstanding; these foundations do not enable production or narrow the accepted launch boundary.
+
+## Source-backed preview checkpoint
+
+The internal workflow now re-verifies original Documents bytes, complete current
+Governance receipts and independent register observations before canonical
+full-year rendering. A separate RF-owned preview table binds source and case
+hashes to exact review/XML bytes and a rendering profile. Registered and tax
+paid-in amounts retain exact supported precision in review. Source correction
+and preview insertion share one current-source lock; identical retries replay,
+while changed evidence has distinct preview identity even with unchanged XML.
+Historical sources and previews remain readable after correction.
+
+This checkpoint passed 1,076 offline tests, 11 actual restricted-role PostgreSQL
+preview tests, the architecture check and independent scoped review. Original
+runtime evidence and earlier failed attempts remain preserved. See
+`source-preview-integration-20260923.json` for exact file/log bindings.
+
+Remaining work without a real AS: customer source intake and review, approval and
+send tied to exact current sources with cross-owner action-time consistency,
+correction admission and archive lineage, cash nominal Governance integration,
+historical fund-issued capital and distribution clearance, remaining service
+conformance and security/recovery/load/browser/mobile validation. Tax and Accounts
+still wait for full RF acceptance. Genuine-company records, authority and final
+production evidence require a recruited AS; that dependency does not block these
+software tasks.

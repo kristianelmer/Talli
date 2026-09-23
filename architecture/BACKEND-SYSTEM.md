@@ -749,3 +749,19 @@ RF owns independent register observations and immutable correction lineages. The
 <!-- architecture-inventory
 {"ports":["Rf1086RegisterObservationPersistence","DocumentEvidenceRetentionPersistence"],"adapterBindings":["Rf1086RegisterObservationPersistence=>talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession","DocumentEvidenceRetentionPersistence=>talli_backend.adapters.postgres_document_evidence.PostgresDocumentEvidenceRetention"],"adapterBindingOwners":["Rf1086RegisterObservationPersistence=>backend-system","DocumentEvidenceRetentionPersistence=>backend-system"],"adapterBindingModes":["Rf1086RegisterObservationPersistence=>verified request-scoped immutable register observations with current-lineage checks","DocumentEvidenceRetentionPersistence=>Documents-owned exact metadata lock and retained original reference in the RF capture transaction"],"adapterDependencies":["talli_backend.adapters.postgres_document_evidence","talli_backend.adapters.supabase_documents"]}
 -->
+
+### RF source-backed preview binding
+
+`ShareholderRegisterSourceWorkflow.generate_source_preview` reuses verified
+capture evidence reads before asking RF to render a full-year preview. It verifies
+the current accepted owner independently from the original source author. The
+RF session rechecks source currentness and accepted ownership under the RF
+company/year lock before writing `shareholder_register_filing.source_previews`.
+The `Rf1086SourcePreviewPreparation` binding preserves historical preview bytes
+and source lineage, including same-XML corrections. This remains an internal
+workflow with no transport route or production activation; external-owner
+freshness is point-in-time until consequential action-time consistency is closed.
+
+<!-- architecture-inventory
+{"ports":["Rf1086SourcePreviewPreparation"],"adapterBindings":["Rf1086SourcePreviewPreparation=>talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession"],"adapterBindingOwners":["Rf1086SourcePreviewPreparation=>backend-system"],"adapterBindingModes":["Rf1086SourcePreviewPreparation=>verified RF owner, canonical full-year source preview, current-source lock at capture; historical source lineage preserved"]}
+-->

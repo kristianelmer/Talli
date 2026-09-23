@@ -1,4 +1,4 @@
-"""Authenticated RF source capture from public owner evidence.
+"""Authenticated RF source capture and preview from public owner evidence.
 
 This workflow constructs trusted context; callers cannot supply it. Documents
 I/O and Governance's coherent read precede the short RF capture transaction.
@@ -25,6 +25,9 @@ from talli_backend.modules.shareholder_register_filing.public import (
     Rf1086RegisterObservationSnapshot, Rf1086VerifiedRegisterObservationContext,
     Rf1086SourceQuery, Rf1086RegisterObservationId, Rf1086RegisterObservationMatchQuery,
     verify_rf1086_register_observation, rf1086_event_register_states,
+    Rf1086YearSourceId, Rf1086SourcePreview, GenerateRf1086SourcePreview,
+    assert_rf1086_year_source_integrity, assert_rf1086_year_source_fresh,
+    assert_rf1086_source_preview_matches, create_rf1086_preparation_service,
 )
 from talli_backend.shared.kernel import CompanyId, CorrelationId, IdempotencyKey, IncomeYear
 
@@ -199,7 +202,7 @@ class ShareholderRegisterSourceWorkflow:
             _require(isinstance(reference, Mapping), 'rf1086_source_independent_register_unavailable')
             observation_id = Rf1086RegisterObservationId(_reference(reference['record_id']))
             observation = await session.read_current_register_observation(
-                Rf1086SourceQuery(command.company_id, command.income_year, command.actor_id), observation_id)
+                Rf1086SourceQuery(command.company_id, command.income_year, session.actor_id), observation_id)
             _require(observation is not None, 'rf1086_source_independent_register_unavailable')
             _require(observation.confirmed_at <= recorded.recorded_at,
                      'rf1086_source_register_postdates_governance')
@@ -268,6 +271,36 @@ class ShareholderRegisterSourceWorkflow:
             idempotency_key: IdempotencyKey, correlation_id: CorrelationId) -> Rf1086YearSourceSnapshot:
         session = await self._rf_sessions.session(access_token)
         _require(session.actor_id == command.actor_id, 'rf1086_source_owner_required')
+        context = await self._verify_year_source_context(access_token, session, command, correlation_id=correlation_id)
+        return await session.record_year_source(command, context=context, idempotency_key=idempotency_key)
+
+    async def generate_source_preview(self, access_token: str, *, company_id: CompanyId,
+            income_year: IncomeYear, source_id: Rf1086YearSourceId,
+            correlation_id: CorrelationId) -> Rf1086SourcePreview:
+        session = await self._rf_sessions.session(access_token)
+        query = Rf1086SourceQuery(company_id, income_year, session.actor_id)
+        source = await session.read_year_source(query, source_id)
+        _require(source is not None, 'rf1086_source_not_found')
+        assert_rf1086_year_source_integrity(source)
+        _require(source.source_id == source_id and source.company_id == company_id
+                 and source.income_year == income_year, 'rf1086_source_company_year_mismatch')
+        context = await self._verify_year_source_context(access_token, session, source.command,
+                                                         correlation_id=correlation_id)
+        current = await session.read_current_year_source(query)
+        _require(current is not None, 'rf1086_source_changed')
+        assert_rf1086_year_source_integrity(current)
+        assert_rf1086_year_source_fresh(source, current_source_id=current.source_id,
+            current_source_sha256=current.source_sha256, context=context)
+        # Persistence rechecks the current source under the RF company/year lock
+        # before append, covering supersession after these external owner reads.
+        preview = await create_rf1086_preparation_service(session).generate_source_preview(
+            GenerateRf1086SourcePreview(company_id=company_id, income_year=income_year, source=source))
+        assert_rf1086_source_preview_matches(preview, source)
+        return preview
+
+    async def _verify_year_source_context(self, access_token: str,
+            session: AuthenticatedShareholderRegisterFilingSession, command: RecordRf1086YearSource, *,
+            correlation_id: CorrelationId) -> Rf1086VerifiedYearSourceContext:
         company = (await self._company_access.company_record(access_token, company_id=str(command.company_id))).company
         _require(company.id == str(command.company_id) and company.role == 'owner' and company.entity_type == 'AS'
                  and company.identity_confirmed_at is not None and company.identity_locked_at is not None,
@@ -295,7 +328,7 @@ class ShareholderRegisterSourceWorkflow:
         receipts += await self._capital_receipts(session, command, view, tuple(verified))
         _require({item.receipt_id for item in receipts} == {item.governance_receipt_id for item in command.event_evidence
                   if item.governance_receipt_id is not None}, 'rf1086_source_governance_events_omitted')
-        context = Rf1086VerifiedYearSourceContext(
+        return Rf1086VerifiedYearSourceContext(
             actor_id=session.actor_id, accepted_owner=True, company_id=command.company_id,
             income_year=command.income_year, company=current_company,
             company_identity_sha256=rf1086_year_source_digest({
@@ -304,4 +337,3 @@ class ShareholderRegisterSourceWorkflow:
             }), documents=tuple(verified), governance_receipts=receipts,
             complete_governance_enumeration=True, governance_enumeration_sha256=view.enumeration_sha256,
         )
-        return await session.record_year_source(command, context=context, idempotency_key=idempotency_key)

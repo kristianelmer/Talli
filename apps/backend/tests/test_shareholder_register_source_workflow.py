@@ -20,6 +20,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     Rf1086PaidInSourceFacts,Rf1086YearDocumentEvidence,Rf1086YearEventEvidence,Rf1086YearSourceError,
     Rf1086YearSourceId,parse_rf1086_case,prepare_rf1086_year_source,rf1086_year_source_digest,
     Rf1086RegisterObservationId,prepare_rf1086_register_observation,
+    Rf1086SourcePreview,PreviewId,
 )
 from talli_backend.shared.kernel import CompanyId,CorrelationId,IdempotencyKey,IncomeYear,LocalDate
 from test_rf1086_year_source import basis,ACTOR,COMPANY,YEAR,NOW,DOCUMENT,RECEIPT,ROOT
@@ -71,6 +72,8 @@ class Harness:
             identity_locked_at=NOW.isoformat(),org_number=case.org_number,name=case.name,address=case.address,postal_code=case.postal_code,city=case.city)
         self.view=dividend_view(self.command,self.record) if kind=='dividend' else CorporateGovernanceYearEvidence(COMPANY,YEAR,(),(),(),'d'*64)
         self.document_failure=False;self.observation=None;self.register_saved=[]
+        self.sources={};self.current_source=None;self.previews=[];self.preview_commands=[]
+        self.preview_race=False;self.after_document_verification=None;self.preview_transform=None
         owner=self
         class RFSession:
             @property
@@ -78,10 +81,29 @@ class Harness:
             async def record_year_source(self,command,*,context,idempotency_key):
                 owner.context=context
                 result=prepare_rf1086_year_source(command,context=context,source_id=Rf1086YearSourceId(str(uuid4())),confirmed_at=NOW)
-                owner.saved.append(result);owner.calls.append('persist');return result
+                owner.saved.append(result);owner.sources[result.source_id]=result;owner.current_source=result
+                owner.calls.append('persist');return result
+            async def read_year_source(self,query,source_id):
+                owner.calls.append('read_source');assert query.actor_id==owner.actor
+                source=owner.sources.get(source_id)
+                return source if source is not None and source.company_id==query.company_id and source.income_year==query.income_year else None
+            async def read_current_year_source(self,query):
+                owner.calls.append('read_current_source');assert query.actor_id==owner.actor
+                return owner.current_source
+            async def capture_source_preview(self,command,prepared):
+                owner.calls.append('preview_persist');owner.preview_commands.append(command)
+                if owner.preview_race or owner.current_source.source_id!=command.source.source_id:
+                    raise Rf1086YearSourceError('rf1086_source_changed')
+                rendered=prepared.rendered
+                result=Rf1086SourcePreview(preview_id=PreviewId(str(uuid4())),company_id=command.company_id,
+                    income_year=command.source.income_year,source_id=command.source.source_id,
+                    source_sha256=command.source.source_sha256,case_sha256=command.source.case_sha256,
+                    readiness_status=rendered.status,readiness_issues=rendered.issues,preview_text=rendered.preview,
+                    hovedskjema_xml=rendered.hovedskjema_xml,underskjema_xml=rendered.underskjema_xml)
+                owner.previews.append(result);return owner.preview_transform(result) if owner.preview_transform else result
             async def read_current_register_observation(self,query,observation_id):
                 owner.calls.append('read_current_observation')
-                assert query.company_id==COMPANY and query.actor_id==ACTOR and query.income_year==YEAR
+                assert query.company_id==COMPANY and query.actor_id==owner.actor and query.income_year==YEAR
                 return owner.observation if owner.observation is not None and owner.observation.observation_id==observation_id else None
             async def record_register_observation(self,command,*,context,idempotency_key):
                 result=prepare_rf1086_register_observation(command,context=context,
@@ -98,6 +120,7 @@ class Harness:
                 owner.calls.append('verify_document')
                 if owner.document_failure:raise DocumentsError.integrity_failed()
                 assert str(document_id)==DOCUMENT
+                if owner.after_document_verification:owner.after_document_verification()
                 return VerifiedDocumentEvidence(owner.record,owner.record.content_sha256,owner.record.byte_length,owner.record.status)
         class DocumentsFactory:
             async def session(self,token):return Documents()

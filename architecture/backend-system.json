@@ -1023,6 +1023,12 @@
       "adapter": "talli_backend.adapters.postgres_document_evidence.PostgresDocumentEvidenceRetention",
       "owner": "backend-system",
       "mode": "Documents-owned exact metadata lock and retained original reference in the RF capture transaction"
+    },
+    {
+      "port": "Rf1086SourcePreviewPreparation",
+      "adapter": "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession",
+      "owner": "backend-system",
+      "mode": "verified RF owner, canonical full-year source preview, current-source lock at capture; historical source lineage preserved"
     }
   ],
   "allowedDependencies": {

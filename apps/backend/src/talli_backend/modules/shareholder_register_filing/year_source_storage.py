@@ -1,4 +1,5 @@
 """Versioned, closed RF storage codec. No executable types or binary float loss."""
+from collections.abc import Mapping
 from dataclasses import fields, is_dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -10,6 +11,7 @@ from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYea
 
 
 _RECORDS = {kind.__name__: kind for kind in (
+    rf.PreviewId, rf.Rf1086ReadinessIssue, rf.Rf1086SourcePreview,
     ActorId, CompanyId, IncomeYear, UserId, rf.Rf1086YearSourceId,
     rf.Rf1086RegisterObservationId, rf.Rf1086RegisterHolding, rf.Rf1086RegisteredShareState,
     rf.Rf1086RegisterDocumentEvidence, rf.RecordRf1086RegisterObservation, rf.Rf1086RegisterObservationSnapshot,
@@ -36,6 +38,10 @@ def _encode(value):
         return {"decimal": format(number, "f")}
     if isinstance(value, datetime):
         return {"datetime": value.isoformat()}
+    if isinstance(value, Mapping):
+        if any(type(key) is not str for key in value):
+            raise ValueError()
+        return {"mapping": {key: _encode(item) for key, item in value.items()}}
     if isinstance(value, tuple):
         return [_encode(item) for item in value]
     if is_dataclass(value) and _RECORDS.get(type(value).__name__) is type(value):
@@ -51,6 +57,8 @@ def _decode(value):
         return tuple(_decode(item) for item in value)
     if type(value) is not dict:
         raise ValueError()
+    if set(value) == {"mapping"} and type(value["mapping"]) is dict:
+        return {key: _decode(item) for key, item in value["mapping"].items()}
     if set(value) == {"decimal"} and type(value["decimal"]) is str:
         number = Decimal(value["decimal"])
         if not number.is_finite():
