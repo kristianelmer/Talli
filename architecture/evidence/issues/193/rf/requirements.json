@@ -73,5 +73,6 @@
   "fullYearSourceDesign": "year-source-design.md",
   "productionArchiveBackend": "production-archive-backend-20260917.json",
   "productionArchiveOverlap": "archive-overlap-runtime-20260923.json",
-  "sourceAndArchiveVerification": "source-archive-verification-20260923.json"
+  "sourceAndArchiveVerification": "source-archive-verification-20260923.json",
+  "broaderCanonicalAcceptance": "broader-canonical-acceptance-20260923.json"
 }

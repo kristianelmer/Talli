@@ -1,6 +1,6 @@
 # RF-1086 Code Evidence Register
 
-Current mapping review: 17 September 2026, issue #193.
+Current mapping review: 17 September 2026; mixed TT02 receipt verified 23 September 2026, issue #193.
 
 ## Current official mapping
 
@@ -21,6 +21,24 @@ Field 17665 reports the company's total dividend amount. It does not contain the
 The current XSDs were changed upstream on 15 September 2026 and enumerate event codes. Former sale `S` and dividend `U` values fail these schemas. The public API transport example's `N` did not prove formation semantics; the prior inference is corrected to `T`. Historical evidence and captured migration oracles remain unchanged; current tests state the exact superseding corrections.
 
 **Limits:** official field meanings and schema validation do not prove service acceptance, complete source readiness, or authority entitlement. The operational production profile remains no-activity only. All broader patterns still require source integration, owner review and current service conformance. The accepted #172 launch scope remains required; this temporary operational boundary does not narrow it. RF acceptance and production activation remain pending.
+
+## Bounded TT02 acceptance — 23 September 2026
+
+The canonical reader verified final acceptance of the original mixed synthetic
+submission containing an ownership transfer (buyer `K`, seller `R`), cash new
+share issue (`N`), cash nominal increase (`6`), ordinary dividend (`Y`), then a
+registered nominal reduction for loss coverage. The company and shareholder
+outputs were retained from the original submission; a new read-only recovery
+retained two unchanged provider receipts and canonical provenance. Independent
+review replayed the same accepted artifacts offline from those retained bytes.
+
+[The acceptance evidence](../../architecture/evidence/issues/193/rf/broader-canonical-acceptance-20260923.json)
+binds the source commit, original submission, exact bounded recovery plan,
+receipts and independent audits. Five requests and zero filing mutations were
+performed by recovery. This proves that synthetic sequence only. It does not
+prove formation, dividend after reduction, the full supported-case matrix,
+genuine-company production acceptance, or the complete source/approval/send
+workflow. The production profile and all seven full RF criteria remain pending.
 
 ## Historical register (16 June 2026; superseded)
 
