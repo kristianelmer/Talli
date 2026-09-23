@@ -22,7 +22,8 @@
       "SendApprovedRf1086Command",
       "ReconcileRf1086FeedbackCommand",
       "OpeningSnapshotCommands",
-      "Rf1086PreparationOperations"
+      "Rf1086PreparationOperations",
+      "RecordRf1086YearSource"
     ],
     "queries": [
       "Rf1086ShareSnapshot",
@@ -76,7 +77,15 @@
       "rf1086_production_code_blockers",
       "rf1086_production_scope_exclusions",
       "Rf1086ArchiveQuery",
-      "Rf1086ArchiveSnapshot"
+      "Rf1086ArchiveSnapshot",
+      "Rf1086ArchiveProductionEventRecord",
+      "Rf1086ArchiveFeedbackArtifactRecord",
+      "prepare_rf1086_year_source",
+      "assert_rf1086_year_source_fresh",
+      "assert_rf1086_year_source_integrity",
+      "assert_rf1086_year_source_replay",
+      "rf1086_year_source_digest",
+      "rf1086_governance_economic_facts"
     ],
     "events": [],
     "errors": [
@@ -86,7 +95,8 @@
       "Rf1086UnknownProductionOutcomeError",
       "Rf1086BlockedProductionOperationError",
       "Rf1086FeedbackArtifactPersistenceError",
-      "Rf1086ProductionError"
+      "Rf1086ProductionError",
+      "Rf1086YearSourceError"
     ],
     "identifiers": [
       "OpeningSnapshotId",
@@ -170,7 +180,15 @@
       "Rf1086CashIssueEvent",
       "Rf1086NominalIncreaseAllocation",
       "Rf1086CashNominalIncreaseEvent",
-      "Rf1086LossCoveringReductionEvent"
+      "Rf1086LossCoveringReductionEvent",
+      "Rf1086YearSourceId",
+      "Rf1086PaidInSourceFacts",
+      "Rf1086YearDocumentEvidence",
+      "Rf1086YearEventEvidence",
+      "Rf1086YearGovernanceReceipt",
+      "Rf1086VerifiedYearSourceContext",
+      "Rf1086YearSourceFreshness",
+      "Rf1086YearSourceSnapshot"
     ]
   },
   "owns": {
@@ -197,7 +215,7 @@
       "Rf1086SourceFacts",
       "Rf1086ArchiveSnapshot"
     ],
-    "migrations": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql; supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql; supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql; supabase/migrations/20260917110951_rf1086_action_required_read_recovery.sql"
+    "migrations": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql; supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql; supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql; supabase/migrations/20260917110951_rf1086_action_required_read_recovery.sql; supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql"
   },
   "ports": [
     {
@@ -307,7 +325,8 @@
     "postgresAdapter": "apps/backend/tests/test_postgres_shareholder_register_filing.py",
     "database": "apps/backend/tests/test_rf1086_database_runtime.py",
     "lifecycle": "apps/backend/tests/test_shareholder_register_filing_lifecycle.py",
-    "archiveSource": "apps/backend/tests/test_rf1086_archive_source.py"
+    "archiveSource": "apps/backend/tests/test_rf1086_archive_source.py",
+    "yearSource": "apps/backend/tests/test_rf1086_year_source.py"
   },
   "compatibilityExceptions": []
 }

@@ -13,6 +13,7 @@ const RF151 = "20260909190548_shareholder_register_filing_capability.sql";
 const RF151_CUTOVER = "20260909190905_shareholder_register_filing_cutover.sql";
 const RF151_CONTRACT = "20260909190955_shareholder_register_filing_contract.sql";
 const RF193_READ_RECOVERY = "20260917110951_rf1086_action_required_read_recovery.sql";
+const RF193_ARCHIVE = "20260917114424_rf1086_production_archive_evidence.sql";
 
 async function topology(database) {
   const { rows: [state] } = await database.query(`select
@@ -36,7 +37,7 @@ export async function rehearseAuthorityTopology({ direction, database, loadSql =
     // The exact RF full rollback restores #150 routines and original openings.
     // Never run the frozen #150 rollback against a later owner's physical tables.
     if (state.rf_owned) {
-      await apply([`rollback/${RF151}`]);
+      await apply([`rollback/${RF193_ARCHIVE}`, `rollback/${RF151}`]);
       state = await topology(database);
     }
     if (state.rf_owned || ![null, "v"].includes(state.authority_kind)) throw new Error("authority_overlap_topology_required");
@@ -56,7 +57,7 @@ export async function rehearseAuthorityTopology({ direction, database, loadSql =
     await apply([`migrations/${AUTHORITY}`, `migrations/${OPERATIONS}`, `migrations/${RF}`,
       ...(direction === "recutover" ? [`contract-migrations/${CONTRACT}`] : []),
       `contract-migrations/${SIGNOFF_CONTRACT}`,
-      `migrations/${RF151}`, `migrations/${RF151_CUTOVER}`, `migrations/${RF193_READ_RECOVERY}`,
+      `migrations/${RF151}`, `migrations/${RF151_CUTOVER}`, `migrations/${RF193_READ_RECOVERY}`, `migrations/${RF193_ARCHIVE}`,
       ...(direction === "recutover" ? [`contract-migrations/${RF151_CONTRACT}`] : [])]);
   }
   const result = await topology(database);

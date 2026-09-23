@@ -378,6 +378,7 @@
         "/api/v1/legacy-rf1086/feedback-reconciliations",
         "/api/v1/shareholder-register-filings/workspace",
         "/api/v1/shareholder-register-filings/archive-source",
+        "/api/v1/shareholder-register-filings/archive-source/production",
         "/api/v1/shareholder-register-filings/previews/{previewId}",
         "/api/v1/shareholder-register-filings/previews",
         "/api/v1/shareholder-register-filings/overrides",

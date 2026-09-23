@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+import re
 from dataclasses import replace
 from datetime import datetime, timezone
 from uuid import UUID, NAMESPACE_URL, uuid5
@@ -15,6 +16,8 @@ from .public import (
     Rf1086PreparedApproval, Rf1086Preview, Rf1086PreviewRecord,
     Rf1086SimulationBasis, Rf1086WorkspaceQuery, Rf1086SourceQuery, Rf1086ArchiveQuery, Rf1086ArchiveSnapshot,
     Rf1086SimulationRecord, Rf1086ReviewCommentRecord, Rf1086FilingPermissionRecord, Rf1086TestEvidenceRecord,
+    Rf1086ApprovalRecord, Rf1086ProductionSubmissionRecord, Rf1086ArchiveProductionEventRecord,
+    Rf1086ArchiveFeedbackArtifactRecord, Rf1086ProductionError,
     ReadRf1086PreviewQuery, VerifyRf1086SourceEvidenceQuery,
     ShareholderRegisterFilingError, Rf1086RecordedResult, Rf1086WorkspaceSnapshot, OpeningSnapshotId,
 )
@@ -62,15 +65,22 @@ def validate_workspace(query: Rf1086WorkspaceQuery, result: Rf1086WorkspaceSnaps
         raise ShareholderRegisterFilingError.unavailable()
     return result
 
-def _validate_archive_source(query: Rf1086ArchiveQuery, result: Rf1086ArchiveSnapshot):
+def _validate_archive_source(query: Rf1086ArchiveQuery, result: Rf1086ArchiveSnapshot, *, include_production: bool = True):
     if (not isinstance(result,Rf1086ArchiveSnapshot) or result.company_id != query.company_id
             or result.income_year != query.income_year):
         raise ShareholderRegisterFilingError.unavailable()
-    for collection,record_type in (
+    collections = (
         (result.previews,Rf1086PreviewRecord),(result.simulations,Rf1086SimulationRecord),
         (result.review_comments,Rf1086ReviewCommentRecord),(result.permissions,Rf1086FilingPermissionRecord),
         (result.test_evidence,Rf1086TestEvidenceRecord),
-    ):
+    )
+    if include_production:
+        collections += (
+            (result.approvals,Rf1086ApprovalRecord),(result.production_submissions,Rf1086ProductionSubmissionRecord),
+            (result.production_events,Rf1086ArchiveProductionEventRecord),
+            (result.feedback_artifacts,Rf1086ArchiveFeedbackArtifactRecord),
+        )
+    for collection,record_type in collections:
         if (any(not isinstance(row,record_type) or row.company_id != str(query.company_id) for row in collection)
                 or len({row.id for row in collection}) != len(collection)):
             raise ShareholderRegisterFilingError.unavailable()
@@ -84,7 +94,80 @@ def _validate_archive_source(query: Rf1086ArchiveQuery, result: Rf1086ArchiveSna
         if row.mode == 'test_authority' and row.authority_test_run_id is not None}
     if {row.id for row in result.test_evidence} != referenced:
         raise ShareholderRegisterFilingError.unavailable()
+    if not include_production:
+        return result
+    try:
+        _validate_archive_production(query, result)
+    except (ValueError, TypeError, KeyError, AttributeError, Rf1086ProductionError):
+        raise ShareholderRegisterFilingError.unavailable() from None
     return result
+
+
+def _validate_archive_production(query, result):
+    def require(condition):
+        if not condition:
+            raise ValueError("RF archive production evidence is inconsistent")
+
+    def valid_hash(value):
+        return isinstance(value, str) and re.fullmatch("[a-f0-9]{64}", value) is not None
+
+    previews = {row.id: row for row in result.previews}
+    approvals = {row.id: row for row in result.approvals}
+    submissions = {row.id: row for row in result.production_submissions}
+    for row in (*result.approvals, *result.production_submissions, *result.production_events):
+        require(row.income_year == int(query.income_year))
+    for row in result.approvals:
+        require(row.obligation == "aksjonaerregisteroppgaven" and row.preview_id in previews)
+        preview = _production_preview(previews[row.preview_id])
+        require(row.payload_hash == rf1086_preview_payload_hash(preview))
+        require(row.manifest_hash == rf1086_current_manifest_hash(preview,
+            actor_id=row.user_id, organization_number=row.manifest["organizationNumber"],
+            approved_manifest=row.manifest))
+    for row in result.production_submissions:
+        require(row.obligation == "aksjonaerregisteroppgaven" and row.environment == "production")
+        require(row.approval_id in approvals)
+        approval = approvals[row.approval_id]
+        require((row.entitlement_id, row.user_id, row.payload_hash, row.case_profile, row.adapter_version)
+            == (approval.entitlement_id, approval.user_id, approval.payload_hash, approval.case_profile, approval.adapter_version))
+        if row.supersedes_submission_id is not None:
+            require(row.supersedes_submission_id in submissions and row.supersedes_submission_id != row.id)
+        seen = {row.id}
+        predecessor = row.supersedes_submission_id
+        while predecessor is not None:
+            require(predecessor not in seen and predecessor in submissions)
+            seen.add(predecessor)
+            predecessor = submissions[predecessor].supersedes_submission_id
+    document_ids = set()
+    artifact_hashes = {identity: set() for identity in submissions}
+    for artifact in result.feedback_artifacts:
+        require(artifact.submission_id in submissions and artifact.document_id not in document_ids)
+        document_ids.add(artifact.document_id)
+        require(valid_hash(artifact.sha256) and type(artifact.byte_length) is int and 1 <= artifact.byte_length <= 10485760)
+        require(artifact.sha256 not in artifact_hashes[artifact.submission_id])
+        artifact_hashes[artifact.submission_id].add(artifact.sha256)
+        require(isinstance(artifact.authority_reference, str) and 1 <= len(artifact.authority_reference) <= 500)
+        submission = submissions[artifact.submission_id]
+        if submission.feedback_state in ("accepted", "rejected"):
+            require(artifact.classification == submission.feedback_state)
+    for submission in result.production_submissions:
+        require(type(submission.feedback_artifact_count) is int
+            and submission.feedback_artifact_count == len(artifact_hashes[submission.id]))
+        if submission.status in ("accepted", "rejected"):
+            require(submission.feedback_state == submission.status)
+        if submission.feedback_state in ("accepted", "rejected"):
+            require(submission.status == submission.feedback_state and submission.feedback_artifact_count > 0)
+            require(any(event.submission_id == submission.id
+                and event.operation_name.startswith("reconciliation:")
+                and event.operation_state == "succeeded"
+                and event.resulting_status == submission.feedback_state
+                and set(event.artifact_hashes) == artifact_hashes[submission.id]
+                for event in result.production_events))
+    for event in result.production_events:
+        require(event.submission_id in submissions)
+        require(all(valid_hash(value) for value in event.artifact_hashes)
+            and len(set(event.artifact_hashes)) == len(event.artifact_hashes)
+            and set(event.artifact_hashes) <= artifact_hashes[event.submission_id])
+        require(event.body_hash is None or valid_hash(event.body_hash))
 
 
 def _required_confirmation(value: bool) -> None:
@@ -205,6 +288,9 @@ class Rf1086PreparationService:
         from talli_backend.shared.kernel import CompanyId, IncomeYear
         return _recorded_result(await self._persistence.record_approval(command,Rf1086PreparedApproval(basis,manifest,digest)),
             company_id=CompanyId(basis.preview.company_id),income_year=IncomeYear(basis.preview.income_year))
+
+    async def legacy_archive_source(self, query: Rf1086ArchiveQuery):
+        return _validate_archive_source(query, await self._persistence.legacy_archive_source(query), include_production=False)
 
     async def archive_source(self, query: Rf1086ArchiveQuery):
         return _validate_archive_source(query,await self._persistence.archive_source(query))

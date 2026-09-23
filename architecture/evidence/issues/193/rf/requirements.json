@@ -63,5 +63,15 @@
   "finalBusinessReceipt": "acceptance-receipt-20260915.json",
   "localArParserVerification": "ar-parser-verification.json",
   "canonicalDialogIntegration": "dialog-integration-verification.json",
-  "canonicalLiveConformance": "canonical-conformance-20260917.json"
+  "canonicalLiveConformance": "canonical-conformance-20260917.json",
+  "officialSourceMapping": "official-event-mapping-20260917.md",
+  "currentOfficialSourcePin": "../../../../../docs/filing/rf1086-official-sources.json",
+  "readOnlyActionRecovery": "action-required-read-recovery-20260917.json",
+  "broaderSyntheticSubmission": "broader-submission-20260917.json",
+  "broaderSyntheticReadRecovery": "broader-read-recovery-20260917.json",
+  "broaderSyntheticReadDiagnostic": "broader-read-diagnostic-20260923.json",
+  "fullYearSourceDesign": "year-source-design.md",
+  "productionArchiveBackend": "production-archive-backend-20260917.json",
+  "productionArchiveOverlap": "archive-overlap-runtime-20260923.json",
+  "sourceAndArchiveVerification": "source-archive-verification-20260923.json"
 }

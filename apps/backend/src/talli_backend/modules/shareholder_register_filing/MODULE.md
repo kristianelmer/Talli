@@ -35,10 +35,14 @@ reconciliation outcomes retain their journal observation time separately from
 transport incidents and mutation observations. Source facts make no commercial
 refund decision.
 
-The archive projection reads previews and simulations for the requested year
+The archive projection reads previews, simulations and production evidence for the requested year
 before decoding them, plus the original company-wide comments and permissions
-and test evidence referenced by those simulations. It does not require another
-year's payloads or extend the original archive to production submissions. The
+and test evidence referenced by those simulations. Its approvals, production submissions,
+complete journal and feedback metadata retain immutable manifests, payload hashes and
+Documents-owned byte references. Company/year and parent relationships, artifact
+counts and approval hashes are checked before publication. Missing or inconsistent
+evidence is unavailable; archive reads do not require current paid entitlement.
+It does not decode another year's payloads. The
 workspace query retains its existing all-year and optional-year behavior.
 
 ## Storage and migration
@@ -109,6 +113,8 @@ Queries:
 - `Rf1086FeedbackArtifactRecord`
 - `Rf1086WorkspaceSnapshot`
 - `Rf1086ArchiveSnapshot`
+- `Rf1086ArchiveProductionEventRecord`
+- `Rf1086ArchiveFeedbackArtifactRecord`
 - `Rf1086SourceSnapshot`
 - `Rf1086SourceFacts`
 - `VerifyRf1086SourceEvidenceQuery`
@@ -264,3 +270,46 @@ Accepted and rejected decisions stay terminal. Receipt bytes and their recorded
 classifications remain immutable: a recheck cannot turn historical ambiguous or
 conflicting artifacts into acceptance. Such evidence requires separately designed
 adjudication/correction support; this recovery path does not authorize it.
+
+### Immutable full-year source foundation (#193)
+
+The public source contracts are `RecordRf1086YearSource`, `Rf1086YearSourceId`,
+`Rf1086PaidInSourceFacts`, `Rf1086YearDocumentEvidence`, `Rf1086YearEventEvidence`,
+`Rf1086YearGovernanceReceipt`, `Rf1086VerifiedYearSourceContext`,
+`Rf1086YearSourceFreshness`, `Rf1086YearSourceSnapshot`, and `Rf1086YearSourceError`.
+The public operations are `prepare_rf1086_year_source`,
+`assert_rf1086_year_source_fresh`, `assert_rf1086_year_source_integrity`,
+`assert_rf1086_year_source_replay`, `rf1086_year_source_digest`, and
+`rf1086_governance_economic_facts`.
+
+`year_source.py` validates complete RF-owned source facts, explicit tax paid-in
+amounts, verified document revisions, finalized corporate evidence, immutable
+correction lineage, canonical decimal digests and the full freshness vector.
+Previous-year documents may corroborate opening facts. There is no artificial
+holder/event count limit. Register observations must be independent of the year
+source that references the finalized governance receipt.
+
+`Rf1086VerifiedYearSourceContext` is a trusted application-workflow input. It must
+be assembled from authenticated owner public query contracts, never deserialized
+from a browser request. The RF capability itself imports no other capability.
+The command cannot supply verified context or finalized governance receipts.
+Persistence must enforce accepted-owner authorization, company/year RLS, a
+current-head compare-and-swap lock, and actor-scoped idempotency before using the
+pure preparation/replay functions.
+
+This is a deterministic contract foundation. Database capture, public Governance
+and Documents projection bindings, transport, complete preview/approval/send
+integration, source archive export, cross-owner freshness race closure and
+service conformance remain pending. Existing production admission is not widened.
+
+
+### Archive deployment overlap
+
+`legacy_archive_source` preserves the original `/archive-source` query extent and
+wire fields. Its adapter never reads or decodes production-only tables, and its
+validation covers only that original extent. `archive_source` remains the complete
+single-snapshot archive projection exposed by additive
+`/archive-source/production` (`rf1086GetProductionArchiveSource`). The latter
+includes original preview lineage and all four production evidence collections.
+Clients must not treat the original response as evidence of absent production
+history. This explicit overlap supports either deployment order under ADR-0012.

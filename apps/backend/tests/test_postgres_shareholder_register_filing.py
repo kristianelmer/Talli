@@ -154,3 +154,28 @@ def test_ambient_test_credentials_never_enable_missing_production_configuration(
     for key, value in VALID.items():
         monkeypatch.setenv(key.replace("TALLI_PROD_", "TALLI_TEST_"), value)
     assert_unavailable({})
+
+
+def test_original_archive_query_never_reads_or_decodes_production_only_tables():
+    from contextlib import asynccontextmanager
+    from talli_backend.modules.shareholder_register_filing.public import Rf1086ArchiveQuery
+    from talli_backend.shared.kernel import CompanyId, IncomeYear
+    store = session({})
+    queries = []
+    class Connection:
+        async def execute(self, sql, values):
+            queries.append(sql)
+            assert not any(table in sql for table in ("filing_approval_snapshots", "production_filing_submissions",
+                "production_filing_events", "production_feedback_artifacts"))
+            return self
+        async def fetchall(self):
+            return []
+    @asynccontextmanager
+    async def transaction(**_):
+        yield Connection()
+    store._transaction = transaction
+    query = Rf1086ArchiveQuery(CompanyId(str(uuid4())), IncomeYear(2025), store.actor_id)
+    result = asyncio.run(store.legacy_archive_source(query))
+    assert result.previews == () and result.production_submissions == ()
+    assert any("assert_member_v1" in sql for sql in queries)
+    assert len(queries) == 5

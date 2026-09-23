@@ -5,6 +5,7 @@ import {
   type Rf1086SimulationCommandWire, type Rf1086PermissionCommandWire,
   type Rf1086TestEvidenceCommandWire, type Rf1086ProductionApprovalCommandWire,
   type Rf1086RecordedResultWire, type Rf1086WorkspaceWire, type Rf1086ArchiveSourceWire,
+  type Rf1086ProductionArchiveSourceWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
@@ -48,14 +49,41 @@ export async function loadRf1086Workspaces(accessToken: string, companyIds: read
 
 export async function loadRf1086ArchiveSource(
   accessToken: string, companyId: string, incomeYear: number, requestId?: string,
-): Promise<Rf1086ArchiveSourceWire> {
-  const value = await client(accessToken).rf1086GetArchiveSource(companyId, incomeYear, { ...request(), requestId });
+): Promise<Rf1086ArchiveSourceWire | Rf1086ProductionArchiveSourceWire> {
+  const api = client(accessToken);
+  let value: Rf1086ArchiveSourceWire | Rf1086ProductionArchiveSourceWire;
+  let usedLegacyFallback = false;
+  try {
+    value = await api.rf1086GetProductionArchiveSource(companyId, incomeYear, { ...request(), requestId });
+  } catch (error) {
+    // Only an absent expanded endpoint permits the original archive contract.
+    // Its lack of production evidence is preserved, never interpreted as zero.
+    if (!(error instanceof TalliApiError) || error.status !== 404) throw error;
+    value = await api.rf1086GetArchiveSource(companyId, incomeYear, { ...request(), requestId });
+    usedLegacyFallback = true;
+  }
   if (value.companyId !== companyId || value.incomeYear !== incomeYear) throw new TalliApiError(502, undefined);
   for (const rows of [value.previews, value.simulations, value.reviewComments, value.permissions, value.testEvidence]) {
     if (rows.some((row) => row.companyId !== companyId)
         || new Set(rows.map((row) => row.id)).size !== rows.length) throw new TalliApiError(502, undefined);
   }
-  if ([value.previews, value.simulations].some((rows) => rows.some((row) => row.incomeYear !== incomeYear))) {
+  if ([value.previews, value.simulations]
+    .some((rows) => rows.some((row) => row.incomeYear !== incomeYear))) {
+    throw new TalliApiError(502, undefined);
+  }
+  if (usedLegacyFallback) return value;
+  if (!("productionSubmissions" in value)) throw new TalliApiError(502, undefined);
+  for (const rows of [value.approvals, value.productionSubmissions, value.productionEvents, value.feedbackArtifacts]) {
+    if (rows.some(row => row.companyId !== companyId)
+        || new Set(rows.map(row => row.id)).size !== rows.length) throw new TalliApiError(502, undefined);
+  }
+  if ([value.approvals, value.productionSubmissions, value.productionEvents]
+    .some(rows => rows.some(row => row.incomeYear !== incomeYear))) throw new TalliApiError(502, undefined);
+  const approvalIds = new Set(value.approvals.map(row => row.id));
+  const submissionIds = new Set(value.productionSubmissions.map(row => row.id));
+  if (value.productionSubmissions.some(row => !approvalIds.has(row.approvalId)
+      || (row.supersedesSubmissionId !== null && !submissionIds.has(row.supersedesSubmissionId)))
+    || [...value.productionEvents, ...value.feedbackArtifacts].some(row => !submissionIds.has(row.submissionId))) {
     throw new TalliApiError(502, undefined);
   }
   return value;

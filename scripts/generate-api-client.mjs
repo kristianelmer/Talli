@@ -307,6 +307,7 @@ const companyTaxOperations = {
 };
 const shareholderRegisterFilingOperations = {
   archiveSource: ["/api/v1/shareholder-register-filings/archive-source", "get", "rf1086GetArchiveSource"],
+  productionArchiveSource: ["/api/v1/shareholder-register-filings/archive-source/production", "get", "rf1086GetProductionArchiveSource"],
   workspace: ["/api/v1/shareholder-register-filings/workspace", "get", "rf1086Workspace"],
   preview: ["/api/v1/shareholder-register-filings/previews/{previewId}", "get", "rf1086Preview"],
   generate: ["/api/v1/shareholder-register-filings/previews", "post", "rf1086GeneratePreview"],
@@ -924,6 +925,9 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "Rf1086ActionAvailabilityWire",
   "Rf1086WorkspaceWire",
   "Rf1086ArchiveSourceWire",
+  "Rf1086ProductionArchiveSourceWire",
+  "Rf1086ArchiveProductionEventWire",
+  "Rf1086ArchiveFeedbackArtifactWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const authorityConnectionsSchemas = Object.fromEntries([
   "LaunchSignoffKey", "LaunchSignoffStatus", "LaunchSignoffCommandWire", "LaunchSignoffRecordWire", "LaunchSignoffListWire",
@@ -3076,6 +3080,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
       return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source?" + query,
         "GET", request, undefined, isRf1086ArchiveSourceWire);
+    },
+
+    async rf1086GetProductionArchiveSource(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Rf1086ProductionArchiveSourceWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production?" + query,
+        "GET", request, undefined, isRf1086ProductionArchiveSourceWire);
     },
 
     async rf1086Workspace(

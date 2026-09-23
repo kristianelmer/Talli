@@ -191,6 +191,11 @@ const RF_COMPATIBILITY_AMENDMENT = Object.freeze({
 // Later Tax-owned read seams preserve the approved RF compositions and every
 // retained sibling chain. Exact digests prevent this from permitting new behavior.
 const TAX_SOURCE_COMPOSITION_DIGESTS = new Map([["apps/web/app/actions.ts\u0000refreshAnnualReadinessSnapshots", "sha256:8d7b86fe06037a7ce5248c8770ffbae71c275b421f24a2315b9986c77492aed4"], ["apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts\u0000GET", "sha256:fd8e6f5546481fa9fe8c9a8fe4dd9efd681b9b708c8aa705d4ca3650f2616007"]]);
+// #193 adds RF-owned production evidence and Documents receipt verification to
+// the export. The exact body is pinned; every remaining sibling SQL chain is
+// still compared with its frozen predecessor below. No persistence is added.
+const RF_PRODUCTION_ARCHIVE_COMPOSITION_DIGEST =
+  "sha256:bde3c921d3577fc26c45d149f93be44a3a4e80110465aedc3b44949d1127e3aa";
 // #152 routes Tax through its declared API while preserving every retained
 // Accounts and Audit chain. This pins behavior, not a new persistence exception.
 const TAX_RETURN_COMPOSITION_DIGESTS = new Map([
@@ -2252,7 +2257,8 @@ export function validateCompatibilityRegistry(path, {
       && resourceOwner?.("table:holding_actions") === "backend:company_tax_filing"
       && !activeLegacyScopeKeys.has(compatibilityScopeKey(scope.path, scope.rule, "table:holding_actions", scope.operation))
       && analysis?.state === "found"
-      && (analysis.sourceDigest === TAX_SOURCE_COMPOSITION_DIGESTS.get(key) || taxReturnComposition(scope) || accountsSourceComposition(scope))
+      && (analysis.sourceDigest === TAX_SOURCE_COMPOSITION_DIGESTS.get(key) || taxReturnComposition(scope)
+        || accountsSourceComposition(scope) || rfProductionArchiveComposition(scope))
       && (analysis.resourceOccurrences.get("table:holding_actions") ?? 0) === 0
       && (analysis.resourceOccurrences.get("table:*") ?? 0) === 0;
   };
@@ -2279,6 +2285,15 @@ export function validateCompatibilityRegistry(path, {
       && analysis.sourceDigest === ACCOUNTS_SOURCE_COMPOSITION_DIGESTS.get(key)
       && resources.every(resource => resourceOwner?.(resource) === "backend:annual_accounts_filing"
         && (analysis.persistenceOccurrences.get(resource) ?? 0) === 0)
+      && ![...analysis.persistenceOccurrences.keys()].some(resource => resource.endsWith(":*"));
+  };
+  const rfProductionArchiveComposition = (scope) => {
+    const analysis = currentOperationAnalysis(scope);
+    return scope.path === "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts"
+      && scope.operation === "GET" && exitedCapabilities.has("shareholder_register_filing")
+      && (exitedCapabilities.has("annual_accounts_filing")
+        || (currentCapability === "annual_accounts_filing" && registry.migration?.currentIssue === "#153"))
+      && analysis?.state === "found" && analysis.sourceDigest === RF_PRODUCTION_ARCHIVE_COMPOSITION_DIGEST
       && ![...analysis.persistenceOccurrences.keys()].some(resource => resource.endsWith(":*"));
   };
   // Archive's older completed deletions must not authorize arbitrary edits to

@@ -229,20 +229,30 @@ class PostgresShareholderRegisterFilingSession:
         async with self._transaction(snapshot=True) as connection:
             return await self._opening_basis(connection, command.company_id, command.opening_snapshot_id)
 
+    async def legacy_archive_source(self, query):
+        return await self._archive_source(query, include_production=False)
+
     async def archive_source(self, query):
+        return await self._archive_source(query, include_production=True)
+
+    async def _archive_source(self, query, *, include_production):
         self._command_actor(query)
         async with self._transaction(snapshot=True) as connection:
             company_id, year = str(query.company_id), int(query.income_year)
             await connection.execute("select shareholder_register_filing.assert_member_v1(%s::uuid)", (company_id,))
             values = {}
-            # Closed receiver inventory: unrelated years' payloads and production
-            # arrays are not read, while comments/permissions remain company-wide.
+            # Filter parent years before decoding; comments/permissions retain
+            # their original company-wide scope, including historical references.
             for name, table, record_type, ordered_at, scoped_year in (
                 ("previews", "filing_previews", rf.Rf1086PreviewRecord, "created_at", True),
                 ("simulations", "filing_submissions", rf.Rf1086SimulationRecord, "created_at", True),
+                ("approvals", "filing_approval_snapshots", rf.Rf1086ApprovalRecord, "approved_at", True),
+                ("production_submissions", "production_filing_submissions", rf.Rf1086ProductionSubmissionRecord, "created_at", True),
                 ("review_comments", "filing_review_comments", rf.Rf1086ReviewCommentRecord, "created_at", False),
                 ("permissions", "authority_permissions", rf.Rf1086FilingPermissionRecord, "updated_at", False),
             ):
+                if not include_production and name in ("approvals", "production_submissions"):
+                    continue
                 where = " and t.income_year=%s::integer" if scoped_year else ""
                 rows = await (await connection.execute(
                     f"select t.* from shareholder_register_filing.{table} t where t.company_id=%s::uuid{where} "
@@ -265,6 +275,22 @@ class PostgresShareholderRegisterFilingSession:
                 )).fetchall()
                 try:
                     values["test_evidence"] = tuple(self._wire_record(rf.Rf1086TestEvidenceRecord, row) for row in rows)
+                except (TypeError, ValueError, KeyError):
+                    raise rf.ShareholderRegisterFilingError.unavailable() from None
+            if not include_production:
+                return rf.Rf1086ArchiveSnapshot(query.company_id, query.income_year, **values)
+            for name, table, record_type, ordered_at in (
+                ("production_events", "production_filing_events", rf.Rf1086ArchiveProductionEventRecord, "created_at"),
+                ("feedback_artifacts", "production_feedback_artifacts", rf.Rf1086ArchiveFeedbackArtifactRecord, "retrieved_at"),
+            ):
+                rows = await (await connection.execute(
+                    f"select t.* from shareholder_register_filing.{table} t "
+                    "join shareholder_register_filing.production_filing_submissions s on s.id=t.submission_id "
+                    "where s.company_id=%s::uuid and s.income_year=%s::integer and t.company_id=s.company_id "
+                    f"order by t.{ordered_at},t.id", (company_id, year),
+                )).fetchall()
+                try:
+                    values[name] = tuple(self._wire_record(record_type, row) for row in rows)
                 except (TypeError, ValueError, KeyError):
                     raise rf.ShareholderRegisterFilingError.unavailable() from None
             return rf.Rf1086ArchiveSnapshot(query.company_id, query.income_year, **values)
@@ -496,7 +522,7 @@ class PostgresShareholderRegisterFilingSession:
             )).fetchall()
             journal = tuple(rf.Rf1086JournalEvent(str(e['id']),str(e['submission_id']),sequence,
                 e['operation_name'],e['operation_state'],e['body_hash'],_record_value(e['idempotency_key']),
-                e['authority_reference'],e['failure_class'],e['safe_error_code'],e['created_at'].isoformat(),e['attempt'],e['resulting_status'],_source_digest(e))
+                e['authority_reference'],e['failure_class'],e['safe_error_code'],e['created_at'].isoformat(),e['attempt'],e['resulting_status'],_source_digest({key: value for key,value in e.items() if key not in {'company_id','income_year'}}))
                 for sequence,e in enumerate(events,1))
             openings = await (await connection.execute(
                 'select id from shareholder_register_filing.opening_balance_setups where company_id=%s::uuid '

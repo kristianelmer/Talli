@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "environment": "test",
+  "sourceCommit": "56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd",
+  "status": "SUBMISSION_CONFIRMED_INITIAL_ARCHIVE_NOT_YET_AVAILABLE",
+  "canonicalAcceptanceVerified": false,
+  "eventTypes": [
+    "share_sale",
+    "cash_issue",
+    "cash_nominal_increase",
+    "dividend",
+    "loss_covering_reduction"
+  ],
+  "preparation": {
+    "mockedTestsPassed": 31,
+    "xsdDocumentsValidated": 3,
+    "independentSpecReview": "passed",
+    "independentStandardsReview": "passed"
+  },
+  "requests": [
+    {
+      "sequence": 1,
+      "kind": "test_token",
+      "httpStatus": 200
+    },
+    {
+      "sequence": 2,
+      "kind": "main",
+      "httpStatus": 200
+    },
+    {
+      "sequence": 3,
+      "kind": "shareholder_1",
+      "httpStatus": 200
+    },
+    {
+      "sequence": 4,
+      "kind": "shareholder_2",
+      "httpStatus": 200
+    },
+    {
+      "sequence": 5,
+      "kind": "confirmation",
+      "httpStatus": 200
+    },
+    {
+      "sequence": 6,
+      "kind": "initial_archive_read",
+      "httpStatus": 404
+    }
+  ],
+  "mutationRetryCount": 0,
+  "originalArtifactsPreserved": true,
+  "privateEvidenceAlias": "issue193-rf-broader-conformance-14d7",
+  "privateArtifactHashes": {
+    "action-plan.json": "4ae2abfc2898af3de80cae7fd3a5a3b43ad10ca4d403064f6d3b13a121a3c825",
+    "preparation-proof.json": "19685283e356d18afa73f58e33c474eb79873bf84ab38000f619111acc141780",
+    "prep-spec-review.json": "a7016a2ff2a0030f9ee4bb810ed898b58bf0078f58e3eb8a57e1ae96dbe6e5d2",
+    "prep-standards-review.json": "e5e04643750b28d5f44cef7548135f59249b191a8d979778d507e13910068652",
+    "independent-review-gate.json": "a05dfa745c132981d148926b8fe6ecff2e791fb3be180edb909bf692bccf4c92",
+    "execution-claim.json": "7371b4138ce8222170f4c561d0a956d54a6698e465774143c75e0c3c127ab51d",
+    "execution/result.json": "27884768f3cb9562b2003a8b4f0e1903449e7a3403085261a4cebfb64977c0a3",
+    "execution/submission-result.json": "8e4f6b2165676313b17d43d831bc6f536357510ba08fc9916fb1dfeca0ee0183"
+  },
+  "limits": [
+    "Provider HTTP acknowledgements and confirmation do not prove business acceptance.",
+    "The exclusive mutation attempt is consumed and must never be rerun.",
+    "Only a separately bounded read-only recovery can establish the subsequent final receipt.",
+    "Synthetic case only; no hosted production persistence, genuine-company evidence, formation conformance or complete case matrix.",
+    "All seven complete RF acceptance criteria remain pending; later filing stages have not begun."
+  ]
+}

@@ -667,3 +667,165 @@ def test_action_required_recovery_cannot_reclassify_retained_ambiguous_artifact(
             "where submission_id=%s", (submission,)).fetchall()
         assert retained == [("action_required", digest)]
     assert len(storage.objects) == 1
+
+
+def test_production_archive_reads_original_complete_history_after_entitlement_expiry(fixture):
+    from talli_backend.modules.shareholder_register_filing.public import Rf1086ArchiveQuery, create_rf1086_preparation_service
+    from talli_backend.shared.kernel import IncomeYear
+    storage=LocalStorage()
+    session=store(fixture,documents=OwnedDocuments(fixture,storage),storage_transport=httpx.MockTransport(storage.upload))
+    submission,reference=confirmed(fixture,session)
+    lease=str(uuid4())
+    assert asyncio.run(session.claim_feedback_lease(submission,lease))
+    journal=session.feedback_journal(submission_id=submission,company_id=str(fixture['company']),income_year=2025,forsendelse_id=reference,lease_id=lease)
+    raw=b'<receipt>original accepted bytes</receipt>';digest=hashlib.sha256(raw).hexdigest()
+    artifact=Rf1086ReconciliationArtifact(submission,str(fixture['company']),'original-provider-receipt','application/xml',raw,len(raw),digest,'accepted')
+    asyncio.run(journal.record_artifact(artifact))
+    asyncio.run(journal.append_reconciliation(Rf1086ReconciliationSnapshot('accepted',(digest,),'RF1086_FEEDBACK_ACCEPTED')))
+    asyncio.run(session.release_feedback_lease(submission,lease))
+    with psycopg.connect(DATABASE_URL) as connection:
+        connection.execute("set local role billing_store_owner")
+        connection.execute("update billing.production_pilot_entitlements set expires_at=now()-interval '1 hour',starts_at=now()-interval '2 hours' where id=%s",(fixture['entitlement'],))
+    query=Rf1086ArchiveQuery(CompanyId(str(fixture['company'])),IncomeYear(2025),session.actor_id)
+    result=asyncio.run(create_rf1086_preparation_service(session).archive_source(query))
+    assert result.production_submissions[0].id==submission and result.production_submissions[0].feedback_state=='accepted'
+    assert result.approvals[0].id==str(fixture['approval'])
+    assert result.previews[0].hovedskjema_xml==MAIN_XML
+    assert result.feedback_artifacts[0].sha256==digest and result.feedback_artifacts[0].byte_length==len(raw)
+    assert result.feedback_artifacts[0].authority_reference=='original-provider-receipt'
+    assert result.production_events and all(e.company_id==str(fixture['company']) and e.income_year==2025 for e in result.production_events)
+    assert result.production_events[-1].artifact_hashes==(digest,)
+    other=asyncio.run(create_rf1086_preparation_service(session).archive_source(
+        Rf1086ArchiveQuery(query.company_id,IncomeYear(2024),session.actor_id)))
+    assert other.approvals==other.production_submissions==other.production_events==other.feedback_artifacts==()
+    outsider=store(fixture,actor=fixture['outsider'])
+    with pytest.raises(Exception):
+        asyncio.run(create_rf1086_preparation_service(outsider).archive_source(
+            Rf1086ArchiveQuery(query.company_id,query.income_year,outsider.actor_id)))
+    async def restricted():
+        async with session._transaction(snapshot=True) as connection:
+            return await (await connection.execute("select current_user,rolbypassrls from pg_roles where rolname=current_user")).fetchone()
+    role=asyncio.run(restricted())
+    assert role['current_user']=='shareholder_register_filing_executor' and not role['rolbypassrls']
+
+
+
+def test_legacy_archive_remains_readable_without_decoding_corrupt_production_metadata(fixture):
+    from unittest.mock import patch
+    from talli_backend.modules.shareholder_register_filing.public import (
+        Rf1086ArchiveQuery, ShareholderRegisterFilingError, create_rf1086_preparation_service,
+    )
+    from talli_backend.shared.kernel import IncomeYear
+
+    session = store(fixture)
+    query = Rf1086ArchiveQuery(CompanyId(str(fixture["company"])), IncomeYear(2025), session.actor_id)
+    # Retained production JSON can satisfy database shape constraints while
+    # missing the immutable manifest facts required by the additive API.
+    with psycopg.connect(DATABASE_URL) as connection:
+        connection.execute(
+            "update shareholder_register_filing.filing_approval_snapshots set manifest=%s where id=%s",
+            (Jsonb({"retainedMalformedMetadata": True}), fixture["approval"]),
+        )
+    decoded = []
+    original_decode = session._wire_record
+    production_types = {"Rf1086ApprovalRecord", "Rf1086ProductionSubmissionRecord",
+        "Rf1086ArchiveProductionEventRecord", "Rf1086ArchiveFeedbackArtifactRecord"}
+
+    def legacy_decode(record_type, row):
+        decoded.append(record_type.__name__)
+        assert record_type.__name__ not in production_types
+        return original_decode(record_type, row)
+
+    service = create_rf1086_preparation_service(session)
+    with patch.object(session, "_wire_record", legacy_decode):
+        legacy = asyncio.run(service.legacy_archive_source(query))
+    assert [row.id for row in legacy.previews] == [str(fixture["preview"])]
+    assert legacy.previews[0].hovedskjema_xml == MAIN_XML
+    assert legacy.approvals == legacy.production_submissions == legacy.production_events == legacy.feedback_artifacts == ()
+    assert "Rf1086PreviewRecord" in decoded
+    with pytest.raises(ShareholderRegisterFilingError) as captured:
+        asyncio.run(service.archive_source(query))
+    assert captured.value.code == "SHAREHOLDER_REGISTER_FILING_DEPENDENCY_UNAVAILABLE"
+
+
+def test_production_archive_event_scope_and_generation_are_atomic(fixture):
+    session=store(fixture);submission,_=confirmed(fixture,session)
+    with psycopg.connect(DATABASE_URL) as connection:
+        before=connection.execute('select generation from public.company_archive_source_generations where company_id=%s and income_year=2025',(fixture['company'],)).fetchone()[0]
+        scope=connection.execute('select distinct company_id,income_year from shareholder_register_filing.production_filing_events where submission_id=%s',(submission,)).fetchall()
+        assert scope==[(fixture['company'],2025)]
+        for field,value in [('company_id',uuid4()),('income_year',2024),('submission_id',uuid4())]:
+            with pytest.raises(psycopg.Error):
+                with connection.transaction():
+                    connection.execute(sql.SQL('update shareholder_register_filing.production_filing_events set {}=%s where submission_id=%s').format(sql.Identifier(field)),(value,submission))
+        assert connection.execute('select generation from public.company_archive_source_generations where company_id=%s and income_year=2025',(fixture['company'],)).fetchone()[0]==before
+        with pytest.raises(RuntimeError,match='rollback archive generation'):
+            with connection.transaction():
+                insert(connection,'shareholder_register_filing.production_filing_events',{'submission_id':submission,'operation_name':'archive-rollback-proof','operation_state':'prepared','resulting_status':'processing'})
+                assert connection.execute('select generation from public.company_archive_source_generations where company_id=%s and income_year=2025',(fixture['company'],)).fetchone()[0]==before+1
+                raise RuntimeError('rollback archive generation')
+        assert connection.execute('select generation from public.company_archive_source_generations where company_id=%s and income_year=2025',(fixture['company'],)).fetchone()[0]==before
+        insert(connection,'shareholder_register_filing.production_filing_events',{'submission_id':submission,'operation_name':'archive-commit-proof','operation_state':'prepared','resulting_status':'processing'})
+        assert connection.execute('select generation from public.company_archive_source_generations where company_id=%s and income_year=2025',(fixture['company'],)).fetchone()[0]==before+1
+        trackers=connection.execute("select c.relname,count(*) from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname='shareholder_register_filing' and c.relname=any(%s) and t.tgfoid='public.company_archive_track_source_write_v1()'::regprocedure group by c.relname",(['filing_approval_snapshots','production_filing_submissions','production_filing_events','production_feedback_artifacts'],)).fetchall()
+        assert len(trackers)==4 and all(count==1 for _,count in trackers)
+
+
+def test_production_archive_migration_replay_preserves_roles_acls_and_original_content():
+    migration=Path(__file__).resolve().parents[3]/'supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql'
+    body=re.sub(r'(?m)^begin;\s*$','',migration.read_text(),count=1)
+    body=re.sub(r'commit;\s*$','',body)
+    with psycopg.connect(DATABASE_URL) as connection:
+        try:
+            roles=connection.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()
+            acl=connection.execute("select proacl::text from pg_proc where oid='public.company_archive_track_source_write_v1()'::regprocedure").fetchone()
+            rows=connection.execute("select to_jsonb(e)-'company_id'-'income_year' from shareholder_register_filing.production_filing_events e order by e.id").fetchall()
+            connection.execute(body)
+            assert connection.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()==roles
+            assert connection.execute("select proacl::text from pg_proc where oid='public.company_archive_track_source_write_v1()'::regprocedure").fetchone()==acl
+            assert connection.execute("select to_jsonb(e)-'company_id'-'income_year' from shareholder_register_filing.production_filing_events e order by e.id").fetchall()==rows
+            assert connection.execute("select bool_and(relforcerowsecurity) from pg_class where oid in ('shareholder_register_filing.production_filing_events'::regclass,'shareholder_register_filing.production_filing_submissions'::regclass)").fetchone()[0]
+        finally:connection.rollback()
+
+
+def test_production_archive_feedback_invalidates_inflight_export(fixture):
+    session=store(fixture);submission,reference=confirmed(fixture,session)
+    with psycopg.connect(DATABASE_URL) as connection:
+        connection.execute("select set_config('request.jwt.claims',%s,true),set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true)",(json.dumps(claims(fixture)),str(fixture['owner']),json.dumps(claims(fixture))))
+        attempt=connection.execute('select public.company_archive_begin_export(%s,2025)',(fixture['company'],)).fetchone()[0]
+    lease=str(uuid4());assert asyncio.run(session.claim_feedback_lease(submission,lease))
+    journal=session.feedback_journal(submission_id=submission,company_id=str(fixture['company']),income_year=2025,forsendelse_id=reference,lease_id=lease)
+    asyncio.run(journal.append_reconciliation(Rf1086ReconciliationSnapshot('action_required',(),'RF1086_FEEDBACK_ACTION_REQUIRED')))
+    asyncio.run(session.release_feedback_lease(submission,lease))
+    with psycopg.connect(DATABASE_URL) as connection:
+        with pytest.raises(psycopg.Error,match='archive_export_stale'):
+            with connection.transaction():connection.execute('select public.company_archive_complete_export(%s,%s)',(attempt,'a'*64))
+        assert not connection.execute('select 1 from public.company_archive_export_receipts where attempt_id=%s',(attempt,)).fetchone()
+        connection.execute('delete from public.company_archive_export_attempts where id=%s',(attempt,))
+
+
+def test_production_archive_rollback_recutover_preserves_original_rows_and_inventory(fixture):
+    session=store(fixture);submission,_=confirmed(fixture,session)
+    root=Path(__file__).resolve().parents[3]
+    def body(relative):
+        content=(root/relative).read_text()
+        return re.sub(r'commit;\s*$','',re.sub(r'(?m)^begin;\s*$','',content,count=1))
+    with psycopg.connect(DATABASE_URL) as connection:
+        try:
+            original=connection.execute("select to_jsonb(e)-'company_id'-'income_year' from shareholder_register_filing.production_filing_events e where submission_id=%s order by e.id",(submission,)).fetchall()
+            def inventory():
+                connection.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true)",(str(fixture['owner']),json.dumps(claims(fixture))))
+                return connection.execute('select shareholder_register_filing.read_scope_inventory_v1(%s,2025,%s)',(fixture['company'],str(fixture['owner']))).fetchone()[0]
+            before=inventory()
+            old_generation=connection.execute('select generation from public.company_archive_source_generations where company_id=%s and income_year=2025',(fixture['company'],)).fetchone()[0]
+            connection.execute(body('supabase/rollback/20260917114424_rf1086_production_archive_evidence.sql'))
+            assert connection.execute('select to_jsonb(e) from shareholder_register_filing.production_filing_events e where submission_id=%s order by e.id',(submission,)).fetchall()==original
+            assert inventory()==before
+            # Migration temporary bookkeeping normally disappears on commit;
+            # remove only these local temporary tables between transactional runs.
+            connection.execute('drop table pg_temp.rf193_archive_borrowed_roles,pg_temp.rf193_archive_prior_execute')
+            connection.execute(body('supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql'))
+            assert inventory()==before
+            assert connection.execute('select generation from public.company_archive_source_generations where company_id=%s and income_year=2025',(fixture['company'],)).fetchone()[0]==old_generation+1
+            assert connection.execute('select distinct company_id,income_year from shareholder_register_filing.production_filing_events where submission_id=%s',(submission,)).fetchall()==[(fixture['company'],2025)]
+        finally:connection.rollback()

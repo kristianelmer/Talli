@@ -3888,6 +3888,52 @@ export interface Rf1086ArchiveSourceWire {
   testEvidence: Rf1086TestEvidenceWire[];
 }
 
+export interface Rf1086ProductionArchiveSourceWire {
+  approvals: Rf1086ApprovalWire[];
+  companyId: string;
+  feedbackArtifacts: Rf1086ArchiveFeedbackArtifactWire[];
+  incomeYear: number;
+  permissions: Rf1086PermissionWire[];
+  previews: Rf1086PreviewWire[];
+  productionEvents: Rf1086ArchiveProductionEventWire[];
+  productionSubmissions: Rf1086ProductionSubmissionWire[];
+  reviewComments: Rf1086ReviewCommentWire[];
+  simulations: Rf1086SimulationWire[];
+  testEvidence: Rf1086TestEvidenceWire[];
+}
+
+export interface Rf1086ArchiveProductionEventWire {
+  artifactHashes: string[];
+  attempt: number;
+  authorityReference: string | null;
+  bodyHash: string | null;
+  companyId: string;
+  correlationId: string | null;
+  createdAt: string;
+  failureClass: "retryable" | "blocked" | "unknown" | null;
+  id: string;
+  idempotencyKey: string | null;
+  incomeYear: number;
+  operationName: string;
+  operationState: "prepared" | "succeeded" | "failed" | "unknown";
+  resultingStatus: "approved" | "sending" | "received" | "processing" | "accepted" | "rejected" | "action_required" | "unknown";
+  safeErrorCode: string | null;
+  submissionId: string;
+}
+
+export interface Rf1086ArchiveFeedbackArtifactWire {
+  authorityReference: string;
+  byteLength: number;
+  classification: "accepted" | "rejected" | "action_required";
+  companyId: string;
+  contentType: "application/xml" | "text/xml" | "application/pdf" | "text/plain" | "application/octet-stream";
+  documentId: string;
+  id: string;
+  retrievedAt: string;
+  sha256: string;
+  submissionId: string;
+}
+
 export type LaunchSignoffKey = "launch_legal_name_public_copy" | "legal_policy_pack" | "security_restore" | "billing_refund" | "rf1086_authority" | "annual_accounts_authority" | "tax_return_authority" | "support_rollback" | "founder_production_go_live";
 
 export type LaunchSignoffStatus = "approved" | "rejected" | "pending";
@@ -9287,6 +9333,64 @@ function isRf1086ArchiveSourceWire(value: unknown): value is Rf1086ArchiveSource
   );
 }
 
+function isRf1086ProductionArchiveSourceWire(value: unknown): value is Rf1086ProductionArchiveSourceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvals","companyId","feedbackArtifacts","incomeYear","permissions","previews","productionEvents","productionSubmissions","reviewComments","simulations","testEvidence"]) &&
+    Array.isArray(value.approvals) && value.approvals.every((item) => isRf1086ApprovalWire(item)) &&
+    isUuid(value.companyId) &&
+    Array.isArray(value.feedbackArtifacts) && value.feedbackArtifacts.every((item) => isRf1086ArchiveFeedbackArtifactWire(item)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    Array.isArray(value.permissions) && value.permissions.every((item) => isRf1086PermissionWire(item)) &&
+    Array.isArray(value.previews) && value.previews.every((item) => isRf1086PreviewWire(item)) &&
+    Array.isArray(value.productionEvents) && value.productionEvents.every((item) => isRf1086ArchiveProductionEventWire(item)) &&
+    Array.isArray(value.productionSubmissions) && value.productionSubmissions.every((item) => isRf1086ProductionSubmissionWire(item)) &&
+    Array.isArray(value.reviewComments) && value.reviewComments.every((item) => isRf1086ReviewCommentWire(item)) &&
+    Array.isArray(value.simulations) && value.simulations.every((item) => isRf1086SimulationWire(item)) &&
+    Array.isArray(value.testEvidence) && value.testEvidence.every((item) => isRf1086TestEvidenceWire(item))
+  );
+}
+
+function isRf1086ArchiveProductionEventWire(value: unknown): value is Rf1086ArchiveProductionEventWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["artifactHashes","attempt","authorityReference","bodyHash","companyId","correlationId","createdAt","failureClass","id","idempotencyKey","incomeYear","operationName","operationState","resultingStatus","safeErrorCode","submissionId"]) &&
+    Array.isArray(value.artifactHashes) && value.artifactHashes.every((item) => typeof item === "string") &&
+    (typeof value.attempt === "number" && Number.isInteger(value.attempt) && value.attempt >= 1 && value.attempt <= 20) &&
+    (typeof value.authorityReference === "string" || value.authorityReference === null) &&
+    (typeof value.bodyHash === "string" || value.bodyHash === null) &&
+    isUuid(value.companyId) &&
+    (typeof value.correlationId === "string" || value.correlationId === null) &&
+    isDateTime(value.createdAt) &&
+    ((value.failureClass === "retryable" || value.failureClass === "blocked" || value.failureClass === "unknown") || value.failureClass === null) &&
+    isUuid(value.id) &&
+    (isUuid(value.idempotencyKey) || value.idempotencyKey === null) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.operationName === "string" &&
+    (value.operationState === "prepared" || value.operationState === "succeeded" || value.operationState === "failed" || value.operationState === "unknown") &&
+    (value.resultingStatus === "approved" || value.resultingStatus === "sending" || value.resultingStatus === "received" || value.resultingStatus === "processing" || value.resultingStatus === "accepted" || value.resultingStatus === "rejected" || value.resultingStatus === "action_required" || value.resultingStatus === "unknown") &&
+    (typeof value.safeErrorCode === "string" || value.safeErrorCode === null) &&
+    isUuid(value.submissionId)
+  );
+}
+
+function isRf1086ArchiveFeedbackArtifactWire(value: unknown): value is Rf1086ArchiveFeedbackArtifactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["authorityReference","byteLength","classification","companyId","contentType","documentId","id","retrievedAt","sha256","submissionId"]) &&
+    typeof value.authorityReference === "string" &&
+    typeof value.byteLength === "number" && Number.isInteger(value.byteLength) &&
+    (value.classification === "accepted" || value.classification === "rejected" || value.classification === "action_required") &&
+    isUuid(value.companyId) &&
+    (value.contentType === "application/xml" || value.contentType === "text/xml" || value.contentType === "application/pdf" || value.contentType === "text/plain" || value.contentType === "application/octet-stream") &&
+    isUuid(value.documentId) &&
+    isUuid(value.id) &&
+    isDateTime(value.retrievedAt) &&
+    typeof value.sha256 === "string" &&
+    isUuid(value.submissionId)
+  );
+}
+
 function isLaunchSignoffKey(value: unknown): value is LaunchSignoffKey {
   return value === "launch_legal_name_public_copy" || value === "legal_policy_pack" || value === "security_restore" || value === "billing_refund" || value === "rf1086_authority" || value === "annual_accounts_authority" || value === "tax_return_authority" || value === "support_rollback" || value === "founder_production_go_live";
 }
@@ -11460,6 +11564,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
       return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source?" + query,
         "GET", request, undefined, isRf1086ArchiveSourceWire);
+    },
+
+    async rf1086GetProductionArchiveSource(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Rf1086ProductionArchiveSourceWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production?" + query,
+        "GET", request, undefined, isRf1086ProductionArchiveSourceWire);
     },
 
     async rf1086Workspace(

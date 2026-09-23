@@ -41,6 +41,7 @@ import { loadBillingSnapshot, presentBillingAccount } from "../../../../../featu
 import {
   buildPersistedCompanyArchive,
   firstArchiveSourceError,
+  rf1086ArchiveReceiptsMatch,
 } from "../../../../lib/archive";
 import { loadAcceptedMembershipCompany } from "../../../../lib/company-access-context";
 import { requireStepUpForAction } from "../../../../lib/security";
@@ -77,6 +78,11 @@ async function loadArchiveRf1086(accessToken: string, companyId: string, incomeY
       permissions: workspace.permissions.map(presentRf1086Permission),
       comments: workspace.reviewComments.map(presentRf1086ReviewComment),
       testEvidence: workspace.testEvidence.filter((row) => evidenceIds.has(row.id)).map(presentRf1086TestEvidence),
+      production: "productionSubmissions" in workspace ? {
+        companyId: workspace.companyId, incomeYear: workspace.incomeYear,
+        approvals: workspace.approvals, productionSubmissions: workspace.productionSubmissions,
+        productionEvents: workspace.productionEvents, feedbackArtifacts: workspace.feedbackArtifacts,
+      } : null,
     }, error: null };
   } catch {
     return { data: null, error: new Error("RF archive source unavailable.") };
@@ -347,7 +353,8 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
   if (taxSource.error) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
   const taxEvidenceIds = new Set(taxSource.submissions.filter((row) => row.mode === "test_authority")
     .map((row) => row.authority_test_run_id).filter((id): id is string => Boolean(id)));
-  if (!submissions?.length && !rf1086.data?.submissions.length && !taxSource.submissions.length) {
+  if (!submissions?.length && !rf1086.data?.submissions.length
+      && !rf1086.data?.production?.productionSubmissions.length && !taxSource.submissions.length) {
     if (rf1086.error) return new Response("Kunne ikke lese komplett arkivgrunnlag", { status: 500 });
     return new Response("Arkivet krever lagret RF-1086-status", { status: 409 });
   }
@@ -390,6 +397,11 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     { data: corporateLifecycle },
   ] = sourceResults;
 
+  if (!rf1086.data || !documentBackupProjection
+      || (rf1086.data.production && !rf1086ArchiveReceiptsMatch(rf1086.data.production, documentBackupProjection))) {
+    return new Response("Kunne ikke bekrefte komplett RF-kvitteringsarkiv", { status: 500 });
+  }
+
   const archive = buildPersistedCompanyArchive({
     company,
     incomeYear,
@@ -398,6 +410,7 @@ export async function GET(_request: Request, { params }: { params: Promise<Recor
     ledgerEntries: ledgerEntries ?? [],
     documents: documents ?? [],
     documentBackupProjection: documentBackupProjection ?? undefined,
+    rf1086Production: rf1086.data.production ?? undefined,
     holdingActions: [
       ...(holdingActions ?? []).filter(
         (action) => ![
