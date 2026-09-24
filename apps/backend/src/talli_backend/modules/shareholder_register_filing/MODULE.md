@@ -429,3 +429,20 @@ historical bytes and reject altered or unsupported storage. RF owns
 <!-- architecture-inventory
 {"ownedTables":["shareholder_register_filing.source_previews"],"ports":["Rf1086SourcePreviewPreparation"]}
 -->
+
+## Full-year approval identity
+
+`build_rf1086_source_approval_manifest` creates the separate
+`production-source-approval-v1` identity for an exact retained source and preview.
+It commits source/case/freshness hashes, owner and entitlement identities, review
+projection and warning acknowledgments, XML bytes and optional predecessor
+submission/manifest/reason. It preserves the historical no-activity manifest.
+
+Full-year shareholder IDs are ordered by UTF-8 bytes and mapped to stable SHA-256
+journal keys so arbitrary supported IDs fit existing journal operation names.
+The returned immutable document map feeds the existing submit-once journal.
+Changing an input or adding unknown manifest keys invalidates the approval.
+
+This pure builder does not grant approval or submission authority. Transactional
+owner/AAL2/entitlement/review checks, cross-owner freshness, correction admission,
+persistence and production profile integration remain separate required work.

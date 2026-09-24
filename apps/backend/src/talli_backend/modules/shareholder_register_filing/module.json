@@ -393,7 +393,8 @@
     "registerProjection": "apps/backend/tests/test_rf1086_register_projection.py",
     "sourceWorkflow": "apps/backend/tests/test_shareholder_register_source_workflow.py",
     "sourcePreview": "apps/backend/tests/test_rf1086_source_preview.py",
-    "sourcePreviewDatabase": "apps/backend/tests/test_rf1086_source_preview_database.py"
+    "sourcePreviewDatabase": "apps/backend/tests/test_rf1086_source_preview_database.py",
+    "sourceProductionManifest": "apps/backend/tests/test_rf1086_source_production.py"
   },
   "compatibilityExceptions": []
 }
