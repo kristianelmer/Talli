@@ -45,6 +45,7 @@ from talli_backend.modules.ledger.public import (
     InvestmentSettlementKind,
     LedgerCursor,
     LedgerEntryKind,
+    LedgerEntryAmendment,
     LedgerEntryPage,
     LedgerError,
     LedgerLine,
@@ -2329,6 +2330,13 @@ class LedgerService:
         if not command.reason.strip():
             raise LedgerError.invalid_input("LEDGER_LOCK_REASON_REQUIRED")
         return await self._persistence.lock_period(command)
+
+    async def list_entry_amendments(
+        self, *, actor_id: ActorId, company_id: CompanyId, correlation_id: CorrelationId,
+    ) -> tuple[LedgerEntryAmendment, ...]:
+        return await self._persistence.list_entry_amendments(
+            actor_id=actor_id, company_id=company_id, correlation_id=correlation_id,
+        )
 
     async def list_entries(
         self,

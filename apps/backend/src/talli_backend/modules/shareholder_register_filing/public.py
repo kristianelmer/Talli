@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field, fields
 from datetime import datetime
+from decimal import Decimal
 from types import MappingProxyType
 from enum import StrEnum
 import re
@@ -235,6 +236,18 @@ class Rf1086ShareholderSnapshot(_ImmutableRf1086Value):
     current_share_count: int
 
 
+class _ImmutableRf1086Event(_ImmutableRf1086Value):
+    __slots__ = ()
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        # Readiness and XML rendering must always identify the same variant.
+        # Literal annotations alone do not validate direct Python callers.
+        expected_type = next(item.default for item in fields(self) if item.name == "type")
+        if self.type != expected_type:
+            raise ValueError("RF-1086 event type must match its public event class")
+
+
 @dataclass(frozen=True, slots=True)
 class Rf1086FormationAllocation(_ImmutableRf1086Value):
     shareholder_id: str
@@ -243,7 +256,7 @@ class Rf1086FormationAllocation(_ImmutableRf1086Value):
 
 
 @dataclass(frozen=True, slots=True)
-class Rf1086FormationEvent(_ImmutableRf1086Value):
+class Rf1086FormationEvent(_ImmutableRf1086Event):
     timestamp: datetime
     issued_share_count: int
     share_count_after: int
@@ -254,7 +267,7 @@ class Rf1086FormationEvent(_ImmutableRf1086Value):
 
 
 @dataclass(frozen=True, slots=True)
-class Rf1086ShareSaleEvent(_ImmutableRf1086Value):
+class Rf1086ShareSaleEvent(_ImmutableRf1086Event):
     timestamp: datetime
     seller_shareholder_id: str
     buyer_shareholder_id: str
@@ -271,12 +284,58 @@ class Rf1086DividendAllocation(_ImmutableRf1086Value):
 
 
 @dataclass(frozen=True, slots=True)
-class Rf1086DividendEvent(_ImmutableRf1086Value):
+class Rf1086DividendEvent(_ImmutableRf1086Event):
     timestamp: datetime
     total_amount: float
     per_share_amount: float
     allocations: tuple[Rf1086DividendAllocation, ...]
     type: Literal["dividend"] = "dividend"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086CashIssueEvent(_ImmutableRf1086Event):
+    """Registered cash subscription; premium is the amount per new share."""
+    timestamp: datetime
+    issued_share_count: int
+    share_count_after: int
+    nominal_value: float
+    allocations: tuple[Rf1086FormationAllocation, ...]
+    registration_confirmed: Literal[True]
+    premium: float = 0
+    type: Literal["cash_issue"] = "cash_issue"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086NominalIncreaseAllocation(_ImmutableRf1086Value):
+    shareholder_id: str
+    share_count_basis: int
+    capital_increase: float
+    premium: float = 0
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086CashNominalIncreaseEvent(_ImmutableRf1086Event):
+    """Registered cash contribution, retaining all existing shares."""
+    timestamp: datetime
+    capital_increase: float
+    nominal_value_increase: float
+    nominal_value_after: float
+    allocations: tuple[Rf1086NominalIncreaseAllocation, ...]
+    registration_confirmed: Literal[True]
+    premium: float = 0
+    type: Literal["cash_nominal_increase"] = "cash_nominal_increase"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086LossCoveringReductionEvent(_ImmutableRf1086Event):
+    """Registered loss cover without payout; no fund-issued capital is supported."""
+    timestamp: datetime
+    capital_reduction: float
+    nominal_value_reduction: float
+    nominal_value_after: float
+    registration_confirmed: Literal[True]
+    fund_issued_capital_before: Literal[0]
+    type: Literal["loss_covering_reduction"] = "loss_covering_reduction"
 
 
 @dataclass(frozen=True, slots=True)
@@ -286,7 +345,7 @@ class Rf1086Case(_ImmutableRf1086Value):
     share_snapshot: Rf1086ShareSnapshot
     shareholders: tuple[Rf1086Shareholder, ...]
     shareholder_snapshots: tuple[Rf1086ShareholderSnapshot, ...]
-    events: tuple[Rf1086FormationEvent | Rf1086ShareSaleEvent | Rf1086DividendEvent, ...] = ()
+    events: tuple[Rf1086FormationEvent | Rf1086ShareSaleEvent | Rf1086DividendEvent | Rf1086CashIssueEvent | Rf1086CashNominalIncreaseEvent | Rf1086LossCoveringReductionEvent, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -584,6 +643,21 @@ class Rf1086ReadOnlyAuthority(Protocol):
                            document_id: str) -> Rf1086AuthorityDocument: ...
 
 
+@dataclass(frozen=True, slots=True)
+class Rf1086FeedbackTransmission(_ImmutableRf1086Value):
+    dialog_id: str
+    transmission_id: str
+    related_forsendelse_id: str
+    created_at: str
+    document_ids: tuple[str, ...]
+    transmission_type: str
+
+
+class Rf1086FeedbackDiscovery(Protocol):
+    async def read_feedback_transmissions(self, *, organization_number: str,
+            dialog_id: str, forsendelse_id: str) -> tuple[Rf1086FeedbackTransmission, ...]: ...
+
+
 class Rf1086MutationAuthority(Protocol):
     async def post_hovedskjema(self, *, income_year: int, xml: str, idempotency_key: str) -> Rf1086MainResponse: ...
     async def post_underskjema(self, *, income_year: int, hovedskjema_id: str,
@@ -705,6 +779,9 @@ class Rf1086ReconciliationInput(_ImmutableRf1086Value):
     forsendelse_id: str
     hovedskjema_xml: str = field(repr=False)
     underskjema_xml: Mapping[str, str] = field(repr=False)
+
+    organization_number: str | None = None
+    dialog_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -975,8 +1052,86 @@ class Rf1086WorkspaceSnapshot(_ImmutableRf1086Value):
 
 
 @dataclass(frozen=True, slots=True)
+class Rf1086ArchiveProductionEventRecord(_ImmutableRf1086Value):
+    id: str
+    company_id: str
+    income_year: int
+    submission_id: str
+    operation_name: str
+    operation_state: str
+    attempt: int
+    body_hash: str | None
+    idempotency_key: str | None
+    authority_reference: str | None
+    failure_class: str | None
+    resulting_status: str
+    artifact_hashes: tuple[str, ...]
+    safe_error_code: str | None
+    correlation_id: str | None
+    created_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ArchiveFeedbackArtifactRecord(Rf1086FeedbackArtifactRecord):
+    """Documents retains original bytes; RF retains their provider attribution."""
+    authority_reference: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086CorrectionPredecessorSnapshot(_ImmutableRf1086Value):
+    """Exact retained parent and receipt set; Documents separately proves bytes."""
+    company_id: CompanyId
+    income_year: IncomeYear
+    submission: Rf1086ProductionSubmissionRecord
+    approval: Rf1086ApprovalRecord
+    preview: Rf1086PreviewRecord
+    artifacts: tuple[Rf1086ArchiveFeedbackArtifactRecord, ...]
+    reconciliation_events: tuple[Rf1086ArchiveProductionEventRecord, ...]
+
+
+def assert_rf1086_correction_predecessor(snapshot: Rf1086CorrectionPredecessorSnapshot, *,
+        company_id: CompanyId, income_year: IncomeYear,
+        predecessor: Rf1086SourceCorrectionPredecessor) -> None:
+    from .source_correction import assert_predecessor
+    assert_predecessor(snapshot, company_id=company_id, income_year=income_year, predecessor=predecessor)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ArchiveSourceReviewBridge(_ImmutableRf1086Value):
+    preview_id: str
+    company_id: str
+    income_year: int
+    source_id: str
+    source_sha256: str
+    payload_sha256: str
+    created_by: str
+    created_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086ArchiveSourceApprovalLineage(_ImmutableRf1086Value):
+    """Retained source, preview and exact approval-time review projection."""
+    approval_id: str
+    preview_id: str
+    company_id: str
+    income_year: int
+    source_id: str
+    source_sha256: str
+    payload_sha256: str
+    manifest_text: str
+    manifest_sha256: str
+    review_sha256: str
+    review_text: str
+    approved_by: str
+    created_at: str
+    source: Rf1086YearSourceSnapshot
+    source_preview: Rf1086SourcePreview
+    bridge: Rf1086ArchiveSourceReviewBridge
+
+
+@dataclass(frozen=True, slots=True)
 class Rf1086ArchiveSnapshot(_ImmutableRf1086Value):
-    """The original archive's year-scoped filing and company-wide review extent."""
+    """Year-scoped filing history, original production evidence and company-wide review."""
 
     company_id: CompanyId
     income_year: IncomeYear
@@ -985,6 +1140,12 @@ class Rf1086ArchiveSnapshot(_ImmutableRf1086Value):
     review_comments: tuple[Rf1086ReviewCommentRecord, ...] = ()
     permissions: tuple[Rf1086FilingPermissionRecord, ...] = ()
     test_evidence: tuple[Rf1086TestEvidenceRecord, ...] = ()
+
+    approvals: tuple[Rf1086ApprovalRecord, ...] = ()
+    production_submissions: tuple[Rf1086ProductionSubmissionRecord, ...] = ()
+    production_events: tuple[Rf1086ArchiveProductionEventRecord, ...] = ()
+    feedback_artifacts: tuple[Rf1086ArchiveFeedbackArtifactRecord, ...] = ()
+    source_approval_lineage: tuple[Rf1086ArchiveSourceApprovalLineage, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -1184,6 +1345,7 @@ class VerifyRf1086SourceEvidenceQuery(_ImmutableRf1086Value):
 
 
 class Rf1086PreparationPersistence(Protocol):
+    async def legacy_archive_source(self, query: Rf1086ArchiveQuery) -> Rf1086ArchiveSnapshot: ...
     async def archive_source(self, query: Rf1086ArchiveQuery) -> Rf1086ArchiveSnapshot: ...
     async def preview_record(self, query: ReadRf1086PreviewQuery) -> Rf1086PreviewRecord | None: ...
     async def load_opening(self, command: GenerateRf1086PreviewCommand) -> Rf1086OpeningBasis: ...
@@ -1202,6 +1364,7 @@ class Rf1086PreparationPersistence(Protocol):
 
 
 class ShareholderRegisterFilingQueries(Protocol):
+    async def legacy_archive_source(self, query: Rf1086ArchiveQuery) -> Rf1086ArchiveSnapshot: ...
     async def archive_source(self, query: Rf1086ArchiveQuery) -> Rf1086ArchiveSnapshot: ...
     async def read_preview(self, query: ReadRf1086PreviewQuery) -> Rf1086PreviewRecord | None: ...
     async def workspace(self, query: Rf1086WorkspaceQuery) -> Rf1086WorkspaceSnapshot: ...
@@ -1301,9 +1464,9 @@ def rf1086_production_document_order(preview: Rf1086Preview) -> tuple[str, ...]:
     return order(preview)
 
 
-async def reconcile_journaled_rf1086_production(journal: Rf1086ProductionJournal, authority: Rf1086ReadOnlyAuthority, input: Rf1086ReconciliationInput, *, initial_poll: bool | None = None, sleep: Callable[[int], Awaitable[None]] | None = None) -> Rf1086ReconciliationResult:
+async def reconcile_journaled_rf1086_production(journal: Rf1086ProductionJournal, authority: Rf1086ReadOnlyAuthority, input: Rf1086ReconciliationInput, *, discovery: Rf1086FeedbackDiscovery | None = None, initial_poll: bool | None = None, sleep: Callable[[int], Awaitable[None]] | None = None) -> Rf1086ReconciliationResult:
     from .feedback import reconcile_journaled_rf1086_production as reconcile
-    return await reconcile(journal, authority, input, initial_poll=initial_poll, sleep=sleep)
+    return await reconcile(journal, authority, input, discovery=discovery, initial_poll=initial_poll, sleep=sleep)
 
 
 
@@ -1345,6 +1508,7 @@ def build_no_activity_rf1086_case(*, company: Rf1086CompanyFacts, opening: Rf108
 
 
 class Rf1086PreparationOperations(ShareholderRegisterFilingQueries, Protocol):
+    async def generate_source_preview(self, command: GenerateRf1086SourcePreview) -> Rf1086SourcePreview: ...
     async def generate_preview(self, command: GenerateRf1086PreviewCommand) -> Rf1086RecordedResult: ...
     async def record_override(self, command: RecordRf1086OverrideCommand) -> Rf1086RecordedResult: ...
     async def add_review_comment(self, command: AddRf1086ReviewCommentCommand) -> Rf1086RecordedResult: ...
@@ -1488,4 +1652,591 @@ def rf1086_production_scope_exclusions(case: Rf1086Case | None = None) -> tuple[
     from .codes import production_scope_exclusions, production_scope_exclusions_for_case
     return production_scope_exclusions() if case is None else production_scope_exclusions_for_case(case)
 
-__all__ = ['ShareholderRegisterFilingErrorCode', 'ShareholderRegisterFilingError', 'OpeningSnapshotId', 'OpeningShareholder', 'RecordOpeningSnapshotCommand', 'ShareholderRegisterFilingCommands', 'Rf1086ShareholderKind', 'Rf1086Company', 'Rf1086ShareSnapshot', 'Rf1086Shareholder', 'Rf1086ShareholderSnapshot', 'Rf1086FormationAllocation', 'Rf1086FormationEvent', 'Rf1086ShareSaleEvent', 'Rf1086DividendAllocation', 'Rf1086DividendEvent', 'Rf1086Case', 'Rf1086ReadinessIssue', 'Rf1086ReadinessResult', 'Rf1086DocumentSet', 'Rf1086RenderedPreview', 'PreviewId', 'OverrideId', 'ReviewCommentId', 'ApprovalId', 'SubmissionId', 'TestEvidenceId', 'Rf1086RecordedResult', 'GenerateRf1086PreviewCommand', 'RecordRf1086OverrideCommand', 'AddRf1086ReviewCommentCommand', 'AcknowledgeRf1086ReviewCommentCommand', 'ConfirmRf1086SimulationCommand', 'ConfirmRf1086FilingPermissionCommand', 'RecordRf1086TestEvidenceCommand', 'ApproveRf1086ProductionCommand', 'SendApprovedRf1086Command', 'ReconcileRf1086FeedbackCommand', 'Rf1086WorkspaceQuery', 'Rf1086ArchiveQuery', 'Rf1086SourceQuery', 'Rf1086ActionAvailability', 'Rf1086AuthorityError', 'Rf1086AuthorityCall', 'Rf1086MainResponse', 'Rf1086PostResponse', 'Rf1086Confirmation', 'Rf1086DocumentReference', 'Rf1086DocumentPage', 'Rf1086AuthorityDocument', 'Rf1086ReadOnlyAuthority', 'Rf1086MutationAuthority', 'ProductionOperation', 'ProductionOperationFailure', 'ProductionOperationJournal', 'JournaledRf1086ProductionInput', 'JournaledRf1086ProductionResult', 'Rf1086UnknownProductionOutcomeError', 'Rf1086BlockedProductionOperationError', 'Rf1086FeedbackResult', 'Rf1086ReconciliationSnapshot', 'Rf1086ReconciliationArtifact', 'Rf1086FeedbackArtifactPersistenceError', 'Rf1086ProductionJournal', 'Rf1086ReconciliationInput', 'Rf1086ReconciliationResult', 'Rf1086ProductionError', 'Rf1086Approval', 'Rf1086Preview', 'Rf1086Submission', 'Rf1086Connection', 'Rf1086SendResult', 'Rf1086OwnerReconciliationResult', 'Rf1086PreviewRecord', 'Rf1086SimulationRecord', 'Rf1086OverrideRecord', 'Rf1086ReviewCommentRecord', 'Rf1086FilingPermissionRecord', 'Rf1086TestEvidenceRecord', 'Rf1086ApprovalRecord', 'Rf1086ProductionSubmissionRecord', 'Rf1086FeedbackArtifactRecord', 'Rf1086WorkspaceSnapshot', 'Rf1086ArchiveSnapshot', 'Rf1086OpeningBasis', 'Rf1086PreparedPreview', 'Rf1086SimulationBasis', 'Rf1086PreparedSimulation', 'Rf1086ApprovalBasis', 'Rf1086PreparedApproval', 'Rf1086MigrationInventory', 'Rf1086JournalEvent', 'Rf1086SourceSnapshot', 'Rf1086OpeningSource', 'Rf1086SourceEvidence', 'Rf1086HistoryCoverage', 'Rf1086ProductionAttemptFact', 'Rf1086CorrectionLink', 'Rf1086IncidentFact', 'Rf1086WarningFact', 'Rf1086OutcomeFact', 'Rf1086SourceFacts', 'VerifyRf1086SourceEvidenceQuery', 'Rf1086PreparationPersistence', 'ShareholderRegisterFilingQueries', 'rf1086_payload_utf8_bytes', 'parse_rf1086_case', 'generate_rf1086_documents', 'assess_rf1086_readiness', 'render_rf1086_preview', 'render_no_activity_rf1086_preview', 'create_rf1086_preparation_service', 'ReadRf1086PreviewQuery', 'resume_production_operation', 'create_rf1086_feedback_artifact_persistence_error', 'rf1086_xml_schema', 'OpeningSnapshotPersistence', 'OpeningSnapshotCommands', 'create_opening_snapshot_service', 'execute_journaled_rf1086_production', 'rf1086_current_manifest_hash', 'rf1086_production_document_order', 'reconcile_journaled_rf1086_production', 'Rf1086CompanyFacts', 'Rf1086OpeningShareholderFact', 'Rf1086OpeningFacts', 'build_no_activity_rf1086_case', 'Rf1086PreparationOperations', 'rf1086_adapter', 'Rf1086OfflineSimulationInput', 'Rf1086OfflineSimulationCall', 'Rf1086OfflineSimulationResult', 'Rf1086ValidationInput', 'Rf1086ValidationCaseResult', 'Rf1086ValidationReport', 'Rf1086CodeVerificationStatus', 'Rf1086CodeDecision', 'parse_rf1086_offline_simulation_input', 'simulate_rf1086_offline_submission', 'validate_rf1086_cases', 'format_rf1086_readiness_report', 'rf1086_code_decisions', 'rf1086_code_decisions_for_case', 'rf1086_production_code_blockers', 'rf1086_production_scope_exclusions', 'ProductionOperationState', 'FailureClassification', 'Rf1086FeedbackClassification', 'Rf1086ReconciliationState']
+class Rf1086YearSourceError(ValueError):
+    """Closed diagnostics: never include shareholder identifiers or source data."""
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086YearSourceId:
+    value: str
+
+    def __post_init__(self):
+        from .year_source import _decimal, _require, _sha, _uuid
+        _uuid(self.value)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086PaidInSourceFacts:
+    """All four values are required, even when zero; they are never inferred."""
+
+    opening_capital: Decimal
+    closing_capital: Decimal
+    opening_premium: Decimal
+    closing_premium: Decimal
+
+    def __post_init__(self):
+        from .year_source import _decimal, _require, _sha, _uuid
+        for field in fields(self):
+            object.__setattr__(self, field.name, _decimal(getattr(self, field.name)))
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086YearDocumentEvidence:
+    document_id: str
+    company_id: CompanyId
+    content_version_sha256: str
+    content_sha256: str
+    document_type: str
+    integrity_status: str
+    byte_length: int
+    created_at: datetime
+    metadata_sha256: str
+    source_income_year: IncomeYear | None = None
+
+    def __post_init__(self):
+        from .year_source import _decimal, _require, _sha, _uuid
+        _uuid(self.document_id)
+        _sha(self.content_sha256)
+        _sha(self.content_version_sha256)
+        _sha(self.metadata_sha256)
+        _require(self.content_version_sha256 == self.content_sha256
+                 and isinstance(self.document_type, str) and bool(self.document_type.strip())
+                 and self.integrity_status in {"attached", "generated_unsigned", "signed_owner_attested", "stored"}
+                 and type(self.byte_length) is int and self.byte_length > 0
+                 and isinstance(self.created_at, datetime) and self.created_at.tzinfo is not None,
+                 "rf1086_source_document_version_invalid")
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086YearEventEvidence:
+    event_index: int
+    event_sha256: str
+    document_ids: tuple[str, ...]
+    governance_receipt_id: str | None = None
+
+    def __post_init__(self):
+        from .year_source import _decimal, _require, _sha, _uuid
+        object.__setattr__(self, "document_ids", tuple(self.document_ids))
+        _require(type(self.event_index) is int and self.event_index >= 0,
+                 "rf1086_source_event_index_invalid")
+        _sha(self.event_sha256)
+        for reference in self.document_ids:
+            _uuid(reference)
+        if self.governance_receipt_id is not None:
+            _uuid(self.governance_receipt_id)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086YearGovernanceReceipt:
+    """Projection of a final owner receipt; never constructed from HTTP input.
+
+    economic_sha256 covers independently read governance facts in the normalized
+    shape returned by rf1086_governance_economic_facts. Register evidence must
+    predate, and be independent of, the full-year source referencing this receipt.
+    """
+
+    receipt_id: str
+    company_id: CompanyId
+    income_year: IncomeYear
+    event_type: str
+    economic_sha256: str
+    finalization_sha256: str
+    signed_document_hashes: tuple[str, ...]
+    active: bool
+    register_observation_id: str | None = None
+    register_observation_sha256: str | None = None
+
+    def __post_init__(self):
+        from .year_source import _decimal, _require, _sha, _uuid
+        object.__setattr__(self, "signed_document_hashes", tuple(self.signed_document_hashes))
+        _uuid(self.receipt_id)
+        _sha(self.economic_sha256)
+        _sha(self.finalization_sha256)
+        for value in self.signed_document_hashes:
+            _sha(value)
+        if self.register_observation_id is not None:
+            _uuid(self.register_observation_id)
+        if self.register_observation_sha256 is not None:
+            _sha(self.register_observation_sha256)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086VerifiedYearSourceContext:
+    """Trusted workflow-only input; no transport deserialization is permitted.
+
+    complete_governance_enumeration means all relevant finalized dividends and
+    registered capital events for this company/year, not merely selected IDs.
+    An adapter must attest this with its public query contract before use.
+    """
+
+    actor_id: ActorId
+    accepted_owner: bool
+    company_id: CompanyId
+    income_year: IncomeYear
+    company: Rf1086Company
+    company_identity_sha256: str
+    documents: tuple[Rf1086YearDocumentEvidence, ...]
+    governance_receipts: tuple[Rf1086YearGovernanceReceipt, ...]
+    complete_governance_enumeration: bool
+    governance_enumeration_sha256: str
+
+    def __post_init__(self):
+        from .year_source import _decimal, _require, _sha, _uuid
+        object.__setattr__(self, "documents", tuple(self.documents))
+        object.__setattr__(self, "governance_receipts", tuple(self.governance_receipts))
+        _sha(self.company_identity_sha256)
+        _sha(self.governance_enumeration_sha256)
+
+
+@dataclass(frozen=True, slots=True)
+class RecordRf1086YearSource:
+    company_id: CompanyId
+    actor_id: ActorId
+    income_year: IncomeYear
+    case: Rf1086Case
+    paid_in: Rf1086PaidInSourceFacts
+    documents: tuple[Rf1086YearDocumentEvidence, ...]
+    opening_document_ids: tuple[str, ...]
+    closing_document_ids: tuple[str, ...]
+    paid_in_document_ids: tuple[str, ...]
+    event_evidence: tuple[Rf1086YearEventEvidence, ...]
+    identities_reviewed: bool
+    complete_year_confirmed: bool
+    paid_in_reviewed: bool
+    no_activity_confirmed: bool
+    supersedes_source_id: Rf1086YearSourceId | None = None
+    supersedes_source_sha256: str | None = None
+    correction_reason: str | None = None
+
+    def __post_init__(self):
+        from .year_source import _decimal, _require, _sha, _uuid
+        for name in ("documents", "opening_document_ids", "closing_document_ids",
+                     "paid_in_document_ids", "event_evidence"):
+            object.__setattr__(self, name, tuple(getattr(self, name)))
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086YearSourceFreshness:
+    source_id: Rf1086YearSourceId
+    source_sha256: str
+    company_identity_sha256: str
+    documents_sha256: str
+    governance_receipts_sha256: str
+    governance_enumeration_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086YearSourceSnapshot(_ImmutableRf1086Value):
+    source_id: Rf1086YearSourceId
+    version: int
+    company_id: CompanyId
+    income_year: IncomeYear
+    command: RecordRf1086YearSource
+    confirmed_by: ActorId
+    confirmed_at: datetime
+    governance_receipts: tuple[Rf1086YearGovernanceReceipt, ...]
+    source_sha256: str
+    case_sha256: str
+    freshness: Rf1086YearSourceFreshness
+
+
+class Rf1086YearSourcePersistence(Protocol):
+    """Authenticated RF storage; verified context comes only from the workflow."""
+
+    async def record_year_source(self, command: RecordRf1086YearSource, *,
+            context: Rf1086VerifiedYearSourceContext,
+            idempotency_key: IdempotencyKey) -> Rf1086YearSourceSnapshot: ...
+
+    async def read_current_year_source(self, query: Rf1086SourceQuery) -> Rf1086YearSourceSnapshot | None: ...
+
+    async def read_year_source(self, query: Rf1086SourceQuery,
+            source_id: Rf1086YearSourceId) -> Rf1086YearSourceSnapshot | None: ...
+
+
+def serialize_rf1086_year_source(snapshot: Rf1086YearSourceSnapshot) -> str:
+    from .year_source_storage import serialize
+    return serialize(snapshot)
+
+
+def parse_rf1086_year_source(value: str) -> Rf1086YearSourceSnapshot:
+    from .year_source_storage import parse
+    return parse(value)
+
+
+def prepare_rf1086_year_source(command: RecordRf1086YearSource, *,
+        context: Rf1086VerifiedYearSourceContext, source_id: Rf1086YearSourceId,
+        confirmed_at: datetime, previous: Rf1086YearSourceSnapshot | None = None) -> Rf1086YearSourceSnapshot:
+    from .year_source import prepare_rf1086_year_source as prepare
+    return prepare(command, context=context, source_id=source_id, confirmed_at=confirmed_at, previous=previous)
+
+
+def assert_rf1086_year_source_fresh(snapshot: Rf1086YearSourceSnapshot, *,
+        current_source_id: Rf1086YearSourceId, current_source_sha256: str,
+        context: Rf1086VerifiedYearSourceContext) -> None:
+    from .year_source import assert_rf1086_year_source_fresh as validate
+    validate(snapshot, current_source_id=current_source_id, current_source_sha256=current_source_sha256, context=context)
+
+
+def assert_rf1086_year_source_integrity(snapshot: Rf1086YearSourceSnapshot) -> None:
+    from .year_source import assert_rf1086_year_source_integrity as validate
+    validate(snapshot)
+
+
+def assert_rf1086_year_source_replay(snapshot: Rf1086YearSourceSnapshot, command: RecordRf1086YearSource) -> None:
+    from .year_source import assert_rf1086_year_source_replay as validate
+    validate(snapshot, command)
+
+
+def rf1086_year_source_digest(value: object) -> str:
+    from .year_source import rf1086_year_source_digest as digest
+    return digest(value)
+
+
+def rf1086_event_register_states(case: Rf1086Case, event_index: int) -> tuple[Rf1086RegisteredShareState, Rf1086RegisteredShareState]:
+    """Exact capital-event states from the same full-case readiness replay."""
+    from .readiness import event_register_states
+    return event_register_states(case, event_index)
+
+
+def rf1086_governance_economic_facts(event: Rf1086DividendEvent | Rf1086CashIssueEvent |
+        Rf1086CashNominalIncreaseEvent | Rf1086LossCoveringReductionEvent) -> Mapping[str, object]:
+    from .year_source import rf1086_governance_economic_facts as normalize
+    return _freeze_rf1086_value(normalize(event))
+
+
+class Rf1086RegisterObservationError(ValueError):
+    """Closed diagnostics for independent registered-share observations."""
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086RegisterObservationId:
+    value: str
+
+    def __post_init__(self):
+        from .register_observation import validate_identity
+        validate_identity(self.value)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086RegisterHolding:
+    shareholder_id: str
+    name: str
+    kind: Literal["norwegian_person", "norwegian_company"]
+    identifier: str
+    share_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086RegisteredShareState(_ImmutableRf1086Value):
+    """Complete one-class register state; tax paid-in balances are separate."""
+
+    share_capital: Decimal
+    share_count: int
+    nominal_value: Decimal
+    holdings: tuple[Rf1086RegisterHolding, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086RegisterDocumentEvidence:
+    """Original independent document bytes verified by the Documents owner.
+
+    role describes owner-reviewed content, not a claim of automated extraction
+    or signedness. Filing-generated or Governance-derived documents cannot be
+    attested as independent evidence by the trusted capture workflow.
+    """
+
+    document_id: str
+    company_id: CompanyId
+    content_version_sha256: str
+    content_sha256: str
+    byte_length: int
+    document_type: str
+    integrity_status: str
+    created_at: datetime
+    metadata_sha256: str
+    role: Literal["register_before", "register_after", "registration"]
+    source_income_year: IncomeYear | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RecordRf1086RegisterObservation(_ImmutableRf1086Value):
+    company_id: CompanyId
+    actor_id: ActorId
+    income_year: IncomeYear
+    effective_at: datetime
+    event_kind: Literal["cash_issue", "cash_nominal_increase", "loss_covering_reduction"]
+    before: Rf1086RegisteredShareState
+    after: Rf1086RegisteredShareState
+    documents: tuple[Rf1086RegisterDocumentEvidence, ...]
+    complete_register_confirmed: bool
+    registration_confirmed: bool
+    single_share_class_confirmed: bool
+    supersedes_observation_id: Rf1086RegisterObservationId | None = None
+    supersedes_observation_sha256: str | None = None
+    correction_reason: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086VerifiedRegisterObservationContext(_ImmutableRf1086Value):
+    """Internal workflow attestation; never accept from HTTP input.
+
+    Independent originals and accepted owner must be checked at capture. This
+    value does not create a cross-capability lease or prove document semantics.
+    """
+
+    actor_id: ActorId
+    accepted_owner: bool
+    company_id: CompanyId
+    income_year: IncomeYear
+    documents: tuple[Rf1086RegisterDocumentEvidence, ...]
+    independent_originals_verified: bool
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086RegisterObservationSnapshot:
+    observation_id: Rf1086RegisterObservationId
+    version: int
+    command: RecordRf1086RegisterObservation
+    confirmed_at: datetime
+    fact_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086RegisterObservationMatchQuery:
+    observation_id: Rf1086RegisterObservationId
+    revision: int
+    fact_sha256: str
+    company_id: CompanyId
+    income_year: IncomeYear
+    effective_at: datetime
+    event_kind: str
+    before: Rf1086RegisteredShareState
+    after: Rf1086RegisteredShareState
+
+
+def prepare_rf1086_register_observation(command: RecordRf1086RegisterObservation, *,
+        context: Rf1086VerifiedRegisterObservationContext,
+        observation_id: Rf1086RegisterObservationId, confirmed_at: datetime,
+        previous: Rf1086RegisterObservationSnapshot | None = None) -> Rf1086RegisterObservationSnapshot:
+    from .register_observation import prepare
+    return prepare(command, context=context, observation_id=observation_id,
+                   confirmed_at=confirmed_at, previous=previous)
+
+
+def assert_rf1086_register_observation_integrity(snapshot: Rf1086RegisterObservationSnapshot) -> None:
+    from .register_observation import assert_integrity
+    assert_integrity(snapshot)
+
+
+def verify_rf1086_register_observation(snapshot: Rf1086RegisterObservationSnapshot,
+        query: Rf1086RegisterObservationMatchQuery) -> Rf1086RegisterObservationSnapshot:
+    """Match an exact persisted observation; does not establish live currentness."""
+    from .register_observation import verify
+    return verify(snapshot, query)
+
+
+def rf1086_register_observation_request_digest(command: RecordRf1086RegisterObservation) -> str:
+    from .register_observation import request_digest
+    return request_digest(command)
+
+
+class Rf1086RegisterObservationPersistence(Protocol):
+    """RF-owned immutable observations, with exact current-lineage reads."""
+
+    async def record_register_observation(self, command: RecordRf1086RegisterObservation, *,
+            context: Rf1086VerifiedRegisterObservationContext,
+            idempotency_key: IdempotencyKey) -> Rf1086RegisterObservationSnapshot: ...
+
+    async def list_register_observations(self, query: Rf1086SourceQuery) -> tuple[Rf1086RegisterObservationSnapshot, ...]: ...
+
+    async def read_register_observation(self, query: Rf1086SourceQuery,
+            observation_id: Rf1086RegisterObservationId) -> Rf1086RegisterObservationSnapshot | None: ...
+
+    async def read_current_register_observation(self, query: Rf1086SourceQuery,
+            observation_id: Rf1086RegisterObservationId) -> Rf1086RegisterObservationSnapshot | None: ...
+
+
+def serialize_rf1086_register_observation(snapshot: Rf1086RegisterObservationSnapshot) -> str:
+    from .year_source_storage import serialize_observation
+    return serialize_observation(snapshot)
+
+
+def parse_rf1086_register_observation(value: str) -> Rf1086RegisterObservationSnapshot:
+    from .year_source_storage import parse_observation
+    return parse_observation(value)
+
+
+
+@dataclass(frozen=True, slots=True)
+class GenerateRf1086SourcePreview:
+    """Internal command after fresh source verification by the application."""
+
+    company_id: CompanyId
+    income_year: IncomeYear
+    source: Rf1086YearSourceSnapshot
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086PreparedSourcePreview:
+    source: Rf1086YearSourceSnapshot
+    rendered: Rf1086RenderedPreview
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SourcePreview(_ImmutableRf1086Value):
+    preview_id: PreviewId
+    company_id: CompanyId
+    income_year: IncomeYear
+    source_id: Rf1086YearSourceId
+    source_sha256: str
+    case_sha256: str
+    readiness_status: str
+    readiness_issues: tuple[Rf1086ReadinessIssue, ...]
+    preview_text: str
+    hovedskjema_xml: str | None
+    underskjema_xml: Mapping[str, str] | None
+    rendering_profile: str = "rf1086-full-year-v1"
+
+
+class Rf1086SourcePreviewPreparation(Protocol):
+    """Capture immutable previews while locking the exact current source."""
+
+    async def capture_source_preview(self, command: GenerateRf1086SourcePreview,
+            prepared: Rf1086PreparedSourcePreview) -> Rf1086SourcePreview: ...
+
+    async def source_preview(self, preview_id: PreviewId) -> Rf1086SourcePreview: ...
+
+
+def assert_rf1086_source_preview_matches(preview: Rf1086SourcePreview,
+        source: Rf1086YearSourceSnapshot) -> None:
+    from .source_preview import assert_matches
+    assert_matches(preview, source)
+
+
+def serialize_rf1086_source_preview(preview: Rf1086SourcePreview) -> str:
+    from .source_preview import serialize
+    return serialize(preview)
+
+
+def parse_rf1086_source_preview(value: str) -> Rf1086SourcePreview:
+    from .source_preview import parse
+    return parse(value)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SourceReadinessEvidence(_ImmutableRf1086Value):
+    """Exact retained RF evidence identity, separate from legacy source-facts v1."""
+
+    company_id: CompanyId
+    income_year: IncomeYear
+    source_id: Rf1086YearSourceId
+    source_version: int
+    source_sha256: str
+    case_sha256: str
+    freshness: Rf1086YearSourceFreshness
+    preview_id: PreviewId
+    preview_payload_sha256: str
+    rendering_profile: str
+    schema_version: Literal["rf1086-source-readiness-evidence-v1"] = "rf1086-source-readiness-evidence-v1"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SourceReadinessProof(_ImmutableRf1086Value):
+    """Source assessment, never release readiness or reusable admission authority.
+
+    Only the application admission reader checks current owner projections and
+    originals. Any consequential use must rebuild within its own guarded scope.
+    The omitted release families are explicit and included in the proof digest.
+    """
+
+    evidence: Rf1086SourceReadinessEvidence
+    readiness_status: Literal["ready", "blocked"]
+    issues: tuple[Rf1086ReadinessIssue, ...]
+    not_evaluated: tuple[str, ...]
+    proof_sha256: str
+    schema_version: Literal["rf1086-source-readiness-v1"] = "rf1086-source-readiness-v1"
+
+
+def build_rf1086_source_readiness(source: Rf1086YearSourceSnapshot,
+        preview: Rf1086SourcePreview) -> Rf1086SourceReadinessProof:
+    """Assess exact immutable source/preview facts; this does not establish freshness."""
+    from .source_readiness import build
+    return build(source, preview)
+
+
+def assert_rf1086_source_readiness_matches(proof: Rf1086SourceReadinessProof,
+        source: Rf1086YearSourceSnapshot, preview: Rf1086SourcePreview) -> None:
+    from .source_readiness import assert_matches
+    assert_matches(proof, source, preview)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SourceApprovalReview(_ImmutableRf1086Value):
+    """Point-in-time review commitment; approval must recheck it under admission."""
+
+    company_id: CompanyId
+    income_year: IncomeYear
+    preview_id: PreviewId
+    source_id: Rf1086YearSourceId
+    source_sha256: str
+    entitlement_id: str
+    review_sha256: str
+    warning_codes: tuple[str, ...]
+    blockers: tuple[str, ...]
+    can_approve: bool
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SourceCorrectionPredecessor:
+    """Exact prior submission selected by correction admission, not by a source edit."""
+
+    submission_id: SubmissionId
+    manifest_sha256: str
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SourceApprovalManifestBasis(_ImmutableRf1086Value):
+    """Trusted application input for payload identity, not permission to submit.
+
+    Admission must separately establish current owner/AAL2, entitlement, review,
+    source freshness and correction eligibility in its consequential transaction.
+    review_sha256 commits the exact RF-owned review/permission projection.
+    """
+
+    source: Rf1086YearSourceSnapshot
+    preview: Rf1086SourcePreview
+    actor_id: ActorId
+    entitlement_id: str
+    review_sha256: str
+    acknowledged_warning_codes: tuple[str, ...]
+    predecessor: Rf1086SourceCorrectionPredecessor | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SourceApprovalManifest(_ImmutableRf1086Value):
+    manifest: Mapping[str, object]
+    manifest_sha256: str
+    document_order: tuple[str, ...]
+    underskjema_xml: Mapping[str, str] = field(repr=False)
+
+
+def build_rf1086_source_approval_manifest(
+        basis: Rf1086SourceApprovalManifestBasis) -> Rf1086SourceApprovalManifest:
+    from .source_production import build_manifest
+    return build_manifest(basis)
+
+
+def assert_rf1086_source_approval_manifest_matches(
+        approved: Rf1086SourceApprovalManifest, basis: Rf1086SourceApprovalManifestBasis) -> None:
+    from .source_production import assert_matches
+    assert_matches(approved, basis)
+
+
+def serialize_rf1086_source_approval_manifest(approved: Rf1086SourceApprovalManifest) -> str:
+    """Exact canonical bytes matching the manifest hash, without granting authority."""
+    from .source_production import serialize_manifest
+    return serialize_manifest(approved)
+
+
+__all__ = ['Rf1086SourceReadinessEvidence', 'Rf1086SourceReadinessProof', 'build_rf1086_source_readiness', 'assert_rf1086_source_readiness_matches', 'Rf1086SourceApprovalReview', 'serialize_rf1086_source_approval_manifest', 'Rf1086SourceCorrectionPredecessor', 'Rf1086SourceApprovalManifestBasis', 'Rf1086SourceApprovalManifest', 'build_rf1086_source_approval_manifest', 'assert_rf1086_source_approval_manifest_matches', 'GenerateRf1086SourcePreview', 'Rf1086PreparedSourcePreview', 'Rf1086SourcePreview', 'Rf1086SourcePreviewPreparation', 'assert_rf1086_source_preview_matches', 'serialize_rf1086_source_preview', 'parse_rf1086_source_preview', 'rf1086_event_register_states', 'ShareholderRegisterFilingErrorCode', 'ShareholderRegisterFilingError', 'OpeningSnapshotId', 'OpeningShareholder', 'RecordOpeningSnapshotCommand', 'ShareholderRegisterFilingCommands', 'Rf1086ShareholderKind', 'Rf1086Company', 'Rf1086ShareSnapshot', 'Rf1086Shareholder', 'Rf1086ShareholderSnapshot', 'Rf1086FormationAllocation', 'Rf1086FormationEvent', 'Rf1086CashIssueEvent', 'Rf1086NominalIncreaseAllocation', 'Rf1086CashNominalIncreaseEvent', 'Rf1086LossCoveringReductionEvent', 'Rf1086ShareSaleEvent', 'Rf1086DividendAllocation', 'Rf1086DividendEvent', 'Rf1086Case', 'Rf1086ReadinessIssue', 'Rf1086ReadinessResult', 'Rf1086DocumentSet', 'Rf1086RenderedPreview', 'PreviewId', 'OverrideId', 'ReviewCommentId', 'ApprovalId', 'SubmissionId', 'TestEvidenceId', 'Rf1086RecordedResult', 'GenerateRf1086PreviewCommand', 'RecordRf1086OverrideCommand', 'AddRf1086ReviewCommentCommand', 'AcknowledgeRf1086ReviewCommentCommand', 'ConfirmRf1086SimulationCommand', 'ConfirmRf1086FilingPermissionCommand', 'RecordRf1086TestEvidenceCommand', 'ApproveRf1086ProductionCommand', 'SendApprovedRf1086Command', 'ReconcileRf1086FeedbackCommand', 'Rf1086WorkspaceQuery', 'Rf1086ArchiveQuery', 'Rf1086SourceQuery', 'Rf1086ActionAvailability', 'Rf1086AuthorityError', 'Rf1086AuthorityCall', 'Rf1086MainResponse', 'Rf1086PostResponse', 'Rf1086Confirmation', 'Rf1086DocumentReference', 'Rf1086DocumentPage', 'Rf1086AuthorityDocument', 'Rf1086ReadOnlyAuthority', 'Rf1086MutationAuthority', 'Rf1086FeedbackDiscovery', 'Rf1086FeedbackTransmission', 'ProductionOperation', 'ProductionOperationFailure', 'ProductionOperationJournal', 'JournaledRf1086ProductionInput', 'JournaledRf1086ProductionResult', 'Rf1086UnknownProductionOutcomeError', 'Rf1086BlockedProductionOperationError', 'Rf1086FeedbackResult', 'Rf1086ReconciliationSnapshot', 'Rf1086ReconciliationArtifact', 'Rf1086FeedbackArtifactPersistenceError', 'Rf1086ProductionJournal', 'Rf1086ReconciliationInput', 'Rf1086ReconciliationResult', 'Rf1086ProductionError', 'Rf1086Approval', 'Rf1086Preview', 'Rf1086Submission', 'Rf1086Connection', 'Rf1086SendResult', 'Rf1086OwnerReconciliationResult', 'Rf1086PreviewRecord', 'Rf1086SimulationRecord', 'Rf1086OverrideRecord', 'Rf1086ReviewCommentRecord', 'Rf1086FilingPermissionRecord', 'Rf1086TestEvidenceRecord', 'Rf1086ApprovalRecord', 'Rf1086ProductionSubmissionRecord', 'Rf1086FeedbackArtifactRecord', 'Rf1086WorkspaceSnapshot', 'Rf1086ArchiveProductionEventRecord', 'Rf1086ArchiveFeedbackArtifactRecord', 'Rf1086ArchiveSnapshot', 'Rf1086CorrectionPredecessorSnapshot', 'assert_rf1086_correction_predecessor', 'Rf1086ArchiveSourceReviewBridge', 'Rf1086ArchiveSourceApprovalLineage', 'Rf1086OpeningBasis', 'Rf1086PreparedPreview', 'Rf1086SimulationBasis', 'Rf1086PreparedSimulation', 'Rf1086ApprovalBasis', 'Rf1086PreparedApproval', 'Rf1086MigrationInventory', 'Rf1086JournalEvent', 'Rf1086SourceSnapshot', 'Rf1086OpeningSource', 'Rf1086SourceEvidence', 'Rf1086HistoryCoverage', 'Rf1086ProductionAttemptFact', 'Rf1086CorrectionLink', 'Rf1086IncidentFact', 'Rf1086WarningFact', 'Rf1086OutcomeFact', 'Rf1086SourceFacts', 'VerifyRf1086SourceEvidenceQuery', 'Rf1086PreparationPersistence', 'ShareholderRegisterFilingQueries', 'rf1086_payload_utf8_bytes', 'parse_rf1086_case', 'generate_rf1086_documents', 'assess_rf1086_readiness', 'render_rf1086_preview', 'render_no_activity_rf1086_preview', 'create_rf1086_preparation_service', 'ReadRf1086PreviewQuery', 'resume_production_operation', 'create_rf1086_feedback_artifact_persistence_error', 'rf1086_xml_schema', 'OpeningSnapshotPersistence', 'OpeningSnapshotCommands', 'create_opening_snapshot_service', 'execute_journaled_rf1086_production', 'rf1086_current_manifest_hash', 'rf1086_production_document_order', 'reconcile_journaled_rf1086_production', 'Rf1086CompanyFacts', 'Rf1086OpeningShareholderFact', 'Rf1086OpeningFacts', 'build_no_activity_rf1086_case', 'Rf1086PreparationOperations', 'rf1086_adapter', 'Rf1086OfflineSimulationInput', 'Rf1086OfflineSimulationCall', 'Rf1086OfflineSimulationResult', 'Rf1086ValidationInput', 'Rf1086ValidationCaseResult', 'Rf1086ValidationReport', 'Rf1086CodeVerificationStatus', 'Rf1086CodeDecision', 'parse_rf1086_offline_simulation_input', 'simulate_rf1086_offline_submission', 'validate_rf1086_cases', 'format_rf1086_readiness_report', 'rf1086_code_decisions', 'rf1086_code_decisions_for_case', 'rf1086_production_code_blockers', 'rf1086_production_scope_exclusions', 'ProductionOperationState', 'FailureClassification', 'Rf1086FeedbackClassification', 'Rf1086ReconciliationState', 'Rf1086YearSourceError', 'Rf1086YearSourceId', 'Rf1086PaidInSourceFacts', 'Rf1086YearDocumentEvidence', 'Rf1086YearEventEvidence', 'Rf1086YearGovernanceReceipt', 'Rf1086VerifiedYearSourceContext', 'RecordRf1086YearSource', 'Rf1086YearSourceFreshness', 'Rf1086YearSourceSnapshot', 'prepare_rf1086_year_source', 'assert_rf1086_year_source_fresh', 'assert_rf1086_year_source_integrity', 'assert_rf1086_year_source_replay', 'rf1086_year_source_digest', 'rf1086_governance_economic_facts', 'Rf1086YearSourcePersistence', 'serialize_rf1086_year_source', 'parse_rf1086_year_source', 'Rf1086RegisterObservationError', 'Rf1086RegisterObservationId', 'Rf1086RegisterHolding', 'Rf1086RegisteredShareState', 'Rf1086RegisterDocumentEvidence', 'RecordRf1086RegisterObservation', 'Rf1086VerifiedRegisterObservationContext', 'Rf1086RegisterObservationSnapshot', 'Rf1086RegisterObservationMatchQuery', 'prepare_rf1086_register_observation', 'assert_rf1086_register_observation_integrity', 'verify_rf1086_register_observation', 'rf1086_register_observation_request_digest', 'Rf1086RegisterObservationPersistence', 'serialize_rf1086_register_observation', 'parse_rf1086_register_observation']

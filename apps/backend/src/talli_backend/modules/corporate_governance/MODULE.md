@@ -174,3 +174,95 @@ projection without reviving a second writer; corrected recutover is repeatable.
 The additive hosted-shape parity migration first restores immutable event IDs and
 occurrence times that were absent from the already-deployed #144 table revision;
 it is a no-op for fresh databases created from the current migration chain.
+
+## Reporting-year evidence
+
+`CorporateReportingYearBasis` reads the existing lifecycle and supported-event
+public projections within one authenticated SERIALIZABLE transaction.
+`CorporateGovernanceApplication.read_reporting_year_evidence` composes that basis
+with Ledger's complete company-scoped `LedgerEntryAmendment` query in the same
+transaction. Governance never reads Ledger tables. This closes the historical
+case where `reverse_supported_event` returned a Ledger reversal without creating
+a separate Governance reversal row.
+
+The deterministic public `build_reporting_year_evidence` assembles these owner
+projections. The immutable `CorporateGovernanceYearEvidence` contains
+`CorporateYearDividendEvidence`, `CorporateYearSupportedEvidence`, and opaque
+`CorporateLedgerAmendment` receipts. It retains pending, rejected, superseded,
+reversed and corrected records, exact signed artifacts/finalizations, and
+connected replacement chains. Its deterministic enumeration digest changes when
+relevant decisions, events, signed evidence or amendments change. It is a source
+projection, not filing readiness, external-source lease or production authority.
+No filing capability dependency or new HTTP endpoint is introduced.
+
+Cash capital increases use their explicit `SupportedCorporateEventReference`,
+the same reference passed to Ledger's `CapitalIncreaseReferenceId`, to group
+available binding-subscription, restricted-payment and registration records.
+The registration remains the reportable receipt;
+`CorporateYearSupportedEvidence.lifecycle_events` retains every original phase,
+including prior-year anchors. All present phases must agree on economics,
+policy, chronology and distinct Ledger entries; payment and registration must
+also agree on bank evidence. A missing registration, conflicting originals, or
+any phase's correction or Ledger amendment remains a blocker. The reporting
+digest uses `corporate-reporting-year-2` and includes every retained original.
+
+A successful owned registration is the existing authority for Ledger's required
+subscription and payment prerequisites. An accepted `OpeningCapitalIncreaseComponent`
+may supply either or both predecessors without corresponding Governance rows.
+The projection therefore accepts coherent available subsets containing the
+registration, including the existing standalone-registered path; it never
+manufactures an opening record or treats missing Governance rows as proof of
+missing Ledger anchors. Full original opening-component provenance would require
+a separate Ledger-owned public evidence reader. In particular, amendments to an
+opening anchor cannot be connected here when its entry identity is absent from
+the Governance basis; that existing standalone-path limitation is not a claim
+of complete opening-anchor amendment coverage. This change admits no nominal-
+value increase and leaves loss-reduction first recognition unchanged.
+
+
+For the supported ordinary owner dividend, the reporting year uses the civil
+general-meeting decision date, not the annual accounts basis, payment date or
+persistence timestamp. [Skatteetaten's RF-1086 examples](https://www.skatteetaten.no/bedrift-og-organisasjon/rapportering-og-bransjer/aksjonarregisteroppgaven/eksempler-pa-utfylling-av-aksjonarregisteroppgaven/)
+state that the general-meeting decision date determines dividend reporting time
+(verified 2026-09-23). Mapping the persisted canonical `generalMeeting.meetingDate`
+to that rule is the product inference. Registered capital facts retain their
+owned `event_date` and phase without deriving a new legal registration date.
+Corrections connected to selected-year records are retained even when their own
+date falls in another year; consumers must consider their status before mapping.
+
+### Company guard for consequential writes
+
+The application mutation transactions acquire the shared company advisory guard
+under READ COMMITTED before reading current owner/eligibility or taking local
+Governance/Ledger locks. Read-only reporting transactions retain SERIALIZABLE.
+Migration `20260924080355_governance_ledger_company_write_guards.sql` also wraps
+owner write RPCs before their original bodies and adds company-scoped table
+backstops, including lifecycle events and amendment receipts in Ledger.
+
+Registered capital events first perform a short guarded prepare/replay check.
+If still new, independent register and original-byte verification runs outside
+the guard. A second guarded prepare handles intervening completion; otherwise
+RF current-observation and Documents retained-original assertions run on that
+same connection before any Ledger posting. No provider or object-storage I/O
+runs while this final guard is held. This binds the selected evidence for these
+events; it does not establish a full-year RF approval/send freshness protocol.
+
+Rollback suspends the guarded writer entry points while preserving data and
+backstops. Reapply restores writes without publishing an unguarded API alias.
+
+### Guarded reporting projection for RF
+
+`corporate_governance.read_guarded_reporting_year_inputs_v1(uuid,integer,text)`
+returns complete company-scoped lifecycle, supported-event and Ledger amendment
+projections under the caller's already-held company guard and READ COMMITTED
+transaction. It verifies the current owner and exact authenticated subject. The
+RF executor receives only this function and schema usage; the Governance owner
+receives only Ledger's public amendment reader, with no Ledger table grants.
+
+`PostgresCorporateReportingEvidence(connection, actor_id)` uses the existing
+projection codecs and public `build_reporting_year_evidence` to return the same
+`CorporateGovernanceYearEvidence` as the ordinary application read. Enumeration
+retains cross-year corrections and historical amendments before domain year
+selection. It opens no connection, sets no role or identity, and performs no
+provider I/O. Rollback disables the RF entry point and preserves original rows.
+The caller still owns admission, source reconciliation and approval/send policy.

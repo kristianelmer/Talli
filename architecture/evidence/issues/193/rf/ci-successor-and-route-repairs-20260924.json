@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "068acb799e0a576c8c40d7134a0f86c4fde1f65c",
+  "status": "PENDING_INTEGRATED_DATABASE_CI",
+  "run": 35967614456,
+  "sourceSha256": {
+    "apps/backend/tests/test_document_evidence_retention_database.py": "f4b507a56a28df2d19ca759d40817453b778c193e29426ec1aad1234128876fe",
+    "apps/web/app/auth/systembruker/confirm/handler.ts": "a3ed4e35c0312cbf5b62f04c371432f7a870b2359ecf7ce1aa961ce2c01208dd",
+    "apps/web/app/auth/systembruker/confirm/route.ts": "58ebc23c36a84d349f9e31166a49d2d450770bebf635ca69db7ba7af240efdd9",
+    "tests/system_user_callback_route.test.mjs": "d1455803126a5ce87afe523afa45670a5e1be25989ef8420d086c310c55e922c",
+    "apps/web/tests/company-access-stage-exit.test.mjs": "675502aa3f1d7224f075d42a37a97d592c34e7fc18a2d777bcedecf9528e98dc"
+  },
+  "findings": [
+    "Application CI passed. Database isolation failed after the predecessor Documents retention rehearsal revoked the metadata assertion permission granted by its installed successor. The rehearsal now reapplies that successor in order and asserts its restored permission; retained bytes stay intact.",
+    "The local webpack build found helper exports in a route module. Helpers moved unchanged into a sibling module; route exports GET only."
+  ],
+  "verification": {
+    "databaseFix": "50 cases collect; no local database rerun. Next CI required.",
+    "callbackTestsPassed": 12,
+    "productionWebpackBuild": "PASS"
+  },
+  "privateEvidenceSha256": {
+    "ci-documents-successor-fix.json": "d0a40344e02f8895ace58d77a6c142f6748147f99270fb5ad15df67b176e4565",
+    "callback-final.log": "1a9f4f6c718489976d23bef9a49880570a3cac447c1b834361ca7ab7046b6176",
+    "build-webpack-final.log": "2994388213a75d16ba829cd39bff1a2facc33cbe0ed75586e0c0a7200b9dfd4f"
+  },
+  "limits": [
+    "No production SQL changes, hosted migrations or provider submissions.",
+    "No full gate claimed. All RF acceptance criteria remain pending."
+  ]
+}

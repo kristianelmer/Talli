@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "issue": "#193",
+  "slice": "RF-1086",
+  "status": "SUBMISSION_CONFIRMED_ARCHIVE_PENDING",
+  "recordedAt": "2026-09-15T05:08:21.585388+00:00",
+  "environment": "Skatteetaten external test / Maskinporten test",
+  "sourceRevision": "abb48eda31f75583629eb1ec9ecd71f676061317",
+  "executionRevision": "553e547f0ca7950ab72d9fb357808bb89a62c9e7",
+  "companyOrgNumber": "310279617",
+  "incomeYear": 2025,
+  "startedAt": "2026-09-15T05:07:10.201616+00:00",
+  "finishedAt": "2026-09-15T05:07:21.237766+00:00",
+  "ownerAuthorization": {
+    "approved": true,
+    "message": "Yes",
+    "manifestSha256": "eb313557b98b36f4d65eff60e6ddd01e32960c7a81e4bf732274830dff4b1fef",
+    "productionAllowed": false,
+    "paidStepsAllowed": false
+  },
+  "verification": {
+    "tokenHttp200": true,
+    "mutationCount": 3,
+    "allMutationHttp200": true,
+    "exactApprovedBodies": true,
+    "exactDurableKeys": true,
+    "duplicateMutationAttempts": 0,
+    "archiveGetAttempts": 5,
+    "archiveHttpStatuses": [
+      404,
+      404,
+      404,
+      404,
+      404
+    ],
+    "pendingMutation": null,
+    "archiveVerified": false,
+    "finalBusinessAcceptanceVerified": false
+  },
+  "references": {
+    "oppgavegiversLeveranseReferanse": "01a0a376-4223-7554-a709-d7af2984f193",
+    "dialogId": "019f5fce-2119-7570-a78b-db0a9b0a5c1f",
+    "forsendelseId": "01a0a376-44d7-7535-845a-322691b770c2"
+  },
+  "archiveError": {
+    "code": "GLD_021",
+    "status": 404,
+    "correlationId": "f04c4e14-9ed1-1d26-a30c-5119546422a9",
+    "retryable": false,
+    "message": "GLD_021"
+  },
+  "artifacts": {
+    "action-manifest-final-source.json": "eb313557b98b36f4d65eff60e6ddd01e32960c7a81e4bf732274830dff4b1fef",
+    "owner-authorization.json": "525b1e0fecaf6977cf5c948c90c752714f17bac475bcaeeca79867dcf358ca3f",
+    "execution-result.json": "ed4c52b16ea6b63a535e6c85a942b98d86ba23f29bf523c25dc141d861c3f6d7",
+    "actual-request-trace.json": "98ca0ac2eba4738a02718c05498e3dc91650d83f531618000a22dc27e5d99134",
+    "live-evidence.json": "60cb7694d116b1515133ecbe74e738b91c461bb59197ad57b7bbc47d9e8fe6fe",
+    "../execute-approved-baseline.py": "825448fadcdf5a04481cc09c9384fb8298fe9fdb7cf7134b028e28273cba4a67"
+  },
+  "limits": [
+    "Five approved archive reads exhausted; no further provider request made",
+    "Confirmed receipt is not archive or final business acceptance",
+    "No production filing, activation, paid step, complete RF gate or later-obligation credit"
+  ],
+  "review": {
+    "status": "PASS_SUBMISSION_CONFIRMED_ARCHIVE_PENDING",
+    "report": "reviews/provider-baseline-20260915-spec.md",
+    "sha256": "e6222fa5d9fe898a15239120d3aac7620d958491b7dd19a2f6401e08528b39f2",
+    "independentChecks": 50
+  },
+  "archiveErrorExtent": "All five HTTP404 statuses retained; the final GET error code GLD_021 is retained individually."
+}

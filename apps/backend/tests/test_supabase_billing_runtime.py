@@ -29,6 +29,7 @@ from talli_backend.modules.billing.public import (
     BillingErrorCode,
     BillingPaymentStatus,
     BillingObligation,
+    BillingPilotCaseProfile,
     BillingPlan,
     BillingPricing,
     BillingProviderResult,
@@ -717,3 +718,35 @@ def test_committed_provider_intent_survives_lost_response_and_restart(failure_mo
             cleanup()
     finally:
         disable_backend_login()
+
+
+def test_full_year_pilot_preserves_profile_identity_idempotency_and_rollback(setup, pilot_case):
+    case = pilot_case
+    historical = asyncio.run(case["management"].manage_pilot_entitlement(case["command"]))
+    command = replace(case["command"], case_profile=BillingPilotCaseProfile.RF1086_FULL_YEAR_V1,
+                      idempotency_key=IdempotencyKey(str(uuid4())))
+    full_year = asyncio.run(case["management"].manage_pilot_entitlement(command))
+    assert full_year.case_profile is BillingPilotCaseProfile.RF1086_FULL_YEAR_V1
+    assert historical.entitlement_id != full_year.entitlement_id
+    assert asyncio.run(case["management"].manage_pilot_entitlement(command)) == full_year
+    assert read_pilot(setup, case).pilot_entitlement_id == historical.entitlement_id
+    assert read_pilot(setup, case, query=replace(case["query"], case_profile=command.case_profile.value)).pilot_entitlement_id == full_year.entitlement_id
+    with pytest.raises(BillingError) as reused:
+        asyncio.run(case["management"].manage_pilot_entitlement(replace(command, case_profile=historical.case_profile)))
+    assert reused.value.code is BillingErrorCode.IDEMPOTENCY_KEY_REUSED
+    with pytest.raises(BillingError) as moved:
+        asyncio.run(case["management"].manage_pilot_entitlement(replace(command,
+            entitlement_id=historical.entitlement_id, idempotency_key=IdempotencyKey(str(uuid4())))))
+    assert moved.value.code is BillingErrorCode.INVALID_INPUT
+    # The rollback CHECK scans retained rows even though the table forces RLS.
+    rollback = Path(__file__).resolve().parents[3] / "supabase/rollback/20260924084752_billing_rf_full_year_pilot_profile.sql"
+    with psycopg.connect(DATABASE_URL, autocommit=True) as connection:
+        with pytest.raises(psycopg.errors.CheckViolation):
+            connection.execute(rollback.read_text())
+        connection.execute("rollback")
+        assert connection.execute("select case_profile from billing.production_pilot_entitlements where id=%s",
+                                  (str(full_year.entitlement_id),)).fetchone()[0] == command.case_profile.value
+        with pytest.raises(psycopg.errors.CheckViolation):
+            connection.execute("update billing.production_pilot_entitlements set case_profile='unknown_profile' where id=%s",
+                               (str(full_year.entitlement_id),))
+    assert asyncio.run(case["management"].manage_pilot_entitlement(command)) == full_year

@@ -445,6 +445,11 @@
       "owner": "backend:documents"
     },
     {
+      "name": "documents.retained_originals",
+      "kind": "capability-business",
+      "owner": "backend:documents"
+    },
+    {
       "name": "investments.acquisition_lots",
       "kind": "capability-business",
       "owner": "backend:investments",
@@ -896,6 +901,42 @@
       "compatibilityResources": [
         "table:production_filing_submissions"
       ]
+    },
+    {
+      "name": "shareholder_register_filing.year_source_heads",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.year_source_versions",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.register_observations",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.source_previews",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.source_review_bridges",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.source_approval_bindings",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
     }
   ],
   "preservedSourceRetirements": [

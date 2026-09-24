@@ -396,3 +396,64 @@ test("corporate release and restore runbooks keep external gates explicitly pend
   assert.match(runbook, /SHA-256/);
   assert.match(runbook, /must never embed raw signed PDF bytes/i);
 });
+
+function rfProductionEvidence() {
+  return { companyId: "source-company", incomeYear: 2025,
+    approvals: [{ id: "a", companyId: "source-company", incomeYear: 2025, entitlementId: "e", payloadHash: "p" }],
+    productionSubmissions: [{ id: "s", companyId: "source-company", incomeYear: 2025,
+      approvalId: "a", entitlementId: "e", payloadHash: "p", supersedesSubmissionId: null, feedbackArtifactCount: 1, status: "accepted", feedbackState: "accepted" }],
+    productionEvents: [{ id: "j", companyId: "source-company", incomeYear: 2025, submissionId: "s", artifactHashes: ["a".repeat(64)], resultingStatus: "accepted", operationName: "reconciliation:original", operationState: "succeeded" }],
+    feedbackArtifacts: [{ id: "r", companyId: "source-company", submissionId: "s", documentId: "document-id",
+      sha256: "a".repeat(64), byteLength: 900, contentType: "application/pdf", authorityReference: "original", classification: "accepted" }] };
+}
+
+test("restore preserves canonical RF production lineage without fabricating simulation rows", () => {
+  const archive = archiveFixture({ rf1086Production: rfProductionEvidence(), rf1086Submissions: [] });
+  const restored = restoreCompanyYearArchive(archive, { targetCompanyId: "restore-target" });
+  assert.deepEqual(restored.restored.rf1086Production, archive.rf1086Production);
+  assert.equal(restored.manifest.counts.rf1086ProductionSubmissions, 1);
+  assert.equal(restored.manifest.counts.rf1086ProductionReceipts, 1);
+  assert.equal(assertRestoreIntegrity(restored).failures.some(code => code.startsWith("rf1086_")), false);
+});
+
+for (const [field, changes, expected] of [
+  ["productionSubmissions", { approvalId: "missing" }, "rf1086_production_relationship_missing"],
+  ["productionSubmissions", { supersedesSubmissionId: "missing" }, "rf1086_production_relationship_missing"],
+  ["productionSubmissions", { feedbackArtifactCount: 2 }, "rf1086_production_receipt_count_mismatch"],
+  ["productionEvents", { incomeYear: 2024 }, "rf1086_production_archive_scope_invalid"],
+  ["feedbackArtifacts", { sha256: "c".repeat(64) }, "rf1086_production_receipt_object_mismatch"],
+]) {
+  test(`restore rejects broken RF evidence ${JSON.stringify(changes)}`, () => {
+    const rf = rfProductionEvidence(); Object.assign(rf[field][0], changes);
+    const restored = restoreCompanyYearArchive(archiveFixture({ rf1086Production: rf }), { targetCompanyId: "restore-target" });
+    assert.ok(assertRestoreIntegrity(restored).failures.includes(expected));
+  });
+}
+
+for (const change of ["empty_receipts", "missing_terminal_event", "mismatched_classification", "foreign_artifact_hash", "hidden_terminal_status", "not_reconciliation"]) {
+  test(`restore cannot mark truncated or inconsistent RF terminal evidence intact: ${change}`, () => {
+    const rf = rfProductionEvidence();
+    if (change === "empty_receipts") { rf.feedbackArtifacts = []; rf.productionEvents = []; rf.productionSubmissions[0].feedbackArtifactCount = 0; }
+    if (change === "missing_terminal_event") rf.productionEvents = [];
+    if (change === "mismatched_classification") rf.feedbackArtifacts[0].classification = "rejected";
+    if (change === "foreign_artifact_hash") rf.productionEvents[0].artifactHashes = ["f".repeat(64)];
+    if (change === "hidden_terminal_status") rf.productionSubmissions[0].feedbackState = "processing";
+    if (change === "not_reconciliation") rf.productionEvents[0].operationName = "confirm";
+    const restored = restoreCompanyYearArchive(archiveFixture({ rf1086Production: rf }), { targetCompanyId: "restore-target" });
+    assert.ok(assertRestoreIntegrity(restored).failures.includes("rf1086_production_terminal_evidence_missing"));
+  });
+}
+
+for (const cycle of ["self", "two-submissions"]) {
+  test(`restore rejects cyclic RF correction history: ${cycle}`, () => {
+    const rf = rfProductionEvidence();
+    if (cycle === "self") rf.productionSubmissions[0].supersedesSubmissionId = "s";
+    else {
+      rf.productionSubmissions.push({ ...rf.productionSubmissions[0], id: "s2", supersedesSubmissionId: "s",
+        status: "processing", feedbackState: "processing", feedbackArtifactCount: 0 });
+      rf.productionSubmissions[0].supersedesSubmissionId = "s2";
+    }
+    const restored = restoreCompanyYearArchive(archiveFixture({ rf1086Production: rf }), { targetCompanyId: "restore-target" });
+    assert.ok(assertRestoreIntegrity(restored).failures.includes("rf1086_production_correction_cycle"));
+  });
+}

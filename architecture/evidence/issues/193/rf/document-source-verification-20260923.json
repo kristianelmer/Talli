@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "issue": 193,
+  "scope": "Documents private-byte verification for trusted RF source capture",
+  "status": "PASS",
+  "testedAt": "2026-09-23",
+  "tests": {
+    "documentsAdapterAndApi": 36,
+    "providerCalls": 0
+  },
+  "proofs": [
+    "Private object length and SHA-256 reverified.",
+    "Metadata and live accepted owner authorization checked again after I/O.",
+    "Real adapter regressions cover revocation before/during read, unavailable authorization and absent refresh binding.",
+    "Original integrity classification preserved; unsigned content is never relabelled signed."
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/modules/documents/public.py": "6217a9bc83b0df48c049d796ea4c08e53b398c6b70d9e26b243920cb29ae3980",
+    "apps/backend/src/talli_backend/modules/documents/service.py": "028415bbafcd4cbf64ce7715d91e1fe9b0c685faf49e9944a5a49a0a00084db2",
+    "apps/backend/src/talli_backend/modules/documents/module.json": "e9d14be429f9293c060242c9cb065baf5e82ccd4212241966bfe3a0b241a8304",
+    "apps/backend/src/talli_backend/modules/documents/MODULE.md": "0a5609447adf2fe14805374d162ad01526ca5e2909e881e4707daaecebe12777",
+    "apps/backend/src/talli_backend/adapters/supabase_documents.py": "b6ec90256ee14b5ab0785e0eee20e5f1a52b70002ed69cbfa7a98c3df8482823",
+    "apps/backend/tests/test_documents.py": "f8d6858b7a87f62bb7ef6e15f4cf0f702a3b8459bf3a4e683cf84d78724b491f",
+    "apps/backend/tests/test_supabase_documents.py": "2484e3caec082cc03d2cf3bddb3de22f98bc5824c907f042bd38bd7f617a8675"
+  },
+  "testLogSha256": "ebe6a5070ba380475dc0ce7fcdd1e78a2b4b16d9cc92d8f4ff598a0ec02ab394",
+  "limits": [
+    "Point-in-time evidence only; no cross-capability lease.",
+    "No new route, private bytes returned to browser, or provider action.",
+    "Full RF source and filing integration still pending."
+  ],
+  "checkpoint": "Pre-retention verification; later additive Documents contracts are verified by source-capture-integration-20260923.json."
+}

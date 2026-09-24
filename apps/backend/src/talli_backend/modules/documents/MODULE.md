@@ -1,7 +1,7 @@
 # Documents backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["documents.evidence_references","public.documents"],"ports":["DocumentObjectStorage","DocumentsAuthorization","DocumentsPersistence"],"publicEntryPoints":["talli_backend.modules.documents.public"]}
+{"dependencies":[],"ownedTables":["documents.evidence_references","documents.retained_originals","public.documents"],"ports":["DocumentEvidenceRetentionPersistence","DocumentOriginalPersistence","DocumentObjectStorage","DocumentsAuthorization","DocumentsPersistence"],"publicEntryPoints":["talli_backend.modules.documents.public"]}
 -->
 
 `documents` owns accounting-document validation, the `public.documents` metadata
@@ -42,3 +42,117 @@ The settlement workflow uses `DocumentBindingQuery`, `DocumentBindingPersistence
 <!-- architecture-inventory
 {"ports":["DocumentBindingPersistence"]}
 -->
+
+`DocumentsSession.verify_document_evidence` publishes `VerifiedDocumentEvidence`
+for authenticated backend consumers. It rereads private object bytes, verifies
+length and SHA-256 against accepted metadata, and rechecks metadata and current
+owner access before and after object I/O using
+`DocumentsPersistence.refresh_actor_role`. The adapter re-reads accepted roles
+through the existing Documents authorization port, replaces its cached roles,
+and fails closed when fresh authorization is unavailable. Other operations
+retain their existing session behavior. The result carries metadata and hashes only;
+it preserves the existing integrity classification and does not upgrade an
+unsigned or restored document to signed evidence. It adds no browser route or
+signed download URL. This is a point-in-time observation, not a cross-capability
+lease: a consequential consumer still needs to close its freshness race.
+
+### Transactional retention of RF source originals
+
+`DocumentEvidenceRetentionCommand` identifies one RF source/observation and its
+verified original document, actual document income year, actual status, content
+hash/length and complete metadata digest. `document_metadata_sha256` owns the
+canonical hash of every `DocumentRecord` field, including storage key, creator,
+creation/removal timestamps, retention and linkage. Aware timestamps normalize
+to UTC. Content hashes are versions of original bytes; no integer document
+revision or signedness is invented.
+
+`DocumentEvidenceRetentionPersistence.retain_verified_evidence` is implemented
+by `PostgresDocumentEvidenceRetention`, registered through
+`document_evidence_retention_adapter`. It must receive the RF caller's existing
+transaction connection. `documents.retain_verified_rf_evidence_v1` checks the
+accepted owner, locks exact same-company/document-year metadata, verifies actual
+status/hash/length, registers a deterministic per-source/document reference and
+returns the complete locked row. The Documents adapter hashes that record and
+calls `documents.assert_retained_metadata_v1` while the lock is held. A mismatch
+aborts the SQL transaction, even if a caller mistakenly catches its exception.
+No RF adapter reads Documents tables directly.
+
+RF source insertion and every referenced original must commit in that same
+transaction. The new SQL API accepts only RF year sources and independent
+register observations. It preserves attached/stored/unsigned/owner-attested
+statuses unchanged. This retention operation is not independent-provenance
+attestation and cannot make filing-generated evidence suitable for register
+capture. Those source rules remain with the source owner and trusted workflow.
+Corrections create additional reference sets; original references are retained.
+Rollback revokes new capture calls while preserving all registry rows, accepted
+statuses and existing document-removal guards. Metadata row locks close the
+verified-metadata-to-source-capture gap; no provider-object lock or external
+cross-capability lease is claimed.
+
+The removal guard uses Ledger's published `has_document_memo_reference_v1`
+lookup with the document's company identity. It does not depend on the retired
+`public.ledger_entries` predecessor relation. The additive Documents migration
+changes only that predicate, preserving every RF, Tax, Accounts and other
+reference branch and the existing function privileges. Replay it after a frozen
+RF cutover that restores the historical guard. Rollback retains the safety
+correction because restoring the retired-table read would break removal checks.
+
+
+### Immutable retained originals
+
+`verify_document_evidence` rechecks current owner and original object bytes, then
+stores an immutable Documents-owned copy (at most 10 MiB) before returning its
+`RetainedDocumentOriginalReceipt`. The private `documents.retained_originals`
+table owns these immutable byte copies. Copying runs in a separate short database
+transaction after object I/O. The receipt binds document/company/source year,
+complete metadata hash, exact byte hash/length, and retention time. Matching
+observations reuse one receipt; changed metadata produces a distinct version.
+
+This byte copy is separate from `evidence_references`. A verification/read can
+create it before a filing source is captured; it does not certify a filing,
+create a filing retention reference, or change normal document removal policy.
+The retained copy remains independently readable by the current accepted owner
+through an exact receipt/company query, even if the mutable bucket original is
+later unavailable. Retained copies are not deleted by removing bucket metadata;
+the original's retention policy is recorded in the immutable metadata snapshot.
+There is currently no automatic retention-expiry purge. The migration
+rollback refuses to discard any retained originals. Empty rollback removes the
+new tables/RPCs and preserves shared lock/owner-predicate/metadata-assertion
+EXECUTE grants that may predate this layer; these helper grants expose neither bytes nor tables.
+Temporary migration role memberships restore their prior options.
+
+`DocumentOriginalPersistence` binds to `PostgresDocumentOriginals` through
+`document_original_persistence_adapter`. Its exact owner read returns
+`RetainedDocumentOriginal`, containing the receipt and verified retained bytes.
+
+`DocumentOriginalPersistence.assert_retained_original` accepts an existing
+verified transaction. Its restricted owner RPC binds an exact immutable receipt
+and current original metadata under the company guard and document row lock;
+metadata mismatch poisons that SQL transaction. Filing executors receive only
+this assertion, never retained bytes or direct table access. A complete
+cross-owner consequential admission guard is separate work; this receipt alone
+is not current-source approval.
+
+
+Production integration remains incomplete: archive/export, backup/restore,
+retention expiry and cancellation/deletion inventories must explicitly account
+for retained copies. Existing inventories do not automatically include this
+new table. A verify-only copy is distinct from a filing retention obligation;
+no complete Documents production-readiness claim follows from this feature.
+
+### Company guard for consequential evidence
+
+`20260924080249_documents_rf_consequential_company_guards.sql` makes Documents
+commands acquire the shared company guard before document or retention row
+locks. READ COMMITTED is required, and accepted-owner access is read again after
+a wait. Retained-reference and original tables also have mutation backstops.
+The guard does not impose a filing-year eligibility requirement on document
+recovery or retention.
+
+Governance may assert an exact retained-original receipt and metadata digest on
+its final guarded transaction connection. It receives no Documents table read
+privileges. Object download and hashing happen before that transaction; final
+assertions check the preserved receipt and current metadata without object I/O.
+Rollback suspends the guarded command helpers while preserving evidence and
+backstops. Runtime migration, ACL and concurrency proof belongs to the database
+lane; static collection alone does not establish this proof.

@@ -103,6 +103,7 @@ test("archive route and generation triggers share one complete source inventory"
   const corporateGovernanceStageExit = sql(corporateGovernanceStageExitPath);
   const billingCapability = sql(billingCapabilityPath);
   const rfCutover = sql(rfCutoverPath);
+  const rfProductionArchive = sql(new URL("../supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql", import.meta.url));
   const taxCutover = sql(taxCutoverPath);
   const taxFilingCutover = sql(taxFilingCutoverPath);
   const accountsCutover = sql(accountsCutoverPath);
@@ -133,6 +134,10 @@ test("archive route and generation triggers share one complete source inventory"
     "shareholder_register_filing.opening_balance_setups",
     "shareholder_register_filing.opening_shareholders",
     "ledger.opening_bank_inputs",
+    "shareholder_register_filing.filing_approval_snapshots",
+    "shareholder_register_filing.production_filing_submissions",
+    "shareholder_register_filing.production_filing_events",
+    "shareholder_register_filing.production_feedback_artifacts",
     "shareholder_register_filing.filing_previews",
     "shareholder_register_filing.filing_submissions",
     "shareholder_register_filing.authority_permissions",
@@ -225,6 +230,9 @@ test("archive route and generation triggers share one complete source inventory"
   ]);
   assert.equal(canonicalTaxFilingTriggers.length, 5);
   const triggerInventory = new Map([
+    ...[...rfProductionArchive.matchAll(
+      /before insert or update or delete on (shareholder_register_filing\.[a-z0-9_]+)\s+for each row execute function public\.company_archive_track_source_write_v1\('(year|company)', 'company_id'\)/giu,
+    )].map((match) => [match[1], match[2]]),
     ...legacyTriggerInventory,
     ...canonicalTaxFilingTriggers,
     ...canonicalInvestmentTriggerInventory,

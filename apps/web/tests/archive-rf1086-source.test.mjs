@@ -8,6 +8,7 @@ import ts from "typescript";
 import { presentOpeningSnapshots } from "../features/ledger/presentation.ts";
 import * as rfPresentation from "../features/shareholder-register-filing/presentation.ts";
 import { loadRf1086ArchiveSource } from "../features/shareholder-register-filing/transport.ts";
+import { rf1086ArchiveReceiptsMatch } from "../app/lib/archive.ts";
 
 const require = createRequire(import.meta.url);
 const source = readFileSync(new URL("../app/archive/[companyId]/[incomeYear]/download/route.ts", import.meta.url), "utf8");
@@ -46,11 +47,11 @@ const workspace = () => ({ companyId, incomeYear: null,
   reviewComments: [{ id: uid(6), previewId: uid(2024 + 300), companyId, target: "rf1086_preview", severity: "hard_block",
     body: "Retained older-year comment", createdBy: uid(1), acknowledgedBy: uid(1), acknowledgedAt: at, createdAt: at }],
   testEvidence: [evidence(uid(4)), evidence(uid(44))], overrides: [], approvals: [],
-  productionSubmissions: [{ id: uid(8), companyId, incomeYear: 2025, status: "accepted" }], feedbackArtifacts: [], actions: [],
+  productionSubmissions: [], productionEvents: [], feedbackArtifacts: [], actions: [],
 });
 
 function route({ generic = {}, failures = {}, rf = workspace(), openings = [opening(2025), opening(2024)],
-  user = true, token = true, mfa = true, receiptError = false, routeSource = source, rfLoader, taxFiling = {}, accountsFiling = {} } = {}) {
+  user = true, token = true, mfa = true, receiptError = false, routeSource = source, rfLoader, taxFiling = {}, accountsFiling = {}, documentObjects = [] } = {}) {
   const calls = [], readTables = [], captures = [], openingYears = [], rfYears = [];
   const ledgerProjection = presentOpeningSnapshots(openings);
   const legacy = { opening_balance_setups: ledgerProjection.setups, opening_shareholders: ledgerProjection.shareholders, ...generic };
@@ -122,6 +123,8 @@ function route({ generic = {}, failures = {}, rf = workspace(), openings = [open
         return { companyId: company, incomeYear: year, simulations,
           previews: rf.previews.filter(row => row.incomeYear === year),
           reviewComments: rf.reviewComments, permissions: rf.permissions,
+          approvals: rf.approvals, productionSubmissions: rf.productionSubmissions,
+          productionEvents: rf.productionEvents, feedbackArtifacts: rf.feedbackArtifacts,
           testEvidence: rf.testEvidence.filter(row => evidenceIds.has(row.id)) };
       },
     },
@@ -129,10 +132,11 @@ function route({ generic = {}, failures = {}, rf = workspace(), openings = [open
       ...["loadInvestmentAcquisitionLots", "loadInvestmentActivity", "loadInvestmentPositions", "loadInvestmentShareSaleAllocations", "loadInvestmentCorrections"].map(key => [key, empty]),
       ...["effectiveInvestmentActivity", "presentAcquisitionLots", "presentInvestmentActivity", "presentInvestmentPositions", "presentShareSaleAllocations", "presentInvestmentCorrections"].map(key => [key, value => value]),
     ]),
-    "../../../../../features/documents": { loadDocumentBackupProjection: async (_access, _company, incomeYear) => ({ companyId, incomeYear, objects: [] }) },
+    "../../../../../features/documents": { loadDocumentBackupProjection: async (_access, _company, incomeYear) => ({ companyId, incomeYear, objects: documentObjects }) },
     "../../../../../features/corporate-governance": { listCorporateDecisionLifecycle: async () => ({ corporateDecisions: [], corporateDocumentSets: [], corporateDocumentArtifacts: [], corporateDocumentEvents: [], corporateDecisionFinalizations: [] }), listSupportedCorporateEvents: empty },
     "../../../../../features/billing": { loadBillingSnapshot: async () => ({ accounts: [] }), presentBillingAccount: value => value },
     "../../../../lib/archive": { firstArchiveSourceError: results => results.find(result => result.error)?.error ?? null,
+      rf1086ArchiveReceiptsMatch,
       buildPersistedCompanyArchive: value => { calls.push("build"); captures.push(value); return { originalArchiveInput: value }; } },
     "../../../../lib/company-access-context": { loadAcceptedMembershipCompany: async () => ({ id: companyId, org_number: "923456789", name: "Synthetic AS" }) },
     "../../../../lib/security": { requireStepUpForAction: async () => { calls.push("mfa"); if (!mfa) throw Error("step-up"); } },
@@ -261,7 +265,7 @@ test("actual generated RF archive transport isolates a malformed 2024 preview fr
   const queries = [];
   t.mock.method(globalThis, "fetch", async (url, request) => {
     const parsed = new URL(url), year = Number(parsed.searchParams.get("incomeYear"));
-    assert.equal(parsed.pathname, "/api/v1/shareholder-register-filings/archive-source");
+    assert.equal(parsed.pathname, "/api/v1/shareholder-register-filings/archive-source/production");
     assert.deepEqual([...parsed.searchParams.entries()].sort(), [["companyId", companyId], ["incomeYear", String(year)]]);
     assert.equal(new Headers(request.headers).get("Authorization"), "Bearer verified-owner");
     assert.equal(request.cache, "no-store");
@@ -271,7 +275,8 @@ test("actual generated RF archive transport isolates a malformed 2024 preview fr
     return Response.json({ companyId, incomeYear: year, previews: [row],
       simulations: [{ ...simulation(year), calls: [], feedbackItems: [], receiptMetadata: null,
         submittedPayloadRef: null, submittedPayload: null }],
-      reviewComments: workspace().reviewComments, permissions: workspace().permissions, testEvidence: [] });
+      reviewComments: workspace().reviewComments, permissions: workspace().permissions, testEvidence: [],
+      approvals: [], productionSubmissions: [], productionEvents: [], feedbackArtifacts: [] });
   });
   const valid = route({ rfLoader: loadRf1086ArchiveSource });
   assert.equal((await valid.run(2025)).status, 200);
@@ -395,4 +400,92 @@ test("owned Accounts archive retains requested-year rows, company-wide comments,
   assert.deepEqual(fixture.readTables, ["audit_events", "bank_suggestion_acceptances"]);
   assert.ok(fixture.calls.indexOf("read:accounts-filing-api") > fixture.calls.indexOf("company_archive_begin_export"));
   assert.equal(fixture.calls.at(-1), "company_archive_complete_export");
+});
+
+function productionArchiveFixture() {
+  const rf = workspace(); rf.simulations = [];
+  const approval = { id: uid(201), companyId, incomeYear: 2025, previewId: preview(2025).id,
+    payloadHash: "a".repeat(64), entitlementId: uid(202), manifest: { exact: "retained" } };
+  const submission = { id: uid(203), companyId, incomeYear: 2025, approvalId: approval.id,
+    payloadHash: approval.payloadHash, entitlementId: approval.entitlementId, supersedesSubmissionId: null,
+    status: "accepted", feedbackState: "accepted", feedbackArtifactCount: 1 };
+  const event = { id: uid(204), companyId, incomeYear: 2025, submissionId: submission.id,
+    operationName: "feedback_reconcile", operationState: "succeeded", resultingStatus: "accepted" };
+  const receipt = { id: uid(205), companyId, submissionId: submission.id, documentId: uid(206),
+    sha256: "b".repeat(64), byteLength: 123, contentType: "application/xml", authorityReference: "immutable-receipt" };
+  const object = { documentId: receipt.documentId, contentSha256: receipt.sha256, byteLength: receipt.byteLength,
+    contentType: receipt.contentType, storageKey: "company/year/receipt.xml", status: "stored", removedAt: null };
+  Object.assign(rf, { approvals: [approval], productionSubmissions: [submission], productionEvents: [event], feedbackArtifacts: [receipt] });
+  return { rf, documentObjects: [object] };
+}
+
+test("production-only RF history exports exact canonical lineage with its verified receipt object", async () => {
+  const input = productionArchiveFixture(), fixture = route(input);
+  assert.equal((await fixture.run()).status, 200);
+  assert.deepEqual(plain(fixture.captures[0].rf1086Production), {
+    companyId, incomeYear: 2025, approvals: input.rf.approvals,
+    productionSubmissions: input.rf.productionSubmissions, productionEvents: input.rf.productionEvents,
+    feedbackArtifacts: input.rf.feedbackArtifacts,
+  });
+  assert.equal(fixture.calls.at(-1), "company_archive_complete_export");
+});
+
+for (const change of [null, { contentSha256: "c".repeat(64) }, { byteLength: 124 },
+  { contentType: "text/plain" }, { status: "removed" }, { storageKey: "" }, { removedAt: at }]) {
+  test(`receipt object mismatch cannot create a completed archive: ${JSON.stringify(change)}`, async () => {
+    const input = productionArchiveFixture();
+    input.documentObjects = change ? [{ ...input.documentObjects[0], ...change }] : [];
+    const fixture = route(input);
+    assert.equal((await fixture.run()).status, 500);
+    assert.equal(fixture.captures.length, 0);
+    assert.equal(fixture.calls.includes("company_archive_complete_export"), false);
+  });
+}
+
+function legacyArchiveResponse(year) {
+  return { companyId, incomeYear: year, previews: [preview(year)],
+    simulations: [{ ...simulation(year), calls: [], feedbackItems: [], receiptMetadata: null,
+      submittedPayloadRef: null, submittedPayload: null }],
+    reviewComments: workspace().reviewComments, permissions: workspace().permissions, testEvidence: [] };
+}
+
+for (const status of [404, 500, 403]) {
+  test(`archive rollout handles unavailable production endpoint HTTP ${status} explicitly`, async (t) => {
+    const previousUrl = process.env.TALLI_BACKEND_URL;
+    process.env.TALLI_BACKEND_URL = "https://backend.example";
+    t.after(() => { if (previousUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+      else process.env.TALLI_BACKEND_URL = previousUrl; });
+    const paths = [];
+    t.mock.method(globalThis, "fetch", async url => {
+      const parsed = new URL(url); paths.push(parsed.pathname);
+      if (parsed.pathname.endsWith("/production")) return Response.json({ detail: "Unavailable" }, { status });
+      return Response.json(legacyArchiveResponse(Number(parsed.searchParams.get("incomeYear"))));
+    });
+    const fixture = route({ rfLoader: loadRf1086ArchiveSource });
+    assert.equal((await fixture.run()).status, status === 404 ? 200 : 500);
+    if (status === 404) {
+      assert.equal(paths.length, 2);
+      assert.equal(paths[1], "/api/v1/shareholder-register-filings/archive-source");
+      assert.equal(fixture.captures[0].rf1086Production, undefined, "unknown production history must not become empty arrays");
+    } else {
+      assert.equal(paths.length, 1);
+      assert.equal(fixture.captures.length, 0);
+    }
+  });
+}
+
+test("successful production archive endpoint cannot omit productionSubmissions", async (t) => {
+  const previousUrl = process.env.TALLI_BACKEND_URL;
+  process.env.TALLI_BACKEND_URL = "https://backend.example";
+  t.after(() => { if (previousUrl === undefined) delete process.env.TALLI_BACKEND_URL;
+    else process.env.TALLI_BACKEND_URL = previousUrl; });
+  const paths = [];
+  t.mock.method(globalThis, "fetch", async url => {
+    const parsed = new URL(url); paths.push(parsed.pathname);
+    return Response.json(legacyArchiveResponse(Number(parsed.searchParams.get("incomeYear"))));
+  });
+  const fixture = route({ rfLoader: loadRf1086ArchiveSource });
+  assert.equal((await fixture.run()).status, 500);
+  assert.deepEqual(paths, ["/api/v1/shareholder-register-filings/archive-source/production"]);
+  assert.equal(fixture.captures.length, 0);
 });

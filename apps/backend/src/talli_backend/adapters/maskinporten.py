@@ -23,10 +23,11 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 SYSTEM_USER_CONTROL_WRITE_SCOPE = "altinn:authentication/systemuser.request.write"
 SYSTEM_USER_CONTROL_READ_SCOPE = "altinn:authentication/systemuser.request.read"
 SYSTEM_REGISTER_WRITE_SCOPE = "altinn:authentication/systemregister.write"
+SYSTEM_USER_DIALOGPORTEN_SCOPE = "digdir:dialogporten"
 SYSTEM_USER_TAX_SCOPE = "skatteetaten:innrapporteringaksjonaerregisteroppgave"
 MASKINPORTEN_JWT_BEARER_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
 _SCOPES = frozenset({SYSTEM_USER_CONTROL_WRITE_SCOPE, SYSTEM_USER_CONTROL_READ_SCOPE,
-                     SYSTEM_REGISTER_WRITE_SCOPE, SYSTEM_USER_TAX_SCOPE})
+                     SYSTEM_REGISTER_WRITE_SCOPE, SYSTEM_USER_TAX_SCOPE, SYSTEM_USER_DIALOGPORTEN_SCOPE})
 _ISSUERS = {"test": "https://test.maskinporten.no/", "production": "https://maskinporten.no/"}
 _UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}", re.I)
 _EXTERNAL_REF = re.compile(r"[A-Za-z0-9_-]{43}")
@@ -108,7 +109,7 @@ def build_maskinporten_grant(
         "iat": issued_at, "exp": issued_at + 119, "jti": _identifier(jti if jti is not None else str(uuid4())),
         "scope": scope,
     }
-    if scope == SYSTEM_USER_TAX_SCOPE:
+    if scope in {SYSTEM_USER_TAX_SCOPE, SYSTEM_USER_DIALOGPORTEN_SCOPE}:
         if (not isinstance(system_user_org_number, str)
                 or not re.fullmatch(r"[0-9]{9}", system_user_org_number)
                 or not isinstance(system_user_external_ref, str)

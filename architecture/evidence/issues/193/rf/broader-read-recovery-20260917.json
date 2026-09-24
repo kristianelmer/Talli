@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "environment": "test",
+  "sourceCommit": "56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd",
+  "status": "UNKNOWN_READ_ERROR",
+  "canonicalAcceptanceVerified": false,
+  "previousAttempt": "broader-submission-20260917.json",
+  "requests": 3,
+  "filingMutations": 0,
+  "artifactsRetained": 0,
+  "safeErrorCode": "RF1086_RECONCILIATION_READ_ERROR",
+  "observations": [
+    "Both test token grants returned HTTP200.",
+    "The exact original dialog GET was journaled before I/O; no response was retained.",
+    "No terminal receipt or acceptance evidence exists from this attempt.",
+    "The canonical reconciler recorded unknown; no resend was attempted."
+  ],
+  "privateEvidenceAlias": "issue193-rf-broader-read-recovery-14d7",
+  "privateArtifactHashes": {
+    "action-plan.json": "3281adeab6aac787cc9bb2bc491bee497f415d8675dfea0abfc42712bf166d3f",
+    "preparation-proof.json": "9b33226ad058b09c1c081f01c30a68d3f0553c30c05b624f433db2fb9109a4cb",
+    "prep-spec-review.json": "d26d8cee1e8caeef6d087fcb94bb91221bebba11c2c6357ce8f2d35de6674b82",
+    "prep-standards-review.json": "fbb818577ce659e4cbf5815aa359c82862c6c59a13f6e8bc7f5809591df303e1",
+    "independent-review-gate.json": "1ffcc527c0fa979e3d6979c2ef0a9c72de4e84245ea1000afe5c61b65d532130",
+    "execution-claim.json": "f2887b3541e5dcd4482b68631b5d3801af7ec9978a064250eddbde48105328e3",
+    "execution/result.json": "592c43ff96309a8e6bc8bd869f6ff300855821bff4a140c0fa5ec6548c0f4c9f",
+    "execution/reconciliation.json": "4c58f1bcaad2ee857baf55812d0a1437a7ddb9792c94e763da8b4ad51e38ee76"
+  },
+  "limits": [
+    "The cause of the failed read is not established by this journal; do not infer service rejection or acceptance.",
+    "The read-only attempt is consumed. Later diagnostics use a new bounded plan and preserve these originals.",
+    "All seven full RF criteria remain pending."
+  ]
+}

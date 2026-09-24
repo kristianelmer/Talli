@@ -23,6 +23,8 @@ from talli_backend.adapters.supabase_ledger import (
     _posted_entry,
 )
 from talli_backend.application.annual_data_compatibility import LegacyAnnualDataView
+from talli_backend.application.corporate_register_evidence import CorporateRegisterEvidenceVerifier, VerifiedCorporateRegisterEvidence
+from talli_backend.adapters.postgres_document_originals import PostgresDocumentOriginals
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
@@ -66,6 +68,7 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateGovernanceErrorCode,
     CorporateGovernancePersistence,
     CorporateLifecycleSnapshot,
+    CorporateReportingYearBasis,
     CorporateSourceReference,
     DocumentReference,
     FinalizeOwnerDividendCommand,
@@ -618,6 +621,13 @@ def _shareholder_loan_request(
 
 
 def _map_governance_database_error(message: str):
+    if "rf1086_register_predecessor_mismatch" in message or "documents_evidence_mismatch" in message:
+        return CorporateGovernanceError.precondition(
+            CorporateGovernanceErrorCode.CORPORATE_EVENT_EVIDENCE_INCOMPLETE,
+            "The current independent register evidence changed before the event was recorded.",
+        )
+    if "rf1086_forbidden" in message or "documents_forbidden" in message:
+        return CorporateGovernanceError.forbidden()
     if "corporate_governance_forbidden" in message:
         return CorporateGovernanceError.forbidden()
     if "corporate_governance_not_found" in message:
@@ -700,6 +710,7 @@ class SupabaseCorporateGovernanceSession:
     @asynccontextmanager
     async def transaction(
         self,
+        *, guarded_company_id: CompanyId | None = None,
     ) -> AsyncIterator[SupabaseCorporateGovernanceTransaction]:
         if not self._database_url:
             raise CorporateGovernanceError.unavailable()
@@ -709,7 +720,10 @@ class SupabaseCorporateGovernanceSession:
                 connect_timeout=5,
                 row_factory=dict_row,
             ) as connection:
-                await connection.set_isolation_level(psycopg.IsolationLevel.SERIALIZABLE)
+                if guarded_company_id is None:
+                    await connection.set_isolation_level(psycopg.IsolationLevel.SERIALIZABLE)
+                else:
+                    await connection.set_isolation_level(psycopg.IsolationLevel.READ_COMMITTED)
                 async with connection.transaction():
                     await connection.execute(
                         "set local role corporate_governance_workflow_executor"
@@ -722,6 +736,11 @@ class SupabaseCorporateGovernanceSession:
                         "select pg_catalog.set_config('talli.verified_actor_claims', %s, true)",
                         (self._verified.claims_json,),
                     )
+                    if guarded_company_id is not None:
+                        await connection.execute(
+                            "select corporate_governance.acquire_company_write_guard_v1(%s::uuid,%s)",
+                            (str(guarded_company_id), str(self.actor_id.subject)),
+                        )
                     yield SupabaseCorporateGovernanceTransaction(
                         self._database_url,
                         self._verified,
@@ -737,6 +756,17 @@ class SupabaseCorporateGovernanceSession:
 
 @bank_transaction_claim_persistence_adapter(BankTransactionClaimPersistence)
 class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
+    async def assert_register_evidence(self, evidence: VerifiedCorporateRegisterEvidence) -> None:
+        observation = evidence.observation
+        await self._database_rows(
+            "select shareholder_register_filing.assert_current_register_observation_v1(%s::uuid,%s::uuid,%s,%s,%s,%s)",
+            (observation.observation_id.value, str(observation.command.company_id), int(observation.command.income_year),
+             observation.version, observation.fact_sha256, str(self.actor_id.subject)),
+        )
+        originals = PostgresDocumentOriginals(self._connection, self.actor_id)
+        for receipt in sorted(evidence.originals, key=lambda item: item.document_id.value):
+            await originals.assert_retained_original(receipt)
+
     async def _database_rows(
         self,
         query: str,
@@ -848,6 +878,12 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
             )
         except (KeyError, TypeError, ValueError):
             raise CorporateGovernanceError.unavailable() from None
+
+    async def read_reporting_year_basis(self, company_id: CompanyId) -> CorporateReportingYearBasis:
+        # The authenticated session owns one SERIALIZABLE transaction. Both
+        # existing owner RPCs therefore read the same coherent MVCC snapshot.
+        return CorporateReportingYearBasis(company_id,
+            await self.list_lifecycle((company_id,)), await self.list_supported_events((company_id,)))
 
     async def list_lifecycle(
         self,
@@ -1474,11 +1510,13 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
 def compose_corporate_governance_application(
     sessions: CorporateGovernanceSessionFactory | None,
     documents: DocumentsSessionFactory,
+    register_evidence: CorporateRegisterEvidenceVerifier | None = None,
 ) -> CorporateGovernanceApplication:
     return CorporateGovernanceApplication(
         sessions or SupabaseCorporateGovernanceAdapter.from_environment(),
         documents,
         LedgerService,
+        register_evidence,
     )
 
 

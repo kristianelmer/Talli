@@ -22,7 +22,10 @@
       "SendApprovedRf1086Command",
       "ReconcileRf1086FeedbackCommand",
       "OpeningSnapshotCommands",
-      "Rf1086PreparationOperations"
+      "Rf1086PreparationOperations",
+      "RecordRf1086YearSource",
+      "RecordRf1086RegisterObservation",
+      "GenerateRf1086SourcePreview"
     ],
     "queries": [
       "Rf1086ShareSnapshot",
@@ -76,7 +79,35 @@
       "rf1086_production_code_blockers",
       "rf1086_production_scope_exclusions",
       "Rf1086ArchiveQuery",
-      "Rf1086ArchiveSnapshot"
+      "Rf1086ArchiveSnapshot",
+      "Rf1086ArchiveProductionEventRecord",
+      "Rf1086ArchiveFeedbackArtifactRecord",
+      "prepare_rf1086_year_source",
+      "assert_rf1086_year_source_fresh",
+      "assert_rf1086_year_source_integrity",
+      "assert_rf1086_year_source_replay",
+      "rf1086_year_source_digest",
+      "rf1086_governance_economic_facts",
+      "serialize_rf1086_year_source",
+      "parse_rf1086_year_source",
+      "Rf1086RegisterObservationMatchQuery",
+      "prepare_rf1086_register_observation",
+      "assert_rf1086_register_observation_integrity",
+      "verify_rf1086_register_observation",
+      "rf1086_register_observation_request_digest",
+      "Rf1086RegisterObservationPersistence",
+      "serialize_rf1086_register_observation",
+      "parse_rf1086_register_observation",
+      "rf1086_event_register_states",
+      "assert_rf1086_source_preview_matches",
+      "serialize_rf1086_source_preview",
+      "parse_rf1086_source_preview",
+      "Rf1086CorrectionPredecessorSnapshot",
+      "assert_rf1086_correction_predecessor",
+      "Rf1086SourceReadinessEvidence",
+      "Rf1086SourceReadinessProof",
+      "build_rf1086_source_readiness",
+      "assert_rf1086_source_readiness_matches"
     ],
     "events": [],
     "errors": [
@@ -86,7 +117,9 @@
       "Rf1086UnknownProductionOutcomeError",
       "Rf1086BlockedProductionOperationError",
       "Rf1086FeedbackArtifactPersistenceError",
-      "Rf1086ProductionError"
+      "Rf1086ProductionError",
+      "Rf1086YearSourceError",
+      "Rf1086RegisterObservationError"
     ],
     "identifiers": [
       "OpeningSnapshotId",
@@ -164,7 +197,34 @@
       "Rf1086OfflineSimulationCall",
       "Rf1086ValidationInput",
       "Rf1086CodeVerificationStatus",
-      "Rf1086CodeDecision"
+      "Rf1086CodeDecision",
+      "Rf1086FeedbackDiscovery",
+      "Rf1086FeedbackTransmission",
+      "Rf1086CashIssueEvent",
+      "Rf1086NominalIncreaseAllocation",
+      "Rf1086CashNominalIncreaseEvent",
+      "Rf1086LossCoveringReductionEvent",
+      "Rf1086YearSourceId",
+      "Rf1086PaidInSourceFacts",
+      "Rf1086YearDocumentEvidence",
+      "Rf1086YearEventEvidence",
+      "Rf1086YearGovernanceReceipt",
+      "Rf1086VerifiedYearSourceContext",
+      "Rf1086YearSourceFreshness",
+      "Rf1086YearSourceSnapshot",
+      "Rf1086YearSourcePersistence",
+      "Rf1086RegisterObservationId",
+      "Rf1086RegisterHolding",
+      "Rf1086RegisteredShareState",
+      "Rf1086RegisterDocumentEvidence",
+      "Rf1086VerifiedRegisterObservationContext",
+      "Rf1086RegisterObservationSnapshot",
+      "Rf1086PreparedSourcePreview",
+      "Rf1086SourcePreview",
+      "Rf1086SourcePreviewPreparation",
+      "Rf1086SourceApprovalReview",
+      "Rf1086ArchiveSourceReviewBridge",
+      "Rf1086ArchiveSourceApprovalLineage"
     ]
   },
   "owns": {
@@ -183,7 +243,13 @@
       "shareholder_register_filing.opening_shareholders",
       "shareholder_register_filing.production_feedback_artifacts",
       "shareholder_register_filing.production_filing_events",
-      "shareholder_register_filing.production_filing_submissions"
+      "shareholder_register_filing.production_filing_submissions",
+      "shareholder_register_filing.year_source_versions",
+      "shareholder_register_filing.year_source_heads",
+      "shareholder_register_filing.register_observations",
+      "shareholder_register_filing.source_previews",
+      "shareholder_register_filing.source_review_bridges",
+      "shareholder_register_filing.source_approval_bindings"
     ],
     "storageBuckets": [],
     "projections": [
@@ -191,7 +257,7 @@
       "Rf1086SourceFacts",
       "Rf1086ArchiveSnapshot"
     ],
-    "migrations": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql; supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql; supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql"
+    "migrations": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql; supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql; supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql; supabase/migrations/20260917110951_rf1086_action_required_read_recovery.sql; supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql; supabase/migrations/20260923091509_rf1086_immutable_year_source.sql; supabase/migrations/20260923102314_rf1086_register_observation_store.sql; supabase/migrations/20260923105912_rf1086_source_backed_preview.sql; supabase/migrations/20260924062746_rf1086_source_company_guard.sql; supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql; supabase/migrations/20260924085227_rf1086_source_review_bridge.sql; supabase/migrations/20260924091015_rf1086_source_approval_foundation.sql; supabase/migrations/20260924094631_rf1086_journal_company_guard.sql"
   },
   "ports": [
     {
@@ -247,6 +313,42 @@
       "adapters": [
         "talli_backend.adapters.rf1086_authority.Rf1086AuthorityAdapter"
       ]
+    },
+    {
+      "name": "Rf1086FeedbackDiscovery",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.shareholder_register_filing.public.Rf1086FeedbackDiscovery",
+      "registrationDecorator": "talli_backend.modules.shareholder_register_filing.public.rf1086_adapter",
+      "adapters": [
+        "talli_backend.adapters.rf1086_dialogporten.Rf1086DialogportenAdapter"
+      ]
+    },
+    {
+      "name": "Rf1086YearSourcePersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.shareholder_register_filing.public.Rf1086YearSourcePersistence",
+      "registrationDecorator": "talli_backend.modules.shareholder_register_filing.public.rf1086_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession"
+      ]
+    },
+    {
+      "name": "Rf1086RegisterObservationPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.shareholder_register_filing.public.Rf1086RegisterObservationPersistence",
+      "registrationDecorator": "talli_backend.modules.shareholder_register_filing.public.rf1086_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession"
+      ]
+    },
+    {
+      "name": "Rf1086SourcePreviewPreparation",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.shareholder_register_filing.public.Rf1086SourcePreviewPreparation",
+      "registrationDecorator": "talli_backend.modules.shareholder_register_filing.public.rf1086_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession"
+      ]
     }
   ],
   "dependencies": [],
@@ -292,7 +394,31 @@
     "postgresAdapter": "apps/backend/tests/test_postgres_shareholder_register_filing.py",
     "database": "apps/backend/tests/test_rf1086_database_runtime.py",
     "lifecycle": "apps/backend/tests/test_shareholder_register_filing_lifecycle.py",
-    "archiveSource": "apps/backend/tests/test_rf1086_archive_source.py"
+    "archiveSource": "apps/backend/tests/test_rf1086_archive_source.py",
+    "yearSource": "apps/backend/tests/test_rf1086_year_source.py",
+    "yearSourceStorage": "apps/backend/tests/test_rf1086_year_source_storage.py",
+    "yearSourceDatabase": "apps/backend/tests/test_rf1086_year_source_database.py",
+    "registerObservation": "apps/backend/tests/test_rf1086_register_observation.py",
+    "registerObservationStorage": "apps/backend/tests/test_rf1086_register_observation_storage.py",
+    "registerObservationDatabase": "apps/backend/tests/test_rf1086_register_observation_database.py",
+    "registerProjection": "apps/backend/tests/test_rf1086_register_projection.py",
+    "sourceWorkflow": "apps/backend/tests/test_shareholder_register_source_workflow.py",
+    "sourcePreview": "apps/backend/tests/test_rf1086_source_preview.py",
+    "sourcePreviewDatabase": "apps/backend/tests/test_rf1086_source_preview_database.py",
+    "sourceProductionManifest": "apps/backend/tests/test_rf1086_source_production.py",
+    "registerObservationRead": "apps/backend/tests/test_shareholder_register_observation_read.py",
+    "companyGuardDatabase": "apps/backend/tests/test_documents_rf_company_guard_database.py",
+    "companyGuardAdapter": "apps/backend/tests/test_consequential_adapter_guards.py",
+    "sourceAdmission": "apps/backend/tests/test_rf1086_source_admission.py",
+    "sourceAdmissionAdapter": "apps/backend/tests/test_postgres_rf_source_admission.py",
+    "sourceReviewBridgeDatabase": "apps/backend/tests/test_rf1086_source_review_bridge_database.py",
+    "sourceApproval": "apps/backend/tests/test_rf1086_source_approval.py",
+    "sourceApprovalApi": "apps/backend/tests/test_rf1086_source_approval_api.py",
+    "sourceApprovalDatabase": "apps/backend/tests/test_rf1086_source_approval_database.py",
+    "sourceApprovalArchive": "apps/backend/tests/test_rf1086_source_approval_archive.py",
+    "sourceCorrection": "apps/backend/tests/test_rf1086_source_correction.py",
+    "sourceReadiness": "apps/backend/tests/test_rf1086_source_readiness.py",
+    "journalCompanyGuard": "apps/backend/tests/test_rf1086_journal_company_guard_database.py"
   },
   "compatibilityExceptions": []
 }

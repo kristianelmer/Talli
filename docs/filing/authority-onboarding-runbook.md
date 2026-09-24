@@ -172,6 +172,7 @@ right *"Tilgang til testmiljøet for ID-porten/Maskinporten Selvbetjening"* was 
   - ✅ **Attached 2026-07-14:** `altinn:instances.read` / `altinn:instances.write`, required for the
     Altinn3 instance/upload legs of the skattemelding and annual-accounts flows. Digdir Selvbetjening
     confirmed both scopes were added to the client without a `Tilgang mangler` marker.
+  - ✅ **Active 2026-09-15:** `digdir:dialogporten` was added to this existing test client with explicit owner approval. The subsequent system-user token and exact Dialogporten GET for the synthetic RF submission returned HTTP 200. Only this scope was added; final feedback contents remain pending. Evidence: `architecture/evidence/issues/193/rf/dialog-access-recovery-20260915.json`.
   - ✅ **Active for vendor-initiated Step 4b (2026-07-01):**
     `altinn:authentication/systemuser.request.write` + `altinn:authentication/systemuser.request.read`.
     Altinn granted these to org 930835978, and after **adding both to the client** in the Digdir
@@ -657,3 +658,51 @@ configured with `altinn:instances.read` and, after Altinn corrected an omitted
 production grant on 2026-07-16, `altinn:instances.write`. Digdir Selvbetjening
 confirmed the write scope was attached without a `Tilgang mangler` marker. This
 scope attachment does not enable the RF-1086 production filing switch.
+
+### Verified synthetic RF receipt — 2026-09-15
+
+The approved no-activity return for synthetic company `310279617`, income year
+2025, received a final `godkjent` decision, reference `AKRE22100`. The complete
+one-page PDF and XML agree. The receipt belongs to an Acceptance transmission
+related to the original Submission; its internal XML submission ID is distinct
+from the HTTP submission ID. See
+[`acceptance-receipt-20260915.json`](../../architecture/evidence/issues/193/rf/acceptance-receipt-20260915.json)
+for hashes, identity chain and the independent 52-check review.
+
+This establishes the synthetic baseline business decision. At receipt retrieval,
+the canonical classifier did not support its `ar_til_mag:v0_1` namespace and
+Dialogporten receipt discovery was pending. The subsequent implementation and
+verification are recorded below. Broader supported cases, complete RF gates and
+genuine-company production evidence remain pending.
+
+### Canonical related-feedback reader — local verification 2026-09-15
+
+The backend now discovers directly related Dialogporten receipt transmissions,
+checks company/service/submission identity, and retrieves exact Attachment IDs
+through the RF document endpoint. It recognizes the observed AR receipt XML and
+retains PDF/XML originals plus a Talli provenance manifest before finalizing.
+The manifest preserves all attachment relationships even for identical bytes.
+608 focused checks, 25 restricted-role SQL/Document runtime tests and independent
+Spec/Standards reviews pass. See
+[`dialog-integration-verification.json`](../../architecture/evidence/issues/193/rf/dialog-integration-verification.json).
+
+Live canonical conformance was pending at this local verification. The production binding requires
+`digdir:dialogporten` in addition to the RF scope; no production client scope or
+feature switch was changed by this implementation.
+
+### Canonical related-feedback reader — live verification 2026-09-17
+
+The separately approved check of the same synthetic 2025 submission completed
+through the canonical reader with state `accepted`. Two test token grants, one
+exact dialog read and two exact receipt reads returned HTTP 200. The original
+PDF/XML hashes matched, and both receipts plus the Talli provenance manifest were
+durably saved in a private local journal before final reconciliation. No filing
+POST occurred and the original submission journal remained unchanged. See
+[`canonical-conformance-20260917.json`](../../architecture/evidence/issues/193/rf/canonical-conformance-20260917.json)
+for the exact approved plan, trace, artifact hashes and independent reviews.
+
+This verifies the canonical reader against the existing accepted synthetic
+no-activity case. It does not establish hosted production persistence, broader
+case coverage or complete RF acceptance. The one-attempt approval is consumed;
+production remains disabled and no further provider interaction is authorized
+by this result.

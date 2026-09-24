@@ -33,6 +33,15 @@ CONTRACT = "20260909124659_authority_connections_contract.sql"
 RF151_EXPAND = "20260909190548_shareholder_register_filing_capability.sql"
 RF151_CUTOVER = "20260909190905_shareholder_register_filing_cutover.sql"
 RF151_CONTRACT = "20260909190955_shareholder_register_filing_contract.sql"
+DOCUMENTS_LEDGER_GUARD = "20260923125730_documents_ledger_evidence_guard.sql"
+RF193_LAYERS = (
+    ("20260917110951_rf1086_action_required_read_recovery.sql", "read_recovery"),
+    ("20260917114424_rf1086_production_archive_evidence.sql", "archive"),
+    ("20260923091509_rf1086_immutable_year_source.sql", "year_source_versions"),
+    ("20260923102314_rf1086_register_observation_store.sql", "register_observations"),
+    ("20260923105912_rf1086_source_backed_preview.sql", "source_previews"),
+    ("20260924062746_rf1086_source_company_guard.sql", "source_company_guard"),
+)
 
 
 def insert(connection, table, values):
@@ -473,26 +482,59 @@ def test_company_access_support_projection_preserves_opened_case_scope(fixture):
             with connection.transaction(): connection.execute("select resources from public.company_access_read_support_case(%s)",(case_id,))
 
 
+def rf193_successor_topology(connection):
+    """Probe a disposable predecessor rehearsal, refusing any newer originals.
+
+    A rollback-only savepoint restores exact membership/RLS state even when this
+    is called from an existing test transaction rather than a dedicated probe.
+    """
+    phase = None
+    successor_layers = []
+    with connection.transaction(force_rollback=True):
+        if not connection.execute("select to_regclass('shareholder_register_filing.migration_state')").fetchone()[0]:
+            return phase, successor_layers
+        principal = connection.execute("select current_user").fetchone()[0]
+        if not connection.execute("select pg_has_role(current_user,'shareholder_register_filing_store_owner','SET')").fetchone()[0]:
+            connection.execute(sql.SQL("grant shareholder_register_filing_store_owner to {} with set true granted by {}").format(
+                sql.Identifier(principal),sql.Identifier(principal)))
+        connection.execute("set local role shareholder_register_filing_store_owner")
+        phase = connection.execute("select shareholder_register_filing.phase_v1()").fetchone()[0]
+        assert phase in ('legacy_overlap','canonical_overlap','contracted')
+        for migration_name, family in RF193_LAYERS:
+            if family == 'source_company_guard':
+                present = connection.execute("select to_regprocedure('shareholder_register_filing.lock_source_company_write_v1()') is not null").fetchone()[0]
+            elif family == 'read_recovery':
+                present = connection.execute("select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='claim_production_feedback_reconciliation' and strpos(pg_get_functiondef(p.oid), %s)>0)", ("'action_required'",)).fetchone()[0]
+            elif family == 'archive':
+                present = connection.execute("select exists(select 1 from pg_attribute where attrelid=to_regclass('shareholder_register_filing.production_filing_events') and attname='company_id' and not attisdropped)").fetchone()[0]
+            else:
+                present = connection.execute("select to_regclass(%s) is not null", ('shareholder_register_filing.' + family,)).fetchone()[0]
+                if present:
+                    # The frozen full-schema rollback cannot preserve these
+                    # newer originals. Refuse populated successor families.
+                    # FORCE RLS must not hide originals from this global
+                    # teardown guard. This owner-only change and its lock
+                    # are rolled back even when retained rows are found.
+                    connection.execute(sql.SQL('alter table {} no force row level security').format(sql.Identifier('shareholder_register_filing', family)))
+                    retained = connection.execute(sql.SQL('select exists(select 1 from {})').format(sql.Identifier('shareholder_register_filing', family))).fetchone()[0]
+                    assert not retained, 'Retained RF193 evidence blocks the predecessor rehearsal'
+            if present:
+                successor_layers.append(migration_name)
+    return phase, successor_layers
+
+
 @pytest.fixture
 def rf151_predecessor_topology(fixture):
     """Rehearse frozen AU lifecycle SQL only after its RF successor rolls back."""
-    phase = None
     with psycopg.connect(DATABASE_URL) as connection:
-        if connection.execute("select to_regclass('shareholder_register_filing.migration_state')").fetchone()[0]:
-            # This read-only phase probe borrows authority within a transaction
-            # that is always rolled back; it changes no persistent ACL/membership.
-            try:
-                principal = connection.execute("select current_user").fetchone()[0]
-                if not connection.execute("select pg_has_role(current_user,'shareholder_register_filing_store_owner','SET')").fetchone()[0]:
-                    connection.execute(sql.SQL("grant shareholder_register_filing_store_owner to {} with set true granted by {}").format(
-                        sql.Identifier(principal),sql.Identifier(principal)))
-                connection.execute("set local role shareholder_register_filing_store_owner")
-                phase = connection.execute("select shareholder_register_filing.phase_v1()").fetchone()[0]
-                assert phase in ('legacy_overlap','canonical_overlap','contracted')
-            finally:
-                connection.rollback()
+        phase, successor_layers = rf193_successor_topology(connection)
     if phase is not None:
         with psycopg.connect(DATABASE_URL,autocommit=True) as connection:
+            for migration_name in reversed(successor_layers):
+                # Read recovery only replaces a routine; the RF151 rollback
+                # removes it. The other layers have explicit retained rollbacks.
+                if migration_name != RF193_LAYERS[0][0]:
+                    connection.execute((ROOT/'supabase/rollback'/migration_name).read_text())
             connection.execute((ROOT/"supabase"/"rollback"/RF151_EXPAND).read_text())
     try:
         yield
@@ -502,6 +544,9 @@ def rf151_predecessor_topology(fixture):
                 connection.execute((ROOT/"supabase"/"migrations"/RF151_EXPAND).read_text())
                 if phase in ('canonical_overlap','contracted'):
                     connection.execute((ROOT/"supabase"/"migrations"/RF151_CUTOVER).read_text())
+                    connection.execute((ROOT/"supabase"/"migrations"/DOCUMENTS_LEDGER_GUARD).read_text())
+                for migration_name in successor_layers:
+                    connection.execute((ROOT/'supabase/migrations'/migration_name).read_text())
                 if phase == 'contracted':
                     connection.execute((ROOT/"supabase"/"contract-migrations"/RF151_CONTRACT).read_text())
                 ensure_fixture_admin_access(connection)
@@ -601,3 +646,23 @@ def test_final_contract_removes_legacy_authority_and_only_recorded_overlap_grant
                 connection.execute((ROOT/"supabase"/"rollback"/CONTRACT).read_text())
             ensure_fixture_admin_access(connection)
     assert state(fixture)==before
+
+
+def assert_retained_rf_original_refuses_predecessor_rehearsal():
+    """Used by actual source/observation captures to exercise the global guard."""
+    with psycopg.connect(DATABASE_URL) as connection:
+        roles = connection.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()
+        tables = connection.execute("select oid,relacl::text,relforcerowsecurity from pg_class where relnamespace='shareholder_register_filing'::regnamespace order by oid").fetchall()
+        connection.execute("select set_config('talli.rf193_rehearsal_marker','outer_transaction',true)")
+        with pytest.raises(AssertionError, match='Retained RF193 evidence'):
+            rf193_successor_topology(connection)
+        assert connection.execute("select current_setting('talli.rf193_rehearsal_marker')").fetchone()[0] == 'outer_transaction'
+    rehearsal = rf151_predecessor_topology.__wrapped__(None)
+    try:
+        with pytest.raises(AssertionError, match='Retained RF193 evidence'):
+            next(rehearsal)
+    finally:
+        rehearsal.close()
+    with psycopg.connect(DATABASE_URL) as connection:
+        assert connection.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall() == roles
+        assert connection.execute("select oid,relacl::text,relforcerowsecurity from pg_class where relnamespace='shareholder_register_filing'::regnamespace order by oid").fetchall() == tables

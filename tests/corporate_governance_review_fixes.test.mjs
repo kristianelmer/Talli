@@ -20,7 +20,7 @@ test("corporate-governance manifests declare the implemented public surface", as
 
   assert.equal(
     backend.owns.migrations,
-    "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
+    "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql",
   );
   for (const exportedType of [
     "AnnualCloseEventKind",
@@ -104,7 +104,7 @@ test("document evidence ownership is acyclic and declared", async () => {
   assert.ok(documents.owns.tables.includes("documents.evidence_references"));
   assert.equal(
     documents.owns.migrations,
-    "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql",
+    "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql; supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql; supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql; supabase/migrations/20260924062717_documents_immutable_retained_originals.sql; supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql",
   );
   assert.match(registry, /documents\.register_evidence_reference_v1/iu);
   assert.match(lifecycle, /backend_system\.register_corporate_governance_documents_v1/iu);

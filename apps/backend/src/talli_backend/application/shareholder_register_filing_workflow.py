@@ -80,7 +80,8 @@ async def send_approved_rf1086_production_filing(session: AuthenticatedSharehold
                 await reconcile_journaled_rf1086_production(session.feedback_journal(submission_id=submission_id,
                     company_id=approval.company_id, income_year=preview.income_year, forsendelse_id=reference, lease_id=lease_id),
                     binding.read_only_authority, Rf1086ReconciliationInput(submission_id, approval.company_id,
-                        preview.income_year, reference, preview.hovedskjema_xml, preview.underskjema_xml), initial_poll=True)
+                        preview.income_year, reference, preview.hovedskjema_xml, preview.underskjema_xml,
+                        company.org_number, submitted.dialog_id), discovery=binding.feedback_discovery, initial_poll=True)
             finally:
                 await session.release_feedback_lease(submission_id, lease_id)
         return Rf1086SendResult(submission_id)
@@ -104,7 +105,7 @@ async def reconcile_rf1086_production(session: AuthenticatedShareholderRegisterF
                 or submission.case_profile != "rf1086_no_activity_v1" or submission.environment != "production"):
             raise Rf1086ProductionError("basis_unavailable")
         state = submission.feedback_state
-        if state in {"accepted", "rejected", "action_required"}:
+        if state in {"accepted", "rejected"}:
             return Rf1086OwnerReconciliationResult(state)
         company = await session.company_record(submission.company_id)
         approval = await session.read_approval(submission.approval_id)
@@ -131,11 +132,13 @@ async def reconcile_rf1086_production(session: AuthenticatedShareholderRegisterF
         if not claimed:
             raise Rf1086ProductionError("status_busy")
         reference = await session.read_claimed_reference(submission.id, lease_id)
+        dialog_id = await session.read_claimed_dialog_id(submission.id, lease_id)
         binding = await session.bind_read_only_authority(company, connection)
         result = await reconcile_journaled_rf1086_production(session.feedback_journal(submission_id=submission.id,
             company_id=submission.company_id, income_year=submission.income_year, forsendelse_id=reference, lease_id=lease_id),
             binding.authority, Rf1086ReconciliationInput(submission.id, submission.company_id, submission.income_year,
-                reference, preview.hovedskjema_xml, preview.underskjema_xml), initial_poll=False)
+                reference, preview.hovedskjema_xml, preview.underskjema_xml, company.org_number, dialog_id),
+            discovery=binding.feedback_discovery, initial_poll=False)
         return Rf1086OwnerReconciliationResult(result.state)
     except Rf1086ProductionError as error:
         return Rf1086OwnerReconciliationResult(state, error.code, True)
@@ -203,6 +206,10 @@ class ShareholderRegisterFilingWorkflow:
     async def workspace(self, query: Rf1086WorkspaceQuery) -> Rf1086WorkspaceSnapshot:
         self._actor(query.actor_id)
         return await create_rf1086_preparation_service(self._persistence).workspace(query)
+
+    async def legacy_archive_source(self, query: Rf1086ArchiveQuery) -> Rf1086ArchiveSnapshot:
+        self._actor(query.actor_id)
+        return await create_rf1086_preparation_service(self._persistence).legacy_archive_source(query)
 
     async def archive_source(self, query: Rf1086ArchiveQuery) -> Rf1086ArchiveSnapshot:
         self._actor(query.actor_id)

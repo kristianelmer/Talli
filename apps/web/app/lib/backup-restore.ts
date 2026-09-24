@@ -92,6 +92,7 @@ export function buildBackupManifest(archive: Record<string, any>) {
         .filter(Boolean),
     )].sort(),
     objectReferences,
+    rf1086ProductionEvidenceAvailability: archive.rf1086Production ? "included" : "unavailable",
     counts: {
       ledgerEntries: archive.ledgerEntries?.length ?? 0,
       holdingActions: archive.taxSettlements?.length ?? 0,
@@ -103,6 +104,8 @@ export function buildBackupManifest(archive: Record<string, any>) {
       filingApprovalSnapshots: archive.filingApprovalSnapshots?.length ?? 0,
       productionFilingSubmissions: archive.productionFilingSubmissions?.length ?? 0,
       productionFilingEvents: archive.productionFilingEvents?.length ?? 0,
+      rf1086ProductionSubmissions: archive.rf1086Production?.productionSubmissions?.length ?? null,
+      rf1086ProductionReceipts: archive.rf1086Production?.feedbackArtifacts?.length ?? null,
       companyTaxSubmissions: submissionCollections.companyTaxSubmissions.length,
       reviewComments: archive.reviewComments?.length ?? 0,
       billingAccounts: archive.billingAccounts?.length ?? 0,
@@ -151,6 +154,7 @@ export function restoreCompanyYearArchive(archive: Record<string, any>, options:
       filingApprovalSnapshots: archive.filingApprovalSnapshots ?? [],
       productionFilingSubmissions: archive.productionFilingSubmissions ?? [],
       productionFilingEvents: archive.productionFilingEvents ?? [],
+      rf1086Production: archive.rf1086Production ?? null,
       reviewComments: archive.reviewComments ?? [],
       billingAccounts: archive.billingAccounts ?? [],
       auditEvents: archive.auditEvents ?? [],
@@ -176,7 +180,83 @@ export function assertRestoreIntegrity(restored: ReturnType<typeof restoreCompan
   if (!restored.restored.ledgerEntries.length) failures.push("ledger_entries_missing");
   if (!restored.restored.documents.length) failures.push("documents_metadata_missing");
   if (!restored.restored.filingPreviews.length) failures.push("filing_previews_missing");
-  if (!restored.restored.filingSubmissions.length) failures.push("filing_submissions_missing");
+  if (!restored.restored.filingSubmissions.length
+      && !restored.restored.rf1086Production?.productionSubmissions?.length) failures.push("filing_submissions_missing");
+  const rf = restored.restored.rf1086Production;
+  if (rf) {
+    const arrays = [rf.approvals, rf.productionSubmissions, rf.productionEvents, rf.feedbackArtifacts];
+    if (rf.companyId !== restored.sourceCompanyId || rf.incomeYear !== restored.incomeYear
+        || arrays.some(rows => !Array.isArray(rows)
+          || rows.some(row => row === null || typeof row !== "object" || typeof row.id !== "string"))) {
+      fail("rf1086_production_archive_scope_invalid");
+    } else {
+      const approvals = new Map(rf.approvals.map((row: any) => [row.id, row]));
+      const submissions = new Map(rf.productionSubmissions.map((row: any) => [row.id, row]));
+      if (arrays.some(rows => new Set(rows.map((row: any) => row.id)).size !== rows.length
+          || rows.some((row: any) => row.companyId !== rf.companyId))
+          || [rf.approvals, rf.productionSubmissions, rf.productionEvents]
+            .some(rows => rows.some((row: any) => row.incomeYear !== rf.incomeYear))) {
+        fail("rf1086_production_archive_scope_invalid");
+      }
+      for (const submission of rf.productionSubmissions) {
+        const approval: any = approvals.get(submission.approvalId);
+        if (!approval || approval.payloadHash !== submission.payloadHash
+            || approval.entitlementId !== submission.entitlementId
+            || (submission.supersedesSubmissionId && !submissions.has(submission.supersedesSubmissionId))) {
+          fail("rf1086_production_relationship_missing");
+        }
+        const seen = new Set([submission.id]);
+        let predecessor = submission.supersedesSubmissionId;
+        while (predecessor != null) {
+          if (seen.has(predecessor) || !submissions.has(predecessor)) {
+            fail("rf1086_production_correction_cycle");
+            break;
+          }
+          seen.add(predecessor);
+          predecessor = (submissions.get(predecessor) as { supersedesSubmissionId: string | null }).supersedesSubmissionId;
+        }
+        const receipts = rf.feedbackArtifacts.filter((row: any) => row.submissionId === submission.id);
+        if (receipts.length !== submission.feedbackArtifactCount) {
+          fail("rf1086_production_receipt_count_mismatch");
+        }
+        const hashes = new Set(receipts.map((row: any) => row.sha256));
+        if (hashes.size !== receipts.length || receipts.some((row: any) => !/^[a-f0-9]{64}$/.test(row.sha256))) {
+          fail("rf1086_production_receipt_hash_invalid");
+        }
+        const terminal = ["accepted", "rejected"].includes(submission.feedbackState);
+        if ((terminal || ["accepted", "rejected"].includes(submission.status))
+            && submission.status !== submission.feedbackState) {
+          fail("rf1086_production_terminal_evidence_missing");
+        }
+        const events = rf.productionEvents.filter((row: any) => row.submissionId === submission.id);
+        if (events.some((row: any) => !Array.isArray(row.artifactHashes)
+            || new Set(row.artifactHashes).size !== row.artifactHashes.length
+            || row.artifactHashes.some((hash: string) => !hashes.has(hash)))) {
+          fail("rf1086_production_event_artifact_mismatch");
+        }
+        if (terminal && (receipts.length === 0 || receipts.some((row: any) => row.classification !== submission.feedbackState)
+            || !events.some((row: any) => row.resultingStatus === submission.feedbackState
+              && typeof row.operationName === "string" && row.operationName.startsWith("reconciliation:")
+              && row.operationState === "succeeded"
+              && Array.isArray(row.artifactHashes) && row.artifactHashes.length === hashes.size
+              && row.artifactHashes.every((hash: string) => hashes.has(hash))))) {
+          fail("rf1086_production_terminal_evidence_missing");
+        }
+      }
+      if ([...rf.productionEvents, ...rf.feedbackArtifacts].some(row => !submissions.has(row.submissionId))) {
+        fail("rf1086_production_relationship_missing");
+      }
+      const objects = new Map(restored.manifest.objectReferences.map((row: any) => [row.documentId, row]));
+      for (const receipt of rf.feedbackArtifacts) {
+        const object: any = objects.get(receipt.documentId);
+        if (!object || object.contentSha256 !== receipt.sha256 || object.byteLength !== receipt.byteLength
+            || object.contentType !== receipt.contentType || !object.storageKey
+            || object.status !== "stored" || object.removedAt != null) {
+          fail("rf1086_production_receipt_object_mismatch");
+        }
+      }
+    }
+  }
   const productionSubmissions = restored.restored.productionFilingSubmissions;
   if (productionSubmissions.length) {
     const entitlementIds = new Set(restored.restored.productionPilotEntitlements.map((row: any) => row.id));

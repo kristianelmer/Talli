@@ -125,6 +125,7 @@ function consumerSetup(failed = false) {
     },
   };
   const dependencies = {
+    rf1086ArchiveReceiptsMatch: module(read("../apps/web/app/lib/archive.ts")).rf1086ArchiveReceiptsMatch,
     createSupabaseServerClient: async () => supabase, createSupabaseServiceRoleClient: () => supabase,
     getCurrentSessionAccessToken: async () => "token", requireStepUpForAction: async () => {},
     loadAcceptedMembershipCompany: async () => ({ id: "company", org_number: "123456789" }),
@@ -132,10 +133,15 @@ function consumerSetup(failed = false) {
     loadPresentedRf1086Source: async () => rfSource,
     loadPresentedAnnualAccountsSource: async () => rfSource,
     previewAnnualAccountsReadiness: async (_, input) => ({ companyId: input.companyId, incomeYear: input.incomeYear, issues: [] }),
-    loadArchiveRf1086: async () => ({ error: null, data: { submissions: [], previews: [], permissions: [], comments: [], testEvidence: [] } }),
+    loadArchiveRf1086: async (_token, companyId, incomeYear) => ({ error: null, data: {
+      submissions: [], previews: [], permissions: [], comments: [], testEvidence: [],
+      production: { companyId, incomeYear, approvals: [], productionSubmissions: [], productionEvents: [], feedbackArtifacts: [] },
+    } }),
     loadArchiveOpeningSnapshots: async () => ({ data: [], shareholders: [], error: null }),
     loadArchiveLedgerEntries: async () => ({ data: [], error: null }),
-    loadArchiveDocuments: async () => ({ data: [], error: null }),
+    loadArchiveDocuments: async (_token, companyId, incomeYear) => ({
+      data: [], projection: { companyId, incomeYear, objects: [] }, error: null,
+    }),
     loadTaxSettlementArchiveSource: async () => ({ data: [], error: null }),
     loadArchiveBilling: async () => ({ data: [], error: null }),
     loadArchiveInvestments: async () => ({ data: null, error: null }),
@@ -167,7 +173,7 @@ test("Archive includes Tax-only submissions and only their linked evidence for t
   const { effects, dependencies, taxSource } = consumerSetup();
   const get = functionFrom("../apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts", "GET", dependencies);
   const response = await get(new Request("https://example.test/archive"), { params: Promise.resolve({ companyId: "company", incomeYear: "2024" }) });
-  assert.equal(response.status, 200);
+  assert.equal(response.status, 200, await response.clone().text());
   const archive = effects.find(item => item.name === "archive").body;
   assert.deepEqual(archive.filingSubmissions, taxSource.submissions);
   assert.deepEqual(archive.filingPreviews, taxSource.previews);
@@ -176,6 +182,23 @@ test("Archive includes Tax-only submissions and only their linked evidence for t
   assert.deepEqual(archive.authorityTestRuns, [{ id: "linked" }]);
   assert.deepEqual(effects.find(item => item.name === "tax-query").body, ["token", ["company"], 2024]);
   assert.equal(effects.filter(item => item.name === "company_archive_complete_export").length, 1);
+});
+test("Archive receipt guard rejects a retained RF receipt without its original Documents object", async () => {
+  const { effects, dependencies } = consumerSetup();
+  const originalRfSource = dependencies.loadArchiveRf1086;
+  dependencies.loadArchiveRf1086 = async (...args) => {
+    const result = await originalRfSource(...args);
+    result.data.production.feedbackArtifacts.push({
+      documentId: "missing-original", companyId: "company", sha256: "a".repeat(64),
+      byteLength: 9, contentType: "application/pdf",
+    });
+    return result;
+  };
+  const get = functionFrom("../apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts", "GET", dependencies);
+  const response = await get(new Request("https://example.test/archive"), { params: Promise.resolve({ companyId: "company", incomeYear: "2024" }) });
+  assert.equal(response.status, 500);
+  assert.equal(await response.text(), "Kunne ikke bekrefte komplett RF-kvitteringsarkiv");
+  assert.equal(effects.some(item => ["archive", "company_archive_complete_export"].includes(item.name)), false);
 });
 test("Archive source failure returns unavailable before building an archive or recording a receipt", async () => {
   const { effects, dependencies } = consumerSetup(true);
@@ -270,7 +293,7 @@ test("Archive keeps company-wide Accounts comments but selects requested-year su
   };
   const get = functionFrom("../apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts", "GET", dependencies);
   const response = await get(new Request("https://example.test/archive"), { params: Promise.resolve({ companyId: "company", incomeYear: "2024" }) });
-  assert.equal(response.status, 200);
+  assert.equal(response.status, 200, await response.clone().text());
   const archive = effects.find(row => row.name === "archive").body;
   assert.deepEqual(archive.filingSubmissions, [selected]);
   assert.deepEqual(archive.filingPreviews, [{ id: "selected", income_year: 2024 }]);

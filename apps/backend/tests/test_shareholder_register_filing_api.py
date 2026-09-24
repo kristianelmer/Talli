@@ -92,6 +92,9 @@ class PreparationSession(CoordinatorSession):
         self.observed(query)
         return self.record if self.preview_visible else None
 
+    async def legacy_archive_source(self, query):
+        return await self.archive_source(query)
+
     async def archive_source(self, query):
         self.observed(query)
         if hasattr(self, "archive_result"):
@@ -361,3 +364,30 @@ def test_rf_read_rejects_malformed_selected_receipt_without_caching_or_exposure(
     assert response.headers["x-request-id"] == HEADERS["X-Request-ID"]
     assert response.json()["code"] == str(ShareholderRegisterFilingError.unavailable().code)
     assert "privateDetail" not in response.text and "must-not-be-exposed" not in response.text
+
+
+@pytest.mark.parametrize("year", [2024, 2025])
+def test_production_archive_source_is_additive_and_returns_one_complete_snapshot(year):
+    api, sessions = setup()
+    response = api.get(BASE + f"/archive-source/production?companyId={COMPANY}&incomeYear={year}", headers=HEADERS)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert set(body) == {"companyId", "incomeYear", "previews", "simulations", "reviewComments", "permissions", "testEvidence",
+        "approvals", "productionSubmissions", "productionEvents", "feedbackArtifacts", "sourceApprovalLineage"}
+    assert body["sourceApprovalLineage"] == []
+    assert len(body["previews"]) == (1 if year == 2025 else 0)
+    assert body["reviewComments"][0]["previewId"] == DOCUMENT
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_original_archive_contract_ignores_production_only_validation_failures():
+    api, sessions = setup()
+    # A malformed production record must block the new complete evidence route,
+    # while the original route retains its original evidence extent.
+    sessions.value.archive_result = Rf1086ArchiveSnapshot(CompanyId(COMPANY), IncomeYear(2025),
+        previews=(sessions.value.record,), approvals=(object(),))
+    legacy = api.get(BASE + f"/archive-source?companyId={COMPANY}&incomeYear=2025", headers=HEADERS)
+    assert legacy.status_code == 200, legacy.text
+    assert set(legacy.json()) == {"companyId", "incomeYear", "previews", "simulations", "reviewComments", "permissions", "testEvidence"}
+    production = api.get(BASE + f"/archive-source/production?companyId={COMPANY}&incomeYear=2025", headers=HEADERS)
+    assert production.status_code == 503, production.text

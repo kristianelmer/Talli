@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "issue": "#193",
+  "slice": "RF-1086",
+  "status": "LOCAL_BOUNDED_PAGINATION_PASS",
+  "sourceRevision": "d342b172ed7fafcd6404563cbfac6d5bcc227630",
+  "tests": {
+    "rootFocusedPassed": 398,
+    "specIndependentPassed": 168,
+    "standardsCommittedPassed": 290,
+    "standardsStatefulProbePassed": 1,
+    "architecture": "PASS",
+    "diffCheck": "PASS"
+  },
+  "reviews": {
+    "spec": {
+      "status": "PASS",
+      "report": "reviews/pagination-spec-review-d342b172.md",
+      "sha256": "9ed78b65d24d907a1291d8db3ce5eda67ef328a5b92965dbb1d72882ddc0c3d7"
+    },
+    "standards": {
+      "status": "PASS",
+      "report": "reviews/pagination-standards-review-d342b172.md",
+      "sha256": "03ea307b1920dfee8b33fc893a387ef698058910aeda7df921fac4dfa88a0ddf"
+    }
+  },
+  "limits": [
+    "No provider evidence for this revision",
+    "No complete RF acceptance or later-obligation credit",
+    "Operational acquisition limits and full load/resumable proof remain pending"
+  ]
+}

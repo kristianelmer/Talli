@@ -326,3 +326,31 @@ amount fails. The backend new-year transaction binds this write to the RF
 snapshot and existing opening posting, so a later failure rolls all effects back.
 
 `preview_tax_settlement_lines` exposes the same private account mapping used by posting. This pure query permits a zero preview; posting still requires a strictly positive amount and balanced lines.
+
+### Original amendment receipts
+
+`LedgerEntryAmendment` and `LedgerQueries.list_entry_amendments` expose the original
+append-only standalone reversals and replacement corrections for one accepted
+company member. The restricted owner RPC `ledger.list_entry_amendments_v1`
+combines `entry_reversals` and `entry_corrections`; it preserves original,
+reversal and optional replacement identities, reason, actor and timestamp.
+It does not filter by reporting year or hide historical receipts, so named
+application workflows can follow complete correction chains. Only the existing
+Ledger and Corporate Governance executors receive this read function; neither
+receives table grants. No writer, business row, RLS policy or capability dependency
+changes. Migration replay preserves pre-existing schema ACLs and role memberships.
+
+### Company guard for source mutations
+
+Migration `20260924080355_governance_ledger_company_write_guards.sql` places the
+shared company guard before the original bodies of Ledger mutation RPCs and
+local entry/year/receipt locks. READ COMMITTED writer transactions recheck the
+current accepted owner after a guard wait. Row backstops cover company-scoped
+Ledger tables, including immutable correction/reversal receipts and technical
+command receipts. Pure Governance/Tax bridge functions delegate to these guarded
+posting APIs without earlier table reads or locks; their narrow grants remain.
+
+The guard does not replace eligibility, posting, idempotency, or reconciliation
+checks. Safe rollback suspends guarded APIs and retains historical rows and
+backstops. Reapply preserves routine identity, owners and ACLs; temporary schema
+CREATE and role SET privileges are restored to their prior effective state.

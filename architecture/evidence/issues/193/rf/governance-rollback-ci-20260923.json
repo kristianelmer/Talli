@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_BOUNDED_GOVERNANCE_REHEARSAL_REPAIR",
+  "baseCommit": "291229fc15e37972bbde7f6cc5c78a34b11f0644",
+  "cause": "New Ledger amendment read grants Governance workflow EXECUTE, so older owner-role rollback requires newer read rollback first. Rehearsal omitted that dependency. Exact shipped Ledger rollback and forward now bracket each complete Governance cycle.",
+  "sourceSha256": {
+    "tests/corporate_governance_capability_schema.test.mjs": "f595e226d7d5b93cb9e58543238fc9394d6acdb1ef109f494fb004d0049389f4",
+    "tests/corporate_governance_database_runtime.test.mjs": "59bc726a986a0daa4a52511ada5b51fdb7d220713f3bacae2b57cc45e8cfd20f",
+    "tests/corporate_governance_migration_lifecycle.test.mjs": "28e812d1811b7ebe932a665c16084ad31af0c085394321f34a6d0f02b6ba40bd",
+    "tests/corporate_governance_annual_close_schema.test.mjs": "eb1a1abe6666916f270dbf9bf2d925dcdb43cc8c8760417619e7350d6d43f47d",
+    "tests/corporate_governance_annual_close_database_runtime.test.mjs": "d521c98d557bc99e9e6fe443a6f224b841aa19181ec7b73811ba87bff4cb426c",
+    "tests/corporate_governance_supported_events_schema.test.mjs": "a20925f6434303bcc222ed930265ded5abdaf88e8df08110953da6fed69a4375",
+    "tests/corporate_governance_supported_events_ui.test.mjs": "700deb83b1e8623ecde6b24442955d39fdc30f1df0a7964117d7ec78176eeadc",
+    "tests/corporate_governance_contract_migration_lifecycle.test.mjs": "3684376e1493371e41c1fff682a4efb7e81974407e43cddbc7211ac07455a38c",
+    "package.json": "a3df78b4c6437f9a45cee6e15c812cdc2fdccc9ddb1f7e75961a8c88aa839061",
+    "scripts/prepare-isolated-supabase-workdir.mjs": "c002e9be60464c8cb54ed6ac088b879598e1ce09da6a617e8bd296ceca28c5ca",
+    "scripts/rehearse-authority-topology.mjs": "642dd41d1e1b8e1b882fdc3012ffafdff6e3058adf0e82cb1ce9321795870b23",
+    "tests/ledger_hosted_migration_authority.test.mjs": "1a24e51d18c61a246fde9836d4455412da9bbbe65316230a4bd4697346533e7f",
+    "supabase/migrations/20260923090824_ledger_reporting_amendment_read.sql": "fd654892335fb12cacb1d65e6b194dbec6a9487dadc06012e9df27c4fa5d9283",
+    "supabase/rollback/20260923090824_ledger_reporting_amendment_read.sql": "32ccba9c96f864d5df44073f853f34f32772df3f4b6609f48ab146d886a27caa"
+  },
+  "verification": {
+    "red_lifecycle": {
+      "tests": 10,
+      "passed": 8,
+      "failed": 2,
+      "skipped": 0,
+      "expected_primary_error": "2BP01 residual grant ledger.list_entry_amendments_v1(uuid,text)",
+      "expected_secondary_error": "42P01 shareholder_loans absent after interrupted rollback"
+    },
+    "green_full_governance_lane": {
+      "tests": 26,
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "process_counts": [
+        24,
+        2
+      ]
+    }
+  },
+  "privateProofSha256": "8dfcb476961dba97e58921dc130875ac8805a568d1cf1e94c71cbafb781bae0f",
+  "leastPrivilegeChecks": [
+    "Ledger-owned security definer",
+    "ledger_executor and Governance workflow EXECUTE restored",
+    "anon/authenticated/PUBLIC EXECUTE denied",
+    "read routine absent after its owned rollback"
+  ],
+  "cleanup": {
+    "ownedDisposableInstanceRemoved": true
+  },
+  "limits": [
+    "Focused full Governance lane with relevant topology prephase, not full aggregate CI",
+    "No production SQL, business writer, evidence retention, or schema constraints modified",
+    "No hosted database or provider calls",
+    "Full RF acceptance and genuine-company production evidence remain pending."
+  ]
+}

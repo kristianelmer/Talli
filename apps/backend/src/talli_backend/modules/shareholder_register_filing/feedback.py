@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import re
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import replace
@@ -9,20 +10,32 @@ from xml.parsers import expat
 
 from .public import (
     Rf1086AuthorityError, Rf1086FeedbackArtifactPersistenceError, Rf1086FeedbackClassification,
-    Rf1086FeedbackResult, Rf1086ProductionJournal, Rf1086ReadOnlyAuthority,
+    Rf1086FeedbackResult, Rf1086FeedbackDiscovery, Rf1086ProductionJournal, Rf1086ReadOnlyAuthority,
     Rf1086ReconciliationArtifact, Rf1086ReconciliationInput, Rf1086ReconciliationResult,
     Rf1086ReconciliationSnapshot,
 )
 from .production import _js_utf8_bytes, _pending_archive_error, _sha256
 
 RF1086_MAX_FEEDBACK_BYTES = 10 * 1024 * 1024
+RF1086_ARCHIVE_PAGE_SIZE = 50
+# Operational scan bounds fail closed; they do not define supported company scope.
+RF1086_MAX_ARCHIVE_PAGES = 100
+RF1086_MAX_ARCHIVE_SCAN_BYTES = 32 * 1024 * 1024
+RF1086_ARCHIVE_SCAN_TIMEOUT_SECONDS = 60
+RF1086_AR_FEEDBACK_NAMESPACE = "urn:ske:fastsetting:innsamling:aksjonaeroppgave:ar_til_mag:v0_1"
 RF1086_FEEDBACK_NAMESPACES = {
     "urn:ske:fastsetting:innsamling:grunnlagsdata:tilbakemelding:innsendingstilbakemelding:v2": "innsendingstilbakemelding-v2",
     "urn:ske:fastsetting:innsamling:grunnlagsdata:tilbakemelding:leveransetilbakemelding:v2": "leveransetilbakemelding-v2",
 }
 
 
-def classify_rf1086_feedback(bytes_value: bytes, *, forsendelse_id: str, income_year: int) -> Rf1086FeedbackResult:
+def classify_rf1086_feedback(bytes_value: bytes, *, forsendelse_id: str, income_year: int,
+        organization_number: str | None = None, related_forsendelse_id: str | None = None) -> Rf1086FeedbackResult:
+    """Classify bytes only after the caller has established their transport identity.
+
+    AR receipts report an internal ID, not the HTTP submission ID. They require
+    an independently verified related-transmission ID and expected company.
+    """
     action_required = Rf1086FeedbackResult("action_required", "unknown", None)
     if (not isinstance(bytes_value, bytes) or not 1 <= len(bytes_value) <= RF1086_MAX_FEEDBACK_BYTES
             or not forsendelse_id or type(income_year) is not int):
@@ -38,6 +51,7 @@ def classify_rf1086_feedback(bytes_value: bytes, *, forsendelse_id: str, income_
     invalid = False
     stack: list[str] = []
     captures: dict[str, list[str]] = {}
+    paths: dict[str, int] = {}
     active: dict | None = None
     cdata = False
 
@@ -46,19 +60,36 @@ def classify_rf1086_feedback(bytes_value: bytes, *, forsendelse_id: str, income_
         uri, _, local = name.rpartition("|")
         if not stack:
             root_namespace = uri
-            schema = RF1086_FEEDBACK_NAMESPACES.get(uri, "unknown")
+            schema = ("aksjonaeroppgave-ar-til-mag-v0_1" if uri == RF1086_AR_FEEDBACK_NAMESPACE
+                      else RF1086_FEEDBACK_NAMESPACES.get(uri, "unknown"))
             if local != "tilbakemelding" or schema == "unknown":
                 invalid = True
         elif uri != root_namespace:
             invalid = True
         if active is not None:
             invalid = True
-        if local in {"leveransestatus", "forsendelseid", "inntektsaar"}:
-            expected = "tilbakemelding/innsending/forsendelseid" if local == "forsendelseid" else (
-                "tilbakemelding/leveranse/inntektsaar" if local == "inntektsaar" else
-                "tilbakemelding/leveranse/leveransestatus" if schema == "innsendingstilbakemelding-v2" else
-                "tilbakemelding/leveranseoppsummering/leveransestatus")
-            if schema == "unknown" or "/".join(stack + [local]) != expected:
+        if len(stack) >= 64:
+            raise ValueError("RF1086_FEEDBACK_DEPTH")
+        path = "/".join(stack + [local])
+        if path in {"tilbakemelding/leveranse", "tilbakemelding/leveranse/oppgavegiver",
+                    "tilbakemelding/leveranse/leveranseoppsummering"}:
+            paths[path] = paths.get(path, 0) + 1
+        if schema == "aksjonaeroppgave-ar-til-mag-v0_1":
+            expected_paths = {
+                "leveransestatus": "tilbakemelding/leveranse/leveranseoppsummering/leveransestatus",
+                "inntektsaar": "tilbakemelding/leveranse/inntektsaar",
+                "organisasjonsnummer": "tilbakemelding/leveranse/oppgavegiver/organisasjonsnummer",
+                "forsendelseid": "tilbakemelding/innsending/forsendelseid",
+            }
+        else:
+            expected_paths = {
+                "forsendelseid": "tilbakemelding/innsending/forsendelseid",
+                "inntektsaar": "tilbakemelding/leveranse/inntektsaar",
+                "leveransestatus": ("tilbakemelding/leveranse/leveransestatus" if schema == "innsendingstilbakemelding-v2"
+                    else "tilbakemelding/leveranseoppsummering/leveransestatus"),
+            }
+        if local in expected_paths:
+            if schema == "unknown" or path != expected_paths[local]:
                 invalid = True
             active = {"field": local, "depth": len(stack) + 1, "text": ""}
         stack.append(local)
@@ -102,6 +133,20 @@ def classify_rf1086_feedback(bytes_value: bytes, *, forsendelse_id: str, income_
     transmissions = captures.get("forsendelseid", [])
     years = captures.get("inntektsaar", [])
     transmission = transmissions[0] if len(transmissions) == 1 else None
+    if schema == "aksjonaeroppgave-ar-til-mag-v0_1":
+        # The verified Dialogporten relation supplies the submission binding.
+        # Never reinterpret innsendingsId as a forsendelse ID.
+        if (not isinstance(organization_number, str) or not re.fullmatch(r"[0-9]{9}", organization_number)
+                or not isinstance(forsendelse_id, str)
+                or not re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", forsendelse_id, re.I)
+                or not isinstance(related_forsendelse_id, str)
+                or related_forsendelse_id != forsendelse_id
+                or captures.get("organisasjonsnummer") != [organization_number]
+                or years != [str(income_year)] or transmissions
+                or any(paths.get(path) != 1 for path in (
+                    "tilbakemelding/leveranse", "tilbakemelding/leveranse/oppgavegiver",
+                    "tilbakemelding/leveranse/leveranseoppsummering"))):
+            invalid = True
     if (invalid or schema == "unknown" or stack or len(statuses) != 1 or statuses[0] not in {"godkjent", "avvist"}
             or len(transmissions) > 1 or len(years) > 1
             or (len(transmissions) == 1 and transmission != forsendelse_id)
@@ -125,39 +170,95 @@ def _safe_reconciliation_failure(error: Exception) -> Rf1086ReconciliationSnapsh
     return Rf1086ReconciliationSnapshot("unknown", safe_error_code="RF1086_RECONCILIATION_READ_ERROR")
 
 
-async def _read_feedback_once(journal: Rf1086ProductionJournal, authority: Rf1086ReadOnlyAuthority,
-        input: Rf1086ReconciliationInput, submitted_hashes: set[str], artifact_hashes: set[str]) -> Rf1086ReconciliationSnapshot:
-    try:
-        page = await authority.list_documents(income_year=input.income_year, reference_id=input.forsendelse_id, page=0, size=50)
-    except Exception as error:
-        return _safe_reconciliation_failure(error)
-    if (not page.document_shape_valid or page.current_page != 0 or page.total_pages > 1
-            or page.total_items != len(page.documents)):
-        return Rf1086ReconciliationSnapshot("action_required", safe_error_code="RF1086_ARCHIVE_SHAPE_INVALID")
-    if not page.documents:
-        return Rf1086ReconciliationSnapshot("processing")
-    classifications: list[Rf1086FeedbackClassification] = []
-    for archived in page.documents:
+async def _complete_archive(authority: Rf1086ReadOnlyAuthority, input: Rf1086ReconciliationInput):
+    documents = []
+    seen = set()
+    total_bytes = 0
+    expected_extent = None
+    page_index = 0
+    while True:
+        page = await authority.list_documents(income_year=input.income_year,
+            reference_id=input.forsendelse_id, page=page_index, size=RF1086_ARCHIVE_PAGE_SIZE)
+        extent = (page.total_items, page.total_pages)
+        if (not page.document_shape_valid or isinstance(page.current_page, bool) or page.current_page != page_index
+                or any(isinstance(value, bool) or not isinstance(value, (int, float))
+                       or not math.isfinite(value) or value < 0 or value != int(value) for value in extent)
+                or (expected_extent is not None and extent != expected_extent)):
+            raise Rf1086AuthorityError("RF1086_ARCHIVE_SHAPE_INVALID", status=200)
+        pages = int(page.total_pages)
+        expected_pages = (int(page.total_items) + RF1086_ARCHIVE_PAGE_SIZE - 1) // RF1086_ARCHIVE_PAGE_SIZE
+        if (pages != expected_pages and not (page.total_items == 0 and pages == 1)) or (pages == 0 and (page_index != 0 or page.documents)):
+            raise Rf1086AuthorityError("RF1086_ARCHIVE_SHAPE_INVALID", status=200)
+        if pages > RF1086_MAX_ARCHIVE_PAGES:
+            raise Rf1086AuthorityError("RF1086_ARCHIVE_SCAN_LIMIT", status=200)
+        expected_count = min(RF1086_ARCHIVE_PAGE_SIZE, int(page.total_items) - page_index * RF1086_ARCHIVE_PAGE_SIZE)
+        if len(page.documents) != expected_count:
+            raise Rf1086AuthorityError("RF1086_ARCHIVE_SHAPE_INVALID", status=200)
+        identities = set()
+        for document in page.documents:
+            raw = _js_utf8_bytes(document if isinstance(document, str) else document.reference)
+            identity = ("inline" if isinstance(document, str) else "reference", _sha256(raw))
+            if identity in seen or identity in identities:
+                raise Rf1086AuthorityError("RF1086_ARCHIVE_SHAPE_INVALID", status=200)
+            identities.add(identity)
+            total_bytes += len(raw)
+            if total_bytes > RF1086_MAX_ARCHIVE_SCAN_BYTES:
+                raise Rf1086AuthorityError("RF1086_ARCHIVE_SCAN_LIMIT", status=200)
+        seen.update(identities)
+        documents.extend(page.documents)
+        if pages == 0 or page_index == pages - 1:
+            return documents
+        expected_extent = extent
+        page_index += 1
+
+
+async def _acquire_feedback(authority: Rf1086ReadOnlyAuthority,
+        input: Rf1086ReconciliationInput, submitted_hashes: set[str]) -> list[Rf1086ReconciliationArtifact]:
+    documents = await _complete_archive(authority, input)
+    artifacts = []
+    processed_bytes = 0
+    for archived in documents:
         if isinstance(archived, str):
             bytes_value = _js_utf8_bytes(archived)
             content_type = "application/xml"
             reference = "inline:" + _sha256(bytes_value)
         else:
-            try:
-                document = await authority.get_document(income_year=input.income_year,
-                    forsendelse_id=input.forsendelse_id, document_id=archived.reference)
-                reference, content_type, bytes_value = document.reference, document.content_type, document.bytes
-            except Exception as error:
-                return _safe_reconciliation_failure(error)
+            document = await authority.get_document(income_year=input.income_year,
+                forsendelse_id=input.forsendelse_id, document_id=archived.reference)
+            reference, content_type, bytes_value = document.reference, document.content_type, document.bytes
+        processed_bytes += len(bytes_value)
+        if processed_bytes > RF1086_MAX_ARCHIVE_SCAN_BYTES:
+            raise Rf1086AuthorityError("RF1086_ARCHIVE_SCAN_LIMIT", status=200)
         digest = _sha256(bytes_value)
         if digest in submitted_hashes:
             continue
         feedback = (classify_rf1086_feedback(bytes_value, forsendelse_id=input.forsendelse_id, income_year=input.income_year)
             if content_type in {"application/xml", "text/xml"} else Rf1086FeedbackResult("action_required", "unknown", None))
-        classifications.append(feedback.classification)
+        artifacts.append(Rf1086ReconciliationArtifact(input.submission_id,
+            input.company_id, reference, content_type, bytes_value, len(bytes_value), digest, feedback.classification))
+    return artifacts
+
+
+async def _read_feedback_once(journal: Rf1086ProductionJournal, authority: Rf1086ReadOnlyAuthority,
+        input: Rf1086ReconciliationInput, submitted_hashes: set[str], artifact_hashes: set[str],
+        discovery: Rf1086FeedbackDiscovery | None) -> Rf1086ReconciliationSnapshot:
+    try:
+        # The provider scan deadline must never cancel a durable artifact write.
+        async with asyncio.timeout(RF1086_ARCHIVE_SCAN_TIMEOUT_SECONDS):
+            if discovery is None:
+                artifacts = await _acquire_feedback(authority, input, submitted_hashes)
+            else:
+                from .dialog_feedback import acquire_dialog_feedback
+                artifacts = await acquire_dialog_feedback(authority, discovery, input)
+    except TimeoutError:
+        return Rf1086ReconciliationSnapshot("unknown", safe_error_code="RF1086_ARCHIVE_SCAN_TIMEOUT")
+    except Exception as error:
+        return _safe_reconciliation_failure(error)
+    classifications: list[Rf1086FeedbackClassification] = []
+    for artifact in artifacts:
+        classifications.append(artifact.classification)
         try:
-            persisted = await journal.record_artifact(Rf1086ReconciliationArtifact(input.submission_id,
-                input.company_id, reference, content_type, bytes_value, len(bytes_value), digest, feedback.classification))
+            persisted = await journal.record_artifact(artifact)
             artifact_hashes.add(persisted)
         except Exception as error:
             retryable = isinstance(error, Rf1086FeedbackArtifactPersistenceError) and error.retryable
@@ -175,7 +276,7 @@ async def _read_feedback_once(journal: Rf1086ProductionJournal, authority: Rf108
 
 async def reconcile_journaled_rf1086_production(journal: Rf1086ProductionJournal,
         authority: Rf1086ReadOnlyAuthority, input: Rf1086ReconciliationInput, *,
-        initial_poll: bool | None = None, sleep: Callable[[int], Awaitable[None]] | None = None) -> Rf1086ReconciliationResult:
+        discovery: Rf1086FeedbackDiscovery | None = None, initial_poll: bool | None = None, sleep: Callable[[int], Awaitable[None]] | None = None) -> Rf1086ReconciliationResult:
     if (not input.submission_id or not input.company_id or not input.forsendelse_id or type(input.income_year) is not int
             or not input.hovedskjema_xml.strip() or not input.underskjema_xml):
         raise ValueError("RF1086_RECONCILIATION_RELATIONSHIP_REQUIRED")
@@ -187,7 +288,7 @@ async def reconcile_journaled_rf1086_production(journal: Rf1086ProductionJournal
     outcome = Rf1086ReconciliationSnapshot("processing")
     for attempt in range(1, maximum_reads + 1):
         archive_reads += 1
-        outcome = await _read_feedback_once(journal, authority, input, submitted_hashes, artifact_hashes)
+        outcome = await _read_feedback_once(journal, authority, input, submitted_hashes, artifact_hashes, discovery)
         if outcome.state != "processing" or attempt == maximum_reads:
             break
         if sleep is not None:

@@ -139,3 +139,19 @@ create a new production submission with `supersedes_submission_id` pointing to t
 prior submission, repeat owner review, and preserve both evidence packages. The
 initial beta does not send corrections until a separate TT02 and production-scope
 decision explicitly activates that case profile.
+
+
+## 2026-09-17: recheck after an action-required read failure
+
+After the underlying access or retrieval problem is repaired, the verified owner
+can use the existing status-check action for the original submission. This is a
+manual, read-only request, retaining the confirmed transmission and dialog,
+original approval/entitlement relationship, receipt archive, and journal. It does
+not repeat a POST or require a new filing approval. Accepted/rejected decisions
+remain terminal, and unresolved/unknown outcomes never authorize another send.
+
+This path recovers retrieval failures; it does not approve accounting corrections
+or overwrite old receipt classifications. Historical ambiguous/conflicting
+artifacts still block a final decision, including after a parser change. Preserve
+the evidence and resolve the missing adjudication/correction procedure before
+claiming full #193 feedback/correction completion.

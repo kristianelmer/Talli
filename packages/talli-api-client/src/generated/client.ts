@@ -2908,8 +2908,11 @@ export interface BillingPaymentEventWire {
 
 export type BillingPaymentStatus = "created" | "succeeded" | "failed" | "refunded" | "canceled";
 
+export type BillingPilotCaseProfile = "rf1086_no_activity_v1" | "rf1086_full_year_v1";
+
 export interface BillingPilotEntitlementCommandWire {
   billingExempt: boolean;
+  caseProfile?: BillingPilotCaseProfile;
   companyId: string;
   entitlementId?: string | null;
   evidenceReference: string;
@@ -3576,6 +3579,467 @@ export interface TaxSettlementPreviewWire {
   payload: TaxSettlementPayloadWire;
 }
 
+export interface RfSourceCompanyWire {
+  address: string;
+  city: string;
+  contactEmail?: string | null;
+  incomeYear: number;
+  name: string;
+  orgNumber: string;
+  postalCode: string;
+  shareType?: string;
+}
+
+export interface RfSourceSharesWire {
+  currentNominalValue: string;
+  currentPaidInPremium: string;
+  currentPaidInShareCapital: string;
+  currentShareCapital: string;
+  currentShareCount: number;
+  previousNominalValue: string;
+  previousPaidInPremium: string;
+  previousPaidInShareCapital: string;
+  previousShareCapital: string;
+  previousShareCount: number;
+}
+
+export interface RfSourceShareholderWire {
+  id: string;
+  kind: "norwegian_person" | "norwegian_company";
+  name: string;
+  nationalId?: string | null;
+  orgNumber?: string | null;
+}
+
+export interface RfSourceShareholderSharesWire {
+  currentShareCount: number;
+  previousShareCount: number;
+  shareholderId: string;
+}
+
+export interface RfSourceFormationAllocationWire {
+  acquisitionValue: string;
+  shareCount: number;
+  shareholderId: string;
+}
+
+export interface RfSourceFormationWire {
+  allocations: RfSourceFormationAllocationWire[];
+  issuedShareCount: number;
+  nominalValue: string;
+  premium: string;
+  shareCountAfter: number;
+  timestamp: string;
+  type: "formation";
+}
+
+export interface RfSourceCashIssueWire {
+  allocations: RfSourceFormationAllocationWire[];
+  issuedShareCount: number;
+  nominalValue: string;
+  premium: string;
+  registrationConfirmed: boolean;
+  shareCountAfter: number;
+  timestamp: string;
+  type: "cash_issue";
+}
+
+export interface RfSourceNominalAllocationWire {
+  capitalIncrease: string;
+  premium: string;
+  shareCountBasis: number;
+  shareholderId: string;
+}
+
+export interface RfSourceNominalIncreaseWire {
+  allocations: RfSourceNominalAllocationWire[];
+  capitalIncrease: string;
+  nominalValueAfter: string;
+  nominalValueIncrease: string;
+  premium: string;
+  registrationConfirmed: boolean;
+  timestamp: string;
+  type: "cash_nominal_increase";
+}
+
+export interface RfSourceLossReductionWire {
+  capitalReduction: string;
+  fundIssuedCapitalBefore: number;
+  nominalValueAfter: string;
+  nominalValueReduction: string;
+  registrationConfirmed: boolean;
+  timestamp: string;
+  type: "loss_covering_reduction";
+}
+
+export interface RfSourceShareSaleWire {
+  buyerShareholderId: string;
+  consideration: string;
+  sellerShareholderId: string;
+  shareCount: number;
+  timestamp: string;
+  type: "share_sale";
+}
+
+export interface RfSourceDividendAllocationWire {
+  amount: string;
+  shareCountBasis: number;
+  shareholderId: string;
+}
+
+export interface RfSourceDividendWire {
+  allocations: RfSourceDividendAllocationWire[];
+  perShareAmount: string;
+  timestamp: string;
+  totalAmount: string;
+  type: "dividend";
+}
+
+export interface RfSourceCaseWire {
+  caseId: string;
+  company: RfSourceCompanyWire;
+  events: (RfSourceFormationWire | RfSourceCashIssueWire | RfSourceNominalIncreaseWire | RfSourceLossReductionWire | RfSourceShareSaleWire | RfSourceDividendWire)[];
+  shareSnapshot: RfSourceSharesWire;
+  shareholderSnapshots: RfSourceShareholderSharesWire[];
+  shareholders: RfSourceShareholderWire[];
+}
+
+export interface RfSourcePaidInWire {
+  closingCapital: string;
+  closingPremium: string;
+  openingCapital: string;
+  openingPremium: string;
+}
+
+export interface RfSourceDocumentWire {
+  byteLength: number;
+  companyId: string;
+  contentSha256: string;
+  contentVersionSha256: string;
+  createdAt: string;
+  documentId: string;
+  documentType: string;
+  integrityStatus: "attached" | "generated_unsigned" | "signed_owner_attested" | "stored";
+  metadataSha256: string;
+  sourceIncomeYear: number;
+}
+
+export interface RfSourceEventEvidenceWire {
+  documentIds: string[];
+  eventIndex: number;
+  eventSha256?: string | null;
+  governanceReceiptId?: string | null;
+}
+
+export interface RfYearSourceCaptureWire {
+  case: RfSourceCaseWire;
+  closingDocumentIds: string[];
+  companyId: string;
+  completeYearConfirmed: boolean;
+  correctionReason?: string | null;
+  documents: RfSourceDocumentWire[];
+  eventEvidence: RfSourceEventEvidenceWire[];
+  identitiesReviewed: boolean;
+  incomeYear: number;
+  noActivityConfirmed: boolean;
+  openingDocumentIds: string[];
+  paidIn: RfSourcePaidInWire;
+  paidInDocumentIds: string[];
+  paidInReviewed: boolean;
+  supersedesSourceId?: string | null;
+  supersedesSourceSha256?: string | null;
+}
+
+export interface RfYearSourceDraftWire {
+  case: RfSourceCaseWire;
+  closingDocumentIds: string[];
+  companyId: string;
+  completeYearConfirmed: boolean;
+  correctionReason?: string | null;
+  documents: RfSourceDocumentWire[];
+  eventEvidence: RfSourceEventEvidenceWire[];
+  identitiesReviewed: boolean;
+  incomeYear: number;
+  noActivityConfirmed: boolean;
+  openingDocumentIds: string[];
+  paidIn: RfSourcePaidInWire;
+  paidInDocumentIds: string[];
+  paidInReviewed: boolean;
+  supersedesSourceId?: string | null;
+  supersedesSourceSha256?: string | null;
+}
+
+export interface RfCurrentYearSourceRecordWire {
+  draft: RfYearSourceDraftWire;
+  receipt: RfYearSourceReceiptWire;
+}
+
+export interface RfCurrentYearSourceWire {
+  currentSource: RfCurrentYearSourceRecordWire | null;
+}
+
+export interface RfSourceIntakeDocumentWire {
+  artifactId: string | null;
+  contentSha256: string;
+  documentId: string;
+  revision: number | null;
+  role: string;
+  sourceIncomeYear: number | null;
+  supersedesArtifactId: string | null;
+  variant: string | null;
+}
+
+export interface RfSourceIntakeRegisterWire {
+  factSha256: string;
+  observationId: string;
+  revision: number;
+}
+
+export interface RfSourceIntakeAllocationWire {
+  amount: string;
+  shareCountBasis: number;
+  shareholderId: string;
+}
+
+export interface RfSourceIntakeDividendEconomicsWire {
+  allocations: RfSourceIntakeAllocationWire[];
+  amount: string;
+}
+
+export interface RfSourceIntakeFinalizationWire {
+  decisionSha256: string;
+  originalDocumentIds: string[];
+  receiptId: string;
+  signedArtifactHashes: Record<string, string>;
+  sourceIncomeYear: number;
+}
+
+export interface RfSourceIntakeDividendWire {
+  blockers: string[];
+  decisionId: string;
+  decisionSha256: string;
+  documents: RfSourceIntakeDocumentWire[];
+  economics: RfSourceIntakeDividendEconomicsWire | null;
+  finalizations: RfSourceIntakeFinalizationWire[];
+  reportingDate: string;
+  reportingYear: number;
+  sourceIncomeYear: number;
+  status: "pending" | "finalized" | "rejected" | "superseded";
+  supersedesDecisionId: string | null;
+}
+
+export interface RfSourceIntakeCapitalEconomicsWire {
+  issuedShareCount: number | null;
+  newShareCapital: string | null;
+  nominalIncrease: string | null;
+  nominalReduction: string | null;
+  oldShareCapital: string | null;
+  sharePremium: string | null;
+}
+
+export interface RfSourceIntakeCapitalEventWire {
+  accountingEntryId: string;
+  blockers: string[];
+  correctionOfEventId: string | null;
+  documents: RfSourceIntakeDocumentWire[];
+  economics: RfSourceIntakeCapitalEconomicsWire | null;
+  eventKind: string;
+  eventReference: string;
+  phase: string;
+  receiptId: string;
+  registerObservation: RfSourceIntakeRegisterWire | null;
+  reportingDate: string;
+  reportingYear: number;
+  sourceIncomeYear: number;
+}
+
+export interface RfSourceIntakeCapitalWire {
+  blockers: string[];
+  events: RfSourceIntakeCapitalEventWire[];
+  representativeReceiptId: string;
+  status: "recorded" | "reversed" | "corrected" | "incomplete" | "conflicting";
+}
+
+export interface RfSourceIntakeAmendmentWire {
+  originalEntryId: string;
+  reason: string;
+  replacementEntryId: string | null;
+  reversalEntryId: string;
+  sourceIncomeYear: number;
+}
+
+export interface RfSourceIntakeCompanyWire {
+  address: string;
+  city: string;
+  identityConfirmedAt: string;
+  identityLockedAt: string;
+  name: string;
+  orgNumber: string;
+  postalCode: string;
+}
+
+export interface RfSourceIntakeBasisWire {
+  blockers: string[];
+  capitalEvents: RfSourceIntakeCapitalWire[];
+  company: RfSourceIntakeCompanyWire;
+  companyId: string;
+  dividends: RfSourceIntakeDividendWire[];
+  enumerationComplete: true;
+  enumerationSha256: string;
+  incomeYear: number;
+  ledgerAmendments: RfSourceIntakeAmendmentWire[];
+}
+
+export interface RfRegisterHoldingWire {
+  identifier: string;
+  kind: "norwegian_person" | "norwegian_company";
+  name: string;
+  shareCount: number;
+  shareholderId: string;
+}
+
+export interface RfRegisteredSharesWire {
+  holdings: RfRegisterHoldingWire[];
+  nominalValue: string;
+  shareCapital: string;
+  shareCount: number;
+}
+
+export interface RfRegisterDocumentWire {
+  byteLength: number;
+  companyId: string;
+  contentSha256: string;
+  contentVersionSha256: string;
+  createdAt: string;
+  documentId: string;
+  documentType: string;
+  integrityStatus: "attached" | "generated_unsigned" | "signed_owner_attested" | "stored";
+  metadataSha256: string;
+  role: "register_before" | "register_after" | "registration";
+  sourceIncomeYear: number;
+}
+
+export interface RfRegisterObservationCaptureWire {
+  after: RfRegisteredSharesWire;
+  before: RfRegisteredSharesWire;
+  companyId: string;
+  completeRegisterConfirmed: boolean;
+  correctionReason?: string | null;
+  documents: RfRegisterDocumentWire[];
+  effectiveAt: string;
+  eventKind: "cash_issue" | "cash_nominal_increase" | "loss_covering_reduction";
+  incomeYear: number;
+  registrationConfirmed: boolean;
+  singleShareClassConfirmed: boolean;
+  supersedesObservationId?: string | null;
+  supersedesObservationSha256?: string | null;
+}
+
+export interface RfSourceProductionReviewRequestWire {
+  companyId: string;
+  entitlementId: string;
+  incomeYear: number;
+  previewId: string;
+}
+
+export interface RfSourceProductionReviewWire {
+  blockers: string[];
+  canApprove: boolean;
+  companyId: string;
+  entitlementId: string;
+  incomeYear: number;
+  previewId: string;
+  reviewSha256: string;
+  sourceId: string;
+  sourceSha256: string;
+  warningCodes: string[];
+}
+
+export interface RfSourceProductionApprovalCommandWire {
+  acknowledgedWarningCodes: string[];
+  companyId: string;
+  entitlementId: string;
+  incomeYear: number;
+  predecessor?: RfSourceCorrectionPredecessorWire | null;
+  previewId: string;
+  realFilingConfirmed: boolean;
+  reviewSha256: string;
+}
+
+export interface RfSourceCorrectionPredecessorWire {
+  manifestSha256: string;
+  reason: string;
+  submissionId: string;
+}
+
+export interface RfSourcePreviewRequestWire {
+  companyId: string;
+  incomeYear: number;
+  sourceId: string;
+}
+
+export interface RfYearSourceReceiptWire {
+  caseSha256: string;
+  companyId: string;
+  confirmedAt: string;
+  incomeYear: number;
+  sourceId: string;
+  sourceSha256: string;
+  version: number;
+}
+
+export interface RfRegisterObservationReceiptWire {
+  companyId: string;
+  confirmedAt: string;
+  factSha256: string;
+  incomeYear: number;
+  observationId: string;
+  version: number;
+}
+
+export interface RfRegisterObservationDraftWire {
+  after: RfRegisteredSharesWire;
+  before: RfRegisteredSharesWire;
+  companyId: string;
+  completeRegisterConfirmed: boolean;
+  correctionReason?: string | null;
+  documents: RfRegisterDocumentWire[];
+  effectiveAt: string;
+  eventKind: "cash_issue" | "cash_nominal_increase" | "loss_covering_reduction";
+  incomeYear: number;
+  registrationConfirmed: boolean;
+  singleShareClassConfirmed: boolean;
+  supersedesObservationId?: string | null;
+  supersedesObservationSha256?: string | null;
+}
+
+export interface RfRegisterObservationRecordWire {
+  draft: RfRegisterObservationDraftWire;
+  isCurrent: boolean;
+  receipt: RfRegisterObservationReceiptWire;
+}
+
+export interface RfRegisterObservationsWire {
+  companyId: string;
+  incomeYear: number;
+  observations: RfRegisterObservationRecordWire[];
+}
+
+export interface RfSourcePreviewWire {
+  caseSha256: string;
+  companyId: string;
+  hovedskjemaXml: string | null;
+  incomeYear: number;
+  previewId: string;
+  previewText: string;
+  readinessIssues: Rf1086IssueWire[];
+  readinessStatus: "ready" | "blocked";
+  renderingProfile: string;
+  sourceId: string;
+  sourceSha256: string;
+  underskjemaXml: Record<string, string> | null;
+}
+
 export interface LegacyRf1086SendCommandWire {
   approvalId: string;
 }
@@ -3803,7 +4267,7 @@ export interface Rf1086ApprovalWire {
   adapterVersion: string;
   approvedAt: string;
   approvedBy: string;
-  caseProfile: "rf1086_no_activity_v1";
+  caseProfile: "rf1086_no_activity_v1" | "rf1086_full_year_v1";
   companyId: string;
   entitlementId: string;
   id: string;
@@ -3822,7 +4286,7 @@ export interface Rf1086ProductionSubmissionWire {
   adapterVersion: string;
   approvalId: string;
   authorityReferences: Record<string, string>;
-  caseProfile: "rf1086_no_activity_v1";
+  caseProfile: "rf1086_no_activity_v1" | "rf1086_full_year_v1";
   companyId: string;
   createdAt: string;
   entitlementId: string;
@@ -3886,6 +4350,88 @@ export interface Rf1086ArchiveSourceWire {
   reviewComments: Rf1086ReviewCommentWire[];
   simulations: Rf1086SimulationWire[];
   testEvidence: Rf1086TestEvidenceWire[];
+}
+
+export interface Rf1086ArchivedYearSourceWire {
+  command: RfYearSourceDraftWire;
+  receipt: RfYearSourceReceiptWire;
+}
+
+export interface Rf1086ArchiveSourceReviewBridgeWire {
+  companyId: string;
+  createdAt: string;
+  createdBy: string;
+  incomeYear: number;
+  payloadSha256: string;
+  previewId: string;
+  sourceId: string;
+  sourceSha256: string;
+}
+
+export interface Rf1086ArchiveSourceApprovalLineageWire {
+  approvalId: string;
+  approvedBy: string;
+  bridge: Rf1086ArchiveSourceReviewBridgeWire;
+  companyId: string;
+  createdAt: string;
+  incomeYear: number;
+  manifestSha256: string;
+  manifestText: string;
+  payloadSha256: string;
+  previewId: string;
+  reviewSha256: string;
+  reviewText: string;
+  source: Rf1086ArchivedYearSourceWire;
+  sourceId: string;
+  sourcePreview: RfSourcePreviewWire;
+  sourceSha256: string;
+}
+
+export interface Rf1086ProductionArchiveSourceWire {
+  approvals: Rf1086ApprovalWire[];
+  companyId: string;
+  feedbackArtifacts: Rf1086ArchiveFeedbackArtifactWire[];
+  incomeYear: number;
+  permissions: Rf1086PermissionWire[];
+  previews: Rf1086PreviewWire[];
+  productionEvents: Rf1086ArchiveProductionEventWire[];
+  productionSubmissions: Rf1086ProductionSubmissionWire[];
+  reviewComments: Rf1086ReviewCommentWire[];
+  simulations: Rf1086SimulationWire[];
+  sourceApprovalLineage?: Rf1086ArchiveSourceApprovalLineageWire[];
+  testEvidence: Rf1086TestEvidenceWire[];
+}
+
+export interface Rf1086ArchiveProductionEventWire {
+  artifactHashes: string[];
+  attempt: number;
+  authorityReference: string | null;
+  bodyHash: string | null;
+  companyId: string;
+  correlationId: string | null;
+  createdAt: string;
+  failureClass: "retryable" | "blocked" | "unknown" | null;
+  id: string;
+  idempotencyKey: string | null;
+  incomeYear: number;
+  operationName: string;
+  operationState: "prepared" | "succeeded" | "failed" | "unknown";
+  resultingStatus: "approved" | "sending" | "received" | "processing" | "accepted" | "rejected" | "action_required" | "unknown";
+  safeErrorCode: string | null;
+  submissionId: string;
+}
+
+export interface Rf1086ArchiveFeedbackArtifactWire {
+  authorityReference: string;
+  byteLength: number;
+  classification: "accepted" | "rejected" | "action_required";
+  companyId: string;
+  contentType: "application/xml" | "text/xml" | "application/pdf" | "text/plain" | "application/octet-stream";
+  documentId: string;
+  id: string;
+  retrievedAt: string;
+  sha256: string;
+  submissionId: string;
 }
 
 export type LaunchSignoffKey = "launch_legal_name_public_copy" | "legal_policy_pack" | "security_restore" | "billing_refund" | "rf1086_authority" | "annual_accounts_authority" | "tax_return_authority" | "support_rollback" | "founder_production_go_live";
@@ -7927,11 +8473,16 @@ function isBillingPaymentStatus(value: unknown): value is BillingPaymentStatus {
   return value === "created" || value === "succeeded" || value === "failed" || value === "refunded" || value === "canceled";
 }
 
+function isBillingPilotCaseProfile(value: unknown): value is BillingPilotCaseProfile {
+  return value === "rf1086_no_activity_v1" || value === "rf1086_full_year_v1";
+}
+
 function isBillingPilotEntitlementCommandWire(value: unknown): value is BillingPilotEntitlementCommandWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["billingExempt","companyId","entitlementId","evidenceReference","expiresAt","incomeYear","startsAt","status","systemUserRequestId","userId"]) &&
+    hasOnlyProperties(value, ["billingExempt","caseProfile","companyId","entitlementId","evidenceReference","expiresAt","incomeYear","startsAt","status","systemUserRequestId","userId"]) &&
     typeof value.billingExempt === "boolean" &&
+    (value.caseProfile === undefined || isBillingPilotCaseProfile(value.caseProfile)) &&
     isUuid(value.companyId) &&
     (value.entitlementId === undefined || (isUuid(value.entitlementId) || value.entitlementId === null)) &&
     (typeof value.evidenceReference === "string" && value.evidenceReference.length >= 1 && value.evidenceReference.length <= 1000) &&
@@ -8851,6 +9402,659 @@ function isTaxSettlementPreviewWire(value: unknown): value is TaxSettlementPrevi
   );
 }
 
+function isRfSourceCompanyWire(value: unknown): value is RfSourceCompanyWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["address","city","contactEmail","incomeYear","name","orgNumber","postalCode","shareType"]) &&
+    typeof value.address === "string" &&
+    typeof value.city === "string" &&
+    (value.contactEmail === undefined || (typeof value.contactEmail === "string" || value.contactEmail === null)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.name === "string" &&
+    (typeof value.orgNumber === "string" && new RegExp("^\\d{9}$", "u").test(value.orgNumber)) &&
+    (typeof value.postalCode === "string" && new RegExp("^\\d{4}$", "u").test(value.postalCode)) &&
+    (value.shareType === undefined || typeof value.shareType === "string")
+  );
+}
+
+function isRfSourceSharesWire(value: unknown): value is RfSourceSharesWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["currentNominalValue","currentPaidInPremium","currentPaidInShareCapital","currentShareCapital","currentShareCount","previousNominalValue","previousPaidInPremium","previousPaidInShareCapital","previousShareCapital","previousShareCount"]) &&
+    typeof value.currentNominalValue === "string" &&
+    typeof value.currentPaidInPremium === "string" &&
+    typeof value.currentPaidInShareCapital === "string" &&
+    typeof value.currentShareCapital === "string" &&
+    (typeof value.currentShareCount === "number" && Number.isInteger(value.currentShareCount) && value.currentShareCount >= 0) &&
+    typeof value.previousNominalValue === "string" &&
+    typeof value.previousPaidInPremium === "string" &&
+    typeof value.previousPaidInShareCapital === "string" &&
+    typeof value.previousShareCapital === "string" &&
+    (typeof value.previousShareCount === "number" && Number.isInteger(value.previousShareCount) && value.previousShareCount >= 0)
+  );
+}
+
+function isRfSourceShareholderWire(value: unknown): value is RfSourceShareholderWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["id","kind","name","nationalId","orgNumber"]) &&
+    typeof value.id === "string" &&
+    (value.kind === "norwegian_person" || value.kind === "norwegian_company") &&
+    typeof value.name === "string" &&
+    (value.nationalId === undefined || ((typeof value.nationalId === "string" && new RegExp("^\\d{11}$", "u").test(value.nationalId)) || value.nationalId === null)) &&
+    (value.orgNumber === undefined || ((typeof value.orgNumber === "string" && new RegExp("^\\d{9}$", "u").test(value.orgNumber)) || value.orgNumber === null))
+  );
+}
+
+function isRfSourceShareholderSharesWire(value: unknown): value is RfSourceShareholderSharesWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["currentShareCount","previousShareCount","shareholderId"]) &&
+    (typeof value.currentShareCount === "number" && Number.isInteger(value.currentShareCount) && value.currentShareCount >= 0) &&
+    (typeof value.previousShareCount === "number" && Number.isInteger(value.previousShareCount) && value.previousShareCount >= 0) &&
+    typeof value.shareholderId === "string"
+  );
+}
+
+function isRfSourceFormationAllocationWire(value: unknown): value is RfSourceFormationAllocationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["acquisitionValue","shareCount","shareholderId"]) &&
+    typeof value.acquisitionValue === "string" &&
+    (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) && value.shareCount >= 0) &&
+    typeof value.shareholderId === "string"
+  );
+}
+
+function isRfSourceFormationWire(value: unknown): value is RfSourceFormationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["allocations","issuedShareCount","nominalValue","premium","shareCountAfter","timestamp","type"]) &&
+    Array.isArray(value.allocations) && value.allocations.every((item) => isRfSourceFormationAllocationWire(item)) &&
+    (typeof value.issuedShareCount === "number" && Number.isInteger(value.issuedShareCount) && value.issuedShareCount >= 0) &&
+    typeof value.nominalValue === "string" &&
+    typeof value.premium === "string" &&
+    (typeof value.shareCountAfter === "number" && Number.isInteger(value.shareCountAfter) && value.shareCountAfter >= 0) &&
+    (typeof value.timestamp === "string" && new RegExp("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$", "u").test(value.timestamp)) &&
+    value.type === "formation"
+  );
+}
+
+function isRfSourceCashIssueWire(value: unknown): value is RfSourceCashIssueWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["allocations","issuedShareCount","nominalValue","premium","registrationConfirmed","shareCountAfter","timestamp","type"]) &&
+    Array.isArray(value.allocations) && value.allocations.every((item) => isRfSourceFormationAllocationWire(item)) &&
+    (typeof value.issuedShareCount === "number" && Number.isInteger(value.issuedShareCount) && value.issuedShareCount >= 0) &&
+    typeof value.nominalValue === "string" &&
+    typeof value.premium === "string" &&
+    typeof value.registrationConfirmed === "boolean" &&
+    (typeof value.shareCountAfter === "number" && Number.isInteger(value.shareCountAfter) && value.shareCountAfter >= 0) &&
+    (typeof value.timestamp === "string" && new RegExp("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$", "u").test(value.timestamp)) &&
+    value.type === "cash_issue"
+  );
+}
+
+function isRfSourceNominalAllocationWire(value: unknown): value is RfSourceNominalAllocationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["capitalIncrease","premium","shareCountBasis","shareholderId"]) &&
+    typeof value.capitalIncrease === "string" &&
+    typeof value.premium === "string" &&
+    (typeof value.shareCountBasis === "number" && Number.isInteger(value.shareCountBasis) && value.shareCountBasis >= 0) &&
+    typeof value.shareholderId === "string"
+  );
+}
+
+function isRfSourceNominalIncreaseWire(value: unknown): value is RfSourceNominalIncreaseWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["allocations","capitalIncrease","nominalValueAfter","nominalValueIncrease","premium","registrationConfirmed","timestamp","type"]) &&
+    Array.isArray(value.allocations) && value.allocations.every((item) => isRfSourceNominalAllocationWire(item)) &&
+    typeof value.capitalIncrease === "string" &&
+    typeof value.nominalValueAfter === "string" &&
+    typeof value.nominalValueIncrease === "string" &&
+    typeof value.premium === "string" &&
+    typeof value.registrationConfirmed === "boolean" &&
+    (typeof value.timestamp === "string" && new RegExp("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$", "u").test(value.timestamp)) &&
+    value.type === "cash_nominal_increase"
+  );
+}
+
+function isRfSourceLossReductionWire(value: unknown): value is RfSourceLossReductionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["capitalReduction","fundIssuedCapitalBefore","nominalValueAfter","nominalValueReduction","registrationConfirmed","timestamp","type"]) &&
+    typeof value.capitalReduction === "string" &&
+    (typeof value.fundIssuedCapitalBefore === "number" && Number.isInteger(value.fundIssuedCapitalBefore) && value.fundIssuedCapitalBefore >= 0 && value.fundIssuedCapitalBefore <= 0) &&
+    typeof value.nominalValueAfter === "string" &&
+    typeof value.nominalValueReduction === "string" &&
+    typeof value.registrationConfirmed === "boolean" &&
+    (typeof value.timestamp === "string" && new RegExp("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$", "u").test(value.timestamp)) &&
+    value.type === "loss_covering_reduction"
+  );
+}
+
+function isRfSourceShareSaleWire(value: unknown): value is RfSourceShareSaleWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["buyerShareholderId","consideration","sellerShareholderId","shareCount","timestamp","type"]) &&
+    typeof value.buyerShareholderId === "string" &&
+    typeof value.consideration === "string" &&
+    typeof value.sellerShareholderId === "string" &&
+    (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) && value.shareCount >= 0) &&
+    (typeof value.timestamp === "string" && new RegExp("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$", "u").test(value.timestamp)) &&
+    value.type === "share_sale"
+  );
+}
+
+function isRfSourceDividendAllocationWire(value: unknown): value is RfSourceDividendAllocationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amount","shareCountBasis","shareholderId"]) &&
+    typeof value.amount === "string" &&
+    (typeof value.shareCountBasis === "number" && Number.isInteger(value.shareCountBasis) && value.shareCountBasis >= 0) &&
+    typeof value.shareholderId === "string"
+  );
+}
+
+function isRfSourceDividendWire(value: unknown): value is RfSourceDividendWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["allocations","perShareAmount","timestamp","totalAmount","type"]) &&
+    Array.isArray(value.allocations) && value.allocations.every((item) => isRfSourceDividendAllocationWire(item)) &&
+    typeof value.perShareAmount === "string" &&
+    (typeof value.timestamp === "string" && new RegExp("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$", "u").test(value.timestamp)) &&
+    typeof value.totalAmount === "string" &&
+    value.type === "dividend"
+  );
+}
+
+function isRfSourceCaseWire(value: unknown): value is RfSourceCaseWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["caseId","company","events","shareSnapshot","shareholderSnapshots","shareholders"]) &&
+    typeof value.caseId === "string" &&
+    isRfSourceCompanyWire(value.company) &&
+    Array.isArray(value.events) && value.events.every((item) => (isRfSourceFormationWire(item) || isRfSourceCashIssueWire(item) || isRfSourceNominalIncreaseWire(item) || isRfSourceLossReductionWire(item) || isRfSourceShareSaleWire(item) || isRfSourceDividendWire(item))) &&
+    isRfSourceSharesWire(value.shareSnapshot) &&
+    Array.isArray(value.shareholderSnapshots) && value.shareholderSnapshots.every((item) => isRfSourceShareholderSharesWire(item)) &&
+    Array.isArray(value.shareholders) && value.shareholders.every((item) => isRfSourceShareholderWire(item))
+  );
+}
+
+function isRfSourcePaidInWire(value: unknown): value is RfSourcePaidInWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["closingCapital","closingPremium","openingCapital","openingPremium"]) &&
+    typeof value.closingCapital === "string" &&
+    typeof value.closingPremium === "string" &&
+    typeof value.openingCapital === "string" &&
+    typeof value.openingPremium === "string"
+  );
+}
+
+function isRfSourceDocumentWire(value: unknown): value is RfSourceDocumentWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["byteLength","companyId","contentSha256","contentVersionSha256","createdAt","documentId","documentType","integrityStatus","metadataSha256","sourceIncomeYear"]) &&
+    (typeof value.byteLength === "number" && Number.isInteger(value.byteLength) && value.byteLength > 0) &&
+    isUuid(value.companyId) &&
+    (typeof value.contentSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.contentSha256)) &&
+    (typeof value.contentVersionSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.contentVersionSha256)) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.documentId) &&
+    typeof value.documentType === "string" &&
+    (value.integrityStatus === "attached" || value.integrityStatus === "generated_unsigned" || value.integrityStatus === "signed_owner_attested" || value.integrityStatus === "stored") &&
+    (typeof value.metadataSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.metadataSha256)) &&
+    (typeof value.sourceIncomeYear === "number" && Number.isInteger(value.sourceIncomeYear) && value.sourceIncomeYear >= 2000 && value.sourceIncomeYear <= 2100)
+  );
+}
+
+function isRfSourceEventEvidenceWire(value: unknown): value is RfSourceEventEvidenceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["documentIds","eventIndex","eventSha256","governanceReceiptId"]) &&
+    Array.isArray(value.documentIds) && value.documentIds.every((item) => isUuid(item)) &&
+    (typeof value.eventIndex === "number" && Number.isInteger(value.eventIndex) && value.eventIndex >= 0) &&
+    (value.eventSha256 === undefined || ((typeof value.eventSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.eventSha256)) || value.eventSha256 === null)) &&
+    (value.governanceReceiptId === undefined || (isUuid(value.governanceReceiptId) || value.governanceReceiptId === null))
+  );
+}
+
+function isRfYearSourceCaptureWire(value: unknown): value is RfYearSourceCaptureWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["case","closingDocumentIds","companyId","completeYearConfirmed","correctionReason","documents","eventEvidence","identitiesReviewed","incomeYear","noActivityConfirmed","openingDocumentIds","paidIn","paidInDocumentIds","paidInReviewed","supersedesSourceId","supersedesSourceSha256"]) &&
+    isRfSourceCaseWire(value.case) &&
+    Array.isArray(value.closingDocumentIds) && value.closingDocumentIds.every((item) => isUuid(item)) &&
+    isUuid(value.companyId) &&
+    typeof value.completeYearConfirmed === "boolean" &&
+    (value.correctionReason === undefined || (typeof value.correctionReason === "string" || value.correctionReason === null)) &&
+    Array.isArray(value.documents) && value.documents.every((item) => isRfSourceDocumentWire(item)) && value.documents.length >= 1 &&
+    Array.isArray(value.eventEvidence) && value.eventEvidence.every((item) => isRfSourceEventEvidenceWire(item)) &&
+    typeof value.identitiesReviewed === "boolean" &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.noActivityConfirmed === "boolean" &&
+    Array.isArray(value.openingDocumentIds) && value.openingDocumentIds.every((item) => isUuid(item)) &&
+    isRfSourcePaidInWire(value.paidIn) &&
+    Array.isArray(value.paidInDocumentIds) && value.paidInDocumentIds.every((item) => isUuid(item)) &&
+    typeof value.paidInReviewed === "boolean" &&
+    (value.supersedesSourceId === undefined || (isUuid(value.supersedesSourceId) || value.supersedesSourceId === null)) &&
+    (value.supersedesSourceSha256 === undefined || ((typeof value.supersedesSourceSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.supersedesSourceSha256)) || value.supersedesSourceSha256 === null))
+  );
+}
+
+function isRfYearSourceDraftWire(value: unknown): value is RfYearSourceDraftWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["case","closingDocumentIds","companyId","completeYearConfirmed","correctionReason","documents","eventEvidence","identitiesReviewed","incomeYear","noActivityConfirmed","openingDocumentIds","paidIn","paidInDocumentIds","paidInReviewed","supersedesSourceId","supersedesSourceSha256"]) &&
+    isRfSourceCaseWire(value.case) &&
+    Array.isArray(value.closingDocumentIds) && value.closingDocumentIds.every((item) => isUuid(item)) &&
+    isUuid(value.companyId) &&
+    typeof value.completeYearConfirmed === "boolean" &&
+    (value.correctionReason === undefined || (typeof value.correctionReason === "string" || value.correctionReason === null)) &&
+    Array.isArray(value.documents) && value.documents.every((item) => isRfSourceDocumentWire(item)) && value.documents.length >= 1 &&
+    Array.isArray(value.eventEvidence) && value.eventEvidence.every((item) => isRfSourceEventEvidenceWire(item)) &&
+    typeof value.identitiesReviewed === "boolean" &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.noActivityConfirmed === "boolean" &&
+    Array.isArray(value.openingDocumentIds) && value.openingDocumentIds.every((item) => isUuid(item)) &&
+    isRfSourcePaidInWire(value.paidIn) &&
+    Array.isArray(value.paidInDocumentIds) && value.paidInDocumentIds.every((item) => isUuid(item)) &&
+    typeof value.paidInReviewed === "boolean" &&
+    (value.supersedesSourceId === undefined || (isUuid(value.supersedesSourceId) || value.supersedesSourceId === null)) &&
+    (value.supersedesSourceSha256 === undefined || ((typeof value.supersedesSourceSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.supersedesSourceSha256)) || value.supersedesSourceSha256 === null))
+  );
+}
+
+function isRfCurrentYearSourceRecordWire(value: unknown): value is RfCurrentYearSourceRecordWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["draft","receipt"]) &&
+    isRfYearSourceDraftWire(value.draft) &&
+    isRfYearSourceReceiptWire(value.receipt)
+  );
+}
+
+function isRfCurrentYearSourceWire(value: unknown): value is RfCurrentYearSourceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["currentSource"]) &&
+    (isRfCurrentYearSourceRecordWire(value.currentSource) || value.currentSource === null)
+  );
+}
+
+function isRfSourceIntakeDocumentWire(value: unknown): value is RfSourceIntakeDocumentWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["artifactId","contentSha256","documentId","revision","role","sourceIncomeYear","supersedesArtifactId","variant"]) &&
+    (isUuid(value.artifactId) || value.artifactId === null) &&
+    (typeof value.contentSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.contentSha256)) &&
+    isUuid(value.documentId) &&
+    (typeof value.revision === "number" && Number.isInteger(value.revision) || value.revision === null) &&
+    typeof value.role === "string" &&
+    (typeof value.sourceIncomeYear === "number" && Number.isInteger(value.sourceIncomeYear) || value.sourceIncomeYear === null) &&
+    (isUuid(value.supersedesArtifactId) || value.supersedesArtifactId === null) &&
+    (typeof value.variant === "string" || value.variant === null)
+  );
+}
+
+function isRfSourceIntakeRegisterWire(value: unknown): value is RfSourceIntakeRegisterWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["factSha256","observationId","revision"]) &&
+    (typeof value.factSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.factSha256)) &&
+    isUuid(value.observationId) &&
+    typeof value.revision === "number" && Number.isInteger(value.revision)
+  );
+}
+
+function isRfSourceIntakeAllocationWire(value: unknown): value is RfSourceIntakeAllocationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["amount","shareCountBasis","shareholderId"]) &&
+    typeof value.amount === "string" &&
+    typeof value.shareCountBasis === "number" && Number.isInteger(value.shareCountBasis) &&
+    typeof value.shareholderId === "string"
+  );
+}
+
+function isRfSourceIntakeDividendEconomicsWire(value: unknown): value is RfSourceIntakeDividendEconomicsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["allocations","amount"]) &&
+    Array.isArray(value.allocations) && value.allocations.every((item) => isRfSourceIntakeAllocationWire(item)) &&
+    typeof value.amount === "string"
+  );
+}
+
+function isRfSourceIntakeFinalizationWire(value: unknown): value is RfSourceIntakeFinalizationWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["decisionSha256","originalDocumentIds","receiptId","signedArtifactHashes","sourceIncomeYear"]) &&
+    (typeof value.decisionSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.decisionSha256)) &&
+    Array.isArray(value.originalDocumentIds) && value.originalDocumentIds.every((item) => isUuid(item)) &&
+    isUuid(value.receiptId) &&
+    isRecord(value.signedArtifactHashes) && Object.values(value.signedArtifactHashes).every((item) => (typeof item === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(item))) &&
+    typeof value.sourceIncomeYear === "number" && Number.isInteger(value.sourceIncomeYear)
+  );
+}
+
+function isRfSourceIntakeDividendWire(value: unknown): value is RfSourceIntakeDividendWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["blockers","decisionId","decisionSha256","documents","economics","finalizations","reportingDate","reportingYear","sourceIncomeYear","status","supersedesDecisionId"]) &&
+    Array.isArray(value.blockers) && value.blockers.every((item) => typeof item === "string") &&
+    isUuid(value.decisionId) &&
+    (typeof value.decisionSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.decisionSha256)) &&
+    Array.isArray(value.documents) && value.documents.every((item) => isRfSourceIntakeDocumentWire(item)) &&
+    (isRfSourceIntakeDividendEconomicsWire(value.economics) || value.economics === null) &&
+    Array.isArray(value.finalizations) && value.finalizations.every((item) => isRfSourceIntakeFinalizationWire(item)) &&
+    typeof value.reportingDate === "string" &&
+    typeof value.reportingYear === "number" && Number.isInteger(value.reportingYear) &&
+    typeof value.sourceIncomeYear === "number" && Number.isInteger(value.sourceIncomeYear) &&
+    (value.status === "pending" || value.status === "finalized" || value.status === "rejected" || value.status === "superseded") &&
+    (isUuid(value.supersedesDecisionId) || value.supersedesDecisionId === null)
+  );
+}
+
+function isRfSourceIntakeCapitalEconomicsWire(value: unknown): value is RfSourceIntakeCapitalEconomicsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["issuedShareCount","newShareCapital","nominalIncrease","nominalReduction","oldShareCapital","sharePremium"]) &&
+    (typeof value.issuedShareCount === "number" && Number.isInteger(value.issuedShareCount) || value.issuedShareCount === null) &&
+    (typeof value.newShareCapital === "string" || value.newShareCapital === null) &&
+    (typeof value.nominalIncrease === "string" || value.nominalIncrease === null) &&
+    (typeof value.nominalReduction === "string" || value.nominalReduction === null) &&
+    (typeof value.oldShareCapital === "string" || value.oldShareCapital === null) &&
+    (typeof value.sharePremium === "string" || value.sharePremium === null)
+  );
+}
+
+function isRfSourceIntakeCapitalEventWire(value: unknown): value is RfSourceIntakeCapitalEventWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["accountingEntryId","blockers","correctionOfEventId","documents","economics","eventKind","eventReference","phase","receiptId","registerObservation","reportingDate","reportingYear","sourceIncomeYear"]) &&
+    isUuid(value.accountingEntryId) &&
+    Array.isArray(value.blockers) && value.blockers.every((item) => typeof item === "string") &&
+    (isUuid(value.correctionOfEventId) || value.correctionOfEventId === null) &&
+    Array.isArray(value.documents) && value.documents.every((item) => isRfSourceIntakeDocumentWire(item)) &&
+    (isRfSourceIntakeCapitalEconomicsWire(value.economics) || value.economics === null) &&
+    typeof value.eventKind === "string" &&
+    isUuid(value.eventReference) &&
+    typeof value.phase === "string" &&
+    isUuid(value.receiptId) &&
+    (isRfSourceIntakeRegisterWire(value.registerObservation) || value.registerObservation === null) &&
+    typeof value.reportingDate === "string" &&
+    typeof value.reportingYear === "number" && Number.isInteger(value.reportingYear) &&
+    typeof value.sourceIncomeYear === "number" && Number.isInteger(value.sourceIncomeYear)
+  );
+}
+
+function isRfSourceIntakeCapitalWire(value: unknown): value is RfSourceIntakeCapitalWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["blockers","events","representativeReceiptId","status"]) &&
+    Array.isArray(value.blockers) && value.blockers.every((item) => typeof item === "string") &&
+    Array.isArray(value.events) && value.events.every((item) => isRfSourceIntakeCapitalEventWire(item)) &&
+    isUuid(value.representativeReceiptId) &&
+    (value.status === "recorded" || value.status === "reversed" || value.status === "corrected" || value.status === "incomplete" || value.status === "conflicting")
+  );
+}
+
+function isRfSourceIntakeAmendmentWire(value: unknown): value is RfSourceIntakeAmendmentWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["originalEntryId","reason","replacementEntryId","reversalEntryId","sourceIncomeYear"]) &&
+    isUuid(value.originalEntryId) &&
+    typeof value.reason === "string" &&
+    (isUuid(value.replacementEntryId) || value.replacementEntryId === null) &&
+    isUuid(value.reversalEntryId) &&
+    typeof value.sourceIncomeYear === "number" && Number.isInteger(value.sourceIncomeYear)
+  );
+}
+
+function isRfSourceIntakeCompanyWire(value: unknown): value is RfSourceIntakeCompanyWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["address","city","identityConfirmedAt","identityLockedAt","name","orgNumber","postalCode"]) &&
+    typeof value.address === "string" &&
+    typeof value.city === "string" &&
+    isDateTime(value.identityConfirmedAt) &&
+    isDateTime(value.identityLockedAt) &&
+    typeof value.name === "string" &&
+    typeof value.orgNumber === "string" &&
+    typeof value.postalCode === "string"
+  );
+}
+
+function isRfSourceIntakeBasisWire(value: unknown): value is RfSourceIntakeBasisWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["blockers","capitalEvents","company","companyId","dividends","enumerationComplete","enumerationSha256","incomeYear","ledgerAmendments"]) &&
+    Array.isArray(value.blockers) && value.blockers.every((item) => typeof item === "string") &&
+    Array.isArray(value.capitalEvents) && value.capitalEvents.every((item) => isRfSourceIntakeCapitalWire(item)) &&
+    isRfSourceIntakeCompanyWire(value.company) &&
+    isUuid(value.companyId) &&
+    Array.isArray(value.dividends) && value.dividends.every((item) => isRfSourceIntakeDividendWire(item)) &&
+    value.enumerationComplete === true &&
+    (typeof value.enumerationSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.enumerationSha256)) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    Array.isArray(value.ledgerAmendments) && value.ledgerAmendments.every((item) => isRfSourceIntakeAmendmentWire(item))
+  );
+}
+
+function isRfRegisterHoldingWire(value: unknown): value is RfRegisterHoldingWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["identifier","kind","name","shareCount","shareholderId"]) &&
+    typeof value.identifier === "string" &&
+    (value.kind === "norwegian_person" || value.kind === "norwegian_company") &&
+    typeof value.name === "string" &&
+    (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) && value.shareCount >= 0) &&
+    typeof value.shareholderId === "string"
+  );
+}
+
+function isRfRegisteredSharesWire(value: unknown): value is RfRegisteredSharesWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["holdings","nominalValue","shareCapital","shareCount"]) &&
+    Array.isArray(value.holdings) && value.holdings.every((item) => isRfRegisterHoldingWire(item)) &&
+    typeof value.nominalValue === "string" &&
+    typeof value.shareCapital === "string" &&
+    (typeof value.shareCount === "number" && Number.isInteger(value.shareCount) && value.shareCount >= 0)
+  );
+}
+
+function isRfRegisterDocumentWire(value: unknown): value is RfRegisterDocumentWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["byteLength","companyId","contentSha256","contentVersionSha256","createdAt","documentId","documentType","integrityStatus","metadataSha256","role","sourceIncomeYear"]) &&
+    (typeof value.byteLength === "number" && Number.isInteger(value.byteLength) && value.byteLength > 0) &&
+    isUuid(value.companyId) &&
+    (typeof value.contentSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.contentSha256)) &&
+    (typeof value.contentVersionSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.contentVersionSha256)) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.documentId) &&
+    typeof value.documentType === "string" &&
+    (value.integrityStatus === "attached" || value.integrityStatus === "generated_unsigned" || value.integrityStatus === "signed_owner_attested" || value.integrityStatus === "stored") &&
+    (typeof value.metadataSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.metadataSha256)) &&
+    (value.role === "register_before" || value.role === "register_after" || value.role === "registration") &&
+    (typeof value.sourceIncomeYear === "number" && Number.isInteger(value.sourceIncomeYear) && value.sourceIncomeYear >= 2000 && value.sourceIncomeYear <= 2100)
+  );
+}
+
+function isRfRegisterObservationCaptureWire(value: unknown): value is RfRegisterObservationCaptureWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["after","before","companyId","completeRegisterConfirmed","correctionReason","documents","effectiveAt","eventKind","incomeYear","registrationConfirmed","singleShareClassConfirmed","supersedesObservationId","supersedesObservationSha256"]) &&
+    isRfRegisteredSharesWire(value.after) &&
+    isRfRegisteredSharesWire(value.before) &&
+    isUuid(value.companyId) &&
+    typeof value.completeRegisterConfirmed === "boolean" &&
+    (value.correctionReason === undefined || (typeof value.correctionReason === "string" || value.correctionReason === null)) &&
+    Array.isArray(value.documents) && value.documents.every((item) => isRfRegisterDocumentWire(item)) && value.documents.length >= 1 &&
+    (typeof value.effectiveAt === "string" && new RegExp("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$", "u").test(value.effectiveAt)) &&
+    (value.eventKind === "cash_issue" || value.eventKind === "cash_nominal_increase" || value.eventKind === "loss_covering_reduction") &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.registrationConfirmed === "boolean" &&
+    typeof value.singleShareClassConfirmed === "boolean" &&
+    (value.supersedesObservationId === undefined || (isUuid(value.supersedesObservationId) || value.supersedesObservationId === null)) &&
+    (value.supersedesObservationSha256 === undefined || ((typeof value.supersedesObservationSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.supersedesObservationSha256)) || value.supersedesObservationSha256 === null))
+  );
+}
+
+function isRfSourceProductionReviewRequestWire(value: unknown): value is RfSourceProductionReviewRequestWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","entitlementId","incomeYear","previewId"]) &&
+    isUuid(value.companyId) &&
+    isUuid(value.entitlementId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isUuid(value.previewId)
+  );
+}
+
+function isRfSourceProductionReviewWire(value: unknown): value is RfSourceProductionReviewWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["blockers","canApprove","companyId","entitlementId","incomeYear","previewId","reviewSha256","sourceId","sourceSha256","warningCodes"]) &&
+    Array.isArray(value.blockers) && value.blockers.every((item) => typeof item === "string") &&
+    typeof value.canApprove === "boolean" &&
+    isUuid(value.companyId) &&
+    isUuid(value.entitlementId) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isUuid(value.previewId) &&
+    (typeof value.reviewSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.reviewSha256)) &&
+    isUuid(value.sourceId) &&
+    (typeof value.sourceSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.sourceSha256)) &&
+    Array.isArray(value.warningCodes) && value.warningCodes.every((item) => typeof item === "string")
+  );
+}
+
+function isRfSourceProductionApprovalCommandWire(value: unknown): value is RfSourceProductionApprovalCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["acknowledgedWarningCodes","companyId","entitlementId","incomeYear","predecessor","previewId","realFilingConfirmed","reviewSha256"]) &&
+    Array.isArray(value.acknowledgedWarningCodes) && value.acknowledgedWarningCodes.every((item) => (typeof item === "string" && item.length >= 1 && new RegExp("\\S", "u").test(item))) &&
+    isUuid(value.companyId) &&
+    isUuid(value.entitlementId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (value.predecessor === undefined || (isRfSourceCorrectionPredecessorWire(value.predecessor) || value.predecessor === null)) &&
+    isUuid(value.previewId) &&
+    typeof value.realFilingConfirmed === "boolean" &&
+    (typeof value.reviewSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.reviewSha256))
+  );
+}
+
+function isRfSourceCorrectionPredecessorWire(value: unknown): value is RfSourceCorrectionPredecessorWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["manifestSha256","reason","submissionId"]) &&
+    (typeof value.manifestSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.manifestSha256)) &&
+    (typeof value.reason === "string" && value.reason.length >= 1 && new RegExp("\\S", "u").test(value.reason)) &&
+    isUuid(value.submissionId)
+  );
+}
+
+function isRfSourcePreviewRequestWire(value: unknown): value is RfSourcePreviewRequestWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","sourceId"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    isUuid(value.sourceId)
+  );
+}
+
+function isRfYearSourceReceiptWire(value: unknown): value is RfYearSourceReceiptWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["caseSha256","companyId","confirmedAt","incomeYear","sourceId","sourceSha256","version"]) &&
+    typeof value.caseSha256 === "string" &&
+    isUuid(value.companyId) &&
+    isDateTime(value.confirmedAt) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isUuid(value.sourceId) &&
+    typeof value.sourceSha256 === "string" &&
+    typeof value.version === "number" && Number.isInteger(value.version)
+  );
+}
+
+function isRfRegisterObservationReceiptWire(value: unknown): value is RfRegisterObservationReceiptWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","confirmedAt","factSha256","incomeYear","observationId","version"]) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.confirmedAt) &&
+    typeof value.factSha256 === "string" &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isUuid(value.observationId) &&
+    typeof value.version === "number" && Number.isInteger(value.version)
+  );
+}
+
+function isRfRegisterObservationDraftWire(value: unknown): value is RfRegisterObservationDraftWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["after","before","companyId","completeRegisterConfirmed","correctionReason","documents","effectiveAt","eventKind","incomeYear","registrationConfirmed","singleShareClassConfirmed","supersedesObservationId","supersedesObservationSha256"]) &&
+    isRfRegisteredSharesWire(value.after) &&
+    isRfRegisteredSharesWire(value.before) &&
+    isUuid(value.companyId) &&
+    typeof value.completeRegisterConfirmed === "boolean" &&
+    (value.correctionReason === undefined || (typeof value.correctionReason === "string" || value.correctionReason === null)) &&
+    Array.isArray(value.documents) && value.documents.every((item) => isRfRegisterDocumentWire(item)) && value.documents.length >= 1 &&
+    (typeof value.effectiveAt === "string" && new RegExp("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$", "u").test(value.effectiveAt)) &&
+    (value.eventKind === "cash_issue" || value.eventKind === "cash_nominal_increase" || value.eventKind === "loss_covering_reduction") &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.registrationConfirmed === "boolean" &&
+    typeof value.singleShareClassConfirmed === "boolean" &&
+    (value.supersedesObservationId === undefined || (isUuid(value.supersedesObservationId) || value.supersedesObservationId === null)) &&
+    (value.supersedesObservationSha256 === undefined || ((typeof value.supersedesObservationSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.supersedesObservationSha256)) || value.supersedesObservationSha256 === null))
+  );
+}
+
+function isRfRegisterObservationRecordWire(value: unknown): value is RfRegisterObservationRecordWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["draft","isCurrent","receipt"]) &&
+    isRfRegisterObservationDraftWire(value.draft) &&
+    typeof value.isCurrent === "boolean" &&
+    isRfRegisterObservationReceiptWire(value.receipt)
+  );
+}
+
+function isRfRegisterObservationsWire(value: unknown): value is RfRegisterObservationsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","observations"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    Array.isArray(value.observations) && value.observations.every((item) => isRfRegisterObservationRecordWire(item))
+  );
+}
+
+function isRfSourcePreviewWire(value: unknown): value is RfSourcePreviewWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["caseSha256","companyId","hovedskjemaXml","incomeYear","previewId","previewText","readinessIssues","readinessStatus","renderingProfile","sourceId","sourceSha256","underskjemaXml"]) &&
+    typeof value.caseSha256 === "string" &&
+    isUuid(value.companyId) &&
+    (typeof value.hovedskjemaXml === "string" || value.hovedskjemaXml === null) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    isUuid(value.previewId) &&
+    typeof value.previewText === "string" &&
+    Array.isArray(value.readinessIssues) && value.readinessIssues.every((item) => isRf1086IssueWire(item)) &&
+    (value.readinessStatus === "ready" || value.readinessStatus === "blocked") &&
+    typeof value.renderingProfile === "string" &&
+    isUuid(value.sourceId) &&
+    typeof value.sourceSha256 === "string" &&
+    (isRecord(value.underskjemaXml) && Object.values(value.underskjemaXml).every((item) => typeof item === "string") || value.underskjemaXml === null)
+  );
+}
+
 function isLegacyRf1086SendCommandWire(value: unknown): value is LegacyRf1086SendCommandWire {
   return (
     isRecord(value) &&
@@ -9181,7 +10385,7 @@ function isRf1086ApprovalWire(value: unknown): value is Rf1086ApprovalWire {
     typeof value.adapterVersion === "string" &&
     isDateTime(value.approvedAt) &&
     isUuid(value.approvedBy) &&
-    value.caseProfile === "rf1086_no_activity_v1" &&
+    (value.caseProfile === "rf1086_no_activity_v1" || value.caseProfile === "rf1086_full_year_v1") &&
     isUuid(value.companyId) &&
     isUuid(value.entitlementId) &&
     isUuid(value.id) &&
@@ -9204,7 +10408,7 @@ function isRf1086ProductionSubmissionWire(value: unknown): value is Rf1086Produc
     typeof value.adapterVersion === "string" &&
     isUuid(value.approvalId) &&
     isRecord(value.authorityReferences) && Object.values(value.authorityReferences).every((item) => typeof item === "string") &&
-    value.caseProfile === "rf1086_no_activity_v1" &&
+    (value.caseProfile === "rf1086_no_activity_v1" || value.caseProfile === "rf1086_full_year_v1") &&
     isUuid(value.companyId) &&
     isDateTime(value.createdAt) &&
     isUuid(value.entitlementId) &&
@@ -9284,6 +10488,112 @@ function isRf1086ArchiveSourceWire(value: unknown): value is Rf1086ArchiveSource
     Array.isArray(value.reviewComments) && value.reviewComments.every((item) => isRf1086ReviewCommentWire(item)) &&
     Array.isArray(value.simulations) && value.simulations.every((item) => isRf1086SimulationWire(item)) &&
     Array.isArray(value.testEvidence) && value.testEvidence.every((item) => isRf1086TestEvidenceWire(item))
+  );
+}
+
+function isRf1086ArchivedYearSourceWire(value: unknown): value is Rf1086ArchivedYearSourceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["command","receipt"]) &&
+    isRfYearSourceDraftWire(value.command) &&
+    isRfYearSourceReceiptWire(value.receipt)
+  );
+}
+
+function isRf1086ArchiveSourceReviewBridgeWire(value: unknown): value is Rf1086ArchiveSourceReviewBridgeWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","createdAt","createdBy","incomeYear","payloadSha256","previewId","sourceId","sourceSha256"]) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    isUuid(value.createdBy) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    (typeof value.payloadSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.payloadSha256)) &&
+    isUuid(value.previewId) &&
+    isUuid(value.sourceId) &&
+    (typeof value.sourceSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.sourceSha256))
+  );
+}
+
+function isRf1086ArchiveSourceApprovalLineageWire(value: unknown): value is Rf1086ArchiveSourceApprovalLineageWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvalId","approvedBy","bridge","companyId","createdAt","incomeYear","manifestSha256","manifestText","payloadSha256","previewId","reviewSha256","reviewText","source","sourceId","sourcePreview","sourceSha256"]) &&
+    isUuid(value.approvalId) &&
+    isUuid(value.approvedBy) &&
+    isRf1086ArchiveSourceReviewBridgeWire(value.bridge) &&
+    isUuid(value.companyId) &&
+    isDateTime(value.createdAt) &&
+    typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) &&
+    (typeof value.manifestSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.manifestSha256)) &&
+    typeof value.manifestText === "string" &&
+    (typeof value.payloadSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.payloadSha256)) &&
+    isUuid(value.previewId) &&
+    (typeof value.reviewSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.reviewSha256)) &&
+    typeof value.reviewText === "string" &&
+    isRf1086ArchivedYearSourceWire(value.source) &&
+    isUuid(value.sourceId) &&
+    isRfSourcePreviewWire(value.sourcePreview) &&
+    (typeof value.sourceSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.sourceSha256))
+  );
+}
+
+function isRf1086ProductionArchiveSourceWire(value: unknown): value is Rf1086ProductionArchiveSourceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvals","companyId","feedbackArtifacts","incomeYear","permissions","previews","productionEvents","productionSubmissions","reviewComments","simulations","sourceApprovalLineage","testEvidence"]) &&
+    Array.isArray(value.approvals) && value.approvals.every((item) => isRf1086ApprovalWire(item)) &&
+    isUuid(value.companyId) &&
+    Array.isArray(value.feedbackArtifacts) && value.feedbackArtifacts.every((item) => isRf1086ArchiveFeedbackArtifactWire(item)) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    Array.isArray(value.permissions) && value.permissions.every((item) => isRf1086PermissionWire(item)) &&
+    Array.isArray(value.previews) && value.previews.every((item) => isRf1086PreviewWire(item)) &&
+    Array.isArray(value.productionEvents) && value.productionEvents.every((item) => isRf1086ArchiveProductionEventWire(item)) &&
+    Array.isArray(value.productionSubmissions) && value.productionSubmissions.every((item) => isRf1086ProductionSubmissionWire(item)) &&
+    Array.isArray(value.reviewComments) && value.reviewComments.every((item) => isRf1086ReviewCommentWire(item)) &&
+    Array.isArray(value.simulations) && value.simulations.every((item) => isRf1086SimulationWire(item)) &&
+    (value.sourceApprovalLineage === undefined || Array.isArray(value.sourceApprovalLineage) && value.sourceApprovalLineage.every((item) => isRf1086ArchiveSourceApprovalLineageWire(item))) &&
+    Array.isArray(value.testEvidence) && value.testEvidence.every((item) => isRf1086TestEvidenceWire(item))
+  );
+}
+
+function isRf1086ArchiveProductionEventWire(value: unknown): value is Rf1086ArchiveProductionEventWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["artifactHashes","attempt","authorityReference","bodyHash","companyId","correlationId","createdAt","failureClass","id","idempotencyKey","incomeYear","operationName","operationState","resultingStatus","safeErrorCode","submissionId"]) &&
+    Array.isArray(value.artifactHashes) && value.artifactHashes.every((item) => typeof item === "string") &&
+    (typeof value.attempt === "number" && Number.isInteger(value.attempt) && value.attempt >= 1 && value.attempt <= 20) &&
+    (typeof value.authorityReference === "string" || value.authorityReference === null) &&
+    (typeof value.bodyHash === "string" || value.bodyHash === null) &&
+    isUuid(value.companyId) &&
+    (typeof value.correlationId === "string" || value.correlationId === null) &&
+    isDateTime(value.createdAt) &&
+    ((value.failureClass === "retryable" || value.failureClass === "blocked" || value.failureClass === "unknown") || value.failureClass === null) &&
+    isUuid(value.id) &&
+    (isUuid(value.idempotencyKey) || value.idempotencyKey === null) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.operationName === "string" &&
+    (value.operationState === "prepared" || value.operationState === "succeeded" || value.operationState === "failed" || value.operationState === "unknown") &&
+    (value.resultingStatus === "approved" || value.resultingStatus === "sending" || value.resultingStatus === "received" || value.resultingStatus === "processing" || value.resultingStatus === "accepted" || value.resultingStatus === "rejected" || value.resultingStatus === "action_required" || value.resultingStatus === "unknown") &&
+    (typeof value.safeErrorCode === "string" || value.safeErrorCode === null) &&
+    isUuid(value.submissionId)
+  );
+}
+
+function isRf1086ArchiveFeedbackArtifactWire(value: unknown): value is Rf1086ArchiveFeedbackArtifactWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["authorityReference","byteLength","classification","companyId","contentType","documentId","id","retrievedAt","sha256","submissionId"]) &&
+    typeof value.authorityReference === "string" &&
+    typeof value.byteLength === "number" && Number.isInteger(value.byteLength) &&
+    (value.classification === "accepted" || value.classification === "rejected" || value.classification === "action_required") &&
+    isUuid(value.companyId) &&
+    (value.contentType === "application/xml" || value.contentType === "text/xml" || value.contentType === "application/pdf" || value.contentType === "text/plain" || value.contentType === "application/octet-stream") &&
+    isUuid(value.documentId) &&
+    isUuid(value.id) &&
+    isDateTime(value.retrievedAt) &&
+    typeof value.sha256 === "string" &&
+    isUuid(value.submissionId)
   );
 }
 
@@ -9560,6 +10870,16 @@ export interface TalliRequestOptions {
 
 export interface TalliMutationOptions extends TalliRequestOptions {
   idempotencyKey: string;
+}
+
+export interface RfSourcePreviewReadRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+}
+
+export interface RfCurrentYearSourceReadRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
 }
 
 export interface LedgerListRequest extends TalliRequestOptions {
@@ -11454,12 +12774,98 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async rf1086ReadSourceIntakeBasis(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfSourceIntakeBasisWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-intake-basis?" + query,
+        "GET", request, undefined, isRfSourceIntakeBasisWire);
+    },
+
+    async rf1086ReadCurrentYearSource(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfCurrentYearSourceWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/current-year-source?" + query,
+        "GET", request, undefined, isRfCurrentYearSourceWire);
+    },
+
+    async rf1086ReadSourceDocument(
+      documentId: string, companyId: string, request: TalliRequestOptions = {},
+    ): Promise<RfSourceDocumentWire> {
+      const query = new URLSearchParams({ companyId });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-documents/" + encodeURIComponent(documentId) + "?" + query,
+        "GET", request, undefined, isRfSourceDocumentWire);
+    },
+
+    async rf1086ListRegisterObservations(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfRegisterObservationsWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations?" + query,
+        "GET", request, undefined, isRfRegisterObservationsWire);
+    },
+
+    async rf1086CaptureRegisterObservation(
+      input: RfRegisterObservationCaptureWire, request: TalliMutationOptions,
+    ): Promise<RfRegisterObservationReceiptWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations",
+        "POST", request, input, isRfRegisterObservationReceiptWire);
+    },
+
+    async rf1086GenerateSourcePreview(
+      input: RfSourcePreviewRequestWire, request: TalliRequestOptions = {},
+    ): Promise<RfSourcePreviewWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-previews",
+        "POST", request, input, isRfSourcePreviewWire);
+    },
+
+    async rf1086PrepareSourceProductionReview(
+      input: RfSourceProductionReviewRequestWire, request: TalliRequestOptions = {},
+    ): Promise<RfSourceProductionReviewWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-production-reviews",
+        "POST", request, input, isRfSourceProductionReviewWire);
+    },
+
+    async rf1086ApproveSourceProduction(
+      input: RfSourceProductionApprovalCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-production-approvals",
+        "POST", request, input, isRf1086RecordedResultWire);
+    },
+
+    async rf1086ReadSourcePreview(
+      previewId: string, request: RfSourcePreviewReadRequest,
+    ): Promise<RfSourcePreviewWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+      });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-previews/" + encodeURIComponent(previewId) + "?" + query,
+        "GET", request, undefined, isRfSourcePreviewWire);
+    },
+
+    async rf1086CaptureYearSource(
+      input: RfYearSourceCaptureWire, request: TalliMutationOptions,
+    ): Promise<RfYearSourceReceiptWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/year-sources",
+        "POST", request, input, isRfYearSourceReceiptWire);
+    },
+
     async rf1086GetArchiveSource(
       companyId: string, incomeYear: number, request: TalliRequestOptions = {},
     ): Promise<Rf1086ArchiveSourceWire> {
       const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
       return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source?" + query,
         "GET", request, undefined, isRf1086ArchiveSourceWire);
+    },
+
+    async rf1086GetProductionArchiveSource(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Rf1086ProductionArchiveSourceWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production?" + query,
+        "GET", request, undefined, isRf1086ProductionArchiveSourceWire);
     },
 
     async rf1086Workspace(

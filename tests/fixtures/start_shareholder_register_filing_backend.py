@@ -3,7 +3,8 @@
 This launcher is test-only. It refuses non-loopback databases, Supabase, and mock
 addresses, and its process-wide socket guard denies all external connections.
 Global production flags remain disabled. This separately selected fresh-send
-fixture admits exactly five RF method templates, mapped to a loopback mock.
+fixture admits five RF method templates and the exact Dialogporten discovery GET,
+all mapped to a loopback mock.
 """
 
 from __future__ import annotations
@@ -40,6 +41,10 @@ def provider_mock_url(original: str, mock_origin: str, method: str = "GET") -> s
     elif (provider.scheme == "https" and provider.netloc == "platform.altinn.no"
           and provider.path.startswith("/authentication/api/v1/systemuser/")):
         path = "/altinn" + provider.path + ("?" + provider.query if provider.query else "")
+    elif (provider.scheme == "https" and provider.netloc == "platform.altinn.no" and method == "GET"
+          and re.fullmatch(r"/dialogporten/api/v1/enduser/dialogs/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", provider.path)
+          and not provider.query):
+        path = "/dialogporten/dialogs/" + provider.path.rsplit("/", 1)[1]
     elif (provider.scheme == "https" and provider.netloc == "api.skatteetaten.no"
           and rf1086_fixture_template(method, provider.path, provider.query)):
         path = "/skatte" + provider.path.removeprefix("/api/aksjonaerregister/v1") + ("?" + provider.query if provider.query else "")

@@ -1,7 +1,7 @@
 # Shareholder register filing
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
+{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions","shareholder_register_filing.year_source_heads","shareholder_register_filing.year_source_versions","shareholder_register_filing.register_observations","shareholder_register_filing.source_previews","shareholder_register_filing.source_review_bridges","shareholder_register_filing.source_approval_bindings"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority","Rf1086YearSourcePersistence","Rf1086RegisterObservationPersistence"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
 -->
 
 ## Owned behavior
@@ -35,10 +35,14 @@ reconciliation outcomes retain their journal observation time separately from
 transport incidents and mutation observations. Source facts make no commercial
 refund decision.
 
-The archive projection reads previews and simulations for the requested year
+The archive projection reads previews, simulations and production evidence for the requested year
 before decoding them, plus the original company-wide comments and permissions
-and test evidence referenced by those simulations. It does not require another
-year's payloads or extend the original archive to production submissions. The
+and test evidence referenced by those simulations. Its approvals, production submissions,
+complete journal and feedback metadata retain immutable manifests, payload hashes and
+Documents-owned byte references. Company/year and parent relationships, artifact
+counts and approval hashes are checked before publication. Missing or inconsistent
+evidence is unavailable; archive reads do not require current paid entitlement.
+It does not decode another year's payloads. The
 workspace query retains its existing all-year and optional-year behavior.
 
 ## Storage and migration
@@ -109,6 +113,8 @@ Queries:
 - `Rf1086FeedbackArtifactRecord`
 - `Rf1086WorkspaceSnapshot`
 - `Rf1086ArchiveSnapshot`
+- `Rf1086ArchiveProductionEventRecord`
+- `Rf1086ArchiveFeedbackArtifactRecord`
 - `Rf1086SourceSnapshot`
 - `Rf1086SourceFacts`
 - `VerifyRf1086SourceEvidenceQuery`
@@ -160,6 +166,10 @@ Values, identifiers and ports:
 - `Rf1086ShareSaleEvent`
 - `Rf1086DividendAllocation`
 - `Rf1086DividendEvent`
+- `Rf1086CashIssueEvent`
+- `Rf1086NominalIncreaseAllocation`
+- `Rf1086CashNominalIncreaseEvent`
+- `Rf1086LossCoveringReductionEvent`
 - `Rf1086Case`
 - `Rf1086ReadinessIssue`
 - `Rf1086DocumentSet`
@@ -179,6 +189,8 @@ Values, identifiers and ports:
 - `Rf1086DocumentPage`
 - `Rf1086AuthorityDocument`
 - `Rf1086ReadOnlyAuthority`
+- `Rf1086FeedbackDiscovery`
+- `Rf1086FeedbackTransmission`
 - `Rf1086MutationAuthority`
 - `ProductionOperation`
 - `ProductionOperationFailure`
@@ -228,3 +240,345 @@ Values, identifiers and ports:
 - `Rf1086CodeDecision`
 
 The mandatory database lane also runs `apps/backend/tests/test_shareholder_register_filing_lifecycle.py` for real phase, role and retained-row regressions.
+
+## Related authority feedback
+
+RF feedback discovery binds the stored dialog and original submission to the
+company and RF service before returning any related transmission attachments.
+The backend uses a separate `digdir:dialogporten` system-user token; neither token
+nor dialog narrative/presentation URLs enters the public contract. All related
+receipt documents are acquired within the shared scan deadline before any
+persistence. A complete XML decision governs its accompanying PDF artifact;
+missing XML, unknown content and conflicting decisions require action. Exact
+Dialogporten IDs, provider creation time and expected company/year are retained
+in artifact metadata while Documents owns the unchanged receipt bytes. A final
+decision is appended only after every artifact has persisted.
+
+A deterministic owned XML provenance manifest preserves every attachment identity
+independently of content-hash deduplication; finalization also requires that
+manifest to be durable. Its reference distinguishes it from provider receipts.
+
+
+## Read-only action-required recovery
+
+An owner may explicitly recheck an `action_required` submission against its
+original confirmed transmission and dialog after repairing the reported problem.
+The existing owner, approval, entitlement identity, connection and lease checks
+still apply. This recheck never obtains a mutation binding or starts another
+submission; expired submission eligibility does not erase recovery access.
+Accepted and rejected decisions stay terminal. Receipt bytes and their recorded
+classifications remain immutable: a recheck cannot turn historical ambiguous or
+conflicting artifacts into acceptance. Such evidence requires separately designed
+adjudication/correction support; this recovery path does not authorize it.
+
+### Immutable full-year source foundation (#193)
+
+The public source contracts are `RecordRf1086YearSource`, `Rf1086YearSourceId`,
+`Rf1086PaidInSourceFacts`, `Rf1086YearDocumentEvidence`, `Rf1086YearEventEvidence`,
+`Rf1086YearGovernanceReceipt`, `Rf1086VerifiedYearSourceContext`,
+`Rf1086YearSourceFreshness`, `Rf1086YearSourceSnapshot`, and `Rf1086YearSourceError`.
+The public operations are `prepare_rf1086_year_source`,
+`assert_rf1086_year_source_fresh`, `assert_rf1086_year_source_integrity`,
+`assert_rf1086_year_source_replay`, `rf1086_year_source_digest`, and
+`rf1086_governance_economic_facts`.
+
+`year_source.py` validates complete RF-owned source facts, explicit tax paid-in
+amounts, verified document revisions, finalized corporate evidence, immutable
+correction lineage, canonical decimal digests and the full freshness vector.
+Previous-year documents may corroborate opening facts. There is no artificial
+holder/event count limit. Register observations must be independent of the year
+source that references the finalized governance receipt.
+
+`Rf1086VerifiedYearSourceContext` is a trusted application-workflow input. It must
+be assembled from authenticated owner public query contracts, never deserialized
+from a browser request. The RF capability itself imports no other capability.
+The command cannot supply verified context or finalized governance receipts.
+Persistence must enforce accepted-owner authorization, company/year RLS, a
+current-head compare-and-swap lock, and actor-scoped idempotency before using the
+pure preparation/replay functions.
+
+This is a deterministic contract foundation. Database capture, public Governance
+and Documents projection bindings, transport, complete preview/approval/send
+integration, source archive export, cross-owner freshness race closure and
+service conformance remain pending. Existing production admission is not widened.
+
+
+### Archive deployment overlap
+
+`legacy_archive_source` preserves the original `/archive-source` query extent and
+wire fields. Its adapter never reads or decodes production-only tables, and its
+validation covers only that original extent. `archive_source` remains the complete
+single-snapshot archive projection exposed by additive
+`/archive-source/production` (`rf1086GetProductionArchiveSource`). The latter
+includes original preview lineage and all four production evidence collections.
+Clients must not treat the original response as evidence of absent production
+history. This explicit overlap supports either deployment order under ADR-0012.
+
+### Immutable full-year source persistence
+
+`Rf1086YearSourcePersistence` records a verified workflow command and reads current
+or historical sources. `serialize_rf1086_year_source` and
+`parse_rf1086_year_source` use a closed versioned codec retaining exact decimal
+facts and validate immutable source hashes. The restricted RF adapter locks the
+company/year, checks current Company Access owner/year admission, resolves
+actor-scoped identical idempotency and appends a new version with an exact current
+predecessor. `shareholder_register_filing.year_source_versions` retains immutable
+source/evidence snapshots; `shareholder_register_filing.year_source_heads` stores
+only their current pointers. Both use FORCE RLS; only the append function writes.
+The migration rollback revokes the new API without deleting retained evidence.
+Source capture grants no correction filing or retry of an unknown provider action.
+
+#### Year-source rollback runbook
+
+Stop source capture before reversing `20260923091509_rf1086_immutable_year_source.sql`.
+Its matching rollback revokes the new executor read/write API and leaves every
+immutable source and current head intact; reapplying the migration restores access.
+The old #151 full rollback drops the entire RF schema and must never run while
+any year-source row exists. The coordinated authority topology runner fails with
+`rf1086_retained_year_sources_block_full_schema_rollback` before predecessor
+mutations. Use the bounded API rollback and preserve evidence; a deeper rollback
+requires a separately reviewed, lossless source relocation. This guard assumes
+source capture is stopped, as required before runtime/schema rollback.
+
+### Independent registered-share observation foundation
+
+The public `RecordRf1086RegisterObservation` / `prepare_rf1086_register_observation`
+contract binds complete, owner-confirmed one-class before/after register states
+for cash issues, nominal cash increases and loss-cover reductions to independently
+verified original Documents references. Registered capital and nominal amounts
+use exact Decimals; tax paid-in facts remain separate. Corrections append a new
+UUID/version/hash with an exact predecessor. `assert_rf1086_register_observation_integrity`
+checks retained content; `verify_rf1086_register_observation` matches an exact
+Governance reference and full event economics through
+`Rf1086RegisterObservationMatchQuery`.
+
+This is deterministic source preparation only. Trusted capture must supply
+`Rf1086VerifiedRegisterObservationContext` after live owner and original-byte
+verification; browser input cannot assert it. There is no register-observation
+store, current-head/withdrawal query, cross-capability lease or production route
+in this foundation. Existing opening/source hashes and arbitrary Governance
+references do not become verified observations. The remaining integration and
+noncircular evidence dependency are recorded in
+`architecture/evidence/issues/193/rf/register-observation-design.md`.
+
+The immutable value contracts are `Rf1086RegisterObservationId`,
+`Rf1086RegisterHolding`, `Rf1086RegisteredShareState`,
+`Rf1086RegisterDocumentEvidence`, and `Rf1086RegisterObservationSnapshot`.
+`Rf1086RegisterObservationError` carries closed diagnostics without identifiers
+or source document contents.
+
+`rf1086_register_observation_request_digest` validates and normalizes request
+content for stable idempotency comparisons independent of input holder/document
+ordering. It does not issue a new observation identity.
+
+`rf1086_event_register_states` projects exact before/after registered capital and active holders for a selected capital event using the same complete chronological reconciliation as readiness. It includes preceding formation and ownership transfers, validates the entire year and rejects non-capital selections or malformed identities. It does not attest external register truth or tax paid-in balances.
+
+### Independent register observation persistence
+
+`Rf1086RegisterObservationPersistence` appends independent observations to
+`shareholder_register_filing.register_observations`. Multiple initial observations
+may exist for one company/year. Each correction names the exact previous immutable
+ID/hash and reason. A unique predecessor and the company/year transaction lock
+prevent forks. Exact current reads return no result for a superseded ID; historical
+reads preserve it. `serialize_rf1086_register_observation` and
+`parse_rf1086_register_observation` use a closed, versioned codec and verify the
+original facts before returning them. Identical normalized idempotency replays
+return the original snapshot, including after a correction; authorization is
+checked again under the database transaction lock.
+
+The accepted, confirmed and locked AS owner can discover all retained company/year
+observations through `GET /api/v1/shareholder-register-filings/register-observations`.
+`list_register_observations` uses one snapshot transaction, fresh owner admission,
+existing executor SELECT/RLS, and no pagination limit. Every stored codec, row binding
+and complete predecessor chain is checked before any history is returned. The response
+pairs each receipt with its exact editable public draft and `isCurrent` (no retained
+successor). Three confirmations reset to false; the draft predecessor names that
+selected observation's ID/hash and its correction reason is cleared. Historical
+drafts remain readable, while capture independently requires the current predecessor.
+This read neither verifies original bytes nor certifies current evidence or approval.
+
+The RF adapter calls Documents-owned retention for each original in stable ID
+order within the same transaction. Complete current metadata, original document
+year, hash and byte length are checked while locking each document. A mismatch
+rolls back both retention and RF capture. Full-year capture checks retained
+register observations are still current under the same company/year lock.
+
+Migration `20260923102314_rf1086_register_observation_store.sql` and its bounded
+rollback preserve every immutable observation. Stop capture before API rollback.
+Full RF schema rollback fails with
+`rf1086_retained_register_observations_block_full_schema_rollback` when any original
+observation remains. A deeper reversal requires a separately reviewed lossless
+relocation, never deleting evidence to make the guard pass.
+
+### Source-backed full-year previews
+
+The internal source workflow re-verifies accepted ownership, retained original
+bytes, all relevant Governance receipts, and independent register observations
+before `GenerateRf1086SourcePreview`. Canonical full-year rendering includes
+supported events and an explicit review of tax paid-in capital and premium.
+`Rf1086SourcePreviewPreparation` persists the source id, source and case hashes,
+rendering profile, readiness, review text and exact XML in `source_previews`.
+
+Capture rechecks accepted ownership and the current source after acquiring the
+same company/year lock used by source corrections. Identical source/rendered
+content replays the same preview; corrected evidence creates a distinct preview
+even when XML is unchanged. Historical previews remain readable using their
+original stored rendering. The closed codec checks storage integrity without
+regenerating historical files. The migration and rollback preserve every preview;
+full RF rollback refuses to erase retained previews.
+
+This internal binding performs no provider operation. Customer routes, source
+review/approval/send integration and cross-owner action-time consistency remain
+pending. Existing legacy previews and production activation are unchanged.
+
+`Rf1086PreparedSourcePreview` binds the verified source to canonical rendering.
+`assert_rf1086_source_preview_matches` verifies new previews against that source.
+`serialize_rf1086_source_preview` and `parse_rf1086_source_preview` retain exact
+historical bytes and reject altered or unsupported storage. RF owns
+`shareholder_register_filing.source_previews`.
+
+<!-- architecture-inventory
+{"ownedTables":["shareholder_register_filing.source_previews"],"ports":["Rf1086SourcePreviewPreparation"]}
+-->
+
+## Full-year approval identity
+
+`build_rf1086_source_approval_manifest` creates the separate
+`production-source-approval-v1` identity for an exact retained source and preview.
+It commits source/case/freshness hashes, owner and entitlement identities, review
+projection and warning acknowledgments, XML bytes and optional predecessor
+submission/manifest/reason. It preserves the historical no-activity manifest.
+
+Full-year shareholder IDs are ordered by UTF-8 bytes and mapped to stable SHA-256
+journal keys so arbitrary supported IDs fit existing journal operation names.
+The returned immutable document map feeds the existing submit-once journal.
+Changing an input or adding unknown manifest keys invalidates the approval.
+
+This pure builder does not grant approval or submission authority. Transactional
+owner/AAL2/entitlement/review checks, cross-owner freshness, correction admission,
+persistence and production profile integration remain separate required work.
+
+## Source writer company guard
+
+`20260924062746_rf1086_source_company_guard.sql` makes source capture,
+register-observation capture and source-preview append acquire the existing
+company-wide archive advisory guard before the RF year lock and document/head
+row locks. Access is checked again after the company guard is acquired. The
+application capture transactions use READ COMMITTED. RF-owned row triggers also
+cover every permitted mutation of the four source tables, including a first
+insert into an empty year. The narrow guard grant adds no cross-owner table
+access. Rollback suspends these commands while retaining guards and originals.
+
+The original source guard covers RF source writers. The successor company
+guards below extend writer coverage; complete action-time source-backed
+production admission remains required. These guard-only triggers do not add
+source evidence to company archive exports or advance archive generations.
+
+## Source intake basis
+
+The authenticated `rf1086ReadSourceIntakeBasis` read returns the currently
+confirmed AS identity and Governance's complete reporting-year enumeration for
+customer source intake. The server projects typed economics using the same
+parsers as source capture. It retains pending, rejected, superseded, corrected,
+reversed and cross-year records; each capital lifecycle retains its original
+phases. Decision/finalization identities, original document references, register
+observation references and Ledger amendment lineage remain explicit. Dividend
+finalizations identify their exact signed originals on the server.
+
+`enumerationComplete` describes the Governance read only. Empty `blockers` does
+not establish source completeness, verified document bytes, an eligible
+finalization, filing readiness or approval. Original references are observations;
+source capture independently verifies all originals and current register facts.
+Capital document references have no source year in the Governance contract, so
+that field remains null until Documents supplies its verified metadata. The read
+performs no RF writes and does not create or advance source evidence.
+
+## Consequential company guards and Governance assertion
+
+`20260924080249_documents_rf_consequential_company_guards.sql` guards RF preview,
+review, permission, simulation, approval and begin commands before their local
+row locks, preserving each existing function owner and ACL. Command adapters
+explicitly use READ COMMITTED and guard before locking/rechecking their basis.
+Existing consistent read-only projections retain REPEATABLE READ.
+
+Governance can call `assert_current_register_observation_v1` with the exact
+observation identity, company/year, revision, hash and verified actor on its
+final guarded transaction connection. The assertion rereads current owner
+access and rejects an observation that has a successor. It gives Governance no
+RF table privileges. This closes the observation freshness gap only for callers
+that hold the shared company guard until their consequential write commits.
+
+Row backstops additionally serialize canonical/legacy overrides and readiness
+mutations. The legacy direct readiness writer still needs an owned command that
+guards before row locks and recomputes its evidence after the guard; a trigger
+alone does not prove a previously computed payload fresh. Complete full-year
+approval/send composition, source archive inclusion, and production readiness
+remain separate work. The safe rollback suspends guarded commands, preserving
+evidence and backstops. Database execution is required to verify migration,
+role, replay and concurrency behavior.
+
+## Guarded source admission scope
+
+The internal `ShareholderRegisterSourceAdmission.admit` context manager performs
+private original verification before opening a short READ COMMITTED transaction.
+Company Access then checks live owner/MFA/year eligibility and acquires the
+company guard before the RF year guard. Current source and preview, retained
+original assertions, complete Governance reporting-year evidence and referenced
+current register observations are read on that same connection. The shared
+capture/admission policy rebuilds the source freshness context. A change during
+preflight prevents the consumer from reaching its decision write.
+
+The yielded scope expires on context exit. Consumers must persist their decision
+before exiting it; an admitted value retained afterward grants no authority.
+`PostgresCorporateReportingEvidence` delegates to the narrow Governance public
+projection, which requires the caller's already held exact company guard and
+combines complete lifecycle, capital history and Ledger amendment projections.
+It grants RF no cross-owner table access. Object and provider I/O stay outside.
+
+This internal scope is not yet wired to an approval/send route. Full-year profile,
+review/permission, entitlement, immutable bridge, approval persistence, submission
+head/correction admission and journal integration remain required. Unit tests
+exercise policy and scope lifetime; actual database permission/concurrency tests
+must run in CI before runtime behavior is considered verified.
+
+
+The full-year review bridge retains the exact source-preview ID, source/hash
+binding, text, issues and XML under the existing filing-review identity without
+an opening setup. Arbitrary shareholder IDs map to the versioned manifest's
+stable hashed journal keys. It is immutable, tenant-scoped, and replayable only
+while its original source remains current. Historical review reads remain
+available after a source correction. The application materializes it within
+source admission, after retained-byte and complete Governance checks.
+
+The bridge itself enables review only. Legacy approval rejects the full-year
+marker. The dedicated full-year approval command enters fresh source admission,
+requires exact active pilot/Authority identity and current review/permission,
+and appends the canonical manifest with immutable source and raw review bindings.
+The review and append share the company/year guard. Exact replay rechecks current
+admission; changed review requires renewed confirmation. Historical archives
+rebuild full-year manifests from retained lineage without consulting current
+source heads. Full-year submissions remain blocked pending their independent
+claim, correction, byte-verification and journal integration. The legacy stored
+readiness prerequisite remains until its owned full-year replacement is ready.
+Rollback suspends new approvals while preserving evidence and send barriers.
+
+`Rf1086SourceApprovalReview` exposes the exact point-in-time review commitment,
+warning codes and blockers. `Rf1086ArchiveSourceReviewBridge` and
+`Rf1086ArchiveSourceApprovalLineage` retain the bridge, source, preview and exact
+approved manifest/review text needed to verify a historical full-year approval.
+
+Correction approval reverifies the exact previous terminal filing, manifest,
+reconciliation event and artifact set. Documents checks each private original
+before admission; the final RF transaction locks the predecessor and compares
+that complete snapshot and retained receipts before writing approval. Journal
+writers acquire the company guard before their submission row locks.
+
+Versioned source-readiness evidence binds the selected source and canonical
+preview after guarded freshness checks. It explicitly leaves annual
+prerequisites, current review/overrides, Authority, Billing and technical release
+unevaluated. It does not replace the legacy stored release gate yet.
+
+The correction contract is `Rf1086CorrectionPredecessorSnapshot`, verified by
+`assert_rf1086_correction_predecessor`. Source assessment exports
+`Rf1086SourceReadinessEvidence`, `Rf1086SourceReadinessProof`,
+`build_rf1086_source_readiness` and `assert_rf1086_source_readiness_matches`.

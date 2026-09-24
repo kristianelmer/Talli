@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable, Mapping
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC
 import json
@@ -30,6 +32,7 @@ from talli_backend.modules.documents.public import (
     DocumentsSessionFactory,
     DocumentStatus,
     StoredDocumentObject,
+    RetainedDocumentOriginal, RetainedDocumentOriginalReceipt,
     document_object_storage_adapter,
     documents_authorization_adapter,
     documents_persistence_adapter,
@@ -139,10 +142,12 @@ class SupabaseDocumentObjectStorage(DocumentObjectStorage):
 
 @documents_persistence_adapter(DocumentsPersistence)
 class SupabaseDocumentsPersistence(DocumentsPersistence):
-    def __init__(self, database_url: str, verified: Any, roles: dict[CompanyId, str]) -> None:
+    def __init__(self, database_url: str, verified: Any, roles: dict[CompanyId, str], *,
+                 role_refresher: Callable[[], Awaitable[Mapping[CompanyId, str]]] | None = None) -> None:
         self._database_url = database_url
         self._verified = verified
         self._roles = roles
+        self._role_refresher = role_refresher
 
     @property
     def actor_id(self) -> ActorId:
@@ -156,13 +161,16 @@ class SupabaseDocumentsPersistence(DocumentsPersistence):
             return False
         return claims.get("aal") == "aal2"
 
-    async def _rows(self, query: str, parameters: tuple[object, ...]) -> list[dict[str, Any]]:
+    @asynccontextmanager
+    async def _transaction(self):
         if not self._database_url:
             raise DocumentsError.storage_unavailable()
         try:
             async with await psycopg.AsyncConnection.connect(
-                self._database_url, connect_timeout=5, row_factory=dict_row
+                self._database_url, connect_timeout=5, row_factory=dict_row,
+                options="-c statement_timeout=5000 -c lock_timeout=1000",
             ) as connection, connection.transaction():
+                await connection.execute("set transaction isolation level read committed")
                 await connection.execute("set local role documents_executor")
                 await connection.execute(
                     "select pg_catalog.set_config('talli.verified_actor_id', %s, true)",
@@ -176,8 +184,7 @@ class SupabaseDocumentsPersistence(DocumentsPersistence):
                     "select pg_catalog.set_config('talli.authorized_company_roles', %s, true)",
                     (json.dumps({str(key): value for key, value in self._roles.items()}),),
                 )
-                cursor = await connection.execute(query, parameters)
-                return [dict(row) for row in await cursor.fetchall()]
+                yield connection
         except DocumentsError:
             raise
         except psycopg.OperationalError:
@@ -192,11 +199,35 @@ class SupabaseDocumentsPersistence(DocumentsPersistence):
                 raise DocumentsError.not_found() from None
             if "documents_evidence_linked" in message:
                 raise DocumentsError.evidence_linked() from None
-            if "documents_conflict" in message:
+            if "documents_conflict" in message or "documents_evidence_mismatch" in message:
                 raise DocumentsError.conflict() from None
             raise DocumentsError.storage_unavailable() from None
 
+    async def _rows(self, query: str, parameters: tuple[object, ...]) -> list[dict[str, Any]]:
+        async with self._transaction() as connection:
+            cursor = await connection.execute(query, parameters)
+            return [dict(row) for row in await cursor.fetchall()]
+
+    async def retain_verified_original(self, document: DocumentRecord, content: bytes) -> RetainedDocumentOriginalReceipt:
+        from talli_backend.adapters.postgres_document_originals import PostgresDocumentOriginals
+        async with self._transaction() as connection:
+            return await PostgresDocumentOriginals(connection, self.actor_id).retain_verified_original(document, content)
+
+    async def read_retained_original(self, original_id: str, company_id: CompanyId) -> RetainedDocumentOriginal:
+        from talli_backend.adapters.postgres_document_originals import PostgresDocumentOriginals
+        async with self._transaction() as connection:
+            return await PostgresDocumentOriginals(connection, self.actor_id).read_retained_original(original_id, company_id)
+
     async def actor_role(self, company_id: CompanyId) -> str | None:
+        return self._roles.get(company_id)
+
+    async def refresh_actor_role(self, company_id: CompanyId) -> str | None:
+        # Evidence verification explicitly requests live accepted membership.
+        # Never reuse a stale owner after a refresh fails or access is revoked.
+        self._roles = {}
+        if self._role_refresher is None:
+            raise DocumentsError.storage_unavailable()
+        self._roles = dict(await self._role_refresher())
         return self._roles.get(company_id)
 
     async def stage_upload(self, command: BeginDocumentUploadCommand, *, name: str, storage_key: str) -> DocumentRecord:
@@ -315,12 +346,15 @@ class SupabaseDocumentsAdapter(DocumentsSessionFactory):
             ledger_session = await self._authentication.session(access_token)
         except LedgerAuthenticationError:
             raise DocumentsError.forbidden() from None
-        roles = dict(await self._authorization.accepted_roles(access_token))
+        async def refresh_roles():
+            return await self._authorization.accepted_roles(access_token)
+        roles = dict(await refresh_roles())
         return DocumentsService(
             SupabaseDocumentsPersistence(
                 self._configuration.database_url,
                 ledger_session._verified,
                 roles,
+                role_refresher=refresh_roles,
             ),
             self._storage,
         )

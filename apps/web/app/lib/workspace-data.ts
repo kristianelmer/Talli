@@ -133,7 +133,7 @@ export async function loadWorkspaceData() {
     user_id: entitlement.userId,
     income_year: entitlement.incomeYear,
     obligation: entitlement.obligation as "aksjonaerregisteroppgaven",
-    case_profile: entitlement.caseProfile as "rf1086_no_activity_v1",
+    case_profile: entitlement.caseProfile as "rf1086_no_activity_v1" | "rf1086_full_year_v1",
     status: entitlement.status,
     billing_exempt: entitlement.billingExempt,
     system_user_request_id: entitlement.systemUserRequestId,

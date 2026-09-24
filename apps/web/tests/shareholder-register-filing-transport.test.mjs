@@ -27,6 +27,16 @@ const archiveSource = (incomeYear = 2025) => ({
     createdBy: other, acknowledgedBy: null, acknowledgedAt: null, createdAt: "2025-01-01T12:00:00Z" }],
   permissions: [], testEvidence: [],
 });
+const productionArchive = (incomeYear = 2025) => ({
+  ...archiveSource(incomeYear),
+  approvals: [],
+  feedbackArtifacts: [],
+  productionEvents: [],
+  productionSubmissions: [],
+});
+const productionArchivePath = "/api/v1/shareholder-register-filings/archive-source/production";
+const legacyArchivePath = "/api/v1/shareholder-register-filings/archive-source";
+
 function environment(t) {
   const prior = process.env.TALLI_BACKEND_URL;
   process.env.TALLI_BACKEND_URL = "https://backend.example";
@@ -54,7 +64,7 @@ test("retained history reads keep every requested company and all years with aut
 
 test("archive source requests exactly one company/year and retains company-wide review facts", async (t) => {
   environment(t);
-  const calls = [], value = archiveSource();
+  const calls = [], value = productionArchive();
   t.mock.method(globalThis, "fetch", async (url, request) => {
     calls.push({ url: new URL(url), request });
     return Response.json(value);
@@ -62,7 +72,7 @@ test("archive source requests exactly one company/year and retains company-wide 
   assert.deepEqual(await loadRf1086ArchiveSource("owner", company, 2025, "rf-archive-request"), value);
   assert.equal(calls.length, 1);
   const { url, request } = calls[0];
-  assert.equal(url.pathname, "/api/v1/shareholder-register-filings/archive-source");
+  assert.equal(url.pathname, productionArchivePath);
   assert.deepEqual([...url.searchParams.entries()].sort(), [["companyId", company], ["incomeYear", "2025"]]);
   assert.equal(request.method, "GET");
   assert.equal(request.body, undefined);
@@ -72,24 +82,52 @@ test("archive source requests exactly one company/year and retains company-wide 
   assert.equal(request.signal instanceof AbortSignal, true);
 });
 
-for (const corruption of ["company", "year", "preview-company", "preview-year", "duplicate-preview", "comment-company", "duplicate-comment", "nested-issue", "extra-workspace-field"]) {
-  test(`archive source rejects ${corruption} without silently broadening or dropping evidence`, async (t) => {
+for (const mode of ["production", "legacy"]) {
+  test(`${mode} archive accepts a complete unmodified response`, async (t) => {
     environment(t);
-    const value = archiveSource();
-    if (corruption === "company") value.companyId = other;
-    if (corruption === "year") value.incomeYear = 2024;
-    if (corruption === "preview-company") value.previews[0].companyId = other;
-    if (corruption === "preview-year") value.previews[0].incomeYear = 2024;
-    if (corruption === "duplicate-preview") value.previews.push(value.previews[0]);
-    if (corruption === "comment-company") value.reviewComments[0].companyId = other;
-    if (corruption === "duplicate-comment") value.reviewComments.push(value.reviewComments[0]);
-    if (corruption === "nested-issue") value.previews[0].issues = [{ level: "warning", message: "Historical issue without code" }];
-    if (corruption === "extra-workspace-field") value.productionSubmissions = [];
-    let calls = 0;
-    t.mock.method(globalThis, "fetch", async () => { calls += 1; return Response.json(value); });
-    await assert.rejects(loadRf1086ArchiveSource("owner", company, 2025), invalidResponse);
-    assert.equal(calls, 1);
+    const value = mode === "production" ? productionArchive() : archiveSource();
+    const calls = [];
+    t.mock.method(globalThis, "fetch", async url => {
+      const path = new URL(url).pathname;
+      calls.push(path);
+      if (mode === "legacy" && path === productionArchivePath)
+        return new Response(null, { status: 404 });
+      return Response.json(value);
+    });
+    assert.deepEqual(await loadRf1086ArchiveSource("owner", company, 2025), value);
+    assert.deepEqual(calls, mode === "production"
+      ? [productionArchivePath] : [productionArchivePath, legacyArchivePath]);
   });
+}
+
+for (const mode of ["production", "legacy"]) {
+  const corruptions = ["company", "year", "preview-company", "preview-year", "duplicate-preview", "comment-company", "duplicate-comment", "nested-issue"];
+  // Only the legacy contract includes company-wide workspace entries.
+  if (mode === "legacy") corruptions.push("extra-workspace-field");
+  for (const corruption of corruptions) {
+    test(`${mode} archive source rejects ${corruption} without silently broadening or dropping evidence`, async (t) => {
+      environment(t);
+      const value = mode === "production" ? productionArchive() : archiveSource();
+      if (corruption === "company") value.companyId = other;
+      if (corruption === "year") value.incomeYear = 2024;
+      if (corruption === "preview-company") value.previews[0].companyId = other;
+      if (corruption === "preview-year") value.previews[0].incomeYear = 2024;
+      if (corruption === "duplicate-preview") value.previews.push(value.previews[0]);
+      if (corruption === "comment-company") value.reviewComments[0].companyId = other;
+      if (corruption === "duplicate-comment") value.reviewComments.push(value.reviewComments[0]);
+      if (corruption === "nested-issue") value.previews[0].issues = [{ level: "warning", message: "Historical issue without code" }];
+      if (corruption === "extra-workspace-field") value.productionSubmissions = [];
+      let calls = 0;
+      t.mock.method(globalThis, "fetch", async url => {
+        calls += 1;
+        if (mode === "legacy" && new URL(url).pathname === productionArchivePath)
+          return new Response(null, { status: 404 });
+        return Response.json(value);
+      });
+      await assert.rejects(loadRf1086ArchiveSource("owner", company, 2025), invalidResponse);
+      assert.equal(calls, mode === "production" ? 1 : 2);
+    });
+  }
 }
 
 test("year-bound archive decoding does not relax the unchanged all-history workspace decoder", async (t) => {
@@ -98,9 +136,11 @@ test("year-bound archive decoding does not relax the unchanged all-history works
   const calls = [];
   t.mock.method(globalThis, "fetch", async url => {
     const parsed = new URL(url); calls.push(parsed.pathname);
-    if (parsed.pathname.endsWith("/archive-source")) {
+    if (parsed.pathname === productionArchivePath) {
       const year = Number(parsed.searchParams.get("incomeYear"));
-      return Response.json({ ...archiveSource(year), previews: [year === 2024 ? malformed : preview()] });
+      const value = productionArchive(year);
+      if (year === 2024) value.previews[0].issues = malformed.issues;
+      return Response.json(value);
     }
     assert.equal(parsed.searchParams.has("incomeYear"), false);
     return Response.json({ ...workspace(), previews: [preview(), malformed] });
@@ -108,7 +148,7 @@ test("year-bound archive decoding does not relax the unchanged all-history works
   assert.equal((await loadRf1086ArchiveSource("owner", company, 2025)).previews[0].incomeYear, 2025);
   await assert.rejects(loadRf1086ArchiveSource("owner", company, 2024), invalidResponse);
   await assert.rejects(loadRf1086Workspaces("owner", [company]), invalidResponse);
-  assert.deepEqual(calls, ["/api/v1/shareholder-register-filings/archive-source", "/api/v1/shareholder-register-filings/archive-source", "/api/v1/shareholder-register-filings/workspace"]);
+  assert.deepEqual(calls, [productionArchivePath, productionArchivePath, "/api/v1/shareholder-register-filings/workspace"]);
 });
 
 for (const corruption of ["company", "child-company", "duplicate", "year", "invalid-status"]) {

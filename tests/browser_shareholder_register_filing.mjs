@@ -110,7 +110,7 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     const backendPort = await allocateLoopbackPort();
     const siteOrigin = `http://localhost:${webPort}`;
     const backendOrigin = `http://127.0.0.1:${backendPort}`;
-    resources.mock = await startRf1086FilingAuthorityMock({ callbackOrigin: siteOrigin });
+    resources.mock = await startRf1086FilingAuthorityMock({ callbackOrigin: siteOrigin, organizationNumber: primary.organizationNumber });
     const callbackKey = `local-authority-browser-${randomUUID()}`;
     const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048,
       privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } });
@@ -255,20 +255,24 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     assert.equal(accepted.productionSubmissions.length, 1);
     assert.equal(accepted.productionSubmissions[0].feedbackState, "accepted");
     assert.equal(accepted.productionSubmissions[0].payloadHash, payloadHash);
-    assert.equal(accepted.feedbackArtifacts.length, 1);
-    const artifact = accepted.feedbackArtifacts[0];
+    const retained = (await rfFixtureTransaction(database, () => database.query(
+      "select id,company_id,submission_id,document_id,sha256,authority_reference from shareholder_register_filing.production_feedback_artifacts where company_id=$1 and submission_id=$2",
+      [primary.id, accepted.productionSubmissions[0].id],
+    ))).rows;
+    const artifact = selectFreshFeedbackArtifact(accepted, retained);
     assert.equal(artifact.submissionId, accepted.productionSubmissions[0].id);
     assert.equal(artifact.classification, "accepted");
+    const download = productionSection.locator(`a[href="/documents/${artifact.documentId}/download"]`);
     for (const width of [320, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `fresh RF overflow at ${width}`);
-      assert.ok(await productionSection.getByRole("link", { name: /Last ned .*tilbakemelding/u }).isVisible());
+      assert.equal(await productionSection.getByRole("link", { name: /Last ned .*tilbakemelding/u }).count(), 2);
+      assert.ok(await download.isVisible());
     }
     for (let reload = 0; reload < 2; reload += 1) {
       await page.reload();
       await productionSection.getByText("Godkjent", { exact: true }).waitFor();
     }
-    const download = productionSection.getByRole("link", { name: /Last ned .*tilbakemelding/u });
     await download.focus();
     assert.equal(await download.evaluate((element) => element === document.activeElement), true);
     const receipt = await context.request.get(new URL(await download.getAttribute("href"), siteOrigin).href, { maxRedirects: 0 });
@@ -279,6 +283,9 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     assert.equal(bytes.status(), 200);
     assert.equal(createHash("sha256").update(await bytes.body()).digest("hex"), artifact.sha256);
     const successfulCalls = resources.mock.snapshot();
+    assert.equal(successfulCalls.filter(({ operation }) => operation === "list_documents").length, 0);
+    assert.equal(successfulCalls.filter(({ operation }) => operation === "read_dialog").length, 1);
+    assert.equal(successfulCalls.filter(({ operation }) => operation === "read_feedback").length, 1);
     assert.equal(successfulCalls.filter(({ operation }) => operation === "post_hovedskjema").length, 1);
     assert.equal(successfulCalls.filter(({ operation }) => operation === "post_underskjema").length, 1);
     assert.equal(successfulCalls.filter(({ operation }) => operation === "confirm").length, 1);
@@ -376,6 +383,25 @@ async function createUser(admin, prefix, users) {
   return { id: result.data.user.id, email, password };
 }
 
+function selectFreshFeedbackArtifact(accepted, retained) {
+  assert.equal(accepted.feedbackArtifacts.length, 2);
+  assert.equal(retained.length, 2);
+  assert.equal(new Set(retained.map(row => row.id)).size, 2);
+  assert.equal(retained.filter(row => row.authority_reference === "talli:rf1086-feedback-provenance:v1").length, 1);
+  // Provider attribution belongs to retained/archive evidence. The ordinary
+  // workspace deliberately omits it; bind each public artifact by receipt ID.
+  for (const row of retained) {
+    const wire = accepted.feedbackArtifacts.find(artifact => artifact.id === row.id);
+    assert.ok(wire);
+    assert.equal(wire.companyId, row.company_id);
+    assert.equal(wire.submissionId, row.submission_id);
+    assert.equal(wire.documentId, row.document_id);
+    assert.equal(wire.sha256, row.sha256);
+  }
+  const original = retained.find(row => row.authority_reference !== "talli:rf1086-feedback-provenance:v1");
+  return accepted.feedbackArtifacts.find(artifact => artifact.id === original.id);
+}
+
 async function seedCompany(admin, database, ownerId, name, companies) {
   const id = randomUUID();
   const organizationNumber = String(randomInt(100000000, 999999999));
@@ -394,7 +420,7 @@ async function seedCompany(admin, database, ownerId, name, companies) {
     values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'authority-v1','in_app_clickwrap',now())`,
     [id, ownerId, name, organizationNumber, terms.version, terms.effectiveDate, terms.path, terms.contentSha256,
       dpa.version, dpa.effectiveDate, dpa.path, dpa.contentSha256]);
-  return { id, name };
+  return { id, name, organizationNumber };
 }
 
 async function authorityFixtureTransaction(database, operation) {

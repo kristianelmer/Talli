@@ -9,7 +9,8 @@
   "publicEntryPoint": "talli_backend.modules.documents.public",
   "exports": {
     "commands": [
-      "BeginDocumentUploadCommand"
+      "BeginDocumentUploadCommand",
+      "DocumentEvidenceRetentionCommand"
     ],
     "queries": [
       "DocumentBackupObject",
@@ -18,7 +19,11 @@
       "DocumentRecord",
       "DocumentRestoreObject",
       "DocumentRestorePlan",
-      "DocumentUploadTransfer"
+      "DocumentUploadTransfer",
+      "VerifiedDocumentEvidence",
+      "document_metadata_sha256",
+      "RetainedDocumentOriginalReceipt",
+      "RetainedDocumentOriginal"
     ],
     "events": [],
     "errors": [
@@ -39,7 +44,11 @@
       "document_binding_persistence_adapter",
       "document_object_storage_adapter",
       "documents_authorization_adapter",
-      "documents_persistence_adapter"
+      "documents_persistence_adapter",
+      "DocumentEvidenceRetentionPersistence",
+      "document_evidence_retention_adapter",
+      "DocumentOriginalPersistence",
+      "document_original_persistence_adapter"
     ]
   },
   "owns": {
@@ -48,7 +57,8 @@
     ],
     "tables": [
       "documents.evidence_references",
-      "public.documents"
+      "public.documents",
+      "documents.retained_originals"
     ],
     "storageBuckets": [
       "company-documents"
@@ -56,7 +66,7 @@
     "projections": [
       "DocumentBackupObject"
     ],
-    "migrations": "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql"
+    "migrations": "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql; supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql; supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql; supabase/migrations/20260924062717_documents_immutable_retained_originals.sql; supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql"
   },
   "ports": [
     {
@@ -94,6 +104,24 @@
       "adapters": [
         "talli_backend.adapters.postgres_company_tax_filing.PostgresCompanyTaxTransaction"
       ]
+    },
+    {
+      "name": "DocumentEvidenceRetentionPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.documents.public.DocumentEvidenceRetentionPersistence",
+      "registrationDecorator": "talli_backend.modules.documents.public.document_evidence_retention_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_document_evidence.PostgresDocumentEvidenceRetention"
+      ]
+    },
+    {
+      "name": "DocumentOriginalPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.documents.public.DocumentOriginalPersistence",
+      "registrationDecorator": "talli_backend.modules.documents.public.document_original_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_document_originals.PostgresDocumentOriginals"
+      ]
     }
   ],
   "dependencies": [],
@@ -120,7 +148,13 @@
     "policy": "apps/backend/tests/test_documents.py",
     "adapter": "apps/backend/tests/test_supabase_documents.py",
     "database": "tests/documents_database_runtime.test.mjs",
-    "architecture": "tests/architecture_foundation.test.mjs"
+    "architecture": "tests/architecture_foundation.test.mjs",
+    "evidenceRetention": "apps/backend/tests/test_document_evidence_retention.py",
+    "evidenceRetentionDatabase": "apps/backend/tests/test_document_evidence_retention_database.py",
+    "retainedOriginals": "apps/backend/tests/test_document_originals.py",
+    "retainedOriginalsDatabase": "apps/backend/tests/test_document_originals_database.py",
+    "companyGuardDatabase": "apps/backend/tests/test_documents_rf_company_guard_database.py",
+    "companyGuardAdapter": "apps/backend/tests/test_consequential_adapter_guards.py"
   },
   "compatibilityExceptions": []
 }

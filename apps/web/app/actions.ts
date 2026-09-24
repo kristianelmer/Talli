@@ -200,7 +200,9 @@ import {
   acknowledgeOwnedRf1086Comment, confirmRf1086SimulationThroughApi,
   confirmRf1086PermissionThroughApi, recordRf1086TestEvidenceThroughApi,
   approveRf1086ProductionThroughApi, rf1086ActionErrorMessage,
+  loadRf1086RegisterObservations, rf1086RegisterErrorMessage,
 } from "../features/shareholder-register-filing";
+import { corporateRegisterFact, needsCorporateRegisterObservation } from "./lib/corporate-register-observation";
 import { SYSTEM_USER_COOKIE, callbackStateForResult } from "./lib/system-user-presentation";
 import { runAuthorityOperation, authorityOperationErrorCode, startOwnerSystemUserRequest, refreshOwnerSystemUserRequest } from "../features/authority-connections";
 import { assertAdvisoryCanBeAcknowledged } from "./lib/review";
@@ -3789,6 +3791,25 @@ export async function recordSupportedCorporateEventAction(formData: FormData) {
   const bankId = formString(formData, "bankTransactionId");
   const sourceId = formString(formData, "sourceDocumentId");
   const sourceHash = formString(formData, "sourceDocumentHash").toLowerCase();
+  const accessToken = await getCurrentSessionAccessToken();
+  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
+  let shareholderRegisterFact: SupportedCorporateEventWire["shareholderRegisterFact"] = null;
+  if (needsCorporateRegisterObservation(eventKind, phase)) {
+    const observationId = requiredFormUuid(formData, "registerObservationId");
+    let observations;
+    try {
+      observations = await loadRf1086RegisterObservations(accessToken, companyId, incomeYear);
+    } catch (error) {
+      failTo(returnTo, rf1086RegisterErrorMessage(error));
+    }
+    try {
+      shareholderRegisterFact = corporateRegisterFact(
+        observations, companyId, incomeYear, eventKind, formString(formData, "eventDate"), observationId,
+      );
+    } catch {
+      failTo(returnTo, "Registergrunnlagen er endret eller passer ikke hendelsen. Last siden på nytt og velg en gjeldende observasjon.");
+    }
+  }
   const body: SupportedCorporateEventWire = {
     companyId,
     incomeYear,
@@ -3807,15 +3828,11 @@ export async function recordSupportedCorporateEventAction(formData: FormData) {
           sourceSha256: formString(formData, "bankSourceHash").toLowerCase(),
         }
       : null,
-    shareholderRegisterFact: formString(formData, "sourceKind") === "shareholder_register"
-      ? { recordId: sourceId, revision: 1, factSha256: sourceHash }
-      : null,
+    shareholderRegisterFact,
     taxCalculationFact: formString(formData, "sourceKind") === "tax_calculation"
       ? { recordId: sourceId, revision: 1, factSha256: sourceHash }
       : null,
   };
-  const accessToken = await getCurrentSessionAccessToken();
-  if (!accessToken) failTo(returnTo, "Innlogging kreves.");
   try {
     await recordSupportedCorporateEventThroughApi(
       accessToken,
@@ -5200,6 +5217,12 @@ export async function upsertProductionPilotEntitlement(formData: FormData) {
   }
   const incomeYear = Number(formString(formData, "incomeYear"));
   const status = formString(formData, "status");
+  const caseProfile = formData.has("caseProfile")
+    ? formString(formData, "caseProfile")
+    : "rf1086_no_activity_v1";
+  if (caseProfile !== "rf1086_no_activity_v1" && caseProfile !== "rf1086_full_year_v1") {
+    redirect("/operator?error=Ugyldig%20pilotprofil");
+  }
   const startsAt = new Date(formString(formData, "startsAt"));
   const expiresAt = new Date(formString(formData, "expiresAt"));
   const evidenceReference = formString(formData, "evidenceReference");
@@ -5216,6 +5239,7 @@ export async function upsertProductionPilotEntitlement(formData: FormData) {
       companyId,
       entitlementId,
       userId: ownerUserId,
+      caseProfile,
       incomeYear,
       status: status as "pending" | "active" | "suspended" | "completed" | "revoked",
       billingExempt: formData.get("billingExempt") === "on",

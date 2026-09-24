@@ -19,6 +19,7 @@ from talli_backend.modules.billing.public import (
     BillingPaymentEventId,
     BillingPaymentKind,
     BillingPaymentStatus,
+    BillingPilotCaseProfile,
     BillingPlan,
     BillingPricing,
     BillingProviderResult,
@@ -295,7 +296,8 @@ def test_entitlement_authorizes_company_scope_before_reading_billing_state() -> 
     assert persistence.account_reads == 0
 
 
-def test_exact_active_pilot_can_exempt_billing_without_activating_provider() -> None:
+@pytest.mark.parametrize("profile", list(BillingPilotCaseProfile))
+def test_exact_active_pilot_can_exempt_billing_without_activating_provider(profile) -> None:
     persistence = MemoryPersistence(ready=True)
     service = BillingService(persistence, SimulationBillingProvider(), now=lambda: NOW.value)
     starts = Timestamp(NOW.value - timedelta(hours=1))
@@ -304,6 +306,7 @@ def test_exact_active_pilot_can_exempt_billing_without_activating_provider() -> 
         ManageProductionPilotEntitlementCommand(
             **metadata("pilot"),
             entitlement_id=None,
+            case_profile=profile,
             user_id=USER_ID,
             income_year=IncomeYear(2025),
             status=ProductionPilotStatus.ACTIVE,
@@ -316,7 +319,7 @@ def test_exact_active_pilot_can_exempt_billing_without_activating_provider() -> 
             evidence_reference="approved-validation-run",
         )
     ))
-    decision = asyncio.run(service.entitlement(query(case_profile="rf1086_no_activity_v1")))
+    decision = asyncio.run(service.entitlement(query(case_profile=profile.value)))
     assert decision.status is BillingStatus.PILOT_ENTITLEMENT_ACTIVE
     assert decision.allowed is True
     assert decision.billing_exempt is True
@@ -324,7 +327,7 @@ def test_exact_active_pilot_can_exempt_billing_without_activating_provider() -> 
 
     persistence.ready = False
     readiness_revoked = asyncio.run(
-        service.entitlement(query(case_profile="rf1086_no_activity_v1"))
+        service.entitlement(query(case_profile=profile.value))
     )
     assert readiness_revoked.status is BillingStatus.ACTIVE
     assert readiness_revoked.allowed is False
@@ -577,3 +580,18 @@ def test_unknown_reconciliation_keeps_original_intent_without_executing_again() 
     assert provider.lookups == 3
     assert len(persistence.events) == 1
     assert not persistence.account.subscription_active
+
+
+@pytest.mark.parametrize("profile", ["rf1086_full_year_v1", "future_profile", None])
+def test_pilot_domain_requires_known_typed_profile(profile):
+    with pytest.raises(BillingError) as invalid:
+        ManageProductionPilotEntitlementCommand(
+            **metadata("invalid-profile"), entitlement_id=None, user_id=USER_ID,
+            income_year=IncomeYear(2025), status=ProductionPilotStatus.ACTIVE,
+            billing_exempt=True,
+            system_user_request_id=SystemUserRequestReference("30000000-0000-4000-8000-000000000001"),
+            starts_at=Timestamp(NOW.value-timedelta(hours=1)),
+            expires_at=Timestamp(NOW.value+timedelta(hours=1)),
+            evidence_reference="synthetic", case_profile=profile,
+        )
+    assert invalid.value.code is BillingErrorCode.INVALID_INPUT

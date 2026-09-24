@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 import { SYSTEM_USER_COOKIE } from "../apps/web/app/lib/system-user-presentation.ts";
 import { systemUserCallbackProof } from "../apps/web/app/lib/authority-callback-transport.ts";
-import { createSystemUserCallbackHandler, systemUserSiteOrigin } from "../apps/web/app/auth/systembruker/confirm/route.ts";
+import { createSystemUserCallbackHandler, systemUserSiteOrigin } from "../apps/web/app/auth/systembruker/confirm/handler.ts";
 
 const requestId = "22345678-1234-4234-8234-123456789abc";
 const companyId = "12345678-1234-4234-8234-123456789abc";

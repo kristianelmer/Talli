@@ -382,6 +382,11 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
   const authorityLifecycle = packageJson.scripts["test:authority-connections-database"];
   const files = lifecycle.match(/apps\/backend\/tests\/test_\w+\.py/gu);
   const authorityFiles = authorityLifecycle.match(/apps\/backend\/tests\/test_\w+\.py/gu);
+  assert.match(authorityLifecycle, /&& uv run --project apps\/backend python scripts\/test-corporate-reporting-owned-clone\.py$/u);
+  const cloneRunner = readFileSync(new URL("../scripts/test-corporate-reporting-owned-clone.py", import.meta.url), "utf8");
+  const cloneFiles = cloneRunner.match(/apps\/backend\/tests\/test_\w+\.py/gu);
+  assert.deepEqual(cloneFiles, ["apps/backend/tests/test_corporate_reporting_year_database_runtime.py"]);
+  authorityFiles.push(...cloneFiles);
   assert.ok(files?.length, "the mandatory database lane must name its test files");
   assert.ok(authorityFiles?.length, "the mandatory Authority lane must name its test files");
   const env = { ...process.env };
@@ -499,13 +504,23 @@ const SIGN='20260909125250_backend_system_launch_signoffs_contract.sql';
 const RFX='20260909190548_shareholder_register_filing_capability.sql';
 const RFC='20260909190905_shareholder_register_filing_cutover.sql';
 const RFF='20260909190955_shareholder_register_filing_contract.sql';
+const RFR='20260917110951_rf1086_action_required_read_recovery.sql';
+const RFA='20260917114424_rf1086_production_archive_evidence.sql';
+const RFY='20260923091509_rf1086_immutable_year_source.sql';
+const RFO='20260923102314_rf1086_register_observation_store.sql';
+const RFP='20260923105912_rf1086_source_backed_preview.sql';
+const RFG='20260924062746_rf1086_source_company_guard.sql';
+const DLG='20260923125730_documents_ledger_evidence_guard.sql';
 const predecessor={rf_owned:false,authority_kind:'r',ledger_kind:'v',ledger_setup:true,opening_kind:'r'};
-const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`];
-const workspaceForward=forward.filter(path=>path!==`contract-migrations/${AUC}`);
+const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`migrations/${RFA}`,`migrations/${RFY}`,`migrations/${RFO}`,`migrations/${RFP}`,`migrations/${RFG}`];
+const consequentialGuards=['20260924080208_company_access_rf_admission_guard.sql','20260924080249_documents_rf_consequential_company_guards.sql','20260924080355_governance_ledger_company_write_guards.sql','20260924083154_governance_guarded_reporting_year_read.sql','20260924084752_billing_rf_full_year_pilot_profile.sql','20260924085227_rf1086_source_review_bridge.sql','20260924091015_rf1086_source_approval_foundation.sql','20260924094631_rf1086_journal_company_guard.sql'].map(file=>`migrations/${file}`);
+const workspaceForward=[...forward.filter(path=>path!==`contract-migrations/${AUC}`),...consequentialGuards];
 function fake(initial,{fail,noEffect=false}={}) {
  const state={signoff_open:true,...initial},executed=[];
  return {state,executed,database:{async query(sql) {
   if(sql.startsWith('select\n')) return {rows:[{...state}]};
+  if(sql.startsWith('select exists(select 1 from shareholder_register_filing.register_observations)')) return {rows:[{retained_observations:state.retained_observations??false}]};
+  if(sql.startsWith('select exists(select 1 from shareholder_register_filing.year_source_versions)')) return {rows:[{retained_sources:state.retained_sources??false}]};
   executed.push(sql); if(sql===fail) throw new Error('synthetic_dependency_failure');
   if(!noEffect){
    if(sql===`contract-migrations/${SIGN}`){if(!state.signoff_open)throw new Error('launch_signoff_policy_missing');state.signoff_open=false;}
@@ -525,9 +540,24 @@ const run=(direction,fixture)=>rehearseAuthorityTopology({direction,database:fix
 for(const authority_kind of ['v',null]) for(const rf_owned of [false,true]) {
  test(`rollback RF=${rf_owned} AU=${authority_kind} restores dependency order`,async()=>{
   const fixture=fake({...predecessor,authority_kind,rf_owned});await run('rollback',fixture);
-  assert.deepEqual(fixture.executed,[...(rf_owned?[`rollback/${RFX}`]:[]),`rollback/${SIGN}`,...(authority_kind===null?[`rollback/${AUC}`]:[]),`rollback/${RF}`,`rollback/${OP}`,`rollback/${AU}`]);
+  assert.deepEqual(fixture.executed,[...(rf_owned?[`rollback/${RFA}`,`rollback/${RFX}`]:[]),`rollback/${SIGN}`,...(authority_kind===null?[`rollback/${AUC}`]:[]),`rollback/${RF}`,`rollback/${OP}`,`rollback/${AU}`]);
  });
 }
+test('empty source-preview API rolls back before source APIs and full RF schema',async()=>{
+ const f=fake({...predecessor,rf_owned:true,rf_source_company_guard:true,rf_source_previews:true,rf_register_observations:true,rf_year_sources:true,authority_kind:null});
+ await run('rollback',f);
+ assert.deepEqual(f.executed.slice(0,6),[`rollback/${RFG}`,`rollback/${RFP}`,`rollback/${RFO}`,`rollback/${RFY}`,`rollback/${RFA}`,`rollback/${RFX}`]);
+});
+test('retained independent register observations block full-schema rollback before any mutation',async()=>{
+ const f=fake({...predecessor,rf_owned:true,rf_register_observations:true,retained_observations:true,authority_kind:null});
+ await assert.rejects(run('rollback',f),/rf1086_retained_register_observations_block_full_schema_rollback/);
+ assert.deepEqual(f.executed,[]);
+});
+test('retained immutable RF year sources block full-schema rollback before any mutation',async()=>{
+ const f=fake({...predecessor,rf_owned:true,rf_year_sources:true,retained_sources:true,authority_kind:null});
+ await assert.rejects(run('rollback',f),/rf1086_retained_year_sources_block_full_schema_rollback/);
+ assert.deepEqual(f.executed,[]);
+});
 test('workspace rollback followed by final recutover restores signoff policy topology',async()=>{
  const f=fake(predecessor);await run('workspace',f);await run('rollback',f);
  f.state.ledger_kind=null;f.state.ledger_setup=false;
@@ -535,7 +565,7 @@ test('workspace rollback followed by final recutover restores signoff policy top
 });
 test('RF rollback failure prevents all predecessor mutations',async()=>{
  const f=fake({...predecessor,rf_owned:true,authority_kind:null},{fail:`rollback/${RFX}`});
- await assert.rejects(run('rollback',f),/synthetic_dependency_failure/);assert.deepEqual(f.executed,[`rollback/${RFX}`]);
+ await assert.rejects(run('rollback',f),/synthetic_dependency_failure/);assert.deepEqual(f.executed,[`rollback/${RFA}`,`rollback/${RFX}`]);
 });
 test('workspace retains AU and Ledger overlap for Billing and sibling consumers',async()=>{
  const f=fake(predecessor);await run('workspace',f);assert.deepEqual(f.executed,workspaceForward);
@@ -545,14 +575,14 @@ for(const wrong of [{ledger_kind:null,ledger_setup:false},{ledger_kind:'r'},{led
  const f=fake({...predecessor,...wrong});await assert.rejects(run('workspace',f),/workspace_requires_ledger_ordinary_overlap/);assert.deepEqual(f.executed,[]);
 });
 test('final RF contract follows explicit final Ledger guard and owner recutover',async()=>{
- const f=fake({...predecessor,ledger_kind:null,ledger_setup:false});await run('recutover',f);assert.deepEqual(f.executed,[...forward,`contract-migrations/${RFF}`]);
+ const f=fake({...predecessor,ledger_kind:null,ledger_setup:false});await run('recutover',f);assert.deepEqual(f.executed,[...forward,`contract-migrations/${RFF}`,...consequentialGuards]);
 });
 for(const wrong of [{ledger_kind:'v',ledger_setup:true},{ledger_kind:null,ledger_setup:true},{ledger_kind:'v',ledger_setup:false}])test(`final refuses incomplete Ledger contract ${JSON.stringify(wrong)}`,async()=>{
  const f=fake({...predecessor,...wrong});await assert.rejects(run('recutover',f),/final_rf_requires_ledger_contract/);assert.deepEqual(f.executed,[]);
 });
-for(const fail of [`migrations/${RF}`,`migrations/${RFX}`,`migrations/${RFC}`,`contract-migrations/${RFF}`])test(`dependency failure stops final sequence at ${fail}`,async()=>{
+for(const fail of [`migrations/${RF}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`contract-migrations/${RFF}`,...consequentialGuards])test(`dependency failure stops final sequence at ${fail}`,async()=>{
  const f=fake({...predecessor,ledger_kind:null,ledger_setup:false},{fail});await assert.rejects(run('recutover',f),/synthetic_dependency_failure/);
- const files=[...forward,`contract-migrations/${RFF}`];assert.deepEqual(f.executed,files.slice(0,files.indexOf(fail)+1));
+ const files=[...forward,`contract-migrations/${RFF}`,...consequentialGuards];assert.deepEqual(f.executed,files.slice(0,files.indexOf(fail)+1));
 });
 test('success is refused if SQL does not establish target state',async()=>{
  const f=fake(predecessor,{noEffect:true});await assert.rejects(run('workspace',f),/authority_rehearsal_target_not_reached/);

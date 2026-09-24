@@ -392,6 +392,15 @@ export default async function FilingObligationPage({
     <div>
       {header}
       {banners}
+      <section className="filingStep">
+        <div className="filingStepBody">
+          <h2 className="filingStepTitle">Kontroller årsgrunnlaget</h2>
+          <p>Aksjonærer, aksjer, innbetalt kapital og hendelser for inntektsåret {input.incomeYear}.</p>
+          <LinkButton variant="primary" href={`/filing/aksjonaerregisteroppgaven/source?companyId=${encodeURIComponent(input.company.id)}&incomeYear=${input.incomeYear}`}>
+            Åpne årsgrunnlaget
+          </LinkButton>
+        </div>
+      </section>
       <Stepper steps={steps} current={currentStep} className="filingStepper" />
 
       <div className="filingFlow">

@@ -114,19 +114,20 @@ def test_accepted_replay_reads_no_key_or_token_and_does_not_rewrite_evidence(rf_
     assert summary == original and calls == [] and path.read_bytes() == previous
 
 
-def test_retry_continues_original_durable_uuid_intent_and_skips_already_recorded_writes(rf_environment, fake_xml):
+def test_failed_post_preserves_original_intent_and_requires_reconciliation(rf_environment, fake_xml):
     def fail_subdocument(request):
         if request.url.path.endswith("/1086U"):
             return httpx.Response(503, json={"kode": "GLD_004", "melding": SECRET})
     with pytest.raises(Rf1086AuthorityError):
         execute(rf_environment, handler=fail_subdocument)
     previous = evidence(rf_environment)
-    assert previous["status"] == "failed_retryable" and previous["hovedskjema"]["hovedskjemaId"] == MAIN_ID
-    summary, calls = execute(rf_environment)
-    current = evidence(rf_environment)
-    assert [request.url.path.split("/")[-1] for request in calls] == ["token", "1086U", "bekreft", "dokumenter"]
-    assert current["preparedAt"] == previous["preparedAt"] and current["idempotencyKeys"] == previous["idempotencyKeys"]
-    assert summary["status"] == "accepted" and SECRET not in json.dumps(previous)
+    assert previous["status"] == "unknown" and previous["hovedskjema"]["hovedskjemaId"] == MAIN_ID
+    saved = Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"]).read_bytes()
+    with pytest.raises(Rf1086AuthorityError, match="RECONCILIATION_REQUIRED") as caught:
+        execute(rf_environment)
+    assert caught.value.test_calls == []
+    assert Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"]).read_bytes() == saved
+    assert SECRET not in json.dumps(previous)
 
 
 def test_confirmed_retry_only_lists_original_archive(rf_environment, fake_xml):
@@ -150,9 +151,9 @@ def test_malformed_saved_keys_are_never_replaced_with_new_provider_intent(rf_env
     saved = evidence(rf_environment)
     saved["idempotencyKeys"] = {}
     Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"]).write_text(json.dumps(saved))
-    with pytest.raises(KeyError) as caught:
+    with pytest.raises(Rf1086AuthorityError, match="SAVED_INTENT_INVALID") as caught:
         execute(rf_environment)
-    assert [request.url.path.split("/")[-1] for request in caught.value.test_calls] == ["token"]
+    assert caught.value.test_calls == []
     assert evidence(rf_environment)["idempotencyKeys"] == {}
 
 
@@ -199,7 +200,7 @@ def test_unsupported_events_and_changed_payload_never_reuse_saved_intent(rf_envi
     saved = Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"]).read_bytes()
     case_path = Path(rf_environment["TALLI_RF1086_CASE_PATH"])
     case = json.loads(case_path.read_text())
-    case["events"] = [{"type": "dividend"}]
+    case["events"] = [{"type": "owner_capital_repayment"}]
     case_path.write_text(json.dumps(case))
     with pytest.raises(ValueError, match="limited"):
         execute(rf_environment)
@@ -228,24 +229,30 @@ def test_actual_canonical_generation_preserves_source_xml_bytes(rf_environment, 
     monkeypatch.chdir(ROOT)
     summary, calls = execute(rf_environment)
     assert summary["status"] == "accepted"
-    output = Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"]).parent / "xml"
+    path = Path(rf_environment["TALLI_RF1086_EVIDENCE_PATH"])
+    output = path.with_name(f".{path.name}.xml")
     assert calls[1].content == (output / "1086H.xml").read_bytes()
     assert calls[2].content == (output / "1086U-founder.xml").read_bytes()
     assert evidence(rf_environment)["payloadHashes"]["hovedskjema"] == hashlib.sha256(calls[1].content).hexdigest()
 
 
-@pytest.mark.parametrize("name", ["no_activity", "stiftelse", "stiftelse_two_founders"])
-def test_tool_generates_exact_pinned_predecessor_fixture_bytes_before_mock_send(rf_environment, name):
+@pytest.mark.parametrize("name", ["no_activity", "stiftelse", "stiftelse_two_founders", "share_sale", "dividend"])
+def test_tool_sends_current_validated_documents_without_changing_their_bytes(rf_environment, name):
     vectors = json.loads((Path(__file__).parent / "fixtures/rf1086_oracle/python-oracle.json").read_text())
     vector = next(row for row in vectors if row["name"] == name)
     Path(rf_environment["TALLI_RF1086_CASE_PATH"]).write_text(json.dumps(vector["input"]))
     rf_environment["TALLI_MASKINPORTEN_SYSTEM_USER_ORG"] = vector["input"]["company"]["org_number"]
     summary, calls = execute(rf_environment)
     assert summary["status"] == "accepted"
-    assert calls[1].content == vector["output"]["hovedskjemaXml"].encode("utf-8")
+    retained = Path(rf_environment['TALLI_RF1086_EVIDENCE_PATH'])
+    retained = retained.with_name(f'.{retained.name}.xml')
+    assert calls[1].content == (retained/'1086H.xml').read_bytes()
     children = [request.content for request in calls if request.url.path.endswith("/1086U")]
-    expected = vector["output"]["underskjemaXml"]
-    assert children == [expected[key].encode("utf-8") for key in tool._shareholder_write_order(list(expected), rf_environment)]
+    identifiers = [holder['id'] for holder in vector['input']['shareholders']]
+    assert children == [(retained/f'1086U-{key}.xml').read_bytes()
+                        for key in tool._shareholder_write_order(identifiers, rf_environment)]
+    if name == 'no_activity':
+        assert calls[1].content == vector['output']['hovedskjemaXml'].encode('utf-8')
 
 
 def test_missing_local_xml_validator_stops_before_token_or_existing_evidence_mutation(rf_environment):
@@ -412,12 +419,15 @@ def test_ordering_subprocess_receives_only_identifiers_and_runtime_locale(rf_env
     assert kwargs["timeout"] == 30 and SECRET not in str(captured)
 
 
-def test_original_harness_pagination_projection_does_not_gain_an_acceptance_gate(rf_environment, fake_xml):
+def test_incomplete_pagination_metadata_cannot_mint_accepted_receipt(rf_environment, fake_xml):
     def mixed_page(request):
         if request.url.path.endswith("/dokumenter"):
             return httpx.Response(200, json={"dokumenter": ["<archive/>"], "totalItems": "1", "totalPages": "unknown"})
-    summary, _ = execute(rf_environment, handler=mixed_page)
-    assert summary["status"] == "accepted" and evidence(rf_environment)["archive"]["totalPages"] is None
+    with pytest.raises(Rf1086AuthorityError, match="ARCHIVE_INCOMPLETE"):
+        execute(rf_environment, handler=mixed_page)
+    assert evidence(rf_environment)["status"] == "failed_blocked"
+    assert evidence(rf_environment)["confirmation"] is not None
+    assert evidence(rf_environment)["archive"] is None
 
 
 @pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])

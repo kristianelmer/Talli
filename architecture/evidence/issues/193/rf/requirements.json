@@ -1,0 +1,139 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "RF-1086",
+  "status": "SYNTHETIC_ACCEPTANCE_AND_BOUNDED_CANONICAL_CONFORMANCE_VERIFIED",
+  "source": "https://github.com/kristianelmer/Talli/issues/193",
+  "predecessor": {
+    "issue": "#153",
+    "merge": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+    "closure": "CLOSED_2026-09-14T22:42:36Z",
+    "receipt": "https://github.com/kristianelmer/Talli/issues/153#issuecomment-5671727749"
+  },
+  "criteria": [
+    {
+      "id": "GH-193-RF-A1",
+      "requirement": "official-source mapping, current schema/code-list pin and drift gate;",
+      "status": "PENDING"
+    },
+    {
+      "id": "GH-193-RF-A2",
+      "requirement": "complete readiness, preview, cross-output reconciliation, review, AAL2 approval, authority entitlement, idempotent journal, submit-once, feedback/correction, final decision/receipt, and archive;",
+      "status": "PENDING"
+    },
+    {
+      "id": "GH-193-RF-A3",
+      "requirement": "current TT02/service conformance plus representative genuine-company final production evidence;",
+      "status": "PENDING"
+    },
+    {
+      "id": "GH-193-RF-A4",
+      "requirement": "safe unknown-outcome reconciliation and no duplicate logical submission;",
+      "status": "PENDING"
+    },
+    {
+      "id": "GH-193-RF-A5",
+      "requirement": "precise enabled/disabled/blocked customer copy and operator kill switch;",
+      "status": "PENDING"
+    },
+    {
+      "id": "GH-193-RF-A6",
+      "requirement": "provider credentials isolated in backend; security, privacy, load, incident/rollback, browser/mobile, and two immutable complete gates;",
+      "status": "PENDING"
+    },
+    {
+      "id": "GH-193-RF-A7",
+      "requirement": "old generic filing writers/rules/adapters removed.",
+      "status": "PENDING"
+    }
+  ],
+  "limits": [
+    "Local RF work is active. The approved synthetic submission, archive, final business acceptance and bounded live canonical reader conformance are verified. Broader cases and all full RF acceptance criteria remain pending.",
+    "RF must pass before Tax begins; Tax must pass before Accounts.",
+    "The #172 accepted supported boundary cannot be silently narrowed.",
+    "No #149/#208/#192 final/#194 progression without the approved prerequisites."
+  ],
+  "claim": "https://github.com/kristianelmer/Talli/issues/193#issuecomment-5671808140",
+  "localJournalVerification": "journal-verification.json",
+  "testBaselineVerification": "provider-baseline-20260915.json",
+  "archiveRecoveryVerification": "archive-recovery-20260915.json",
+  "localPaginationVerification": "pagination-verification.json",
+  "finalFeedbackLookup": "feedback-lookup-20260915.json",
+  "dialogAccessRecovery": "dialog-access-recovery-20260915.json",
+  "finalBusinessReceipt": "acceptance-receipt-20260915.json",
+  "localArParserVerification": "ar-parser-verification.json",
+  "canonicalDialogIntegration": "dialog-integration-verification.json",
+  "canonicalLiveConformance": "canonical-conformance-20260917.json",
+  "officialSourceMapping": "official-event-mapping-20260917.md",
+  "currentOfficialSourcePin": "../../../../../docs/filing/rf1086-official-sources.json",
+  "readOnlyActionRecovery": "action-required-read-recovery-20260917.json",
+  "broaderSyntheticSubmission": "broader-submission-20260917.json",
+  "broaderSyntheticReadRecovery": "broader-read-recovery-20260917.json",
+  "broaderSyntheticReadDiagnostic": "broader-read-diagnostic-20260923.json",
+  "fullYearSourceDesign": "year-source-design.md",
+  "productionArchiveBackend": "production-archive-backend-20260917.json",
+  "productionArchiveOverlap": "archive-overlap-runtime-20260923.json",
+  "sourceAndArchiveVerification": "source-archive-verification-20260923.json",
+  "broaderCanonicalAcceptance": "broader-canonical-acceptance-20260923.json",
+  "documentSourceVerification": "document-source-verification-20260923.json",
+  "governanceYearEvidence": "governance-year-evidence-20260923.json",
+  "yearSourcePersistence": "year-source-persistence-20260923.json",
+  "registerObservationDesign": "register-observation-design.md",
+  "trustedSourceCapture": "source-capture-workflow-20260923.json",
+  "capitalSourceRemainingScope": "capital-source-remaining-scope-20260923.md",
+  "documentsAtomicRetention": "documents-retention-runtime-20260923.json",
+  "sourceRetentionRuntime": "source-retention-runtime-20260923.json",
+  "sourceCaptureIntegration": "source-capture-integration-20260923.json",
+  "productionPilotDesignation": {
+    "status": "PENDING",
+    "ownerConfirmedAt": "2026-09-23",
+    "reason": "Owner has not recruited a production AS."
+  },
+  "sourceCaptureReviewFixes": "source-capture-review-fixes-20260923.json",
+  "sourceCaptureIndependentReviews": {
+    "implementationCommit": "0375d02205cf2737375935cc90370863082fac58",
+    "spec": "review-source-capture-spec-0375d022.md",
+    "standards": "review-source-capture-standards-0375d022.md",
+    "status": "PASS_BOUNDED_SCOPE"
+  },
+  "sourceCaptureArchitectureCheck": {
+    "commit": "0375d02205cf2737375935cc90370863082fac58",
+    "status": "PASS",
+    "logSha256": "23091325e26ea3bbb93531a2dafd538355890112315f0b6bcc130fa06bec06be"
+  },
+  "sourceBackedPreview": {
+    "status": "PASS_BOUNDED_INTERNAL_BINDING",
+    "integration": "source-preview-integration-20260923.json",
+    "persistence": "source-preview-persistence-runtime-20260923.json",
+    "review": "review-source-preview.json",
+    "remaining": "Shared-transaction Governance/RF admission freshness, observation withdrawal/invalidation, authenticated persisted source journeys, source-bound approval/send, correction admission and source archive lineage remain pending."
+  },
+  "ciRegressionVerification": "ci-regressions-20260923.json",
+  "capitalLifecycleSourceIntegration": "capital-lifecycle-integration-20260923.json",
+  "browserCleanupCiRepair": "browser-cleanup-ci-20260923.json",
+  "governanceRollbackCiRepair": "governance-rollback-ci-20260923.json",
+  "sourceApiIntegration": "source-api-integration-20260923.json",
+  "sourceMetadataCompatibility": "source-metadata-compatibility-20260923.json",
+  "serverDerivedEventDigest": "server-event-digest-20260923.json",
+  "sourceProductionIntegrationPlan": "source-production-integration-plan.md",
+  "documentsLedgerRetention": "documents-ledger-retention-20260923.json",
+  "authorityTopologyOwnedClone": "authority-topology-owned-clone-20260924.json",
+  "sourceApprovalManifest": "source-approval-manifest-20260924.json",
+  "currentSourceCorrectionDraft": "current-source-draft-20260924.json",
+  "consequentialFreshnessWriteInventory": "consequential-freshness-write-inventory-20260924.md",
+  "sourceIntakeBasis": "source-intake-basis-20260924.json",
+  "immutableDocumentOriginals": "immutable-document-originals-20260924.json",
+  "sourceCompanyGuard": "source-company-guard-20260924.json",
+  "customerSourceEditor": "customer-source-editor-20260924.json",
+  "ciSuccessorAndRouteRepairs": "ci-successor-and-route-repairs-20260924.json",
+  "customerRegisterIntake": "customer-register-intake-20260924.json",
+  "governanceRegisterBinding": "governance-register-binding-20260924.json",
+  "canonicalBrowserMockRepair": "canonical-browser-mock-repair-20260924.json",
+  "consequentialCompanyGuards": "consequential-company-guards-20260924.json",
+  "freshBrowserProjectionRepair": "fresh-browser-projection-repair-20260924.json",
+  "guardedSourceAdmission": "guarded-source-admission-20260924.json",
+  "fullYearReviewFoundation": "full-year-review-foundation-20260924.json",
+  "fullYearApprovalFoundation": "full-year-approval-foundation-20260924.json",
+  "sourceCorrectionAndReadiness": "source-correction-readiness-20260924.json",
+  "sourceSubmissionClaimContract": "source-submission-claim-contract.md"
+}

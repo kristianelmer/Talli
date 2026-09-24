@@ -306,7 +306,18 @@ const companyTaxOperations = {
   preview: ["/api/v1/company-tax/settlement-previews", "post", "companyTaxPreviewSettlement"],
 };
 const shareholderRegisterFilingOperations = {
+  sourceIntakeBasis: ["/api/v1/shareholder-register-filings/source-intake-basis", "get", "rf1086ReadSourceIntakeBasis"],
+  currentYearSource: ["/api/v1/shareholder-register-filings/current-year-source", "get", "rf1086ReadCurrentYearSource"],
+  registerObservations: ["/api/v1/shareholder-register-filings/register-observations", "get", "rf1086ListRegisterObservations"],
+  sourceDocument: ["/api/v1/shareholder-register-filings/source-documents/{documentId}", "get", "rf1086ReadSourceDocument"],
+  captureRegisterObservation: ["/api/v1/shareholder-register-filings/register-observations", "post", "rf1086CaptureRegisterObservation"],
+  captureYearSource: ["/api/v1/shareholder-register-filings/year-sources", "post", "rf1086CaptureYearSource"],
+  generateSourcePreview: ["/api/v1/shareholder-register-filings/source-previews", "post", "rf1086GenerateSourcePreview"],
+  sourceProductionReview: ["/api/v1/shareholder-register-filings/source-production-reviews", "post", "rf1086PrepareSourceProductionReview"],
+  sourceProductionApproval: ["/api/v1/shareholder-register-filings/source-production-approvals", "post", "rf1086ApproveSourceProduction"],
+  sourcePreview: ["/api/v1/shareholder-register-filings/source-previews/{previewId}", "get", "rf1086ReadSourcePreview"],
   archiveSource: ["/api/v1/shareholder-register-filings/archive-source", "get", "rf1086GetArchiveSource"],
+  productionArchiveSource: ["/api/v1/shareholder-register-filings/archive-source/production", "get", "rf1086GetProductionArchiveSource"],
   workspace: ["/api/v1/shareholder-register-filings/workspace", "get", "rf1086Workspace"],
   preview: ["/api/v1/shareholder-register-filings/previews/{previewId}", "get", "rf1086Preview"],
   generate: ["/api/v1/shareholder-register-filings/previews", "post", "rf1086GeneratePreview"],
@@ -896,6 +907,55 @@ const companyTaxSchemas = Object.fromEntries([
   "TaxSettlementPreviewLineWire", "TaxSettlementPreviewWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const shareholderRegisterFilingSchemas = Object.fromEntries([
+  "RfSourceCompanyWire",
+  "RfSourceSharesWire",
+  "RfSourceShareholderWire",
+  "RfSourceShareholderSharesWire",
+  "RfSourceFormationAllocationWire",
+  "RfSourceFormationWire",
+  "RfSourceCashIssueWire",
+  "RfSourceNominalAllocationWire",
+  "RfSourceNominalIncreaseWire",
+  "RfSourceLossReductionWire",
+  "RfSourceShareSaleWire",
+  "RfSourceDividendAllocationWire",
+  "RfSourceDividendWire",
+  "RfSourceCaseWire",
+  "RfSourcePaidInWire",
+  "RfSourceDocumentWire",
+  "RfSourceEventEvidenceWire",
+  "RfYearSourceCaptureWire",
+  "RfYearSourceDraftWire",
+  "RfCurrentYearSourceRecordWire",
+  "RfCurrentYearSourceWire",
+  "RfSourceIntakeDocumentWire",
+  "RfSourceIntakeRegisterWire",
+  "RfSourceIntakeAllocationWire",
+  "RfSourceIntakeDividendEconomicsWire",
+  "RfSourceIntakeFinalizationWire",
+  "RfSourceIntakeDividendWire",
+  "RfSourceIntakeCapitalEconomicsWire",
+  "RfSourceIntakeCapitalEventWire",
+  "RfSourceIntakeCapitalWire",
+  "RfSourceIntakeAmendmentWire",
+  "RfSourceIntakeCompanyWire",
+  "RfSourceIntakeBasisWire",
+
+  "RfRegisterHoldingWire",
+  "RfRegisteredSharesWire",
+  "RfRegisterDocumentWire",
+  "RfRegisterObservationCaptureWire",
+  "RfSourceProductionReviewRequestWire",
+  "RfSourceProductionReviewWire",
+  "RfSourceProductionApprovalCommandWire",
+  "RfSourceCorrectionPredecessorWire",
+  "RfSourcePreviewRequestWire",
+  "RfYearSourceReceiptWire",
+  "RfRegisterObservationReceiptWire",
+  "RfRegisterObservationDraftWire",
+  "RfRegisterObservationRecordWire",
+  "RfRegisterObservationsWire",
+  "RfSourcePreviewWire",
   "LegacyRf1086SendCommandWire", "LegacyRf1086ReconcileCommandWire", "LegacyRf1086SendResultWire", "LegacyRf1086ReconcileResultWire",
   "Rf1086GeneratePreviewWire",
   "Rf1086OverrideCommandWire",
@@ -924,6 +984,12 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "Rf1086ActionAvailabilityWire",
   "Rf1086WorkspaceWire",
   "Rf1086ArchiveSourceWire",
+  "Rf1086ArchivedYearSourceWire",
+  "Rf1086ArchiveSourceReviewBridgeWire",
+  "Rf1086ArchiveSourceApprovalLineageWire",
+  "Rf1086ProductionArchiveSourceWire",
+  "Rf1086ArchiveProductionEventWire",
+  "Rf1086ArchiveFeedbackArtifactWire",
 ].map((name) => [name, contract.components.schemas[name]]));
 const authorityConnectionsSchemas = Object.fromEntries([
   "LaunchSignoffKey", "LaunchSignoffStatus", "LaunchSignoffCommandWire", "LaunchSignoffRecordWire", "LaunchSignoffListWire",
@@ -971,6 +1037,7 @@ const billingSchemas = Object.fromEntries([
   "BillingPaymentKind",
   "BillingPaymentEventWire",
   "BillingPaymentStatus",
+  "BillingPilotCaseProfile",
   "BillingPilotEntitlementCommandWire",
   "BillingPilotEntitlementWire",
   "BillingPlan",
@@ -1176,6 +1243,16 @@ export interface TalliRequestOptions {
 
 export interface TalliMutationOptions extends TalliRequestOptions {
   idempotencyKey: string;
+}
+
+export interface RfSourcePreviewReadRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+}
+
+export interface RfCurrentYearSourceReadRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
 }
 
 export interface LedgerListRequest extends TalliRequestOptions {
@@ -3070,12 +3147,98 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       );
     },
 
+    async rf1086ReadSourceIntakeBasis(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfSourceIntakeBasisWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-intake-basis?" + query,
+        "GET", request, undefined, isRfSourceIntakeBasisWire);
+    },
+
+    async rf1086ReadCurrentYearSource(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfCurrentYearSourceWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/current-year-source?" + query,
+        "GET", request, undefined, isRfCurrentYearSourceWire);
+    },
+
+    async rf1086ReadSourceDocument(
+      documentId: string, companyId: string, request: TalliRequestOptions = {},
+    ): Promise<RfSourceDocumentWire> {
+      const query = new URLSearchParams({ companyId });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-documents/" + encodeURIComponent(documentId) + "?" + query,
+        "GET", request, undefined, isRfSourceDocumentWire);
+    },
+
+    async rf1086ListRegisterObservations(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfRegisterObservationsWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations?" + query,
+        "GET", request, undefined, isRfRegisterObservationsWire);
+    },
+
+    async rf1086CaptureRegisterObservation(
+      input: RfRegisterObservationCaptureWire, request: TalliMutationOptions,
+    ): Promise<RfRegisterObservationReceiptWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations",
+        "POST", request, input, isRfRegisterObservationReceiptWire);
+    },
+
+    async rf1086GenerateSourcePreview(
+      input: RfSourcePreviewRequestWire, request: TalliRequestOptions = {},
+    ): Promise<RfSourcePreviewWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-previews",
+        "POST", request, input, isRfSourcePreviewWire);
+    },
+
+    async rf1086PrepareSourceProductionReview(
+      input: RfSourceProductionReviewRequestWire, request: TalliRequestOptions = {},
+    ): Promise<RfSourceProductionReviewWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-production-reviews",
+        "POST", request, input, isRfSourceProductionReviewWire);
+    },
+
+    async rf1086ApproveSourceProduction(
+      input: RfSourceProductionApprovalCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-production-approvals",
+        "POST", request, input, isRf1086RecordedResultWire);
+    },
+
+    async rf1086ReadSourcePreview(
+      previewId: string, request: RfSourcePreviewReadRequest,
+    ): Promise<RfSourcePreviewWire> {
+      const query = new URLSearchParams({
+        companyId: request.companyId,
+        incomeYear: String(request.incomeYear),
+      });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-previews/" + encodeURIComponent(previewId) + "?" + query,
+        "GET", request, undefined, isRfSourcePreviewWire);
+    },
+
+    async rf1086CaptureYearSource(
+      input: RfYearSourceCaptureWire, request: TalliMutationOptions,
+    ): Promise<RfYearSourceReceiptWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/year-sources",
+        "POST", request, input, isRfYearSourceReceiptWire);
+    },
+
     async rf1086GetArchiveSource(
       companyId: string, incomeYear: number, request: TalliRequestOptions = {},
     ): Promise<Rf1086ArchiveSourceWire> {
       const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
       return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source?" + query,
         "GET", request, undefined, isRf1086ArchiveSourceWire);
+    },
+
+    async rf1086GetProductionArchiveSource(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Rf1086ProductionArchiveSourceWire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production?" + query,
+        "GET", request, undefined, isRf1086ProductionArchiveSourceWire);
     },
 
     async rf1086Workspace(

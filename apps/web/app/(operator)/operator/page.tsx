@@ -296,10 +296,17 @@ export default async function OperatorPage({ searchParams }: OperatorProps) {
                   action={upsertProductionPilotEntitlement}
                 >
                   <h3>Eksakt RF-1086-produksjonspilot</h3>
+                  <label>
+                    Pilotprofil
+                    <select name="caseProfile" defaultValue="rf1086_no_activity_v1" required>
+                      <option value="rf1086_no_activity_v1">Uten aktivitet</option>
+                      <option value="rf1086_full_year_v1">Hele inntektsåret</option>
+                    </select>
+                  </label>
                   <input name="operationId" type="hidden" value={randomUUID()} />
                   <p>
-                    Én navngitt eier, ett selskap, ett inntektsår og kun
-                    profilen uten aktivitet.
+                    Én navngitt eier, ett selskap, ett inntektsår og én
+                    valgt RF-1086-profil.
                   </p>
                   <label>
                     Selskap-ID

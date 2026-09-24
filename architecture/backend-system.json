@@ -177,13 +177,14 @@
     },
     {
       "name": "corporate-governance",
-      "purpose": "Authenticates one verified owner, derives deterministic annual-close, owner-dividend, shareholder-loan, supported domestic capital, financing and group-event facts in Python, serves immutable lifecycles, verifies Documents evidence, and atomically coordinates Ledger posting and optional Banking claims through narrow contracts.",
+      "purpose": "Authenticates one verified owner, derives deterministic annual-close, owner-dividend, shareholder-loan, supported domestic capital, financing and group-event facts in Python, serves immutable lifecycles, verifies Documents evidence and current independent RF capital observations at a point in time, and atomically coordinates Ledger posting and optional Banking claims through narrow contracts. Cross-owner evidence freshness is not transactional.",
       "publicPackages": [
         "talli_backend.modules.banking.public",
         "talli_backend.modules.company_access.public",
         "talli_backend.modules.corporate_governance.public",
         "talli_backend.modules.documents.public",
-        "talli_backend.modules.ledger.public"
+        "talli_backend.modules.ledger.public",
+        "talli_backend.modules.shareholder_register_filing.public"
       ],
       "routes": [
         "/api/v1/corporate-governance/decision-facts",
@@ -371,13 +372,15 @@
         "talli_backend.modules.billing.public",
         "talli_backend.modules.company_access.public",
         "talli_backend.modules.documents.public",
-        "talli_backend.modules.shareholder_register_filing.public"
+        "talli_backend.modules.shareholder_register_filing.public",
+        "talli_backend.modules.corporate_governance.public"
       ],
       "routes": [
         "/api/v1/legacy-rf1086/production-filings",
         "/api/v1/legacy-rf1086/feedback-reconciliations",
         "/api/v1/shareholder-register-filings/workspace",
         "/api/v1/shareholder-register-filings/archive-source",
+        "/api/v1/shareholder-register-filings/archive-source/production",
         "/api/v1/shareholder-register-filings/previews/{previewId}",
         "/api/v1/shareholder-register-filings/previews",
         "/api/v1/shareholder-register-filings/overrides",
@@ -386,7 +389,14 @@
         "/api/v1/shareholder-register-filings/simulations",
         "/api/v1/shareholder-register-filings/filing-permissions",
         "/api/v1/shareholder-register-filings/test-evidence",
-        "/api/v1/shareholder-register-filings/production-approvals"
+        "/api/v1/shareholder-register-filings/production-approvals",
+        "/api/v1/shareholder-register-filings/register-observations",
+        "/api/v1/shareholder-register-filings/year-sources",
+        "/api/v1/shareholder-register-filings/source-previews",
+        "/api/v1/shareholder-register-filings/source-previews/{previewId}",
+        "/api/v1/shareholder-register-filings/source-documents/{documentId}",
+        "/api/v1/shareholder-register-filings/current-year-source",
+        "/api/v1/shareholder-register-filings/source-intake-basis"
       ]
     },
     {
@@ -515,6 +525,18 @@
       "routes": [
         "/api/v1/annual-accounts/source-facts"
       ]
+    },
+    {
+      "name": "shareholder-register-source-approval",
+      "purpose": "Binds an immutable full-year source review and persisted owner approval under one company/year admission transaction, reverifying retained predecessor receipt bytes for corrections; performs no provider operation.",
+      "publicPackages": [
+        "talli_backend.modules.shareholder_register_filing.public",
+        "talli_backend.modules.documents.public"
+      ],
+      "routes": [
+        "/api/v1/shareholder-register-filings/source-production-reviews",
+        "/api/v1/shareholder-register-filings/source-production-approvals"
+      ]
     }
   ],
   "operationalControlState": {
@@ -638,7 +660,8 @@
       "supabase/contract-migrations/20260914092924_annual_accounts_filing_preparation_contracts.sql",
       "supabase/contract-migrations/20260914110840_annual_accounts_filing_source_contract.sql",
       "supabase/contract-migrations/20260914112549_annual_accounts_filing_backend_binding.sql",
-      "supabase/rollback/20260914112549_annual_accounts_filing_backend_binding.sql"
+      "supabase/rollback/20260914112549_annual_accounts_filing_backend_binding.sql",
+      "supabase/migrations/20260923090824_ledger_reporting_amendment_read.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },
@@ -1003,6 +1026,30 @@
       "adapter": "talli_backend.adapters.postgres_annual_accounts.PostgresAnnualAccountsTransaction",
       "owner": "backend-system",
       "mode": "one verified owner repeatable snapshot; positive Accounts migration coverage, complete enumeration and phase lock; no provider operation"
+    },
+    {
+      "port": "Rf1086YearSourcePersistence",
+      "adapter": "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession",
+      "owner": "backend-system",
+      "mode": "verified request-scoped RF capability binding"
+    },
+    {
+      "port": "Rf1086RegisterObservationPersistence",
+      "adapter": "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession",
+      "owner": "backend-system",
+      "mode": "verified request-scoped immutable register observations with current-lineage checks"
+    },
+    {
+      "port": "DocumentEvidenceRetentionPersistence",
+      "adapter": "talli_backend.adapters.postgres_document_evidence.PostgresDocumentEvidenceRetention",
+      "owner": "backend-system",
+      "mode": "Documents-owned exact metadata lock and retained original reference in the RF capture transaction"
+    },
+    {
+      "port": "Rf1086SourcePreviewPreparation",
+      "adapter": "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession",
+      "owner": "backend-system",
+      "mode": "verified RF owner, canonical full-year source preview, current-source lock at capture; historical source lineage preserved"
     }
   ],
   "allowedDependencies": {
@@ -1081,7 +1128,10 @@
       "talli_backend.adapters.postgres_annual_accounts",
       "talli_backend.application.annual_accounts_session",
       "talli_backend.modules.annual_accounts_filing.public",
-      "talli_backend.json_transport"
+      "talli_backend.json_transport",
+      "talli_backend.application.shareholder_register_source_workflow",
+      "talli_backend.application.corporate_register_evidence",
+      "talli_backend.application.shareholder_register_source_approval"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",
@@ -1105,7 +1155,8 @@
       "talli_backend.modules.shareholder_register_filing.public",
       "talli_backend.modules.system_boundary.public",
       "talli_backend.modules.validation_observation.public",
-      "talli_backend.modules.audit.public"
+      "talli_backend.modules.audit.public",
+      "talli_backend.application.corporate_register_evidence"
     ],
     "adapters": [
       "__future__",
@@ -1178,7 +1229,10 @@
       "urllib.error",
       "urllib.parse",
       "urllib.request",
-      "talli_backend.modules.audit.public"
+      "talli_backend.modules.audit.public",
+      "talli_backend.adapters.postgres_document_evidence",
+      "talli_backend.adapters.supabase_documents",
+      "talli_backend.application.corporate_register_evidence"
     ]
   }
 }

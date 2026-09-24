@@ -3,6 +3,9 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 import json
+from hashlib import sha256
+
+import pytest
 from types import SimpleNamespace
 
 from talli_backend.adapters.supabase_documents import (
@@ -16,6 +19,9 @@ from talli_backend.modules.documents.public import (
     BeginDocumentUploadCommand,
     DocumentId,
     DocumentStatus,
+    DocumentsError,
+    StoredDocumentObject,
+    RetainedDocumentOriginalReceipt, document_metadata_sha256,
 )
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, UserId
 
@@ -156,3 +162,77 @@ def test_documents_adapter_keeps_authorization_and_persistence_connections_separ
         adapter._authorization._gateway._configuration.database_url
         == "postgresql://company-access"
     )
+
+
+@pytest.mark.parametrize("change", ["revoked_before_read", "revoked_during_read", "unavailable_during_read", "unchanged"])
+def test_verified_evidence_refreshes_real_adapter_authorization_around_object_io(change):
+    # Use the real session factory, persistence and authorization adapters. Only
+    # their external authentication, Company Access gateway, DB and storage I/O
+    # are replaced; in particular actor_role retains its real cached behavior.
+    adapter = SupabaseDocumentsAdapter.from_environment()
+    class Authentication:
+        async def session(self, access_token):
+            assert access_token == "bearer"
+            return SimpleNamespace(_verified=SimpleNamespace(actor_id=ACTOR, claims_json='{"aal":"aal2"}'))
+    class Gateway:
+        revoked = False
+        unavailable = False
+        membership_reads = 0
+        async def session_subject(self, access_token):
+            assert access_token == "bearer"
+            return str(USER_ID)
+        async def memberships(self, access_token, subject):
+            assert access_token == "bearer" and subject == str(USER_ID)
+            self.membership_reads += 1
+            if self.unavailable:
+                raise DocumentsError.storage_unavailable()
+            return [] if self.revoked else [{"company_id": str(COMPANY_ID), "role": "owner", "accepted_at": "2026-09-01T00:00:00Z"}]
+    gateway = Gateway()
+    adapter._authentication = Authentication()
+    adapter._authorization = SupabaseDocumentsAuthorization(gateway)
+    content = b"%PDF-1.7\nverified"
+    reads = []
+    class Storage:
+        async def read_object(self, *, bucket, storage_key):
+            reads.append(storage_key)
+            if change == "revoked_during_read": gateway.revoked = True
+            if change == "unavailable_during_read": gateway.unavailable = True
+            return StoredDocumentObject(content, "application/pdf")
+    adapter._storage = Storage()
+    async def verify():
+        service = await adapter.session("bearer")
+        assert await service._persistence.actor_role(COMPANY_ID) == "owner"
+        async def rows(query, parameters):
+            assert query.startswith("select * from documents.get_document_v1")
+            assert parameters == (str(DOCUMENT_ID), str(USER_ID))
+            return [row() | {"byte_length": len(content), "content_sha256": sha256(content).hexdigest()}]
+        service._persistence._rows = rows
+        if change == "revoked_before_read": gateway.revoked = True
+        if change == "unchanged":
+            async def retain(document, original):
+                assert original == content
+                return RetainedDocumentOriginalReceipt("40000000-0000-4000-8000-000000000001", document.document_id,
+                    document.company_id, document.income_year, document_metadata_sha256(document), document.content_sha256,
+                    document.byte_length, datetime(2026, 9, 24, tzinfo=UTC))
+            service._persistence.retain_verified_original = retain
+            evidence = await service.verify_document_evidence(DOCUMENT_ID)
+            assert evidence.content_sha256 == sha256(content).hexdigest()
+            assert evidence.integrity_status is DocumentStatus.ATTACHED
+        else:
+            with pytest.raises(DocumentsError) as error:
+                await service.verify_document_evidence(DOCUMENT_ID)
+            assert error.value.code == ("DOCUMENT_STORAGE_UNAVAILABLE" if change == "unavailable_during_read" else "DOCUMENT_FORBIDDEN")
+            assert await service._persistence.actor_role(COMPANY_ID) is None
+    asyncio.run(verify())
+    assert len(reads) == (0 if change == "revoked_before_read" else 1)
+    assert gateway.membership_reads == (2 if change == "revoked_before_read" else 3)
+
+
+def test_evidence_role_refresh_cannot_fall_back_to_cached_owner_without_live_binding():
+    verified = SimpleNamespace(actor_id=ACTOR, claims_json='{"aal":"aal2"}')
+    persistence = SupabaseDocumentsPersistence("postgresql://unused", verified, {COMPANY_ID: "owner"})
+    assert asyncio.run(persistence.actor_role(COMPANY_ID)) == "owner"
+    with pytest.raises(DocumentsError) as error:
+        asyncio.run(persistence.refresh_actor_role(COMPANY_ID))
+    assert error.value.code == "DOCUMENT_STORAGE_UNAVAILABLE"
+    assert asyncio.run(persistence.actor_role(COMPANY_ID)) is None

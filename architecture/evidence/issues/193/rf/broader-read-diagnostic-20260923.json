@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "environment": "test",
+  "testedAt": "2026-09-23",
+  "sourceCommit": "56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd",
+  "status": "UNKNOWN_READ_ERROR",
+  "canonicalAcceptanceVerified": false,
+  "previousAttempt": "broader-read-recovery-20260917.json",
+  "requests": 3,
+  "filingMutations": 0,
+  "artifactsRetained": 0,
+  "safeErrorCode": "RF1086_RECONCILIATION_READ_ERROR",
+  "diagnostic": {
+    "code": "RESPONSE_SECRET_REFUSED",
+    "phase": "response_privacy_check",
+    "responseStatus": 200,
+    "responseBytesRead": 17589,
+    "originalResponseSaved": false
+  },
+  "observations": [
+    "Both test token grants returned HTTP 200.",
+    "Dialogporten returned HTTP 200; the local response privacy check refused retention.",
+    "The canonical reconciler recorded unknown; no filing resend or receipt acceptance was established."
+  ],
+  "privateEvidenceAlias": "issue193-rf-broader-read-recovery-14d7-02",
+  "privateArtifactHashes": {
+    "action-plan.json": "9c20819dd115e7b8c96364128974f6501934a59910de6e56d46f46af83bee475",
+    "preparation-proof.json": "4d5b9903eb0972b6d31dcf6c28c4cbeda8a167348bc041d8cd36b81d9fef577b",
+    "prep-spec-review.json": "31b064d2693560cd2cff6b749157014669372380aee864c53e3279e186bb5d76",
+    "prep-standards-review.json": "6b1444f27970fe3f6c613afc7739a0002ee7a77b4daa24ebeca5407fcdd3196d",
+    "independent-review-gate.json": "875d125b702c6518a2cf51a7861a57f1c2ccdfa7893f8e7bbd8fafded166c462",
+    "execution-claim.json": "2813ebd28cb101645c7996a0f6e90625e07cb1d4491c9e792897744c7e00213b",
+    "execution/result.json": "57cbaf7d51599b5023b9b78712a4899202a83519bc05b04cfee7876ee830697f",
+    "execution/reconciliation.json": "4c58f1bcaad2ee857baf55812d0a1437a7ddb9792c94e763da8b4ad51e38ee76",
+    "execution/request-03-failure.json": "0490cc0c469abb3224390c36ee25cec633a8128accd29d1c722e3052d889eeff"
+  },
+  "limits": [
+    "This attempt is consumed and its original journal remains immutable.",
+    "The response body was not retained; the exact matching content is not established.",
+    "This diagnostic does not establish the cause of the earlier September 17 read failure.",
+    "No production or full RF criterion acceptance is claimed."
+  ]
+}

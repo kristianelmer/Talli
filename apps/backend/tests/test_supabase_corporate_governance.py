@@ -561,3 +561,93 @@ def annual_lifecycle_payload(state: str) -> dict[str, object]:
         "finalizationId": None,
         "replayed": False,
     }
+
+
+def test_guarded_sessions_acquire_company_guard_after_identity_before_application_work(monkeypatch):
+    from contextlib import asynccontextmanager
+    import psycopg
+    from talli_backend.adapters.supabase_ledger import SupabaseLedgerSession
+    command = supported_proposal()
+    verified = bound_transaction()._verified
+    for session_type, schema in ((SupabaseCorporateGovernanceSession, 'corporate_governance'),
+                                 (SupabaseLedgerSession, 'ledger')):
+        events = []
+        class Connection:
+            async def __aenter__(self): return self
+            async def __aexit__(self, *args): pass
+            async def set_isolation_level(self, value): events.append(('isolation', value))
+            @asynccontextmanager
+            async def transaction(self):
+                events.append(('begin',))
+                yield self
+                events.append(('commit',))
+            async def execute(self, query, params=()): events.append((query, params))
+        async def connect(*args, **kwargs): return Connection()
+        monkeypatch.setattr(psycopg.AsyncConnection, 'connect', connect)
+        async def run():
+            session = session_type('postgresql://unused', verified)
+            async with session.transaction(guarded_company_id=command.company_id):
+                events.append(('application',))
+        asyncio.run(run())
+        guard = next(i for i,e in enumerate(events) if f'{schema}.acquire_company_write_guard_v1' in e[0])
+        identity = next(i for i,e in enumerate(events) if 'talli.verified_actor_claims' in e[0])
+        application = events.index(('application',))
+        assert identity < guard < application
+        assert events[guard][1] == (str(command.company_id), str(command.actor_id.subject))
+        assert ('isolation', psycopg.IsolationLevel.READ_COMMITTED) in events or ('set transaction isolation level read committed', ()) in events
+        assert events[-1] == ('commit',)
+
+
+def test_unguarded_governance_reads_keep_serializable_isolation(monkeypatch):
+    from contextlib import asynccontextmanager
+    import psycopg
+    events = []
+    class Connection:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def set_isolation_level(self, value): events.append(value)
+        @asynccontextmanager
+        async def transaction(self): yield self
+        async def execute(self, query, params=()): events.append(query)
+    async def connect(*args, **kwargs): return Connection()
+    monkeypatch.setattr(psycopg.AsyncConnection, 'connect', connect)
+    async def run():
+        async with SupabaseCorporateGovernanceSession('postgresql://unused', bound_transaction()._verified).transaction():
+            pass
+    asyncio.run(run())
+    assert events[0] == psycopg.IsolationLevel.SERIALIZABLE
+    assert not any('acquire_company_write_guard' in str(e) for e in events)
+
+
+def test_exact_register_and_retained_receipts_use_the_existing_governance_connection(monkeypatch):
+    from types import SimpleNamespace
+    from test_corporate_register_evidence import harness
+    from talli_backend.adapters import supabase_corporate_governance as adapter
+    h = harness()
+    evidence = h.verify()
+    transaction = bound_transaction()
+    transaction._connection = object()
+    calls = []
+    async def rows(query, parameters=()):
+        calls.append(('rf', query, parameters))
+        return []
+    transaction._database_rows = rows
+    class Originals:
+        def __init__(self, connection, actor):
+            assert connection is transaction._connection and actor == transaction.actor_id
+        async def assert_retained_original(self, receipt): calls.append(('original', receipt))
+    monkeypatch.setattr(adapter, 'PostgresDocumentOriginals', Originals)
+    asyncio.run(transaction.assert_register_evidence(evidence))
+    assert 'assert_current_register_observation_v1' in calls[0][1]
+    assert calls[0][2] == (evidence.observation.observation_id.value, str(evidence.observation.command.company_id),
+                          int(evidence.observation.command.income_year), evidence.observation.version,
+                          evidence.observation.fact_sha256, str(transaction.actor_id.subject))
+    assert [c[1] for c in calls[1:]] == list(evidence.originals)
+
+
+def test_final_evidence_errors_map_to_governance_precondition():
+    from talli_backend.adapters.supabase_corporate_governance import _map_governance_database_error
+    from talli_backend.modules.corporate_governance.public import CorporateGovernanceErrorCode
+    for code in ('rf1086_register_predecessor_mismatch', 'documents_evidence_mismatch'):
+        error = _map_governance_database_error(code)
+        assert error.code is CorporateGovernanceErrorCode.CORPORATE_EVENT_EVIDENCE_INCOMPLETE
