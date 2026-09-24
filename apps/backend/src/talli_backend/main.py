@@ -457,7 +457,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     Rf1086ProductionError, Rf1086RecordedResult, Rf1086WorkspaceQuery,
     SendApprovedRf1086Command, ShareholderRegisterFilingError, SubmissionId,
     RecordRf1086YearSource, RecordRf1086RegisterObservation, Rf1086YearSourceError,
-    Rf1086RegisterObservationError, Rf1086YearSourceId, Rf1086RegisterObservationId,
+    Rf1086RegisterObservationError, Rf1086YearSourceSnapshot, Rf1086YearSourceId, Rf1086RegisterObservationId,
     Rf1086SourcePreview, Rf1086Company, Rf1086ShareSnapshot, Rf1086Shareholder,
     Rf1086ShareholderKind, Rf1086ShareholderSnapshot, Rf1086FormationAllocation,
     Rf1086FormationEvent, Rf1086CashIssueEvent, Rf1086NominalIncreaseAllocation,
@@ -1854,6 +1854,21 @@ class RfYearSourceReceiptWire(TransportModel):
     confirmed_at: datetime
 
 
+class RfYearSourceDraftWire(RfYearSourceCaptureWire):
+    # The editable response uses the same JSON input representation, including
+    # decimal strings. Keep existing request schema identities across deployments.
+    model_config = ConfigDict(json_schema_mode_override="validation")
+
+
+class RfCurrentYearSourceRecordWire(TransportModel):
+    receipt: RfYearSourceReceiptWire
+    draft: RfYearSourceDraftWire
+
+
+class RfCurrentYearSourceWire(TransportModel):
+    current_source: RfCurrentYearSourceRecordWire | None
+
+
 class RfRegisterObservationReceiptWire(TransportModel):
     observation_id: UUID
     company_id: UUID
@@ -1929,6 +1944,61 @@ def _rf_source_command(body: RfYearSourceCaptureWire | RfRegisterObservationCapt
     if values['supersedes_observation_id'] is not None:
         values['supersedes_observation_id'] = Rf1086RegisterObservationId(values['supersedes_observation_id'])
     return RecordRf1086RegisterObservation(**values)
+
+
+def _rf_source_public_json(value: Any) -> Any:
+    """Project only the explicit public intake types, never stored codec tags."""
+    models = {
+        Rf1086Company: RfSourceCompanyWire, Rf1086ShareSnapshot: RfSourceSharesWire,
+        Rf1086Shareholder: RfSourceShareholderWire, Rf1086ShareholderSnapshot: RfSourceShareholderSharesWire,
+        Rf1086FormationAllocation: RfSourceFormationAllocationWire, Rf1086FormationEvent: RfSourceFormationWire,
+        Rf1086CashIssueEvent: RfSourceCashIssueWire, Rf1086NominalIncreaseAllocation: RfSourceNominalAllocationWire,
+        Rf1086CashNominalIncreaseEvent: RfSourceNominalIncreaseWire,
+        Rf1086LossCoveringReductionEvent: RfSourceLossReductionWire, Rf1086ShareSaleEvent: RfSourceShareSaleWire,
+        Rf1086DividendAllocation: RfSourceDividendAllocationWire, Rf1086DividendEvent: RfSourceDividendWire,
+        Rf1086Case: RfSourceCaseWire, Rf1086PaidInSourceFacts: RfSourcePaidInWire,
+        Rf1086YearDocumentEvidence: RfSourceDocumentWire, Rf1086YearEventEvidence: RfSourceEventEvidenceWire,
+    }
+    if type(value) in models:
+        return {name: format(Decimal(str(getattr(value, name))), 'f') if field.annotation is Decimal
+                else _rf_source_public_json(getattr(value, name))
+                for name, field in models[type(value)].model_fields.items()}
+    if isinstance(value, (Decimal, float)):
+        return format(Decimal(str(value)), 'f')
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, (CompanyId, Rf1086YearSourceId)):
+        return str(value) if isinstance(value, CompanyId) else value.value
+    if isinstance(value, IncomeYear):
+        return int(value)
+    if isinstance(value, Rf1086ShareholderKind):
+        return value.value
+    if isinstance(value, tuple):
+        return [_rf_source_public_json(item) for item in value]
+    if value is None or type(value) in {str, int, bool}:
+        return value
+    raise ValueError("Unsupported public RF source value")
+
+
+def _rf_current_year_source_wire(source: Rf1086YearSourceSnapshot | None) -> RfCurrentYearSourceWire:
+    if source is None:
+        return RfCurrentYearSourceWire(current_source=None)
+    command = source.command
+    draft = RfYearSourceDraftWire.model_validate({
+        'company_id': str(source.company_id), 'income_year': int(source.income_year),
+        **{name: _rf_source_public_json(getattr(command, name)) for name in (
+            'case', 'paid_in', 'documents', 'opening_document_ids', 'closing_document_ids',
+            'paid_in_document_ids', 'event_evidence')},
+        'identities_reviewed': False, 'complete_year_confirmed': False,
+        'paid_in_reviewed': False, 'no_activity_confirmed': False,
+        'supersedes_source_id': source.source_id.value,
+        'supersedes_source_sha256': source.source_sha256, 'correction_reason': None,
+    })
+    return RfCurrentYearSourceWire(current_source=RfCurrentYearSourceRecordWire(
+        receipt=RfYearSourceReceiptWire(source_id=UUID(source.source_id.value),
+            company_id=UUID(str(source.company_id)), income_year=int(source.income_year), version=source.version,
+            source_sha256=source.source_sha256, case_sha256=source.case_sha256, confirmed_at=source.confirmed_at),
+        draft=draft))
 
 
 def _rf_source_preview_wire(preview: Rf1086SourcePreview) -> RfSourcePreviewWire:
@@ -11872,6 +11942,23 @@ def create_app(
                 document_type=source.document_type, integrity_status=source.integrity_status,
                 byte_length=source.byte_length, created_at=source.created_at, metadata_sha256=source.metadata_sha256,
                 source_income_year=int(source.source_income_year))
+        return await shareholder_register_source_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/current-year-source",
+        operation_id="rf1086ReadCurrentYearSource", response_model=RfCurrentYearSourceWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_read_current_year_source(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfCurrentYearSourceWire:
+        async def execute():
+            result = await shareholder_register_source_workflow.read_current_year_source(bearer_token(credentials),
+                company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year))
+            return _rf_current_year_source_wire(result)
         return await shareholder_register_source_call(execute)
 
     @application.post(

@@ -306,6 +306,7 @@ const companyTaxOperations = {
   preview: ["/api/v1/company-tax/settlement-previews", "post", "companyTaxPreviewSettlement"],
 };
 const shareholderRegisterFilingOperations = {
+  currentYearSource: ["/api/v1/shareholder-register-filings/current-year-source", "get", "rf1086ReadCurrentYearSource"],
   sourceDocument: ["/api/v1/shareholder-register-filings/source-documents/{documentId}", "get", "rf1086ReadSourceDocument"],
   captureRegisterObservation: ["/api/v1/shareholder-register-filings/register-observations", "post", "rf1086CaptureRegisterObservation"],
   captureYearSource: ["/api/v1/shareholder-register-filings/year-sources", "post", "rf1086CaptureYearSource"],
@@ -920,6 +921,9 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "RfSourceDocumentWire",
   "RfSourceEventEvidenceWire",
   "RfYearSourceCaptureWire",
+  "RfYearSourceDraftWire",
+  "RfCurrentYearSourceRecordWire",
+  "RfCurrentYearSourceWire",
   "RfRegisterHoldingWire",
   "RfRegisteredSharesWire",
   "RfRegisterDocumentWire",
@@ -1214,6 +1218,11 @@ export interface TalliMutationOptions extends TalliRequestOptions {
 }
 
 export interface RfSourcePreviewReadRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+}
+
+export interface RfCurrentYearSourceReadRequest extends TalliRequestOptions {
   companyId: string;
   incomeYear: number;
 }
@@ -3108,6 +3117,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async rf1086ReadCurrentYearSource(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfCurrentYearSourceWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/current-year-source?" + query,
+        "GET", request, undefined, isRfCurrentYearSourceWire);
     },
 
     async rf1086ReadSourceDocument(

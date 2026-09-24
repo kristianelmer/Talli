@@ -168,6 +168,31 @@ class ShareholderRegisterSourceWorkflow:
                  'rf1086_source_document_not_found')
         return _document_projection(evidence)
 
+    async def read_current_year_source(self, access_token: str, *, company_id: CompanyId,
+            income_year: IncomeYear) -> Rf1086YearSourceSnapshot | None:
+        """Read retained facts for correction, without certifying current evidence.
+
+        Original bytes may have changed since capture. They are deliberately not
+        read here; a subsequent capture independently verifies all owner evidence.
+        """
+        session = await self._rf_sessions.session(access_token)
+        company = (await self._company_access.company_record(access_token, company_id=str(company_id))).company
+        _require(company.id == str(company_id) and company.role == 'owner' and company.entity_type == 'AS'
+                 and company.identity_confirmed_at is not None and company.identity_locked_at is not None,
+                 'rf1086_source_owner_required')
+        source = await session.read_current_year_source(Rf1086SourceQuery(company_id, income_year, session.actor_id))
+        if source is None:
+            return None
+        assert_rf1086_year_source_integrity(source)
+        _require(source.company_id == company_id and source.income_year == income_year,
+                 'rf1086_source_company_year_mismatch')
+        # A rename, address update, or renewed confirmation must not hide the
+        # retained facts needed to correct them. Company ID and organization
+        # number anchor identity; capture checks the complete current projection.
+        _require(source.command.case.company.org_number == company.org_number,
+                 'rf1086_source_company_year_mismatch')
+        return source
+
     async def _capital_receipts(self, session: AuthenticatedShareholderRegisterFilingSession,
             command: RecordRf1086YearSource, view: CorporateGovernanceYearEvidence,
             verified: tuple[Rf1086YearDocumentEvidence, ...]) -> tuple[Rf1086YearGovernanceReceipt, ...]:

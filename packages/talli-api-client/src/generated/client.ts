@@ -3747,6 +3747,34 @@ export interface RfYearSourceCaptureWire {
   supersedesSourceSha256?: string | null;
 }
 
+export interface RfYearSourceDraftWire {
+  case: RfSourceCaseWire;
+  closingDocumentIds: string[];
+  companyId: string;
+  completeYearConfirmed: boolean;
+  correctionReason?: string | null;
+  documents: RfSourceDocumentWire[];
+  eventEvidence: RfSourceEventEvidenceWire[];
+  identitiesReviewed: boolean;
+  incomeYear: number;
+  noActivityConfirmed: boolean;
+  openingDocumentIds: string[];
+  paidIn: RfSourcePaidInWire;
+  paidInDocumentIds: string[];
+  paidInReviewed: boolean;
+  supersedesSourceId?: string | null;
+  supersedesSourceSha256?: string | null;
+}
+
+export interface RfCurrentYearSourceRecordWire {
+  draft: RfYearSourceDraftWire;
+  receipt: RfYearSourceReceiptWire;
+}
+
+export interface RfCurrentYearSourceWire {
+  currentSource: RfCurrentYearSourceRecordWire | null;
+}
+
 export interface RfRegisterHoldingWire {
   identifier: string;
   kind: "norwegian_person" | "norwegian_company";
@@ -9396,6 +9424,46 @@ function isRfYearSourceCaptureWire(value: unknown): value is RfYearSourceCapture
   );
 }
 
+function isRfYearSourceDraftWire(value: unknown): value is RfYearSourceDraftWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["case","closingDocumentIds","companyId","completeYearConfirmed","correctionReason","documents","eventEvidence","identitiesReviewed","incomeYear","noActivityConfirmed","openingDocumentIds","paidIn","paidInDocumentIds","paidInReviewed","supersedesSourceId","supersedesSourceSha256"]) &&
+    isRfSourceCaseWire(value.case) &&
+    Array.isArray(value.closingDocumentIds) && value.closingDocumentIds.every((item) => isUuid(item)) &&
+    isUuid(value.companyId) &&
+    typeof value.completeYearConfirmed === "boolean" &&
+    (value.correctionReason === undefined || (typeof value.correctionReason === "string" || value.correctionReason === null)) &&
+    Array.isArray(value.documents) && value.documents.every((item) => isRfSourceDocumentWire(item)) && value.documents.length >= 1 &&
+    Array.isArray(value.eventEvidence) && value.eventEvidence.every((item) => isRfSourceEventEvidenceWire(item)) &&
+    typeof value.identitiesReviewed === "boolean" &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.noActivityConfirmed === "boolean" &&
+    Array.isArray(value.openingDocumentIds) && value.openingDocumentIds.every((item) => isUuid(item)) &&
+    isRfSourcePaidInWire(value.paidIn) &&
+    Array.isArray(value.paidInDocumentIds) && value.paidInDocumentIds.every((item) => isUuid(item)) &&
+    typeof value.paidInReviewed === "boolean" &&
+    (value.supersedesSourceId === undefined || (isUuid(value.supersedesSourceId) || value.supersedesSourceId === null)) &&
+    (value.supersedesSourceSha256 === undefined || ((typeof value.supersedesSourceSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.supersedesSourceSha256)) || value.supersedesSourceSha256 === null))
+  );
+}
+
+function isRfCurrentYearSourceRecordWire(value: unknown): value is RfCurrentYearSourceRecordWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["draft","receipt"]) &&
+    isRfYearSourceDraftWire(value.draft) &&
+    isRfYearSourceReceiptWire(value.receipt)
+  );
+}
+
+function isRfCurrentYearSourceWire(value: unknown): value is RfCurrentYearSourceWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["currentSource"]) &&
+    (isRfCurrentYearSourceRecordWire(value.currentSource) || value.currentSource === null)
+  );
+}
+
 function isRfRegisterHoldingWire(value: unknown): value is RfRegisterHoldingWire {
   return (
     isRecord(value) &&
@@ -10283,6 +10351,11 @@ export interface TalliMutationOptions extends TalliRequestOptions {
 }
 
 export interface RfSourcePreviewReadRequest extends TalliRequestOptions {
+  companyId: string;
+  incomeYear: number;
+}
+
+export interface RfCurrentYearSourceReadRequest extends TalliRequestOptions {
   companyId: string;
   incomeYear: number;
 }
@@ -12177,6 +12250,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async rf1086ReadCurrentYearSource(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfCurrentYearSourceWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/current-year-source?" + query,
+        "GET", request, undefined, isRfCurrentYearSourceWire);
     },
 
     async rf1086ReadSourceDocument(

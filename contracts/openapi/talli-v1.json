@@ -21889,6 +21889,41 @@
         "title": "Rf1086WorkspaceWire",
         "type": "object"
       },
+      "RfCurrentYearSourceRecordWire": {
+        "properties": {
+          "draft": {
+            "$ref": "#/components/schemas/RfYearSourceDraftWire"
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/RfYearSourceReceiptWire"
+          }
+        },
+        "required": [
+          "receipt",
+          "draft"
+        ],
+        "title": "RfCurrentYearSourceRecordWire",
+        "type": "object"
+      },
+      "RfCurrentYearSourceWire": {
+        "properties": {
+          "currentSource": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RfCurrentYearSourceRecordWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "currentSource"
+        ],
+        "title": "RfCurrentYearSourceWire",
+        "type": "object"
+      },
       "RfRegisterDocumentWire": {
         "additionalProperties": false,
         "properties": {
@@ -23243,6 +23278,135 @@
           "noActivityConfirmed"
         ],
         "title": "RfYearSourceCaptureWire",
+        "type": "object"
+      },
+      "RfYearSourceDraftWire": {
+        "additionalProperties": false,
+        "properties": {
+          "case": {
+            "$ref": "#/components/schemas/RfSourceCaseWire"
+          },
+          "closingDocumentIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Closingdocumentids",
+            "type": "array"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "completeYearConfirmed": {
+            "title": "Completeyearconfirmed",
+            "type": "boolean"
+          },
+          "correctionReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correctionreason"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/RfSourceDocumentWire"
+            },
+            "minItems": 1,
+            "title": "Documents",
+            "type": "array"
+          },
+          "eventEvidence": {
+            "items": {
+              "$ref": "#/components/schemas/RfSourceEventEvidenceWire"
+            },
+            "title": "Eventevidence",
+            "type": "array"
+          },
+          "identitiesReviewed": {
+            "title": "Identitiesreviewed",
+            "type": "boolean"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "noActivityConfirmed": {
+            "title": "Noactivityconfirmed",
+            "type": "boolean"
+          },
+          "openingDocumentIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Openingdocumentids",
+            "type": "array"
+          },
+          "paidIn": {
+            "$ref": "#/components/schemas/RfSourcePaidInWire"
+          },
+          "paidInDocumentIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Paidindocumentids",
+            "type": "array"
+          },
+          "paidInReviewed": {
+            "title": "Paidinreviewed",
+            "type": "boolean"
+          },
+          "supersedesSourceId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedessourceid"
+          },
+          "supersedesSourceSha256": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedessourcesha256"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "case",
+          "paidIn",
+          "documents",
+          "openingDocumentIds",
+          "closingDocumentIds",
+          "paidInDocumentIds",
+          "eventEvidence",
+          "identitiesReviewed",
+          "completeYearConfirmed",
+          "paidInReviewed",
+          "noActivityConfirmed"
+        ],
+        "title": "RfYearSourceDraftWire",
         "type": "object"
       },
       "RfYearSourceReceiptWire": {
@@ -94770,6 +94934,412 @@
           }
         ],
         "summary": "Rf1086 Production Archive Source",
+        "tags": [
+          "shareholder-register-filings"
+        ]
+      }
+    },
+    "/api/v1/shareholder-register-filings/current-year-source": {
+      "get": {
+        "operationId": "rf1086ReadCurrentYearSource",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "companyId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Companyid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "incomeYear",
+            "required": true,
+            "schema": {
+              "maximum": 2100,
+              "minimum": 2000,
+              "title": "Incomeyear",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfCurrentYearSourceWire"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authority Connections request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authority Connections request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authority Connections request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authority Connections request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authority Connections request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authority Connections request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Rf1086 Read Current Year Source",
         "tags": [
           "shareholder-register-filings"
         ]

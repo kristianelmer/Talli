@@ -668,3 +668,20 @@ test("source metadata uses a separate route while existing documents retain thei
   assert.equal(contract.components.schemas.DocumentWire.properties.metadataSha256, undefined);
   assert.ok(contract.components.schemas.RfSourceDocumentWire.required.includes("metadataSha256"));
 });
+
+test("current source client scopes the owner read and preserves an explicit absent source", async () => {
+  const { createTalliApiClient } = await import(generatedClientPath.href);
+  const companyId = "11111111-1111-4111-8111-111111111111";
+  const calls = [];
+  const client = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async (url, init) => {
+    calls.push({ url: new URL(url), init });
+    return new Response(JSON.stringify({ currentSource: null }), { status: 200 });
+  } });
+  assert.deepEqual(await client.rf1086ReadCurrentYearSource({ companyId, incomeYear: 2025,
+    headers: { Authorization: "Bearer owner-token" } }), { currentSource: null });
+  assert.equal(calls[0].url.pathname, "/api/v1/shareholder-register-filings/current-year-source");
+  assert.deepEqual([...calls[0].url.searchParams], [["companyId", companyId], ["incomeYear", "2025"]]);
+  assert.equal(calls[0].init.cache, "no-store");
+  assert.equal(calls[0].init.method, "GET");
+  assert.equal(calls[0].init.headers.Authorization, "Bearer owner-token");
+});

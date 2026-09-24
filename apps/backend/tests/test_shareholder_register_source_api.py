@@ -1,7 +1,7 @@
 """Authenticated source routes run the real workflow against synthetic owners."""
 from contextlib import asynccontextmanager
 from dataclasses import fields, is_dataclass, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 import re
@@ -14,8 +14,10 @@ from talli_backend.main import create_app
 from talli_backend.application.shareholder_register_filing_session import ShareholderRegisterFilingAuthenticationError
 from talli_backend.modules.corporate_governance.public import CorporateReportingYearBasis, CorporateLifecycleSnapshot
 from talli_backend.modules.documents.public import document_metadata_sha256, DocumentId
-from talli_backend.shared.kernel import CompanyId
-from talli_backend.modules.shareholder_register_filing.public import Rf1086YearSourceId
+from talli_backend.shared.kernel import CompanyId, IncomeYear
+from talli_backend.modules.shareholder_register_filing.public import (
+    Rf1086YearSourceId, prepare_rf1086_year_source, rf1086_year_source_digest,
+)
 from test_shareholder_register_source_workflow import Harness
 from test_shareholder_register_capital_source_workflow import setup as capital_setup
 from test_shareholder_register_source_preview_workflow import correction
@@ -49,6 +51,12 @@ class ApiHarness:
             async def record_year_source(self,command,*,context,idempotency_key):
                 owner.idempotencies.append(idempotency_key.value)
                 if owner.persistence_error:raise owner.persistence_error
+                if h.current_source is not None:
+                    result=prepare_rf1086_year_source(command,context=context,
+                        source_id=Rf1086YearSourceId(str(uuid4())),previous=h.current_source,
+                        confirmed_at=h.current_source.confirmed_at+timedelta(seconds=1))
+                    h.context=context;h.saved.append(result);h.sources[result.source_id]=result;h.current_source=result
+                    h.calls.append('persist');return result
                 return await self.wrapped.record_year_source(command,context=context,idempotency_key=idempotency_key)
             async def record_register_observation(self,command,*,context,idempotency_key):
                 owner.idempotencies.append(idempotency_key.value)
@@ -84,6 +92,9 @@ class ApiHarness:
         self.client=TestClient(self.app)
     def capture(self,body=None,headers=None):
         return self.client.post(BASE+'/year-sources',json=body if body is not None else draft(self.h.command),headers=headers or HEADERS)
+    def current_source(self,**query):
+        return self.client.get(BASE+'/current-year-source',
+            params={'companyId':str(COMPANY),'incomeYear':int(YEAR),**query},headers=HEADERS)
     def preview(self,source_id):
         return self.client.post(BASE+'/source-previews',json={'companyId':str(COMPANY),'incomeYear':int(YEAR),'sourceId':source_id},headers=HEADERS)
     def source_document(self,**query):
@@ -394,3 +405,219 @@ def test_event_digest_is_optional_only_at_customer_input_boundary():
     assert schema['additionalProperties'] is False
     with pytest.raises(Rf1086YearSourceError):
         Rf1086YearEventEvidence(0,None,(DOCUMENT,))
+
+
+def test_current_source_absence_is_explicit_and_read_creates_nothing():
+    api=ApiHarness();response=api.current_source()
+    assert response.status_code==200,response.text
+    assert response.json()=={'currentSource':None}
+    assert not api.h.saved and not api.h.previews and not api.idempotencies
+    assert 'read_current_source' in api.h.calls
+    assert {'verify_document','governance','persist','preview_persist'}.isdisjoint(api.h.calls)
+
+
+def test_current_source_read_edit_capture_preserves_predecessor_and_resets_review():
+    api=ApiHarness();amount='9007199254740993.000001';body=draft(api.h.command)
+    body['case']['share_snapshot'].update(previous_paid_in_premium=amount,current_paid_in_premium=amount)
+    body['paid_in'].update(opening_premium=amount,closing_premium=amount)
+    first=api.capture(body);assert first.status_code==200,first.text
+    original=api.h.saved[0];original_hash=rf1086_year_source_digest(original);api.h.calls=[]
+    response=api.current_source();assert response.status_code==200,response.text
+    current=response.json()['currentSource'];assert current['receipt']==first.json()
+    editable=current['draft']
+    assert editable['paidIn']['openingPremium']==amount
+    assert editable['case']['shareSnapshot']['previousPaidInPremium']==amount
+    assert editable['documents'][0]['sourceIncomeYear']==2024
+    assert editable['supersedesSourceId']==first.json()['sourceId']
+    assert editable['supersedesSourceSha256']==first.json()['sourceSha256']
+    assert editable['correctionReason'] is None
+    flags=('identitiesReviewed','completeYearConfirmed','paidInReviewed','noActivityConfirmed')
+    assert all(editable[field] is False for field in flags)
+    assert {'verify_document','governance','persist','preview_persist'}.isdisjoint(api.h.calls)
+    assert api.capture(editable).status_code==409
+    editable.update({field:True for field in flags});editable['correctionReason']='Reviewed corrected holder name'
+    editable['case']['shareholders'][0]['name']='Corrected owner name'
+    second=api.capture(editable,headers={**HEADERS,'Idempotency-Key':'source-api-correction-0002'})
+    assert second.status_code==200,second.text
+    assert second.json()['version']==2 and second.json()['sourceId']!=first.json()['sourceId']
+    assert len(api.h.saved)==2 and rf1086_year_source_digest(api.h.saved[0])==original_hash
+    assert api.h.saved[1].command.supersedes_source_id==original.source_id
+    again=api.current_source().json()['currentSource']
+    assert again['receipt']==second.json() and again['draft']['correctionReason'] is None
+    assert again['draft']['supersedesSourceId']==second.json()['sourceId']
+    assert all(again['draft'][field] is False for field in flags)
+    assert all(key not in current for key in ('freshness','actorId','governanceReceipts','context'))
+
+
+@pytest.mark.parametrize('change',['bytes','metadata','unavailable'])
+def test_stale_original_is_readable_for_correction_but_capture_reverifies(change):
+    api=ApiHarness();assert api.capture().status_code==200
+    if change=='bytes':api.h.record=replace(api.h.record,content_sha256='f'*64)
+    if change=='metadata':api.h.record=replace(api.h.record,name='Changed original')
+    if change=='unavailable':api.h.document_failure=True
+    api.h.calls=[];response=api.current_source()
+    assert response.status_code==200,response.text
+    assert 'verify_document' not in api.h.calls
+    editable=response.json()['currentSource']['draft']
+    editable.update(identitiesReviewed=True,completeYearConfirmed=True,paidInReviewed=True,
+        noActivityConfirmed=True,correctionReason='Re-reviewed evidence')
+    assert api.capture(editable).status_code==409 and len(api.h.saved)==1
+    assert 'verify_document' in api.h.calls
+
+
+@pytest.mark.parametrize('change',['reviewer','read_only','revoked','unconfirmed','unlocked','entity','tenant'])
+def test_current_source_denies_invalid_current_owner_before_retained_read(change):
+    api=ApiHarness();assert api.capture().status_code==200;api.h.calls=[]
+    if change in {'reviewer','read_only'}:api.h.company.role=change
+    if change=='revoked':api.auth_failure=True
+    if change=='unconfirmed':api.h.company.identity_confirmed_at=None
+    if change=='unlocked':api.h.company.identity_locked_at=None
+    if change=='entity':api.h.company.entity_type='ENK'
+    query={'companyId':str(uuid4())} if change=='tenant' else {}
+    response=api.current_source(**query)
+    assert response.status_code in {401,403,404},response.text
+    assert {'read_current_source','verify_document','governance','persist'}.isdisjoint(api.h.calls)
+    assert DOCUMENT not in response.text and len(api.h.saved)==1
+
+
+@pytest.mark.parametrize('change',['org_number','source_hash','case_hash','company','year'])
+def test_current_source_denies_changed_identity_or_corrupt_or_wrong_scope_storage(change):
+    api=ApiHarness();assert api.capture().status_code==200
+    if change=='org_number':api.h.company.org_number='123456789'
+    if change=='source_hash':api.h.current_source=replace(api.h.current_source,source_sha256='f'*64)
+    if change=='case_hash':api.h.current_source=replace(api.h.current_source,case_sha256='f'*64)
+    if change=='company':api.h.current_source=replace(api.h.current_source,company_id=CompanyId(str(uuid4())))
+    query={'incomeYear':2024} if change=='year' else {}
+    api.h.calls=[];response=api.current_source(**query)
+    assert response.status_code==409,response.text
+    assert {'verify_document','governance','persist'}.isdisjoint(api.h.calls)
+    assert DOCUMENT not in response.text and len(api.h.saved)==1
+
+
+@pytest.mark.parametrize('query',[{'incomeYear':1999},{'incomeYear':2101},{'incomeYear':'bad'},{'companyId':'bad'}])
+def test_current_source_rejects_invalid_scope_parameters(query):
+    api=ApiHarness();response=api.current_source(**query)
+    assert response.status_code==422 and not api.h.calls
+
+
+@pytest.mark.parametrize('kind',['formation','transfer'])
+def test_current_source_preserves_civil_event_times_and_evidence_for_editing(kind):
+    api=ApiHarness(kind=kind);body=draft(api.h.command)
+    body['case']['share_snapshot'].update(previous_paid_in_premium='0',current_paid_in_premium='0')
+    # A date near daylight-saving transition must never be converted through UTC.
+    body['case']['events'][0]['timestamp']='2025-03-30T02:30:00'
+    body['event_evidence'][0]['event_sha256']=None
+    response=api.capture(body);assert response.status_code==200,response.text
+    current=api.current_source();assert current.status_code==200,current.text
+    editable=current.json()['currentSource']['draft']
+    assert editable['case']['events'][0]['timestamp']=='2025-03-30T02:30:00'
+    assert editable['eventEvidence'][0]['documentIds']==[DOCUMENT]
+    assert editable['eventEvidence'][0]['eventSha256']==api.h.saved[0].command.event_evidence[0].event_sha256
+    assert editable['case']['events'][0]['type']==api.h.saved[0].command.case.events[0].type
+
+
+def test_current_source_api_is_additive_without_input_schema_splitting():
+    schema=ApiHarness().app.openapi();models=schema['components']['schemas']
+    assert 'RfYearSourceCaptureWire' in models and 'RfSourceCaseWire' in models
+    assert not any(key.startswith(('RfSource','RfYearSource')) and key.endswith(('-Input','-Output')) for key in models)
+    route=schema['paths'][BASE+'/current-year-source']['get']
+    assert route['operationId']=='rf1086ReadCurrentYearSource'
+    assert {item['name'] for item in route['parameters']}=={'companyId','incomeYear','X-Request-ID'}
+    assert models['RfCurrentYearSourceWire']['required']==['currentSource']
+
+
+@pytest.mark.parametrize('event',[
+    {'type':'formation','timestamp':'2025-03-30T02:30:00','issued_share_count':100,'share_count_after':100,
+     'nominal_value':'300.00','premium':'0.125',
+     'allocations':[{'shareholder_id':'owner','share_count':100,'acquisition_value':'30012.500'}]},
+    {'type':'cash_issue','timestamp':'2025-03-30T02:30:00','issued_share_count':100,'share_count_after':200,
+     'nominal_value':'300.00','premium':'0.125','registration_confirmed':True,
+     'allocations':[{'shareholder_id':'owner','share_count':100,'acquisition_value':'30012.500'}]},
+    {'type':'cash_nominal_increase','timestamp':'2025-03-30T02:30:00','capital_increase':'125.00',
+     'nominal_value_increase':'1.25','nominal_value_after':'301.25','registration_confirmed':True,'premium':'0.125',
+     'allocations':[{'shareholder_id':'owner','share_count_basis':100,'capital_increase':'125.00','premium':'0.125'}]},
+    {'type':'loss_covering_reduction','timestamp':'2025-03-30T02:30:00','capital_reduction':'125.00',
+     'nominal_value_reduction':'1.25','nominal_value_after':'298.75','registration_confirmed':True,'fund_issued_capital_before':0},
+    {'type':'share_sale','timestamp':'2025-03-30T02:30:00','seller_shareholder_id':'owner',
+     'buyer_shareholder_id':'new-owner','share_count':1,'consideration':'9007199254740993.000001'},
+    {'type':'dividend','timestamp':'2025-03-30T02:30:00','total_amount':'1000.125','per_share_amount':'10.00125',
+     'allocations':[{'shareholder_id':'owner','amount':'1000.125','share_count_basis':100}]},
+])
+def test_every_public_event_projects_to_the_editable_wire_without_number_or_timezone_loss(event):
+    from pydantic import TypeAdapter
+    from talli_backend.main import RfSourceEventWire, _rf_source_value, _rf_source_public_json
+    adapter=TypeAdapter(RfSourceEventWire)
+    original=adapter.validate_python(event)
+    domain=_rf_source_value(original)
+    projected=_rf_source_public_json(domain)
+    assert projected==event
+    assert _rf_source_value(adapter.validate_python(projected))==domain
+
+
+@pytest.mark.parametrize('kind',['dividend','cash_issue','loss_covering_reduction'])
+def test_current_source_projects_governed_events_and_receipt_references(kind):
+    from test_shareholder_register_capital_source_workflow import prepare_capital
+    api=ApiHarness(kind='dividend' if kind=='dividend' else 'no_activity')
+    if kind!='dividend':
+        # Use the same public workflow with independently backed register evidence.
+        # The API wrapper closes over h, so configure its retained source from a
+        # separate fully prepared owner composition.
+        h=capital_setup(kind);prepare_capital(h);source=h.capture()
+        api.h.company=h.company;api.h.current_source=source
+    else:
+        source=api.h.capture()
+    response=api.current_source();assert response.status_code==200,response.text
+    record=response.json()['currentSource'];event=record['draft']['case']['events'][0]
+    assert event['type']==kind
+    evidence=record['draft']['eventEvidence'][0]
+    assert evidence['governanceReceiptId']==source.command.event_evidence[0].governance_receipt_id
+    assert evidence['documentIds']==list(source.command.event_evidence[0].document_ids)
+    assert record['receipt']['sourceSha256']==source.source_sha256
+
+
+def test_current_source_requires_authentication_and_is_not_cacheable():
+    api=ApiHarness()
+    response=api.client.get(BASE+'/current-year-source',params={'companyId':str(COMPANY),'incomeYear':int(YEAR)})
+    assert response.status_code==401 and 'read_current_source' not in api.h.calls
+    assert 'no-store' in api.current_source().headers['cache-control']
+
+
+@pytest.mark.parametrize('field,new_value',[
+    ('name','Renamed holding AS'),('address','New address 42'),('postal_code','0456'),('city','BERGEN'),
+])
+def test_current_source_remains_readable_after_company_details_change_for_correction(field,new_value):
+    api=ApiHarness();assert api.capture().status_code==200
+    original=api.h.saved[0];before=rf1086_year_source_digest(original)
+    setattr(api.h.company,field,new_value)
+    api.h.company.identity_confirmed_at=(NOW+timedelta(days=1)).isoformat()
+    api.h.company.identity_locked_at=(NOW+timedelta(days=1)).isoformat()
+    api.h.calls=[];response=api.current_source()
+    assert response.status_code==200,response.text
+    editable=response.json()['currentSource']['draft']
+    wire_field={'postal_code':'postalCode'}.get(field,field)
+    assert editable['case']['company'][wire_field]==getattr(original.command.case.company,field)
+    assert {'verify_document','governance','persist'}.isdisjoint(api.h.calls)
+    assert all(editable[key] is False for key in (
+        'identitiesReviewed','completeYearConfirmed','paidInReviewed','noActivityConfirmed'))
+    editable.update(identitiesReviewed=True,completeYearConfirmed=True,paidInReviewed=True,
+        noActivityConfirmed=True,correctionReason='Reviewed updated company details')
+    denied=api.capture(editable)
+    assert denied.status_code==409 and denied.json()['code']=='rf1086_source_company_year_mismatch'
+    assert len(api.h.saved)==1 and rf1086_year_source_digest(api.h.saved[0])==before
+    editable['case']['company'][wire_field]=new_value
+    corrected=api.capture(editable,headers={**HEADERS,'Idempotency-Key':'updated-company-correction-0002'})
+    assert corrected.status_code==200,corrected.text
+    assert corrected.json()['version']==2
+    assert api.h.saved[1].command.supersedes_source_id==original.source_id
+    assert getattr(api.h.saved[1].command.case.company,field)==new_value
+    assert rf1086_year_source_digest(api.h.saved[0])==before
+
+
+def test_renewed_company_identity_confirmation_does_not_hide_retained_source():
+    api=ApiHarness();assert api.capture().status_code==200
+    original=api.h.saved[0]
+    api.h.company.identity_confirmed_at=(NOW+timedelta(days=1)).isoformat()
+    api.h.company.identity_locked_at=(NOW+timedelta(days=1)).isoformat()
+    response=api.current_source();assert response.status_code==200,response.text
+    assert response.json()['currentSource']['receipt']['sourceSha256']==original.source_sha256
+    assert len(api.h.saved)==1
