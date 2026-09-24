@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { TalliApiError } from "@talli/talli-api-client";
 import {
-  loadRf1086SourceIntakeBasis, loadRf1086CurrentYearSource, loadRf1086SourceDocument,
+  loadRf1086SourceIntakeBasis, loadRf1086CurrentYearSource, loadRf1086SourceDocument, loadRf1086RegisterObservations,
+  rf1086RegisterErrorMessage, rf1086RegisterCaptureRejected,
   captureRf1086YearSourceThroughApi, captureRf1086RegisterObservationThroughApi,
   generateRf1086SourcePreviewThroughApi, loadRf1086SourcePreview, rf1086SourceErrorMessage, rf1086SourceCaptureRejected,
 } from "../features/shareholder-register-filing/index.ts";
@@ -288,4 +289,108 @@ test("known prewrite business validation at 409 allows correction of a first rej
   for (const code of ["rf1086_source_idempotency_conflict", "rf1086_source_predecessor_mismatch", "rf1086_source_predecessor_required",
     "rf1086_source_changed", "rf1086_source_storage_invalid", "rf1086_source_snapshot_invalid", "rf1086_source_collision", "unknown"])
     assert.equal(rejected(code), false);
+});
+
+const registerRecord = (id = previewId, isCurrent = true, version = 1) => ({
+  receipt: { ...registerReceipt(), observationId: id, version },
+  draft: { ...registerBody(), completeRegisterConfirmed: false, registrationConfirmed: false,
+    singleShareClassConfirmed: false, supersedesObservationId: id, supersedesObservationSha256: hash }, isCurrent,
+});
+const registers = () => ({ companyId: company, incomeYear: 2025,
+  observations: [registerRecord(), registerRecord(sourceId, false), registerRecord(other, true, 2)] });
+
+test("register list preserves authenticated history, multiple current lineages, exact revisions and civil values", async t => {
+  const value = registers(), calls = environment(t, value);
+  value.observations[0].draft.after.shareCapital = exactAmount;
+  assert.deepEqual(await loadRf1086RegisterObservations("owner", company, 2025), value);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url.pathname, base + "/register-observations");
+  assert.deepEqual(Object.fromEntries(calls[0].url.searchParams), { companyId: company, incomeYear: "2025" });
+  assert.equal(calls[0].request.method, "GET");
+  assert.equal(calls[0].request.cache, "no-store");
+  assert.equal(calls[0].request.headers.Authorization, "Bearer owner");
+  assert.ok(calls[0].request.signal instanceof AbortSignal);
+});
+
+test("register absence requires an explicit empty observation list", async t => {
+  const value = { companyId: company, incomeYear: 2025, observations: [] };
+  environment(t, value);
+  assert.deepEqual(await loadRf1086RegisterObservations("owner", company, 2025), value);
+});
+
+for (const [label, mutate] of [
+  ["envelope company", value => { value.companyId = other; }],
+  ["envelope year", value => { value.incomeYear = 2024; }],
+  ["receipt company", value => { value.observations[0].receipt.companyId = other; }],
+  ["receipt year", value => { value.observations[0].receipt.incomeYear = 2024; }],
+  ["draft company", value => { value.observations[0].draft.companyId = other; }],
+  ["draft year", value => { value.observations[0].draft.incomeYear = 2024; }],
+  ["predecessor id", value => { value.observations[0].draft.supersedesObservationId = other; }],
+  ["predecessor hash", value => { value.observations[0].draft.supersedesObservationSha256 = "b".repeat(64); }],
+  ["receipt hash", value => { value.observations[0].receipt.factSha256 = "invalid"; }],
+  ["version", value => { value.observations[0].receipt.version = 0; }],
+  ["complete review", value => { value.observations[0].draft.completeRegisterConfirmed = true; }],
+  ["registration review", value => { value.observations[0].draft.registrationConfirmed = true; }],
+  ["share class review", value => { value.observations[0].draft.singleShareClassConfirmed = true; }],
+  ["correction reason", value => { value.observations[0].draft.correctionReason = "Old review"; }],
+  ["document company", value => { value.observations[0].draft.documents[0].companyId = other; }],
+  ["duplicate role", value => { value.observations[0].draft.documents.push(value.observations[0].draft.documents[0]); }],
+  ["duplicate observation", value => { value.observations.push(value.observations[0]); }],
+  ["contradictory currentness", value => { value.observations.push({ ...value.observations[0], isCurrent: false }); }],
+  ["invalid currentness", value => { value.observations[0].isCurrent = "true"; }],
+  ["absent currentness", value => { delete value.observations[0].isCurrent; }],
+  ["absent observations", value => { delete value.observations; }],
+  ["null observations", value => { value.observations = null; }],
+]) {
+  test(`register list rejects ${label} without hiding history`, async t => {
+    const value = registers(); mutate(value); environment(t, value);
+    await assert.rejects(loadRf1086RegisterObservations("owner", company, 2025), invalid);
+  });
+}
+
+for (const status of [401, 403, 404, 409, 503]) {
+  test(`register list propagates ${status} without an empty fallback`, async t => {
+    const calls = environment(t, {}, status);
+    await assert.rejects(loadRf1086RegisterObservations("owner", company, 2025), error => error instanceof TalliApiError && error.status === status);
+    assert.equal(calls.length, 1);
+  });
+}
+
+const registerProblem = (status, code, problemStatus = status) => new TalliApiError(status, {
+  type: "about:blank", title: "Secret title", detail: "Secret original", instance: "/fixture", requestId: "fixture", code, status: problemStatus,
+});
+test("register capture releases only exact known prewrite refusals", () => {
+  for (const code of ["rf1086_register_amount_invalid", "rf1086_register_owner_confirmation_required", "rf1086_register_holder_total_mismatch",
+    "rf1086_register_document_coverage_incomplete", "rf1086_register_correction_reason_required", "rf1086_register_correction_scope_invalid",
+    "rf1086_register_capture_predates_event", "rf1086_source_documents_unverified", "rf1086_source_register_original_required"]) {
+    assert.equal(rf1086RegisterCaptureRejected(registerProblem(409, code)), true, code);
+  }
+  for (const code of ["rf1086_register_idempotency_conflict", "rf1086_register_predecessor_mismatch", "rf1086_register_storage_invalid",
+    "rf1086_register_integrity_mismatch", "rf1086_register_reference_mismatch", "rf1086_register_correction_link_invalid", "rf1086_register_previous_required", "unknown"]) {
+    assert.equal(rf1086RegisterCaptureRejected(registerProblem(409, code)), false, code);
+  }
+  for (const status of [400, 422]) {
+    for (const code of ["rf1086_source_invalid_request", "SHAREHOLDER_REGISTER_FILING_INVALID_INPUT", "invalid_request"]) {
+      assert.equal(rf1086RegisterCaptureRejected(registerProblem(status, code)), true);
+    }
+    assert.equal(rf1086RegisterCaptureRejected(registerProblem(status, "unknown")), false);
+  }
+  for (const status of [401, 403, 404, 500, 502, 503]) assert.equal(rf1086RegisterCaptureRejected(registerProblem(status, "rf1086_register_amount_invalid")), false);
+  assert.equal(rf1086RegisterCaptureRejected(registerProblem(409, "rf1086_register_amount_invalid", 503)), false);
+  assert.equal(rf1086RegisterCaptureRejected(new TalliApiError(409, undefined)), false);
+  assert.equal(rf1086RegisterCaptureRejected(new Error("connection lost")), false);
+});
+
+test("register errors give safe actionable Norwegian messages without original details", () => {
+  assert.match(rf1086RegisterErrorMessage(registerProblem(409, "rf1086_register_holder_total_mismatch")), /samlet antall aksjer/);
+  assert.match(rf1086RegisterErrorMessage(registerProblem(409, "rf1086_register_predecessor_mismatch")), /allerede korrigert/);
+  assert.match(rf1086RegisterErrorMessage(registerProblem(409, "rf1086_register_idempotency_conflict")), /lagringsforsøket/);
+  assert.match(rf1086RegisterErrorMessage(registerProblem(409, "rf1086_register_amount_invalid")), /beløpene/);
+  assert.match(rf1086RegisterErrorMessage(registerProblem(401, "unknown")), /Logg inn/);
+  assert.match(rf1086RegisterErrorMessage(registerProblem(403, "unknown")), /ikke tilgang/);
+  for (const code of ["unknown", "__proto__", "constructor", "rf1086_register_storage_invalid"]) {
+    const message = rf1086RegisterErrorMessage(registerProblem(409, code));
+    assert.match(message, /Kontroller lagret status/);
+    assert.doesNotMatch(message, /Secret|unknown|__proto__|constructor|storage_invalid/);
+  }
 });

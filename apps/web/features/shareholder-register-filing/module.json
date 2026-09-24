@@ -13,7 +13,8 @@
     "apps/web/features/shareholder-register-filing/index.ts"
   ],
   "ownedRoutes": [
-    "/filing/aksjonaerregisteroppgaven/source"
+    "/filing/aksjonaerregisteroppgaven/source",
+    "/filing/aksjonaerregisteroppgaven/register"
   ],
   "apiOperations": [
     "legacyRf1086ReconcileFeedback",
@@ -29,6 +30,7 @@
     "rf1086GenerateSourcePreview",
     "rf1086GetArchiveSource",
     "rf1086GetProductionArchiveSource",
+    "rf1086ListRegisterObservations",
     "rf1086Preview",
     "rf1086ReadCurrentYearSource",
     "rf1086ReadSourceDocument",

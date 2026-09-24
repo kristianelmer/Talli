@@ -24,8 +24,14 @@ shareholder, opening/closing and event facts, binds document roles, preserves
 correction ancestry, and generates a separate preview after capture. Amounts stay
 decimal strings and event times stay civil times. Content edits reset reviews;
 uncertain captures retain an identical request and key even after a later
-validation refusal. Independent register-observation intake and authenticated
-full-stack browser journeys still need implementation/verification. Increased
+validation refusal. Independent register-observation intake now supports owner-scoped history,
+current-version correction, before/after holdings, all three evidence roles and
+stable retry requests. The capital-event UI selects an actual current observation
+and the server action rereads its exact ID/version/hash instead of treating a
+document as a register fact. Authenticated full-stack browser journeys remain
+pending. Direct Governance API admission must still resolve and verify those
+references itself; the web reread is not a substitute for that backend boundary.
+Explicit register withdrawal and its downstream invalidation also remain pending. Increased
 nominal-value events remain visibly unavailable for complete source capture until
 Governance support is implemented.
 

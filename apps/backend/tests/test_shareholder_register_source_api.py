@@ -42,7 +42,7 @@ class ApiHarness:
     def __init__(self, *, capital=False, kind='no_activity'):
         self.h=capital_setup() if capital else Harness(kind)
         h=self.h; self.idempotencies=[]; self.auth_failure=False; self.persistence_error=None
-        self.reporting_basis=None; self.reporting_amendments=()
+        self.reporting_basis=None; self.reporting_amendments=(); self.observations=None
         owner=self
         class RFSession:
             def __init__(self, wrapped):self.wrapped=wrapped
@@ -59,8 +59,20 @@ class ApiHarness:
                     h.context=context;h.saved.append(result);h.sources[result.source_id]=result;h.current_source=result
                     h.calls.append('persist');return result
                 return await self.wrapped.record_year_source(command,context=context,idempotency_key=idempotency_key)
+            async def list_register_observations(self,query):
+                h.calls.append('list_observations')
+                if owner.persistence_error:raise owner.persistence_error
+                if owner.observations is not None:return owner.observations
+                return tuple(row for row in h.register_saved if row.command.company_id==query.company_id
+                             and row.command.income_year==query.income_year)
             async def record_register_observation(self,command,*,context,idempotency_key):
                 owner.idempotencies.append(idempotency_key.value)
+                if command.supersedes_observation_id is not None:
+                    from talli_backend.modules.shareholder_register_filing.public import prepare_rf1086_register_observation, Rf1086RegisterObservationId
+                    previous=next(row for row in h.register_saved if row.observation_id==command.supersedes_observation_id)
+                    result=prepare_rf1086_register_observation(command,context=context,previous=previous,
+                        observation_id=Rf1086RegisterObservationId(str(uuid4())),confirmed_at=previous.confirmed_at+timedelta(seconds=1))
+                    h.register_saved.append(result);return result
                 return await self.wrapped.record_register_observation(command,context=context,idempotency_key=idempotency_key)
             async def source_preview(self,preview_id):
                 h.calls.append('read_preview')

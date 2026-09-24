@@ -386,6 +386,17 @@ original facts before returning them. Identical normalized idempotency replays
 return the original snapshot, including after a correction; authorization is
 checked again under the database transaction lock.
 
+The accepted, confirmed and locked AS owner can discover all retained company/year
+observations through `GET /api/v1/shareholder-register-filings/register-observations`.
+`list_register_observations` uses one snapshot transaction, fresh owner admission,
+existing executor SELECT/RLS, and no pagination limit. Every stored codec, row binding
+and complete predecessor chain is checked before any history is returned. The response
+pairs each receipt with its exact editable public draft and `isCurrent` (no retained
+successor). Three confirmations reset to false; the draft predecessor names that
+selected observation's ID/hash and its correction reason is cleared. Historical
+drafts remain readable, while capture independently requires the current predecessor.
+This read neither verifies original bytes nor certifies current evidence or approval.
+
 The RF adapter calls Documents-owned retention for each original in stable ID
 order within the same transaction. Complete current metadata, original document
 year, hash and byte length are checked while locking each document. A mismatch

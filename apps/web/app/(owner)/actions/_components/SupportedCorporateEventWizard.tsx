@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 
 import type {
   RecordedSupportedCorporateEventWire,
@@ -8,6 +9,8 @@ import type {
   SupportedCorporateEventPhase,
   SupportedCorporateEvidenceKind,
 } from "../../../../features/corporate-governance";
+import type { RfRegisterObservationsWire } from "../../../../features/shareholder-register-filing";
+import { corporateRegisterObservations, needsCorporateRegisterObservation } from "../../../lib/corporate-register-observation";
 import {
   recordSupportedCorporateEventAction,
   reverseSupportedCorporateEventAction,
@@ -30,6 +33,8 @@ type Props = {
   documents: EvidenceDocument[];
   bankTransactions: BankTransaction[];
   existingEvents: RecordedSupportedCorporateEventWire[];
+  registerObservations: RfRegisterObservationsWire | null;
+  registerObservationsError: string | null;
   operationId?: string;
 };
 
@@ -74,12 +79,14 @@ function Field({
   required = true,
   type = "text",
   defaultValue = "",
+  onChange,
 }: {
   label: string;
   name: string;
   required?: boolean;
   type?: string;
   defaultValue?: string;
+  onChange?: (value: string) => void;
 }) {
   return (
     <label className="field">
@@ -92,6 +99,7 @@ function Field({
         type={type}
         defaultValue={defaultValue}
         required={required}
+        onChange={onChange ? (event) => onChange(event.target.value) : undefined}
       />
     </label>
   );
@@ -464,10 +472,13 @@ export function SupportedCorporateEventWizard({
   documents,
   bankTransactions,
   existingEvents,
+  registerObservations,
+  registerObservationsError,
   operationId: initialOperationId,
 }: Props) {
   const [kind, setKind] = useState<SupportedCorporateEventKind>("owner_loan");
   const [phase, setPhase] = useState<SupportedCorporateEventPhase>("funding");
+  const [eventDate, setEventDate] = useState("");
   const [reference, setReference] = useState(() => crypto.randomUUID());
   const [operationId] = useState(
     () => initialOperationId ?? crypto.randomUUID(),
@@ -482,6 +493,10 @@ export function SupportedCorporateEventWizard({
     kind === "intercompany_loan" ||
     kind === "bank_loan" ||
     (kind === "cash_capital_increase" && phase !== "binding_subscription");
+  const needsRegister = needsCorporateRegisterObservation(kind, phase);
+  const observations = registerObservations
+    ? corporateRegisterObservations(registerObservations, companyId, incomeYear, kind, eventDate)
+    : [];
   const primaryKind: SupportedCorporateEvidenceKind =
     kind === "bank_loan" && phase === "payment"
       ? "lender_statement"
@@ -554,7 +569,7 @@ export function SupportedCorporateEventWizard({
             ))}
           </SelectField>
         ) : null}
-        <Field label="Hendelsesdato" name="eventDate" type="date" />
+        <Field label="Hendelsesdato" name="eventDate" type="date" onChange={setEventDate} />
         <AmountsAndFacts kind={kind} phase={phase} />
         <DocumentSelect
           documents={documents}
@@ -598,21 +613,32 @@ export function SupportedCorporateEventWizard({
           />
         ) : null}
         {needsBank ? <BankSelect transactions={bankTransactions} /> : null}
-        {(kind === "cash_capital_increase" && phase === "registered") ||
-        (kind === "loss_coverage_capital_reduction" &&
-          phase !== "decided_not_registered") ? (
+        {needsRegister ? (
           <>
-            <DocumentSelect
-              documents={documents}
-              prefix="sourceDocument"
-              kind="shareholder_register"
-              label="Aksjeeierbok"
-            />
-            <input
-              type="hidden"
-              name="sourceKind"
-              value="shareholder_register"
-            />
+            {registerObservationsError ? (
+              <Banner variant="warning" title="Registergrunnlager kunne ikke lastes">
+                {registerObservationsError} Last siden på nytt før du bokfører denne fasen.
+              </Banner>
+            ) : null}
+            <label className="field">
+              <span className="fieldLabel">Bekreftet aksjeeierbok før og etter hendelsen</span>
+              <select key={`${kind}:${phase}:${eventDate}`} name="registerObservationId" defaultValue="" required>
+                <option value="">Velg en registergrunnlag</option>
+                {observations.map(({ receipt, draft }) => (
+                  <option key={receipt.observationId} value={receipt.observationId}>
+                    {draft.effectiveAt.replace("T", " ")} · versjon {receipt.version} · {receipt.observationId.slice(0, 8)}
+                  </option>
+                ))}
+              </select>
+              <span className="fieldHelper">
+                {!eventDate ? "Velg hendelsesdato først. " : !observations.length && !registerObservationsError
+                  ? "Ingen gjeldende registergrunnlager passer denne hendelsestypen og datoen. " : ""}
+                Velg observasjonen som dokumenterer denne hendelsen.
+              </span>
+            </label>
+            <Link href={`/filing/aksjonaerregisteroppgaven/register?companyId=${companyId}&incomeYear=${incomeYear}`}>
+              Registrer eller kontroller aksjeeierboken
+            </Link>
           </>
         ) : null}
         {kind === "group_contribution" ? (
@@ -626,7 +652,7 @@ export function SupportedCorporateEventWizard({
             <input type="hidden" name="sourceKind" value="tax_calculation" />
           </>
         ) : null}
-        <SubmitButton pendingLabel="Kontrollerer og bokfører …">
+        <SubmitButton pendingLabel="Kontrollerer og bokfører …" disabled={needsRegister && (!!registerObservationsError || !observations.length)}>
           Kontroller og bokfør
         </SubmitButton>
       </form>

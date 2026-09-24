@@ -48,6 +48,8 @@ def test_independent_lineages_and_current_exact_id_preserve_history(admitted,bac
     assert asyncio.run(s.read_current_register_observation(query(c),independent.observation_id))==independent
     assert asyncio.run(s.read_current_register_observation(query(c),second.observation_id))==second
     assert capture(s,c,ctx,key)==first
+    assert asyncio.run(s.list_register_observations(query(c)))==(first,independent,second)
+    assert asyncio.run(s.list_register_observations(replace(query(c),income_year=IncomeYear(2025))))==()
 
 
 def test_replay_normalization_and_key_conflict(admitted,backend_url):
@@ -76,6 +78,9 @@ def test_wrong_predecessor_hash_company_year_and_owner_revocation(admitted,backe
     with psycopg.connect(DATABASE_URL) as db:db.execute("update public.company_memberships set role='read_only' where company_id=%s",(admitted['company'],))
     with pytest.raises(rf.ShareholderRegisterFilingError):capture(s,c,ctx,key)
     assert asyncio.run(s.read_register_observation(query(c),first.observation_id))==first
+    with pytest.raises(rf.ShareholderRegisterFilingError):asyncio.run(s.list_register_observations(query(c)))
+    with pytest.raises(rf.ShareholderRegisterFilingError):
+        asyncio.run(outsider.list_register_observations(replace(query(c),actor_id=outsider.actor_id)))
 
 
 def test_direct_mutation_denied_and_forced_rls(admitted,backend_url):

@@ -1,8 +1,12 @@
 # Independent register observations for RF year sources
 
-Status: pure public foundation, 2026-09-23. No observation database, browser capture,
-trusted application binding, current-head authority, production enablement, or
-full RF acceptance is established by this change.
+Historical foundation design, originally recorded 2026-09-23. Subsequent changes
+added owned immutable persistence, verified original capture, current-lineage
+reads and customer register entry/correction. See the evidence indexed by
+`requirements.json`. This design still records the required explicit withdrawal,
+Governance admission binding and shared freshness guarantees; those are not
+established by the customer UI. No production enablement or full RF acceptance
+is claimed.
 
 ## Why another RF source contract is required
 

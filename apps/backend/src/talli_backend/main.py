@@ -1990,6 +1990,22 @@ class RfRegisterObservationReceiptWire(TransportModel):
     confirmed_at: datetime
 
 
+class RfRegisterObservationDraftWire(RfRegisterObservationCaptureWire):
+    model_config = ConfigDict(json_schema_mode_override="validation")
+
+
+class RfRegisterObservationRecordWire(TransportModel):
+    receipt: RfRegisterObservationReceiptWire
+    draft: RfRegisterObservationDraftWire
+    is_current: bool
+
+
+class RfRegisterObservationsWire(TransportModel):
+    company_id: UUID
+    income_year: RfSourceYear
+    observations: list[RfRegisterObservationRecordWire]
+
+
 class RfSourcePreviewWire(TransportModel):
     preview_id: UUID
     company_id: UUID
@@ -2070,6 +2086,8 @@ def _rf_source_public_json(value: Any) -> Any:
         Rf1086DividendAllocation: RfSourceDividendAllocationWire, Rf1086DividendEvent: RfSourceDividendWire,
         Rf1086Case: RfSourceCaseWire, Rf1086PaidInSourceFacts: RfSourcePaidInWire,
         Rf1086YearDocumentEvidence: RfSourceDocumentWire, Rf1086YearEventEvidence: RfSourceEventEvidenceWire,
+        Rf1086RegisterHolding: RfRegisterHoldingWire, Rf1086RegisteredShareState: RfRegisteredSharesWire,
+        Rf1086RegisterDocumentEvidence: RfRegisterDocumentWire,
     }
     if type(value) in models:
         return {name: format(Decimal(str(getattr(value, name))), 'f') if field.annotation is Decimal
@@ -12090,6 +12108,41 @@ def create_app(
             result = await shareholder_register_source_workflow.read_current_year_source(bearer_token(credentials),
                 company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year))
             return _rf_current_year_source_wire(result)
+        return await shareholder_register_source_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/register-observations",
+        operation_id="rf1086ListRegisterObservations", response_model=RfRegisterObservationsWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_list_register_observations(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfRegisterObservationsWire:
+        async def execute():
+            snapshots = await shareholder_register_source_workflow.read_register_observations(bearer_token(credentials),
+                company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year))
+            superseded = {item.command.supersedes_observation_id for item in snapshots}
+            observations = []
+            for snapshot in snapshots:
+                command = snapshot.command
+                draft = RfRegisterObservationDraftWire.model_validate({
+                    'company_id': str(command.company_id), 'income_year': int(command.income_year),
+                    **{name: _rf_source_public_json(getattr(command, name)) for name in
+                       ('effective_at', 'event_kind', 'before', 'after', 'documents')},
+                    'complete_register_confirmed': False, 'registration_confirmed': False,
+                    'single_share_class_confirmed': False,
+                    'supersedes_observation_id': snapshot.observation_id.value,
+                    'supersedes_observation_sha256': snapshot.fact_sha256, 'correction_reason': None,
+                })
+                observations.append(RfRegisterObservationRecordWire(
+                    receipt=RfRegisterObservationReceiptWire(observation_id=UUID(snapshot.observation_id.value),
+                        company_id=UUID(str(command.company_id)), income_year=int(command.income_year),
+                        version=snapshot.version, fact_sha256=snapshot.fact_sha256, confirmed_at=snapshot.confirmed_at),
+                    draft=draft, is_current=snapshot.observation_id not in superseded))
+            return RfRegisterObservationsWire(company_id=company_id, income_year=income_year, observations=observations)
         return await shareholder_register_source_call(execute)
 
     @application.post(

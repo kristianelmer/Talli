@@ -187,8 +187,9 @@ export function sourceCommand(draft: SourceDraft): RfYearSourceCaptureWire {
   };
 }
 
-export type SourceSaveAttempt = { command: RfYearSourceCaptureWire; key: string; uncertain: boolean };
+export type SaveAttempt<T> = { command: T; key: string; uncertain: boolean };
+export type SourceSaveAttempt = SaveAttempt<RfYearSourceCaptureWire>;
 /** A later rejection cannot resolve an earlier missing response for this key. */
-export function afterCaptureFailure(attempt: SourceSaveAttempt, rejected: boolean): SourceSaveAttempt | null {
+export function afterCaptureFailure<T>(attempt: SaveAttempt<T>, rejected: boolean): SaveAttempt<T> | null {
   return rejected && !attempt.uncertain ? null : { ...attempt, uncertain: true };
 }

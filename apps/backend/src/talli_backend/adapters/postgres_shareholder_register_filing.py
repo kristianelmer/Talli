@@ -330,6 +330,24 @@ class PostgresShareholderRegisterFilingSession:
         )).fetchone()
         return self._register_observation(row)
 
+    async def list_register_observations(self, query):
+        self._command_actor(query)
+        async with self._transaction(snapshot=True) as connection:
+            owner = await (await connection.execute(
+                "select public.company_access_is_accepted_owner_v1(%s::uuid) as allowed",
+                (str(query.company_id),))).fetchone()
+            if owner is None or owner["allowed"] is not True:
+                raise rf.ShareholderRegisterFilingError.forbidden()
+            rows = await (await connection.execute(
+                "select v.* from shareholder_register_filing.register_observations v "
+                "where v.company_id=%s::uuid and v.income_year=%s order by v.confirmed_at,v.id",
+                (str(query.company_id), int(query.income_year)),)).fetchall()
+            snapshots = tuple(self._register_observation(row) for row in rows)
+            if any(item.command.company_id != query.company_id or item.command.income_year != query.income_year
+                   for item in snapshots):
+                raise rf.Rf1086RegisterObservationError("rf1086_register_storage_invalid")
+            return snapshots
+
     async def read_register_observation(self, query, observation_id):
         self._command_actor(query)
         async with self._transaction(snapshot=True) as connection:

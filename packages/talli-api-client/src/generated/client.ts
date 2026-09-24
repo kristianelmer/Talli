@@ -3957,6 +3957,34 @@ export interface RfRegisterObservationReceiptWire {
   version: number;
 }
 
+export interface RfRegisterObservationDraftWire {
+  after: RfRegisteredSharesWire;
+  before: RfRegisteredSharesWire;
+  companyId: string;
+  completeRegisterConfirmed: boolean;
+  correctionReason?: string | null;
+  documents: RfRegisterDocumentWire[];
+  effectiveAt: string;
+  eventKind: "cash_issue" | "cash_nominal_increase" | "loss_covering_reduction";
+  incomeYear: number;
+  registrationConfirmed: boolean;
+  singleShareClassConfirmed: boolean;
+  supersedesObservationId?: string | null;
+  supersedesObservationSha256?: string | null;
+}
+
+export interface RfRegisterObservationRecordWire {
+  draft: RfRegisterObservationDraftWire;
+  isCurrent: boolean;
+  receipt: RfRegisterObservationReceiptWire;
+}
+
+export interface RfRegisterObservationsWire {
+  companyId: string;
+  incomeYear: number;
+  observations: RfRegisterObservationRecordWire[];
+}
+
 export interface RfSourcePreviewWire {
   caseSha256: string;
   companyId: string;
@@ -9834,6 +9862,46 @@ function isRfRegisterObservationReceiptWire(value: unknown): value is RfRegister
   );
 }
 
+function isRfRegisterObservationDraftWire(value: unknown): value is RfRegisterObservationDraftWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["after","before","companyId","completeRegisterConfirmed","correctionReason","documents","effectiveAt","eventKind","incomeYear","registrationConfirmed","singleShareClassConfirmed","supersedesObservationId","supersedesObservationSha256"]) &&
+    isRfRegisteredSharesWire(value.after) &&
+    isRfRegisteredSharesWire(value.before) &&
+    isUuid(value.companyId) &&
+    typeof value.completeRegisterConfirmed === "boolean" &&
+    (value.correctionReason === undefined || (typeof value.correctionReason === "string" || value.correctionReason === null)) &&
+    Array.isArray(value.documents) && value.documents.every((item) => isRfRegisterDocumentWire(item)) && value.documents.length >= 1 &&
+    (typeof value.effectiveAt === "string" && new RegExp("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$", "u").test(value.effectiveAt)) &&
+    (value.eventKind === "cash_issue" || value.eventKind === "cash_nominal_increase" || value.eventKind === "loss_covering_reduction") &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    typeof value.registrationConfirmed === "boolean" &&
+    typeof value.singleShareClassConfirmed === "boolean" &&
+    (value.supersedesObservationId === undefined || (isUuid(value.supersedesObservationId) || value.supersedesObservationId === null)) &&
+    (value.supersedesObservationSha256 === undefined || ((typeof value.supersedesObservationSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.supersedesObservationSha256)) || value.supersedesObservationSha256 === null))
+  );
+}
+
+function isRfRegisterObservationRecordWire(value: unknown): value is RfRegisterObservationRecordWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["draft","isCurrent","receipt"]) &&
+    isRfRegisterObservationDraftWire(value.draft) &&
+    typeof value.isCurrent === "boolean" &&
+    isRfRegisterObservationReceiptWire(value.receipt)
+  );
+}
+
+function isRfRegisterObservationsWire(value: unknown): value is RfRegisterObservationsWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","observations"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    Array.isArray(value.observations) && value.observations.every((item) => isRfRegisterObservationRecordWire(item))
+  );
+}
+
 function isRfSourcePreviewWire(value: unknown): value is RfSourcePreviewWire {
   return (
     isRecord(value) &&
@@ -12546,6 +12614,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const query = new URLSearchParams({ companyId });
       return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-documents/" + encodeURIComponent(documentId) + "?" + query,
         "GET", request, undefined, isRfSourceDocumentWire);
+    },
+
+    async rf1086ListRegisterObservations(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfRegisterObservationsWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations?" + query,
+        "GET", request, undefined, isRfRegisterObservationsWire);
     },
 
     async rf1086CaptureRegisterObservation(

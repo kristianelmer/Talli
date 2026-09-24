@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import type {
   RfCurrentYearSourceRecordWire, RfSourceIntakeBasisWire, RfSourcePreviewWire, RfSourceDocumentWire,
   RfYearSourceReceiptWire,
@@ -64,6 +64,8 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
   const [pending, startTransition] = useTransition();
   const [attempt, setAttempt] = useState<SourceSaveAttempt | null>(null);
   const [saved, setSaved] = useState<RfYearSourceReceiptWire | null>(null);
+  const savedHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { if (saved) savedHeading.current?.focus(); }, [saved]);
   const [preview, setPreview] = useState<RfSourcePreviewWire | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const receipt = saved ?? current?.receipt;
@@ -131,7 +133,7 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
     <Banner variant="info">Kontroller hele året, også aksjonærer som har solgt alle aksjene. Beløp oppgis i kroner, uten tusenskilletegn.
       Lagring oppretter et årsgrunnlag. Innsending krever en egen gjennomgang og godkjenning.</Banner>
     {receipt ? <section className="dataPanel" aria-label="Lagret årsgrunnlag">
-      <h2>{saved ? "Årsgrunnlaget er lagret" : "Gjeldende årsgrunnlag"}</h2>
+      <h2 ref={savedHeading} tabIndex={-1}>{saved ? "Årsgrunnlaget er lagret" : "Gjeldende årsgrunnlag"}</h2>
       <p>Versjon {receipt.version} · lagret {receipt.confirmedAt}</p>
       <button type="button" className="btn btn--secondary" disabled={pending} onClick={generatePreview}>Lag forhåndsvisning av lagret grunnlag</button>
       {saved ? <p><a href={reloadHref}>Åpne lagret grunnlag for en ny korrigering</a></p> : <p>Endringer nedenfor lagres som en ny versjon. Tidligere grunnlag beholdes.</p>}
@@ -150,6 +152,7 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
     </section> : null}
     <section className="dataPanel" aria-label="Registrerte selskapsbeslutninger">
       <h2>Registrerte beslutninger og rettelser</h2>
+      <p><a className="btn btn--secondary" href={`/filing/aksjonaerregisteroppgaven/register?${new URLSearchParams({ companyId: basis.companyId, incomeYear: String(basis.incomeYear) })}`}>Åpne aksjeeierbok ved kapitalendring</a></p>
       <p>Kontroller disse mot hendelsene nedenfor. Datoen for rapportering kan høre til et annet år enn beslutningens årsgrunnlag.</p>
       {basis.blockers.length ? <Banner variant="danger">Registrerte forhold må avklares før årsgrunnlaget kan lagres.
         <ul>{basis.blockers.map(code => <li key={code}>{blockerLabel(code)}</li>)}</ul><a href="/actions">Se selskapsbeslutninger</a></Banner> : null}

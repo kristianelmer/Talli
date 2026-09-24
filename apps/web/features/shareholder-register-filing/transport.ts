@@ -8,7 +8,7 @@ import {
   type Rf1086ProductionArchiveSourceWire,
   type RfSourcePreviewWire, type RfSourcePreviewRequestWire, type RfYearSourceReceiptWire,
   type RfYearSourceCaptureWire, type RfRegisterObservationCaptureWire,
-  type RfCurrentYearSourceWire,
+  type RfCurrentYearSourceWire, type RfRegisterObservationsWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
@@ -192,6 +192,29 @@ export async function loadRf1086CurrentYearSource(
   return value;
 }
 
+export async function loadRf1086RegisterObservations(
+  accessToken: string, companyId: string, incomeYear: number,
+): Promise<RfRegisterObservationsWire> {
+  const value = await client(accessToken).rf1086ListRegisterObservations({ ...request(), companyId, incomeYear });
+  sourceScope(value, companyId, incomeYear);
+  const ids = new Set<string>();
+  for (const { receipt, draft, isCurrent } of value.observations) {
+    sourceScope(receipt, companyId, incomeYear);
+    sourceScope(draft, companyId, incomeYear);
+    if (ids.has(receipt.observationId) || receipt.version < 1 || !/^[a-f0-9]{64}$/.test(receipt.factSha256)
+        || typeof isCurrent !== "boolean" || draft.supersedesObservationId !== receipt.observationId
+        || draft.supersedesObservationSha256 !== receipt.factSha256 || draft.correctionReason !== null
+        || draft.completeRegisterConfirmed || draft.registrationConfirmed || draft.singleShareClassConfirmed
+        || draft.documents.some(document => document.companyId !== companyId)
+        || new Set(draft.documents.map(document => JSON.stringify([document.documentId, document.role]))).size
+          !== draft.documents.length) throw new TalliApiError(502, undefined);
+    ids.add(receipt.observationId);
+  }
+  // Independent lineages can each be current. Only the backend has the original
+  // predecessor graph; preserve its currentness flags, including historical rows.
+  return value;
+}
+
 export async function loadRf1086SourceDocument(accessToken: string, companyId: string, documentId: string) {
   const value = await client(accessToken).rf1086ReadSourceDocument(documentId, companyId, request());
   if (value.companyId !== companyId || value.documentId !== documentId) throw new TalliApiError(502, undefined);
@@ -303,6 +326,53 @@ export function rf1086SourceErrorMessage(error: unknown) {
   if (error instanceof TalliApiError && error.status === 401) return "Logg inn på nytt for å fortsette med årsgrunnlaget.";
   if (error instanceof TalliApiError && error.status === 403) return "Du har ikke tilgang til å bekrefte dette årsgrunnlaget.";
   return "Årsgrunnlaget kunne ikke bekreftes. Kontroller lagret status før du prøver igjen.";
+}
+
+const registerPrewriteValidationCodes = new Set([
+  "rf1086_register_amount_invalid", "rf1086_register_count_invalid", "rf1086_register_capital_count_mismatch",
+  "rf1086_register_capital_below_supported_minimum", "rf1086_register_holders_missing", "rf1086_register_holder_invalid",
+  "rf1086_register_holder_identity_invalid", "rf1086_register_holder_count_invalid", "rf1086_register_holder_duplicate",
+  "rf1086_register_holder_total_mismatch", "rf1086_register_owner_confirmation_required", "rf1086_register_effective_time_invalid",
+  "rf1086_register_holder_identity_changed", "rf1086_register_issue_transition_invalid", "rf1086_register_issue_holder_transition_invalid",
+  "rf1086_register_nominal_holder_transition_invalid", "rf1086_register_nominal_transition_invalid", "rf1086_register_event_unsupported",
+  "rf1086_register_documents_missing", "rf1086_register_document_binding_invalid", "rf1086_register_document_role_invalid",
+  "rf1086_register_document_duplicate", "rf1086_register_document_version_conflict", "rf1086_register_document_coverage_incomplete",
+  "rf1086_register_correction_reason_required", "rf1086_register_correction_scope_invalid",
+  "rf1086_register_document_postdates_capture", "rf1086_register_capture_predates_event",
+  "rf1086_source_register_original_required", "rf1086_source_documents_unverified",
+]);
+const registerMessages: Record<string, string> = {
+  rf1086_register_predecessor_mismatch: "Aksjeeierboken er allerede korrigert. Last inn lagrede opplysninger på nytt før du fortsetter.",
+  rf1086_register_idempotency_conflict: "Dette lagringsforsøket er allerede brukt med andre opplysninger. Kontroller lagret status før du starter et nytt forsøk.",
+  rf1086_register_correction_reason_required: "Beskriv hvorfor opplysningene fra aksjeeierboken skal korrigeres.",
+  rf1086_register_correction_scope_invalid: "En korrigering må beholde selskap, år, hendelsestype og tidspunkt fra den lagrede registreringen.",
+  rf1086_register_owner_confirmation_required: "Kontroller og bekreft hele aksjeeierboken, registreringen og at selskapet har én aksjeklasse.",
+  rf1086_register_effective_time_invalid: "Oppgi dato og lokalt klokkeslett i det valgte inntektsåret, med hele sekunder.",
+  rf1086_register_document_coverage_incomplete: "Legg ved aksjeeierboken før og etter endringen, og dokumentasjon på registreringen.",
+  rf1086_register_capital_count_mismatch: "Aksjekapitalen må stemme med antall aksjer og pålydende. Kontroller begge tidspunktene.",
+  rf1086_register_holder_total_mismatch: "Aksjene fordelt på aksjonærene må stemme med samlet antall aksjer.",
+  rf1086_source_register_original_required: "Velg vedlagte originaldokumenter fra selskapets dokumenter.",
+  rf1086_source_documents_unverified: "Dokumentopplysningene kunne ikke bekreftes. Hent originalene på nytt og kontroller vedleggene.",
+};
+
+// Like source capture, this classifies only this response, never an earlier
+// uncertain attempt. Conflicts, storage failures and unknown codes stay uncertain.
+export function rf1086RegisterCaptureRejected(error: unknown): boolean {
+  if (!(error instanceof TalliApiError) || error.problem?.status !== error.status) return false;
+  if (error.status === 409) return registerPrewriteValidationCodes.has(error.problem.code);
+  return (error.status === 400 || error.status === 422)
+    && ["rf1086_source_invalid_request", "SHAREHOLDER_REGISTER_FILING_INVALID_INPUT", "invalid_request"].includes(error.problem.code);
+}
+
+export function rf1086RegisterErrorMessage(error: unknown) {
+  const code = error instanceof TalliApiError ? error.problem?.code : undefined;
+  if (code && Object.hasOwn(registerMessages, code)) return registerMessages[code];
+  if ((code && registerPrewriteValidationCodes.has(code)) || (error instanceof TalliApiError && error.status === 422)) {
+    return "Kontroller aksjonærene, aksjene, beløpene og dokumenthenvisningene før du prøver igjen.";
+  }
+  if (error instanceof TalliApiError && error.status === 401) return "Logg inn på nytt for å fortsette med aksjeeierboken.";
+  if (error instanceof TalliApiError && error.status === 403) return "Du har ikke tilgang til å bekrefte aksjeeierboken for dette selskapet.";
+  return "Opplysningene fra aksjeeierboken kunne ikke bekreftes. Kontroller lagret status før du prøver igjen.";
 }
 
 const codes = new Set(["invalid_request", "authentication_required", "configuration_unavailable", "approval_expired",

@@ -308,6 +308,7 @@ const companyTaxOperations = {
 const shareholderRegisterFilingOperations = {
   sourceIntakeBasis: ["/api/v1/shareholder-register-filings/source-intake-basis", "get", "rf1086ReadSourceIntakeBasis"],
   currentYearSource: ["/api/v1/shareholder-register-filings/current-year-source", "get", "rf1086ReadCurrentYearSource"],
+  registerObservations: ["/api/v1/shareholder-register-filings/register-observations", "get", "rf1086ListRegisterObservations"],
   sourceDocument: ["/api/v1/shareholder-register-filings/source-documents/{documentId}", "get", "rf1086ReadSourceDocument"],
   captureRegisterObservation: ["/api/v1/shareholder-register-filings/register-observations", "post", "rf1086CaptureRegisterObservation"],
   captureYearSource: ["/api/v1/shareholder-register-filings/year-sources", "post", "rf1086CaptureYearSource"],
@@ -945,6 +946,9 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "RfSourcePreviewRequestWire",
   "RfYearSourceReceiptWire",
   "RfRegisterObservationReceiptWire",
+  "RfRegisterObservationDraftWire",
+  "RfRegisterObservationRecordWire",
+  "RfRegisterObservationsWire",
   "RfSourcePreviewWire",
   "LegacyRf1086SendCommandWire", "LegacyRf1086ReconcileCommandWire", "LegacyRf1086SendResultWire", "LegacyRf1086ReconcileResultWire",
   "Rf1086GeneratePreviewWire",
@@ -3155,6 +3159,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const query = new URLSearchParams({ companyId });
       return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-documents/" + encodeURIComponent(documentId) + "?" + query,
         "GET", request, undefined, isRfSourceDocumentWire);
+    },
+
+    async rf1086ListRegisterObservations(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfRegisterObservationsWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations?" + query,
+        "GET", request, undefined, isRfRegisterObservationsWire);
     },
 
     async rf1086CaptureRegisterObservation(

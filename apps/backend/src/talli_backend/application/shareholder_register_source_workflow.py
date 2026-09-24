@@ -25,6 +25,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     Rf1086RegisterObservationSnapshot, Rf1086VerifiedRegisterObservationContext,
     Rf1086SourceQuery, Rf1086RegisterObservationId, Rf1086RegisterObservationMatchQuery,
     verify_rf1086_register_observation, rf1086_event_register_states,
+    assert_rf1086_register_observation_integrity, Rf1086RegisterObservationError,
     Rf1086YearSourceId, Rf1086SourcePreview, GenerateRf1086SourcePreview, PreviewId,
     assert_rf1086_year_source_integrity, assert_rf1086_year_source_fresh,
     assert_rf1086_source_preview_matches, create_rf1086_preparation_service,
@@ -526,6 +527,38 @@ class ShareholderRegisterSourceWorkflow:
         _require(len(receipts) == sum(event.type in {'cash_issue', 'loss_covering_reduction'} for event in command.case.events),
                  'rf1086_source_independent_register_unavailable')
         return tuple(receipts)
+
+    async def read_register_observations(self, access_token: str, *, company_id: CompanyId,
+            income_year: IncomeYear) -> tuple[Rf1086RegisterObservationSnapshot, ...]:
+        """Retained history for owner correction; does not reverify original bytes."""
+        session = await self._rf_sessions.session(access_token)
+        company = (await self._company_access.company_record(access_token, company_id=str(company_id))).company
+        _require(company.id == str(company_id) and company.role == 'owner' and company.entity_type == 'AS'
+                 and company.identity_confirmed_at is not None and company.identity_locked_at is not None,
+                 'rf1086_source_owner_required')
+        observations = await session.list_register_observations(Rf1086SourceQuery(company_id, income_year, session.actor_id))
+        by_id = {}
+        for observation in observations:
+            assert_rf1086_register_observation_integrity(observation)
+            if (observation.command.company_id != company_id or observation.command.income_year != income_year
+                    or observation.observation_id in by_id):
+                raise Rf1086RegisterObservationError('rf1086_register_storage_invalid')
+            by_id[observation.observation_id] = observation
+        successors = set()
+        for observation in observations:
+            predecessor_id = observation.command.supersedes_observation_id
+            if predecessor_id is None:
+                continue
+            predecessor = by_id.get(predecessor_id)
+            if (predecessor is None or predecessor_id in successors
+                    or observation.command.supersedes_observation_sha256 != predecessor.fact_sha256
+                    or observation.version != predecessor.version + 1
+                    or observation.command.effective_at != predecessor.command.effective_at
+                    or observation.command.event_kind != predecessor.command.event_kind
+                    or observation.confirmed_at <= predecessor.confirmed_at):
+                raise Rf1086RegisterObservationError('rf1086_register_storage_invalid')
+            successors.add(predecessor_id)
+        return tuple(observations)
 
     async def capture_register_observation(self, access_token: str,
             command: RecordRf1086RegisterObservation, *, idempotency_key: IdempotencyKey,
