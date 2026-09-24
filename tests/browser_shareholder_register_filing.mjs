@@ -255,10 +255,11 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     assert.equal(accepted.productionSubmissions.length, 1);
     assert.equal(accepted.productionSubmissions[0].feedbackState, "accepted");
     assert.equal(accepted.productionSubmissions[0].payloadHash, payloadHash);
-    assert.equal(accepted.feedbackArtifacts.length, 2);
-    assert.equal(accepted.feedbackArtifacts.filter(({ authorityReference }) => authorityReference === "talli:rf1086-feedback-provenance:v1").length, 1);
-    const artifact = accepted.feedbackArtifacts.find(({ authorityReference }) => authorityReference !== "talli:rf1086-feedback-provenance:v1");
-    assert.ok(artifact);
+    const retained = (await rfFixtureTransaction(database, () => database.query(
+      "select id,company_id,submission_id,document_id,sha256,authority_reference from shareholder_register_filing.production_feedback_artifacts where company_id=$1 and submission_id=$2",
+      [primary.id, accepted.productionSubmissions[0].id],
+    ))).rows;
+    const artifact = selectFreshFeedbackArtifact(accepted, retained);
     assert.equal(artifact.submissionId, accepted.productionSubmissions[0].id);
     assert.equal(artifact.classification, "accepted");
     const download = productionSection.locator(`a[href="/documents/${artifact.documentId}/download"]`);
@@ -380,6 +381,25 @@ async function createUser(admin, prefix, users) {
   assert.ifError(result.error);
   users.push(result.data.user.id);
   return { id: result.data.user.id, email, password };
+}
+
+function selectFreshFeedbackArtifact(accepted, retained) {
+  assert.equal(accepted.feedbackArtifacts.length, 2);
+  assert.equal(retained.length, 2);
+  assert.equal(new Set(retained.map(row => row.id)).size, 2);
+  assert.equal(retained.filter(row => row.authority_reference === "talli:rf1086-feedback-provenance:v1").length, 1);
+  // Provider attribution belongs to retained/archive evidence. The ordinary
+  // workspace deliberately omits it; bind each public artifact by receipt ID.
+  for (const row of retained) {
+    const wire = accepted.feedbackArtifacts.find(artifact => artifact.id === row.id);
+    assert.ok(wire);
+    assert.equal(wire.companyId, row.company_id);
+    assert.equal(wire.submissionId, row.submission_id);
+    assert.equal(wire.documentId, row.document_id);
+    assert.equal(wire.sha256, row.sha256);
+  }
+  const original = retained.find(row => row.authority_reference !== "talli:rf1086-feedback-provenance:v1");
+  return accepted.feedbackArtifacts.find(artifact => artifact.id === original.id);
 }
 
 async function seedCompany(admin, database, ownerId, name, companies) {

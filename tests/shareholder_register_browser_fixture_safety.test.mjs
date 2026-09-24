@@ -275,3 +275,30 @@ for (const failureAt of [null, "seed", "restore"]) test(`fresh signoff fixture r
   assert.deepEqual(triggers, originalTriggers);
   assert.doesNotMatch(statements.join("\n"), /session_replication_role|no force row level security|disable trigger (?:all|user)/iu);
 });
+
+
+test("fresh browser selects retained feedback using the actual redacted workspace wire", () => {
+  const result = spawnSync(process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python",
+    ["tests/fixtures/rf1086_workspace_feedback.py"], { encoding: "utf8", timeout: 10_000 });
+  assert.equal(result.status, 0, result.stderr);
+  const { accepted, retained } = JSON.parse(result.stdout);
+  assert.equal(accepted.feedbackArtifacts.length, 2);
+  assert.ok(accepted.feedbackArtifacts.every(row => !("authorityReference" in row)));
+  const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
+  const body = source.slice(source.indexOf("function selectFreshFeedbackArtifact("), source.indexOf("async function seedCompany("));
+  const selectFreshFeedbackArtifact = vm.runInNewContext(`(${body.trim()})`, { assert });
+  const artifact = selectFreshFeedbackArtifact(accepted, retained);
+  const original = retained.find(row => row.authority_reference !== "talli:rf1086-feedback-provenance:v1");
+  assert.equal(artifact.documentId, original.document_id);
+  assert.equal(artifact.sha256, original.sha256);
+  assert.equal(selectFreshFeedbackArtifact(accepted, [...retained].reverse()).id, artifact.id);
+  for (const field of ["company_id", "submission_id", "document_id", "sha256"]) {
+    const changed = structuredClone(retained);
+    changed[0][field] = "mismatched-original";
+    assert.throws(() => selectFreshFeedbackArtifact(accepted, changed));
+  }
+  const missingProvenance = retained.map(row => ({ ...row, authority_reference: "original-only" }));
+  assert.throws(() => selectFreshFeedbackArtifact(accepted, missingProvenance));
+  assert.throws(() => selectFreshFeedbackArtifact(accepted, [retained[0], retained[0]]));
+  assert.throws(() => selectFreshFeedbackArtifact({ ...accepted, feedbackArtifacts: accepted.feedbackArtifacts.slice(1) }, retained));
+});
