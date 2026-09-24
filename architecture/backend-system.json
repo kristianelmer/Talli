@@ -177,13 +177,14 @@
     },
     {
       "name": "corporate-governance",
-      "purpose": "Authenticates one verified owner, derives deterministic annual-close, owner-dividend, shareholder-loan, supported domestic capital, financing and group-event facts in Python, serves immutable lifecycles, verifies Documents evidence, and atomically coordinates Ledger posting and optional Banking claims through narrow contracts.",
+      "purpose": "Authenticates one verified owner, derives deterministic annual-close, owner-dividend, shareholder-loan, supported domestic capital, financing and group-event facts in Python, serves immutable lifecycles, verifies Documents evidence and current independent RF capital observations at a point in time, and atomically coordinates Ledger posting and optional Banking claims through narrow contracts. Cross-owner evidence freshness is not transactional.",
       "publicPackages": [
         "talli_backend.modules.banking.public",
         "talli_backend.modules.company_access.public",
         "talli_backend.modules.corporate_governance.public",
         "talli_backend.modules.documents.public",
-        "talli_backend.modules.ledger.public"
+        "talli_backend.modules.ledger.public",
+        "talli_backend.modules.shareholder_register_filing.public"
       ],
       "routes": [
         "/api/v1/corporate-governance/decision-facts",
@@ -1116,7 +1117,8 @@
       "talli_backend.application.annual_accounts_session",
       "talli_backend.modules.annual_accounts_filing.public",
       "talli_backend.json_transport",
-      "talli_backend.application.shareholder_register_source_workflow"
+      "talli_backend.application.shareholder_register_source_workflow",
+      "talli_backend.application.corporate_register_evidence"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",
@@ -1140,7 +1142,8 @@
       "talli_backend.modules.shareholder_register_filing.public",
       "talli_backend.modules.system_boundary.public",
       "talli_backend.modules.validation_observation.public",
-      "talli_backend.modules.audit.public"
+      "talli_backend.modules.audit.public",
+      "talli_backend.application.corporate_register_evidence"
     ],
     "adapters": [
       "__future__",
@@ -1215,7 +1218,8 @@
       "urllib.request",
       "talli_backend.modules.audit.public",
       "talli_backend.adapters.postgres_document_evidence",
-      "talli_backend.adapters.supabase_documents"
+      "talli_backend.adapters.supabase_documents",
+      "talli_backend.application.corporate_register_evidence"
     ]
   }
 }

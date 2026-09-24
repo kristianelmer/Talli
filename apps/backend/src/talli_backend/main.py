@@ -30,6 +30,7 @@ from talli_backend.application.shareholder_register_filing_session import (
 )
 from talli_backend.application.shareholder_register_filing_workflow import ShareholderRegisterFilingWorkflow
 from talli_backend.application.shareholder_register_source_workflow import ShareholderRegisterSourceWorkflow
+from talli_backend.application.corporate_register_evidence import CorporateRegisterEvidenceVerifier
 from talli_backend.application.launch_signoffs import (
     LaunchSignoffAuthenticationError, LaunchSignoffError, LaunchSignoffKey,
     LaunchSignoffRecord, LaunchSignoffSessionFactory, LaunchSignoffStatus,
@@ -5107,10 +5108,6 @@ def create_app(
         if documents_session_factory is not None
         else SupabaseDocumentsAdapter.from_environment()
     )
-    corporate_governance_application = compose_corporate_governance_application(
-        corporate_governance_session_factory,
-        documents_application,
-    )
     banking_application = compose_banking_application(banking_session_factory)
     billing_sessions = (
         billing_session_factory
@@ -5143,6 +5140,11 @@ def create_app(
             company_access_service=company_access_service,
         )
 
+    corporate_governance_application = compose_corporate_governance_application(
+        corporate_governance_session_factory,
+        documents_application,
+        CorporateRegisterEvidenceVerifier(shareholder_register_filing_session_factory, documents_application),
+    )
     shareholder_register_source_workflow = ShareholderRegisterSourceWorkflow(
         shareholder_register_filing_session_factory, company_access_service,
         documents_application, corporate_governance_application,

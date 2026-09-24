@@ -313,6 +313,14 @@
       "to": "backend:ledger"
     },
     {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.shareholder_register_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:shareholder_register_filing"
+    },
+    {
       "from": "backend-system:investment-activity",
       "imports": [
         "talli_backend.modules.banking.public"

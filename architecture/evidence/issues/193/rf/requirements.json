@@ -106,7 +106,7 @@
     "integration": "source-preview-integration-20260923.json",
     "persistence": "source-preview-persistence-runtime-20260923.json",
     "review": "review-source-preview.json",
-    "remaining": "Governance API register admission binding, observation withdrawal/invalidation, authenticated persisted source journeys, source-bound approval/send and atomic freshness, correction admission and source archive lineage remain pending."
+    "remaining": "Shared-transaction Governance/RF admission freshness, observation withdrawal/invalidation, authenticated persisted source journeys, source-bound approval/send, correction admission and source archive lineage remain pending."
   },
   "ciRegressionVerification": "ci-regressions-20260923.json",
   "capitalLifecycleSourceIntegration": "capital-lifecycle-integration-20260923.json",
@@ -126,5 +126,6 @@
   "sourceCompanyGuard": "source-company-guard-20260924.json",
   "customerSourceEditor": "customer-source-editor-20260924.json",
   "ciSuccessorAndRouteRepairs": "ci-successor-and-route-repairs-20260924.json",
-  "customerRegisterIntake": "customer-register-intake-20260924.json"
+  "customerRegisterIntake": "customer-register-intake-20260924.json",
+  "governanceRegisterBinding": "governance-register-binding-20260924.json"
 }

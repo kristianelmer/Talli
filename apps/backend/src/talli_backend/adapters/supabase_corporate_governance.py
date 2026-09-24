@@ -23,6 +23,7 @@ from talli_backend.adapters.supabase_ledger import (
     _posted_entry,
 )
 from talli_backend.application.annual_data_compatibility import LegacyAnnualDataView
+from talli_backend.application.corporate_register_evidence import CorporateRegisterEvidenceVerifier
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
@@ -1481,11 +1482,13 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
 def compose_corporate_governance_application(
     sessions: CorporateGovernanceSessionFactory | None,
     documents: DocumentsSessionFactory,
+    register_evidence: CorporateRegisterEvidenceVerifier | None = None,
 ) -> CorporateGovernanceApplication:
     return CorporateGovernanceApplication(
         sessions or SupabaseCorporateGovernanceAdapter.from_environment(),
         documents,
         LedgerService,
+        register_evidence,
     )
 
 

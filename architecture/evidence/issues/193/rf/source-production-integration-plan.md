@@ -29,8 +29,11 @@ current-version correction, before/after holdings, all three evidence roles and
 stable retry requests. The capital-event UI selects an actual current observation
 and the server action rereads its exact ID/version/hash instead of treating a
 document as a register fact. Authenticated full-stack browser journeys remain
-pending. Direct Governance API admission must still resolve and verify those
-references itself; the web reread is not a substitute for that backend boundary.
+pending. Direct Governance API admission now resolves the exact current RF
+observation, checks its scope/date/economics and verifies current originals through
+Documents before Ledger recognition. Completed exact replay precedes these new
+live checks. This is a point-in-time check across separate owner transactions;
+shared transaction freshness remains pending.
 Explicit register withdrawal and its downstream invalidation also remain pending. Increased
 nominal-value events remain visibly unavailable for complete source capture until
 Governance support is implemented.

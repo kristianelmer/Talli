@@ -1,6 +1,14 @@
 # Consequential RF freshness: current write/lock inventory
 
-Source inspection on 2026-09-24. This is an implementation inventory, not concurrency or production acceptance evidence. No database/provider calls were made. Scope: source-backed approval and the durable first-send claim; recovery of a claimed operation remains governed by the existing journal.
+Initial source inspection on 2026-09-24. This is an implementation inventory, not concurrency or production acceptance evidence. The update below distinguishes implemented foundations from the remaining shared admission work. No database/provider calls were made. Scope: source-backed approval and the durable first-send claim; recovery of a claimed operation remains governed by the existing journal.
+
+## Implemented since the initial inventory
+
+- RF source, register and source-preview writers now take the company guard before their local locks and recheck owner/eligibility after waiting. See [source-company-guard-20260924.json](source-company-guard-20260924.json). The RF writer row below records the original gap; it is no longer outstanding for these three writer paths. Other owners and production approval/send remain outside that guarantee.
+- Documents now retains verified immutable original bytes and exposes transaction-bound receipt read/assert contracts. See [immutable-document-originals-20260924.json](immutable-document-originals-20260924.json). The original-byte section below explains the gap this foundation addresses. Consequential admission still needs to consume those receipts; archive, backup, expiry and cancellation/deletion integration remain outstanding.
+- Governance's customer action now selects a current RF register observation and rereads its receipt. See [customer-register-intake-20260924.json](customer-register-intake-20260924.json). Direct API validation has subsequently been added through the RF and Documents public contracts. These checks still run in separate owner transactions and do not establish shared transaction freshness.
+
+The following initial inventory remains useful for the missing transaction composition, public query grants and writer ordering. It must not be read as a claim that the implemented foundations are still absent.
 
 ## Recommended starting point
 

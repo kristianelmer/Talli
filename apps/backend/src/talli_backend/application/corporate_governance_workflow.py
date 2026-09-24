@@ -8,6 +8,10 @@ from dataclasses import replace
 from decimal import Decimal
 from typing import Protocol
 
+from talli_backend.application.corporate_register_evidence import (
+    CorporateRegisterEvidenceVerifier, requires_register_observation,
+)
+
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceSessionFactory,
     CorporateGovernanceWorkflowTransaction,
@@ -323,11 +327,13 @@ class CorporateGovernanceApplication:
         session_factory: CorporateGovernanceSessionFactory,
         documents_session_factory: DocumentsSessionFactory,
         ledger_facade_factory: LedgerFacadeFactory,
+        register_evidence: CorporateRegisterEvidenceVerifier | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._documents_session_factory = documents_session_factory
         self._ledger_facade_factory = ledger_facade_factory
         self._service = CorporateGovernanceService()
+        self._register_evidence = register_evidence
 
     async def authenticated_actor_id(self, access_token: str) -> ActorId:
         """Resolve the verified actor without accepting an actor from transport input."""
@@ -1186,6 +1192,13 @@ class CorporateGovernanceApplication:
             prepared = await transaction.prepare_supported_event(command, canonical)
             if prepared.replay is not None:
                 return prepared.replay
+            observation = None
+            if requires_register_observation(command):
+                if self._register_evidence is None:
+                    raise CorporateGovernanceError.unavailable()
+                # Point-in-time public-owner reads; no shared company guard is
+                # held here. Exact completed replay precedes these live checks.
+                observation = await self._register_evidence.verify(access_token, command)
             primary, corroborating = _ledger_sources(command, canonical.facts_sha256)
             posted = await self._ledger_facade_factory(
                 transaction
@@ -1233,11 +1246,17 @@ class CorporateGovernanceApplication:
                         str(posted.entry_id)
                     ),
                 )
-            return await transaction.complete_supported_event(
+            result = await transaction.complete_supported_event(
                 command,
                 AccountingEntryReference(str(posted.entry_id)),
                 prepared,
             )
+            if observation is not None and observation.confirmed_at > result.recorded_at:
+                raise CorporateGovernanceError.precondition(
+                    CorporateGovernanceErrorCode.CORPORATE_EVENT_EVIDENCE_INCOMPLETE,
+                    "The independent register observation postdates the Governance event.",
+                )
+            return result
 
     async def reverse_supported_event(
         self,
