@@ -110,7 +110,7 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     const backendPort = await allocateLoopbackPort();
     const siteOrigin = `http://localhost:${webPort}`;
     const backendOrigin = `http://127.0.0.1:${backendPort}`;
-    resources.mock = await startRf1086FilingAuthorityMock({ callbackOrigin: siteOrigin });
+    resources.mock = await startRf1086FilingAuthorityMock({ callbackOrigin: siteOrigin, organizationNumber: primary.organizationNumber });
     const callbackKey = `local-authority-browser-${randomUUID()}`;
     const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048,
       privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } });
@@ -255,20 +255,23 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     assert.equal(accepted.productionSubmissions.length, 1);
     assert.equal(accepted.productionSubmissions[0].feedbackState, "accepted");
     assert.equal(accepted.productionSubmissions[0].payloadHash, payloadHash);
-    assert.equal(accepted.feedbackArtifacts.length, 1);
-    const artifact = accepted.feedbackArtifacts[0];
+    assert.equal(accepted.feedbackArtifacts.length, 2);
+    assert.equal(accepted.feedbackArtifacts.filter(({ authorityReference }) => authorityReference === "talli:rf1086-feedback-provenance:v1").length, 1);
+    const artifact = accepted.feedbackArtifacts.find(({ authorityReference }) => authorityReference !== "talli:rf1086-feedback-provenance:v1");
+    assert.ok(artifact);
     assert.equal(artifact.submissionId, accepted.productionSubmissions[0].id);
     assert.equal(artifact.classification, "accepted");
+    const download = productionSection.locator(`a[href="/documents/${artifact.documentId}/download"]`);
     for (const width of [320, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `fresh RF overflow at ${width}`);
-      assert.ok(await productionSection.getByRole("link", { name: /Last ned .*tilbakemelding/u }).isVisible());
+      assert.equal(await productionSection.getByRole("link", { name: /Last ned .*tilbakemelding/u }).count(), 2);
+      assert.ok(await download.isVisible());
     }
     for (let reload = 0; reload < 2; reload += 1) {
       await page.reload();
       await productionSection.getByText("Godkjent", { exact: true }).waitFor();
     }
-    const download = productionSection.getByRole("link", { name: /Last ned .*tilbakemelding/u });
     await download.focus();
     assert.equal(await download.evaluate((element) => element === document.activeElement), true);
     const receipt = await context.request.get(new URL(await download.getAttribute("href"), siteOrigin).href, { maxRedirects: 0 });
@@ -279,6 +282,9 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     assert.equal(bytes.status(), 200);
     assert.equal(createHash("sha256").update(await bytes.body()).digest("hex"), artifact.sha256);
     const successfulCalls = resources.mock.snapshot();
+    assert.equal(successfulCalls.filter(({ operation }) => operation === "list_documents").length, 0);
+    assert.equal(successfulCalls.filter(({ operation }) => operation === "read_dialog").length, 1);
+    assert.equal(successfulCalls.filter(({ operation }) => operation === "read_feedback").length, 1);
     assert.equal(successfulCalls.filter(({ operation }) => operation === "post_hovedskjema").length, 1);
     assert.equal(successfulCalls.filter(({ operation }) => operation === "post_underskjema").length, 1);
     assert.equal(successfulCalls.filter(({ operation }) => operation === "confirm").length, 1);
@@ -394,7 +400,7 @@ async function seedCompany(admin, database, ownerId, name, companies) {
     values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'authority-v1','in_app_clickwrap',now())`,
     [id, ownerId, name, organizationNumber, terms.version, terms.effectiveDate, terms.path, terms.contentSha256,
       dpa.version, dpa.effectiveDate, dpa.path, dpa.contentSha256]);
-  return { id, name };
+  return { id, name, organizationNumber };
 }
 
 async function authorityFixtureTransaction(database, operation) {

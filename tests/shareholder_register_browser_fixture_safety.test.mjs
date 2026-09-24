@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
+import { promisify } from "node:util";
 
 import { startRf1086FilingAuthorityMock } from "./fixtures/rf1086-filing-authority-mock.mjs";
 import { fixtureTableTransaction } from "./support/rf1086-fixture-access.mjs";
@@ -36,7 +37,7 @@ print('exact-local-templates')`;
 });
 
 test("fresh local RF mock preserves request identity and emits relationship-bound feedback", async (t) => {
-  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001" });
+  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001", organizationNumber: "999999999" });
   t.after(() => mock.close());
   const base = `${mock.baseUrl}/skatte/2025`;
   const key = randomUUID();
@@ -55,18 +56,16 @@ test("fresh local RF mock preserves request identity and emits relationship-boun
     method: "POST", headers: { ...headers, idempotencykey: randomUUID() },
   });
   assert.equal(confirmed.status, 200);
-  const { forsendelseId } = await confirmed.json();
-  const list = await fetch(`${base}/forsendelser/${forsendelseId}/dokumenter?page=0&size=50`, { headers });
-  assert.equal(list.status, 200);
-  const { dokumenter } = await list.json();
-  const artifact = await fetch(`${base}/forsendelser/${forsendelseId}/dokumenter/${dokumenter[0].dokumentId}`, { headers });
-  assert.equal(artifact.status, 200);
-  const xml = await artifact.text();
-  assert.ok(xml.includes(`<forsendelseid>${forsendelseId}</forsendelseid>`));
-  assert.ok(xml.includes("<inntektsaar>2025</inntektsaar>"));
-  assert.ok(xml.includes("<leveransestatus>godkjent</leveransestatus>"));
-  assert.deepEqual(mock.snapshot().map(({ operation }) => operation), [
-    "post_hovedskjema", "replayed_mutation", "request_rejected", "post_underskjema", "confirm", "list_documents", "read_feedback",
+  const { forsendelseId, dialogId } = await confirmed.json();
+  const result = await promisify(execFile)(process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python",
+    ["tests/fixtures/reconcile_authority_browser_feedback.py"], {
+      env: { ...process.env, TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL: mock.baseUrl,
+        TALLI_FIXTURE_ORG: "999999999", TALLI_FIXTURE_SUBMISSION: forsendelseId, TALLI_FIXTURE_DIALOG: dialogId,
+        TALLI_FIXTURE_LAUNCHER: "start_shareholder_register_filing_backend.py" }, timeout: 15_000,
+    });
+  assert.deepEqual(JSON.parse(result.stdout), { state: "accepted", artifacts: 2 });
+  assert.deepEqual(mock.snapshot().filter(({ service }) => service === "skatteetaten").map(({ operation }) => operation), [
+    "post_hovedskjema", "replayed_mutation", "request_rejected", "post_underskjema", "confirm", "read_dialog", "read_feedback",
   ]);
 });
 
@@ -96,7 +95,7 @@ test("fresh browser starts without a preview or approval and verifies the comple
 });
 
 test("ambiguous fresh mock response records the original mutation before disconnecting", async (t) => {
-  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001" });
+  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001", organizationNumber: "999999999" });
   t.after(() => mock.close());
   mock.failNextMainResponse();
   const key = randomUUID();

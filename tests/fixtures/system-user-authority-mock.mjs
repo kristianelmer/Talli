@@ -10,7 +10,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
 const SYSTEM_USER_RIGHT = "ske-innrapportering-aksjonaerregisteroppgave";
 const CALLBACK_URL = "https://talli.no/auth/systembruker/confirm";
 const FEEDBACK_NAMESPACE =
-  "urn:ske:fastsetting:innsamling:grunnlagsdata:tilbakemelding:innsendingstilbakemelding:v2";
+  "urn:ske:fastsetting:innsamling:aksjonaeroppgave:ar_til_mag:v0_1";
 const MAX_REQUEST_BYTES = 64 * 1024;
 
 const preloadBaseUrl = process.env.TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL;
@@ -143,6 +143,10 @@ export async function startSystemUserAuthorityMock({ callbackOrigin }) {
     tamperedCallbackRequestId: null,
     feedbackDocumentId: randomUUID(),
     forsendelseId: null,
+    dialogId: null,
+    organizationNumber: null,
+    incomeYear: null,
+    feedbackTransmissionId: randomUUID(),
     calls: [],
   };
 
@@ -158,6 +162,7 @@ export async function startSystemUserAuthorityMock({ callbackOrigin }) {
           "altinn:authentication/systemuser.request.write",
           "altinn:authentication/systemuser.request.read",
           "skatteetaten:innrapporteringaksjonaerregisteroppgave",
+          "digdir:dialogporten",
         ]).has(scope));
         state.calls.push({ service: "maskinporten", operation: "token" });
         return json(response, 200, {
@@ -259,6 +264,24 @@ export async function startSystemUserAuthorityMock({ callbackOrigin }) {
         return response.end();
       }
 
+      const dialogRead = url.pathname.match(/^\/dialogporten\/dialogs\/([0-9a-f-]+)$/u);
+      if (request.method === "GET" && dialogRead && url.search === "") {
+        assert.equal(dialogRead[1], state.dialogId);
+        assert.ok(state.forsendelseId && state.organizationNumber && state.incomeYear);
+        state.calls.push({ service: "dialogporten", operation: "read_dialog" });
+        return json(response, 200, {
+          id: state.dialogId,
+          party: "urn:altinn:organization:identifier-no:" + state.organizationNumber,
+          serviceResource: "urn:altinn:resource:ske-innrapportering-aksjonaerregisteroppgave",
+          transmissions: [
+            { id: state.forsendelseId, type: "Submission", isAuthorized: true },
+            { id: state.feedbackTransmissionId, relatedTransmissionId: state.forsendelseId,
+              type: "Acceptance", isAuthorized: true, createdAt: "2026-09-24T00:00:00Z",
+              attachments: [{ id: state.feedbackDocumentId }] },
+          ],
+        });
+      }
+
       const documentList = url.pathname.match(
         /^\/skatte\/(\d{4})\/forsendelser\/([0-9a-f-]+)\/dokumenter$/u,
       );
@@ -277,10 +300,12 @@ export async function startSystemUserAuthorityMock({ callbackOrigin }) {
         /^\/skatte\/(\d{4})\/forsendelser\/([0-9a-f-]+)\/dokumenter\/([0-9a-f-]+)$/u,
       );
       if (request.method === "GET" && documentRead) {
-        assert.equal(documentRead[2], state.forsendelseId);
+        assert.equal(documentRead[2], state.feedbackTransmissionId);
+        assert.equal(Number(documentRead[1]), state.incomeYear);
+        assert.equal(url.search, "");
         assert.equal(documentRead[3], state.feedbackDocumentId);
         state.calls.push({ service: "skatteetaten", operation: "read_feedback" });
-        const bytes = feedbackBytes({ incomeYear: Number(documentRead[1]), forsendelseId: documentRead[2] });
+        const bytes = feedbackBytes({ incomeYear: state.incomeYear, organizationNumber: state.organizationNumber });
         response.writeHead(200, {
           "content-type": "application/xml",
           "content-length": String(bytes.byteLength),
@@ -306,9 +331,12 @@ export async function startSystemUserAuthorityMock({ callbackOrigin }) {
   return {
     baseUrl: `http://127.0.0.1:${address.port}`,
     feedbackDocumentId: state.feedbackDocumentId,
-    setForsendelseId(value) {
-      assert.match(value, /^[0-9a-f-]{36}$/u);
-      state.forsendelseId = value;
+    setFeedbackContext({ forsendelseId, dialogId, organizationNumber, incomeYear }) {
+      assert.match(forsendelseId, UUID_PATTERN);
+      assert.match(dialogId, UUID_PATTERN);
+      assert.match(organizationNumber, /^[0-9]{9}$/u);
+      assert.ok(Number.isInteger(incomeYear) && incomeYear >= 2000 && incomeYear <= 2100);
+      Object.assign(state, { forsendelseId, dialogId, organizationNumber, incomeYear });
     },
     setTamperedCallbackRequestId(value) {
       assert.match(value, /^[0-9a-f-]{36}$/u);
@@ -340,7 +368,7 @@ function approvalPage(requestId) {
   ].join("");
 }
 
-function feedbackBytes({ incomeYear, forsendelseId }) {
+export function feedbackBytes({ incomeYear, organizationNumber }) {
   const element = (name, content, attributes = "") => {
     const left = String.fromCodePoint(60);
     const right = String.fromCodePoint(62);
@@ -348,9 +376,9 @@ function feedbackBytes({ incomeYear, forsendelseId }) {
   };
   const innsendingsstatus = element("leveransestatus", "godkjent");
   const inntektsaar = element("inntektsaar", String(incomeYear));
-  const innsending = element("innsending", element("forsendelseid", forsendelseId));
-  const leveranse = element("leveranse", `${innsendingsstatus}${inntektsaar}`);
-  const xml = element("tilbakemelding", `${innsending}${leveranse}`, ` xmlns="${FEEDBACK_NAMESPACE}"`);
+  const oppgavegiver = element("oppgavegiver", element("organisasjonsnummer", organizationNumber));
+  const leveranse = element("leveranse", `${oppgavegiver}${inntektsaar}${element("leveranseoppsummering", innsendingsstatus)}`);
+  const xml = element("tilbakemelding", leveranse, ` xmlns="${FEEDBACK_NAMESPACE}"`);
   return new TextEncoder().encode(xml);
 }
 

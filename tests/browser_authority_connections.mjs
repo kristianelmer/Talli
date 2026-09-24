@@ -186,7 +186,7 @@ test("owner connects through hydrated Next, generated FastAPI transport, real RL
     assert.ok(!body.includes(original.external_ref) && !body.includes(original.altinn_request_id));
     assert.ok(!body.includes(callbackKey) && !body.includes(privateKey));
     const production = await seedHistoricalRf(database, primary.id, owner.id, original);
-    resources.mock.setForsendelseId(production.forsendelseId);
+    resources.mock.setFeedbackContext({ ...production, organizationNumber: primary.organizationNumber, incomeYear: 2025 });
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`${siteOrigin}/filing/aksjonaerregisteroppgaven`);
     const productionSection = page.locator("section").filter({
@@ -204,14 +204,18 @@ test("owner connects through hydrated Next, generated FastAPI transport, real RL
       await page.reload();
       await productionSection.getByText("Godkjent", { exact: true }).waitFor();
     }
-    const artifact = (await rfFixtureTransaction(database, () => database.query("select document_id,sha256 from shareholder_register_filing.production_feedback_artifacts where submission_id=$1", [production.submissionId]))).rows;
-    assert.equal(artifact.length, 1);
+    const artifact = (await rfFixtureTransaction(database, () => database.query("select document_id,sha256,authority_reference from shareholder_register_filing.production_feedback_artifacts where submission_id=$1", [production.submissionId]))).rows;
+    assert.equal(artifact.length, 2);
+    assert.equal(artifact.filter((row) => row.authority_reference === "talli:rf1086-feedback-provenance:v1").length, 1);
+    const feedback = artifact.find((row) => row.authority_reference !== "talli:rf1086-feedback-provenance:v1");
+    assert.ok(feedback);
+    const download = productionSection.locator(`a[href="/documents/${feedback.document_id}/download"]`);
     for (const width of [320, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `RF overflow at ${width}`);
-      assert.ok(await productionSection.getByRole("link", { name: /Last ned .*tilbakemelding/u }).isVisible());
+      assert.equal(await productionSection.getByRole("link", { name: /Last ned .*tilbakemelding/u }).count(), 2);
+      assert.ok(await download.isVisible());
     }
-    const download = productionSection.getByRole("link", { name: /Last ned .*tilbakemelding/u });
     await download.focus();
     assert.equal(await download.evaluate((element) => element === document.activeElement), true);
     const downloadHref = await download.getAttribute("href");
@@ -221,7 +225,7 @@ test("owner connects through hydrated Next, generated FastAPI transport, real RL
     assert.ok(isLoopbackSupabaseUrl(signed.origin) && signed.searchParams.has("token"));
     const bytes = await context.request.get(signed.href, { maxRedirects: 0 });
     assert.equal(bytes.status(), 200);
-    assert.equal(createHash("sha256").update(await bytes.body()).digest("hex"), artifact[0].sha256);
+    assert.equal(createHash("sha256").update(await bytes.body()).digest("hex"), feedback.sha256);
     assert.ok(!(await page.locator("body").innerText()).includes(original.external_ref));
     // A callback URL alone has no cookie authority, even with the legitimate
     // session and a query selecting an existing request.
@@ -251,10 +255,10 @@ test("owner connects through hydrated Next, generated FastAPI transport, real RL
     assert.equal(forbidden.status, 403);
     assert.equal(forbidden.headers.get("cache-control"), "no-store");
     assert.ok(!(await forbidden.text()).includes(original.external_ref));
-    const forbiddenReceipt = await otherContext.request.get(`${siteOrigin}/documents/${artifact[0].document_id}/download`, { maxRedirects: 0 });
+    const forbiddenReceipt = await otherContext.request.get(`${siteOrigin}/documents/${feedback.document_id}/download`, { maxRedirects: 0 });
     assert.equal(forbiddenReceipt.status(), 403);
     assert.equal(forbiddenReceipt.headers().location, undefined);
-    assert.ok(!(await forbiddenReceipt.text()).includes(artifact[0].document_id));
+    assert.ok(!(await forbiddenReceipt.text()).includes(feedback.document_id));
     const forbiddenRecovery = await fetch(`${backendOrigin}/api/v1/legacy-rf1086/feedback-reconciliations`, {
       method: "POST", headers: { Authorization: `Bearer ${otherSession.access_token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ submissionId: production.submissionId }),
@@ -262,7 +266,8 @@ test("owner connects through hydrated Next, generated FastAPI transport, real RL
     assert.equal(forbiddenRecovery.status, 200);
     assert.deepEqual(await forbiddenRecovery.json(), { state: null, errorCode: "basis_unavailable", requiresManualRetry: true });
     const calls = resources.mock.snapshot();
-    assert.equal(calls.filter(({ operation }) => operation === "list_documents").length, 1);
+    assert.equal(calls.filter(({ operation }) => operation === "list_documents").length, 0);
+    assert.equal(calls.filter(({ operation }) => operation === "read_dialog").length, 1);
     assert.equal(calls.filter(({ operation }) => operation === "read_feedback").length, 1);
     assert.ok(!calls.some(({ service, operation }) => service === "skatteetaten" && operation.startsWith("post_")));
     assert.equal(calls.filter(({ operation }) => operation === "create_request").length, 2);
@@ -321,7 +326,7 @@ async function seedCompany(admin, database, ownerId, name, companies) {
     values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'authority-v1','in_app_clickwrap',now())`,
     [id, ownerId, name, organizationNumber, terms.version, terms.effectiveDate, terms.path, terms.contentSha256,
       dpa.version, dpa.effectiveDate, dpa.path, dpa.contentSha256]);
-  return { id, name };
+  return { id, name, organizationNumber };
 }
 
 async function authorityFixtureTransaction(database, operation) {
@@ -436,7 +441,7 @@ async function seedHistoricalRf(database, companyId, ownerId, request) {
     await database.query(`insert into shareholder_register_filing.production_filing_events(submission_id,operation_name,operation_state,attempt,body_hash,idempotency_key,authority_reference,resulting_status,company_id,income_year)
       values($1,'confirm','succeeded',1,$2,$3,$4,'received',$5,2025)`, [submissionId, hash, randomUUID(), JSON.stringify({ dialogId, forsendelseId }), companyId]);
   });
-  return { submissionId, forsendelseId };
+  return { submissionId, forsendelseId, dialogId };
 }
 
 
