@@ -254,3 +254,129 @@ def test_dividend_receipt_digest_does_not_depend_on_decimal_precision():
         context.traps[Rounded]=True
         context.traps[Inexact]=True
         assert actual.capture().governance_receipts[0].economic_sha256==expected
+
+
+def intake(h):
+    return asyncio.run(h.workflow.read_source_intake_basis('verified-token', company_id=COMPANY,
+        income_year=YEAR, correlation_id=CorrelationId('source-intake')))
+
+
+def test_intake_enumerates_empty_year_without_claiming_capture_or_readiness():
+    h=Harness(); result=intake(h)
+    assert result.company.org_number==h.command.case.company.org_number and result.company_id==str(COMPANY)
+    assert result.company.identity_confirmed_at==h.company.identity_confirmed_at
+    assert result.enumeration_complete and result.enumeration_sha256==h.view.enumeration_sha256
+    assert not result.dividends and not result.capital_events and not result.blockers
+    assert h.calls==['rf_auth','company','governance'] and not h.saved and not h.context
+
+
+@pytest.mark.parametrize('change',['reviewer','not_as','unconfirmed','unlocked','wrong_company'])
+def test_intake_owner_guard_precedes_governance_read(change):
+    h=Harness()
+    if change=='reviewer':h.company.role='reviewer'
+    if change=='not_as':h.company.entity_type='ENK'
+    if change=='unconfirmed':h.company.identity_confirmed_at=None
+    if change=='unlocked':h.company.identity_locked_at=None
+    if change=='wrong_company':h.company.id=str(uuid4())
+    with pytest.raises(Rf1086YearSourceError,match='owner_required'):intake(h)
+    assert h.calls==['rf_auth','company']
+
+
+@pytest.mark.parametrize('change',['company','year','decision_company','artifact_company'])
+def test_intake_rejects_incorrect_governance_scope(change):
+    h=Harness('dividend');item=h.view.dividends[0]
+    if change=='company':h.view=replace(h.view,company_id=CompanyId(str(uuid4())))
+    if change=='year':h.view=replace(h.view,income_year=IncomeYear(2026))
+    if change=='decision_company':h.view=replace(h.view,dividends=(replace(item,decision=replace(item.decision,company_id=CompanyId(str(uuid4())))),))
+    if change=='artifact_company':h.view=replace(h.view,dividends=(replace(item,artifacts=(replace(item.artifacts[0],company_id=CompanyId(str(uuid4()))),)),))
+    with pytest.raises(Rf1086YearSourceError,match='scope_mismatch'):intake(h)
+    assert 'verify_document' not in h.calls and not h.saved
+
+
+@pytest.mark.parametrize('status',['finalized','pending','rejected','superseded'])
+def test_intake_preserves_dividend_status_original_year_and_exact_receipt_document_refs(status):
+    h=Harness('dividend');h.view=replace(h.view,dividends=(replace(h.view.dividends[0],status=status),))
+    result=intake(h);item=result.dividends[0]
+    assert item.status==status and item.source_income_year==2024 and item.reporting_year==int(YEAR)
+    assert item.finalizations[0].receipt_id==RECEIPT
+    assert all(row.document_id==DOCUMENT and row.source_income_year==2024 for row in item.documents)
+    assert item.economics.amount=='1000.00'
+    assert item.economics.allocations[0].share_count_basis==100
+    assert ('rf1086_source_governance_unresolved' in result.blockers)==(status!='finalized')
+    assert 'verify_document' not in h.calls
+
+
+def test_intake_preserves_cross_year_supersession_and_invalid_economics_as_blockers():
+    h=Harness('dividend');item=h.view.dividends[0]
+    original=replace(item,status='superseded')
+    correction=replace(item,decision=replace(item.decision,decision_id=ref(CorporateDecisionId),
+        supersedes_decision_id=item.decision.decision_id,canonical_input={}),
+        reporting_date=LocalDate(date(2026,1,2)),status='pending',finalizations=())
+    h.view=replace(h.view,dividends=(original,correction))
+    result=intake(h)
+    assert len(result.dividends)==2 and result.dividends[1].reporting_year==2026
+    assert result.dividends[1].supersedes_decision_id==str(original.decision.decision_id)
+    assert result.dividends[1].economics is None
+    assert {'rf1086_source_governance_unresolved','rf1086_source_governance_economics_invalid'}<=set(result.blockers)
+
+
+def test_intake_preserves_capital_lifecycle_cross_year_phases_and_independent_register_refs():
+    from test_shareholder_register_capital_source_workflow import setup, prepare_capital
+    from talli_backend.modules.corporate_governance.public import SupportedCorporateEventId, SupportedCorporateEventPhase
+    h=setup();prepare_capital(h);item=h.view.supported_events[0]
+    earlier=replace(item.recorded,event=replace(item.recorded.event,event_id=ref(SupportedCorporateEventId),
+        phase=SupportedCorporateEventPhase.BINDING_SUBSCRIPTION,income_year=IncomeYear(2024),
+        event_date=LocalDate(date(2024,12,20))))
+    h.view=replace(h.view,supported_events=(replace(item,lifecycle_events=(earlier,item.recorded)),))
+    h.calls=[];result=intake(h);capital=result.capital_events[0]
+    assert capital.status=='recorded' and len(capital.events)==2 and not capital.blockers
+    assert [row.source_income_year for row in capital.events]==[2024,2025]
+    assert capital.events[1].register_observation.observation_id==h.observation.observation_id.value
+    assert capital.events[1].register_observation.fact_sha256==h.observation.fact_sha256
+    assert capital.events[1].economics.nominal_increase=='30000' and capital.events[1].economics.share_premium=='500'
+    assert {row.role for row in capital.events[1].documents}=={'signed_decision','amended_articles','registration_receipt'}
+    assert all(row.document_id==DOCUMENT and row.revision==3 and row.source_income_year is None for row in capital.events[1].documents)
+    assert h.calls==['rf_auth','company','governance']
+
+
+@pytest.mark.parametrize('status',['incomplete','conflicting','reversed','corrected'])
+def test_intake_never_hides_unresolved_capital_events(status):
+    from test_shareholder_register_capital_source_workflow import setup, prepare_capital
+    h=setup();prepare_capital(h);h.view=replace(h.view,supported_events=(replace(h.view.supported_events[0],status=status),))
+    result=intake(h)
+    assert result.capital_events[0].status==status
+    assert result.capital_events[0].representative_receipt_id==RECEIPT
+    assert 'rf1086_source_governance_unresolved' in result.blockers
+
+
+def test_intake_retains_ledger_amendment_lineage_and_blocks_unchanged_source_assumptions():
+    h=Harness('dividend')
+    amendment=CorporateLedgerAmendment(ref(AccountingEntryReference),ref(AccountingEntryReference),
+        ref(AccountingEntryReference),COMPANY,IncomeYear(2024),'Corrected original',ACTOR,NOW)
+    h.view=replace(h.view,ledger_amendments=(amendment,))
+    result=intake(h)
+    assert result.ledger_amendments[0].original_entry_id==str(amendment.original_entry_id)
+    assert result.ledger_amendments[0].replacement_entry_id==str(amendment.replacement_entry_id)
+    assert result.ledger_amendments[0].source_income_year==2024
+    assert 'rf1086_source_governance_unresolved' in result.blockers
+
+
+def test_intake_uses_same_signed_original_matching_as_capture_without_verifying_bytes():
+    h=Harness('dividend');item=h.view.dividends[0]
+    h.view=replace(h.view,dividends=(replace(item,artifacts=()),))
+    result=intake(h)
+    assert len(result.dividends[0].finalizations)==1
+    assert result.dividends[0].finalizations[0].original_document_ids==()
+    assert 'rf1086_source_governance_signed_document_unverified' in result.blockers
+    with pytest.raises(Rf1086YearSourceError,match='signed_document_unverified'):h.capture()
+
+
+def test_intake_preserves_invalid_capital_economics_row_with_explicit_blocker():
+    from test_shareholder_register_capital_source_workflow import setup, prepare_capital
+    h=setup();prepare_capital(h);item=h.view.supported_events[0]
+    original=replace(item.recorded.event,canonical_facts={**item.recorded.event.canonical_facts,'businessFacts':{}})
+    h.view=replace(h.view,supported_events=(replace(item,recorded=replace(item.recorded,event=original)),))
+    result=intake(h)
+    assert result.capital_events[0].events[0].receipt_id==RECEIPT
+    assert result.capital_events[0].events[0].economics is None
+    assert 'rf1086_source_governance_economics_invalid' in result.blockers

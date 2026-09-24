@@ -306,6 +306,7 @@ const companyTaxOperations = {
   preview: ["/api/v1/company-tax/settlement-previews", "post", "companyTaxPreviewSettlement"],
 };
 const shareholderRegisterFilingOperations = {
+  sourceIntakeBasis: ["/api/v1/shareholder-register-filings/source-intake-basis", "get", "rf1086ReadSourceIntakeBasis"],
   currentYearSource: ["/api/v1/shareholder-register-filings/current-year-source", "get", "rf1086ReadCurrentYearSource"],
   sourceDocument: ["/api/v1/shareholder-register-filings/source-documents/{documentId}", "get", "rf1086ReadSourceDocument"],
   captureRegisterObservation: ["/api/v1/shareholder-register-filings/register-observations", "post", "rf1086CaptureRegisterObservation"],
@@ -924,6 +925,19 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "RfYearSourceDraftWire",
   "RfCurrentYearSourceRecordWire",
   "RfCurrentYearSourceWire",
+  "RfSourceIntakeDocumentWire",
+  "RfSourceIntakeRegisterWire",
+  "RfSourceIntakeAllocationWire",
+  "RfSourceIntakeDividendEconomicsWire",
+  "RfSourceIntakeFinalizationWire",
+  "RfSourceIntakeDividendWire",
+  "RfSourceIntakeCapitalEconomicsWire",
+  "RfSourceIntakeCapitalEventWire",
+  "RfSourceIntakeCapitalWire",
+  "RfSourceIntakeAmendmentWire",
+  "RfSourceIntakeCompanyWire",
+  "RfSourceIntakeBasisWire",
+
   "RfRegisterHoldingWire",
   "RfRegisteredSharesWire",
   "RfRegisterDocumentWire",
@@ -3117,6 +3131,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         undefined,
         isBankSuggestionAcceptancePageWire,
       );
+    },
+
+    async rf1086ReadSourceIntakeBasis(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfSourceIntakeBasisWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-intake-basis?" + query,
+        "GET", request, undefined, isRfSourceIntakeBasisWire);
     },
 
     async rf1086ReadCurrentYearSource(

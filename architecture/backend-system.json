@@ -394,7 +394,8 @@
         "/api/v1/shareholder-register-filings/source-previews",
         "/api/v1/shareholder-register-filings/source-previews/{previewId}",
         "/api/v1/shareholder-register-filings/source-documents/{documentId}",
-        "/api/v1/shareholder-register-filings/current-year-source"
+        "/api/v1/shareholder-register-filings/current-year-source",
+        "/api/v1/shareholder-register-filings/source-intake-basis"
       ]
     },
     {

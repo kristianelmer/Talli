@@ -22683,6 +22683,680 @@
         "title": "RfSourceFormationWire",
         "type": "object"
       },
+      "RfSourceIntakeAllocationWire": {
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "shareCountBasis": {
+            "title": "Sharecountbasis",
+            "type": "integer"
+          },
+          "shareholderId": {
+            "title": "Shareholderid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "shareholderId",
+          "amount",
+          "shareCountBasis"
+        ],
+        "title": "RfSourceIntakeAllocationWire",
+        "type": "object"
+      },
+      "RfSourceIntakeAmendmentWire": {
+        "properties": {
+          "originalEntryId": {
+            "format": "uuid",
+            "title": "Originalentryid",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "replacementEntryId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replacemententryid"
+          },
+          "reversalEntryId": {
+            "format": "uuid",
+            "title": "Reversalentryid",
+            "type": "string"
+          },
+          "sourceIncomeYear": {
+            "title": "Sourceincomeyear",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "originalEntryId",
+          "reversalEntryId",
+          "replacementEntryId",
+          "sourceIncomeYear",
+          "reason"
+        ],
+        "title": "RfSourceIntakeAmendmentWire",
+        "type": "object"
+      },
+      "RfSourceIntakeBasisWire": {
+        "properties": {
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "capitalEvents": {
+            "items": {
+              "$ref": "#/components/schemas/RfSourceIntakeCapitalWire"
+            },
+            "title": "Capitalevents",
+            "type": "array"
+          },
+          "company": {
+            "$ref": "#/components/schemas/RfSourceIntakeCompanyWire"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "dividends": {
+            "items": {
+              "$ref": "#/components/schemas/RfSourceIntakeDividendWire"
+            },
+            "title": "Dividends",
+            "type": "array"
+          },
+          "enumerationComplete": {
+            "const": true,
+            "title": "Enumerationcomplete",
+            "type": "boolean"
+          },
+          "enumerationSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Enumerationsha256",
+            "type": "string"
+          },
+          "incomeYear": {
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "ledgerAmendments": {
+            "items": {
+              "$ref": "#/components/schemas/RfSourceIntakeAmendmentWire"
+            },
+            "title": "Ledgeramendments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "company",
+          "enumerationSha256",
+          "enumerationComplete",
+          "dividends",
+          "capitalEvents",
+          "ledgerAmendments",
+          "blockers"
+        ],
+        "title": "RfSourceIntakeBasisWire",
+        "type": "object"
+      },
+      "RfSourceIntakeCapitalEconomicsWire": {
+        "properties": {
+          "issuedShareCount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issuedsharecount"
+          },
+          "newShareCapital": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Newsharecapital"
+          },
+          "nominalIncrease": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nominalincrease"
+          },
+          "nominalReduction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nominalreduction"
+          },
+          "oldShareCapital": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldsharecapital"
+          },
+          "sharePremium": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sharepremium"
+          }
+        },
+        "required": [
+          "nominalIncrease",
+          "sharePremium",
+          "issuedShareCount",
+          "nominalReduction",
+          "oldShareCapital",
+          "newShareCapital"
+        ],
+        "title": "RfSourceIntakeCapitalEconomicsWire",
+        "type": "object"
+      },
+      "RfSourceIntakeCapitalEventWire": {
+        "properties": {
+          "accountingEntryId": {
+            "format": "uuid",
+            "title": "Accountingentryid",
+            "type": "string"
+          },
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "correctionOfEventId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correctionofeventid"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/RfSourceIntakeDocumentWire"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "economics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RfSourceIntakeCapitalEconomicsWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "eventKind": {
+            "title": "Eventkind",
+            "type": "string"
+          },
+          "eventReference": {
+            "format": "uuid",
+            "title": "Eventreference",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "receiptId": {
+            "format": "uuid",
+            "title": "Receiptid",
+            "type": "string"
+          },
+          "registerObservation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RfSourceIntakeRegisterWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reportingDate": {
+            "format": "date",
+            "title": "Reportingdate",
+            "type": "string"
+          },
+          "reportingYear": {
+            "title": "Reportingyear",
+            "type": "integer"
+          },
+          "sourceIncomeYear": {
+            "title": "Sourceincomeyear",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "receiptId",
+          "eventReference",
+          "eventKind",
+          "phase",
+          "sourceIncomeYear",
+          "reportingDate",
+          "reportingYear",
+          "correctionOfEventId",
+          "accountingEntryId",
+          "economics",
+          "documents",
+          "registerObservation",
+          "blockers"
+        ],
+        "title": "RfSourceIntakeCapitalEventWire",
+        "type": "object"
+      },
+      "RfSourceIntakeCapitalWire": {
+        "properties": {
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/RfSourceIntakeCapitalEventWire"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "representativeReceiptId": {
+            "format": "uuid",
+            "title": "Representativereceiptid",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "recorded",
+              "reversed",
+              "corrected",
+              "incomplete",
+              "conflicting"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "representativeReceiptId",
+          "status",
+          "events",
+          "blockers"
+        ],
+        "title": "RfSourceIntakeCapitalWire",
+        "type": "object"
+      },
+      "RfSourceIntakeCompanyWire": {
+        "properties": {
+          "address": {
+            "title": "Address",
+            "type": "string"
+          },
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "identityConfirmedAt": {
+            "format": "date-time",
+            "title": "Identityconfirmedat",
+            "type": "string"
+          },
+          "identityLockedAt": {
+            "format": "date-time",
+            "title": "Identitylockedat",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "orgNumber": {
+            "title": "Orgnumber",
+            "type": "string"
+          },
+          "postalCode": {
+            "title": "Postalcode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "orgNumber",
+          "name",
+          "address",
+          "postalCode",
+          "city",
+          "identityConfirmedAt",
+          "identityLockedAt"
+        ],
+        "title": "RfSourceIntakeCompanyWire",
+        "type": "object"
+      },
+      "RfSourceIntakeDividendEconomicsWire": {
+        "properties": {
+          "allocations": {
+            "items": {
+              "$ref": "#/components/schemas/RfSourceIntakeAllocationWire"
+            },
+            "title": "Allocations",
+            "type": "array"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "allocations"
+        ],
+        "title": "RfSourceIntakeDividendEconomicsWire",
+        "type": "object"
+      },
+      "RfSourceIntakeDividendWire": {
+        "properties": {
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "decisionId": {
+            "format": "uuid",
+            "title": "Decisionid",
+            "type": "string"
+          },
+          "decisionSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Decisionsha256",
+            "type": "string"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/RfSourceIntakeDocumentWire"
+            },
+            "title": "Documents",
+            "type": "array"
+          },
+          "economics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RfSourceIntakeDividendEconomicsWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finalizations": {
+            "items": {
+              "$ref": "#/components/schemas/RfSourceIntakeFinalizationWire"
+            },
+            "title": "Finalizations",
+            "type": "array"
+          },
+          "reportingDate": {
+            "format": "date",
+            "title": "Reportingdate",
+            "type": "string"
+          },
+          "reportingYear": {
+            "title": "Reportingyear",
+            "type": "integer"
+          },
+          "sourceIncomeYear": {
+            "title": "Sourceincomeyear",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "finalized",
+              "rejected",
+              "superseded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "supersedesDecisionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedesdecisionid"
+          }
+        },
+        "required": [
+          "decisionId",
+          "decisionSha256",
+          "sourceIncomeYear",
+          "reportingDate",
+          "reportingYear",
+          "status",
+          "supersedesDecisionId",
+          "economics",
+          "finalizations",
+          "documents",
+          "blockers"
+        ],
+        "title": "RfSourceIntakeDividendWire",
+        "type": "object"
+      },
+      "RfSourceIntakeDocumentWire": {
+        "properties": {
+          "artifactId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifactid"
+          },
+          "contentSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Contentsha256",
+            "type": "string"
+          },
+          "documentId": {
+            "format": "uuid",
+            "title": "Documentid",
+            "type": "string"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "sourceIncomeYear": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceincomeyear"
+          },
+          "supersedesArtifactId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedesartifactid"
+          },
+          "variant": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variant"
+          }
+        },
+        "required": [
+          "documentId",
+          "contentSha256",
+          "role",
+          "sourceIncomeYear",
+          "variant",
+          "revision",
+          "artifactId",
+          "supersedesArtifactId"
+        ],
+        "title": "RfSourceIntakeDocumentWire",
+        "type": "object"
+      },
+      "RfSourceIntakeFinalizationWire": {
+        "properties": {
+          "decisionSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Decisionsha256",
+            "type": "string"
+          },
+          "originalDocumentIds": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Originaldocumentids",
+            "type": "array"
+          },
+          "receiptId": {
+            "format": "uuid",
+            "title": "Receiptid",
+            "type": "string"
+          },
+          "signedArtifactHashes": {
+            "additionalProperties": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "title": "Signedartifacthashes",
+            "type": "object"
+          },
+          "sourceIncomeYear": {
+            "title": "Sourceincomeyear",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "receiptId",
+          "sourceIncomeYear",
+          "decisionSha256",
+          "signedArtifactHashes",
+          "originalDocumentIds"
+        ],
+        "title": "RfSourceIntakeFinalizationWire",
+        "type": "object"
+      },
+      "RfSourceIntakeRegisterWire": {
+        "properties": {
+          "factSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Factsha256",
+            "type": "string"
+          },
+          "observationId": {
+            "format": "uuid",
+            "title": "Observationid",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "observationId",
+          "revision",
+          "factSha256"
+        ],
+        "title": "RfSourceIntakeRegisterWire",
+        "type": "object"
+      },
       "RfSourceLossReductionWire": {
         "additionalProperties": false,
         "properties": {
@@ -99312,6 +99986,412 @@
           }
         ],
         "summary": "Rf1086 Read Source Document",
+        "tags": [
+          "shareholder-register-filings"
+        ]
+      }
+    },
+    "/api/v1/shareholder-register-filings/source-intake-basis": {
+      "get": {
+        "operationId": "rf1086ReadSourceIntakeBasis",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "companyId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Companyid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "incomeYear",
+            "required": true,
+            "schema": {
+              "maximum": 2100,
+              "minimum": 2000,
+              "title": "Incomeyear",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Optional caller-provided correlation identifier.",
+            "in": "header",
+            "name": "X-Request-ID",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RfSourceIntakeBasisWire"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authority Connections request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authority Connections request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authority Connections request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authority Connections request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authority Connections request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "properties": {
+                    "code": {
+                      "title": "Code",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "requestId": {
+                      "title": "Requestid",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "detail",
+                    "instance",
+                    "code",
+                    "requestId"
+                  ],
+                  "title": "ProblemDetails",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authority Connections request failed.",
+            "headers": {
+              "X-Request-ID": {
+                "description": "Correlation identifier for the request and response.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Rf1086 Read Source Intake Basis",
         "tags": [
           "shareholder-register-filings"
         ]

@@ -1869,6 +1869,118 @@ class RfCurrentYearSourceWire(TransportModel):
     current_source: RfCurrentYearSourceRecordWire | None
 
 
+class RfSourceIntakeDocumentWire(TransportModel):
+    document_id: UUID
+    content_sha256: RfSourceHash
+    role: str
+    source_income_year: int | None
+    variant: str | None
+    revision: int | None
+    artifact_id: UUID | None
+    supersedes_artifact_id: UUID | None
+
+
+class RfSourceIntakeRegisterWire(TransportModel):
+    observation_id: UUID
+    revision: int
+    fact_sha256: RfSourceHash
+
+
+class RfSourceIntakeAllocationWire(TransportModel):
+    shareholder_id: str
+    amount: str
+    share_count_basis: int
+
+
+class RfSourceIntakeDividendEconomicsWire(TransportModel):
+    amount: str
+    allocations: list[RfSourceIntakeAllocationWire]
+
+
+class RfSourceIntakeFinalizationWire(TransportModel):
+    receipt_id: UUID
+    source_income_year: int
+    decision_sha256: RfSourceHash
+    signed_artifact_hashes: dict[str, RfSourceHash]
+    original_document_ids: list[UUID]
+
+
+class RfSourceIntakeDividendWire(TransportModel):
+    decision_id: UUID
+    decision_sha256: RfSourceHash
+    source_income_year: int
+    reporting_date: date
+    reporting_year: int
+    status: Literal["pending", "finalized", "rejected", "superseded"]
+    supersedes_decision_id: UUID | None
+    economics: RfSourceIntakeDividendEconomicsWire | None
+    finalizations: list[RfSourceIntakeFinalizationWire]
+    documents: list[RfSourceIntakeDocumentWire]
+    blockers: list[str]
+
+
+class RfSourceIntakeCapitalEconomicsWire(TransportModel):
+    nominal_increase: str | None
+    share_premium: str | None
+    issued_share_count: int | None
+    nominal_reduction: str | None
+    old_share_capital: str | None
+    new_share_capital: str | None
+
+
+class RfSourceIntakeCapitalEventWire(TransportModel):
+    receipt_id: UUID
+    event_reference: UUID
+    event_kind: str
+    phase: str
+    source_income_year: int
+    reporting_date: date
+    reporting_year: int
+    correction_of_event_id: UUID | None
+    accounting_entry_id: UUID
+    economics: RfSourceIntakeCapitalEconomicsWire | None
+    documents: list[RfSourceIntakeDocumentWire]
+    register_observation: RfSourceIntakeRegisterWire | None
+    blockers: list[str]
+
+
+class RfSourceIntakeCapitalWire(TransportModel):
+    representative_receipt_id: UUID
+    status: Literal["recorded", "reversed", "corrected", "incomplete", "conflicting"]
+    events: list[RfSourceIntakeCapitalEventWire]
+    blockers: list[str]
+
+
+class RfSourceIntakeAmendmentWire(TransportModel):
+    original_entry_id: UUID
+    reversal_entry_id: UUID
+    replacement_entry_id: UUID | None
+    source_income_year: int
+    reason: str
+
+
+class RfSourceIntakeCompanyWire(TransportModel):
+    org_number: str
+    name: str
+    address: str
+    postal_code: str
+    city: str
+    identity_confirmed_at: AwareDatetime
+    identity_locked_at: AwareDatetime
+
+
+class RfSourceIntakeBasisWire(TransportModel):
+    company_id: UUID
+    income_year: int
+    company: RfSourceIntakeCompanyWire
+    enumeration_sha256: RfSourceHash
+    enumeration_complete: Literal[True]
+    dividends: list[RfSourceIntakeDividendWire]
+    capital_events: list[RfSourceIntakeCapitalWire]
+    ledger_amendments: list[RfSourceIntakeAmendmentWire]
+    blockers: list[str]
+
+
 class RfRegisterObservationReceiptWire(TransportModel):
     observation_id: UUID
     company_id: UUID
@@ -11942,6 +12054,25 @@ def create_app(
                 document_type=source.document_type, integrity_status=source.integrity_status,
                 byte_length=source.byte_length, created_at=source.created_at, metadata_sha256=source.metadata_sha256,
                 source_income_year=int(source.source_income_year))
+        return await shareholder_register_source_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/source-intake-basis",
+        operation_id="rf1086ReadSourceIntakeBasis", response_model=RfSourceIntakeBasisWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_read_source_intake_basis(
+        request: Request,
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfSourceIntakeBasisWire:
+        async def execute():
+            result = await shareholder_register_source_workflow.read_source_intake_basis(bearer_token(credentials),
+                company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year),
+                correlation_id=CorrelationId(request.state.request_id))
+            return RfSourceIntakeBasisWire.model_validate(result, from_attributes=True)
         return await shareholder_register_source_call(execute)
 
     @application.get(

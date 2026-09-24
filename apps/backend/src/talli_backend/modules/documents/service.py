@@ -21,6 +21,7 @@ from talli_backend.modules.documents.public import (
     DocumentsPersistence,
     DocumentStatus,
     VerifiedDocumentEvidence,
+    document_metadata_sha256,
     DocumentTransferKind,
     DocumentUploadTransfer,
 )
@@ -217,9 +218,18 @@ class DocumentsService:
             raise DocumentsError.forbidden()
         if current != document:
             raise DocumentsError.conflict()
+        # Retain the actual verified bytes before returning an immutable receipt.
+        # Persistence rechecks current owner and complete metadata under its own
+        # short transaction; object I/O has already completed.
+        retained = await self._persistence.retain_verified_original(document, stored.content)
+        if (retained.document_id != document.document_id or retained.company_id != document.company_id
+                or retained.source_income_year != document.income_year
+                or retained.metadata_sha256 != document_metadata_sha256(document)
+                or retained.content_sha256 != document.content_sha256 or retained.byte_length != document.byte_length):
+            raise DocumentsError.integrity_failed()
         return VerifiedDocumentEvidence(
             document=document, content_sha256=document.content_sha256,
-            byte_length=document.byte_length, integrity_status=document.status,
+            byte_length=document.byte_length, integrity_status=document.status, retained_original=retained,
         )
 
     async def create_transfer(self, document_id: DocumentId, kind: DocumentTransferKind) -> DocumentObjectTransfer:

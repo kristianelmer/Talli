@@ -1,7 +1,7 @@
 # Documents backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["documents.evidence_references","public.documents"],"ports":["DocumentEvidenceRetentionPersistence","DocumentObjectStorage","DocumentsAuthorization","DocumentsPersistence"],"publicEntryPoints":["talli_backend.modules.documents.public"]}
+{"dependencies":[],"ownedTables":["documents.evidence_references","documents.retained_originals","public.documents"],"ports":["DocumentEvidenceRetentionPersistence","DocumentOriginalPersistence","DocumentObjectStorage","DocumentsAuthorization","DocumentsPersistence"],"publicEntryPoints":["talli_backend.modules.documents.public"]}
 -->
 
 `documents` owns accounting-document validation, the `public.documents` metadata
@@ -96,3 +96,46 @@ changes only that predicate, preserving every RF, Tax, Accounts and other
 reference branch and the existing function privileges. Replay it after a frozen
 RF cutover that restores the historical guard. Rollback retains the safety
 correction because restoring the retired-table read would break removal checks.
+
+
+### Immutable retained originals
+
+`verify_document_evidence` rechecks current owner and original object bytes, then
+stores an immutable Documents-owned copy (at most 10 MiB) before returning its
+`RetainedDocumentOriginalReceipt`. The private `documents.retained_originals`
+table owns these immutable byte copies. Copying runs in a separate short database
+transaction after object I/O. The receipt binds document/company/source year,
+complete metadata hash, exact byte hash/length, and retention time. Matching
+observations reuse one receipt; changed metadata produces a distinct version.
+
+This byte copy is separate from `evidence_references`. A verification/read can
+create it before a filing source is captured; it does not certify a filing,
+create a filing retention reference, or change normal document removal policy.
+The retained copy remains independently readable by the current accepted owner
+through an exact receipt/company query, even if the mutable bucket original is
+later unavailable. Retained copies are not deleted by removing bucket metadata;
+the original's retention policy is recorded in the immutable metadata snapshot.
+There is currently no automatic retention-expiry purge. The migration
+rollback refuses to discard any retained originals. Empty rollback removes the
+new tables/RPCs and preserves shared lock/owner-predicate/metadata-assertion
+EXECUTE grants that may predate this layer; these helper grants expose neither bytes nor tables.
+Temporary migration role memberships restore their prior options.
+
+`DocumentOriginalPersistence` binds to `PostgresDocumentOriginals` through
+`document_original_persistence_adapter`. Its exact owner read returns
+`RetainedDocumentOriginal`, containing the receipt and verified retained bytes.
+
+`DocumentOriginalPersistence.assert_retained_original` accepts an existing
+verified transaction. Its restricted owner RPC binds an exact immutable receipt
+and current original metadata under the company guard and document row lock;
+metadata mismatch poisons that SQL transaction. Filing executors receive only
+this assertion, never retained bytes or direct table access. A complete
+cross-owner consequential admission guard is separate work; this receipt alone
+is not current-source approval.
+
+
+Production integration remains incomplete: archive/export, backup/restore,
+retention expiry and cancellation/deletion inventories must explicitly account
+for retained copies. Existing inventories do not automatically include this
+new table. A verify-only copy is distinct from a filing retention obligation;
+no complete Documents production-readiness claim follows from this feature.

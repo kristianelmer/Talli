@@ -21,7 +21,9 @@
       "DocumentRestorePlan",
       "DocumentUploadTransfer",
       "VerifiedDocumentEvidence",
-      "document_metadata_sha256"
+      "document_metadata_sha256",
+      "RetainedDocumentOriginalReceipt",
+      "RetainedDocumentOriginal"
     ],
     "events": [],
     "errors": [
@@ -44,7 +46,9 @@
       "documents_authorization_adapter",
       "documents_persistence_adapter",
       "DocumentEvidenceRetentionPersistence",
-      "document_evidence_retention_adapter"
+      "document_evidence_retention_adapter",
+      "DocumentOriginalPersistence",
+      "document_original_persistence_adapter"
     ]
   },
   "owns": {
@@ -53,7 +57,8 @@
     ],
     "tables": [
       "documents.evidence_references",
-      "public.documents"
+      "public.documents",
+      "documents.retained_originals"
     ],
     "storageBuckets": [
       "company-documents"
@@ -61,7 +66,7 @@
     "projections": [
       "DocumentBackupObject"
     ],
-    "migrations": "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql; supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql; supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql"
+    "migrations": "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql; supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql; supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql; supabase/migrations/20260924062717_documents_immutable_retained_originals.sql"
   },
   "ports": [
     {
@@ -108,6 +113,15 @@
       "adapters": [
         "talli_backend.adapters.postgres_document_evidence.PostgresDocumentEvidenceRetention"
       ]
+    },
+    {
+      "name": "DocumentOriginalPersistence",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.documents.public.DocumentOriginalPersistence",
+      "registrationDecorator": "talli_backend.modules.documents.public.document_original_persistence_adapter",
+      "adapters": [
+        "talli_backend.adapters.postgres_document_originals.PostgresDocumentOriginals"
+      ]
     }
   ],
   "dependencies": [],
@@ -136,7 +150,9 @@
     "database": "tests/documents_database_runtime.test.mjs",
     "architecture": "tests/architecture_foundation.test.mjs",
     "evidenceRetention": "apps/backend/tests/test_document_evidence_retention.py",
-    "evidenceRetentionDatabase": "apps/backend/tests/test_document_evidence_retention_database.py"
+    "evidenceRetentionDatabase": "apps/backend/tests/test_document_evidence_retention_database.py",
+    "retainedOriginals": "apps/backend/tests/test_document_originals.py",
+    "retainedOriginalsDatabase": "apps/backend/tests/test_document_originals_database.py"
   },
   "compatibilityExceptions": []
 }

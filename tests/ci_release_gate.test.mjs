@@ -509,9 +509,10 @@ const RFA='20260917114424_rf1086_production_archive_evidence.sql';
 const RFY='20260923091509_rf1086_immutable_year_source.sql';
 const RFO='20260923102314_rf1086_register_observation_store.sql';
 const RFP='20260923105912_rf1086_source_backed_preview.sql';
+const RFG='20260924062746_rf1086_source_company_guard.sql';
 const DLG='20260923125730_documents_ledger_evidence_guard.sql';
 const predecessor={rf_owned:false,authority_kind:'r',ledger_kind:'v',ledger_setup:true,opening_kind:'r'};
-const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`migrations/${RFA}`,`migrations/${RFY}`,`migrations/${RFO}`,`migrations/${RFP}`];
+const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`migrations/${RFA}`,`migrations/${RFY}`,`migrations/${RFO}`,`migrations/${RFP}`,`migrations/${RFG}`];
 const workspaceForward=forward.filter(path=>path!==`contract-migrations/${AUC}`);
 function fake(initial,{fail,noEffect=false}={}) {
  const state={signoff_open:true,...initial},executed=[];
@@ -542,9 +543,9 @@ for(const authority_kind of ['v',null]) for(const rf_owned of [false,true]) {
  });
 }
 test('empty source-preview API rolls back before source APIs and full RF schema',async()=>{
- const f=fake({...predecessor,rf_owned:true,rf_source_previews:true,rf_register_observations:true,rf_year_sources:true,authority_kind:null});
+ const f=fake({...predecessor,rf_owned:true,rf_source_company_guard:true,rf_source_previews:true,rf_register_observations:true,rf_year_sources:true,authority_kind:null});
  await run('rollback',f);
- assert.deepEqual(f.executed.slice(0,5),[`rollback/${RFP}`,`rollback/${RFO}`,`rollback/${RFY}`,`rollback/${RFA}`,`rollback/${RFX}`]);
+ assert.deepEqual(f.executed.slice(0,6),[`rollback/${RFG}`,`rollback/${RFP}`,`rollback/${RFO}`,`rollback/${RFY}`,`rollback/${RFA}`,`rollback/${RFX}`]);
 });
 test('retained independent register observations block full-schema rollback before any mutation',async()=>{
  const f=fake({...predecessor,rf_owned:true,rf_register_observations:true,retained_observations:true,authority_kind:null});

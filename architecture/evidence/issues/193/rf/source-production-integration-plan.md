@@ -9,15 +9,17 @@ genuine-company records, authority and the final production pilot need a recruit
 Keep canonical hashing on the backend. An omitted event digest in an HTTP capture
 request is derived from the typed canonical event at its declared index. An
 explicit digest still has to match, and invalid or duplicate indices still fail.
-The internal source command always contains all event digests.
+The internal source command always contains all event digests. This is implemented.
 
-Expose a typed intake projection from existing public Governance reporting-year
-evidence, including unresolved, superseded and amended records. Return selectable
-receipt IDs, dates, economics, original-document IDs and independent register
-observation requirements. Do not make the customer UI reproduce completeness or
-eligibility policy. Expose current source details as an editable typed draft,
-without using the internal tagged storage codec as a transport format. Capture
-must verify all evidence again after these preparatory reads.
+`rf1086ReadSourceIntakeBasis` now exposes typed public Governance reporting-year
+evidence, including unresolved, superseded and amended records, receipt IDs,
+dates, economics, original-document IDs and independent register references.
+It preserves blockers and never certifies source capture or filing readiness.
+The customer UI should use this policy-owned projection. Current source details
+are available as an editable typed
+draft through `rf1086ReadCurrentYearSource`, with confirmations reset and exact
+predecessor identity retained. Capture verifies all evidence again after these
+preparatory reads. The customer screens still need implementation.
 
 ## Consequential freshness
 
@@ -31,23 +33,30 @@ Billing-entitlement ordering. Acquire guards before reading their projections.
 
 Do not give RF access to other owners' tables. Compose narrow public adapters on
 one authenticated connection. Keep byte downloads and provider I/O outside this
-transaction. Documents must pin an immutable verified object version; a metadata
-row lock alone cannot prevent an object overwrite. Prove that storage invariant
-before treating its digest as consequential authority.
+transaction. Documents now retains bounded immutable copies of verified original
+bytes and supplies exact receipt/read/assert contracts. Approval/send still need
+to bind and consume those receipts. Archive, backup, expiry and deletion handling
+must include the new copies before production use. A copied original is not a
+filing reference or approval.
 
 Two-session tests must cover insertion into a previously empty year, prior-year
 decisions, Ledger amendments, evidence changes, source corrections and membership
 revocation. A writer either commits before admission and invalidates stale facts,
-or waits until admission has committed.
+or waits until admission has committed. RF's source writers now acquire the
+company guard before their year/document locks, with row-trigger backstops;
+other owners and consequential admission still need the shared guard coverage.
+The concrete owner interface and writer
+inventory is in [consequential-freshness-write-inventory-20260924.md](consequential-freshness-write-inventory-20260924.md).
 
 ## Versioned manifest and existing journal
 
-Preserve historical `production-approval-v1` manifests and hashes. Introduce a
-separate source manifest binding company/year/actor, source ID/version/hash, case
-hash, source preview and XML hashes/order, complete freshness commitments, review
-acknowledgments, entitlement/profile/adapter and optional correction ancestry.
-Stable shareholder IDs need a versioned document ordering rule; the legacy UUID
-ordering must remain unchanged for historical receipts.
+The pure `production-source-approval-v1` manifest builder is implemented. It binds
+company/year/actor, source ID/version/hash, case hash, source preview and XML
+hashes/order, complete freshness commitments, review acknowledgments,
+entitlement/profile/adapter and optional correction ancestry. Stable shareholder
+IDs use UTF-8 ordering and bounded hashed journal keys. Historical
+`production-approval-v1` manifests, hashes and UUID ordering remain unchanged.
+The builder does not persist approval or authorize sending.
 
 Add an explicit full-year profile across Billing commands/transports/SQL and RF
 approval, submission and journal visibility. Do not label eventful cases as

@@ -15,6 +15,7 @@ from talli_backend.modules.documents.public import (
     DocumentStatus,
     DocumentTransferKind,
     StoredDocumentObject,
+    RetainedDocumentOriginalReceipt, document_metadata_sha256,
 )
 from talli_backend.modules.documents.service import (
     DocumentsService,
@@ -83,6 +84,14 @@ class Persistence:
         assert byte_length == len(PDF)
         assert content_sha256 == sha256(PDF).hexdigest()
         return self.current
+
+    async def retain_verified_original(self, document, content):
+        assert document == self.current
+        assert len(content) == document.byte_length and sha256(content).hexdigest() == document.content_sha256
+        self.retained_content = bytes(content)
+        return RetainedDocumentOriginalReceipt("40000000-0000-4000-8000-000000000001", document.document_id,
+            document.company_id, document.income_year, document_metadata_sha256(document), document.content_sha256,
+            document.byte_length, datetime(2026, 9, 24, tzinfo=UTC))
 
     async def get_document(self, document_id):
         return self.current

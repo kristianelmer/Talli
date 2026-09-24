@@ -42,6 +42,7 @@ class ApiHarness:
     def __init__(self, *, capital=False, kind='no_activity'):
         self.h=capital_setup() if capital else Harness(kind)
         h=self.h; self.idempotencies=[]; self.auth_failure=False; self.persistence_error=None
+        self.reporting_basis=None; self.reporting_amendments=()
         owner=self
         class RFSession:
             def __init__(self, wrapped):self.wrapped=wrapped
@@ -79,8 +80,8 @@ class ApiHarness:
         class GovTransaction:
             async def read_reporting_year_basis(self,company_id):
                 h.calls.append('governance');assert company_id==COMPANY
-                return CorporateReportingYearBasis(COMPANY,CorporateLifecycleSnapshot((),(),(),(),()),())
-            async def list_entry_amendments(self,**kwargs):return ()
+                return owner.reporting_basis or CorporateReportingYearBasis(COMPANY,CorporateLifecycleSnapshot((),(),(),(),()),())
+            async def list_entry_amendments(self,**kwargs):return owner.reporting_amendments
         class GovSession:
             actor_id=ACTOR
             @asynccontextmanager
@@ -621,3 +622,135 @@ def test_renewed_company_identity_confirmation_does_not_hide_retained_source():
     response=api.current_source();assert response.status_code==200,response.text
     assert response.json()['currentSource']['receipt']['sourceSha256']==original.source_sha256
     assert len(api.h.saved)==1
+
+
+
+def intake_basis(api, **query):
+    return api.client.get(BASE+'/source-intake-basis',
+        params={'companyId':str(COMPANY),'incomeYear':int(YEAR),**query},headers=HEADERS)
+
+
+def populate_intake_governance(api, h):
+    from talli_backend.modules.corporate_governance.public import CorporateDocumentSetRecord
+    view=h.view
+    sets=tuple(CorporateDocumentSetRecord(item.decision.document_set_id,COMPANY,item.decision.income_year,
+        item.decision.decision_id,'dividend','1',item.decision.decision_hash,None,str(ACTOR.subject),NOW)
+        for item in view.dividends)
+    api.reporting_basis=CorporateReportingYearBasis(COMPANY,CorporateLifecycleSnapshot(
+        tuple(item.decision for item in view.dividends),sets,
+        tuple(row for item in view.dividends for row in item.artifacts),
+        tuple(row for item in view.dividends for row in item.events),
+        tuple(row for item in view.dividends for row in item.finalizations)),
+        tuple(row for item in view.supported_events for row in (item.lifecycle_events or (item.recorded,))))
+    api.reporting_amendments=view.ledger_amendments
+
+
+def test_intake_basis_authentication_scope_and_no_store():
+    api=ApiHarness()
+    response=api.client.get(BASE+'/source-intake-basis',params={'companyId':str(COMPANY),'incomeYear':2025})
+    assert response.status_code==401 and 'governance' not in api.h.calls
+    api.auth_failure=True;assert intake_basis(api).status_code==401
+    api.auth_failure=False
+    for query in ({'companyId':str(uuid4())},{'incomeYear':1999},{'incomeYear':2101},{'companyId':'invalid'}):
+        api.h.calls=[];response=intake_basis(api,**query)
+        assert response.status_code in {404,422} and 'governance' not in api.h.calls
+    response=intake_basis(api);assert response.status_code==200,response.text
+    body=response.json();assert body['enumerationComplete'] is True
+    assert body['dividends']==[] and body['capitalEvents']==[] and body['ledgerAmendments']==[]
+    assert body['company']['orgNumber']==api.h.company.org_number
+    assert set(body['company'])=={'orgNumber','name','address','postalCode','city','identityConfirmedAt','identityLockedAt'}
+    assert 'no-store' in response.headers['cache-control']
+    assert 'verify_document' not in api.h.calls and not api.h.saved
+
+
+@pytest.mark.parametrize('change',['reviewer','unconfirmed','unlocked','not_as'])
+def test_intake_basis_requires_current_confirmed_as_owner(change):
+    api=ApiHarness()
+    if change=='reviewer':api.h.company.role='reviewer'
+    if change=='unconfirmed':api.h.company.identity_confirmed_at=None
+    if change=='unlocked':api.h.company.identity_locked_at=None
+    if change=='not_as':api.h.company.entity_type='ENK'
+    response=intake_basis(api)
+    assert response.status_code in {403,404,409},response.text
+    assert 'governance' not in api.h.calls and not api.h.saved
+
+
+@pytest.mark.parametrize('kind',['dividend','cash_issue','loss_covering_reduction'])
+def test_intake_basis_projects_real_governance_enumeration_to_typed_economics_and_original_refs(kind):
+    from test_shareholder_register_capital_source_workflow import setup, prepare_capital
+    h=Harness('dividend') if kind=='dividend' else setup(kind)
+    if kind!='dividend':prepare_capital(h)
+    api=ApiHarness();populate_intake_governance(api,h)
+    response=intake_basis(api);assert response.status_code==200,response.text
+    body=response.json()
+    if kind=='dividend':
+        row=body['dividends'][0]
+        assert row['sourceIncomeYear']==2024 and row['reportingYear']==2025
+        assert row['economics']['amount']=='1000.00'
+        assert row['finalizations'][0]['originalDocumentIds']==[DOCUMENT]
+        assert all(doc['sourceIncomeYear']==2024 for doc in row['documents'])
+    else:
+        row=body['capitalEvents'][0]['events'][0]
+        assert row['registerObservation']['observationId']==h.observation.observation_id.value
+        assert row['registerObservation']['factSha256']==h.observation.fact_sha256
+        assert len(row['documents'])==3 and row['documents'][0]['revision']==3
+        assert row['economics']['nominalIncrease' if kind=='cash_issue' else 'nominalReduction']=='30000'
+    assert 'canonical' not in response.text and 'actorId' not in response.text
+    assert 'verify_document' not in api.h.calls and not api.h.saved
+
+
+def test_intake_basis_preserves_pending_governance_as_explicit_blocker():
+    h=Harness('dividend');h.view=replace(h.view,dividends=(replace(h.view.dividends[0],status='pending',finalizations=()),))
+    api=ApiHarness();populate_intake_governance(api,h)
+    response=intake_basis(api);assert response.status_code==200,response.text
+    body=response.json()
+    assert body['dividends'][0]['status']=='pending' and body['dividends'][0]['finalizations']==[]
+    assert 'rf1086_source_governance_unresolved' in body['blockers']
+    assert body['enumerationComplete'] is True
+
+
+def test_actual_intake_responses_roundtrip_through_generated_client_and_reject_altered_economics():
+    import json
+    from pathlib import Path
+    import subprocess
+    from test_shareholder_register_capital_source_workflow import setup, prepare_capital
+    responses=[]
+    for kind in ('empty','dividend','pending','cash_issue','loss_covering_reduction'):
+        api=ApiHarness()
+        if kind in {'dividend','pending'}:
+            h=Harness('dividend')
+            if kind=='pending':h.view=replace(h.view,dividends=(replace(h.view.dividends[0],finalizations=()),))
+            populate_intake_governance(api,h)
+        elif kind!='empty':
+            h=setup(kind);prepare_capital(h);populate_intake_governance(api,h)
+        response=intake_basis(api);assert response.status_code==200,response.text
+        responses.append(response.json())
+    client=(Path(__file__).resolve().parents[3]/'packages/talli-api-client/src/generated/client.ts').as_uri()
+    script='''
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const { createTalliApiClient } = await import(process.argv[1]);
+const responses = JSON.parse(readFileSync(0, 'utf8'));
+for (const body of responses) {
+  const calls = [];
+  const client = createTalliApiClient({ baseUrl: 'https://backend.invalid', fetch: async (url, init) => {
+    calls.push([url, init]); return new Response(JSON.stringify(body), { status: 200 });
+  }});
+  const result = await client.rf1086ReadSourceIntakeBasis({ companyId: body.companyId, incomeYear: body.incomeYear,
+    headers: { Authorization: 'Bearer synthetic-owner-token' }, requestId: 'intake-client-proof' });
+  assert.deepEqual(result, body);
+  assert.equal(new URL(calls[0][0]).searchParams.get('companyId'), body.companyId);
+  assert.equal(new URL(calls[0][0]).searchParams.get('incomeYear'), String(body.incomeYear));
+  assert.equal(calls[0][1].method, 'GET');
+  assert.equal(calls[0][1].cache, 'no-store');
+  assert.equal(new Headers(calls[0][1].headers).get('Authorization'), 'Bearer synthetic-owner-token');
+}
+const altered = structuredClone(responses[1]);
+altered.dividends[0].economics.amount = 1000;
+const client = createTalliApiClient({ baseUrl: 'https://backend.invalid', fetch: async () => new Response(JSON.stringify(altered), {status:200}) });
+await assert.rejects(() => client.rf1086ReadSourceIntakeBasis({ companyId: altered.companyId, incomeYear: altered.incomeYear }));
+console.log('5 real intake API responses accepted; altered decimal-string response rejected');
+'''
+    result=subprocess.run(['node','--experimental-strip-types','--input-type=module','-e',script,client],
+        input=json.dumps(responses),capture_output=True,text=True,timeout=30)
+    assert result.returncode==0,result.stdout+result.stderr

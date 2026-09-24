@@ -40,6 +40,7 @@ RF193_LAYERS = (
     ("20260923091509_rf1086_immutable_year_source.sql", "year_source_versions"),
     ("20260923102314_rf1086_register_observation_store.sql", "register_observations"),
     ("20260923105912_rf1086_source_backed_preview.sql", "source_previews"),
+    ("20260924062746_rf1086_source_company_guard.sql", "source_company_guard"),
 )
 
 
@@ -500,7 +501,9 @@ def rf193_successor_topology(connection):
         phase = connection.execute("select shareholder_register_filing.phase_v1()").fetchone()[0]
         assert phase in ('legacy_overlap','canonical_overlap','contracted')
         for migration_name, family in RF193_LAYERS:
-            if family == 'read_recovery':
+            if family == 'source_company_guard':
+                present = connection.execute("select to_regprocedure('shareholder_register_filing.lock_source_company_write_v1()') is not null").fetchone()[0]
+            elif family == 'read_recovery':
                 present = connection.execute("select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='claim_production_feedback_reconciliation' and strpos(pg_get_functiondef(p.oid), %s)>0)", ("'action_required'",)).fetchone()[0]
             elif family == 'archive':
                 present = connection.execute("select exists(select 1 from pg_attribute where attrelid=to_regclass('shareholder_register_filing.production_filing_events') and attname='company_id' and not attisdropped)").fetchone()[0]

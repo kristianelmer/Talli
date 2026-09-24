@@ -445,6 +445,11 @@
       "owner": "backend:documents"
     },
     {
+      "name": "documents.retained_originals",
+      "kind": "capability-business",
+      "owner": "backend:documents"
+    },
+    {
       "name": "investments.acquisition_lots",
       "kind": "capability-business",
       "owner": "backend:investments",

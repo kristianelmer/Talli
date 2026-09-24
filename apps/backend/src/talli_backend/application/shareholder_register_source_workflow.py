@@ -5,7 +5,7 @@ I/O and Governance's coherent read precede the short RF capture transaction.
 Capture retains those exact observations, not a cross-owner production lease.
 """
 from collections.abc import Mapping
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
 from typing import Protocol
 
@@ -72,36 +72,13 @@ def _dividend_receipts(view: CorporateGovernanceYearEvidence, verified_documents
         for item in view.dividends:
             _require(item.reporting_date.value.year == int(view.income_year),
                      'rf1086_source_governance_unresolved')
-            _require(len(item.finalizations) == 1, 'rf1086_source_governance_receipt_invalid')
-            final = item.finalizations[0]
+            final, groups = _dividend_originals(item, view.company_id)
             decision = item.decision
-            _require(final.company_id == view.company_id and decision.company_id == view.company_id
-                     and final.decision_id == decision.decision_id and final.decision_hash == decision.decision_hash
-                     and bool(final.signed_artifact_hashes), 'rf1086_source_governance_receipt_invalid')
-            _require({'dividend_board_proposal', 'dividend_general_meeting_minutes'} <= final.signed_artifact_hashes.keys(),
-                     'rf1086_source_governance_receipt_invalid')
-            for kind, content_hash in final.signed_artifact_hashes.items():
-                originals = [artifact for artifact in item.artifacts
-                    if artifact.variant is CorporateArtifactVariant.SIGNED_OWNER_ATTESTED
-                    and artifact.artifact_kind.value == kind and artifact.content_sha256 == content_hash]
+            for originals in groups:
                 _require(any(str(artifact.document_id) in verified_by_id
-                    and verified_by_id[str(artifact.document_id)].content_sha256 == content_hash for artifact in originals),
+                    and verified_by_id[str(artifact.document_id)].content_sha256 == artifact.content_sha256 for artifact in originals),
                     'rf1086_source_governance_signed_document_unverified')
-            canonical = decision.canonical_input
-            dividend = canonical['dividend']
-            holders = canonical['shareholders']
-            _require(isinstance(dividend, Mapping) and isinstance(holders, (tuple, list)),
-                     'rf1086_source_governance_economics_invalid')
-            counts = {holder['shareholderId']: holder['shareCount'] for holder in holders}
-            _require(len(counts) == len(holders) and all(type(value) is int and value > 0 for value in counts.values()),
-                     'rf1086_source_governance_economics_invalid')
-            allocations = tuple(sorted(((row['shareholderId'], _ore(row['amountOre']), counts[row['shareholderId']])
-                                        for row in dividend['allocations']), key=lambda row: row[0]))
-            _require(len({row[0] for row in allocations}) == len(allocations)
-                     and sum(row['amountOre'] for row in dividend['allocations']) == dividend['amountOre'],
-                     'rf1086_source_governance_economics_invalid')
-            economics = {'event_type': 'dividend', 'event_date': item.reporting_date.value.isoformat(),
-                         'amount': _ore(dividend['amountOre']), 'allocations': allocations}
+            economics = _dividend_economics(item)
             # Preserve original Governance source-year and receipt fields in the
             # proof. Only RF's derived reportable year uses the meeting date.
             finalization_hash = rf1086_year_source_digest({
@@ -140,6 +117,277 @@ def _nok(value: object) -> Decimal:
     return amount
 
 
+def _dividend_originals(item, company_id):
+    _require(len(item.finalizations) == 1, 'rf1086_source_governance_receipt_invalid')
+    final, decision = item.finalizations[0], item.decision
+    _require(final.company_id == company_id and decision.company_id == company_id
+             and final.decision_id == decision.decision_id and final.decision_hash == decision.decision_hash
+             and bool(final.signed_artifact_hashes), 'rf1086_source_governance_receipt_invalid')
+    _require({'dividend_board_proposal', 'dividend_general_meeting_minutes'} <= final.signed_artifact_hashes.keys(),
+             'rf1086_source_governance_receipt_invalid')
+    groups = []
+    for kind, content_hash in final.signed_artifact_hashes.items():
+        originals = tuple(artifact for artifact in item.artifacts
+            if artifact.variant is CorporateArtifactVariant.SIGNED_OWNER_ATTESTED
+            and artifact.artifact_kind.value == kind and artifact.content_sha256 == content_hash)
+        _require(bool(originals), 'rf1086_source_governance_signed_document_unverified')
+        groups.append(originals)
+    return final, tuple(groups)
+
+
+def _dividend_economics(item) -> dict:
+    canonical = item.decision.canonical_input
+    dividend, holders = canonical['dividend'], canonical['shareholders']
+    _require(isinstance(dividend, Mapping) and isinstance(holders, (tuple, list)),
+             'rf1086_source_governance_economics_invalid')
+    counts = {holder['shareholderId']: holder['shareCount'] for holder in holders}
+    _require(len(counts) == len(holders) and all(type(value) is int and value > 0 for value in counts.values()),
+             'rf1086_source_governance_economics_invalid')
+    allocations = tuple(sorted(((row['shareholderId'], _ore(row['amountOre']), counts[row['shareholderId']])
+                                for row in dividend['allocations']), key=lambda row: row[0]))
+    _require(len({row[0] for row in allocations}) == len(allocations)
+             and sum(row['amountOre'] for row in dividend['allocations']) == dividend['amountOre'],
+             'rf1086_source_governance_economics_invalid')
+    return {'event_type': 'dividend', 'event_date': item.reporting_date.value.isoformat(),
+            'amount': _ore(dividend['amountOre']), 'allocations': allocations}
+
+
+def _capital_economics(original, event_type) -> dict:
+    business = original.canonical_facts['businessFacts']
+    result = {'event_type': event_type, 'event_date': original.event_date.value.isoformat()}
+    if event_type == 'cash_issue':
+        count = business['issued_share_count']
+        _require(type(count) is int and count > 0, 'rf1086_source_governance_economics_invalid')
+        result.update(nominal_increase=_nok(business['nominal_increase']),
+                      share_premium=_nok(business['share_premium']), issued_share_count=count)
+    elif event_type == 'loss_covering_reduction':
+        result.update(nominal_reduction=_nok(business['nominal_reduction']),
+            old_share_capital=_nok(business['old_share_capital']), new_share_capital=_nok(business['new_share_capital']))
+    else:
+        raise Rf1086YearSourceError('rf1086_source_governance_economics_invalid')
+    return result
+
+
+@dataclass(frozen=True, slots=True)
+class SourceIntakeDocument:
+    document_id: str
+    content_sha256: str
+    role: str
+    source_income_year: int | None
+    variant: str | None
+    revision: int | None
+    artifact_id: str | None = None
+    supersedes_artifact_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SourceIntakeRegisterReference:
+    observation_id: str
+    revision: int
+    fact_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class SourceIntakeDividendAllocation:
+    shareholder_id: str
+    amount: str
+    share_count_basis: int
+
+
+@dataclass(frozen=True, slots=True)
+class SourceIntakeDividendEconomics:
+    amount: str
+    allocations: tuple[SourceIntakeDividendAllocation, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class SourceIntakeFinalization:
+    receipt_id: str
+    source_income_year: int
+    decision_sha256: str
+    signed_artifact_hashes: Mapping[str, str]
+    original_document_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class SourceIntakeDividend:
+    decision_id: str
+    decision_sha256: str
+    source_income_year: int
+    reporting_date: str
+    reporting_year: int
+    status: str
+    supersedes_decision_id: str | None
+    economics: SourceIntakeDividendEconomics | None
+    finalizations: tuple[SourceIntakeFinalization, ...]
+    documents: tuple[SourceIntakeDocument, ...]
+    blockers: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class SourceIntakeCapitalEconomics:
+    nominal_increase: str | None
+    share_premium: str | None
+    issued_share_count: int | None
+    nominal_reduction: str | None
+    old_share_capital: str | None
+    new_share_capital: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class SourceIntakeCapitalEvent:
+    receipt_id: str
+    event_reference: str
+    event_kind: str
+    phase: str
+    source_income_year: int
+    reporting_date: str
+    reporting_year: int
+    correction_of_event_id: str | None
+    accounting_entry_id: str
+    economics: SourceIntakeCapitalEconomics | None
+    documents: tuple[SourceIntakeDocument, ...]
+    register_observation: SourceIntakeRegisterReference | None
+    blockers: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class SourceIntakeCapital:
+    representative_receipt_id: str
+    status: str
+    events: tuple[SourceIntakeCapitalEvent, ...]
+    blockers: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class SourceIntakeAmendment:
+    original_entry_id: str
+    reversal_entry_id: str
+    replacement_entry_id: str | None
+    source_income_year: int
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class SourceIntakeCompany:
+    org_number: str
+    name: str
+    address: str
+    postal_code: str
+    city: str
+    identity_confirmed_at: str
+    identity_locked_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class SourceIntakeBasis:
+    company_id: str
+    income_year: int
+    company: SourceIntakeCompany
+    enumeration_sha256: str
+    enumeration_complete: bool
+    dividends: tuple[SourceIntakeDividend, ...]
+    capital_events: tuple[SourceIntakeCapital, ...]
+    ledger_amendments: tuple[SourceIntakeAmendment, ...]
+    blockers: tuple[str, ...]
+
+
+def _intake_projection(company, view) -> SourceIntakeBasis:
+    """Retain every owner-enumerated row; parsing never certifies capture readiness."""
+    dividends, capital = [], []
+    for item in view.dividends:
+        decision = item.decision
+        _require(all(row.company_id == view.company_id for row in
+            (decision, *item.document_sets, *item.artifacts, *item.events, *item.finalizations)),
+            'rf1086_source_governance_scope_mismatch')
+        blockers = []
+        if item.status != 'finalized' or item.reporting_date.value.year != int(view.income_year):
+            blockers.append('rf1086_source_governance_unresolved')
+        if len(item.finalizations) != 1:
+            blockers.append('rf1086_source_governance_receipt_invalid')
+        economics = None
+        try:
+            facts = _dividend_economics(item)
+            economics = SourceIntakeDividendEconomics(format(facts['amount'], 'f'), tuple(
+                SourceIntakeDividendAllocation(holder, format(amount, 'f'), count)
+                for holder, amount, count in facts['allocations']))
+        except (KeyError, TypeError, ValueError, AttributeError):
+            blockers.append('rf1086_source_governance_economics_invalid')
+        documents = tuple(SourceIntakeDocument(str(row.document_id), row.content_sha256,
+            row.artifact_kind.value, int(row.income_year), row.variant.value, None,
+            str(row.artifact_id), str(row.supersedes_artifact_id) if row.supersedes_artifact_id else None)
+            for row in item.artifacts)
+        original_ids = ()
+        if item.finalizations:
+            try:
+                _, groups = _dividend_originals(item, view.company_id)
+                original_ids = tuple(sorted({str(original.document_id) for group in groups for original in group}))
+            except Rf1086YearSourceError as error:
+                blockers.append(str(error))
+        finals = tuple(SourceIntakeFinalization(str(row.finalization_id), int(row.income_year),
+            row.decision_hash, row.signed_artifact_hashes, original_ids) for row in item.finalizations)
+        dividends.append(SourceIntakeDividend(str(decision.decision_id), decision.decision_hash,
+            int(decision.income_year), item.reporting_date.value.isoformat(), item.reporting_date.value.year,
+            item.status, str(decision.supersedes_decision_id) if decision.supersedes_decision_id else None,
+            economics, finals, documents, tuple(dict.fromkeys(blockers))))
+    for item in view.supported_events:
+        rows = item.lifecycle_events or (item.recorded,)
+        _require(item.recorded in rows and all(row.event.company_id == view.company_id for row in rows),
+                 'rf1086_source_governance_scope_mismatch')
+        events = []
+        for row in rows:
+            original = row.event
+            blockers = []
+            economics = None
+            event_type = {'cash_capital_increase': 'cash_issue',
+                'loss_coverage_capital_reduction': 'loss_covering_reduction'}.get(original.event_kind.value)
+            try:
+                values = _capital_economics(original, event_type)
+                economics = SourceIntakeCapitalEconomics(**{name:
+                    format(values[name], 'f') if isinstance(values.get(name), Decimal) else values.get(name)
+                    for name in SourceIntakeCapitalEconomics.__dataclass_fields__})
+            except (KeyError, TypeError, ValueError, AttributeError):
+                blockers.append('rf1086_source_governance_economics_invalid')
+            documents, reference = [], None
+            try:
+                for fact in original.canonical_facts['documentFacts']:
+                    documents.append(SourceIntakeDocument(_reference(fact['document_id']), fact['content_sha256'],
+                        fact['evidence_kind'], None, None, fact['revision']))
+                fact = original.canonical_facts.get('shareholderRegisterFact')
+                if fact is not None:
+                    reference = SourceIntakeRegisterReference(_reference(fact['record_id']), fact['revision'], fact['fact_sha256'])
+            except (KeyError, TypeError, ValueError, AttributeError):
+                # Never label a partially decoded reference set as complete.
+                raise Rf1086YearSourceError('rf1086_source_governance_receipt_invalid') from None
+            if not documents:
+                blockers.append('rf1086_source_governance_signed_document_unverified')
+            if original.phase.value in {'registered', 'first_recognized_after_registration'} and reference is None:
+                blockers.append('rf1086_source_independent_register_unavailable')
+            events.append(SourceIntakeCapitalEvent(str(original.event_id), str(original.event_reference),
+                original.event_kind.value, original.phase.value, int(original.income_year),
+                original.event_date.value.isoformat(), original.event_date.value.year,
+                str(row.correction_of_event_id) if row.correction_of_event_id else None, str(row.accounting_entry_id),
+                economics, tuple(documents), reference, tuple(blockers)))
+        representative = item.recorded
+        blockers = []
+        if (item.status != 'recorded' or representative.correction_of_event_id is not None
+                or representative.event.phase.value not in {'registered', 'first_recognized_after_registration'}
+                or representative.event.income_year != view.income_year):
+            blockers.append('rf1086_source_governance_unresolved')
+        capital.append(SourceIntakeCapital(str(representative.event.event_id), item.status, tuple(events), tuple(blockers)))
+    _require(all(row.company_id == view.company_id for row in view.ledger_amendments),
+             'rf1086_source_governance_scope_mismatch')
+    amendments = tuple(SourceIntakeAmendment(str(row.original_entry_id), str(row.reversal_entry_id),
+        str(row.replacement_entry_id) if row.replacement_entry_id else None, int(row.income_year), row.reason)
+        for row in view.ledger_amendments)
+    blockers = tuple(sorted({code for item in (*dividends, *capital) for code in item.blockers}
+        | {code for item in capital for event in item.events for code in event.blockers}
+        | ({'rf1086_source_governance_unresolved'} if amendments else set())))
+    return SourceIntakeBasis(company.id, int(view.income_year), SourceIntakeCompany(company.org_number, company.name,
+        company.address, company.postal_code, company.city, company.identity_confirmed_at, company.identity_locked_at), view.enumeration_sha256,
+        True, tuple(dividends), tuple(capital), amendments, blockers)
+
+
 class ShareholderRegisterSourceWorkflow:
     def __init__(self, rf_sessions: ShareholderRegisterFilingSessionFactory,
             company_access: CompanyAccessService, documents: DocumentsSessionFactory,
@@ -148,6 +396,20 @@ class ShareholderRegisterSourceWorkflow:
         self._company_access = company_access
         self._documents = documents
         self._governance = governance
+
+    async def read_source_intake_basis(self, access_token: str, *, company_id: CompanyId,
+            income_year: IncomeYear, correlation_id: CorrelationId) -> SourceIntakeBasis:
+        """Owner-only discovery; original bytes and capture authority are not verified here."""
+        await self._rf_sessions.session(access_token)
+        company = (await self._company_access.company_record(access_token, company_id=str(company_id))).company
+        _require(company.id == str(company_id) and company.role == 'owner' and company.entity_type == 'AS'
+                 and company.identity_confirmed_at is not None and company.identity_locked_at is not None,
+                 'rf1086_source_owner_required')
+        view = await self._governance.read_reporting_year_evidence(access_token,
+            company_id=company_id, income_year=income_year, correlation_id=correlation_id)
+        _require(view.company_id == company_id and view.income_year == income_year,
+                 'rf1086_source_governance_scope_mismatch')
+        return _intake_projection(company, view)
 
     async def read_source_document(self, access_token: str, *, company_id: CompanyId,
             document_id: DocumentId) -> Rf1086YearDocumentEvidence:
@@ -227,14 +489,7 @@ class ShareholderRegisterSourceWorkflow:
                      and original.income_year == command.income_year and original.event_date.value == event.timestamp.date(),
                      'rf1086_source_governance_receipt_invalid')
             facts = original.canonical_facts
-            business = facts['businessFacts']
-            economics = {'event_type': event.type, 'event_date': original.event_date.value.isoformat()}
-            if event.type == 'cash_issue':
-                economics.update(nominal_increase=_nok(business['nominal_increase']),
-                    share_premium=_nok(business['share_premium']), issued_share_count=business['issued_share_count'])
-            else:
-                economics.update(nominal_reduction=_nok(business['nominal_reduction']),
-                    old_share_capital=_nok(business['old_share_capital']), new_share_capital=_nok(business['new_share_capital']))
+            economics = _capital_economics(original, event.type)
             hashes = []
             for fact in facts['documentFacts']:
                 document = documents.get(_reference(fact['document_id']))

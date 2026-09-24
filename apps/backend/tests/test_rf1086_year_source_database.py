@@ -168,10 +168,13 @@ def test_migration_replay_rollback_recutover_preserve_history_and_roles(admitted
     with psycopg.connect(DATABASE_URL) as db:
         before=db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()
         db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+        db.execute((ROOT/'supabase/migrations'/'20260924062746_rf1086_source_company_guard.sql').read_text())
         assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()==before
     with psycopg.connect(DATABASE_URL) as db:db.execute((ROOT/'supabase/rollback'/MIGRATION).read_text())
     with pytest.raises(rf.ShareholderRegisterFilingError):asyncio.run(s.read_current_year_source(query(c)))
-    with psycopg.connect(DATABASE_URL) as db:db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+        db.execute((ROOT/'supabase/migrations'/'20260924062746_rf1086_source_company_guard.sql').read_text())
     assert asyncio.run(s.read_current_year_source(query(c)))==source
 
 

@@ -9,6 +9,7 @@ const databaseUrl = process.env.DATABASE_URL;
 const migrationName = "20260901233000_documents_capability.sql";
 const registryMigrationName =
   "20260902030000_documents_evidence_reference_registry.sql";
+const originalsMigrationName = "20260924062717_documents_immutable_retained_originals.sql";
 const retentionMigrationName = "20260923102419_documents_verified_rf_evidence_retention.sql";
 const governanceLifecycleMigrationName =
   "20260902100000_corporate_governance_artifact_lifecycle.sql";
@@ -45,6 +46,8 @@ test(
       governanceRollback,
       retentionForward,
       ledgerGuardForward,
+      originalsForward,
+      originalsRollback,
     ] = await Promise.all([
       readFile(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/rollback/${migrationName}`, import.meta.url), "utf8"),
@@ -54,6 +57,8 @@ test(
       readFile(new URL(`../supabase/rollback/${governanceLifecycleMigrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/migrations/${retentionMigrationName}`, import.meta.url), "utf8"),
       readFile(new URL("../supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql", import.meta.url), "utf8"),
+      readFile(new URL(`../supabase/migrations/${originalsMigrationName}`, import.meta.url), "utf8"),
+      readFile(new URL(`../supabase/rollback/${originalsMigrationName}`, import.meta.url), "utf8"),
     ]);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
@@ -63,6 +68,9 @@ test(
       assert.equal(initial.capability_schema, true);
 
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        // The originals rollback is empty-only and sees all rows under FORCE RLS.
+        // Never use CASCADE or a test cleanup to discard retained customer bytes.
+        await client.query(originalsRollback);
         await client.query(governanceRollback);
         await client.query("begin");
         try {
@@ -98,6 +106,7 @@ test(
         await client.query(governanceForward);
         await client.query(retentionForward);
         await client.query(ledgerGuardForward);
+        await client.query(originalsForward);
         const successor = await state(client);
         assert.deepEqual(
           {
@@ -132,6 +141,19 @@ test(
           has_function_privilege('shareholder_register_filing_executor',
             'documents.assert_retained_metadata_v1(text,text)', 'EXECUTE') as metadata`);
         assert.deepEqual(retentionGrant.rows[0], { capture: true, metadata: true });
+        const originalState = await client.query(`select
+          relrowsecurity as rls, relforcerowsecurity as force_rls,
+          has_table_privilege('shareholder_register_filing_executor',
+            'documents.retained_originals','SELECT') as filing_reads_bytes,
+          has_function_privilege('shareholder_register_filing_executor',
+            'documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)',
+            'EXECUTE') as filing_asserts,
+          has_function_privilege('documents_executor',
+            'documents.read_retained_original_v1(uuid,uuid,text)','EXECUTE') as owner_reads
+          from pg_catalog.pg_class where oid='documents.retained_originals'::regclass`);
+        assert.deepEqual(originalState.rows[0], {
+          rls: true, force_rls: true, filing_reads_bytes: false, filing_asserts: true, owner_reads: true,
+        });
       }
     } finally {
       await client.end();

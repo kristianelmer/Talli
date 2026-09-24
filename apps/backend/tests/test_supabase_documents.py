@@ -21,6 +21,7 @@ from talli_backend.modules.documents.public import (
     DocumentStatus,
     DocumentsError,
     StoredDocumentObject,
+    RetainedDocumentOriginalReceipt, document_metadata_sha256,
 )
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, UserId
 
@@ -208,6 +209,12 @@ def test_verified_evidence_refreshes_real_adapter_authorization_around_object_io
         service._persistence._rows = rows
         if change == "revoked_before_read": gateway.revoked = True
         if change == "unchanged":
+            async def retain(document, original):
+                assert original == content
+                return RetainedDocumentOriginalReceipt("40000000-0000-4000-8000-000000000001", document.document_id,
+                    document.company_id, document.income_year, document_metadata_sha256(document), document.content_sha256,
+                    document.byte_length, datetime(2026, 9, 24, tzinfo=UTC))
+            service._persistence.retain_verified_original = retain
             evidence = await service.verify_document_evidence(DOCUMENT_ID)
             assert evidence.content_sha256 == sha256(content).hexdigest()
             assert evidence.integrity_status is DocumentStatus.ATTACHED

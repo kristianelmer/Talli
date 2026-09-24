@@ -44,6 +44,30 @@ def db():
     assert url, 'DATABASE_URL must identify the owned disposable database'
     with psycopg.connect(url) as connection:
         try:
+            # Separately committed migrations are folded into one rollback-only
+            # transaction here. Avoid an ANALYZE/catalog deadlock by obtaining
+            # the complete RF table set before DDL, or releasing the whole set
+            # and retrying. NOWAIT avoids assuming ANALYZE uses our lock order.
+            from time import monotonic, sleep
+            relations = connection.execute("select c.relname,c.relowner::regrole::text from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname=%s and c.relkind in ('r','p') order by c.relname", (SCHEMA,)).fetchall()
+            if relations:
+                principal = connection.execute('select current_user').fetchone()[0]
+                if not connection.execute("select pg_has_role(current_user,'shareholder_register_filing_store_owner','SET')").fetchone()[0]:
+                    connection.execute(sql.SQL('grant shareholder_register_filing_store_owner to {} with set true granted by {}').format(sql.Identifier(principal),sql.Identifier(principal)))
+                deadline = monotonic() + 5
+                while True:
+                    try:
+                        with connection.transaction():
+                            for name, owner in relations:
+                                assert owner in (principal, 'shareholder_register_filing_store_owner')
+                                connection.execute(sql.SQL('set local role {}').format(sql.Identifier(owner)))
+                                connection.execute(sql.SQL('lock table {} in access exclusive mode nowait').format(sql.Identifier(SCHEMA, name)))
+                            connection.execute('reset role')
+                        break
+                    except psycopg.errors.LockNotAvailable:
+                        if monotonic() >= deadline:
+                            raise
+                        sleep(.02)
             from test_authority_connections_database_runtime import rf193_successor_topology, RF193_LAYERS
             phase, successor_layers = rf193_successor_topology(connection)
             if phase is not None:
@@ -751,3 +775,62 @@ def test_reverse_rejects_malformed_generic_quarantine_atomically(db,reverse,corr
     assert db.execute("select to_regclass('public.opening_balance_setups')").fetchone()[0] is None
     assert not db.execute('select 1 from public.filing_previews where id=%s',(p,)).fetchone()
     assert db.execute('select to_jsonb(g) from public.company_archive_source_generations g order by company_id,income_year').fetchall()==generations
+
+
+def test_rollback_rehearsal_does_not_deadlock_concurrent_analyze(monkeypatch):
+    """Two real lock conflicts, with exactly one ANALYZE per rollback cycle."""
+    import threading
+    from test_rf1086_database_runtime import rf_fixture_admin_access
+    authority = rf_fixture_admin_access.__wrapped__()
+    next(authority)
+    original_execute = psycopg.Connection.execute
+    conflict_seen = threading.Event()
+    release_analyze = threading.Event()
+
+    def observed_execute(connection, *args, **kwargs):
+        try:
+            return original_execute(connection, *args, **kwargs)
+        except psycopg.errors.LockNotAvailable:
+            # This is an actual PostgreSQL lock conflict, not a timing sleep.
+            conflict_seen.set()
+            release_analyze.set()
+            raise
+
+    monkeypatch.setattr(psycopg.Connection, 'execute', observed_execute)
+    try:
+        for _ in range(2):
+            conflict_seen.clear()
+            release_analyze.clear()
+            started = threading.Event()
+            errors = []
+
+            def analyze():
+                try:
+                    with psycopg.connect(os.environ['DATABASE_URL']) as connection:
+                        try:
+                            connection.execute('set local role shareholder_register_filing_store_owner')
+                            connection.execute('lock table shareholder_register_filing.year_source_heads in share update exclusive mode')
+                            started.set()
+                            assert release_analyze.wait(timeout=5), 'Rehearsal never reached the held table'
+                            connection.execute('analyze shareholder_register_filing.year_source_heads, shareholder_register_filing.year_source_versions')
+                        finally:
+                            connection.rollback()
+                except Exception as error:
+                    errors.append(error)
+                    started.set()
+
+            worker = threading.Thread(target=analyze)
+            worker.start()
+            rehearsal = db.__wrapped__()
+            try:
+                assert started.wait(timeout=5), 'ANALYZE worker did not acquire its table lock'
+                next(rehearsal)
+            finally:
+                rehearsal.close()
+                release_analyze.set()
+                worker.join(timeout=10)
+            assert not worker.is_alive(), 'ANALYZE worker must stop before authority cleanup'
+            assert errors == []
+            assert conflict_seen.is_set(), 'Rehearsal must release its partial lock batch on contention'
+    finally:
+        authority.close()

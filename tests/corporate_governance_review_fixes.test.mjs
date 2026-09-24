@@ -104,7 +104,7 @@ test("document evidence ownership is acyclic and declared", async () => {
   assert.ok(documents.owns.tables.includes("documents.evidence_references"));
   assert.equal(
     documents.owns.migrations,
-    "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql; supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql; supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql",
+    "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql; supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql; supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql; supabase/migrations/20260924062717_documents_immutable_retained_originals.sql",
   );
   assert.match(registry, /documents\.register_evidence_reference_v1/iu);
   assert.match(lifecycle, /backend_system\.register_corporate_governance_documents_v1/iu);

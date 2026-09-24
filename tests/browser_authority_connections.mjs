@@ -432,8 +432,9 @@ async function seedHistoricalRf(database, companyId, ownerId, request) {
       payload_hash,adapter_version,environment,status,authority_references,submitted_by,feedback_state,feedback_forsendelse_id)
       values($1,$2,$3,$4,$5,2025,'aksjonaerregisteroppgaven','rf1086_no_activity_v1',$6,'rf1086-production-v1','production','processing','{}',$5,'processing',$7)`,
       [submissionId, approvalId, entitlementId, companyId, ownerId, hash, forsendelseId]);
-    await database.query(`insert into shareholder_register_filing.production_filing_events(submission_id,operation_name,operation_state,attempt,body_hash,idempotency_key,authority_reference,resulting_status)
-      values($1,'confirm','succeeded',1,$2,$3,$4,'received')`, [submissionId, hash, randomUUID(), JSON.stringify({ dialogId, forsendelseId })]);
+    // Fixture access disables the archive scope trigger; keep its derived scope.
+    await database.query(`insert into shareholder_register_filing.production_filing_events(submission_id,operation_name,operation_state,attempt,body_hash,idempotency_key,authority_reference,resulting_status,company_id,income_year)
+      values($1,'confirm','succeeded',1,$2,$3,$4,'received',$5,2025)`, [submissionId, hash, randomUUID(), JSON.stringify({ dialogId, forsendelseId }), companyId]);
   });
   return { submissionId, forsendelseId };
 }

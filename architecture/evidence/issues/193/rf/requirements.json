@@ -119,5 +119,9 @@
   "documentsLedgerRetention": "documents-ledger-retention-20260923.json",
   "authorityTopologyOwnedClone": "authority-topology-owned-clone-20260924.json",
   "sourceApprovalManifest": "source-approval-manifest-20260924.json",
-  "currentSourceCorrectionDraft": "current-source-draft-20260924.json"
+  "currentSourceCorrectionDraft": "current-source-draft-20260924.json",
+  "consequentialFreshnessWriteInventory": "consequential-freshness-write-inventory-20260924.md",
+  "sourceIntakeBasis": "source-intake-basis-20260924.json",
+  "immutableDocumentOriginals": "immutable-document-originals-20260924.json",
+  "sourceCompanyGuard": "source-company-guard-20260924.json"
 }

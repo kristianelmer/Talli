@@ -446,3 +446,38 @@ Changing an input or adding unknown manifest keys invalidates the approval.
 This pure builder does not grant approval or submission authority. Transactional
 owner/AAL2/entitlement/review checks, cross-owner freshness, correction admission,
 persistence and production profile integration remain separate required work.
+
+## Source writer company guard
+
+`20260924062746_rf1086_source_company_guard.sql` makes source capture,
+register-observation capture and source-preview append acquire the existing
+company-wide archive advisory guard before the RF year lock and document/head
+row locks. Access is checked again after the company guard is acquired. The
+application capture transactions use READ COMMITTED. RF-owned row triggers also
+cover every permitted mutation of the four source tables, including a first
+insert into an empty year. The narrow guard grant adds no cross-owner table
+access. Rollback suspends these commands while retaining guards and originals.
+
+This covers RF source writers only. Company Access, Governance, Ledger,
+Documents and RF review/permission coverage, shared action-time reads and
+production admission remain required. These guard-only triggers do not add
+source evidence to company archive exports or advance archive generations.
+
+## Source intake basis
+
+The authenticated `rf1086ReadSourceIntakeBasis` read returns the currently
+confirmed AS identity and Governance's complete reporting-year enumeration for
+customer source intake. The server projects typed economics using the same
+parsers as source capture. It retains pending, rejected, superseded, corrected,
+reversed and cross-year records; each capital lifecycle retains its original
+phases. Decision/finalization identities, original document references, register
+observation references and Ledger amendment lineage remain explicit. Dividend
+finalizations identify their exact signed originals on the server.
+
+`enumerationComplete` describes the Governance read only. Empty `blockers` does
+not establish source completeness, verified document bytes, an eligible
+finalization, filing readiness or approval. Original references are observations;
+source capture independently verifies all originals and current register facts.
+Capital document references have no source year in the Governance contract, so
+that field remains null until Documents supplies its verified metadata. The read
+performs no RF writes and does not create or advance source evidence.

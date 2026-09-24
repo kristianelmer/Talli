@@ -166,15 +166,37 @@ class DocumentBackupObject:
 
 
 @dataclass(frozen=True, slots=True)
+class RetainedDocumentOriginalReceipt:
+    """An immutable Documents-owned byte copy; not a filing authorization."""
+    original_id: str
+    document_id: DocumentId
+    company_id: CompanyId
+    source_income_year: IncomeYear
+    metadata_sha256: str
+    content_sha256: str
+    byte_length: int
+    retained_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class RetainedDocumentOriginal:
+    receipt: RetainedDocumentOriginalReceipt
+    content: bytes
+
+
+@dataclass(frozen=True, slots=True)
 class VerifiedDocumentEvidence:
     """Accepted metadata whose private object bytes were just reverified.
 
-    This is a point-in-time observation, not a lease or proof of legal signature.
+    Metadata is a point-in-time observation, not a filing lease or proof of legal
+    signature. A retained_original receipt additionally pins an immutable byte
+    copy; it creates no filing evidence reference or current-source approval.
     """
     document: DocumentRecord
     content_sha256: str
     byte_length: int
     integrity_status: DocumentStatus
+    retained_original: RetainedDocumentOriginalReceipt | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -206,6 +228,8 @@ class DocumentsPersistence(Protocol):
     async def stage_upload(self, command: BeginDocumentUploadCommand, *, name: str, storage_key: str) -> DocumentRecord: ...
     async def quarantine_upload(self, document_id: DocumentId, reason: str) -> None: ...
     async def finalize_upload(self, document_id: DocumentId, *, byte_length: int, content_sha256: str) -> DocumentRecord: ...
+    async def retain_verified_original(self, document: DocumentRecord, content: bytes) -> RetainedDocumentOriginalReceipt: ...
+    async def read_retained_original(self, original_id: str, company_id: CompanyId) -> RetainedDocumentOriginal: ...
     async def get_document(self, document_id: DocumentId) -> DocumentRecord | None: ...
     async def list_documents(self, company_ids: tuple[CompanyId, ...]) -> tuple[DocumentRecord, ...]: ...
     async def has_evidence_references(self, document_id: DocumentId) -> bool: ...
@@ -351,6 +375,25 @@ def document_evidence_retention_adapter(
     return declare
 
 
+class DocumentOriginalPersistence(Protocol):
+    async def retain_verified_original(self, document: DocumentRecord, content: bytes) -> RetainedDocumentOriginalReceipt: ...
+    async def read_retained_original(self, original_id: str, company_id: CompanyId) -> RetainedDocumentOriginal: ...
+    async def assert_retained_original(self, receipt: RetainedDocumentOriginalReceipt) -> None:
+        """Assert immutable bytes and current metadata in the caller's transaction.
+
+        The assertion acquires the company guard and document row lock. Any
+        mismatch must abort the SQL transaction, even if caught by a caller.
+        """
+        ...
+
+
+def document_original_persistence_adapter(contract: type[object]) -> Callable[[DocumentsAdapter], DocumentsAdapter]:
+    def declare(adapter: DocumentsAdapter) -> DocumentsAdapter:
+        _ = contract
+        return adapter
+    return declare
+
+
 def document_metadata_sha256(document: DocumentRecord) -> str:
     """Documents-owned complete public metadata digest, including storage binding."""
     from .evidence import metadata_sha256
@@ -358,6 +401,8 @@ def document_metadata_sha256(document: DocumentRecord) -> str:
 
 
 __all__ = [
+    "RetainedDocumentOriginalReceipt", "RetainedDocumentOriginal", "DocumentOriginalPersistence",
+    "document_original_persistence_adapter",
     "BeginDocumentUploadCommand",
     "DocumentBackupObject",
     "DocumentErrorCode",
