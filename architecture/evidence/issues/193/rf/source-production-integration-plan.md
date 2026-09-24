@@ -88,13 +88,26 @@ IDs use UTF-8 ordering and bounded hashed journal keys. Historical
 `production-approval-v1` manifests, hashes and UUID ordering remain unchanged.
 The builder does not persist approval or authorize sending.
 
-Add an explicit full-year profile across Billing commands/transports/SQL and RF
-approval, submission and journal visibility. Do not label eventful cases as
-no-activity. Unknown profiles remain denied. An immutable RF-owned bridge from
-source previews to existing filing previews can preserve the existing approval
-foreign key without inventing an opening setup. The old approval route must
-reject bridge previews. Readiness must use the verified full-year source binding
-instead of regenerating an opening-only case.
+The Billing full-year prerequisite now admits exactly `rf1086_full_year_v1`
+through domain/HTTP/operator/generated contracts and the Billing CHECK. Omitted
+profile preserves the historical default; unknown/null grant profiles fail.
+Profile remains part of immutable entitlement identity and replay fingerprints.
+
+The RF-owned immutable review bridge now projects a retained source preview into
+`filing_previews` with the same UUID and no opening setup. A composite foreign
+key binds company/year/source/source-hash/payload-hash. Review text, issues and
+XML derive from stored preview bytes; shareholder keys match the versioned
+source manifest. Application `prepare_review` performs that write inside held
+source admission after original-byte checks. Exact replay requires a current
+source; historical reads survive correction. The bridge has no HTTP route yet.
+Legacy Python approval paths and production table barriers reject these previews.
+Rollback suspends new bridges while retaining evidence and barriers.
+
+Full-year RF approval/submission constraints, immutable review digest, exact
+warning acknowledgment and authority/entitlement checks, approval append and
+journal visibility still require their independent guarded commands. The review
+bridge is not approval or send authority. Readiness must use the verified
+full-year source binding instead of regenerating an opening-only case.
 
 Repeat all consequential checks in the transaction that persists the submit-once
 claim. That commit is the admission point: later source changes require a

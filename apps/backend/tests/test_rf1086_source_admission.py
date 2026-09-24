@@ -145,3 +145,34 @@ def test_guarded_legal_identity_preserves_reviewed_contact_and_share_type():
     assert h.identity.company.contact_email is None
     asyncio.run(h.run())
     assert h.committed
+
+
+def test_review_projection_commits_only_after_all_admission_checks_inside_guard():
+    h=AdmissionHarness()
+    async def bridge(preview):
+        assert h.held and 'governance' in h.calls and 'original' in h.calls
+        assert preview == h.preview
+        h.calls.append('bridge')
+        return preview.preview_id
+    h.transaction.bridge_source_preview=bridge
+    result=asyncio.run(h.workflow.prepare_review('token',company_id=COMPANY,income_year=YEAR,
+        preview_id=h.preview.preview_id,correlation_id=CorrelationId('review-bridge')))
+    assert result==h.preview.preview_id and h.committed
+    assert h.calls.index('bridge') < h.calls.index('release')
+
+
+def test_stale_source_never_materializes_review_and_bridge_failure_rolls_back():
+    h=AdmissionHarness()
+    async def bridge(preview):
+        assert h.held
+        raise RuntimeError('projection write failed')
+    h.transaction.bridge_source_preview=bridge
+    with pytest.raises(RuntimeError,match='projection write failed'):
+        asyncio.run(h.workflow.prepare_review('token',company_id=COMPANY,income_year=YEAR,
+            preview_id=h.preview.preview_id,correlation_id=CorrelationId('review-bridge')))
+    assert not h.committed and not h.held
+    h.on_guard=lambda:setattr(h,'current',replace(h.source,source_sha256='f'*64))
+    with pytest.raises(rf.Rf1086YearSourceError):
+        asyncio.run(h.workflow.prepare_review('token',company_id=COMPANY,income_year=YEAR,
+            preview_id=h.preview.preview_id,correlation_id=CorrelationId('review-bridge')))
+    assert not h.committed

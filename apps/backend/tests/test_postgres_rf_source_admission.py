@@ -70,3 +70,31 @@ def test_actual_scope_orders_company_before_year_and_reuses_connection_then_expi
         for action in (scoped.company_identity,scoped.current_source):
             with pytest.raises(rf.ShareholderRegisterFilingError): await action()
     asyncio.run(run())
+
+
+def test_bridge_uses_guarded_connection_and_rejects_changed_projection_and_expired_scope():
+    import hashlib
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    h=AdmissionHarness();store=rf_session();calls=[]
+    query=rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id)
+    class Connection:
+        info=SimpleNamespace(transaction_status=TransactionStatus.INTRANS)
+        async def execute(self,sql,args):calls.append((sql,args));return self
+        async def fetchone(self):return {'id':h.preview.preview_id.value}
+    db=Connection()
+    async def read(connection,preview_id):
+        assert connection is db;return h.preview
+    store._read_source_preview=read
+    scope=_SourceAdmission(store,db,query,h.identity)
+    async def run():
+        assert await scope.bridge_source_preview(h.preview)==h.preview.preview_id
+        assert calls==[('select shareholder_register_filing.bridge_source_preview_v1(%s::uuid,%s,%s) as id',
+            (h.preview.preview_id.value,hashlib.sha256(rf.serialize_rf1086_source_preview(h.preview).encode()).hexdigest(),str(store.actor_id.subject)))]
+        with pytest.raises(rf.Rf1086YearSourceError):
+            await scope.bridge_source_preview(replace(h.preview,preview_text='changed review'))
+        with pytest.raises(rf.Rf1086YearSourceError):
+            await scope.bridge_source_preview(replace(h.preview,income_year=type(YEAR)(2023)))
+        scope.close()
+        with pytest.raises(rf.ShareholderRegisterFilingError):await scope.bridge_source_preview(h.preview)
+        assert len(calls)==1
+    asyncio.run(run())

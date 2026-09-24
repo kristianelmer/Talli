@@ -24,6 +24,8 @@ const CONSEQUENTIAL_GUARDS = [
   "20260924080249_documents_rf_consequential_company_guards.sql",
   "20260924080355_governance_ledger_company_write_guards.sql",
   "20260924083154_governance_guarded_reporting_year_read.sql",
+  "20260924084752_billing_rf_full_year_pilot_profile.sql",
+  "20260924085227_rf1086_source_review_bridge.sql",
 ];
 const RF193_SOURCE_PREVIEW = "20260923105912_rf1086_source_backed_preview.sql";
 

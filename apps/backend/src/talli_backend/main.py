@@ -254,6 +254,7 @@ from talli_backend.modules.billing.public import (
     BillingPaymentProvider,
     BillingPaymentStatus,
     BillingPlan,
+    BillingPilotCaseProfile,
     BillingSnapshot,
     BillingSnapshotQuery,
     BillingStatus,
@@ -2427,6 +2428,7 @@ class BillingUnsupportedWire(BillingCompanyWire):
 
 
 class BillingPilotEntitlementCommandWire(BillingCompanyWire):
+    case_profile: BillingPilotCaseProfile = BillingPilotCaseProfile.RF1086_NO_ACTIVITY_V1
     entitlement_id: UUID | None = None
     user_id: UUID
     income_year: int = Field(ge=2000, le=2100)
@@ -13205,6 +13207,7 @@ def create_app(
                 starts_at=Timestamp(command.starts_at),
                 expires_at=Timestamp(command.expires_at),
                 evidence_reference=command.evidence_reference,
+                case_profile=command.case_profile,
             ))
             return billing_pilot_wire(await workflow.manage_pilot_entitlement(domain))
 

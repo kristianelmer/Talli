@@ -1,7 +1,7 @@
 # Shareholder register filing
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions","shareholder_register_filing.year_source_heads","shareholder_register_filing.year_source_versions","shareholder_register_filing.register_observations"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority","Rf1086YearSourcePersistence","Rf1086RegisterObservationPersistence"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
+{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions","shareholder_register_filing.year_source_heads","shareholder_register_filing.year_source_versions","shareholder_register_filing.register_observations","shareholder_register_filing.source_previews","shareholder_register_filing.source_review_bridges"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority","Rf1086YearSourcePersistence","Rf1086RegisterObservationPersistence"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
 -->
 
 ## Owned behavior
@@ -540,3 +540,18 @@ review/permission, entitlement, immutable bridge, approval persistence, submissi
 head/correction admission and journal integration remain required. Unit tests
 exercise policy and scope lifetime; actual database permission/concurrency tests
 must run in CI before runtime behavior is considered verified.
+
+
+The full-year review bridge retains the exact source-preview ID, source/hash
+binding, text, issues and XML under the existing filing-review identity without
+an opening setup. Arbitrary shareholder IDs map to the versioned manifest's
+stable hashed journal keys. It is immutable, tenant-scoped, and replayable only
+while its original source remains current. Historical review reads remain
+available after a source correction. The application materializes it within
+source admission, after retained-byte and complete Governance checks.
+
+This bridge enables review only. Domain/adapter legacy approval paths reject the
+full-year marker, and table barriers reject source-preview IDs or full-year
+profiles in production approvals/submissions. Full-year approval/send must add
+an independent guarded command before those barriers can be narrowed. Rollback
+suspends bridge creation while retaining historical projections and barriers.

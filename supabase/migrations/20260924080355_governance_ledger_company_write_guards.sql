@@ -180,7 +180,7 @@ end; $tables$;
 -- after admission. Never edit historical migration bodies, rename public APIs,
 -- grant table access, or leave an independently callable unguarded alias.
 do $routines$
-declare item record; routine record; helper text; company_arg text; subject_arg text;
+declare item record; routine record; helper text; company_arg text; subject_arg text; migration_owned_legacy boolean;
  definition text; wrapped text; original text; prefix constant text := E'BEGIN\n  -- rf193-company-write-guard-v1\n';
 begin
  for item in select * from (values
@@ -260,14 +260,20 @@ begin
     join pg_catalog.pg_language l on l.oid=p.prolang
     where n.nspname=item.schema_name and p.proname=item.routine_name
   loop
+   -- The expanded writer migration created this exact Ledger delegate as its
+   -- migration principal, whose ownership must remain unchanged here.
+   -- Do not admit other Ledger routines or unexpected overloads on that basis.
+   migration_owned_legacy:=routine.owner_name=current_user and (
+     item.schema_name='backend_system' or coalesce(routine.oid=pg_catalog.to_regprocedure(
+       'ledger.post_entry_with_id_v1(text,uuid,integer,text,text,jsonb,jsonb,boolean,text,text,text,text,uuid)'),false));
    if routine.lanname<>'plpgsql' or not routine.prosecdef or routine.provolatile<>'v'
       or (routine.owner_name not in ('corporate_governance_store_owner','ledger_store_owner','ledger_workflow_store_owner')
-        and not (item.schema_name='backend_system' and routine.owner_name=current_user))
+        and not migration_owned_legacy)
       or routine.proconfig is distinct from array['search_path=""']::text[]
    then raise exception 'rf193_writer_routine_shape_changed: %.%',item.schema_name,item.routine_name; end if;
    -- Expanded legacy coordinators run as their original migration principal,
    -- whose temporary store-owner SET membership must not become a dependency.
-   if item.schema_name='backend_system' and routine.owner_name=current_user then
+   if migration_owned_legacy then
     set local role ledger_store_owner;
     execute pg_catalog.format('grant execute on function ledger.acquire_company_write_guard_v1(uuid,text) to %I',routine.owner_name);
     reset role;

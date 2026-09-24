@@ -1028,6 +1028,7 @@ const billingSchemas = Object.fromEntries([
   "BillingPaymentKind",
   "BillingPaymentEventWire",
   "BillingPaymentStatus",
+  "BillingPilotCaseProfile",
   "BillingPilotEntitlementCommandWire",
   "BillingPilotEntitlementWire",
   "BillingPlan",

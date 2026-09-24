@@ -5453,12 +5453,24 @@
         "title": "BillingPaymentStatus",
         "type": "string"
       },
+      "BillingPilotCaseProfile": {
+        "enum": [
+          "rf1086_no_activity_v1",
+          "rf1086_full_year_v1"
+        ],
+        "title": "BillingPilotCaseProfile",
+        "type": "string"
+      },
       "BillingPilotEntitlementCommandWire": {
         "additionalProperties": false,
         "properties": {
           "billingExempt": {
             "title": "Billingexempt",
             "type": "boolean"
+          },
+          "caseProfile": {
+            "$ref": "#/components/schemas/BillingPilotCaseProfile",
+            "default": "rf1086_no_activity_v1"
           },
           "companyId": {
             "format": "uuid",

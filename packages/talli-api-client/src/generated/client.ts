@@ -2908,8 +2908,11 @@ export interface BillingPaymentEventWire {
 
 export type BillingPaymentStatus = "created" | "succeeded" | "failed" | "refunded" | "canceled";
 
+export type BillingPilotCaseProfile = "rf1086_no_activity_v1" | "rf1086_full_year_v1";
+
 export interface BillingPilotEntitlementCommandWire {
   billingExempt: boolean;
+  caseProfile?: BillingPilotCaseProfile;
   companyId: string;
   entitlementId?: string | null;
   evidenceReference: string;
@@ -8397,11 +8400,16 @@ function isBillingPaymentStatus(value: unknown): value is BillingPaymentStatus {
   return value === "created" || value === "succeeded" || value === "failed" || value === "refunded" || value === "canceled";
 }
 
+function isBillingPilotCaseProfile(value: unknown): value is BillingPilotCaseProfile {
+  return value === "rf1086_no_activity_v1" || value === "rf1086_full_year_v1";
+}
+
 function isBillingPilotEntitlementCommandWire(value: unknown): value is BillingPilotEntitlementCommandWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["billingExempt","companyId","entitlementId","evidenceReference","expiresAt","incomeYear","startsAt","status","systemUserRequestId","userId"]) &&
+    hasOnlyProperties(value, ["billingExempt","caseProfile","companyId","entitlementId","evidenceReference","expiresAt","incomeYear","startsAt","status","systemUserRequestId","userId"]) &&
     typeof value.billingExempt === "boolean" &&
+    (value.caseProfile === undefined || isBillingPilotCaseProfile(value.caseProfile)) &&
     isUuid(value.companyId) &&
     (value.entitlementId === undefined || (isUuid(value.entitlementId) || value.entitlementId === null)) &&
     (typeof value.evidenceReference === "string" && value.evidenceReference.length >= 1 && value.evidenceReference.length <= 1000) &&

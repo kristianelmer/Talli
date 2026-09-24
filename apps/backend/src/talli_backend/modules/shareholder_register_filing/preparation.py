@@ -285,7 +285,8 @@ class Rf1086PreparationService:
         try: UUID(command.entitlement_id)
         except (ValueError,TypeError,AttributeError): raise ShareholderRegisterFilingError.invalid_input() from None
         basis = await self._persistence.load_approval_basis(command)
-        if basis.preview.id != str(command.preview_id) or basis.preview.status != 'ready' or not basis.preview.hovedskjema_xml:
+        if (basis.preview.source == 'rf1086-full-year-v1' or basis.preview.id != str(command.preview_id)
+                or basis.preview.status != 'ready' or not basis.preview.hovedskjema_xml):
             raise ShareholderRegisterFilingError.company_year_not_admitted()
         preview = _production_preview(basis.preview)
         manifest = rf1086_current_manifest(preview,actor_id=str(command.actor_id.subject),organization_number=basis.organization_number)

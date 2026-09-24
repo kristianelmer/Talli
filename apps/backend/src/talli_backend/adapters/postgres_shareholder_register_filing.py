@@ -785,6 +785,8 @@ class PostgresShareholderRegisterFilingSession:
 
     async def _approval_basis(self, connection, preview_id, *, lock=False):
         preview = await self._preview_record(connection,preview_id,lock=lock)
+        if preview.source == 'rf1086-full-year-v1':
+            raise rf.Rf1086ProductionError('basis_unavailable')
         identity = await (await connection.execute(
             'select public.company_access_read_rf_company_identity_v1(%s::uuid,%s::text) as identity',
             (preview.company_id,str(self.actor_id.subject)),
@@ -1095,6 +1097,20 @@ class _SourceAdmission:
             raise rf.ShareholderRegisterFilingError.forbidden()
         from talli_backend.adapters.postgres_document_originals import PostgresDocumentOriginals
         await PostgresDocumentOriginals(self._connection, self.actor_id).assert_retained_original(receipt)
+
+    async def bridge_source_preview(self, preview):
+        self._require_active()
+        if (preview.company_id != self._query.company_id or preview.income_year != self._query.income_year
+                or await self.source_preview(preview.preview_id) != preview):
+            raise rf.Rf1086YearSourceError('rf1086_source_preview_mismatch')
+        payload_sha = hashlib.sha256(rf.serialize_rf1086_source_preview(preview).encode('utf-8')).hexdigest()
+        row = await (await self._connection.execute(
+            'select shareholder_register_filing.bridge_source_preview_v1(%s::uuid,%s,%s) as id',
+            (preview.preview_id.value, payload_sha, str(self.actor_id.subject)),
+        )).fetchone()
+        if row is None or str(row['id']) != preview.preview_id.value:
+            raise rf.Rf1086YearSourceError('rf1086_source_preview_storage_invalid')
+        return preview.preview_id
 
     async def read_current_register_observation(self, query, observation_id):
         self._require_active()

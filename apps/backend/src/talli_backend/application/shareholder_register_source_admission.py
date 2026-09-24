@@ -31,6 +31,7 @@ class Rf1086SourceAdmissionTransaction(Protocol):
     async def governance_evidence(self, correlation_id: CorrelationId) -> CorporateGovernanceYearEvidence: ...
     async def current_source(self) -> rf.Rf1086YearSourceSnapshot | None: ...
     async def source_preview(self, preview_id: rf.PreviewId) -> rf.Rf1086SourcePreview: ...
+    async def bridge_source_preview(self, preview: rf.Rf1086SourcePreview) -> rf.PreviewId: ...
     async def assert_original(self, receipt: RetainedDocumentOriginalReceipt) -> None: ...
     async def read_current_register_observation(self, query: rf.Rf1086SourceQuery,
             observation_id: rf.Rf1086RegisterObservationId) -> rf.Rf1086RegisterObservationSnapshot | None: ...
@@ -66,6 +67,17 @@ class ShareholderRegisterSourceAdmission:
     def __init__(self, sessions: SourceAdmissionSessions, documents: DocumentsSessionFactory):
         self._sessions = sessions
         self._documents = documents
+
+    async def prepare_review(self, access_token: str, *, company_id: CompanyId,
+            income_year: IncomeYear, preview_id: rf.PreviewId, correlation_id: CorrelationId) -> rf.PreviewId:
+        """Materialize the immutable review projection before releasing admission.
+
+        Review preparation grants no approval or provider authority. Those
+        operations must independently re-enter admission against current facts.
+        """
+        async with self.admit(access_token, company_id=company_id, income_year=income_year,
+                preview_id=preview_id, correlation_id=correlation_id) as admitted:
+            return await admitted.transaction.bridge_source_preview(admitted.preview)
 
     @asynccontextmanager
     async def admit(self, access_token: str, *, company_id: CompanyId,

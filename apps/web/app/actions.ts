@@ -5217,6 +5217,12 @@ export async function upsertProductionPilotEntitlement(formData: FormData) {
   }
   const incomeYear = Number(formString(formData, "incomeYear"));
   const status = formString(formData, "status");
+  const caseProfile = formData.has("caseProfile")
+    ? formString(formData, "caseProfile")
+    : "rf1086_no_activity_v1";
+  if (caseProfile !== "rf1086_no_activity_v1" && caseProfile !== "rf1086_full_year_v1") {
+    redirect("/operator?error=Ugyldig%20pilotprofil");
+  }
   const startsAt = new Date(formString(formData, "startsAt"));
   const expiresAt = new Date(formString(formData, "expiresAt"));
   const evidenceReference = formString(formData, "evidenceReference");
@@ -5233,6 +5239,7 @@ export async function upsertProductionPilotEntitlement(formData: FormData) {
       companyId,
       entitlementId,
       userId: ownerUserId,
+      caseProfile,
       incomeYear,
       status: status as "pending" | "active" | "suspended" | "completed" | "revoked",
       billingExempt: formData.get("billingExempt") === "on",
