@@ -116,5 +116,6 @@
   "sourceMetadataCompatibility": "source-metadata-compatibility-20260923.json",
   "serverDerivedEventDigest": "server-event-digest-20260923.json",
   "sourceProductionIntegrationPlan": "source-production-integration-plan.md",
-  "documentsLedgerRetention": "documents-ledger-retention-20260923.json"
+  "documentsLedgerRetention": "documents-ledger-retention-20260923.json",
+  "authorityTopologyOwnedClone": "authority-topology-owned-clone-20260924.json"
 }

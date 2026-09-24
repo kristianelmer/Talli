@@ -27,8 +27,12 @@ def migration(db, path):
     body = (ROOT / path).read_text()
     body = re.sub(r'(?m)^begin;\s*$', '', body, count=1)
     body = re.sub(r'commit;\s*$', '', body)
+    original_search_path = db.execute("select current_setting('search_path')").fetchone()[0]
     try:
         db.execute(body)
+        # Each shipped migration owns a transaction; SET LOCAL must not leak
+        # into the next migration when this rehearsal strips those boundaries.
+        db.execute("select set_config('search_path',%s,true)", (original_search_path,))
     except psycopg.Error as error:
         error.add_note(path + ': ' + (error.diag.context or '').splitlines()[-1:][0] if error.diag.context else path)
         raise
@@ -40,7 +44,14 @@ def db():
     assert url, 'DATABASE_URL must identify the owned disposable database'
     with psycopg.connect(url) as connection:
         try:
-            if connection.execute("select to_regclass('shareholder_register_filing.migration_state')").fetchone()[0]:
+            from test_authority_connections_database_runtime import rf193_successor_topology, RF193_LAYERS
+            phase, successor_layers = rf193_successor_topology(connection)
+            if phase is not None:
+                # Restore the frozen table shape before removing its owner;
+                # all DDL and originals are restored by the outer rollback.
+                for name in reversed(successor_layers):
+                    if name != RF193_LAYERS[0][0]:
+                        migration(connection, 'supabase/rollback/' + name)
                 migration(connection, ROLLBACK)
             yield connection
         finally:

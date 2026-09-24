@@ -154,3 +154,11 @@ def test_year_source_rechecks_observation_supersession_inside_capture_transactio
     with pytest.raises(rf.Rf1086YearSourceError,match='register_observation_stale'):
         asyncio.run(s.record_year_source(command,context=context,idempotency_key=IdempotencyKey(str(uuid4()))))
     assert asyncio.run(s.read_current_year_source(query(command))) is None
+
+
+def test_original_observation_blocks_frozen_predecessor_rehearsal(admitted,backend_url):
+    from test_authority_connections_database_runtime import assert_retained_rf_original_refuses_predecessor_rehearsal
+    store=session(admitted,backend_url);command,context=inputs(admitted,store)
+    original=capture(store,command,context)
+    assert_retained_rf_original_refuses_predecessor_rehearsal()
+    assert asyncio.run(store.read_register_observation(query(command),original.observation_id))==original

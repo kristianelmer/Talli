@@ -196,3 +196,11 @@ def test_late_source_failure_rolls_back_retention_source_and_head(admitted,backe
             db.execute('set local role shareholder_register_filing_store_owner')
             db.execute('drop trigger fixture_reject_source on shareholder_register_filing.year_source_versions')
             db.execute('drop function shareholder_register_filing.fixture_reject_source()')
+
+
+def test_original_source_blocks_frozen_predecessor_rehearsal(admitted,backend_url):
+    from test_authority_connections_database_runtime import assert_retained_rf_original_refuses_predecessor_rehearsal
+    store=session(admitted,backend_url);command,context=inputs(admitted,store)
+    original=capture(store,command,context)
+    assert_retained_rf_original_refuses_predecessor_rehearsal()
+    assert asyncio.run(store.read_current_year_source(query(command)))==original

@@ -382,6 +382,11 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
   const authorityLifecycle = packageJson.scripts["test:authority-connections-database"];
   const files = lifecycle.match(/apps\/backend\/tests\/test_\w+\.py/gu);
   const authorityFiles = authorityLifecycle.match(/apps\/backend\/tests\/test_\w+\.py/gu);
+  assert.match(authorityLifecycle, /&& uv run --project apps\/backend python scripts\/test-corporate-reporting-owned-clone\.py$/u);
+  const cloneRunner = readFileSync(new URL("../scripts/test-corporate-reporting-owned-clone.py", import.meta.url), "utf8");
+  const cloneFiles = cloneRunner.match(/apps\/backend\/tests\/test_\w+\.py/gu);
+  assert.deepEqual(cloneFiles, ["apps/backend/tests/test_corporate_reporting_year_database_runtime.py"]);
+  authorityFiles.push(...cloneFiles);
   assert.ok(files?.length, "the mandatory database lane must name its test files");
   assert.ok(authorityFiles?.length, "the mandatory Authority lane must name its test files");
   const env = { ...process.env };
@@ -504,8 +509,9 @@ const RFA='20260917114424_rf1086_production_archive_evidence.sql';
 const RFY='20260923091509_rf1086_immutable_year_source.sql';
 const RFO='20260923102314_rf1086_register_observation_store.sql';
 const RFP='20260923105912_rf1086_source_backed_preview.sql';
+const DLG='20260923125730_documents_ledger_evidence_guard.sql';
 const predecessor={rf_owned:false,authority_kind:'r',ledger_kind:'v',ledger_setup:true,opening_kind:'r'};
-const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${RFR}`,`migrations/${RFA}`,`migrations/${RFY}`,`migrations/${RFO}`,`migrations/${RFP}`];
+const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`migrations/${RFA}`,`migrations/${RFY}`,`migrations/${RFO}`,`migrations/${RFP}`];
 const workspaceForward=forward.filter(path=>path!==`contract-migrations/${AUC}`);
 function fake(initial,{fail,noEffect=false}={}) {
  const state={signoff_open:true,...initial},executed=[];
@@ -572,7 +578,7 @@ test('final RF contract follows explicit final Ledger guard and owner recutover'
 for(const wrong of [{ledger_kind:'v',ledger_setup:true},{ledger_kind:null,ledger_setup:true},{ledger_kind:'v',ledger_setup:false}])test(`final refuses incomplete Ledger contract ${JSON.stringify(wrong)}`,async()=>{
  const f=fake({...predecessor,...wrong});await assert.rejects(run('recutover',f),/final_rf_requires_ledger_contract/);assert.deepEqual(f.executed,[]);
 });
-for(const fail of [`migrations/${RF}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${RFR}`,`contract-migrations/${RFF}`])test(`dependency failure stops final sequence at ${fail}`,async()=>{
+for(const fail of [`migrations/${RF}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`contract-migrations/${RFF}`])test(`dependency failure stops final sequence at ${fail}`,async()=>{
  const f=fake({...predecessor,ledger_kind:null,ledger_setup:false},{fail});await assert.rejects(run('recutover',f),/synthetic_dependency_failure/);
  const files=[...forward,`contract-migrations/${RFF}`];assert.deepEqual(f.executed,files.slice(0,files.indexOf(fail)+1));
 });

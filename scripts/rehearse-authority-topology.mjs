@@ -14,6 +14,7 @@ const RF151_CUTOVER = "20260909190905_shareholder_register_filing_cutover.sql";
 const RF151_CONTRACT = "20260909190955_shareholder_register_filing_contract.sql";
 const RF193_READ_RECOVERY = "20260917110951_rf1086_action_required_read_recovery.sql";
 const RF193_ARCHIVE = "20260917114424_rf1086_production_archive_evidence.sql";
+const DOCUMENTS_LEDGER_GUARD = "20260923125730_documents_ledger_evidence_guard.sql";
 const RF193_YEAR_SOURCE = "20260923091509_rf1086_immutable_year_source.sql";
 
 const RF193_OBSERVATION = "20260923102314_rf1086_register_observation_store.sql";
@@ -72,7 +73,7 @@ export async function rehearseAuthorityTopology({ direction, database, loadSql =
     await apply([`migrations/${AUTHORITY}`, `migrations/${OPERATIONS}`, `migrations/${RF}`,
       ...(direction === "recutover" ? [`contract-migrations/${CONTRACT}`] : []),
       `contract-migrations/${SIGNOFF_CONTRACT}`,
-      `migrations/${RF151}`, `migrations/${RF151_CUTOVER}`, `migrations/${RF193_READ_RECOVERY}`, `migrations/${RF193_ARCHIVE}`, `migrations/${RF193_YEAR_SOURCE}`, `migrations/${RF193_OBSERVATION}`, `migrations/${RF193_SOURCE_PREVIEW}`,
+      `migrations/${RF151}`, `migrations/${RF151_CUTOVER}`, `migrations/${DOCUMENTS_LEDGER_GUARD}`, `migrations/${RF193_READ_RECOVERY}`, `migrations/${RF193_ARCHIVE}`, `migrations/${RF193_YEAR_SOURCE}`, `migrations/${RF193_OBSERVATION}`, `migrations/${RF193_SOURCE_PREVIEW}`,
       ...(direction === "recutover" ? [`contract-migrations/${RF151_CONTRACT}`] : [])]);
   }
   const result = await topology(database);

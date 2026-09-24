@@ -147,7 +147,7 @@ DATABASE_URL="$DB_URL" npm run test:billing-database-lifecycle
 # Every final database, feedback and hydrated owner lane uses private RF storage;
 # no authority provider is called.
 DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs recutover
-DATABASE_URL="$DB_URL" npm run test:authority-connections-database
+TALLI_SUPABASE_WORKDIR="$isolated_workdir" DATABASE_URL="$DB_URL" npm run test:authority-connections-database
 DATABASE_URL="$DB_URL" npm run test:company-tax-database
 DATABASE_URL="$DB_URL" npm run test:annual-accounts-database
 TALLI_SUPABASE_WORKDIR="$isolated_workdir" npm run test:supabase-advisors
