@@ -229,3 +229,23 @@ to that rule is the product inference. Registered capital facts retain their
 owned `event_date` and phase without deriving a new legal registration date.
 Corrections connected to selected-year records are retained even when their own
 date falls in another year; consumers must consider their status before mapping.
+
+### Company guard for consequential writes
+
+The application mutation transactions acquire the shared company advisory guard
+under READ COMMITTED before reading current owner/eligibility or taking local
+Governance/Ledger locks. Read-only reporting transactions retain SERIALIZABLE.
+Migration `20260924080355_governance_ledger_company_write_guards.sql` also wraps
+owner write RPCs before their original bodies and adds company-scoped table
+backstops, including lifecycle events and amendment receipts in Ledger.
+
+Registered capital events first perform a short guarded prepare/replay check.
+If still new, independent register and original-byte verification runs outside
+the guard. A second guarded prepare handles intervening completion; otherwise
+RF current-observation and Documents retained-original assertions run on that
+same connection before any Ledger posting. No provider or object-storage I/O
+runs while this final guard is held. This binds the selected evidence for these
+events; it does not establish a full-year RF approval/send freshness protocol.
+
+Rollback suspends the guarded writer entry points while preserving data and
+backstops. Reapply restores writes without publishing an unguarded API alias.

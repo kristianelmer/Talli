@@ -63,6 +63,7 @@ class AuthenticatedLedgerSession(LedgerPersistence, Protocol):
 
     def transaction(
         self,
+        *, guarded_company_id: CompanyId | None = None,
     ) -> AbstractAsyncContextManager[LedgerWorkflowTransaction]: ...
 
     async def list_opening_snapshots(

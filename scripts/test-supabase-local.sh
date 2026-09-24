@@ -144,7 +144,9 @@ DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle
 DATABASE_URL="$DB_URL" npm run test:billing-database-lifecycle
 
 # Require the already established Ledger contract before the RF final contract.
-# Every final database, feedback and hydrated owner lane uses private RF storage;
+# Recutover also replays all three consequential company guards after historical
+# Ledger/Governance/Documents replacements. Every final database, feedback and
+# hydrated owner lane uses private RF storage;
 # no authority provider is called.
 DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs recutover
 TALLI_SUPABASE_WORKDIR="$isolated_workdir" DATABASE_URL="$DB_URL" npm run test:authority-connections-database

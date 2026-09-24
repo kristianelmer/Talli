@@ -163,6 +163,8 @@ class PostgresShareholderRegisterFilingSession:
             ) as connection, connection.transaction():
                 if snapshot:
                     await connection.execute("set transaction isolation level repeatable read")
+                else:
+                    await connection.execute("set transaction isolation level read committed")
                 await connection.execute("set local role shareholder_register_filing_executor")
                 await connection.execute(
                     "select pg_catalog.set_config('talli.verified_actor_id',%s,true), "
@@ -648,6 +650,7 @@ class PostgresShareholderRegisterFilingSession:
     async def record_preview(self, command, prepared):
         self._command_actor(command)
         async with self._transaction() as connection:
+            await connection.execute("select shareholder_register_filing.lock_company_write_v1(%s::uuid,false)", (str(command.company_id),))
             current = await self._opening_basis(connection, command.company_id, command.opening_snapshot_id, lock=True)
             if current != prepared.basis:
                 raise rf.ShareholderRegisterFilingError.company_year_not_admitted()
@@ -748,6 +751,7 @@ class PostgresShareholderRegisterFilingSession:
             if isinstance(v,(list,tuple)): return [plain(i) for i in v]
             return v
         async with self._transaction() as connection:
+            await connection.execute("select shareholder_register_filing.lock_preview_write_v1(%s::uuid,false)", (str(command.preview_id),))
             current = await self._simulation_basis(connection, command.preview_id, lock=True)
             if current != prepared.basis:
                 raise rf.ShareholderRegisterFilingError.company_year_not_admitted()
@@ -779,6 +783,7 @@ class PostgresShareholderRegisterFilingSession:
             if isinstance(v,(tuple,list)): return [plain(i) for i in v]
             return v
         async with self._transaction() as connection:
+            await connection.execute("select shareholder_register_filing.lock_preview_write_v1(%s::uuid,false)", (str(command.preview_id),))
             current = await self._approval_basis(connection,command.preview_id,lock=True)
             if current != prepared.basis:
                 raise rf.ShareholderRegisterFilingError.company_year_not_admitted()
@@ -842,6 +847,7 @@ class PostgresShareholderRegisterFilingSession:
             async with timeout(10), await psycopg.AsyncConnection.connect(self._configuration.database_url,
                     connect_timeout=5, row_factory=dict_row,
                     options="-c statement_timeout=5000 -c lock_timeout=1000") as connection, connection.transaction():
+                await connection.execute("set transaction isolation level read committed")
                 await connection.execute("set local role shareholder_register_filing_executor")
                 await connection.execute(
                     "select pg_catalog.set_config('talli.verified_actor_id',%s,true), "

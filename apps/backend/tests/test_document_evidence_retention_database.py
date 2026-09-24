@@ -151,6 +151,7 @@ def test_rollback_preserves_references_deletion_guard_and_replay_restores_exact_
     retain(backend_url,originals,command(originals))
     with psycopg.connect(DATABASE_URL) as db:
         before=db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()
+        guarded=db.execute("select to_regprocedure('documents.lock_company_write_v1(uuid,text)') is not null").fetchone()[0]
         originals_installed=db.execute("select to_regclass('documents.retained_originals') is not null").fetchone()[0]
         db.execute((ROOT/'supabase/rollback'/MIGRATION).read_text())
         assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()==before
@@ -171,6 +172,8 @@ def test_rollback_preserves_references_deletion_guard_and_replay_restores_exact_
                 db.execute((ROOT/'supabase/migrations'/ORIGINALS_MIGRATION).read_text())
                 assert db.execute("select has_function_privilege('documents_executor',"
                     "'documents.assert_retained_metadata_v1(text,text)','EXECUTE')").fetchone()[0]
+            if guarded:
+                db.execute((ROOT/'supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql').read_text())
             assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()==before
     assert retained_count(originals)==1
 

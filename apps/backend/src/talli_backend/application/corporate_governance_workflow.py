@@ -656,7 +656,7 @@ class CorporateGovernanceApplication:
         command: OwnerDividendProposalCommand,
     ) -> ProposedOwnerDividend:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             facts = await self._derive_decision_facts_in_transaction(
                 transaction,
@@ -692,7 +692,7 @@ class CorporateGovernanceApplication:
         command: AnnualCloseProposalCommand,
     ) -> ProposedAnnualClose:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             facts = await self._derive_decision_facts_in_transaction(
                 transaction,
@@ -762,7 +762,7 @@ class CorporateGovernanceApplication:
                     CorporateGovernanceErrorCode.UNSUPPORTED_DIVIDEND_BASIS,
                     "Document evidence does not match the owner-dividend proposal.",
                 )
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             return await transaction.register_owner_dividend_documents(command)
 
@@ -804,7 +804,7 @@ class CorporateGovernanceApplication:
                     CorporateGovernanceErrorCode.INVALID_INPUT,
                     "Document evidence does not match the annual-close proposal.",
                 )
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             return await transaction.register_annual_close_documents(command)
 
@@ -814,7 +814,7 @@ class CorporateGovernanceApplication:
         command: ApproveOwnerDividendCommand,
     ) -> OwnerDividendLifecycle:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             return await transaction.approve_owner_dividend(command)
 
@@ -824,7 +824,7 @@ class CorporateGovernanceApplication:
         command: ApproveAnnualCloseCommand,
     ) -> AnnualCloseLifecycle:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             return await transaction.approve_annual_close(command)
 
@@ -834,7 +834,7 @@ class CorporateGovernanceApplication:
         command: RecordAnnualCloseEventCommand,
     ) -> AnnualCloseLifecycle:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             return await transaction.record_annual_close_event(command)
 
@@ -844,7 +844,7 @@ class CorporateGovernanceApplication:
         command: FinalizeAnnualCloseCommand,
     ) -> AnnualCloseLifecycle:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             snapshot = await transaction.read_lifecycle(command.decision_id)
             if any(
@@ -897,7 +897,7 @@ class CorporateGovernanceApplication:
                 CorporateGovernanceErrorCode.INVALID_INPUT,
                 "Signed annual-close evidence does not match the uploaded document.",
             )
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             snapshot = await transaction.read_lifecycle(command.decision_id)
             readiness = self._service.assess_lifecycle(
@@ -919,7 +919,7 @@ class CorporateGovernanceApplication:
         command: RecordOwnerDividendEventCommand,
     ) -> OwnerDividendLifecycle:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             return await transaction.record_owner_dividend_event(command)
 
@@ -955,7 +955,7 @@ class CorporateGovernanceApplication:
                 CorporateGovernanceErrorCode.INVALID_INPUT,
                 "Signed owner-dividend evidence does not match the uploaded document.",
             )
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             snapshot = await transaction.read_lifecycle(command.decision_id)
             readiness = self._service.assess_lifecycle(
@@ -977,7 +977,7 @@ class CorporateGovernanceApplication:
         command: FinalizeOwnerDividendCommand,
     ) -> OwnerDividendLifecycle:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             prepared = await transaction.prepare_owner_dividend_finalization(command)
             if prepared.replay is not None:
@@ -1022,7 +1022,7 @@ class CorporateGovernanceApplication:
         command: RecordOwnerDividendPaymentCommand,
     ) -> OwnerDividendLifecycle:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             prepared = await transaction.prepare_owner_dividend_payment(command)
             if prepared.replay is not None:
@@ -1075,35 +1075,40 @@ class CorporateGovernanceApplication:
     ) -> RecordedShareholderLoan:
         session = await self._session(access_token, command.actor_id)
         loan = self._service.validate_shareholder_loan(command)
-        async with session.transaction() as transaction:
+        if command.document_id is not None:
+            async with session.transaction(guarded_company_id=command.company_id) as transaction:
+                await self._require_owner(transaction, command.company_id)
+                prepared = await transaction.prepare_shareholder_loan(command, loan)
+                if prepared.replay is not None:
+                    return prepared.replay
+            documents = await self._documents_session_factory.session(access_token)
+            if documents.actor_id != command.actor_id:
+                raise CorporateGovernanceError.forbidden()
+            records = await documents.list_documents((command.company_id,))
+            record = next(
+                (
+                    item
+                    for item in records
+                    if str(item.document_id) == str(command.document_id)
+                ),
+                None,
+            )
+            if (
+                record is None
+                or record.company_id != command.company_id
+                or record.income_year != command.income_year
+                or record.status
+                in {DocumentStatus.QUARANTINED, DocumentStatus.REMOVED}
+            ):
+                raise CorporateGovernanceError.precondition(
+                    CorporateGovernanceErrorCode.INVALID_INPUT,
+                    "Shareholder-loan document evidence does not match the company year.",
+                )
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             prepared = await transaction.prepare_shareholder_loan(command, loan)
             if prepared.replay is not None:
                 return prepared.replay
-            if command.document_id is not None:
-                documents = await self._documents_session_factory.session(access_token)
-                if documents.actor_id != command.actor_id:
-                    raise CorporateGovernanceError.forbidden()
-                records = await documents.list_documents((command.company_id,))
-                record = next(
-                    (
-                        item
-                        for item in records
-                        if str(item.document_id) == str(command.document_id)
-                    ),
-                    None,
-                )
-                if (
-                    record is None
-                    or record.company_id != command.company_id
-                    or record.income_year != command.income_year
-                    or record.status
-                    in {DocumentStatus.QUARANTINED, DocumentStatus.REMOVED}
-                ):
-                    raise CorporateGovernanceError.precondition(
-                        CorporateGovernanceErrorCode.INVALID_INPUT,
-                        "Shareholder-loan document evidence does not match the company year.",
-                    )
             ledger = self._ledger_facade_factory(transaction)
             directions = {
                 "shareholder_to_company": LedgerShareholderLoanDirection.SHAREHOLDER_TO_COMPANY,
@@ -1187,18 +1192,25 @@ class CorporateGovernanceApplication:
                     "Corporate-event document evidence does not match the company year.",
                 )
 
-        async with session.transaction() as transaction:
+        evidence = None
+        if requires_register_observation(command):
+            # Recovery does not depend on re-reading mutable live evidence. This
+            # short transaction releases all guards before original-byte I/O.
+            async with session.transaction(guarded_company_id=command.company_id) as transaction:
+                await self._require_owner(transaction, command.company_id)
+                prepared = await transaction.prepare_supported_event(command, canonical)
+                if prepared.replay is not None:
+                    return prepared.replay
+            if self._register_evidence is None:
+                raise CorporateGovernanceError.unavailable()
+            evidence = await self._register_evidence.verify(access_token, command)
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             prepared = await transaction.prepare_supported_event(command, canonical)
             if prepared.replay is not None:
                 return prepared.replay
-            observation = None
-            if requires_register_observation(command):
-                if self._register_evidence is None:
-                    raise CorporateGovernanceError.unavailable()
-                # Point-in-time public-owner reads; no shared company guard is
-                # held here. Exact completed replay precedes these live checks.
-                observation = await self._register_evidence.verify(access_token, command)
+            if evidence is not None:
+                await transaction.assert_register_evidence(evidence)
             primary, corroborating = _ledger_sources(command, canonical.facts_sha256)
             posted = await self._ledger_facade_factory(
                 transaction
@@ -1251,7 +1263,7 @@ class CorporateGovernanceApplication:
                 AccountingEntryReference(str(posted.entry_id)),
                 prepared,
             )
-            if observation is not None and observation.confirmed_at > result.recorded_at:
+            if evidence is not None and evidence.observation.confirmed_at > result.recorded_at:
                 raise CorporateGovernanceError.precondition(
                     CorporateGovernanceErrorCode.CORPORATE_EVENT_EVIDENCE_INCOMPLETE,
                     "The independent register observation postdates the Governance event.",
@@ -1290,7 +1302,7 @@ class CorporateGovernanceApplication:
                 "The reversal document does not match the company year.",
             )
 
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             events = await transaction.list_supported_events((command.company_id,))
             original = next(

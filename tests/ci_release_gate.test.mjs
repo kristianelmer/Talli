@@ -513,7 +513,8 @@ const RFG='20260924062746_rf1086_source_company_guard.sql';
 const DLG='20260923125730_documents_ledger_evidence_guard.sql';
 const predecessor={rf_owned:false,authority_kind:'r',ledger_kind:'v',ledger_setup:true,opening_kind:'r'};
 const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`migrations/${RFA}`,`migrations/${RFY}`,`migrations/${RFO}`,`migrations/${RFP}`,`migrations/${RFG}`];
-const workspaceForward=forward.filter(path=>path!==`contract-migrations/${AUC}`);
+const consequentialGuards=['20260924080208_company_access_rf_admission_guard.sql','20260924080249_documents_rf_consequential_company_guards.sql','20260924080355_governance_ledger_company_write_guards.sql'].map(file=>`migrations/${file}`);
+const workspaceForward=[...forward.filter(path=>path!==`contract-migrations/${AUC}`),...consequentialGuards];
 function fake(initial,{fail,noEffect=false}={}) {
  const state={signoff_open:true,...initial},executed=[];
  return {state,executed,database:{async query(sql) {
@@ -574,14 +575,14 @@ for(const wrong of [{ledger_kind:null,ledger_setup:false},{ledger_kind:'r'},{led
  const f=fake({...predecessor,...wrong});await assert.rejects(run('workspace',f),/workspace_requires_ledger_ordinary_overlap/);assert.deepEqual(f.executed,[]);
 });
 test('final RF contract follows explicit final Ledger guard and owner recutover',async()=>{
- const f=fake({...predecessor,ledger_kind:null,ledger_setup:false});await run('recutover',f);assert.deepEqual(f.executed,[...forward,`contract-migrations/${RFF}`]);
+ const f=fake({...predecessor,ledger_kind:null,ledger_setup:false});await run('recutover',f);assert.deepEqual(f.executed,[...forward,`contract-migrations/${RFF}`,...consequentialGuards]);
 });
 for(const wrong of [{ledger_kind:'v',ledger_setup:true},{ledger_kind:null,ledger_setup:true},{ledger_kind:'v',ledger_setup:false}])test(`final refuses incomplete Ledger contract ${JSON.stringify(wrong)}`,async()=>{
  const f=fake({...predecessor,...wrong});await assert.rejects(run('recutover',f),/final_rf_requires_ledger_contract/);assert.deepEqual(f.executed,[]);
 });
-for(const fail of [`migrations/${RF}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`contract-migrations/${RFF}`])test(`dependency failure stops final sequence at ${fail}`,async()=>{
+for(const fail of [`migrations/${RF}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`contract-migrations/${RFF}`,...consequentialGuards])test(`dependency failure stops final sequence at ${fail}`,async()=>{
  const f=fake({...predecessor,ledger_kind:null,ledger_setup:false},{fail});await assert.rejects(run('recutover',f),/synthetic_dependency_failure/);
- const files=[...forward,`contract-migrations/${RFF}`];assert.deepEqual(f.executed,files.slice(0,files.indexOf(fail)+1));
+ const files=[...forward,`contract-migrations/${RFF}`,...consequentialGuards];assert.deepEqual(f.executed,files.slice(0,files.indexOf(fail)+1));
 });
 test('success is refused if SQL does not establish target state',async()=>{
  const f=fake(predecessor,{noEffect:true});await assert.rejects(run('workspace',f),/authority_rehearsal_target_not_reached/);

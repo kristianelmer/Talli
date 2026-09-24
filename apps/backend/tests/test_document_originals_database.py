@@ -190,7 +190,10 @@ def test_migration_replay_preserves_original_and_nonempty_rollback_refuses(origi
                 "where roleid='documents_store_owner'::regrole order by member,grantor").fetchall()
     before=authority()
     with psycopg.connect(DATABASE_URL,autocommit=True) as db:
+        guarded=db.execute("select to_regprocedure('documents.lock_company_write_v1(uuid,text)') is not null").fetchone()[0]
         db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+        if guarded:
+            db.execute((ROOT/'supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql').read_text())
     assert read(original,receipt).content==PDF
     with psycopg.connect(DATABASE_URL,autocommit=True) as db:
         with pytest.raises(psycopg.Error,match='documents_retained_original_rollback_requires_empty'):

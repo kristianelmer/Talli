@@ -1,13 +1,12 @@
-"""Point-in-time RF evidence binding for registered Governance capital events.
+"""Preflight RF and original-byte evidence for registered Governance events.
 
-Only owner public contracts are used. RF currentness and Documents verification
-use separate transactions: this is not a cross-owner freshness lease. Original
-byte I/O must move before any future company-guard transaction; only retained
-receipt assertions may run while that shared guard is held.
+External byte I/O runs without the shared company guard. The returned immutable
+receipts are reasserted on the final guarded Governance transaction connection.
 """
 from __future__ import annotations
 
 from decimal import Decimal, localcontext
+from dataclasses import dataclass
 
 from talli_backend.application.shareholder_register_filing_session import (
     ShareholderRegisterFilingAuthenticationError,
@@ -23,7 +22,7 @@ from talli_backend.modules.corporate_governance.public import (
     SupportedCorporateEventPhase,
 )
 from talli_backend.modules.documents.public import (
-    DocumentId, DocumentStatus, DocumentsSessionFactory, document_metadata_sha256,
+    DocumentId, DocumentStatus, DocumentsSessionFactory, RetainedDocumentOriginalReceipt, document_metadata_sha256,
 )
 from talli_backend.modules.shareholder_register_filing.public import (
     Rf1086ProductionError, Rf1086RegisterObservationError,
@@ -31,6 +30,12 @@ from talli_backend.modules.shareholder_register_filing.public import (
     Rf1086SourceQuery, assert_rf1086_register_observation_integrity,
 )
 from talli_backend.shared.kernel import DomainError, ErrorCategory
+
+
+@dataclass(frozen=True, slots=True)
+class VerifiedCorporateRegisterEvidence:
+    observation: Rf1086RegisterObservationSnapshot
+    originals: tuple[RetainedDocumentOriginalReceipt, ...]
 
 
 def requires_register_observation(command: RecordSupportedCorporateEventCommand) -> bool:
@@ -69,7 +74,7 @@ class CorporateRegisterEvidenceVerifier:
         self._documents = documents
 
     async def verify(self, access_token: str,
-                     command: RecordSupportedCorporateEventCommand) -> Rf1086RegisterObservationSnapshot:
+                     command: RecordSupportedCorporateEventCommand) -> VerifiedCorporateRegisterEvidence:
         try:
             return await self._verify(access_token, command)
         except CorporateGovernanceError:
@@ -89,7 +94,7 @@ class CorporateRegisterEvidenceVerifier:
             raise CorporateGovernanceError.unavailable() from None
 
     async def _verify(self, access_token: str,
-                      command: RecordSupportedCorporateEventCommand) -> Rf1086RegisterObservationSnapshot:
+                      command: RecordSupportedCorporateEventCommand) -> VerifiedCorporateRegisterEvidence:
         _require(requires_register_observation(command))
         reference = command.shareholder_register_fact
         _require(reference is not None)
@@ -148,4 +153,6 @@ class CorporateRegisterEvidenceVerifier:
                      and retained.company_id == record.company_id and retained.source_income_year == record.income_year
                      and retained.metadata_sha256 == expected.metadata_sha256
                      and retained.content_sha256 == expected.content_sha256 and retained.byte_length == expected.byte_length)
-        return snapshot
+        return VerifiedCorporateRegisterEvidence(snapshot, tuple(
+            originals[key].retained_original for key in sorted(originals)
+        ))

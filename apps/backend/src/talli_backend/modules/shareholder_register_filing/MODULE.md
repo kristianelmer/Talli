@@ -469,9 +469,9 @@ cover every permitted mutation of the four source tables, including a first
 insert into an empty year. The narrow guard grant adds no cross-owner table
 access. Rollback suspends these commands while retaining guards and originals.
 
-This covers RF source writers only. Company Access, Governance, Ledger,
-Documents and RF review/permission coverage, shared action-time reads and
-production admission remain required. These guard-only triggers do not add
+The original source guard covers RF source writers. The successor company
+guards below extend writer coverage; complete action-time source-backed
+production admission remains required. These guard-only triggers do not add
 source evidence to company archive exports or advance archive generations.
 
 ## Source intake basis
@@ -492,3 +492,27 @@ source capture independently verifies all originals and current register facts.
 Capital document references have no source year in the Governance contract, so
 that field remains null until Documents supplies its verified metadata. The read
 performs no RF writes and does not create or advance source evidence.
+
+## Consequential company guards and Governance assertion
+
+`20260924080249_documents_rf_consequential_company_guards.sql` guards RF preview,
+review, permission, simulation, approval and begin commands before their local
+row locks, preserving each existing function owner and ACL. Command adapters
+explicitly use READ COMMITTED and guard before locking/rechecking their basis.
+Existing consistent read-only projections retain REPEATABLE READ.
+
+Governance can call `assert_current_register_observation_v1` with the exact
+observation identity, company/year, revision, hash and verified actor on its
+final guarded transaction connection. The assertion rereads current owner
+access and rejects an observation that has a successor. It gives Governance no
+RF table privileges. This closes the observation freshness gap only for callers
+that hold the shared company guard until their consequential write commits.
+
+Row backstops additionally serialize canonical/legacy overrides and readiness
+mutations. The legacy direct readiness writer still needs an owned command that
+guards before row locks and recomputes its evidence after the guard; a trigger
+alone does not prove a previously computed payload fresh. Complete full-year
+approval/send composition, source archive inclusion, and production readiness
+remain separate work. The safe rollback suspends guarded commands, preserving
+evidence and backstops. Database execution is required to verify migration,
+role, replay and concurrency behavior.

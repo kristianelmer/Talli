@@ -66,7 +66,7 @@
     "projections": [
       "DocumentBackupObject"
     ],
-    "migrations": "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql; supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql; supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql; supabase/migrations/20260924062717_documents_immutable_retained_originals.sql"
+    "migrations": "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql; supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql; supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql; supabase/migrations/20260924062717_documents_immutable_retained_originals.sql; supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql"
   },
   "ports": [
     {
@@ -152,7 +152,9 @@
     "evidenceRetention": "apps/backend/tests/test_document_evidence_retention.py",
     "evidenceRetentionDatabase": "apps/backend/tests/test_document_evidence_retention_database.py",
     "retainedOriginals": "apps/backend/tests/test_document_originals.py",
-    "retainedOriginalsDatabase": "apps/backend/tests/test_document_originals_database.py"
+    "retainedOriginalsDatabase": "apps/backend/tests/test_document_originals_database.py",
+    "companyGuardDatabase": "apps/backend/tests/test_documents_rf_company_guard_database.py",
+    "companyGuardAdapter": "apps/backend/tests/test_consequential_adapter_guards.py"
   },
   "compatibilityExceptions": []
 }

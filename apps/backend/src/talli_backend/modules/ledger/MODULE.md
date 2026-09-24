@@ -339,3 +339,18 @@ application workflows can follow complete correction chains. Only the existing
 Ledger and Corporate Governance executors receive this read function; neither
 receives table grants. No writer, business row, RLS policy or capability dependency
 changes. Migration replay preserves pre-existing schema ACLs and role memberships.
+
+### Company guard for source mutations
+
+Migration `20260924080355_governance_ledger_company_write_guards.sql` places the
+shared company guard before the original bodies of Ledger mutation RPCs and
+local entry/year/receipt locks. READ COMMITTED writer transactions recheck the
+current accepted owner after a guard wait. Row backstops cover company-scoped
+Ledger tables, including immutable correction/reversal receipts and technical
+command receipts. Pure Governance/Tax bridge functions delegate to these guarded
+posting APIs without earlier table reads or locks; their narrow grants remain.
+
+The guard does not replace eligibility, posting, idempotency, or reconciliation
+checks. Safe rollback suspends guarded APIs and retains historical rows and
+backstops. Reapply preserves routine identity, owners and ACLs; temporary schema
+CREATE and role SET privileges are restored to their prior effective state.

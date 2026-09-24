@@ -139,3 +139,20 @@ retention expiry and cancellation/deletion inventories must explicitly account
 for retained copies. Existing inventories do not automatically include this
 new table. A verify-only copy is distinct from a filing retention obligation;
 no complete Documents production-readiness claim follows from this feature.
+
+### Company guard for consequential evidence
+
+`20260924080249_documents_rf_consequential_company_guards.sql` makes Documents
+commands acquire the shared company guard before document or retention row
+locks. READ COMMITTED is required, and accepted-owner access is read again after
+a wait. Retained-reference and original tables also have mutation backstops.
+The guard does not impose a filing-year eligibility requirement on document
+recovery or retention.
+
+Governance may assert an exact retained-original receipt and metadata digest on
+its final guarded transaction connection. It receives no Documents table read
+privileges. Object download and hashing happen before that transaction; final
+assertions check the preserved receipt and current metadata without object I/O.
+Rollback suspends the guarded command helpers while preserving evidence and
+backstops. Runtime migration, ACL and concurrency proof belongs to the database
+lane; static collection alone does not establish this proof.

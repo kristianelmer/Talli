@@ -714,7 +714,7 @@ class SupabaseLedgerSession:
         return LedgerError.unavailable()
 
     @asynccontextmanager
-    async def transaction(self) -> AsyncIterator[SupabaseLedgerWorkflowTransaction]:
+    async def transaction(self, *, guarded_company_id: CompanyId | None = None) -> AsyncIterator[SupabaseLedgerWorkflowTransaction]:
         if not self._database_url:
             raise self._unavailable()
         try:
@@ -723,6 +723,8 @@ class SupabaseLedgerSession:
                 connect_timeout=5,
                 row_factory=dict_row,
             ) as connection, connection.transaction():
+                if guarded_company_id is not None:
+                    await connection.execute("set transaction isolation level read committed")
                 await connection.execute("set local role ledger_workflow_executor")
                 await connection.execute(
                     "select pg_catalog.set_config('talli.verified_actor_id', %s, true)",
@@ -732,6 +734,9 @@ class SupabaseLedgerSession:
                     "select pg_catalog.set_config('talli.verified_actor_claims', %s, true)",
                     (self._verified.claims_json,),
                 )
+                if guarded_company_id is not None:
+                    await connection.execute("select ledger.acquire_company_write_guard_v1(%s::uuid,%s)",
+                        (str(guarded_company_id), str(self.actor_id.subject)))
                 yield SupabaseLedgerWorkflowTransaction(
                     self._database_url,
                     self._verified,

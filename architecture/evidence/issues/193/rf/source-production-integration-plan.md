@@ -32,8 +32,10 @@ document as a register fact. Authenticated full-stack browser journeys remain
 pending. Direct Governance API admission now resolves the exact current RF
 observation, checks its scope/date/economics and verifies current originals through
 Documents before Ledger recognition. Completed exact replay precedes these new
-live checks. This is a point-in-time check across separate owner transactions;
-shared transaction freshness remains pending.
+live checks. The successor implementation verifies bytes outside the guard, then reasserts
+the exact current observation and retained-original receipts on the final guarded
+Governance transaction connection before Ledger recognition. Unit/adapter checks
+pass; database migration, concurrency and permission execution remain pending CI.
 Explicit register withdrawal and its downstream invalidation also remain pending. Increased
 nominal-value events remain visibly unavailable for complete source capture until
 Governance support is implemented.
@@ -61,7 +63,13 @@ decisions, Ledger amendments, evidence changes, source corrections and membershi
 revocation. A writer either commits before admission and invalidates stale facts,
 or waits until admission has committed. RF's source writers now acquire the
 company guard before their year/document locks, with row-trigger backstops;
-other owners and consequential admission still need the shared guard coverage.
+successor migrations now add Company Access, Documents, Governance, Ledger and
+RF review/approval writer guards. Company Access supplies a narrow guarded
+admission projection, and Governance consumes exact RF/retained-original
+assertions in its final transaction. These successor migrations still require
+database execution proof. Full-year RF approval/send composition remains pending.
+The legacy direct readiness upsert still computes outside an owned guarded
+command; its row backstop alone cannot make that payload fresh.
 The concrete owner interface and writer
 inventory is in [consequential-freshness-write-inventory-20260924.md](consequential-freshness-write-inventory-20260924.md).
 

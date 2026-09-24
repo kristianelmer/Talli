@@ -53,6 +53,7 @@ def harness(kind="cash_issue"):
         @property
         def actor_id(self): return h.document_actor
         async def verify_document_evidence(self, identity):
+            assert not getattr(h, "guard_active", False)
             h.originals.append(identity)
             if h.document_error: raise h.document_error
             return h.evidence
@@ -83,7 +84,7 @@ def harness(kind="cash_issue"):
     ("loss_covering_reduction", Phase.REGISTERED), ("loss_covering_reduction", Phase.FIRST_RECOGNIZED_AFTER_REGISTRATION)])
 def test_real_verifier_binds_current_observation_and_reverifies_unique_prior_year_original(kind, phase):
     h = harness(kind); h.command = replace(h.command, phase=phase)
-    assert h.verify() == h.snapshot
+    assert h.verify().observation == h.snapshot
     query, identity = h.reads[0]
     assert (query.company_id, query.income_year, query.actor_id, identity) == (COMPANY, YEAR, ACTOR, h.snapshot.observation_id)
     assert h.originals == [h.evidence.document.document_id]
@@ -176,12 +177,21 @@ def test_corrupt_persisted_observation_is_unavailable_not_accepted():
 def workflow(h, *, verifier=True):
     h.calls, h.committed, h.pending = [], [], []
     h.replay, h.recorded_at, h.rolled_back = None, NOW, False
+    h.guard_active, h.assert_error, h.prepare_count = False, None, 0
     class Transaction:
         actor_id = ACTOR
         async def actor_role(self, company): return "owner"
         async def prepare_supported_event(self, command, canonical):
             h.calls.append("prepare")
+            h.prepare_count += 1
+            if getattr(h, "intervening_replay", None) and h.prepare_count == 2:
+                h.replay = h.intervening_replay
             return PreparedSupportedCorporateEvent(canonical, h.replay)
+        async def assert_register_evidence(self, evidence):
+            assert h.guard_active
+            assert evidence.observation == h.snapshot and evidence.originals
+            h.calls.append("assert")
+            if h.assert_error: raise h.assert_error
         async def complete_supported_event(self, command, entry, prepared):
             h.calls.append("complete")
             result = RecordedSupportedCorporateEvent(prepared.event, entry, None, None, h.recorded_at, False)
@@ -191,13 +201,18 @@ def workflow(h, *, verifier=True):
     class Session:
         actor_id = ACTOR
         @asynccontextmanager
-        async def transaction(self):
+        async def transaction(self, *, guarded_company_id=None):
+            assert guarded_company_id == COMPANY
+            assert not h.guard_active
+            h.guard_active = True
             try:
                 yield transaction
                 h.committed.extend(h.pending); h.pending.clear()
             except Exception:
                 h.pending.clear(); h.rolled_back = True
                 raise
+            finally:
+                h.guard_active = False
     class Factory:
         async def session(self, token): return Session()
     class Ledger:
@@ -212,7 +227,7 @@ def workflow(h, *, verifier=True):
 
 def test_workflow_checks_real_verifier_before_any_ledger_effect():
     h = workflow(harness()); result = h.run()
-    assert h.calls == ["prepare", "ledger", "complete"] and len(h.committed) == 2
+    assert h.calls == ["prepare", "prepare", "assert", "ledger", "complete"] and len(h.committed) == 2
     assert h.originals and result.event.canonical_facts["shareholderRegisterFact"]["fact_sha256"] == h.snapshot.fact_sha256
 
 
@@ -221,7 +236,7 @@ def test_workflow_fails_closed_before_ledger_for_missing_verifier_or_stale_obser
     h = workflow(harness(), verifier=not missing_verifier)
     h.snapshot = None
     with pytest.raises(CorporateGovernanceError): h.run()
-    assert h.calls == ["prepare"] and not h.committed and h.rolled_back
+    assert h.calls == ["prepare"] and not h.committed and not h.guard_active
 
 
 def test_exact_completed_replay_precedes_new_live_register_checks():
@@ -235,7 +250,7 @@ def test_exact_completed_replay_precedes_new_live_register_checks():
 def test_postdating_observation_rolls_back_ledger_and_governance_before_commit():
     h = workflow(harness()); h.recorded_at = h.snapshot.confirmed_at - timedelta(seconds=1)
     with pytest.raises(CorporateGovernanceError): h.run()
-    assert h.calls == ["prepare", "ledger", "complete"]
+    assert h.calls == ["prepare", "prepare", "assert", "ledger", "complete"]
     assert h.rolled_back and not h.committed and not h.pending
 
 
@@ -295,3 +310,20 @@ def test_actual_http_composition_uses_verified_rf_and_documents_contracts(failur
         assert response.json()["canonicalFacts"]["shareholderRegisterFact"]["record_id"]["value"] == payload["shareholderRegisterFact"]["recordId"]
     else:
         assert not h.committed and "ledger" not in h.calls
+
+
+def test_final_same_connection_assertion_failure_blocks_ledger():
+    h = workflow(harness())
+    h.assert_error = CorporateGovernanceError.forbidden()
+    with pytest.raises(CorporateGovernanceError): h.run()
+    assert h.calls == ["prepare", "prepare", "assert"]
+    assert h.rolled_back and not h.committed
+
+
+def test_intervening_completed_replay_skips_final_evidence_and_posting():
+    original = workflow(harness()).run()
+    h = workflow(harness())
+    h.intervening_replay = replace(original, replayed=True)
+    assert h.run() == h.intervening_replay
+    assert h.calls == ["prepare", "prepare"]
+    assert not h.committed

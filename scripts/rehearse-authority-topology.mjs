@@ -19,6 +19,11 @@ const RF193_YEAR_SOURCE = "20260923091509_rf1086_immutable_year_source.sql";
 
 const RF193_OBSERVATION = "20260923102314_rf1086_register_observation_store.sql";
 const RF193_SOURCE_COMPANY_GUARD = "20260924062746_rf1086_source_company_guard.sql";
+const CONSEQUENTIAL_GUARDS = [
+  "20260924080208_company_access_rf_admission_guard.sql",
+  "20260924080249_documents_rf_consequential_company_guards.sql",
+  "20260924080355_governance_ledger_company_write_guards.sql",
+];
 const RF193_SOURCE_PREVIEW = "20260923105912_rf1086_source_backed_preview.sql";
 
 async function topology(database) {
@@ -76,7 +81,10 @@ export async function rehearseAuthorityTopology({ direction, database, loadSql =
       ...(direction === "recutover" ? [`contract-migrations/${CONTRACT}`] : []),
       `contract-migrations/${SIGNOFF_CONTRACT}`,
       `migrations/${RF151}`, `migrations/${RF151_CUTOVER}`, `migrations/${DOCUMENTS_LEDGER_GUARD}`, `migrations/${RF193_READ_RECOVERY}`, `migrations/${RF193_ARCHIVE}`, `migrations/${RF193_YEAR_SOURCE}`, `migrations/${RF193_OBSERVATION}`, `migrations/${RF193_SOURCE_PREVIEW}`, `migrations/${RF193_SOURCE_COMPANY_GUARD}`,
-      ...(direction === "recutover" ? [`contract-migrations/${RF151_CONTRACT}`] : [])]);
+      ...(direction === "recutover" ? [`contract-migrations/${RF151_CONTRACT}`] : []),
+      // Historical owner lifecycles can replace entire routine bodies. Reapply
+      // the ordered additive guards only after every predecessor/contract body.
+      ...CONSEQUENTIAL_GUARDS.map(file => `migrations/${file}`)]);
   }
   const result = await topology(database);
   const valid = direction === "rollback"

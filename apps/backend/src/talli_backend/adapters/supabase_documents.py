@@ -170,6 +170,7 @@ class SupabaseDocumentsPersistence(DocumentsPersistence):
                 self._database_url, connect_timeout=5, row_factory=dict_row,
                 options="-c statement_timeout=5000 -c lock_timeout=1000",
             ) as connection, connection.transaction():
+                await connection.execute("set transaction isolation level read committed")
                 await connection.execute("set local role documents_executor")
                 await connection.execute(
                     "select pg_catalog.set_config('talli.verified_actor_id', %s, true)",
