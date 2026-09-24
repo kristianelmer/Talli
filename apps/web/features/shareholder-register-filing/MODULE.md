@@ -8,7 +8,7 @@ business persistence stay behind the backend boundary.
 The two shipped v1 Send and recovery operation names remain unchanged.
 
 <!-- architecture-inventory
-{"publicEntryPoints":["@/features/shareholder-register-filing","apps/web/features/shareholder-register-filing","apps/web/features/shareholder-register-filing/index.ts"],"routes":["/filing/aksjonaerregisteroppgaven/source","/filing/aksjonaerregisteroppgaven/register"],"apiOperations":["legacyRf1086ReconcileFeedback","legacyRf1086SendApprovedFiling","rf1086AcknowledgeReviewComment","rf1086AddReviewComment","rf1086ApproveProduction","rf1086CaptureRegisterObservation","rf1086CaptureYearSource","rf1086ConfirmFilingPermission","rf1086ConfirmSimulation","rf1086GeneratePreview","rf1086GenerateSourcePreview","rf1086GetArchiveSource","rf1086GetProductionArchiveSource","rf1086ListRegisterObservations","rf1086Preview","rf1086ReadCurrentYearSource","rf1086ReadSourceDocument","rf1086ReadSourceIntakeBasis","rf1086ReadSourcePreview","rf1086RecordOverride","rf1086RecordTestEvidence","rf1086Workspace"],"dependencies":[]}
+{"publicEntryPoints":["@/features/shareholder-register-filing","apps/web/features/shareholder-register-filing","apps/web/features/shareholder-register-filing/index.ts"],"routes":["/filing/aksjonaerregisteroppgaven/source","/filing/aksjonaerregisteroppgaven/register"],"apiOperations":["legacyRf1086ReconcileFeedback","legacyRf1086SendApprovedFiling","rf1086AcknowledgeReviewComment","rf1086AddReviewComment","rf1086ApproveProduction","rf1086ApproveSourceProduction","rf1086CaptureRegisterObservation","rf1086CaptureYearSource","rf1086ConfirmFilingPermission","rf1086ConfirmSimulation","rf1086GeneratePreview","rf1086GenerateSourcePreview","rf1086GetArchiveSource","rf1086GetProductionArchiveSource","rf1086ListRegisterObservations","rf1086PrepareSourceProductionReview","rf1086Preview","rf1086ReadCurrentYearSource","rf1086ReadSourceDocument","rf1086ReadSourceIntakeBasis","rf1086ReadSourcePreview","rf1086RecordOverride","rf1086RecordTestEvidence","rf1086Workspace"],"dependencies":[]}
 -->
 
 `rf1086GetArchiveSource` preserves the original archive extent for one company/year, including company-wide comments and permissions. `rf1086GetProductionArchiveSource` adds immutable approval, submission, journal and receipt evidence. The web falls back to the original contract only when the expanded endpoint returns 404; production evidence remains explicitly unavailable during that overlap, never an assumed empty history. Other errors block export.
@@ -41,3 +41,11 @@ Reads do not verify original bytes or authorize a corporate event or filing.
 Register capture uses the same caller-owned attempt key and a separate closed
 error mapping. Only known prewrite refusals allow editing a first failed attempt;
 a prior uncertain result must remain attached to its original body and key.
+
+The annual-source preview now presents production approval separately from capture.
+The server resolves the exact full-year Billing pilot, then requests the owned RF
+review commitment. Blockers are displayed, warning acknowledgements and explicit
+confirmation are required, and prior filings can be selected for a reviewed
+correction. An uncertain approval keeps the identical command for retry. Approval
+does not send; the interface explicitly reports full-year submission unavailable
+until its guarded command is implemented. All decisive checks remain in RF.

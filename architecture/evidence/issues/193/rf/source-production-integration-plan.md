@@ -19,7 +19,9 @@ The customer UI should use this policy-owned projection. Current source details
 are available as an editable typed
 draft through `rf1086ReadCurrentYearSource`, with confirmations reset and exact
 predecessor identity retained. Capture verifies all evidence again after these
-preparatory reads. The customer annual-source screen now edits typed company,
+preparatory reads. The customer annual-source screen now provides scoped production review, explicit
+warning acknowledgement, approval confirmation and exact-command uncertain retry.
+Approval does not send. It also edits typed company,
 shareholder, opening/closing and event facts, binds document roles, preserves
 correction ancestry, and generates a separate preview after capture. Amounts stay
 decimal strings and event times stay civil times. Content edits reset reviews;
@@ -117,8 +119,11 @@ rechecks current admission. Legacy approval cannot use source previews.
 Historical full-year approvals are exported with source, preview, bridge, raw
 review and canonical manifest lineage. Archive validation rebuilds the captured
 identity without consulting the current source head. Predecessor approval binds
-an exact terminal submission and its verified journal artifact set; retained
-prior-feedback byte checks remain required before enabling full-year send.
+an exact terminal submission and its verified journal artifact set. Correction
+approval now verifies every retained feedback original through Documents before
+admission and compares the complete predecessor snapshot and receipts under the
+final company/year and submission locks. Full-year send must repeat this check;
+full-year predecessor submissions require their future archive contract.
 
 Full-year submission constraints, claim and journal visibility remain blocked
 pending their independent guarded command. The legacy stored-readiness gate is
@@ -156,3 +161,18 @@ historical fund-issued capital and distribution clearance remain part of the
 accepted scope. Broader service conformance, customer/browser/mobile journeys,
 security/privacy/load/recovery validation, removal of obsolete generic writers
 and two immutable complete gates remain outstanding independently of recruitment.
+
+## Source readiness prerequisite
+
+`rf1086-source-readiness-v1` now binds the selected full-year source and canonical
+preview after guarded current-owner and original-byte checks. Its pure proof
+explicitly excludes release prerequisites. Existing `source_facts` v1 still uses
+opening-only readiness and twelve-family historical coverage; full-year
+enumeration and the new source/preview/bridge/approval families remain to integrate.
+
+Replacing the caller-written annual readiness snapshot must preserve opening
+balance, unmatched bank items, unsupported unpaid items and annual authority
+confirmation, plus period/interview/document warnings. These require complete
+Banking/Ledger/annual-data owner projections and participating writer guards. A
+ready RF source alone cannot silently remove those conditions. The six technical
+release signoffs remain separate.

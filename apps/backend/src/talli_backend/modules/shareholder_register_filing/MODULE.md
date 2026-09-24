@@ -566,3 +566,19 @@ Rollback suspends new approvals while preserving evidence and send barriers.
 warning codes and blockers. `Rf1086ArchiveSourceReviewBridge` and
 `Rf1086ArchiveSourceApprovalLineage` retain the bridge, source, preview and exact
 approved manifest/review text needed to verify a historical full-year approval.
+
+Correction approval reverifies the exact previous terminal filing, manifest,
+reconciliation event and artifact set. Documents checks each private original
+before admission; the final RF transaction locks the predecessor and compares
+that complete snapshot and retained receipts before writing approval. Journal
+writers acquire the company guard before their submission row locks.
+
+Versioned source-readiness evidence binds the selected source and canonical
+preview after guarded freshness checks. It explicitly leaves annual
+prerequisites, current review/overrides, Authority, Billing and technical release
+unevaluated. It does not replace the legacy stored release gate yet.
+
+The correction contract is `Rf1086CorrectionPredecessorSnapshot`, verified by
+`assert_rf1086_correction_predecessor`. Source assessment exports
+`Rf1086SourceReadinessEvidence`, `Rf1086SourceReadinessProof`,
+`build_rf1086_source_readiness` and `assert_rf1086_source_readiness_matches`.

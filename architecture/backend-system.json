@@ -528,9 +528,10 @@
     },
     {
       "name": "shareholder-register-source-approval",
-      "purpose": "Binds an immutable full-year source review and persisted owner approval under one company/year admission transaction; performs no provider operation.",
+      "purpose": "Binds an immutable full-year source review and persisted owner approval under one company/year admission transaction, reverifying retained predecessor receipt bytes for corrections; performs no provider operation.",
       "publicPackages": [
-        "talli_backend.modules.shareholder_register_filing.public"
+        "talli_backend.modules.shareholder_register_filing.public",
+        "talli_backend.modules.documents.public"
       ],
       "routes": [
         "/api/v1/shareholder-register-filings/source-production-reviews",

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import pg from "pg";
-import { emptyDocumentsRetentionTeardown } from "./support/documents_retention_rehearsal.mjs";
+import { emptyDocumentsRetentionTeardown, documentsOnlyCompanyGuards } from "./support/documents_retention_rehearsal.mjs";
 
 const { Client } = pg;
 const databaseUrl = process.env.DATABASE_URL;
@@ -114,7 +114,7 @@ test(
         await client.query(retentionForward);
         await client.query(ledgerGuardForward);
         await client.query(originalsForward);
-        if (guards.documents) await client.query(documentsGuardForward);
+        if (guards.documents) await client.query(documentsOnlyCompanyGuards(documentsGuardForward));
         if (guards.governance) await client.query(governanceGuardForward);
         const successor = await state(client);
         assert.deepEqual(

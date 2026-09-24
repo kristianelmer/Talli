@@ -679,6 +679,14 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   {
     "from": "backend-system:shareholder-register-source-approval",
     "imports": [
+      "talli_backend.modules.documents.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:documents"
+  },
+  {
+    "from": "backend-system:shareholder-register-source-approval",
+    "imports": [
       "talli_backend.modules.shareholder_register_filing.public"
     ],
     "kind": "workflow",

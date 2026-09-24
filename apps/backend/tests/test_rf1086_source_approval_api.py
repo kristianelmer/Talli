@@ -165,13 +165,24 @@ def test_actual_http_blocked_review_remains_reviewable_and_wrong_bearer_is_rejec
 
 
 def test_actual_http_predecessor_fields_are_preserved_in_canonical_manifest():
-    client,h,scope = approval_api()
-    predecessor = {'submissionId':PREVIEW,'manifestSha256':'b'*64,'reason':'Owner reviewed correction'}
+    from test_rf1086_source_correction import CorrectionHarness
+    h = CorrectionHarness()
+    client = TestClient(create_app(
+        shareholder_register_filing_session_factory=h.approval._admission._sessions,
+        documents_session_factory=h.approval._admission._documents))
+    scope = {'companyId':str(h.source.company_id),'incomeYear':int(h.source.income_year),
+             'previewId':h.preview.preview_id.value,'entitlementId':h.review.entitlement_id}
+    predecessor = {'submissionId':h.prior.submission_id.value,'manifestSha256':h.prior.manifest_sha256,
+                   'reason':'  Owner reviewed\ncorrection with retained receipts  '}
     response = client.post(BASE+'/source-production-approvals',headers=HEADERS,json={**scope,
-        'reviewSha256':h.review_hash,'acknowledgedWarningCodes':[],'realFilingConfirmed':True,
+        'reviewSha256':h.review.review_sha256,'acknowledgedWarningCodes':list(h.review.warning_codes),'realFilingConfirmed':True,
         'predecessor':predecessor})
     assert response.status_code == 200,response.text
-    assert h.manifests[0].manifest['predecessor'] == predecessor
+    assert h.writes[0].manifest['predecessor'] == predecessor
+    assert h.calls.count('prior_original') == len(h.prior_snapshot.artifacts)
+    assert all(h.calls.index('prior_bytes:'+document_id) < h.calls.index('guard')
+               for document_id in h.prior_documents)
+    assert h.calls.index('prior_lock') < h.calls.index('review') < h.calls.index('append')
 
 
 @pytest.mark.parametrize('kind', ['no_activity','formation','dividend','cash_issue','loss_covering_reduction'])

@@ -6,6 +6,7 @@ from talli_backend.modules.shareholder_register_filing import public as rf
 from talli_backend.shared.kernel import CompanyId, CorrelationId, IncomeYear
 
 from .shareholder_register_source_admission import ShareholderRegisterSourceAdmission
+from .shareholder_register_source_correction import ShareholderRegisterSourceCorrection
 
 
 def _hash(value):
@@ -43,6 +44,7 @@ def _review(value, admitted, entitlement_id):
 class ShareholderRegisterSourceApprovalWorkflow:
     def __init__(self, sessions, documents):
         self._admission = ShareholderRegisterSourceAdmission(sessions, documents)
+        self._correction = ShareholderRegisterSourceCorrection(sessions, documents)
 
     async def read_review(self, access_token: str, *, company_id: CompanyId,
             income_year: IncomeYear, preview_id: rf.PreviewId, entitlement_id: str,
@@ -65,8 +67,16 @@ class ShareholderRegisterSourceApprovalWorkflow:
                 or any(type(code) is not str or not code.strip() for code in acknowledged_warning_codes)
                 or len(set(acknowledged_warning_codes)) != len(acknowledged_warning_codes)):
             raise rf.ShareholderRegisterFilingError.invalid_input()
+        correction = None
+        if predecessor is not None:
+            if not isinstance(predecessor, rf.Rf1086SourceCorrectionPredecessor):
+                raise rf.ShareholderRegisterFilingError.invalid_input()
+            correction = await self._correction.prepare(access_token,company_id=company_id,
+                income_year=income_year,predecessor=predecessor)
         async with self._admission.admit(access_token, company_id=company_id, income_year=income_year,
                 preview_id=preview_id, correlation_id=correlation_id) as admitted:
+            if correction is not None:
+                await self._correction.assert_admitted(correction,admitted.transaction)
             await admitted.transaction.bridge_source_preview(admitted.preview)
             review = _review(await admitted.transaction.read_source_approval_context(preview_id, entitlement_id),
                              admitted, entitlement_id)

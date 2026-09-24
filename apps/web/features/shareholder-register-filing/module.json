@@ -22,6 +22,7 @@
     "rf1086AcknowledgeReviewComment",
     "rf1086AddReviewComment",
     "rf1086ApproveProduction",
+    "rf1086ApproveSourceProduction",
     "rf1086CaptureRegisterObservation",
     "rf1086CaptureYearSource",
     "rf1086ConfirmFilingPermission",
@@ -31,6 +32,7 @@
     "rf1086GetArchiveSource",
     "rf1086GetProductionArchiveSource",
     "rf1086ListRegisterObservations",
+    "rf1086PrepareSourceProductionReview",
     "rf1086Preview",
     "rf1086ReadCurrentYearSource",
     "rf1086ReadSourceDocument",
@@ -57,7 +59,8 @@
   ],
   "tests": {
     "architecture": "tests/architecture_foundation.test.mjs",
-    "sourceTransport": "apps/web/tests/shareholder-register-source-transport.test.mjs"
+    "sourceTransport": "apps/web/tests/shareholder-register-source-transport.test.mjs",
+    "sourceApprovalControl": "apps/web/tests/shareholder-register-source-approval-control.test.mjs"
   },
   "compatibilityExceptions": []
 }

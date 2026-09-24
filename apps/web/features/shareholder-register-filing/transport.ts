@@ -9,6 +9,8 @@ import {
   type RfSourcePreviewWire, type RfSourcePreviewRequestWire, type RfYearSourceReceiptWire,
   type RfYearSourceCaptureWire, type RfRegisterObservationCaptureWire,
   type RfCurrentYearSourceWire, type RfRegisterObservationsWire,
+  type RfSourceProductionReviewRequestWire, type RfSourceProductionReviewWire,
+  type RfSourceProductionApprovalCommandWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
@@ -390,4 +392,23 @@ export function rf1086ActionErrorMessage(error: unknown) {
   if (code === "SHAREHOLDER_REGISTER_FILING_FORBIDDEN") return "Du har ikke tilgang til RF-1086-handlingen.";
   if (code === "SHAREHOLDER_REGISTER_FILING_INVALID_INPUT" || code === "invalid_request") return "Kontroller feltene og bekreftelsene før du prøver igjen.";
   return "RF-1086-handlingen kunne ikke bekreftes. Se lagret status før du prøver igjen.";
+}
+
+
+export async function prepareRf1086SourceProductionReview(accessToken: string,
+  body: RfSourceProductionReviewRequestWire, sourceId: string, sourceSha256: string): Promise<RfSourceProductionReviewWire> {
+  const value = await client(accessToken).rf1086PrepareSourceProductionReview(body, request());
+  if (value.companyId !== body.companyId || value.incomeYear !== body.incomeYear
+      || value.previewId !== body.previewId || value.entitlementId !== body.entitlementId
+      || value.sourceId !== sourceId || value.sourceSha256 !== sourceSha256
+      || value.canApprove !== (value.blockers.length === 0)
+      || new Set(value.warningCodes).size !== value.warningCodes.length
+      || new Set(value.blockers).size !== value.blockers.length) throw new TalliApiError(502, undefined);
+  return value;
+}
+
+export async function approveRf1086SourceProduction(accessToken: string, body: RfSourceProductionApprovalCommandWire) {
+  const value = await client(accessToken).rf1086ApproveSourceProduction(body, request());
+  if (value.companyId !== body.companyId || value.incomeYear !== body.incomeYear) throw new TalliApiError(502, undefined);
+  return value;
 }

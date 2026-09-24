@@ -394,3 +394,50 @@ test("register errors give safe actionable Norwegian messages without original d
     assert.doesNotMatch(message, /Secret|unknown|__proto__|constructor|storage_invalid/);
   }
 });
+
+const approvalTransport = await import('../features/shareholder-register-filing/transport.ts');
+const entitlementId = '50000000-0000-4000-8000-000000000001';
+const reviewRequest = () => ({ companyId: company, incomeYear: 2025, previewId, entitlementId });
+const reviewResponse = () => ({ ...reviewRequest(), sourceId, sourceSha256: hash, reviewSha256: 'b'.repeat(64),
+  warningCodes: ['review_warning'], blockers: [], canApprove: true });
+
+test('source approval review calls owned authenticated API and preserves server review commitment', async t => {
+  const calls = environment(t, reviewResponse());
+  const value = await approvalTransport.prepareRf1086SourceProductionReview('owner-token', reviewRequest(), sourceId, hash);
+  assert.deepEqual(value, reviewResponse());
+  assert.equal(calls[0].url.pathname, `${base}/source-production-reviews`);
+  assert.equal(calls[0].request.headers.Authorization, 'Bearer owner-token');
+  assert.deepEqual(JSON.parse(calls[0].request.body), reviewRequest());
+});
+for (const [name, patch] of Object.entries({ company: { companyId: other }, year: { incomeYear: 2024 },
+  preview: { previewId: other }, entitlement: { entitlementId: other }, source: { sourceId: other },
+  sourceHash: { sourceSha256: 'c'.repeat(64) }, contradictoryVerdict: { blockers: ['hard_review_comment'] },
+  duplicateWarnings: { warningCodes: ['x', 'x'] }, duplicateBlocks: { canApprove: false, blockers: ['x', 'x'] } })) {
+  test(`source approval review rejects ${name} mismatch`, async t => {
+    environment(t, { ...reviewResponse(), ...patch });
+    await assert.rejects(approvalTransport.prepareRf1086SourceProductionReview('owner-token', reviewRequest(), sourceId, hash), TalliApiError);
+  });
+}
+test('blocked source review remains blocked and exposes actionable backend reasons', async t => {
+  environment(t, { ...reviewResponse(), canApprove: false, blockers: ['technical_release_not_ready'] });
+  const value = await approvalTransport.prepareRf1086SourceProductionReview('owner-token', reviewRequest(), sourceId, hash);
+  assert.equal(value.canApprove, false);
+  assert.deepEqual(value.blockers, ['technical_release_not_ready']);
+});
+test('source approval sends exact acknowledgements and correction identity without provider call', async t => {
+  const result = { recordId: other, companyId: company, incomeYear: 2025 };
+  const calls = environment(t, result);
+  const command = { ...reviewRequest(), reviewSha256: 'b'.repeat(64), acknowledgedWarningCodes: ['review_warning'],
+    realFilingConfirmed: true, predecessor: { submissionId: sourceId, manifestSha256: hash, reason: 'Reviewed æ correction\n' } };
+  assert.deepEqual(await approvalTransport.approveRf1086SourceProduction('owner-token', command), result);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url.pathname, `${base}/source-production-approvals`);
+  assert.deepEqual(JSON.parse(calls[0].request.body), command);
+});
+for (const patch of [{ companyId: other }, { incomeYear: 2024 }]) {
+  test(`source approval refuses receipt scope ${JSON.stringify(patch)}`, async t => {
+    environment(t, { recordId: other, companyId: company, incomeYear: 2025, ...patch });
+    await assert.rejects(approvalTransport.approveRf1086SourceProduction('owner-token', { ...reviewRequest(),
+      reviewSha256: hash, acknowledgedWarningCodes: [], realFilingConfirmed: true }), TalliApiError);
+  });
+}

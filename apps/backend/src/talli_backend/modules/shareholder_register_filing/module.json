@@ -101,7 +101,13 @@
       "rf1086_event_register_states",
       "assert_rf1086_source_preview_matches",
       "serialize_rf1086_source_preview",
-      "parse_rf1086_source_preview"
+      "parse_rf1086_source_preview",
+      "Rf1086CorrectionPredecessorSnapshot",
+      "assert_rf1086_correction_predecessor",
+      "Rf1086SourceReadinessEvidence",
+      "Rf1086SourceReadinessProof",
+      "build_rf1086_source_readiness",
+      "assert_rf1086_source_readiness_matches"
     ],
     "events": [],
     "errors": [
@@ -251,7 +257,7 @@
       "Rf1086SourceFacts",
       "Rf1086ArchiveSnapshot"
     ],
-    "migrations": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql; supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql; supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql; supabase/migrations/20260917110951_rf1086_action_required_read_recovery.sql; supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql; supabase/migrations/20260923091509_rf1086_immutable_year_source.sql; supabase/migrations/20260923102314_rf1086_register_observation_store.sql; supabase/migrations/20260923105912_rf1086_source_backed_preview.sql; supabase/migrations/20260924062746_rf1086_source_company_guard.sql; supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql; supabase/migrations/20260924085227_rf1086_source_review_bridge.sql; supabase/migrations/20260924091015_rf1086_source_approval_foundation.sql"
+    "migrations": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql; supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql; supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql; supabase/migrations/20260917110951_rf1086_action_required_read_recovery.sql; supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql; supabase/migrations/20260923091509_rf1086_immutable_year_source.sql; supabase/migrations/20260923102314_rf1086_register_observation_store.sql; supabase/migrations/20260923105912_rf1086_source_backed_preview.sql; supabase/migrations/20260924062746_rf1086_source_company_guard.sql; supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql; supabase/migrations/20260924085227_rf1086_source_review_bridge.sql; supabase/migrations/20260924091015_rf1086_source_approval_foundation.sql; supabase/migrations/20260924094631_rf1086_journal_company_guard.sql"
   },
   "ports": [
     {
@@ -409,7 +415,10 @@
     "sourceApproval": "apps/backend/tests/test_rf1086_source_approval.py",
     "sourceApprovalApi": "apps/backend/tests/test_rf1086_source_approval_api.py",
     "sourceApprovalDatabase": "apps/backend/tests/test_rf1086_source_approval_database.py",
-    "sourceApprovalArchive": "apps/backend/tests/test_rf1086_source_approval_archive.py"
+    "sourceApprovalArchive": "apps/backend/tests/test_rf1086_source_approval_archive.py",
+    "sourceCorrection": "apps/backend/tests/test_rf1086_source_correction.py",
+    "sourceReadiness": "apps/backend/tests/test_rf1086_source_readiness.py",
+    "journalCompanyGuard": "apps/backend/tests/test_rf1086_journal_company_guard_database.py"
   },
   "compatibilityExceptions": []
 }

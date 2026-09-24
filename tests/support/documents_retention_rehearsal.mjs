@@ -57,3 +57,31 @@ begin
  end loop;
 end; $restore$;
 `;
+
+// Historical Documents rehearsal deliberately runs after RF is rolled back.
+// Replay the exact Documents portion of the shared successor, not RF routines
+// whose schema is absent in that topology. Production migration stays intact.
+export function documentsOnlyCompanyGuards(migration) {
+  const boundary = "set local role shareholder_register_filing_store_owner;";
+  const wrapStart = "do $wrap$";
+  const wrapEnd = "end; $wrap$;";
+  const restore = "do $restore$";
+  const first = migration.indexOf(boundary);
+  const start = migration.indexOf(wrapStart);
+  const end = migration.indexOf(wrapEnd, start);
+  const last = migration.lastIndexOf(restore);
+  if (!(first > 0 && start > first && end > start && last > end)
+      || migration.indexOf(wrapStart, start + wrapStart.length) !== -1) {
+    throw new Error("Documents company guard migration structure changed");
+  }
+  let wrapper = migration.slice(start, end + wrapEnd.length);
+  const entries = wrapper.split("\n").filter(line => line.startsWith("  ('"));
+  const documentEntries = entries.filter(line => line.startsWith("  ('documents."));
+  const otherEntries = entries.filter(line => line.startsWith("  ('shareholder_register_filing."));
+  if (documentEntries.length !== 9 || otherEntries.length !== 9 || entries.length !== 18) {
+    throw new Error("Documents company guard routine inventory changed");
+  }
+  wrapper = wrapper.split("\n").filter(line => !line.startsWith("  ('shareholder_register_filing.")).join("\n")
+    .replace(/,\n \) s\(signature,call,owner_name\)/u, "\n ) s(signature,call,owner_name)");
+  return migration.slice(0, first) + wrapper + "\n" + migration.slice(last);
+}

@@ -271,6 +271,55 @@ class PostgresShareholderRegisterFilingSession:
             )).fetchone()
             return self._year_source(row)
 
+    async def read_correction_predecessor(self, query, submission_id):
+        self._command_actor(query)
+        async with self._transaction(snapshot=True) as connection:
+            await connection.execute('select shareholder_register_filing.assert_member_v1(%s::uuid)',
+                (str(query.company_id),))
+            return await self._correction_predecessor(connection,query,submission_id,lock=False)
+
+    async def _correction_predecessor(self, connection, query, submission_id, *, lock):
+        if lock:
+            # Owner RPC checks the already-held company/year guards and locks the
+            # parent before reading children. Runtime has no direct UPDATE grant.
+            row = await (await connection.execute(
+                'select * from shareholder_register_filing.lock_correction_predecessor_v1(%s::uuid,%s::uuid,%s,%s)',
+                (submission_id.value,str(query.company_id),int(query.income_year),str(self.actor_id.subject)),
+            )).fetchone()
+        else:
+            row = await (await connection.execute(
+                'select * from shareholder_register_filing.production_filing_submissions '
+                'where id=%s::uuid and company_id=%s::uuid and income_year=%s',
+                (submission_id.value,str(query.company_id),int(query.income_year)),
+            )).fetchone()
+        if row is None:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        try:
+            submission = self._wire_record(rf.Rf1086ProductionSubmissionRecord,row)
+            approval_row = await (await connection.execute(
+                'select * from shareholder_register_filing.filing_approval_snapshots '
+                'where id=%s::uuid and company_id=%s::uuid and income_year=%s',
+                (submission.approval_id,str(query.company_id),int(query.income_year)),
+            )).fetchone()
+            if approval_row is None:
+                raise rf.Rf1086ProductionError('basis_unavailable')
+            approval = self._wire_record(rf.Rf1086ApprovalRecord,approval_row)
+            preview = await self._preview_record(connection,rf.PreviewId(approval.preview_id))
+            artifact_rows = await (await connection.execute(
+                'select * from shareholder_register_filing.production_feedback_artifacts '
+                'where submission_id=%s::uuid order by document_id,id', (submission_id.value,),
+            )).fetchall()
+            event_rows = await (await connection.execute(
+                "select * from shareholder_register_filing.production_filing_events "
+                "where submission_id=%s::uuid and operation_name like 'reconciliation:%%' "
+                "and operation_state='succeeded' order by created_at,id", (submission_id.value,),
+            )).fetchall()
+            return rf.Rf1086CorrectionPredecessorSnapshot(query.company_id,query.income_year,submission,approval,preview,
+                tuple(self._wire_record(rf.Rf1086ArchiveFeedbackArtifactRecord,item) for item in artifact_rows),
+                tuple(self._wire_record(rf.Rf1086ArchiveProductionEventRecord,item) for item in event_rows))
+        except (TypeError,ValueError,KeyError):
+            raise rf.Rf1086ProductionError('basis_unavailable') from None
+
     async def _retain_source_documents(self, connection, record_type, record_id, documents):
         retention = PostgresDocumentEvidenceRetention(connection, self.actor_id)
         # Stable ordering prevents two captures from taking document locks in
@@ -1137,6 +1186,12 @@ class _SourceAdmission:
             raise rf.ShareholderRegisterFilingError.forbidden()
         from talli_backend.adapters.postgres_document_originals import PostgresDocumentOriginals
         await PostgresDocumentOriginals(self._connection, self.actor_id).assert_retained_original(receipt)
+
+    async def read_correction_predecessor(self, query, submission_id):
+        self._require_active()
+        if query != self._query:
+            raise rf.ShareholderRegisterFilingError.forbidden()
+        return await self._store._correction_predecessor(self._connection,query,submission_id,lock=True)
 
     async def bridge_source_preview(self, preview):
         self._require_active()

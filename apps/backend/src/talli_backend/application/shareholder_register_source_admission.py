@@ -37,6 +37,8 @@ class Rf1086SourceAdmissionTransaction(Protocol):
     async def append_source_approval(self, preview: rf.Rf1086SourcePreview, entitlement_id: str,
             manifest: rf.Rf1086SourceApprovalManifest, review_sha256: str) -> rf.Rf1086RecordedResult: ...
     async def assert_original(self, receipt: RetainedDocumentOriginalReceipt) -> None: ...
+    async def read_correction_predecessor(self, query: rf.Rf1086SourceQuery,
+            submission_id: rf.SubmissionId) -> rf.Rf1086CorrectionPredecessorSnapshot: ...
     async def read_current_register_observation(self, query: rf.Rf1086SourceQuery,
             observation_id: rf.Rf1086RegisterObservationId) -> rf.Rf1086RegisterObservationSnapshot | None: ...
 
@@ -47,6 +49,8 @@ class SourceAdmissionSession(Protocol):
     async def source_preview(self, preview_id: rf.PreviewId) -> rf.Rf1086SourcePreview: ...
     async def read_year_source(self, query: rf.Rf1086SourceQuery,
             source_id: rf.Rf1086YearSourceId) -> rf.Rf1086YearSourceSnapshot | None: ...
+    async def read_correction_predecessor(self, query: rf.Rf1086SourceQuery,
+            submission_id: rf.SubmissionId) -> rf.Rf1086CorrectionPredecessorSnapshot: ...
     def source_admission(self, query: rf.Rf1086SourceQuery) -> AsyncContextManager[Rf1086SourceAdmissionTransaction]: ...
 
 
@@ -82,6 +86,19 @@ class ShareholderRegisterSourceAdmission:
         async with self.admit(access_token, company_id=company_id, income_year=income_year,
                 preview_id=preview_id, correlation_id=correlation_id) as admitted:
             return await admitted.transaction.bridge_source_preview(admitted.preview)
+
+    async def read_readiness(self, access_token: str, *, company_id: CompanyId,
+            income_year: IncomeYear, preview_id: rf.PreviewId,
+            correlation_id: CorrelationId) -> rf.Rf1086SourceReadinessProof:
+        """Read source readiness after current evidence checks on the held connection.
+
+        This is a point-in-time observation without approval, send, payment or
+        release authority. Consumers must re-enter admission before deciding.
+        No legacy annual readiness or review projection is written by this read.
+        """
+        async with self.admit(access_token, company_id=company_id, income_year=income_year,
+                preview_id=preview_id, correlation_id=correlation_id) as admitted:
+            return rf.build_rf1086_source_readiness(admitted.source, admitted.preview)
 
     @asynccontextmanager
     async def admit(self, access_token: str, *, company_id: CompanyId,

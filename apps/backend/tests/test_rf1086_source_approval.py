@@ -107,7 +107,8 @@ def test_malformed_review_projection_is_never_approval_authority(field,value):
 
 
 def test_exact_correction_identity_is_bound_but_source_correction_does_not_invent_one():
-    h=ApprovalHarness();prior=rf.Rf1086SourceCorrectionPredecessor(rf.SubmissionId(str(uuid4())),'c'*64,'Reviewed replacement')
+    from test_rf1086_source_correction import CorrectionHarness
+    h=CorrectionHarness();prior=h.prior
     h.approve(predecessor=prior)
     assert dict(h.writes[0].manifest['predecessor'])=={
         'submissionId':prior.submission_id.value,'manifestSha256':prior.manifest_sha256,'reason':prior.reason}

@@ -5,6 +5,7 @@ import type {
   RfCurrentYearSourceRecordWire, RfSourceIntakeBasisWire, RfSourcePreviewWire, RfSourceDocumentWire,
   RfYearSourceReceiptWire,
 } from "../../../../../features/shareholder-register-filing/index.ts";
+import { SourceApproval } from "./SourceApproval";
 import { Banner } from "../../../../components/ui";
 import { captureSourceAction, previewSourceAction, readSourceDocumentAction } from "./actions";
 import {
@@ -67,11 +68,26 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
   const savedHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { if (saved) savedHeading.current?.focus(); }, [saved]);
   const [preview, setPreview] = useState<RfSourcePreviewWire | null>(null);
+  const [approvalLocked, setApprovalLocked] = useState(false);
+  const approvalLock = useRef(false);
+  const sourceWork = useRef(false);
+  function lockApproval(locked: boolean) {
+    if (locked && sourceWork.current) return false;
+    approvalLock.current = locked;
+    setApprovalLocked(locked);
+    return true;
+  }
+  function work(operation: () => Promise<void>) {
+    if (approvalLock.current || sourceWork.current) return;
+    sourceWork.current = true;
+    startTransition(async () => { try { await operation(); } finally { sourceWork.current = false; } });
+  }
   const [previewError, setPreviewError] = useState<string | null>(null);
   const receipt = saved ?? current?.receipt;
-  const frozen = pending || attempt !== null || saved !== null;
+  const frozen = pending || attempt !== null || saved !== null || approvalLocked;
   const receipts = governanceReceipts(basis);
   function change(update: (value: SourceDraft) => SourceDraft) {
+    if (approvalLock.current) return;
     setDraft(value => resetReview(update(value))); setMessage(null); setPreview(null);
   }
   function updateEvent(index: number, update: (event: EventDraft) => EventDraft) {
@@ -85,7 +101,7 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
       </Check>) : <p>Legg til dokumenter under «Dokumentasjon» først.</p>}</div>;
   }
   function addDocuments(ids: string[]) {
-    startTransition(async () => {
+    work(async () => {
       const loaded: RfSourceDocumentWire[] = [];
       try {
       for (const id of [...new Set(ids)]) {
@@ -98,6 +114,7 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
     });
   }
   function capture() {
+    if (approvalLock.current) return;
     let next = attempt;
     if (!next) {
       try { next = { command: sourceCommand(draft), key: crypto.randomUUID(), uncertain: false }; }
@@ -105,7 +122,7 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
       setAttempt(next);
     }
     const submitted = next;
-    startTransition(async () => {
+    work(async () => {
       setMessage(null);
       try {
       const result = await captureSourceAction(submitted.command, submitted.key);
@@ -119,8 +136,8 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
     });
   }
   function generatePreview() {
-    if (!receipt) return;
-    startTransition(async () => {
+    if (!receipt || approvalLock.current) return;
+    work(async () => {
       setPreviewError(null); setPreview(null);
       try {
         const result = await previewSourceAction({ companyId: receipt.companyId, incomeYear: receipt.incomeYear, sourceId: receipt.sourceId });
@@ -135,7 +152,7 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
     {receipt ? <section className="dataPanel" aria-label="Lagret årsgrunnlag">
       <h2 ref={savedHeading} tabIndex={-1}>{saved ? "Årsgrunnlaget er lagret" : "Gjeldende årsgrunnlag"}</h2>
       <p>Versjon {receipt.version} · lagret {receipt.confirmedAt}</p>
-      <button type="button" className="btn btn--secondary" disabled={pending} onClick={generatePreview}>Lag forhåndsvisning av lagret grunnlag</button>
+      <button type="button" className="btn btn--secondary" disabled={pending || approvalLocked} onClick={generatePreview}>Lag forhåndsvisning av lagret grunnlag</button>
       {saved ? <p><a href={reloadHref}>Åpne lagret grunnlag for en ny korrigering</a></p> : <p>Endringer nedenfor lagres som en ny versjon. Tidligere grunnlag beholdes.</p>}
     </section> : null}
     {previewError ? <Banner variant="danger">{previewError}</Banner> : null}
@@ -149,6 +166,7 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
         {Object.entries(preview.underskjemaXml ?? {}).map(([id, xml]) => <details key={id}><summary>Aksjonær {draft.holders.find(h => h.id === id)?.name ?? id}</summary>
           <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{xml}</pre></details>)}
       </details>
+      <SourceApproval key={preview.previewId} preview={preview} onLockChange={lockApproval} busy={pending} />
     </section> : null}
     <section className="dataPanel" aria-label="Registrerte selskapsbeslutninger">
       <h2>Registrerte beslutninger og rettelser</h2>
@@ -279,7 +297,7 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
       </fieldset>
       {message ? <div role="alert"><Banner variant="danger">{message}</Banner></div> : null}
       {attempt && !pending ? <Banner variant="info">Lagringen er ikke bekreftet. Feltene beholdes uendret. Prøv samme lagring igjen, eller <a href={reloadHref}>åpne sist lagrede grunnlag</a> for å kontrollere resultatet.</Banner> : null}
-      <button type="submit" className="btn btn--primary" disabled={pending || saved !== null || !draft.identitiesReviewed || !draft.completeYearConfirmed || !draft.paidInReviewed || (!draft.events.length && !draft.noActivityConfirmed)}>
+      <button type="submit" className="btn btn--primary" disabled={approvalLocked || pending || saved !== null || !draft.identitiesReviewed || !draft.completeYearConfirmed || !draft.paidInReviewed || (!draft.events.length && !draft.noActivityConfirmed)}>
         {pending ? "Kontrollerer …" : attempt ? "Prøv samme lagring igjen" : draft.supersedesSourceId ? "Lagre korrigert årsgrunnlag" : "Lagre årsgrunnlag"}
       </button>
     </form>

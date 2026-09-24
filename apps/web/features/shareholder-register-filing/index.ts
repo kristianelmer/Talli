@@ -72,3 +72,7 @@ export type {
   RfSourcePreviewReadRequest,
   RfCurrentYearSourceReadRequest,
 } from "@talli/talli-api-client";
+
+export { prepareRf1086SourceProductionReview, approveRf1086SourceProduction } from "./transport.ts";
+export type { RfSourceProductionReviewWire, RfSourceProductionReviewRequestWire,
+  RfSourceProductionApprovalCommandWire, RfSourceCorrectionPredecessorWire } from "@talli/talli-api-client";
