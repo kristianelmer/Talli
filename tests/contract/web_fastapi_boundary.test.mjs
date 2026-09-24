@@ -685,3 +685,44 @@ test("current source client scopes the owner read and preserves an explicit abse
   assert.equal(calls[0].init.method, "GET");
   assert.equal(calls[0].init.headers.Authorization, "Bearer owner-token");
 });
+
+test("full-year production review and approval client preserve exact scoped commands", async () => {
+  const { createTalliApiClient } = await import(generatedClientPath.href);
+  const scope = { companyId: "10000000-0000-4000-8000-000000000001", incomeYear: 2025,
+    previewId: "10000000-0000-4000-8000-000000000002", entitlementId: "10000000-0000-4000-8000-000000000003" };
+  const review = { ...scope, sourceId: scope.previewId, sourceSha256: "a".repeat(64),
+    reviewSha256: "b".repeat(64), warningCodes: ["review_warning"], blockers: [], canApprove: true };
+  const requests = [];
+  const receipt = { recordId: scope.previewId, companyId: scope.companyId, incomeYear: scope.incomeYear };
+  const client = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async (url, init) => {
+    requests.push({url:new URL(url),init});
+    return Response.json(requests.length === 1 ? review : receipt);
+  }});
+  const options = {requestId:"source-production-proof",headers:{Authorization:"Bearer owner-token"}};
+  assert.deepEqual(await client.rf1086PrepareSourceProductionReview(scope,options),review);
+  const command = {...scope,reviewSha256:review.reviewSha256,acknowledgedWarningCodes:review.warningCodes,
+    realFilingConfirmed:true,predecessor:{submissionId:scope.previewId,manifestSha256:"c".repeat(64),reason:"Reviewed correction"}};
+  assert.deepEqual(await client.rf1086ApproveSourceProduction(command,options),receipt);
+  assert.deepEqual(requests.map(row=>row.url.pathname),[
+    "/api/v1/shareholder-register-filings/source-production-reviews",
+    "/api/v1/shareholder-register-filings/source-production-approvals"]);
+  for (const row of requests) {
+    assert.equal(row.init.method,"POST");assert.equal(row.init.cache,"no-store");
+    assert.equal(row.init.headers.Authorization,"Bearer owner-token");
+    assert.equal(row.init.headers["X-Request-ID"],"source-production-proof");
+  }
+  assert.deepEqual(JSON.parse(requests[0].init.body),scope);
+  assert.deepEqual(JSON.parse(requests[1].init.body),command);
+});
+
+test("full-year review client rejects malformed owner response fields", async () => {
+  const { createTalliApiClient, TalliApiError } = await import(generatedClientPath.href);
+  const scope = {companyId:"10000000-0000-4000-8000-000000000001",incomeYear:2025,
+    previewId:"10000000-0000-4000-8000-000000000002",entitlementId:"10000000-0000-4000-8000-000000000003"};
+  const good = {...scope,sourceId:scope.previewId,sourceSha256:"a".repeat(64),reviewSha256:"b".repeat(64),
+    warningCodes:[],blockers:[],canApprove:true};
+  for (const changed of [{canApprove:"true"},{reviewSha256:"not-a-hash"},{sourceId:null},{blockers:null}]) {
+    const client=createTalliApiClient({baseUrl:"https://backend.example",fetch:async()=>Response.json({...good,...changed})});
+    await assert.rejects(client.rf1086PrepareSourceProductionReview(scope),error=>error instanceof TalliApiError && error.status===502);
+  }
+});

@@ -313,6 +313,8 @@ const shareholderRegisterFilingOperations = {
   captureRegisterObservation: ["/api/v1/shareholder-register-filings/register-observations", "post", "rf1086CaptureRegisterObservation"],
   captureYearSource: ["/api/v1/shareholder-register-filings/year-sources", "post", "rf1086CaptureYearSource"],
   generateSourcePreview: ["/api/v1/shareholder-register-filings/source-previews", "post", "rf1086GenerateSourcePreview"],
+  sourceProductionReview: ["/api/v1/shareholder-register-filings/source-production-reviews", "post", "rf1086PrepareSourceProductionReview"],
+  sourceProductionApproval: ["/api/v1/shareholder-register-filings/source-production-approvals", "post", "rf1086ApproveSourceProduction"],
   sourcePreview: ["/api/v1/shareholder-register-filings/source-previews/{previewId}", "get", "rf1086ReadSourcePreview"],
   archiveSource: ["/api/v1/shareholder-register-filings/archive-source", "get", "rf1086GetArchiveSource"],
   productionArchiveSource: ["/api/v1/shareholder-register-filings/archive-source/production", "get", "rf1086GetProductionArchiveSource"],
@@ -943,6 +945,10 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "RfRegisteredSharesWire",
   "RfRegisterDocumentWire",
   "RfRegisterObservationCaptureWire",
+  "RfSourceProductionReviewRequestWire",
+  "RfSourceProductionReviewWire",
+  "RfSourceProductionApprovalCommandWire",
+  "RfSourceCorrectionPredecessorWire",
   "RfSourcePreviewRequestWire",
   "RfYearSourceReceiptWire",
   "RfRegisterObservationReceiptWire",
@@ -978,6 +984,9 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "Rf1086ActionAvailabilityWire",
   "Rf1086WorkspaceWire",
   "Rf1086ArchiveSourceWire",
+  "Rf1086ArchivedYearSourceWire",
+  "Rf1086ArchiveSourceReviewBridgeWire",
+  "Rf1086ArchiveSourceApprovalLineageWire",
   "Rf1086ProductionArchiveSourceWire",
   "Rf1086ArchiveProductionEventWire",
   "Rf1086ArchiveFeedbackArtifactWire",
@@ -3182,6 +3191,20 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     ): Promise<RfSourcePreviewWire> {
       return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-previews",
         "POST", request, input, isRfSourcePreviewWire);
+    },
+
+    async rf1086PrepareSourceProductionReview(
+      input: RfSourceProductionReviewRequestWire, request: TalliRequestOptions = {},
+    ): Promise<RfSourceProductionReviewWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-production-reviews",
+        "POST", request, input, isRfSourceProductionReviewWire);
+    },
+
+    async rf1086ApproveSourceProduction(
+      input: RfSourceProductionApprovalCommandWire, request: TalliRequestOptions = {},
+    ): Promise<Rf1086RecordedResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-production-approvals",
+        "POST", request, input, isRf1086RecordedResultWire);
     },
 
     async rf1086ReadSourcePreview(

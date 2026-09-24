@@ -46,8 +46,9 @@ The internal guarded source admission scope now composes Company Access, RF,
 Documents and complete Governance/Ledger public projections on one short
 connection after byte preflight. The capture/admission policy is shared, and the
 yielded scope expires on exit. It has unit/adapter verification and collected
-database tests, but runtime SQL verification remains pending. Approval and send
-still need to persist their decisions inside this scope.
+database tests, and bounded PostgreSQL approval verification. Complete database integration
+remains pending. Approval now persists inside this scope; submission still needs
+the same admission discipline.
 Independent rereads followed by an RF write leave a race. The owner queries and
 all writes affecting their projections must participate in company-scoped guards:
 Company Access membership/identity, Governance records including cross-year
@@ -58,8 +59,8 @@ Billing-entitlement ordering. Acquire guards before reading their projections.
 Do not give RF access to other owners' tables. Compose narrow public adapters on
 one authenticated connection. Keep byte downloads and provider I/O outside this
 transaction. Documents now retains bounded immutable copies of verified original
-bytes and supplies exact receipt/read/assert contracts. Approval/send still need
-to bind and consume those receipts. Archive, backup, expiry and deletion handling
+bytes and supplies exact receipt/read/assert contracts. Approval binds and consumes those receipts; submission still needs
+the same checks. Archive, backup, expiry and deletion handling
 must include the new copies before production use. A copied original is not a
 filing reference or approval.
 
@@ -72,7 +73,7 @@ successor migrations now add Company Access, Documents, Governance, Ledger and
 RF review/approval writer guards. Company Access supplies a narrow guarded
 admission projection, and Governance consumes exact RF/retained-original
 assertions in its final transaction. These successor migrations still require
-database execution proof. Full-year RF approval/send composition remains pending.
+database execution proof. Full-year RF approval composition is implemented; submission remains pending.
 The legacy direct readiness upsert still computes outside an owned guarded
 command; its row backstop alone cannot make that payload fresh.
 The concrete owner interface and writer
@@ -99,15 +100,30 @@ key binds company/year/source/source-hash/payload-hash. Review text, issues and
 XML derive from stored preview bytes; shareholder keys match the versioned
 source manifest. Application `prepare_review` performs that write inside held
 source admission after original-byte checks. Exact replay requires a current
-source; historical reads survive correction. The bridge has no HTTP route yet.
-Legacy Python approval paths and production table barriers reject these previews.
+source; historical reads survive correction. The authenticated source-production review route materializes the bridge inside admission.
+Legacy approval paths reject these previews. Full-year approval requires an
+exact immutable source binding; full-year submission remains blocked.
 Rollback suspends new bridges while retaining evidence and barriers.
 
-Full-year RF approval/submission constraints, immutable review digest, exact
-warning acknowledgment and authority/entitlement checks, approval append and
-journal visibility still require their independent guarded commands. The review
-bridge is not approval or send authority. Readiness must use the verified
-full-year source binding instead of regenerating an opening-only case.
+Full-year approval now has a separate authenticated command. It requires
+fresh source admission, exact review hash and warning acknowledgments, filing
+permission, active exact-profile pilot, accepted preflighted Authority identity
+and existing release inputs. Authority request locks precede Billing entitlement
+locks; MFA and entitlement time checks use the clock after waiting. Hard review
+comments remain blockers after acknowledgement. The canonical manifest and exact
+historical review text are retained in immutable approval bindings; exact replay
+rechecks current admission. Legacy approval cannot use source previews.
+
+Historical full-year approvals are exported with source, preview, bridge, raw
+review and canonical manifest lineage. Archive validation rebuilds the captured
+identity without consulting the current source head. Predecessor approval binds
+an exact terminal submission and its verified journal artifact set; retained
+prior-feedback byte checks remain required before enabling full-year send.
+
+Full-year submission constraints, claim and journal visibility remain blocked
+pending their independent guarded command. The legacy stored-readiness gate is
+still a prerequisite and must be replaced with owned full-year readiness based
+on the verified source; it cannot substitute for those source checks.
 
 Repeat all consequential checks in the transaction that persists the submit-once
 claim. That commit is the admission point: later source changes require a

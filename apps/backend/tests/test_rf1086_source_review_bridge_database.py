@@ -147,7 +147,10 @@ def test_safe_rollback_retains_review_and_production_barriers_then_exact_recutov
         assert asyncio.run(records(store,preview))==before
         with pytest.raises(rf.ShareholderRegisterFilingError):asyncio.run(bridge(store,preview))
     finally:
-        with psycopg.connect(DATABASE_URL) as db:db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+        with psycopg.connect(DATABASE_URL) as db:
+            db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+            if db.execute("select to_regprocedure('shareholder_register_filing.append_source_approval_v1(uuid,uuid,text,text,text,text)')").fetchone()[0]:
+                db.execute((ROOT/'supabase/migrations/20260924091015_rf1086_source_approval_foundation.sql').read_text())
     assert asyncio.run(bridge(store,preview)) and asyncio.run(records(store,preview))==before
     with psycopg.connect(DATABASE_URL) as db:
         for role in ('anon','authenticated','service_role'):

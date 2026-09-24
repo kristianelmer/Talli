@@ -23,13 +23,27 @@ set local role documents_store_owner;
 -- The production rollback retains originals and the deletion guard unchanged.
 lock table documents.evidence_references in share row exclusive mode;
 do $empty_registry$
+declare forced boolean; populated boolean;
 begin
- if exists(select 1 from documents.evidence_references) then
+ select relforcerowsecurity into forced from pg_catalog.pg_class
+ where oid='documents.evidence_references'::regclass;
+ -- The fixture owner must count every row, including another actor's evidence.
+ -- DDL and the assertion share the caller transaction; failure restores RLS.
+ alter table documents.evidence_references no force row level security;
+ select exists(select 1 from documents.evidence_references) into populated;
+ if forced then alter table documents.evidence_references force row level security; end if;
+ if populated then
   raise exception 'documents_retained_evidence_blocks_rehearsal_teardown';
  end if;
 end; $empty_registry$;
 drop function if exists documents.retain_verified_rf_evidence_v1(text,uuid,uuid,uuid,integer,text,text,bigint,text,uuid);
 drop function if exists documents.assert_retained_metadata_v1(text,text);
+-- The retained-original rollback ran first; this empty registry is next to go.
+-- Remove only the new owner-local trigger/helper names, never CASCADE.
+drop trigger if exists consequential_company_guard on documents.evidence_references;
+drop function if exists documents.lock_evidence_company_write_v1();
+drop function if exists documents.lock_document_write_v1(uuid,text);
+drop function if exists documents.lock_company_write_v1(uuid,text);
 
 reset role;
 do $restore$

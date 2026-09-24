@@ -373,7 +373,8 @@ def test_production_archive_source_is_additive_and_returns_one_complete_snapshot
     assert response.status_code == 200, response.text
     body = response.json()
     assert set(body) == {"companyId", "incomeYear", "previews", "simulations", "reviewComments", "permissions", "testEvidence",
-        "approvals", "productionSubmissions", "productionEvents", "feedbackArtifacts"}
+        "approvals", "productionSubmissions", "productionEvents", "feedbackArtifacts", "sourceApprovalLineage"}
+    assert body["sourceApprovalLineage"] == []
     assert len(body["previews"]) == (1 if year == 2025 else 0)
     assert body["reviewComments"][0]["previewId"] == DOCUMENT
     assert response.headers["cache-control"] == "no-store"

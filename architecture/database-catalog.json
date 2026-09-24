@@ -931,6 +931,12 @@
       "kind": "capability-business",
       "owner": "backend:shareholder_register_filing",
       "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.source_approval_bindings",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
     }
   ],
   "preservedSourceRetirements": [

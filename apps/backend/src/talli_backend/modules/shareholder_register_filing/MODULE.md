@@ -1,7 +1,7 @@
 # Shareholder register filing
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions","shareholder_register_filing.year_source_heads","shareholder_register_filing.year_source_versions","shareholder_register_filing.register_observations","shareholder_register_filing.source_previews","shareholder_register_filing.source_review_bridges"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority","Rf1086YearSourcePersistence","Rf1086RegisterObservationPersistence"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
+{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions","shareholder_register_filing.year_source_heads","shareholder_register_filing.year_source_versions","shareholder_register_filing.register_observations","shareholder_register_filing.source_previews","shareholder_register_filing.source_review_bridges","shareholder_register_filing.source_approval_bindings"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority","Rf1086YearSourcePersistence","Rf1086RegisterObservationPersistence"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
 -->
 
 ## Owned behavior
@@ -550,8 +550,19 @@ while its original source remains current. Historical review reads remain
 available after a source correction. The application materializes it within
 source admission, after retained-byte and complete Governance checks.
 
-This bridge enables review only. Domain/adapter legacy approval paths reject the
-full-year marker, and table barriers reject source-preview IDs or full-year
-profiles in production approvals/submissions. Full-year approval/send must add
-an independent guarded command before those barriers can be narrowed. Rollback
-suspends bridge creation while retaining historical projections and barriers.
+The bridge itself enables review only. Legacy approval rejects the full-year
+marker. The dedicated full-year approval command enters fresh source admission,
+requires exact active pilot/Authority identity and current review/permission,
+and appends the canonical manifest with immutable source and raw review bindings.
+The review and append share the company/year guard. Exact replay rechecks current
+admission; changed review requires renewed confirmation. Historical archives
+rebuild full-year manifests from retained lineage without consulting current
+source heads. Full-year submissions remain blocked pending their independent
+claim, correction, byte-verification and journal integration. The legacy stored
+readiness prerequisite remains until its owned full-year replacement is ready.
+Rollback suspends new approvals while preserving evidence and send barriers.
+
+`Rf1086SourceApprovalReview` exposes the exact point-in-time review commitment,
+warning codes and blockers. `Rf1086ArchiveSourceReviewBridge` and
+`Rf1086ArchiveSourceApprovalLineage` retain the bridge, source, preview and exact
+approved manifest/review text needed to verify a historical full-year approval.

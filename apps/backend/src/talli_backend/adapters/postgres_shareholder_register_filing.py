@@ -193,6 +193,11 @@ class PostgresShareholderRegisterFilingSession:
                 raise rf.ShareholderRegisterFilingError.invalid_input() from None
             if "production_filing_fresh_owner_step_up_required" in str(error):
                 raise Rf1086ProductionError("step_up_required") from None
+            if "rf1086_source_review_changed" in str(error):
+                raise Rf1086ProductionError("payload_changed") from None
+            if any(code in str(error) for code in ("rf1086_source_approval_blocked", "rf1086_source_approval_manifest_invalid",
+                    "rf1086_source_production_admission_required", "rf1086_source_approval_guard_required")):
+                raise Rf1086ProductionError("basis_unavailable") from None
             if any(code in str(error) for code in ("rf1086_company_year_not_admitted","production_pilot_entitlement_required")):
                 raise rf.ShareholderRegisterFilingError.company_year_not_admitted() from None
             if error.sqlstate == "42501" or "rf1086_forbidden" in str(error):
@@ -592,6 +597,41 @@ class PostgresShareholderRegisterFilingSession:
                     raise rf.ShareholderRegisterFilingError.unavailable() from None
             if not include_production:
                 return rf.Rf1086ArchiveSnapshot(query.company_id, query.income_year, **values)
+            # Historical approval lineage uses retained versions, never current
+            # heads, current Documents status or today's review permissions.
+            lineage = []
+            if any(row.case_profile == 'rf1086_full_year_v1' for row in values['approvals']):
+                bindings = await (await connection.execute(
+                    'select * from shareholder_register_filing.source_approval_bindings '
+                    'where company_id=%s::uuid and income_year=%s order by approval_id',
+                    (company_id, year),
+                )).fetchall()
+                for binding in bindings:
+                    source_row = await (await connection.execute(
+                        'select * from shareholder_register_filing.year_source_versions '
+                        'where id=%s::uuid and company_id=%s::uuid and income_year=%s',
+                        (binding['source_id'], company_id, year),
+                    )).fetchone()
+                    bridge_row = await (await connection.execute(
+                        'select * from shareholder_register_filing.source_review_bridges '
+                        'where preview_id=%s::uuid and company_id=%s::uuid and income_year=%s',
+                        (binding['preview_id'], company_id, year),
+                    )).fetchone()
+                    try:
+                        source = self._year_source(source_row)
+                        preview = await self._read_source_preview(connection, rf.PreviewId(str(binding['preview_id'])))
+                        if source is None or bridge_row is None:
+                            raise ValueError('incomplete retained source approval')
+                        lineage.append(rf.Rf1086ArchiveSourceApprovalLineage(
+                            **{field.name: _record_value(binding[field.name])
+                               for field in fields(rf.Rf1086ArchiveSourceApprovalLineage)
+                               if field.name not in ('source', 'source_preview', 'bridge')},
+                            source=source, source_preview=preview,
+                            bridge=self._wire_record(rf.Rf1086ArchiveSourceReviewBridge, bridge_row),
+                        ))
+                    except (TypeError, ValueError, KeyError, rf.Rf1086YearSourceError):
+                        raise rf.ShareholderRegisterFilingError.unavailable() from None
+            values['source_approval_lineage'] = tuple(lineage)
             for name, table, record_type, ordered_at in (
                 ("production_events", "production_filing_events", rf.Rf1086ArchiveProductionEventRecord, "created_at"),
                 ("feedback_artifacts", "production_feedback_artifacts", rf.Rf1086ArchiveFeedbackArtifactRecord, "retrieved_at"),
@@ -1112,11 +1152,77 @@ class _SourceAdmission:
             raise rf.Rf1086YearSourceError('rf1086_source_preview_storage_invalid')
         return preview.preview_id
 
+    async def read_source_approval_context(self, preview_id, entitlement_id):
+        self._require_active()
+        preview = await self.source_preview(preview_id)
+        row = await (await self._connection.execute(
+            'select shareholder_register_filing.read_source_approval_context_v1(%s::uuid,%s::uuid,%s) as context',
+            (preview_id.value, entitlement_id, str(self.actor_id.subject)),
+        )).fetchone()
+        return _source_approval_review(row['context'] if row else None, self._query, preview, entitlement_id)
+
+    async def append_source_approval(self, preview, entitlement_id, manifest, review_sha256):
+        self._require_active()
+        if (await self.source_preview(preview.preview_id) != preview
+                or manifest.manifest.get('entitlementId') != entitlement_id
+                or manifest.manifest.get('userId') != str(self.actor_id.subject)
+                or manifest.manifest.get('preview', {}).get('id') != preview.preview_id.value
+                or manifest.manifest.get('review', {}).get('sha256') != review_sha256):
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        manifest_text = rf.serialize_rf1086_source_approval_manifest(manifest)
+        try:
+            row = await (await self._connection.execute(
+                'select * from shareholder_register_filing.append_source_approval_v1(%s::uuid,%s::uuid,%s,%s,%s,%s)',
+                (preview.preview_id.value, entitlement_id, manifest_text, manifest.manifest_sha256,
+                 review_sha256, str(self.actor_id.subject)),
+            )).fetchone()
+        except psycopg.Error as error:
+            # Capture correction and production correction share an SQL error
+            # name. Translate only this approval operation, preserving capture.
+            if 'rf1086_source_predecessor_mismatch' in str(error):
+                raise rf.Rf1086ProductionError('payload_changed') from None
+            raise
+        if not row:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        result = self._store._recorded(row)
+        if result.company_id != self._query.company_id or result.income_year != self._query.income_year:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        return result
+
     async def read_current_register_observation(self, query, observation_id):
         self._require_active()
         if query != self._query:
             raise rf.ShareholderRegisterFilingError.forbidden()
         return await self._store._read_register_observation(self._connection, query, observation_id, current=True)
+
+
+def _source_approval_review(value, query, preview, entitlement_id):
+    """Reject malformed owner projections before treating their digest as review."""
+    try:
+        from uuid import UUID
+        keys = {'companyId', 'incomeYear', 'previewId', 'sourceId', 'sourceSha256',
+                'entitlementId', 'reviewSha256', 'warningCodes', 'blockers'}
+        if (not isinstance(value, dict) or set(value) != keys
+                or value['companyId'] != str(query.company_id)
+                or type(value['incomeYear']) is not int or value['incomeYear'] != int(query.income_year)
+                or value['previewId'] != preview.preview_id.value
+                or value['sourceId'] != preview.source_id.value
+                or value['sourceSha256'] != preview.source_sha256
+                or value['entitlementId'] != entitlement_id
+                or str(UUID(entitlement_id)) != entitlement_id
+                or type(value['reviewSha256']) is not str
+                or re.fullmatch('[a-f0-9]{64}', value['reviewSha256']) is None):
+            raise ValueError()
+        for name in ('warningCodes', 'blockers'):
+            codes = value[name]
+            if (type(codes) is not list or any(type(code) is not str or not code.strip() for code in codes)
+                    or codes != sorted(set(codes))):
+                raise ValueError()
+        return rf.Rf1086SourceApprovalReview(query.company_id, query.income_year, preview.preview_id,
+            preview.source_id, preview.source_sha256, entitlement_id, value['reviewSha256'],
+            tuple(value['warningCodes']), tuple(value['blockers']), not value['blockers'])
+    except (ValueError, TypeError, KeyError, AttributeError):
+        raise rf.Rf1086ProductionError('basis_unavailable') from None
 
 
 @rf.rf1086_adapter(rf.ProductionOperationJournal)

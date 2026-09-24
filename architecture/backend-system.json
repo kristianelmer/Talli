@@ -525,6 +525,17 @@
       "routes": [
         "/api/v1/annual-accounts/source-facts"
       ]
+    },
+    {
+      "name": "shareholder-register-source-approval",
+      "purpose": "Binds an immutable full-year source review and persisted owner approval under one company/year admission transaction; performs no provider operation.",
+      "publicPackages": [
+        "talli_backend.modules.shareholder_register_filing.public"
+      ],
+      "routes": [
+        "/api/v1/shareholder-register-filings/source-production-reviews",
+        "/api/v1/shareholder-register-filings/source-production-approvals"
+      ]
     }
   ],
   "operationalControlState": {
@@ -1118,7 +1129,8 @@
       "talli_backend.modules.annual_accounts_filing.public",
       "talli_backend.json_transport",
       "talli_backend.application.shareholder_register_source_workflow",
-      "talli_backend.application.corporate_register_evidence"
+      "talli_backend.application.corporate_register_evidence",
+      "talli_backend.application.shareholder_register_source_approval"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",

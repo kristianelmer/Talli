@@ -123,3 +123,15 @@ def assert_matches(approved: rf.Rf1086SourceApprovalManifest,
             raise rf.Rf1086ProductionError("payload_changed")
     except (ValueError, TypeError, AttributeError, KeyError, ArithmeticError):
         raise rf.Rf1086ProductionError("payload_changed") from None
+
+
+def serialize_manifest(approved: rf.Rf1086SourceApprovalManifest) -> str:
+    """Encode the approved version without applying the legacy hash algorithm."""
+    try:
+        _require(isinstance(approved, rf.Rf1086SourceApprovalManifest))
+        text = _canonical(approved.manifest)
+        _require(approved.manifest.get('schemaVersion') == 'production-source-approval-v1'
+                 and _hash(text) == approved.manifest_sha256)
+        return text
+    except (ValueError, TypeError, AttributeError, KeyError, ArithmeticError):
+        raise rf.Rf1086ProductionError('basis_unavailable') from None

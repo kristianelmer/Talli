@@ -48,6 +48,8 @@ test(
       ledgerGuardForward,
       originalsForward,
       originalsRollback,
+      documentsGuardForward,
+      governanceGuardForward,
     ] = await Promise.all([
       readFile(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/rollback/${migrationName}`, import.meta.url), "utf8"),
@@ -59,11 +61,16 @@ test(
       readFile(new URL("../supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql", import.meta.url), "utf8"),
       readFile(new URL(`../supabase/migrations/${originalsMigrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/rollback/${originalsMigrationName}`, import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql", import.meta.url), "utf8"),
     ]);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
     try {
       const initial = await state(client);
+      const { rows: [guards] } = await client.query(`select
+        to_regprocedure('documents.lock_company_write_v1(uuid,text)') is not null as documents,
+        to_regprocedure('ledger.acquire_company_write_guard_v1(uuid,text)') is not null as governance`);
       assert.equal(initial.table_owner, "documents_store_owner");
       assert.equal(initial.capability_schema, true);
 
@@ -107,6 +114,8 @@ test(
         await client.query(retentionForward);
         await client.query(ledgerGuardForward);
         await client.query(originalsForward);
+        if (guards.documents) await client.query(documentsGuardForward);
+        if (guards.governance) await client.query(governanceGuardForward);
         const successor = await state(client);
         assert.deepEqual(
           {

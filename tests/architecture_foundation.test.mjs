@@ -557,6 +557,14 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "to": "backend:ledger"
   },
   {
+    "from": "backend-system:corporate-governance",
+    "imports": [
+      "talli_backend.modules.shareholder_register_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:shareholder_register_filing"
+  },
+  {
     "from": "backend-system:investment-activity",
     "imports": [
       "talli_backend.modules.banking.public"
@@ -647,6 +655,14 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   {
     "from": "backend-system:shareholder-register-filing",
     "imports": [
+      "talli_backend.modules.corporate_governance.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:corporate_governance"
+  },
+  {
+    "from": "backend-system:shareholder-register-filing",
+    "imports": [
       "talli_backend.modules.documents.public"
     ],
     "kind": "workflow",
@@ -654,6 +670,14 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
   },
   {
     "from": "backend-system:shareholder-register-filing",
+    "imports": [
+      "talli_backend.modules.shareholder_register_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:shareholder_register_filing"
+  },
+  {
+    "from": "backend-system:shareholder-register-source-approval",
     "imports": [
       "talli_backend.modules.shareholder_register_filing.public"
     ],
