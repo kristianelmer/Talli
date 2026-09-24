@@ -106,7 +106,7 @@
     "integration": "source-preview-integration-20260923.json",
     "persistence": "source-preview-persistence-runtime-20260923.json",
     "review": "review-source-preview.json",
-    "remaining": "Customer source intake/review, source-bound approval/send and action-time freshness, correction admission and source lineage in archive remain pending."
+    "remaining": "Independent register-observation intake, authenticated full-stack source journeys, source-bound approval/send and action-time freshness, correction admission and source lineage in archive remain pending."
   },
   "ciRegressionVerification": "ci-regressions-20260923.json",
   "capitalLifecycleSourceIntegration": "capital-lifecycle-integration-20260923.json",
@@ -123,5 +123,7 @@
   "consequentialFreshnessWriteInventory": "consequential-freshness-write-inventory-20260924.md",
   "sourceIntakeBasis": "source-intake-basis-20260924.json",
   "immutableDocumentOriginals": "immutable-document-originals-20260924.json",
-  "sourceCompanyGuard": "source-company-guard-20260924.json"
+  "sourceCompanyGuard": "source-company-guard-20260924.json",
+  "customerSourceEditor": "customer-source-editor-20260924.json",
+  "ciSuccessorAndRouteRepairs": "ci-successor-and-route-repairs-20260924.json"
 }

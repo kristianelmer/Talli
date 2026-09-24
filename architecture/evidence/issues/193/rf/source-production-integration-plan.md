@@ -19,7 +19,15 @@ The customer UI should use this policy-owned projection. Current source details
 are available as an editable typed
 draft through `rf1086ReadCurrentYearSource`, with confirmations reset and exact
 predecessor identity retained. Capture verifies all evidence again after these
-preparatory reads. The customer screens still need implementation.
+preparatory reads. The customer annual-source screen now edits typed company,
+shareholder, opening/closing and event facts, binds document roles, preserves
+correction ancestry, and generates a separate preview after capture. Amounts stay
+decimal strings and event times stay civil times. Content edits reset reviews;
+uncertain captures retain an identical request and key even after a later
+validation refusal. Independent register-observation intake and authenticated
+full-stack browser journeys still need implementation/verification. Increased
+nominal-value events remain visibly unavailable for complete source capture until
+Governance support is implemented.
 
 ## Consequential freshness
 

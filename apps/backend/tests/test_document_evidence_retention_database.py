@@ -20,6 +20,7 @@ pytestmark=pytest.mark.authority_database
 DATABASE_URL=os.environ.get('DATABASE_URL','')
 ROOT=Path(__file__).resolve().parents[3]
 MIGRATION='20260923102419_documents_verified_rf_evidence_retention.sql'
+ORIGINALS_MIGRATION='20260924062717_documents_immutable_retained_originals.sql'
 
 
 @pytest.fixture
@@ -150,6 +151,7 @@ def test_rollback_preserves_references_deletion_guard_and_replay_restores_exact_
     retain(backend_url,originals,command(originals))
     with psycopg.connect(DATABASE_URL) as db:
         before=db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()
+        originals_installed=db.execute("select to_regclass('documents.retained_originals') is not null").fetchone()[0]
         db.execute((ROOT/'supabase/rollback'/MIGRATION).read_text())
         assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()==before
     try:
@@ -162,6 +164,13 @@ def test_rollback_preserves_references_deletion_guard_and_replay_restores_exact_
     finally:
         with psycopg.connect(DATABASE_URL) as db:
             db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+            if originals_installed:
+                # The frozen predecessor revokes the later Documents-executor
+                # metadata assertion grant. Restore the installed successor in
+                # migration order, without rolling back its retained bytes.
+                db.execute((ROOT/'supabase/migrations'/ORIGINALS_MIGRATION).read_text())
+                assert db.execute("select has_function_privilege('documents_executor',"
+                    "'documents.assert_retained_metadata_v1(text,text)','EXECUTE')").fetchone()[0]
             assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()==before
     assert retained_count(originals)==1
 

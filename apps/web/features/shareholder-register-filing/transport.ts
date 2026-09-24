@@ -6,6 +6,9 @@ import {
   type Rf1086TestEvidenceCommandWire, type Rf1086ProductionApprovalCommandWire,
   type Rf1086RecordedResultWire, type Rf1086WorkspaceWire, type Rf1086ArchiveSourceWire,
   type Rf1086ProductionArchiveSourceWire,
+  type RfSourcePreviewWire, type RfSourcePreviewRequestWire, type RfYearSourceReceiptWire,
+  type RfYearSourceCaptureWire, type RfRegisterObservationCaptureWire,
+  type RfCurrentYearSourceWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
@@ -139,6 +142,167 @@ export async function sendApprovedRf1086ThroughApi(accessToken: string, approval
 }
 export async function reconcileRf1086ThroughApi(accessToken: string, submissionId: string) {
   return client(accessToken).legacyRf1086ReconcileFeedback({ submissionId }, authorityRequest());
+}
+
+
+function sourceScope(value: { companyId: string; incomeYear: number }, companyId: string, incomeYear: number) {
+  if (value.companyId !== companyId || value.incomeYear !== incomeYear) throw new TalliApiError(502, undefined);
+}
+
+function sourceReceipt(value: RfYearSourceReceiptWire, companyId: string, incomeYear: number) {
+  sourceScope(value, companyId, incomeYear);
+  if (value.version < 1 || !/^[a-f0-9]{64}$/.test(value.sourceSha256)
+      || !/^[a-f0-9]{64}$/.test(value.caseSha256)) throw new TalliApiError(502, undefined);
+  return value;
+}
+
+function sourceMutationRequest(idempotencyKey: string) {
+  // The form/action owns attempt identity. This transport never generates or
+  // replaces a key on retry, and never converts body amounts or civil times.
+  if (typeof idempotencyKey !== "string" || !/^[A-Za-z0-9._:-]{16,255}$/.test(idempotencyKey)) {
+    throw new TalliApiError(422, undefined);
+  }
+  return { ...request(), idempotencyKey };
+}
+
+export async function loadRf1086SourceIntakeBasis(accessToken: string, companyId: string, incomeYear: number) {
+  const value = await client(accessToken).rf1086ReadSourceIntakeBasis({ ...request(), companyId, incomeYear });
+  sourceScope(value, companyId, incomeYear);
+  // Cross-year Governance originals are intentionally retained in this envelope.
+  // Backend enumeration and blockers own completeness and eligibility policy.
+  return value;
+}
+
+export async function loadRf1086CurrentYearSource(
+  accessToken: string, companyId: string, incomeYear: number,
+): Promise<RfCurrentYearSourceWire> {
+  const value = await client(accessToken).rf1086ReadCurrentYearSource({ ...request(), companyId, incomeYear });
+  if (value.currentSource === null) return value;
+  const { receipt, draft } = value.currentSource;
+  sourceReceipt(receipt, companyId, incomeYear);
+  sourceScope(draft, companyId, incomeYear);
+  if (draft.case.company.incomeYear !== incomeYear
+      || draft.supersedesSourceId !== receipt.sourceId || draft.supersedesSourceSha256 !== receipt.sourceSha256
+      || draft.identitiesReviewed || draft.completeYearConfirmed || draft.paidInReviewed || draft.noActivityConfirmed
+      || draft.correctionReason !== null
+      || draft.documents.some(document => document.companyId !== companyId)
+      || new Set(draft.documents.map(document => document.documentId)).size !== draft.documents.length) {
+    throw new TalliApiError(502, undefined);
+  }
+  return value;
+}
+
+export async function loadRf1086SourceDocument(accessToken: string, companyId: string, documentId: string) {
+  const value = await client(accessToken).rf1086ReadSourceDocument(documentId, companyId, request());
+  if (value.companyId !== companyId || value.documentId !== documentId) throw new TalliApiError(502, undefined);
+  // Prior-year originals can substantiate the selected year; retain their year.
+  return value;
+}
+
+export async function captureRf1086YearSourceThroughApi(
+  accessToken: string, body: RfYearSourceCaptureWire, idempotencyKey: string,
+) {
+  const options = sourceMutationRequest(idempotencyKey);
+  if (body.case.company.incomeYear !== body.incomeYear
+      || body.documents.some(document => document.companyId !== body.companyId)) throw new TalliApiError(422, undefined);
+  const value = sourceReceipt(await client(accessToken).rf1086CaptureYearSource(body, options), body.companyId, body.incomeYear);
+  if (value.sourceId === body.supersedesSourceId) throw new TalliApiError(502, undefined);
+  return value;
+}
+
+export async function captureRf1086RegisterObservationThroughApi(
+  accessToken: string, body: RfRegisterObservationCaptureWire, idempotencyKey: string,
+) {
+  const options = sourceMutationRequest(idempotencyKey);
+  if (body.documents.some(document => document.companyId !== body.companyId)) throw new TalliApiError(422, undefined);
+  const value = await client(accessToken).rf1086CaptureRegisterObservation(body, options);
+  sourceScope(value, body.companyId, body.incomeYear);
+  if (value.version < 1 || !/^[a-f0-9]{64}$/.test(value.factSha256)
+      || value.observationId === body.supersedesObservationId) throw new TalliApiError(502, undefined);
+  return value;
+}
+
+function sourcePreview(value: RfSourcePreviewWire, companyId: string, incomeYear: number, sourceId: string) {
+  sourceScope(value, companyId, incomeYear);
+  if (value.sourceId !== sourceId || !/^[a-f0-9]{64}$/.test(value.sourceSha256)
+      || !/^[a-f0-9]{64}$/.test(value.caseSha256)) throw new TalliApiError(502, undefined);
+  return value;
+}
+
+export async function generateRf1086SourcePreviewThroughApi(accessToken: string, body: RfSourcePreviewRequestWire) {
+  // This backend operation deliberately appends a preview; it does not offer
+  // mutation-key replay. Keep it a separate owner action, without automatic retry.
+  return sourcePreview(await client(accessToken).rf1086GenerateSourcePreview(body, request()),
+    body.companyId, body.incomeYear, body.sourceId);
+}
+
+export async function loadRf1086SourcePreview(
+  accessToken: string, companyId: string, incomeYear: number, sourceId: string, previewId: string,
+) {
+  const value = sourcePreview(await client(accessToken).rf1086ReadSourcePreview(previewId,
+    { ...request(), companyId, incomeYear }), companyId, incomeYear, sourceId);
+  if (value.previewId !== previewId) throw new TalliApiError(502, undefined);
+  return value;
+}
+
+const sourceMessages: Record<string, string> = {
+  rf1086_source_changed: "Årsgrunnlaget er endret. Last inn det lagrede grunnlaget på nytt før du fortsetter.",
+  rf1086_source_predecessor_mismatch: "En nyere versjon er allerede lagret. Last inn årsgrunnlaget på nytt og vurder endringene.",
+  rf1086_source_predecessor_required: "Det finnes allerede et årsgrunnlag. Last det inn og lagre endringen som en ny versjon.",
+  rf1086_source_idempotency_conflict: "Dette lagringsforsøket er allerede brukt med andre opplysninger. Kontroller lagret status før du starter et nytt forsøk.",
+  rf1086_source_correction_reason_required: "Beskriv hvorfor årsgrunnlaget skal korrigeres.",
+  rf1086_source_owner_required: "En bekreftet eier av selskapet må åpne årsgrunnlaget.",
+  rf1086_source_not_found: "Fant ikke årsgrunnlaget for dette selskapet og året.",
+  rf1086_source_preview_not_found: "Fant ikke forhåndsvisningen for dette selskapet og året.",
+  rf1086_source_document_not_found: "Fant ikke dokumentet i dette selskapet.",
+  rf1086_source_documents_unverified: "Dokumentene kunne ikke bekreftes. Last inn originalene på nytt og kontroller vedleggene.",
+  rf1086_source_register_original_changed: "Et originaldokument i aksjeeierboken er endret. Kontroller og bekreft dokumentasjonen på nytt.",
+  rf1086_source_governance_unresolved: "Selskapet har selskapsbeslutninger eller korrigeringer som må avklares før årsgrunnlaget kan lagres.",
+  rf1086_source_governance_events_omitted: "Alle rapporteringspliktige selskapsbeslutninger må være med i årsgrunnlaget.",
+  rf1086_source_independent_register_unavailable: "Bekreft aksjeeierboken og registreringsdokumentasjonen for kapitalendringen først.",
+  rf1086_source_governance_nominal_increase_unavailable: "Denne økningen av pålydende kan ikke bekreftes gjennom den tilgjengelige selskapsdokumentasjonen ennå.",
+  rf1086_source_completeness_required: "Kontroller og bekreft at hele året, aksjonæridentitetene og innbetalt kapital er gjennomgått.",
+  rf1086_source_no_activity_confirmation_mismatch: "Bekreftelsen om et år uten hendelser stemmer ikke med opplysningene. Kontroller hendelsene.",
+  rf1086_source_paid_in_mismatch: "Innbetalt kapital og overkurs stemmer ikke med årsgrunnlaget. Kontroller beløpene og dokumentasjonen.",
+};
+const sourceValidationCodes = new Set([
+  "rf1086_source_invalid_request", "rf1086_source_structure_invalid", "rf1086_source_contract_invalid",
+  "rf1086_source_amount_invalid", "rf1086_source_identity_invalid", "rf1086_source_holder_identity_invalid",
+  "rf1086_source_holder_identity_duplicate", "rf1086_source_case_not_ready", "rf1086_source_event_evidence_incomplete",
+  "rf1086_source_event_evidence_mismatch", "rf1086_source_basis_evidence_missing", "rf1086_source_paid_in_required",
+  "rf1086_source_signed_evidence_missing", "rf1086_source_company_year_mismatch", "rf1086_register_value_invalid",
+]);
+
+const sourcePrewriteValidationCodes = new Set([
+  "rf1086_source_structure_invalid", "rf1086_source_contract_invalid", "rf1086_source_amount_invalid",
+  "rf1086_source_identity_invalid", "rf1086_source_holder_identity_invalid", "rf1086_source_holder_identity_duplicate",
+  "rf1086_source_case_not_ready", "rf1086_source_event_evidence_incomplete", "rf1086_source_event_evidence_mismatch",
+  "rf1086_source_basis_evidence_missing", "rf1086_source_paid_in_required", "rf1086_source_paid_in_mismatch",
+  "rf1086_source_signed_evidence_missing", "rf1086_source_documents_unverified", "rf1086_source_company_year_mismatch",
+  "rf1086_source_completeness_required", "rf1086_source_no_activity_confirmation_mismatch",
+  "rf1086_source_correction_reason_required", "rf1086_register_value_invalid",
+]);
+
+// Classifies this response only. A later refusal does not resolve an earlier
+// unknown result for the same attempt; the caller must retain that uncertainty.
+export function rf1086SourceCaptureRejected(error: unknown): boolean {
+  if (!(error instanceof TalliApiError) || error.problem?.status !== error.status) return false;
+  const code = error.problem.code;
+  if (error.status === 409) return sourcePrewriteValidationCodes.has(code);
+  if (error.status !== 400 && error.status !== 422) return false;
+  return sourceValidationCodes.has(code) || code === "SHAREHOLDER_REGISTER_FILING_INVALID_INPUT"
+    || code === "invalid_request";
+}
+
+export function rf1086SourceErrorMessage(error: unknown) {
+  const code = error instanceof TalliApiError ? error.problem?.code : undefined;
+  if (code && Object.hasOwn(sourceMessages, code)) return sourceMessages[code];
+  if ((code && sourceValidationCodes.has(code)) || (error instanceof TalliApiError && error.status === 422)) {
+    return "Kontroller feltene, dokumenthenvisningene og bekreftelsene før du prøver igjen.";
+  }
+  if (error instanceof TalliApiError && error.status === 401) return "Logg inn på nytt for å fortsette med årsgrunnlaget.";
+  if (error instanceof TalliApiError && error.status === 403) return "Du har ikke tilgang til å bekrefte dette årsgrunnlaget.";
+  return "Årsgrunnlaget kunne ikke bekreftes. Kontroller lagret status før du prøver igjen.";
 }
 
 const codes = new Set(["invalid_request", "authentication_required", "configuration_unavailable", "approval_expired",

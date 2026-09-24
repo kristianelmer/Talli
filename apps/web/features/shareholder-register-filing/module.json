@@ -12,19 +12,28 @@
     "apps/web/features/shareholder-register-filing",
     "apps/web/features/shareholder-register-filing/index.ts"
   ],
-  "ownedRoutes": [],
+  "ownedRoutes": [
+    "/filing/aksjonaerregisteroppgaven/source"
+  ],
   "apiOperations": [
     "legacyRf1086ReconcileFeedback",
     "legacyRf1086SendApprovedFiling",
     "rf1086AcknowledgeReviewComment",
     "rf1086AddReviewComment",
     "rf1086ApproveProduction",
+    "rf1086CaptureRegisterObservation",
+    "rf1086CaptureYearSource",
     "rf1086ConfirmFilingPermission",
     "rf1086ConfirmSimulation",
     "rf1086GeneratePreview",
+    "rf1086GenerateSourcePreview",
     "rf1086GetArchiveSource",
     "rf1086GetProductionArchiveSource",
     "rf1086Preview",
+    "rf1086ReadCurrentYearSource",
+    "rf1086ReadSourceDocument",
+    "rf1086ReadSourceIntakeBasis",
+    "rf1086ReadSourcePreview",
     "rf1086RecordOverride",
     "rf1086RecordTestEvidence",
     "rf1086Workspace"
@@ -45,7 +54,8 @@
     "Direct business persistence"
   ],
   "tests": {
-    "architecture": "tests/architecture_foundation.test.mjs"
+    "architecture": "tests/architecture_foundation.test.mjs",
+    "sourceTransport": "apps/web/tests/shareholder-register-source-transport.test.mjs"
   },
   "compatibilityExceptions": []
 }
