@@ -146,7 +146,7 @@
     ],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql"
+    "migrations": "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql"
   },
   "ports": [
     {
@@ -199,6 +199,8 @@
     "Service-role access, RLS bypass, direct browser persistence, or a second governance writer"
   ],
   "tests": {
+    "guardedReportingAdapter": "apps/backend/tests/test_postgres_corporate_reporting_evidence.py",
+    "guardedReportingDatabase": "apps/backend/tests/test_corporate_reporting_year_database_runtime.py",
     "companyWriterGuard": "apps/backend/tests/test_governance_ledger_company_guard_database.py",
     "contract": "apps/backend/tests/test_corporate_governance_public_contract.py",
     "policy": "apps/backend/tests/test_corporate_governance.py",

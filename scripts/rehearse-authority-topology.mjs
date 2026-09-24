@@ -23,6 +23,7 @@ const CONSEQUENTIAL_GUARDS = [
   "20260924080208_company_access_rf_admission_guard.sql",
   "20260924080249_documents_rf_consequential_company_guards.sql",
   "20260924080355_governance_ledger_company_write_guards.sql",
+  "20260924083154_governance_guarded_reporting_year_read.sql",
 ];
 const RF193_SOURCE_PREVIEW = "20260923105912_rf1086_source_backed_preview.sql";
 

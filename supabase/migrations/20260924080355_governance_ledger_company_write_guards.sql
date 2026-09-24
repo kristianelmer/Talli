@@ -283,7 +283,7 @@ begin
      else 'pg_catalog.current_setting(''talli.verified_actor_id'',true)' end;
    if company_arg is null then raise exception 'rf193_writer_company_argument_missing: %.%',item.schema_name,item.routine_name; end if;
    helper:=case when item.schema_name='corporate_governance' then 'corporate_governance' else 'ledger' end;
-   original:=pg_catalog.rtrim(routine.prosrc);
+   original:=pg_catalog.rtrim(routine.prosrc,E' \t\n\r');
    if pg_catalog.right(original,1)<>';' then original:=original||';'; end if;
    wrapped:=prefix||pg_catalog.format('  PERFORM %I.acquire_company_write_guard_v1(%s,%s);',helper,company_arg,subject_arg)
       ||E'\n'||original||E'\nEND;\n';

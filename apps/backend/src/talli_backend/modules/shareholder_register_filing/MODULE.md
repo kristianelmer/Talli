@@ -516,3 +516,27 @@ approval/send composition, source archive inclusion, and production readiness
 remain separate work. The safe rollback suspends guarded commands, preserving
 evidence and backstops. Database execution is required to verify migration,
 role, replay and concurrency behavior.
+
+## Guarded source admission scope
+
+The internal `ShareholderRegisterSourceAdmission.admit` context manager performs
+private original verification before opening a short READ COMMITTED transaction.
+Company Access then checks live owner/MFA/year eligibility and acquires the
+company guard before the RF year guard. Current source and preview, retained
+original assertions, complete Governance reporting-year evidence and referenced
+current register observations are read on that same connection. The shared
+capture/admission policy rebuilds the source freshness context. A change during
+preflight prevents the consumer from reaching its decision write.
+
+The yielded scope expires on context exit. Consumers must persist their decision
+before exiting it; an admitted value retained afterward grants no authority.
+`PostgresCorporateReportingEvidence` delegates to the narrow Governance public
+projection, which requires the caller's already held exact company guard and
+combines complete lifecycle, capital history and Ledger amendment projections.
+It grants RF no cross-owner table access. Object and provider I/O stay outside.
+
+This internal scope is not yet wired to an approval/send route. Full-year profile,
+review/permission, entitlement, immutable bridge, approval persistence, submission
+head/correction admission and journal integration remain required. Unit tests
+exercise policy and scope lifetime; actual database permission/concurrency tests
+must run in CI before runtime behavior is considered verified.

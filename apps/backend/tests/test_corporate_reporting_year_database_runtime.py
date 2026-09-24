@@ -23,6 +23,7 @@ from talli_backend.shared.kernel import ActorId,ActorKind,CompanyId,CorrelationI
 pytestmark=pytest.mark.authority_database
 URL=os.environ.get('DATABASE_URL','')
 MIGRATION=Path(__file__).resolve().parents[3]/'supabase/migrations/20260923090824_ledger_reporting_amendment_read.sql'
+GUARDED_MIGRATION=MIGRATION.with_name('20260924083154_governance_guarded_reporting_year_read.sql')
 
 
 def insert(conn,table,values):
@@ -33,7 +34,7 @@ def insert(conn,table,values):
 @pytest.fixture(scope='module',autouse=True)
 def owned_clone_authority():
     assert conninfo_to_dict(URL)['dbname'].startswith('rf193_governance_'), 'Use a newly owned disposable clone only'
-    roles=['ledger_store_owner','corporate_governance_store_owner','corporate_governance_workflow_executor']
+    roles=['ledger_store_owner','corporate_governance_store_owner','corporate_governance_workflow_executor','shareholder_register_filing_executor']
     scopes={'ledger':['entries','entry_reversals','entry_corrections'],'corporate_governance':['supported_events']}
     role_changes={};acls={};schemas={}
     with psycopg.connect(URL) as conn:
@@ -172,5 +173,103 @@ def test_read_rollback_and_recutover_preserve_original_receipts():
         conn.execute((MIGRATION.parents[1]/'rollback'/MIGRATION.name).read_text())
         assert conn.execute("select to_regprocedure('ledger.list_entry_amendments_v1(uuid,text)')").fetchone()[0] is None
         conn.execute(MIGRATION.read_text())
+        conn.execute(GUARDED_MIGRATION.read_text())
         assert conn.execute('select original_entry_id,reversal_entry_id,reason,reversed_at from ledger.entry_reversals where company_id=%s',(data['company'],)).fetchall()==before
     assert read(data).supported_events[0].status=='reversed'
+
+
+def guarded_read(data, *, guard=True, isolation='read committed', subject=None, guard_company=None, reader_actor=None):
+    from psycopg.rows import dict_row
+    from talli_backend.adapters.postgres_corporate_reporting_evidence import PostgresCorporateReportingEvidence
+    actor=subject or data['actor']
+    async def run():
+        async with await psycopg.AsyncConnection.connect(URL,row_factory=dict_row) as conn:
+            await conn.execute(sql.SQL('set transaction isolation level {}').format(sql.SQL(isolation)))
+            if guard:
+                await conn.execute('select public.company_archive_lock_company_v1(%s)',(guard_company or data['company'],))
+            await conn.execute('set local role shareholder_register_filing_executor')
+            await conn.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true)",
+                (str(actor),json.dumps({'sub':str(actor),'role':'authenticated','aal':'aal2'})))
+            result=await PostgresCorporateReportingEvidence(conn,ActorId(ActorKind.USER,UserId(str(reader_actor or actor)))).read_reporting_year_evidence(
+                company_id=CompanyId(str(data['company'])),income_year=IncomeYear(2026),correlation_id=CorrelationId('guarded-reporting-read'))
+            assert (await (await conn.execute('select current_user as role')).fetchone())['role']=='shareholder_register_filing_executor'
+            return result
+    return asyncio.run(run())
+
+
+def test_guarded_rf_reader_preserves_complete_original_correction_chain():
+    data=seed(); replacement=uuid4(); add_amendment(data,replacement=replacement); add_amendment(data,original=replacement)
+    result=guarded_read(data)
+    assert result==read(data)
+    assert result.supported_events[0].status=='corrected' and len(result.ledger_amendments)==2
+
+
+@pytest.mark.parametrize('failure',['no_guard','wrong_company_guard','repeatable_read','wrong_owner','revoked_owner','subject_mismatch'])
+def test_guarded_rf_reader_requires_current_owner_rc_and_exact_company_guard(failure):
+    data=seed(); kwargs={}
+    if failure=='no_guard':kwargs['guard']=False
+    elif failure=='wrong_company_guard':kwargs['guard_company']=uuid4()
+    elif failure=='repeatable_read':kwargs['isolation']='repeatable read'
+    elif failure=='wrong_owner':kwargs['subject']=uuid4()
+    elif failure=='subject_mismatch':kwargs['reader_actor']=uuid4()
+    elif failure=='revoked_owner':
+        with psycopg.connect(URL) as conn:
+            conn.execute("update public.company_memberships set role='read_only' where company_id=%s",(data['company'],))
+    with pytest.raises(CorporateGovernanceError):guarded_read(data,**kwargs)
+
+
+def test_guarded_projection_acl_replay_and_rollback_preserve_original_history():
+    data=seed();add_amendment(data);before=guarded_read(data)
+    signature='corporate_governance.read_guarded_reporting_year_inputs_v1(uuid,integer,text)'
+    with psycopg.connect(URL,autocommit=True) as conn:
+        membership=conn.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall()
+        identity=conn.execute('select oid,proowner,proacl::text,proconfig from pg_proc where oid=%s::regprocedure',(signature,)).fetchone()
+        conn.execute(GUARDED_MIGRATION.read_text())
+        assert conn.execute('select oid,proowner,proacl::text,proconfig from pg_proc where oid=%s::regprocedure',(signature,)).fetchone()==identity
+        assert conn.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall()==membership
+        for role in ('anon','authenticated','service_role'):
+            assert not conn.execute("select has_function_privilege(%s,%s,'EXECUTE')",(role,signature)).fetchone()[0]
+        for table in ('ledger.entries','ledger.entry_corrections','ledger.entry_reversals','corporate_governance.supported_events'):
+            assert not conn.execute("select has_table_privilege('shareholder_register_filing_executor',%s,'SELECT')",(table,)).fetchone()[0]
+    try:
+        with psycopg.connect(URL,autocommit=True) as conn:
+            conn.execute((GUARDED_MIGRATION.parents[1]/'rollback'/GUARDED_MIGRATION.name).read_text())
+        with pytest.raises(CorporateGovernanceError):guarded_read(data)
+        assert read(data)==before
+    finally:
+        with psycopg.connect(URL,autocommit=True) as conn:
+            conn.execute(GUARDED_MIGRATION.read_text())
+    assert guarded_read(data)==before
+
+
+def test_guarded_reader_blocks_concurrent_amendment_until_transaction_exit():
+    from psycopg.rows import dict_row
+    from test_rf1086_source_company_guard_database import waiting
+    from talli_backend.adapters.postgres_corporate_reporting_evidence import PostgresCorporateReportingEvidence
+    data=seed(); reversal=uuid4()
+    with psycopg.connect(URL) as conn:add_entry(conn,data['actor'],data['company'],reversal)
+    async def write(ready):
+        async with await psycopg.AsyncConnection.connect(URL) as conn:
+            ready.set_result((await (await conn.execute('select pg_backend_pid()')).fetchone())[0])
+            await conn.execute('insert into ledger.entry_reversals(original_entry_id,reversal_entry_id,company_id,income_year,reason,reversed_by) values(%s,%s,%s,2026,%s,%s)',
+                (data['entry'],reversal,data['company'],'retained concurrent reversal',data['actor']))
+    async def run():
+        async with await psycopg.AsyncConnection.connect(URL,row_factory=dict_row) as conn:
+            await conn.execute('select public.company_archive_lock_company_v1(%s)',(data['company'],))
+            await conn.execute('set local role shareholder_register_filing_executor')
+            await conn.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true)",
+                (str(data['actor']),json.dumps({'sub':str(data['actor']),'role':'authenticated','aal':'aal2'})))
+            reader=PostgresCorporateReportingEvidence(conn,ActorId(ActorKind.USER,UserId(str(data['actor']))))
+            kwargs={'company_id':CompanyId(str(data['company'])),'income_year':IncomeYear(2026),'correlation_id':CorrelationId('guarded-concurrency')}
+            before=await reader.read_reporting_year_evidence(**kwargs)
+            ready=asyncio.get_running_loop().create_future()
+            task=asyncio.create_task(write(ready))
+            await waiting(await ready)
+            assert not task.done()
+            assert await reader.read_reporting_year_evidence(**kwargs)==before
+        await task
+        return before
+    before=asyncio.run(run())
+    after=guarded_read(data)
+    assert before.supported_events[0].status=='recorded' and after.supported_events[0].status=='reversed'
+    assert before.enumeration_sha256!=after.enumeration_sha256

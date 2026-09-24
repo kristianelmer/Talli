@@ -397,7 +397,9 @@
     "sourceProductionManifest": "apps/backend/tests/test_rf1086_source_production.py",
     "registerObservationRead": "apps/backend/tests/test_shareholder_register_observation_read.py",
     "companyGuardDatabase": "apps/backend/tests/test_documents_rf_company_guard_database.py",
-    "companyGuardAdapter": "apps/backend/tests/test_consequential_adapter_guards.py"
+    "companyGuardAdapter": "apps/backend/tests/test_consequential_adapter_guards.py",
+    "sourceAdmission": "apps/backend/tests/test_rf1086_source_admission.py",
+    "sourceAdmissionAdapter": "apps/backend/tests/test_postgres_rf_source_admission.py"
   },
   "compatibilityExceptions": []
 }

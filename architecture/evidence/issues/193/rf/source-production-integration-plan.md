@@ -42,7 +42,12 @@ Governance support is implemented.
 
 ## Consequential freshness
 
-Approval and send need a shared short transaction with public owner queries.
+The internal guarded source admission scope now composes Company Access, RF,
+Documents and complete Governance/Ledger public projections on one short
+connection after byte preflight. The capture/admission policy is shared, and the
+yielded scope expires on exit. It has unit/adapter verification and collected
+database tests, but runtime SQL verification remains pending. Approval and send
+still need to persist their decisions inside this scope.
 Independent rereads followed by an RF write leave a race. The owner queries and
 all writes affecting their projections must participate in company-scoped guards:
 Company Access membership/identity, Governance records including cross-year

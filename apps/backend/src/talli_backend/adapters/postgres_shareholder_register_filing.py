@@ -183,6 +183,10 @@ class PostgresShareholderRegisterFilingSession:
                          "rf1086_source_preview_stale", "rf1086_source_preview_storage_invalid"):
                 if code in str(error):
                     raise rf.Rf1086YearSourceError(code) from None
+            if "company_access_forbidden" in str(error):
+                raise rf.ShareholderRegisterFilingError.forbidden() from None
+            if any(code in str(error) for code in ("company_access_company_year_not_admitted", "company_access_identity_not_confirmed")):
+                raise rf.ShareholderRegisterFilingError.company_year_not_admitted() from None
             if "rf1086_not_found" in str(error) or "production_preview_not_found" in str(error):
                 raise rf.ShareholderRegisterFilingError.not_found() from None
             if "rf1086_invalid_input" in str(error):
@@ -196,6 +200,24 @@ class PostgresShareholderRegisterFilingSession:
             raise rf.ShareholderRegisterFilingError.unavailable() from None
         except TimeoutError:
             raise rf.ShareholderRegisterFilingError.unavailable() from None
+
+    @asynccontextmanager
+    async def source_admission(self, query):
+        """Yield a single guarded connection; never perform object/provider I/O."""
+        self._command_actor(query)
+        async with self._transaction() as connection:
+            row = await (await connection.execute(
+                'select public.company_access_read_rf_admission_v1(%s::uuid,%s,%s) as admission',
+                (str(query.company_id), int(query.income_year), str(self.actor_id.subject)),
+            )).fetchone()
+            identity = _source_admission_company(row['admission'] if row else None, query)
+            await connection.execute('select shareholder_register_filing.lock_year_source_v1(%s::uuid,%s)',
+                (str(query.company_id), int(query.income_year)))
+            scoped = _SourceAdmission(self, connection, query, identity)
+            try:
+                yield scoped
+            finally:
+                scoped.close()
 
     def _command_actor(self, command):
         if command.actor_id != self.actor_id:
@@ -1005,6 +1027,80 @@ class PostgresShareholderRegisterFilingSession:
 
     def feedback_journal(self, *, submission_id, company_id, income_year, forsendelse_id, lease_id):
         return _FeedbackJournal(self, submission_id, company_id, income_year, forsendelse_id, lease_id)
+
+
+def _source_admission_company(value, query):
+    from talli_backend.application.shareholder_register_source_admission import Rf1086AdmissionCompany
+    try:
+        if (not isinstance(value, dict) or value['companyId'] != str(query.company_id)
+                or type(value['incomeYear']) is not int or value['incomeYear'] != int(query.income_year)
+                or value['acceptedOwner'] is not True or value['consequentialOperationsAllowed'] is not True
+                or value['entityType'] != 'AS'):
+            raise ValueError()
+        text = ('organizationNumber', 'legalName', 'address', 'postalCode', 'city')
+        if any(not isinstance(value[key], str) or not value[key].strip() for key in text):
+            raise ValueError()
+        times = [datetime.fromisoformat(value[key]) for key in ('identityConfirmedAt', 'identityLockedAt')]
+        if any(item.tzinfo is None for item in times):
+            raise ValueError()
+        company = rf.Rf1086Company(value['organizationNumber'], value['legalName'], value['address'],
+                                  value['postalCode'], value['city'], int(query.income_year))
+        return Rf1086AdmissionCompany(company, times[0].isoformat(), times[1].isoformat())
+    except (KeyError, TypeError, ValueError, AttributeError):
+        raise rf.ShareholderRegisterFilingError.unavailable() from None
+
+
+class _SourceAdmission:
+    def __init__(self, store, connection, query, identity):
+        self._store, self._connection, self._query, self._identity = store, connection, query, identity
+        self._active = True
+
+    @property
+    def actor_id(self):
+        return self._store.actor_id
+
+    def close(self):
+        self._active = False
+
+    def _require_active(self):
+        from psycopg.pq import TransactionStatus
+        if not self._active or self._connection.info.transaction_status != TransactionStatus.INTRANS:
+            raise rf.ShareholderRegisterFilingError.unavailable()
+
+    async def company_identity(self):
+        self._require_active()
+        return self._identity
+
+    async def governance_evidence(self, correlation_id):
+        self._require_active()
+        from talli_backend.adapters.postgres_corporate_reporting_evidence import PostgresCorporateReportingEvidence
+        return await PostgresCorporateReportingEvidence(self._connection, self.actor_id).read_reporting_year_evidence(
+            company_id=self._query.company_id, income_year=self._query.income_year, correlation_id=correlation_id)
+
+    async def current_source(self):
+        self._require_active()
+        return await self._store._current_year_source(self._connection, self._query.company_id, self._query.income_year)
+
+    async def source_preview(self, preview_id):
+        self._require_active()
+        preview = await self._store._read_source_preview(self._connection, preview_id)
+        if (preview is None or preview.company_id != self._query.company_id
+                or preview.income_year != self._query.income_year):
+            raise rf.Rf1086YearSourceError('rf1086_source_preview_not_found')
+        return preview
+
+    async def assert_original(self, receipt):
+        self._require_active()
+        if receipt.company_id != self._query.company_id:
+            raise rf.ShareholderRegisterFilingError.forbidden()
+        from talli_backend.adapters.postgres_document_originals import PostgresDocumentOriginals
+        await PostgresDocumentOriginals(self._connection, self.actor_id).assert_retained_original(receipt)
+
+    async def read_current_register_observation(self, query, observation_id):
+        self._require_active()
+        if query != self._query:
+            raise rf.ShareholderRegisterFilingError.forbidden()
+        return await self._store._read_register_observation(self._connection, query, observation_id, current=True)
 
 
 @rf.rf1086_adapter(rf.ProductionOperationJournal)

@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import AsyncContextManager, Protocol
+
+from talli_backend.application.shareholder_register_source_admission import Rf1086SourceAdmissionTransaction
 
 from talli_backend.modules.billing.public import BillingQueries
 from talli_backend.modules.company_access.public import CompanyAccessRecord
@@ -11,7 +13,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     ProductionOperationJournal, Rf1086Approval, Rf1086Connection, Rf1086PreparationPersistence,
     Rf1086MutationAuthority, Rf1086Preview, Rf1086ProductionJournal,
     Rf1086ReadOnlyAuthority, Rf1086FeedbackDiscovery, Rf1086Submission,
-    Rf1086YearSourcePersistence, Rf1086RegisterObservationPersistence, Rf1086SourcePreviewPreparation,
+    Rf1086YearSourcePersistence, Rf1086RegisterObservationPersistence, Rf1086SourcePreviewPreparation, Rf1086SourceQuery,
 )
 from talli_backend.shared.kernel import ActorId
 
@@ -41,6 +43,7 @@ class AuthenticatedShareholderRegisterFilingSession(Rf1086PreparationPersistence
     def actor_id(self) -> ActorId: ...
     @property
     def billing(self) -> BillingQueries: ...
+    def source_admission(self, query: Rf1086SourceQuery) -> AsyncContextManager[Rf1086SourceAdmissionTransaction]: ...
     def require_configuration(self) -> None: ...
     async def read_approval(self, approval_id: str) -> Rf1086Approval | None: ...
     async def read_preview(self, preview_id: str) -> Rf1086Preview | None: ...

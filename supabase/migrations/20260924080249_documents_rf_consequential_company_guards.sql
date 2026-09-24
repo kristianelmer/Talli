@@ -167,7 +167,7 @@ begin
    if pg_catalog.left(before_row.prosrc,pg_catalog.length(prefix))<>prefix then raise exception 'rf193_company_guard_definition_drift: %',spec.signature; end if;
    continue;
   end if;
-  body:=pg_catalog.rtrim(before_row.prosrc);
+  body:=pg_catalog.rtrim(before_row.prosrc,E' \t\n\r');
   if pg_catalog.right(body,1)<>';' then body:=body||';'; end if;
   wrapped:=prefix||body||E'\nend;\n';
   definition:=pg_catalog.pg_get_functiondef(before_row.oid);

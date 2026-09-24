@@ -184,3 +184,83 @@ def test_new_backstops_cover_every_row_mutation(relation):
     with psycopg.connect(DATABASE_URL) as db:
         row = db.execute("select tgtype,tgenabled from pg_trigger where tgrelid=%s::regclass and tgname='consequential_company_guard'", (relation,)).fetchone()
         assert row == (31,'O')
+
+
+def wrapper_syntax_probe(migration):
+    """Exercise the shipped normalizer against a real PL/pgSQL body ending LF."""
+    import re
+    source = (ROOT / 'supabase/migrations' / migration).read_text()
+    variable, record = ('body', 'before_row') if migration == MIGRATION else ('original', 'routine')
+    normalizer = re.search(
+        rf"{variable}:=pg_catalog\.rtrim\({record}\.prosrc[^;]*;\s*"
+        rf"if pg_catalog\.right\({variable},1\)<>'.*?end if;", source, re.S,
+    )
+    assert normalizer, 'The actual migration normalizer must be exercised'
+    return f"""
+    create temporary table if not exists rf193_wrapper_syntax_scope(id integer);
+    create or replace function pg_temp.rf193_wrapper_syntax_probe() returns integer
+    language plpgsql as $original$
+    declare answer integer := 7;
+    begin
+      return answer;
+    end;
+    $original$;
+    do $probe$
+    declare {record} record; {variable} text; definition text; wrapped text;
+    begin
+      select prosrc,oid into {record} from pg_proc
+      where oid='pg_temp.rf193_wrapper_syntax_probe()'::regprocedure;
+      {normalizer.group(0)}
+      definition:=pg_get_functiondef({record}.oid);
+      wrapped:=E'begin\\n perform 1;\\n'||{variable}||E'\\nend;\\n';
+      execute replace(definition,{record}.prosrc,wrapped);
+      if pg_temp.rf193_wrapper_syntax_probe()<>7 then
+        raise exception 'wrapper changed original return behavior';
+      end if;
+    end; $probe$;
+    """
+
+
+@pytest.mark.parametrize('migration', [MIGRATION, '20260924080355_governance_ledger_company_write_guards.sql'])
+def test_shipped_wrapper_normalizer_compiles_newline_terminated_original(migration):
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute(wrapper_syntax_probe(migration))
+
+
+def test_rf_admission_reads_governance_on_its_guarded_connection_and_expires(admitted, backend_url):
+    from talli_backend.shared.kernel import CompanyId, IncomeYear, CorrelationId
+    store = session(admitted, backend_url)
+    query = rf.Rf1086SourceQuery(CompanyId(str(admitted['company'])), IncomeYear(2026), store.actor_id)
+    async def run():
+        async with store.source_admission(query) as scope:
+            identity = await scope.company_identity()
+            assert identity.company.org_number == admitted['org']
+            assert await scope.current_source() is None
+            view = await scope.governance_evidence(CorrelationId('same-connection-admission'))
+            assert view.company_id == query.company_id and view.income_year == query.income_year
+            assert view.dividends == view.supported_events == view.ledger_amendments == ()
+        with pytest.raises(rf.ShareholderRegisterFilingError):
+            await scope.company_identity()
+    asyncio.run(run())
+
+
+def test_rf_admission_holds_membership_writer_until_consumer_finishes(admitted, backend_url):
+    from talli_backend.shared.kernel import CompanyId, IncomeYear
+    store = session(admitted, backend_url)
+    query = rf.Rf1086SourceQuery(CompanyId(str(admitted['company'])), IncomeYear(2026), store.actor_id)
+    async def mutate(ready):
+        async with await psycopg.AsyncConnection.connect(DATABASE_URL) as db:
+            ready.set_result((await (await db.execute('select pg_backend_pid()')).fetchone())[0])
+            await db.execute("update public.company_memberships set role='read_only' where company_id=%s", (admitted['company'],))
+    async def run():
+        async with store.source_admission(query) as scope:
+            ready=asyncio.get_running_loop().create_future()
+            task=asyncio.create_task(mutate(ready))
+            await waiting(await ready)
+            assert not task.done()
+            assert await scope.current_source() is None
+        await task
+        with pytest.raises(rf.ShareholderRegisterFilingError):
+            async with store.source_admission(query):
+                pytest.fail('Revoked owner was admitted')
+    asyncio.run(run())

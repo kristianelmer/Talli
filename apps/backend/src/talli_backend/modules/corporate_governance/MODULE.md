@@ -249,3 +249,20 @@ events; it does not establish a full-year RF approval/send freshness protocol.
 
 Rollback suspends the guarded writer entry points while preserving data and
 backstops. Reapply restores writes without publishing an unguarded API alias.
+
+### Guarded reporting projection for RF
+
+`corporate_governance.read_guarded_reporting_year_inputs_v1(uuid,integer,text)`
+returns complete company-scoped lifecycle, supported-event and Ledger amendment
+projections under the caller's already-held company guard and READ COMMITTED
+transaction. It verifies the current owner and exact authenticated subject. The
+RF executor receives only this function and schema usage; the Governance owner
+receives only Ledger's public amendment reader, with no Ledger table grants.
+
+`PostgresCorporateReportingEvidence(connection, actor_id)` uses the existing
+projection codecs and public `build_reporting_year_evidence` to return the same
+`CorporateGovernanceYearEvidence` as the ordinary application read. Enumeration
+retains cross-year corrections and historical amendments before domain year
+selection. It opens no connection, sets no role or identity, and performs no
+provider I/O. Rollback disables the RF entry point and preserves original rows.
+The caller still owns admission, source reconciliation and approval/send policy.

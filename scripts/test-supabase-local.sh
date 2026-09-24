@@ -144,7 +144,8 @@ DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle
 DATABASE_URL="$DB_URL" npm run test:billing-database-lifecycle
 
 # Require the already established Ledger contract before the RF final contract.
-# Recutover also replays all three consequential company guards after historical
+# Recutover also replays consequential company guards and the guarded reporting
+# reader after historical
 # Ledger/Governance/Documents replacements. Every final database, feedback and
 # hydrated owner lane uses private RF storage;
 # no authority provider is called.

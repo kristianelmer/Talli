@@ -169,7 +169,7 @@
     ],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql"
+    "migrations": "supabase/migrations/20260827100000_ledger_capability.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql"
   },
   "ports": [
     {

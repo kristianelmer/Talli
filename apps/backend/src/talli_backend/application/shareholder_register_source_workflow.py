@@ -389,6 +389,79 @@ def _intake_projection(company, view) -> SourceIntakeBasis:
         True, tuple(dividends), tuple(capital), amendments, blockers)
 
 
+async def _capital_receipts(session: AuthenticatedShareholderRegisterFilingSession,
+        command: RecordRf1086YearSource, view: CorporateGovernanceYearEvidence,
+        verified: tuple[Rf1086YearDocumentEvidence, ...]) -> tuple[Rf1086YearGovernanceReceipt, ...]:
+    try:
+        return await _build_capital_receipts(session, command, view, verified)
+    except (KeyError, TypeError, AttributeError, InvalidOperation):
+        raise Rf1086YearSourceError('rf1086_source_governance_receipt_invalid') from None
+
+async def _build_capital_receipts(session: AuthenticatedShareholderRegisterFilingSession,
+        command: RecordRf1086YearSource, view: CorporateGovernanceYearEvidence,
+        verified: tuple[Rf1086YearDocumentEvidence, ...]) -> tuple[Rf1086YearGovernanceReceipt, ...]:
+    receipts = []
+    documents = {item.document_id: item for item in verified}
+    by_receipt = {item.governance_receipt_id: item for item in command.event_evidence
+                  if item.governance_receipt_id is not None}
+    _require(not any(event.type == 'cash_nominal_increase' for event in command.case.events),
+             'rf1086_source_governance_nominal_increase_unavailable')
+    for item in view.supported_events:
+        recorded = item.recorded
+        original = recorded.event
+        _require(item.status == 'recorded' and recorded.correction_of_event_id is None,
+                 'rf1086_source_governance_unresolved')
+        _require(original.phase.value in {'registered', 'first_recognized_after_registration'},
+                 'rf1086_source_governance_unresolved')
+        evidence = by_receipt.get(str(original.event_id))
+        _require(evidence is not None and 0 <= evidence.event_index < len(command.case.events),
+                 'rf1086_source_governance_events_omitted')
+        event = command.case.events[evidence.event_index]
+        expected_kind = {'cash_issue': 'cash_capital_increase',
+                         'loss_covering_reduction': 'loss_coverage_capital_reduction'}.get(event.type)
+        _require(original.event_kind.value == expected_kind and original.company_id == command.company_id
+                 and original.income_year == command.income_year and original.event_date.value == event.timestamp.date(),
+                 'rf1086_source_governance_receipt_invalid')
+        facts = original.canonical_facts
+        economics = _capital_economics(original, event.type)
+        hashes = []
+        for fact in facts['documentFacts']:
+            document = documents.get(_reference(fact['document_id']))
+            _require(document is not None and document.content_sha256 == fact['content_sha256'],
+                     'rf1086_source_governance_signed_document_unverified')
+            hashes.append(document.content_sha256)
+        _require(bool(hashes), 'rf1086_source_governance_signed_document_unverified')
+        reference = facts.get('shareholderRegisterFact')
+        _require(isinstance(reference, Mapping), 'rf1086_source_independent_register_unavailable')
+        observation_id = Rf1086RegisterObservationId(_reference(reference['record_id']))
+        observation = await session.read_current_register_observation(
+            Rf1086SourceQuery(command.company_id, command.income_year, session.actor_id), observation_id)
+        _require(observation is not None, 'rf1086_source_independent_register_unavailable')
+        _require(observation.confirmed_at <= recorded.recorded_at,
+                 'rf1086_source_register_postdates_governance')
+        before, after = rf1086_event_register_states(command.case, evidence.event_index)
+        verify_rf1086_register_observation(observation, Rf1086RegisterObservationMatchQuery(
+            observation_id, reference['revision'], reference['fact_sha256'], command.company_id,
+            command.income_year, event.timestamp, event.type, before, after))
+        for source in observation.command.documents:
+            current = documents.get(source.document_id)
+            _require(current is not None and current.company_id == source.company_id
+                     and current.content_version_sha256 == source.content_version_sha256
+                     and current.content_sha256 == source.content_sha256 and current.byte_length == source.byte_length
+                     and current.document_type == source.document_type and current.integrity_status == source.integrity_status
+                     and current.created_at == source.created_at and current.metadata_sha256 == source.metadata_sha256
+                     and current.source_income_year == source.source_income_year,
+                     'rf1086_source_register_original_changed')
+        receipts.append(Rf1086YearGovernanceReceipt(receipt_id=str(original.event_id),
+            company_id=command.company_id, income_year=command.income_year, event_type=event.type,
+            economic_sha256=rf1086_year_source_digest(economics), finalization_sha256=recorded.finalization_sha256,
+            signed_document_hashes=tuple(sorted(hashes)), active=True,
+            register_observation_id=observation.observation_id.value, register_observation_sha256=observation.fact_sha256))
+    _require(len(receipts) == sum(event.type in {'cash_issue', 'loss_covering_reduction'} for event in command.case.events),
+             'rf1086_source_independent_register_unavailable')
+    return tuple(receipts)
+
+
 class ShareholderRegisterSourceWorkflow:
     def __init__(self, rf_sessions: ShareholderRegisterFilingSessionFactory,
             company_access: CompanyAccessService, documents: DocumentsSessionFactory,
@@ -455,78 +528,6 @@ class ShareholderRegisterSourceWorkflow:
         _require(source.command.case.company.org_number == company.org_number,
                  'rf1086_source_company_year_mismatch')
         return source
-
-    async def _capital_receipts(self, session: AuthenticatedShareholderRegisterFilingSession,
-            command: RecordRf1086YearSource, view: CorporateGovernanceYearEvidence,
-            verified: tuple[Rf1086YearDocumentEvidence, ...]) -> tuple[Rf1086YearGovernanceReceipt, ...]:
-        try:
-            return await self._build_capital_receipts(session, command, view, verified)
-        except (KeyError, TypeError, AttributeError, InvalidOperation):
-            raise Rf1086YearSourceError('rf1086_source_governance_receipt_invalid') from None
-
-    async def _build_capital_receipts(self, session: AuthenticatedShareholderRegisterFilingSession,
-            command: RecordRf1086YearSource, view: CorporateGovernanceYearEvidence,
-            verified: tuple[Rf1086YearDocumentEvidence, ...]) -> tuple[Rf1086YearGovernanceReceipt, ...]:
-        receipts = []
-        documents = {item.document_id: item for item in verified}
-        by_receipt = {item.governance_receipt_id: item for item in command.event_evidence
-                      if item.governance_receipt_id is not None}
-        _require(not any(event.type == 'cash_nominal_increase' for event in command.case.events),
-                 'rf1086_source_governance_nominal_increase_unavailable')
-        for item in view.supported_events:
-            recorded = item.recorded
-            original = recorded.event
-            _require(item.status == 'recorded' and recorded.correction_of_event_id is None,
-                     'rf1086_source_governance_unresolved')
-            _require(original.phase.value in {'registered', 'first_recognized_after_registration'},
-                     'rf1086_source_governance_unresolved')
-            evidence = by_receipt.get(str(original.event_id))
-            _require(evidence is not None and 0 <= evidence.event_index < len(command.case.events),
-                     'rf1086_source_governance_events_omitted')
-            event = command.case.events[evidence.event_index]
-            expected_kind = {'cash_issue': 'cash_capital_increase',
-                             'loss_covering_reduction': 'loss_coverage_capital_reduction'}.get(event.type)
-            _require(original.event_kind.value == expected_kind and original.company_id == command.company_id
-                     and original.income_year == command.income_year and original.event_date.value == event.timestamp.date(),
-                     'rf1086_source_governance_receipt_invalid')
-            facts = original.canonical_facts
-            economics = _capital_economics(original, event.type)
-            hashes = []
-            for fact in facts['documentFacts']:
-                document = documents.get(_reference(fact['document_id']))
-                _require(document is not None and document.content_sha256 == fact['content_sha256'],
-                         'rf1086_source_governance_signed_document_unverified')
-                hashes.append(document.content_sha256)
-            _require(bool(hashes), 'rf1086_source_governance_signed_document_unverified')
-            reference = facts.get('shareholderRegisterFact')
-            _require(isinstance(reference, Mapping), 'rf1086_source_independent_register_unavailable')
-            observation_id = Rf1086RegisterObservationId(_reference(reference['record_id']))
-            observation = await session.read_current_register_observation(
-                Rf1086SourceQuery(command.company_id, command.income_year, session.actor_id), observation_id)
-            _require(observation is not None, 'rf1086_source_independent_register_unavailable')
-            _require(observation.confirmed_at <= recorded.recorded_at,
-                     'rf1086_source_register_postdates_governance')
-            before, after = rf1086_event_register_states(command.case, evidence.event_index)
-            verify_rf1086_register_observation(observation, Rf1086RegisterObservationMatchQuery(
-                observation_id, reference['revision'], reference['fact_sha256'], command.company_id,
-                command.income_year, event.timestamp, event.type, before, after))
-            for source in observation.command.documents:
-                current = documents.get(source.document_id)
-                _require(current is not None and current.company_id == source.company_id
-                         and current.content_version_sha256 == source.content_version_sha256
-                         and current.content_sha256 == source.content_sha256 and current.byte_length == source.byte_length
-                         and current.document_type == source.document_type and current.integrity_status == source.integrity_status
-                         and current.created_at == source.created_at and current.metadata_sha256 == source.metadata_sha256
-                         and current.source_income_year == source.source_income_year,
-                         'rf1086_source_register_original_changed')
-            receipts.append(Rf1086YearGovernanceReceipt(receipt_id=str(original.event_id),
-                company_id=command.company_id, income_year=command.income_year, event_type=event.type,
-                economic_sha256=rf1086_year_source_digest(economics), finalization_sha256=recorded.finalization_sha256,
-                signed_document_hashes=tuple(sorted(hashes)), active=True,
-                register_observation_id=observation.observation_id.value, register_observation_sha256=observation.fact_sha256))
-        _require(len(receipts) == sum(event.type in {'cash_issue', 'loss_covering_reduction'} for event in command.case.events),
-                 'rf1086_source_independent_register_unavailable')
-        return tuple(receipts)
 
     async def read_register_observations(self, access_token: str, *, company_id: CompanyId,
             income_year: IncomeYear) -> tuple[Rf1086RegisterObservationSnapshot, ...]:
@@ -680,18 +681,30 @@ class ShareholderRegisterSourceWorkflow:
             verified.append(observed)
         view = await self._governance.read_reporting_year_evidence(access_token,
             company_id=command.company_id, income_year=command.income_year, correlation_id=correlation_id)
-        _require(view.company_id == command.company_id and view.income_year == command.income_year,
-                 'rf1086_source_governance_scope_mismatch')
-        receipts = _dividend_receipts(view, tuple(verified))
-        receipts += await self._capital_receipts(session, command, view, tuple(verified))
-        _require({item.receipt_id for item in receipts} == {item.governance_receipt_id for item in command.event_evidence
-                  if item.governance_receipt_id is not None}, 'rf1086_source_governance_events_omitted')
-        return Rf1086VerifiedYearSourceContext(
-            actor_id=session.actor_id, accepted_owner=True, company_id=command.company_id,
-            income_year=command.income_year, company=current_company,
-            company_identity_sha256=rf1086_year_source_digest({
+        return await build_verified_source_context(session, command, current_company,
+            rf1086_year_source_digest({
                 'company_id': company.id, 'company': current_company, 'entity_type': company.entity_type,
                 'identity_confirmed_at': company.identity_confirmed_at, 'identity_locked_at': company.identity_locked_at,
-            }), documents=tuple(verified), governance_receipts=receipts,
-            complete_governance_enumeration=True, governance_enumeration_sha256=view.enumeration_sha256,
-        )
+            }), tuple(verified), view)
+
+
+async def build_verified_source_context(session, command, company, identity_sha256, documents, view):
+    """One policy for capture observations and guarded consequential owner reads.
+
+    The caller supplies verified owner projections, never a transport context.
+    Register reads use the supplied scope; admission supplies its held connection.
+    """
+    _require(company == command.case.company, 'rf1086_source_company_year_mismatch')
+    _require(view.company_id == command.company_id and view.income_year == command.income_year,
+             'rf1086_source_governance_scope_mismatch')
+    _require(tuple(documents) == tuple(command.documents), 'rf1086_source_documents_unverified')
+    receipts = _dividend_receipts(view, tuple(documents))
+    receipts += await _capital_receipts(session, command, view, tuple(documents))
+    _require({item.receipt_id for item in receipts} == {item.governance_receipt_id for item in command.event_evidence
+              if item.governance_receipt_id is not None}, 'rf1086_source_governance_events_omitted')
+    return Rf1086VerifiedYearSourceContext(
+        actor_id=session.actor_id, accepted_owner=True, company_id=command.company_id,
+        income_year=command.income_year, company=company, company_identity_sha256=identity_sha256,
+        documents=tuple(documents), governance_receipts=receipts,
+        complete_governance_enumeration=True, governance_enumeration_sha256=view.enumeration_sha256,
+    )
