@@ -457,3 +457,128 @@ for (const cycle of ["self", "two-submissions"]) {
     assert.ok(assertRestoreIntegrity(restored).failures.includes("rf1086_production_correction_cycle"));
   });
 }
+
+function fullYearArchiveFixture() {
+  const rf = JSON.parse(readFileSync(new URL(
+    "../apps/web/tests/fixtures/rf1086-source-submission-archive.json", import.meta.url,
+  ), "utf8"));
+  const archive = archiveFixture({
+    company: { id: rf.companyId, org_number: "314259521", name: "Talli synthetic restore AS" },
+    incomeYear: rf.incomeYear, rf1086Production: rf,
+  });
+  archive.documentBackupProjection.companyId = rf.companyId;
+  for (const source of rf.sourceApprovalLineage[0].source.command.documents) {
+    archive.documentBackupProjection.objects.push({
+      documentId: source.documentId, documentType: source.documentType,
+      contentSha256: source.contentSha256, byteLength: source.byteLength,
+      status: source.integrityStatus, storageKey: `synthetic/${source.documentId}.pdf`, removedAt: null,
+    });
+  }
+  return archive;
+}
+
+const restoreFullYear = archive => restoreCompanyYearArchive(archive, { targetCompanyId: "isolated-restore-target" });
+
+test("full-year restore preserves captured company identity, source lineage, claims and head", () => {
+  const archive = fullYearArchiveFixture();
+  const restored = restoreFullYear(archive);
+  assert.equal(assertRestoreIntegrity(restored).ok, true);
+  assert.equal(restored.restored.company.id, "isolated-restore-target");
+  assert.deepEqual(restored.restored.rf1086Production, archive.rf1086Production);
+  assert.equal(restored.restored.rf1086Production.sourceSubmissionClaims[0].companyId, archive.company.id);
+  assert.equal(restored.manifest.counts.rf1086SourceApprovalLineage, 1);
+  assert.equal(restored.manifest.counts.rf1086SourceSubmissionClaims, 1);
+  assert.equal(restored.manifest.counts.rf1086SubmissionHeads, 1);
+  for (const family of ["register_observations", "year_source_versions", "year_source_heads", "source_previews",
+    "source_review_bridges", "source_approval_bindings", "source_submission_bindings", "submission_heads"]) {
+    assert.ok(restored.manifest.launchCriticalTables.includes(`shareholder_register_filing.${family}`));
+  }
+});
+
+for (const [name, change, failure] of [
+  ["missing lineage", rf => { delete rf.sourceApprovalLineage; }, "approval_lineage_mismatch"],
+  ["duplicate lineage", rf => rf.sourceApprovalLineage.push(structuredClone(rf.sourceApprovalLineage[0])), "approval_lineage_mismatch"],
+  ["null lineage row", rf => { rf.sourceApprovalLineage[0] = null; }, "evidence_shape_invalid"],
+  ["object claims", rf => { rf.sourceSubmissionClaims = {}; }, "evidence_shape_invalid"],
+  ["missing source", rf => { delete rf.sourceApprovalLineage[0].source; }, "approval_lineage_mismatch"],
+  ["null command", rf => { rf.sourceApprovalLineage[0].source.command = null; }, "approval_lineage_mismatch"],
+  ["foreign source", rf => { rf.sourceApprovalLineage[0].source.receipt.companyId = "another-company"; }, "approval_lineage_mismatch"],
+  ["changed source hash", rf => { rf.sourceApprovalLineage[0].source.receipt.sourceSha256 = "f".repeat(64); }, "approval_lineage_mismatch"],
+  ["missing bridge", rf => { delete rf.sourceApprovalLineage[0].bridge; }, "approval_lineage_mismatch"],
+  ["changed bridge payload", rf => { rf.sourceApprovalLineage[0].bridge.payloadSha256 = "f".repeat(64); }, "approval_lineage_mismatch"],
+  ["changed manifest bytes", rf => { rf.sourceApprovalLineage[0].manifestText += " "; }, "approval_commitment_mismatch"],
+  ["changed review bytes", rf => { rf.sourceApprovalLineage[0].reviewText += " "; }, "approval_commitment_mismatch"],
+  ["changed manifest projection", rf => { rf.approvals[0].manifest.organizationNumber = "000000000"; }, "approval_commitment_mismatch"],
+  ["changed main XML", rf => { rf.sourceApprovalLineage[0].sourcePreview.hovedskjemaXml += " "; }, "xml_commitment_mismatch"],
+  ["changed shareholder XML", rf => { rf.sourceApprovalLineage[0].sourcePreview.underskjemaXml.owner += " "; }, "xml_commitment_mismatch"],
+  ["missing shareholder XML", rf => { rf.sourceApprovalLineage[0].sourcePreview.underskjemaXml = {}; }, "xml_commitment_mismatch"],
+  ["missing source documents", rf => { delete rf.sourceApprovalLineage[0].source.command.documents; }, "document_object_mismatch"],
+  ["null source document", rf => { rf.sourceApprovalLineage[0].source.command.documents[0] = null; }, "document_object_mismatch"],
+  ["missing claim", rf => { delete rf.sourceSubmissionClaims; }, "claim_mismatch"],
+  ["duplicate claim", rf => rf.sourceSubmissionClaims.push(structuredClone(rf.sourceSubmissionClaims[0])), "claim_mismatch"],
+  ["claim wrong company", rf => { rf.sourceSubmissionClaims[0].companyId = "another-company"; }, "claim_mismatch"],
+  ["claim wrong year", rf => { rf.sourceSubmissionClaims[0].incomeYear = 2024; }, "claim_mismatch"],
+  ["claim wrong manifest", rf => { rf.sourceSubmissionClaims[0].manifestSha256 = "f".repeat(64); }, "claim_mismatch"],
+  ["claim wrong payload", rf => { rf.sourceSubmissionClaims[0].payloadSha256 = "f".repeat(64); }, "claim_mismatch"],
+  ["claim wrong actor", rf => { rf.sourceSubmissionClaims[0].claimedBy = "another-owner"; }, "claim_mismatch"],
+  ["claim wrong parent", rf => { rf.sourceSubmissionClaims[0].predecessorSubmissionId = "another-submission"; }, "claim_mismatch"],
+  ["claim wrong submission", rf => { rf.sourceSubmissionClaims[0].submissionId = "another-submission"; }, "claim_mismatch"],
+  ["claim invalid time", rf => { rf.sourceSubmissionClaims[0].claimedAt = "2026-01-01"; }, "claim_mismatch"],
+  ["missing head", rf => { delete rf.submissionHead; }, "head_mismatch"],
+  ["head wrong company", rf => { rf.submissionHead.companyId = "another-company"; }, "head_mismatch"],
+  ["head wrong year", rf => { rf.submissionHead.incomeYear = 2024; }, "head_mismatch"],
+  ["head wrong obligation", rf => { rf.submissionHead.obligation = "skattemelding"; }, "head_mismatch"],
+  ["head wrong environment", rf => { rf.submissionHead.environment = "test"; }, "head_mismatch"],
+  ["head wrong submission", rf => { rf.submissionHead.submissionId = "another-submission"; }, "head_mismatch"],
+  ["head invalid time", rf => { rf.submissionHead.updatedAt = "2026-01-01"; }, "head_mismatch"],
+]) {
+  test(`full-year restore rejects ${name}`, () => {
+    const archive = fullYearArchiveFixture();
+    change(archive.rf1086Production);
+    const result = assertRestoreIntegrity(restoreFullYear(archive));
+    assert.equal(result.ok, false);
+    assert.ok(result.failures.includes(`rf1086_source_${failure}`), JSON.stringify(result.failures));
+  });
+}
+
+for (const field of ["contentSha256", "byteLength", "documentType", "status", "storageKey", "removedAt"]) {
+  test(`full-year restore rejects source-original object ${field} changes`, () => {
+    const archive = fullYearArchiveFixture();
+    const object = archive.documentBackupProjection.objects.at(-1);
+    object[field] = field === "storageKey" ? null : field === "byteLength" ? 999 : "changed";
+    assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_document_object_mismatch"));
+  });
+}
+
+test("full-year restore rejects missing and duplicate original objects", () => {
+  for (const duplicate of [false, true]) {
+    const archive = fullYearArchiveFixture();
+    if (duplicate) archive.documentBackupProjection.objects.push(structuredClone(archive.documentBackupProjection.objects.at(-1)));
+    else archive.documentBackupProjection.objects.pop();
+    assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_document_object_mismatch"));
+  }
+});
+
+test("approval-only source archives require lineage and originals but no claim or managed head", () => {
+  const archive = fullYearArchiveFixture();
+  archive.rf1086Production.productionSubmissions = [];
+  archive.rf1086Production.sourceSubmissionClaims = [];
+  archive.rf1086Production.submissionHead = null;
+  assert.equal(assertRestoreIntegrity(restoreFullYear(archive)).ok, true);
+  archive.rf1086Production.submissionHead = { companyId: archive.company.id };
+  assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_head_mismatch"));
+});
+
+test("full-year restore rejects incomplete managed ancestry even if all rows retain approvals", () => {
+  const archive = fullYearArchiveFixture();
+  const rf = archive.rf1086Production;
+  const orphan = { ...rf.productionSubmissions[0], id: "orphan", caseProfile: "legacy" };
+  rf.productionSubmissions.push(orphan);
+  assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_head_mismatch"));
+});
+
+test("full-year restore rejects a changed captured preview text", () => {
+  const archive = fullYearArchiveFixture();
+  archive.rf1086Production.sourceApprovalLineage[0].sourcePreview.previewText += "changed";
+  assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_approval_commitment_mismatch"));
+});

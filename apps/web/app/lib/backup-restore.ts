@@ -1,3 +1,5 @@
+import { rf1086SourceRestoreFailures } from "./rf1086-restore-integrity.ts";
+
 export const launchCriticalTables = [
   "companies",
   "company_memberships",
@@ -16,11 +18,20 @@ export const launchCriticalTables = [
   "investments.share_sale_allocations",
   "investments.received_dividends",
   "documents",
+  "documents.retained_originals",
   "annual_accounts_filing.filing_previews",
   "shareholder_register_filing.filing_previews",
   "billing.production_pilot_entitlements",
+  "shareholder_register_filing.register_observations",
+  "shareholder_register_filing.year_source_versions",
+  "shareholder_register_filing.year_source_heads",
+  "shareholder_register_filing.source_previews",
+  "shareholder_register_filing.source_review_bridges",
   "shareholder_register_filing.filing_approval_snapshots",
+  "shareholder_register_filing.source_approval_bindings",
   "shareholder_register_filing.production_filing_submissions",
+  "shareholder_register_filing.source_submission_bindings",
+  "shareholder_register_filing.submission_heads",
   "shareholder_register_filing.production_filing_events",
   "shareholder_register_filing.production_feedback_artifacts",
   "annual_accounts_filing.authority_test_runs",
@@ -106,6 +117,9 @@ export function buildBackupManifest(archive: Record<string, any>) {
       productionFilingEvents: archive.productionFilingEvents?.length ?? 0,
       rf1086ProductionSubmissions: archive.rf1086Production?.productionSubmissions?.length ?? null,
       rf1086ProductionReceipts: archive.rf1086Production?.feedbackArtifacts?.length ?? null,
+      rf1086SourceApprovalLineage: archive.rf1086Production?.sourceApprovalLineage?.length ?? null,
+      rf1086SourceSubmissionClaims: archive.rf1086Production?.sourceSubmissionClaims?.length ?? null,
+      rf1086SubmissionHeads: archive.rf1086Production == null ? null : archive.rf1086Production.submissionHead == null ? 0 : 1,
       companyTaxSubmissions: submissionCollections.companyTaxSubmissions.length,
       reviewComments: archive.reviewComments?.length ?? 0,
       billingAccounts: archive.billingAccounts?.length ?? 0,
@@ -190,6 +204,7 @@ export function assertRestoreIntegrity(restored: ReturnType<typeof restoreCompan
           || rows.some(row => row === null || typeof row !== "object" || typeof row.id !== "string"))) {
       fail("rf1086_production_archive_scope_invalid");
     } else {
+      for (const code of rf1086SourceRestoreFailures(rf, restored.manifest.objectReferences)) fail(code);
       const approvals = new Map(rf.approvals.map((row: any) => [row.id, row]));
       const submissions = new Map(rf.productionSubmissions.map((row: any) => [row.id, row]));
       if (arrays.some(rows => new Set(rows.map((row: any) => row.id)).size !== rows.length

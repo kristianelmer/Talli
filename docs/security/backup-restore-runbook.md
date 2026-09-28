@@ -62,3 +62,28 @@ Machine-checkable signoff gate:
 - Required key: `security_restore`
 - Closure rule: reviewer, review date, evidence link, and decision must be
   recorded as `approved`; the review date must be 30 days old or newer.
+
+## Full-year RF evidence
+
+Include the RF register observations, source versions and heads, source previews,
+review bridges, approval bindings, submission bindings and managed filing heads,
+as well as Documents' `retained_originals`, in the database backup inventory.
+The company archive's approved lineage is not a replacement for a database backup
+of all source versions, including unapproved history and independent observations.
+
+The archive restore fixture preserves captured source-company identities rather
+than rewriting historical approvals or claim actors to the target company's ID.
+Its full-year checks verify retained manifest/review text hashes, XML and preview
+text commitments, linked source/preview/bridge identities, claim/approval/actor
+relationships, complete ancestry ending at the managed head, and source-original
+object metadata. Missing, duplicate or changed originals fail these checks even
+when other non-filing missing objects can produce warnings.
+
+A passing fixture is not a completed restore rehearsal: it does not write a
+restored database or retrieve object bytes, and it does not reconstruct the full
+source case through Python's RF policy. Before signing off, restore the complete
+owner-held source records and retained originals, verify those records through
+the RF owner and verify actual original bytes through Documents. Include prior
+reporting-year documents, approved and unapproved source history, corrections,
+unknown outcomes, cancellation/expiry and company deletion. Keep release signoff
+pending until that evidence exists.
