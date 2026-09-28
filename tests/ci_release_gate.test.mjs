@@ -567,6 +567,21 @@ test('RF rollback failure prevents all predecessor mutations',async()=>{
  const f=fake({...predecessor,rf_owned:true,authority_kind:null},{fail:`rollback/${RFX}`});
  await assert.rejects(run('rollback',f),/synthetic_dependency_failure/);assert.deepEqual(f.executed,[`rollback/${RFA}`,`rollback/${RFX}`]);
 });
+test('recutover failure identifies its migration and routine without printing SQL data',async()=>{
+ const fixture=fake({...predecessor,ledger_kind:null,ledger_setup:false});
+ const failure=Object.assign(new Error('permission denied for function lock_ledger_writer_year_v1'),{
+  code:'42501',where:'SQL statement "private fixture data"\nPL/pgSQL function inline_code_block line 17 at EXECUTE'});
+ const query=fixture.database.query;
+ fixture.database.query=async sql=>{if(sql===`migrations/${AU}`)throw failure;return query(sql);};
+ await assert.rejects(run('recutover',fixture),error=>{
+  assert.match(error.message,/migrations\/20260909120610_authority_connections_capability\.sql \[42501\]/u);
+  assert.match(error.message,/inline_code_block line 17 at EXECUTE/u);
+  assert.doesNotMatch(error.message,/private fixture data|SQL statement/u);
+  assert.equal(error.cause,failure);
+  return true;
+ });
+ assert.deepEqual(fixture.executed,[]);
+});
 test('workspace retains AU and Ledger overlap for Billing and sibling consumers',async()=>{
  const f=fake(predecessor);await run('workspace',f);assert.deepEqual(f.executed,workspaceForward);
  assert.ok(!f.executed.some(p=>p.includes('ledger_capability_contract')||p===`contract-migrations/${AUC}`||p===`contract-migrations/${RFF}`));

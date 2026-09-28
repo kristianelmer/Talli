@@ -53,7 +53,22 @@ async function topology(database) {
 export async function rehearseAuthorityTopology({ direction, database, loadSql = (relative) => readFile(new URL(`../supabase/${relative}`, import.meta.url), "utf8") }) {
   if (!new Set(["rollback", "workspace", "recutover"]).has(direction)) throw new Error("invalid_authority_rehearsal_direction");
   let state = await topology(database);
-  const apply = async (files) => { for (const file of files) await database.query(await loadSql(file)); };
+  const apply = async (files) => {
+    for (const file of files) {
+      try {
+        await database.query(await loadSql(file));
+      } catch (error) {
+        // Keep the migration and routine location: permission errors otherwise
+        // lose the exact failed recutover stage. Never print SQL statements/data.
+        const code = /^[A-Z0-9]{5}$/u.test(error.code ?? "") ? error.code : "unknown";
+        const frames = typeof error.where === "string" ? error.where.split("\n")
+          .filter(line => /^(?:PL\/pgSQL|SQL) function /u.test(line)).slice(0, 4)
+          .map(line => line.slice(0, 300)) : [];
+        throw new Error([`authority_rehearsal_sql_failed: ${file} [${code}] ${error.message}`,
+          ...frames].join("\n"), { cause: error });
+      }
+    }
+  };
   if (direction === "rollback") {
     // The exact RF full rollback restores #150 routines and original openings.
     // Never run the frozen #150 rollback against a later owner's physical tables.
