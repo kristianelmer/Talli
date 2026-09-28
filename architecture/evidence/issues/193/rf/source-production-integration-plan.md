@@ -210,3 +210,13 @@ changed source-original objects. This supersedes earlier statements that the
 full-year archive source contract is absent. Consolidated restore, complete
 retention generation and cross-year original-object inclusion remain pending.
 See `source-submission-archive-20260928.json` for bounded verification.
+
+## Canonical RF archive recovery record
+
+The production endpoint and company download now retain `canonicalArchive`, a
+closed versioned snapshot containing full typed sources, freshness/Governance
+evidence and original filing history. The local Python verifier reconstructs and
+checks that record through RF policy, including correction ancestry and unknown
+outcomes. This closes the missing policy-verifiable source record in the export;
+it does not close actual database/object restore, unapproved source/observation
+history export, retention generations, expiry/cancellation or deletion.

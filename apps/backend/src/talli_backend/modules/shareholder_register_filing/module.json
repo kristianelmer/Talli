@@ -114,7 +114,10 @@
       "Rf1086SourceSubmissionClaimResult",
       "inspect_rf1086_retained_source_approval",
       "assert_rf1086_source_submission_claim",
-      "Rf1086SubmissionHead"
+      "Rf1086SubmissionHead",
+      "Rf1086ArchiveError",
+      "serialize_rf1086_archive",
+      "parse_rf1086_archive"
     ],
     "events": [],
     "errors": [
@@ -428,7 +431,8 @@
     "sourceCorrection": "apps/backend/tests/test_rf1086_source_correction.py",
     "sourceReadiness": "apps/backend/tests/test_rf1086_source_readiness.py",
     "journalCompanyGuard": "apps/backend/tests/test_rf1086_journal_company_guard_database.py",
-    "submissionHistory": "apps/backend/tests/test_rf1086_submission_history.py"
+    "submissionHistory": "apps/backend/tests/test_rf1086_submission_history.py",
+    "archiveStorage": "apps/backend/tests/test_rf1086_archive_storage.py"
   },
   "compatibilityExceptions": []
 }

@@ -144,5 +144,6 @@
   "fullYearSubmissionArchive": "source-submission-archive-20260928.json",
   "governanceGuardRollback": "governance-guard-rollback-20260928.json",
   "fullYearArchiveRestoreChecks": "source-archive-restore-checks-20260928.json",
-  "governanceEvidenceAuthorityRollback": "governance-evidence-authority-rollback-20260928.json"
+  "governanceEvidenceAuthorityRollback": "governance-evidence-authority-rollback-20260928.json",
+  "canonicalArchiveReconstruction": "canonical-archive-reconstruction-20260928.json"
 }

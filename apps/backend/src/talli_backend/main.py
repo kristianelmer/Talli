@@ -455,7 +455,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     AcknowledgeRf1086ReviewCommentCommand, AddRf1086ReviewCommentCommand,
     ApprovalId, ApproveRf1086ProductionCommand, ConfirmRf1086FilingPermissionCommand,
     ConfirmRf1086SimulationCommand, GenerateRf1086PreviewCommand, OpeningShareholder,
-    Rf1086ArchiveQuery, OpeningSnapshotId, PreviewId, ReadRf1086PreviewQuery, ReconcileRf1086FeedbackCommand,
+    Rf1086ArchiveQuery, Rf1086ArchiveError, serialize_rf1086_archive, OpeningSnapshotId, PreviewId, ReadRf1086PreviewQuery, ReconcileRf1086FeedbackCommand,
     RecordRf1086OverrideCommand, RecordRf1086TestEvidenceCommand, ReviewCommentId,
     Rf1086ProductionError, Rf1086RecordedResult, Rf1086WorkspaceQuery, Rf1086SourceCorrectionPredecessor,
     SendApprovedRf1086Command, ShareholderRegisterFilingError, SubmissionId,
@@ -2544,6 +2544,7 @@ def _rf_submission_head_wire(value):
 
 
 class Rf1086ProductionArchiveSourceWire(Rf1086ArchiveSourceWire):
+    canonical_archive: str | None = None
     source_submission_claims: list[Rf1086SourceSubmissionClaimWire] = Field(default_factory=list)
     submission_head: Rf1086SubmissionHeadWire | None = None
     source_approval_lineage: list[Rf1086ArchiveSourceApprovalLineageWire] = Field(default_factory=list)
@@ -12139,11 +12140,17 @@ def create_app(
     ) -> Rf1086ProductionArchiveSourceWire:
         async def execute():
             workflow = await shareholder_register_filing_workflow(credentials)
-            result = await workflow.archive_source(Rf1086ArchiveQuery(
+            query = Rf1086ArchiveQuery(
                 company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year), actor_id=workflow.actor_id,
-            ))
+            )
+            result = await workflow.archive_source(query)
+            try:
+                canonical_archive = serialize_rf1086_archive(result, query=query)
+            except Rf1086ArchiveError:
+                raise ShareholderRegisterFilingError.unavailable() from None
             try:
                 return Rf1086ProductionArchiveSourceWire(
+                    canonical_archive=canonical_archive,
                     company_id=UUID(str(result.company_id)), income_year=int(result.income_year),
                     previews=[Rf1086PreviewWire.model_validate(row, from_attributes=True) for row in result.previews],
                     simulations=[Rf1086SimulationWire.model_validate(row, from_attributes=True) for row in result.simulations],

@@ -509,9 +509,10 @@ test('download forwards source lineage, immutable claims and managed head withou
   const input = productionArchiveFixture();
   const lineage = [], claims = [], head = null;
   const fixture = route({ ...input, rfLoader: async () => ({ ...input.rf, companyId, incomeYear: 2025,
-    sourceApprovalLineage: lineage, sourceSubmissionClaims: claims, submissionHead: head }) });
+    sourceApprovalLineage: lineage, sourceSubmissionClaims: claims, submissionHead: head, canonicalArchive: "retained-record" }) });
   assert.equal((await fixture.run()).status, 200);
   assert.deepEqual(fixture.captures[0].rf1086Production.sourceApprovalLineage, lineage);
   assert.deepEqual(fixture.captures[0].rf1086Production.sourceSubmissionClaims, claims);
   assert.equal(fixture.captures[0].rf1086Production.submissionHead, head);
+  assert.equal(fixture.captures[0].rf1086Production.canonicalArchive, "retained-record");
 });

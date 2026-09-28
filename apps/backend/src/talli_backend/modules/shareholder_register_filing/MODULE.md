@@ -657,3 +657,22 @@ unknown in the export. The API exposes claim/head DTOs without granting send
 authority, and legacy-only archives preserve their existing shape plus empty
 claim/head fields. This is RF archive source coverage; company-wide retention
 generation and consolidated backup/restore validation still require separate proof.
+
+`serialize_rf1086_archive` and `parse_rf1086_archive` provide the closed
+`rf1086-production-archive-v1` record carried as `canonicalArchive` in production
+archive responses. This preserves complete captured sources, freshness and
+Governance receipts, previews, review bridges, approvals, claims, heads, journals
+and feedback metadata. The parser checks the expected company/year and reuses RF
+source, approval and history validation. It preserves original numeric types and
+XML, rejects unknown record types, duplicate fields, nonfinite values, oversized
+records and invalid commitments, and never deserializes executable classes.
+
+`Rf1086ArchiveError` reports a closed integrity diagnostic. Records are bounded
+to 64 MiB; the command-line input file is bounded to 256 MiB.
+The nested snapshot text has an accidental-damage checksum; it is not an external
+signature. Parsing grants no identity, live freshness, database restore or send
+authority. The local `apps/backend/scripts/verify_rf1086_archive.py` verifier reads
+this authoritative record from either an API export or a company download. It
+performs no database/provider calls and does not prove retained object bytes.
+Unapproved source history, independent register observations and all original
+object bytes still require the complete owner database/object backup.

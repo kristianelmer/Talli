@@ -4410,6 +4410,7 @@ export interface Rf1086SubmissionHeadWire {
 
 export interface Rf1086ProductionArchiveSourceWire {
   approvals: Rf1086ApprovalWire[];
+  canonicalArchive?: string | null;
   companyId: string;
   feedbackArtifacts: Rf1086ArchiveFeedbackArtifactWire[];
   incomeYear: number;
@@ -10593,8 +10594,9 @@ function isRf1086SubmissionHeadWire(value: unknown): value is Rf1086SubmissionHe
 function isRf1086ProductionArchiveSourceWire(value: unknown): value is Rf1086ProductionArchiveSourceWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["approvals","companyId","feedbackArtifacts","incomeYear","permissions","previews","productionEvents","productionSubmissions","reviewComments","simulations","sourceApprovalLineage","sourceSubmissionClaims","submissionHead","testEvidence"]) &&
+    hasOnlyProperties(value, ["approvals","canonicalArchive","companyId","feedbackArtifacts","incomeYear","permissions","previews","productionEvents","productionSubmissions","reviewComments","simulations","sourceApprovalLineage","sourceSubmissionClaims","submissionHead","testEvidence"]) &&
     Array.isArray(value.approvals) && value.approvals.every((item) => isRf1086ApprovalWire(item)) &&
+    (value.canonicalArchive === undefined || (typeof value.canonicalArchive === "string" || value.canonicalArchive === null)) &&
     isUuid(value.companyId) &&
     Array.isArray(value.feedbackArtifacts) && value.feedbackArtifacts.every((item) => isRf1086ArchiveFeedbackArtifactWire(item)) &&
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&

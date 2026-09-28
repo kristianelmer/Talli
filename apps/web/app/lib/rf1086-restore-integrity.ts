@@ -17,6 +17,18 @@ export function rf1086SourceRestoreFailures(rf: Record<string, any>, objects: an
     && Number.isInteger(row.incomeYear) && row.incomeYear === rf.incomeYear;
   const approvals = rf.approvals.filter((row: any) => row.caseProfile === "rf1086_full_year_v1");
   const submissions = rf.productionSubmissions.filter((row: any) => row.caseProfile === "rf1086_full_year_v1");
+  if (approvals.length || rf.canonicalArchive != null) {
+    try {
+      if (typeof rf.canonicalArchive !== "string") throw new Error("missing");
+      const envelope = JSON.parse(rf.canonicalArchive);
+      if (!record(envelope) || envelope.codec !== "rf1086-production-archive-v1"
+          || typeof envelope.snapshotText !== "string" || !hash(envelope.sha256)
+          || digest(envelope.snapshotText) !== envelope.sha256
+          || Object.keys(envelope).sort().join(",") !== "codec,sha256,snapshotText") throw new Error("invalid");
+    } catch {
+      fail("canonical_record_invalid");
+    }
+  }
   const lineage = rf.sourceApprovalLineage ?? [];
   const claims = rf.sourceSubmissionClaims ?? [];
   if (!Array.isArray(lineage) || !Array.isArray(claims)

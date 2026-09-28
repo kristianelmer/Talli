@@ -87,3 +87,25 @@ the RF owner and verify actual original bytes through Documents. Include prior
 reporting-year documents, approved and unapproved source history, corrections,
 unknown outcomes, cancellation/expiry and company deletion. Keep release signoff
 pending until that evidence exists.
+
+### Verify the canonical RF record
+
+New production archives include `rf1086Production.canonicalArchive`. This closed,
+versioned record preserves the complete captured source facts and their retained
+freshness/Governance evidence; it is the authoritative RF input for recovery.
+The surrounding readable projections are not a substitute for it. Run the local
+owner-policy verifier with the expected company and year, supplied independently:
+
+```sh
+apps/backend/.venv/bin/python apps/backend/scripts/verify_rf1086_archive.py company-archive.json --company-id COMPANY_UUID --income-year 2025
+```
+
+The verifier also accepts an RF endpoint export or the canonical record itself.
+It reconstructs the captured typed records and checks their source, approval,
+claim, journal and correction integrity. A pass reports
+`verified_rf_canonical_record`, with `databaseRestorePerformed: false` and
+`objectBytesVerified: false`. It checks the canonical record rather than treating
+editable display projections as authority. Changed facts fail even if the outer
+container checksum is recomputed. The checksum is not an independent signature
+or proof of provenance. Keep the actual database and object-byte recovery gate
+pending until its separate rehearsal succeeds.

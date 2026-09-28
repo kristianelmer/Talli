@@ -259,6 +259,9 @@ def test_actual_http_archive_exports_source_claim_head_and_verified_journal(stat
         params={'companyId':str(snapshot.company_id),'incomeYear':int(snapshot.income_year)})
     assert response.status_code==200,response.text
     body=response.json();claim=snapshot.source_submission_claims[0]
+    from talli_backend.modules.shareholder_register_filing import public as rf
+    assert rf.parse_rf1086_archive(body['canonicalArchive'], query=rf.Rf1086ArchiveQuery(
+        snapshot.company_id, snapshot.income_year, ACTOR)) == snapshot
     assert body['sourceSubmissionClaims']==[{'submissionId':claim.submission_id.value,'approvalId':claim.approval_id.value,
         'companyId':str(claim.company_id),'incomeYear':int(claim.income_year),'manifestSha256':claim.manifest_sha256,
         'payloadSha256':claim.payload_sha256,'predecessorSubmissionId':None,'claimedBy':str(claim.claimed_by.subject),

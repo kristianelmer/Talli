@@ -582,3 +582,16 @@ test("full-year restore rejects a changed captured preview text", () => {
   archive.rf1086Production.sourceApprovalLineage[0].sourcePreview.previewText += "changed";
   assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_approval_commitment_mismatch"));
 });
+
+test("full-year restore requires an intact canonical record for Python-owned reconstruction", () => {
+  for (const value of [undefined, null, "{}", "malformed"]) {
+    const archive = fullYearArchiveFixture();
+    archive.rf1086Production.canonicalArchive = value;
+    assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_canonical_record_invalid"));
+  }
+  const archive = fullYearArchiveFixture();
+  const envelope = JSON.parse(archive.rf1086Production.canonicalArchive);
+  envelope.snapshotText += " ";
+  archive.rf1086Production.canonicalArchive = JSON.stringify(envelope);
+  assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_canonical_record_invalid"));
+});

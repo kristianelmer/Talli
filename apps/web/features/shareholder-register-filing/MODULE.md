@@ -55,3 +55,8 @@ submission claims and a scoped filing head. Company downloads preserve these
 records and check each retained source document against the exported Documents
 object identity, hash, length, type and status. Missing or changed originals block
 export. This does not establish consolidated restore or retention coverage.
+
+Production archive responses also carry the opaque `canonicalArchive` record.
+Company downloads preserve it byte-for-byte for Python-owned source and history
+verification. The web restore fixture checks its container checksum; it does not
+interpret canonical RF facts or grant restore/submission authority.

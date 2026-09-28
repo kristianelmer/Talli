@@ -20836,6 +20836,17 @@
             "title": "Approvals",
             "type": "array"
           },
+          "canonicalArchive": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonicalarchive"
+          },
           "companyId": {
             "format": "uuid",
             "title": "Companyid",

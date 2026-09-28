@@ -29,7 +29,7 @@ import type { RecordedSupportedCorporateEventWire } from "../../features/corpora
 import type { Rf1086ProductionArchiveSourceWire } from "../../features/shareholder-register-filing";
 
 export type Rf1086ProductionArchive = Pick<Rf1086ProductionArchiveSourceWire,
-  "companyId" | "incomeYear" | "approvals" | "productionSubmissions" | "productionEvents" | "feedbackArtifacts" | "sourceApprovalLineage" | "sourceSubmissionClaims" | "submissionHead">;
+  "companyId" | "incomeYear" | "approvals" | "productionSubmissions" | "productionEvents" | "feedbackArtifacts" | "sourceApprovalLineage" | "sourceSubmissionClaims" | "submissionHead" | "canonicalArchive">;
 
 /** Each retained RF receipt must resolve to the exact Documents-owned object. */
 export function rf1086ArchiveReceiptsMatch(
