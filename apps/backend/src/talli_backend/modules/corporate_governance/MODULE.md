@@ -268,3 +268,11 @@ retains cross-year corrections and historical amendments before domain year
 selection. It opens no connection, sets no role or identity, and performs no
 provider I/O. Rollback disables the RF entry point and preserves original rows.
 The caller still owns admission, source reconciliation and approval/send policy.
+
+A complete capability rollback explicitly retires the later Governance company
+write guards and guarded reporting reader after their tables are removed, and
+revokes only Governance's additive Ledger and company-lock grants before role
+retirement. Ledger keeps its own guard and reader authority. Recutover must replay
+the company-write-guard and guarded-reporting successors after historical table
+and routine recreation; the twice-run lifecycle rehearsal checks the restored
+triggers, loan guard, RF reader and cross-owner grants.

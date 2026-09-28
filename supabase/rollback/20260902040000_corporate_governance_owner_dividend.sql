@@ -115,6 +115,28 @@ revoke usage on schema ledger
 from corporate_governance_workflow_executor,
   corporate_governance_ledger_bridge_owner;
 
+-- Later guarded reporting/writer entry points add these cross-owner grants.
+-- Retire only Governance's authority; Ledger keeps its own guards and readers.
+do $revoke_guard_successors$
+begin
+  set local role ledger_store_owner;
+  if pg_catalog.to_regprocedure(
+    'ledger.acquire_company_write_guard_v1(uuid,text)'
+  ) is not null then
+    revoke execute on function ledger.acquire_company_write_guard_v1(uuid,text)
+      from corporate_governance_store_owner;
+  end if;
+  if pg_catalog.to_regprocedure(
+    'ledger.list_entry_amendments_v1(uuid,text)'
+  ) is not null then
+    revoke execute on function ledger.list_entry_amendments_v1(uuid,text)
+      from corporate_governance_store_owner;
+  end if;
+  revoke usage on schema ledger from corporate_governance_store_owner;
+  reset role;
+end
+$revoke_guard_successors$;
+
 revoke execute on function banking.claim_owner_dividend_transaction_v1(
   jsonb, uuid, text
 ) from corporate_governance_workflow_executor;
@@ -222,6 +244,14 @@ drop table corporate_governance.owner_dividend_artifacts;
 drop table corporate_governance.owner_dividend_decisions;
 drop table corporate_governance.owner_dividend_accounting_policies;
 drop function corporate_governance.prevent_corporate_governance_mutation();
+-- The complete capability rollback also retires its additive guard entry points.
+-- All guarded Governance tables are gone before the trigger function is dropped.
+-- RESTRICT is intentional: unexpected dependencies must still abort rollback.
+drop function if exists corporate_governance.read_guarded_reporting_year_inputs_v1(
+  uuid, integer, text
+);
+drop function if exists corporate_governance.lock_company_write_v1();
+drop function if exists corporate_governance.acquire_company_write_guard_v1(uuid,text);
 drop schema corporate_governance;
 reset role;
 revoke execute on function
@@ -242,6 +272,16 @@ begin
   end if;
 end
 $revoke_predecessor_assertion$;
+do $revoke_company_guard$
+begin
+  if pg_catalog.to_regprocedure(
+    'public.company_archive_lock_company_v1(uuid)'
+  ) is not null then
+    revoke execute on function public.company_archive_lock_company_v1(uuid)
+      from corporate_governance_store_owner;
+  end if;
+end
+$revoke_company_guard$;
 revoke execute on function extensions.digest(text, text)
 from corporate_governance_store_owner;
 revoke usage on schema extensions from corporate_governance_store_owner;

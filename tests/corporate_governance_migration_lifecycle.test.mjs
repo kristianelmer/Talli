@@ -25,6 +25,40 @@ const supportedEventsMigrationName =
   "20260904220000_corporate_governance_supported_events.sql";
 const ledgerAmendmentReadMigrationName =
   "20260923090824_ledger_reporting_amendment_read.sql";
+const companyWriteGuardsMigrationName =
+  "20260924080355_governance_ledger_company_write_guards.sql";
+const guardedReportingReadMigrationName =
+  "20260924083154_governance_guarded_reporting_year_read.sql";
+
+async function assertGovernanceSuccessorGuards(client) {
+  const { rows: [state] } = await client.query(String.raw`
+    select
+      (select count(*)::integer from pg_catalog.pg_trigger t
+        join pg_catalog.pg_class c on c.oid = t.tgrelid
+        join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'corporate_governance'
+          and t.tgname = 'aa_company_write_guard' and t.tgenabled = 'O'
+          and t.tgfoid = 'corporate_governance.lock_company_write_v1()'::regprocedure
+      ) as guarded_tables,
+      position('rf193-company-write-guard-v1' in pg_catalog.pg_get_functiondef(
+        'corporate_governance.prepare_shareholder_loan_v1(jsonb,text)'::regprocedure
+      )) > 0 as guarded_loan,
+      pg_catalog.has_function_privilege('shareholder_register_filing_executor',
+        'corporate_governance.read_guarded_reporting_year_inputs_v1(uuid,integer,text)',
+        'EXECUTE') as rf_reads,
+      pg_catalog.has_function_privilege('authenticated',
+        'corporate_governance.read_guarded_reporting_year_inputs_v1(uuid,integer,text)',
+        'EXECUTE') as browser_reads,
+      pg_catalog.has_function_privilege('corporate_governance_store_owner',
+        'ledger.acquire_company_write_guard_v1(uuid,text)', 'EXECUTE') as ledger_guard,
+      pg_catalog.has_function_privilege('corporate_governance_store_owner',
+        'ledger.list_entry_amendments_v1(uuid,text)', 'EXECUTE') as ledger_reads
+  `);
+  assert.deepEqual(state, {
+    guarded_tables: 11, guarded_loan: true, rf_reads: true,
+    browser_reads: false, ledger_guard: true, ledger_reads: true,
+  });
+}
 
 async function assertLedgerAmendmentReadAuthority(client) {
   const { rows: [authority] } = await client.query(String.raw`
@@ -1161,6 +1195,8 @@ test(
       supportedEventsRollback,
       ledgerAmendmentReadForward,
       ledgerAmendmentReadRollback,
+      companyWriteGuardsForward,
+      guardedReportingReadForward,
     ] =
       await Promise.all([
       readFile(
@@ -1241,6 +1277,14 @@ test(
       ),
       readFile(
         new URL(`../supabase/rollback/${ledgerAmendmentReadMigrationName}`, import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL(`../supabase/migrations/${companyWriteGuardsMigrationName}`, import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL(`../supabase/migrations/${guardedReportingReadMigrationName}`, import.meta.url),
         "utf8",
       ),
     ]);
@@ -1648,6 +1692,11 @@ test(
         await client.query(lifecycleForward);
         await client.query(supportedEventsForward);
         await client.query(ledgerAmendmentReadForward);
+        // Historical migrations recreate unwrapped routines and fresh tables.
+        // Restore both successor boundaries before declaring recutover complete.
+        await client.query(companyWriteGuardsForward);
+        await client.query(guardedReportingReadForward);
+        await assertGovernanceSuccessorGuards(client);
         await assertLedgerAmendmentReadAuthority(client);
         assert.deepEqual(await state(client), {
           capability_schema: true,
