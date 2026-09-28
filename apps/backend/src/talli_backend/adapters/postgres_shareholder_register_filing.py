@@ -42,7 +42,7 @@ from talli_backend.modules.documents.public import (
 )
 from talli_backend.modules.ledger.public import LedgerError
 from talli_backend.modules.shareholder_register_filing import public as rf
-from talli_backend.shared.kernel import CompanyId, IncomeYear, Timestamp
+from talli_backend.shared.kernel import ActorId, ActorKind, UserId, CompanyId, IncomeYear, Timestamp
 
 
 def _id(row, name):
@@ -740,6 +740,33 @@ class PostgresShareholderRegisterFilingSession:
                     lineage.append(await self._retained_source_approval_lineage(
                         connection, binding, company_id, year))
             values['source_approval_lineage'] = tuple(lineage)
+            # Claims and the managed head are captured in the same repeatable
+            # snapshot as approvals/journal rows, including historical actors.
+            claim_rows = await (await connection.execute(
+                'select * from shareholder_register_filing.source_submission_bindings '
+                'where company_id=%s::uuid and income_year=%s order by submission_id',
+                (company_id,year),
+            )).fetchall()
+            head_rows = await (await connection.execute(
+                'select * from shareholder_register_filing.submission_heads '
+                'where company_id=%s::uuid and income_year=%s order by obligation,environment',
+                (company_id,year),
+            )).fetchall()
+            try:
+                values['source_submission_claims'] = tuple(_source_claim_record(row,
+                    rf.ApprovalId(str(row['approval_id'])),row['manifest_sha256'],
+                    None if row['predecessor_submission_id'] is None else rf.SubmissionId(str(row['predecessor_submission_id'])),
+                    ActorId(ActorKind.USER,UserId(str(row['claimed_by'])))) for row in claim_rows)
+                if len(head_rows)>1:raise ValueError('multiple managed heads')
+                values['submission_head'] = None
+                if head_rows:
+                    head=head_rows[0]
+                    if type(head['income_year']) is not int:raise ValueError('invalid head year')
+                    values['submission_head'] = rf.Rf1086SubmissionHead(CompanyId(str(head['company_id'])),
+                        IncomeYear(head['income_year']),head['obligation'],head['environment'],
+                        rf.SubmissionId(str(head['submission_id'])),_record_value(head['updated_at']))
+            except (ValueError,TypeError,KeyError,rf.Rf1086ProductionError,rf.ShareholderRegisterFilingError):
+                raise rf.ShareholderRegisterFilingError.unavailable() from None
             for name, table, record_type, ordered_at in (
                 ("production_events", "production_filing_events", rf.Rf1086ArchiveProductionEventRecord, "created_at"),
                 ("feedback_artifacts", "production_feedback_artifacts", rf.Rf1086ArchiveFeedbackArtifactRecord, "retrieved_at"),

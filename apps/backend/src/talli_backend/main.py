@@ -2507,7 +2507,45 @@ def _rf_archive_source_approval_lineage_wire(value) -> Rf1086ArchiveSourceApprov
         bridge=Rf1086ArchiveSourceReviewBridgeWire.model_validate(value.bridge, from_attributes=True))
 
 
+class Rf1086SourceSubmissionClaimWire(TransportModel):
+    submission_id: UUID
+    approval_id: UUID
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    manifest_sha256: RfSourceHash
+    payload_sha256: RfSourceHash
+    predecessor_submission_id: UUID | None
+    claimed_by: UUID
+    claimed_at: Rf1086HistoricalTimestampWire
+
+
+class Rf1086SubmissionHeadWire(TransportModel):
+    company_id: UUID
+    income_year: int = Field(ge=2000, le=2100)
+    obligation: Literal['aksjonaerregisteroppgaven']
+    environment: Literal['production']
+    submission_id: UUID
+    updated_at: Rf1086HistoricalTimestampWire
+
+
+def _rf_source_claim_wire(value):
+    return Rf1086SourceSubmissionClaimWire(submission_id=value.submission_id.value,
+        approval_id=value.approval_id.value,company_id=str(value.company_id),income_year=int(value.income_year),
+        manifest_sha256=value.manifest_sha256,payload_sha256=value.payload_sha256,
+        predecessor_submission_id=None if value.predecessor_submission_id is None else value.predecessor_submission_id.value,
+        claimed_by=str(value.claimed_by.subject),claimed_at=value.claimed_at)
+
+
+def _rf_submission_head_wire(value):
+    if value is None:return None
+    return Rf1086SubmissionHeadWire(company_id=str(value.company_id),income_year=int(value.income_year),
+        obligation=value.obligation,environment=value.environment,submission_id=value.submission_id.value,
+        updated_at=value.updated_at)
+
+
 class Rf1086ProductionArchiveSourceWire(Rf1086ArchiveSourceWire):
+    source_submission_claims: list[Rf1086SourceSubmissionClaimWire] = Field(default_factory=list)
+    submission_head: Rf1086SubmissionHeadWire | None = None
     source_approval_lineage: list[Rf1086ArchiveSourceApprovalLineageWire] = Field(default_factory=list)
     approvals: list[Rf1086ApprovalWire]
     production_submissions: list[Rf1086ProductionSubmissionWire]
@@ -12119,6 +12157,8 @@ def create_app(
                     production_events=[Rf1086ArchiveProductionEventWire.model_validate(row, from_attributes=True) for row in result.production_events],
                     feedback_artifacts=[Rf1086ArchiveFeedbackArtifactWire.model_validate(row, from_attributes=True) for row in result.feedback_artifacts],
                     source_approval_lineage=[_rf_archive_source_approval_lineage_wire(row) for row in result.source_approval_lineage],
+                    source_submission_claims=[_rf_source_claim_wire(row) for row in result.source_submission_claims],
+                    submission_head=_rf_submission_head_wire(result.submission_head),
                 )
             except ValidationError:
                 raise ShareholderRegisterFilingError.unavailable() from None

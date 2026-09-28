@@ -82,6 +82,9 @@ async function loadArchiveRf1086(accessToken: string, companyId: string, incomeY
         companyId: workspace.companyId, incomeYear: workspace.incomeYear,
         approvals: workspace.approvals, productionSubmissions: workspace.productionSubmissions,
         productionEvents: workspace.productionEvents, feedbackArtifacts: workspace.feedbackArtifacts,
+        ...(workspace.sourceApprovalLineage === undefined ? {} : { sourceApprovalLineage: workspace.sourceApprovalLineage }),
+        ...(workspace.sourceSubmissionClaims === undefined ? {} : { sourceSubmissionClaims: workspace.sourceSubmissionClaims }),
+        ...(workspace.submissionHead === undefined ? {} : { submissionHead: workspace.submissionHead }),
       } : null,
     }, error: null };
   } catch {

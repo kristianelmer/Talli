@@ -29,7 +29,7 @@ import type { RecordedSupportedCorporateEventWire } from "../../features/corpora
 import type { Rf1086ProductionArchiveSourceWire } from "../../features/shareholder-register-filing";
 
 export type Rf1086ProductionArchive = Pick<Rf1086ProductionArchiveSourceWire,
-  "companyId" | "incomeYear" | "approvals" | "productionSubmissions" | "productionEvents" | "feedbackArtifacts">;
+  "companyId" | "incomeYear" | "approvals" | "productionSubmissions" | "productionEvents" | "feedbackArtifacts" | "sourceApprovalLineage" | "sourceSubmissionClaims" | "submissionHead">;
 
 /** Each retained RF receipt must resolve to the exact Documents-owned object. */
 export function rf1086ArchiveReceiptsMatch(
@@ -38,12 +38,20 @@ export function rf1086ArchiveReceiptsMatch(
   if (filing.companyId !== documents.companyId || filing.incomeYear !== documents.incomeYear) return false;
   const objects = new Map(documents.objects.map(row => [row.documentId, row]));
   if (objects.size !== documents.objects.length) return false;
-  return filing.feedbackArtifacts.every(receipt => {
+  const receiptsMatch = filing.feedbackArtifacts.every(receipt => {
     const object = objects.get(receipt.documentId);
     return receipt.companyId === filing.companyId && object !== undefined
       && object.contentSha256 === receipt.sha256 && object.byteLength === receipt.byteLength
       && object.contentType === receipt.contentType && Boolean(object.storageKey)
       && object.status === "stored" && object.removedAt === null;
+  });
+  const sourceDocuments = (filing.sourceApprovalLineage ?? []).flatMap(line => line.source.command.documents);
+  return receiptsMatch && sourceDocuments.every(source => {
+    const object = objects.get(source.documentId);
+    return source.companyId === filing.companyId && object !== undefined
+      && object.contentSha256 === source.contentSha256 && object.byteLength === source.byteLength
+      && object.documentType === source.documentType && object.status === source.integrityStatus
+      && Boolean(object.storageKey) && object.removedAt === null;
   });
 }
 

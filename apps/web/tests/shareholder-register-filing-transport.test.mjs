@@ -248,3 +248,30 @@ for (const [status, code, absent] of [
     }
   });
 }
+
+const sourceArchiveFixture = JSON.parse((await import('node:fs')).readFileSync(
+  new URL('./fixtures/rf1086-source-submission-archive.json', import.meta.url), 'utf8'));
+
+test('full-year archive response preserves actual backend claim, head and retained lineage DTOs', async t => {
+  environment(t);
+  t.mock.method(globalThis, 'fetch', async () => Response.json(sourceArchiveFixture));
+  assert.deepEqual(await loadRf1086ArchiveSource('owner', sourceArchiveFixture.companyId, sourceArchiveFixture.incomeYear), sourceArchiveFixture);
+});
+
+for (const mutation of ['missing-lineage','missing-claims','missing-head','claim-company','claim-payload','duplicate-claim','head-year','head-submission','unknown-claim-property']) {
+  test(`full-year archive transport rejects ${mutation}`, async t => {
+    environment(t);
+    const value = structuredClone(sourceArchiveFixture);
+    if (mutation === 'missing-lineage') delete value.sourceApprovalLineage;
+    if (mutation === 'missing-claims') delete value.sourceSubmissionClaims;
+    if (mutation === 'missing-head') delete value.submissionHead;
+    if (mutation === 'claim-company') value.sourceSubmissionClaims[0].companyId = other;
+    if (mutation === 'claim-payload') value.sourceSubmissionClaims[0].payloadSha256 = 'f'.repeat(64);
+    if (mutation === 'duplicate-claim') value.sourceSubmissionClaims.push(value.sourceSubmissionClaims[0]);
+    if (mutation === 'head-year') value.submissionHead.incomeYear = 2024;
+    if (mutation === 'head-submission') value.submissionHead.submissionId = other;
+    if (mutation === 'unknown-claim-property') value.sourceSubmissionClaims[0].dispatchAuthorized = true;
+    t.mock.method(globalThis, 'fetch', async () => Response.json(value));
+    await assert.rejects(loadRf1086ArchiveSource('owner', value.companyId, value.incomeYear), invalidResponse);
+  });
+}

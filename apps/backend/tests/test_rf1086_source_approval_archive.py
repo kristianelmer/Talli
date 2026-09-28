@@ -130,7 +130,7 @@ def test_rehashed_review_cannot_change_scope_actor_or_original_inputs(change):
     with pytest.raises(rf.ShareholderRegisterFilingError): read(original)
 
 
-def test_full_year_submissions_remain_closed_until_their_archive_contract_exists():
+def test_full_year_archive_rejects_missing_submission_claim_and_head():
     from test_rf1086_archive_source import production_snapshot
     original = source_archive(); approval = original.approvals[0]
     submission = replace(production_snapshot().production_submissions[0],
@@ -143,9 +143,12 @@ def test_full_year_submissions_remain_closed_until_their_archive_contract_exists
 
 
 @pytest.mark.parametrize('missing', [None, 'binding', 'source', 'bridge'])
-def test_actual_adapter_reads_original_lineage_on_same_snapshot_without_current_owner_calls(missing):
+@pytest.mark.parametrize('submitted', [False, True])
+def test_actual_adapter_reads_original_lineage_on_same_snapshot_without_current_owner_calls(missing,submitted):
     from test_postgres_shareholder_register_filing import session
-    original = source_archive(); line = original.source_approval_lineage[0]
+    from test_rf1086_source_submission_archive import source_submission_archive
+    original = source_submission_archive(status='approved') if submitted else source_archive()
+    line = original.source_approval_lineage[0]
     store = session({}); calls = []
     binding = {f.name: getattr(line, f.name) for f in fields(line)
                if f.name not in ('source','source_preview','bridge')}
@@ -160,6 +163,16 @@ def test_actual_adapter_reads_original_lineage_on_same_snapshot_without_current_
             calls.append((sql,args))
             assert not any(name in sql for name in ('year_source_heads','lock_year_source','admission','documents.','authority_connections.','billing.'))
             if 'source_approval_bindings' in sql: return Cursor([] if missing=='binding' else [binding])
+            if 'source_submission_bindings' in sql:
+                return Cursor([{'submission_id':c.submission_id.value,'approval_id':c.approval_id.value,
+                    'company_id':str(c.company_id),'income_year':int(c.income_year),'manifest_sha256':c.manifest_sha256,
+                    'payload_sha256':c.payload_sha256,'predecessor_submission_id':None,
+                    'claimed_by':str(c.claimed_by.subject),'claimed_at':c.claimed_at} for c in original.source_submission_claims])
+            if 'submission_heads' in sql:
+                head=original.submission_head
+                return Cursor([] if head is None else [{'company_id':str(head.company_id),'income_year':int(head.income_year),
+                    'obligation':head.obligation,'environment':head.environment,'submission_id':head.submission_id.value,'updated_at':head.updated_at}])
+            if 'production_filing_submissions t' in sql:return Cursor([row(item) for item in original.production_submissions])
             if 'year_source_versions' in sql:
                 assert args==(line.source_id,str(original.company_id),int(original.income_year))
                 return Cursor([] if missing=='source' else [{'retained':True}])
@@ -187,4 +200,6 @@ def test_actual_adapter_reads_original_lineage_on_same_snapshot_without_current_
     else:
         actual=asyncio.run(run())
         assert actual.source_approval_lineage==original.source_approval_lineage
+        assert actual.source_submission_claims==original.source_submission_claims
+        assert actual.submission_head==original.submission_head
         assert any('source_approval_bindings' in sql for sql,args in calls)

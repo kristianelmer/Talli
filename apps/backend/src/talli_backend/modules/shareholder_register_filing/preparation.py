@@ -146,9 +146,7 @@ def _validate_archive_production(query, result):
             approved_manifest=row.manifest))
     for row in result.production_submissions:
         require(row.obligation == "aksjonaerregisteroppgaven" and row.environment == "production")
-        # Full-year send and its historical journal validation are a successor
-        # boundary. Never publish a partial archive as complete production proof.
-        require(row.case_profile == 'rf1086_no_activity_v1')
+        require(row.case_profile in ('rf1086_no_activity_v1','rf1086_full_year_v1'))
         require(row.approval_id in approvals)
         approval = approvals[row.approval_id]
         require((row.entitlement_id, row.user_id, row.payload_hash, row.case_profile, row.adapter_version)
@@ -161,6 +159,8 @@ def _validate_archive_production(query, result):
             require(predecessor not in seen and predecessor in submissions)
             seen.add(predecessor)
             predecessor = submissions[predecessor].supersedes_submission_id
+    from .source_archive import validate_source_submissions
+    validate_source_submissions(query, result, require)
     document_ids = set()
     artifact_hashes = {identity: set() for identity in submissions}
     for artifact in result.feedback_artifacts:

@@ -198,3 +198,15 @@ parent. The approval and claim workflows share this policy and still verify
 feedback originals before admission and retained receipts inside the guard.
 This resolves the predecessor-profile limitation; complete archive export still
 requires full-year claim/head coverage and historical journal verification.
+
+## Full-year archive source and download checkpoint
+
+The production archive now validates and exports source approval lineage, exact
+submission claims, the managed filing head, complete correction ancestry, and
+original document/confirmation journal commitments. Terminal results require
+retained feedback and reconciliation; unknown outcomes remain unknown. API and
+web transport retain these records, and company downloads reject missing or
+changed source-original objects. This supersedes earlier statements that the
+full-year archive source contract is absent. Consolidated restore, complete
+retention generation and cross-year original-object inclusion remain pending.
+See `source-submission-archive-20260928.json` for bounded verification.

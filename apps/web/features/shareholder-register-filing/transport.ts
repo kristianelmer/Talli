@@ -91,6 +91,20 @@ export async function loadRf1086ArchiveSource(
     || [...value.productionEvents, ...value.feedbackArtifacts].some(row => !submissionIds.has(row.submissionId))) {
     throw new TalliApiError(502, undefined);
   }
+  const sourceApprovals = value.approvals.filter(row => row.caseProfile === "rf1086_full_year_v1");
+  const sourceSubmissions = value.productionSubmissions.filter(row => row.caseProfile === "rf1086_full_year_v1");
+  const lineage = value.sourceApprovalLineage ?? [], claims = value.sourceSubmissionClaims ?? [];
+  if (lineage.length !== sourceApprovals.length || new Set(lineage.map(row => row.approvalId)).size !== lineage.length
+      || lineage.some(row => row.companyId !== companyId || row.incomeYear !== incomeYear
+        || !sourceApprovals.some(approval => approval.id === row.approvalId && approval.manifestHash === row.manifestSha256))
+      || claims.length !== sourceSubmissions.length || new Set(claims.map(row => row.submissionId)).size !== claims.length
+      || claims.some(row => row.companyId !== companyId || row.incomeYear !== incomeYear
+        || !sourceSubmissions.some(submission => submission.id === row.submissionId
+          && submission.approvalId === row.approvalId && submission.payloadHash === row.payloadSha256
+          && submission.supersedesSubmissionId === row.predecessorSubmissionId))) throw new TalliApiError(502, undefined);
+  const head = value.submissionHead;
+  if (sourceSubmissions.length ? (!head || head.companyId !== companyId || head.incomeYear !== incomeYear
+      || !sourceSubmissions.some(row => row.id === head.submissionId)) : head != null) throw new TalliApiError(502, undefined);
   return value;
 }
 

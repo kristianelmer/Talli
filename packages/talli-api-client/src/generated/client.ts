@@ -4387,6 +4387,27 @@ export interface Rf1086ArchiveSourceApprovalLineageWire {
   sourceSha256: string;
 }
 
+export interface Rf1086SourceSubmissionClaimWire {
+  approvalId: string;
+  claimedAt: string;
+  claimedBy: string;
+  companyId: string;
+  incomeYear: number;
+  manifestSha256: string;
+  payloadSha256: string;
+  predecessorSubmissionId: string | null;
+  submissionId: string;
+}
+
+export interface Rf1086SubmissionHeadWire {
+  companyId: string;
+  environment: "production";
+  incomeYear: number;
+  obligation: "aksjonaerregisteroppgaven";
+  submissionId: string;
+  updatedAt: string;
+}
+
 export interface Rf1086ProductionArchiveSourceWire {
   approvals: Rf1086ApprovalWire[];
   companyId: string;
@@ -4399,6 +4420,8 @@ export interface Rf1086ProductionArchiveSourceWire {
   reviewComments: Rf1086ReviewCommentWire[];
   simulations: Rf1086SimulationWire[];
   sourceApprovalLineage?: Rf1086ArchiveSourceApprovalLineageWire[];
+  sourceSubmissionClaims?: Rf1086SourceSubmissionClaimWire[];
+  submissionHead?: Rf1086SubmissionHeadWire | null;
   testEvidence: Rf1086TestEvidenceWire[];
 }
 
@@ -10538,10 +10561,39 @@ function isRf1086ArchiveSourceApprovalLineageWire(value: unknown): value is Rf10
   );
 }
 
+function isRf1086SourceSubmissionClaimWire(value: unknown): value is Rf1086SourceSubmissionClaimWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvalId","claimedAt","claimedBy","companyId","incomeYear","manifestSha256","payloadSha256","predecessorSubmissionId","submissionId"]) &&
+    isUuid(value.approvalId) &&
+    isDateTime(value.claimedAt) &&
+    isUuid(value.claimedBy) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (typeof value.manifestSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.manifestSha256)) &&
+    (typeof value.payloadSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.payloadSha256)) &&
+    (isUuid(value.predecessorSubmissionId) || value.predecessorSubmissionId === null) &&
+    isUuid(value.submissionId)
+  );
+}
+
+function isRf1086SubmissionHeadWire(value: unknown): value is Rf1086SubmissionHeadWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","environment","incomeYear","obligation","submissionId","updatedAt"]) &&
+    isUuid(value.companyId) &&
+    value.environment === "production" &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    value.obligation === "aksjonaerregisteroppgaven" &&
+    isUuid(value.submissionId) &&
+    isDateTime(value.updatedAt)
+  );
+}
+
 function isRf1086ProductionArchiveSourceWire(value: unknown): value is Rf1086ProductionArchiveSourceWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["approvals","companyId","feedbackArtifacts","incomeYear","permissions","previews","productionEvents","productionSubmissions","reviewComments","simulations","sourceApprovalLineage","testEvidence"]) &&
+    hasOnlyProperties(value, ["approvals","companyId","feedbackArtifacts","incomeYear","permissions","previews","productionEvents","productionSubmissions","reviewComments","simulations","sourceApprovalLineage","sourceSubmissionClaims","submissionHead","testEvidence"]) &&
     Array.isArray(value.approvals) && value.approvals.every((item) => isRf1086ApprovalWire(item)) &&
     isUuid(value.companyId) &&
     Array.isArray(value.feedbackArtifacts) && value.feedbackArtifacts.every((item) => isRf1086ArchiveFeedbackArtifactWire(item)) &&
@@ -10553,6 +10605,8 @@ function isRf1086ProductionArchiveSourceWire(value: unknown): value is Rf1086Pro
     Array.isArray(value.reviewComments) && value.reviewComments.every((item) => isRf1086ReviewCommentWire(item)) &&
     Array.isArray(value.simulations) && value.simulations.every((item) => isRf1086SimulationWire(item)) &&
     (value.sourceApprovalLineage === undefined || Array.isArray(value.sourceApprovalLineage) && value.sourceApprovalLineage.every((item) => isRf1086ArchiveSourceApprovalLineageWire(item))) &&
+    (value.sourceSubmissionClaims === undefined || Array.isArray(value.sourceSubmissionClaims) && value.sourceSubmissionClaims.every((item) => isRf1086SourceSubmissionClaimWire(item))) &&
+    (value.submissionHead === undefined || (isRf1086SubmissionHeadWire(value.submissionHead) || value.submissionHead === null)) &&
     Array.isArray(value.testEvidence) && value.testEvidence.every((item) => isRf1086TestEvidenceWire(item))
   );
 }

@@ -49,3 +49,9 @@ confirmation are required, and prior filings can be selected for a reviewed
 correction. An uncertain approval keeps the identical command for retry. Approval
 does not send; the interface explicitly reports full-year submission unavailable
 until its guarded command is implemented. All decisive checks remain in RF.
+
+Full-year archive transport requires complete source-approval lineage, matching
+submission claims and a scoped filing head. Company downloads preserve these
+records and check each retained source document against the exported Documents
+object identity, hash, length, type and status. Missing or changed originals block
+export. This does not establish consolidated restore or retention coverage.

@@ -113,7 +113,8 @@
       "Rf1086SourceSubmissionClaim",
       "Rf1086SourceSubmissionClaimResult",
       "inspect_rf1086_retained_source_approval",
-      "assert_rf1086_source_submission_claim"
+      "assert_rf1086_source_submission_claim",
+      "Rf1086SubmissionHead"
     ],
     "events": [],
     "errors": [

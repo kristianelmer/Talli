@@ -20903,6 +20903,23 @@
             "title": "Sourceapprovallineage",
             "type": "array"
           },
+          "sourceSubmissionClaims": {
+            "items": {
+              "$ref": "#/components/schemas/Rf1086SourceSubmissionClaimWire"
+            },
+            "title": "Sourcesubmissionclaims",
+            "type": "array"
+          },
+          "submissionHead": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Rf1086SubmissionHeadWire"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "testEvidence": {
             "items": {
               "$ref": "#/components/schemas/Rf1086TestEvidenceWire"
@@ -21664,6 +21681,121 @@
           "submittedBy"
         ],
         "title": "Rf1086SimulationWire",
+        "type": "object"
+      },
+      "Rf1086SourceSubmissionClaimWire": {
+        "properties": {
+          "approvalId": {
+            "format": "uuid",
+            "title": "Approvalid",
+            "type": "string"
+          },
+          "claimedAt": {
+            "format": "date-time",
+            "title": "Claimedat",
+            "type": "string"
+          },
+          "claimedBy": {
+            "format": "uuid",
+            "title": "Claimedby",
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "manifestSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Manifestsha256",
+            "type": "string"
+          },
+          "payloadSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Payloadsha256",
+            "type": "string"
+          },
+          "predecessorSubmissionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predecessorsubmissionid"
+          },
+          "submissionId": {
+            "format": "uuid",
+            "title": "Submissionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "submissionId",
+          "approvalId",
+          "companyId",
+          "incomeYear",
+          "manifestSha256",
+          "payloadSha256",
+          "predecessorSubmissionId",
+          "claimedBy",
+          "claimedAt"
+        ],
+        "title": "Rf1086SourceSubmissionClaimWire",
+        "type": "object"
+      },
+      "Rf1086SubmissionHeadWire": {
+        "properties": {
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "environment": {
+            "const": "production",
+            "title": "Environment",
+            "type": "string"
+          },
+          "incomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Incomeyear",
+            "type": "integer"
+          },
+          "obligation": {
+            "const": "aksjonaerregisteroppgaven",
+            "title": "Obligation",
+            "type": "string"
+          },
+          "submissionId": {
+            "format": "uuid",
+            "title": "Submissionid",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "companyId",
+          "incomeYear",
+          "obligation",
+          "environment",
+          "submissionId",
+          "updatedAt"
+        ],
+        "title": "Rf1086SubmissionHeadWire",
         "type": "object"
       },
       "Rf1086SubmittedPayloadReferenceWire": {

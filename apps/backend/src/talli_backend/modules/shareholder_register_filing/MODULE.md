@@ -557,8 +557,8 @@ and appends the canonical manifest with immutable source and raw review bindings
 The review and append share the company/year guard. Exact replay rechecks current
 admission; changed review requires renewed confirmation. Historical archives
 rebuild full-year manifests from retained lineage without consulting current
-source heads. Full-year submissions remain blocked pending their independent
-claim, correction, byte-verification and journal integration. The legacy stored
+source heads. Full-year provider dispatch remains blocked pending its guarded application
+composition and journal integration. Claims and correction validation are described below. The legacy stored
 readiness prerequisite remains until its owned full-year replacement is ready.
 Rollback suspends new approvals while preserving evidence and send barriers.
 
@@ -615,7 +615,7 @@ Rollback revokes the new claim command but retains heads, claims and historical
 visibility. Replay the claim successor after the review/approval predecessors.
 The existing production submission generation trigger records claim insertion
 in the same transaction. Full-year application dispatch, owned annual readiness,
-original-byte revalidation at send and archive claim lineage remain required
+original-byte revalidation at send remain required
 before enabling the full-year send path; this database foundation does not expose
 an HTTP send command or activate production.
 
@@ -644,5 +644,16 @@ predecessors cannot carry source-only lineage. The adapter loads both forms on
 the caller's snapshot or guarded connection; it never substitutes current source
 or review inputs for captured history. The application still verifies feedback
 originals before the guard and compares the complete snapshot and original
-receipts inside it. Whole-year submission archive export remains a separate
-pending boundary; this predecessor support does not open provider dispatch.
+receipts inside it. This predecessor support does not open provider dispatch.
+
+The production archive now includes `source_submission_claims` and the scoped
+`Rf1086SubmissionHead` from the same database snapshot as original approvals and
+journal rows. Full-year records require exactly matching immutable claims and a
+complete linear history ending at that head. Their journal mutation names, XML
+hashes and persistent idempotency keys must match the approved source document
+order; terminal submissions require successful document posts and confirmation
+as well as retained reconciliation/artifact evidence. Unknown outcomes remain
+unknown in the export. The API exposes claim/head DTOs without granting send
+authority, and legacy-only archives preserve their existing shape plus empty
+claim/head fields. This is RF archive source coverage; company-wide retention
+generation and consolidated backup/restore validation still require separate proof.

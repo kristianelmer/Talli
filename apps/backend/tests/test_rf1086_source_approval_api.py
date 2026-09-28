@@ -242,3 +242,28 @@ def test_actual_http_archive_exports_exact_original_source_and_approval_lineage(
     assert source['command']['correctionReason'] is None
     assert source['command']['paidIn']['openingCapital'] == str(lineage.source.command.paid_in.opening_capital)
     assert 'actorId' not in source['command'] and 'freshness' not in source and 'context' not in source
+
+
+@pytest.mark.parametrize('status',['approved','accepted','rejected'])
+def test_actual_http_archive_exports_source_claim_head_and_verified_journal(status):
+    from test_rf1086_source_submission_archive import source_submission_archive
+    from test_rf1086_year_source import ACTOR
+    snapshot=source_submission_archive(status=status)
+    class Session:
+        actor_id=ACTOR
+        async def archive_source(self,query):return snapshot
+    class Sessions:
+        async def session(self,token):return Session()
+    client=TestClient(create_app(shareholder_register_filing_session_factory=Sessions()))
+    response=client.get(BASE+'/archive-source/production',headers=HEADERS,
+        params={'companyId':str(snapshot.company_id),'incomeYear':int(snapshot.income_year)})
+    assert response.status_code==200,response.text
+    body=response.json();claim=snapshot.source_submission_claims[0]
+    assert body['sourceSubmissionClaims']==[{'submissionId':claim.submission_id.value,'approvalId':claim.approval_id.value,
+        'companyId':str(claim.company_id),'incomeYear':int(claim.income_year),'manifestSha256':claim.manifest_sha256,
+        'payloadSha256':claim.payload_sha256,'predecessorSubmissionId':None,'claimedBy':str(claim.claimed_by.subject),
+        'claimedAt':claim.claimed_at}]
+    assert body['submissionHead']['submissionId']==claim.submission_id.value
+    assert body['submissionHead']['environment']=='production'
+    assert len(body['productionEvents'])==len(snapshot.production_events)
+    assert response.headers['cache-control']=='no-store'
