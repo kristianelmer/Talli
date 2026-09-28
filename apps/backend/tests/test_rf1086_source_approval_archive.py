@@ -14,7 +14,8 @@ from test_rf1086_year_source import ACTOR, NOW
 
 
 def source_archive(kind='no_activity'):
-    basis = manifest_basis(source_for(source_case(kind)))
+    from rf1086_archive_documents import evidence
+    basis = manifest_basis(source_for(source_case(kind), document=evidence()))
     source, preview = basis.source, basis.preview
     company, year, actor = str(source.company_id), int(source.income_year), str(ACTOR.subject)
     payload = sha256(rf.serialize_rf1086_source_preview(preview).encode()).hexdigest()

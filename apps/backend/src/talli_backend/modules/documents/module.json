@@ -25,7 +25,9 @@
       "RetainedDocumentOriginalReceipt",
       "RetainedDocumentOriginal",
       "RetainedDocumentOriginalQuery",
-      "RetainedDocumentOriginalSnapshot"
+      "RetainedDocumentOriginalSnapshot",
+      "serialize_retained_document_original",
+      "parse_retained_document_original"
     ],
     "events": [],
     "errors": [
@@ -139,7 +141,8 @@
     "talli_backend.shared.kernel",
     "typing",
     "unicodedata",
-    "uuid"
+    "uuid",
+    "base64"
   ],
   "forbiddenResponsibilities": [
     "Corporate-governance, filing, ledger, investment, authority, or archive composition policy",
@@ -156,7 +159,8 @@
     "retainedOriginals": "apps/backend/tests/test_document_originals.py",
     "retainedOriginalsDatabase": "apps/backend/tests/test_document_originals_database.py",
     "companyGuardDatabase": "apps/backend/tests/test_documents_rf_company_guard_database.py",
-    "companyGuardAdapter": "apps/backend/tests/test_consequential_adapter_guards.py"
+    "companyGuardAdapter": "apps/backend/tests/test_consequential_adapter_guards.py",
+    "originalArchive": "apps/backend/tests/test_document_original_archive.py"
   },
   "compatibilityExceptions": []
 }

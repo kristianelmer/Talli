@@ -218,7 +218,8 @@ def test_actual_http_archive_exports_exact_original_source_and_approval_lineage(
         async def session(self, token):
             assert token == 'token'
             return Session()
-    client = TestClient(create_app(shareholder_register_filing_session_factory=Sessions()))
+    from rf1086_archive_documents import DocumentsFactory
+    client = TestClient(create_app(shareholder_register_filing_session_factory=Sessions(), documents_session_factory=DocumentsFactory()))
     response = client.get(BASE+'/archive-source/production',headers=HEADERS,
         params={'companyId':str(snapshot.company_id),'incomeYear':int(snapshot.income_year)})
     assert response.status_code == 200,response.text
@@ -254,7 +255,8 @@ def test_actual_http_archive_exports_source_claim_head_and_verified_journal(stat
         async def archive_source(self,query):return snapshot
     class Sessions:
         async def session(self,token):return Session()
-    client=TestClient(create_app(shareholder_register_filing_session_factory=Sessions()))
+    from rf1086_archive_documents import DocumentsFactory
+    client=TestClient(create_app(shareholder_register_filing_session_factory=Sessions(), documents_session_factory=DocumentsFactory()))
     response=client.get(BASE+'/archive-source/production',headers=HEADERS,
         params={'companyId':str(snapshot.company_id),'incomeYear':int(snapshot.income_year)})
     assert response.status_code==200,response.text

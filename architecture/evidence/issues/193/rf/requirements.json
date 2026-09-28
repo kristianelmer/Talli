@@ -147,5 +147,6 @@
   "governanceEvidenceAuthorityRollback": "governance-evidence-authority-rollback-20260928.json",
   "canonicalArchiveReconstruction": "canonical-archive-reconstruction-20260928.json",
   "governanceScopedRecutover": "governance-scoped-recutover-20260928.json",
-  "historicalOriginalRecovery": "historical-original-recovery-20260928.json"
+  "historicalOriginalRecovery": "historical-original-recovery-20260928.json",
+  "portableSourceOriginals": "source-original-bundle-20260928.json"
 }

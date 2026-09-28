@@ -1,3 +1,4 @@
+import { rf1086SourceOriginalsMatch } from "./rf1086-original-integrity.ts";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 
@@ -41,8 +42,7 @@ export function rf1086SourceRestoreFailures(rf: Record<string, any>, objects: an
   if (claims.length !== submissions.length
       || new Set(claims.map(row => row.submissionId)).size !== claims.length
       || new Set(claims.map(row => row.approvalId)).size !== claims.length) fail("claim_mismatch");
-  const objectMap = new Map(objects.filter(record).map(row => [row.documentId, row]));
-  if (lineage.length && (objectMap.size !== objects.length)) fail("document_object_mismatch");
+  if (!rf1086SourceOriginalsMatch(rf)) fail("document_object_mismatch");
   for (const line of lineage) {
     const approval = approvals.find((row: any) => row.id === line.approvalId);
     const receipt = line.source?.receipt, command = line.source?.command;
@@ -91,15 +91,7 @@ export function rf1086SourceRestoreFailures(rf: Record<string, any>, objects: an
             return typeof xml !== "string" || digest(xml) !== row.sha256;
           })) fail("xml_commitment_mismatch");
     } else fail("xml_commitment_mismatch");
-    if (!Array.isArray(command.documents) || command.documents.some((source: any) => {
-      if (!record(source)) return true;
-      const object = objectMap.get(source.documentId);
-      return source.companyId !== rf.companyId || !hash(source.contentSha256)
-        || !Number.isSafeInteger(source.byteLength) || source.byteLength <= 0
-        || !object || object.contentSha256 !== source.contentSha256 || object.byteLength !== source.byteLength
-        || object.documentType !== source.documentType || object.status !== source.integrityStatus
-        || typeof object.storageKey !== "string" || !object.storageKey || object.removedAt != null;
-    })) fail("document_object_mismatch");
+
   }
   for (const claim of claims) {
     const submission = submissions.find((row: any) => row.id === claim.submissionId);

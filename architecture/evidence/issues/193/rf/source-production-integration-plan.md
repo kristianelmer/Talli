@@ -234,3 +234,17 @@ for RF to know an internal Documents receipt ID in order to request historical
 originals. Company archive composition and portable cross-year byte bundles are
 still pending; no database/object restore is claimed. See
 `historical-original-recovery-20260928.json`.
+
+
+## Portable approved-source originals
+
+The production RF endpoint and company download now compose exact historical
+source-original metadata and bytes via Documents public contracts. Prior-year
+source evidence is preserved without substituting the current-year document
+projection. The local verifier checks these records against canonical RF source
+commitments, and `--require-source-originals` rejects incomplete bundles. This
+supersedes the pending approved-source byte-composition item above. Actual
+DB/object hydration, feedback and other document byte bundles, unapproved source
+history, streaming bundles beyond the bounded inline limit, and complete
+retention/expiry/cancellation coverage still need implementation and proof.
+See `source-original-bundle-20260928.json` for the bounded evidence.

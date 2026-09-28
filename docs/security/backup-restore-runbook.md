@@ -109,3 +109,27 @@ editable display projections as authority. Changed facts fail even if the outer
 container checksum is recomputed. The checksum is not an independent signature
 or proof of provenance. Keep the actual database and object-byte recovery gate
 pending until its separate rehearsal succeeds.
+
+
+### Verify retained source-original bytes
+
+New endpoint exports and company downloads include `sourceOriginals` alongside
+the canonical RF record. Each entry preserves an exact Documents-owned metadata
+version and immutable original bytes, including evidence from prior years. The
+current-year document projection is not a replacement for these records. Require
+complete source originals when verifying a downloaded bundle:
+
+```sh
+apps/backend/.venv/bin/python apps/backend/scripts/verify_rf1086_archive.py company-archive.json --company-id COMPANY_UUID --income-year 2025 --require-source-originals
+```
+
+A pass additionally reports `sourceOriginalBytesVerified: true` and the number
+of distinct retained source versions. Any missing, duplicate, changed or surplus
+original fails. With or without the flag, an included `sourceOriginals` field is
+always checked. A bare canonical record remains usable for RF-only diagnosis
+without the flag; its result does not claim source-byte verification. The inline
+transport allows up to 128 MiB of original source bytes; larger bundles fail
+closed and require a future streaming export. Feedback originals and other
+company objects are not covered by this source-byte result, and
+`objectBytesVerified` and `databaseRestorePerformed` remain false. Actual
+restoration, unapproved history and retention/expiry coverage still need proof.

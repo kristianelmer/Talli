@@ -809,3 +809,14 @@ verifies originals before taking the guard, rechecks all current source facts,
 then reads and persists RF-owned review/approval state through that same
 connection. Authority request locks precede Billing entitlement locks. It
 performs no provider operation; submission remains independently gated.
+
+
+RF archive composition uses `talli_backend.application.shareholder_register_archive`
+to join retained RF source identities with Documents' public original-recovery
+and portable-record contracts. The same authenticated owner context is required;
+there is no cross-capability table access or provider operation. Exact metadata
+versions and source years remain independent of mutable document projections.
+
+<!-- architecture-inventory
+{"transportDependencies":["talli_backend.application.shareholder_register_archive"]}
+-->

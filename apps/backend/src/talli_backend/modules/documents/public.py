@@ -429,7 +429,20 @@ def document_metadata_sha256(document: DocumentRecord) -> str:
     return metadata_sha256(document)
 
 
+def serialize_retained_document_original(snapshot: RetainedDocumentOriginalSnapshot, *, query: RetainedDocumentOriginalQuery) -> str:
+    """Encode verified captured metadata and exact bytes, without filing authority."""
+    from .archive_storage import serialize
+    return serialize(snapshot, query=query)
+
+
+def parse_retained_document_original(value: str, *, query: RetainedDocumentOriginalQuery) -> RetainedDocumentOriginalSnapshot:
+    """Verify portable evidence against an independently retained source identity."""
+    from .archive_storage import parse
+    return parse(value, query=query)
+
+
 __all__ = [
+    "serialize_retained_document_original", "parse_retained_document_original",
     "RetainedDocumentOriginalQuery", "RetainedDocumentOriginalSnapshot",
     "RetainedDocumentOriginalReceipt", "RetainedDocumentOriginal", "DocumentOriginalPersistence",
     "document_original_persistence_adapter",

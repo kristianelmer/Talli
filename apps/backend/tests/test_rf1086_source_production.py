@@ -16,8 +16,11 @@ from test_rf1086_register_projection import formation_transfer_issue_case
 from test_shareholder_register_filing_production import Authority, OperationJournal
 
 
-def source_for(case):
+def source_for(case, *, document=None):
     command, context = basis()
+    if document is not None:
+        command = replace(command, documents=(document,))
+        context = replace(context, documents=(document,))
     shares = case.share_snapshot
     paid_in = rf.Rf1086PaidInSourceFacts(shares.previous_paid_in_share_capital,
         shares.current_paid_in_share_capital, shares.previous_paid_in_premium, shares.current_paid_in_premium)

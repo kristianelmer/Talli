@@ -984,6 +984,7 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "Rf1086ActionAvailabilityWire",
   "Rf1086WorkspaceWire",
   "Rf1086ArchiveSourceWire",
+  "Rf1086ArchiveSourceOriginalWire",
   "Rf1086ArchivedYearSourceWire",
   "Rf1086ArchiveSourceReviewBridgeWire",
   "Rf1086ArchiveSourceApprovalLineageWire",

@@ -60,3 +60,11 @@ Production archive responses also carry the opaque `canonicalArchive` record.
 Company downloads preserve it byte-for-byte for Python-owned source and history
 verification. The web restore fixture checks its container checksum; it does not
 interpret canonical RF facts or grant restore/submission authority.
+
+
+`sourceOriginals` carries Documents-owned portable records for exact historical
+source versions, including prior-year originals. The download preserves these
+records verbatim. Web checks only scope, shape and metadata/byte commitments;
+Python owns record reconstruction. Restore consistency no longer substitutes the
+current-year Documents projection for captured source metadata. Feedback receipt
+projection checks still apply. These checks do not hydrate a database or bucket.

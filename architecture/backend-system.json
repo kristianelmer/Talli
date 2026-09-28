@@ -1131,7 +1131,8 @@
       "talli_backend.json_transport",
       "talli_backend.application.shareholder_register_source_workflow",
       "talli_backend.application.corporate_register_evidence",
-      "talli_backend.application.shareholder_register_source_approval"
+      "talli_backend.application.shareholder_register_source_approval",
+      "talli_backend.application.shareholder_register_archive"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",

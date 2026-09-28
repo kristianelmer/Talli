@@ -541,22 +541,37 @@ for (const [name, change, failure] of [
   });
 }
 
-for (const field of ["contentSha256", "byteLength", "documentType", "status", "storageKey", "removedAt"]) {
-  test(`full-year restore rejects source-original object ${field} changes`, () => {
+for (const field of ["contentSha256", "byteLength", "metadataSha256", "sourceIncomeYear", "documentId"]) {
+  test(`full-year restore rejects retained source-original ${field} changes`, () => {
     const archive = fullYearArchiveFixture();
-    const object = archive.documentBackupProjection.objects.at(-1);
-    object[field] = field === "storageKey" ? null : field === "byteLength" ? 999 : "changed";
+    archive.rf1086Production.sourceOriginals[0][field] = field === "byteLength" || field === "sourceIncomeYear" ? 1 : "changed";
     assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_document_object_mismatch"));
   });
 }
 
-test("full-year restore rejects missing and duplicate original objects", () => {
-  for (const duplicate of [false, true]) {
+test("full-year restore rejects missing, duplicate and damaged retained originals", () => {
+  for (const change of ["missing", "duplicate", "bytes", "metadata"]) {
     const archive = fullYearArchiveFixture();
-    if (duplicate) archive.documentBackupProjection.objects.push(structuredClone(archive.documentBackupProjection.objects.at(-1)));
-    else archive.documentBackupProjection.objects.pop();
+    const originals = archive.rf1086Production.sourceOriginals;
+    if (change === "missing") originals.pop();
+    else if (change === "duplicate") originals.push(structuredClone(originals[0]));
+    else {
+      const record = JSON.parse(originals[0].canonicalOriginal);
+      record[change === "bytes" ? "contentBase64" : "documentText"] += "changed";
+      originals[0].canonicalOriginal = JSON.stringify(record);
+    }
     assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_document_object_mismatch"));
   }
+});
+
+test("full-year restore uses captured prior-year originals independently of current document metadata", () => {
+  const archive = fullYearArchiveFixture();
+  archive.documentBackupProjection.objects.pop();
+  assert.equal(archive.rf1086Production.sourceOriginals[0].sourceIncomeYear, 2024);
+  assert.equal(archive.incomeYear, 2025);
+  const restored = restoreFullYear(archive);
+  assert.equal(assertRestoreIntegrity(restored).ok, true);
+  assert.equal(restored.manifest.counts.rf1086SourceOriginals, 1);
 });
 
 test("approval-only source archives require lineage and originals but no claim or managed head", () => {

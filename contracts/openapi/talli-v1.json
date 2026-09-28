@@ -20236,6 +20236,57 @@
         "title": "Rf1086ArchiveSourceApprovalLineageWire",
         "type": "object"
       },
+      "Rf1086ArchiveSourceOriginalWire": {
+        "properties": {
+          "byteLength": {
+            "maximum": 10485760.0,
+            "minimum": 1.0,
+            "title": "Bytelength",
+            "type": "integer"
+          },
+          "canonicalOriginal": {
+            "title": "Canonicaloriginal",
+            "type": "string"
+          },
+          "companyId": {
+            "format": "uuid",
+            "title": "Companyid",
+            "type": "string"
+          },
+          "contentSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Contentsha256",
+            "type": "string"
+          },
+          "documentId": {
+            "format": "uuid",
+            "title": "Documentid",
+            "type": "string"
+          },
+          "metadataSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Metadatasha256",
+            "type": "string"
+          },
+          "sourceIncomeYear": {
+            "maximum": 2100.0,
+            "minimum": 2000.0,
+            "title": "Sourceincomeyear",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "documentId",
+          "companyId",
+          "sourceIncomeYear",
+          "metadataSha256",
+          "contentSha256",
+          "byteLength",
+          "canonicalOriginal"
+        ],
+        "title": "Rf1086ArchiveSourceOriginalWire",
+        "type": "object"
+      },
       "Rf1086ArchiveSourceReviewBridgeWire": {
         "properties": {
           "companyId": {
@@ -20912,6 +20963,13 @@
               "$ref": "#/components/schemas/Rf1086ArchiveSourceApprovalLineageWire"
             },
             "title": "Sourceapprovallineage",
+            "type": "array"
+          },
+          "sourceOriginals": {
+            "items": {
+              "$ref": "#/components/schemas/Rf1086ArchiveSourceOriginalWire"
+            },
+            "title": "Sourceoriginals",
             "type": "array"
           },
           "sourceSubmissionClaims": {

@@ -490,18 +490,15 @@ test("successful production archive endpoint cannot omit productionSubmissions",
   assert.equal(fixture.captures.length, 0);
 });
 
-test('full-year archive requires the exact source-document objects as well as feedback receipts', () => {
+test('full-year archive requires exact retained source versions independently of current-year objects', () => {
   const filing = JSON.parse(readFileSync(new URL('./fixtures/rf1086-source-submission-archive.json', import.meta.url), 'utf8'));
-  const documents = { companyId: filing.companyId, incomeYear: filing.incomeYear,
-    objects: filing.sourceApprovalLineage.flatMap(line => line.source.command.documents).map(source => ({
-      documentId: source.documentId, contentSha256: source.contentSha256, byteLength: source.byteLength,
-      documentType: source.documentType, status: source.integrityStatus, storageKey: 'retained/source', removedAt: null,
-    })) };
+  const documents = { companyId: filing.companyId, incomeYear: filing.incomeYear, objects: [] };
   assert.equal(rf1086ArchiveReceiptsMatch(filing, documents), true);
-  assert.equal(rf1086ArchiveReceiptsMatch(filing, { ...documents, objects: [] }), false);
-  for (const mutation of [{ contentSha256: 'f'.repeat(64) }, { byteLength: 1 }, { storageKey: '' },
-    { removedAt: at }, { documentType: 'other' }, { status: 'missing' }]) {
-    assert.equal(rf1086ArchiveReceiptsMatch(filing, { ...documents, objects: [{ ...documents.objects[0], ...mutation }] }), false);
+  assert.equal(filing.sourceOriginals[0].sourceIncomeYear, 2024);
+  assert.equal(rf1086ArchiveReceiptsMatch({ ...filing, sourceOriginals: [] }, documents), false);
+  for (const mutation of [{ contentSha256: 'f'.repeat(64) }, { byteLength: 1 }, { sourceIncomeYear: 2025 },
+    { metadataSha256: 'f'.repeat(64) }, { canonicalOriginal: '{}' }]) {
+    assert.equal(rf1086ArchiveReceiptsMatch({ ...filing, sourceOriginals: [{ ...filing.sourceOriginals[0], ...mutation }] }, documents), false);
   }
 });
 
@@ -509,10 +506,11 @@ test('download forwards source lineage, immutable claims and managed head withou
   const input = productionArchiveFixture();
   const lineage = [], claims = [], head = null;
   const fixture = route({ ...input, rfLoader: async () => ({ ...input.rf, companyId, incomeYear: 2025,
-    sourceApprovalLineage: lineage, sourceSubmissionClaims: claims, submissionHead: head, canonicalArchive: "retained-record" }) });
+    sourceApprovalLineage: lineage, sourceSubmissionClaims: claims, submissionHead: head, canonicalArchive: "retained-record", sourceOriginals: [] }) });
   assert.equal((await fixture.run()).status, 200);
   assert.deepEqual(fixture.captures[0].rf1086Production.sourceApprovalLineage, lineage);
   assert.deepEqual(fixture.captures[0].rf1086Production.sourceSubmissionClaims, claims);
   assert.equal(fixture.captures[0].rf1086Production.submissionHead, head);
   assert.equal(fixture.captures[0].rf1086Production.canonicalArchive, "retained-record");
+  assert.deepEqual(fixture.captures[0].rf1086Production.sourceOriginals, []);
 });

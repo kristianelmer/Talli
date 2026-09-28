@@ -181,3 +181,19 @@ current-source approval or submission authority.
 
 This is a recovery primitive. Company archive composition, portable byte bundles,
 database/object hydration and retention-expiry coverage remain separate work.
+
+
+### Portable retained-original record
+
+`serialize_retained_document_original` and `parse_retained_document_original`
+encode and verify `documents-retained-original-v1`. The closed record preserves
+Documents' canonical complete metadata text, the immutable receipt and exact
+base64 bytes. Parsing takes an independently captured
+`RetainedDocumentOriginalQuery`; it checks company/document/source year,
+metadata/content hashes and length, and rejects duplicate or unknown fields,
+altered metadata, invalid base64 and noncanonical nested identities. Failures
+raise `DOCUMENT_INTEGRITY_FAILED`. The existing metadata digest is unchanged.
+Each record is limited to 16 MiB and each original to 10 MiB. This is portable
+evidence verification, without authentication, filing permission or a database
+restore. A checksum cannot independently authenticate a maliciously replaced
+record together with its supposedly independent source commitment.

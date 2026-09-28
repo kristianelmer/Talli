@@ -1,3 +1,4 @@
+import { rf1086SourceOriginalsMatch } from "./rf1086-original-integrity.ts";
 import type {
   AuthorityPermissionRow,
   AuthorityTestRunRow,
@@ -29,7 +30,7 @@ import type { RecordedSupportedCorporateEventWire } from "../../features/corpora
 import type { Rf1086ProductionArchiveSourceWire } from "../../features/shareholder-register-filing";
 
 export type Rf1086ProductionArchive = Pick<Rf1086ProductionArchiveSourceWire,
-  "companyId" | "incomeYear" | "approvals" | "productionSubmissions" | "productionEvents" | "feedbackArtifacts" | "sourceApprovalLineage" | "sourceSubmissionClaims" | "submissionHead" | "canonicalArchive">;
+  "companyId" | "incomeYear" | "approvals" | "productionSubmissions" | "productionEvents" | "feedbackArtifacts" | "sourceApprovalLineage" | "sourceSubmissionClaims" | "submissionHead" | "canonicalArchive" | "sourceOriginals">;
 
 /** Each retained RF receipt must resolve to the exact Documents-owned object. */
 export function rf1086ArchiveReceiptsMatch(
@@ -45,14 +46,7 @@ export function rf1086ArchiveReceiptsMatch(
       && object.contentType === receipt.contentType && Boolean(object.storageKey)
       && object.status === "stored" && object.removedAt === null;
   });
-  const sourceDocuments = (filing.sourceApprovalLineage ?? []).flatMap(line => line.source.command.documents);
-  return receiptsMatch && sourceDocuments.every(source => {
-    const object = objects.get(source.documentId);
-    return source.companyId === filing.companyId && object !== undefined
-      && object.contentSha256 === source.contentSha256 && object.byteLength === source.byteLength
-      && object.documentType === source.documentType && object.status === source.integrityStatus
-      && Boolean(object.storageKey) && object.removedAt === null;
-  });
+  return receiptsMatch && rf1086SourceOriginalsMatch(filing);
 }
 
 export type LedgerEntryRow = {

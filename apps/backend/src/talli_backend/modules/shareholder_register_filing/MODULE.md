@@ -676,3 +676,18 @@ this authoritative record from either an API export or a company download. It
 performs no database/provider calls and does not prove retained object bytes.
 Unapproved source history, independent register observations and all original
 object bytes still require the complete owner database/object backup.
+
+
+The production archive composition additionally exports `sourceOriginals` via
+Documents' public historical-recovery and portable-record contracts. Exact
+versions are deduplicated by document/company/source year and metadata/content
+commitments, not document ID alone. Current metadata and current-year document
+lists cannot replace the captured version. Original lookup requires an accepted
+owner with AAL2 and the same verified actor as the RF session. Missing or changed
+originals fail the complete archive response before it can be downloaded.
+The inline bundle permits at most 128 MiB of original source bytes; larger
+bundles fail closed and need a future streaming transport. Feedback and unrelated
+company-document byte bundles, unapproved source history and actual restore
+remain separate work. The offline verifier's `--require-source-originals` flag
+requires every captured source version and validates each with Documents policy;
+it reports source-byte verification separately from database/object restoration.

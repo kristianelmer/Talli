@@ -8,7 +8,7 @@ import json
 from .public import DocumentRecord, DocumentsError
 
 
-def metadata_sha256(document: DocumentRecord) -> str:
+def metadata_text(document: DocumentRecord) -> str:
     def value(item):
         if is_dataclass(item):
             return {field.name: value(getattr(item, field.name)) for field in fields(item)}
@@ -23,5 +23,8 @@ def metadata_sha256(document: DocumentRecord) -> str:
         raise DocumentsError.invalid_input()
     if not isinstance(document, DocumentRecord):
         raise DocumentsError.invalid_input()
-    return hashlib.sha256(json.dumps(value(document), sort_keys=True, ensure_ascii=False,
-                                    separators=(",", ":")).encode("utf-8")).hexdigest()
+    return json.dumps(value(document), sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+
+def metadata_sha256(document: DocumentRecord) -> str:
+    return hashlib.sha256(metadata_text(document).encode("utf-8")).hexdigest()

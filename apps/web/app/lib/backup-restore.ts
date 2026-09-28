@@ -117,6 +117,7 @@ export function buildBackupManifest(archive: Record<string, any>) {
       productionFilingEvents: archive.productionFilingEvents?.length ?? 0,
       rf1086ProductionSubmissions: archive.rf1086Production?.productionSubmissions?.length ?? null,
       rf1086ProductionReceipts: archive.rf1086Production?.feedbackArtifacts?.length ?? null,
+      rf1086SourceOriginals: archive.rf1086Production?.sourceOriginals?.length ?? null,
       rf1086SourceApprovalLineage: archive.rf1086Production?.sourceApprovalLineage?.length ?? null,
       rf1086SourceSubmissionClaims: archive.rf1086Production?.sourceSubmissionClaims?.length ?? null,
       rf1086SubmissionHeads: archive.rf1086Production == null ? null : archive.rf1086Production.submissionHead == null ? 0 : 1,

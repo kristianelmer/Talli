@@ -7,6 +7,8 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
+from talli_backend.application.shareholder_register_archive import verify_source_originals
+from talli_backend.modules.documents.public import DocumentsError
 from talli_backend.modules.shareholder_register_filing import public as rf
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, UserId
 
@@ -25,7 +27,10 @@ def main() -> int:
     parser.add_argument('archive', type=Path)
     parser.add_argument('--company-id', required=True)
     parser.add_argument('--income-year', required=True, type=int)
+    parser.add_argument('--require-source-originals', action='store_true', help='Require all captured source document bytes in a downloaded bundle.')
     args = parser.parse_args()
+    source_originals_verified = False
+    original_count = 0
     try:
         with args.archive.open('rb') as stream:
             content = stream.read(256 * 1024 * 1024 + 1)
@@ -37,6 +42,7 @@ def main() -> int:
             raise ValueError()
         if document.get('codec') == 'rf1086-production-archive-v1':
             canonical = text
+            section = {}
         else:
             section = document.get('rf1086Production', document)
             if type(section) is not dict:
@@ -47,7 +53,11 @@ def main() -> int:
         query = rf.Rf1086ArchiveQuery(CompanyId(args.company_id), IncomeYear(args.income_year),
             ActorId(ActorKind.SYSTEM, UserId('00000000-0000-0000-0000-000000000000')))
         archive = rf.parse_rf1086_archive(canonical, query=query)
-    except (OSError, ValueError, TypeError, KeyError, RecursionError):
+        if args.require_source_originals or 'sourceOriginals' in section:
+            originals = verify_source_originals(archive, section.get('sourceOriginals'))
+            source_originals_verified = True
+            original_count = len(originals)
+    except (OSError, ValueError, TypeError, KeyError, RecursionError, DocumentsError):
         print(json.dumps({'status': 'invalid', 'code': 'rf1086_archive_verification_failed'}))
         return 1
     print(json.dumps({'status': 'verified_rf_canonical_record',
@@ -56,7 +66,8 @@ def main() -> int:
         'sourceApprovals': len(archive.source_approval_lineage),
         'sourceClaims': len(archive.source_submission_claims),
         'feedbackArtifacts': len(archive.feedback_artifacts),
-        'databaseRestorePerformed': False, 'objectBytesVerified': False}))
+        'databaseRestorePerformed': False, 'objectBytesVerified': False,
+        'sourceOriginalBytesVerified': source_originals_verified, 'sourceOriginals': original_count}))
     return 0
 
 
