@@ -18,8 +18,8 @@ NOW = SOURCE_NOW.isoformat()
 
 
 class ClaimHarness:
-    def __init__(self, kind='no_activity', *, correction=False):
-        self.h = h = CorrectionHarness() if correction else ApprovalHarness(kind)
+    def __init__(self, kind='no_activity', *, correction=False, snapshot=None):
+        self.h = h = CorrectionHarness(snapshot=snapshot) if correction else ApprovalHarness(kind)
         h.approve(**({'predecessor': h.prior} if correction else {}))
         manifest = h.writes[0]
         self.approval_id = rf.ApprovalId(h.result.record_id)
@@ -184,3 +184,12 @@ def test_retained_approval_decoder_rejects_malformed_authority(field,value):
     c.retained=replace(c.retained,approval=replace(c.retained.approval,**{field:value}))
     with pytest.raises(rf.Rf1086ProductionError):c.run()
     assert 'bytes' not in c.h.calls and 'claim' not in c.h.calls
+
+
+def test_full_year_predecessor_is_verified_before_claiming_its_correction():
+    from test_rf1086_full_year_correction import full_year_predecessor
+    c=ClaimHarness(correction=True,snapshot=full_year_predecessor('formation'))
+    assert c.run()==c.result and c.h.committed
+    assert c.result.claim.predecessor_submission_id==c.expected_head
+    assert c.h.calls.index('prior_lock') < c.h.calls.index('claim')
+    assert c.h.calls.count('prior_original')==2

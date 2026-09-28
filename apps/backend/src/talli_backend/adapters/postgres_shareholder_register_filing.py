@@ -351,9 +351,26 @@ class PostgresShareholderRegisterFilingSession:
                 "where submission_id=%s::uuid and operation_name like 'reconciliation:%%' "
                 "and operation_state='succeeded' order by created_at,id", (submission_id.value,),
             )).fetchall()
+            lineage = claim = None
+            if submission.case_profile == 'rf1086_full_year_v1':
+                binding = await (await connection.execute(
+                    'select * from shareholder_register_filing.source_approval_bindings '
+                    'where approval_id=%s::uuid and company_id=%s::uuid and income_year=%s',
+                    (approval.id,str(query.company_id),int(query.income_year)),
+                )).fetchone()
+                if binding is None:
+                    raise rf.Rf1086ProductionError('basis_unavailable')
+                lineage = await self._retained_source_approval_lineage(
+                    connection,binding,str(query.company_id),int(query.income_year))
+                claim = await self._read_source_submission_claim(connection,rf.ApprovalId(approval.id),
+                    approval.manifest_hash,None if submission.supersedes_submission_id is None
+                    else rf.SubmissionId(submission.supersedes_submission_id))
+                if claim is None:
+                    raise rf.Rf1086ProductionError('basis_unavailable')
             return rf.Rf1086CorrectionPredecessorSnapshot(query.company_id,query.income_year,submission,approval,preview,
                 tuple(self._wire_record(rf.Rf1086ArchiveFeedbackArtifactRecord,item) for item in artifact_rows),
-                tuple(self._wire_record(rf.Rf1086ArchiveProductionEventRecord,item) for item in event_rows))
+                tuple(self._wire_record(rf.Rf1086ArchiveProductionEventRecord,item) for item in event_rows),
+                source_approval_lineage=lineage,source_claim=claim)
         except (TypeError,ValueError,KeyError):
             raise rf.Rf1086ProductionError('basis_unavailable') from None
 
@@ -633,6 +650,33 @@ class PostgresShareholderRegisterFilingSession:
         async with self._transaction(snapshot=True) as connection:
             return await self._opening_basis(connection, command.company_id, command.opening_snapshot_id)
 
+    async def _retained_source_approval_lineage(self, connection, binding, company_id, year):
+        """Read captured lineage on the caller's snapshot or held admission connection."""
+        try:
+            source_row = await (await connection.execute(
+                'select * from shareholder_register_filing.year_source_versions '
+                'where id=%s::uuid and company_id=%s::uuid and income_year=%s',
+                (binding['source_id'], company_id, year),
+            )).fetchone()
+            bridge_row = await (await connection.execute(
+                'select * from shareholder_register_filing.source_review_bridges '
+                'where preview_id=%s::uuid and company_id=%s::uuid and income_year=%s',
+                (binding['preview_id'], company_id, year),
+            )).fetchone()
+            source = self._year_source(source_row)
+            preview = await self._read_source_preview(connection, rf.PreviewId(str(binding['preview_id'])))
+            if source is None or bridge_row is None:
+                raise ValueError('incomplete retained source approval')
+            return rf.Rf1086ArchiveSourceApprovalLineage(
+                **{field.name: _record_value(binding[field.name])
+                   for field in fields(rf.Rf1086ArchiveSourceApprovalLineage)
+                   if field.name not in ('source', 'source_preview', 'bridge')},
+                source=source, source_preview=preview,
+                bridge=self._wire_record(rf.Rf1086ArchiveSourceReviewBridge, bridge_row),
+            )
+        except (TypeError, ValueError, KeyError, rf.Rf1086YearSourceError):
+            raise rf.ShareholderRegisterFilingError.unavailable() from None
+
     async def legacy_archive_source(self, query):
         return await self._archive_source(query, include_production=False)
 
@@ -693,30 +737,8 @@ class PostgresShareholderRegisterFilingSession:
                     (company_id, year),
                 )).fetchall()
                 for binding in bindings:
-                    source_row = await (await connection.execute(
-                        'select * from shareholder_register_filing.year_source_versions '
-                        'where id=%s::uuid and company_id=%s::uuid and income_year=%s',
-                        (binding['source_id'], company_id, year),
-                    )).fetchone()
-                    bridge_row = await (await connection.execute(
-                        'select * from shareholder_register_filing.source_review_bridges '
-                        'where preview_id=%s::uuid and company_id=%s::uuid and income_year=%s',
-                        (binding['preview_id'], company_id, year),
-                    )).fetchone()
-                    try:
-                        source = self._year_source(source_row)
-                        preview = await self._read_source_preview(connection, rf.PreviewId(str(binding['preview_id'])))
-                        if source is None or bridge_row is None:
-                            raise ValueError('incomplete retained source approval')
-                        lineage.append(rf.Rf1086ArchiveSourceApprovalLineage(
-                            **{field.name: _record_value(binding[field.name])
-                               for field in fields(rf.Rf1086ArchiveSourceApprovalLineage)
-                               if field.name not in ('source', 'source_preview', 'bridge')},
-                            source=source, source_preview=preview,
-                            bridge=self._wire_record(rf.Rf1086ArchiveSourceReviewBridge, bridge_row),
-                        ))
-                    except (TypeError, ValueError, KeyError, rf.Rf1086YearSourceError):
-                        raise rf.ShareholderRegisterFilingError.unavailable() from None
+                    lineage.append(await self._retained_source_approval_lineage(
+                        connection, binding, company_id, year))
             values['source_approval_lineage'] = tuple(lineage)
             for name, table, record_type, ordered_at in (
                 ("production_events", "production_filing_events", rf.Rf1086ArchiveProductionEventRecord, "created_at"),

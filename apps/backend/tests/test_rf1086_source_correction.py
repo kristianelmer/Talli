@@ -47,9 +47,9 @@ def assert_valid(snapshot, prior=None):
 
 
 class CorrectionHarness(ApprovalHarness):
-    def __init__(self,status='accepted'):
+    def __init__(self,status='accepted',*,snapshot=None):
         super().__init__()
-        self.prior_snapshot=predecessor_snapshot(status)
+        self.prior_snapshot=predecessor_snapshot(status) if snapshot is None else snapshot
         self.history=(self.prior_snapshot.submission,)
         self.locked_snapshot=self.prior_snapshot
         self.prior=predecessor(self.prior_snapshot)

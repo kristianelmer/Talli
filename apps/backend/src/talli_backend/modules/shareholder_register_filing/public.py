@@ -1087,6 +1087,8 @@ class Rf1086CorrectionPredecessorSnapshot(_ImmutableRf1086Value):
     preview: Rf1086PreviewRecord
     artifacts: tuple[Rf1086ArchiveFeedbackArtifactRecord, ...]
     reconciliation_events: tuple[Rf1086ArchiveProductionEventRecord, ...]
+    source_approval_lineage: Rf1086ArchiveSourceApprovalLineage | None = None
+    source_claim: Rf1086SourceSubmissionClaim | None = None
 
 
 def assert_rf1086_correction_predecessor(snapshot: Rf1086CorrectionPredecessorSnapshot, *,

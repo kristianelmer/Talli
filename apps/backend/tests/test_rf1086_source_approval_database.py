@@ -654,3 +654,41 @@ def test_archive_rollback_preserves_durable_claim_scope_foreign_keys(claim_fixtu
             assert state()==before
             assert db.execute("select oid,conname,conindid,convalidated from pg_constraint where conrelid in ('shareholder_register_filing.source_submission_bindings'::regclass,'shareholder_register_filing.submission_heads'::regclass) and contype='f' order by oid").fetchall()==constraints
         finally:db.rollback()
+
+
+@pytest.mark.parametrize('guarded',[False,True])
+def test_full_year_predecessor_reads_original_approval_and_claim_under_restricted_role(claim_fixture,guarded):
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    f=claim_fixture;store=f['store']
+    async def create():
+        async with store._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+            return approval,await claim_source(db,f,approval)
+    approval,first=asyncio.run(create());submission=first['claim']['submission_id'];digest='d'*64
+    # Synthetic terminal RF evidence only; Documents original-byte verification
+    # is separately exercised by the application correction harness.
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true),set_config('request.jwt.claims',%s,true)",
+            (str(store.actor_id.subject),store._verified.claims_json,store._verified.claims_json))
+        db.execute("update shareholder_register_filing.production_filing_submissions set status='accepted',feedback_state='accepted',feedback_artifact_count=1 where id=%s",(submission,))
+        insert(db,'shareholder_register_filing.production_feedback_artifacts',dict(company_id=f['seed']['company'],submission_id=submission,
+            document_id=f['command'].documents[0].document_id,authority_reference='synthetic-full-year-terminal',
+            content_type='application/pdf',byte_length=100,sha256=digest,classification='accepted'))
+        insert(db,'shareholder_register_filing.production_filing_events',dict(submission_id=submission,company_id=f['seed']['company'],
+            income_year=2026,operation_name='reconciliation:synthetic-full-year',operation_state='succeeded',attempt=1,
+            resulting_status='accepted',artifact_hashes=[digest]))
+    query=rf.Rf1086SourceQuery(f['source'].company_id,f['source'].income_year,store.actor_id)
+    prior=rf.Rf1086SourceCorrectionPredecessor(rf.SubmissionId(submission),approval['manifest_hash'],'Synthetic correction')
+    async def read():
+        if not guarded:return await store.read_correction_predecessor(query,prior.submission_id)
+        async with store._transaction() as db:
+            await lock(db,f)
+            scope=_SourceAdmission(store,db,query,None)
+            return await scope.read_correction_predecessor(query,prior.submission_id)
+    snapshot=asyncio.run(read())
+    assert snapshot.source_approval_lineage.source==f['source']
+    assert snapshot.source_claim.submission_id==prior.submission_id
+    rf.assert_rf1086_correction_predecessor(snapshot,company_id=query.company_id,income_year=query.income_year,predecessor=prior)
+    with pytest.raises(rf.Rf1086ProductionError):
+        rf.assert_rf1086_correction_predecessor(replace(snapshot,source_claim=None),
+            company_id=query.company_id,income_year=query.income_year,predecessor=prior)

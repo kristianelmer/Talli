@@ -139,5 +139,6 @@
   "submissionHistoryAndReplay": "submission-history-and-replay-20260928.json",
   "triggerGuardPermissions": "trigger-guard-permissions-20260928.json",
   "sourceSubmissionClaim": "source-submission-claim-20260928.json",
-  "sourceClaimApplication": "source-claim-application-20260928.json"
+  "sourceClaimApplication": "source-claim-application-20260928.json",
+  "fullYearCorrectionPredecessor": "full-year-correction-predecessor-20260928.json"
 }

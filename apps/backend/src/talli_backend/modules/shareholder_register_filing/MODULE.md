@@ -634,3 +634,15 @@ on the guarded connection before rebuilding the exact manifest and claiming.
 Retries first recover retained claims without demanding current source or pilot
 freshness. A concurrent commit can also be recovered after failed admission.
 This workflow has no provider binding and is not exposed as an HTTP send route.
+
+Full-year correction predecessors now retain `source_approval_lineage` and
+`source_claim` in `Rf1086CorrectionPredecessorSnapshot`. The validator rebuilds
+the original source preview and canonical approval from retained review evidence,
+checks the immutable claim's scope, actor, payload, manifest and parent, then
+requires matching terminal feedback artifacts and reconciliation. Legacy
+predecessors cannot carry source-only lineage. The adapter loads both forms on
+the caller's snapshot or guarded connection; it never substitutes current source
+or review inputs for captured history. The application still verifies feedback
+originals before the guard and compares the complete snapshot and original
+receipts inside it. Whole-year submission archive export remains a separate
+pending boundary; this predecessor support does not open provider dispatch.

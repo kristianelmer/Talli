@@ -3,7 +3,7 @@ import re
 from uuid import UUID
 
 from . import public as rf
-from .preparation import _production_preview
+from .preparation import _production_preview, _validate_archive_source_approval
 from .production import rf1086_preview_payload_hash, rf1086_current_manifest_hash
 
 
@@ -41,16 +41,20 @@ def assert_predecessor(snapshot, *, company_id, income_year, predecessor):
             and all(_uuid(value) for value in (submission.id, approval.id, preview.id, approval.user_id, approval.entitlement_id)))
         _require((submission.entitlement_id,submission.case_profile,submission.adapter_version,submission.payload_hash)
             == (approval.entitlement_id,approval.case_profile,approval.adapter_version,approval.payload_hash))
-        # Source-backed production sends remain closed. Their ancestry requires
-        # the future source submission/archive contract, not legacy hashing.
-        _require(approval.case_profile == 'rf1086_no_activity_v1' and approval.adapter_version == 'rf1086-production-v1'
-            and preview.source != 'rf1086-full-year-v1' and preview.status == 'ready'
+        _require(preview.status == 'ready'
             and preview.filing in ('aksjonaerregisteroppgaven','aksjonærregisteroppgaven')
             and bool(preview.hovedskjema_xml))
-        production = _production_preview(preview)
-        _require(approval.payload_hash == rf1086_preview_payload_hash(production)
-            and approval.manifest_hash == rf1086_current_manifest_hash(production,
-                actor_id=approval.user_id,organization_number=approval.manifest['organizationNumber'],approved_manifest=approval.manifest))
+        if approval.case_profile == 'rf1086_full_year_v1':
+            _assert_source_predecessor(snapshot, company_id, income_year)
+        else:
+            _require(approval.case_profile == 'rf1086_no_activity_v1'
+                and approval.adapter_version == 'rf1086-production-v1'
+                and preview.source != 'rf1086-full-year-v1'
+                and snapshot.source_approval_lineage is None and snapshot.source_claim is None)
+            production = _production_preview(preview)
+            _require(approval.payload_hash == rf1086_preview_payload_hash(production)
+                and approval.manifest_hash == rf1086_current_manifest_hash(production,
+                    actor_id=approval.user_id,organization_number=approval.manifest['organizationNumber'],approved_manifest=approval.manifest))
         artifacts = snapshot.artifacts
         _require(type(artifacts) is tuple and bool(artifacts)
             and all(isinstance(row, rf.Rf1086ArchiveFeedbackArtifactRecord) for row in artifacts)
@@ -78,5 +82,28 @@ def assert_predecessor(snapshot, *, company_id, income_year, predecessor):
         _require(any(event.resulting_status == submission.status and set(event.artifact_hashes) == hashes for event in events))
     except rf.Rf1086ProductionError:
         raise
-    except (ValueError, TypeError, AttributeError, KeyError, ArithmeticError):
+    except (ValueError, TypeError, AttributeError, KeyError, ArithmeticError,
+            rf.Rf1086YearSourceError, rf.ShareholderRegisterFilingError):
         raise rf.Rf1086ProductionError('basis_unavailable') from None
+
+
+def _assert_source_predecessor(snapshot, company_id, income_year):
+    """Rebuild the historical source approval and its immutable claim together."""
+    approval, submission = snapshot.approval, snapshot.submission
+    lineage, claim = snapshot.source_approval_lineage, snapshot.source_claim
+    _require(isinstance(lineage, rf.Rf1086ArchiveSourceApprovalLineage)
+        and isinstance(claim, rf.Rf1086SourceSubmissionClaim))
+    approval_id = rf.ApprovalId(approval.id)
+    prior = rf.inspect_rf1086_retained_source_approval(
+        rf.Rf1086RetainedSourceApproval(approval, lineage.manifest_text),
+        approval_id=approval_id, manifest_sha256=approval.manifest_hash, actor_id=claim.claimed_by)
+    expected_head = None if prior is None else prior.submission_id
+    rf.assert_rf1086_source_submission_claim(claim, approval_id=approval_id,
+        manifest_sha256=approval.manifest_hash, expected_head=expected_head, actor_id=claim.claimed_by)
+    _require(claim.submission_id.value == submission.id and claim.company_id == company_id
+        and claim.income_year == income_year and claim.payload_sha256 == submission.payload_hash
+        and str(claim.claimed_by.subject) == submission.submitted_by
+        and submission.supersedes_submission_id == (None if expected_head is None else expected_head.value))
+    _validate_archive_source_approval(
+        rf.Rf1086ArchiveQuery(company_id, income_year, claim.claimed_by),
+        approval, snapshot.preview, lineage, _require)

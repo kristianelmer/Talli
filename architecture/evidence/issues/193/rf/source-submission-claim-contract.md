@@ -54,3 +54,10 @@ and repeat predecessor byte checks at send. Rollback must retain claim/head/data
 and historical recovery, revoking new claims without narrowing populated CHECKs.
 Replay earlier RF capability/recovery and 80249/85227/91015 predecessors before
 the new claim successor; 94631 supplies the company-first journal prerequisite.
+
+The application predecessor snapshot now includes the original full-year
+approval lineage and immutable source claim. Full-year correction validates both
+against the retained source/review/preview before checking terminal feedback.
+The same connection reloads all retained evidence after the company/year guard;
+Documents original-byte preflight and final receipt checks remain mandatory.
+Whole-year submission archive export and provider dispatch remain pending.

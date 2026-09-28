@@ -191,3 +191,10 @@ confirmation, plus period/interview/document warnings. These require complete
 Banking/Ledger/annual-data owner projections and participating writer guards. A
 ready RF source alone cannot silently remove those conditions. The six technical
 release signoffs remain separate.
+
+Full-year correction predecessor validation now rebuilds the retained source
+approval and binds its durable claim to the exact submission, payload, actor and
+parent. The approval and claim workflows share this policy and still verify
+feedback originals before admission and retained receipts inside the guard.
+This resolves the predecessor-profile limitation; complete archive export still
+requires full-year claim/head coverage and historical journal verification.
