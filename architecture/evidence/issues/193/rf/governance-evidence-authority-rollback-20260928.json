@@ -1,0 +1,39 @@
+{
+  "baseCommit": "5525024ac9d6b58e6f74603c4b52d37be44df82a",
+  "status": "PASS_BOUNDED_EVIDENCE_AUTHORITY_RETIREMENT_FULL_STACK_PENDING",
+  "failure": {
+    "ciRun": 36391848272,
+    "revision": "4d32adc194c2d9e4357c4939c0d05b9c3908c06d",
+    "legacyReplayFixture": "PASS",
+    "remainingDatabaseFailure": "Workflow role retained EXECUTE grants on Documents metadata/original assertions after older capability rollback"
+  },
+  "changes": [
+    "Explicitly revoke retiring Governance caller authority on Documents assertions and optional RF register observation assertion",
+    "Keep evidence functions and other consumer permissions intact",
+    "Restore caller grants after role recreation; assert Documents access after recutover",
+    "Borrow exact owner roles only when required and restore original membership options"
+  ],
+  "verification": {
+    "boundedPostgreSQL": "Reproduces role dependency failure after prior cleanup; exact production evidence cleanup and actual maintained JS restoration run twice successfully",
+    "restrictedMigrationPrincipal": "Cleanup and restoration preserve both owner-role memberships exactly",
+    "staticContractsPassed": 13,
+    "databaseCasesSkippedLocally": 7,
+    "architecture": "PASS"
+  },
+  "limits": [
+    "Minimal evidence/guard topology is not a full Supabase lifecycle proof",
+    "Application CI on the preceding revision was still running at recording time; full revision CI remains pending",
+    "No hosted changes, provider calls, real AS data or acceptance closure"
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md": "bfe5c9a362003dbbc9cac0858b4473116ed13bc54162f9be92da61f7d293f83d",
+    "supabase/rollback/20260902040000_corporate_governance_owner_dividend.sql": "d0b987a5e2fa4df77fe5b431ddfa89f4c9051a105ae92294e1da039404734581",
+    "tests/corporate_governance_migration_lifecycle.test.mjs": "557c410a7099cff2f538603495fae72b4925b9852fe1de735fadd00d4d8997f4"
+  },
+  "privateProofSha256": {
+    "talli-governance-evidence-probe.log": "35a03100c7b54619493ce53b3c880b850bfd0849030b0f4b5df679c5fc2e5b5a",
+    "talli-governance-evidence-contract.log": "aa72cfa3d9b9b1de5904edb2cb8d8878cb10d186059641cb7312be8bec3c06e6",
+    "talli-governance-evidence-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "evidence_probe.py": "06780b27f76cd7402c2af1e1325e98a057705199b868ba1572ace541be818c91"
+  }
+}

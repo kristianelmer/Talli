@@ -137,6 +137,55 @@ begin
 end
 $revoke_guard_successors$;
 
+-- Evidence assertions survive this rollback under their own capability owners.
+-- Remove this retiring caller's grants without changing any other consumer.
+do $revoke_evidence_successors$
+declare
+  item record;
+  signature text;
+  borrowed boolean;
+  prior jsonb;
+begin
+  for item in select * from (values
+    ('documents_store_owner', 'documents', array[
+      'documents.assert_retained_metadata_v1(text,text)',
+      'documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)'
+    ]),
+    ('shareholder_register_filing_store_owner', 'shareholder_register_filing', array[
+      'shareholder_register_filing.assert_current_register_observation_v1(uuid,uuid,integer,integer,text,text)'
+    ])
+  ) evidence(owner_role, schema_name, signatures) loop
+    if pg_catalog.to_regnamespace(item.schema_name) is null then continue; end if;
+    borrowed := not pg_catalog.pg_has_role(current_user, item.owner_role, 'SET');
+    prior := null;
+    if borrowed then
+      select pg_catalog.jsonb_build_object('admin', m.admin_option,
+        'inherit', m.inherit_option, 'set', m.set_option) into prior
+      from pg_catalog.pg_auth_members m
+      where m.roleid = pg_catalog.to_regrole(item.owner_role)
+        and m.member = pg_catalog.to_regrole(current_user) and m.grantor = m.member;
+      execute pg_catalog.format('grant %I to %I with set true granted by %I',
+        item.owner_role, current_user, current_user);
+    end if;
+    execute pg_catalog.format('set local role %I', item.owner_role);
+    foreach signature in array item.signatures loop
+      if pg_catalog.to_regprocedure(signature) is not null then
+        execute pg_catalog.format('revoke execute on function %s from corporate_governance_workflow_executor', signature);
+      end if;
+    end loop;
+    execute pg_catalog.format('revoke usage on schema %I from corporate_governance_workflow_executor', item.schema_name);
+    reset role;
+    if borrowed then
+      execute pg_catalog.format('revoke %I from %I granted by %I', item.owner_role, current_user, current_user);
+      if prior is not null then
+        execute pg_catalog.format('grant %I to %I with admin %s, inherit %s, set %s granted by %I',
+          item.owner_role, current_user, prior->>'admin', prior->>'inherit', prior->>'set', current_user);
+      end if;
+    end if;
+  end loop;
+end
+$revoke_evidence_successors$;
+
 revoke execute on function banking.claim_owner_dividend_transaction_v1(
   jsonb, uuid, text
 ) from corporate_governance_workflow_executor;

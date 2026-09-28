@@ -30,6 +30,52 @@ const companyWriteGuardsMigrationName =
 const guardedReportingReadMigrationName =
   "20260924083154_governance_guarded_reporting_year_read.sql";
 
+async function restoreGovernanceEvidenceAuthority(client) {
+  // The evidence capabilities remain installed throughout Governance rollback.
+  // Restore only the recreated caller's published assertion grants. Replaying
+  // their complete writer migrations here would change this rehearsal's topology.
+  await client.query("begin");
+  try {
+    for (const [owner, schema, signatures] of [
+      ["documents_store_owner", "documents", [
+        "documents.assert_retained_metadata_v1(text,text)",
+        "documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)",
+      ]],
+      ["shareholder_register_filing_store_owner", "shareholder_register_filing", [
+        "shareholder_register_filing.assert_current_register_observation_v1(uuid,uuid,integer,integer,text,text)",
+      ]],
+    ]) {
+      const { rows: [state] } = await client.query(`
+        select current_user as principal, pg_has_role(current_user, $1, 'SET') as can_set,
+          (select jsonb_build_object('admin', m.admin_option, 'inherit', m.inherit_option, 'set', m.set_option)
+           from pg_auth_members m where m.roleid = to_regrole($1)
+             and m.member = current_user::regrole and m.grantor = m.member) as prior
+      `, [owner]);
+      const identifier = value => '"' + value.replaceAll('"', '""') + '"';
+      const principal = identifier(state.principal);
+      if (!state.can_set) await client.query(`grant ${identifier(owner)} to ${principal} with set true granted by ${principal}`);
+      await client.query(`set local role ${identifier(owner)}`);
+      for (const signature of signatures) {
+        const { rows: [routine] } = await client.query("select to_regprocedure($1) is not null as present", [signature]);
+        if (routine.present) {
+          await client.query(`grant usage on schema ${identifier(schema)} to corporate_governance_workflow_executor`);
+          // Signatures are fixed in the inventory above, never user-supplied.
+          await client.query(`grant execute on function ${signature} to corporate_governance_workflow_executor`);
+        }
+      }
+      await client.query("reset role");
+      if (!state.can_set) {
+        await client.query(`revoke ${identifier(owner)} from ${principal} granted by ${principal}`);
+        if (state.prior) await client.query(`grant ${identifier(owner)} to ${principal} with admin ${state.prior.admin}, inherit ${state.prior.inherit}, set ${state.prior.set} granted by ${principal}`);
+      }
+    }
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  }
+}
+
 async function assertGovernanceSuccessorGuards(client) {
   const { rows: [state] } = await client.query(String.raw`
     select
@@ -52,11 +98,17 @@ async function assertGovernanceSuccessorGuards(client) {
       pg_catalog.has_function_privilege('corporate_governance_store_owner',
         'ledger.acquire_company_write_guard_v1(uuid,text)', 'EXECUTE') as ledger_guard,
       pg_catalog.has_function_privilege('corporate_governance_store_owner',
-        'ledger.list_entry_amendments_v1(uuid,text)', 'EXECUTE') as ledger_reads
+        'ledger.list_entry_amendments_v1(uuid,text)', 'EXECUTE') as ledger_reads,
+      pg_catalog.has_function_privilege('corporate_governance_workflow_executor',
+        'documents.assert_retained_metadata_v1(text,text)', 'EXECUTE') as document_metadata_reads,
+      pg_catalog.has_function_privilege('corporate_governance_workflow_executor',
+        'documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)',
+        'EXECUTE') as document_original_reads
   `);
   assert.deepEqual(state, {
     guarded_tables: 11, guarded_loan: true, rf_reads: true,
     browser_reads: false, ledger_guard: true, ledger_reads: true,
+    document_metadata_reads: true, document_original_reads: true,
   });
 }
 
@@ -1696,6 +1748,7 @@ test(
         // Restore both successor boundaries before declaring recutover complete.
         await client.query(companyWriteGuardsForward);
         await client.query(guardedReportingReadForward);
+        await restoreGovernanceEvidenceAuthority(client);
         await assertGovernanceSuccessorGuards(client);
         await assertLedgerAmendmentReadAuthority(client);
         assert.deepEqual(await state(client), {
