@@ -1,4 +1,4 @@
-import { rf1086SourceOriginalsMatch } from "./rf1086-original-integrity.ts";
+import { rf1086SourceOriginalsMatch, rf1086FeedbackOriginalsMatch } from "./rf1086-original-integrity.ts";
 import type {
   AuthorityPermissionRow,
   AuthorityTestRunRow,
@@ -30,7 +30,7 @@ import type { RecordedSupportedCorporateEventWire } from "../../features/corpora
 import type { Rf1086ProductionArchiveSourceWire } from "../../features/shareholder-register-filing";
 
 export type Rf1086ProductionArchive = Pick<Rf1086ProductionArchiveSourceWire,
-  "companyId" | "incomeYear" | "approvals" | "productionSubmissions" | "productionEvents" | "feedbackArtifacts" | "sourceApprovalLineage" | "sourceSubmissionClaims" | "submissionHead" | "canonicalArchive" | "sourceOriginals" | "sourceHistoryDocuments">;
+  "companyId" | "incomeYear" | "approvals" | "productionSubmissions" | "productionEvents" | "feedbackArtifacts" | "sourceApprovalLineage" | "sourceSubmissionClaims" | "submissionHead" | "canonicalArchive" | "sourceOriginals" | "sourceHistoryDocuments" | "feedbackOriginals">;
 
 /** Each retained RF receipt must resolve to the exact Documents-owned object. */
 export function rf1086ArchiveReceiptsMatch(
@@ -40,13 +40,15 @@ export function rf1086ArchiveReceiptsMatch(
   const objects = new Map(documents.objects.map(row => [row.documentId, row]));
   if (objects.size !== documents.objects.length) return false;
   const receiptsMatch = filing.feedbackArtifacts.every(receipt => {
+    // Bound receipts are checked against their retained original below.
+    if (receipt.originalId != null) return receipt.companyId === filing.companyId;
     const object = objects.get(receipt.documentId);
     return receipt.companyId === filing.companyId && object !== undefined
       && object.contentSha256 === receipt.sha256 && object.byteLength === receipt.byteLength
       && object.contentType === receipt.contentType && Boolean(object.storageKey)
       && object.status === "stored" && object.removedAt === null;
   });
-  return receiptsMatch && rf1086SourceOriginalsMatch(filing);
+  return receiptsMatch && rf1086SourceOriginalsMatch(filing) && rf1086FeedbackOriginalsMatch(filing);
 }
 
 export type LedgerEntryRow = {

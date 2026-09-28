@@ -19948,6 +19948,52 @@
             "title": "Id",
             "type": "string"
           },
+          "originalId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalid"
+          },
+          "originalMetadataSha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalmetadatasha256"
+          },
+          "originalRetainedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalretainedat"
+          },
+          "originalSourceIncomeYear": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Originalsourceincomeyear"
+          },
           "retrievedAt": {
             "format": "date-time",
             "title": "Retrievedat",
@@ -20908,6 +20954,13 @@
               "$ref": "#/components/schemas/Rf1086ArchiveFeedbackArtifactWire"
             },
             "title": "Feedbackartifacts",
+            "type": "array"
+          },
+          "feedbackOriginals": {
+            "items": {
+              "$ref": "#/components/schemas/Rf1086ArchiveSourceOriginalWire"
+            },
+            "title": "Feedbackoriginals",
             "type": "array"
           },
           "incomeYear": {

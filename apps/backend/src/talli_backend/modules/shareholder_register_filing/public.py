@@ -1075,6 +1075,10 @@ class Rf1086ArchiveProductionEventRecord(_ImmutableRf1086Value):
 class Rf1086ArchiveFeedbackArtifactRecord(Rf1086FeedbackArtifactRecord):
     """Documents retains original bytes; RF retains their provider attribution."""
     authority_reference: str
+    original_id: str | None = None
+    original_metadata_sha256: str | None = None
+    original_source_income_year: int | None = None
+    original_retained_at: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

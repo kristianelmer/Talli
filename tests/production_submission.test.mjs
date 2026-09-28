@@ -33,7 +33,7 @@ test("RF producer preserves the public Documents lifecycle and original filing l
   assert.match(feedbackPersistence, /BeginDocumentUploadCommand/u);
   assert.match(feedbackPersistence, /"authority_feedback"/u);
   assert.match(feedbackPersistence, /production_filing_submission:/u);
-  assert.match(feedbackPersistence, /record_production_feedback_artifact/u);
+  assert.match(feedbackPersistence, /record_retained_feedback_artifact_v1/u);
   assert.match(feedbackPersistence, /producer_rollback/u);
   assert.doesNotMatch(feedbackPersistence, /insert into documents\.|update documents\.|getPublicUrl/u);
 });

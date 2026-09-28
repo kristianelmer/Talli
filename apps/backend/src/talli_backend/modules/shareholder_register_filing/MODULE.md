@@ -659,8 +659,9 @@ claim/head fields. This is RF archive source coverage; company-wide retention
 generation and consolidated backup/restore validation still require separate proof.
 
 `serialize_rf1086_archive` and `parse_rf1086_archive` provide the closed
-`rf1086-production-archive-v2` record carried as `canonicalArchive` in production
-archive responses. Existing v1 records remain byte-for-byte round-trippable and
+`rf1086-production-archive-v3` record carried as `canonicalArchive` when feedback
+original bindings are present. Existing v1 and v2 records remain byte-for-byte
+round-trippable; v1 records
 explicitly lack the complete source-history capture. This preserves complete captured sources, freshness and
 Governance receipts, previews, review bridges, approvals, claims, heads, journals
 and feedback metadata. The parser checks the expected company/year and reuses RF
@@ -692,9 +693,9 @@ commitments, not document ID alone. Current metadata and current-year document
 lists cannot replace the captured version. Original lookup requires an accepted
 owner with AAL2 and the same verified actor as the RF session. Missing or changed
 originals fail the complete archive response before it can be downloaded.
-The inline bundle permits at most 128 MiB of original source bytes; larger
-bundles fail closed and need a future streaming transport. Feedback and unrelated
-company-document byte bundles and actual restore remain separate work. The offline verifier's `--require-source-originals` flag
+The inline bundle permits at most 128 MiB of combined source and feedback
+original bytes; larger bundles fail closed and need a future streaming transport.
+Unrelated company-document byte bundles and actual restore remain separate work. The offline verifier's `--require-source-originals` flag
 requires every captured source version and validates each with Documents policy;
 it reports source-byte verification separately from database/object restoration.
 
@@ -719,4 +720,18 @@ without acknowledging RF metadata. The owned
 receipt under the company guard, then atomically stores the artifact and its
 original ID, metadata digest, source year and retention timestamp. Bound rows
 reject mutation. Existing canonical artifacts keep their attribution and legacy
-null bindings; backfill and portable feedback-byte export remain separate work.
+null bindings; legacy backfill remains separate work.
+
+Bound feedback records export their original ID, metadata digest, source year and
+retention time in the v3 canonical record and transport projection. The
+`feedbackOriginals` bundle contains the Documents-owned original bytes and metadata.
+Export, download and offline verification require an exact receipt match, submission
+link, uploader attribution and content commitments. Current bucket metadata cannot
+replace or invalidate this retained version. Web checks compare bindings with the
+canonical record and preserve submillisecond timestamp precision.
+
+`--require-feedback-originals` requires retained bytes for every feedback artifact;
+older unbound artifacts fail that strict check. Without the flag, legacy records
+remain readable and the verifier reports partial feedback coverage. Verification
+of supplied bytes grants no independent authenticity, provider or restoration
+authority. Both v1 and v2 records keep their original codec and bytes.

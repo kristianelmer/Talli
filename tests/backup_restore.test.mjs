@@ -623,3 +623,17 @@ test('restore preserves unapproved v2 history and rejects missing historical ori
   archive.rf1086Production.sourceOriginals.pop();
   assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes('rf1086_source_document_object_mismatch'));
 });
+
+
+test('portable v3 feedback verifies without current bucket metadata and detects missing bytes', () => {
+  const rf = JSON.parse(readFileSync(new URL('../apps/web/tests/fixtures/rf1086-feedback-original-archive.json', import.meta.url), 'utf8'));
+  const archive = archiveFixture({ company: { id: rf.companyId, org_number: '314259521', name: 'Synthetic feedback AS' },
+    incomeYear: rf.incomeYear, rf1086Production: rf });
+  archive.documentBackupProjection.companyId = rf.companyId;
+  const restored = restoreFullYear(archive);
+  assert.deepEqual(assertRestoreIntegrity(restored).failures, []);
+  assert.deepEqual(restored.restored.rf1086Production, rf);
+  assert.equal(restored.manifest.counts.rf1086FeedbackOriginals, 1);
+  archive.rf1086Production.feedbackOriginals = [];
+  assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes('rf1086_source_feedback_object_mismatch'));
+});

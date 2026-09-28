@@ -118,6 +118,7 @@ export function buildBackupManifest(archive: Record<string, any>) {
       rf1086ProductionSubmissions: archive.rf1086Production?.productionSubmissions?.length ?? null,
       rf1086ProductionReceipts: archive.rf1086Production?.feedbackArtifacts?.length ?? null,
       rf1086SourceOriginals: archive.rf1086Production?.sourceOriginals?.length ?? null,
+      rf1086FeedbackOriginals: archive.rf1086Production?.feedbackOriginals?.length ?? null,
       rf1086SourceApprovalLineage: archive.rf1086Production?.sourceApprovalLineage?.length ?? null,
       rf1086SourceSubmissionClaims: archive.rf1086Production?.sourceSubmissionClaims?.length ?? null,
       rf1086SubmissionHeads: archive.rf1086Production == null ? null : archive.rf1086Production.submissionHead == null ? 0 : 1,
@@ -264,6 +265,8 @@ export function assertRestoreIntegrity(restored: ReturnType<typeof restoreCompan
       }
       const objects = new Map(restored.manifest.objectReferences.map((row: any) => [row.documentId, row]));
       for (const receipt of rf.feedbackArtifacts) {
+        // rf1086SourceRestoreFailures verifies bound historical originals.
+        if (receipt.originalId != null) continue;
         const object: any = objects.get(receipt.documentId);
         if (!object || object.contentSha256 !== receipt.sha256 || object.byteLength !== receipt.byteLength
             || object.contentType !== receipt.contentType || !object.storageKey

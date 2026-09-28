@@ -4423,6 +4423,7 @@ export interface Rf1086ProductionArchiveSourceWire {
   canonicalArchive?: string | null;
   companyId: string;
   feedbackArtifacts: Rf1086ArchiveFeedbackArtifactWire[];
+  feedbackOriginals?: Rf1086ArchiveSourceOriginalWire[];
   incomeYear: number;
   permissions: Rf1086PermissionWire[];
   previews: Rf1086PreviewWire[];
@@ -4465,6 +4466,10 @@ export interface Rf1086ArchiveFeedbackArtifactWire {
   contentType: "application/xml" | "text/xml" | "application/pdf" | "text/plain" | "application/octet-stream";
   documentId: string;
   id: string;
+  originalId?: string | null;
+  originalMetadataSha256?: string | null;
+  originalRetainedAt?: string | null;
+  originalSourceIncomeYear?: number | null;
   retrievedAt: string;
   sha256: string;
   submissionId: string;
@@ -10620,11 +10625,12 @@ function isRf1086SubmissionHeadWire(value: unknown): value is Rf1086SubmissionHe
 function isRf1086ProductionArchiveSourceWire(value: unknown): value is Rf1086ProductionArchiveSourceWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["approvals","canonicalArchive","companyId","feedbackArtifacts","incomeYear","permissions","previews","productionEvents","productionSubmissions","reviewComments","simulations","sourceApprovalLineage","sourceHistoryDocuments","sourceOriginals","sourceSubmissionClaims","submissionHead","testEvidence"]) &&
+    hasOnlyProperties(value, ["approvals","canonicalArchive","companyId","feedbackArtifacts","feedbackOriginals","incomeYear","permissions","previews","productionEvents","productionSubmissions","reviewComments","simulations","sourceApprovalLineage","sourceHistoryDocuments","sourceOriginals","sourceSubmissionClaims","submissionHead","testEvidence"]) &&
     Array.isArray(value.approvals) && value.approvals.every((item) => isRf1086ApprovalWire(item)) &&
     (value.canonicalArchive === undefined || (typeof value.canonicalArchive === "string" || value.canonicalArchive === null)) &&
     isUuid(value.companyId) &&
     Array.isArray(value.feedbackArtifacts) && value.feedbackArtifacts.every((item) => isRf1086ArchiveFeedbackArtifactWire(item)) &&
+    (value.feedbackOriginals === undefined || Array.isArray(value.feedbackOriginals) && value.feedbackOriginals.every((item) => isRf1086ArchiveSourceOriginalWire(item))) &&
     (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
     Array.isArray(value.permissions) && value.permissions.every((item) => isRf1086PermissionWire(item)) &&
     Array.isArray(value.previews) && value.previews.every((item) => isRf1086PreviewWire(item)) &&
@@ -10667,7 +10673,7 @@ function isRf1086ArchiveProductionEventWire(value: unknown): value is Rf1086Arch
 function isRf1086ArchiveFeedbackArtifactWire(value: unknown): value is Rf1086ArchiveFeedbackArtifactWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["authorityReference","byteLength","classification","companyId","contentType","documentId","id","retrievedAt","sha256","submissionId"]) &&
+    hasOnlyProperties(value, ["authorityReference","byteLength","classification","companyId","contentType","documentId","id","originalId","originalMetadataSha256","originalRetainedAt","originalSourceIncomeYear","retrievedAt","sha256","submissionId"]) &&
     typeof value.authorityReference === "string" &&
     typeof value.byteLength === "number" && Number.isInteger(value.byteLength) &&
     (value.classification === "accepted" || value.classification === "rejected" || value.classification === "action_required") &&
@@ -10675,6 +10681,10 @@ function isRf1086ArchiveFeedbackArtifactWire(value: unknown): value is Rf1086Arc
     (value.contentType === "application/xml" || value.contentType === "text/xml" || value.contentType === "application/pdf" || value.contentType === "text/plain" || value.contentType === "application/octet-stream") &&
     isUuid(value.documentId) &&
     isUuid(value.id) &&
+    (value.originalId === undefined || (isUuid(value.originalId) || value.originalId === null)) &&
+    (value.originalMetadataSha256 === undefined || (typeof value.originalMetadataSha256 === "string" || value.originalMetadataSha256 === null)) &&
+    (value.originalRetainedAt === undefined || (isDateTime(value.originalRetainedAt) || value.originalRetainedAt === null)) &&
+    (value.originalSourceIncomeYear === undefined || (typeof value.originalSourceIncomeYear === "number" && Number.isInteger(value.originalSourceIncomeYear) || value.originalSourceIncomeYear === null)) &&
     isDateTime(value.retrievedAt) &&
     typeof value.sha256 === "string" &&
     isUuid(value.submissionId)

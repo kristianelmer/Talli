@@ -438,6 +438,16 @@ class OwnedDocuments:
             {CompanyId(str(self.fixture["company"])): "owner"}, role_refresher=self.refresh_roles), self.storage)
 
 
+def test_feedback_writer_has_receipt_assertion_access_without_original_byte_access():
+    with psycopg.connect(DATABASE_URL) as connection:
+        owner = 'shareholder_register_filing_store_owner'
+        assert connection.execute("select has_schema_privilege(%s,'documents','USAGE')", (owner,)).fetchone()[0]
+        assert connection.execute("select has_function_privilege(%s,'documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)','EXECUTE')", (owner,)).fetchone()[0]
+        for role in (owner, 'shareholder_register_filing_executor'):
+            assert not connection.execute("select has_table_privilege(%s,'documents.retained_originals','SELECT')", (role,)).fetchone()[0]
+            assert not connection.execute("select has_function_privilege(%s,'documents.read_retained_original_v1(uuid,uuid,text)','EXECUTE')", (role,)).fetchone()[0]
+
+
 def test_real_documents_contract_stored_receipt_and_hash_drive_final_feedback_without_metadata_duplication(fixture):
     storage = LocalStorage()
     session = store(fixture, documents=OwnedDocuments(fixture, storage), storage_transport=httpx.MockTransport(storage.upload))
@@ -449,7 +459,17 @@ def test_real_documents_contract_stored_receipt_and_hash_drive_final_feedback_wi
     raw = b"<tilbakemelding>immutable local receipt</tilbakemelding>"
     digest = hashlib.sha256(raw).hexdigest()
     artifact = Rf1086ReconciliationArtifact(submission, str(fixture["company"]), str(uuid4()), "application/xml", raw, len(raw), digest, "accepted")
-    assert asyncio.run(journal.record_artifact(artifact)) == digest
+    try:
+        assert asyncio.run(journal.record_artifact(artifact)) == digest
+    except Exception as error:
+        # Disposable-fixture diagnostics only; the runtime error remains closed.
+        cause, seen = error, set()
+        while cause is not None and id(cause) not in seen:
+            seen.add(id(cause))
+            if isinstance(cause, psycopg.Error):
+                raise AssertionError(f'feedback_sql_failed [{cause.sqlstate}]: {cause.diag.message_primary}') from None
+            cause = cause.__cause__ or cause.__context__
+        raise
     assert asyncio.run(journal.record_artifact(artifact)) == digest
     snapshot = Rf1086ReconciliationSnapshot("accepted", (digest,), "RF1086_FEEDBACK_ACCEPTED")
     assert asyncio.run(journal.append_reconciliation(snapshot))

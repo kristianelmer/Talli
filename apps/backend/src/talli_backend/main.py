@@ -2436,6 +2436,10 @@ class Rf1086ArchiveProductionEventWire(TransportModel):
 
 class Rf1086ArchiveFeedbackArtifactWire(Rf1086FeedbackArtifactWire):
     authority_reference: str
+    original_id: UUID | None = None
+    original_metadata_sha256: str | None = None
+    original_source_income_year: int | None = None
+    original_retained_at: datetime | None = None
 
 
 class Rf1086ArchiveSourceWire(TransportModel):
@@ -2556,6 +2560,7 @@ class Rf1086ArchiveSourceOriginalWire(TransportModel):
 class Rf1086ProductionArchiveSourceWire(Rf1086ArchiveSourceWire):
     source_history_documents: list[RfSourceDocumentWire] | None = None
     source_originals: list[Rf1086ArchiveSourceOriginalWire] = Field(default_factory=list)
+    feedback_originals: list[Rf1086ArchiveSourceOriginalWire] = Field(default_factory=list)
     canonical_archive: str | None = None
     source_submission_claims: list[Rf1086SourceSubmissionClaimWire] = Field(default_factory=list)
     submission_head: Rf1086SubmissionHeadWire | None = None
@@ -12160,7 +12165,7 @@ def create_app(
                 canonical_archive = serialize_rf1086_archive(result, query=query)
             except Rf1086ArchiveError:
                 raise ShareholderRegisterFilingError.unavailable() from None
-            from talli_backend.application.shareholder_register_archive import archive_source_originals, source_document_evidence
+            from talli_backend.application.shareholder_register_archive import archive_source_originals, archive_feedback_originals, source_document_evidence
             source_originals = await archive_source_originals(result, documents_factory=documents_application,
                 access_token=bearer_token(credentials), actor_id=workflow.actor_id)
             try:
@@ -12170,6 +12175,8 @@ def create_app(
                             for name in RfSourceDocumentWire.model_fields})
                         for document in source_document_evidence(result)],
                     canonical_archive=canonical_archive, source_originals=source_originals,
+                    feedback_originals=await archive_feedback_originals(result, documents_factory=documents_application,
+                        access_token=bearer_token(credentials), actor_id=workflow.actor_id),
                     company_id=UUID(str(result.company_id)), income_year=int(result.income_year),
                     previews=[Rf1086PreviewWire.model_validate(row, from_attributes=True) for row in result.previews],
                     simulations=[Rf1086SimulationWire.model_validate(row, from_attributes=True) for row in result.simulations],

@@ -4,6 +4,13 @@ const record = (value: any): value is Record<string, any> => value !== null && t
 const hash = (value: any) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
 const digest = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 const keys = (value: Record<string, any>, expected: string[]) => Object.keys(value).sort().join(",") === expected.sort().join(",");
+const exactInstant = (value: any): string | null => {
+  if (typeof value !== "string") return null;
+  const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if (!match) return null;
+  const seconds = Date.parse(match[1] + match[3]);
+  return Number.isFinite(seconds) ? (BigInt(seconds) * BigInt(1_000_000) + BigInt((match[2] ?? "").padEnd(9, "0"))).toString() : null;
+};
 const identity = (row: any) => JSON.stringify([row.documentId, row.companyId, row.sourceIncomeYear,
   row.metadataSha256, row.contentSha256, row.byteLength]);
 const commitment = (row: any) => JSON.stringify([identity(row), row.contentVersionSha256,
@@ -11,7 +18,7 @@ const commitment = (row: any) => JSON.stringify([identity(row), row.contentVersi
 
 function historyCommitmentsMatch(rf: Record<string, any>, documents: any[]): boolean {
   const envelope = JSON.parse(rf.canonicalArchive);
-  if (!record(envelope) || envelope.codec !== "rf1086-production-archive-v2"
+  if (!record(envelope) || !["rf1086-production-archive-v2", "rf1086-production-archive-v3"].includes(envelope.codec)
       || !keys(envelope, ["codec", "snapshotText", "sha256"])
       || typeof envelope.snapshotText !== "string" || digest(envelope.snapshotText) !== envelope.sha256) return false;
   const snapshot = JSON.parse(envelope.snapshotText);
@@ -54,7 +61,7 @@ export function rf1086SourceOriginalsMatch(rf: Record<string, any>): boolean {
     if (history == null && typeof rf.canonicalArchive === "string") {
       let codec;
       try { codec = JSON.parse(rf.canonicalArchive)?.codec; } catch { /* The separate canonical check diagnoses malformed v1. */ }
-      if (codec === "rf1086-production-archive-v2") return false;
+      if (["rf1086-production-archive-v2", "rf1086-production-archive-v3"].includes(codec)) return false;
     }
     const groups = lines.map(line => line?.source?.command?.documents);
     if (history != null) groups.push(history);
@@ -95,5 +102,68 @@ export function rf1086SourceOriginalsMatch(rf: Record<string, any>): boolean {
           || !Number.isFinite(Date.parse(document.created_at)) || Date.parse(document.created_at) !== Date.parse(source.createdAt)) return false;
     }
     return true;
+  } catch { return false; }
+}
+
+/** Verify captured feedback bindings and their portable original bytes. */
+export function rf1086FeedbackOriginalsMatch(rf: Record<string, any>): boolean {
+  try {
+    const artifacts = rf.feedbackArtifacts ?? [], originals = rf.feedbackOriginals ?? [];
+    if (!Array.isArray(artifacts) || !Array.isArray(originals)) return false;
+    if (artifacts.some(row => !record(row)) || new Set(artifacts.map(row => row.id)).size !== artifacts.length) return false;
+    const bindingFields = ["originalId", "originalMetadataSha256", "originalSourceIncomeYear", "originalRetainedAt"];
+    if (artifacts.some(row => bindingFields.some(key => row[key] != null)
+        && !bindingFields.every(key => row[key] != null))) return false;
+    const bound = artifacts.filter(row => row?.originalId != null);
+    if (bound.length !== originals.length) return false;
+    let captured: any[] = [], submissions: any[] = [];
+    if (rf.canonicalArchive != null) {
+      const envelope = JSON.parse(rf.canonicalArchive);
+      if (!record(envelope) || !keys(envelope, ["codec", "snapshotText", "sha256"])
+          || typeof envelope.snapshotText !== "string" || digest(envelope.snapshotText) !== envelope.sha256
+          || !["rf1086-production-archive-v1", "rf1086-production-archive-v2", "rf1086-production-archive-v3"].includes(envelope.codec)
+          || (bound.length > 0 && envelope.codec !== "rf1086-production-archive-v3")) return false;
+      const snapshot = JSON.parse(envelope.snapshotText);
+      if (snapshot?.record !== "Rf1086ArchiveSnapshot" || !Array.isArray(snapshot.fields?.feedback_artifacts)
+          || !Array.isArray(snapshot.fields?.production_submissions)) return false;
+      captured = snapshot.fields.feedback_artifacts;
+      submissions = snapshot.fields.production_submissions;
+      if (captured.length !== artifacts.length) return false;
+      for (const artifact of artifacts) {
+        const matches = captured.filter(row => row?.record === "Rf1086ArchiveFeedbackArtifactRecord" && row.fields?.id === artifact.id);
+        if (matches.length !== 1) return false;
+        const fields = matches[0].fields;
+        for (const [wire, stored] of [["companyId", "company_id"], ["submissionId", "submission_id"],
+          ["documentId", "document_id"], ["contentType", "content_type"], ["byteLength", "byte_length"], ["sha256", "sha256"],
+          ["classification", "classification"], ["authorityReference", "authority_reference"],
+          ["originalId", "original_id"], ["originalMetadataSha256", "original_metadata_sha256"],
+          ["originalSourceIncomeYear", "original_source_income_year"]]) {
+          if ((artifact[wire] ?? null) !== (fields[stored] ?? null)) return false;
+        }
+        if (artifact.originalId != null && (exactInstant(artifact.originalRetainedAt) === null
+            || exactInstant(artifact.originalRetainedAt) !== exactInstant(fields.original_retained_at))) return false;
+        if (exactInstant(artifact.retrievedAt) === null
+            || exactInstant(artifact.retrievedAt) !== exactInstant(fields.retrieved_at)) return false;
+      }
+    } else if (bound.length) return false;
+    const expected = [];
+    for (const artifact of bound) {
+      const matches = originals.filter(row => row?.documentId === artifact.documentId);
+      if (matches.length !== 1 || artifact.originalSourceIncomeYear !== rf.incomeYear) return false;
+      const envelope = JSON.parse(matches[0].canonicalOriginal), document = JSON.parse(envelope.documentText);
+      const submission = submissions.find(row => row?.record === "Rf1086ProductionSubmissionRecord" && row.fields?.id === artifact.submissionId);
+      if (envelope.receipt?.originalId !== artifact.originalId
+          || exactInstant(envelope.receipt?.retainedAt) === null
+          || exactInstant(envelope.receipt.retainedAt) !== exactInstant(artifact.originalRetainedAt)
+          || document.content_type !== artifact.contentType
+          || document.linked_to !== "production_filing_submission:" + artifact.submissionId
+          || document.created_by?.kind !== "USER" || document.created_by?.subject?.value !== submission?.fields?.user_id) return false;
+      expected.push({ documentId: artifact.documentId, companyId: artifact.companyId,
+        sourceIncomeYear: artifact.originalSourceIncomeYear, metadataSha256: artifact.originalMetadataSha256,
+        contentSha256: artifact.sha256, byteLength: artifact.byteLength, contentVersionSha256: artifact.sha256,
+        documentType: "authority_feedback", integrityStatus: "stored", createdAt: document.created_at });
+    }
+    return rf1086SourceOriginalsMatch({ companyId: rf.companyId,
+      sourceApprovalLineage: [{ source: { command: { documents: expected } } }], sourceOriginals: originals });
   } catch { return false; }
 }

@@ -867,7 +867,8 @@ class PostgresShareholderRegisterFilingSession:
 
     @staticmethod
     def _wire_record(record_type, row):
-        values = {field.name: _record_value(row[field.name]) for field in fields(record_type)}
+        values = {field.name: _record_value(row.get(field.name) if record_type is rf.Rf1086ArchiveFeedbackArtifactRecord
+            and field.name.startswith('original_') else row[field.name]) for field in fields(record_type)}
         if record_type is rf.Rf1086PreviewRecord:
             values['issues'] = tuple(rf.Rf1086ReadinessIssue(**issue) for issue in row['issues'])
         return record_type(**values)

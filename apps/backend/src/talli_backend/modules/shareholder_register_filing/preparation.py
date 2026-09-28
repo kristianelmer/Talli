@@ -172,6 +172,15 @@ def _validate_archive_production(query, result):
         require(artifact.sha256 not in artifact_hashes[artifact.submission_id])
         artifact_hashes[artifact.submission_id].add(artifact.sha256)
         require(isinstance(artifact.authority_reference, str) and 1 <= len(artifact.authority_reference) <= 500)
+        original = (artifact.original_id, artifact.original_metadata_sha256,
+                    artifact.original_source_income_year, artifact.original_retained_at)
+        if any(value is not None for value in original):
+            require(all(value is not None for value in original)
+                    and str(UUID(artifact.original_id)) == artifact.original_id
+                    and valid_hash(artifact.original_metadata_sha256)
+                    and type(artifact.original_source_income_year) is int
+                    and artifact.original_source_income_year == query.income_year.value
+                    and datetime.fromisoformat(artifact.original_retained_at).tzinfo is not None)
         submission = submissions[artifact.submission_id]
         if submission.feedback_state in ("accepted", "rejected"):
             require(artifact.classification == submission.feedback_state)

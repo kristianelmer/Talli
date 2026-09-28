@@ -307,3 +307,21 @@ Run 36411282456 at 85cae057 passed Application and real feedback retention/recov
 cases, then failed at year-scoped archive reading. The disposable test now exposes
 the underlying SQL diagnostic while production keeps its safe error boundary.
 That archive failure and final-revision database/release verification remain open.
+
+
+## Portable feedback originals
+
+The v3 canonical record and HTTP/download composition now preserve exact retained
+feedback bindings and original bytes. Offline strict verification rejects legacy
+unbound artifacts; source and feedback bundles share the 128 MiB limit. Current
+bucket metadata cannot replace a bound historical original. Older codecs remain
+byte-exact round-trippable. This completes the portable feedback composition item
+above, but not legacy backfill, database/object restoration or release acceptance.
+See `feedback-original-export-20260928.json`.
+
+Run 36413115758 at ae0b2a0c failed at the new retained-feedback writer and a stale
+Application test expecting the old writer name. The corrected isolated probe
+reproduced missing Documents schema USAGE for the RF store owner, and passes with
+the explicit schema grant. The static expectation is updated. The older archive
+read failure was not reached; final-revision CI and all RF acceptance criteria
+remain pending.

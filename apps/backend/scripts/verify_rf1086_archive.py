@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
-from talli_backend.application.shareholder_register_archive import verify_source_originals
+from talli_backend.application.shareholder_register_archive import verify_source_originals, verify_feedback_originals
 from talli_backend.modules.documents.public import DocumentsError
 from talli_backend.modules.shareholder_register_filing import public as rf
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, UserId
@@ -29,7 +29,10 @@ def main() -> int:
     parser.add_argument('--income-year', required=True, type=int)
     parser.add_argument('--require-source-originals', action='store_true', help='Require all captured source document bytes in a downloaded bundle.')
     parser.add_argument('--require-source-history', action='store_true', help='Require the complete versioned source and observation history.')
+    parser.add_argument('--require-feedback-originals', action='store_true', help='Require exact original bytes for every feedback artifact, including older receipts.')
     args = parser.parse_args()
+    feedback_originals_verified = False
+    feedback_original_count = 0
     source_originals_verified = False
     original_count = 0
     try:
@@ -41,7 +44,7 @@ def main() -> int:
         document = json.loads(text, object_pairs_hook=unique)
         if type(document) is not dict:
             raise ValueError()
-        if document.get('codec') in ('rf1086-production-archive-v1', 'rf1086-production-archive-v2'):
+        if document.get('codec') in ('rf1086-production-archive-v1', 'rf1086-production-archive-v2', 'rf1086-production-archive-v3'):
             canonical = text
             section = {}
         else:
@@ -60,6 +63,10 @@ def main() -> int:
             originals = verify_source_originals(archive, section.get('sourceOriginals'))
             source_originals_verified = True
             original_count = len(originals)
+        if args.require_feedback_originals or 'feedbackOriginals' in section:
+            originals = verify_feedback_originals(archive, section.get('feedbackOriginals'), require_complete=args.require_feedback_originals)
+            feedback_originals_verified = True
+            feedback_original_count = len(originals)
     except (OSError, ValueError, TypeError, KeyError, RecursionError, DocumentsError):
         print(json.dumps({'status': 'invalid', 'code': 'rf1086_archive_verification_failed'}))
         return 1
@@ -73,6 +80,9 @@ def main() -> int:
         'sourceClaims': len(archive.source_submission_claims),
         'feedbackArtifacts': len(archive.feedback_artifacts),
         'databaseRestorePerformed': False, 'objectBytesVerified': False,
+        'feedbackOriginalBytesVerified': feedback_originals_verified,
+        'feedbackOriginals': feedback_original_count,
+        'feedbackOriginalsComplete': feedback_originals_verified and all(row.original_id is not None for row in archive.feedback_artifacts),
         'sourceOriginalBytesVerified': source_originals_verified, 'sourceOriginals': original_count}))
     return 0
 

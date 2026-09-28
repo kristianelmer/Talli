@@ -19,6 +19,7 @@ begin
 end; $borrow$;
 set local role documents_store_owner;
 -- A receipt assertion exposes metadata only, never retained object bytes.
+grant usage on schema documents to shareholder_register_filing_store_owner;
 grant execute on function documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)
  to shareholder_register_filing_store_owner;
 reset role;

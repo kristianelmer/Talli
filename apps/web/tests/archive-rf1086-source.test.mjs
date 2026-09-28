@@ -502,18 +502,36 @@ test('full-year archive requires exact retained source versions independently of
   }
 });
 
-test('download forwards source lineage, immutable claims and managed head without rewriting evidence', async () => {
-  const input = productionArchiveFixture();
-  const lineage = [], claims = [], head = null;
-  const fixture = route({ ...input, rfLoader: async () => ({ ...input.rf, companyId, incomeYear: 2025,
-    sourceApprovalLineage: lineage, sourceSubmissionClaims: claims, submissionHead: head, canonicalArchive: "retained-record", sourceOriginals: [] }) });
+test('download forwards canonical evidence and retained feedback without current bucket metadata', async () => {
+  const rf = JSON.parse(readFileSync(new URL('./fixtures/rf1086-feedback-original-archive.json', import.meta.url), 'utf8'));
+  const fixture = route({ rfLoader: async () => rf, documentObjects: [] });
   assert.equal((await fixture.run()).status, 200);
-  assert.deepEqual(fixture.captures[0].rf1086Production.sourceApprovalLineage, lineage);
-  assert.deepEqual(fixture.captures[0].rf1086Production.sourceSubmissionClaims, claims);
-  assert.equal(fixture.captures[0].rf1086Production.submissionHead, head);
-  assert.equal(fixture.captures[0].rf1086Production.canonicalArchive, "retained-record");
-  assert.deepEqual(fixture.captures[0].rf1086Production.sourceOriginals, []);
+  for (const key of ['sourceApprovalLineage', 'sourceSubmissionClaims', 'submissionHead', 'canonicalArchive',
+    'sourceOriginals', 'feedbackOriginals', 'sourceHistoryDocuments']) {
+    assert.deepEqual(plain(fixture.captures[0].rf1086Production[key]), rf[key]);
+  }
 });
+
+for (const [name, change] of [
+  ['missing originals', rf => { rf.feedbackOriginals = []; }],
+  ['duplicate originals', rf => { rf.feedbackOriginals.push(rf.feedbackOriginals[0]); }],
+  ['deleted bindings and originals', rf => { rf.feedbackArtifacts = []; rf.feedbackOriginals = []; }],
+  ['missing binding', rf => { delete rf.feedbackArtifacts[0].originalId; }],
+  ['changed metadata', rf => { rf.feedbackArtifacts[0].originalMetadataSha256 = 'f'.repeat(64); }],
+  ['changed timestamp below millisecond precision', rf => { rf.feedbackArtifacts[0].originalRetainedAt = rf.feedbackArtifacts[0].originalRetainedAt.replace('.123', '.123001'); }],
+  ['changed bytes', rf => {
+    const original = JSON.parse(rf.feedbackOriginals[0].canonicalOriginal);
+    original.contentBase64 = 'AA=='; rf.feedbackOriginals[0].canonicalOriginal = JSON.stringify(original);
+  }],
+]) {
+  test(`download refuses retained feedback corruption: ${name}`, async () => {
+    const rf = JSON.parse(readFileSync(new URL('./fixtures/rf1086-feedback-original-archive.json', import.meta.url), 'utf8'));
+    change(rf);
+    const fixture = route({ rfLoader: async () => rf });
+    assert.equal((await fixture.run()).status, 500);
+    assert.equal(fixture.captures.length, 0);
+  });
+}
 
 test('unapproved source history requires all retained metadata versions and independent register originals', async (t) => {
   const filing = JSON.parse(readFileSync(new URL('./fixtures/rf1086-source-history-archive.json', import.meta.url), 'utf8'));
