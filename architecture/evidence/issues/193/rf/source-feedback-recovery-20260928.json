@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-28",
+  "status": "PASS_BOUNDED_CONFIRMED_SOURCE_RECOVERY",
+  "baseCommit": "7fe0e5d70d0fe7b62456dd4ce9f6989aae35501f",
+  "scope": "Read-only feedback recovery for already-confirmed full-year source submissions.",
+  "behavior": [
+    "Full-year recovery derives its exact original XML and source_* keys from the validated retained approval, durable claim and complete journal, instead of reading current source facts.",
+    "Requires accepted ownership, original submitter and exact historical entitlement/connection relationships; expired/revoked pilots and invalidated approvals do not erase confirmed-submission recovery.",
+    "Validates confirmation/dialog UUIDs against the succeeded journal and rejects duplicate confirmation keys before acquiring a read-only provider token.",
+    "Invalid or missing archive evidence releases the claimed lease without a provider call; unconfirmed unknown outcomes cannot invent a reference or replay a POST.",
+    "Legacy send explicitly rejects full-year approvals; no full-year send endpoint or production activation is added.",
+    "Ledger disposable-container readiness now checks TCP so the temporary socket-only initialization server cannot be mistaken for the final server."
+  ],
+  "verification": {
+    "focusedWorkflowAndApi": "211 passed before final two negative cases.",
+    "finalSourceRecovery": "38 passed, including real FastAPI route with local fake read-only provider, five source families and three recoverable states.",
+    "broaderRfSelection": "1778 passed, 6846 deselected, 3 pre-existing multiprocessing warnings; final two negative cases verified separately.",
+    "architecture": "PASS",
+    "ledgerLifecycle": "PASS: actual fresh PostgreSQL Ledger expand, contract, concurrency, rollback and recutover; 1 runtime test in 38 seconds, no skip.",
+    "databaseCollection": "48 source approval/claim database cases collected, including actual journal-to-archive recovery after approval invalidation/pilot expiry; execution pending.",
+    "previousRevisionCi": "Run 36415185712 Database isolation failed during disposable Ledger bootstrap: socket connected to temporary PostgreSQL server while shutting down. It did not reach RF; Application still in progress when recorded."
+  },
+  "limits": [
+    "Full-schema RF archive/recovery execution and final-revision CI remain pending.",
+    "No full-year provider dispatch, annual readiness replacement, unknown POST replay, production data or hosted/provider operations.",
+    "Bound historical feedback originals must also be consumed by correction admission; current correction preflight still uses the current Documents evidence and must not substitute another retained receipt.",
+    "All seven RF acceptance criteria remain pending."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-source-recovery-20260928-14d7",
+  "sha256": {
+    "talli-source-recovery-tests.log": "664f53cede374326c52cbe8c75e12db10d487879a271dd62f42c68a12682b9e9",
+    "talli-source-recovery-final.log": "7afb221ceed6d5ca91f8259d5706a1af39bb91675a0716becab6f526e35b346a",
+    "talli-source-recovery-rf.log": "4cff9981ad2c6bc6893caf099a629c4552ab21d85f93a38635bc83fe2e8206ff",
+    "talli-source-recovery-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-source-recovery-db-collection.log": "df2d2dc303b841ed3e5bf31bf7819e56671311b52b6fbcaec27e68fe7e962d34",
+    "talli-ledger-tcp-ready.log": "64eaf89a63d3c802c7ac483af4f1efa089ef475f3077cb839b66e9b0fd44995d",
+    "talli-7fe0-database.log": "1272f4daf17c008709cee8aa24729a61b3e369f53884773d89e5d6bbf6855dc5"
+  }
+}

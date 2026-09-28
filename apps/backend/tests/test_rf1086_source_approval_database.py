@@ -698,3 +698,44 @@ def test_full_year_predecessor_reads_original_approval_and_claim_under_restricte
     with pytest.raises(rf.Rf1086ProductionError):
         rf.assert_rf1086_correction_predecessor(replace(snapshot,source_claim=None),
             company_id=query.company_id,income_year=query.income_year,predecessor=prior)
+
+
+def test_confirmed_source_claim_reconstructs_read_only_payload_after_live_approval_expiry(claim_fixture):
+    from test_shareholder_register_filing_production import Authority
+    f = claim_fixture
+    store = f['store']
+    async def create():
+        async with store._transaction() as db:
+            await lock(db, f)
+            review = await context(db, f)
+            approval = await append(db, f, review)
+            claimed = await claim_source(db, f, approval)
+            payload = manifest(f, review)
+        submission_id = claimed['claim']['submission_id']
+        authority = Authority()  # In-memory provider only; real journal writes.
+        result = await rf.execute_journaled_rf1086_production(rf.JournaledRf1086ProductionInput(
+            submission_id, int(f['source'].income_year), f['preview'].hovedskjema_xml,
+            payload.underskjema_xml, payload.document_order),
+            journal=store.operation_journal(submission_id), authority_client=authority)
+        assert [name for name, _ in authority.calls].count('main') == 1
+        return approval, submission_id, payload, result
+    approval, submission_id, payload, result = asyncio.run(create())
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute("update shareholder_register_filing.filing_approval_snapshots set invalidated_at=clock_timestamp(),invalidation_reason='later review' where id=%s", (approval['id'],))
+        db.execute("update billing.production_pilot_entitlements set expires_at=clock_timestamp()-interval '1 second' where id=%s", (f['entitlement'],))
+    async def recover():
+        lease = str(uuid4())
+        assert await store.claim_feedback_lease(submission_id, lease)
+        try:
+            reference = await store.read_claimed_reference(submission_id, lease)
+            dialog = await store.read_claimed_dialog_id(submission_id, lease)
+            query = rf.Rf1086ArchiveQuery(f['source'].company_id, f['source'].income_year, store.actor_id)
+            archive = await store.archive_source(query)
+            recovered = rf.prepare_rf1086_source_reconciliation(archive, query=query,
+                submission=await store.read_submission(submission_id), forsendelse_id=reference, dialog_id=dialog)
+            assert recovered.hovedskjema_xml == f['preview'].hovedskjema_xml
+            assert recovered.underskjema_xml == payload.underskjema_xml
+            assert (reference, dialog) == (result.forsendelse_id, result.dialog_id)
+        finally:
+            await store.release_feedback_lease(submission_id, lease)
+    asyncio.run(recover())

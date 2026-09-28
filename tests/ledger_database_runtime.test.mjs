@@ -1845,7 +1845,9 @@ test("ledger authority survives expand, contract, concurrency, rollback, and rec
 
     let readyChecks = 0;
     for (let attempt = 0; attempt < 48; attempt += 1) {
-      if (docker(["exec", containerName, "pg_isready", "-U", "postgres", "-d", "talli_test"]).status === 0) {
+      // The entrypoint's temporary initialization server accepts socket
+      // connections, then shuts down. TCP identifies the final server.
+      if (docker(["exec", containerName, "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "talli_test"]).status === 0) {
         readyChecks += 1;
         if (readyChecks === 2) break;
       } else {

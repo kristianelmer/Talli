@@ -152,5 +152,6 @@
   "completeSourceHistory": "complete-source-history-20260928.json",
   "feedbackOriginalRetention": "feedback-original-retention-20260928.json",
   "feedbackOriginalBinding": "feedback-original-binding-20260928.json",
-  "feedbackOriginalExport": "feedback-original-export-20260928.json"
+  "feedbackOriginalExport": "feedback-original-export-20260928.json",
+  "sourceFeedbackRecovery": "source-feedback-recovery-20260928.json"
 }

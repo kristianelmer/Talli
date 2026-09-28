@@ -735,3 +735,21 @@ older unbound artifacts fail that strict check. Without the flag, legacy records
 remain readable and the verifier reports partial feedback coverage. Verification
 of supplied bytes grants no independent authenticity, provider or restoration
 authority. Both v1 and v2 records keep their original codec and bytes.
+
+
+`prepare_rf1086_source_reconciliation` reconstructs read-only feedback input for
+confirmed full-year submissions from the validated canonical archive. It checks
+the authenticated submitter, retained approval and claim, complete original
+journal, exact confirmation/dialog identity and the immutable source preview.
+The returned input retains the approved `source_*` document keys and original XML;
+current source facts cannot substitute for the claimed payload.
+
+The authenticated recovery workflow supports both production profiles. Full-year
+recovery reads this retained snapshot after obtaining its feedback lease and
+before acquiring a read-only authority token. It retains accepted-owner and exact
+historical entitlement/connection checks but permits revoked or expired pilots
+and invalidated approvals to recover their already-confirmed submission. Archive
+failure or changed evidence releases the lease without a provider call. An
+unconfirmed unknown mutation still cannot be replayed or treated as confirmed.
+The legacy send entry explicitly rejects full-year approvals; owned readiness and
+full-year dispatch remain separate work.

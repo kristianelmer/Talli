@@ -15,6 +15,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     VerifyRf1086SourceEvidenceQuery, create_rf1086_preparation_service,
     execute_journaled_rf1086_production, rf1086_current_manifest_hash, rf1086_production_document_order,
     reconcile_journaled_rf1086_production,
+    prepare_rf1086_source_reconciliation,
     Rf1086ProductionError, Rf1086ReconciliationInput, Rf1086SendResult, SendApprovedRf1086Command,
 )
 from talli_backend.shared.kernel import ActorId, CompanyId, CorrelationId, IncomeYear
@@ -43,6 +44,8 @@ async def send_approved_rf1086_production_filing(session: AuthenticatedSharehold
     approval = await session.read_approval(approval_id)
     if approval is None or approval.invalidated:
         raise Rf1086ProductionError("approval_expired")
+    if approval.case_profile != "rf1086_no_activity_v1":
+        raise Rf1086ProductionError("basis_unavailable")
     await session.require_fresh_production_owner(approval.company_id)
     preview = await session.read_preview(approval.preview_id)
     correlation = CorrelationId(str(uuid4()))
@@ -102,7 +105,8 @@ async def reconcile_rf1086_production(session: AuthenticatedShareholderRegisterF
         actor = str(session.actor_id.subject)
         submission = await session.read_submission(submission_id)
         if (submission is None or submission.user_id != actor or submission.obligation != "aksjonaerregisteroppgaven"
-                or submission.case_profile != "rf1086_no_activity_v1" or submission.environment != "production"):
+                or submission.case_profile not in {"rf1086_no_activity_v1", "rf1086_full_year_v1"}
+                or submission.environment != "production"):
             raise Rf1086ProductionError("basis_unavailable")
         state = submission.feedback_state
         if state in {"accepted", "rejected"}:
@@ -121,11 +125,12 @@ async def reconcile_rf1086_production(session: AuthenticatedShareholderRegisterF
             or str(entitlement.case_profile) != submission.case_profile):
             raise Rf1086ProductionError("basis_unavailable")
         connection = await session.read_connection(str(entitlement.system_user_request_id), submission.company_id)
-        preview = await session.read_preview(approval.preview_id)
+        source_filing = submission.case_profile == "rf1086_full_year_v1"
+        preview = None if source_filing else await session.read_preview(approval.preview_id)
         if (not _valid_connection(connection, company_id=submission.company_id, actor_id=actor,
                 obligation=submission.obligation, external_ref=entitlement.system_user_external_reference)
-            or preview is None or preview.company_id != submission.company_id or preview.income_year != submission.income_year
-            or not preview.hovedskjema_xml):
+            or (not source_filing and (preview is None or preview.company_id != submission.company_id
+                or preview.income_year != submission.income_year or not preview.hovedskjema_xml))):
             raise Rf1086ProductionError("connection_unavailable")
         session.require_configuration()
         claimed = await session.claim_feedback_lease(submission.id, lease_id)
@@ -133,11 +138,19 @@ async def reconcile_rf1086_production(session: AuthenticatedShareholderRegisterF
             raise Rf1086ProductionError("status_busy")
         reference = await session.read_claimed_reference(submission.id, lease_id)
         dialog_id = await session.read_claimed_dialog_id(submission.id, lease_id)
+        if source_filing:
+            query = Rf1086ArchiveQuery(CompanyId(submission.company_id), IncomeYear(submission.income_year), session.actor_id)
+            recovery = prepare_rf1086_source_reconciliation(await session.archive_source(query),
+                query=query, submission=submission, forsendelse_id=reference, dialog_id=dialog_id)
+            if recovery.organization_number != company.org_number:
+                raise Rf1086ProductionError("basis_unavailable")
+        else:
+            recovery = Rf1086ReconciliationInput(submission.id, submission.company_id, submission.income_year,
+                reference, preview.hovedskjema_xml, preview.underskjema_xml, company.org_number, dialog_id)
         binding = await session.bind_read_only_authority(company, connection)
         result = await reconcile_journaled_rf1086_production(session.feedback_journal(submission_id=submission.id,
             company_id=submission.company_id, income_year=submission.income_year, forsendelse_id=reference, lease_id=lease_id),
-            binding.authority, Rf1086ReconciliationInput(submission.id, submission.company_id, submission.income_year,
-                reference, preview.hovedskjema_xml, preview.underskjema_xml, company.org_number, dialog_id),
+            binding.authority, recovery,
             discovery=binding.feedback_discovery, initial_poll=False)
         return Rf1086OwnerReconciliationResult(result.state)
     except Rf1086ProductionError as error:

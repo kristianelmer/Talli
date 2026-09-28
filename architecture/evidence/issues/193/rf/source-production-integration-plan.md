@@ -325,3 +325,28 @@ reproduced missing Documents schema USAGE for the RF store owner, and passes wit
 the explicit schema grant. The static expectation is updated. The older archive
 read failure was not reached; final-revision CI and all RF acceptance criteria
 remain pending.
+
+
+## Confirmed full-year feedback recovery
+
+Read-only recovery now accepts the full-year profile only after reconstructing
+its retained source approval, immutable claim, complete POST journal and exact
+confirmation/dialog relationship. It uses approved source document keys and XML,
+keeps owner/submitter/connection checks, and permits historical recovery after
+pilot expiry or approval invalidation. Missing or altered evidence stops before
+token acquisition and releases the lease. An unknown unconfirmed POST remains
+unknown. Legacy send explicitly rejects the full-year profile. See
+`source-feedback-recovery-20260928.json` for bounded local/API evidence; actual
+full-schema recovery execution and final-revision CI remain pending.
+
+Run 36415185712 stopped in the disposable Ledger bootstrap before RF: readiness
+accepted the temporary socket-only initialization server. TCP readiness fixes
+that observed race; the actual complete Ledger lifecycle rehearsal passes locally.
+Application was still in progress when this checkpoint was written.
+
+Correction admission still verifies current Documents evidence. For feedback
+with an immutable original binding, it must read and compare that exact retained
+version and reassert its historical receipt under the final guard. It must not
+substitute a newer retained metadata version merely because the bytes match.
+This historical correction-original integration remains open, alongside source
+send, owned annual readiness, retention generations and actual restoration.
