@@ -156,7 +156,10 @@ The database claim repeats this complete-history check and advances the managed
 head atomically with claim insertion. Bounded PostgreSQL checks include an observed
 two-session race, competing roots/forks, terminal full-year correction, populated
 rollback and ordered predecessor replay. Maintained full-stack cases still await
-CI; the claim is not yet connected to source admission or provider dispatch.
+CI. The application now connects the claim to source admission: scope comes
+from the retained approval, exact source/review/manifest and predecessor receipts
+are rechecked inside the guard, and retries recover the durable claim without
+authorizing another POST. Provider dispatch remains unconnected.
 
 A versioned archive includes source versions, previews, bridge bindings,
 approvals and submission ancestry. Verify historical artifacts against their

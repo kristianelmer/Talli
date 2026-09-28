@@ -40,7 +40,9 @@ drop trigger if exists company_archive_track_rf193_artifacts on shareholder_regi
 drop trigger if exists a_rf193_event_archive_scope on shareholder_register_filing.production_filing_events;
 drop function if exists shareholder_register_filing.derive_event_archive_scope_v1();
 alter table shareholder_register_filing.production_filing_events drop constraint if exists rf193_event_archive_scope;
-alter table shareholder_register_filing.production_filing_submissions drop constraint if exists rf193_submission_archive_scope;
+-- Retain the submission identity key. Later durable claim/head foreign keys
+-- depend on it, including while their command is rolled back. This redundant
+-- unique key changes no original submission data or legacy write behavior.
 alter table shareholder_register_filing.production_filing_events drop column if exists company_id, drop column if exists income_year;
 create or replace function shareholder_register_filing.read_scope_inventory_v1(p_company_id uuid,p_income_year integer,p_verified_subject text)
 returns jsonb language plpgsql stable security definer set search_path='' as $function$

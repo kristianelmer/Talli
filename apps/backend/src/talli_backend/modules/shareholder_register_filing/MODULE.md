@@ -618,3 +618,19 @@ in the same transaction. Full-year application dispatch, owned annual readiness,
 original-byte revalidation at send and archive claim lineage remain required
 before enabling the full-year send path; this database foundation does not expose
 an HTTP send command or activate production.
+
+`Rf1086RetainedSourceApproval` carries the approval record and exact canonical
+manifest text. `inspect_rf1086_retained_source_approval` verifies its identity
+before source admission. `Rf1086SourceSubmissionClaim` retains the immutable
+approval, payload, actor and predecessor identity;
+`assert_rf1086_source_submission_claim` validates that identity on every read.
+`Rf1086SourceSubmissionClaimResult` distinguishes a new claim from historical
+recovery. Recovery never grants a second provider dispatch.
+
+The application claim workflow derives scope, preview and entitlement from the
+retained approval. It verifies original bytes before admission, then rechecks
+approval, complete history, correction receipts, source, Governance and review
+on the guarded connection before rebuilding the exact manifest and claiming.
+Retries first recover retained claims without demanding current source or pilot
+freshness. A concurrent commit can also be recovered after failed admission.
+This workflow has no provider binding and is not exposed as an HTTP send route.

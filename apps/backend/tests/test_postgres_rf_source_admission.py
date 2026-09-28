@@ -180,3 +180,82 @@ def test_approval_context_and_append_use_one_live_connection_and_exact_manifest_
         with pytest.raises(rf.ShareholderRegisterFilingError):await scope.read_source_approval_context(h.preview.preview_id,entitlement)
         with pytest.raises(rf.ShareholderRegisterFilingError):await scope.append_source_approval(h.preview,entitlement,manifest,'a'*64)
     asyncio.run(run())
+
+
+def claim_wire(c, actor):
+    return {'submission_id':c.claim.submission_id.value,'approval_id':c.approval_id.value,
+        'company_id':str(COMPANY),'income_year':int(YEAR),'manifest_sha256':c.manifest_sha256,
+        'payload_sha256':c.claim.payload_sha256,'predecessor_submission_id':None,
+        'claimed_by':str(actor.subject),'claimed_at':c.claim.claimed_at}
+
+
+def test_claim_and_recovery_use_same_guarded_connection_and_expire():
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    from test_rf1086_source_claim import ClaimHarness
+    c=ClaimHarness();h=c.h;store=rf_session();calls=[]
+    wire=claim_wire(c,store.actor_id)
+    class Connection:
+        info=SimpleNamespace(transaction_status=TransactionStatus.INTRANS)
+        async def execute(self,sql,args):calls.append((sql,args));return self
+        async def fetchone(self):
+            if 'read_source_submission_claim' in calls[-1][0]:return wire
+            return {'result':{'claim':wire,'newlyClaimed':True}}
+    db=Connection();scope=_SourceAdmission(store,db,rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id),h.identity)
+    async def run():
+        claimed=await scope.claim_source_submission(c.approval_id,c.manifest_sha256,None)
+        assert claimed.newly_claimed is True and claimed.claim.claimed_by==store.actor_id
+        assert calls[-1][1]==(c.approval_id.value,c.manifest_sha256,None,str(store.actor_id.subject))
+        assert await scope.read_source_submission_claim(c.approval_id,c.manifest_sha256,None)==claimed.claim
+        assert calls[-1][1]==(c.approval_id.value,c.manifest_sha256,str(store.actor_id.subject))
+        scope.close()
+        for action in (scope.claim_source_submission,scope.read_source_submission_claim):
+            with pytest.raises(rf.ShareholderRegisterFilingError):await action(c.approval_id,c.manifest_sha256,None)
+        with pytest.raises(rf.ShareholderRegisterFilingError):await scope.read_source_claim_approval(c.approval_id)
+        assert len(calls)==2
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('field,value',[('income_year',True),('claimed_by',str(uuid4())),
+    ('manifest_sha256','a'*64),('payload_sha256',None),('claimed_at','2026-01-01T00:00:00'),
+    ('predecessor_submission_id',str(uuid4())),('submission_id','bad'),('extra',True)],
+    ids=['year','actor','manifest','payload','timestamp','predecessor','submission','extra'])
+def test_claim_decoder_rejects_malformed_retained_identity(field,value):
+    from talli_backend.adapters.postgres_shareholder_register_filing import _source_claim_record
+    from test_rf1086_source_claim import ClaimHarness
+    c=ClaimHarness();wire=claim_wire(c,c.h.actor);wire[field]=value
+    with pytest.raises(rf.Rf1086ProductionError):
+        _source_claim_record(wire,c.approval_id,c.manifest_sha256,None,c.h.actor)
+
+
+def test_null_postgres_composite_means_no_claim_but_partial_null_does_not():
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SOURCE_CLAIM_FIELDS
+    from test_rf1086_source_claim import ClaimHarness
+    c=ClaimHarness();store=rf_session();row=dict.fromkeys(_SOURCE_CLAIM_FIELDS)
+    class Connection:
+        async def execute(self,*args):return self
+        async def fetchone(self):return row
+    async def run():
+        assert await store._read_source_submission_claim(Connection(),c.approval_id,c.manifest_sha256,None) is None
+        row['approval_id']=c.approval_id.value
+        with pytest.raises(rf.Rf1086ProductionError):
+            await store._read_source_submission_claim(Connection(),c.approval_id,c.manifest_sha256,None)
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('mutation',['company','year','newly-claimed','extra'])
+def test_guarded_claim_rejects_wrong_scope_or_result_shape(mutation):
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    from test_rf1086_source_claim import ClaimHarness
+    c=ClaimHarness();store=rf_session();wire=claim_wire(c,store.actor_id)
+    result={'claim':wire,'newlyClaimed':True}
+    if mutation=='company':wire['company_id']=str(uuid4())
+    if mutation=='year':wire['income_year']=2023
+    if mutation=='newly-claimed':result['newlyClaimed']=1
+    if mutation=='extra':result['dispatchAuthorized']=True
+    class Connection:
+        info=SimpleNamespace(transaction_status=TransactionStatus.INTRANS)
+        async def execute(self,*args):return self
+        async def fetchone(self):return {'result':result}
+    scope=_SourceAdmission(store,Connection(),rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id),c.h.identity)
+    with pytest.raises(rf.Rf1086ProductionError):
+        asyncio.run(scope.claim_source_submission(c.approval_id,c.manifest_sha256,None))

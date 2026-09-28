@@ -2,8 +2,10 @@
 
 Implementation contract derived from the current RF journal and approval code on
 24 September 2026. The database claim foundation is implemented in
-`20260928060732_rf1086_source_submission_claim.sql`; application admission,
-owned annual readiness, provider dispatch and archive integration remain pending.
+`20260928060732_rf1086_source_submission_claim.sql`. The application now wraps
+the claim with source admission, original-byte checks and exact retained-approval
+rebuilding. Owned annual readiness, provider dispatch and archive integration
+remain pending.
 This contract is not acceptance evidence.
 
 The guarded command should accept only approval ID, exact manifest SHA, expected

@@ -5,7 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import AsyncContextManager, Protocol
 
-from talli_backend.application.shareholder_register_source_admission import Rf1086SourceAdmissionTransaction
+from talli_backend.application.shareholder_register_source_admission import Rf1086SourceAdmissionTransaction, SourceAdmissionSession
 
 from talli_backend.modules.billing.public import BillingQueries
 from talli_backend.modules.company_access.public import CompanyAccessRecord
@@ -38,7 +38,7 @@ class Rf1086ReadOnlyBinding:
 
 
 class AuthenticatedShareholderRegisterFilingSession(Rf1086PreparationPersistence, Rf1086YearSourcePersistence,
-        Rf1086RegisterObservationPersistence, Rf1086SourcePreviewPreparation, Protocol):
+        Rf1086RegisterObservationPersistence, Rf1086SourcePreviewPreparation, SourceAdmissionSession, Protocol):
     @property
     def actor_id(self) -> ActorId: ...
     @property

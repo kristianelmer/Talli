@@ -609,3 +609,48 @@ def test_claim_rollback_retains_recovery_and_recutover_identity(claim_fixture):
             result=await claim_source(db,f,approval)
             assert result['claim']==first['claim'] and not result['newlyClaimed']
     asyncio.run(replay())
+
+
+def test_source_claim_adapter_round_trips_retained_approval_and_claim(claim_fixture):
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    f=claim_fixture;store=f['store']
+    async def run():
+        async with store._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+            query=rf.Rf1086SourceQuery(f['source'].company_id,f['source'].income_year,store.actor_id)
+            scope=_SourceAdmission(store,db,query,None)
+            approval_id=rf.ApprovalId(str(approval['id']))
+            retained=await scope.read_source_claim_approval(approval_id)
+            assert retained.approval.manifest_hash==approval['manifest_hash']
+            assert rf.inspect_rf1086_retained_source_approval(retained,approval_id=approval_id,
+                manifest_sha256=approval['manifest_hash'],actor_id=store.actor_id) is None
+            first=await scope.claim_source_submission(approval_id,approval['manifest_hash'],None)
+            assert first.newly_claimed is True
+            assert await scope.read_source_submission_claim(approval_id,approval['manifest_hash'],None)==first.claim
+            scope.close()
+        assert await store.read_source_claim_approval(approval_id)==retained
+        assert await store.read_source_submission_claim(approval_id,approval['manifest_hash'],None)==first.claim
+    asyncio.run(run())
+
+
+def test_archive_rollback_preserves_durable_claim_scope_foreign_keys(claim_fixture):
+    import re
+    f=claim_fixture
+    async def create():
+        async with f['store']._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+            return await claim_source(db,f,approval)
+    first=asyncio.run(create())
+    with psycopg.connect(DATABASE_URL) as db:
+        try:
+            def state():
+                return db.execute("select to_jsonb(b) from shareholder_register_filing.source_submission_bindings b where submission_id=%s union all select to_jsonb(h) from shareholder_register_filing.submission_heads h where submission_id=%s",
+                    (first['claim']['submission_id'],first['claim']['submission_id'])).fetchall()
+            before=state();assert len(before)==2
+            constraints=db.execute("select oid,conname,conindid,convalidated from pg_constraint where conrelid in ('shareholder_register_filing.source_submission_bindings'::regclass,'shareholder_register_filing.submission_heads'::regclass) and contype='f' order by oid").fetchall()
+            rollback=(ROOT/'supabase/rollback/20260917114424_rf1086_production_archive_evidence.sql').read_text()
+            rollback=re.sub(r'commit;\s*$','',re.sub(r'(?m)^begin;\s*$','',rollback,count=1))
+            db.execute(rollback)
+            assert state()==before
+            assert db.execute("select oid,conname,conindid,convalidated from pg_constraint where conrelid in ('shareholder_register_filing.source_submission_bindings'::regclass,'shareholder_register_filing.submission_heads'::regclass) and contype='f' order by oid").fetchall()==constraints
+        finally:db.rollback()

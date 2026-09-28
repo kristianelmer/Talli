@@ -108,7 +108,12 @@
       "Rf1086SourceReadinessProof",
       "build_rf1086_source_readiness",
       "assert_rf1086_source_readiness_matches",
-      "assert_rf1086_submission_predecessor"
+      "assert_rf1086_submission_predecessor",
+      "Rf1086RetainedSourceApproval",
+      "Rf1086SourceSubmissionClaim",
+      "Rf1086SourceSubmissionClaimResult",
+      "inspect_rf1086_retained_source_approval",
+      "assert_rf1086_source_submission_claim"
     ],
     "events": [],
     "errors": [
