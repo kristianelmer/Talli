@@ -220,6 +220,56 @@ def test_replay_preserves_function_identity_membership_and_rollback_fails_closed
             assert state(db) == before and memberships(db) == roles
 
 
+def test_recutover_validates_a_writer_whose_owner_cannot_execute_it():
+    """The language validator requires EXECUTE independently of ownership.
+
+    An isolated overload exercises the real wrapper migration without changing
+    the callable production coordinator or its historical ACL.
+    """
+    signature = 'backend_system.lock_ledger_writer_year_v1(jsonb,text,boolean)'
+    with psycopg.connect(DATABASE_URL, autocommit=True) as db:
+        assert db.execute('select to_regprocedure(%s)', (signature,)).fetchone()[0] is None
+        schema_owner, had_create = db.execute("""select pg_get_userbyid(nspowner),
+            has_schema_privilege('ledger_store_owner',oid,'CREATE')
+            from pg_namespace where nspname='backend_system'""").fetchone()
+        try:
+            with db.transaction():
+                db.execute(sql.SQL('set local role {}').format(sql.Identifier(schema_owner)))
+                db.execute('grant create on schema backend_system to ledger_store_owner')
+                db.execute('set local role ledger_store_owner')
+                db.execute("""create function backend_system.lock_ledger_writer_year_v1(
+                    p_request jsonb,p_verified_subject text,p_recutover_probe boolean)
+                    returns void language plpgsql volatile security definer set search_path=''
+                    as $$begin raise exception 'unguarded_probe_body';end$$""")
+                db.execute(sql.SQL('revoke all on function {} from public,ledger_store_owner').format(sql.SQL(signature)))
+                db.execute(sql.SQL('grant execute on function {} to ledger_workflow_executor').format(sql.SQL(signature)))
+                db.execute(sql.SQL('set local role {}').format(sql.Identifier(schema_owner)))
+                if not had_create:
+                    db.execute('revoke create on schema backend_system from ledger_store_owner')
+            def identity():
+                return db.execute("""select oid,proowner,proacl::text,proconfig,prosecdef
+                    from pg_proc where oid=%s::regprocedure""", (signature,)).fetchone()
+            def schema_acls():
+                return db.execute("""select oid,nspacl::text from pg_namespace
+                    where nspname in ('ledger','corporate_governance','backend_system') order by oid""").fetchall()
+            before, roles, acls = identity(), memberships(db), schema_acls()
+            for _ in range(2):
+                db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+                assert identity() == before and memberships(db) == roles
+                assert schema_acls() == acls
+                assert not db.execute("select has_function_privilege('ledger_store_owner',%s,'EXECUTE')", (signature,)).fetchone()[0]
+                assert db.execute("select prosrc like 'BEGIN%%rf193-company-write-guard-v1%%' from pg_proc where oid=%s::regprocedure", (signature,)).fetchone()[0]
+            with pytest.raises(psycopg.errors.RaiseException, match='ledger_forbidden'):
+                with db.transaction():
+                    db.execute('set local role ledger_workflow_executor')
+                    db.execute("select backend_system.lock_ledger_writer_year_v1('{}'::jsonb,null,true)")
+        finally:
+            db.execute('rollback')
+            with db.transaction():
+                db.execute('set local role ledger_store_owner')
+                db.execute(sql.SQL('drop function if exists {}').format(sql.SQL(signature)))
+
+
 @pytest.mark.parametrize('bridge,role', [('corporate_bridge','corporate_governance_ledger_bridge_owner'),
                                         ('tax_bridge','company_tax_filing_ledger_bridge_owner')])
 def test_pure_bridge_delegates_enter_guard_before_inner_validation(admitted, bridge, role):

@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
+import { rf1086ArchiveReceiptsMatch } from "../apps/web/app/lib/archive.ts";
 
 const read = path => readFileSync(new URL(path, import.meta.url), "utf8");
 test("owner actions compile as a Next server-action module", async () => {
@@ -125,7 +126,7 @@ function consumerSetup(failed = false) {
     },
   };
   const dependencies = {
-    rf1086ArchiveReceiptsMatch: module(read("../apps/web/app/lib/archive.ts")).rf1086ArchiveReceiptsMatch,
+    rf1086ArchiveReceiptsMatch,
     createSupabaseServerClient: async () => supabase, createSupabaseServiceRoleClient: () => supabase,
     getCurrentSessionAccessToken: async () => "token", requireStepUpForAction: async () => {},
     loadAcceptedMembershipCompany: async () => ({ id: "company", org_number: "123456789" }),

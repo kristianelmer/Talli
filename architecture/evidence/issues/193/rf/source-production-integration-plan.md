@@ -248,3 +248,15 @@ DB/object hydration, feedback and other document byte bundles, unapproved source
 history, streaming bundles beyond the bounded inline limit, and complete
 retention/expiry/cancellation coverage still need implementation and proof.
 See `source-original-bundle-20260928.json` for the bounded evidence.
+
+
+## Guard recutover validator and archive composition checks
+
+CI run 36398579593 identified the exact final recutover failure: PostgreSQL's
+language validator rejects replacing a routine as its owner when that owner's
+EXECUTE privilege was previously revoked. The guard migration now temporarily
+borrows that exact owner permission and restores it after replacement. A bounded
+PostgreSQL replay/rollback probe preserves routine and role identity and keeps
+admission fail-closed. The web composition harness also loads the real RF archive
+verifier, resolving two missing-dependency failures. Full final-revision CI remains
+pending. See `recutover-validator-20260928.json`; no acceptance criterion changes.

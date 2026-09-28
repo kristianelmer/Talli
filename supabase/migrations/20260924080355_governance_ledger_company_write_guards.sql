@@ -184,7 +184,7 @@ end; $tables$;
 -- after admission. Never edit historical migration bodies, rename public APIs,
 -- grant table access, or leave an independently callable unguarded alias.
 do $routines$
-declare item record; routine record; helper text; company_arg text; subject_arg text; migration_owned_legacy boolean;
+declare item record; routine record; helper text; company_arg text; subject_arg text; migration_owned_legacy boolean; owner_had_execute boolean;
  definition text; wrapped text; original text; prefix constant text := E'BEGIN\n  -- rf193-company-write-guard-v1\n';
 begin
  for item in select * from (values
@@ -298,8 +298,18 @@ begin
    wrapped:=prefix||pg_catalog.format('  PERFORM %I.acquire_company_write_guard_v1(%s,%s);',helper,company_arg,subject_arg)
       ||E'\n'||original||E'\nEND;\n';
    definition:=pg_catalog.replace(pg_catalog.pg_get_functiondef(routine.oid),routine.prosrc,wrapped);
+   -- PostgreSQL's language validator checks EXECUTE even for the owner.
+   -- Historical coordinator retirement can revoke that owner's execution;
+   -- borrow it only while replacing the body, then restore the exact ACL.
+   owner_had_execute:=pg_catalog.has_function_privilege(routine.owner_name,routine.oid,'EXECUTE');
    execute pg_catalog.format('set local role %I',routine.owner_name);
+   if not owner_had_execute then
+    execute pg_catalog.format('grant execute on function %s to %I',routine.oid::regprocedure,routine.owner_name);
+   end if;
    execute definition;
+   if not owner_had_execute then
+    execute pg_catalog.format('revoke execute on function %s from %I',routine.oid::regprocedure,routine.owner_name);
+   end if;
    reset role;
    if exists(select 1 from pg_catalog.pg_proc p where p.oid=routine.oid and (
        p.proowner<>routine.proowner or p.proacl is distinct from routine.proacl
