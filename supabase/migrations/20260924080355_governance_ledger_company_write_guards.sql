@@ -60,7 +60,9 @@ end; $guard$;
 revoke all on function corporate_governance.acquire_company_write_guard_v1(uuid,text) from public,anon,authenticated,service_role;
 grant execute on function corporate_governance.acquire_company_write_guard_v1(uuid,text) to corporate_governance_workflow_executor;
 create or replace function corporate_governance.lock_company_write_v1() returns trigger
-language plpgsql security invoker set search_path='' as $trigger$
+-- Trigger-only authority: lock the affected row companies without granting
+-- callers the private lock RPC. The surrounding write retains caller RLS.
+language plpgsql security definer set search_path='' as $trigger$
 declare company uuid;
 begin
  if pg_catalog.current_setting('transaction_isolation') <> 'read committed' then
@@ -94,7 +96,9 @@ end; $guard$;
 revoke all on function ledger.acquire_company_write_guard_v1(uuid,text) from public,anon,authenticated,service_role;
 grant execute on function ledger.acquire_company_write_guard_v1(uuid,text) to ledger_executor,ledger_workflow_executor,ledger_workflow_store_owner,corporate_governance_store_owner;
 create or replace function ledger.lock_company_write_v1() returns trigger
-language plpgsql security invoker set search_path='' as $trigger$
+-- The overlap view writes as authenticated. Elevate only this row lock helper,
+-- never the compatibility writer or its table privileges/RLS checks.
+language plpgsql security definer set search_path='' as $trigger$
 declare company uuid;
 begin
  if pg_catalog.current_setting('transaction_isolation') <> 'read committed' then

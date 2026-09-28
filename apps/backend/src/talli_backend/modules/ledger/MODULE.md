@@ -349,6 +349,9 @@ current accepted owner after a guard wait. Row backstops cover company-scoped
 Ledger tables, including immutable correction/reversal receipts and technical
 command receipts. Pure Governance/Tax bridge functions delegate to these guarded
 posting APIs without earlier table reads or locks; their narrow grants remain.
+The private row-trigger helper runs as the Ledger store owner solely to acquire
+the company lock. The overlap insert writer stays an invoker and retains table
+RLS; authenticated callers cannot call the shared lock RPC directly.
 
 The guard does not replace eligibility, posting, idempotency, or reconciliation
 checks. Safe rollback suspends guarded APIs and retains historical rows and

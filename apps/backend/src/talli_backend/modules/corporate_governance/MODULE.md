@@ -238,6 +238,8 @@ Governance/Ledger locks. Read-only reporting transactions retain SERIALIZABLE.
 Migration `20260924080355_governance_ledger_company_write_guards.sql` also wraps
 owner write RPCs before their original bodies and adds company-scoped table
 backstops, including lifecycle events and amendment receipts in Ledger.
+The private row-trigger helper runs as its store owner solely to acquire the
+company lock; the surrounding mutation retains its existing permissions and RLS.
 
 Registered capital events first perform a short guarded prepare/replay check.
 If still new, independent register and original-byte verification runs outside

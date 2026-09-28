@@ -1,0 +1,50 @@
+{
+  "baseCommit": "3e2d60a4b56e1e57f2108b76384e4934b3de34c6",
+  "status": "PASS_BOUNDED_TRIGGER_PERMISSIONS_FULL_DATABASE_INTEGRATION_PENDING",
+  "scope": [
+    "Ledger and Governance row-trigger lock helpers execute under their owning roles; compatibility writes retain invoker permissions and RLS",
+    "No new grants to authenticated, anon or service_role; shared lock RPC remains private"
+  ],
+  "ciPredecessor": {
+    "run": 36384775249,
+    "job": 108807757610,
+    "database": "FAILURE",
+    "cause": "Authenticated legacy opening-balance insert reaches a SECURITY INVOKER row trigger, which cannot call the private company archive lock",
+    "priorReplayRepair": "Documents historical replay progressed past the previously missing Ledger table",
+    "completeRerun": "PENDING"
+  },
+  "verification": {
+    "postgresReproduction": "Exact production lock helper and legacy insert function reproduce the CI permission denial in a minimal tenant fixture; fixed helper permits the valid write",
+    "maintainedDatabaseRegressionsPassed": 2,
+    "postgresChecks": [
+      "Tenant-invalid insert rejected by RLS",
+      "Tenant-changing update rejected by RLS",
+      "Valid insert/update/delete through actual Ledger and Governance helpers",
+      "Exact company advisory lock held by writer",
+      "Direct shared lock and helper RPC calls remain denied",
+      "Repeatable-read write rejected"
+    ],
+    "replayScopePassed": 12,
+    "architecture": "PASS",
+    "testPartitionPassed": 2,
+    "whitespace": "PASS"
+  },
+  "limits": [
+    "Minimal PostgreSQL fixture does not replace the complete Supabase database lane",
+    "Submission claim draft remains unverified and outside runnable migrations; full-year send stays blocked",
+    "No hosted changes, provider operations or real AS data; all seven RF acceptance criteria remain PENDING"
+  ],
+  "sourceSha256": {
+    "supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql": "c03ccf5f4e43e7c5f6fc64eed5f94e5af7c732f0f50d8c4359622a7d25d59411",
+    "apps/backend/tests/test_governance_ledger_company_guard_database.py": "43eae28ce62c2524a5b4232363406c02c6e6c3206dadf25d8a79b289167ae0c5",
+    "apps/backend/src/talli_backend/modules/ledger/MODULE.md": "2bc7521a64f5e3054a5c893a5070369cb95b2a35551787820b7fd947f79283bf",
+    "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md": "a48a87caf3500a6a012eac1bd4d036339508936cd2feaede01d6c3366d6ca3b6"
+  },
+  "privateProofSha256": {
+    "green.json": "c9ba2552dd628c5e23a037ace7998184c36ec3e9ba97b20798e7f7368827f150",
+    "probe.py": "9cf11180a3330ef0716d711c5676234ffc32c207a2016b428bf199d3ea4ffa7a",
+    "red.json": "259370d9c1060693b0b909ca46dff0a9fb45ca02e52335066b5645f3c4d7eb45",
+    "talli-3e2d-database.log": "35f0670ffcd0655bbc6cd37e88bad96405a86ef7b7bcda7f9984e27b76e6716c",
+    "talli-trigger-guard-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e"
+  }
+}

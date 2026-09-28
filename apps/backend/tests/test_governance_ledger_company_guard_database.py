@@ -156,6 +156,47 @@ def test_backstops_cover_every_company_owned_source_table_and_keep_private_acls(
         assert not db.execute("select has_table_privilege('corporate_governance_workflow_executor','documents.retained_originals','SELECT')").fetchone()[0]
 
 
+@pytest.mark.parametrize('schema', ['ledger', 'corporate_governance'])
+def test_restricted_row_writer_acquires_guard_without_private_rpc_access_or_rls_bypass(schema):
+    """Exercise the production trigger with an invoker/RLS write, as the overlap view does.
+
+    Temporary rows isolate the guard's permissions from each owner's business
+    validation. The workspace lane also exercises the real legacy opening write.
+    """
+    from uuid import uuid4
+    company, outsider = uuid4(), uuid4()
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute('create temporary table guard_writer_probe(company_id uuid, value integer) on commit drop')
+        db.execute('alter table guard_writer_probe enable row level security')
+        db.execute('alter table guard_writer_probe force row level security')
+        db.execute("create policy tenant on guard_writer_probe to authenticated using(company_id=current_setting('test.guard_company')::uuid) with check(company_id=current_setting('test.guard_company')::uuid)")
+        db.execute('grant select,insert,update,delete on guard_writer_probe to authenticated')
+        db.execute(sql.SQL('create trigger company_guard before insert or update or delete on guard_writer_probe for each row execute function {}.lock_company_write_v1()').format(sql.Identifier(schema)))
+        db.execute("select set_config('test.guard_company',%s,true)", (str(company),))
+        db.execute('set local role authenticated')
+        db.execute('insert into guard_writer_probe values(%s,1)', (company,))
+        db.execute('update guard_writer_probe set value=2 where company_id=%s', (company,))
+        assert db.execute('select value from guard_writer_probe').fetchall() == [(2,)]
+        db.execute('reset role')
+        assert db.execute("""select exists(select 1 from pg_locks where pid=pg_backend_pid()
+            and locktype='advisory' and granted and objsubid=1
+            and classid=((hashtextextended(%s,157)>>32)&4294967295)::oid
+            and objid=(hashtextextended(%s,157)&4294967295)::oid)""", (str(company),str(company))).fetchone()[0]
+        for statement, params in [
+            ('insert into guard_writer_probe values(%s,3)', (outsider,)),
+            ('update guard_writer_probe set company_id=%s', (outsider,)),
+        ]:
+            with pytest.raises(psycopg.errors.InsufficientPrivilege, match='row-level security'):
+                with db.transaction():
+                    db.execute('set local role authenticated')
+                    db.execute(statement, params)
+        for function in [f'{schema}.lock_company_write_v1()', 'public.company_archive_lock_company_v1(uuid)']:
+            assert not db.execute("select has_function_privilege('authenticated',%s,'EXECUTE')", (function,)).fetchone()[0]
+        db.execute('set local role authenticated')
+        db.execute('delete from guard_writer_probe where company_id=%s', (company,))
+        assert db.execute('select count(*) from guard_writer_probe').fetchone()[0] == 0
+
+
 def test_replay_preserves_function_identity_membership_and_rollback_fails_closed(admitted):
     with psycopg.connect(DATABASE_URL) as db:
         before, roles = state(db), memberships(db)

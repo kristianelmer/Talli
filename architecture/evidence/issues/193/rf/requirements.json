@@ -136,5 +136,6 @@
   "fullYearApprovalFoundation": "full-year-approval-foundation-20260924.json",
   "sourceCorrectionAndReadiness": "source-correction-readiness-20260924.json",
   "sourceSubmissionClaimContract": "source-submission-claim-contract.md",
-  "submissionHistoryAndReplay": "submission-history-and-replay-20260928.json"
+  "submissionHistoryAndReplay": "submission-history-and-replay-20260928.json",
+  "triggerGuardPermissions": "trigger-guard-permissions-20260928.json"
 }
