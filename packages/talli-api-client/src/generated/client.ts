@@ -4431,6 +4431,7 @@ export interface Rf1086ProductionArchiveSourceWire {
   reviewComments: Rf1086ReviewCommentWire[];
   simulations: Rf1086SimulationWire[];
   sourceApprovalLineage?: Rf1086ArchiveSourceApprovalLineageWire[];
+  sourceHistoryDocuments?: RfSourceDocumentWire[] | null;
   sourceOriginals?: Rf1086ArchiveSourceOriginalWire[];
   sourceSubmissionClaims?: Rf1086SourceSubmissionClaimWire[];
   submissionHead?: Rf1086SubmissionHeadWire | null;
@@ -10619,7 +10620,7 @@ function isRf1086SubmissionHeadWire(value: unknown): value is Rf1086SubmissionHe
 function isRf1086ProductionArchiveSourceWire(value: unknown): value is Rf1086ProductionArchiveSourceWire {
   return (
     isRecord(value) &&
-    hasOnlyProperties(value, ["approvals","canonicalArchive","companyId","feedbackArtifacts","incomeYear","permissions","previews","productionEvents","productionSubmissions","reviewComments","simulations","sourceApprovalLineage","sourceOriginals","sourceSubmissionClaims","submissionHead","testEvidence"]) &&
+    hasOnlyProperties(value, ["approvals","canonicalArchive","companyId","feedbackArtifacts","incomeYear","permissions","previews","productionEvents","productionSubmissions","reviewComments","simulations","sourceApprovalLineage","sourceHistoryDocuments","sourceOriginals","sourceSubmissionClaims","submissionHead","testEvidence"]) &&
     Array.isArray(value.approvals) && value.approvals.every((item) => isRf1086ApprovalWire(item)) &&
     (value.canonicalArchive === undefined || (typeof value.canonicalArchive === "string" || value.canonicalArchive === null)) &&
     isUuid(value.companyId) &&
@@ -10632,6 +10633,7 @@ function isRf1086ProductionArchiveSourceWire(value: unknown): value is Rf1086Pro
     Array.isArray(value.reviewComments) && value.reviewComments.every((item) => isRf1086ReviewCommentWire(item)) &&
     Array.isArray(value.simulations) && value.simulations.every((item) => isRf1086SimulationWire(item)) &&
     (value.sourceApprovalLineage === undefined || Array.isArray(value.sourceApprovalLineage) && value.sourceApprovalLineage.every((item) => isRf1086ArchiveSourceApprovalLineageWire(item))) &&
+    (value.sourceHistoryDocuments === undefined || (Array.isArray(value.sourceHistoryDocuments) && value.sourceHistoryDocuments.every((item) => isRfSourceDocumentWire(item)) || value.sourceHistoryDocuments === null)) &&
     (value.sourceOriginals === undefined || Array.isArray(value.sourceOriginals) && value.sourceOriginals.every((item) => isRf1086ArchiveSourceOriginalWire(item))) &&
     (value.sourceSubmissionClaims === undefined || Array.isArray(value.sourceSubmissionClaims) && value.sourceSubmissionClaims.every((item) => isRf1086SourceSubmissionClaimWire(item))) &&
     (value.submissionHead === undefined || (isRf1086SubmissionHeadWire(value.submissionHead) || value.submissionHead === null)) &&

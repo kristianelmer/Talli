@@ -13,7 +13,8 @@ from . import public as rf
 from .preparation import _validate_archive_source
 from .year_source_storage import _unique, _RECORDS as _SOURCE_RECORDS, _ENUMS
 
-_CODEC = "rf1086-production-archive-v1"
+_CODEC = "rf1086-production-archive-v2"
+_LEGACY_CODEC = "rf1086-production-archive-v1"
 _MAX_BYTES = 64 * 1024 * 1024
 _RECORDS = {**_SOURCE_RECORDS, **{kind.__name__: kind for kind in (
     ActorId, CompanyId, IncomeYear, UserId, rf.ApprovalId, rf.SubmissionId,
@@ -23,6 +24,7 @@ _RECORDS = {**_SOURCE_RECORDS, **{kind.__name__: kind for kind in (
     rf.Rf1086ArchiveProductionEventRecord, rf.Rf1086ArchiveFeedbackArtifactRecord,
     rf.Rf1086ArchiveSourceApprovalLineage, rf.Rf1086ArchiveSourceReviewBridge,
     rf.Rf1086SourceSubmissionClaim, rf.Rf1086SubmissionHead,
+    rf.Rf1086ArchiveCaptureRecord, rf.Rf1086ArchiveYearSourceHead, rf.Rf1086ArchiveSourcePreview, rf.Rf1086ArchiveSourceHistory,
 )}}
 
 
@@ -48,7 +50,9 @@ def _encode(value):
         return [_encode(child) for child in value]
     if is_dataclass(value) and _RECORDS.get(type(value).__name__) is type(value):
         return {"record": type(value).__name__, "fields": {
-            field.name: _encode(getattr(value, field.name)) for field in fields(value)}}
+            field.name: _encode(getattr(value, field.name)) for field in fields(value)
+            if not (type(value) is rf.Rf1086ArchiveSnapshot and field.name == 'source_history'
+                    and value.source_history is None)}}
     raise ValueError()
 
 
@@ -96,7 +100,8 @@ def serialize(snapshot, *, query):
     try:
         _validate(query, snapshot)
         text = _text(_encode(snapshot))
-        result = _text({"codec": _CODEC, "snapshotText": text, "sha256": sha256(text.encode("utf-8")).hexdigest()})
+        codec = _LEGACY_CODEC if snapshot.source_history is None else _CODEC
+        result = _text({"codec": codec, "snapshotText": text, "sha256": sha256(text.encode("utf-8")).hexdigest()})
         if len(result.encode("utf-8")) > _MAX_BYTES:
             raise ValueError()
         return result
@@ -111,10 +116,19 @@ def parse(value, *, query):
             raise ValueError()
         envelope = json.loads(value, object_pairs_hook=_unique)
         if (type(envelope) is not dict or set(envelope) != {"codec", "snapshotText", "sha256"}
-                or envelope["codec"] != _CODEC or type(envelope["snapshotText"]) is not str
+                or envelope["codec"] not in (_CODEC, _LEGACY_CODEC) or type(envelope["snapshotText"]) is not str
                 or sha256(envelope["snapshotText"].encode("utf-8")).hexdigest() != envelope["sha256"]):
             raise ValueError()
-        snapshot = _decode(json.loads(envelope["snapshotText"], object_pairs_hook=_unique))
+        encoded = json.loads(envelope["snapshotText"], object_pairs_hook=_unique)
+        if type(encoded) is not dict or encoded.get('record') != 'Rf1086ArchiveSnapshot' or type(encoded.get('fields')) is not dict:
+            raise ValueError()
+        if envelope['codec'] == _LEGACY_CODEC:
+            if 'source_history' in encoded['fields']:
+                raise ValueError()
+            encoded['fields']['source_history'] = None
+        elif encoded['fields'].get('source_history') is None:
+            raise ValueError()
+        snapshot = _decode(encoded)
         return _validate(query, snapshot)
     except (ValueError, TypeError, KeyError, AttributeError, ArithmeticError, RecursionError,
             rf.ShareholderRegisterFilingError):

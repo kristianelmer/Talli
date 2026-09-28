@@ -683,6 +683,47 @@ class PostgresShareholderRegisterFilingSession:
     async def archive_source(self, query):
         return await self._archive_source(query, include_production=True)
 
+    async def _archive_source_history(self, connection, company_id, year):
+        """All retained history on the caller's repeatable snapshot, without admission."""
+        rows = {}
+        for table, ordering in (
+            ('year_source_versions', 'version,id'), ('year_source_heads', 'source_id'),
+            ('register_observations', 'confirmed_at,id'), ('source_previews', 'created_at,id'),
+            ('source_review_bridges', 'created_at,preview_id'),
+        ):
+            rows[table] = await (await connection.execute(
+                f'select * from shareholder_register_filing.{table} '
+                f'where company_id=%s::uuid and income_year=%s order by {ordering}',
+                (company_id, year),
+            )).fetchall()
+        try:
+            sources = tuple(self._year_source(row) for row in rows['year_source_versions'])
+            source_rows = {str(row['id']): row for row in rows['year_source_versions']}
+            heads = rows['year_source_heads']
+            if len(heads) > 1:
+                raise ValueError('multiple source heads')
+            head = None
+            if heads:
+                row = heads[0]
+                if type(row['version']) is not int or type(row['income_year']) is not int:
+                    raise ValueError('invalid source head')
+                head = rf.Rf1086ArchiveYearSourceHead(CompanyId(str(row['company_id'])),
+                    IncomeYear(row['income_year']), rf.Rf1086YearSourceId(str(row['source_id'])),
+                    row['version'], row['source_sha256'])
+            previews = tuple(rf.Rf1086ArchiveSourcePreview(
+                self._source_preview({**row, 'source_snapshot_text': source_rows[str(row['source_id'])]['snapshot_text']}),
+                row['payload_text'], row['payload_sha256'], str(row['created_by']), _record_value(row['created_at']))
+                for row in rows['source_previews'])
+            def capture_records(table):
+                return tuple(rf.Rf1086ArchiveCaptureRecord(str(row['id']), row['idempotency_key'],
+                    row['request_sha256'], row['snapshot_text']) for row in rows[table])
+            return rf.Rf1086ArchiveSourceHistory(sources, head,
+                tuple(self._register_observation(row) for row in rows['register_observations']), previews,
+                tuple(self._wire_record(rf.Rf1086ArchiveSourceReviewBridge, row) for row in rows['source_review_bridges']),
+                capture_records('year_source_versions'), capture_records('register_observations'))
+        except (ValueError, TypeError, KeyError, rf.Rf1086YearSourceError, rf.Rf1086RegisterObservationError):
+            raise rf.ShareholderRegisterFilingError.unavailable() from None
+
     async def _archive_source(self, query, *, include_production):
         self._command_actor(query)
         async with self._transaction(snapshot=True) as connection:
@@ -727,6 +768,7 @@ class PostgresShareholderRegisterFilingSession:
                     raise rf.ShareholderRegisterFilingError.unavailable() from None
             if not include_production:
                 return rf.Rf1086ArchiveSnapshot(query.company_id, query.income_year, **values)
+            values['source_history'] = await self._archive_source_history(connection, company_id, year)
             # Historical approval lineage uses retained versions, never current
             # heads, current Documents status or today's review permissions.
             lineage = []

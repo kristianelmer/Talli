@@ -659,8 +659,9 @@ claim/head fields. This is RF archive source coverage; company-wide retention
 generation and consolidated backup/restore validation still require separate proof.
 
 `serialize_rf1086_archive` and `parse_rf1086_archive` provide the closed
-`rf1086-production-archive-v1` record carried as `canonicalArchive` in production
-archive responses. This preserves complete captured sources, freshness and
+`rf1086-production-archive-v2` record carried as `canonicalArchive` in production
+archive responses. Existing v1 records remain byte-for-byte round-trippable and
+explicitly lack the complete source-history capture. This preserves complete captured sources, freshness and
 Governance receipts, previews, review bridges, approvals, claims, heads, journals
 and feedback metadata. The parser checks the expected company/year and reuses RF
 source, approval and history validation. It preserves original numeric types and
@@ -674,8 +675,14 @@ signature. Parsing grants no identity, live freshness, database restore or send
 authority. The local `apps/backend/scripts/verify_rf1086_archive.py` verifier reads
 this authoritative record from either an API export or a company download. It
 performs no database/provider calls and does not prove retained object bytes.
-Unapproved source history, independent register observations and all original
-object bytes still require the complete owner database/object backup.
+V2 captures every source version, the source head, every independent register
+observation and correction, source previews (including blocked/unbridged work),
+and review bridges on the same repeatable database snapshot as filing history.
+Capture records retain the original storage text, idempotency key and request
+hash. Validation rejects missing/forked chains, inconsistent heads, orphaned
+previews/bridges, changed capture records and incompatible approved lineage.
+Historical unapproved renderer output is preserved rather than regenerated.
+This is an export, not a database backup or completed restoration.
 
 
 The production archive composition additionally exports `sourceOriginals` via
@@ -687,7 +694,17 @@ owner with AAL2 and the same verified actor as the RF session. Missing or change
 originals fail the complete archive response before it can be downloaded.
 The inline bundle permits at most 128 MiB of original source bytes; larger
 bundles fail closed and need a future streaming transport. Feedback and unrelated
-company-document byte bundles, unapproved source history and actual restore
-remain separate work. The offline verifier's `--require-source-originals` flag
+company-document byte bundles and actual restore remain separate work. The offline verifier's `--require-source-originals` flag
 requires every captured source version and validates each with Documents policy;
 it reports source-byte verification separately from database/object restoration.
+
+Source originals now cover every v2 source and observation, including unapproved
+work, while v1 retains its approved-lineage requirements. The offline verifier's
+`--require-source-history` rejects older partial records; history counts and
+source-byte verification are reported separately. No restore/write authority is
+created by decoding either version.
+
+`Rf1086ArchiveSourceHistory` groups the complete source and observation snapshots,
+`Rf1086ArchiveYearSourceHead`, all retained `Rf1086ArchiveSourcePreview` records,
+and review bridges. `Rf1086ArchiveCaptureRecord` binds each source/observation to
+its original stored text, request hash and actor-scoped idempotency key.

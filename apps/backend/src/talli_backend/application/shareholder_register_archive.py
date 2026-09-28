@@ -8,14 +8,22 @@ from talli_backend.modules.shareholder_register_filing import public as rf
 MAX_SOURCE_ORIGINAL_BYTES = 128 * 1024 * 1024
 
 
+def source_document_evidence(archive):
+    """Keep every captured reference, including independently recorded observations."""
+    records = [line.source for line in archive.source_approval_lineage]
+    if archive.source_history is not None:
+        records.extend(archive.source_history.year_sources)
+        records.extend(archive.source_history.register_observations)
+    return tuple(document for record in records for document in record.command.documents)
+
+
 def source_original_queries(archive):
     queries = {}
-    for line in archive.source_approval_lineage:
-        for source in line.source.command.documents:
-            query = RetainedDocumentOriginalQuery(DocumentId(source.document_id), source.company_id,
-                source.source_income_year, source.metadata_sha256, source.content_sha256, source.byte_length)
-            if query.company_id != archive.company_id: raise DocumentsError.integrity_failed()
-            queries[query] = query
+    for source in source_document_evidence(archive):
+        query = RetainedDocumentOriginalQuery(DocumentId(source.document_id), source.company_id,
+            source.source_income_year, source.metadata_sha256, source.content_sha256, source.byte_length)
+        if query.company_id != archive.company_id: raise DocumentsError.integrity_failed()
+        queries[query] = query
     if sum(query.byte_length for query in queries) > MAX_SOURCE_ORIGINAL_BYTES:
         raise DocumentsError.integrity_failed()
     return tuple(sorted(queries, key=lambda q: (str(q.document_id), int(q.source_income_year), q.metadata_sha256, q.content_sha256)))
@@ -29,14 +37,13 @@ def original_wire(query, canonical):
 
 def _assert_source_metadata(archive, query, original):
     document = original.document
-    for line in archive.source_approval_lineage:
-        for source in line.source.command.documents:
-            if (source.document_id == str(query.document_id) and source.company_id == query.company_id
-                    and source.source_income_year == query.source_income_year and source.metadata_sha256 == query.metadata_sha256
-                    and source.content_sha256 == query.content_sha256 and source.byte_length == query.byte_length):
-                if (source.document_type != document.document_type or source.integrity_status != document.status.value
-                        or source.created_at != document.created_at or source.content_version_sha256 != document.content_sha256):
-                    raise DocumentsError.integrity_failed()
+    for source in source_document_evidence(archive):
+        if (source.document_id == str(query.document_id) and source.company_id == query.company_id
+                and source.source_income_year == query.source_income_year and source.metadata_sha256 == query.metadata_sha256
+                and source.content_sha256 == query.content_sha256 and source.byte_length == query.byte_length):
+            if (source.document_type != document.document_type or source.integrity_status != document.status.value
+                    or source.created_at != document.created_at or source.content_version_sha256 != document.content_sha256):
+                raise DocumentsError.integrity_failed()
 
 
 async def archive_source_originals(archive, *, documents_factory, access_token, actor_id):

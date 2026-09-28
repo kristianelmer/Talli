@@ -610,3 +610,16 @@ test("full-year restore requires an intact canonical record for Python-owned rec
   archive.rf1086Production.canonicalArchive = JSON.stringify(envelope);
   assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_canonical_record_invalid"));
 });
+
+test('restore preserves unapproved v2 history and rejects missing historical originals', () => {
+  const rf = JSON.parse(readFileSync(new URL('../apps/web/tests/fixtures/rf1086-source-history-archive.json', import.meta.url), 'utf8'));
+  const archive = archiveFixture({ company: { id: rf.companyId, org_number: '314259521', name: 'Synthetic history AS' },
+    incomeYear: rf.incomeYear, rf1086Production: rf });
+  archive.documentBackupProjection.companyId = rf.companyId;
+  const restored = restoreFullYear(archive);
+  assert.equal(assertRestoreIntegrity(restored).ok, true);
+  assert.deepEqual(restored.restored.rf1086Production, rf);
+  assert.equal(restored.manifest.counts.rf1086SourceOriginals, 5);
+  archive.rf1086Production.sourceOriginals.pop();
+  assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes('rf1086_source_document_object_mismatch'));
+});

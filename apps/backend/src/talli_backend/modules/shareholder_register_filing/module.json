@@ -117,7 +117,11 @@
       "Rf1086SubmissionHead",
       "Rf1086ArchiveError",
       "serialize_rf1086_archive",
-      "parse_rf1086_archive"
+      "parse_rf1086_archive",
+      "Rf1086ArchiveYearSourceHead",
+      "Rf1086ArchiveSourcePreview",
+      "Rf1086ArchiveSourceHistory",
+      "Rf1086ArchiveCaptureRecord"
     ],
     "events": [],
     "errors": [
@@ -432,7 +436,8 @@
     "sourceReadiness": "apps/backend/tests/test_rf1086_source_readiness.py",
     "journalCompanyGuard": "apps/backend/tests/test_rf1086_journal_company_guard_database.py",
     "submissionHistory": "apps/backend/tests/test_rf1086_submission_history.py",
-    "archiveStorage": "apps/backend/tests/test_rf1086_archive_storage.py"
+    "archiveStorage": "apps/backend/tests/test_rf1086_archive_storage.py",
+    "archiveHistory": "apps/backend/tests/test_rf1086_archive_history.py"
   },
   "compatibilityExceptions": []
 }

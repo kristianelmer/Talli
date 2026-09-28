@@ -68,8 +68,9 @@ Machine-checkable signoff gate:
 Include the RF register observations, source versions and heads, source previews,
 review bridges, approval bindings, submission bindings and managed filing heads,
 as well as Documents' `retained_originals`, in the database backup inventory.
-The company archive's approved lineage is not a replacement for a database backup
-of all source versions, including unapproved history and independent observations.
+V2 company archives include all scoped source versions and observations, including
+unapproved history, previews, bridges and original capture/idempotency records.
+They do not replace a full owner database/object backup or perform restoration.
 
 The archive restore fixture preserves captured source-company identities rather
 than rewriting historical approvals or claim actors to the target company's ID.
@@ -91,8 +92,9 @@ pending until that evidence exists.
 ### Verify the canonical RF record
 
 New production archives include `rf1086Production.canonicalArchive`. This closed,
-versioned record preserves the complete captured source facts and their retained
-freshness/Governance evidence; it is the authoritative RF input for recovery.
+versioned v2 record preserves all captured source versions and observations,
+original capture records, previews, review bridges and retained freshness/Governance
+evidence; it is the authoritative RF input for recovery.
 The surrounding readable projections are not a substitute for it. Run the local
 owner-policy verifier with the expected company and year, supplied independently:
 
@@ -120,10 +122,12 @@ current-year document projection is not a replacement for these records. Require
 complete source originals when verifying a downloaded bundle:
 
 ```sh
-apps/backend/.venv/bin/python apps/backend/scripts/verify_rf1086_archive.py company-archive.json --company-id COMPANY_UUID --income-year 2025 --require-source-originals
+apps/backend/.venv/bin/python apps/backend/scripts/verify_rf1086_archive.py company-archive.json --company-id COMPANY_UUID --income-year 2025 --require-source-history --require-source-originals
 ```
 
-A pass additionally reports `sourceOriginalBytesVerified: true` and the number
+The history flag rejects v1 archives that only captured approved lineage. A v2
+pass reports `sourceHistoryIncluded: true`, source-version and observation counts,
+and additionally `sourceOriginalBytesVerified: true` and the number
 of distinct retained source versions. Any missing, duplicate, changed or surplus
 original fails. With or without the flag, an included `sourceOriginals` field is
 always checked. A bare canonical record remains usable for RF-only diagnosis
@@ -132,4 +136,4 @@ transport allows up to 128 MiB of original source bytes; larger bundles fail
 closed and require a future streaming export. Feedback originals and other
 company objects are not covered by this source-byte result, and
 `objectBytesVerified` and `databaseRestorePerformed` remain false. Actual
-restoration, unapproved history and retention/expiry coverage still need proof.
+restoration and retention/expiry coverage still need proof.

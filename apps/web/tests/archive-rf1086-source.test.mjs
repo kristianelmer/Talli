@@ -514,3 +514,21 @@ test('download forwards source lineage, immutable claims and managed head withou
   assert.equal(fixture.captures[0].rf1086Production.canonicalArchive, "retained-record");
   assert.deepEqual(fixture.captures[0].rf1086Production.sourceOriginals, []);
 });
+
+test('unapproved source history requires all retained metadata versions and independent register originals', async (t) => {
+  const filing = JSON.parse(readFileSync(new URL('./fixtures/rf1086-source-history-archive.json', import.meta.url), 'utf8'));
+  assert.equal(filing.approvals.length, 0);
+  const documents = { companyId: filing.companyId, incomeYear: filing.incomeYear, objects: [] };
+  assert.equal(rf1086ArchiveReceiptsMatch(filing, documents), true);
+  assert.equal(filing.sourceOriginals.length, 5);
+  assert.equal(rf1086ArchiveReceiptsMatch({ ...filing, sourceHistoryDocuments: [], sourceOriginals: [] }, documents), false);
+  assert.equal(rf1086ArchiveReceiptsMatch({ ...filing, sourceOriginals: filing.sourceOriginals.slice(1) }, documents), false);
+  assert.equal(rf1086ArchiveReceiptsMatch({ ...filing, sourceHistoryDocuments: [] }, documents), false);
+  assert.equal(rf1086ArchiveReceiptsMatch({ ...filing, sourceHistoryDocuments: null }, documents), false);
+  const priorUrl = process.env.TALLI_BACKEND_URL;
+  process.env.TALLI_BACKEND_URL = 'https://backend.example';
+  t.after(() => { if (priorUrl === undefined) delete process.env.TALLI_BACKEND_URL; else process.env.TALLI_BACKEND_URL = priorUrl; });
+  t.mock.method(globalThis, 'fetch', async () => Response.json(filing));
+  const loaded = await loadRf1086ArchiveSource('token', filing.companyId, filing.incomeYear);
+  assert.deepEqual(loaded, filing);
+});

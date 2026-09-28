@@ -260,3 +260,20 @@ PostgreSQL replay/rollback probe preserves routine and role identity and keeps
 admission fail-closed. The web composition harness also loads the real RF archive
 verifier, resolving two missing-dependency failures. Full final-revision CI remains
 pending. See `recutover-validator-20260928.json`; no acceptance criterion changes.
+
+
+## Complete retained source-history export
+
+The production adapter now reads every scoped source version and head, register
+observation/correction, source preview and review bridge on the same repeatable
+snapshot as the filing journal. V2 canonical archives retain original capture
+text, idempotency keys and request hashes, as well as historical renderer output
+and creator/time. Approved and unapproved evidence contributes exact historical
+Documents originals. The offline verifier can require complete source history
+and source bytes separately; v1 archives remain byte-exact and explicitly partial.
+
+This supersedes earlier pending items for unapproved source/observation history
+export. It does not complete database/object restoration, feedback/other object
+bundles, streaming, retention generations, expiry/cancellation/deletion or the
+remaining dispatch/readiness/recovery and release gates. See
+`complete-source-history-20260928.json` for bounded verification.

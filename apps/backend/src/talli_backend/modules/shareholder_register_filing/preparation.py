@@ -99,6 +99,8 @@ def _validate_archive_source(query: Rf1086ArchiveQuery, result: Rf1086ArchiveSna
         return result
     try:
         _validate_archive_production(query, result)
+        from .archive_history import validate
+        validate(result)
     except (ValueError, TypeError, KeyError, AttributeError, Rf1086ProductionError):
         raise ShareholderRegisterFilingError.unavailable() from None
     return result

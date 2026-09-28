@@ -22,7 +22,7 @@ export function rf1086SourceRestoreFailures(rf: Record<string, any>, objects: an
     try {
       if (typeof rf.canonicalArchive !== "string") throw new Error("missing");
       const envelope = JSON.parse(rf.canonicalArchive);
-      if (!record(envelope) || envelope.codec !== "rf1086-production-archive-v1"
+      if (!record(envelope) || !["rf1086-production-archive-v1", "rf1086-production-archive-v2"].includes(envelope.codec)
           || typeof envelope.snapshotText !== "string" || !hash(envelope.sha256)
           || digest(envelope.snapshotText) !== envelope.sha256
           || Object.keys(envelope).sort().join(",") !== "codec,sha256,snapshotText") throw new Error("invalid");

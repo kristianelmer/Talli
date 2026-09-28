@@ -50,6 +50,14 @@ def test_exact_preview_replay_and_history_after_source_correction(admitted,backe
         async with s._transaction() as db:
             return (await (await db.execute('select count(*) as n from shareholder_register_filing.filing_previews where company_id=%s',(admitted['company'],))).fetchone())['n']
     assert asyncio.run(legacy_count())==0
+    archive_query = rf.Rf1086ArchiveQuery(c.company_id,c.income_year,s.actor_id)
+    archive = asyncio.run(rf.create_rf1086_preparation_service(s).archive_source(archive_query))
+    assert archive.approvals == () and archive.source_approval_lineage == ()
+    assert archive.source_history.year_sources == (source,new_source)
+    assert archive.source_history.year_source_head.source_id == new_source.source_id
+    assert [row.preview for row in archive.source_history.source_previews] == [first,second]
+    assert archive.source_history.review_bridges == ()
+    assert rf.parse_rf1086_archive(rf.serialize_rf1086_archive(archive,query=archive_query),query=archive_query) == archive
 
 
 def test_concurrent_same_source_returns_one_immutable_preview(admitted,backend_url):

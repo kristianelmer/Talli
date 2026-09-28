@@ -68,3 +68,11 @@ records verbatim. Web checks only scope, shape and metadata/byte commitments;
 Python owns record reconstruction. Restore consistency no longer substitutes the
 current-year Documents projection for captured source metadata. Feedback receipt
 projection checks still apply. These checks do not hydrate a database or bucket.
+
+V2 `sourceHistoryDocuments` declares all captured document requirements,
+including unapproved source versions and independent register observations.
+Downloads preserve it with the canonical record and originals. Web verification
+compares these technical metadata commitments with the canonical history and
+rejects partial projections or missing originals. Python owns source chains,
+observation corrections, capture replay identities and filing policy. Existing v1
+archives remain readable without claiming complete source-history coverage.

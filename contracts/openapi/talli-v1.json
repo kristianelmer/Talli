@@ -20965,6 +20965,20 @@
             "title": "Sourceapprovallineage",
             "type": "array"
           },
+          "sourceHistoryDocuments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RfSourceDocumentWire"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcehistorydocuments"
+          },
           "sourceOriginals": {
             "items": {
               "$ref": "#/components/schemas/Rf1086ArchiveSourceOriginalWire"

@@ -2554,6 +2554,7 @@ class Rf1086ArchiveSourceOriginalWire(TransportModel):
 
 
 class Rf1086ProductionArchiveSourceWire(Rf1086ArchiveSourceWire):
+    source_history_documents: list[RfSourceDocumentWire] | None = None
     source_originals: list[Rf1086ArchiveSourceOriginalWire] = Field(default_factory=list)
     canonical_archive: str | None = None
     source_submission_claims: list[Rf1086SourceSubmissionClaimWire] = Field(default_factory=list)
@@ -12159,11 +12160,15 @@ def create_app(
                 canonical_archive = serialize_rf1086_archive(result, query=query)
             except Rf1086ArchiveError:
                 raise ShareholderRegisterFilingError.unavailable() from None
-            from talli_backend.application.shareholder_register_archive import archive_source_originals
+            from talli_backend.application.shareholder_register_archive import archive_source_originals, source_document_evidence
             source_originals = await archive_source_originals(result, documents_factory=documents_application,
                 access_token=bearer_token(credentials), actor_id=workflow.actor_id)
             try:
                 return Rf1086ProductionArchiveSourceWire(
+                    source_history_documents=None if result.source_history is None else [
+                        RfSourceDocumentWire.model_validate({name: _rf_source_public_json(getattr(document, name))
+                            for name in RfSourceDocumentWire.model_fields})
+                        for document in source_document_evidence(result)],
                     canonical_archive=canonical_archive, source_originals=source_originals,
                     company_id=UUID(str(result.company_id)), income_year=int(result.income_year),
                     previews=[Rf1086PreviewWire.model_validate(row, from_attributes=True) for row in result.previews],

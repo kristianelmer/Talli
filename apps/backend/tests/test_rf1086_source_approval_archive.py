@@ -162,7 +162,7 @@ def test_actual_adapter_reads_original_lineage_on_same_snapshot_without_current_
     class Connection:
         async def execute(self, sql, args):
             calls.append((sql,args))
-            assert not any(name in sql for name in ('year_source_heads','lock_year_source','admission','documents.','authority_connections.','billing.'))
+            assert not any(name in sql for name in ('lock_year_source','admission','documents.','authority_connections.','billing.'))
             if 'source_approval_bindings' in sql: return Cursor([] if missing=='binding' else [binding])
             if 'source_submission_bindings' in sql:
                 return Cursor([{'submission_id':c.submission_id.value,'approval_id':c.approval_id.value,
@@ -175,8 +175,21 @@ def test_actual_adapter_reads_original_lineage_on_same_snapshot_without_current_
                     'obligation':head.obligation,'environment':head.environment,'submission_id':head.submission_id.value,'updated_at':head.updated_at}])
             if 'production_filing_submissions t' in sql:return Cursor([row(item) for item in original.production_submissions])
             if 'year_source_versions' in sql:
-                assert args==(line.source_id,str(original.company_id),int(original.income_year))
-                return Cursor([] if missing=='source' else [{'retained':True}])
+                assert args in ((line.source_id,str(original.company_id),int(original.income_year)),
+                                (str(original.company_id),int(original.income_year)))
+                return Cursor([] if missing=='source' else [{'id': line.source_id,
+                    'snapshot_text': rf.serialize_rf1086_year_source(line.source),
+                    'idempotency_key': 'archive-source-capture-key',
+                    'request_sha256': rf.rf1086_year_source_digest(line.source.command)}])
+            if 'year_source_heads' in sql:
+                return Cursor([{'company_id': line.company_id, 'income_year': line.income_year,
+                    'source_id': line.source_id, 'version': line.source.version, 'source_sha256': line.source_sha256}])
+            if 'source_previews' in sql:
+                return Cursor([{'id': line.preview_id, 'company_id': line.company_id, 'income_year': line.income_year,
+                    'source_id': line.source_id, 'source_sha256': line.source_sha256,
+                    'case_sha256': line.source.case_sha256, 'profile': 'rf1086-full-year-v1',
+                    'payload_text': rf.serialize_rf1086_source_preview(line.source_preview),
+                    'payload_sha256': line.payload_sha256, 'created_by': line.approved_by, 'created_at': line.created_at}])
             if 'source_review_bridges' in sql: return Cursor([] if missing=='bridge' else [asdict(line.bridge)])
             if 'filing_approval_snapshots' in sql: return Cursor([row(original.approvals[0])])
             if 'filing_previews t' in sql:

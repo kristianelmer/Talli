@@ -28,6 +28,7 @@ def main() -> int:
     parser.add_argument('--company-id', required=True)
     parser.add_argument('--income-year', required=True, type=int)
     parser.add_argument('--require-source-originals', action='store_true', help='Require all captured source document bytes in a downloaded bundle.')
+    parser.add_argument('--require-source-history', action='store_true', help='Require the complete versioned source and observation history.')
     args = parser.parse_args()
     source_originals_verified = False
     original_count = 0
@@ -40,7 +41,7 @@ def main() -> int:
         document = json.loads(text, object_pairs_hook=unique)
         if type(document) is not dict:
             raise ValueError()
-        if document.get('codec') == 'rf1086-production-archive-v1':
+        if document.get('codec') in ('rf1086-production-archive-v1', 'rf1086-production-archive-v2'):
             canonical = text
             section = {}
         else:
@@ -53,6 +54,8 @@ def main() -> int:
         query = rf.Rf1086ArchiveQuery(CompanyId(args.company_id), IncomeYear(args.income_year),
             ActorId(ActorKind.SYSTEM, UserId('00000000-0000-0000-0000-000000000000')))
         archive = rf.parse_rf1086_archive(canonical, query=query)
+        if args.require_source_history and archive.source_history is None:
+            raise ValueError()
         if args.require_source_originals or 'sourceOriginals' in section:
             originals = verify_source_originals(archive, section.get('sourceOriginals'))
             source_originals_verified = True
@@ -64,6 +67,9 @@ def main() -> int:
         'companyId': str(archive.company_id), 'incomeYear': int(archive.income_year),
         'approvals': len(archive.approvals), 'submissions': len(archive.production_submissions),
         'sourceApprovals': len(archive.source_approval_lineage),
+        'sourceHistoryIncluded': archive.source_history is not None,
+        'sourceVersions': None if archive.source_history is None else len(archive.source_history.year_sources),
+        'registerObservations': None if archive.source_history is None else len(archive.source_history.register_observations),
         'sourceClaims': len(archive.source_submission_claims),
         'feedbackArtifacts': len(archive.feedback_artifacts),
         'databaseRestorePerformed': False, 'objectBytesVerified': False,
