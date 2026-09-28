@@ -39,6 +39,7 @@ from talli_backend.modules.billing.public import BillingQueries
 from talli_backend.modules.company_access.public import CompanyAccessError, CompanyAccessService
 from talli_backend.modules.documents.public import (
     BeginDocumentUploadCommand, DocumentId, DocumentsError, DocumentsSessionFactory, DocumentStatus,
+    VerifiedDocumentEvidence, RetainedDocumentOriginalReceipt, document_metadata_sha256,
 )
 from talli_backend.modules.ledger.public import LedgerError
 from talli_backend.modules.shareholder_register_filing import public as rf
@@ -1609,6 +1610,25 @@ class _FeedbackJournal:
         stored = await self._store(document_id, artifact)
         if stored.content_sha256 != artifact.sha256 or stored.byte_length != artifact.byte_length:
             await self._remove_best_effort(document_id)
+            raise create_rf1086_feedback_artifact_persistence_error(None, integrity_failure=True)
+        # Preserve the exact verified original before RF acknowledges its new
+        # metadata row. A successful upload alone is not retained byte evidence.
+        documents = await self._document_session(
+            _DocumentOperation(document_id, 'rf1086-feedback-retain:' + document_id), 'retain')
+        try:
+            evidence = await documents.verify_document_evidence(DocumentId(document_id))
+        except DocumentsError as error:
+            # Retention may have committed before a read/transport failure. Keep
+            # the uploaded record; do not turn ambiguity into destructive cleanup.
+            raise create_rf1086_feedback_artifact_persistence_error(error) from None
+        receipt = evidence.retained_original if isinstance(evidence, VerifiedDocumentEvidence) else None
+        if (not isinstance(receipt, RetainedDocumentOriginalReceipt) or evidence.document != stored
+                or evidence.content_sha256 != artifact.sha256 or evidence.byte_length != artifact.byte_length
+                or evidence.integrity_status != DocumentStatus.STORED
+                or receipt.document_id != stored.document_id or receipt.company_id != stored.company_id
+                or receipt.source_income_year != stored.income_year
+                or receipt.metadata_sha256 != document_metadata_sha256(stored)
+                or receipt.content_sha256 != artifact.sha256 or receipt.byte_length != artifact.byte_length):
             raise create_rf1086_feedback_artifact_persistence_error(None, integrity_failure=True)
         try:
             rows = await self._session._rows("select id from shareholder_register_filing.record_production_feedback_artifact("

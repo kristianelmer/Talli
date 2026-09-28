@@ -455,6 +455,22 @@ def test_real_documents_contract_stored_receipt_and_hash_drive_final_feedback_wi
         assert row[3].startswith(str(fixture["company"]) + "/2025/")
         assert connection.execute("select count(*) from shareholder_register_filing.production_feedback_artifacts where submission_id=%s", (submission,)).fetchone()[0] == 1
     assert len(storage.objects) == 1
+    # Recovery reads the actual immutable bytes after mutable storage is lost.
+    with psycopg.connect(DATABASE_URL) as connection:
+        connection.execute('set local role documents_store_owner')
+        connection.execute("select set_config('talli.verified_actor_id',%s,true)", (str(fixture['owner']),))
+        originals = connection.execute("select document_id,metadata_sha256,content_sha256,byte_length,content "
+            "from documents.retained_originals where company_id=%s", (fixture['company'],)).fetchall()
+        assert len(originals) == 1 and bytes(originals[0][4]) == raw
+        original = originals[0]
+    from talli_backend.modules.documents.public import DocumentId, RetainedDocumentOriginalQuery
+    from talli_backend.shared.kernel import CompanyId, IncomeYear
+    storage.objects.clear()
+    async def recover():
+        documents = await session._documents.session('local-only')
+        return await documents.read_retained_evidence(RetainedDocumentOriginalQuery(DocumentId(str(original[0])),
+            CompanyId(str(fixture['company'])), IncomeYear(2025), original[1], original[2], original[3]))
+    assert asyncio.run(recover()).original.content == raw
 
 
 def test_related_dialog_receipts_reconcile_through_real_rf_and_documents_storage(fixture):

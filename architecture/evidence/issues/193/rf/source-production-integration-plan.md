@@ -277,3 +277,17 @@ export. It does not complete database/object restoration, feedback/other object
 bundles, streaming, retention generations, expiry/cancellation/deletion or the
 remaining dispatch/readiness/recovery and release gates. See
 `complete-source-history-20260928.json` for bounded verification.
+
+
+## New feedback original retention
+
+New feedback uploads now pass Documents original-byte verification and retention
+before RF records their artifact metadata. RF checks the exact metadata and byte
+commitments; an ambiguous retention error preserves the uploaded record and does
+not acknowledge the artifact. Existing canonical artifacts retain idempotent reuse.
+Older artifact backfill, durable RF-to-original receipt linkage and portable
+feedback bundles remain pending. See `feedback-original-retention-20260928.json`.
+
+Previous-revision CI run 36400398886 passed Application but Database isolation
+timed out after a failure in the RF lane. Complete final-revision CI remains
+pending; this is no longer an active run or passing database evidence.

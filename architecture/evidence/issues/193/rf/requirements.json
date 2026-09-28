@@ -149,5 +149,6 @@
   "governanceScopedRecutover": "governance-scoped-recutover-20260928.json",
   "historicalOriginalRecovery": "historical-original-recovery-20260928.json",
   "portableSourceOriginals": "source-original-bundle-20260928.json",
-  "completeSourceHistory": "complete-source-history-20260928.json"
+  "completeSourceHistory": "complete-source-history-20260928.json",
+  "feedbackOriginalRetention": "feedback-original-retention-20260928.json"
 }

@@ -708,3 +708,12 @@ created by decoding either version.
 `Rf1086ArchiveYearSourceHead`, all retained `Rf1086ArchiveSourcePreview` records,
 and review bridges. `Rf1086ArchiveCaptureRecord` binds each source/observation to
 its original stored text, request hash and actor-scoped idempotency key.
+
+
+For newly uploaded authority feedback, the adapter requires Documents-owned
+verification and immutable-original retention before recording RF artifact
+metadata. It checks the receipt against the exact uploaded document metadata and
+content commitments. Ambiguous retention failures preserve the uploaded record
+without acknowledging RF metadata. Existing canonical artifacts are reused;
+backfill, durable original-receipt binding and portable feedback-byte export
+remain separate work.
