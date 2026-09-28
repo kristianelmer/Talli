@@ -11,6 +11,8 @@ import unicodedata
 from talli_backend.modules.documents.public import (
     BeginDocumentUploadCommand,
     DocumentBackupObject,
+    RetainedDocumentOriginalQuery,
+    RetainedDocumentOriginalSnapshot,
     DocumentId,
     DocumentObjectStorage,
     DocumentObjectTransfer,
@@ -280,6 +282,30 @@ class DocumentsService:
             await self._persistence.restore_after_storage_failure(document_id)
             raise
         return removed
+
+    async def read_retained_evidence(self, query: RetainedDocumentOriginalQuery) -> RetainedDocumentOriginalSnapshot:
+        """Recover exact captured metadata/bytes without consulting mutable originals."""
+        if await self._persistence.refresh_actor_role(query.company_id) != "owner":
+            raise DocumentsError.forbidden()
+        if not self._persistence.aal2:
+            raise DocumentsError.step_up_required()
+        result = await self._persistence.read_retained_evidence(query)
+        if await self._persistence.refresh_actor_role(query.company_id) != "owner":
+            raise DocumentsError.forbidden()
+        document, original = result.document, result.original
+        receipt = original.receipt
+        if (receipt.document_id != query.document_id or receipt.company_id != query.company_id
+                or receipt.source_income_year != query.source_income_year
+                or receipt.metadata_sha256 != query.metadata_sha256
+                or receipt.content_sha256 != query.content_sha256 or receipt.byte_length != query.byte_length
+                or document.document_id != query.document_id or document.company_id != query.company_id
+                or document.income_year != query.source_income_year
+                or document_metadata_sha256(document) != query.metadata_sha256
+                or document.content_sha256 != query.content_sha256 or document.byte_length != query.byte_length
+                or len(original.content) != query.byte_length
+                or sha256(original.content).hexdigest() != query.content_sha256):
+            raise DocumentsError.integrity_failed()
+        return result
 
     async def backup_projection(self, company_id: CompanyId, income_year: IncomeYear) -> tuple[DocumentBackupObject, ...]:
         if await self._persistence.actor_role(company_id) is None:

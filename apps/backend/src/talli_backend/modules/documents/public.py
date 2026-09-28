@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+import re
 from collections.abc import Callable, Mapping
 from typing import Protocol, TypeVar
 from uuid import UUID
@@ -185,6 +186,31 @@ class RetainedDocumentOriginal:
 
 
 @dataclass(frozen=True, slots=True)
+class RetainedDocumentOriginalQuery:
+    """Exact historical evidence identity; the source year can precede a filing."""
+    document_id: DocumentId
+    company_id: CompanyId
+    source_income_year: IncomeYear
+    metadata_sha256: str
+    content_sha256: str
+    byte_length: int
+
+    def __post_init__(self) -> None:
+        if (not isinstance(self.document_id, DocumentId) or not isinstance(self.company_id, CompanyId)
+                or not isinstance(self.source_income_year, IncomeYear)
+                or any(not isinstance(value, str) or re.fullmatch(r"[a-f0-9]{64}", value) is None
+                       for value in (self.metadata_sha256, self.content_sha256))
+                or type(self.byte_length) is not int or not 1 <= self.byte_length <= 10485760):
+            raise DocumentsError.invalid_input()
+
+
+@dataclass(frozen=True, slots=True)
+class RetainedDocumentOriginalSnapshot:
+    document: DocumentRecord
+    original: RetainedDocumentOriginal
+
+
+@dataclass(frozen=True, slots=True)
 class VerifiedDocumentEvidence:
     """Accepted metadata whose private object bytes were just reverified.
 
@@ -230,6 +256,7 @@ class DocumentsPersistence(Protocol):
     async def finalize_upload(self, document_id: DocumentId, *, byte_length: int, content_sha256: str) -> DocumentRecord: ...
     async def retain_verified_original(self, document: DocumentRecord, content: bytes) -> RetainedDocumentOriginalReceipt: ...
     async def read_retained_original(self, original_id: str, company_id: CompanyId) -> RetainedDocumentOriginal: ...
+    async def read_retained_evidence(self, query: RetainedDocumentOriginalQuery) -> RetainedDocumentOriginalSnapshot: ...
     async def get_document(self, document_id: DocumentId) -> DocumentRecord | None: ...
     async def list_documents(self, company_ids: tuple[CompanyId, ...]) -> tuple[DocumentRecord, ...]: ...
     async def has_evidence_references(self, document_id: DocumentId) -> bool: ...
@@ -258,6 +285,7 @@ class DocumentsSession(Protocol):
     async def verify_document_evidence(self, document_id: DocumentId) -> VerifiedDocumentEvidence: ...
     async def create_transfer(self, document_id: DocumentId, kind: DocumentTransferKind) -> DocumentObjectTransfer: ...
     async def remove_document(self, document_id: DocumentId, *, reason: str) -> DocumentRecord: ...
+    async def read_retained_evidence(self, query: RetainedDocumentOriginalQuery) -> RetainedDocumentOriginalSnapshot: ...
     async def backup_projection(self, company_id: CompanyId, income_year: IncomeYear) -> tuple[DocumentBackupObject, ...]: ...
     async def prepare_isolated_restore(
         self,
@@ -378,6 +406,7 @@ def document_evidence_retention_adapter(
 class DocumentOriginalPersistence(Protocol):
     async def retain_verified_original(self, document: DocumentRecord, content: bytes) -> RetainedDocumentOriginalReceipt: ...
     async def read_retained_original(self, original_id: str, company_id: CompanyId) -> RetainedDocumentOriginal: ...
+    async def read_retained_evidence(self, query: RetainedDocumentOriginalQuery) -> RetainedDocumentOriginalSnapshot: ...
     async def assert_retained_original(self, receipt: RetainedDocumentOriginalReceipt) -> None:
         """Assert immutable bytes and current metadata in the caller's transaction.
 
@@ -401,6 +430,7 @@ def document_metadata_sha256(document: DocumentRecord) -> str:
 
 
 __all__ = [
+    "RetainedDocumentOriginalQuery", "RetainedDocumentOriginalSnapshot",
     "RetainedDocumentOriginalReceipt", "RetainedDocumentOriginal", "DocumentOriginalPersistence",
     "document_original_persistence_adapter",
     "BeginDocumentUploadCommand",

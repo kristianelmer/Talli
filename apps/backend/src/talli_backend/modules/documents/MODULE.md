@@ -156,3 +156,28 @@ assertions check the preserved receipt and current metadata without object I/O.
 Rollback suspends the guarded command helpers while preserving evidence and
 backstops. Runtime migration, ACL and concurrency proof belongs to the database
 lane; static collection alone does not establish this proof.
+
+### Historical original recovery
+
+`DocumentsSession.read_retained_evidence(RetainedDocumentOriginalQuery)` retrieves
+one exact immutable original and its captured `DocumentRecord`. The query binds
+document/company/source year, complete metadata hash, content hash and length;
+`RetainedDocumentOriginalSnapshot` contains the captured metadata and original
+receipt/bytes. The source year may precede the filing year. Recovery never reads
+current document metadata or the mutable bucket object, and it never falls back
+to another retained version. The service requires current accepted owner access
+before and after the read, plus AAL2, then verifies all identities and hashes.
+
+The additive `20260928083000_documents_historical_original_recovery.sql` migration
+publishes the exact lookup solely to `documents_executor`. Its authenticated
+owner predicate and forced RLS both apply. Filing/Governance executors receive no
+byte read permission. `PostgresDocumentOriginals` validates the captured metadata,
+receipt and bytes through the `DocumentOriginalPersistence` contract; the
+`SupabaseDocumentsPersistence` adapter binds the same operation to a verified
+transaction. A missing exact version raises `DOCUMENT_NOT_FOUND`; mismatched
+adapter evidence raises `DOCUMENT_INTEGRITY_FAILED`. Rollback removes only the
+lookup and preserves every retained original. Historical recovery grants no
+current-source approval or submission authority.
+
+This is a recovery primitive. Company archive composition, portable byte bundles,
+database/object hydration and retention-expiry coverage remain separate work.

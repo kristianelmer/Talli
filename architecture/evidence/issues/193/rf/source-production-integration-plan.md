@@ -220,3 +220,17 @@ checks that record through RF policy, including correction ancestry and unknown
 outcomes. This closes the missing policy-verifiable source record in the export;
 it does not close actual database/object restore, unapproved source/observation
 history export, retention generations, expiry/cancellation or deletion.
+
+
+## Exact historical document recovery primitive
+
+Documents now exposes an owner/AAL2-protected query for an exact retained
+original by document/company/source year, metadata hash, content hash and length.
+The returned snapshot includes captured metadata and verified bytes, independently
+of current metadata or mutable bucket availability. PostgreSQL evidence proves
+multiple retained versions, source-year separation, closed mismatches, narrow
+executor permissions and lossless lookup rollback/replay. This removes the need
+for RF to know an internal Documents receipt ID in order to request historical
+originals. Company archive composition and portable cross-year byte bundles are
+still pending; no database/object restore is claimed. See
+`historical-original-recovery-20260928.json`.

@@ -50,6 +50,8 @@ test(
       originalsRollback,
       documentsGuardForward,
       governanceGuardForward,
+      historicalForward,
+      historicalRollback,
     ] = await Promise.all([
       readFile(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/rollback/${migrationName}`, import.meta.url), "utf8"),
@@ -63,6 +65,8 @@ test(
       readFile(new URL(`../supabase/rollback/${originalsMigrationName}`, import.meta.url), "utf8"),
       readFile(new URL("../supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260928083000_documents_historical_original_recovery.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260928083000_documents_historical_original_recovery.sql", import.meta.url), "utf8"),
     ]);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
@@ -77,6 +81,7 @@ test(
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
         // The originals rollback is empty-only and sees all rows under FORCE RLS.
         // Never use CASCADE or a test cleanup to discard retained customer bytes.
+        await client.query(historicalRollback);
         await client.query(originalsRollback);
         await client.query(governanceRollback);
         await client.query("begin");
@@ -114,6 +119,7 @@ test(
         await client.query(retentionForward);
         await client.query(ledgerGuardForward);
         await client.query(originalsForward);
+        await client.query(historicalForward);
         if (guards.documents) await client.query(documentsOnlyCompanyGuards(documentsGuardForward));
         if (guards.governance) await client.query(governanceOnlyCompanyGuards(governanceGuardForward));
         const successor = await state(client);
@@ -158,10 +164,14 @@ test(
             'documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)',
             'EXECUTE') as filing_asserts,
           has_function_privilege('documents_executor',
-            'documents.read_retained_original_v1(uuid,uuid,text)','EXECUTE') as owner_reads
+            'documents.read_retained_original_v1(uuid,uuid,text)','EXECUTE') as owner_reads,
+          has_function_privilege('documents_executor',
+            'documents.read_retained_evidence_v1(uuid,uuid,integer,text,text,integer,text)','EXECUTE') as owner_recovers,
+          has_function_privilege('shareholder_register_filing_executor',
+            'documents.read_retained_evidence_v1(uuid,uuid,integer,text,text,integer,text)','EXECUTE') as filing_recovers
           from pg_catalog.pg_class where oid='documents.retained_originals'::regclass`);
         assert.deepEqual(originalState.rows[0], {
-          rls: true, force_rls: true, filing_reads_bytes: false, filing_asserts: true, owner_reads: true,
+          rls: true, force_rls: true, filing_reads_bytes: false, filing_asserts: true, owner_reads: true, owner_recovers: true, filing_recovers: false,
         });
       }
     } finally {

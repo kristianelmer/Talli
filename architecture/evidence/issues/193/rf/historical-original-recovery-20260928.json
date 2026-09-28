@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-28",
+  "status": "PASS_BOUNDED_HISTORICAL_ORIGINAL_RECOVERY",
+  "baseCommit": "b528778dd511d744616f10d6317bee45040277a1",
+  "scope": "Documents-owned exact historical lookup by document/company/source year, complete metadata hash, content hash and length; returns captured metadata and immutable original bytes.",
+  "verification": {
+    "backend": "90 passed: Documents policy, retained originals, Supabase adapter, retention and consequential guard tests.",
+    "contract": "11 passed; 1 full database lifecycle skipped without DATABASE_URL.",
+    "architecture": "PASS",
+    "postgres": "Actual new lookup migration and original retention migration executed on an isolated cached postgres:17-alpine container; actual Python adapter retains and reads two metadata/source-year versions. Wrong hash/length/year fail closed; filing executor lacks byte-read authority; revoked accepted owner denied. Lookup rollback/replay twice preserves bytes and memberships.",
+    "postgresLimit": "Bounded fixture uses a minimal accepted-owner predicate and document schema; it does not replace the complete Supabase/RLS/lifecycle lane.",
+    "fullDatabaseTests": "39 retained-original database tests collected, not executed locally; include new historical version, cross-company, verified actor, membership, ACL and rollback/replay cases."
+  },
+  "authority": {
+    "hostedChanges": false,
+    "providerCalls": false,
+    "productionAsDataUsed": false,
+    "filingAuthorityAdded": false
+  },
+  "remaining": [
+    "Compose exact historical originals into portable company archive bundles, including cross-year evidence.",
+    "Execute complete database lifecycle on the final revision.",
+    "Implement and prove actual database/object restoration.",
+    "Include unapproved source/observation history, retention generations, expiry and cancellation/deletion coverage.",
+    "All seven RF acceptance criteria remain PENDING."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-historical-original-20260928-14d7",
+  "sha256": {
+    "talli-historical-original-tests.log": "8eb0acbe7dc96184b19ee60ddbca467e894d6a9b3b5ddb9da015ef40f7f7bdd4",
+    "talli-historical-contract.log": "6a89f9f44f3406f58700416d03a03eeb7ee919b109baac789a5e89755b45c54f",
+    "talli-historical-architecture.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "talli-historical-db-collection.log": "5c38df8469f196054c73e62010a0960a8c32d7cd287103961223ddc57b9b29d8",
+    "talli-historical-probe.log": "2cea84b244d57b464da8bb8e4488e72453a766c13021bb48476884bcbf0653b7",
+    "probe.py": "b28672030d9e1434dde162f227978395b90f4d6ab37ec17ad991af0d886e874e"
+  }
+}

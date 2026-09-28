@@ -218,6 +218,11 @@ class SupabaseDocumentsPersistence(DocumentsPersistence):
         async with self._transaction() as connection:
             return await PostgresDocumentOriginals(connection, self.actor_id).read_retained_original(original_id, company_id)
 
+    async def read_retained_evidence(self, query):
+        from talli_backend.adapters.postgres_document_originals import PostgresDocumentOriginals
+        async with self._transaction() as connection:
+            return await PostgresDocumentOriginals(connection, self.actor_id).read_retained_evidence(query)
+
     async def actor_role(self, company_id: CompanyId) -> str | None:
         return self._roles.get(company_id)
 

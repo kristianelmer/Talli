@@ -8,7 +8,7 @@ from psycopg.pq import TransactionStatus
 from talli_backend.adapters.supabase_documents import _document
 from talli_backend.modules.documents.public import (
     DocumentId, DocumentOriginalPersistence, DocumentsError, RetainedDocumentOriginal,
-    RetainedDocumentOriginalReceipt, document_metadata_sha256, document_original_persistence_adapter,
+    RetainedDocumentOriginalReceipt, RetainedDocumentOriginalSnapshot, document_metadata_sha256, document_original_persistence_adapter,
 )
 from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear
 
@@ -25,17 +25,26 @@ def _receipt(value):
         raise DocumentsError.storage_unavailable() from None
 
 
-def _metadata(value):
+def _snapshot_document(value):
     if not isinstance(value, dict):
         return None
     try:
         row = dict(value)
+        if row.get('created_at') is None:
+            return None
         for key in ('created_at', 'removed_at'):
             if row.get(key) is not None:
                 row[key] = datetime.fromisoformat(row[key])
-        return document_metadata_sha256(_document(row))
+                if row[key].utcoffset() is None:
+                    return None
+        return _document(row)
     except (KeyError, TypeError, ValueError, DocumentsError):
         return None
+
+
+def _metadata(value):
+    document = _snapshot_document(value)
+    return document_metadata_sha256(document) if document is not None else None
 
 
 @document_original_persistence_adapter(DocumentOriginalPersistence)
@@ -75,6 +84,30 @@ class PostgresDocumentOriginals(DocumentOriginalPersistence):
                 or len(content) != receipt.byte_length or sha256(content).hexdigest() != receipt.content_sha256):
             raise DocumentsError.integrity_failed()
         return RetainedDocumentOriginal(receipt, content)
+
+    async def read_retained_evidence(self, query):
+        self._require_transaction()
+        row = await (await self._connection.execute(
+            'select * from documents.read_retained_evidence_v1(%s::uuid,%s::uuid,%s,%s,%s,%s,%s)',
+            (query.document_id.value, str(query.company_id), int(query.source_income_year),
+             query.metadata_sha256, query.content_sha256, query.byte_length, str(self._actor_id.subject)),
+        )).fetchone()
+        if row is None:
+            raise DocumentsError.not_found()
+        receipt = _receipt(row['receipt'])
+        document = _snapshot_document(row.get('document'))
+        content = bytes(row['content'])
+        if (document is None or document_metadata_sha256(document) != query.metadata_sha256
+                or receipt.document_id != query.document_id or receipt.company_id != query.company_id
+                or receipt.source_income_year != query.source_income_year
+                or receipt.metadata_sha256 != query.metadata_sha256 or receipt.content_sha256 != query.content_sha256
+                or receipt.byte_length != query.byte_length
+                or document.document_id != query.document_id or document.company_id != query.company_id
+                or document.income_year != query.source_income_year or document.content_sha256 != query.content_sha256
+                or document.byte_length != query.byte_length
+                or len(content) != query.byte_length or sha256(content).hexdigest() != query.content_sha256):
+            raise DocumentsError.integrity_failed()
+        return RetainedDocumentOriginalSnapshot(document, RetainedDocumentOriginal(receipt, content))
 
     async def assert_retained_original(self, receipt):
         self._require_transaction()

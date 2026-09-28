@@ -247,3 +247,110 @@ def test_verified_actor_binding_required_despite_cached_owner(original,binding):
             with pytest.raises(psycopg.errors.InFailedSqlTransaction):await db.execute('select 1')
     asyncio.run(run())
     assert count(original)==0
+
+
+HISTORICAL_MIGRATION = '20260928083000_documents_historical_original_recovery.sql'
+
+
+def historical_query(seed):
+    from talli_backend.modules.documents.public import RetainedDocumentOriginalQuery, document_metadata_sha256
+    document = seed['document']
+    return RetainedDocumentOriginalQuery(document.document_id, document.company_id, document.income_year,
+        document_metadata_sha256(document), document.content_sha256, document.byte_length)
+
+
+def read_historical(seed, *, query=None, actor=None, role='documents_executor'):
+    async def run():
+        db, adapter = await connect(seed, actor=actor, role=role)
+        async with db:
+            return await adapter.read_retained_evidence(query or historical_query(seed))
+    return asyncio.run(run())
+
+
+def test_historical_recovery_uses_exact_captured_version_after_current_metadata_moves_year(original):
+    first = retain(original)
+    with psycopg.connect(DATABASE_URL, row_factory=dict_row) as db:
+        db.execute('set local role documents_store_owner')
+        db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.authorized_company_roles',%s,true)",
+            (str(original['owner']), json.dumps({str(original['company']): 'owner'})))
+        changed = db.execute('update public.documents set name=%s,income_year=2026 where id=%s returning *',
+            ('Changed.pdf', original['document'].document_id.value)).fetchone()
+    second_document = _document(changed)
+    second = retain(original, document=second_document)
+    recovered = read_historical(original)
+    assert recovered.document == original['document']
+    assert recovered.original.receipt == first
+    assert recovered.original.content == PDF
+    newer = dict(original, document=second_document)
+    assert read_historical(newer).original.receipt == second
+    assert first.original_id != second.original_id and count(original) == 2
+    with pytest.raises(psycopg.Error, match='documents_evidence_mismatch'):
+        assert_original(original, first)
+
+
+@pytest.mark.parametrize('field,value', [
+    ('metadata_sha256', 'f'*64), ('content_sha256', 'e'*64), ('byte_length', 1),
+    ('source_income_year', IncomeYear(2024)), ('document_id', DocumentId(str(uuid4()))),
+])
+def test_historical_lookup_never_falls_back_to_another_retained_version(original, field, value):
+    retain(original)
+    with pytest.raises(psycopg.Error, match='documents_not_found'):
+        read_historical(original, query=replace(historical_query(original), **{field: value}))
+
+
+def test_historical_lookup_requires_live_membership_despite_cached_owner(original):
+    retain(original)
+    with pytest.raises(psycopg.Error, match='documents_forbidden'):
+        read_historical(original, actor=original['outsider'])
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute('delete from public.company_memberships where company_id=%s', (original['company'],))
+    with pytest.raises(psycopg.Error, match='documents_forbidden'):
+        read_historical(original)
+
+
+def test_historical_lookup_does_not_grant_filing_executor_access_to_bytes(original):
+    retain(original)
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        read_historical(original, role='shareholder_register_filing_executor')
+    with psycopg.connect(DATABASE_URL) as db:
+        for role in ('anon', 'authenticated', 'service_role', 'shareholder_register_filing_executor', 'corporate_governance_workflow_executor'):
+            assert not db.execute("select has_function_privilege(%s,'documents.read_retained_evidence_v1(uuid,uuid,integer,text,text,integer,text)','EXECUTE')", (role,)).fetchone()[0]
+
+
+def test_historical_lookup_rollback_replay_preserves_bytes_and_role_authority(original):
+    receipt = retain(original)
+    with psycopg.connect(DATABASE_URL, autocommit=True) as db:
+        def authority():
+            return db.execute("select member,grantor,admin_option,inherit_option,set_option from pg_auth_members where roleid='documents_store_owner'::regrole order by member,grantor").fetchall()
+        before = authority()
+        for _ in range(2):
+            db.execute((ROOT/'supabase/rollback'/HISTORICAL_MIGRATION).read_text())
+            assert read(original, receipt).content == PDF
+            db.execute((ROOT/'supabase/migrations'/HISTORICAL_MIGRATION).read_text())
+            assert read_historical(original).original.receipt == receipt
+            assert authority() == before
+
+
+def test_historical_lookup_cannot_rebind_bytes_between_two_owned_companies(original):
+    retain(original)
+    other = uuid4()
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute("insert into public.companies(id,org_number,name,entity_type,address,postal_code,city,status_text,source,created_by) values(%s,%s,'Second AS','AS','Example 2','0150','Oslo','Active','test',%s)",
+            (other, str(100000000+other.int%899999999), original['owner']))
+        db.execute("insert into public.company_memberships(company_id,user_id,role,accepted_at) values(%s,%s,'owner',now())", (other, original['owner']))
+    with pytest.raises(psycopg.Error, match='documents_not_found'):
+        read_historical(original, query=replace(historical_query(original), company_id=CompanyId(str(other))))
+    assert read_historical(original).original.content == PDF
+
+
+@pytest.mark.parametrize('binding', ['missing', 'mismatched'])
+def test_historical_lookup_requires_actor_binding(original, binding):
+    retain(original)
+    async def run():
+        db, adapter = await connect(original)
+        async with db:
+            identity = '' if binding == 'missing' else str(original['outsider'])
+            await db.execute("select set_config('talli.verified_actor_id',%s,true)", (identity,))
+            with pytest.raises(psycopg.Error, match='documents_forbidden'):
+                await adapter.read_retained_evidence(historical_query(original))
+    asyncio.run(run())
