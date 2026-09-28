@@ -40,6 +40,31 @@ def test_projection_matches_capture_timestamp_precision():
     assert identity.identity_confirmed_at=='2026-01-01T00:00:00.123000+00:00'
 
 
+def test_submission_history_uses_held_connection_and_enumerates_every_owner_without_limit():
+    from dataclasses import fields
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    from test_rf1086_source_correction import predecessor_snapshot
+    h=AdmissionHarness(); store=rf_session(); calls=[]
+    record=predecessor_snapshot().submission
+    query=rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id)
+    class Connection:
+        info=SimpleNamespace(transaction_status=TransactionStatus.INTRANS)
+        async def execute(self,sql,args): calls.append((sql,args)); return self
+        async def fetchall(self): return [{field.name:getattr(record,field.name) for field in fields(record)}]
+    db=Connection(); scoped=_SourceAdmission(store,db,query,h.identity)
+    async def run():
+        assert await scoped.submission_history()==(record,)
+        assert calls==[(
+            'select * from shareholder_register_filing.production_filing_submissions '
+            'where company_id=%s::uuid and income_year=%s '
+            "and obligation='aksjonaerregisteroppgaven' and environment='production' order by id",
+            (str(COMPANY),int(YEAR)))]
+        scoped.close()
+        with pytest.raises(rf.ShareholderRegisterFilingError): await scoped.submission_history()
+        assert len(calls)==1
+    asyncio.run(run())
+
+
 def test_actual_scope_orders_company_before_year_and_reuses_connection_then_expires():
     h=AdmissionHarness(); store=rf_session(); calls=[]
     query=rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id)

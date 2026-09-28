@@ -582,3 +582,13 @@ The correction contract is `Rf1086CorrectionPredecessorSnapshot`, verified by
 `assert_rf1086_correction_predecessor`. Source assessment exports
 `Rf1086SourceReadinessEvidence`, `Rf1086SourceReadinessProof`,
 `build_rf1086_source_readiness` and `assert_rf1086_source_readiness_matches`.
+
+`assert_rf1086_submission_predecessor` checks the complete company/year production
+history before full-year approval. An initial approval requires empty history;
+a correction requires the exact terminal leaf of one complete linear chain.
+Duplicate identities, forks, competing roots, missing parents, cycles and
+unresolved outcomes fail. The adapter enumerates all submitters and profiles
+under the admission scope's company/year guards; it never chooses by timestamp.
+Original feedback and canonical manifest verification remain separate required
+checks. This approval check does not create the durable submission head or
+submit-once claim, which remain required before full-year sending opens.

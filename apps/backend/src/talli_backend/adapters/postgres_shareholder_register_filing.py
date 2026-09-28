@@ -1193,6 +1193,19 @@ class _SourceAdmission:
             raise rf.ShareholderRegisterFilingError.forbidden()
         return await self._store._correction_predecessor(self._connection,query,submission_id,lock=True)
 
+    async def submission_history(self):
+        self._require_active()
+        # The enclosing company/year guards serialize all journal writers.
+        # Enumerate every owner's row: actor or profile filtering could hide a
+        # competing first filing. Existing company-member SELECT/RLS applies.
+        rows = await (await self._connection.execute(
+            'select * from shareholder_register_filing.production_filing_submissions '
+            'where company_id=%s::uuid and income_year=%s '
+            "and obligation='aksjonaerregisteroppgaven' and environment='production' order by id",
+            (str(self._query.company_id), int(self._query.income_year)),
+        )).fetchall()
+        return tuple(self._store._wire_record(rf.Rf1086ProductionSubmissionRecord, row) for row in rows)
+
     async def bridge_source_preview(self, preview):
         self._require_active()
         if (preview.company_id != self._query.company_id or preview.income_year != self._query.income_year

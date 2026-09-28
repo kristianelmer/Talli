@@ -50,6 +50,7 @@ class CorrectionHarness(ApprovalHarness):
     def __init__(self,status='accepted'):
         super().__init__()
         self.prior_snapshot=predecessor_snapshot(status)
+        self.history=(self.prior_snapshot.submission,)
         self.locked_snapshot=self.prior_snapshot
         self.prior=predecessor(self.prior_snapshot)
         self.prior_documents={}

@@ -75,6 +75,8 @@ class ShareholderRegisterSourceApprovalWorkflow:
                 income_year=income_year,predecessor=predecessor)
         async with self._admission.admit(access_token, company_id=company_id, income_year=income_year,
                 preview_id=preview_id, correlation_id=correlation_id) as admitted:
+            rf.assert_rf1086_submission_predecessor(await admitted.transaction.submission_history(),
+                company_id=company_id, income_year=income_year, predecessor=predecessor)
             if correction is not None:
                 await self._correction.assert_admitted(correction,admitted.transaction)
             await admitted.transaction.bridge_source_preview(admitted.preview)

@@ -107,7 +107,8 @@
       "Rf1086SourceReadinessEvidence",
       "Rf1086SourceReadinessProof",
       "build_rf1086_source_readiness",
-      "assert_rf1086_source_readiness_matches"
+      "assert_rf1086_source_readiness_matches",
+      "assert_rf1086_submission_predecessor"
     ],
     "events": [],
     "errors": [
@@ -418,7 +419,8 @@
     "sourceApprovalArchive": "apps/backend/tests/test_rf1086_source_approval_archive.py",
     "sourceCorrection": "apps/backend/tests/test_rf1086_source_correction.py",
     "sourceReadiness": "apps/backend/tests/test_rf1086_source_readiness.py",
-    "journalCompanyGuard": "apps/backend/tests/test_rf1086_journal_company_guard_database.py"
+    "journalCompanyGuard": "apps/backend/tests/test_rf1086_journal_company_guard_database.py",
+    "submissionHistory": "apps/backend/tests/test_rf1086_submission_history.py"
   },
   "compatibilityExceptions": []
 }

@@ -22,6 +22,11 @@ class ApprovalHarness(AdmissionHarness):
             self.source.source_sha256,ENTITLEMENT,'a'*64,
             tuple(sorted({i.code for i in self.preview.readiness_issues if i.level=='warning'})),(),True)
         self.writes=[];self.append_error=None;self.result=rf.Rf1086RecordedResult(str(uuid4()),COMPANY,YEAR)
+        self.history=()
+        async def history():
+            assert self.held
+            self.calls.append('history')
+            return self.history
         async def bridge(preview):
             assert self.held and preview==self.preview
             self.calls.append('bridge');return preview.preview_id
@@ -35,6 +40,7 @@ class ApprovalHarness(AdmissionHarness):
             if self.append_error:raise self.append_error
             self.writes.append(manifest);return self.result
         self.transaction.bridge_source_preview=bridge
+        self.transaction.submission_history=history
         self.transaction.read_source_approval_context=read
         self.transaction.append_source_approval=append
         self.approval=ShareholderRegisterSourceApprovalWorkflow(self.workflow._sessions,self.workflow._documents)

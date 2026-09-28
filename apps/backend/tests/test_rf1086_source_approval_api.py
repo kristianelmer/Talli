@@ -105,6 +105,12 @@ def approval_api():
         h.calls.append('approval')
         return rf.Rf1086RecordedResult(PREVIEW,h.source.company_id,h.source.income_year)
     h.transaction.bridge_source_preview = bridge
+    h.history = ()
+    async def history():
+        assert h.held
+        h.calls.append('history')
+        return h.history
+    h.transaction.submission_history = history
     h.transaction.read_source_approval_context = context
     h.transaction.append_source_approval = append
     class Sessions:
@@ -162,6 +168,18 @@ def test_actual_http_blocked_review_remains_reviewable_and_wrong_bearer_is_rejec
     h.calls.clear()
     response = client.post(BASE+'/source-production-reviews',json=scope,headers={'Authorization':'Bearer wrong'})
     assert response.status_code == 401 and h.calls == []
+
+
+def test_actual_http_first_approval_is_rejected_when_guarded_history_is_not_empty():
+    from test_rf1086_source_correction import predecessor_snapshot
+    client,h,scope = approval_api()
+    h.history = (predecessor_snapshot().submission,)
+    response = client.post(BASE+'/source-production-approvals',json={**scope,
+        'reviewSha256':h.review_hash,'acknowledgedWarningCodes':[],
+        'realFilingConfirmed':True},headers=HEADERS)
+    assert response.status_code == 409, response.text
+    assert h.calls.index('guard') < h.calls.index('history') < h.calls.index('release')
+    assert not h.manifests and not h.committed
 
 
 def test_actual_http_predecessor_fields_are_preserved_in_canonical_manifest():

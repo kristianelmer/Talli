@@ -85,3 +85,38 @@ export function documentsOnlyCompanyGuards(migration) {
     .replace(/,\n \) s\(signature,call,owner_name\)/u, "\n ) s(signature,call,owner_name)");
   return migration.slice(0, first) + wrapper + "\n" + migration.slice(last);
 }
+
+// Documents' predecessor recreates Governance artifact routines. Restore those
+// guards only: RF rollback has already removed ledger.opening_bank_inputs, and
+// Ledger's own historical replay is a separate phase. Keep the migration's
+// original strict wrapper and privilege restoration, with a closed inventory.
+export function governanceOnlyCompanyGuards(migration) {
+  const ledger = migration.indexOf("set local role ledger_store_owner;");
+  const tables = migration.indexOf("do $tables$");
+  if (ledger < 0 || tables <= ledger
+      || !migration.slice(0, ledger).includes("end; $trigger$;")) {
+    throw new Error("Governance company guard migration structure changed");
+  }
+  let result = migration.slice(0, ledger) + migration.slice(tables);
+  for (const [tag, total, owned] of [["tables", 40, 11], ["routines", 68, 19]]) {
+    const start = result.indexOf(`do $${tag}$`);
+    const endMarker = `end; $${tag}$;`;
+    const end = result.indexOf(endMarker, start);
+    if (start < 0 || end <= start || result.indexOf(`do $${tag}$`, start + 1) !== -1) {
+      throw new Error("Governance company guard block changed");
+    }
+    const block = result.slice(start, end + endMarker.length);
+    const entries = block.split("\n").filter(line => line.startsWith(" ('"));
+    const ownPrefix = tag === "tables" ? " ('corporate_governance." : " ('corporate_governance',";
+    const others = tag === "tables" ? /^ \('(ledger|backend_system)\./u : /^ \('(ledger|backend_system)',/u;
+    const ownEntries = entries.filter(line => line.startsWith(ownPrefix));
+    if (entries.length !== total || ownEntries.length !== owned
+        || entries.filter(line => others.test(line)).length !== total - owned) {
+      throw new Error("Governance company guard inventory changed");
+    }
+    const selected = block.split("\n").filter(line => !others.test(line)).join("\n")
+      .replace(/,\n \) inventory\(/u, "\n ) inventory(");
+    result = result.slice(0, start) + selected + result.slice(end + endMarker.length);
+  }
+  return result;
+}

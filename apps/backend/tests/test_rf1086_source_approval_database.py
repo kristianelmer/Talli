@@ -359,3 +359,74 @@ def test_authority_wait_uses_wall_clock_for_expiry(approval_fixture,expired):
             await asyncio.sleep(.4 if expired=='pilot' else 2.1)
         with pytest.raises(Exception,match='(?i)pilot_entitlement_required|step_up_required|basis_unavailable|company_year_not_admitted'):await task
     asyncio.run(run())
+
+
+def history_submission(f, *, actor=None):
+    preview,approval,submission=[uuid4() for _ in range(3)]
+    owner=f['seed']['owner']; company=f['seed']['company']
+    with psycopg.connect(DATABASE_URL) as db:
+        insert(db,'shareholder_register_filing.filing_previews',dict(id=preview,company_id=company,income_year=2026,
+            filing='aksjonaerregisteroppgaven',status='ready',preview='History fixture',created_by=owner))
+        insert(db,'shareholder_register_filing.filing_approval_snapshots',dict(id=approval,entitlement_id=f['entitlement'],preview_id=preview,
+            company_id=company,user_id=actor or owner,income_year=2026,obligation='aksjonaerregisteroppgaven',
+            case_profile='rf1086_no_activity_v1',adapter_version='rf1086-production-v1',payload_hash='a'*64,manifest_hash='b'*64,
+            manifest=Jsonb({}),approved_by=actor or owner))
+        insert(db,'shareholder_register_filing.production_filing_submissions',dict(id=submission,approval_id=approval,entitlement_id=f['entitlement'],
+            company_id=company,user_id=actor or owner,income_year=2026,obligation='aksjonaerregisteroppgaven',
+            case_profile='rf1086_no_activity_v1',adapter_version='rf1086-production-v1',payload_hash='a'*64,
+            environment='production',status='processing',feedback_state='processing',submitted_by=actor or owner))
+    return str(submission)
+
+
+def test_guarded_history_includes_other_submitters_and_cannot_be_read_after_scope_exit(approval_fixture):
+    from talli_backend.shared.kernel import CompanyId, IncomeYear
+    from test_rf1086_year_source_database import session as year_session
+    f=approval_fixture; fixture=f['seed']; session=f['store']
+    submission=history_submission(f,actor=fixture['outsider'])
+    query=rf.Rf1086SourceQuery(CompanyId(str(fixture['company'])), IncomeYear(2026), session.actor_id)
+    async def run():
+        async with session.source_admission(query) as scope:
+            rows=await scope.submission_history()
+            assert len(rows)==1 and rows[0].id==submission and rows[0].user_id==str(fixture['outsider'])
+            with pytest.raises(rf.Rf1086ProductionError):
+                rf.assert_rf1086_submission_predecessor(rows,company_id=query.company_id,
+                    income_year=query.income_year,predecessor=None)
+        with pytest.raises(rf.ShareholderRegisterFilingError): await scope.submission_history()
+        outsider=year_session(fixture,session._configuration.database_url,actor=fixture['outsider'])
+        with pytest.raises(Exception):
+            async with outsider.source_admission(rf.Rf1086SourceQuery(query.company_id,query.income_year,outsider.actor_id)):
+                pytest.fail('outsider entered owner admission')
+    asyncio.run(run())
+
+
+def test_guarded_history_observes_writer_commit_after_waiting_for_company(approval_fixture):
+    from talli_backend.shared.kernel import CompanyId, IncomeYear
+    from test_rf1086_source_company_guard_database import waiting
+    f=approval_fixture; fixture=f['seed']; session=f['store']
+    submission=history_submission(f)
+    query=rf.Rf1086SourceQuery(CompanyId(str(fixture['company'])), IncomeYear(2026), session.actor_id)
+    async def run():
+        task=None
+        ready=asyncio.get_running_loop().create_future()
+        original=session._transaction
+        from contextlib import asynccontextmanager
+        @asynccontextmanager
+        async def observed_transaction(*args,**kwargs):
+            async with original(*args,**kwargs) as db:
+                ready.set_result((await (await db.execute('select pg_backend_pid() as pid')).fetchone())['pid'])
+                yield db
+        session._transaction=observed_transaction
+        async def reader():
+            async with session.source_admission(query) as scope: return await scope.submission_history()
+        try:
+            with psycopg.connect(DATABASE_URL) as writer:
+                writer.execute('select public.company_archive_lock_company_v1(%s)',(fixture['company'],))
+                task=asyncio.create_task(reader())
+                await waiting(await ready)
+                writer.execute("update shareholder_register_filing.production_filing_submissions set status='accepted',feedback_state='accepted' where id=%s",(submission,))
+            rows=await task
+            assert len(rows)==1 and rows[0].id==submission and rows[0].status=='accepted'
+        finally:
+            if task and not task.done():
+                task.cancel(); await asyncio.gather(task,return_exceptions=True)
+    asyncio.run(run())

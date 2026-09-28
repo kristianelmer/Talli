@@ -146,6 +146,13 @@ sending, processing and unknown outcomes require reconciliation. Populate immuta
 predecessors, cycles and duplicate replacements. A source correction alone never
 authorizes another POST.
 
+Approval now checks the complete retained company/year submission chain inside
+source admission. Initial approval requires empty history; corrections must
+name its exact terminal leaf. All submitters and profiles are enumerated, and
+ambiguous or incomplete chains fail instead of selecting the latest timestamp.
+This check still needs to be repeated by the future durable claim command,
+which must advance the company/year head atomically with claim insertion.
+
 A versioned archive includes source versions, previews, bridge bindings,
 approvals and submission ancestry. Verify historical artifacts against their
 captured immutable evidence, so an earlier archive remains valid after a genuine
