@@ -229,6 +229,10 @@ export async function fixtureTableTransaction(database, relations, operation) {
       await database.query("reset role");
     }
     const result = await operation();
+    // Validate deferred references before ALTER restores USER triggers. Keeping
+    // internal FK triggers enabled can otherwise leave pending events on the
+    // touched parent tables; any invalid reference still rolls everything back.
+    await database.query("set constraints all immediate");
     for (const { relation, before, triggers } of snapshots) {
       await database.query(`set local role ${identifier(before.owner)}`);
       for (const trigger of triggers) await database.query(`alter table ${qualified(relation)} ${modes[trigger.mode]} trigger ${identifier(trigger.name)}`);

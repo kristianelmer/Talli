@@ -1,7 +1,10 @@
 # Full-year submission claim integration
 
 Implementation contract derived from the current RF journal and approval code on
-24 September 2026. This is remaining work, not acceptance evidence.
+24 September 2026. The database claim foundation is implemented in
+`20260928060732_rf1086_source_submission_claim.sql`; application admission,
+owned annual readiness, provider dispatch and archive integration remain pending.
+This contract is not acceptance evidence.
 
 The guarded command should accept only approval ID, exact manifest SHA, expected
 company/year head submission ID and verified subject. Source identity, statutory

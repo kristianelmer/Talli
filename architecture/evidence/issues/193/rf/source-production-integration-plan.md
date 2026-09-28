@@ -125,8 +125,10 @@ admission and compares the complete predecessor snapshot and receipts under the
 final company/year and submission locks. Full-year send must repeat this check;
 full-year predecessor submissions require their future archive contract.
 
-Full-year submission constraints, claim and journal visibility remain blocked
-pending their independent guarded command. The legacy stored-readiness gate is
+The guarded database claim now persists an immutable source binding and one
+company/year submission head, with exact historical recovery and legacy barriers.
+Application send, original-byte revalidation and full-year recovery/archive
+integration remain pending; no source send endpoint is exposed. The legacy stored-readiness gate is
 still a prerequisite and must be replaced with owned full-year readiness based
 on the verified source; it cannot substitute for those source checks.
 
@@ -150,8 +152,11 @@ Approval now checks the complete retained company/year submission chain inside
 source admission. Initial approval requires empty history; corrections must
 name its exact terminal leaf. All submitters and profiles are enumerated, and
 ambiguous or incomplete chains fail instead of selecting the latest timestamp.
-This check still needs to be repeated by the future durable claim command,
-which must advance the company/year head atomically with claim insertion.
+The database claim repeats this complete-history check and advances the managed
+head atomically with claim insertion. Bounded PostgreSQL checks include an observed
+two-session race, competing roots/forks, terminal full-year correction, populated
+rollback and ordered predecessor replay. Maintained full-stack cases still await
+CI; the claim is not yet connected to source admission or provider dispatch.
 
 A versioned archive includes source versions, previews, bridge bindings,
 approvals and submission ancestry. Verify historical artifacts against their

@@ -151,6 +151,7 @@ test("fixture access refuses external databases and undeclared relations before 
 for (const fails of [false, true]) test(`fixture restores exact USER trigger modes on ${fails ? "rollback" : "success"} without disabling foreign keys`, async () => {
   const original = [{ name: 'quoted"trigger', mode: "O" }, { name: "disabled", mode: "D" }, { name: "replica", mode: "R" }, { name: "always", mode: "A" }];
   let current = structuredClone(original);
+  let deferredChecks = false;
   const statements = [];
   const database = { connectionParameters: { host: "127.0.0.1" }, query: async statement => {
     statements.push(statement);
@@ -161,13 +162,16 @@ for (const fails of [false, true]) test(`fixture restores exact USER trigger mod
     if (statement.includes("select relacl::text acl")) return { rows: [{ acl: "original-table-acl", forced: true }] };
     if (statement.includes("from pg_trigger")) { assert.ok(statement.includes("not tgisinternal")); return { rows: structuredClone(current) }; }
     const alteration = /^alter table "public"\."audit_events" (enable replica|enable always|enable|disable) trigger "((?:[^"]|"")+)"$/u.exec(statement);
+    if (alteration && deferredChecks) throw new Error('cannot ALTER TABLE because it has pending trigger events');
     if (alteration) current.find(row => row.name === alteration[2].replaceAll('""', '"')).mode = { enable: "O", disable: "D", "enable replica": "R", "enable always": "A" }[alteration[1]];
+    if (statement === "set constraints all immediate") deferredChecks = false;
     if (statement === "rollback") current = structuredClone(original);
     return { rows: [] };
   } };
   const failure = new Error("fixture operation failed");
   const action = fixtureTableTransaction(database, ["public.audit_events"], async () => {
     assert.ok(current.every(trigger => trigger.mode === "D"));
+    deferredChecks = true;
     if (fails) throw failure;
     return "fixture-result";
   });

@@ -1,0 +1,80 @@
+{
+  "baseCommit": "c1ee34108b2ec7a581b8509655a7bfffb1ef7c97",
+  "status": "PASS_BOUNDED_DATABASE_CLAIM_APPLICATION_AND_FULL_STACK_PENDING",
+  "scope": [
+    "Immutable source submission binding and atomic company/year/obligation/environment head",
+    "Complete-history validation, exact terminal predecessor and canonical approval revalidation under held company/year guards",
+    "Exact historical recovery independent of approval invalidation and pilot expiry",
+    "Legacy begin rejects source approvals; row insertion guard prevents new unmanaged legacy filings after adoption",
+    "Evidence-preserving rollback and ordered replay of review/approval/claim migrations",
+    "Disposable fixture drains deferred foreign-key checks before restoring USER triggers, retaining all constraints and rollback protections"
+  ],
+  "verification": {
+    "postgresChecksPassed": 75,
+    "postgresScope": "Real migration, source codec, manifest, approval and claim functions; minimal table topology with synthetic actor, Billing, Authority and release input seams",
+    "concurrency": "Two restricted-role sessions converge after an observed advisory-lock wait; admin is used only for fixture setup and wait observation",
+    "focusedBackendPassed": 136,
+    "architecture": "PASS",
+    "architectureContractPassed": 1,
+    "ciPartitionAndTopologySelectionPassed": 6,
+    "orderedReplayAndFailureSelectionPassed": 40,
+    "fixtureSafetyPassed": 36,
+    "databaseCasesCollected": 43,
+    "newClaimDatabaseCasesCollected": 12,
+    "newClaimDatabaseCasesExecutedOnFullSupabase": 0,
+    "deferredFixturePostgres": "Actual helper reproduces pending-trigger ALTER failure; valid delete succeeds after drain; invalid FK rolls back with original USER trigger/ACL/FORCE RLS"
+  },
+  "ciPredecessor": {
+    "run": 36386001699,
+    "job": 108811476753,
+    "database": "FAILURE",
+    "cause": "Browser fixture cleanup tried restoring USER triggers while deferred foreign-key checks were pending",
+    "repair": "Flush constraints before restoring trigger modes inside the same disposable fixture transaction",
+    "completeRerun": "PENDING"
+  },
+  "remaining": [
+    "Connect retained claim to guarded application source admission and original-byte/predecessor receipt revalidation",
+    "Replace caller-written legacy annual readiness with owned full-year inputs while retaining technical release signoffs",
+    "Implement full-year send/reconciliation dispatch and immutable hashed shareholder operation keys",
+    "Export and validate full-year claim/head lineage, correction predecessors, retention, cancellation and recovery",
+    "Run maintained full-stack claim cases and full release gates; all seven RF acceptance criteria remain PENDING"
+  ],
+  "limits": [
+    "This is a database foundation, not an exposed or production-ready full-year send command",
+    "No hosted changes, provider calls or real AS data; Tax and Accounts remain untouched"
+  ],
+  "sourceSha256": {
+    "supabase/migrations/20260928060732_rf1086_source_submission_claim.sql": "aa84224e41bd690b0d61860673df55f3d46e22b65ee69c8bdd0b571ac7a5fc15",
+    "supabase/rollback/20260928060732_rf1086_source_submission_claim.sql": "ddedcb476147a107d1f7d831ee6add6ec96c3b5ae7a29e457258167636ad3e70",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "121fe03fa5021576fd1f932f1b0c45ffb8a61410207ad75616cb7f723d403573",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "31ca3e71a81abc4181d9fa02a958409ab81ad830b1a28898dd470358211f2a8e",
+    "apps/backend/tests/test_rf1086_source_approval_database.py": "e021a71c86de579212d9ffcfe07032605fc2c2db14ef05ffd2717819cb0f6233",
+    "architecture/database-catalog.json": "78602d094a6ed1721eea50ddd0df2513e13150f8ced0076b297f8437ee826c26",
+    "scripts/rehearse-authority-topology.mjs": "b2b67fad7f4fbc98401859e0ec78498488f05a843ef0f8729eb2abd65ea86474",
+    "tests/ci_release_gate.test.mjs": "25f7bc25f4b7aaf1c88a2925890a7f0376c9d2605dd5d9ceaaf32261ee15a503",
+    "tests/support/rf1086-fixture-access.mjs": "34e1aad16b69a8c1305ec7900f310b5895c61c64c62aef8a4fa4e0ac33b83b73",
+    "tests/rf1086_workspace_fixture_safety.test.mjs": "891369518cdcc6bf4c3a25bc20c00b3aa23d384fac303b08a942d7c904f1b4df",
+    "architecture/evidence/issues/193/rf/source-submission-claim-contract.md": "27f407e1c93de873d096fa67e5908aa70f1ff42098fd8b56a6084ce7262bdcd7",
+    "architecture/evidence/issues/193/rf/source-production-integration-plan.md": "dc7b73434c5bdb6babaf27ace4c5dde618356994145c7e84ac11a904f035b31e"
+  },
+  "privateProofSha256": {
+    "cleanup.log": "4b82d9493e3c82bf685e265074e422c9b32dbb95e3c9b52b9a6679f0da40dea7",
+    "encoded-fixture.json": "dc9f1867cb98fc818d619dcd3e6e80de22ad4f7064285e001c5d69506861dd5e",
+    "results.json": "fba13feb4609a7c817a049d59cf43543815af2f3df1be31129bc53a16424fe47",
+    "sql.log": "4d2ab9b068b57e21f50014939a9d416ef7bcb0c7cb0ce5052fcb77999681602b",
+    "talli-c1ee-database.log": "1ea3629f637fff0779250f1304516ec114c746851a7ad01192d6bfa1a6b1c9ea",
+    "talli-source-claim-architecture-contract.log": "ea305502d6e3bb4c704b625b337f078ae16f978c48e9cd8d5584db285d3d846c",
+    "talli-source-claim-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-source-claim-backend.log": "abb26d7df416da539038955d39a6353d08da69138cf448744a51ed0806b28b90",
+    "talli-source-claim-db-collection.log": "eb035bfc51ef44ea0cd94b8a094bdd476cbd0a735053a4c231acda7882ea70dd",
+    "talli-source-claim-fixture-tests.log": "fc844633fa54ff8daab0edba16cf0bf7472d99153f197d71603a0f4278f2d000",
+    "talli-source-claim-replay-order.log": "2d56a14460bd25e7d53fed414befb36e1d7621d58a61c1d1f449285d98d846de",
+    "talli-source-claim-topology.log": "90a6def507fb18b7737b00121b5c14bb239a8b020e38afdddbda315ec9f4d36a",
+    "validate.py": "bd032c0aec3becd4570850a0c18b5ed93c177537077d1bc6256b7890e385f3e4"
+  },
+  "deferredFixtureProofSha256": {
+    "check.mjs": "7fa8c2a24e21253c4106fa89f40f467437a5cd9e19d1224c8c23b445238047a4",
+    "result.json": "eaf87390bd43628966a21a152e7ec94c448d6ea75050141c4debff82578d4c23",
+    "run.py": "191a75de798dfa5176720d3c2dabf4313a4b582d0cbb1c26202598ad2bbb1848"
+  }
+}

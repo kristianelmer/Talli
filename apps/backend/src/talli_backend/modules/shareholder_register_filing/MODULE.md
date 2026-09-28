@@ -1,7 +1,7 @@
 # Shareholder register filing
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions","shareholder_register_filing.year_source_heads","shareholder_register_filing.year_source_versions","shareholder_register_filing.register_observations","shareholder_register_filing.source_previews","shareholder_register_filing.source_review_bridges","shareholder_register_filing.source_approval_bindings"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority","Rf1086YearSourcePersistence","Rf1086RegisterObservationPersistence"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
+{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions","shareholder_register_filing.year_source_heads","shareholder_register_filing.year_source_versions","shareholder_register_filing.register_observations","shareholder_register_filing.source_previews","shareholder_register_filing.source_review_bridges","shareholder_register_filing.source_approval_bindings","shareholder_register_filing.source_submission_bindings","shareholder_register_filing.submission_heads"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority","Rf1086YearSourcePersistence","Rf1086RegisterObservationPersistence"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
 -->
 
 ## Owned behavior
@@ -592,3 +592,29 @@ under the admission scope's company/year guards; it never chooses by timestamp.
 Original feedback and canonical manifest verification remain separate required
 checks. This approval check does not create the durable submission head or
 submit-once claim, which remain required before full-year sending opens.
+
+### Durable full-year submission claim
+
+Migration `20260928060732_rf1086_source_submission_claim.sql` retains immutable
+`source_submission_bindings` and one `submission_heads` row per company, year,
+obligation and production environment. The guarded database command binds the
+exact approved manifest and predecessor, checks every retained filing as one
+complete chain, then inserts the claim and journal row and advances the head in
+one transaction. Forks, disconnected history, stale predecessors and unresolved
+outcomes fail closed. The company/year guards precede head/parent rows and the
+Authority/Billing revalidation performed by the approval validator.
+
+An exact historical lookup remains available after approval invalidation or
+pilot expiry. Replay returns the existing claim without authorizing another
+provider POST. Legacy begin rejects source approvals, and a managed head blocks
+new unmanaged legacy insertions. Existing legacy approval replay remains valid.
+The immutable binding authorizes only matching full-year journal rows; ordinary
+journal status changes preserve their original payload and predecessor.
+
+Rollback revokes the new claim command but retains heads, claims and historical
+visibility. Replay the claim successor after the review/approval predecessors.
+The existing production submission generation trigger records claim insertion
+in the same transaction. Full-year application dispatch, owned annual readiness,
+original-byte revalidation at send and archive claim lineage remain required
+before enabling the full-year send path; this database foundation does not expose
+an HTTP send command or activate production.
