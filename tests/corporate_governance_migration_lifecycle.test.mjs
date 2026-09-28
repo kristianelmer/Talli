@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import pg from "pg";
+import { governanceGuardReplay } from "./support/governance_guard_replay.mjs";
 
 const { Client } = pg;
 const databaseUrl = process.env.DATABASE_URL;
@@ -1746,7 +1747,7 @@ test(
         await client.query(ledgerAmendmentReadForward);
         // Historical migrations recreate unwrapped routines and fresh tables.
         // Restore both successor boundaries before declaring recutover complete.
-        await client.query(companyWriteGuardsForward);
+        await client.query(governanceGuardReplay(companyWriteGuardsForward));
         await client.query(guardedReportingReadForward);
         await restoreGovernanceEvidenceAuthority(client);
         await assertGovernanceSuccessorGuards(client);

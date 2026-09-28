@@ -630,6 +630,12 @@ def test_source_claim_adapter_round_trips_retained_approval_and_claim(claim_fixt
             scope.close()
         assert await store.read_source_claim_approval(approval_id)==retained
         assert await store.read_source_submission_claim(approval_id,approval['manifest_hash'],None)==first.claim
+        archive_query=rf.Rf1086ArchiveQuery(f['source'].company_id,f['source'].income_year,store.actor_id)
+        archive=await rf.create_rf1086_preparation_service(store).archive_source(archive_query)
+        assert archive.source_submission_claims==(first.claim,)
+        assert archive.submission_head.submission_id==first.claim.submission_id
+        canonical_archive=rf.serialize_rf1086_archive(archive,query=archive_query)
+        assert rf.parse_rf1086_archive(canonical_archive,query=archive_query)==archive
     asyncio.run(run())
 
 

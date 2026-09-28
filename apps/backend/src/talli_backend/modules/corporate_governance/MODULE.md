@@ -278,3 +278,10 @@ with temporary role memberships restored exactly. Ledger keeps its own guard and
 the company-write-guard and guarded-reporting successors after historical table
 and routine recreation; the twice-run lifecycle rehearsal checks the restored
 triggers, loan guard, RF reader and cross-owner grants.
+
+The isolated historical Governance rehearsal replays only Governance definitions
+from the combined company-write-guard successor. Ledger's independently rehearsed
+older topology and routine bodies stay intact; the final combined cutover still
+uses the complete strict migration. The scoped replay retains all Governance
+missing-table checks and restores the existing Ledger guard grant needed by its
+caller, without creating replacement Ledger tables.
