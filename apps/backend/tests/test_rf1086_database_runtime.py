@@ -422,10 +422,20 @@ class LocalStorage:
 
 class OwnedDocuments:
     def __init__(self, fixture, storage): self.fixture, self.storage = fixture, storage
+    async def refresh_roles(self):
+        # Model the production gateway's live accepted-membership read. SQL
+        # evidence verification must not inherit the fixture's cached owner.
+        async with await psycopg.AsyncConnection.connect(DATABASE_URL, connect_timeout=5,
+                options='-c statement_timeout=5000 -c lock_timeout=1000') as connection:
+            rows = await (await connection.execute(
+                'select company_id,role from public.company_memberships '
+                'where company_id=%s and user_id=%s and accepted_at is not null',
+                (self.fixture['company'], self.fixture['owner']))).fetchall()
+        return {CompanyId(str(company)): role for company, role in rows}
     async def session(self, _):
         session = store(self.fixture)
         return DocumentsService(SupabaseDocumentsPersistence(self.fixture["url"], session._verified,
-            {CompanyId(str(self.fixture["company"])): "owner"}), self.storage)
+            {CompanyId(str(self.fixture["company"])): "owner"}, role_refresher=self.refresh_roles), self.storage)
 
 
 def test_real_documents_contract_stored_receipt_and_hash_drive_final_feedback_without_metadata_duplication(fixture):
