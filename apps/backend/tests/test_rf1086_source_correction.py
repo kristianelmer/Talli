@@ -8,7 +8,7 @@ import pytest
 
 from talli_backend.application.shareholder_register_source_approval import ShareholderRegisterSourceApprovalWorkflow
 from talli_backend.modules.documents.public import (DocumentRecord, DocumentId, DocumentStatus,
-    VerifiedDocumentEvidence, RetainedDocumentOriginalReceipt, DocumentsError, document_metadata_sha256)
+    RetainedDocumentOriginal, RetainedDocumentOriginalSnapshot, VerifiedDocumentEvidence, RetainedDocumentOriginalReceipt, DocumentsError, document_metadata_sha256)
 from talli_backend.modules.shareholder_register_filing import public as rf
 from test_rf1086_archive_source import production_snapshot
 from test_rf1086_source_approval import ApprovalHarness
@@ -82,6 +82,12 @@ class CorrectionHarness(ApprovalHarness):
                 class Session:
                     @property
                     def actor_id(self): return owner.document_actor
+                    async def read_retained_evidence(self,query):
+                        assert not owner.held
+                        owner.calls.append('historical_bytes:'+query.document_id.value)
+                        result=owner.historical[query.document_id.value]
+                        assert query.metadata_sha256 == next(row.original_metadata_sha256 for row in owner.prior_snapshot.artifacts if row.document_id == query.document_id.value)
+                        return result
                     async def verify_document_evidence(self,document_id):
                         if document_id.value not in owner.prior_documents:
                             return await original.verify_document_evidence(document_id)
@@ -250,3 +256,77 @@ def test_adapter_preserves_exact_predecessor_snapshot_and_uses_guarded_owner_loc
         assert not opened and 'lock_correction_predecessor_v1' in calls[0][0]
         assert len(calls)==5
     else:assert len(opened)==1 and 'assert_member' in calls[0][0]
+
+
+def bind_historical(h):
+    h.historical={}
+    artifacts=[]
+    for i, artifact in enumerate(h.prior_snapshot.artifacts):
+        evidence=h.prior_documents[artifact.document_id];receipt=evidence.retained_original
+        h.historical[artifact.document_id]=RetainedDocumentOriginalSnapshot(evidence.document,
+            RetainedDocumentOriginal(receipt,f'receipt-{i}'.encode()))
+        artifacts.append(replace(artifact,original_id=receipt.original_id,
+            original_metadata_sha256=receipt.metadata_sha256,original_source_income_year=int(receipt.source_income_year),
+            original_retained_at=receipt.retained_at.isoformat()))
+    h.prior_snapshot=replace(h.prior_snapshot,artifacts=tuple(artifacts));h.locked_snapshot=h.prior_snapshot
+    async def historical(receipt):
+        assert h.held
+        h.calls.append('historical_original')
+        if h.original_failure: raise DocumentsError.integrity_failed()
+        assert receipt==h.historical[receipt.document_id.value].original.receipt
+    h.transaction.assert_historical_original=historical
+    # Any attempt to verify today's metadata/bytes is a regression.
+    h.prior_failure=AssertionError('Historical correction must not read current document metadata')
+    return h
+
+
+@pytest.mark.parametrize('profile',['legacy','full-year'])
+@pytest.mark.parametrize('status',['accepted','rejected'])
+def test_correction_uses_bound_historical_original_even_when_current_document_is_unavailable(profile,status):
+    if profile=='full-year':
+        from test_rf1086_full_year_correction import full_year_predecessor
+        h=CorrectionHarness(snapshot=full_year_predecessor(status=status))
+    else: h=CorrectionHarness(status)
+    bind_historical(h)
+    assert h.approve(predecessor=h.prior)==h.result
+    assert h.calls.count('historical_original')==2 and 'prior_original' not in h.calls
+    assert all(h.calls.index(call)<h.calls.index('guard') for call in h.calls if call.startswith('historical_bytes:'))
+    assert h.calls.index('prior_lock')<h.calls.index('historical_original')<h.calls.index('append')
+
+
+@pytest.mark.parametrize('change',['id','metadata','year','time','bytes','creator','document'])
+def test_correction_rejects_substituted_historical_original_before_guard(change):
+    from datetime import timedelta
+    h=bind_historical(CorrectionHarness());key=sorted(h.historical)[0];value=h.historical[key];receipt=value.original.receipt
+    if change=='id': receipt=replace(receipt,original_id=str(UUID(int=999)))
+    if change=='metadata': receipt=replace(receipt,metadata_sha256='f'*64)
+    if change=='year': receipt=replace(receipt,source_income_year=rf.IncomeYear(2024))
+    if change=='time': receipt=replace(receipt,retained_at=receipt.retained_at+timedelta(microseconds=1))
+    value=replace(value,original=replace(value.original,receipt=receipt))
+    if change=='bytes': value=replace(value,original=replace(value.original,content=b'wrong!!!!'))
+    if change=='creator': value=replace(value,document=replace(value.document,created_by=replace(ACTOR,subject=type(ACTOR.subject)(str(UUID(int=999))))))
+    if change=='document': value=replace(value,document=replace(value.document,name='Newer metadata.xml'))
+    h.historical[key]=value
+    with pytest.raises(rf.Rf1086ProductionError): h.approve(predecessor=h.prior)
+    assert 'guard' not in h.calls and not h.writes
+
+
+@pytest.mark.parametrize('field,value', [('original_id',None),('original_id','bad'),('original_metadata_sha256',None),
+    ('original_metadata_sha256','F'*64),('original_source_income_year',2024),('original_source_income_year',True),
+    ('original_retained_at',None),('original_retained_at','2026-01-01')])
+def test_correction_policy_rejects_incomplete_or_invalid_original_binding(field,value):
+    h=bind_historical(CorrectionHarness());rows=h.prior_snapshot.artifacts
+    h.prior_snapshot=replace(h.prior_snapshot,artifacts=(replace(rows[0],**{field:value}),rows[1]))
+    with pytest.raises(rf.Rf1086ProductionError): h.approve(predecessor=h.prior)
+    assert 'guard' not in h.calls and not any(c.startswith('historical_bytes:') for c in h.calls)
+
+
+@pytest.mark.parametrize('race',['binding','revoked-original'])
+def test_historical_correction_rechecks_binding_and_retention_under_guard(race):
+    h=bind_historical(CorrectionHarness())
+    if race=='binding':
+        h.on_guard=lambda:setattr(h,'locked_snapshot',replace(h.prior_snapshot,artifacts=tuple(
+            replace(row,original_id=str(UUID(int=999))) for row in h.prior_snapshot.artifacts)))
+    else: h.original_failure=True
+    with pytest.raises((rf.Rf1086ProductionError,DocumentsError)):h.approve(predecessor=h.prior)
+    assert not h.held and not h.writes and not h.committed

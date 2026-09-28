@@ -354,3 +354,102 @@ def test_historical_lookup_requires_actor_binding(original, binding):
             with pytest.raises(psycopg.Error, match='documents_forbidden'):
                 await adapter.read_retained_evidence(historical_query(original))
     asyncio.run(run())
+
+
+HISTORICAL_ASSERTION = '20260928124000_documents_historical_original_assertion.sql'
+
+
+def assert_historical(seed, receipt, *, actor=None):
+    async def run():
+        db, adapter = await connect(seed, role='shareholder_register_filing_executor', actor=actor)
+        async with db:
+            await adapter.assert_historical_original(receipt)
+    asyncio.run(run())
+
+
+def test_historical_assertion_preserves_exact_old_version_after_current_metadata_changes(original):
+    receipt = retain(original)
+    with psycopg.connect(DATABASE_URL, row_factory=dict_row) as db:
+        db.execute('set local role documents_store_owner')
+        db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.authorized_company_roles',%s,true)",
+            (str(original['owner']), json.dumps({str(original['company']): 'owner'})))
+        row = db.execute('update public.documents set name=%s,income_year=2026 where id=%s returning *',
+            ('New metadata.pdf', original['document'].document_id.value)).fetchone()
+    newer = retain(original, document=_document(row))
+    assert receipt.original_id != newer.original_id
+    assert_historical(original, receipt)
+    assert_historical(original, newer)
+    with pytest.raises(psycopg.Error, match='documents_evidence_mismatch'): assert_original(original, receipt)
+    assert count(original) == 2
+
+
+@pytest.mark.parametrize('field,value', [('metadata_sha256','f'*64),('content_sha256','e'*64),('byte_length',1),
+    ('original_id',str(uuid4())),('document_id',DocumentId(str(uuid4()))),('source_income_year',IncomeYear(2024)),
+    ('retained_at',None)], ids=['metadata','content','length','original','document','year','retained-at'])
+def test_historical_assertion_mismatch_aborts_callers_transaction(original,field,value):
+    receipt=retain(original)
+    if field=='retained_at': value=receipt.retained_at+timedelta(microseconds=1)
+    async def run():
+        db,adapter=await connect(original,role='shareholder_register_filing_executor')
+        async with db:
+            with pytest.raises(psycopg.Error,match='documents_evidence_mismatch'):
+                await adapter.assert_historical_original(replace(receipt,**{field:value}))
+            with pytest.raises(psycopg.errors.InFailedSqlTransaction):await db.execute('select 1')
+    asyncio.run(run())
+    assert count(original)==1
+
+
+def test_historical_assertion_requires_current_owner_despite_cached_role(original):
+    receipt=retain(original)
+    with pytest.raises(psycopg.Error,match='documents_forbidden'):assert_historical(original,receipt,actor=original['outsider'])
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute('delete from public.company_memberships where company_id=%s',(original['company'],))
+    with pytest.raises(psycopg.Error,match='documents_forbidden'):assert_historical(original,receipt)
+
+
+def test_historical_assertion_replay_and_rollback_preserve_originals_and_grants(original):
+    receipt=retain(original)
+    with psycopg.connect(DATABASE_URL,autocommit=True) as db:
+        def authority():
+            return db.execute("select member,grantor,admin_option,inherit_option,set_option from pg_auth_members where roleid='documents_store_owner'::regrole order by member,grantor").fetchall()
+        before=authority()
+        for _ in range(2):
+            db.execute((ROOT/'supabase/rollback'/HISTORICAL_ASSERTION).read_text())
+            assert read(original,receipt).content==PDF
+            db.execute((ROOT/'supabase/migrations'/HISTORICAL_ASSERTION).read_text())
+            assert_historical(original,receipt)
+            assert authority()==before
+        for role in ('anon','authenticated','service_role'):
+            assert not db.execute("select has_function_privilege(%s,'documents.assert_historical_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)','EXECUTE')",(role,)).fetchone()[0]
+
+
+@pytest.mark.parametrize('isolation',['repeatable read','serializable'])
+def test_historical_assertion_rejects_stale_transaction_snapshots(original,isolation):
+    receipt=retain(original)
+    async def run():
+        async with await psycopg.AsyncConnection.connect(original['url'],row_factory=dict_row) as db:
+            await db.execute('set transaction isolation level '+isolation)
+            await db.execute('set local role shareholder_register_filing_executor')
+            await db.execute("select set_config('talli.verified_actor_id',%s,true)",(str(original['owner']),))
+            with pytest.raises(psycopg.Error,match='documents_guard_requires_read_committed'):
+                await PostgresDocumentOriginals(db,ActorId(ActorKind.USER,UserId(str(original['owner'])))).assert_historical_original(receipt)
+    asyncio.run(run())
+
+
+def test_historical_assertion_refreshes_owner_after_company_guard_wait(original):
+    from test_documents_rf_company_guard_database import waiting
+    receipt=retain(original)
+    async def assertion(ready):
+        db,adapter=await connect(original,role='shareholder_register_filing_executor')
+        async with db:
+            ready.set_result((await (await db.execute('select pg_backend_pid() as pid')).fetchone())['pid'])
+            await adapter.assert_historical_original(receipt)
+    async def run():
+        with psycopg.connect(DATABASE_URL) as blocker:
+            blocker.execute('select public.company_archive_lock_company_v1(%s)',(original['company'],))
+            ready=asyncio.get_running_loop().create_future()
+            task=asyncio.create_task(assertion(ready))
+            await waiting(await ready)
+            blocker.execute("update public.company_memberships set role='read_only' where company_id=%s",(original['company'],))
+        with pytest.raises(psycopg.Error,match='documents_forbidden'):await task
+    asyncio.run(run())

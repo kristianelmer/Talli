@@ -30,6 +30,7 @@ const CONSEQUENTIAL_GUARDS = [
   "20260924094631_rf1086_journal_company_guard.sql",
   "20260928060732_rf1086_source_submission_claim.sql",
   "20260928110000_rf1086_feedback_original_binding.sql",
+  "20260928124000_documents_historical_original_assertion.sql",
 ];
 const RF193_SOURCE_PREVIEW = "20260923105912_rf1086_source_backed_preview.sql";
 

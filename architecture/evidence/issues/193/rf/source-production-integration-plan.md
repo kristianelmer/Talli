@@ -342,11 +342,21 @@ full-schema recovery execution and final-revision CI remain pending.
 Run 36415185712 stopped in the disposable Ledger bootstrap before RF: readiness
 accepted the temporary socket-only initialization server. TCP readiness fixes
 that observed race; the actual complete Ledger lifecycle rehearsal passes locally.
-Application was still in progress when this checkpoint was written.
+Application subsequently passed, including the complete launch rehearsal and
+production dependency audit. Database did not reach RF. Run 36417395568 at
+7e7382c7 now verifies the TCP readiness fix and confirmed source recovery.
 
-Correction admission still verifies current Documents evidence. For feedback
-with an immutable original binding, it must read and compare that exact retained
-version and reassert its historical receipt under the final guard. It must not
-substitute a newer retained metadata version merely because the bytes match.
-This historical correction-original integration remains open, alongside source
-send, owned annual readiness, retention generations and actual restoration.
+## Exact historical correction originals
+
+Correction admission now reads each bound feedback artifact's exact historical
+Documents original. It verifies captured metadata, bytes, attribution and every
+receipt binding before admission. The final transaction compares the complete
+predecessor snapshot and reasserts that same historical receipt under the company
+guard. Current metadata changes cannot substitute a different original. Legacy
+unbound feedback continues its current-evidence check without claiming historical
+coverage. The Documents assertion requires READ COMMITTED and rechecks live
+ownership after waiting; it grants RF no byte or table access. Bounded PostgreSQL
+verification covers exact identity, stale snapshots, revocation during guard wait,
+rollback/replay and preserved grants. Full-schema execution remains pending.
+See `historical-correction-originals-20260928.json`. Source send, owned annual
+readiness, retention generations and actual restoration remain open.

@@ -407,6 +407,14 @@ class DocumentOriginalPersistence(Protocol):
     async def retain_verified_original(self, document: DocumentRecord, content: bytes) -> RetainedDocumentOriginalReceipt: ...
     async def read_retained_original(self, original_id: str, company_id: CompanyId) -> RetainedDocumentOriginal: ...
     async def read_retained_evidence(self, query: RetainedDocumentOriginalQuery) -> RetainedDocumentOriginalSnapshot: ...
+    async def assert_historical_original(self, receipt: RetainedDocumentOriginalReceipt) -> None:
+        """Assert an exact immutable receipt under the company guard and live ownership.
+
+        Return no bytes and do not require current document metadata. Mismatch
+        must abort the caller's transaction. This does not prove source freshness.
+        """
+        ...
+
     async def assert_retained_original(self, receipt: RetainedDocumentOriginalReceipt) -> None:
         """Assert immutable bytes and current metadata in the caller's transaction.
 

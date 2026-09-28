@@ -1317,6 +1317,13 @@ class _SourceAdmission:
         from talli_backend.adapters.postgres_document_originals import PostgresDocumentOriginals
         await PostgresDocumentOriginals(self._connection, self.actor_id).assert_retained_original(receipt)
 
+    async def assert_historical_original(self, receipt):
+        self._require_active()
+        if receipt.company_id != self._query.company_id:
+            raise rf.ShareholderRegisterFilingError.forbidden()
+        from talli_backend.adapters.postgres_document_originals import PostgresDocumentOriginals
+        await PostgresDocumentOriginals(self._connection, self.actor_id).assert_historical_original(receipt)
+
     async def read_correction_predecessor(self, query, submission_id):
         self._require_active()
         if query != self._query:

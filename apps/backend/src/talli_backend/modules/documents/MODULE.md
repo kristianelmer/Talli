@@ -179,6 +179,20 @@ adapter evidence raises `DOCUMENT_INTEGRITY_FAILED`. Rollback removes only the
 lookup and preserves every retained original. Historical recovery grants no
 current-source approval or submission authority.
 
+`DocumentOriginalPersistence.assert_historical_original` reasserts the exact
+immutable receipt on the caller's transaction through
+`documents.assert_historical_original_v1`. The assertion requires READ COMMITTED,
+acquires the company guard and checks live accepted ownership after waiting. It
+returns captured metadata only; the adapter verifies its canonical digest with a
+SQL assertion that aborts the transaction on mismatch. All receipt fields,
+including original identity and retention time, must match. Current mutable
+metadata is irrelevant to this historical assertion. Existing
+`assert_retained_original` continues to require current metadata for fresh source
+admission and initial feedback binding. The additive
+`20260928124000_documents_historical_original_assertion.sql` grants only Documents
+and RF executors this metadata assertion, with no byte/table access. Rollback
+removes the assertion while preserving originals and existing grants.
+
 This is a recovery primitive. Company archive composition, portable byte bundles,
 database/object hydration and retention-expiry coverage remain separate work.
 

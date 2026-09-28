@@ -644,7 +644,13 @@ predecessors cannot carry source-only lineage. The adapter loads both forms on
 the caller's snapshot or guarded connection; it never substitutes current source
 or review inputs for captured history. The application still verifies feedback
 originals before the guard and compares the complete snapshot and original
-receipts inside it. This predecessor support does not open provider dispatch.
+receipts inside it. Bound feedback artifacts read their exact historical Documents
+original before locking, including captured metadata and byte verification. Final
+admission compares the complete predecessor snapshot and asserts that same receipt
+under the company guard. Current document changes cannot substitute a newer
+original. Unbound legacy feedback retains its existing current-evidence check;
+this does not backfill missing historical bindings. This predecessor support does
+not open provider dispatch.
 
 The production archive now includes `source_submission_claims` and the scoped
 `Rf1086SubmissionHead` from the same database snapshot as original approvals and

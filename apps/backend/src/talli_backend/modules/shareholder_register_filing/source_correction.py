@@ -3,7 +3,7 @@ import re
 from uuid import UUID
 
 from . import public as rf
-from .preparation import _production_preview, _validate_archive_source_approval
+from .preparation import _production_preview, _validate_archive_source_approval, _validate_feedback_original_binding
 from .production import rf1086_preview_payload_hash, rf1086_current_manifest_hash
 
 
@@ -62,6 +62,7 @@ def assert_predecessor(snapshot, *, company_id, income_year, predecessor):
         for attribute in ('id','document_id','sha256'):
             _require(len({getattr(row,attribute) for row in artifacts}) == len(artifacts))
         for artifact in artifacts:
+            _validate_feedback_original_binding(artifact, income_year, _require)
             _require(artifact.company_id == str(company_id) and artifact.submission_id == submission.id
                 and _uuid(artifact.id) and _uuid(artifact.document_id) and _hash(artifact.sha256)
                 and type(artifact.byte_length) is int and 0 < artifact.byte_length <= 10485760

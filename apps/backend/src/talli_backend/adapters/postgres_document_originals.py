@@ -118,3 +118,13 @@ class PostgresDocumentOriginals(DocumentOriginalPersistence):
         )).fetchone()
         await self._connection.execute('select documents.assert_retained_metadata_v1(%s,%s)',
             (_metadata(row['document']) if row else None, receipt.metadata_sha256))
+
+    async def assert_historical_original(self, receipt):
+        self._require_transaction()
+        row = await (await self._connection.execute(
+            'select documents.assert_historical_original_v1(%s::uuid,%s::uuid,%s::uuid,%s,%s,%s,%s,%s,%s) as document',
+            (receipt.original_id, receipt.document_id.value, str(receipt.company_id), int(receipt.source_income_year),
+             receipt.metadata_sha256, receipt.content_sha256, receipt.byte_length, receipt.retained_at, str(self._actor_id.subject)),
+        )).fetchone()
+        await self._connection.execute('select documents.assert_retained_metadata_v1(%s,%s)',
+            (_metadata(row['document']) if row else None, receipt.metadata_sha256))

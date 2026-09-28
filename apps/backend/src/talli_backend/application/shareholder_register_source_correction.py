@@ -1,15 +1,16 @@
 """Reverify correction receipt bytes before guarded predecessor admission."""
 from dataclasses import dataclass
 from datetime import datetime
+from hashlib import sha256
 import re
 from uuid import UUID
 
 from talli_backend.modules.documents.public import (
     DocumentId, DocumentRecord, DocumentStatus, RetainedDocumentOriginalReceipt, VerifiedDocumentEvidence,
-    document_metadata_sha256,
+    document_metadata_sha256, RetainedDocumentOriginalQuery, RetainedDocumentOriginalSnapshot,
 )
 from talli_backend.modules.shareholder_register_filing import public as rf
-from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear
+from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear
 
 
 def _require(condition):
@@ -51,12 +52,28 @@ class ShareholderRegisterSourceCorrection:
         _require(documents.actor_id == session.actor_id)
         originals = []
         for artifact in sorted(snapshot.artifacts,key=lambda row: (row.document_id,row.id)):
-            evidence = await documents.verify_document_evidence(DocumentId(artifact.document_id))
+            if artifact.original_id is None:
+                evidence = await documents.verify_document_evidence(DocumentId(artifact.document_id))
+            else:
+                retained = await documents.read_retained_evidence(RetainedDocumentOriginalQuery(
+                    DocumentId(artifact.document_id), company_id, IncomeYear(artifact.original_source_income_year),
+                    artifact.original_metadata_sha256, artifact.sha256, artifact.byte_length))
+                _require(isinstance(retained, RetainedDocumentOriginalSnapshot))
+                receipt, content = retained.original.receipt, retained.original.content
+                _require(receipt.original_id == artifact.original_id
+                    and receipt.metadata_sha256 == artifact.original_metadata_sha256
+                    and int(receipt.source_income_year) == artifact.original_source_income_year
+                    and receipt.retained_at == datetime.fromisoformat(artifact.original_retained_at)
+                    and len(content) == artifact.byte_length and sha256(content).hexdigest() == artifact.sha256)
+                evidence = VerifiedDocumentEvidence(retained.document, artifact.sha256,
+                    artifact.byte_length, DocumentStatus.STORED, receipt)
             _require(isinstance(evidence,VerifiedDocumentEvidence))
             document, receipt = evidence.document, evidence.retained_original
             _require(isinstance(document,DocumentRecord)
                 and document.document_id.value == artifact.document_id and document.company_id == company_id
                 and document.income_year == income_year and document.document_type == 'authority_feedback'
+                and document.created_by.kind is ActorKind.USER
+                and str(document.created_by.subject) == snapshot.submission.user_id
                 and document.linked_to == 'production_filing_submission:'+snapshot.submission.id
                 and document.content_type == artifact.content_type
                 and document.status is DocumentStatus.STORED and evidence.integrity_status is DocumentStatus.STORED
@@ -84,5 +101,15 @@ class ShareholderRegisterSourceCorrection:
         rf.assert_rf1086_correction_predecessor(current,company_id=verified.company_id,
             income_year=verified.income_year,predecessor=verified.predecessor)
         _require(current == verified.snapshot)
-        for receipt in verified.originals:
-            await transaction.assert_original(receipt)
+        artifacts = sorted(current.artifacts, key=lambda row: (row.document_id, row.id))
+        _require(len(verified.originals) == len(artifacts))
+        for artifact, receipt in zip(artifacts, verified.originals, strict=True):
+            _require(receipt.document_id.value == artifact.document_id)
+            if artifact.original_id is None:
+                await transaction.assert_original(receipt)
+            else:
+                _require(receipt.original_id == artifact.original_id
+                    and receipt.metadata_sha256 == artifact.original_metadata_sha256
+                    and int(receipt.source_income_year) == artifact.original_source_income_year
+                    and receipt.retained_at == datetime.fromisoformat(artifact.original_retained_at))
+                await transaction.assert_historical_original(receipt)
