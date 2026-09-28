@@ -481,6 +481,53 @@ def test_real_documents_contract_stored_receipt_and_hash_drive_final_feedback_wi
         return await documents.read_retained_evidence(RetainedDocumentOriginalQuery(DocumentId(str(original[0])),
             CompanyId(str(fixture['company'])), IncomeYear(2025), original[1], original[2], original[3]))
     assert asyncio.run(recover()).original.content == raw
+    with psycopg.connect(DATABASE_URL) as connection:
+        bound = connection.execute('select original_id,original_metadata_sha256,original_source_income_year,original_retained_at '
+            'from shareholder_register_filing.production_feedback_artifacts where submission_id=%s', (submission,)).fetchone()
+        connection.execute('set local role documents_store_owner')
+        connection.execute("select set_config('talli.verified_actor_id',%s,true)", (str(fixture['owner']),))
+        actual = connection.execute('select id,metadata_sha256,source_income_year,retained_at '
+            'from documents.retained_originals where document_id=%s', (original[0],)).fetchone()
+        assert bound == actual
+    with psycopg.connect(DATABASE_URL) as connection:
+        with pytest.raises(psycopg.Error, match='rf1086_feedback_original_immutable'):
+            with connection.transaction():
+                connection.execute("update shareholder_register_filing.production_feedback_artifacts set original_metadata_sha256=%s where submission_id=%s", ('f'*64, submission))
+
+
+
+@pytest.mark.parametrize('change', ['original_id', 'metadata_hash', 'retained_at', 'content_type'])
+def test_feedback_original_binding_rejects_mismatch_without_partial_rf_metadata(fixture, change):
+    from talli_backend.modules.documents.public import DocumentId
+    storage = LocalStorage()
+    documents = OwnedDocuments(fixture, storage)
+    session = store(fixture, documents=documents, storage_transport=httpx.MockTransport(storage.upload))
+    submission, reference = confirmed(fixture, session)
+    lease = str(uuid4())
+    assert asyncio.run(session.claim_feedback_lease(submission, lease))
+    journal = session.feedback_journal(submission_id=submission, company_id=str(fixture['company']),
+        income_year=2025, forsendelse_id=reference, lease_id=lease)
+    raw = b'<receipt>bound original</receipt>'
+    artifact = Rf1086ReconciliationArtifact(submission, str(fixture['company']), str(uuid4()),
+        'application/xml', raw, len(raw), hashlib.sha256(raw).hexdigest(), 'accepted')
+    document_id = str(uuid4())
+    async def retain():
+        await journal._store(document_id, artifact)
+        return await (await documents.session('local-only')).verify_document_evidence(DocumentId(document_id))
+    receipt = asyncio.run(retain()).retained_original
+    parameters = [str(fixture['company']), submission, document_id, artifact.authority_reference,
+        artifact.content_type, artifact.byte_length, artifact.sha256, artifact.classification,
+        receipt.original_id, receipt.metadata_sha256, receipt.retained_at]
+    if change == 'original_id': parameters[8] = str(uuid4())
+    if change == 'metadata_hash': parameters[9] = 'f'*64
+    if change == 'retained_at': parameters[10] = receipt.retained_at - timedelta(seconds=1)
+    if change == 'content_type': parameters[4] = 'text/plain'
+    with pytest.raises(_PersistenceError):
+        asyncio.run(session._rows('select id from shareholder_register_filing.record_retained_feedback_artifact_v1('
+            '%s::uuid,%s::uuid,%s::uuid,%s::text,%s::text,%s::bigint,%s::text,%s::text,%s::uuid,%s::text,%s::timestamptz)', tuple(parameters)))
+    with psycopg.connect(DATABASE_URL) as connection:
+        assert connection.execute('select count(*) from shareholder_register_filing.production_feedback_artifacts where submission_id=%s', (submission,)).fetchone()[0] == 0
+    asyncio.run(session.release_feedback_lease(submission, lease))
 
 
 def test_related_dialog_receipts_reconcile_through_real_rf_and_documents_storage(fixture):
@@ -580,8 +627,16 @@ def test_year_scoped_archive_source_ignores_unrelated_legacy_preview_decode_fail
             'preview':'Retained original warning shape','issues':Jsonb([{'level':'warning','message':'historical'}]),'created_by':fixture['owner'],
         })
     session=store(fixture)
-    result=asyncio.run(session.archive_source(Rf1086ArchiveQuery(
-        company_id=CompanyId(str(fixture['company'])),income_year=IncomeYear(2025),actor_id=session.actor_id)))
+    try:
+        result=asyncio.run(session.archive_source(Rf1086ArchiveQuery(
+            company_id=CompanyId(str(fixture['company'])),income_year=IncomeYear(2025),actor_id=session.actor_id)))
+    except ShareholderRegisterFilingError as error:
+        # The production boundary intentionally hides database detail. Preserve
+        # its underlying SQL diagnosis only in this disposable-fixture test.
+        cause = error.__context__
+        if isinstance(cause, psycopg.Error):
+            raise AssertionError(f'archive_sql_failed [{cause.sqlstate}]: {cause.diag.message_primary}') from None
+        raise
     assert [row.id for row in result.previews]==[str(fixture['preview'])]
     with pytest.raises(ShareholderRegisterFilingError) as captured:
         asyncio.run(session.archive_source(Rf1086ArchiveQuery(

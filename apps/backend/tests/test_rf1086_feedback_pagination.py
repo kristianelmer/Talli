@@ -156,7 +156,7 @@ def test_scan_deadline_does_not_interrupt_finalized_receipt_link(monkeypatch):
     async def delayed_link(statement, parameters=()):
         if statement.startswith('select document_id,sha256') and linked:
             return list(linked)
-        if statement.startswith('select id from shareholder_register_filing.record_production_feedback_artifact'):
+        if statement.startswith('select id from shareholder_register_filing.record_retained_feedback_artifact_v1'):
             await asyncio.sleep(0.04)
             linked.append({'document_id': parameters[2], 'sha256': parameters[6]})
         return await original_query(statement, parameters)

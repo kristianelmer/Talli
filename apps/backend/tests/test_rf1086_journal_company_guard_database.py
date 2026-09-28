@@ -16,7 +16,8 @@ pytestmark = pytest.mark.authority_database
 MIGRATION = '20260924094631_rf1086_journal_company_guard.sql'
 NAMES = ('prepare_operation_v1', 'append_production_filing_event',
          'claim_production_feedback_reconciliation', 'release_production_feedback_reconciliation',
-         'append_production_feedback_reconciliation', 'record_production_feedback_artifact')
+         'append_production_feedback_reconciliation', 'record_production_feedback_artifact',
+         'record_retained_feedback_artifact_v1')
 
 
 def command(name, f, submission, reference, lease):
@@ -32,6 +33,8 @@ def command(name, f, submission, reference, lease):
         return 'select shareholder_register_filing.release_production_feedback_reconciliation(%s,%s)', (submission, lease), None
     if name == NAMES[4]:
         return 'select shareholder_register_filing.append_production_feedback_reconciliation(%s,%s,%s,%s,%s,%s,%s)', (submission, lease, reference, 'processing', [], None, None), None
+    if name == NAMES[6]:
+        return 'select shareholder_register_filing.record_retained_feedback_artifact_v1(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)', (f['company'], submission, uuid4(), 'guard-artifact', 'application/xml', 1, 'a'*64, 'accepted', uuid4(), 'b'*64, f['now']), 'documents_evidence_mismatch'
     return 'select shareholder_register_filing.record_production_feedback_artifact(%s,%s,%s,%s,%s,%s,%s,%s)', (f['company'], submission, uuid4(), 'guard-artifact', 'application/xml', 1, 'a'*64, 'accepted'), 'production_feedback_document_relationship_mismatch'
 
 

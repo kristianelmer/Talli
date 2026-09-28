@@ -714,6 +714,9 @@ For newly uploaded authority feedback, the adapter requires Documents-owned
 verification and immutable-original retention before recording RF artifact
 metadata. It checks the receipt against the exact uploaded document metadata and
 content commitments. Ambiguous retention failures preserve the uploaded record
-without acknowledging RF metadata. Existing canonical artifacts are reused;
-backfill, durable original-receipt binding and portable feedback-byte export
-remain separate work.
+without acknowledging RF metadata. The owned
+`record_retained_feedback_artifact_v1` writer reasserts the exact Documents
+receipt under the company guard, then atomically stores the artifact and its
+original ID, metadata digest, source year and retention timestamp. Bound rows
+reject mutation. Existing canonical artifacts keep their attribution and legacy
+null bindings; backfill and portable feedback-byte export remain separate work.

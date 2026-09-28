@@ -291,3 +291,19 @@ feedback bundles remain pending. See `feedback-original-retention-20260928.json`
 Previous-revision CI run 36400398886 passed Application but Database isolation
 timed out after a failure in the RF lane. Complete final-revision CI remains
 pending; this is no longer an active run or passing database evidence.
+
+
+## Atomic feedback original linkage
+
+The owned RF writer now stores the exact Documents original identity, metadata
+digest, source year and retention time with each new feedback artifact in one
+transaction. It reasserts the receipt under the company guard; RF gains no byte
+read privilege. Bound records reject mutation. Legacy canonical rows retain
+explicitly absent bindings. This supersedes the new-record binding item above;
+legacy recovery/backfill and canonical/portable feedback archive composition
+remain pending. See `feedback-original-binding-20260928.json`.
+
+Run 36411282456 at 85cae057 passed Application and real feedback retention/recovery
+cases, then failed at year-scoped archive reading. The disposable test now exposes
+the underlying SQL diagnostic while production keeps its safe error boundary.
+That archive failure and final-revision database/release verification remain open.

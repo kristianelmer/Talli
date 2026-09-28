@@ -197,3 +197,10 @@ Each record is limited to 16 MiB and each original to 10 MiB. This is portable
 evidence verification, without authentication, filing permission or a database
 restore. A checksum cannot independently authenticate a maliciously replaced
 record together with its supposedly independent source commitment.
+
+
+RF's retained-feedback writer may invoke `documents.assert_retained_original_v1`
+as `shareholder_register_filing_store_owner`. This narrow public assertion checks
+the accepted owner, immutable original identity and exact current metadata under
+the company/document locks. It returns metadata only. RF receives neither table
+access to retained originals nor an original-byte read grant.

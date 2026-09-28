@@ -1631,10 +1631,11 @@ class _FeedbackJournal:
                 or receipt.content_sha256 != artifact.sha256 or receipt.byte_length != artifact.byte_length):
             raise create_rf1086_feedback_artifact_persistence_error(None, integrity_failure=True)
         try:
-            rows = await self._session._rows("select id from shareholder_register_filing.record_production_feedback_artifact("
-                "%s::uuid,%s::uuid,%s::uuid,%s::text,%s::text,%s::bigint,%s::text,%s::text)",
+            rows = await self._session._rows("select id from shareholder_register_filing.record_retained_feedback_artifact_v1("
+                "%s::uuid,%s::uuid,%s::uuid,%s::text,%s::text,%s::bigint,%s::text,%s::text,%s::uuid,%s::text,%s::timestamptz)",
                 (self._company_id, self._submission_id, document_id, artifact.authority_reference,
-                 artifact.content_type, artifact.byte_length, artifact.sha256, artifact.classification))
+                 artifact.content_type, artifact.byte_length, artifact.sha256, artifact.classification,
+                 receipt.original_id, receipt.metadata_sha256, receipt.retained_at))
             if not rows:
                 raise _PersistenceError()
             return artifact.sha256

@@ -384,8 +384,10 @@ def feedback_store(*, existing=(), metadata_error=None, response_status=200):
             if isinstance(result, Exception):
                 raise result
             return [result] if result else []
-        assert statement.startswith("select id from shareholder_register_filing.record_production_feedback_artifact")
+        assert statement.startswith("select id from shareholder_register_filing.record_retained_feedback_artifact_v1")
         assert any(event[0] == 'retain' for event in documents.events)
+        document = documents.records[parameters[2]]
+        assert parameters[8:] == (MAIN, document_metadata_sha256(document), document.created_at)
         if metadata_error:
             raise metadata_error
         return [{"id": MAIN}]
@@ -416,7 +418,7 @@ def test_receipt_uses_owned_documents_stage_signed_upload_finalize_and_original_
     assert str(uploads[0].url).startswith(f"https://project.example.test/storage/v1/object/upload/sign/company-documents/{COMPANY_ID}/2025/{document_id}/")
     assert uploads[0].url.params["token"] == "private-signed-upload-token"
     assert uploads[0].headers["x-upsert"] == "false" and "authorization" not in uploads[0].headers
-    assert rows[-1][1] == (COMPANY_ID, SUBMISSION_ID, document_id, DOCUMENT, "application/xml", len(ARTIFACT_BYTES), ARTIFACT.sha256, "accepted")
+    assert rows[-1][1][:8] == (COMPANY_ID, SUBMISSION_ID, document_id, DOCUMENT, "application/xml", len(ARTIFACT_BYTES), ARTIFACT.sha256, "accepted")
     assert documents.records[document_id].status is DocumentStatus.STORED
 
 
