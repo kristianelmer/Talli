@@ -157,5 +157,6 @@
   "historicalCorrectionOriginals": "historical-correction-originals-20260928.json",
   "fullYearFactsAndRehearsal": "full-year-facts-rehearsal-20260929.json",
   "bankYearProjectionAndArchiveRepair": "bank-year-archive-repair-20260929.json",
-  "bankFixtureAuthorityRepair": "bank-fixture-authority-repair-20260929.json"
+  "bankFixtureAuthorityRepair": "bank-fixture-authority-repair-20260929.json",
+  "bankingCompanyWriteGuards": "banking-company-guards-20260929.json"
 }

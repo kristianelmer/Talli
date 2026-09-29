@@ -106,7 +106,7 @@
     "projections": [
       "public.bank_transactions"
     ],
-    "migrations": "supabase/migrations/20260828100000_banking_capability.sql; supabase/migrations/20260929073756_banking_year_reconciliation_projection.sql"
+    "migrations": "supabase/migrations/20260828100000_banking_capability.sql; supabase/migrations/20260929073756_banking_year_reconciliation_projection.sql; supabase/migrations/20260929092425_banking_company_write_guards.sql"
   },
   "ports": [
     {

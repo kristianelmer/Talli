@@ -60,3 +60,16 @@ Minimal self-contained option: add a **Documents-owned immutable retained-origin
 4. Append immutable approval or consume approval into the existing unique durable submission/journal claim before releasing guard. Commit before provider POST. A new source correction cannot create a second submission after ambiguous/accepted work; recover the original claimed journal. Recheck external entitlement/authority through their existing owner lock contracts as part of send (outside this inventory's owner scope).
 5. Never open REPEATABLE READ/SERIALIZABLE and establish its snapshot while waiting for the company lock, then assume reads after acquisition see the preceding writer. Use READ COMMITTED under complete writer exclusion, or explicitly prove an alternative snapshot protocol. Existing independent SERIALIZABLE Governance reads alone do not close RF admission race.
 6. Required concurrent tests: guard-wait then committed rename/revocation/eligibility change; previously empty year gains cross-year dividend; finalize/reject/supersede during admission; Ledger correction/reversal; original removal/metadata drift; source/register supersession; new hard-block review/override and permission disable. Each must serialize to correct fresh decision or conflict without submission claim. Also test lock-order races (document removal vs source capture, acknowledgement vs approval), immutable retained-byte receipt against storage replacement, replay and unknown-provider outcome without repeat POST. Run under actual owned DB executor roles and both migration topologies.
+
+
+## Banking follow-up (2026-09-29)
+
+The original inventory omitted Banking and annual interview inputs. Canonical
+Banking now has 22 company-first RPC wrappers and eight owned-table row
+backstops, with retained attempt/company assertions for sync completion/failure.
+See `banking-company-guards-20260929.json` and Banking's MODULE.md. Ordinary
+read lists and member-readable suggestion replay remain unchanged. Historical
+workflow replay restores the guard successor. Raw legacy/browser mutations
+still require retirement or early admission; trigger-only ordering is not a
+complete barrier. Current opening facts, annual interview answers and final
+RF annual-readiness composition remain separate outstanding work.

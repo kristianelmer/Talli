@@ -426,3 +426,20 @@ fact and exact authority. The old test reproduces the CI permission failure;
 the repaired three cases pass under a non-superuser without direct Banking
 INSERT privilege. See `bank-fixture-authority-repair-20260929.json`.
 Final Supabase CI, Banking writer guards and annual composition remain open.
+
+
+## Banking writer admission checkpoint
+
+The 22 canonical Banking mutation/row-locking RPCs now acquire the company
+guard before their original body and recheck ownership after waiting. All
+eight Banking tables have row backstops. Sync completion/failure also binds
+the retained attempt to the requested company before touching its row.
+Rollback suspends guarded writers; replay preserves routine identity, ACLs
+and facts. The historical Banking workflow rehearsal restores this successor.
+
+Thirty-two new PostgreSQL cases pass, including one actual wait/revocation
+case per RPC, and pass again under a restricted migration principal. The
+existing Banking lifecycle rehearsal and 101 RF/Documents cases also pass.
+See `banking-company-guards-20260929.json`. Raw legacy/browser writes still
+need retirement or early admission; their row backstop alone cannot establish
+lock ordering. Final owned annual-readiness composition remains open.

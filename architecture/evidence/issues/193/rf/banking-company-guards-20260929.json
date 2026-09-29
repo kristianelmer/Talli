@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_BANKING_WRITER_GUARDS",
+  "baseCommit": "84cef18a68e99f768434d8413c92d339ef8d1781",
+  "scope": "Company-first admission for the 22 canonical Banking mutation/row-locking RPCs, eight owned-table backstops and sync attempt company binding.",
+  "changes": [
+    "Preserve existing routine identity/owner/ACL/config while wrapping the complete original body, including DECLARE initializers, after READ COMMITTED verified-owner admission and the shared company guard. Recheck ownership after waiting.",
+    "Reject sync completion/failure whose retained attempt belongs to another requested company, before the original row update. Pure member-readable suggestion replay and listing authorization are unchanged.",
+    "All eight Banking tables acquire the same company guard in row triggers. Rollback suspends guarded writer APIs while preserving facts, wrappers and backstops; replay restores the helper without nesting wrappers.",
+    "The Banking predecessor rehearsal reapplies the successor after replaying historical workflow bodies. Add actual guard tests to the mandatory authority database lane."
+  ],
+  "verification": {
+    "database": "35 passed: 32 new actual PostgreSQL guard cases plus 3 Banking year-projection cases. Covers each of 22 RPCs waiting before row/year locks, revocation while waiting, unrelated company, import/replay, snapshot-isolation rejection, two-owned-company sync mismatch, successful sync completion/failure, direct owner row backstop, narrow ACL/catalogue coverage and two rollback/replays preserving exact facts/routines/authority.",
+    "restricted": "All 32 new cases also pass under a non-superuser fixture principal without direct private Banking INSERT privilege. Exact pg_auth_members restored after teardown.",
+    "bankingLifecycle": "Full existing Banking PostgreSQL rehearsal passes reconciliation, contract, rollback, security and recutover, including provider sync and source-file flows.",
+    "rfRegression": "101 actual PostgreSQL source approval/claim/archive/recovery/facts and Documents-original cases passed.",
+    "schema": "20 Banking schema checks passed.",
+    "architecture": "Checker exit 0. Whitespace check passed.",
+    "ci": "Run36548714542 at84cef18a remains live; preserve it until terminal before pushing another revision."
+  },
+  "limits": [
+    "These tests use disposable PostgreSQL17 with minimal Auth/Storage shims; they do not replace the full Supabase CI lane.",
+    "Raw legacy/browser writes retain only the row-trigger backstop, which does not prove company-first ordering before their initial row locks. Their retirement and final cross-owner annual admission remain outstanding. Older backend Ledger coordinators already have company-first wrappers.",
+    "Bank year counts are observations, not completeness of imported statements or current filing authority. No owned annual-readiness composition or production full-year send is claimed.",
+    "All seven RF acceptance criteria pending; no real AS data, hosted changes or production provider calls."
+  ],
+  "references": [
+    "https://www.postgresql.org/docs/17/explicit-locking.html",
+    "https://supabase.com/changelog/postgres-15-19-17-11-breaking-changes"
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-bank-guards-20260929-14d7",
+  "sha256": {
+    "talli-bank-guards-build.log": "2c3528afa5e83f811d36661ac7538371832f8559369fb82c7be87bfb333f405f",
+    "talli-bank-guards-tests.log": "a2b9d3c2e820c8cd54894b0eb830c426f624f357cc64b11176030d753341bf2b",
+    "talli-bank-guards-restricted.log": "0e28ae8c1e19ac99bd5e0ba672204ab062ca9ac93740dea37886fda45020892c",
+    "talli-bank-guards-lifecycle.log": "f4b7481244274cd5fb44466fea3dedb87b5fe81e0ffeb1b345e4fb6cb8e56033",
+    "talli-bank-guards-schema.log": "f356a9e13e37c94eaa81c7f67e959a9f3dfe3efd8d8c3ac245863a157447f794",
+    "talli-bank-guards-rf-regression.log": "056e269399afc612188995d85f6c3a5ec12cbc6852286449269b2f524e0da12e",
+    "talli-bank-guards-architecture.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "talli-build-owned-bank-db.py": "d0e7ecddf552c34ae8647ed67ea5d23b7d31da0f1e0550a27f655e7445efa7a8",
+    "talli-bank-writer-catalogue.json": "45463d6dc93822c30f3b8587437b43500f703376458cfba62949a62e09530646",
+    "talli-bank-guards-architecture-final.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607"
+  }
+}
