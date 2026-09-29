@@ -443,3 +443,10 @@ existing Banking lifecycle rehearsal and 101 RF/Documents cases also pass.
 See `banking-company-guards-20260929.json`. Raw legacy/browser writes still
 need retirement or early admission; their row backstop alone cannot establish
 lock ordering. Final owned annual-readiness composition remains open.
+
+The shared Authority/final successor manifest also restores Banking guards.
+Tax prepare now restores them after settlement expansion; direct PostgreSQL
+verification confirms the historical expansion removes exactly two wrappers
+and successor replay restores all 22. Full ordered Tax prepare awaits CI: the
+bounded local fixture already removed a Governance table required by its
+Investments predecessor. No Tax behavior or scope was expanded.

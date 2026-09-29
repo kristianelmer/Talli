@@ -42,5 +42,9 @@
   {
     "migration": "20260928124000_documents_historical_original_assertion.sql",
     "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='documents' and p.proname='assert_historical_original_v1')"
+  },
+  {
+    "migration": "20260929092425_banking_company_write_guards.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='banking' and p.proname='acquire_company_write_guard_v1')"
   }
 ]

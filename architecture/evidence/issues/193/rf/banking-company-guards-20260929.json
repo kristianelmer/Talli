@@ -9,7 +9,8 @@
     "Preserve existing routine identity/owner/ACL/config while wrapping the complete original body, including DECLARE initializers, after READ COMMITTED verified-owner admission and the shared company guard. Recheck ownership after waiting.",
     "Reject sync completion/failure whose retained attempt belongs to another requested company, before the original row update. Pure member-readable suggestion replay and listing authorization are unchanged.",
     "All eight Banking tables acquire the same company guard in row triggers. Rollback suspends guarded writer APIs while preserving facts, wrappers and backstops; replay restores the helper without nesting wrappers.",
-    "The Banking predecessor rehearsal reapplies the successor after replaying historical workflow bodies. Add actual guard tests to the mandatory authority database lane."
+    "The Banking predecessor rehearsal reapplies the successor after replaying historical workflow bodies. Add actual guard tests to the mandatory authority database lane.",
+    "Shared final/Authority successor manifest includes Banking guards. Tax prepare restores the installed Banking successor after settlement expansion recreates its two Banking RPCs."
   ],
   "verification": {
     "database": "35 passed: 32 new actual PostgreSQL guard cases plus 3 Banking year-projection cases. Covers each of 22 RPCs waiting before row/year locks, revocation while waiting, unrelated company, import/replay, snapshot-isolation rejection, two-owned-company sync mismatch, successful sync completion/failure, direct owner row backstop, narrow ACL/catalogue coverage and two rollback/replays preserving exact facts/routines/authority.",
@@ -18,13 +19,16 @@
     "rfRegression": "101 actual PostgreSQL source approval/claim/archive/recovery/facts and Documents-original cases passed.",
     "schema": "20 Banking schema checks passed.",
     "architecture": "Checker exit 0. Whitespace check passed.",
-    "ci": "Run36548714542 at84cef18a remains live; preserve it until terminal before pushing another revision."
+    "ci": "Run36548714542 at84cef18a remains live; preserve it until terminal before pushing another revision.",
+    "successorReplay": "Actual settlement expansion removed exactly two Banking wrappers (22 to20); replay restored all22. Seven predecessor orchestration tests passed with the extended manifest. Two additional rollback/replays as a non-superuser starting without store-owner SET privilege preserved exact membership options and schema ACLs.",
+    "topologyHarness": "All70 CI/rehearsal harness tests pass after adding Banking to the exact successor-order expectation, including failure-at-each-layer checks. Architecture checker exit0 after replay changes."
   },
   "limits": [
     "These tests use disposable PostgreSQL17 with minimal Auth/Storage shims; they do not replace the full Supabase CI lane.",
     "Raw legacy/browser writes retain only the row-trigger backstop, which does not prove company-first ordering before their initial row locks. Their retirement and final cross-owner annual admission remain outstanding. Older backend Ledger coordinators already have company-first wrappers.",
     "Bank year counts are observations, not completeness of imported statements or current filing authority. No owned annual-readiness composition or production full-year send is claimed.",
-    "All seven RF acceptance criteria pending; no real AS data, hosted changes or production provider calls."
+    "All seven RF acceptance criteria pending; no real AS data, hosted changes or production provider calls.",
+    "Full Tax prepare could not run on this bounded local topology: its Investments predecessor requires already-removed public.corporate_decision_finalizations. The relevant actual settlement SQL reset/replay was tested directly instead; full ordered CI remains required."
   ],
   "references": [
     "https://www.postgresql.org/docs/17/explicit-locking.html",
@@ -41,6 +45,12 @@
     "talli-bank-guards-architecture.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
     "talli-build-owned-bank-db.py": "d0e7ecddf552c34ae8647ed67ea5d23b7d31da0f1e0550a27f655e7445efa7a8",
     "talli-bank-writer-catalogue.json": "45463d6dc93822c30f3b8587437b43500f703376458cfba62949a62e09530646",
-    "talli-bank-guards-architecture-final.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607"
+    "talli-bank-guards-architecture-final.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "talli-bank-guards-tax-replay.log": "e6851f1dd1106163ab41b46c112140afb3eb21d0b6cff4f26615403b58bc5cf2",
+    "talli-bank-guards-tax-definitions.log": "187574a21ed94cbe2f131823a145ed6b6ba20e3cd3a7c7fafc75c24348d9fe0e",
+    "talli-bank-guards-predecessor-tests.log": "4aafbc5ca95f67cbeae74d395cc35b529399cc131f8a7f47c2031a58cc637af8",
+    "talli-bank-guards-unborrowed-replay.log": "488f9867fb793cf97ce9ff5fa072aeb1d6fa04426b11621e9e574a9c0e2cb929",
+    "talli-bank-guards-topology-tests.log": "206188ebb89d4390bbc96639572d0ae26ff69db8504a1e0075d1b4419c5bb406",
+    "talli-bank-guards-architecture-replay.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607"
   }
 }
