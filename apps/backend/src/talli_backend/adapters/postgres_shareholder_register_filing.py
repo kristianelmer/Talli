@@ -1341,6 +1341,16 @@ class _SourceAdmission:
         documents = SupabaseDocumentMetadataTransaction(self._connection, self.actor_id)
         return annual_document_inputs(await documents.list_documents((self._query.company_id,)), self._query)
 
+    async def annual_opening_inputs(self):
+        self._require_active()
+        from talli_backend.application.shareholder_register_annual_opening import annual_opening_inputs
+        args = (str(self._query.company_id), int(self._query.income_year), str(self.actor_id.subject))
+        openings = await (await self._connection.execute(
+            'select * from shareholder_register_filing.read_opening_snapshots_v1(%s::uuid,%s,%s)', args)).fetchall()
+        shareholders = await (await self._connection.execute(
+            'select * from shareholder_register_filing.read_opening_shareholders_v1(%s::uuid,%s,%s)', args)).fetchall()
+        return annual_opening_inputs(openings, shareholders, self._query)
+
     async def annual_interview(self):
         self._require_active()
         from talli_backend.adapters.postgres_rf_annual_interview import annual_interview_for_year

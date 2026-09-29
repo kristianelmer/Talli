@@ -487,3 +487,34 @@ lifecycle but exposed an Investments fixture applying the Banking successor befo
 its deferred claim routine existed. The fixture now installs the guard immediately
 after that prerequisite. Its complete PostgreSQL lifecycle passes and verifies all
 22 Banking wrappers remain installed at the end. The full rehearsal is rerunning.
+
+## Guarded annual input checkpoint — 29 September
+
+RF admission now has complete exact-year Banking reconciliation evidence,
+Ledger opening-bank inputs and period-lock history, the frozen annual interview,
+active Documents metadata, and RF-owned opening/holder evidence on the same
+held connection. Documents visibility is derived from the current Company Access
+admission after the company guard, replacing empty or stale session role maps.
+Opening evidence commits lock/creation timestamps, attribution and all holder
+fields without rendering a no-activity case. The existing RF owner queries retain
+their migration-quarantine refusal. These inputs are implemented; final policy
+composition and removal of the stored annual readiness prerequisite remain open.
+
+The next implementation must preserve the RF conditions in the frozen annual
+readiness consumer: exact-year locked opening, unmatched unaccepted bank items,
+unsupported unpaid items and annual authority confirmation, plus period-lock,
+interview, bank-confirmation and Documents warnings. Missing interview remains
+an RF warning under that source policy; it must not erase the separate current
+Authority permission check. Bind the Ledger bank-input snapshot ID to the
+matching RF opening identity. Do not equate an onboarding opening with statutory
+start-of-year capital for a formation case or infer statement coverage from a
+successful empty Banking enumeration.
+
+Compose a versioned RF-owned immutable proof through the thin application
+workflow. Bind scope, source/preview and exact input identities/digests, recheck
+inside approval and first-send admission, and preserve historical approval/claim
+and archive verification. Current review/overrides, warning acknowledgements,
+Authority, Billing and the six technical signoffs remain independent release
+requirements. Replace the stored-ready SQL seam only when this entire path has
+positive and negative database coverage; keep legacy profiles and frozen annual
+writers unchanged. Full-year dispatch/recovery follows that replacement.

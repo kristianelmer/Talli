@@ -445,7 +445,9 @@
     "annualLedgerInputs": "apps/backend/tests/test_rf_annual_ledger_inputs.py",
     "annualLedgerAdmission": "apps/backend/tests/test_rf_annual_ledger_admission_database.py",
     "annualDocumentInputs": "apps/backend/tests/test_rf_annual_document_inputs.py",
-    "annualDocumentAdmission": "apps/backend/tests/test_rf_annual_document_admission_database.py"
+    "annualDocumentAdmission": "apps/backend/tests/test_rf_annual_document_admission_database.py",
+    "annualOpeningInputs": "apps/backend/tests/test_rf_annual_opening_inputs.py",
+    "annualOpeningAdmission": "apps/backend/tests/test_rf_annual_opening_admission_database.py"
   },
   "compatibilityExceptions": []
 }

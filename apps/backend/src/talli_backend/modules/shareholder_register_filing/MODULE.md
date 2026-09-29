@@ -814,3 +814,13 @@ object download occurs while holding the company guard. This projection proves
 neither original-byte integrity nor filing readiness. The only new database
 authority is EXECUTE on `documents.list_documents_v1(uuid[],text)`; rollback
 revokes it and historical rehearsal restores it after owner function recreation.
+
+`annual_opening_inputs` reads RF's existing opening and shareholder owner queries
+inside source admission. It retains exact company/year, snapshot identity and a
+versioned digest of every opening/holder field, including lock time and original
+attribution. Missing openings remain distinct from malformed or quarantined
+records. Duplicate parents/holders, mismatched scope, missing lock timestamps,
+non-finite capital or inconsistent share totals fail closed. This digest is
+separate from the legacy opening-rendering source digest. The projection does
+not render a no-activity case or equate an onboarding snapshot with the statutory
+start-of-year capital of a newly formed company. No SQL grant or writer changes.
