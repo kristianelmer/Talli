@@ -156,7 +156,11 @@ def test_restricted_grant_rollback_replay_preserves_owner_definitions_and_author
             def memberships():
                 return db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall()
             def function():
-                return db.execute('select prosrc,proconfig,proowner,proacl::text from pg_proc where oid=%s::regprocedure', (SIGNATURE,)).fetchone()
+                # Compare complete grants, not ACL array insertion order.
+                return db.execute('''select prosrc,proconfig,proowner,
+                    (select jsonb_agg(to_jsonb(a) order by grantor,grantee,privilege_type,is_grantable)
+                     from aclexplode(proacl) a)
+                    from pg_proc where oid=%s::regprocedure''', (SIGNATURE,)).fetchone()
             before, definition = memberships(), function()
             schema = db.execute("select nspowner,nspacl::text from pg_namespace where nspname='documents'").fetchone()
             with psycopg.connect(make_conninfo(DATABASE_URL, user=role, password=password), autocommit=True) as migrator:
@@ -165,7 +169,8 @@ def test_restricted_grant_rollback_replay_preserves_owner_definitions_and_author
                     migrator.execute((ROOT/'supabase/rollback'/MIGRATION).read_text())
                     assert not db.execute("select has_function_privilege('shareholder_register_filing_executor',%s,'EXECUTE')", (SIGNATURE,)).fetchone()[0]
                     migrator.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
-                    assert memberships() == before and function() == definition
+                    assert memberships() == before
+                    assert function() == definition
                     assert db.execute("select nspowner,nspacl::text from pg_namespace where nspname='documents'").fetchone() == schema
         finally:
             db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())

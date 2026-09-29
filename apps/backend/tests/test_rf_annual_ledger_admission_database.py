@@ -166,7 +166,14 @@ def test_restricted_read_grant_rollback_replay_preserves_owner_definitions_and_a
         try:
             db.execute(sql.SQL('grant ledger_store_owner to {} with admin true,inherit false,set false').format(sql.Identifier(role)))
             def memberships():return db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall()
-            def functions():return [db.execute('select prosrc,proconfig,proowner,proacl::text from pg_proc where oid=%s::regprocedure',(signature,)).fetchone() for signature in SIGNATURES]
+            def functions():
+                # REVOKE/re-GRANT can reorder equivalent ACL entries. Preserve
+                # every grantor, grantee, privilege and grant option instead.
+                return [db.execute('''select prosrc,proconfig,proowner,
+                    (select jsonb_agg(to_jsonb(a) order by grantor,grantee,privilege_type,is_grantable)
+                     from aclexplode(proacl) a)
+                    from pg_proc where oid=%s::regprocedure''', (signature,)).fetchone()
+                    for signature in SIGNATURES]
             before=memberships();original=functions()
             schema=db.execute("select nspowner,nspacl::text from pg_namespace where nspname='ledger'").fetchone()
             with psycopg.connect(make_conninfo(DATABASE_URL,user=role,password=password),autocommit=True) as migrator:
@@ -176,7 +183,8 @@ def test_restricted_read_grant_rollback_replay_preserves_owner_definitions_and_a
                     for signature in SIGNATURES:
                         assert not db.execute("select has_function_privilege('shareholder_register_filing_executor',%s,'EXECUTE')",(signature,)).fetchone()[0]
                     migrator.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
-                    assert memberships()==before and functions()==original
+                    assert memberships()==before
+                    assert functions()==original
                     assert db.execute("select nspowner,nspacl::text from pg_namespace where nspname='ledger'").fetchone()==schema
         finally:
             db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
