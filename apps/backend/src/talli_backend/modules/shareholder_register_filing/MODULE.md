@@ -888,3 +888,26 @@ approval; exact committed claims and historical archives remain recoverable.
 Rollback suspends new V2 effects, leaves V1 effects closed and preserves history.
 Mandatory successor replay restores V2 after historical migrations. Provider
 send remains unexposed pending profile-specific dispatch and recovery.
+
+
+### Retained dispatch position and uncertain attempts
+
+`assess_rf1086_source_dispatch` reconstructs the exact immutable payload, source
+keys, document order, durable claim and journal position from the validated
+archive. It produces no provider authority. Unstarted V2 operations require
+current admission; a retryable failure requires a new durable retry admission
+using its original key. A prepared operation without a committed outcome is
+uncertain, just like an explicit unknown result. Neither may be automatically
+repeated. Attempt 20 and explicitly blocked failures cannot retry. Unstarted V1
+claims require current approval rather than obtaining authority from recovery.
+
+The assessment rejects gaps, conflicting outcomes, duplicate intents, retries
+after success/unknown/block, backward attempt timestamps, and downstream
+mutations without predecessor success. Original successful outcomes without a
+prepared row remain readable for historical imports. Confirmed feedback recovery
+now applies these checks before acquiring a read-only provider binding. The
+archive codec remains unchanged; these stricter checks govern recovery use.
+
+The next dispatch step must commit its initial/retry intent under current source,
+annual and authorization admission before network I/O. This assessment is a
+read-only position, not that admission; full-year provider dispatch remains closed.

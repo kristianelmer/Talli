@@ -3,7 +3,7 @@ import asyncio
 from dataclasses import fields, replace
 import json
 from types import SimpleNamespace
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -209,3 +209,22 @@ def test_duplicate_confirmation_keys_cannot_select_a_recovery_target():
         replace(event, authority_reference=reference) if event.operation_name == 'confirm' else event for event in archive.production_events))
     with pytest.raises(rf.Rf1086ProductionError, match='basis_unavailable'):
         prepare(archive)
+
+
+@pytest.mark.parametrize('mutation', ['conflicting-outcome', 'retry-after-success', 'repeated-intent'])
+def test_ambiguous_confirmed_journal_never_acquires_feedback_credentials(mutation):
+    session = RecoverySession()
+    confirmation = next(event for event in session.archive.production_events if event.operation_name == 'confirm')
+    extra = replace(confirmation, id=str(uuid4()), operation_state='unknown',
+        failure_class='unknown', authority_reference=None)
+    if mutation == 'retry-after-success':
+        extra = replace(extra, attempt=2, operation_state='prepared', failure_class=None)
+    events = (*session.archive.production_events, extra)
+    if mutation == 'repeated-intent':
+        first = replace(extra, operation_state='prepared', failure_class=None)
+        events = (*session.archive.production_events, first, replace(first, id=str(uuid4())))
+    session.archive = replace(session.archive, production_events=events)
+    result = recover(session)
+    assert result.error_code == 'basis_unavailable' and result.requires_manual_retry
+    assert session.events[-1] == 'release' and 'read_token' not in session.events
+    assert not session.authority.calls

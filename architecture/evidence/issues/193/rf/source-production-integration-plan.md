@@ -566,3 +566,24 @@ uncertain-outcome recovery and final acceptance verification remain next. Local
 unit/database and restricted migration-authority evidence is recorded separately;
 full Supabase CI at the final revision is still required. All seven RF acceptance
 criteria remain pending.
+
+
+## Retained dispatch position — 29 September
+
+The RF-owned dispatch assessment now distinguishes current admission, retry
+admission, uncertain recovery, blocked, old approval, and confirmed states from
+complete retained claim/payload/journal evidence. It retains the exact original
+key and attempt without incrementing either in memory. Confirmed feedback
+recovery uses this assessment before obtaining credentials. It rejects conflicting
+or gapped attempt histories and downstream mutation intents without predecessor
+success. Synthetic coverage includes all seven supported source profiles,
+crash/unknown at each mutation, retry exhaustion, malformed lineage and correction
+ancestry. This closes a recovery-validation gap, not provider dispatch admission.
+
+Next implement the versioned durable initial/retry intent command plus its thin
+application integration. The generic journal's in-memory retry increment cannot
+serve as the full-year concurrent retry admission. A recovered claim with an empty
+journal must re-enter current source/annual/authorization admission; an existing
+prepared or unknown intent must never grant a second POST. Preserve exact keys and
+original bytes, close generic full-year mutation bypasses, then cover concurrent
+claims/retries and crash windows with real PostgreSQL and a synthetic authority.

@@ -4,7 +4,6 @@ from uuid import UUID
 
 from talli_backend.shared.kernel import ActorKind
 from . import public as rf
-from .preparation import _validate_archive_source
 
 
 def prepare(archive, *, query, submission, forsendelse_id, dialog_id):
@@ -17,11 +16,14 @@ def prepare(archive, *, query, submission, forsendelse_id, dialog_id):
     try:
         if not isinstance(query, rf.Rf1086ArchiveQuery):
             raise ValueError()
-        _validate_archive_source(query, archive)
         if (not isinstance(submission, rf.Rf1086Submission)
                 or submission.case_profile != 'rf1086_full_year_v1'
                 or query.actor_id.kind is not ActorKind.USER
                 or submission.user_id != str(query.actor_id.subject)):
+            raise ValueError()
+        assessment = rf.assess_rf1086_source_dispatch(archive, query=query,
+            submission_id=rf.SubmissionId(submission.id))
+        if assessment.disposition != 'confirmed':
             raise ValueError()
         retained = next(row for row in archive.production_submissions if row.id == submission.id)
         for field in ('id', 'approval_id', 'entitlement_id', 'company_id', 'user_id',
@@ -42,11 +44,10 @@ def prepare(archive, *, query, submission, forsendelse_id, dialog_id):
         if confirmation != {'dialogId': dialog_id, 'forsendelseId': forsendelse_id}:
             raise ValueError()
         approval = next(row for row in archive.approvals if row.id == retained.approval_id)
-        preview = next(row for row in archive.previews if row.id == approval.preview_id)
         # The archive validator proves this bridge uses the exact source_* keys
         # and XML from the source manifest, including every stable shareholder ID.
         return rf.Rf1086ReconciliationInput(retained.id, retained.company_id, retained.income_year,
-            forsendelse_id, preview.hovedskjema_xml, preview.underskjema_xml,
+            forsendelse_id, assessment.payload.hovedskjema_xml, assessment.payload.underskjema_xml,
             approval.manifest['organizationNumber'], dialog_id)
     except (ValueError, TypeError, KeyError, AttributeError, StopIteration,
             rf.ShareholderRegisterFilingError, rf.Rf1086YearSourceError):

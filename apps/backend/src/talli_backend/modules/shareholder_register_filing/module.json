@@ -129,7 +129,9 @@
       "Rf1086ArchiveYearSourceHead",
       "Rf1086ArchiveSourcePreview",
       "Rf1086ArchiveSourceHistory",
-      "Rf1086ArchiveCaptureRecord"
+      "Rf1086ArchiveCaptureRecord",
+      "Rf1086SourceDispatchAssessment",
+      "assess_rf1086_source_dispatch"
     ],
     "events": [],
     "errors": [
@@ -458,7 +460,8 @@
     "annualReadiness": "apps/backend/tests/test_rf1086_annual_readiness.py",
     "annualReadinessDatabase": "apps/backend/tests/test_rf1086_annual_readiness_database.py",
     "annualApprovalEvidence": "apps/backend/tests/test_rf1086_annual_approval_evidence.py",
-    "annualApprovalDatabase": "apps/backend/tests/test_rf1086_annual_approval_database.py"
+    "annualApprovalDatabase": "apps/backend/tests/test_rf1086_annual_approval_database.py",
+    "sourceDispatch": "apps/backend/tests/test_rf1086_source_dispatch.py"
   },
   "compatibilityExceptions": []
 }
