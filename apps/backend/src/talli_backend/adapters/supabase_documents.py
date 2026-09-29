@@ -296,6 +296,30 @@ class SupabaseDocumentsPersistence(DocumentsPersistence):
         )
 
 
+class SupabaseDocumentMetadataTransaction:
+    """Existing metadata query on a caller-owned transaction; no object I/O."""
+
+    def __init__(self, connection, actor_id: ActorId) -> None:
+        self._connection = connection
+        self.actor_id = actor_id
+
+    async def list_documents(self, company_ids: tuple[CompanyId, ...]) -> tuple[DocumentRecord, ...]:
+        from psycopg.pq import TransactionStatus
+        if self._connection.info.transaction_status != TransactionStatus.INTRANS:
+            raise DocumentsError.storage_unavailable()
+        if (type(company_ids) is not tuple or not company_ids
+                or any(not isinstance(value, CompanyId) for value in company_ids)):
+            raise DocumentsError.invalid_input()
+        try:
+            cursor = await self._connection.execute(
+                "select * from documents.list_documents_v1(%s::uuid[], %s)",
+                ([str(value) for value in company_ids], str(self.actor_id.subject)),
+            )
+            return tuple(_document(dict(row)) for row in await cursor.fetchall())
+        except (psycopg.DatabaseError, KeyError, TypeError, ValueError, AttributeError):
+            raise DocumentsError.storage_unavailable() from None
+
+
 @documents_authorization_adapter(DocumentsAuthorization)
 class SupabaseDocumentsAuthorization(DocumentsAuthorization):
     def __init__(self, gateway: CompanyAccessGateway) -> None:

@@ -804,3 +804,13 @@ original identities and attribution. It is not a company-year close assessment, 
 RF readiness decision. Only two existing read EXECUTE grants are added. Rollback
 disables those calls while retaining harmless namespace visibility; historical
 rehearsal restores the grants after Ledger/RF function recreation.
+
+`annual_document_inputs` enumerates active Documents metadata through the unchanged
+Documents owner query on the held admission connection, then selects the exact
+company/year. It preserves statuses and original metadata; staged, quarantined
+and accepted-missing records are not silently discarded. Inconsistent scope,
+duplicate identities, removed records or malformed metadata fail closed. No
+object download occurs while holding the company guard. This projection proves
+neither original-byte integrity nor filing readiness. The only new database
+authority is EXECUTE on `documents.list_documents_v1(uuid[],text)`; rollback
+revokes it and historical rehearsal restores it after owner function recreation.

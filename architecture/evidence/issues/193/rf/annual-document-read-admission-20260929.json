@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_ANNUAL_DOCUMENT_INPUT",
+  "baseCommit": "afe0ce3686e3668bf8dd44aa7d14bf97ce3ac8c8",
+  "change": "RF reads complete active Documents metadata through the unchanged owner query on the held admission connection, then selects the exact year. Original statuses and metadata remain intact; malformed enumeration cannot become successful absence. File bytes are not fetched under the guard.",
+  "authorization": "After Company Access confirms current accepted ownership under the company guard, RF replaces the transaction-local Documents role map with that exact admitted company. Empty or stale session maps cannot hide current documents or authorize other companies. The only additional database grant is EXECUTE on documents.list_documents_v1(uuid[],text).",
+  "verification": {
+    "unit": "98 Documents, metadata input and RF admission cases pass on the final implementation.",
+    "database": "78 document metadata/guard/original cases pass. A final26-case combined Documents/interview/Ledger/admission run also passes, including explicit replacement of stale unrelated role context,103 active records, exact-year and removed/foreign exclusions, metadata attribution, lock waits, cached-owner revocation and expired scopes.",
+    "migration": "Twice rollback/replay by a restricted non-superuser without initial Documents store-owner SET restores exact memberships, routine definitions/ACLs and namespace ownership/ACL. Fresh authority rollback/recutover succeeds and historical successor replay includes the read grant.",
+    "architecture": "Architecture check and79 CI/rehearsal harness cases pass.",
+    "regression": "Initial real database test reproduced a false empty enumeration from an empty authorization map. The final code derives its exact map from guarded Company Access admission; no RLS or owner-reader changes.",
+    "topology": "Fresh disposable PostgreSQL17 with minimal Auth/Storage shims. Full Supabase CI for this commit remains required."
+  },
+  "limits": [
+    "This is metadata evidence, not original-byte integrity, statement coverage or a filing decision.",
+    "RF-owned opening facts and final annual policy still need integration; the caller-written release flag is not replaced and full-year dispatch stays closed.",
+    "All seven RF acceptance criteria remain pending. No real AS, hosted change or provider operation."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-annual-documents-20260929-14d7",
+  "sha256": {
+    "setup.log": "090af722f1fe1f15d60578aab14b65c02d574abaf7818fc2f305c1e90adf1b0e",
+    "unit-exact-final.log": "2d07fb8e82b2bde02adef1ef9c8c4041a813ccd90b7f657b7f20b66e59bac7e6",
+    "database-final.log": "895bcdc4d402d2a2479680e3874a7e32f89c21cd0045a87b93e9c480ba4e025f",
+    "database-exact-final.log": "08b760a2c115222f3eaf29d4daa1d551023da0f7e0431e7d6f1011096848ac49",
+    "architecture-final.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "ci-harness.log": "3d4023acedcb33ab0a17060321c330f42390151d53d492fdc90df95cf6623574"
+  }
+}

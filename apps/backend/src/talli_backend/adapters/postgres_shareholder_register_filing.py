@@ -219,6 +219,13 @@ class PostgresShareholderRegisterFilingSession:
                 (str(query.company_id), int(query.income_year), str(self.actor_id.subject)),
             )).fetchone()
             identity = _source_admission_company(row['admission'] if row else None, query)
+            # Documents' unchanged owner query uses this transaction-local map.
+            # Derive it only from the current Company Access admission under the
+            # company guard, replacing any empty or stale session role cache.
+            await connection.execute(
+                "select pg_catalog.set_config('talli.authorized_company_roles',%s,true)",
+                (json.dumps({str(query.company_id): 'owner'}, separators=(',', ':')),),
+            )
             await connection.execute('select shareholder_register_filing.lock_year_source_v1(%s::uuid,%s)',
                 (str(query.company_id), int(query.income_year)))
             scoped = _SourceAdmission(self, connection, query, identity)
@@ -1326,6 +1333,13 @@ class _SourceAdmission:
         ledger = SupabaseLedgerWorkflowTransaction(
             self._store._configuration.database_url, self._store._verified, self._connection)
         return await read_annual_ledger_inputs(ledger, self._query, correlation_id)
+
+    async def annual_document_inputs(self):
+        self._require_active()
+        from talli_backend.adapters.supabase_documents import SupabaseDocumentMetadataTransaction
+        from talli_backend.application.shareholder_register_annual_documents import annual_document_inputs
+        documents = SupabaseDocumentMetadataTransaction(self._connection, self.actor_id)
+        return annual_document_inputs(await documents.list_documents((self._query.company_id,)), self._query)
 
     async def annual_interview(self):
         self._require_active()

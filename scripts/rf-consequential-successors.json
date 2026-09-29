@@ -54,5 +54,9 @@
   {
     "migration": "20260929160247_rf_annual_ledger_read_admission.sql",
     "presenceQuery": "select coalesce(has_function_privilege('shareholder_register_filing_executor',to_regprocedure('ledger.list_period_locks(uuid[],text,integer,text)'),'EXECUTE'),false)"
+  },
+  {
+    "migration": "20260929162030_rf_annual_document_read_admission.sql",
+    "presenceQuery": "select coalesce(has_function_privilege('shareholder_register_filing_executor',to_regprocedure('documents.list_documents_v1(uuid[],text)'),'EXECUTE'),false)"
   }
 ]

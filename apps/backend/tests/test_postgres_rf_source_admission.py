@@ -86,7 +86,11 @@ def test_actual_scope_orders_company_before_year_and_reuses_connection_then_expi
     async def run():
         async with store.source_admission(query) as scoped:
             assert calls[0][0].startswith('select public.company_access_read_rf_admission_v1(')
-            assert calls[1][0].startswith('select shareholder_register_filing.lock_year_source_v1(')
+            assert calls[1] == (
+                "select pg_catalog.set_config('talli.authorized_company_roles',%s,true)",
+                ('{"' + str(COMPANY) + '":"owner"}',),
+            )
+            assert calls[2][0].startswith('select shareholder_register_filing.lock_year_source_v1(')
             assert await scoped.current_source()==h.source
             assert await scoped.source_preview(h.preview.preview_id)==h.preview
             assert await scoped.read_current_register_observation(query,rf.Rf1086RegisterObservationId(str(uuid4()))) is None
