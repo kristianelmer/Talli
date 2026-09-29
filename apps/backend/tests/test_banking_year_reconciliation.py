@@ -81,3 +81,58 @@ def test_explicit_zero_counts_are_valid_but_not_filing_authority():
     summary = BankYearReconciliation(COMPANY_ID, YEAR, Timestamp(row()['observed_at']), 0, 0, 0)
     assert not hasattr(summary, 'ready')
     assert replace(summary, transaction_count=1, accepted_warning_count=1).unmatched_count == 0
+
+
+def test_exact_evidence_read_reaches_service_and_preserves_original_count_api():
+    from talli_backend.modules.banking.public import BankYearReconciliationEvidence
+    session = bound_session()
+    calls = []
+    async def read(sql, parameters):
+        calls.append((sql, parameters))
+        return [row() | {'source_sha256': 'a' * 64,
+                         'schema_version': 'banking-year-reconciliation-evidence-v1'}]
+    session._banking_rows = read
+    result = asyncio.run(BankingService(session).read_year_reconciliation_evidence(**QUERY))
+    assert isinstance(result, BankYearReconciliationEvidence)
+    assert result.reconciliation == BankYearReconciliation(COMPANY_ID, YEAR, Timestamp(row()['observed_at']), 503, 501, 1)
+    assert result.source_sha256 == 'a' * 64
+    assert calls == [('select * from banking.read_year_reconciliation_evidence_v1(%s::uuid, %s::integer, %s::text)',
+                      (str(COMPANY_ID), 2026, str(ACTOR_ID.subject)))]
+    with pytest.raises(FrozenInstanceError): result.source_sha256 = 'b' * 64
+    assert not hasattr(result, 'ready')
+
+
+@pytest.mark.parametrize('field,value', [
+    ('source_sha256', None), ('source_sha256', 'a' * 63), ('source_sha256', 'A' * 64),
+    ('source_sha256', 1), ('schema_version', None), ('schema_version', 'v2'),
+    ('transaction_count', True), ('unmatched_count', -1), ('accepted_warning_count', 503),
+    ('company_id', UUID('10000000-0000-0000-0000-000000000099')), ('income_year', True),
+    ('observed_at', '2026-01-01'),
+])
+def test_invalid_exact_evidence_is_never_admitted(field, value):
+    session = bound_session()
+    async def read(*args):
+        return [row() | {'source_sha256': 'a' * 64,
+                         'schema_version': 'banking-year-reconciliation-evidence-v1', field: value}]
+    session._banking_rows = read
+    with pytest.raises(BankingError) as error:
+        asyncio.run(session.read_year_reconciliation_evidence(**QUERY))
+    assert error.value.code == 'BANKING_DEPENDENCY_UNAVAILABLE'
+
+
+@pytest.mark.parametrize('rows', [[], [row(), row()], [{}], [None]])
+def test_missing_exact_evidence_fails_closed(rows):
+    session = bound_session()
+    async def read(*args): return rows
+    session._banking_rows = read
+    with pytest.raises(BankingError): asyncio.run(session.read_year_reconciliation_evidence(**QUERY))
+
+
+def test_foreign_actor_cannot_request_exact_evidence():
+    session = bound_session()
+    async def read(*args): pytest.fail('foreign actor must not query')
+    session._banking_rows = read
+    other = ActorId(ActorKind.USER, UserId('20000000-0000-0000-0000-000000000099'))
+    with pytest.raises(BankingError) as error:
+        asyncio.run(session.read_year_reconciliation_evidence(**(QUERY | {'actor_id': other})))
+    assert error.value.code == 'BANKING_FORBIDDEN'

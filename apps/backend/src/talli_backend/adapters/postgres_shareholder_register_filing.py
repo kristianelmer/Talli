@@ -1310,6 +1310,15 @@ class _SourceAdmission:
         self._require_active()
         return self._identity
 
+    async def bank_year_evidence(self, correlation_id):
+        self._require_active()
+        from talli_backend.adapters.supabase_banking import SupabaseBankingWorkflowTransaction
+        banking = SupabaseBankingWorkflowTransaction(
+            self._store._configuration.database_url, self._store._verified, self._connection)
+        return await banking.read_year_reconciliation_evidence(
+            actor_id=self.actor_id, company_id=self._query.company_id,
+            income_year=self._query.income_year, correlation_id=correlation_id)
+
     async def governance_evidence(self, correlation_id):
         self._require_active()
         from talli_backend.adapters.postgres_corporate_reporting_evidence import PostgresCorporateReportingEvidence

@@ -803,6 +803,28 @@ class BankYearReconciliation:
 
 
 @dataclass(frozen=True, slots=True)
+class BankYearReconciliationEvidence:
+    """Exact canonical year facts observed under the company writer guard.
+
+    The digest excludes observation time and commits every transaction's fixed
+    v1 fields, including identity, provenance, amounts and reconciliation state.
+    It proves neither statement coverage nor filing readiness. Consequential
+    consumers must reread on their held transaction before committing a decision.
+    """
+
+    reconciliation: BankYearReconciliation
+    source_sha256: str
+    schema_version: str = "banking-year-reconciliation-evidence-v1"
+
+    def __post_init__(self) -> None:
+        if (not isinstance(self.reconciliation, BankYearReconciliation)
+                or type(self.source_sha256) is not str
+                or re.fullmatch(r"[a-f0-9]{64}", self.source_sha256) is None
+                or self.schema_version != "banking-year-reconciliation-evidence-v1"):
+            raise ValueError("bank reconciliation evidence is invalid")
+
+
+@dataclass(frozen=True, slots=True)
 class BankSuggestionAcceptancePage:
     items: tuple[AcceptedBankSuggestion, ...]
     page: BankingPage
@@ -867,6 +889,11 @@ class BankingError(DomainError):
 
 
 class BankingPersistence(Protocol):
+    async def read_year_reconciliation_evidence(
+        self, *, actor_id: ActorId, company_id: CompanyId,
+        income_year: IncomeYear, correlation_id: CorrelationId,
+    ) -> BankYearReconciliationEvidence: ...
+
     async def read_year_reconciliation(
         self, *, actor_id: ActorId, company_id: CompanyId,
         income_year: IncomeYear, correlation_id: CorrelationId,
@@ -1109,6 +1136,11 @@ class BankingCommands(Protocol):
 
 
 class BankingQueries(Protocol):
+    async def read_year_reconciliation_evidence(
+        self, *, actor_id: ActorId, company_id: CompanyId,
+        income_year: IncomeYear, correlation_id: CorrelationId,
+    ) -> BankYearReconciliationEvidence: ...
+
     async def read_year_reconciliation(
         self, *, actor_id: ActorId, company_id: CompanyId,
         income_year: IncomeYear, correlation_id: CorrelationId,
@@ -1137,6 +1169,7 @@ class BankingQueries(Protocol):
 
 __all__ = [
     "BankYearReconciliation",
+    "BankYearReconciliationEvidence",
     "AcceptBankFileCommand",
     "AcceptBankSuggestionCommand",
     "AcceptedBankSuggestion",

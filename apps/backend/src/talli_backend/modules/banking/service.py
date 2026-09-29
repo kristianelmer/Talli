@@ -27,6 +27,7 @@ from talli_backend.modules.banking.public import (
     BankTransactionPage,
     BankTransactionState,
     BankYearReconciliation,
+    BankYearReconciliationEvidence,
     BankingCursor,
     BankingError,
     BankingErrorCode,
@@ -584,6 +585,15 @@ class BankingService:
             command,
             prepared=prepared,
             accounting_entry_id=accounting_entry_id,
+        )
+
+    async def read_year_reconciliation_evidence(
+        self, *, actor_id: ActorId, company_id: CompanyId,
+        income_year: IncomeYear, correlation_id: CorrelationId,
+    ) -> BankYearReconciliationEvidence:
+        return await self._persistence.read_year_reconciliation_evidence(
+            actor_id=actor_id, company_id=company_id,
+            income_year=income_year, correlation_id=correlation_id,
         )
 
     async def read_year_reconciliation(

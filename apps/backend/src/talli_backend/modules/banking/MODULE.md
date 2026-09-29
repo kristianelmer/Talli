@@ -42,7 +42,24 @@ statements were imported. This observation does not authorize filing: writer
 guard coverage and final annual-readiness composition are described below. The
 owned SQL API is `banking.read_year_reconciliation_v1`, introduced by
 `20260929073756_banking_year_reconciliation_projection.sql`; rollback removes
-only this read function. `ImportBankStatementCommand` accepts
+only this read function.
+
+`read_year_reconciliation_evidence` adds `BankYearReconciliationEvidence`: the
+same complete counts plus a versioned SHA-256 commitment to every canonical
+transaction's fixed v1 identity, scope, economic, provenance and reconciliation
+fields. Each JSON row is hashed, then the ordered fixed-width row hashes and
+company/year/counts are hashed. Observation time is separate; timezone is fixed
+to UTC. Identical counts with different facts produce different evidence.
+`banking.read_year_reconciliation_evidence_v1` acquires the shared company guard,
+requires READ COMMITTED and rechecks accepted ownership after a wait. RF can
+call this public read on its held admission connection without private-table
+access. No returned digest authorizes a later write. Complete statement coverage,
+opening currentness and composed RF annual readiness remain separate obligations.
+Migration `20260929125448_banking_year_reconciliation_evidence.sql` adds the
+read; rollback removes it while preserving facts, the old count API and schema
+visibility. It grants no table access or provider operation.
+
+`ImportBankStatementCommand` accepts
 the immutable uploaded source; parsing, validation, and duplicate hashing remain
 private. `AcceptBankSuggestionCommand` binds the owner's visible preview to the
 expected `BankSuggestionKind` and rule version, while the capability revalidates

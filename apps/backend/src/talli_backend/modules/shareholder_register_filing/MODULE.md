@@ -595,6 +595,13 @@ preview after guarded freshness checks. It explicitly leaves annual
 prerequisites, current review/overrides, Authority, Billing and technical release
 unevaluated. It does not replace the legacy stored release gate yet.
 
+The held source-admission transaction can read Banking-owned
+`BankYearReconciliationEvidence` through `bank_year_evidence`. This keeps the
+exact canonical transaction digest and observation on the same company guard,
+without private Banking table access or a separate connection. It is a producer
+input for annual readiness; counts/digests do not prove bank-statement coverage
+and are not yet a replacement for the stored annual gate.
+
 The correction contract is `Rf1086CorrectionPredecessorSnapshot`, verified by
 `assert_rf1086_correction_predecessor`. Source assessment exports
 `Rf1086SourceReadinessEvidence`, `Rf1086SourceReadinessProof`,

@@ -192,7 +192,8 @@ def test_catalogue_covers_all_banking_mutators_and_keeps_runtime_authority_narro
     with psycopg.connect(DATABASE_URL) as db:
         routines=db.execute("select proname,prosrc from pg_proc where pronamespace='banking'::regnamespace and prosecdef and provolatile='v'").fetchall()
         pure_or_helpers={'list_records_v1','list_connections_v1','suggestion_acceptance_replay_v1',
-                         'acquire_company_write_guard_v1','lock_company_write_v1'}
+                         'acquire_company_write_guard_v1','lock_company_write_v1',
+                         'read_year_reconciliation_evidence_v1'}
         assert {name for name,_ in routines if name not in pure_or_helpers}==set(WRITERS)
         assert {name for name,body in routines if 'rf193-banking-company-write-guard-v1' in body}==set(WRITERS)
         tables=db.execute("""select c.relname from pg_trigger t join pg_class c on c.oid=t.tgrelid
