@@ -481,3 +481,9 @@ Both expansion and rollback now borrow/restore that role as well as the function
 owner. A corrected restricted fixture retains Ledger schema ownership, reproduces
 the published failure and passes two repaired rollback/replays plus all seven
 annual guard tests. See `annual-guard-schema-owner-repair-20260929.json`.
+
+The isolated full Supabase rehearsal then passed installation and Ledger/Banking
+lifecycle but exposed an Investments fixture applying the Banking successor before
+its deferred claim routine existed. The fixture now installs the guard immediately
+after that prerequisite. Its complete PostgreSQL lifecycle passes and verifies all
+22 Banking wrappers remain installed at the end. The full rehearsal is rerunning.

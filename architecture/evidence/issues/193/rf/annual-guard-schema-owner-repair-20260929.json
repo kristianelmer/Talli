@@ -9,7 +9,9 @@
   "verification": {
     "regression": "Published rollback reproduces the exact CI missing-ledger-SET failure under a non-superuser with neither function-owner nor schema-owner SET. Corrected rollback/expansion then pass twice and restore exact role options and schema ACLs. Seven annual guard database cases pass under the same restricted principal.",
     "architecture": "Checker exit0; whitespace check passes.",
-    "fullStack": "Independent isolated Supabase rehearsal started; pending. Existing Application CI still running; no push cancellation."
+    "fullStack": "First full isolated Supabase rehearsal installs all migrations successfully, passes advisors and Ledger/Banking lifecycle, then exposes an Investments predecessor-order issue. Corrected full rehearsal is now running.",
+    "investmentsPredecessor": "The Investments fixture previously applied Banking guards before its deliberately deferred external-action claim routine existed. Defer the successor until that prerequisite is installed. The complete actual Investments database lifecycle passes, with an added final assertion that all22 Banking wrappers remain installed.",
+    "ci": "Run36565738799 at4a483b is terminal failure: Database found missing schema-owner SET; Application found the same deferred Investments claim ordering reproduced and repaired locally. Both diagnosed causes are addressed in this revision; fresh CI required."
   },
   "limits": [
     "405 broader RF tests passed at the prior commit. This fix has narrow restricted-database verification; new full Supabase verification remains required.",
@@ -21,6 +23,9 @@
     "talli-annual-schema-owner-build.log": "68760ff7176dc739a5b3c9a76a7d087ca56362ae07aa5357716424b6577bd42f",
     "talli-annual-schema-owner-restricted.log": "3f661f55a12a1cc86173411e5ff3485dcf322b86d4e2b410790f1988cddb87ac",
     "talli-annual-schema-owner-restricted.py": "38082110660afb3e60a3ac28296e2db73128830576d0bfda96535459a00aa191",
-    "talli-annual-schema-owner-architecture.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607"
+    "talli-annual-schema-owner-architecture.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "talli-annual-schema-owner-full-supabase.log": "2be992d2782a7db36295871b115df808d7adfc0ffc5744673ab72e8fa2ae5d35",
+    "talli-investments-banking-guard-replay.log": "10f4dfc9705689bfb5ba552e4af38dae914059770468227b7913cb3e2144d1cc",
+    "talli-4a483b-failed.log": "2530ff5a2e72e5c589e9932b9aaea062253f8f02e039646b086f3d72b7156d74"
   }
 }
