@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_SCOPED_RF_OVERRIDE_FIXTURE_CLEANUP",
+  "failedRun": "https://github.com/kristianelmer/Talli/actions/runs/36610443103",
+  "failedRevision": "ea40437c2cce02319275a28c135b5ca3b63815e1",
+  "failure": "Application succeeded. Database passed 700 Authority/RF cases and the subsequent 514-case lane, then the seven Tax lifecycle scenarios rejected preserved evidence after an unsupported non-RF override fixture escaped its RF test.",
+  "change": "The annual RF fixture records and deletes only its explicitly inserted synthetic override by exact ID and company during teardown. No Tax production code, policy or migration is changed.",
+  "verification": "Run the RF other-override case immediately before all seven existing Tax lifecycle scenarios on the explicitly contracted Tax settlement predecessor: eight passed. Minimal local Auth/Storage shims; full Supabase CI rerun remains required.",
+  "sha256": {
+    "fixture-tax-cleanup-final.log": "81143be787a4ddea749f3dba3e45ec4006525b0a802e455cefc2228b96cfdf12",
+    "ci-ea40437c-database-failed.log": "71f2b8e4c5e6a02cc78d4b26a2a27036ce124f09d81ddc018557fa996b918d63"
+  },
+  "limits": [
+    "The separately developed durable source operation migration is not part of this fixture-repair commit.",
+    "All seven RF acceptance criteria remain pending."
+  ]
+}

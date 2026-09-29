@@ -42,7 +42,15 @@ def annual_fixture(approval_fixture):
             add_lock(db, f['seed'])
     f['interview'] = seed(f['seed'])
     set_answers(f)
-    return f
+    try:
+        yield f
+    finally:
+        # This deliberately unsupported non-RF row tests the retained override
+        # gate. Do not leak it into the later global Tax expansion quarantine.
+        if f.get('synthetic_non_rf_override') is not None:
+            with psycopg.connect(DATABASE_URL) as db:
+                db.execute('delete from public.filing_overrides where id=%s and company_id=%s',
+                    (f['synthetic_non_rf_override'], f['seed']['company']))
 
 
 def set_answers(f, **changes):
@@ -133,7 +141,7 @@ def test_remaining_release_blocks_cannot_be_replaced_by_a_ready_proof(annual_fix
         if field == 'permission': db.execute('update shareholder_register_filing.authority_permissions set production_enabled=false where company_id=%s', (f['seed']['company'],))
         if field == 'technical': db.execute("update public.launch_signoffs set status='pending' where key='rf1086_authority'")
         if field == 'other-override':
-            db.execute("insert into public.filing_overrides(company_id,income_year,filing,field_target,old_value,new_value,reason,risk_level,created_by,owner_confirmed_by,owner_confirmed_at) values(%s,2026,'other','check','a','b','Synthetic block','block',%s,%s,clock_timestamp())", (f['seed']['company'], f['seed']['owner'], f['seed']['owner']))
+            f['synthetic_non_rf_override'] = db.execute("insert into public.filing_overrides(company_id,income_year,filing,field_target,old_value,new_value,reason,risk_level,created_by,owner_confirmed_by,owner_confirmed_at) values(%s,2026,'other','check','a','b','Synthetic block','block',%s,%s,clock_timestamp()) returning id", (f['seed']['company'], f['seed']['owner'], f['seed']['owner'])).fetchone()[0]
     async def check():
         async with f['store'].source_admission(query(f)) as scope:
             annual = await proof(f, scope)
