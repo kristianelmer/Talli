@@ -85,6 +85,10 @@ export async function startRf1086FilingAuthorityMock({ callbackOrigin, organizat
           const bytes = Buffer.from(feedbackBytes({ incomeYear: Number(year), organizationNumber }));
           const feedbackTransmission = randomUUID();
           main.confirmation = result;
+          // The send journal reads the confirmed submission archive before
+          // Dialogporten discovers the separate, related feedback transmission.
+          state.transmissions.set(transmission, { year,
+            documents: [main.body, ...main.children.map(({ body }) => body)].map((body) => body.toString("utf8")) });
           state.transmissions.set(feedbackTransmission, { year, artifactId, bytes });
           state.dialogs.set(result.dialogId, {
             id: result.dialogId,
@@ -111,8 +115,9 @@ export async function startRf1086FilingAuthorityMock({ callbackOrigin, organizat
       if (segments.length === 4) {
         assert.equal(url.search, "?page=0&size=50");
         state.calls.push({ operation: "list_documents", transmission: operation });
-        return json(response, 200, { totalItems: 1, totalPages: 1, currentPage: 0,
-          dokumenter: [{ dokumentId: transmission.artifactId }] });
+        const documents = transmission.documents ?? [{ dokumentId: transmission.artifactId }];
+        return json(response, 200, { totalItems: documents.length, totalPages: 1, currentPage: 0,
+          dokumenter: documents });
       }
       assert.equal(segments.length, 5);
       assert.equal(segments[4], transmission.artifactId);

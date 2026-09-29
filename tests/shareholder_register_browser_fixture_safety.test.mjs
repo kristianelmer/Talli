@@ -69,6 +69,21 @@ test("fresh local RF mock preserves request identity and emits relationship-boun
   ]);
 });
 
+test("fresh RF mock supports the shipped send journal before dialog feedback discovery", async (t) => {
+  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001", organizationNumber: "999999999" });
+  t.after(() => mock.close());
+  const result = await promisify(execFile)(process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python",
+    ["tests/fixtures/reconcile_authority_browser_feedback.py"], {
+      env: { ...process.env, TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL: mock.baseUrl,
+        TALLI_FIXTURE_ORG: "999999999", TALLI_FIXTURE_FRESH_SEND: "true",
+        TALLI_FIXTURE_LAUNCHER: "start_shareholder_register_filing_backend.py" }, timeout: 15_000,
+    });
+  assert.deepEqual(JSON.parse(result.stdout), { state: "accepted", artifacts: 2 });
+  assert.deepEqual(mock.snapshot().filter(({ service }) => service === "skatteetaten").map(({ operation }) => operation), [
+    "post_hovedskjema", "post_underskjema", "confirm", "list_documents", "read_dialog", "read_feedback",
+  ]);
+});
+
 test("fresh browser starts without a preview or approval and verifies the complete durable result", () => {
   const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
   const fixture = readFileSync(new URL("./fixtures/start_shareholder_register_filing_backend.py", import.meta.url), "utf8");

@@ -283,7 +283,9 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     assert.equal(bytes.status(), 200);
     assert.equal(createHash("sha256").update(await bytes.body()).digest("hex"), artifact.sha256);
     const successfulCalls = resources.mock.snapshot();
-    assert.equal(successfulCalls.filter(({ operation }) => operation === "list_documents").length, 0);
+    const archiveReads = successfulCalls.filter(({ operation }) => operation === "list_documents");
+    assert.equal(archiveReads.length, 1);
+    assert.equal(archiveReads[0].transmission, successfulCalls.find(({ operation }) => operation === "confirm").transmission);
     assert.equal(successfulCalls.filter(({ operation }) => operation === "read_dialog").length, 1);
     assert.equal(successfulCalls.filter(({ operation }) => operation === "read_feedback").length, 1);
     assert.equal(successfulCalls.filter(({ operation }) => operation === "post_hovedskjema").length, 1);
@@ -348,7 +350,9 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     assert.equal(recovery.requiresManualRetry, true);
     assert.notEqual(recovery.state, "accepted");
     assert.equal(resources.mock.snapshot().filter(({ operation }) => operation.startsWith("post_")).length, mutationCount);
-    assert.ok(!resources.mock.snapshot().some(({ operation }) => operation === "replayed_mutation" || operation === "request_rejected"));
+    assert.deepEqual(resources.mock.snapshot()
+      .filter(({ operation }) => operation === "replayed_mutation" || operation === "request_rejected")
+      .map(({ service, operation }) => ({ service, operation })), []);
     for (const event of ["POST:/api/v1/shareholder-register-filings/previews:200",
       "POST:/api/v1/shareholder-register-filings/review-comments:200",
       "POST:/api/v1/shareholder-register-filings/production-approvals:200",
@@ -476,6 +480,7 @@ async function login(page, origin, user) {
   await form.getByLabel("E-post").fill(user.email);
   await form.getByLabel("Passord").fill(user.password);
   await form.getByRole("button", { name: "Logg inn", exact: true }).click();
+  await page.waitForURL((url) => url.origin === origin && url.pathname === "/dashboard");
   await page.waitForLoadState("networkidle");
 }
 

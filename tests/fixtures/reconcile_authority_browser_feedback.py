@@ -16,11 +16,13 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "apps/backend/src"), str(ROOT / "apps/backend/tests")]
 from talli_backend.adapters.maskinporten import MaskinportenClient, MaskinportenConfiguration
 from talli_backend.modules.shareholder_register_filing.public import (
+    JournaledRf1086ProductionInput,
     Rf1086ReconciliationInput,
+    execute_journaled_rf1086_production,
     reconcile_journaled_rf1086_production,
 )
 from test_postgres_shareholder_register_filing import session, VALID
-from test_shareholder_register_filing_production import FeedbackJournal
+from test_shareholder_register_filing_production import FeedbackJournal, OperationJournal
 
 launcher = os.environ.get("TALLI_FIXTURE_LAUNCHER", "start_authority_connections_backend.py")
 assert launcher in (
@@ -53,15 +55,26 @@ async def main():
     )
     store._rf_transport = transport
     org = os.environ["TALLI_FIXTURE_ORG"]
-    submission = os.environ["TALLI_FIXTURE_SUBMISSION"]
-    dialog = os.environ["TALLI_FIXTURE_DIALOG"]
-    binding = await store.bind_read_only_authority(
+    fresh_send = os.environ.get("TALLI_FIXTURE_FRESH_SEND") == "true"
+    bind = store.bind_mutation_authority if fresh_send else store.bind_read_only_authority
+    binding = await bind(
         SimpleNamespace(org_number=org), SimpleNamespace(external_ref="A" * 43),
     )
     journal = FeedbackJournal("processing")
     try:
+        if fresh_send:
+            sent = await execute_journaled_rf1086_production(
+                JournaledRf1086ProductionInput("local-submission", 2025, "<submitted-main/>",
+                    {"holder": "<submitted-under/>"}, ("holder",)),
+                journal=OperationJournal(), authority_client=binding.authority,
+            )
+            assert sent.document_count == 2 and sent.status == "processing"
+            submission, dialog = sent.forsendelse_id, sent.dialog_id
+        else:
+            submission = os.environ["TALLI_FIXTURE_SUBMISSION"]
+            dialog = os.environ["TALLI_FIXTURE_DIALOG"]
         result = await reconcile_journaled_rf1086_production(
-            journal, binding.authority,
+            journal, binding.read_only_authority if fresh_send else binding.authority,
             Rf1086ReconciliationInput(
                 "local-submission", "local-company", 2025, submission,
                 "<submitted-main/>", {"holder": "<submitted-under/>"}, org, dialog,
