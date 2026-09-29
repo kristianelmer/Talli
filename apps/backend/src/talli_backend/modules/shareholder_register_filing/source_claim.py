@@ -38,7 +38,14 @@ def inspect_approval(value, *, approval_id, manifest_sha256, actor_id):
         _require(type(manifest) is dict and _canonical(manifest)==value.manifest_text
             and _canonical(a.manifest)==value.manifest_text
             and hashlib.sha256(value.manifest_text.encode('utf-8')).hexdigest()==manifest_sha256)
-        expected={'schemaVersion':'production-source-approval-v1','companyId':a.company_id,
+        version = manifest.get('schemaVersion')
+        _require(version in ('production-source-approval-v1', 'production-source-approval-v2'))
+        if version == 'production-source-approval-v2':
+            from .annual_readiness_storage import inspect_binding
+            inspect_binding(manifest['annualReadiness'])
+        else:
+            _require('annualReadiness' not in manifest)
+        expected={'schemaVersion':version,'companyId':a.company_id,
             'incomeYear':a.income_year,'userId':a.user_id,'entitlementId':a.entitlement_id,
             'caseProfile':a.case_profile,'adapterVersion':a.adapter_version,'obligation':a.obligation}
         _require(all(manifest[key]==item and type(manifest[key]) is type(item) for key,item in expected.items())

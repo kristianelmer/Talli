@@ -111,6 +111,8 @@
       "Rf1086AnnualReadinessProof",
       "build_rf1086_annual_readiness",
       "assert_rf1086_annual_readiness_matches",
+      "serialize_rf1086_annual_readiness",
+      "parse_rf1086_annual_readiness",
       "prepare_rf1086_source_reconciliation",
       "build_rf1086_source_readiness",
       "assert_rf1086_source_readiness_matches",
@@ -454,7 +456,8 @@
     "annualOpeningInputs": "apps/backend/tests/test_rf_annual_opening_inputs.py",
     "annualOpeningAdmission": "apps/backend/tests/test_rf_annual_opening_admission_database.py",
     "annualReadiness": "apps/backend/tests/test_rf1086_annual_readiness.py",
-    "annualReadinessDatabase": "apps/backend/tests/test_rf1086_annual_readiness_database.py"
+    "annualReadinessDatabase": "apps/backend/tests/test_rf1086_annual_readiness_database.py",
+    "annualApprovalEvidence": "apps/backend/tests/test_rf1086_annual_approval_evidence.py"
   },
   "compatibilityExceptions": []
 }

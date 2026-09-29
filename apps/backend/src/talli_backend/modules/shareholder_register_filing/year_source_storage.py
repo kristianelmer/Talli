@@ -12,6 +12,8 @@ from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYea
 
 _RECORDS = {kind.__name__: kind for kind in (
     rf.PreviewId, rf.Rf1086ReadinessIssue, rf.Rf1086SourcePreview,
+    rf.Rf1086SourceReadinessEvidence, rf.Rf1086SourceReadinessProof,
+    rf.Rf1086AnnualDocumentStatus, rf.Rf1086AnnualReadinessInputs, rf.Rf1086AnnualReadinessProof,
     ActorId, CompanyId, IncomeYear, UserId, rf.Rf1086YearSourceId,
     rf.Rf1086RegisterObservationId, rf.Rf1086RegisterHolding, rf.Rf1086RegisteredShareState,
     rf.Rf1086RegisterDocumentEvidence, rf.RecordRf1086RegisterObservation, rf.Rf1086RegisterObservationSnapshot,

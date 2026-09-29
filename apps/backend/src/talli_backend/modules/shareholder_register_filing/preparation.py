@@ -140,7 +140,8 @@ def _validate_archive_production(query, result):
             continue
         require(row.case_profile == 'rf1086_no_activity_v1'
                 and previews[row.preview_id].source != 'rf1086-full-year-v1'
-                and row.manifest.get('schemaVersion') != 'production-source-approval-v1')
+                and row.manifest.get('schemaVersion') not in (
+                    'production-source-approval-v1', 'production-source-approval-v2'))
         preview = _production_preview(previews[row.preview_id])
         require(row.payload_hash == rf1086_preview_payload_hash(preview))
         require(row.manifest_hash == rf1086_current_manifest_hash(preview,
@@ -226,13 +227,17 @@ def _validate_archive_source_approval(query, approval, projection, lineage, requ
             and approval.adapter_version == 'rf1086-source-production-v1')
     review = approval.manifest['review']
     require(review['sha256'] == lineage.review_sha256)
+    annual = None
+    if approval.manifest.get('schemaVersion') == 'production-source-approval-v2':
+        from .annual_readiness_storage import parse_binding
+        annual = parse_binding(approval.manifest['annualReadiness'], source, preview)
     _validate_retained_source_review(lineage, approval, bridge, review, require)
     prior = approval.manifest['predecessor']
     predecessor = None if prior is None else rf.Rf1086SourceCorrectionPredecessor(
         rf.SubmissionId(prior['submissionId']), prior['manifestSha256'], prior['reason'])
     basis = rf.Rf1086SourceApprovalManifestBasis(source, preview,
         ActorId(ActorKind.USER, UserId(approval.user_id)), approval.entitlement_id,
-        lineage.review_sha256, tuple(review['acknowledgedWarningCodes']), predecessor)
+        lineage.review_sha256, tuple(review['acknowledgedWarningCodes']), predecessor, annual)
     rebuilt = rf.build_rf1086_source_approval_manifest(basis)
     require(rebuilt.manifest_sha256 == approval.manifest_hash
             and rebuilt.manifest == approval.manifest
@@ -255,10 +260,17 @@ def _validate_retained_source_review(lineage, approval, bridge, manifest_review,
 
     require(type(lineage.review_text) is str and _sha256(lineage.review_text) == lineage.review_sha256)
     review = json.loads(lineage.review_text, object_pairs_hook=unique)
-    require(isinstance(review, dict) and set(review) == {'version', 'binding', 'scope', 'comments',
-            'overrides', 'permission', 'pilot', 'request', 'storedReleaseReady', 'technicalReleaseReady'})
-    require(review['version'] == 'rf1086-source-review-v1'
-            and review['storedReleaseReady'] is True and review['technicalReleaseReady'] is True)
+    keys = {'version', 'binding', 'scope', 'comments', 'overrides', 'permission', 'pilot',
+            'request', 'technicalReleaseReady'}
+    if approval.manifest.get('schemaVersion') == 'production-source-approval-v2':
+        require(isinstance(review, dict) and set(review) == keys | {'annualReadiness', 'otherOverridesReady'})
+        require(review['version'] == 'rf1086-source-review-v2'
+                and review['otherOverridesReady'] is True
+                and review['annualReadiness'] == approval.manifest['annualReadiness'])
+    else:
+        require(isinstance(review, dict) and set(review) == keys | {'storedReleaseReady'})
+        require(review['version'] == 'rf1086-source-review-v1' and review['storedReleaseReady'] is True)
+    require(review['technicalReleaseReady'] is True)
     require(review['scope'] == {'companyId': lineage.company_id, 'incomeYear': lineage.income_year,
             'previewId': lineage.preview_id, 'sourceId': lineage.source_id,
             'sourceSha256': lineage.source_sha256, 'entitlementId': approval.entitlement_id,

@@ -56,6 +56,18 @@ def build_manifest(basis: rf.Rf1086SourceApprovalManifestBasis) -> rf.Rf1086Sour
                  and bool(preview.underskjema_xml)
                  and all(issue.level == "warning" for issue in preview.readiness_issues))
         warnings = tuple(sorted({issue.code for issue in preview.readiness_issues}))
+        annual_binding = None
+        if basis.annual_readiness is not None:
+            annual = basis.annual_readiness
+            annual_text = rf.serialize_rf1086_annual_readiness(annual, source, preview)
+            _require(annual.readiness_status in ('ready', 'warning'))
+            warnings = annual.required_warning_codes
+            annual_binding = {
+                'schemaVersion': 'rf1086-annual-readiness-binding-v1',
+                'proofSha256': annual.proof_sha256,
+                'proofTextSha256': _hash(annual_text),
+                'proofText': annual_text,
+            }
         acknowledged = basis.acknowledged_warning_codes
         _require(all(isinstance(code, str) and bool(code) for code in acknowledged)
                  and len(set(acknowledged)) == len(acknowledged)
@@ -102,6 +114,9 @@ def build_manifest(basis: rf.Rf1086SourceApprovalManifestBasis) -> rf.Rf1086Sour
             "review": {"sha256": basis.review_sha256, "acknowledgedWarningCodes": warnings},
             "predecessor": predecessor,
         }
+        if annual_binding is not None:
+            manifest['schemaVersion'] = 'production-source-approval-v2'
+            manifest['annualReadiness'] = annual_binding
         return rf.Rf1086SourceApprovalManifest(manifest, _hash(_canonical(manifest)), order, xml)
     except rf.Rf1086ProductionError:
         raise
@@ -130,7 +145,7 @@ def serialize_manifest(approved: rf.Rf1086SourceApprovalManifest) -> str:
     try:
         _require(isinstance(approved, rf.Rf1086SourceApprovalManifest))
         text = _canonical(approved.manifest)
-        _require(approved.manifest.get('schemaVersion') == 'production-source-approval-v1'
+        _require(approved.manifest.get('schemaVersion') in ('production-source-approval-v1', 'production-source-approval-v2')
                  and _hash(text) == approved.manifest_sha256)
         return text
     except (ValueError, TypeError, AttributeError, KeyError, ArithmeticError):

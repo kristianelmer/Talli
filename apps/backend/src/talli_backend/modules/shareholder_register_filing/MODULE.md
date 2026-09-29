@@ -849,7 +849,23 @@ or removed document statuses fail closed at the input boundary.
 
 This is a read-only point-in-time prerequisite assessment. Review/overrides,
 current Authority permission, Billing, technical signoffs and warning acceptance
-remain independent release checks. No stored-ready SQL seam, approval manifest,
-historical archive or provider dispatch changes in this step. Consequential
-consumers must rebuild under their own held guard; the proof alone grants no
-permission to approve or send.
+remain independent release checks. Consequential consumers must rebuild under
+their own held guard; the proof alone grants no permission to approve or send.
+
+`serialize_rf1086_annual_readiness` and `parse_rf1086_annual_readiness` retain a
+closed, canonical proof encoding and replay RF policy against the exact retained
+source/preview. Noncanonical bytes, duplicate/unknown fields, foreign scope and
+changed derived policy fail closed. A manifest basis with `annual_readiness`
+produces `production-source-approval-v2`, binding both the policy digest and exact
+proof bytes. Blocked annual proofs cannot produce approval manifests; every
+required warning must be acknowledged. The XML/document order and production
+adapter version stay unchanged. A basis without annual evidence retains exact
+V1 manifest bytes for historical recovery.
+
+V2 archives rebuild the retained annual proof without current owner queries. A
+matching `rf1086-source-review-v2` records the same annual binding,
+`otherOverridesReady` and the independent technical gate; V1 archives retain
+their original stored-release review contract. Claim identity inspection accepts
+both manifest versions, but does not grant freshness or dispatch authority.
+This is the retention contract foundation: live approval and first-claim SQL
+still use V1 and the stored-ready seam until guarded V2 enforcement is integrated.
