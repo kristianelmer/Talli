@@ -603,3 +603,34 @@ consume `newlyPrepared` explicitly, and discard its provider binding afterward.
 An existing claim alone never grants send authority. Cover this integration's crash
 windows and authority changes with a synthetic provider before exposing any route.
 All seven RF acceptance criteria remain pending.
+
+## Synthetic application dispatch — 29 September
+
+The thin full-year dispatch component now consumes durable operation grants. It
+validates retained claim/payload/history, acquires a disposable Authority binding
+outside the database guard, rebuilds current annual evidence before main-document
+admission, and returns a send grant only after the intent transaction commits.
+Continuation keeps original approved bytes and keys while rechecking current
+authorization. Confirmed replay needs neither current source bytes nor another
+provider binding. An uncertain intent or response never grants another POST.
+
+The versioned intent RPC also binds the acquired Authority request ID and external
+reference to the current locked Billing/Authority linkage. A reconnect during
+credential acquisition therefore cannot authorize a POST with the old binding.
+Old intent RPC execution is revoked, including after rollback; in-flight outcome
+recording remains available.
+
+Synthetic tests cover all seven source profiles, competing sends, known retries,
+commit failure, cancellation, lost responses and outcome persistence failures.
+Actual PostgreSQL tests use a second connection during each synthetic POST to
+prove that its prepared intent is committed and its company guard released.
+The complete source-capture → original verification → approval → claim → dispatch
+flow uses real RF, Billing and Documents persistence with synthetic storage and
+Authority. Changed original bytes or annual facts during binding block dispatch;
+confirmed replay uses the retained evidence after current storage bytes change.
+
+This component is not yet composed into HTTP. Route/UI integration, uncertain
+outcome reconciliation, actual database/object restore, retention generations,
+streaming archives and final security/browser/recovery acceptance remain. Local
+PostgreSQL Auth/Storage shims do not substitute for exact-revision Supabase CI.
+All seven RF acceptance criteria remain pending; no real AS or provider was used.

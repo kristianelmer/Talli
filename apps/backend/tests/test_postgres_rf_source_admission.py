@@ -326,7 +326,8 @@ def test_operation_json_replay_equals_native_outcome_timestamp(encoded):
         async def fetchone(self):return {'result':{'operation':event,'newlyPrepared':False}}
     scope=_SourceAdmission(store,Connection(),rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id),c.h.identity)
     result=asyncio.run(scope.prepare_source_operation(claim,operation_name='post_hovedskjema',
-        body_sha256='a'*64,idempotency_key=str(uuid4())))
+        body_sha256='a'*64,idempotency_key=str(uuid4()), connection=rf.Rf1086Connection(
+            str(uuid4()),str(COMPANY),str(store.actor_id.subject),'aksjonaerregisteroppgaven','bound-external','accepted',True)))
     native=event|{'created_at':datetime.fromisoformat('2026-09-29T08:01:14.041720+00:00')}
     assert not result.newly_prepared
     assert result.event==store._wire_record(rf.Rf1086ArchiveProductionEventRecord,native)

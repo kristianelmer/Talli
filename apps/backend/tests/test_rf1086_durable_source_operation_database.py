@@ -3,7 +3,8 @@ import asyncio
 from dataclasses import replace
 from hashlib import sha256
 import json
-from uuid import uuid4
+from types import SimpleNamespace
+from uuid import UUID, uuid4
 
 import psycopg
 import pytest
@@ -17,15 +18,18 @@ from test_rf1086_annual_approval_database import (
 )
 
 pytestmark = pytest.mark.authority_database
-MIGRATION = '20260929182856_rf1086_durable_source_operation_intent.sql'
+INTENT_MIGRATION = '20260929182856_rf1086_durable_source_operation_intent.sql'
+MIGRATION = '20260929192057_rf1086_dispatch_binding_identity.sql'
 
 
 @pytest.fixture
 def operation_fixture(annual_fixture):
     f = annual_fixture
     with psycopg.connect(DATABASE_URL) as db:
+        db.execute((ROOT/'supabase/migrations'/INTENT_MIGRATION).read_text())
         db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
     async def seed():
+        f['connection'] = await f['store'].read_connection(str(f['request']), str(f['seed']['company']))
         async with f['store'].source_admission(query(f)) as scope:
             result, manifest, annual = await approval(f, scope)
             claim = await scope.claim_source_submission(rf.ApprovalId(result.record_id), manifest.manifest_sha256, None, annual)
@@ -39,7 +43,7 @@ async def prepare(f, name='post_hovedskjema', digest=None, **args):
     async with f['store'].source_admission(query(f)) as scope:
         annual = await proof(f, scope) if name == 'post_hovedskjema' else None
         return await scope.prepare_source_operation(f['claim'], operation_name=name,
-            body_sha256=digest, idempotency_key=str(uuid4()), annual=annual, **args)
+            body_sha256=digest, idempotency_key=str(uuid4()), connection=f['connection'], annual=annual, **args)
 
 
 async def finish(f, intent, state='succeeded', reference=None, failure=None):
@@ -109,7 +113,7 @@ def test_changed_intent_identity_never_inserts_a_journal_event(operation_fixture
             async with f['store'].source_admission(query(f)) as scope:
                 await scope.prepare_source_operation(f['claim'], operation_name='post_hovedskjema',
                     body_sha256=f['manifest'].manifest['documentHashes'][0]['sha256'],
-                    idempotency_key=str(uuid4()))
+                    idempotency_key=str(uuid4()), connection=f['connection'])
         else:
             args = {}
             if change == 'body': args['digest'] = 'a'*64
@@ -248,6 +252,189 @@ def test_every_new_intent_requires_current_authority(operation_fixture, continua
             (f['claim'].submission_id.value, name)).fetchone()[0] == 0
 
 
+@pytest.mark.parametrize('continuation', [False, True])
+@pytest.mark.parametrize('change', ['request', 'external'])
+def test_credentials_must_match_the_locked_authority_binding(operation_fixture, continuation, change):
+    f = operation_fixture
+    name, digest = 'post_hovedskjema', None
+    if continuation:
+        asyncio.run(finish(f, asyncio.run(prepare(f)), reference='main-reference'))
+        name = 'post_underskjema:' + f['manifest'].document_order[0]
+        digest = f['manifest'].manifest['documentHashes'][1]['sha256']
+    f['connection'] = replace(f['connection'], **({'id': str(uuid4())} if change == 'request'
+        else {'external_ref': 'credentials-from-a-different-connection'}))
+    with pytest.raises(rf.Rf1086ProductionError, match='connection_unavailable'): asyncio.run(prepare(f, name, digest))
+    with psycopg.connect(DATABASE_URL) as db:
+        assert db.execute('select count(*) from shareholder_register_filing.production_filing_events where submission_id=%s and operation_name=%s',
+            (f['claim'].submission_id.value, name)).fetchone()[0] == 0
+
+
+@pytest.mark.parametrize('lost_stage', [None, 'main', 'sub', 'confirm'])
+def test_synthetic_provider_observes_committed_intents_outside_database_guard(operation_fixture, lost_stage):
+    from test_shareholder_register_filing_production import Authority
+    f = operation_fixture
+    query = rf.Rf1086ArchiveQuery(f['source'].company_id,f['source'].income_year,f['store'].actor_id)
+    class Journal:
+        intent = None
+        async def prepare(self, *, submission_id, name, body_hash, idempotency_key):
+            assert submission_id == f['claim'].submission_id.value
+            result = await prepare(f, name, body_hash)
+            self.intent = result.event
+            return result
+        async def finish(self, intent, **args):
+            return await f['store'].finish_source_operation(f['claim'].submission_id,intent.id,**args)
+    journal, authority = Journal(), Authority()
+    for method, stage in [('post_hovedskjema','main'),('post_underskjema','sub'),('confirm','confirm')]:
+        original = getattr(authority,method)
+        async def verify(*, _original=original, _stage=stage, **args):
+            with psycopg.connect(DATABASE_URL,options='-c lock_timeout=250') as db:
+                bind_fixture_owner(db,f)
+                # A second connection must acquire the company guard now, and
+                # see the committed intent before any synthetic provider effect.
+                db.execute('select public.company_archive_lock_company_v1(%s)',(f['seed']['company'],))
+                row = db.execute('select operation_state,idempotency_key from shareholder_register_filing.production_filing_events where id=%s',
+                    (journal.intent.id,)).fetchone()
+                assert row == ('prepared', UUID(args['idempotency_key']))
+            response = await _original(**args)
+            if lost_stage == _stage: raise rf.Rf1086AuthorityError('SYNTHETIC_LOST_RESPONSE')
+            return response
+        setattr(authority,method,verify)
+    async def run():
+        archive = await rf.create_rf1086_preparation_service(f['store']).archive_source(query)
+        payload = rf.assess_rf1086_source_dispatch(archive,query=query,submission_id=f['claim'].submission_id).payload
+        async def dispatch():
+            return await rf.execute_rf1086_source_dispatch(payload,journal=journal,
+                read_journal=f['store'].operation_journal(f['claim'].submission_id.value),authority_client=authority)
+        if lost_stage:
+            with pytest.raises(rf.Rf1086UnknownProductionOutcomeError): await dispatch()
+        else:
+            await dispatch()
+        before = list(authority.calls)
+        if lost_stage:
+            with pytest.raises(rf.Rf1086UnknownProductionOutcomeError): await dispatch()
+        else:
+            await dispatch()
+        assert authority.calls == before
+        archive = await rf.create_rf1086_preparation_service(f['store']).archive_source(query)
+        assert rf.assess_rf1086_source_dispatch(archive,query=query,submission_id=f['claim'].submission_id).disposition == (
+            'recovery_required' if lost_stage else 'confirmed')
+    asyncio.run(run())
+
+
+@pytest.fixture
+def dispatch_billing_access(backend_url):
+    from psycopg import sql
+    from psycopg.conninfo import conninfo_to_dict
+    username = conninfo_to_dict(backend_url)['user']
+    assert username.startswith('rf_test_')
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute(sql.SQL('grant billing_executor to {} with inherit false,set true').format(sql.Identifier(username)))
+    try:
+        yield
+    finally:
+        with psycopg.connect(DATABASE_URL) as db:
+            db.execute(sql.SQL('revoke billing_executor from {}').format(sql.Identifier(username)))
+
+
+@pytest.mark.parametrize('change', [None, 'original', 'annual-during-binding'])
+def test_capture_approval_claim_and_dispatch_with_real_retained_originals(annual_fixture, dispatch_billing_access, change):
+    from talli_backend.adapters.supabase_billing import SupabaseBillingSession
+    from talli_backend.adapters.supabase_documents import SupabaseDocumentsPersistence
+    from talli_backend.application.shareholder_register_source_workflow import ShareholderRegisterSourceWorkflow
+    from talli_backend.application.shareholder_register_source_approval import ShareholderRegisterSourceApprovalWorkflow
+    from talli_backend.application.shareholder_register_source_dispatch import ShareholderRegisterSourceDispatchWorkflow
+    from talli_backend.modules.documents.public import DocumentsError, StoredDocumentObject
+    from talli_backend.modules.documents.service import DocumentsService
+    from talli_backend.shared.kernel import CorrelationId, IdempotencyKey
+    from test_rf1086_year_source_database import seed_documents
+    from test_shareholder_register_filing_production import Authority
+    f = annual_fixture
+    store = f['store']
+    with psycopg.connect(DATABASE_URL) as db:
+        for migration in (INTENT_MIGRATION, MIGRATION): db.execute((ROOT/'supabase/migrations'/migration).read_text())
+    content = b'%PDF-1.7\nSynthetic complete RF source original\n'
+    class Storage:
+        data = content
+        async def read_object(self, **args): return StoredDocumentObject(self.data,'application/pdf')
+    storage = Storage()
+    async def refresh_roles():
+        async with store.source_admission(query(f)) as scope:
+            await scope.company_identity()
+        return {f['source'].company_id: 'owner'}
+    documents = DocumentsService(SupabaseDocumentsPersistence(store._configuration.database_url,store._verified,
+        {f['source'].company_id:'owner'}, role_refresher=refresh_roles),storage)
+    class Sessions:
+        async def session(self, token): return store
+    class DocumentSessions:
+        async def session(self, token): return documents
+    class Company:
+        async def company_record(self, token, *, company_id):
+            async with store.source_admission(query(f)) as scope:
+                identity = await scope.company_identity()
+            company = identity.company
+            return SimpleNamespace(company=SimpleNamespace(id=company_id,role='owner',entity_type='AS',
+                org_number=company.org_number,name=company.name,address=company.address,
+                postal_code=company.postal_code,city=company.city,
+                identity_confirmed_at=identity.identity_confirmed_at,identity_locked_at=identity.identity_locked_at))
+    class Governance:
+        async def read_reporting_year_evidence(self, token, *, company_id, income_year, correlation_id):
+            async with store.source_admission(query(f)) as scope:
+                return await scope.governance_evidence(correlation_id)
+    store._company_access = Company()
+    store._billing = SupabaseBillingSession(store._configuration.database_url,store._verified)
+    store.require_configuration = lambda: None  # Test binding below never requests credentials.
+    authority = Authority()
+    discarded = []
+    async def binding(*args):
+        if change == 'annual-during-binding': set_answers(f,has_unpaid_items=True)
+        return SimpleNamespace(authority=authority,discard=lambda:discarded.append(True))
+    store.bind_mutation_authority = binding
+    async def run():
+        correlation = CorrelationId('complete-source-dispatch')
+        company = (await store._company_access.company_record('synthetic',company_id=str(f['source'].company_id))).company
+        expected = replace(f['command'].documents[0],content_sha256=sha256(content).hexdigest(),
+            content_version_sha256=sha256(content).hexdigest(),byte_length=len(content))
+        originals = seed_documents(f['seed'],store,(expected,))
+        document_id = originals[0].document_id
+        current = f['source']
+        command = replace(f['command'],case=replace(f['command'].case,company=replace(f['command'].case.company,
+            org_number=company.org_number,name=company.name,address=company.address,postal_code=company.postal_code,city=company.city)),
+            documents=originals,opening_document_ids=(document_id,),closing_document_ids=(document_id,),paid_in_document_ids=(document_id,),
+            supersedes_source_id=current.source_id,supersedes_source_sha256=current.source_sha256,correction_reason='Use verified original bytes and current legal identity')
+        source_workflow = ShareholderRegisterSourceWorkflow(Sessions(),store._company_access,DocumentSessions(),Governance())
+        f['source'] = await source_workflow.capture_year_source('synthetic',command,
+            idempotency_key=IdempotencyKey(str(uuid4())),correlation_id=correlation)
+        f['preview'] = await source_workflow.generate_source_preview('synthetic',company_id=f['source'].company_id,
+            income_year=f['source'].income_year,source_id=f['source'].source_id,correlation_id=correlation)
+        approvals = ShareholderRegisterSourceApprovalWorkflow(Sessions(),DocumentSessions())
+        args = dict(company_id=f['source'].company_id,income_year=f['source'].income_year,
+            preview_id=f['preview'].preview_id,entitlement_id=str(f['entitlement']),correlation_id=correlation)
+        review = await approvals.read_review('synthetic',**args)
+        assert review.can_approve, review.blockers
+        approved = await approvals.approve('synthetic',**args,review_sha256=review.review_sha256,
+            acknowledged_warning_codes=review.warning_codes,real_filing_confirmed=True)
+        retained = await store.read_source_claim_approval(rf.ApprovalId(approved.record_id))
+        if change == 'original': storage.data = b'changed after approval'
+        workflow = ShareholderRegisterSourceDispatchWorkflow(Sessions(),DocumentSessions())
+        async def send():
+            return await workflow.send('synthetic',approval_id=rf.ApprovalId(approved.record_id),
+                manifest_sha256=retained.approval.manifest_hash,correlation_id=correlation)
+        if change:
+            with pytest.raises((DocumentsError,rf.Rf1086ProductionError,rf.ShareholderRegisterFilingError)): await send()
+            assert not authority.calls
+            return
+        result = await send()
+        assert discarded == [True]
+        before = list(authority.calls)
+        storage.data = b'current mutable object no longer needed for confirmed replay'
+        assert await send() == result
+        assert authority.calls == before and discarded == [True]
+        archive_query = rf.Rf1086ArchiveQuery(f['source'].company_id,f['source'].income_year,store.actor_id)
+        archive = await rf.create_rf1086_preparation_service(store).archive_source(archive_query)
+        assert rf.assess_rf1086_source_dispatch(archive,query=archive_query,submission_id=rf.SubmissionId(result.submission_id)).disposition == 'confirmed'
+    asyncio.run(run())
+
+
 def test_rollback_blocks_new_intents_but_retains_outcome_recording(operation_fixture):
     f = operation_fixture
     intent = asyncio.run(prepare(f))
@@ -273,5 +460,6 @@ def test_replay_restores_exact_authority_and_only_backend_can_prepare(operation_
         assert db.execute(roles).fetchall() == before
         assert db.execute(schemas).fetchall() == before_schema
         for role in ('anon', 'authenticated', 'service_role'):
-            assert not db.execute("select has_function_privilege(%s,'shareholder_register_filing.prepare_source_operation_v1(uuid,text,text,text,uuid,uuid,text,text)','execute')", (role,)).fetchone()[0]
-        assert db.execute("select has_function_privilege('shareholder_register_filing_executor','shareholder_register_filing.prepare_source_operation_v1(uuid,text,text,text,uuid,uuid,text,text)','execute')").fetchone()[0]
+            assert not db.execute("select has_function_privilege(%s,'shareholder_register_filing.prepare_source_operation_v2(uuid,text,text,text,uuid,uuid,text,uuid,text,text)','execute')", (role,)).fetchone()[0]
+        assert db.execute("select has_function_privilege('shareholder_register_filing_executor','shareholder_register_filing.prepare_source_operation_v2(uuid,text,text,text,uuid,uuid,text,uuid,text,text)','execute')").fetchone()[0]
+        assert not db.execute("select has_function_privilege('shareholder_register_filing_executor','shareholder_register_filing.prepare_source_operation_v1(uuid,text,text,text,uuid,uuid,text,text)','execute')").fetchone()[0]

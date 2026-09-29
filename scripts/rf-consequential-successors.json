@@ -66,5 +66,9 @@
   {
     "migration": "20260929182856_rf1086_durable_source_operation_intent.sql",
     "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='prepare_source_operation_v1')"
+  },
+  {
+    "migration": "20260929192057_rf1086_dispatch_binding_identity.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='prepare_source_operation_v2')"
   }
 ]

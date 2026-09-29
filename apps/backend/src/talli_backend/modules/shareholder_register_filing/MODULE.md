@@ -1,7 +1,7 @@
 # Shareholder register filing
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions","shareholder_register_filing.year_source_heads","shareholder_register_filing.year_source_versions","shareholder_register_filing.register_observations","shareholder_register_filing.source_previews","shareholder_register_filing.source_review_bridges","shareholder_register_filing.source_approval_bindings","shareholder_register_filing.source_submission_bindings","shareholder_register_filing.submission_heads"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority","Rf1086YearSourcePersistence","Rf1086RegisterObservationPersistence"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
+{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions","shareholder_register_filing.year_source_heads","shareholder_register_filing.year_source_versions","shareholder_register_filing.register_observations","shareholder_register_filing.source_previews","shareholder_register_filing.source_review_bridges","shareholder_register_filing.source_approval_bindings","shareholder_register_filing.source_submission_bindings","shareholder_register_filing.submission_heads"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority","Rf1086RegisterObservationPersistence","Rf1086SourceOperationJournal","Rf1086YearSourcePersistence"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
 -->
 
 ## Owned behavior
@@ -935,3 +935,20 @@ Recording a completed request does not require the earlier MFA or entitlement
 to remain fresh. Rollback suspends preparation while preserving this outcome
 recording and historical recovery. No new tables or archive codecs are added.
 Application dispatch integration and provider interaction remain unexposed.
+
+
+`Rf1086SourceOperationJournal` binds each admitted intent and exact outcome.
+`execute_rf1086_source_dispatch` consumes its `newly_prepared` result explicitly;
+an old retryable failure never becomes a send grant. The application
+source-dispatch component of `shareholder-register-filing` verifies retained archive/claim
+identity, acquires and discards the provider binding outside database admission,
+commits current annual evidence for the main document, and preserves approved
+bytes during subsequent current-authority admissions. It performs no provider
+mutation while a database guard is held. A generic transport or persistence
+exception leaves an unknown outcome. No full-year HTTP route is composed yet.
+
+Migration `20260929192057_rf1086_dispatch_binding_identity.sql` binds the exact
+credential request/external identity to each intent under Authority/Billing locks.
+It closes the older prepare RPC; rollback also keeps that bypass closed while
+preserving in-flight completion. Tests cover simulated dispatch/crash behavior,
+exact replay, and database binding changes without actual provider credentials.

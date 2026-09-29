@@ -194,6 +194,8 @@ class PostgresShareholderRegisterFilingSession:
                 raise rf.ShareholderRegisterFilingError.invalid_input() from None
             if "production_filing_fresh_owner_step_up_required" in str(error):
                 raise Rf1086ProductionError("step_up_required") from None
+            if "rf1086_source_dispatch_binding_changed" in str(error):
+                raise Rf1086ProductionError("connection_unavailable") from None
             if any(code in str(error) for code in ("rf1086_source_review_changed", "rf1086_source_claim_head_changed",
                     "rf1086_source_claim_mismatch", "rf1086_managed_submission_head_required")):
                 raise Rf1086ProductionError("payload_changed") from None
@@ -1474,17 +1476,21 @@ class _SourceAdmission:
         return rf.serialize_rf1086_annual_readiness(annual, source, preview)
 
     async def prepare_source_operation(self, claim, *, operation_name, body_sha256,
-            idempotency_key, expected_event_id=None, annual=None):
+            idempotency_key, connection, expected_event_id=None, annual=None):
         self._require_active()
         if (not isinstance(claim, rf.Rf1086SourceSubmissionClaim)
                 or claim.company_id != self._query.company_id or claim.income_year != self._query.income_year
-                or claim.claimed_by != self.actor_id):
+                or claim.claimed_by != self.actor_id or not isinstance(connection, rf.Rf1086Connection)
+                or connection.company_id != str(claim.company_id)
+                or connection.initiating_owner_user_id != str(self.actor_id.subject)
+                or connection.obligation != 'aksjonaerregisteroppgaven'
+                or connection.status != 'accepted' or not connection.preflight_verified):
             raise rf.Rf1086ProductionError('basis_unavailable')
         annual_text = None if annual is None else await self._annual_proof_text(annual)
         row = await (await self._connection.execute(
-            'select shareholder_register_filing.prepare_source_operation_v1(%s::uuid,%s,%s,%s,%s::uuid,%s::uuid,%s,%s) as result',
+            'select shareholder_register_filing.prepare_source_operation_v2(%s::uuid,%s,%s,%s,%s::uuid,%s::uuid,%s,%s::uuid,%s,%s) as result',
             (claim.submission_id.value, claim.manifest_sha256, operation_name, body_sha256,
-             idempotency_key, expected_event_id, annual_text, str(self.actor_id.subject)),
+             idempotency_key, expected_event_id, annual_text, connection.id, connection.external_ref, str(self.actor_id.subject)),
         )).fetchone()
         value = row['result'] if row else None
         if (type(value) is not dict or set(value) != {'operation', 'newlyPrepared'}

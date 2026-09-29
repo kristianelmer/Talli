@@ -132,7 +132,8 @@
       "Rf1086ArchiveCaptureRecord",
       "Rf1086SourceDispatchAssessment",
       "assess_rf1086_source_dispatch",
-      "Rf1086SourceOperationPreparation"
+      "Rf1086SourceOperationPreparation",
+      "execute_rf1086_source_dispatch"
     ],
     "events": [],
     "errors": [
@@ -284,7 +285,7 @@
       "Rf1086SourceFacts",
       "Rf1086ArchiveSnapshot"
     ],
-    "migrations": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql; supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql; supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql; supabase/migrations/20260917110951_rf1086_action_required_read_recovery.sql; supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql; supabase/migrations/20260923091509_rf1086_immutable_year_source.sql; supabase/migrations/20260923102314_rf1086_register_observation_store.sql; supabase/migrations/20260923105912_rf1086_source_backed_preview.sql; supabase/migrations/20260924062746_rf1086_source_company_guard.sql; supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql; supabase/migrations/20260924085227_rf1086_source_review_bridge.sql; supabase/migrations/20260924091015_rf1086_source_approval_foundation.sql; supabase/migrations/20260924094631_rf1086_journal_company_guard.sql; supabase/migrations/20260928060732_rf1086_source_submission_claim.sql; supabase/migrations/20260929173935_rf1086_annual_approval_binding.sql; supabase/migrations/20260929182856_rf1086_durable_source_operation_intent.sql"
+    "migrations": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql; supabase/migrations/20260909190905_shareholder_register_filing_cutover.sql; supabase/contract-migrations/20260909190955_shareholder_register_filing_contract.sql; supabase/migrations/20260917110951_rf1086_action_required_read_recovery.sql; supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql; supabase/migrations/20260923091509_rf1086_immutable_year_source.sql; supabase/migrations/20260923102314_rf1086_register_observation_store.sql; supabase/migrations/20260923105912_rf1086_source_backed_preview.sql; supabase/migrations/20260924062746_rf1086_source_company_guard.sql; supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql; supabase/migrations/20260924085227_rf1086_source_review_bridge.sql; supabase/migrations/20260924091015_rf1086_source_approval_foundation.sql; supabase/migrations/20260924094631_rf1086_journal_company_guard.sql; supabase/migrations/20260928060732_rf1086_source_submission_claim.sql; supabase/migrations/20260929173935_rf1086_annual_approval_binding.sql; supabase/migrations/20260929182856_rf1086_durable_source_operation_intent.sql; supabase/migrations/20260929192057_rf1086_dispatch_binding_identity.sql"
   },
   "ports": [
     {
@@ -376,6 +377,15 @@
       "adapters": [
         "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession"
       ]
+    },
+    {
+      "name": "Rf1086SourceOperationJournal",
+      "direction": "outbound",
+      "contract": "talli_backend.modules.shareholder_register_filing.public.Rf1086SourceOperationJournal",
+      "registrationDecorator": "talli_backend.modules.shareholder_register_filing.public.rf1086_adapter",
+      "adapters": [
+        "talli_backend.application.shareholder_register_source_dispatch._AdmittedJournal"
+      ]
     }
   ],
   "dependencies": [],
@@ -463,7 +473,9 @@
     "annualApprovalEvidence": "apps/backend/tests/test_rf1086_annual_approval_evidence.py",
     "annualApprovalDatabase": "apps/backend/tests/test_rf1086_annual_approval_database.py",
     "sourceDispatch": "apps/backend/tests/test_rf1086_source_dispatch.py",
-    "durableSourceOperationDatabase": "apps/backend/tests/test_rf1086_durable_source_operation_database.py"
+    "durableSourceOperationDatabase": "apps/backend/tests/test_rf1086_durable_source_operation_database.py",
+    "durableSourceExecution": "apps/backend/tests/test_rf1086_source_dispatch_execution.py",
+    "sourceDispatchWorkflow": "apps/backend/tests/test_rf1086_source_dispatch_workflow.py"
   },
   "compatibilityExceptions": []
 }

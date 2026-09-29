@@ -666,14 +666,16 @@
       "supabase/rollback/20260929094835_annual_interview_company_guard.sql",
       "supabase/migrations/20260929144619_rf_annual_interview_read_admission.sql",
       "supabase/rollback/20260929144619_rf_annual_interview_read_admission.sql",
-    "supabase/migrations/20260929160247_rf_annual_ledger_read_admission.sql",
-    "supabase/rollback/20260929160247_rf_annual_ledger_read_admission.sql",
-    "supabase/migrations/20260929162030_rf_annual_document_read_admission.sql",
-    "supabase/rollback/20260929162030_rf_annual_document_read_admission.sql",
-    "supabase/migrations/20260929173935_rf1086_annual_approval_binding.sql",
-    "supabase/rollback/20260929173935_rf1086_annual_approval_binding.sql",
-    "supabase/migrations/20260929182856_rf1086_durable_source_operation_intent.sql",
-    "supabase/rollback/20260929182856_rf1086_durable_source_operation_intent.sql"
+      "supabase/migrations/20260929160247_rf_annual_ledger_read_admission.sql",
+      "supabase/rollback/20260929160247_rf_annual_ledger_read_admission.sql",
+      "supabase/migrations/20260929162030_rf_annual_document_read_admission.sql",
+      "supabase/rollback/20260929162030_rf_annual_document_read_admission.sql",
+      "supabase/migrations/20260929173935_rf1086_annual_approval_binding.sql",
+      "supabase/rollback/20260929173935_rf1086_annual_approval_binding.sql",
+      "supabase/migrations/20260929182856_rf1086_durable_source_operation_intent.sql",
+      "supabase/rollback/20260929182856_rf1086_durable_source_operation_intent.sql",
+      "supabase/migrations/20260929192057_rf1086_dispatch_binding_identity.sql",
+      "supabase/rollback/20260929192057_rf1086_dispatch_binding_identity.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },
@@ -1062,6 +1064,12 @@
       "adapter": "talli_backend.adapters.postgres_shareholder_register_filing.PostgresShareholderRegisterFilingSession",
       "owner": "backend-system",
       "mode": "verified RF owner, canonical full-year source preview, current-source lock at capture; historical source lineage preserved"
+    },
+    {
+      "port": "Rf1086SourceOperationJournal",
+      "adapter": "talli_backend.application.shareholder_register_source_dispatch._AdmittedJournal",
+      "owner": "backend-system",
+      "mode": "held company/year admission with current annual proof for main document, committed operation intents and exact outcomes outside provider I/O"
     }
   ],
   "allowedDependencies": {
