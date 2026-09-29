@@ -73,7 +73,9 @@ def approval_fixture(admitted,backend_url,remove_only_bridge_fixture):
             db.execute('delete from shareholder_register_filing.filing_approval_snapshots where company_id=%s',(admitted['company'],))
             db.execute("delete from shareholder_register_filing.filing_previews where company_id=%s and source<>'rf1086-full-year-v1'",(admitted['company'],))
             db.execute('delete from shareholder_register_filing.authority_permissions where company_id=%s',(admitted['company'],))
-            db.execute('delete from billing.production_pilot_entitlements where id=%s',(entitlement,))
+            deleted = db.execute('delete from billing.production_pilot_entitlements where id=%s and company_id=%s returning id',
+                                 (entitlement,admitted['company'])).fetchall()
+            assert deleted == [(entitlement,)], 'full-year approval fixture must remove its exact pilot entitlement'
             db.execute('delete from authority_connections.system_user_requests where id=%s',(request,))
             db.execute('delete from public.filing_readiness_snapshots where company_id=%s',(admitted['company'],))
             db.execute('delete from public.launch_signoffs where key=any(%s)',(list(SIGNOFFS),))

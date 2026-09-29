@@ -720,12 +720,22 @@ def test_committed_provider_intent_survives_lost_response_and_restart(failure_mo
         disable_backend_login()
 
 
-def test_full_year_pilot_preserves_profile_identity_idempotency_and_rollback(setup, pilot_case):
+def test_full_year_pilot_preserves_profile_identity_idempotency_and_rollback(setup, pilot_case, request):
     case = pilot_case
     historical = asyncio.run(case["management"].manage_pilot_entitlement(case["command"]))
     command = replace(case["command"], case_profile=BillingPilotCaseProfile.RF1086_FULL_YEAR_V1,
                       idempotency_key=IdempotencyKey(str(uuid4())))
     full_year = asyncio.run(case["management"].manage_pilot_entitlement(command))
+    # Later lifecycle rehearsals intentionally reject retained full-year pilots.
+    # Remove only this test's exact row, including when an assertion fails.
+    def remove_full_year_fixture():
+        with psycopg.connect(DATABASE_URL) as connection:
+            deleted = connection.execute(
+                "delete from billing.production_pilot_entitlements where id=%s and company_id=%s returning id",
+                (str(full_year.entitlement_id), str(command.company_id)),
+            ).fetchall()
+            assert [str(row[0]) for row in deleted] == [str(full_year.entitlement_id)]
+    request.addfinalizer(remove_full_year_fixture)
     assert full_year.case_profile is BillingPilotCaseProfile.RF1086_FULL_YEAR_V1
     assert historical.entitlement_id != full_year.entitlement_id
     assert asyncio.run(case["management"].manage_pilot_entitlement(command)) == full_year
