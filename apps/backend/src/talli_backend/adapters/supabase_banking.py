@@ -49,6 +49,7 @@ from talli_backend.modules.banking.public import (
     BankTransaction,
     BankTransactionId,
     BankTransactionPage,
+    BankYearReconciliation,
     BankSyncAttemptId,
     BankSyncCommand,
     BankSyncContext,
@@ -806,6 +807,33 @@ class _BankingOperations:
         if len(rows) != 1 or not isinstance(rows[0].get("items"), list):
             raise BankingError.unavailable()
         return rows[0]
+
+    async def read_year_reconciliation(
+        self, *, actor_id, company_id, income_year, correlation_id,
+    ) -> BankYearReconciliation:
+        _ = correlation_id
+        if actor_id != self.actor_id:
+            raise BankingError.forbidden()
+        rows = await self._banking_rows(
+            "select * from banking.read_year_reconciliation_v1(%s::uuid, %s::integer, %s::text)",
+            (str(company_id), int(income_year), str(self.actor_id.subject)),
+        )
+        try:
+            if len(rows) != 1:
+                raise ValueError("missing complete year projection")
+            row = rows[0]
+            if (str(row["company_id"]) != str(company_id)
+                    or type(row["income_year"]) is not int or row["income_year"] != int(income_year)):
+                raise ValueError("year projection scope mismatch")
+            return BankYearReconciliation(
+                company_id=company_id, income_year=income_year,
+                observed_at=_timestamp(row["observed_at"]),
+                transaction_count=row["transaction_count"],
+                unmatched_count=row["unmatched_count"],
+                accepted_warning_count=row["accepted_warning_count"],
+            )
+        except (KeyError, TypeError, ValueError):
+            raise BankingError.unavailable() from None
 
     async def list_transactions(
         self, *, actor_id, company_ids, correlation_id, cursor, limit

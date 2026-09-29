@@ -44,6 +44,7 @@
       "BankSyncResult",
       "BankTransaction",
       "BankTransactionPage",
+      "BankYearReconciliation",
       "BankingQueries",
       "PersistedBankFilePreview",
       "PreparedBankSuggestion"
@@ -105,7 +106,7 @@
     "projections": [
       "public.bank_transactions"
     ],
-    "migrations": "supabase/migrations/20260828100000_banking_capability.sql"
+    "migrations": "supabase/migrations/20260828100000_banking_capability.sql; supabase/migrations/20260929073756_banking_year_reconciliation_projection.sql"
   },
   "ports": [
     {

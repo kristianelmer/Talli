@@ -33,7 +33,16 @@ atomically, and no provider or file function writes ledger data.
 Import only `talli_backend.modules.banking.public`. `BankingCommands` exposes
 supported statement import and the prepare/complete halves of explicit
 suggestion acceptance. `BankingQueries` exposes deterministic cursor pages for
-transactions and accepted suggestions. `ImportBankStatementCommand` accepts
+transactions and accepted suggestions. `read_year_reconciliation` returns a
+`BankYearReconciliation` with complete counts for one company and year from one
+database snapshot, including unmatched facts and accepted warnings. It requires
+an accepted owner and fails closed for a forbidden company instead of returning
+an empty year. Counts cover canonical imported facts, not proof that all bank
+statements were imported. This observation does not authorize filing: writer
+guard coverage and final annual-readiness composition remain separate. The
+owned SQL API is `banking.read_year_reconciliation_v1`, introduced by
+`20260929073756_banking_year_reconciliation_projection.sql`; rollback removes
+only this read function. `ImportBankStatementCommand` accepts
 the immutable uploaded source; parsing, validation, and duplicate hashing remain
 private. `AcceptBankSuggestionCommand` binds the owner's visible preview to the
 expected `BankSuggestionKind` and rule version, while the capability revalidates

@@ -259,3 +259,26 @@ def test_guarded_claim_rejects_wrong_scope_or_result_shape(mutation):
     scope=_SourceAdmission(store,Connection(),rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id),c.h.identity)
     with pytest.raises(rf.Rf1086ProductionError):
         asyncio.run(scope.claim_source_submission(c.approval_id,c.manifest_sha256,None))
+
+
+@pytest.mark.parametrize('encoded', ['2026-09-29T08:01:14.04172+00:00',
+    '2026-09-29T08:01:14.041720Z', '2026-09-29T10:01:14.041720+02:00'])
+def test_claim_json_and_native_timestamps_keep_exact_same_identity(encoded):
+    from datetime import datetime
+    from talli_backend.adapters.postgres_shareholder_register_filing import _source_claim_record
+    from test_rf1086_source_claim import ClaimHarness
+    c=ClaimHarness(); wire=claim_wire(c,c.h.actor)
+    def decode(value):
+        return _source_claim_record(wire|{'claimed_at':value},c.approval_id,c.manifest_sha256,None,c.h.actor)
+    native=datetime.fromisoformat('2026-09-29T08:01:14.041720+00:00')
+    assert decode(encoded)==decode(native)
+    assert decode(encoded).claimed_at=='2026-09-29T08:01:14.041720+00:00'
+    assert decode('2026-09-29T08:01:14.041721+00:00')!=decode(native)
+
+
+def test_claim_timestamp_rejects_submicrosecond_precision_instead_of_truncating():
+    from talli_backend.adapters.postgres_shareholder_register_filing import _source_claim_record
+    from test_rf1086_source_claim import ClaimHarness
+    c=ClaimHarness();wire=claim_wire(c,c.h.actor)|{'claimed_at':'2026-09-29T08:01:14.0417201+00:00'}
+    with pytest.raises(rf.Rf1086ProductionError):
+        _source_claim_record(wire,c.approval_id,c.manifest_sha256,None,c.h.actor)

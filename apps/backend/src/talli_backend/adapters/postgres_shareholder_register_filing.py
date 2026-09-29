@@ -1457,11 +1457,22 @@ def _source_claim_record(row,approval_id,manifest_sha256,expected_head,actor_id)
         if (not isinstance(row,dict) or set(row)!=_SOURCE_CLAIM_FIELDS
                 or type(row['income_year']) is not int or str(row['claimed_by'])!=str(actor_id.subject)):
             raise ValueError()
+        claimed_at = row['claimed_at']
+        if isinstance(claimed_at,str):
+            # PostgreSQL JSON trims trailing fractional zeros; native row reads
+            # preserve six digits. Normalize only this typed timestamp, keeping
+            # every microsecond and refusing precision we cannot represent.
+            if re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})',claimed_at) is None:
+                raise ValueError()
+            claimed_at = datetime.fromisoformat(claimed_at)
+        if not isinstance(claimed_at,datetime):
+            raise ValueError()
+        claimed_at = Timestamp(claimed_at).value.isoformat()
         value = rf.Rf1086SourceSubmissionClaim(rf.SubmissionId(str(row['submission_id'])),
             rf.ApprovalId(str(row['approval_id'])),CompanyId(str(row['company_id'])),IncomeYear(row['income_year']),
             row['manifest_sha256'],row['payload_sha256'],
             None if row['predecessor_submission_id'] is None else rf.SubmissionId(str(row['predecessor_submission_id'])),
-            actor_id,_record_value(row['claimed_at']))
+            actor_id,claimed_at)
         rf.assert_rf1086_source_submission_claim(value,approval_id=approval_id,manifest_sha256=manifest_sha256,
             expected_head=expected_head,actor_id=actor_id)
         return value

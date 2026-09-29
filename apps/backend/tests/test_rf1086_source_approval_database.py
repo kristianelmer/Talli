@@ -1,5 +1,6 @@
 """Real restricted-role full-year approval and claims; provider dispatch stays closed."""
 import asyncio
+import base64
 from dataclasses import replace
 from datetime import timedelta
 import hashlib
@@ -28,7 +29,8 @@ def approval_fixture(admitted,backend_url,remove_only_bridge_fixture):
     claims['amr'][0]['timestamp']=int(claims['amr'][0]['timestamp'])
     store._verified=replace(store._verified,claims_json=json.dumps(claims))
     asyncio.run(bridge(store,preview))
-    request,entitlement=uuid4(),uuid4(); external='source-approval-'+str(request)
+    request,entitlement=uuid4(),uuid4()
+    external=base64.urlsafe_b64encode(hashlib.sha256(str(request).encode()).digest()).decode().rstrip('=')
     with psycopg.connect(DATABASE_URL) as db:
         now=db.execute("select clock_timestamp()-interval '1 second'").fetchone()[0]
         signoffs=db.execute('select to_jsonb(s) from public.launch_signoffs s where key=any(%s)',(list(SIGNOFFS),)).fetchall()
@@ -80,6 +82,11 @@ def approval_fixture(admitted,backend_url,remove_only_bridge_fixture):
 
 async def lock(db,f):
     await db.execute('select shareholder_register_filing.lock_year_source_v1(%s,%s)',(f['seed']['company'],2026))
+
+
+def bind_fixture_owner(db,f):
+    db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true)",
+               (str(f['store'].actor_id.subject),f['store']._verified.claims_json))
 
 
 async def context(db,f):
@@ -138,7 +145,10 @@ def test_context_requires_same_connection_company_and_year_guards(approval_fixtu
     f=approval_fixture
     async def run():
         async with f['store']._transaction(snapshot=guard=='repeatable-read') as db:
-            if guard=='company-only':await db.execute('select public.company_archive_lock_company_v1(%s)',(f['seed']['company'],))
+            if guard=='company-only':
+                # The private lock RPC is deliberately not granted to RF. Take
+                # only its advisory key to exercise the missing year guard.
+                await db.execute('select pg_advisory_xact_lock(hashtextextended(%s,157))',(str(f['seed']['company']),))
             if guard=='repeatable-read':
                 await db.execute('select pg_advisory_xact_lock(hashtextextended(%s,157)),pg_advisory_xact_lock(hashtextextended(%s,0))',
                     (str(f['seed']['company']),f"rf1086:year-source:{f['seed']['company']}:2026"))
@@ -373,6 +383,7 @@ def history_submission(f, *, actor=None):
     preview,approval,submission=[uuid4() for _ in range(3)]
     owner=f['seed']['owner']; company=f['seed']['company']
     with psycopg.connect(DATABASE_URL) as db:
+        bind_fixture_owner(db,f)
         insert(db,'shareholder_register_filing.filing_previews',dict(id=preview,company_id=company,income_year=2026,
             filing='aksjonaerregisteroppgaven',status='ready',preview='History fixture',created_by=owner))
         insert(db,'shareholder_register_filing.filing_approval_snapshots',dict(id=approval,entitlement_id=f['entitlement'],preview_id=preview,
@@ -458,6 +469,13 @@ async def claim_source(db,f,approval,*,expected_head=None,sha=None,subject=None)
         (approval['id'],sha or approval['manifest_hash'],expected_head,subject or str(f['store'].actor_id.subject)))).fetchone())['result']
 
 
+def invalidate_fixture_approval(db,f,approval_id):
+    # The full-year trigger reads its binding under FORCE RLS. Use the actual
+    # fixture owner context rather than treating the disposable admin as owner.
+    bind_fixture_owner(db,f)
+    db.execute("update shareholder_register_filing.filing_approval_snapshots set invalidated_at=clock_timestamp(),invalidation_reason='later review' where id=%s",(approval_id,))
+
+
 def test_source_claim_retains_exact_identity_after_invalidation_and_expiry(claim_fixture):
     f=claim_fixture
     async def create():
@@ -470,7 +488,7 @@ def test_source_claim_retains_exact_identity_after_invalidation_and_expiry(claim
             return approval,first
     approval,first=asyncio.run(create())
     with psycopg.connect(DATABASE_URL) as db:
-        db.execute("update shareholder_register_filing.filing_approval_snapshots set invalidated_at=clock_timestamp(),invalidation_reason='later review' where id=%s",(approval['id'],))
+        invalidate_fixture_approval(db,f,approval['id'])
         db.execute("update billing.production_pilot_entitlements set expires_at=clock_timestamp()-interval '1 second' where id=%s",(f['entitlement'],))
     async def replay():
         # No company/year admission or fresh pilot validation for exact recovery.
@@ -495,8 +513,11 @@ def test_invalid_source_claim_cannot_leave_a_head_or_submission(claim_fixture,in
             if invalid!='guards':await lock(db,f)
             await claim_source(db,f,approval,expected_head=uuid4() if invalid=='head' else None,
                 sha='f'*64 if invalid=='manifest' else None,subject=str(uuid4()) if invalid=='subject' else None)
-    with pytest.raises(Exception,match='source_claim|source_approval_guard_required|rf1086_forbidden|basis_unavailable'):
+    error_type,code = ((rf.ShareholderRegisterFilingError,'SHAREHOLDER_REGISTER_FILING_FORBIDDEN') if invalid=='subject'
+                      else (rf.Rf1086ProductionError,'basis_unavailable' if invalid=='guards' else 'payload_changed'))
+    with pytest.raises(error_type) as rejected:
         asyncio.run(denied())
+    assert rejected.value.code==code
     with psycopg.connect(DATABASE_URL) as db:
         for table in ['source_submission_bindings','submission_heads','production_filing_submissions']:
             assert db.execute(f'select count(*) from shareholder_register_filing.{table} where company_id=%s',(f['seed']['company'],)).fetchone()[0]==0
@@ -510,7 +531,7 @@ def test_later_approval_cannot_claim_a_second_initial_filing(claim_fixture):
             return approval,await claim_source(db,f,approval)
     approval,first=asyncio.run(first_claim())
     with psycopg.connect(DATABASE_URL) as db:
-        db.execute("update shareholder_register_filing.filing_approval_snapshots set invalidated_at=clock_timestamp(),invalidation_reason='later review' where id=%s",(approval['id'],))
+        invalidate_fixture_approval(db,f,approval['id'])
     async def later():
         async with f['store']._transaction() as db:
             await lock(db,f);return await append(db,f,await context(db,f))
@@ -518,7 +539,8 @@ def test_later_approval_cannot_claim_a_second_initial_filing(claim_fixture):
     async def denied():
         async with f['store']._transaction() as db:
             await lock(db,f);await claim_source(db,f,second)
-    with pytest.raises(Exception,match='source_claim_head_changed|basis_unavailable'):asyncio.run(denied())
+    with pytest.raises(rf.Rf1086ProductionError) as rejected:asyncio.run(denied())
+    assert rejected.value.code=='payload_changed'
     with psycopg.connect(DATABASE_URL) as db:
         assert db.execute('select count(*) from shareholder_register_filing.production_filing_submissions where company_id=%s',(f['seed']['company'],)).fetchone()[0]==1
         assert str(db.execute('select submission_id from shareholder_register_filing.submission_heads where company_id=%s',(f['seed']['company'],)).fetchone()[0])==first['claim']['submission_id']
@@ -600,7 +622,8 @@ def test_claim_rollback_retains_recovery_and_recutover_identity(claim_fixture):
                 assert str(retained['submission_id'])==first['claim']['submission_id']
             async with f['store']._transaction() as db:
                 await claim_source(db,f,approval)
-        with pytest.raises(Exception,match='permission denied|basis_unavailable'):asyncio.run(read_and_denied())
+        with pytest.raises(rf.ShareholderRegisterFilingError) as rejected:asyncio.run(read_and_denied())
+        assert rejected.value.code=='SHAREHOLDER_REGISTER_FILING_FORBIDDEN'
     finally:
         with psycopg.connect(DATABASE_URL) as db:
             db.execute((ROOT/'supabase/migrations'/CLAIM_MIGRATION).read_text())
@@ -721,7 +744,7 @@ def test_confirmed_source_claim_reconstructs_read_only_payload_after_live_approv
         return approval, submission_id, payload, result
     approval, submission_id, payload, result = asyncio.run(create())
     with psycopg.connect(DATABASE_URL) as db:
-        db.execute("update shareholder_register_filing.filing_approval_snapshots set invalidated_at=clock_timestamp(),invalidation_reason='later review' where id=%s", (approval['id'],))
+        invalidate_fixture_approval(db,f,approval['id'])
         db.execute("update billing.production_pilot_entitlements set expires_at=clock_timestamp()-interval '1 second' where id=%s", (f['entitlement'],))
     async def recover():
         lease = str(uuid4())

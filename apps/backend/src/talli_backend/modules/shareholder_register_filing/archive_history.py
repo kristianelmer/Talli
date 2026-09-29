@@ -117,8 +117,11 @@ def validate(archive):
                  == (str(archive.company_id), int(archive.income_year), preview.source_id.value,
                      preview.source_sha256, record.payload_sha256))
         UUID(bridge.created_by)
+        # The review projection uses its transaction timestamp; the subsequent
+        # bridge insert uses clock_timestamp(). They are distinct retained
+        # facts, not two encodings of one instant. Do not rewrite either one.
         _require(_instant(bridge.created_at) >= _instant(record.created_at)
-                 and _instant(bridge.created_at) == _instant(projection.created_at))
+                 and _instant(bridge.created_at) >= _instant(projection.created_at))
         xml = {'source_' + sha256(('rf1086-source-shareholder-v1:' + key).encode('utf-8')).hexdigest(): value
                for key, value in (preview.underskjema_xml or {}).items()}
         _require(projection.source == 'rf1086-full-year-v1' and projection.setup_id is None

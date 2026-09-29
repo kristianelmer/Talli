@@ -779,6 +779,30 @@ class BankTransactionPage:
 
 
 @dataclass(frozen=True, slots=True)
+class BankYearReconciliation:
+    """Complete canonical year counts at one database snapshot.
+
+    This observes imported facts; it proves neither bank-statement coverage nor
+    filing readiness. A consequential workflow must protect and reread inputs.
+    Accepted warnings can overlap matched transactions, but never unmatched ones.
+    """
+
+    company_id: CompanyId
+    income_year: IncomeYear
+    observed_at: Timestamp
+    transaction_count: int
+    unmatched_count: int
+    accepted_warning_count: int
+
+    def __post_init__(self) -> None:
+        counts = (self.transaction_count, self.unmatched_count, self.accepted_warning_count)
+        if any(type(count) is not int or count < 0 for count in counts):
+            raise ValueError("bank reconciliation counts must be nonnegative integers")
+        if self.unmatched_count + self.accepted_warning_count > self.transaction_count:
+            raise ValueError("bank reconciliation counts exceed the year total")
+
+
+@dataclass(frozen=True, slots=True)
 class BankSuggestionAcceptancePage:
     items: tuple[AcceptedBankSuggestion, ...]
     page: BankingPage
@@ -843,6 +867,11 @@ class BankingError(DomainError):
 
 
 class BankingPersistence(Protocol):
+    async def read_year_reconciliation(
+        self, *, actor_id: ActorId, company_id: CompanyId,
+        income_year: IncomeYear, correlation_id: CorrelationId,
+    ) -> BankYearReconciliation: ...
+
     async def import_transactions(
         self,
         command: ImportBankStatementCommand,
@@ -1080,6 +1109,11 @@ class BankingCommands(Protocol):
 
 
 class BankingQueries(Protocol):
+    async def read_year_reconciliation(
+        self, *, actor_id: ActorId, company_id: CompanyId,
+        income_year: IncomeYear, correlation_id: CorrelationId,
+    ) -> BankYearReconciliation: ...
+
     async def list_transactions(
         self,
         *,
@@ -1102,6 +1136,7 @@ class BankingQueries(Protocol):
 
 
 __all__ = [
+    "BankYearReconciliation",
     "AcceptBankFileCommand",
     "AcceptBankSuggestionCommand",
     "AcceptedBankSuggestion",

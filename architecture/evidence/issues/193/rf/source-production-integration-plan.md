@@ -380,3 +380,35 @@ populated new binding/head families and bound feedback before teardown. The
 local orchestration tests verify restoration even when the predecessor test
 raises; actual full-schema restoration remains pending CI. See
 `full-year-facts-rehearsal-20260929.json` for the bounded validation checkpoint.
+
+
+## Banking year observation and archive chronology
+
+Banking now exposes an owner-authorized, unpaginated year reconciliation
+projection. One statement counts canonical facts, unmatched facts and accepted
+warnings, explicitly distinguishing an empty year from forbidden access. This
+is a read input for future annual readiness, not a filing decision or proof that
+all bank statements were imported. Banking writer guard coverage, current
+opening/annual interview checks and consequential RF composition remain open.
+
+Actual PostgreSQL execution exposed a full-year archive validator bug: review
+projections retain transaction timestamps, while their subsequent bridge rows
+retain wall-clock timestamps. Validation now preserves both originals and checks
+ordering instead of requiring equality. Retained review binding/hash checks are
+unchanged. The legacy year-scoped archive case also passes locally.
+
+Run 36536926077 at 5e3a03a5 failed because the Documents predecessor rehearsal
+left the newer historical assertion installed before schema rollback, and an
+Application assertion expected an older Documents migration inventory. Both
+are corrected. The rehearsal restores the assertion only if originally present
+and checks runtime/browser grants. Full-year approval database fixtures now use
+valid Authority reference encoding, real owner context for RLS-backed triggers,
+and exact public error outcomes. See `bank-year-archive-repair-20260929.json`.
+Final-revision CI and all seven RF acceptance criteria remain pending.
+
+Claim timestamps now decode consistently from PostgreSQL JSON (which trims
+fractional zeros) and native row values, retaining every microsecond. Finer
+precision is rejected rather than truncated. A complete local 101-case
+approval/claim/original run passes. One earlier source capture returned
+`rf1086_source_storage_invalid` without a diagnosed cause; retain that lead if
+it recurs. The local Auth shim does not replace the full Supabase CI lane.

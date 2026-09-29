@@ -52,6 +52,8 @@ test(
       governanceGuardForward,
       historicalForward,
       historicalRollback,
+      historicalAssertionForward,
+      historicalAssertionRollback,
     ] = await Promise.all([
       readFile(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/rollback/${migrationName}`, import.meta.url), "utf8"),
@@ -67,6 +69,8 @@ test(
       readFile(new URL("../supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/migrations/20260928083000_documents_historical_original_recovery.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/rollback/20260928083000_documents_historical_original_recovery.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260928124000_documents_historical_original_assertion.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260928124000_documents_historical_original_assertion.sql", import.meta.url), "utf8"),
     ]);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
@@ -74,13 +78,15 @@ test(
       const initial = await state(client);
       const { rows: [guards] } = await client.query(`select
         to_regprocedure('documents.lock_company_write_v1(uuid,text)') is not null as documents,
-        to_regprocedure('ledger.acquire_company_write_guard_v1(uuid,text)') is not null as governance`);
+        to_regprocedure('ledger.acquire_company_write_guard_v1(uuid,text)') is not null as governance,
+        to_regprocedure('documents.assert_historical_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)') is not null as historical_assertion`);
       assert.equal(initial.table_owner, "documents_store_owner");
       assert.equal(initial.capability_schema, true);
 
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
         // The originals rollback is empty-only and sees all rows under FORCE RLS.
         // Never use CASCADE or a test cleanup to discard retained customer bytes.
+        if (guards.historical_assertion) await client.query(historicalAssertionRollback);
         await client.query(historicalRollback);
         await client.query(originalsRollback);
         await client.query(governanceRollback);
@@ -122,6 +128,7 @@ test(
         await client.query(historicalForward);
         if (guards.documents) await client.query(documentsOnlyCompanyGuards(documentsGuardForward));
         if (guards.governance) await client.query(governanceOnlyCompanyGuards(governanceGuardForward));
+        if (guards.historical_assertion) await client.query(historicalAssertionForward);
         const successor = await state(client);
         assert.deepEqual(
           {
@@ -172,6 +179,19 @@ test(
           from pg_catalog.pg_class where oid='documents.retained_originals'::regclass`);
         assert.deepEqual(originalState.rows[0], {
           rls: true, force_rls: true, filing_reads_bytes: false, filing_asserts: true, owner_reads: true, owner_recovers: true, filing_recovers: false,
+        });
+        const assertionState = await client.query(`select
+          to_regprocedure('documents.assert_historical_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)') is not null as installed,
+          has_function_privilege('shareholder_register_filing_executor',
+            to_regprocedure('documents.assert_historical_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)'),
+            'EXECUTE') as filing_asserts,
+          has_function_privilege('authenticated',
+            to_regprocedure('documents.assert_historical_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)'),
+            'EXECUTE') as browser_asserts`);
+        assert.deepEqual(assertionState.rows[0], {
+          installed: guards.historical_assertion,
+          filing_asserts: guards.historical_assertion ? true : null,
+          browser_asserts: guards.historical_assertion ? false : null,
         });
       }
     } finally {

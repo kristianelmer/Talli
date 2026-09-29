@@ -143,6 +143,25 @@ def test_existing_v1_fixture_remains_byte_exact_and_does_not_claim_complete_hist
     assert rf.serialize_rf1086_archive(parsed, query=query(archive)) == canonical
 
 
+@pytest.mark.parametrize('offset', [-1000000, -1, 0])
+def test_projection_transaction_time_can_precede_bridge_wall_clock_without_rewriting_either(offset):
+    archive, _ = history_archive()
+    projection = replace(archive.previews[0], created_at=(NOW+timedelta(microseconds=offset)).isoformat())
+    archive = replace(archive, previews=(projection,))
+    assert read(archive) is archive
+    _, decoded = round_trip(archive)
+    assert decoded.previews[0].created_at == projection.created_at
+    assert decoded.source_history.review_bridges == archive.source_history.review_bridges
+
+
+def test_bridge_cannot_precede_its_projection():
+    archive, _ = history_archive()
+    projection = archive.previews[0]
+    projection = replace(projection, created_at=(NOW+timedelta(microseconds=1)).isoformat())
+    with pytest.raises(rf.Rf1086ArchiveError):
+        round_trip(replace(archive, previews=(projection,)))
+
+
 @pytest.mark.parametrize('change', ['missing-source', 'duplicate-source', 'stale-head', 'missing-head',
     'wrong-scope', 'missing-observation-parent', 'duplicate-observation', 'missing-preview', 'preview-hash',
     'preview-time', 'missing-bridge', 'bridge-hash', 'extra-projection',
