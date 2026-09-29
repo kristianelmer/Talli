@@ -450,3 +450,26 @@ verification confirms the historical expansion removes exactly two wrappers
 and successor replay restores all 22. Full ordered Tax prepare awaits CI: the
 bounded local fixture already removed a Governance table required by its
 Investments predecessor. No Tax behavior or scope was expanded.
+
+## Annual interview guard and CI fixture repair
+
+Existing `public.annual_data` INSERT/UPDATE/DELETE now acquire the company guard
+through a private infrastructure trigger, including both scopes on reassignment.
+The frozen history reader still returns years up to the requested year. RF must
+select and validate its exact year. Writer rules, RLS, values and ownership remain
+unchanged; this adds no Annual Compliance coordinator or checkout authority.
+Rollback suspends writes without losing facts; replay restores them with exact
+role and schema authority. Seven PostgreSQL cases also pass under a non-superuser
+starting without SET access to the guard owner.
+
+CI run 36548714542 passed Application but its Database job reached the 30-minute
+limit. The stack showed a preview test synchronously revoking ownership in a
+second transaction while holding the same company guard. Revocation now commits
+on the guard-holding transaction; the waiting preview must return FORBIDDEN.
+The next bridge test now binds both verified actor fields and positively checks
+source visibility before asserting the legacy-production rejection. Its former
+incomplete fixture hit a foreign-key failure instead of the intended barrier.
+A fresh broader PostgreSQL run passes all 405 RF cases; 70 CI harness tests and
+the architecture checker also pass. See
+`annual-interview-guard-and-ci-repair-20260929.json` for current verification.
+Full Supabase CI and owned annual-readiness composition remain open.

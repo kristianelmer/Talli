@@ -171,16 +171,23 @@ def test_queued_preview_observes_source_correction_committed_under_same_lock(adm
     assert generate(s,corrected).source_id==corrected.source_id
 
 
-def test_owner_revocation_while_preview_waits_on_source_lock_fails_closed(admitted,backend_url):
+def test_owner_revocation_while_preview_waits_on_company_lock_fails_closed(admitted,backend_url):
     s=session(admitted,backend_url);c,ctx=inputs(admitted,s);source=capture(s,c,ctx)
     async def run():
-        async with s._transaction() as blocker:
-            await blocker.execute('select shareholder_register_filing.lock_year_source_v1(%s::uuid,%s)',(str(source.company_id),int(source.income_year)))
+        with psycopg.connect(DATABASE_URL) as blocker:
+            blocker.execute("set local lock_timeout='3s'")
+            blocker.execute('select public.company_archive_lock_company_v1(%s)',(admitted['company'],))
             task=asyncio.create_task(rf.create_rf1086_preparation_service(session(admitted,backend_url)).generate_source_preview(
                 rf.GenerateRf1086SourcePreview(source.company_id,source.income_year,source)))
-            await wait_for_source_lock()
-            with psycopg.connect(DATABASE_URL) as db:db.execute("update public.company_memberships set role='read_only' where company_id=%s",(admitted['company'],))
-        with pytest.raises(rf.ShareholderRegisterFilingError):await task
+            try:
+                await wait_for_source_lock()
+                # Membership writes share the company guard. Commit revocation
+                # on its holder; a second synchronous connection would deadlock.
+                blocker.execute("update public.company_memberships set role='read_only' where company_id=%s",(admitted['company'],))
+            except BaseException:
+                task.cancel();await asyncio.gather(task,return_exceptions=True);raise
+        with pytest.raises(rf.ShareholderRegisterFilingError) as caught:await asyncio.wait_for(task,5)
+        assert caught.value.code == rf.ShareholderRegisterFilingErrorCode.FORBIDDEN
     asyncio.run(run())
 
 

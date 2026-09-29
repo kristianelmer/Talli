@@ -125,7 +125,10 @@ def test_legacy_production_cannot_insert_approval_for_source_preview(admitted,ba
     store,_,_,_,preview=prepare(admitted,backend_url);asyncio.run(bridge(store,preview))
     with psycopg.connect(DATABASE_URL) as db:
         db.execute('set local role shareholder_register_filing_store_owner')
-        db.execute("select set_config('talli.verified_actor_id',%s,true)",(str(store.actor_id.subject),))
+        db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true)",
+                   (str(store.actor_id.subject),store._verified.claims_json))
+        assert db.execute('select id from shareholder_register_filing.source_previews where id=%s',
+                          (preview.preview_id.value,)).fetchone() is not None
         with pytest.raises(psycopg.Error,match='rf1086_source_production_admission_required'):
             db.execute("""insert into shareholder_register_filing.filing_approval_snapshots
                 (entitlement_id,preview_id,company_id,user_id,income_year,obligation,case_profile,

@@ -820,3 +820,15 @@ versions and source years remain independent of mutable document projections.
 <!-- architecture-inventory
 {"transportDependencies":["talli_backend.application.shareholder_register_archive"]}
 -->
+
+Existing annual interview writes participate in the shared company guard through
+`backend_system.guard_annual_interview_write_v1`, owned by the existing archive
+projection infrastructure role. INSERT, UPDATE and DELETE protect both old and
+new company scopes. The frozen annual-data reader, writer authority, validation,
+values and ownership remain unchanged. Rollback suspends writes while retaining
+facts; replay resumes the existing writer. This is a row backstop, not proof of
+company-first ordering for raw browser writes or complete RF annual readiness.
+
+<!-- architecture-inventory
+{"technicalMigrations":["supabase/migrations/20260929094835_annual_interview_company_guard.sql","supabase/rollback/20260929094835_annual_interview_company_guard.sql"]}
+-->
