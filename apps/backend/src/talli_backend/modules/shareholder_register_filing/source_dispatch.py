@@ -100,6 +100,9 @@ def assess(archive, *, query, submission_id):
             disposition = 'recovery_required'
         elif operation is not None and (operation.failure_class == 'blocked' or operation.attempt >= 20):
             disposition = 'blocked'
+        elif submission.status == 'unknown':
+            # An unexplained unknown projection is not evidence of an unsent request.
+            disposition = 'recovery_required'
         elif (approval.manifest['schemaVersion'] != 'production-source-approval-v2'
                 or approval.invalidated_at is not None):
             disposition = 'current_approval_required'

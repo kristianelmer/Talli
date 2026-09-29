@@ -14,6 +14,7 @@ from test_rf1086_year_source_database import (
     DATABASE_URL, ROOT, session, inputs, capture, remove_only_owned_source_fixture,
 )
 from test_rf1086_source_preview_database import generate, remove_only_preview_fixture
+from test_authority_connections_database_runtime import rf193_consequential_topology
 
 pytestmark=pytest.mark.authority_database
 MIGRATION='20260924085227_rf1086_source_review_bridge.sql'
@@ -144,6 +145,7 @@ def test_safe_rollback_retains_review_and_production_barriers_then_exact_recutov
     before=asyncio.run(records(store,preview))
     with psycopg.connect(DATABASE_URL) as db:
         roles=db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()
+        successors = [name for name in rf193_consequential_topology(db) if name > MIGRATION]
         db.execute((ROOT/'supabase/rollback'/MIGRATION).read_text())
         assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()==roles
     try:
@@ -152,8 +154,8 @@ def test_safe_rollback_retains_review_and_production_barriers_then_exact_recutov
     finally:
         with psycopg.connect(DATABASE_URL) as db:
             db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
-            if db.execute("select to_regprocedure('shareholder_register_filing.append_source_approval_v1(uuid,uuid,text,text,text,text)')").fetchone()[0]:
-                db.execute((ROOT/'supabase/migrations/20260924091015_rf1086_source_approval_foundation.sql').read_text())
+            for migration in successors:
+                db.execute((ROOT/'supabase/migrations'/migration).read_text())
     assert asyncio.run(bridge(store,preview)) and asyncio.run(records(store,preview))==before
     with psycopg.connect(DATABASE_URL) as db:
         for role in ('anon','authenticated','service_role'):

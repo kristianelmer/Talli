@@ -156,6 +156,12 @@ def test_existing_v1_claim_does_not_make_unstarted_submission_sendable():
     assert assess(source_submission_archive(status='approved')).disposition == 'current_approval_required'
 
 
+def test_unknown_projection_without_journal_is_not_proof_of_an_unsent_request():
+    archive = annual_submission()
+    archive = replace(archive, production_submissions=(replace(archive.production_submissions[0], status='unknown'),))
+    assert assess(archive).disposition == 'recovery_required'
+
+
 def test_invalidated_v2_approval_does_not_make_unstarted_submission_sendable():
     archive = annual_submission()
     archive = replace(archive, approvals=(replace(archive.approvals[0],

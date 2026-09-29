@@ -838,7 +838,9 @@ company-first ordering for raw browser writes or complete RF annual readiness.
     "supabase/migrations/20260929162030_rf_annual_document_read_admission.sql",
     "supabase/rollback/20260929162030_rf_annual_document_read_admission.sql",
     "supabase/migrations/20260929173935_rf1086_annual_approval_binding.sql",
-    "supabase/rollback/20260929173935_rf1086_annual_approval_binding.sql"]}
+    "supabase/rollback/20260929173935_rf1086_annual_approval_binding.sql",
+    "supabase/migrations/20260929182856_rf1086_durable_source_operation_intent.sql",
+    "supabase/rollback/20260929182856_rf1086_durable_source_operation_intent.sql"]}
 -->
 
 RF annual admission consumes Ledger's existing opening-bank and period-lock

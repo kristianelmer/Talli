@@ -580,10 +580,26 @@ success. Synthetic coverage includes all seven supported source profiles,
 crash/unknown at each mutation, retry exhaustion, malformed lineage and correction
 ancestry. This closes a recovery-validation gap, not provider dispatch admission.
 
-Next implement the versioned durable initial/retry intent command plus its thin
-application integration. The generic journal's in-memory retry increment cannot
-serve as the full-year concurrent retry admission. A recovered claim with an empty
-journal must re-enter current source/annual/authorization admission; an existing
-prepared or unknown intent must never grant a second POST. Preserve exact keys and
-original bytes, close generic full-year mutation bypasses, then cover concurrent
-claims/retries and crash windows with real PostgreSQL and a synthetic authority.
+## Durable operation admission — 29 September
+
+The versioned initial/retry intent command now commits one prepared event before
+provider I/O. It serializes concurrent callers under company, year and submission
+locks, requires the exact failed event before retry, and preserves the original
+key and payload. Only `newlyPrepared=true` grants a new operation. Prepared,
+unknown, blocked, exhausted and already-successful operations cannot grant another
+POST. An unexplained unknown submission projection also requires recovery.
+
+Initial main-document admission rechecks the retained V2 annual proof and current
+review. Subsequent documents retain the original approved bytes while rechecking
+current owner/MFA, Authority, Billing, overrides and technical release gates.
+Each document requires persisted predecessor success. The outcome command binds
+the exact intent, accepts identical replay and rejects conflicting or stale
+outcomes. Rollback closes new intent admission but preserves in-flight outcome
+recording. Generic full-year mutation journal commands cannot bypass this path.
+
+Thin application dispatch integration remains next. It must rebuild current annual
+facts under admission before the initial intent, commit before external I/O,
+consume `newlyPrepared` explicitly, and discard its provider binding afterward.
+An existing claim alone never grants send authority. Cover this integration's crash
+windows and authority changes with a synthetic provider before exposing any route.
+All seven RF acceptance criteria remain pending.

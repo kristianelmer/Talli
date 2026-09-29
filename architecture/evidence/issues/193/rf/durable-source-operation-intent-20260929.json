@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_DURABLE_SOURCE_OPERATION_PERSISTENCE",
+  "baseRevision": "93a21395926a9f1f710870c9fb59a8c5b18e6826",
+  "changes": [
+    "Backend-only initial/retry intent commits before provider I/O; only newlyPrepared=true grants a new operation.",
+    "Company/year/submission serialization permits exactly one competing initial or retry intent; retries require the exact failed event and retain the original idempotency key.",
+    "Approved document hashes/order and persisted predecessor successes bind all mutations. Main admission binds current V2 annual proof; continuation retains original bytes and checks current authorization/release.",
+    "Exact intent outcome completion supports identical replay and rejects stale/conflicting outcomes. Rollback keeps outcome recording while closing new intents.",
+    "Prepared, unknown, blocked, exhausted, completed and unexplained unknown projection states never grant another provider mutation.",
+    "Generic full-year mutation bypasses are closed, including whitespace variants; legacy no-activity and read-only journal paths remain available.",
+    "JSON intent timestamps normalize to native-row identity. Historical rollback fixtures restore all installed successors; original dispatch architecture evidence is corrected."
+  ],
+  "verification": {
+    "broadBeforeFinalEdgeFixes": {
+      "rfDatabaseCases": 494,
+      "focusedUnitApiCases": 565,
+      "ciHarnessCases": 81
+    },
+    "finalAffectedSequence": {
+      "cases": 100,
+      "coverage": [
+        "review bridge rollback",
+        "journal guard rollback and replay",
+        "25 durable-operation database cases",
+        "historical V1 confirmed recovery",
+        "adapter identity and timestamp normalization"
+      ]
+    },
+    "finalAuthorityCases": {
+      "cases": 10,
+      "coverage": "Initial and continuation intents reject revoked ownership, stale MFA, expired pilot, missing Authority preflight and pending technical release."
+    },
+    "restrictedMigrator": "Two rollback/replays passed for non-superuser/non-bypass migrator without initial RF owner SET or schema USAGE; exact grantors/options/schema ACLs restored and probe role removed.",
+    "architecture": "PASS, independently executed with exit 0.",
+    "previousRevisionCi": {
+      "revision": "93a21395926a9f1f710870c9fb59a8c5b18e6826",
+      "run": "https://github.com/kristianelmer/Talli/actions/runs/36613574328",
+      "databaseIsolation": "PASS",
+      "application": "Failed missing MODULE.md declaration, fixed in this checkpoint.",
+      "immutableEvidence": "SKIPPED"
+    }
+  },
+  "diagnoses": [
+    "A prior journal rollback test left the historical no-full-year-claims trigger installed; cleanup now restores installed successors in canonical order.",
+    "One rerun timed out after the local VM exhausted memory with 42 auto-restarted dormant containers. These were temporarily stopped; the affected sequence then ran successfully.",
+    "Final sequence exposed trimmed fractional timestamp zeroes in PostgreSQL JSON; normalization and three deterministic timezone/precision regression cases fix identity mismatch."
+  ],
+  "limits": [
+    "No application full-year dispatch route or provider call enabled. Thin dispatch integration and synthetic authority crash/race verification remain required.",
+    "No actual database/object restore or immutable acceptance-gate claim.",
+    "Local PostgreSQL uses minimal Auth/Storage shims; final Supabase CI remains required.",
+    "All seven RF acceptance criteria remain pending; no real AS source or authority bundle available."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-durable-intent-20260929-14d7",
+  "sha256": {
+    "database-rf-final.log": "7b0eb9d67b57ed506db8b333e14aace7a804963fbcbed9109db58b760597e47f",
+    "unit-verified.log": "21a02d43613d755512c3f1182f5bdf55a6872774baf919a07bcd9d19f5cbd233",
+    "ci-harness.log": "a769b48c8aa82fe64790679ee37cb426480ee3dd39b3be7ced12580fa335ab3f",
+    "database-sequence-checkpoint.log": "b9f5cebf34d83e14cd6ec0b8ed10da81f0d989875ab5ddfde19a4a2a5db211c5",
+    "database-authority-final.log": "9492cc0a05dcd0f877bf7fcc191bd9523cf4d102f2756d0382a2737ffcccc2ae",
+    "migration-authority-final.log": "b861fd894cfdc6f0a36e86f83d36cb2a159e806dae0382bb9ed19524861fc5c3",
+    "architecture-final-checkpoint.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "ci-93a21395-database-passed.log": "b5a0fb5114d844a2750f74ea9d1f192ea10b8f755cdaa1581865778bdc852459"
+  }
+}

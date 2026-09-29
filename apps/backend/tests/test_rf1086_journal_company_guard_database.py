@@ -12,6 +12,7 @@ from test_rf1086_database_runtime import (
 )
 from test_rf1086_source_company_guard_database import waiting
 from test_rf1086_year_source_database import ROOT
+from test_authority_connections_database_runtime import rf193_consequential_topology
 
 pytestmark = pytest.mark.authority_database
 MIGRATION = '20260924094631_rf1086_journal_company_guard.sql'
@@ -128,6 +129,7 @@ def test_mixed_successor_replay_and_rollback_preserve_journal_identity_acl_and_r
     submission, _ = confirmed(fixture)
     with psycopg.connect(DATABASE_URL) as db:
         original = identities(db)
+        successors = [name for name in rf193_consequential_topology(db) if name > MIGRATION]
         membership = db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall()
     try:
         with psycopg.connect(DATABASE_URL) as db:
@@ -145,7 +147,7 @@ def test_mixed_successor_replay_and_rollback_preserve_journal_identity_acl_and_r
         for migration in ('20260924085227_rf1086_source_review_bridge.sql', '20260924091015_rf1086_source_approval_foundation.sql', '20260917110951_rf1086_action_required_read_recovery.sql', MIGRATION, MIGRATION):
             with psycopg.connect(DATABASE_URL) as db: db.execute((ROOT/'supabase/migrations'/migration).read_text())
     finally:
-        for migration in ('20260924091015_rf1086_source_approval_foundation.sql', MIGRATION):
+        for migration in ('20260924091015_rf1086_source_approval_foundation.sql', MIGRATION, *successors):
             with psycopg.connect(DATABASE_URL) as db: db.execute((ROOT/'supabase/migrations'/migration).read_text())
     with psycopg.connect(DATABASE_URL) as db:
         assert identities(db) == original

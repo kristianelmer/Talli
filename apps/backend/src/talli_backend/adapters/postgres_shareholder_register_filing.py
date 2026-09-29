@@ -1233,6 +1233,14 @@ class PostgresShareholderRegisterFilingSession:
     def operation_journal(self, submission_id):
         return _OperationJournal(self, submission_id)
 
+    async def finish_source_operation(self, submission_id, intent_id, *, state, reference=None, failure=None):
+        rows = await self._rows(
+            'select * from shareholder_register_filing.finish_source_operation_v1(%s::uuid,%s::uuid,%s,%s,%s,%s)',
+            (submission_id.value, intent_id, state, reference, failure, str(self.actor_id.subject)))
+        if not rows:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        return self._wire_record(rf.Rf1086ArchiveProductionEventRecord, rows[0])
+
     async def claim_feedback_lease(self, submission_id, lease_id):
         rows = await self._rows("select shareholder_register_filing.claim_production_feedback_reconciliation(%s::uuid,%s::uuid) as claimed", (submission_id, lease_id))
         return bool(rows and rows[0]["claimed"] is True)
@@ -1464,6 +1472,36 @@ class _SourceAdmission:
         source = await self.current_source()
         preview = await self.source_preview(annual.source.evidence.preview_id)
         return rf.serialize_rf1086_annual_readiness(annual, source, preview)
+
+    async def prepare_source_operation(self, claim, *, operation_name, body_sha256,
+            idempotency_key, expected_event_id=None, annual=None):
+        self._require_active()
+        if (not isinstance(claim, rf.Rf1086SourceSubmissionClaim)
+                or claim.company_id != self._query.company_id or claim.income_year != self._query.income_year
+                or claim.claimed_by != self.actor_id):
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        annual_text = None if annual is None else await self._annual_proof_text(annual)
+        row = await (await self._connection.execute(
+            'select shareholder_register_filing.prepare_source_operation_v1(%s::uuid,%s,%s,%s,%s::uuid,%s::uuid,%s,%s) as result',
+            (claim.submission_id.value, claim.manifest_sha256, operation_name, body_sha256,
+             idempotency_key, expected_event_id, annual_text, str(self.actor_id.subject)),
+        )).fetchone()
+        value = row['result'] if row else None
+        if (type(value) is not dict or set(value) != {'operation', 'newlyPrepared'}
+                or type(value['newlyPrepared']) is not bool):
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        # PostgreSQL JSON trims trailing fractional zeroes; direct row reads
+        # return datetime. Keep both paths identical to the retained archive.
+        operation = dict(value['operation'])
+        operation['created_at'] = Timestamp(datetime.fromisoformat(operation['created_at'])).value
+        event = self._store._wire_record(rf.Rf1086ArchiveProductionEventRecord, operation)
+        if (event.submission_id != claim.submission_id.value or event.operation_name != operation_name
+                or event.company_id != str(claim.company_id) or event.income_year != int(claim.income_year)
+                or event.body_hash != body_sha256 or event.idempotency_key is None
+                or type(event.attempt) is not int or not 1 <= event.attempt <= 20
+                or (value['newlyPrepared'] and event.operation_state != 'prepared')):
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        return rf.Rf1086SourceOperationPreparation(event, value['newlyPrepared'])
 
     async def read_source_approval_context(self, preview_id, entitlement_id, annual):
         self._require_active()

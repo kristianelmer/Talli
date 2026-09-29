@@ -305,3 +305,28 @@ def test_claim_timestamp_rejects_submicrosecond_precision_instead_of_truncating(
     c=ClaimHarness();wire=claim_wire(c,c.h.actor)|{'claimed_at':'2026-09-29T08:01:14.0417201+00:00'}
     with pytest.raises(rf.Rf1086ProductionError):
         _source_claim_record(wire,c.approval_id,c.manifest_sha256,None,c.h.actor)
+
+
+@pytest.mark.parametrize('encoded', ['2026-09-29T08:01:14.04172+00:00',
+    '2026-09-29T08:01:14.041720Z', '2026-09-29T10:01:14.041720+02:00'])
+def test_operation_json_replay_equals_native_outcome_timestamp(encoded):
+    from datetime import datetime
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    from test_rf1086_source_claim import ClaimHarness
+    c=ClaimHarness(); store=rf_session()
+    claim=replace(c.claim,claimed_by=store.actor_id)
+    event=dict(id=str(uuid4()),company_id=str(COMPANY),income_year=int(YEAR),
+        submission_id=claim.submission_id.value,operation_name='post_hovedskjema',
+        operation_state='unknown',attempt=1,body_hash='a'*64,idempotency_key=str(uuid4()),
+        authority_reference=None,failure_class='unknown',resulting_status='unknown',
+        artifact_hashes=[],safe_error_code=None,correlation_id=None,created_at=encoded)
+    class Connection:
+        info=SimpleNamespace(transaction_status=TransactionStatus.INTRANS)
+        async def execute(self,*args):return self
+        async def fetchone(self):return {'result':{'operation':event,'newlyPrepared':False}}
+    scope=_SourceAdmission(store,Connection(),rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id),c.h.identity)
+    result=asyncio.run(scope.prepare_source_operation(claim,operation_name='post_hovedskjema',
+        body_sha256='a'*64,idempotency_key=str(uuid4())))
+    native=event|{'created_at':datetime.fromisoformat('2026-09-29T08:01:14.041720+00:00')}
+    assert not result.newly_prepared
+    assert result.event==store._wire_record(rf.Rf1086ArchiveProductionEventRecord,native)

@@ -12,7 +12,7 @@
   ],
   "verification": {
     "focusedCases": 593,
-    "architecture": "pass",
+    "architecture": "Failed at original checkpoint: MODULE.md omitted Rf1086SourceDispatchAssessment. A later whitespace command masked the checker exit code. Corrected in the durable-intent follow-up and checked independently.",
     "profiles": [
       "no_activity",
       "formation",

@@ -71,6 +71,7 @@ async def proof(f, scope):
 async def approval(f, scope):
     annual = await proof(f, scope)
     review = await scope.read_source_approval_context(f['preview'].preview_id, str(f['entitlement']), annual)
+    assert review.can_approve, review.blockers
     manifest = rf.build_rf1086_source_approval_manifest(rf.Rf1086SourceApprovalManifestBasis(
         f['source'], f['preview'], scope.actor_id, str(f['entitlement']), review.review_sha256,
         review.warning_codes, annual_readiness=annual))

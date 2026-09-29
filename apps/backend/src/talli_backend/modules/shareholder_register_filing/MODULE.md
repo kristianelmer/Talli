@@ -892,7 +892,7 @@ send remains unexposed pending profile-specific dispatch and recovery.
 
 ### Retained dispatch position and uncertain attempts
 
-`assess_rf1086_source_dispatch` reconstructs the exact immutable payload, source
+`assess_rf1086_source_dispatch` returns `Rf1086SourceDispatchAssessment` and reconstructs the exact immutable payload, source
 keys, document order, durable claim and journal position from the validated
 archive. It produces no provider authority. Unstarted V2 operations require
 current admission; a retryable failure requires a new durable retry admission
@@ -911,3 +911,27 @@ archive codec remains unchanged; these stricter checks govern recovery use.
 The next dispatch step must commit its initial/retry intent under current source,
 annual and authorization admission before network I/O. This assessment is a
 read-only position, not that admission; full-year provider dispatch remains closed.
+
+
+### Durable source operation intent
+
+`Rf1086SourceOperationPreparation` reports the persisted journal event and whether
+this transaction created it. The backend-only `prepare_source_operation_v1`
+serializes company/year and submission scope, checks original claim/manifest,
+operation order, payload hashes and current owner/MFA, Authority, Billing,
+permission, overrides and technical release gates. Before the main POST it also
+requires current annual evidence and the exact approved review. Continuation
+retains the originally approved bytes even if today's annual facts change.
+
+Initial and retry intents commit before network I/O. A retry retains the original
+key and increments the persisted attempt exactly once. A competing request sees
+the existing intent and receives no new dispatch grant. Prepared, unknown,
+blocked and exhausted attempts never grant an automatic retry. The generic
+legacy mutation commands reject full-year operations, including trimmed names.
+
+`finish_source_operation_v1` records only an exact prepared mutation's outcome.
+Exact replay is idempotent; contradictory outcomes and stale intent IDs fail.
+Recording a completed request does not require the earlier MFA or entitlement
+to remain fresh. Rollback suspends preparation while preserving this outcome
+recording and historical recovery. No new tables or archive codecs are added.
+Application dispatch integration and provider interaction remain unexposed.

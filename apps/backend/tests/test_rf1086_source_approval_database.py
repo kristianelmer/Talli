@@ -741,7 +741,10 @@ def test_full_year_predecessor_reads_original_approval_and_claim_under_restricte
 
 
 def test_confirmed_source_claim_reconstructs_read_only_payload_after_live_approval_expiry(claim_fixture):
-    from test_shareholder_register_filing_production import Authority
+    # Preserve V1 history coverage by importing committed historical evidence.
+    # Generic full-year mutation commands are now intentionally closed; current
+    # journal execution is covered by the durable-operation database suite.
+    from types import SimpleNamespace
     f = claim_fixture
     store = f['store']
     async def create():
@@ -750,16 +753,27 @@ def test_confirmed_source_claim_reconstructs_read_only_payload_after_live_approv
             review = await context(db, f)
             approval = await append(db, f, review)
             claimed = await claim_source(db, f, approval)
-            payload = manifest(f, review)
-        submission_id = claimed['claim']['submission_id']
-        authority = Authority()  # In-memory provider only; real journal writes.
-        result = await rf.execute_journaled_rf1086_production(rf.JournaledRf1086ProductionInput(
-            submission_id, int(f['source'].income_year), f['preview'].hovedskjema_xml,
-            payload.underskjema_xml, payload.document_order),
-            journal=store.operation_journal(submission_id), authority_client=authority)
-        assert [name for name, _ in authority.calls].count('main') == 1
-        return approval, submission_id, payload, result
-    approval, submission_id, payload, result = asyncio.run(create())
+            return approval, claimed['claim']['submission_id'], manifest(f, review)
+    approval, submission_id, payload = asyncio.run(create())
+    result = SimpleNamespace(forsendelse_id=str(uuid4()), dialog_id=str(uuid4()))
+    refs = {}
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute('set local role shareholder_register_filing_store_owner')
+        db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true),set_config('request.jwt.claims',%s,true)",
+            (str(store.actor_id.subject),store._verified.claims_json,store._verified.claims_json))
+        for doc in payload.manifest['documentHashes']:
+            name = 'post_hovedskjema' if doc['name'] == 'hovedskjema' else 'post_underskjema:' + doc['name'].removeprefix('underskjema_')
+            refs[name] = 'historical-main' if name == 'post_hovedskjema' else 'posted'
+            insert(db, 'shareholder_register_filing.production_filing_events', dict(submission_id=submission_id,
+                operation_name=name, operation_state='succeeded', attempt=1, body_hash=doc['sha256'],
+                idempotency_key=uuid4(), authority_reference=refs[name], resulting_status='sending'))
+        refs['confirm'] = json.dumps(dict(dialogId=result.dialog_id, forsendelseId=result.forsendelse_id), separators=(',', ':'))
+        insert(db, 'shareholder_register_filing.production_filing_events', dict(submission_id=submission_id,
+            operation_name='confirm', operation_state='succeeded', attempt=1,
+            body_hash=hashlib.sha256(f'historical-main:{len(payload.document_order)}'.encode()).hexdigest(),
+            idempotency_key=uuid4(), authority_reference=refs['confirm'], resulting_status='received'))
+        db.execute("update shareholder_register_filing.production_filing_submissions set status='received',authority_references=%s where id=%s",
+            (Jsonb(refs), submission_id))
     with psycopg.connect(DATABASE_URL) as db:
         invalidate_fixture_approval(db,f,approval['id'])
         db.execute("update billing.production_pilot_entitlements set expires_at=clock_timestamp()-interval '1 second' where id=%s", (f['entitlement'],))
