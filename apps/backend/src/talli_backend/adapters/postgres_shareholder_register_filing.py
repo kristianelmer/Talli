@@ -1319,6 +1319,14 @@ class _SourceAdmission:
             actor_id=self.actor_id, company_id=self._query.company_id,
             income_year=self._query.income_year, correlation_id=correlation_id)
 
+    async def annual_ledger_inputs(self, correlation_id):
+        self._require_active()
+        from talli_backend.adapters.supabase_ledger import SupabaseLedgerWorkflowTransaction
+        from talli_backend.application.shareholder_register_annual_ledger import read_annual_ledger_inputs
+        ledger = SupabaseLedgerWorkflowTransaction(
+            self._store._configuration.database_url, self._store._verified, self._connection)
+        return await read_annual_ledger_inputs(ledger, self._query, correlation_id)
+
     async def annual_interview(self):
         self._require_active()
         from talli_backend.adapters.postgres_rf_annual_interview import annual_interview_for_year

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_ANNUAL_LEDGER_INPUT",
+  "baseCommit": "b5ab17f798997de472c8c6fa37501b28489684e7",
+  "change": "RF reads existing Ledger opening-bank inputs and complete period-lock history on the held admission connection. It selects the exact year only after all pages complete, retains company/year even for empty results, and rejects inconsistent pagination, cycles, duplicate identities or foreign scope. Owner queries and writers are unchanged.",
+  "authority": "Only EXECUTE on two existing Ledger public reads plus schema USAGE for RF executor. No private table grants. Rollback disables both read grants while retaining namespace visibility. Temporary store-owner SET authority is restored exactly. Historical Ledger/RF recutover reapplies the grants.",
+  "verification": {
+    "unit": "17 focused consumer cases pass; the broader Ledger input, interview and admission set passed124 before the final addition of explicit parent company/year fields.",
+    "database": "Five focused final database cases pass, including101 period locks with the selected year on a later page, exact Money/attribution, empty current-year evidence, committed writes after waits, owner downgrade, no private table access and twice restricted-principal rollback/replay with exact memberships and function definitions/ACLs. The combined reader/interview/guard set passed30.",
+    "architecture": "Architecture check and78 CI/rehearsal harness checks pass.",
+    "topology": "Fresh disposable PostgreSQL17 with minimal Auth/Storage shims; actual authority rollback/recutover completed before the database checks. Integrated full Supabase CI remains required."
+  },
+  "limits": [
+    "This read supplies annual inputs; it does not compute RF readiness, replace the stored release flag or expose full-year dispatch.",
+    "Ledger Money retains its existing two-decimal normalization. No raw numeric-byte fidelity or complete company-year close is claimed.",
+    "Current RF opening/share facts, Documents status/completeness, statement coverage and final guarded annual policy remain unfinished.",
+    "All seven RF acceptance criteria remain pending; no real AS or provider action."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-annual-ledger-20260929-14d7",
+  "sha256": {
+    "setup.log": "0e0492cf5d5a060f7f4f0a41d379fd9cbcf4b2cb32d439715a3b784e40a864d5",
+    "unit.log": "b497cf853c04e850bff44c3c81b6479d8d9792e3ee24a5ab7520acc4976e033d",
+    "unit-final.log": "a7db2c81fcca6438cc798b6a69890c3d0964d86b809bd747ecf31b685007d12f",
+    "database-final.log": "235e01bde7f6707afb00b59cdaf17bb1572f9bcd2e88946bef60b8d69e60383b",
+    "database-exact-final.log": "50f58ac0ec6d19174107e8aee7cf056cbb76ae70a0f92357e59525f21eee28a4",
+    "ci-harness.log": "2252604e19039336d519a8dfc80f4f8aa3ef00097a6d0b5614196679f11cff32",
+    "architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e"
+  }
+}

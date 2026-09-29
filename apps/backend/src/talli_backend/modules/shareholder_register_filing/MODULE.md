@@ -792,3 +792,15 @@ failure or changed evidence releases the lease without a provider call. An
 unconfirmed unknown mutation still cannot be replayed or treated as confirmed.
 The legacy send entry explicitly rejects full-year approvals; owned readiness and
 full-year dispatch remain separate work.
+
+
+The RF admission scope also reads Ledger-owned opening-bank inputs and complete
+period-lock history on its held connection, through the unchanged Ledger public
+queries. The application selects the exact reporting year only after all pages
+complete; cursor cycles, inconsistent extents, duplicate identities and foreign
+company facts are unavailable. Missing current-year inputs stay empty instead of
+reusing another year. The immutable result preserves Ledger Money values (its existing two-decimal normalization),
+original identities and attribution. It is not a company-year close assessment, statement coverage or
+RF readiness decision. Only two existing read EXECUTE grants are added. Rollback
+disables those calls while retaining harmless namespace visibility; historical
+rehearsal restores the grants after Ledger/RF function recreation.
