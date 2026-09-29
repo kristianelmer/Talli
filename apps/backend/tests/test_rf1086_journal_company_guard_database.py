@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from uuid import uuid4
 
 import psycopg
+from psycopg import sql
 import pytest
 
 from test_rf1086_database_runtime import (
@@ -173,19 +174,35 @@ def test_correction_port_requires_held_scope_and_returns_exact_historical_row(fi
     # admin first on this exact connection. No role privilege persists afterward.
     import json
     from test_rf1086_database_runtime import claims
-    with psycopg.connect(DATABASE_URL, row_factory=psycopg.rows.dict_row) as db:
-        if scope != 'no-guards':
-            db.execute('select public.company_archive_lock_company_v1(%s)', (company,))
-            db.execute("select pg_advisory_xact_lock(hashtextextended('rf1086:year-source:'||%s||':'||%s,0))", (str(company), str(year)))
-        db.execute('set local role shareholder_register_filing_executor')
-        raw = json.dumps(claims(fixture, fresh=False))
-        db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true),set_config('request.jwt.claims',%s,true)", (str(fixture['owner']), raw, raw))
-        query = 'select * from shareholder_register_filing.lock_correction_predecessor_v1(%s,%s,%s,%s)'
-        args = (submission, company, year, str(subject))
-        if scope == 'exact':
-            result = db.execute(query, args).fetchone()
-            assert str(result['id']) == submission
-            assert result['company_id'] == fixture['company'] and result['income_year'] == 2025
-        else:
-            with pytest.raises(psycopg.Error): db.execute(query, args)
-            db.rollback()
+    with psycopg.connect(DATABASE_URL, autocommit=True, row_factory=psycopg.rows.dict_row) as db:
+        memberships = 'select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3'
+        before = db.execute(memberships).fetchall()
+        # Supabase's migration principal can administer this role without SET.
+        # Keep the borrow and every assertion in one rolled-back transaction,
+        # preserving all existing grantors/options even when an assertion fails.
+        with db.transaction(force_rollback=True):
+            if not db.execute("select pg_has_role(current_user,'shareholder_register_filing_executor','SET') as allowed").fetchone()['allowed']:
+                principal = db.execute('select current_user').fetchone()['current_user']
+                db.execute(sql.SQL('grant shareholder_register_filing_executor to {} with set true granted by {}').format(
+                    sql.Identifier(principal), sql.Identifier(principal)))
+            if scope != 'no-guards':
+                db.execute('select public.company_archive_lock_company_v1(%s)', (company,))
+                db.execute("select pg_advisory_xact_lock(hashtextextended('rf1086:year-source:'||%s||':'||%s,0))", (str(company), str(year)))
+            db.execute('set local role shareholder_register_filing_executor')
+            raw = json.dumps(claims(fixture, fresh=False))
+            db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true),set_config('request.jwt.claims',%s,true)", (str(fixture['owner']), raw, raw))
+            query = 'select * from shareholder_register_filing.lock_correction_predecessor_v1(%s,%s,%s,%s)'
+            args = (submission, company, year, str(subject))
+            if scope == 'exact':
+                result = db.execute(query, args).fetchone()
+                assert str(result['id']) == submission
+                assert result['company_id'] == fixture['company'] and result['income_year'] == 2025
+            else:
+                expected = {
+                    'no-guards': 'rf1086_source_approval_guard_required',
+                    'wrong-year': 'rf1086_source_predecessor_mismatch',
+                    'wrong-company': 'rf1086_source_predecessor_mismatch',
+                    'wrong-subject': 'legacy_rf1086_submission_relationship_mismatch',
+                }[scope]
+                with pytest.raises(psycopg.errors.RaiseException, match=expected): db.execute(query, args)
+        assert db.execute(memberships).fetchall() == before
