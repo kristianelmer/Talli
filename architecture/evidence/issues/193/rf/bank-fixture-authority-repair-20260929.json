@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_RESTRICTED_BANK_FIXTURE",
+  "baseCommit": "da69cdc9014f2ae66ba0904532d6f64e4392e5ae",
+  "scope": "Repair the mandatory Banking projection database fixture without changing runtime privileges or production behavior.",
+  "findings": [
+    "CI run 36541117434 passed Application. Database passed 83 Python cases then failed seeding banking.transactions as the migration principal without table privilege (42501).",
+    "Seeding as Banking store owner also exposed an invalid 2025 fixture: only 2026 can be admitted, and Banking INSERT FORCE RLS correctly rejects the unadmitted year."
+  ],
+  "changes": [
+    "Temporarily borrow Banking executor and store-owner SET authority, preserve exact prior membership options, and restore after tests. Seed/read private facts as Banking store owner with verified actor claims.",
+    "Verify year isolation by asserting a 2025 query excludes all 504 admitted 2026 facts. Preserve unmatched, pending/reversed, accepted-warning, forbidden owner/company and revoked-owner assertions.",
+    "Rollback/replay compares a real retained bank fact under owner RLS plus exact role memberships and schema ACLs across two cycles."
+  ],
+  "verification": {
+    "red": "Original committed test reproduces permission denied for table transactions under the restricted principal (one failure).",
+    "green": "All three repaired database tests pass under a non-superuser principal with no direct Banking INSERT privilege. Full pg_auth_members inventory is identical after fixture teardown.",
+    "ci": "New revision pending; da69 Application passed, Database failed at Banking fixture before subsequent RF suites.",
+    "limits": "Disposable PostgreSQL 17 with all expansion migrations and final RF topology, minimal Auth/Storage shims. Restricted fixture principal has public/auth fixture grants and BYPASSRLS; private Banking writes explicitly use the FORCE-RLS store-owner role. This is not a complete Supabase lane.",
+    "architecture": "PASS (checker exit 0); git diff --check passed."
+  },
+  "remaining": [
+    "Banking writer guards and final owned annual readiness remain open.",
+    "All seven RF acceptance criteria pending. No production AS, hosted changes or provider operations."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-bank-fixture-20260929-14d7",
+  "sha256": {
+    "talli-da69-database.log": "72246863dfaa362438f7d75af374d1cdde5ef6c003e2393e74a84f88260cf857",
+    "talli-bank-fixture-build.log": "26fc4dcec464d340d1a8b75b011496ddffcbad856dd5632b8e51e2250d852017",
+    "talli-bank-fixture-original-red.log": "b8dcd63eb05988fffbc342f73b4863939f0657f2b9cbbceebc84e24787960400",
+    "talli-bank-fixture-restricted.log": "b185a8239d420a084808b0b5eb109608bc27257d243a6909555151a7b2e4c843",
+    "talli-run-bank-fixture-check.py": "117b2367c6ed3014f15975e6564a4920b77a5f5f8326ba895a213e2d554c8180",
+    "talli-build-owned-bank-db.py": "d0e7ecddf552c34ae8647ed67ea5d23b7d31da0f1e0550a27f655e7445efa7a8",
+    "talli-bank-fixture-architecture.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607"
+  }
+}

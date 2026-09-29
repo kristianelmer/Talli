@@ -412,3 +412,17 @@ precision is rejected rather than truncated. A complete local 101-case
 approval/claim/original run passes. One earlier source capture returned
 `rf1086_source_storage_invalid` without a diagnosed cause; retain that lead if
 it recurs. The local Auth shim does not replace the full Supabase CI lane.
+
+
+## Restricted Banking fixture checkpoint
+
+Run 36541117434 at da69cdc9 passed Application. Database passed 83 Python
+cases before the Banking fixture attempted a private-table INSERT without
+owner authority. The fixture now borrows/restores exact SET membership and
+seeds through Banking's FORCE-RLS owner. That revealed an invalid unadmitted
+2025 fixture; year isolation now checks that all 504 valid 2026 facts are
+excluded from a 2025 query. Two rollback/replays preserve an actual retained
+fact and exact authority. The old test reproduces the CI permission failure;
+the repaired three cases pass under a non-superuser without direct Banking
+INSERT privilege. See `bank-fixture-authority-repair-20260929.json`.
+Final Supabase CI, Banking writer guards and annual composition remain open.
