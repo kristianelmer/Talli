@@ -602,6 +602,15 @@ without private Banking table access or a separate connection. It is a producer
 input for annual readiness; counts/digests do not prove bank-statement coverage
 and are not yet a replacement for the stored annual gate.
 
+`annual_interview` reads the frozen annual-data history API on that same held
+connection, then selects only the requested company/year. Earlier interviews
+cannot satisfy current prerequisites. Duplicate identities/years, malformed
+scope, timestamps or prerequisite booleans fail closed; an empty successful
+enumeration remains distinct from unavailable evidence. The view is deeply
+immutable. This consumer does not change the history reader's at-or-before-year
+semantics, browser permissions or interview writers. The read still grants no
+filing authorization; annual policy composition remains pending.
+
 The correction contract is `Rf1086CorrectionPredecessorSnapshot`, verified by
 `assert_rf1086_correction_predecessor`. Source assessment exports
 `Rf1086SourceReadinessEvidence`, `Rf1086SourceReadinessProof`,

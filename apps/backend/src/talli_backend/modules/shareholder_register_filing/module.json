@@ -440,7 +440,8 @@
     "submissionHistory": "apps/backend/tests/test_rf1086_submission_history.py",
     "archiveStorage": "apps/backend/tests/test_rf1086_archive_storage.py",
     "archiveHistory": "apps/backend/tests/test_rf1086_archive_history.py",
-    "fullYearSourceEvidence": "apps/backend/tests/test_rf1086_full_year_source_facts.py"
+    "fullYearSourceEvidence": "apps/backend/tests/test_rf1086_full_year_source_facts.py",
+    "annualInterviewAdmission": "apps/backend/tests/test_rf_annual_interview_admission_database.py"
   },
   "compatibilityExceptions": []
 }

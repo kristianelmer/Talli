@@ -830,5 +830,7 @@ facts; replay resumes the existing writer. This is a row backstop, not proof of
 company-first ordering for raw browser writes or complete RF annual readiness.
 
 <!-- architecture-inventory
-{"technicalMigrations":["supabase/migrations/20260929094835_annual_interview_company_guard.sql","supabase/rollback/20260929094835_annual_interview_company_guard.sql"]}
+{"technicalMigrations":["supabase/migrations/20260929094835_annual_interview_company_guard.sql","supabase/rollback/20260929094835_annual_interview_company_guard.sql",
+    "supabase/migrations/20260929144619_rf_annual_interview_read_admission.sql",
+    "supabase/rollback/20260929144619_rf_annual_interview_read_admission.sql"]}
 -->

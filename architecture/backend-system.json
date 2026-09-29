@@ -663,7 +663,9 @@
       "supabase/rollback/20260914112549_annual_accounts_filing_backend_binding.sql",
       "supabase/migrations/20260923090824_ledger_reporting_amendment_read.sql",
       "supabase/migrations/20260929094835_annual_interview_company_guard.sql",
-      "supabase/rollback/20260929094835_annual_interview_company_guard.sql"
+      "supabase/rollback/20260929094835_annual_interview_company_guard.sql",
+      "supabase/migrations/20260929144619_rf_annual_interview_read_admission.sql",
+      "supabase/rollback/20260929144619_rf_annual_interview_read_admission.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },

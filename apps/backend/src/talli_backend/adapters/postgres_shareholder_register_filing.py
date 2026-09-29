@@ -1319,6 +1319,17 @@ class _SourceAdmission:
             actor_id=self.actor_id, company_id=self._query.company_id,
             income_year=self._query.income_year, correlation_id=correlation_id)
 
+    async def annual_interview(self):
+        self._require_active()
+        from talli_backend.adapters.postgres_rf_annual_interview import annual_interview_for_year
+        rows = await (await self._connection.execute(
+            'select backend_system.list_annual_data_legacy_v1(%s::uuid,%s::integer,%s::text) as items',
+            (str(self._query.company_id), int(self._query.income_year), str(self.actor_id.subject)),
+        )).fetchall()
+        if len(rows) != 1 or 'items' not in rows[0]:
+            raise rf.ShareholderRegisterFilingError.unavailable()
+        return annual_interview_for_year(rows[0]['items'], self._query)
+
     async def governance_evidence(self, correlation_id):
         self._require_active()
         from talli_backend.adapters.postgres_corporate_reporting_evidence import PostgresCorporateReportingEvidence
