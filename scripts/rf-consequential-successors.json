@@ -58,5 +58,9 @@
   {
     "migration": "20260929162030_rf_annual_document_read_admission.sql",
     "presenceQuery": "select coalesce(has_function_privilege('shareholder_register_filing_executor',to_regprocedure('documents.list_documents_v1(uuid[],text)'),'EXECUTE'),false)"
+  },
+  {
+    "migration": "20260929173935_rf1086_annual_approval_binding.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='append_source_approval_v2')"
   }
 ]

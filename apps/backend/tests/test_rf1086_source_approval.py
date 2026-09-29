@@ -18,6 +18,8 @@ ENTITLEMENT=str(uuid4())
 class ApprovalHarness(AdmissionHarness):
     def __init__(self,kind='no_activity'):
         super().__init__(kind)
+        from test_rf1086_annual_readiness import annual_harness
+        annual_harness(self)
         self.review=rf.Rf1086SourceApprovalReview(COMPANY,YEAR,self.preview.preview_id,self.source.source_id,
             self.source.source_sha256,ENTITLEMENT,'a'*64,
             tuple(sorted({i.code for i in self.preview.readiness_issues if i.level=='warning'})),(),True)
@@ -30,8 +32,9 @@ class ApprovalHarness(AdmissionHarness):
         async def bridge(preview):
             assert self.held and preview==self.preview
             self.calls.append('bridge');return preview.preview_id
-        async def read(preview_id,entitlement_id):
+        async def read(preview_id,entitlement_id,annual):
             assert self.held and preview_id==self.preview.preview_id and entitlement_id==ENTITLEMENT
+            self.last_annual=annual
             self.calls.append('review');return self.review
         async def append(preview,entitlement_id,manifest,review_sha256):
             assert self.held and 'original' in self.calls and 'governance' in self.calls
@@ -125,3 +128,48 @@ def test_manifest_serialization_refuses_wrong_digest_and_version():
     h=ApprovalHarness();h.approve();manifest=h.writes[0]
     with pytest.raises(rf.Rf1086ProductionError):rf.serialize_rf1086_source_approval_manifest(replace(manifest,manifest_sha256='f'*64))
     with pytest.raises(rf.Rf1086ProductionError):rf.serialize_rf1086_source_approval_manifest(replace(manifest,manifest={**manifest.manifest,'schemaVersion':'unknown'}))
+
+
+def test_approval_rebuilds_annual_commitment_after_review_and_guard_wait():
+    h = ApprovalHarness()
+    async def context(preview_id, entitlement_id, annual):
+        assert h.held
+        h.calls.append('review')
+        return replace(h.review, review_sha256=rf.rf1086_year_source_digest(
+            {'review': h.review.review_sha256, 'annual': annual.proof_sha256}))
+    h.transaction.read_source_approval_context = context
+    review = asyncio.run(h.approval.read_review('token',company_id=COMPANY,income_year=YEAR,
+        preview_id=h.preview.preview_id,entitlement_id=ENTITLEMENT,correlation_id=CorrelationId('annual-review')))
+    def changed():
+        ledger = h.annual['annual_ledger_inputs']
+        h.annual['annual_ledger_inputs'] = replace(ledger,
+            period_locks=(replace(ledger.period_locks[0], reason='Changed after review'),))
+    h.on_guard = changed
+    h.committed = False
+    with pytest.raises(rf.Rf1086ProductionError, match='payload_changed'):
+        h.approve(review_sha256=review.review_sha256)
+    assert not h.writes and not h.committed
+
+
+def test_annual_warning_requires_exact_acknowledgement_and_is_retained():
+    h = ApprovalHarness()
+    interview = h.annual['annual_interview']
+    h.annual['annual_interview'] = replace(interview, answers=dict(interview.answers) | {'bank_balance_confirmed': False})
+    h.review = replace(h.review, warning_codes=('bank_balance_not_confirmed',))
+    with pytest.raises(rf.Rf1086ProductionError, match='payload_changed'):
+        h.approve(acknowledged_warning_codes=())
+    assert not h.writes
+    h.approve()
+    manifest = h.writes[0].manifest
+    assert manifest['review']['acknowledgedWarningCodes'] == ('bank_balance_not_confirmed',)
+    proof = rf.parse_rf1086_annual_readiness(manifest['annualReadiness']['proofText'], h.source, h.preview)
+    assert proof.required_warning_codes == ('bank_balance_not_confirmed',)
+
+
+def test_ready_database_projection_cannot_override_annual_hard_block():
+    h = ApprovalHarness()
+    interview = h.annual['annual_interview']
+    h.annual['annual_interview'] = replace(interview, answers=dict(interview.answers) | {'has_unpaid_items': True})
+    assert h.review.can_approve
+    with pytest.raises(rf.Rf1086ProductionError): h.approve()
+    assert not h.writes and not h.committed

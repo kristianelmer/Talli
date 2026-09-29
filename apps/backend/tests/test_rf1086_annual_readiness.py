@@ -95,7 +95,7 @@ def test_forged_proof_cannot_remove_warnings_or_exclusions():
             rf.assert_rf1086_annual_readiness_matches(changed, *source_and_preview(), inputs)
 
 
-def annual_harness():
+def annual_harness(h=None):
     from decimal import Decimal
     from talli_backend.application.annual_data_compatibility import LegacyAnnualDataView
     from talli_backend.application.shareholder_register_annual_documents import Rf1086AnnualDocumentInputs
@@ -106,7 +106,7 @@ def annual_harness():
     from talli_backend.shared.kernel import Money, Timestamp
     from test_rf1086_year_source import NOW
     from test_rf_annual_document_inputs import document
-    h = AdmissionHarness()
+    h = h or AdmissionHarness()
     identity = str(uuid4())
     h.annual = {
         'annual_opening_inputs': Rf1086AnnualOpeningInputs(COMPANY, YEAR,

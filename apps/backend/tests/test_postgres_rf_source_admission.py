@@ -148,6 +148,18 @@ def test_approval_context_rejects_incoherent_owner_projection(field,value):
         _source_approval_review(wire,rf.Rf1086SourceQuery(COMPANY,YEAR,h.actor),h.preview,entitlement)
 
 
+
+def source_reads(store, db, h):
+    async def current(connection, company, year):
+        assert connection is db and company == COMPANY and year == YEAR
+        return h.source
+    async def preview(connection, identity):
+        assert connection is db and identity == h.preview.preview_id
+        return h.preview
+    store._current_year_source = current
+    store._read_source_preview = preview
+
+
 def test_approval_context_and_append_use_one_live_connection_and_exact_manifest_bytes():
     from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
     h=AdmissionHarness();store=rf_session();entitlement=str(uuid4());approval_id=str(uuid4());calls=[]
@@ -161,12 +173,14 @@ def test_approval_context_and_append_use_one_live_connection_and_exact_manifest_
     db=Connection()
     async def read(connection,preview_id):
         assert connection is db and preview_id==h.preview.preview_id;return h.preview
-    store._read_source_preview=read;scope=_SourceAdmission(store,db,query,h.identity)
+    source_reads(store,db,h);scope=_SourceAdmission(store,db,query,h.identity)
+    from test_rf1086_annual_readiness import ready_inputs
+    annual=rf.build_rf1086_annual_readiness(h.source,h.preview,ready_inputs())
     async def run():
-        review=await scope.read_source_approval_context(h.preview.preview_id,entitlement)
+        review=await scope.read_source_approval_context(h.preview.preview_id,entitlement,annual)
         assert review.can_approve and review.source_id==h.source.source_id
         manifest=rf.build_rf1086_source_approval_manifest(rf.Rf1086SourceApprovalManifestBasis(
-            h.source,h.preview,store.actor_id,entitlement,review.review_sha256,review.warning_codes))
+            h.source,h.preview,store.actor_id,entitlement,review.review_sha256,review.warning_codes,annual_readiness=annual))
         result=await scope.append_source_approval(h.preview,entitlement,manifest,review.review_sha256)
         assert result.record_id==approval_id and result.company_id==COMPANY and result.income_year==YEAR
         assert calls[-1][1]==(h.preview.preview_id.value,entitlement,
@@ -181,7 +195,7 @@ def test_approval_context_and_append_use_one_live_connection_and_exact_manifest_
         with pytest.raises(rf.Rf1086ProductionError,match='payload_changed'):
             await scope.append_source_approval(h.preview,entitlement,manifest,'a'*64)
         scope.close()
-        with pytest.raises(rf.ShareholderRegisterFilingError):await scope.read_source_approval_context(h.preview.preview_id,entitlement)
+        with pytest.raises(rf.ShareholderRegisterFilingError):await scope.read_source_approval_context(h.preview.preview_id,entitlement,annual)
         with pytest.raises(rf.ShareholderRegisterFilingError):await scope.append_source_approval(h.preview,entitlement,manifest,'a'*64)
     asyncio.run(run())
 
@@ -204,16 +218,20 @@ def test_claim_and_recovery_use_same_guarded_connection_and_expire():
         async def fetchone(self):
             if 'read_source_submission_claim' in calls[-1][0]:return wire
             return {'result':{'claim':wire,'newlyClaimed':True}}
-    db=Connection();scope=_SourceAdmission(store,db,rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id),h.identity)
+    db=Connection();source_reads(store,db,h)
+    scope=_SourceAdmission(store,db,rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id),h.identity)
     async def run():
-        claimed=await scope.claim_source_submission(c.approval_id,c.manifest_sha256,None)
+        claimed=await scope.claim_source_submission(c.approval_id,c.manifest_sha256,None,c.h.last_annual)
         assert claimed.newly_claimed is True and claimed.claim.claimed_by==store.actor_id
-        assert calls[-1][1]==(c.approval_id.value,c.manifest_sha256,None,str(store.actor_id.subject))
+        assert calls[-1][1]==(c.approval_id.value,c.manifest_sha256,None,
+            rf.serialize_rf1086_annual_readiness(h.last_annual,h.source,h.preview),str(store.actor_id.subject))
         assert await scope.read_source_submission_claim(c.approval_id,c.manifest_sha256,None)==claimed.claim
         assert calls[-1][1]==(c.approval_id.value,c.manifest_sha256,str(store.actor_id.subject))
         scope.close()
-        for action in (scope.claim_source_submission,scope.read_source_submission_claim):
-            with pytest.raises(rf.ShareholderRegisterFilingError):await action(c.approval_id,c.manifest_sha256,None)
+        with pytest.raises(rf.ShareholderRegisterFilingError):
+            await scope.claim_source_submission(c.approval_id,c.manifest_sha256,None,h.last_annual)
+        with pytest.raises(rf.ShareholderRegisterFilingError):
+            await scope.read_source_submission_claim(c.approval_id,c.manifest_sha256,None)
         with pytest.raises(rf.ShareholderRegisterFilingError):await scope.read_source_claim_approval(c.approval_id)
         assert len(calls)==2
     asyncio.run(run())
@@ -260,9 +278,10 @@ def test_guarded_claim_rejects_wrong_scope_or_result_shape(mutation):
         info=SimpleNamespace(transaction_status=TransactionStatus.INTRANS)
         async def execute(self,*args):return self
         async def fetchone(self):return {'result':result}
-    scope=_SourceAdmission(store,Connection(),rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id),c.h.identity)
+    db=Connection();source_reads(store,db,c.h)
+    scope=_SourceAdmission(store,db,rf.Rf1086SourceQuery(COMPANY,YEAR,store.actor_id),c.h.identity)
     with pytest.raises(rf.Rf1086ProductionError):
-        asyncio.run(scope.claim_source_submission(c.approval_id,c.manifest_sha256,None))
+        asyncio.run(scope.claim_source_submission(c.approval_id,c.manifest_sha256,None,c.h.last_annual))
 
 
 @pytest.mark.parametrize('encoded', ['2026-09-29T08:01:14.04172+00:00',

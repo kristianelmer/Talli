@@ -36,8 +36,10 @@ def boundary():
     ('companyId', None), ('companyId', 'invalid'), ('previewId', None), ('entitlementId', None),
     ('incomeYear', None), ('incomeYear', '2025'), ('incomeYear', True), ('incomeYear', 1999),
     ('actorId', COMPANY), ('trustedFacts', {}), ('sourceSha256', 'b'*64),
+    ('annualReadiness', {}), ('proofText', '{}'), ('ready', True),
 ], ids=['null-company','invalid-company','null-preview','null-entitlement','null-year','string-year',
-        'boolean-year','year-range','caller-actor','trusted-facts','caller-source-hash'])
+        'boolean-year','year-range','caller-actor','trusted-facts','caller-source-hash',
+        'caller-annual-proof','caller-proof-text','caller-ready'])
 def test_scope_and_unknown_fields_fail_before_authentication(boundary, approval, field, value):
     client, sessions = boundary
     command = {**body(approval), field: value}
@@ -85,14 +87,15 @@ def approval_api():
     from test_rf1086_source_admission import AdmissionHarness
     from talli_backend.application.shareholder_register_filing_session import ShareholderRegisterFilingAuthenticationError
     from talli_backend.modules.shareholder_register_filing import public as rf
-    h = AdmissionHarness()
+    from test_rf1086_annual_readiness import annual_harness
+    h = annual_harness()
     h.review_hash, h.blockers, h.manifests = 'd'*64, (), []
     async def bridge(preview):
         assert h.held and 'original' in h.calls and 'governance' in h.calls
         h.calls.append('bridge')
         return preview.preview_id
-    async def context(preview_id, entitlement_id):
-        assert h.held and h.calls[-1] == 'bridge'
+    async def context(preview_id, entitlement_id, annual):
+        assert h.held and h.calls[-1] == 'annual_document_inputs'
         h.calls.append('review')
         return rf.Rf1086SourceApprovalReview(h.source.company_id,h.source.income_year,h.preview.preview_id,
             h.source.source_id,h.source.source_sha256,entitlement_id,h.review_hash,

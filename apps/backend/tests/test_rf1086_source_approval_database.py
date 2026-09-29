@@ -22,6 +22,19 @@ pytestmark=pytest.mark.authority_database
 MIGRATION='20260924091015_rf1086_source_approval_foundation.sql'
 
 
+@pytest.fixture(scope='module', autouse=True)
+def historical_source_command_revision():
+    """Rehearse V1's historical contract; restore current V2 before leaving it."""
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+        db.execute((ROOT/'supabase/migrations/20260928060732_rf1086_source_submission_claim.sql').read_text())
+    try:
+        yield
+    finally:
+        with psycopg.connect(DATABASE_URL) as db:
+            db.execute((ROOT/'supabase/migrations/20260929173935_rf1086_annual_approval_binding.sql').read_text())
+
+
 @pytest.fixture
 def approval_fixture(admitted,backend_url,remove_only_bridge_fixture):
     store,command,context,source,preview=prepare(admitted,backend_url)
@@ -636,7 +649,7 @@ def test_claim_rollback_retains_recovery_and_recutover_identity(claim_fixture):
     asyncio.run(replay())
 
 
-def test_source_claim_adapter_round_trips_retained_approval_and_claim(claim_fixture):
+def test_historical_v1_claim_adapter_reads_retained_approval_and_claim(claim_fixture):
     from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
     f=claim_fixture;store=f['store']
     async def run():
@@ -649,7 +662,9 @@ def test_source_claim_adapter_round_trips_retained_approval_and_claim(claim_fixt
             assert retained.approval.manifest_hash==approval['manifest_hash']
             assert rf.inspect_rf1086_retained_source_approval(retained,approval_id=approval_id,
                 manifest_sha256=approval['manifest_hash'],actor_id=store.actor_id) is None
-            first=await scope.claim_source_submission(approval_id,approval['manifest_hash'],None)
+            historical=await claim_source(db,f,approval)
+            first=rf.Rf1086SourceSubmissionClaimResult(
+                await scope.read_source_submission_claim(approval_id,approval['manifest_hash'],None),historical['newlyClaimed'])
             assert first.newly_claimed is True
             assert await scope.read_source_submission_claim(approval_id,approval['manifest_hash'],None)==first.claim
             scope.close()

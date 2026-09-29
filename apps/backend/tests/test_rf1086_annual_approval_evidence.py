@@ -160,12 +160,12 @@ def test_rehashed_manifest_cannot_publish_damaged_annual_binding(change):
             source_approval_lineage=(replace(line, manifest_text=text, manifest_sha256=digest),)))
 
 
-def test_retention_support_does_not_enable_v2_first_claim_before_live_enforcement():
+def test_unclaimed_v1_requires_fresh_annual_approval_but_exact_historical_claim_recovers():
     from test_rf1086_source_claim import ClaimHarness
     c = ClaimHarness()
     h, approval = c.h, c.retained.approval
-    basis = annual_basis(basis=rf.Rf1086SourceApprovalManifestBasis(h.source, h.preview, h.actor,
-        approval.entitlement_id, h.review.review_sha256, h.review.warning_codes))
+    basis = rf.Rf1086SourceApprovalManifestBasis(h.source, h.preview, h.actor,
+        approval.entitlement_id, h.review.review_sha256, h.review.warning_codes)
     manifest = rf.build_rf1086_source_approval_manifest(basis)
     c.retained = rf.Rf1086RetainedSourceApproval(replace(approval,
         manifest=manifest.manifest, manifest_hash=manifest.manifest_sha256),

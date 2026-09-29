@@ -57,7 +57,7 @@ class ClaimHarness:
         async def recover(*args):
             assert h.held; h.calls.append('locked_recover'); return owner.existing
         async def claim(*args):
-            assert h.held and args==(owner.approval_id,owner.manifest_sha256,owner.expected_head)
+            assert h.held and args==(owner.approval_id,owner.manifest_sha256,owner.expected_head,h.last_annual)
             h.calls.append('claim'); return owner.result
         h.transaction.read_source_claim_approval=read
         h.transaction.read_source_submission_claim=recover
@@ -193,3 +193,26 @@ def test_full_year_predecessor_is_verified_before_claiming_its_correction():
     assert c.result.claim.predecessor_submission_id==c.expected_head
     assert c.h.calls.index('prior_lock') < c.h.calls.index('claim')
     assert c.h.calls.count('prior_original')==2
+
+
+@pytest.mark.parametrize('family', ['opening', 'ledger', 'banking', 'interview', 'documents'])
+def test_changed_annual_owner_evidence_never_first_claims_old_approval(family):
+    c = ClaimHarness(); h = c.h
+    if family == 'opening':
+        value = h.annual['annual_opening_inputs']
+        h.annual['annual_opening_inputs'] = replace(value,
+            opening_sources=(replace(value.opening_sources[0], source_digest='f'*64),))
+    if family == 'ledger':
+        value = h.annual['annual_ledger_inputs']
+        h.annual['annual_ledger_inputs'] = replace(value,
+            period_locks=(replace(value.period_locks[0], reason='Changed review'),))
+    if family == 'banking':
+        h.annual['bank_year_evidence'] = replace(h.annual['bank_year_evidence'], source_sha256='f'*64)
+    if family == 'interview':
+        h.annual['annual_interview'] = replace(h.annual['annual_interview'], updated_at='2026-09-29T12:00:00+00:00')
+    if family == 'documents':
+        value = h.annual['annual_document_inputs']
+        h.annual['annual_document_inputs'] = replace(value,
+            documents=(replace(value.documents[0], name='Updated annual reference.pdf'),))
+    with pytest.raises(rf.Rf1086ProductionError, match='payload_changed'): c.run()
+    assert 'claim' not in h.calls and not h.committed

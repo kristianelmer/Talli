@@ -7,6 +7,7 @@ from talli_backend.modules.shareholder_register_filing import public as rf
 from talli_backend.shared.kernel import CompanyId, IncomeYear
 from .shareholder_register_source_admission import ShareholderRegisterSourceAdmission
 from .shareholder_register_source_approval import _review
+from .shareholder_register_annual_readiness import read_annual_readiness
 from .shareholder_register_source_correction import ShareholderRegisterSourceCorrection
 
 
@@ -38,7 +39,8 @@ class ShareholderRegisterSourceClaimWorkflow:
             retained=await session.read_source_claim_approval(approval_id)
             prior=rf.inspect_rf1086_retained_source_approval(retained,approval_id=approval_id,
                 manifest_sha256=manifest_sha256,actor_id=session.actor_id)
-            if (retained.approval.invalidated_at is not None
+            if (retained.approval.manifest.get('schemaVersion') != 'production-source-approval-v2'
+                    or retained.approval.invalidated_at is not None
                     or (None if prior is None else prior.submission_id)!=expected_head):
                 raise rf.Rf1086ProductionError('payload_changed')
             a=retained.approval;company_id=CompanyId(a.company_id);income_year=IncomeYear(a.income_year)
@@ -58,15 +60,16 @@ class ShareholderRegisterSourceClaimWorkflow:
                 rf.assert_rf1086_submission_predecessor(await tx.submission_history(),
                     company_id=company_id,income_year=income_year,predecessor=prior)
                 if correction is not None:await self._correction.assert_admitted(correction,tx)
-                review=_review(await tx.read_source_approval_context(rf.PreviewId(a.preview_id),a.entitlement_id),admitted,a.entitlement_id)
+                annual=await read_annual_readiness(admitted,correlation_id)
+                review=_review(await tx.read_source_approval_context(rf.PreviewId(a.preview_id),a.entitlement_id,annual),admitted,a.entitlement_id,annual)
                 if not review.can_approve:raise rf.Rf1086ProductionError('basis_unavailable')
                 rebuilt=rf.build_rf1086_source_approval_manifest(rf.Rf1086SourceApprovalManifestBasis(
-                    admitted.source,admitted.preview,tx.actor_id,a.entitlement_id,review.review_sha256,review.warning_codes,prior))
+                    admitted.source,admitted.preview,tx.actor_id,a.entitlement_id,review.review_sha256,review.warning_codes,prior,annual))
                 if (rf.serialize_rf1086_source_approval_manifest(rebuilt)!=retained.manifest_text
                         or rebuilt.manifest_sha256!=manifest_sha256
                         or hashlib.sha256(rf.serialize_rf1086_source_preview(admitted.preview).encode('utf-8')).hexdigest()!=a.payload_hash):
                     raise rf.Rf1086ProductionError('payload_changed')
-                result=await tx.claim_source_submission(approval_id,manifest_sha256,expected_head)
+                result=await tx.claim_source_submission(approval_id,manifest_sha256,expected_head,annual)
                 if not isinstance(result,rf.Rf1086SourceSubmissionClaimResult) or type(result.newly_claimed) is not bool:
                     raise rf.Rf1086ProductionError('basis_unavailable')
                 rf.assert_rf1086_source_submission_claim(result.claim,approval_id=approval_id,

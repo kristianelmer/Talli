@@ -541,3 +541,28 @@ and historical recovery while rejecting stale annual evidence for new effects.
 The SQL/application boundary must require this RF-owned proof and independently
 preserve overrides, Authority, Billing and technical gates before the browser-
 written stored-ready prerequisite can be removed.
+
+## Guarded annual approval and claim — 29 September
+
+Full-year review and approval now rebuild RF annual policy from all five owner
+inputs inside source admission. Manifest V2 retains that exact proof and required
+warning acknowledgements. First claim repeats those owner reads and requires the
+same proof, review and manifest bytes; even a same-value metadata change requires
+a new approval. A committed exact claim remains recoverable without fresh annual
+facts. Unclaimed V1 approvals must be replaced by a current V2 approval, while
+historical V1 manifests, archives and committed claims keep their original hashes.
+
+Private V2 SQL replaces the stored-ready snapshot prerequisite for these new
+full-year effects. It preserves RF and non-RF blocking overrides, review comments,
+Authority/Billing linkage, post-wait MFA/expiry and technical signoffs. The HTTP
+contract accepts no caller proof or ready flag. RF Python remains the policy owner;
+SQL binds server-computed proof bytes and validates identity, held locks and the
+independent authorization/release requirements. Direct browser and old V1 effect
+RPC grants are closed. Rollback suspends new effects without discarding history
+or reopening V1; historical successor rehearsal restores V2.
+
+This does not expose full-year provider dispatch. Its profile-specific send,
+uncertain-outcome recovery and final acceptance verification remain next. Local
+unit/database and restricted migration-authority evidence is recorded separately;
+full Supabase CI at the final revision is still required. All seven RF acceptance
+criteria remain pending.

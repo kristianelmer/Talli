@@ -18,6 +18,21 @@ from talli_backend.shared.kernel import CompanyId, IncomeYear
 pytestmark = pytest.mark.authority_database
 
 
+@pytest.fixture(autouse=True)
+def remove_only_annual_opening_fixture(admitted, backend_url):
+    """Incomplete synthetic openings must not escape into global rollback tests."""
+    yield
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute("delete from shareholder_register_filing.migration_quarantine where company_id=%s and family in ('opening_balance_setups','opening_shareholders')", (admitted['company'],))
+        db.execute('set local role shareholder_register_filing_store_owner')
+        db.execute('alter table shareholder_register_filing.opening_shareholders no force row level security')
+        db.execute('alter table shareholder_register_filing.opening_balance_setups no force row level security')
+        db.execute('delete from shareholder_register_filing.opening_shareholders where company_id=%s', (admitted['company'],))
+        db.execute('delete from shareholder_register_filing.opening_balance_setups where company_id=%s', (admitted['company'],))
+        db.execute('alter table shareholder_register_filing.opening_shareholders force row level security')
+        db.execute('alter table shareholder_register_filing.opening_balance_setups force row level security')
+
+
 def query(fixture, store):
     return rf.Rf1086SourceQuery(CompanyId(str(fixture['company'])), IncomeYear(2026), store.actor_id)
 

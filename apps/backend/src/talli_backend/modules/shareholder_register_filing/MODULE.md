@@ -867,5 +867,24 @@ matching `rf1086-source-review-v2` records the same annual binding,
 `otherOverridesReady` and the independent technical gate; V1 archives retain
 their original stored-release review contract. Claim identity inspection accepts
 both manifest versions, but does not grant freshness or dispatch authority.
-This is the retention contract foundation: live approval and first-claim SQL
-still use V1 and the stored-ready seam until guarded V2 enforcement is integrated.
+Live full-year review, approval and first claim use V2. The thin workflow reads
+all annual owners again inside held source admission and passes only its
+server-computed proof to persistence. No request accepts annual proof bytes or a
+caller ready flag. SQL commits the exact proof with current authorization and
+review, validates its source/preview scope and requires first-claim proof bytes
+to equal the retained approval. A changed annual digest requires a new approval,
+even if the XML and warning set are unchanged. The adapter revalidates the proof
+codec against the held source/preview before passing it to SQL.
+
+The old browser-written stored-ready prerequisite no longer decides new full-year
+approval or claim. Its non-RF blocking-override predicate is preserved through
+`backend_system.rf1086_other_overrides_ready_v1`, with the existing receiver owner
+and current member check. RF overrides/comments, Authority/Billing, post-wait MFA
+and technical signoffs remain independent gates. Annual policy stays in RF Python;
+SQL enforces persistence, identity and authorization, not a second policy engine.
+
+V1 full-year effect RPC grants are revoked. Unclaimed V1 approvals need fresh V2
+approval; exact committed claims and historical archives remain recoverable.
+Rollback suspends new V2 effects, leaves V1 effects closed and preserves history.
+Mandatory successor replay restores V2 after historical migrations. Provider
+send remains unexposed pending profile-specific dispatch and recovery.

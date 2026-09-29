@@ -1442,11 +1442,12 @@ class _SourceAdmission:
             raise rf.Rf1086ProductionError('basis_unavailable')
         return value
 
-    async def claim_source_submission(self, approval_id, manifest_sha256, expected_head):
+    async def claim_source_submission(self, approval_id, manifest_sha256, expected_head, annual):
         self._require_active()
         row = await (await self._connection.execute(
-            'select shareholder_register_filing.claim_source_submission_v1(%s::uuid,%s,%s::uuid,%s) as result',
-            (approval_id.value,manifest_sha256,None if expected_head is None else expected_head.value,str(self.actor_id.subject)),
+            'select shareholder_register_filing.claim_source_submission_v2(%s::uuid,%s,%s::uuid,%s,%s) as result',
+            (approval_id.value,manifest_sha256,None if expected_head is None else expected_head.value,
+             await self._annual_proof_text(annual),str(self.actor_id.subject)),
         )).fetchone()
         value = row['result'] if row else None
         if type(value) is not dict or set(value)!={'claim','newlyClaimed'} or type(value['newlyClaimed']) is not bool:
@@ -1456,12 +1457,22 @@ class _SourceAdmission:
             raise rf.Rf1086ProductionError('basis_unavailable')
         return rf.Rf1086SourceSubmissionClaimResult(claim,value['newlyClaimed'])
 
-    async def read_source_approval_context(self, preview_id, entitlement_id):
+    async def _annual_proof_text(self, annual):
+        self._require_active()
+        if not isinstance(annual, rf.Rf1086AnnualReadinessProof):
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        source = await self.current_source()
+        preview = await self.source_preview(annual.source.evidence.preview_id)
+        return rf.serialize_rf1086_annual_readiness(annual, source, preview)
+
+    async def read_source_approval_context(self, preview_id, entitlement_id, annual):
         self._require_active()
         preview = await self.source_preview(preview_id)
+        if annual.source.evidence.preview_id != preview_id:
+            raise rf.Rf1086ProductionError('basis_unavailable')
         row = await (await self._connection.execute(
-            'select shareholder_register_filing.read_source_approval_context_v1(%s::uuid,%s::uuid,%s) as context',
-            (preview_id.value, entitlement_id, str(self.actor_id.subject)),
+            'select shareholder_register_filing.read_source_approval_context_v2(%s::uuid,%s::uuid,%s,%s) as context',
+            (preview_id.value, entitlement_id, await self._annual_proof_text(annual), str(self.actor_id.subject)),
         )).fetchone()
         return _source_approval_review(row['context'] if row else None, self._query, preview, entitlement_id)
 
@@ -1476,7 +1487,7 @@ class _SourceAdmission:
         manifest_text = rf.serialize_rf1086_source_approval_manifest(manifest)
         try:
             row = await (await self._connection.execute(
-                'select * from shareholder_register_filing.append_source_approval_v1(%s::uuid,%s::uuid,%s,%s,%s,%s)',
+                'select * from shareholder_register_filing.append_source_approval_v2(%s::uuid,%s::uuid,%s,%s,%s,%s)',
                 (preview.preview_id.value, entitlement_id, manifest_text, manifest.manifest_sha256,
                  review_sha256, str(self.actor_id.subject)),
             )).fetchone()

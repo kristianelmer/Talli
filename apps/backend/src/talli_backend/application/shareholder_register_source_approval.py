@@ -7,6 +7,7 @@ from talli_backend.shared.kernel import CompanyId, CorrelationId, IncomeYear
 
 from .shareholder_register_source_admission import ShareholderRegisterSourceAdmission
 from .shareholder_register_source_correction import ShareholderRegisterSourceCorrection
+from .shareholder_register_annual_readiness import read_annual_readiness
 
 
 def _hash(value):
@@ -21,9 +22,9 @@ def _entitlement(value):
         raise rf.ShareholderRegisterFilingError.invalid_input() from None
 
 
-def _review(value, admitted, entitlement_id):
-    expected_warnings = tuple(sorted({issue.code for issue in admitted.preview.readiness_issues
-                                     if issue.level == 'warning'}))
+def _review(value, admitted, entitlement_id, annual):
+    rf.assert_rf1086_annual_readiness_matches(annual, admitted.source, admitted.preview, annual.annual_inputs)
+    expected_warnings = annual.required_warning_codes
     if not (isinstance(value, rf.Rf1086SourceApprovalReview)
             and value.company_id == admitted.source.company_id
             and value.income_year == admitted.source.income_year
@@ -36,7 +37,8 @@ def _review(value, admitted, entitlement_id):
             and all(type(code) is str and bool(code.strip()) for code in value.blockers)
             and value.blockers == tuple(sorted(set(value.blockers)))
             and type(value.can_approve) is bool and value.can_approve == (not value.blockers)
-            and (not value.can_approve or admitted.preview.readiness_status == 'ready')):
+            and (not value.can_approve or (admitted.preview.readiness_status == 'ready'
+                and annual.readiness_status in ('ready', 'warning')))):
         raise rf.Rf1086ProductionError('basis_unavailable')
     return value
 
@@ -53,8 +55,9 @@ class ShareholderRegisterSourceApprovalWorkflow:
         async with self._admission.admit(access_token, company_id=company_id, income_year=income_year,
                 preview_id=preview_id, correlation_id=correlation_id) as admitted:
             await admitted.transaction.bridge_source_preview(admitted.preview)
-            return _review(await admitted.transaction.read_source_approval_context(preview_id, entitlement_id),
-                           admitted, entitlement_id)
+            annual = await read_annual_readiness(admitted, correlation_id)
+            return _review(await admitted.transaction.read_source_approval_context(preview_id, entitlement_id, annual),
+                           admitted, entitlement_id, annual)
 
     async def approve(self, access_token: str, *, company_id: CompanyId,
             income_year: IncomeYear, preview_id: rf.PreviewId, entitlement_id: str,
@@ -80,8 +83,9 @@ class ShareholderRegisterSourceApprovalWorkflow:
             if correction is not None:
                 await self._correction.assert_admitted(correction,admitted.transaction)
             await admitted.transaction.bridge_source_preview(admitted.preview)
-            review = _review(await admitted.transaction.read_source_approval_context(preview_id, entitlement_id),
-                             admitted, entitlement_id)
+            annual = await read_annual_readiness(admitted, correlation_id)
+            review = _review(await admitted.transaction.read_source_approval_context(preview_id, entitlement_id, annual),
+                             admitted, entitlement_id, annual)
             if not review.can_approve:
                 raise rf.Rf1086ProductionError('basis_unavailable')
             if (review.review_sha256 != review_sha256
@@ -89,7 +93,7 @@ class ShareholderRegisterSourceApprovalWorkflow:
                 raise rf.Rf1086ProductionError('payload_changed')
             basis = rf.Rf1086SourceApprovalManifestBasis(admitted.source, admitted.preview,
                 admitted.transaction.actor_id, entitlement_id, review.review_sha256,
-                acknowledged_warning_codes, predecessor)
+                acknowledged_warning_codes, predecessor, annual)
             manifest = rf.build_rf1086_source_approval_manifest(basis)
             result = await admitted.transaction.append_source_approval(
                 admitted.preview, entitlement_id, manifest, review.review_sha256)
