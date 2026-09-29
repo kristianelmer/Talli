@@ -1,6 +1,6 @@
 """Existing Ledger queries remain owned and complete inside RF admission."""
 import asyncio
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from decimal import Decimal
 from uuid import uuid4
 
@@ -21,6 +21,53 @@ MIGRATION='20260929160247_rf_annual_ledger_read_admission.sql'
 SIGNATURES=('ledger.read_opening_bank_inputs_v1(uuid,integer,text)',
             'ledger.list_period_locks(uuid[],text,integer,text)')
 CORRELATION=CorrelationId('rf-annual-ledger-database')
+
+
+@contextmanager
+def ledger_fixture_insert_access(url):
+    """Borrow only fixture INSERT under an existing BYPASSRLS test principal."""
+    role = 'ledger_store_owner'
+    tables = ('ledger.opening_bank_inputs', 'ledger.period_locks')
+    borrowed = []
+    membership_borrowed = False
+    prior = None
+    with psycopg.connect(url, autocommit=True) as db:
+        principal, bypass = db.execute('select current_user,rolbypassrls from pg_roles where rolname=current_user').fetchone()
+        assert bypass, 'Ledger fixtures require the disposable database admin'
+        original_acls = {table: db.execute('select relacl::text,relforcerowsecurity from pg_class where oid=%s::regclass', (table,)).fetchone() for table in tables}
+        try:
+            with db.transaction():
+                if not db.execute("select pg_has_role(current_user,%s,'SET')", (role,)).fetchone()[0]:
+                    prior = db.execute('select admin_option,inherit_option,set_option from pg_auth_members where roleid=%s::regrole and member=current_user::regrole and grantor=member', (role,)).fetchone()
+                    db.execute(sql.SQL('grant {} to {} with set true granted by {}').format(sql.Identifier(role), sql.Identifier(principal), sql.Identifier(principal)))
+                    membership_borrowed = True
+                for table in tables:
+                    if not db.execute("select has_table_privilege(current_user,%s,'INSERT')", (table,)).fetchone()[0]:
+                        db.execute('set local role ledger_store_owner')
+                        db.execute(sql.SQL('grant insert on {} to {}').format(sql.Identifier(*table.split('.')), sql.Identifier(principal)))
+                        db.execute('reset role')
+                        borrowed.append(table)
+            yield
+        finally:
+            with db.transaction():
+                if borrowed:
+                    db.execute('set local role ledger_store_owner')
+                    for table in reversed(borrowed):
+                        db.execute(sql.SQL('revoke insert on {} from {}').format(sql.Identifier(*table.split('.')), sql.Identifier(principal)))
+                    db.execute('reset role')
+                if membership_borrowed:
+                    db.execute(sql.SQL('revoke {} from {} granted by {}').format(sql.Identifier(role), sql.Identifier(principal), sql.Identifier(principal)))
+                    if prior is not None:
+                        db.execute(sql.SQL('grant {} to {} with admin {},inherit {},set {} granted by {}').format(
+                            sql.Identifier(role), sql.Identifier(principal), *(sql.SQL(str(value).lower()) for value in prior), sql.Identifier(principal)))
+                for table in tables:
+                    assert db.execute('select relacl::text,relforcerowsecurity from pg_class where oid=%s::regclass', (table,)).fetchone() == original_acls[table]
+
+
+@pytest.fixture(scope='module', autouse=True)
+def ledger_fixture_authority():
+    with ledger_fixture_insert_access(DATABASE_URL):
+        yield
 
 
 def query(fixture,store):
