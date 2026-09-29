@@ -19,6 +19,7 @@ const RF193_YEAR_SOURCE = "20260923091509_rf1086_immutable_year_source.sql";
 
 const RF193_OBSERVATION = "20260923102314_rf1086_register_observation_store.sql";
 const RF193_SOURCE_COMPANY_GUARD = "20260924062746_rf1086_source_company_guard.sql";
+const TAX_SETTLEMENT = "20260913171000_company_tax_settlement_expand.sql";
 const CONSEQUENTIAL_GUARDS = JSON.parse(await readFile(
   new URL("./rf-consequential-successors.json", import.meta.url), "utf8",
 )).map(layer => layer.migration);
@@ -31,6 +32,7 @@ async function topology(database) {
     to_regprocedure('shareholder_register_filing.lock_source_company_write_v1()') is not null as rf_source_company_guard,
     to_regclass('shareholder_register_filing.register_observations') is not null as rf_register_observations,
     to_regclass('shareholder_register_filing.year_source_versions') is not null as rf_year_sources,
+    to_regclass('backend_system.tax_settlement_migration_state') is not null as tax_settlement,
     (select c.relkind::text from pg_class c join pg_namespace n on n.oid=c.relnamespace
       where n.nspname='public' and c.relname='system_user_requests') as authority_kind,
     (select c.relkind::text from pg_class c join pg_namespace n on n.oid=c.relnamespace
@@ -88,6 +90,17 @@ export async function rehearseAuthorityTopology({ direction, database, loadSql =
     if (direction === "recutover" && (state.ledger_kind !== null || state.ledger_setup || state.opening_kind !== "r")) {
       throw new Error("final_rf_requires_ledger_contract");
     }
+    // The historical Ledger close rehearsal recreates post_entry and therefore
+    // loses grants installed by later consumers. Restore the shipped inactive
+    // Tax expansion before the RF guards; never replace an active Tax writer.
+    let restoreTaxExpansion = false;
+    if (direction === "recutover" && state.tax_settlement) {
+      const { rows: [settlement] } = await database.query("select phase from backend_system.tax_settlement_migration_state where singleton");
+      if (!["expanded", "rolled_back"].includes(settlement?.phase)) {
+        throw new Error("authority_rehearsal_requires_inactive_tax_settlement");
+      }
+      restoreTaxExpansion = true;
+    }
     // Billing's ordinary pilot coordinator still reads the AU overlap view.
     // Its lifecycle retires that dependency before the final recutover phase.
     await apply([`migrations/${AUTHORITY}`, `migrations/${OPERATIONS}`, `migrations/${RF}`,
@@ -95,6 +108,7 @@ export async function rehearseAuthorityTopology({ direction, database, loadSql =
       `contract-migrations/${SIGNOFF_CONTRACT}`,
       `migrations/${RF151}`, `migrations/${RF151_CUTOVER}`, `migrations/${DOCUMENTS_LEDGER_GUARD}`, `migrations/${RF193_READ_RECOVERY}`, `migrations/${RF193_ARCHIVE}`, `migrations/${RF193_YEAR_SOURCE}`, `migrations/${RF193_OBSERVATION}`, `migrations/${RF193_SOURCE_PREVIEW}`, `migrations/${RF193_SOURCE_COMPANY_GUARD}`,
       ...(direction === "recutover" ? [`contract-migrations/${RF151_CONTRACT}`] : []),
+      ...(restoreTaxExpansion ? [`migrations/${TAX_SETTLEMENT}`] : []),
       // Historical owner lifecycles can replace entire routine bodies. Reapply
       // the ordered additive guards only after every predecessor/contract body.
       ...CONSEQUENTIAL_GUARDS.map(file => `migrations/${file}`)]);

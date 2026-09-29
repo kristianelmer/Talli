@@ -511,6 +511,7 @@ const RFO='20260923102314_rf1086_register_observation_store.sql';
 const RFP='20260923105912_rf1086_source_backed_preview.sql';
 const RFG='20260924062746_rf1086_source_company_guard.sql';
 const DLG='20260923125730_documents_ledger_evidence_guard.sql';
+const TAX='20260913171000_company_tax_settlement_expand.sql';
 const predecessor={rf_owned:false,authority_kind:'r',ledger_kind:'v',ledger_setup:true,opening_kind:'r'};
 const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`migrations/${RFA}`,`migrations/${RFY}`,`migrations/${RFO}`,`migrations/${RFP}`,`migrations/${RFG}`];
 const consequentialGuards=['20260924080208_company_access_rf_admission_guard.sql','20260924080249_documents_rf_consequential_company_guards.sql','20260924080355_governance_ledger_company_write_guards.sql','20260924083154_governance_guarded_reporting_year_read.sql','20260924084752_billing_rf_full_year_pilot_profile.sql','20260924085227_rf1086_source_review_bridge.sql','20260924091015_rf1086_source_approval_foundation.sql','20260924094631_rf1086_journal_company_guard.sql','20260928060732_rf1086_source_submission_claim.sql','20260928110000_rf1086_feedback_original_binding.sql','20260928124000_documents_historical_original_assertion.sql','20260929092425_banking_company_write_guards.sql'].map(file=>`migrations/${file}`);
@@ -519,6 +520,7 @@ function fake(initial,{fail,noEffect=false}={}) {
  const state={signoff_open:true,...initial},executed=[];
  return {state,executed,database:{async query(sql) {
   if(sql.startsWith('select\n')) return {rows:[{...state}]};
+  if(sql==='select phase from backend_system.tax_settlement_migration_state where singleton') return {rows:state.tax_phase?[{phase:state.tax_phase}]:[]};
   if(sql.startsWith('select exists(select 1 from shareholder_register_filing.register_observations)')) return {rows:[{retained_observations:state.retained_observations??false}]};
   if(sql.startsWith('select exists(select 1 from shareholder_register_filing.year_source_versions)')) return {rows:[{retained_sources:state.retained_sources??false}]};
   executed.push(sql); if(sql===fail) throw new Error('synthetic_dependency_failure');
@@ -591,6 +593,21 @@ for(const wrong of [{ledger_kind:null,ledger_setup:false},{ledger_kind:'r'},{led
 });
 test('final RF contract follows explicit final Ledger guard and owner recutover',async()=>{
  const f=fake({...predecessor,ledger_kind:null,ledger_setup:false});await run('recutover',f);assert.deepEqual(f.executed,[...forward,`contract-migrations/${RFF}`,...consequentialGuards]);
+});
+for(const tax_phase of ['expanded','rolled_back']) test(`final RF rehearsal restores ${tax_phase} Tax bridge before successor guards`,async()=>{
+ const f=fake({...predecessor,ledger_kind:null,ledger_setup:false,tax_settlement:true,tax_phase});
+ await run('recutover',f);
+ assert.deepEqual(f.executed,[...forward,`contract-migrations/${RFF}`,`migrations/${TAX}`,...consequentialGuards]);
+});
+for(const tax_phase of ['cutover','contracted',undefined]) test(`final RF rehearsal refuses active or missing Tax phase ${tax_phase}`,async()=>{
+ const f=fake({...predecessor,ledger_kind:null,ledger_setup:false,tax_settlement:true,tax_phase});
+ await assert.rejects(run('recutover',f),/authority_rehearsal_requires_inactive_tax_settlement/);
+ assert.deepEqual(f.executed,[]);
+});
+test('failed Tax bridge restoration prevents every successor guard',async()=>{
+ const f=fake({...predecessor,ledger_kind:null,ledger_setup:false,tax_settlement:true,tax_phase:'expanded'},{fail:`migrations/${TAX}`});
+ await assert.rejects(run('recutover',f),/synthetic_dependency_failure/);
+ assert.deepEqual(f.executed,[...forward,`contract-migrations/${RFF}`,`migrations/${TAX}`]);
 });
 for(const wrong of [{ledger_kind:'v',ledger_setup:true},{ledger_kind:null,ledger_setup:true},{ledger_kind:'v',ledger_setup:false}])test(`final refuses incomplete Ledger contract ${JSON.stringify(wrong)}`,async()=>{
  const f=fake({...predecessor,...wrong});await assert.rejects(run('recutover',f),/final_rf_requires_ledger_contract/);assert.deepEqual(f.executed,[]);
