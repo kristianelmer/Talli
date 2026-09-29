@@ -46,5 +46,9 @@
   {
     "migration": "20260929092425_banking_company_write_guards.sql",
     "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='banking' and p.proname='acquire_company_write_guard_v1')"
+  },
+  {
+    "migration": "20260929144619_rf_annual_interview_read_admission.sql",
+    "presenceQuery": "select coalesce(has_function_privilege('shareholder_register_filing_executor',to_regprocedure('backend_system.list_annual_data_legacy_v1(uuid,integer,text)'),'EXECUTE'),false)"
   }
 ]

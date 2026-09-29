@@ -11,7 +11,9 @@
     "database": "12 real database tests passed:5 new RF consumer/grant cases and7 existing annual writer-guard cases. Committed changes after guard waits are observed, revoked ownership is rejected, and expired scopes fail.",
     "restrictedMigration": "Twice rollback/replay under a nonsuperuser without BYPASSRLS or initial owner SET restores exact role memberships, function source/owner/config/ACL and schema ACLs.",
     "architecture": "npm run check:architecture passed after documenting both technical migrations.",
-    "baseline": "Disposable PostgreSQL17 with minimal Auth/Storage shims. Full Supabase CI on this change remains required."
+    "baseline": "Disposable PostgreSQL17 with minimal Auth/Storage shims. Full Supabase CI on this change remains required.",
+    "historicalReplay": "Reader drop/recreation loses RF EXECUTE. Exact migration replay restores it; successor inventory now reapplies it during final RF recutover. Actual rollback/recutover followed by12 interview/guard tests passed. All64 RF lifecycle tests and77 CI harness tests passed.",
+    "harnessLimit": "Full Governance lifecycle was not runnable against the minimal post-contract shim: missing Auth fields, then predecessor corporate/opening tables. Reader recreation and final RF recutover were verified separately; full Supabase remains required."
   },
   "limits": [
     "This is an annual-readiness input, not the completed annual policy or a replacement for the stored release flag.",
@@ -22,6 +24,10 @@
   "sha256": {
     "talli-rf-interview-unit-combined.log": "32124180ef5242b82f51f4c8701bef7bf8e932372f3c796341bb2b271c3b965c",
     "talli-rf-interview-database.log": "fae44fd8fb37c7ac73039b0b22e5e58ee7cb7497400b264cf98bdaadc2cb32a1",
-    "talli-rf-interview-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e"
+    "talli-rf-interview-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-rf-interview-reader-recreate.log": "8e6bc689215aed2b881219cdd7ed6025317ebc563dccd254136d08915a8cf7f1",
+    "talli-rf-interview-recutover.log": "d24f1cad46d1cba6f2928294c912120d4dfd634a93fc7fd3656605b64becf750",
+    "talli-rf-interview-ci-harness.log": "81545789ede75dc82484f106fbdb7c2fc45f0363f59261ad8de248f605a46362",
+    "talli-rf-interview-rf-lifecycle.log": "7c3b293d4c67c915e6246a86eeb9dacbd4cfa7dff157df9649360d5ae0413fdc"
   }
 }

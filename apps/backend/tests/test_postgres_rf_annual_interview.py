@@ -40,7 +40,7 @@ def test_exact_year_is_selected_without_reusing_old_answers_and_is_deeply_immuta
 
 
 @pytest.mark.parametrize('field,value',[
-    ('companyId',str(uuid4())),('sourceId','bad'),('incomeYear',True),('incomeYear',str(int(YEAR))),
+    pytest.param('companyId',str(uuid4()),id='company-scope'),('sourceId','bad'),('incomeYear',True),('incomeYear',str(int(YEAR))),
     ('incomeYear',int(YEAR)+1),('incomeYear',1999),('answers',[]),('answers',{'has_unpaid_items':'false'}),
     ('answers',{'authority_to_submit_confirmed':1}),('answers',{'bank_balance_confirmed':None}),
     ('answers',{'value':float('nan')}),('answers',{1:True}),('confirmations','reviewed'),('confirmations',[1]),
