@@ -30,10 +30,11 @@ def query(fixture, store):
     return rf.Rf1086SourceQuery(CompanyId(str(fixture['company'])), IncomeYear(2026), store.actor_id)
 
 
-def add_document(db, fixture, year=2026, status='attached'):
+def add_document(db, fixture, year=2026, status='attached', *, execution_role='documents_executor'):
     identity = uuid4()
     subject = str(fixture['owner'])
-    db.execute('set local role documents_executor')
+    assert execution_role in ('documents_executor', 'documents_store_owner')
+    db.execute(sql.SQL('set local role {}').format(sql.Identifier(execution_role)))
     db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.authorized_company_roles',%s,true)",
                (subject, json.dumps({str(fixture['company']): 'owner'})))
     request = {'documentId': str(identity), 'companyId': str(fixture['company']), 'incomeYear': year,
@@ -131,7 +132,9 @@ def test_wait_observes_committed_document_or_rejects_revoked_owner(admitted, bac
                     blocker.execute("update public.company_memberships set role='read_only' where company_id=%s and user_id=%s",
                                     (admitted['company'], admitted['owner']))
                 else:
-                    identity = add_document(blocker, admitted)
+                    # This disposable admin already borrows the owner role;
+                    # unlike the runtime login it cannot SET documents_executor.
+                    identity = add_document(blocker, admitted, execution_role='documents_store_owner')
             if revoke:
                 with pytest.raises(rf.ShareholderRegisterFilingError):
                     await asyncio.wait_for(task, 3)
