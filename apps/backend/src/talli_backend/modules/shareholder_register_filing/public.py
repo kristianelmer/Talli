@@ -1322,6 +1322,9 @@ class Rf1086SourceSnapshot(_ImmutableRf1086Value):
     as_of: Timestamp
     complete_enumeration: bool
     opening_sources: tuple[Rf1086OpeningSource, ...]
+    # V2 enumerates retained full-year history in the same database snapshot.
+    full_year_archive: Rf1086ArchiveSnapshot | None = None
+    full_year_family_counts: Mapping[str, int] | None = None
 
 
 @dataclass(frozen=True, slots=True)

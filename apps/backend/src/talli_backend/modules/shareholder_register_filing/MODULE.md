@@ -35,6 +35,23 @@ reconciliation outcomes retain their journal observation time separately from
 transport incidents and mutation observations. Source facts make no commercial
 refund decision.
 
+
+`rf1086-source-v2` also commits the complete retained full-year archive: source
+versions and head, independent observations and capture records, previews,
+review bridges, approval lineage, durable claims, submission head, journal and
+feedback-original bindings. The adapter reads these on the same repeatable
+snapshot as legacy facts and independently counts all eight new storage
+families. Coverage checks match both projections and exact family counts, and
+validate retained source/archive integrity. Missing or inconsistent evidence
+cannot certify complete history. Legacy v1 hashing remains byte-for-byte stable;
+previous v1 evidence cannot verify a v2 snapshot. Read timestamps remain excluded
+from the digest.
+
+Complete historical coverage does not establish current full-year readiness.
+When full-year sources exist, facts explicitly return
+`rf1086_full_year_readiness_not_evaluated` rather than falling back to an opening
+snapshot. Fresh admission and owned annual prerequisites remain separate work.
+
 The archive projection reads previews, simulations and production evidence for the requested year
 before decoding them, plus the original company-wide comments and permissions
 and test evidence referenced by those simulations. Its approvals, production submissions,

@@ -1,0 +1,46 @@
+[
+  {
+    "migration": "20260924080208_company_access_rf_admission_guard.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='company_access_read_rf_admission_v1')"
+  },
+  {
+    "migration": "20260924080249_documents_rf_consequential_company_guards.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='documents' and p.proname='lock_company_write_v1')"
+  },
+  {
+    "migration": "20260924080355_governance_ledger_company_write_guards.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.proname='acquire_company_write_guard_v1')"
+  },
+  {
+    "migration": "20260924083154_governance_guarded_reporting_year_read.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.proname='read_guarded_reporting_year_inputs_v1')"
+  },
+  {
+    "migration": "20260924084752_billing_rf_full_year_pilot_profile.sql",
+    "presenceQuery": "select exists(select 1 from pg_constraint where conrelid=to_regclass('billing.production_pilot_entitlements') and pg_get_constraintdef(oid) like '%rf1086_full_year_v1%')"
+  },
+  {
+    "migration": "20260924085227_rf1086_source_review_bridge.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='bridge_source_preview_v1')"
+  },
+  {
+    "migration": "20260924091015_rf1086_source_approval_foundation.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='append_source_approval_v1')"
+  },
+  {
+    "migration": "20260924094631_rf1086_journal_company_guard.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='lock_submission_company_write_v1')"
+  },
+  {
+    "migration": "20260928060732_rf1086_source_submission_claim.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='claim_source_submission_v1')"
+  },
+  {
+    "migration": "20260928110000_rf1086_feedback_original_binding.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='record_retained_feedback_artifact_v1')"
+  },
+  {
+    "migration": "20260928124000_documents_historical_original_assertion.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='documents' and p.proname='assert_historical_original_v1')"
+  }
+]

@@ -439,7 +439,8 @@
     "journalCompanyGuard": "apps/backend/tests/test_rf1086_journal_company_guard_database.py",
     "submissionHistory": "apps/backend/tests/test_rf1086_submission_history.py",
     "archiveStorage": "apps/backend/tests/test_rf1086_archive_storage.py",
-    "archiveHistory": "apps/backend/tests/test_rf1086_archive_history.py"
+    "archiveHistory": "apps/backend/tests/test_rf1086_archive_history.py",
+    "fullYearSourceEvidence": "apps/backend/tests/test_rf1086_full_year_source_facts.py"
   },
   "compatibilityExceptions": []
 }

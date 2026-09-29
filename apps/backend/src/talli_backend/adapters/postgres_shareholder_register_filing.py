@@ -728,103 +728,107 @@ class PostgresShareholderRegisterFilingSession:
     async def _archive_source(self, query, *, include_production):
         self._command_actor(query)
         async with self._transaction(snapshot=True) as connection:
-            company_id, year = str(query.company_id), int(query.income_year)
-            await connection.execute("select shareholder_register_filing.assert_member_v1(%s::uuid)", (company_id,))
-            values = {}
-            # Filter parent years before decoding; comments/permissions retain
-            # their original company-wide scope, including historical references.
-            for name, table, record_type, ordered_at, scoped_year in (
-                ("previews", "filing_previews", rf.Rf1086PreviewRecord, "created_at", True),
-                ("simulations", "filing_submissions", rf.Rf1086SimulationRecord, "created_at", True),
-                ("approvals", "filing_approval_snapshots", rf.Rf1086ApprovalRecord, "approved_at", True),
-                ("production_submissions", "production_filing_submissions", rf.Rf1086ProductionSubmissionRecord, "created_at", True),
-                ("review_comments", "filing_review_comments", rf.Rf1086ReviewCommentRecord, "created_at", False),
-                ("permissions", "authority_permissions", rf.Rf1086FilingPermissionRecord, "updated_at", False),
-            ):
-                if not include_production and name in ("approvals", "production_submissions"):
-                    continue
-                where = " and t.income_year=%s::integer" if scoped_year else ""
-                rows = await (await connection.execute(
-                    f"select t.* from shareholder_register_filing.{table} t where t.company_id=%s::uuid{where} "
-                    f"order by t.{ordered_at} desc,t.id desc",
-                    (company_id, year) if scoped_year else (company_id,),
-                )).fetchall()
-                try:
-                    values[name] = tuple(self._wire_record(record_type, row) for row in rows)
-                except (TypeError, ValueError, KeyError):
-                    raise rf.ShareholderRegisterFilingError.unavailable() from None
-            evidence_ids = sorted({row.authority_test_run_id for row in values["simulations"]
-                if row.mode == "test_authority" and row.authority_test_run_id is not None})
-            values["test_evidence"] = ()
-            if evidence_ids:
-                rows = await (await connection.execute(
-                    "select t.* from shareholder_register_filing.authority_test_runs t "
-                    "where t.company_id=%s::uuid and t.obligation='aksjonaerregisteroppgaven' "
-                    "and t.id=any(%s::uuid[]) order by t.recorded_at desc,t.id desc",
-                    (company_id,evidence_ids),
-                )).fetchall()
-                try:
-                    values["test_evidence"] = tuple(self._wire_record(rf.Rf1086TestEvidenceRecord, row) for row in rows)
-                except (TypeError, ValueError, KeyError):
-                    raise rf.ShareholderRegisterFilingError.unavailable() from None
-            if not include_production:
-                return rf.Rf1086ArchiveSnapshot(query.company_id, query.income_year, **values)
-            values['source_history'] = await self._archive_source_history(connection, company_id, year)
-            # Historical approval lineage uses retained versions, never current
-            # heads, current Documents status or today's review permissions.
-            lineage = []
-            if any(row.case_profile == 'rf1086_full_year_v1' for row in values['approvals']):
-                bindings = await (await connection.execute(
-                    'select * from shareholder_register_filing.source_approval_bindings '
-                    'where company_id=%s::uuid and income_year=%s order by approval_id',
-                    (company_id, year),
-                )).fetchall()
-                for binding in bindings:
-                    lineage.append(await self._retained_source_approval_lineage(
-                        connection, binding, company_id, year))
-            values['source_approval_lineage'] = tuple(lineage)
-            # Claims and the managed head are captured in the same repeatable
-            # snapshot as approvals/journal rows, including historical actors.
-            claim_rows = await (await connection.execute(
-                'select * from shareholder_register_filing.source_submission_bindings '
-                'where company_id=%s::uuid and income_year=%s order by submission_id',
-                (company_id,year),
-            )).fetchall()
-            head_rows = await (await connection.execute(
-                'select * from shareholder_register_filing.submission_heads '
-                'where company_id=%s::uuid and income_year=%s order by obligation,environment',
-                (company_id,year),
+            return await self._archive_source_on_connection(connection, query, include_production=include_production)
+
+    async def _archive_source_on_connection(self, connection, query, *, include_production):
+        self._command_actor(query)
+        company_id, year = str(query.company_id), int(query.income_year)
+        await connection.execute("select shareholder_register_filing.assert_member_v1(%s::uuid)", (company_id,))
+        values = {}
+        # Filter parent years before decoding; comments/permissions retain
+        # their original company-wide scope, including historical references.
+        for name, table, record_type, ordered_at, scoped_year in (
+            ("previews", "filing_previews", rf.Rf1086PreviewRecord, "created_at", True),
+            ("simulations", "filing_submissions", rf.Rf1086SimulationRecord, "created_at", True),
+            ("approvals", "filing_approval_snapshots", rf.Rf1086ApprovalRecord, "approved_at", True),
+            ("production_submissions", "production_filing_submissions", rf.Rf1086ProductionSubmissionRecord, "created_at", True),
+            ("review_comments", "filing_review_comments", rf.Rf1086ReviewCommentRecord, "created_at", False),
+            ("permissions", "authority_permissions", rf.Rf1086FilingPermissionRecord, "updated_at", False),
+        ):
+            if not include_production and name in ("approvals", "production_submissions"):
+                continue
+            where = " and t.income_year=%s::integer" if scoped_year else ""
+            rows = await (await connection.execute(
+                f"select t.* from shareholder_register_filing.{table} t where t.company_id=%s::uuid{where} "
+                f"order by t.{ordered_at} desc,t.id desc",
+                (company_id, year) if scoped_year else (company_id,),
             )).fetchall()
             try:
-                values['source_submission_claims'] = tuple(_source_claim_record(row,
-                    rf.ApprovalId(str(row['approval_id'])),row['manifest_sha256'],
-                    None if row['predecessor_submission_id'] is None else rf.SubmissionId(str(row['predecessor_submission_id'])),
-                    ActorId(ActorKind.USER,UserId(str(row['claimed_by'])))) for row in claim_rows)
-                if len(head_rows)>1:raise ValueError('multiple managed heads')
-                values['submission_head'] = None
-                if head_rows:
-                    head=head_rows[0]
-                    if type(head['income_year']) is not int:raise ValueError('invalid head year')
-                    values['submission_head'] = rf.Rf1086SubmissionHead(CompanyId(str(head['company_id'])),
-                        IncomeYear(head['income_year']),head['obligation'],head['environment'],
-                        rf.SubmissionId(str(head['submission_id'])),_record_value(head['updated_at']))
-            except (ValueError,TypeError,KeyError,rf.Rf1086ProductionError,rf.ShareholderRegisterFilingError):
+                values[name] = tuple(self._wire_record(record_type, row) for row in rows)
+            except (TypeError, ValueError, KeyError):
                 raise rf.ShareholderRegisterFilingError.unavailable() from None
-            for name, table, record_type, ordered_at in (
-                ("production_events", "production_filing_events", rf.Rf1086ArchiveProductionEventRecord, "created_at"),
-                ("feedback_artifacts", "production_feedback_artifacts", rf.Rf1086ArchiveFeedbackArtifactRecord, "retrieved_at"),
-            ):
-                rows = await (await connection.execute(
-                    f"select t.* from shareholder_register_filing.{table} t "
-                    "join shareholder_register_filing.production_filing_submissions s on s.id=t.submission_id "
-                    "where s.company_id=%s::uuid and s.income_year=%s::integer and t.company_id=s.company_id "
-                    f"order by t.{ordered_at},t.id", (company_id, year),
-                )).fetchall()
-                try:
-                    values[name] = tuple(self._wire_record(record_type, row) for row in rows)
-                except (TypeError, ValueError, KeyError):
-                    raise rf.ShareholderRegisterFilingError.unavailable() from None
+        evidence_ids = sorted({row.authority_test_run_id for row in values["simulations"]
+            if row.mode == "test_authority" and row.authority_test_run_id is not None})
+        values["test_evidence"] = ()
+        if evidence_ids:
+            rows = await (await connection.execute(
+                "select t.* from shareholder_register_filing.authority_test_runs t "
+                "where t.company_id=%s::uuid and t.obligation='aksjonaerregisteroppgaven' "
+                "and t.id=any(%s::uuid[]) order by t.recorded_at desc,t.id desc",
+                (company_id,evidence_ids),
+            )).fetchall()
+            try:
+                values["test_evidence"] = tuple(self._wire_record(rf.Rf1086TestEvidenceRecord, row) for row in rows)
+            except (TypeError, ValueError, KeyError):
+                raise rf.ShareholderRegisterFilingError.unavailable() from None
+        if not include_production:
             return rf.Rf1086ArchiveSnapshot(query.company_id, query.income_year, **values)
+        values['source_history'] = await self._archive_source_history(connection, company_id, year)
+        # Historical approval lineage uses retained versions, never current
+        # heads, current Documents status or today's review permissions.
+        lineage = []
+        if any(row.case_profile == 'rf1086_full_year_v1' for row in values['approvals']):
+            bindings = await (await connection.execute(
+                'select * from shareholder_register_filing.source_approval_bindings '
+                'where company_id=%s::uuid and income_year=%s order by approval_id',
+                (company_id, year),
+            )).fetchall()
+            for binding in bindings:
+                lineage.append(await self._retained_source_approval_lineage(
+                    connection, binding, company_id, year))
+        values['source_approval_lineage'] = tuple(lineage)
+        # Claims and the managed head are captured in the same repeatable
+        # snapshot as approvals/journal rows, including historical actors.
+        claim_rows = await (await connection.execute(
+            'select * from shareholder_register_filing.source_submission_bindings '
+            'where company_id=%s::uuid and income_year=%s order by submission_id',
+            (company_id,year),
+        )).fetchall()
+        head_rows = await (await connection.execute(
+            'select * from shareholder_register_filing.submission_heads '
+            'where company_id=%s::uuid and income_year=%s order by obligation,environment',
+            (company_id,year),
+        )).fetchall()
+        try:
+            values['source_submission_claims'] = tuple(_source_claim_record(row,
+                rf.ApprovalId(str(row['approval_id'])),row['manifest_sha256'],
+                None if row['predecessor_submission_id'] is None else rf.SubmissionId(str(row['predecessor_submission_id'])),
+                ActorId(ActorKind.USER,UserId(str(row['claimed_by'])))) for row in claim_rows)
+            if len(head_rows)>1:raise ValueError('multiple managed heads')
+            values['submission_head'] = None
+            if head_rows:
+                head=head_rows[0]
+                if type(head['income_year']) is not int:raise ValueError('invalid head year')
+                values['submission_head'] = rf.Rf1086SubmissionHead(CompanyId(str(head['company_id'])),
+                    IncomeYear(head['income_year']),head['obligation'],head['environment'],
+                    rf.SubmissionId(str(head['submission_id'])),_record_value(head['updated_at']))
+        except (ValueError,TypeError,KeyError,rf.Rf1086ProductionError,rf.ShareholderRegisterFilingError):
+            raise rf.ShareholderRegisterFilingError.unavailable() from None
+        for name, table, record_type, ordered_at in (
+            ("production_events", "production_filing_events", rf.Rf1086ArchiveProductionEventRecord, "created_at"),
+            ("feedback_artifacts", "production_feedback_artifacts", rf.Rf1086ArchiveFeedbackArtifactRecord, "retrieved_at"),
+        ):
+            rows = await (await connection.execute(
+                f"select t.* from shareholder_register_filing.{table} t "
+                "join shareholder_register_filing.production_filing_submissions s on s.id=t.submission_id "
+                "where s.company_id=%s::uuid and s.income_year=%s::integer and t.company_id=s.company_id "
+                f"order by t.{ordered_at},t.id", (company_id, year),
+            )).fetchall()
+            try:
+                values[name] = tuple(self._wire_record(record_type, row) for row in rows)
+            except (TypeError, ValueError, KeyError):
+                raise rf.ShareholderRegisterFilingError.unavailable() from None
+        return rf.Rf1086ArchiveSnapshot(query.company_id, query.income_year, **values)
 
     async def _workspace(self, connection, query):
         self._command_actor(query)
@@ -1076,11 +1080,25 @@ class PostgresShareholderRegisterFilingSession:
                 except rf.ShareholderRegisterFilingError as error:
                     # Invalid current rendering basis does not erase retained filing history.
                     if error.code != 'SHAREHOLDER_REGISTER_FILING_INVALID_INPUT': raise
+            archive = await self._archive_source_on_connection(connection,
+                rf.Rf1086ArchiveQuery(query.company_id, query.income_year, query.actor_id), include_production=True)
+            # Independent counts expose truncated/new-family enumeration. The
+            # same repeatable snapshot and accepted-owner completeness apply.
+            family_counts = {}
+            for table in ('year_source_versions','year_source_heads','register_observations',
+                          'source_previews','source_review_bridges','source_approval_bindings',
+                          'source_submission_bindings','submission_heads'):
+                count = await (await connection.execute(
+                    f'select count(*) as count from shareholder_register_filing.{table} '
+                    'where company_id=%s::uuid and income_year=%s',
+                    (str(query.company_id), int(query.income_year)),
+                )).fetchone()
+                family_counts[table] = count['count']
             as_of = await (await connection.execute(
                 'select pg_catalog.transaction_timestamp() as observed_at,public.company_access_is_accepted_owner_v1(%s::uuid) as complete',
                 (str(query.company_id),),
             )).fetchone()
-            return rf.Rf1086SourceSnapshot(workspace,inventory,journal,tuple(bases),Timestamp(as_of['observed_at']),as_of['complete'] is True,tuple(opening_sources))
+            return rf.Rf1086SourceSnapshot(workspace,inventory,journal,tuple(bases),Timestamp(as_of['observed_at']),as_of['complete'] is True,tuple(opening_sources),archive,family_counts)
 
     async def _rows(self, query, parameters=()):
         import json

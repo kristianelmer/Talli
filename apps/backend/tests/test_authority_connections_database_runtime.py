@@ -44,6 +44,16 @@ RF193_LAYERS = (
 )
 
 
+RF193_CONSEQUENTIAL = json.loads((ROOT/'scripts/rf-consequential-successors.json').read_text())
+RF193_CONSEQUENTIAL_NAMES = {layer['migration'] for layer in RF193_CONSEQUENTIAL}
+
+
+def rf193_consequential_topology(connection):
+    """Record only installed successors, sharing the final harness replay order."""
+    return [layer['migration'] for layer in RF193_CONSEQUENTIAL
+        if connection.execute(layer['presenceQuery']).fetchone()[0]]
+
+
 def insert(connection, table, values):
     connection.execute(sql.SQL("insert into {} ({}) values ({})").format(
         sql.Identifier(*table.split(".")), sql.SQL(",").join(map(sql.Identifier, values)),
@@ -520,6 +530,14 @@ def rf193_successor_topology(connection):
                     assert not retained, 'Retained RF193 evidence blocks the predecessor rehearsal'
             if present:
                 successor_layers.append(migration_name)
+        for family in ('source_review_bridges','source_approval_bindings','source_submission_bindings','submission_heads'):
+            if connection.execute('select to_regclass(%s) is not null',('shareholder_register_filing.'+family,)).fetchone()[0]:
+                connection.execute(sql.SQL('alter table {} no force row level security').format(sql.Identifier('shareholder_register_filing',family)))
+                assert not connection.execute(sql.SQL('select exists(select 1 from {})').format(sql.Identifier('shareholder_register_filing',family))).fetchone()[0], 'Retained RF193 evidence blocks the predecessor rehearsal'
+        if connection.execute("select exists(select 1 from pg_attribute where attrelid=to_regclass('shareholder_register_filing.production_feedback_artifacts') and attname='original_id' and not attisdropped)").fetchone()[0]:
+            connection.execute('alter table shareholder_register_filing.production_feedback_artifacts no force row level security')
+            assert not connection.execute('select exists(select 1 from shareholder_register_filing.production_feedback_artifacts where original_id is not null)').fetchone()[0], 'Retained RF193 evidence blocks the predecessor rehearsal'
+        successor_layers.extend(rf193_consequential_topology(connection))
     return phase, successor_layers
 
 
@@ -533,7 +551,7 @@ def rf151_predecessor_topology(fixture):
             for migration_name in reversed(successor_layers):
                 # Read recovery only replaces a routine; the RF151 rollback
                 # removes it. The other layers have explicit retained rollbacks.
-                if migration_name != RF193_LAYERS[0][0]:
+                if migration_name != RF193_LAYERS[0][0] and migration_name not in RF193_CONSEQUENTIAL_NAMES:
                     connection.execute((ROOT/'supabase/rollback'/migration_name).read_text())
             connection.execute((ROOT/"supabase"/"rollback"/RF151_EXPAND).read_text())
     try:
@@ -546,9 +564,14 @@ def rf151_predecessor_topology(fixture):
                     connection.execute((ROOT/"supabase"/"migrations"/RF151_CUTOVER).read_text())
                     connection.execute((ROOT/"supabase"/"migrations"/DOCUMENTS_LEDGER_GUARD).read_text())
                 for migration_name in successor_layers:
-                    connection.execute((ROOT/'supabase/migrations'/migration_name).read_text())
+                    if migration_name not in RF193_CONSEQUENTIAL_NAMES:
+                        connection.execute((ROOT/'supabase/migrations'/migration_name).read_text())
                 if phase == 'contracted':
                     connection.execute((ROOT/"supabase"/"contract-migrations"/RF151_CONTRACT).read_text())
+                for migration_name in successor_layers:
+                    if migration_name in RF193_CONSEQUENTIAL_NAMES:
+                        connection.execute((ROOT/'supabase/migrations'/migration_name).read_text())
+                assert rf193_consequential_topology(connection)==[name for name in successor_layers if name in RF193_CONSEQUENTIAL_NAMES]
                 ensure_fixture_admin_access(connection)
 
 

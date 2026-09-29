@@ -19,19 +19,9 @@ const RF193_YEAR_SOURCE = "20260923091509_rf1086_immutable_year_source.sql";
 
 const RF193_OBSERVATION = "20260923102314_rf1086_register_observation_store.sql";
 const RF193_SOURCE_COMPANY_GUARD = "20260924062746_rf1086_source_company_guard.sql";
-const CONSEQUENTIAL_GUARDS = [
-  "20260924080208_company_access_rf_admission_guard.sql",
-  "20260924080249_documents_rf_consequential_company_guards.sql",
-  "20260924080355_governance_ledger_company_write_guards.sql",
-  "20260924083154_governance_guarded_reporting_year_read.sql",
-  "20260924084752_billing_rf_full_year_pilot_profile.sql",
-  "20260924085227_rf1086_source_review_bridge.sql",
-  "20260924091015_rf1086_source_approval_foundation.sql",
-  "20260924094631_rf1086_journal_company_guard.sql",
-  "20260928060732_rf1086_source_submission_claim.sql",
-  "20260928110000_rf1086_feedback_original_binding.sql",
-  "20260928124000_documents_historical_original_assertion.sql",
-];
+const CONSEQUENTIAL_GUARDS = JSON.parse(await readFile(
+  new URL("./rf-consequential-successors.json", import.meta.url), "utf8",
+)).map(layer => layer.migration);
 const RF193_SOURCE_PREVIEW = "20260923105912_rf1086_source_backed_preview.sql";
 
 async function topology(database) {

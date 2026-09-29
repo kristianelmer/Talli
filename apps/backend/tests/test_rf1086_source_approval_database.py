@@ -739,3 +739,23 @@ def test_confirmed_source_claim_reconstructs_read_only_payload_after_live_approv
         finally:
             await store.release_feedback_lease(submission_id, lease)
     asyncio.run(recover())
+
+
+def test_full_year_source_facts_include_claim_and_positive_family_counts(claim_fixture):
+    from talli_backend.modules.shareholder_register_filing.source_facts import build_source_facts
+    f=claim_fixture;store=f['store']
+    async def run():
+        async with store._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+            claimed=await claim_source(db,f,approval)
+        q=rf.Rf1086SourceQuery(f['source'].company_id,f['source'].income_year,store.actor_id)
+        source=await store.source_snapshot(q)
+        assert source.full_year_family_counts=={'year_source_versions':1,'year_source_heads':1,
+            'register_observations':0,'source_previews':1,'source_review_bridges':1,
+            'source_approval_bindings':1,'source_submission_bindings':1,'submission_heads':1}
+        assert source.full_year_archive.source_submission_claims[0].submission_id.value==claimed['claim']['submission_id']
+        facts=build_source_facts(q,source)
+        assert facts.evidence.version.startswith('rf1086-source-v2:')
+        assert not any(reason.startswith('full_year_') for reason in facts.history_coverage.reasons)
+        assert facts.readiness_status=='unavailable' and facts.hard_blocks==('rf1086_full_year_readiness_not_evaluated',)
+    asyncio.run(run())

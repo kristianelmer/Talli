@@ -360,3 +360,23 @@ verification covers exact identity, stale snapshots, revocation during guard wai
 rollback/replay and preserved grants. Full-schema execution remains pending.
 See `historical-correction-originals-20260928.json`. Source send, owned annual
 readiness, retention generations and actual restoration remain open.
+
+
+## Full-year facts and predecessor rehearsal restoration
+
+The source-facts projection now uses `rf1086-source-v2` for complete retained
+full-year history. It shares one repeatable database snapshot with legacy facts,
+validates original archive lineage and checks independent counts for all eight
+new families. Historical v1 hashes remain unchanged. Complete coverage does not
+imply current full-year readiness; that status explicitly remains unevaluated
+until owned annual and fresh admission composition is completed.
+
+Run 36417395568 at 7e7382c7 passed Application and reached RF in Database. The
+retained-feedback writer was absent (SQLSTATE 42883) because the earlier Authority
+predecessor fixture restored only older RF layers after dropping the schema.
+The fixture now captures installed successors from the migration inventory shared
+with the final harness and restores them after the RF contract. It refuses
+populated new binding/head families and bound feedback before teardown. The
+local orchestration tests verify restoration even when the predecessor test
+raises; actual full-schema restoration remains pending CI. See
+`full-year-facts-rehearsal-20260929.json` for the bounded validation checkpoint.
