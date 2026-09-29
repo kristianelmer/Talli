@@ -121,6 +121,14 @@ class ShareholderRegisterSourceAdmission:
                 preview_id=preview_id, correlation_id=correlation_id) as admitted:
             return rf.build_rf1086_source_readiness(admitted.source, admitted.preview)
 
+    async def read_annual_readiness(self, access_token: str, *, company_id: CompanyId,
+            income_year: IncomeYear, preview_id: rf.PreviewId,
+            correlation_id: CorrelationId) -> rf.Rf1086AnnualReadinessProof:
+        from .shareholder_register_annual_readiness import read_annual_readiness
+        async with self.admit(access_token, company_id=company_id, income_year=income_year,
+                preview_id=preview_id, correlation_id=correlation_id) as admitted:
+            return await read_annual_readiness(admitted, correlation_id)
+
     @asynccontextmanager
     async def admit(self, access_token: str, *, company_id: CompanyId,
             income_year: IncomeYear, preview_id: rf.PreviewId, correlation_id: CorrelationId):

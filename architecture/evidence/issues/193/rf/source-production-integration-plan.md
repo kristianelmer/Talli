@@ -518,3 +518,26 @@ Authority, Billing and the six technical signoffs remain independent release
 requirements. Replace the stored-ready SQL seam only when this entire path has
 positive and negative database coverage; keep legacy profiles and frozen annual
 writers unchanged. Full-year dispatch/recovery follows that replacement.
+
+## RF annual decision checkpoint — 29 September
+
+The read-only annual composition is implemented as
+`Rf1086AnnualReadinessInputs` / `Rf1086AnnualReadinessProof`. It binds the exact
+source/preview and five owner-evidence digests, preserves annual blockers and
+warnings, requires the Ledger opening-bank identity to match RF's opening, and
+uses RF policy after all sequential reads on the held admission. Source-only V1
+proofs and historical approval manifests remain unchanged. Tests cover all seven
+supported source-event profiles, changed same-count metadata, unavailable/foreign
+owner reads, current interview changes, accepted Documents warnings and exact
+proof tampering. A real database composition moves missing → warning → ready →
+blocked without changing the immutable filing source.
+
+This closes the missing read-side annual decision. It does not replace
+`rf1086_stored_release_inputs_v1`, change approval/review SQL, or expose sending.
+The next step is a versioned consequential binding: retain the annual proof in
+new approvals, combine its exact warning set with review, and rebuild it at
+approval and the first durable claim/send. Preserve old manifest/archive hashes
+and historical recovery while rejecting stale annual evidence for new effects.
+The SQL/application boundary must require this RF-owned proof and independently
+preserve overrides, Authority, Billing and technical gates before the browser-
+written stored-ready prerequisite can be removed.

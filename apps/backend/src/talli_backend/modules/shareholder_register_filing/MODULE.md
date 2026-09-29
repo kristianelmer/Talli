@@ -824,3 +824,32 @@ non-finite capital or inconsistent share totals fail closed. This digest is
 separate from the legacy opening-rendering source digest. The projection does
 not render a no-activity case or equate an onboarding snapshot with the statutory
 start-of-year capital of a newly formed company. No SQL grant or writer changes.
+
+### Annual prerequisite proof
+
+`Rf1086AnnualReadinessInputs` carries scoped, complete owner projections and all
+five family evidence digests; `Rf1086AnnualDocumentStatus` retains document
+identity, linkage and status for RF policy. `build_rf1086_annual_readiness` binds
+these inputs to the exact source/preview in `Rf1086AnnualReadinessProof`.
+`assert_rf1086_annual_readiness_matches` rebuilds the entire proof, including
+issues, required/accepted warnings and explicit unevaluated release families.
+The application reads each owner sequentially on the held admission connection.
+Banking observation time is excluded from proof identity; changes to canonical
+facts or other owner metadata change the proof even when counts remain equal.
+
+Annual hard conditions include locked opening, matching Ledger opening-bank
+identity, unmatched unaccepted transactions, unsupported unpaid items and annual
+authority confirmation. Period/interview/bank-confirmation warnings remain
+unaccepted until a later explicit acknowledgement. Missing interview preserves
+RF's existing warning behavior. Missing interview answer keys retain their
+existing false defaults; present non-boolean answers are unavailable. Accepted
+missing-document status is retained as an accepted warning. Canonical ASCII RF
+linkage, Norwegian linkage and RF-1086 labels all select the obligation. Unknown
+or removed document statuses fail closed at the input boundary.
+
+This is a read-only point-in-time prerequisite assessment. Review/overrides,
+current Authority permission, Billing, technical signoffs and warning acceptance
+remain independent release checks. No stored-ready SQL seam, approval manifest,
+historical archive or provider dispatch changes in this step. Consequential
+consumers must rebuild under their own held guard; the proof alone grants no
+permission to approve or send.
