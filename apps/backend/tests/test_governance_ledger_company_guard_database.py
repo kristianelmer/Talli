@@ -77,7 +77,7 @@ async def writer(fixture, schema, role, ready, *, original=False):
 
 
 @pytest.mark.parametrize('schema,role', SCOPES)
-@pytest.mark.parametrize('revoke', [False, True])
+@pytest.mark.parametrize('revoke', [False, True, 'membership-removed'])
 def test_guard_wait_rereads_current_owner_without_holding_local_locks(admitted, schema, role, revoke):
     async def run():
         with psycopg.connect(DATABASE_URL) as blocker:
@@ -87,10 +87,14 @@ def test_guard_wait_rereads_current_owner_without_holding_local_locks(admitted, 
             pid = await ready
             await waiting(pid)
             assert not blocker.execute("select exists(select 1 from pg_locks where pid=%s and locktype='advisory' and granted)", (pid,)).fetchone()[0]
-            if revoke:
+            if revoke == 'membership-removed':
+                blocker.execute('delete from public.company_memberships where company_id=%s and user_id=%s',
+                                (admitted['company'],admitted['owner']))
+            elif revoke:
                 blocker.execute("update public.company_memberships set role='read_only' where company_id=%s", (admitted['company'],))
         if revoke:
-            with pytest.raises(psycopg.errors.RaiseException, match=f'{schema}_forbidden'):
+            expected = 'ledger_not_found' if schema == 'ledger' and revoke == 'membership-removed' else f'{schema}_forbidden'
+            with pytest.raises(psycopg.errors.RaiseException, match=expected):
                 await task
         else:
             await task

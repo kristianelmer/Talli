@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_GATE_REPAIR",
+  "baseCommit": "b11356fe86c845534d4cb92499f523412e5dfb6d",
+  "problem": "CI36584732648 passed Application and the repaired Banking reconciliation, then failed two Tax database cases: the fixture session did not accept Ledger guarded_company_id, and the shared Ledger company guard replaced the released outsider404 concealment with403.",
+  "change": "Bring only the disposable session wrapper into parity with the production Ledger guard call. In the unmerged Ledger company-guard migration, preserve accepted-member concealment before and after the wait, followed by the existing owner requirement. No Tax business scope, provider operation or production deployment changes.",
+  "verification": {
+    "red": "Both exact CI failures reproduced against a fresh disposable PostgreSQL17 database with the required predecessor contracts.",
+    "behavior": "Outsider and nonexistent company both produce LEDGER_NOT_FOUND404; accepted read-only member produces LEDGER_FORBIDDEN403. Membership removal during a wait produces Ledger not-found; owner downgrade remains forbidden. Administrative-cost receipt replay works with the actual shared guard.",
+    "focused": "All22 Tax database cases and20 Governance/Ledger guard cases passed together, including migration rollback/replay and bridge waits. Minimal Auth/Storage shims, not a complete Supabase gate.",
+    "next": "One complete successful fixed-revision release gate is the current milestone. Do not add adjacent features while repairing concrete gate failures."
+  },
+  "preservedFeatureWork": {
+    "branch": "codex/issue-193-completion-14d7",
+    "commits": [
+      "61ce2721",
+      "1c88f82d"
+    ],
+    "scope": "Exact-year annual interview read and replay integration. Local only; excluded from this gate repair branch until the fixed-revision gate passes."
+  },
+  "limits": [
+    "All seven RF acceptance criteria remain pending.",
+    "Genuine-company production evidence remains separate; no AS recruited."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-tax-gate-repair-20260929-14d7",
+  "sha256": {
+    "talli-b11356fe-database.log": "5d1582e92363357d705dfdf7f2dd6ac11db41acfac9afc418ccd2ab758575c9a",
+    "talli-tax-gate-red.log": "6bb27300e8fad31b29afa3867e458d27a0136f1e67d8ca316f5a67d93f7cd7bb",
+    "talli-tax-gate-green.log": "bb5ed1499a79f200316f3bf1a5fbb0148fa29f68a5aba5155162ed69a43abb5a",
+    "talli-tax-gate-focused-all.log": "9fd621564a4642a94a48202aeb5c5c654fdf45e9308f6d2972aa4d92287a3ae8"
+  }
+}

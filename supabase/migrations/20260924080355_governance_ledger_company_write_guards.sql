@@ -86,10 +86,16 @@ begin
   raise exception 'rf193_company_guard_requires_read_committed'; end if;
  if actor is null or p_company is null or p_subject is null or p_subject<>actor::text
     or actor is distinct from public.company_access_auth_uid_v1()
-    or not public.company_access_is_accepted_owner_v1(p_company)
+ then raise exception 'ledger_forbidden'; end if;
+ -- Preserve the released Ledger concealment contract before the owner guard.
+ if not public.company_access_is_accepted_member_v1(p_company)
+ then raise exception 'ledger_not_found'; end if;
+ if not public.company_access_is_accepted_owner_v1(p_company)
  then raise exception 'ledger_forbidden'; end if;
  perform public.company_archive_lock_company_v1(p_company);
  -- READ COMMITTED callers observe revocation committed while the guard waited.
+ if not public.company_access_is_accepted_member_v1(p_company)
+ then raise exception 'ledger_not_found'; end if;
  if not public.company_access_is_accepted_owner_v1(p_company)
  then raise exception 'ledger_forbidden'; end if;
 end; $guard$;
