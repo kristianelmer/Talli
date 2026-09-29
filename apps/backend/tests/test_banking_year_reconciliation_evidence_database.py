@@ -86,7 +86,14 @@ def test_accepted_warning_and_deletion_change_digest_and_counts(admitted):
     with psycopg.connect(DATABASE_URL) as db:
         # Fixture-only deletion: production store-owner RLS intentionally has no DELETE policy.
         assert db.execute('select rolbypassrls from pg_roles where rolname=current_user').fetchone()[0]
-        assert db.execute('delete from banking.transactions where company_id=%s returning id',(admitted['company'],)).fetchone()
+        # The overlap mirror still enforces the verified owner's RLS. Keep that
+        # context when returning to the fixture janitor for canonical deletion.
+        bank_owner(db, admitted)
+        db.execute('reset role')
+        deleted = db.execute('delete from banking.transactions where company_id=%s returning id',(admitted['company'],)).fetchall()
+        assert len(deleted) == 1
+        if db.execute("select to_regclass('public.bank_transactions')").fetchone()[0]:
+            assert db.execute('select id from public.bank_transactions where id=%s',deleted[0]).fetchall() == []
     empty = read(admitted)
     assert empty.reconciliation.transaction_count == 0
     assert empty.source_sha256 not in (first.source_sha256, accepted.source_sha256)
