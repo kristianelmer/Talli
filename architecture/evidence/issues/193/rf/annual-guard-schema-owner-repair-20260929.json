@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_RESTRICTED_SCHEMA_OWNER_BORROW",
+  "baseCommit": "4a483b938250fa3b69a11b6d53be5c2ce59ee974",
+  "problem": "CI36565738799 Database failed during annual guard installation: permission denied to SET ROLE ledger_store_owner. The function owner and backend_system schema owner are independent; the original local restricted fixture incorrectly made the migration principal own that schema.",
+  "change": "Expansion and rollback borrow missing SET permission for the existing function owner and actual backend_system schema owner. Record and restore each exact self-granted membership while preserving all other grantors. Schema privileges and temporary trigger-creation EXECUTE are still restored.",
+  "verification": {
+    "regression": "Published rollback reproduces the exact CI missing-ledger-SET failure under a non-superuser with neither function-owner nor schema-owner SET. Corrected rollback/expansion then pass twice and restore exact role options and schema ACLs. Seven annual guard database cases pass under the same restricted principal.",
+    "architecture": "Checker exit0; whitespace check passes.",
+    "fullStack": "Independent isolated Supabase rehearsal started; pending. Existing Application CI still running; no push cancellation."
+  },
+  "limits": [
+    "405 broader RF tests passed at the prior commit. This fix has narrow restricted-database verification; new full Supabase verification remains required.",
+    "No readiness, checkout or production provider authority is enabled. All seven RF criteria remain pending."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-annual-schema-owner-20260929-14d7",
+  "sha256": {
+    "talli-4a483b-database.log": "3817ed4735102431147fbb68dc84ced2273ab76ac1740949f590067b56aaed67",
+    "talli-annual-schema-owner-build.log": "68760ff7176dc739a5b3c9a76a7d087ca56362ae07aa5357716424b6577bd42f",
+    "talli-annual-schema-owner-restricted.log": "3f661f55a12a1cc86173411e5ff3485dcf322b86d4e2b410790f1988cddb87ac",
+    "talli-annual-schema-owner-restricted.py": "38082110660afb3e60a3ac28296e2db73128830576d0bfda96535459a00aa191",
+    "talli-annual-schema-owner-architecture.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607"
+  }
+}

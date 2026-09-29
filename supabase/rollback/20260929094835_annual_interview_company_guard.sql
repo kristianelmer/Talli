@@ -4,17 +4,30 @@ begin;
 set local lock_timeout='5s';
 set local statement_timeout='120s';
 set local search_path='';
-create temporary table annual_interview_guard_authority(prior jsonb, borrowed boolean, had_create boolean, had_usage boolean) on commit drop;
+create temporary table annual_interview_guard_authority(had_create boolean, had_usage boolean) on commit drop;
+create temporary table annual_interview_guard_roles(role_name text primary key, prior jsonb) on commit drop;
 do $borrow$
-declare p jsonb; b boolean:=not pg_catalog.pg_has_role(current_user,'company_archive_projection_executor','SET');
+declare p jsonb; target text;
 begin
- if b then
-  select pg_catalog.jsonb_build_object('admin',m.admin_option,'inherit',m.inherit_option,'set',m.set_option) into p
-  from pg_catalog.pg_auth_members m where m.roleid=pg_catalog.to_regrole('company_archive_projection_executor')
-   and m.member=pg_catalog.to_regrole(current_user) and m.grantor=m.member;
-  execute pg_catalog.format('grant company_archive_projection_executor to %I with set true granted by %I',current_user,current_user);
- end if;
- insert into pg_temp.annual_interview_guard_authority values(p,b,pg_catalog.has_schema_privilege('company_archive_projection_executor','backend_system','CREATE'),pg_catalog.has_schema_privilege('company_archive_projection_executor','backend_system','USAGE'));
+ insert into pg_temp.annual_interview_guard_authority values(
+  pg_catalog.has_schema_privilege('company_archive_projection_executor','backend_system','CREATE'),
+  pg_catalog.has_schema_privilege('company_archive_projection_executor','backend_system','USAGE'));
+ -- Function ownership and schema ownership are independent. Supabase's
+ -- migration principal may administer either role without permanent SET access.
+ for target in
+  select 'company_archive_projection_executor'
+  union select pg_catalog.pg_get_userbyid(nspowner) from pg_catalog.pg_namespace
+   where nspname='backend_system'
+    and not (select had_create and had_usage from pg_temp.annual_interview_guard_authority)
+ loop
+  if not pg_catalog.pg_has_role(current_user,target,'SET') then
+   select pg_catalog.jsonb_build_object('admin',m.admin_option,'inherit',m.inherit_option,'set',m.set_option) into p
+   from pg_catalog.pg_auth_members m where m.roleid=pg_catalog.to_regrole(target)
+    and m.member=pg_catalog.to_regrole(current_user) and m.grantor=m.member;
+   insert into pg_temp.annual_interview_guard_roles values(target,p);
+   execute pg_catalog.format('grant %I to %I with set true granted by %I',target,current_user,current_user);
+  end if;
+ end loop;
 end; $borrow$;
 do $create$
 declare o text;
@@ -42,11 +55,11 @@ begin
   if not r.had_usage then revoke usage on schema backend_system from company_archive_projection_executor; end if;
   reset role;
  end if;
- if r.borrowed then
-  execute pg_catalog.format('revoke company_archive_projection_executor from %I granted by %I',current_user,current_user);
+ for r in select * from pg_temp.annual_interview_guard_roles order by role_name loop
+  execute pg_catalog.format('revoke %I from %I granted by %I',r.role_name,current_user,current_user);
   if r.prior is not null then
-   execute pg_catalog.format('grant company_archive_projection_executor to %I with admin %s,inherit %s,set %s granted by %I',current_user,r.prior->>'admin',r.prior->>'inherit',r.prior->>'set',current_user);
+   execute pg_catalog.format('grant %I to %I with admin %s,inherit %s,set %s granted by %I',r.role_name,current_user,r.prior->>'admin',r.prior->>'inherit',r.prior->>'set',current_user);
   end if;
- end if;
+ end loop;
 end; $restore$;
 commit;

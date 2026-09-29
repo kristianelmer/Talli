@@ -473,3 +473,11 @@ A fresh broader PostgreSQL run passes all 405 RF cases; 70 CI harness tests and
 the architecture checker also pass. See
 `annual-interview-guard-and-ci-repair-20260929.json` for current verification.
 Full Supabase CI and owned annual-readiness composition remain open.
+
+
+The next full Supabase CI exposed a migration-authority gap before tests: the
+annual guard did not borrow SET for the independent backend_system schema owner.
+Both expansion and rollback now borrow/restore that role as well as the function
+owner. A corrected restricted fixture retains Ledger schema ownership, reproduces
+the published failure and passes two repaired rollback/replays plus all seven
+annual guard tests. See `annual-guard-schema-owner-repair-20260929.json`.
