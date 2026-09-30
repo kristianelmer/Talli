@@ -17,6 +17,7 @@ from test_rf1086_database_runtime import backend_url, rf_fixture_admin_access, i
 from test_rf1086_year_source_database import DATABASE_URL, ROOT, capture, remove_only_owned_source_fixture
 from test_rf1086_source_preview_database import remove_only_preview_fixture
 from test_rf1086_source_review_bridge_database import prepare, bridge, remove_only_bridge_fixture
+from test_authority_connections_database_runtime import rf193_consequential_topology
 
 pytestmark=pytest.mark.authority_database
 MIGRATION='20260924091015_rf1086_source_approval_foundation.sql'
@@ -24,15 +25,17 @@ MIGRATION='20260924091015_rf1086_source_approval_foundation.sql'
 
 @pytest.fixture(scope='module', autouse=True)
 def historical_source_command_revision():
-    """Rehearse V1's historical contract; restore current V2 before leaving it."""
+    """Rehearse V1, then restore every successor installed before the rewind."""
     with psycopg.connect(DATABASE_URL) as db:
+        successors = [name for name in rf193_consequential_topology(db) if name > MIGRATION]
         db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
         db.execute((ROOT/'supabase/migrations/20260928060732_rf1086_source_submission_claim.sql').read_text())
     try:
         yield
     finally:
         with psycopg.connect(DATABASE_URL) as db:
-            db.execute((ROOT/'supabase/migrations/20260929173935_rf1086_annual_approval_binding.sql').read_text())
+            for migration in successors:
+                db.execute((ROOT/'supabase/migrations'/migration).read_text())
 
 
 @pytest.fixture

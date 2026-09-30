@@ -53,7 +53,12 @@
     "typecheck": "passed",
     "architecture": "passed",
     "localCleanup": "passed: owned Supabase stack removed, all 42 pre-existing dormant containers restored, Colima returned to stopped, generated Next files restored",
-    "currentRevisionCi": "pending"
+    "currentRevisionCi": {
+      "revision": "87549d59c61ebbca72602ce1ed77c7da25458e24",
+      "runId": 36687670485,
+      "result": "failure",
+      "cause": "Historical source approval fixture overwrote the cutover-aware receiver before the browser; see historical-source-fixture-restoration-20260930.json"
+    }
   },
   "fixes": [
     {

@@ -787,3 +787,19 @@ immutable evidence was skipped. Current-revision CI remains required, including
 the new receiver's pre-cutover/rollback regression and the full ordered topology.
 See `full-year-source-browser-20260930.json`. All seven RF acceptance criteria
 remain pending. No production setting, hosted database or genuine filing changed.
+
+## Historical fixture successor restoration — 30 September
+
+CI at 87549d59 passed Application and 560 RF/Authority database tests, then failed
+the full-year browser review with 503. The historical V1 approval fixture's
+teardown replayed the original annual migration, overwriting the newer override
+receiver before Accounts retired the generic table. A real database regression
+reproduced this replacement in 1.21 seconds. The fixture now records installed
+successors before its rewind and restores them in registry order.
+
+The regression passes, preserving the exact receiver, role memberships and
+successor topology. The subsequent final contracts and combined legacy/full-year
+browser pass all 16 cases; 89 CI-control checks also pass. Full ordered CI at the
+new revision remains required. See
+`historical-source-fixture-restoration-20260930.json`. This changes test cleanup;
+all seven RF acceptance criteria remain pending.

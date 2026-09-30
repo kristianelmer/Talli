@@ -27,6 +27,32 @@ MIGRATION = '20260929173935_rf1086_annual_approval_binding.sql'
 CORRELATION = CorrelationId('annual-approval-database')
 
 
+def test_historical_source_fixture_restores_current_override_receiver():
+    from test_authority_connections_database_runtime import rf193_consequential_topology
+    from test_rf1086_source_approval_database import historical_source_command_revision
+
+    def state(db):
+        receiver = db.execute("select pg_get_functiondef('backend_system.rf1086_other_overrides_ready_v1(uuid,integer)'::regprocedure)").fetchone()[0]
+        roles = db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall()
+        return receiver, roles, rf193_consequential_topology(db)
+
+    with psycopg.connect(DATABASE_URL) as db:
+        before = state(db)
+    assert 'annual_accounts_filing.has_blocking_override_v1' in before[0]
+    historical = historical_source_command_revision.__wrapped__()
+    try:
+        next(historical)
+        historical.close()
+        with psycopg.connect(DATABASE_URL) as db:
+            assert state(db) == before, 'Historical fixture replaced the current RF override receiver'
+    finally:
+        historical.close()
+        # A failing regression must not contaminate the remaining database lane.
+        with psycopg.connect(DATABASE_URL) as db:
+            for migration in before[2]:
+                db.execute((ROOT/'supabase/migrations'/migration).read_text())
+
+
 @pytest.fixture
 def annual_fixture(approval_fixture):
     f = approval_fixture
