@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "e39dbd940a6fa89de9c3599b1a2c077c12e23ce3",
+  "trigger": {
+    "ciRunId": 36752628443,
+    "headRevision": "e32a0a74d3ea63a57206fa03cfe39740e7be50a7",
+    "applicationTestsBuildAndLaunch": "passed",
+    "productionDependencyAudit": "critical Next.js GHSA-vcvr-r3jv-pc5j"
+  },
+  "advisory": {
+    "id": "GHSA-vcvr-r3jv-pc5j",
+    "url": "https://github.com/vercel/next.js/security/advisories/GHSA-vcvr-r3jv-pc5j",
+    "affected": ">=16.2.0 <16.3.6",
+    "firstPatchedVersion": "16.3.6",
+    "conditions": "Node ImageResponse renders attacker-controlled SVG content, attributes or styles"
+  },
+  "upgrade": {
+    "before": "16.3.4",
+    "after": "16.3.8",
+    "release": "https://github.com/vercel/next.js/releases/tag/v16.3.8",
+    "rootAndWebManifestsPinned": true,
+    "bothLockfilesUpdated": true,
+    "otherDependencyVersionsChanged": false,
+    "react": "19.2.7; satisfies Next peer range",
+    "node": "24.20.0; satisfies >=20.9.0",
+    "migration": "Same 16.3 patch line; no applicable API migration or codemod",
+    "guides": [
+      "https://nextjs.org/docs/app/guides/upgrading/version-16",
+      "https://nextjs.org/docs/app/guides/upgrading/codemods"
+    ]
+  },
+  "validation": {
+    "rootProductionAuditVulnerabilities": 0,
+    "webProductionAuditVulnerabilities": 0,
+    "webBuild": "passed",
+    "typecheck": "passed",
+    "architecture": "passed",
+    "finalRevisionCi": "pending",
+    "fullRfDeletionRestoreBrowser": "passed",
+    "browserDurationMilliseconds": 164009.159208
+  },
+  "sha256": {
+    "package.json": "021c86507333a784852cb05f799fbf2535cc97bedd1dcaafa8139a35b0c4c71b",
+    "package-lock.json": "64e7290e45a78b19db2555185316b3dc9609630dabd23796966e4f120e476b9e",
+    "apps/web/package.json": "60a70b43b736fa4df0446c130eb4b7c19992d395e1095e251d6044cc6d5c6915",
+    "apps/web/package-lock.json": "79cdacddec979664e3b14f00dd1726f22f1659d6eca372f6ef0a2572c841049e"
+  }
+}
