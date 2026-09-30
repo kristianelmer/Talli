@@ -10,6 +10,7 @@ import psycopg
 import pytest
 
 from talli_backend.modules.shareholder_register_filing import public as rf
+from talli_backend.adapters.postgres_shareholder_register_filing import _PersistenceError
 from test_rf1086_source_approval_database import bind_fixture_owner
 from test_rf1086_annual_approval_database import (
     annual_fixture, approval_fixture, admitted, backend_url, rf_fixture_admin_access,
@@ -47,8 +48,14 @@ async def prepare(f, name='post_hovedskjema', digest=None, **args):
 
 
 async def finish(f, intent, state='succeeded', reference=None, failure=None):
-    return await f['store'].finish_source_operation(f['claim'].submission_id, intent.event.id,
-        state=state, reference=reference, failure=failure)
+    try:
+        return await f['store'].finish_source_operation(f['claim'].submission_id, intent.event.id,
+            state=state, reference=reference, failure=failure)
+    except _PersistenceError as error:
+        # Preserve the failure type and safe driver classification for CI;
+        # never expose SQL text, parameters, credentials or provider responses.
+        error.add_note(f'SQLSTATE={error.code or "unavailable"}')
+        raise
 
 
 def test_complete_original_payload_journal_and_exact_outcome_replay(operation_fixture):

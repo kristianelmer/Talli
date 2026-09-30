@@ -718,3 +718,38 @@ verification ~81 MB. macOS peak RSS remains ~0.8–0.9 GB, including fixture/app
 imports. Stable live allocations across records argue against retained document
 collections; platform/native memory and real HTTP/browser concurrency sizing remain
 open. No allocator workaround or weaker byte verification was introduced.
+
+
+## Authenticated archive browser verification — 30 September
+
+The actual owner browser journey now downloads the RF NDJSON archive from the
+source page through Next, FastAPI and real isolated Supabase Auth/Storage. The
+offline verifier confirms exact company/year, the filing record and both retained
+feedback originals, including the terminal commitment. The same journey checks
+MFA and cross-company denial, mobile layout, no extra provider mutations, no
+egress violations and a clean browser console. It uses a synthetic legacy
+no-activity submission; full-year source capture, review, approval and send still
+need their authenticated browser acceptance journey.
+
+This exposed duplicate React sibling keys on the source page: the editor and
+submission panel both used company/year. Distinct panel prefixes preserve scoped
+state reset and remove the console error. The browser assertion failed twice
+before that fix and passed afterwards. The final focused command passed all 16
+cases (one complete journey plus 15 fixture checks); 74 focused web and 88 CI
+control checks also passed. The 1 GiB allocation regression is now included in
+the launch rehearsal so the next Linux CI run measures it.
+
+One earlier local database run rejected exact completed-operation replay with a
+redacted persistence error. It did not recur in 60 isolated repetitions, another
+60 repetitions following the real Supabase predecessor sequence, or CI at
+78c19b38. The diagnostic RF/Authority suite passed 619 cases. Its cause remains
+unresolved; a test-only exception note now retains SQLSTATE without exposing SQL
+or credentials. No runtime behavior was changed based on that observation.
+
+CI at 78c19b38 passed Application, Database isolation and Release gate; immutable
+evidence was skipped. The corrected browser was verified against final contracts
+in a focused local run; it is not a claim that the entire ordered local rehearsal
+passed after the fix. Current-revision CI remains required. See
+`authenticated-archive-browser-20260930.json`. All seven RF acceptance criteria
+remain pending; restoration, retention generations, full-year browser/recovery
+acceptance and both immutable gates remain open.

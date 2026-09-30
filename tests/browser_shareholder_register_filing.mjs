@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createHash, createHmac, generateKeyPairSync, randomInt, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -27,7 +28,7 @@ const databaseUrl = process.env.DATABASE_URL;
 // This is a mandatory local lane: absent or non-loopback configuration fails;
 // it never converts the full-stack authority journey into a skipped test.
 test("owner completes fresh RF preview, review, approval, send and private feedback through the canonical backend", {
-  timeout: 300_000,
+  timeout: 360_000,
 }, async (t) => {
   assert.ok(supabaseUrl && anonKey && serviceRoleKey && databaseUrl, "authority browser requires isolated Supabase configuration");
   assert.ok(isLoopbackSupabaseUrl(supabaseUrl) && isLoopbackPostgresUrl(databaseUrl), "authority browser fixtures require loopback");
@@ -158,6 +159,11 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     await installBrowserEgressGuard(context, { approvalEnabled: true, blockedRequests: egressViolations, mockBaseUrl: resources.mock.baseUrl });
     const page = await context.newPage();
     await login(page, siteOrigin, owner);
+    const rfArchiveUrl = `${siteOrigin}/filing/aksjonaerregisteroppgaven/source/archive?companyId=${primary.id}&incomeYear=2025`;
+    const noMfaArchive = await context.request.get(rfArchiveUrl, { maxRedirects: 0 });
+    assert.equal(noMfaArchive.status(), 403);
+    assert.equal(noMfaArchive.headers()["content-disposition"], undefined);
+    assert.ok(!(await noMfaArchive.text()).includes("canonicalArchive"));
     await establishOwnerAal2(page, siteOrigin);
     const session = await browserSession(context);
     const api = createTalliApiClient({ baseUrl: backendOrigin });
@@ -282,6 +288,35 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     const bytes = await context.request.get(signed.href, { maxRedirects: 0 });
     assert.equal(bytes.status(), 200);
     assert.equal(createHash("sha256").update(await bytes.body()).digest("hex"), artifact.sha256);
+    // Use the actual owner page, native browser download, Next route, FastAPI,
+    // RF snapshot and Documents retained-original reads. The provider stays local.
+    await page.goto(`${siteOrigin}/filing/aksjonaerregisteroppgaven/source?companyId=${primary.id}&incomeYear=2025`);
+    const archiveLink = page.getByRole("link", { name: "Last ned RF-arkiv", exact: true });
+    await archiveLink.waitFor();
+    for (const width of [320, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      assert.ok(await archiveLink.isVisible());
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `RF archive overflow at ${width}`);
+    }
+    const archived = page.waitForEvent("download");
+    await archiveLink.click();
+    const archiveDownload = await archived;
+    assert.equal(await archiveDownload.failure(), null);
+    assert.equal(archiveDownload.suggestedFilename(), `rf1086-${primary.id}-2025.ndjson`);
+    const archivePath = await archiveDownload.path();
+    assert.ok(archivePath); // Playwright owns and removes it when its context closes.
+    const verification = JSON.parse(execFileSync(python, ["apps/backend/scripts/verify_rf1086_archive.py", archivePath,
+      "--stream", "--company-id", primary.id, "--income-year", "2025", "--require-source-history", "--require-feedback-originals"],
+      { cwd: process.cwd(), env: runtimeEnvironment(), encoding: "utf8", timeout: 30_000 }));
+    assert.equal(verification.status, "verified_rf_canonical_record");
+    assert.equal(verification.companyId, primary.id);
+    assert.equal(verification.incomeYear, 2025);
+    assert.equal(verification.submissions, 1);
+    assert.equal(verification.feedbackArtifacts, 2);
+    assert.equal(verification.feedbackOriginals, 2);
+    assert.equal(verification.feedbackOriginalsComplete, true);
+    assert.equal(verification.sourceHistoryIncluded, true);
+    assert.equal(verification.databaseRestorePerformed, false);
     const successfulCalls = resources.mock.snapshot();
     const archiveReads = successfulCalls.filter(({ operation }) => operation === "list_documents");
     assert.equal(archiveReads.length, 1);
@@ -312,6 +347,10 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     assert.equal(deniedReceipt.status(), 403);
     assert.equal(deniedReceipt.headers().location, undefined);
     assert.ok(!(await deniedReceipt.text()).includes(artifact.documentId));
+    const deniedArchive = await otherContext.request.get(rfArchiveUrl, { maxRedirects: 0 });
+    assert.equal(deniedArchive.status(), 403);
+    assert.equal(deniedArchive.headers()["content-disposition"], undefined);
+    assert.ok(!(await deniedArchive.text()).includes(artifact.documentId));
     const deniedRecovery = await api.legacyRf1086ReconcileFeedback({ submissionId: accepted.productionSubmissions[0].id }, { headers: otherHeaders });
     assert.deepEqual(deniedRecovery, { state: null, errorCode: "basis_unavailable", requiresManualRetry: true });
 
@@ -353,7 +392,8 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     assert.deepEqual(resources.mock.snapshot()
       .filter(({ operation }) => operation === "replayed_mutation" || operation === "request_rejected")
       .map(({ service, operation }) => ({ service, operation })), []);
-    for (const event of ["POST:/api/v1/shareholder-register-filings/previews:200",
+    for (const event of ["GET:/api/v1/shareholder-register-filings/archive-source/production-stream:200",
+      "POST:/api/v1/shareholder-register-filings/previews:200",
       "POST:/api/v1/shareholder-register-filings/review-comments:200",
       "POST:/api/v1/shareholder-register-filings/production-approvals:200",
       "POST:/api/v1/legacy-rf1086/production-filings:200", "POST:/api/v1/legacy-rf1086/production-filings:503"])

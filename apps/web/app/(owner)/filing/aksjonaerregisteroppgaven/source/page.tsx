@@ -28,7 +28,7 @@ async function SourceProductionPanel({ token, companyId, incomeYear }: { token: 
       .sort((a, b) => b.approvedAt.localeCompare(a.approvedAt)).map(row => ({ id: row.id, approvedAt: row.approvedAt }));
     const artifacts = workspace.feedbackArtifacts.map(row => ({ id: row.id, submissionId: row.submissionId,
       documentId: row.documentId, classification: row.classification }));
-    return <SourceProduction key={`${companyId}:${incomeYear}`} companyId={companyId} incomeYear={incomeYear} approvals={approvals} artifacts={artifacts} />;
+    return <SourceProduction key={`production:${companyId}:${incomeYear}`} companyId={companyId} incomeYear={incomeYear} approvals={approvals} artifacts={artifacts} />;
   } catch {
     return <Banner variant="danger">Lagrede godkjenninger og innsendingsstatus kunne ikke hentes. Last siden på nytt før du gjør noe mer.</Banner>;
   }
@@ -70,7 +70,7 @@ export default async function Rf1086SourcePage({ searchParams }: Props) {
     if (documents.documents.some((document) => document.companyId !== companyId)) {
       throw new Error("Document scope mismatch");
     }
-    return <div>{header}{archiveDownload}{await production}<SourceEditor key={`${companyId}:${incomeYear}`} basis={basis} current={source.currentSource}
+    return <div>{header}{archiveDownload}{await production}<SourceEditor key={`source:${companyId}:${incomeYear}`} basis={basis} current={source.currentSource}
       documentOptions={documents.documents.filter(document => document.removedAt === null).map((document) => ({ id: document.id, name: document.name, incomeYear: document.incomeYear }))}
       caseId={randomUUID()} /></div>;
   } catch (error) {
