@@ -8,7 +8,7 @@ import { isLoopbackSupabaseUrl } from "../support/supabase_fixture_safety.mjs";
 // Only admission, opening facts and a pilot entitlement are prepared. Every
 // source, preview, approval, operation and receipt below is created by the app.
 export async function exerciseFullYearSourceJourney({ page, siteOrigin, company, incomeYear, database, ownerId,
-  openingHolderId, entitlementId, api, authorization, storage, mock, python, environment, apiCalls }) {
+  openingHolderId, entitlementId, api, authorization, storage, mock, python, environment, apiCalls, lostResponse }) {
   const scope = { companyId: company.id, incomeYear, headers: authorization };
   const options = { headers: authorization };
   const before = await api.rf1086Workspace(company.id, incomeYear, options);
@@ -168,7 +168,7 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   const correction = await exerciseSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
     mock, python, environment, source, approved, accepted, documentId });
   await exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-    mock, python, environment, documentId, correction });
+    mock, python, environment, documentId, correction, lostResponse });
 }
 
 async function uploadOriginal({ api, options, storage, company, incomeYear, consideration }) {
@@ -292,7 +292,7 @@ async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear,
 }
 
 async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-  mock, python, environment, documentId, correction }) {
+  mock, python, environment, documentId, correction, lostResponse }) {
   const { nextApproval, nextPreview, panel } = await approveSourceCorrection({ page, sourceHref,
     company, incomeYear, api, scope, options, storage, source: correction.source, prior: correction.submission,
     documentId, consideration: "19000", previousConsideration: "18000" });
@@ -301,7 +301,9 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
   assert.equal(position.expectedHead, correction.submission.id);
   const command = { approvalId: nextApproval.id, manifestSha256: position.manifestSha256, expectedHead: position.expectedHead };
   const callsBefore = mock.snapshot().filter(row => row.service === "skatteetaten").length;
-  mock.failNextMainResponse();
+  const fail = { main: "failNextMainResponse", child: "failNextChildResponse", confirmation: "failNextConfirmationResponse" }[lostResponse];
+  assert.ok(fail);
+  mock[fail]();
   await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
   await panel.getByRole("checkbox").check();
   await panel.getByRole("button", { name: "Send godkjent oppgave", exact: true }).click();
@@ -318,25 +320,51 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
   const unknown = retained.productionSubmissions.find(row => row.approvalId === nextApproval.id);
   assert.equal(retained.productionSubmissions.length, 3);
   assert.equal(unknown.status, "unknown");
-  assert.deepEqual(unknown.authorityReferences, {}, "a lost response cannot establish an authority receipt");
   assert.equal(unknown.supersedesSubmissionId, correction.submission.id);
   assert.equal(retained.submissionHead.submissionId, unknown.id);
   assert.equal(retained.sourceSubmissionClaims.length, 3);
   assert.equal(retained.sourceSubmissionClaims.filter(row => row.approvalId === nextApproval.id).length, 1);
   const journal = retained.productionEvents.filter(row => row.submissionId === unknown.id);
-  assert.deepEqual(journal.map(row => row.operationState).sort(), ["prepared", "unknown"]);
-  assert.equal(journal.find(row => row.operationState === "unknown").failureClass, "unknown");
   const mutations = mock.snapshot().filter(row => row.service === "skatteetaten").slice(callsBefore);
-  assert.deepEqual(mutations.map(row => row.operation), ["post_hovedskjema"]);
-  assert.equal(mutations[0].operation, "post_hovedskjema");
+  const expectedOperations = { main: ["post_hovedskjema"], child: ["post_hovedskjema", "post_underskjema"],
+    confirmation: ["post_hovedskjema", "post_underskjema", "post_underskjema", "confirm"] }[lostResponse];
+  assert.deepEqual(mutations.map(row => row.operation), expectedOperations);
   assert.equal(mutations[0].digest, createHash("sha256").update(nextPreview.hovedskjemaXml).digest("hex"));
-  for (const event of journal) {
-    assert.equal(event.operationName, "post_hovedskjema");
-    assert.equal(event.attempt, 1);
-    assert.equal(event.idempotencyKey, mutations[0].key);
-    assert.equal(event.bodyHash, mutations[0].digest);
-    assert.equal(event.authorityReference, null);
+  assert.equal(journal.length, mutations.length * 2);
+  const succeeded = journal.filter(row => row.operationState === "succeeded");
+  const uncertain = journal.filter(row => row.operationState === "unknown");
+  assert.equal(succeeded.length, mutations.length - 1);
+  assert.equal(uncertain.length, 1);
+  assert.equal(uncertain[0].failureClass, "unknown");
+  assert.equal(uncertain[0].authorityReference, null);
+  const knownReferences = {};
+  const childHashes = Object.values(nextPreview.underskjemaXml).map(xml => createHash("sha256").update(xml).digest("hex"));
+  if (lostResponse === "confirmation")
+    assert.deepEqual(mutations.filter(row => row.operation === "post_underskjema").map(row => row.digest).sort(), childHashes.sort());
+  for (const [index, mutation] of mutations.entries()) {
+    const events = journal.filter(row => row.idempotencyKey === mutation.key);
+    assert.equal(events.length, 2);
+    assert.deepEqual(events.map(row => row.operationState).sort(), ["prepared", index === mutations.length - 1 ? "unknown" : "succeeded"].sort());
+    const bodyHash = mutation.operation === "confirm"
+      ? createHash("sha256").update(`${mutations[0].id}:2`).digest("hex") : mutation.digest;
+    for (const event of events) {
+      assert.equal(event.attempt, 1);
+      assert.equal(event.bodyHash, bodyHash);
+      if (mutation.operation === "post_underskjema") {
+        assert.ok(event.operationName.startsWith("post_underskjema:"));
+        assert.ok(childHashes.includes(mutation.digest));
+      } else assert.equal(event.operationName, mutation.operation);
+    }
+    assert.equal(events[0].operationName, events[1].operationName);
+    const completed = events.find(row => row.operationState === "succeeded");
+    if (completed) {
+      const reference = mutation.operation === "post_hovedskjema" ? mutations[0].id : "posted";
+      assert.equal(completed.authorityReference, reference);
+      knownReferences[completed.operationName] = reference;
+    }
   }
+  assert.deepEqual(unknown.authorityReferences, knownReferences, "retain only references from received successful responses");
+  assert.equal(Object.hasOwn(unknown.authorityReferences, "confirm"), false);
   const callsAfterLoss = mock.snapshot();
   for (let attempt = 0; attempt < 2; attempt++) {
     await assert.rejects(api.rf1086SendSourceProduction(command, options), error =>

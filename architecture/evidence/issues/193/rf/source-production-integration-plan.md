@@ -862,3 +862,24 @@ This covers a lost main-form response, not lost child/confirmation responses or
 external recovery conformance. Remaining crash, rejected-predecessor, security,
 restore, retention and immutable-acceptance work stays open. All seven RF
 acceptance criteria remain pending.
+
+## Lost child and confirmation response journeys — 30 September
+
+The browser command now runs fresh full-year histories for lost main, child and
+confirmation responses. In each case the loopback mock records its mutation before
+disconnecting. Received main/child references survive; the unknown operation gains
+no receipt. The journal preserves exact keys, approved payload hashes, confirmation
+commitment and attempt 1. Two exact retries, reloads and status reads leave provider
+calls and durable state unchanged. The owner has no send/continue/feedback action.
+
+All 20 browser/fixture cases pass, including strict archive verification for each
+unknown stage. All 90 CI controls pass. Base CI at dacb9bd3 passes Application,
+Database isolation and Release gate; immutable evidence is skipped. Its database
+job took 27m05s. The job limit is now 45 minutes to accommodate two additional
+sequential browser histories; each scenario still has a six-minute limit. See
+`full-year-all-unknown-browser-20260930.json`. Current-revision CI remains required.
+
+This closes the three lost-response browser scenarios. Process crashes, prepared
+intents, rejected-predecessor correction and remaining security/conformance cases
+still need browser evidence. Actual restore, retention and both immutable
+acceptance gates remain open. All seven RF acceptance criteria remain pending.

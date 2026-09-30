@@ -11,7 +11,7 @@ const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u;
 export async function startRf1086FilingAuthorityMock({ callbackOrigin, organizationNumber }) {
   assert.match(organizationNumber, /^[0-9]{9}$/u);
   const owner = await startSystemUserAuthorityMock({ callbackOrigin });
-  const state = { calls: [], main: new Map(), keys: new Map(), transmissions: new Map(), dialogs: new Map(), failNextMain: false };
+  const state = { calls: [], main: new Map(), keys: new Map(), transmissions: new Map(), dialogs: new Map(), failNextResponse: null };
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? "/", "http://127.0.0.1");
@@ -57,8 +57,8 @@ export async function startRf1086FilingAuthorityMock({ callbackOrigin, organizat
           const result = { hovedskjemaId: id };
           state.keys.set(key, { identity, result, status: 201 });
           state.calls.push({ operation: "post_hovedskjema", key, digest, id });
-          if (state.failNextMain) {
-            state.failNextMain = false;
+          if (state.failNextResponse === "post_hovedskjema") {
+            state.failNextResponse = null;
             return response.destroy();
           }
           return json(response, 201, result);
@@ -71,6 +71,10 @@ export async function startRf1086FilingAuthorityMock({ callbackOrigin, organizat
           main.children.push({ key, body, digest });
           state.calls.push({ operation: "post_underskjema", key, digest, id: reference });
           state.keys.set(key, { identity, result: null, status: 204 });
+          if (state.failNextResponse === "post_underskjema") {
+            state.failNextResponse = null;
+            return response.destroy();
+          }
           return json(response, 204, null);
         }
         if (operation === "bekreft" && segments.length === 3) {
@@ -102,6 +106,10 @@ export async function startRf1086FilingAuthorityMock({ callbackOrigin, organizat
           });
           state.calls.push({ operation: "confirm", key, digest, id: reference, transmission });
           state.keys.set(key, { identity, result, status: 200 });
+          if (state.failNextResponse === "confirm") {
+            state.failNextResponse = null;
+            return response.destroy();
+          }
           return json(response, 200, result);
         }
         throw new Error("unrecognized RF mutation");
@@ -143,7 +151,9 @@ export async function startRf1086FilingAuthorityMock({ callbackOrigin, organizat
   assert.equal(address.address, "127.0.0.1");
   return {
     baseUrl: `http://127.0.0.1:${address.port}`,
-    failNextMainResponse() { state.failNextMain = true; },
+    failNextMainResponse() { state.failNextResponse = "post_hovedskjema"; },
+    failNextChildResponse() { state.failNextResponse = "post_underskjema"; },
+    failNextConfirmationResponse() { state.failNextResponse = "confirm"; },
     setTamperedCallbackRequestId(value) { owner.setTamperedCallbackRequestId(value); },
     snapshot() { return [...owner.snapshot(), ...state.calls.map((call) => ({ service: "skatteetaten", ...call }))]; },
     async close() {

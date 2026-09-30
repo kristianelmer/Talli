@@ -28,7 +28,7 @@ const databaseUrl = process.env.DATABASE_URL;
 
 // This is a mandatory local lane: absent or non-loopback configuration fails;
 // it never converts the full-stack authority journey into a skipped test.
-test("owner completes legacy and full-year RF capture, approval, send, feedback and archive through the canonical backend", {
+for (const lostResponse of ["main", "child", "confirmation"]) test(`owner completes RF capture, correction and lost ${lostResponse} response through the canonical backend`, {
   timeout: 360_000,
 }, async (t) => {
   assert.ok(supabaseUrl && anonKey && serviceRoleKey && databaseUrl, "authority browser requires isolated Supabase configuration");
@@ -411,7 +411,7 @@ test("owner completes legacy and full-year RF capture, approval, send, feedback 
     await exerciseFullYearSourceJourney({ page, siteOrigin, company: primary, incomeYear: sourceYear, database, ownerId: owner.id,
       openingHolderId: sourceOpening.holderId, entitlementId: sourceEntitlement, api, authorization,
       storage: createClient(supabaseUrl, anonKey, { auth: { autoRefreshToken: false, persistSession: false } }).storage,
-      mock: resources.mock, python, environment: runtimeEnvironment(), apiCalls }).catch(async error => {
+      mock: resources.mock, python, environment: runtimeEnvironment(), apiCalls, lostResponse }).catch(async error => {
       const alerts = await page.getByRole("alert").allTextContents();
       throw new Error(`full_year_source_journey_failed: ${error.message}; alerts=${JSON.stringify(alerts)}`, { cause: error });
     });

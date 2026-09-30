@@ -123,6 +123,33 @@ test("ambiguous fresh mock response records the original mutation before disconn
   assert.ok(mock.snapshot()[0].id);
 });
 
+for (const stage of ["child", "confirmation"]) test(`lost ${stage} mock response preserves the completed mutation`, async (t) => {
+  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001", organizationNumber: "999999999" });
+  t.after(() => mock.close());
+  const base = `${mock.baseUrl}/skatte/2025`;
+  const post = (path, key, body) => fetch(base + path, { method: "POST",
+    headers: { authorization: "Bearer opaque-synthetic-fixture", idempotencykey: key }, body });
+  const main = await post("/1086H", randomUUID(), "<H>original</H>");
+  const { hovedskjemaId } = await main.json();
+  const childPath = `/${hovedskjemaId}/1086U`;
+  if (stage === "confirmation") assert.equal((await post(childPath, randomUUID(), "<U>original</U>")).status, 204);
+  const key = randomUUID();
+  const path = stage === "child" ? childPath : `/${hovedskjemaId}/bekreft?antall_underskjema=1`;
+  const body = stage === "child" ? "<U>original</U>" : undefined;
+  mock[stage === "child" ? "failNextChildResponse" : "failNextConfirmationResponse"]();
+  await assert.rejects(post(path, key, body));
+  const recorded = mock.snapshot().filter(row => row.key === key);
+  assert.equal(recorded.length, 1);
+  assert.equal(recorded[0].operation, stage === "child" ? "post_underskjema" : "confirm");
+  assert.equal(recorded[0].id, hovedskjemaId);
+  // This verifies the mock, not permission for the product to replay an unknown operation.
+  const replay = await post(path, key, body);
+  assert.equal(replay.status, stage === "child" ? 204 : 200);
+  if (stage === "confirmation") assert.equal((await replay.json()).forsendelseId, recorded[0].transmission);
+  else assert.equal((await post(`/${hovedskjemaId}/bekreft?antall_underskjema=1`, randomUUID())).status, 200);
+  assert.equal(mock.snapshot().filter(row => row.operation === recorded[0].operation && row.key === key).length, 1);
+});
+
 test("fresh RF browser uses finite fixture authority while preserving foreign keys and signoff storage", () => {
   const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
   assert.doesNotMatch(source, /session_replication_role|no force row level security|disable trigger/iu);
