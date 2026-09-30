@@ -38,7 +38,14 @@
     ],
     "accountsActivationTests": 41,
     "ciControlTests": 89,
-    "currentRevisionCi": "pending",
+    "currentRevisionCi": {
+      "revision": "e985ebd919b6725c46e8f21d16cc117dd45cde74",
+      "runId": 36698538102,
+      "result": "failure",
+      "application": "passed",
+      "rfAuthorityDatabaseTestsPassed": 497,
+      "cause": "The current override receiver was preserved; the historical RF lifecycle then exposed its missing rollback file"
+    },
     "cleanup": "Passed: owned stack removed, 42 dormant containers restored, Colima stopped and generated Next files restored",
     "credentialScan": "passed",
     "whitespace": "passed"

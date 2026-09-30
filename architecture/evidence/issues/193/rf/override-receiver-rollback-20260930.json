@@ -1,0 +1,61 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "e985ebd919b6725c46e8f21d16cc117dd45cde74",
+  "scope": "Safe RF override receiver rollback and complete local successor lifecycle validation",
+  "failure": {
+    "ciRunId": 36698538102,
+    "result": "failure",
+    "application": "passed",
+    "databaseCasesPassed": 497,
+    "cause": "After the historical source fixture correctly retained the current receiver, the full RF lifecycle discovered that its registered successor had no rollback file"
+  },
+  "fix": "Rollback replaces the override prerequisite with false, preserving its owner and grants and all retained evidence. Forward replay restores the cutover-aware query. It never restores a query against the retired generic table.",
+  "validation": {
+    "missingRollbackRegression": {
+      "before": "failed with ENOENT in 16.95 ms",
+      "after": "passed in 41.64 ms",
+      "scope": "Every registered consequential RF successor has both a forward and rollback file"
+    },
+    "rfAuthorityDatabaseSuite": {
+      "passed": 562,
+      "durationSeconds": 203.79,
+      "includes": [
+        "Historical source fixture retains installed successors",
+        "Repeated receiver rollback blocks review and approval, retains historical approval, preserves exact memberships/schema/function authority and replays successfully",
+        "Complete historical RF expansion, cutover, contract and rollback lifecycle"
+      ]
+    },
+    "reportingOwnedCloneTests": 15,
+    "additionalDurableOperationRegression": {
+      "passed": 1,
+      "durationSeconds": 1.63,
+      "assertions": [
+        "An intent already granted before rollback can still record its outcome",
+        "The next mutation is denied without appending a journal event",
+        "Forward replay permits the next intent"
+      ]
+    },
+    "finalTopologyBrowser": {
+      "passed": 16,
+      "journeyDurationMs": 94758.190708,
+      "scope": "Complete legacy, full-year and accepted-predecessor correction flow after the RF suite and final Tax/Accounts contracts"
+    },
+    "ciControlTests": 90,
+    "currentRevisionCi": "pending",
+    "cleanup": "Passed: owned stack removed, 42 dormant containers restored, Colima stopped and generated Next files restored",
+    "credentialScan": "passed",
+    "whitespace": "passed"
+  },
+  "limitations": [
+    "Complete ordered GitHub CI at the new revision remains required",
+    "Synthetic provider acceptance is not external conformance or a real AS pilot",
+    "No hosted database, production setting, real provider operation or merge",
+    "All seven RF acceptance criteria remain pending"
+  ],
+  "sha256": {
+    "supabase/rollback/20260930083000_rf1086_override_receiver_cutover.sql": "76a990d51a8fe29744d73ad92a4e732d2e48c805987c2425ce6bf0141ba03038",
+    "apps/backend/tests/test_rf1086_annual_approval_database.py": "26652cdde0c75f160faabf7e6deeceb5b82ecf29ab8789b7022334153dc38acf",
+    "apps/backend/tests/test_rf1086_durable_source_operation_database.py": "02fe11337ebadb668da7eab456e4694a6e35d72aeaed6f27de00f297e9ae8376",
+    "tests/ci_release_gate.test.mjs": "ffa6f0f090c0af8b9f58508aeb0a42c6fa4b557f70107b19e5ab1c149444dcef"
+  }
+}

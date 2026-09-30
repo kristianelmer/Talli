@@ -97,6 +97,32 @@ def test_retry_commits_new_attempt_once_and_preserves_original_key(operation_fix
     asyncio.run(run())
 
 
+def test_override_receiver_rollback_stops_new_intents_but_retains_inflight_outcomes(operation_fixture):
+    f = operation_fixture
+    migration = '20260930083000_rf1086_override_receiver_cutover.sql'
+    first = asyncio.run(prepare(f))
+    child = f['manifest'].manifest['documentHashes'][1]
+    operation = 'post_underskjema:' + child['name'].removeprefix('underskjema_')
+    async def events():
+        return await f['store']._rows(
+            'select * from shareholder_register_filing.production_filing_events where submission_id=%s order by created_at,id',
+            (f['claim'].submission_id.value,))
+    with psycopg.connect(DATABASE_URL, autocommit=True) as db:
+        try:
+            db.execute((ROOT/'supabase/rollback'/migration).read_text())
+            # A provider outcome already in flight must remain recordable.
+            completed = asyncio.run(finish(f, first, reference='retained-main-reference'))
+            assert completed.operation_state == 'succeeded'
+            before = asyncio.run(events())
+            with pytest.raises((rf.ShareholderRegisterFilingError, rf.Rf1086ProductionError)):
+                asyncio.run(prepare(f, operation, child['sha256']))
+            assert asyncio.run(events()) == before
+            db.execute((ROOT/'supabase/migrations'/migration).read_text())
+            assert asyncio.run(prepare(f, operation, child['sha256'])).newly_prepared
+        finally:
+            db.execute((ROOT/'supabase/migrations'/migration).read_text())
+
+
 @pytest.mark.parametrize('retry', [False, True])
 def test_concurrent_callers_receive_only_one_committed_dispatch_intent(operation_fixture, retry):
     f = operation_fixture

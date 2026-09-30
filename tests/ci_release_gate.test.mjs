@@ -20,6 +20,16 @@ const workflowPath = new URL(
   import.meta.url,
 );
 const vercelConfigPath = new URL("../vercel.json", import.meta.url);
+
+test("RF successor registry provides both forward and rollback migration files", () => {
+  const layers = JSON.parse(readFileSync(new URL("../scripts/rf-consequential-successors.json", import.meta.url), "utf8"));
+  for (const { migration } of layers) {
+    for (const directory of ["migrations", "rollback"]) {
+      assert.ok(readFileSync(new URL(`../supabase/${directory}/${migration}`, import.meta.url), "utf8").trim());
+    }
+  }
+});
+
 const localGatePath = new URL(
   "../scripts/run-customer-ready-gate.mjs",
   import.meta.url,

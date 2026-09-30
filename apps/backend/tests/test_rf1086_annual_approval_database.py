@@ -234,6 +234,41 @@ def test_sql_binding_rejects_wrong_scope_identity_or_incomplete_proof(annual_fix
     with pytest.raises((rf.ShareholderRegisterFilingError,rf.Rf1086ProductionError)): asyncio.run(run())
 
 
+def test_override_receiver_rollback_blocks_new_effects_retains_history_and_replays(annual_fixture):
+    f = annual_fixture
+    migration = '20260930083000_rf1086_override_receiver_cutover.sql'
+    async def approve():
+        async with f['store'].source_admission(query(f)) as scope:
+            return await approval(f, scope)
+    result, manifest, annual = asyncio.run(approve())
+    async def blocked():
+        async with f['store'].source_admission(query(f)) as scope:
+            current = await proof(f, scope)
+            review = await scope.read_source_approval_context(f['preview'].preview_id, str(f['entitlement']), current)
+            assert not review.can_approve and 'other_blocking_override' in review.blockers
+            await scope.append_source_approval(f['preview'], str(f['entitlement']), manifest, manifest.manifest['review']['sha256'])
+    def authority(db):
+        roles = db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall()
+        schemas = db.execute("select nspowner,nspacl::text from pg_namespace where nspname in ('backend_system','shareholder_register_filing') order by nspname").fetchall()
+        receiver = db.execute("select proowner,proacl::text from pg_proc where oid='backend_system.rf1086_other_overrides_ready_v1(uuid,integer)'::regprocedure").fetchone()
+        return roles, schemas, receiver
+    with psycopg.connect(DATABASE_URL, autocommit=True) as db:
+        before = authority(db)
+        try:
+            for _ in range(2):
+                db.execute((ROOT/'supabase/rollback'/migration).read_text())
+                assert authority(db) == before
+                with pytest.raises((rf.ShareholderRegisterFilingError, rf.Rf1086ProductionError)):
+                    asyncio.run(blocked())
+                retained = asyncio.run(f['store'].read_source_claim_approval(rf.ApprovalId(result.record_id)))
+                assert retained.manifest_text == rf.serialize_rf1086_source_approval_manifest(manifest)
+            db.execute((ROOT/'supabase/migrations'/migration).read_text())
+            assert authority(db) == before
+            assert asyncio.run(approve()) == (result, manifest, annual)
+        finally:
+            db.execute((ROOT/'supabase/migrations'/migration).read_text())
+
+
 def test_rollback_retains_history_closes_new_effects_and_replay_restores_exact_authority(annual_fixture):
     f = annual_fixture
     async def approve():

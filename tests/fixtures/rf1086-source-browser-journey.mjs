@@ -24,19 +24,7 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   const callsBefore = mock.snapshot().filter(({ service }) => service === "skatteetaten").length;
 
   // Upload original bytes via Documents' actual signed-upload and finalize API.
-  const content = syntheticPdf();
-  const documentId = randomUUID();
-  const name = "Synthetic full-year share transfer.pdf";
-  const transfer = await api.documentsBeginUpload({ documentId, companyId: company.id, incomeYear,
-    fileName: name, contentType: "application/pdf", byteLength: content.length,
-    headerBase64: content.subarray(0, 5).toString("base64"), documentType: "corporate_document",
-    finalStatus: "attached", linkedTo: "aksjonaerregisteroppgaven" },
-  { ...options, idempotencyKey: randomUUID() });
-  assert.ok(isLoopbackSupabaseUrl(new URL(transfer.signedUrl).origin));
-  assert.ifError((await storage.from(transfer.bucket).uploadToSignedUrl(transfer.storageKey,
-    transfer.token, content, { contentType: "application/pdf" })).error);
-  const document = await api.documentsFinalizeUpload(documentId, { ...options, idempotencyKey: randomUUID() });
-  assert.equal(document.contentSha256, createHash("sha256").update(content).digest("hex"));
+  const { documentId, document } = await uploadOriginal({ api, options, storage, company, incomeYear, consideration: "15000" });
 
   const sourceHref = `${siteOrigin}/filing/aksjonaerregisteroppgaven/source?companyId=${company.id}&incomeYear=${incomeYear}`;
   await page.goto(sourceHref);
@@ -127,6 +115,7 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   assert.equal(approved.approvals[0].entitlementId, entitlementId);
   assert.equal(Object.keys(approved.previews[0].underskjemaXml).length, 2);
   const panel = page.getByRole("region", { name: "Innsending og status", exact: true });
+  await panel.getByRole("combobox", { name: /^Lagret godkjenning/ }).locator(`option[value="${approved.approvals[0].id}"]`).waitFor({ state: "attached" });
   assert.equal(await panel.getByRole("combobox", { name: /^Lagret godkjenning/ }).inputValue(), approved.approvals[0].id);
   await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
   await panel.getByRole("checkbox").check();
@@ -176,10 +165,122 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   assert.equal(operations.filter(({ operation }) => ["replayed_mutation", "request_rejected"].includes(operation)).length, 0);
   for (const endpoint of ["year-sources", "source-previews", "source-production-reviews", "source-production-approvals", "source-production-filings"])
     assert.ok(apiCalls.some(call => call.endsWith(`POST:/api/v1/shareholder-register-filings/${endpoint}:200`)), `missing full-year backend operation ${endpoint}`);
+  await exerciseSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
+    mock, python, environment, source, approved, accepted, documentId });
 }
 
-function syntheticPdf() {
-  const stream = "BT /F1 12 Tf 20 100 Td (Synthetic share transfer: 50 of 100 shares, NOK 15000.) Tj ET";
+async function uploadOriginal({ api, options, storage, company, incomeYear, consideration }) {
+  const content = syntheticPdf(consideration);
+  const documentId = randomUUID();
+  const name = `Synthetic full-year share transfer ${consideration}.pdf`;
+  const transfer = await api.documentsBeginUpload({ documentId, companyId: company.id, incomeYear,
+    fileName: name, contentType: "application/pdf", byteLength: content.length,
+    headerBase64: content.subarray(0, 5).toString("base64"), documentType: "corporate_document",
+    finalStatus: "attached", linkedTo: "aksjonaerregisteroppgaven" },
+  { ...options, idempotencyKey: randomUUID() });
+  assert.ok(isLoopbackSupabaseUrl(new URL(transfer.signedUrl).origin));
+  assert.ifError((await storage.from(transfer.bucket).uploadToSignedUrl(transfer.storageKey,
+    transfer.token, content, { contentType: "application/pdf" })).error);
+  const document = await api.documentsFinalizeUpload(documentId, { ...options, idempotencyKey: randomUUID() });
+  assert.equal(document.contentSha256, createHash("sha256").update(content).digest("hex"));
+  return { documentId, document, name };
+}
+
+async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
+  mock, python, environment, source, approved, accepted, documentId }) {
+  const prior = accepted.productionSubmissions[0];
+  const callsBefore = mock.snapshot().filter(({ service }) => service === "skatteetaten").length;
+  const corrected = await uploadOriginal({ api, options, storage, company, incomeYear, consideration: "18000" });
+  await page.goto(sourceHref);
+  await page.getByRole("heading", { name: "Gjeldende årsgrunnlag", exact: true }).waitFor();
+  await page.getByRole("combobox", { name: /^Velg originaldokument/ }).selectOption(corrected.documentId);
+  await page.getByRole("button", { name: "Hent dokumentopplysninger", exact: true }).click();
+  const event = page.getByRole("group", { name: "1. Overdragelse av aksjer", exact: true });
+  const documents = event.getByRole("group", { name: "Dokumenter for denne hendelsen", exact: true });
+  await documents.getByRole("checkbox", { name: `${corrected.name} · ${incomeYear}`, exact: true }).check();
+  await documents.getByRole("checkbox", { name: `Synthetic full-year share transfer 15000.pdf · ${incomeYear}`, exact: true }).uncheck();
+  await event.getByLabel("Samlet vederlag (kr)", { exact: true }).fill("18000");
+  await page.getByLabel("Hvorfor korrigeres det tidligere årsgrunnlaget?", { exact: true }).fill("Originaldokumentet viser korrigert vederlag på 18000 kroner.");
+  for (const checkbox of await page.getByRole("group", { name: "Gjennomgang av hele året", exact: true }).getByRole("checkbox").all())
+    await checkbox.check();
+  await page.getByRole("button", { name: "Lagre korrigert årsgrunnlag", exact: true }).click();
+  await page.getByRole("heading", { name: "Årsgrunnlaget er lagret", exact: true }).waitFor();
+  const current = (await api.rf1086ReadCurrentYearSource(scope)).currentSource;
+  assert.equal(current.receipt.version, 2);
+  assert.notEqual(current.receipt.sourceId, source.receipt.sourceId);
+  // The read API returns a draft for the next correction, anchored to this
+  // newly saved version. The archive verifier checks the persisted ancestry.
+  assert.equal(current.draft.supersedesSourceId, current.receipt.sourceId);
+  assert.equal(current.draft.supersedesSourceSha256, current.receipt.sourceSha256);
+  assert.equal(current.draft.documents.find(row => row.documentId === corrected.documentId).contentSha256, corrected.document.contentSha256);
+  assert.ok(current.draft.documents.some(row => row.documentId === documentId), "opening original retained in the corrected source");
+  await page.getByRole("button", { name: "Lag forhåndsvisning av lagret grunnlag", exact: true }).click();
+  await page.getByRole("button", { name: "Kontroller vilkår for godkjenning", exact: true }).click();
+  const review = page.getByRole("group", { name: "Din gjennomgang", exact: true });
+  await review.waitFor();
+  await review.getByRole("combobox", { name: "Oppgaven som skal erstattes", exact: true }).selectOption(prior.id);
+  await review.getByLabel("Hvorfor skal oppgaven korrigeres?", { exact: true }).fill("Korrigert vederlag med nytt originaldokument.");
+  for (const checkbox of await review.getByRole("checkbox").all()) await checkbox.check();
+  await page.getByRole("button", { name: "Lagre godkjenning", exact: true }).click();
+  await page.getByRole("link", { name: "Gå til innsending og status", exact: true }).click();
+  const workspace = await api.rf1086Workspace(company.id, incomeYear, options);
+  assert.equal(workspace.approvals.length, 2);
+  const nextApproval = workspace.approvals.find(row => row.id !== approved.approvals[0].id);
+  const nextPreview = workspace.previews.find(row => row.id === nextApproval.previewId);
+  assert.ok(nextPreview);
+  assert.notEqual(nextApproval.payloadHash, approved.approvals[0].payloadHash);
+  const panel = page.getByRole("region", { name: "Innsending og status", exact: true });
+  await panel.getByRole("combobox", { name: /^Lagret godkjenning/ }).locator(`option[value="${nextApproval.id}"]`).waitFor({ state: "attached" });
+  assert.equal(await panel.getByRole("combobox", { name: /^Lagret godkjenning/ }).inputValue(), nextApproval.id);
+  await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
+  await panel.getByRole("checkbox").check();
+  await panel.getByRole("button", { name: "Send godkjent oppgave", exact: true }).click();
+  await panel.getByText("Innsendingen er bekreftet. Hent lagret status og tilbakemelding.", { exact: true }).waitFor();
+  await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
+  await panel.getByRole("button", { name: "Hent tilbakemelding", exact: true }).click();
+  await panel.getByText("Tilbakemelding: Godkjent.", { exact: true }).waitFor();
+  const after = await api.rf1086Workspace(company.id, incomeYear, options);
+  assert.equal(after.productionSubmissions.length, 2);
+  assert.equal(after.feedbackArtifacts.length, 4);
+  assert.deepEqual(after.approvals.find(row => row.id === approved.approvals[0].id), approved.approvals[0]);
+  assert.deepEqual(after.previews.find(row => row.id === approved.previews[0].id), approved.previews[0]);
+  const replacement = after.productionSubmissions.find(row => row.id !== prior.id);
+  assert.equal(replacement.feedbackState, "accepted");
+  assert.equal(replacement.supersedesSubmissionId, prior.id);
+  await page.reload();
+  await panel.getByRole("combobox", { name: /^Lagret godkjenning/ }).selectOption(approved.approvals[0].id);
+  await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
+  await panel.getByText("Innsendingen er bekreftet mottatt. Se tilbakemeldingen for Skatteetatens behandling. Status: Godkjent.", { exact: true }).waitFor();
+  assert.equal(await panel.getByRole("button", { name: /^(Send godkjent oppgave|Fortsett samme innsending)$/ }).count(), 0);
+  assert.equal((await api.rf1086ReadSourceProductionPosition(approved.approvals[0].id, options)).submissionId, prior.id);
+  await panel.getByRole("combobox", { name: /^Lagret godkjenning/ }).selectOption(nextApproval.id);
+  await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
+  assert.equal((await api.rf1086ReadSourceProductionPosition(nextApproval.id, options)).submissionId, replacement.id);
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Last ned RF-arkiv", exact: true }).click();
+  const download = await downloading;
+  assert.equal(await download.failure(), null);
+  const verification = JSON.parse(execFileSync(python, ["apps/backend/scripts/verify_rf1086_archive.py", await download.path(),
+    "--stream", "--company-id", company.id, "--income-year", String(incomeYear), "--require-source-history", "--require-feedback-originals"],
+  { cwd: process.cwd(), env: environment, encoding: "utf8", timeout: 30_000 }));
+  for (const key of ["sourceVersions", "sourceApprovals", "sourceClaims", "submissions", "sourceOriginals"])
+    assert.equal(verification[key], 2, key);
+  assert.equal(verification.feedbackOriginals, 4);
+  assert.equal(verification.feedbackOriginalsComplete, true);
+  assert.equal(verification.databaseRestorePerformed, false);
+  const operations = mock.snapshot().filter(({ service }) => service === "skatteetaten").slice(callsBefore);
+  assert.equal(operations.filter(({ operation }) => operation === "post_hovedskjema").length, 1);
+  assert.equal(operations.filter(({ operation }) => operation === "post_underskjema").length, 2);
+  assert.equal(operations.filter(({ operation }) => operation === "confirm").length, 1);
+  assert.equal(operations.find(({ operation }) => operation === "post_hovedskjema").digest,
+    createHash("sha256").update(nextPreview.hovedskjemaXml).digest("hex"));
+  assert.deepEqual(operations.filter(({ operation }) => operation === "post_underskjema").map(row => row.digest).sort(),
+    Object.values(nextPreview.underskjemaXml).map(xml => createHash("sha256").update(xml).digest("hex")).sort());
+  assert.equal(operations.filter(({ operation }) => ["replayed_mutation", "request_rejected"].includes(operation)).length, 0);
+}
+
+function syntheticPdf(consideration) {
+  const stream = `BT /F1 12 Tf 20 100 Td (Synthetic share transfer: 50 of 100 shares, NOK ${consideration}.) Tj ET`;
   const objects = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
     "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 500 200] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
     `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"];

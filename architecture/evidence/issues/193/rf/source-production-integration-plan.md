@@ -799,7 +799,45 @@ successors before its rewind and restores them in registry order.
 
 The regression passes, preserving the exact receiver, role memberships and
 successor topology. The subsequent final contracts and combined legacy/full-year
-browser pass all 16 cases; 89 CI-control checks also pass. Full ordered CI at the
-new revision remains required. See
+browser pass all 16 cases; 89 CI-control checks also pass. CI at e985ebd9 then
+passed Application and 497 RF/Authority cases, but the historical lifecycle
+exposed the receiver's missing rollback file. See
 `historical-source-fixture-restoration-20260930.json`. This changes test cleanup;
 all seven RF acceptance criteria remain pending.
+
+## Accepted full-year correction browser journey — 30 September
+
+The authenticated full-year journey now continues from accepted feedback through
+a correction. It uploads a distinct original for corrected share-transfer
+consideration, captures a second source version, previews and reviews current
+evidence, selects the accepted predecessor and saves an explicit replacement
+approval. The guarded send and feedback paths produce a second accepted filing.
+
+The browser proves the first approval and preview are unchanged, the new payload
+is selected after server revalidation, the replacement points to the accepted
+predecessor, and the old approval remains readable without a resend action.
+Offline archive verification checks both versions, approvals, claims and filings,
+two source originals and four feedback originals. All 16 combined browser checks
+pass. No application behavior changed. See
+`full-year-correction-browser-20260930.json`; exact-revision CI remains required.
+
+This covers an accepted-predecessor correction against a loopback authority mock.
+Rejected-predecessor, crash/uncertain-response and adversarial full-year browser
+cases, external conformance and the remaining restore/retention/acceptance work
+remain open. All seven RF acceptance criteria remain pending.
+
+## Override receiver rollback and full RF lifecycle — 30 September
+
+The missing receiver rollback now closes the override prerequisite while keeping
+retained approvals, claims and outcomes readable. It preserves owner/grant state
+and never reopens the retired generic table. Forward replay restores the current
+owned query. A fast registry check catches a missing forward/rollback pair before
+the database lane reaches its historical lifecycle.
+
+The complete local RF/Authority suite passes 562 cases, followed by 15 reporting
+clone cases. An additional durable-operation regression verifies that an in-flight
+outcome can still be recorded, the next intent is blocked without a journal
+append, and forward replay restores admission. After those checks, final contracts
+and all 16 legacy/full-year/correction browser checks pass. All 90 CI-control
+checks pass. See `override-receiver-rollback-20260930.json`. Complete ordered CI
+at the new revision remains required; all seven RF acceptance criteria are pending.
