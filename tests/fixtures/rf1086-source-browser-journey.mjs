@@ -8,7 +8,7 @@ import { isLoopbackSupabaseUrl } from "../support/supabase_fixture_safety.mjs";
 // Only admission, opening facts and a pilot entitlement are prepared. Every
 // source, preview, approval, operation and receipt below is created by the app.
 export async function exerciseFullYearSourceJourney({ page, siteOrigin, company, incomeYear, database, ownerId,
-  openingHolderId, entitlementId, api, authorization, storage, mock, python, environment, apiCalls, lostResponse, crashBackend }) {
+  openingHolderId, entitlementId, api, authorization, storage, mock, python, environment, apiCalls, lostResponse, crashBackend, armPreparedCrash }) {
   const scope = { companyId: company.id, incomeYear, headers: authorization };
   const options = { headers: authorization };
   const before = await api.rf1086Workspace(company.id, incomeYear, options);
@@ -168,7 +168,7 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   const correction = await exerciseSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
     mock, python, environment, source, approved, accepted, documentId });
   return await exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-    mock, python, environment, documentId, correction, lostResponse, crashBackend });
+    mock, python, environment, documentId, correction, lostResponse, crashBackend, armPreparedCrash });
 }
 
 async function uploadOriginal({ api, options, storage, company, incomeYear, consideration }) {
@@ -292,7 +292,7 @@ async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear,
 }
 
 async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-  mock, python, environment, documentId, correction, lostResponse, crashBackend }) {
+  mock, python, environment, documentId, correction, lostResponse, crashBackend, armPreparedCrash }) {
   const { nextApproval, nextPreview, panel } = await approveSourceCorrection({ page, sourceHref,
     company, incomeYear, api, scope, options, storage, source: correction.source, prior: correction.submission,
     documentId, consideration: "19000", previousConsideration: "18000" });
@@ -304,7 +304,7 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
   const fail = { main: "failNextMainResponse", child: "failNextChildResponse", confirmation: "failNextConfirmationResponse" }[lostResponse];
   assert.ok(fail);
   const operation = { main: "post_hovedskjema", child: "post_underskjema", confirmation: "confirm" }[lostResponse];
-  const held = crashBackend ? mock.holdNextResponse(operation) : undefined;
+  const held = armPreparedCrash ? armPreparedCrash(operation) : crashBackend ? mock.holdNextResponse(operation) : undefined;
   let beforeCrashArchive, callsAtCrash;
   if (!crashBackend) mock[fail]();
   await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
@@ -320,8 +320,11 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
     const atCrash = await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options);
     const active = atCrash.productionSubmissions.find(row => row.approvalId === nextApproval.id);
     const lastMutation = mock.snapshot().filter(row => row.service === "skatteetaten").at(-1);
-    const intent = atCrash.productionEvents.filter(row => row.submissionId === active.id && row.idempotencyKey === lastMutation.key);
-    assert.equal(intent.length, 1, "provider mutation must have exactly one already committed intent");
+    const intent = atCrash.productionEvents.filter(row => row.submissionId === active.id && (armPreparedCrash
+      ? row.operationName.split(":")[0] === operation && row.operationState === "prepared"
+        && !atCrash.productionEvents.some(outcome => outcome.idempotencyKey === row.idempotencyKey && outcome.operationState !== "prepared")
+      : row.idempotencyKey === lastMutation.key));
+    assert.equal(intent.length, 1, "selected operation must have exactly one already committed intent");
     assert.equal(intent[0].operationState, "prepared");
     assert.equal(active.status, "sending");
     beforeCrashArchive = atCrash;
@@ -354,14 +357,15 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
   assert.equal(retained.sourceSubmissionClaims.filter(row => row.approvalId === nextApproval.id).length, 1);
   const journal = retained.productionEvents.filter(row => row.submissionId === unknown.id);
   const mutations = mock.snapshot().filter(row => row.service === "skatteetaten").slice(callsBefore);
-  const expectedOperations = { main: ["post_hovedskjema"], child: ["post_hovedskjema", "post_underskjema"],
+  const intendedOperations = { main: ["post_hovedskjema"], child: ["post_hovedskjema", "post_underskjema"],
     confirmation: ["post_hovedskjema", "post_underskjema", "post_underskjema", "confirm"] }[lostResponse];
+  const expectedOperations = armPreparedCrash ? intendedOperations.slice(0, -1) : intendedOperations;
   assert.deepEqual(mutations.map(row => row.operation), expectedOperations);
-  assert.equal(mutations[0].digest, createHash("sha256").update(nextPreview.hovedskjemaXml).digest("hex"));
-  assert.equal(journal.length, mutations.length * 2 - (crashBackend ? 1 : 0));
+  if (mutations.length) assert.equal(mutations[0].digest, createHash("sha256").update(nextPreview.hovedskjemaXml).digest("hex"));
+  assert.equal(journal.length, mutations.length * 2 + (armPreparedCrash ? 1 : crashBackend ? -1 : 0));
   const succeeded = journal.filter(row => row.operationState === "succeeded");
   const uncertain = journal.filter(row => row.operationState === "unknown");
-  assert.equal(succeeded.length, mutations.length - 1);
+  assert.equal(succeeded.length, mutations.length - (armPreparedCrash ? 0 : 1));
   assert.equal(uncertain.length, crashBackend ? 0 : 1);
   if (!crashBackend) {
     assert.equal(uncertain[0].failureClass, "unknown");
@@ -369,14 +373,31 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
   }
   const knownReferences = {};
   const childHashes = Object.values(nextPreview.underskjemaXml).map(xml => createHash("sha256").update(xml).digest("hex"));
+  if (armPreparedCrash) {
+    const incomplete = journal.filter(event => event.operationState === "prepared"
+      && !journal.some(outcome => outcome.idempotencyKey === event.idempotencyKey && outcome.operationState !== "prepared"));
+    assert.equal(incomplete.length, 1);
+    const pending = incomplete[0];
+    assert.equal(pending.operationName.split(":")[0], operation);
+    assert.equal(pending.attempt, 1);
+    assert.equal(pending.authorityReference, null);
+    assert.equal(pending.failureClass, null);
+    assert.equal(pending.resultingStatus, "sending");
+    assert.match(pending.idempotencyKey, /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u);
+    const expectedHash = lostResponse === "main" ? createHash("sha256").update(nextPreview.hovedskjemaXml).digest("hex")
+      : lostResponse === "confirmation" ? createHash("sha256").update(`${mutations[0].id}:2`).digest("hex") : undefined;
+    if (expectedHash) assert.equal(pending.bodyHash, expectedHash);
+    else assert.ok(childHashes.includes(pending.bodyHash));
+    assert.equal(mutations.some(mutation => mutation.key === pending.idempotencyKey), false);
+  }
   if (lostResponse === "confirmation")
     assert.deepEqual(mutations.filter(row => row.operation === "post_underskjema").map(row => row.digest).sort(), childHashes.sort());
   for (const [index, mutation] of mutations.entries()) {
     const events = journal.filter(row => row.idempotencyKey === mutation.key);
-    const incomplete = crashBackend && index === mutations.length - 1;
+    const incomplete = crashBackend && !armPreparedCrash && index === mutations.length - 1;
     assert.equal(events.length, incomplete ? 1 : 2);
     assert.deepEqual(events.map(row => row.operationState).sort(), incomplete ? ["prepared"]
-      : ["prepared", index === mutations.length - 1 ? "unknown" : "succeeded"].sort());
+      : ["prepared", !armPreparedCrash && index === mutations.length - 1 ? "unknown" : "succeeded"].sort());
     const bodyHash = mutation.operation === "confirm"
       ? createHash("sha256").update(`${mutations[0].id}:2`).digest("hex") : mutation.digest;
     for (const event of events) {

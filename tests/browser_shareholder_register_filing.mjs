@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash, createHmac, generateKeyPairSync, randomInt, randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { once } from "node:events";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createRequire } from "node:module";
 import test from "node:test";
 
@@ -29,8 +31,8 @@ const databaseUrl = process.env.DATABASE_URL;
 
 // This is a mandatory local lane: absent or non-loopback configuration fails;
 // it never converts the full-stack authority journey into a skipped test.
-for (const { lostResponse, crash } of ["main", "child", "confirmation"].flatMap(lostResponse =>
-  [{ lostResponse, crash: false }, { lostResponse, crash: true }])) test(`owner completes RF capture, correction and ${crash ? "process crash at" : "lost"} ${lostResponse} response through the canonical backend`, {
+for (const { lostResponse, crash, beforeMutation } of ["main", "child", "confirmation"].flatMap(lostResponse =>
+  [{ lostResponse, crash: false }, { lostResponse, crash: true }, { lostResponse, crash: true, beforeMutation: true }])) test(`owner completes RF capture, correction and ${beforeMutation ? "process crash before" : crash ? "process crash at" : "lost"} ${lostResponse} ${beforeMutation ? "provider mutation" : "response"} through the canonical backend`, {
   timeout: 360_000,
 }, async (t) => {
   assert.ok(supabaseUrl && anonKey && serviceRoleKey && databaseUrl, "authority browser requires isolated Supabase configuration");
@@ -39,7 +41,7 @@ for (const { lostResponse, crash } of ["main", "child", "confirmation"].flatMap(
   assert.notEqual(process.env.TALLI_RF1086_PRODUCTION_ENABLED, "true");
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const database = new pg.Client({ connectionString: databaseUrl });
-  const resources = { connected: false, users: [], companies: [], roles: [], backend: null, web: null, browser: null, mock: null };
+  const resources = { connected: false, users: [], companies: [], roles: [], backend: null, web: null, browser: null, mock: null, preparedControl: null };
   const health = [];
   const egressViolations = [];
   const apiCalls = [];
@@ -51,6 +53,7 @@ for (const { lostResponse, crash } of ["main", "child", "confirmation"].flatMap(
     await attempt(() => stopOwnedProcess(resources.web));
     await attempt(() => stopOwnedProcess(resources.backend));
     await attempt(() => resources.mock?.close());
+    if (resources.preparedControl) await attempt(() => rmSync(resources.preparedControl, { recursive: true }));
     if (resources.connected) {
       for (const role of resources.roles) await attempt(() => database.query(`alter role ${role} nologin password null`));
       await attempt(async () => {
@@ -120,6 +123,13 @@ for (const { lostResponse, crash } of ["main", "child", "confirmation"].flatMap(
     const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048,
       privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } });
     const nonce = randomUUID();
+    if (beforeMutation) resources.preparedControl = mkdtempSync(join(tmpdir(), "talli-rf-prepared-crash-"));
+    const preparedSignals = new Map();
+    const armPreparedCrash = operation => {
+      const held = new Promise(resolve => preparedSignals.set(operation, resolve));
+      writeFileSync(join(resources.preparedControl, "stop-after-prepare"), `${nonce}:${operation}`, { mode: 0o600 });
+      return held;
+    };
     const python = process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python";
     assert.ok(existsSync(python), "backend Python runtime is absent");
     const backendSpec = { command: python, args: ["tests/fixtures/start_shareholder_register_filing_backend.py"],
@@ -134,6 +144,7 @@ for (const { lostResponse, crash } of ["main", "child", "confirmation"].flatMap(
         TALLI_PROD_MASKINPORTEN_CLIENT_ID: randomUUID(), TALLI_PROD_MASKINPORTEN_KEY_ID: randomUUID(),
         TALLI_PROD_MASKINPORTEN_PRIVATE_KEY_PEM: privateKey,
         TALLI_BACKEND_PORT: String(backendPort), TALLI_READINESS_NONCE: nonce,
+        ...(beforeMutation ? { TALLI_RF_STOP_AFTER_PREPARE_FILE: join(resources.preparedControl, "stop-after-prepare") } : {}),
       } };
     const launchBackend = () => {
       resources.backend = startOwnedProcess(backendSpec);
@@ -145,6 +156,11 @@ for (const { lostResponse, crash } of ["main", "child", "confirmation"].flatMap(
           const line = httpOutput.slice(0, newline);
           httpOutput = httpOutput.slice(newline + 1);
           if (line.startsWith("TALLI_AUTHORITY_HTTP:")) apiCalls.push(line);
+          if (line.startsWith(`TALLI_RF_PREPARED_STOP:${nonce}:`)) {
+            const operation = line.slice(`TALLI_RF_PREPARED_STOP:${nonce}:`.length);
+            preparedSignals.get(operation)?.();
+            preparedSignals.delete(operation);
+          }
         }
       });
     };
@@ -427,7 +443,8 @@ for (const { lostResponse, crash } of ["main", "child", "confirmation"].flatMap(
       openingHolderId: sourceOpening.holderId, entitlementId: sourceEntitlement, api, authorization,
       storage: createClient(supabaseUrl, anonKey, { auth: { autoRefreshToken: false, persistSession: false } }).storage,
       mock: resources.mock, python, environment: runtimeEnvironment(), apiCalls, lostResponse,
-      crashBackend: crash ? crashBackend : undefined }).catch(async error => {
+      crashBackend: crash ? crashBackend : undefined,
+      armPreparedCrash: beforeMutation ? armPreparedCrash : undefined }).catch(async error => {
       const alerts = await page.getByRole("alert").allTextContents();
       throw new Error(`full_year_source_journey_failed: ${error.message}; alerts=${JSON.stringify(alerts)}`, { cause: error });
     });

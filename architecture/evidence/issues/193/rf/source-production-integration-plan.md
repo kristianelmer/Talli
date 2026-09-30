@@ -937,3 +937,26 @@ These are synthetic provider effects. Before-I/O process-loss browser coverage,
 rejected-predecessor and remaining security/conformance cases, broader object
 restore/retention and both immutable acceptance gates remain open. All seven RF
 acceptance criteria stay pending.
+
+## Process loss before provider mutation — 30 September
+
+The browser now also kills the owned backend after its real operation intent has
+committed, before the sender receives its grant for main, child or confirmation
+POST. A nonce-bound, one-use private file arms a barrier in the local test launcher;
+there is no production hook or new HTTP endpoint. Eight barrier tests verify
+commit ordering, arm matching/consumption and cancellation without grant delivery.
+
+All nine full-year browser histories and 20 fixture checks pass (29 total). In each
+new case, the selected POST never reaches the loopback provider. Restart preserves
+the exact prepared intent, keys, approved hashes, successful earlier references,
+claims and history. Two exact retries return 409; status reads and reloads acquire
+no tokens and make no provider calls. The owner remains in `recovery_required`.
+All three main-stage histories also pass actual same-cluster database restoration
+and retained-original byte verification. See
+`prepared-before-mutation-browser-20260930.json`.
+
+This closes the three browser scenarios for process loss after intent commit but
+before provider mutation. Rejected-predecessor correction, remaining security and
+provider conformance, unknown-operation reconciliation, broader object/role
+restore and retention, legacy feedback backfill, HTTP/concurrency sizing and both
+immutable acceptance gates remain. All seven RF acceptance criteria stay pending.
