@@ -24,7 +24,7 @@
     "test:boundary-smoke": "node --test tests/production_boundary_smoke.mjs",
     "test:boundary": "npm run test:boundary-backend && npm run test:boundary-web && npm run test:boundary-contract",
     "test:company-access-onboarding": "uv run --project apps/backend pytest -c apps/backend/pyproject.toml apps/backend/tests/test_company_eligibility.py apps/backend/tests/test_company_onboarding.py apps/backend/tests/test_company_onboarding_migration.py && node --experimental-strip-types --test apps/web/tests/company-eligibility.test.mjs apps/web/tests/company-year-eligibility-gate.test.mjs apps/web/tests/company-access-onboarding.test.mjs apps/web/tests/company-access-stage-exit.test.mjs apps/web/tests/owner-mfa-transition.test.mjs tests/company_access_onboarding_cutover.test.mjs tests/company_year_admission_schema.test.mjs",
-    "test:archive": "node --experimental-strip-types --test tests/archive_export.test.mjs && node --experimental-strip-types --test apps/web/tests/archive-rf1086-source.test.mjs",
+    "test:archive": "node --experimental-strip-types --test tests/archive_export.test.mjs && node --experimental-strip-types --test apps/web/tests/archive-rf1086-source.test.mjs apps/web/tests/rf1086-archive-stream.test.mjs",
     "test:annual-data": "node --experimental-strip-types --test tests/annual_data.test.mjs",
     "test:annual-readiness": "node --experimental-strip-types --test tests/annual_readiness_gates.test.mjs",
     "test:annual-workspace": "node --experimental-strip-types --test tests/annual_workspace_view_model.test.mjs tests/annual_workspace_scope.test.mjs tests/action_return.test.mjs tests/annual_workspace_render.test.mjs tests/annual_workspace_routes.test.mjs",

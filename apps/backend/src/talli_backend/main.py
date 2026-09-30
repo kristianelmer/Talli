@@ -17,7 +17,7 @@ from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from fastapi import Depends, FastAPI, Header, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import StrictBool, AwareDatetime, NaiveDatetime, BeforeValidator, AfterValidator, BaseModel, ConfigDict, Field, ValidationError, model_validator
 from pydantic.json_schema import SkipJsonSchema, WithJsonSchema
@@ -12171,6 +12171,31 @@ def create_app(
                 )
             except ValidationError:
                 raise ShareholderRegisterFilingError.unavailable() from None
+        return await shareholder_register_filing_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/archive-source/production-stream",
+        operation_id="rf1086DownloadProductionArchive", response_class=StreamingResponse,
+        responses={**authority_errors, 200: {"description": "Bounded NDJSON archive; final commitment required.",
+            "content": {"application/x-ndjson": {"schema": {"type": "string", "format": "binary"}}}}},
+        tags=["shareholder-register-filings"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_production_archive_stream(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ):
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            query = Rf1086ArchiveQuery(CompanyId(str(company_id)), IncomeYear(income_year), workflow.actor_id)
+            archive = await workflow.archive_source(query)
+            from talli_backend.application.shareholder_register_archive import prepare_archive_stream
+            content = await prepare_archive_stream(archive, query=query, documents_factory=documents_application,
+                access_token=bearer_token(credentials), actor_id=workflow.actor_id)
+            return StreamingResponse(content, media_type="application/x-ndjson", headers={
+                "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+                "Content-Disposition": f'attachment; filename="rf1086-{company_id}-{income_year}.ndjson"',
+            })
         return await shareholder_register_filing_call(execute)
 
     @application.get(

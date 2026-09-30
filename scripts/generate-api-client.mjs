@@ -320,6 +320,7 @@ const shareholderRegisterFilingOperations = {
   sourcePreview: ["/api/v1/shareholder-register-filings/source-previews/{previewId}", "get", "rf1086ReadSourcePreview"],
   archiveSource: ["/api/v1/shareholder-register-filings/archive-source", "get", "rf1086GetArchiveSource"],
   productionArchiveSource: ["/api/v1/shareholder-register-filings/archive-source/production", "get", "rf1086GetProductionArchiveSource"],
+  productionArchiveStream: ["/api/v1/shareholder-register-filings/archive-source/production-stream", "get", "rf1086DownloadProductionArchive"],
   workspace: ["/api/v1/shareholder-register-filings/workspace", "get", "rf1086Workspace"],
   preview: ["/api/v1/shareholder-register-filings/previews/{previewId}", "get", "rf1086Preview"],
   generate: ["/api/v1/shareholder-register-filings/previews", "post", "rf1086GeneratePreview"],
@@ -3253,6 +3254,31 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
       return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source?" + query,
         "GET", request, undefined, isRf1086ArchiveSourceWire);
+    },
+
+    // The caller must consume and verify the final NDJSON commitment. A 200
+    // response is only an opened stream; this method never buffers its body.
+    async rf1086DownloadProductionArchive(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Response> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const response = await fetchImplementation(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production-stream?" + query, {
+        method: "GET", cache: "no-store", signal: request.signal,
+        headers: { Accept: "application/x-ndjson, application/problem+json",
+          ...options.headers, ...request.headers,
+          ...(request.requestId === undefined ? {} : { [${JSON.stringify(correlationParameter.name)}]: request.requestId }) },
+      });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!response.ok) {
+        const candidate = contentType.includes("application/problem+json")
+          ? await response.json().catch(() => undefined) : undefined;
+        throw new TalliApiError(response.status, isProblemDetails(candidate) ? candidate : undefined);
+      }
+      if (contentType.split(";")[0].trim().toLowerCase() !== "application/x-ndjson" || response.body === null) {
+        await response.body?.cancel();
+        throw new TalliApiError(502, undefined);
+      }
+      return response;
     },
 
     async rf1086GetProductionArchiveSource(

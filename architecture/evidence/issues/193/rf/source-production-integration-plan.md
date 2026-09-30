@@ -667,3 +667,30 @@ browser/security/recovery journeys, legacy feedback backfill, actual database an
 object restoration, retention generations, streaming archive bundles and the two
 immutable acceptance gates. All seven acceptance criteria remain pending. No
 production setting, actual provider operation or real AS data was used.
+
+
+## Streaming retained originals and recovery research — 30 September
+
+An additive authenticated `archive-source/production-stream` GET now returns the
+validated canonical record, each exact retained source/feedback original, and a
+mandatory terminal count/hash commitment. It fetches one original at a time,
+retains the Documents per-record bound, and caps combined original content at
+1 GiB. The existing 128 MiB inline JSON contract is unchanged. The generated
+client leaves the response body unconsumed; HTTP 200 alone is not completeness.
+The offline verifier's `--stream` mode verifies bounded lines in order, exact
+metadata/bytes, completeness and the terminal commitment without extracting or
+writing anything. Legacy unbound feedback remains explicitly incomplete.
+
+Local checks cover corruption even with a recomputed transport hash, truncation,
+wrong scope/attribution, unavailable originals, actor mismatch, cancellation,
+non-buffering client behavior and scaled aggregate limits. A full 1 GiB load
+rehearsal, browser download integration and database/object restoration remain.
+
+Public provider research found documented same-key/body main/child replay but
+no specified retention window or deduplication scope, plus a confirmation-header
+discrepancy between prose and OpenAPI. Unknown operations remain stopped; no
+replay window or negative discovery proof was invented. See
+`unknown-outcome-recovery-research-20260930.md` for pinned primary evidence and
+remaining provider clarification/conformance requirements. This does not require
+an AS to continue independent software work. All seven RF acceptance criteria
+remain pending; no live business-provider action or production setting changed.
