@@ -8,7 +8,9 @@ import { isLoopbackSupabaseUrl } from "../support/supabase_fixture_safety.mjs";
 // Only admission, opening facts and a pilot entitlement are prepared. Every
 // source, preview, approval, operation and receipt below is created by the app.
 export async function exerciseFullYearSourceJourney({ page, siteOrigin, company, incomeYear, database, ownerId,
-  openingHolderId, entitlementId, api, authorization, storage, mock, python, environment, apiCalls, lostResponse, crashBackend, armPreparedCrash }) {
+  openingHolderId, entitlementId, api, authorization, storage, mock, python, environment, apiCalls, lostResponse, crashBackend, armPreparedCrash, predecessorFeedback = "accepted" }) {
+  assert.ok(["accepted", "rejected"].includes(predecessorFeedback));
+  const predecessorLabel = predecessorFeedback === "accepted" ? "Godkjent" : "Avvist";
   const scope = { companyId: company.id, incomeYear, headers: authorization };
   const options = { headers: authorization };
   const before = await api.rf1086Workspace(company.id, incomeYear, options);
@@ -120,20 +122,23 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
   await panel.getByRole("checkbox").check();
   const send = panel.getByRole("button", { name: "Send godkjent oppgave", exact: true });
+  if (predecessorFeedback === "rejected") mock.rejectNextFeedback();
   await send.focus();
   await send.press("Enter");
   await panel.getByText("Innsendingen er bekreftet. Hent lagret status og tilbakemelding.", { exact: true }).waitFor();
   assert.equal(await panel.getByRole("button", { name: "Send godkjent oppgave", exact: true }).count(), 0);
   await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
   await panel.getByRole("button", { name: "Hent tilbakemelding", exact: true }).click();
-  await panel.getByText("Tilbakemelding: Godkjent.", { exact: true }).waitFor();
-  const accepted = await api.rf1086Workspace(company.id, incomeYear, options);
-  assert.equal(accepted.productionSubmissions.length, 1);
-  assert.equal(accepted.productionSubmissions[0].feedbackState, "accepted");
-  assert.equal(accepted.feedbackArtifacts.length, 2);
+  await panel.getByText(`Tilbakemelding: ${predecessorLabel}.`, { exact: true }).waitFor();
+  const processed = await api.rf1086Workspace(company.id, incomeYear, options);
+  assert.equal(processed.productionSubmissions.length, 1);
+  assert.equal(processed.productionSubmissions[0].feedbackState, predecessorFeedback);
+  assert.equal(processed.productionSubmissions[0].status, predecessorFeedback);
+  assert.equal(processed.feedbackArtifacts.length, 2);
+  assert.ok(processed.feedbackArtifacts.every(row => row.classification === predecessorFeedback));
   const position = await api.rf1086ReadSourceProductionPosition(approved.approvals[0].id, options);
   assert.equal(position.disposition, "confirmed");
-  assert.equal(position.submissionId, accepted.productionSubmissions[0].id);
+  assert.equal(position.submissionId, processed.productionSubmissions[0].id);
   for (const width of [320, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `full-year source overflow at ${width}`);
@@ -141,7 +146,7 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   await page.reload();
   await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
   assert.equal(await panel.getByRole("button", { name: "Send godkjent oppgave", exact: true }).count(), 0);
-  await panel.getByRole("link", { name: "Tilbakemelding: Godkjent", exact: true }).first().waitFor();
+  await panel.getByRole("link", { name: `Tilbakemelding: ${predecessorLabel}`, exact: true }).first().waitFor();
   const downloading = page.waitForEvent("download");
   await page.getByRole("link", { name: "Last ned RF-arkiv", exact: true }).click();
   const download = await downloading;
@@ -166,7 +171,7 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   for (const endpoint of ["year-sources", "source-previews", "source-production-reviews", "source-production-approvals", "source-production-filings"])
     assert.ok(apiCalls.some(call => call.endsWith(`POST:/api/v1/shareholder-register-filings/${endpoint}:200`)), `missing full-year backend operation ${endpoint}`);
   const correction = await exerciseSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-    mock, python, environment, source, approved, accepted, documentId });
+    mock, python, environment, source, approved, processed, documentId, predecessorLabel });
   return await exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeYear, api, scope, options, storage,
     mock, python, environment, documentId, correction, lostResponse, crashBackend, armPreparedCrash });
 }
@@ -237,8 +242,9 @@ async function approveSourceCorrection({ page, sourceHref, company, incomeYear, 
 }
 
 async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-  mock, python, environment, source, approved, accepted, documentId }) {
-  const prior = accepted.productionSubmissions[0];
+  mock, python, environment, source, approved, processed, documentId, predecessorLabel }) {
+  const prior = processed.productionSubmissions[0];
+  const historyBefore = await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options);
   const callsBefore = mock.snapshot().filter(({ service }) => service === "skatteetaten").length;
   const { current, nextApproval, nextPreview, panel } = await approveSourceCorrection({ page, sourceHref,
     company, incomeYear, api, scope, options, storage, source, prior, documentId,
@@ -258,12 +264,20 @@ async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear,
   const replacement = after.productionSubmissions.find(row => row.id !== prior.id);
   assert.equal(replacement.feedbackState, "accepted");
   assert.equal(replacement.supersedesSubmissionId, prior.id);
+  assert.deepEqual(after.productionSubmissions.find(row => row.id === prior.id), prior);
+  assert.deepEqual(after.feedbackArtifacts.filter(row => row.submissionId === prior.id), processed.feedbackArtifacts);
+  const historyAfter = await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options);
+  assert.deepEqual(historyAfter.productionEvents.filter(row => row.submissionId === prior.id),
+    historyBefore.productionEvents.filter(row => row.submissionId === prior.id));
   await page.reload();
   await panel.getByRole("combobox", { name: /^Lagret godkjenning/ }).selectOption(approved.approvals[0].id);
   await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
-  await panel.getByText("Innsendingen er bekreftet mottatt. Se tilbakemeldingen for Skatteetatens behandling. Status: Godkjent.", { exact: true }).waitFor();
+  await panel.getByText(`Innsendingen er bekreftet mottatt. Se tilbakemeldingen for Skatteetatens behandling. Status: ${predecessorLabel}.`, { exact: true }).waitFor();
   assert.equal(await panel.getByRole("button", { name: /^(Send godkjent oppgave|Fortsett samme innsending)$/ }).count(), 0);
-  assert.equal((await api.rf1086ReadSourceProductionPosition(approved.approvals[0].id, options)).submissionId, prior.id);
+  const priorPosition = await api.rf1086ReadSourceProductionPosition(approved.approvals[0].id, options);
+  assert.equal(priorPosition.submissionId, prior.id);
+  assert.equal(priorPosition.feedbackState, prior.feedbackState);
+  await panel.getByRole("link", { name: `Tilbakemelding: ${predecessorLabel}`, exact: true }).first().waitFor();
   await panel.getByRole("combobox", { name: /^Lagret godkjenning/ }).selectOption(nextApproval.id);
   await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
   assert.equal((await api.rf1086ReadSourceProductionPosition(nextApproval.id, options)).submissionId, replacement.id);

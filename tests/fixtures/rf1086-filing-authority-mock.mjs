@@ -11,7 +11,8 @@ const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u;
 export async function startRf1086FilingAuthorityMock({ callbackOrigin, organizationNumber }) {
   assert.match(organizationNumber, /^[0-9]{9}$/u);
   const owner = await startSystemUserAuthorityMock({ callbackOrigin });
-  const state = { calls: [], main: new Map(), keys: new Map(), transmissions: new Map(), dialogs: new Map(), failNextResponse: null };
+  const state = { calls: [], main: new Map(), keys: new Map(), transmissions: new Map(), dialogs: new Map(), failNextResponse: null,
+    nextFeedbackState: "accepted" };
   const heldResponses = new Set();
   let pendingHold;
   function disruptResponse(operation, response) {
@@ -98,7 +99,9 @@ export async function startRf1086FilingAuthorityMock({ callbackOrigin, organizat
           const result = { oppgavegiversLeveranseReferanse: `synthetic-${randomUUID()}`,
             dialogId: randomUUID(), forsendelseId: transmission };
           const artifactId = randomUUID();
-          const bytes = Buffer.from(feedbackBytes({ incomeYear: Number(year), organizationNumber }));
+          const feedbackState = state.nextFeedbackState;
+          state.nextFeedbackState = "accepted";
+          const bytes = Buffer.from(feedbackBytes({ incomeYear: Number(year), organizationNumber, feedbackState }));
           const feedbackTransmission = randomUUID();
           main.confirmation = result;
           // The send journal reads the confirmed submission archive before
@@ -112,7 +115,7 @@ export async function startRf1086FilingAuthorityMock({ callbackOrigin, organizat
             serviceResource: "urn:altinn:resource:ske-innrapportering-aksjonaerregisteroppgave",
             transmissions: [
               { id: transmission, type: "Submission", isAuthorized: true },
-              { id: feedbackTransmission, relatedTransmissionId: transmission, type: "Acceptance",
+              { id: feedbackTransmission, relatedTransmissionId: transmission, type: feedbackState === "accepted" ? "Acceptance" : "Rejection",
                 isAuthorized: true, createdAt: "2026-09-24T00:00:00Z", attachments: [{ id: artifactId }] },
             ],
           });
@@ -160,6 +163,7 @@ export async function startRf1086FilingAuthorityMock({ callbackOrigin, organizat
   assert.equal(address.address, "127.0.0.1");
   return {
     baseUrl: `http://127.0.0.1:${address.port}`,
+    rejectNextFeedback() { state.nextFeedbackState = "rejected"; },
     failNextMainResponse() { state.failNextResponse = "post_hovedskjema"; },
     failNextChildResponse() { state.failNextResponse = "post_underskjema"; },
     failNextConfirmationResponse() { state.failNextResponse = "confirm"; },

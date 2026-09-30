@@ -84,6 +84,23 @@ test("fresh RF mock supports the shipped send journal before dialog feedback dis
   ]);
 });
 
+test("fresh RF mock rejects one filing with matching XML and dialog type, then accepts the next filing", async (t) => {
+  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001", organizationNumber: "999999999" });
+  t.after(() => mock.close());
+  mock.rejectNextFeedback();
+  for (const state of ["rejected", "accepted"]) {
+    const result = await promisify(execFile)(process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python",
+      ["tests/fixtures/reconcile_authority_browser_feedback.py"], {
+        env: { ...process.env, TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL: mock.baseUrl,
+          TALLI_FIXTURE_ORG: "999999999", TALLI_FIXTURE_FRESH_SEND: "true", TALLI_FIXTURE_FEEDBACK_STATE: state,
+          TALLI_FIXTURE_LAUNCHER: "start_shareholder_register_filing_backend.py" }, timeout: 15_000,
+      });
+    assert.deepEqual(JSON.parse(result.stdout), { state, artifacts: 2 });
+  }
+  assert.equal(mock.snapshot().filter(row => row.operation === "confirm").length, 2);
+  assert.equal(mock.snapshot().filter(row => ["request_rejected", "replayed_mutation"].includes(row.operation)).length, 0);
+});
+
 test("fresh browser starts without a preview or approval and verifies the complete durable result", () => {
   const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
   const fixture = readFileSync(new URL("./fixtures/start_shareholder_register_filing_backend.py", import.meta.url), "utf8");

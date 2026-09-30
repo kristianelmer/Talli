@@ -168,8 +168,8 @@ replace an isolated restore of owner-held records and actual stored bytes;
 ### Rehearse the owned local database restore
 
 The RF browser suite invokes `scripts/rehearse-rf1086-owned-restore.py` after
-creating an accepted filing, an accepted correction and an unknown send through
-the application. It supplies the downloaded NDJSON archive, company, year and
+creating an accepted or rejected filing, an accepted correction and an unknown
+send through the application. It supplies the downloaded NDJSON archive, company, year and
 owner, together with the disposable runner's explicit `DATABASE_URL`,
 `TALLI_SUPABASE_WORKDIR` and existing `TALLI_LEDGER_DATABASE_URL` for owner reads.
 The command rejects targets outside that owned local

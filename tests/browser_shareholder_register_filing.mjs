@@ -31,8 +31,12 @@ const databaseUrl = process.env.DATABASE_URL;
 
 // This is a mandatory local lane: absent or non-loopback configuration fails;
 // it never converts the full-stack authority journey into a skipped test.
-for (const { lostResponse, crash, beforeMutation } of ["main", "child", "confirmation"].flatMap(lostResponse =>
-  [{ lostResponse, crash: false }, { lostResponse, crash: true }, { lostResponse, crash: true, beforeMutation: true }])) test(`owner completes RF capture, correction and ${beforeMutation ? "process crash before" : crash ? "process crash at" : "lost"} ${lostResponse} ${beforeMutation ? "provider mutation" : "response"} through the canonical backend`, {
+const scenarios = [
+  ...["main", "child", "confirmation"].flatMap(lostResponse =>
+    [{ lostResponse, crash: false }, { lostResponse, crash: true }, { lostResponse, crash: true, beforeMutation: true }]),
+  { lostResponse: "main", crash: false, predecessorFeedback: "rejected" },
+];
+for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepted" } of scenarios) test(`owner completes RF capture, ${predecessorFeedback === "rejected" ? "rejected-predecessor correction" : "correction"} and ${beforeMutation ? "process crash before" : crash ? "process crash at" : "lost"} ${lostResponse} ${beforeMutation ? "provider mutation" : "response"} through the canonical backend`, {
   timeout: 360_000,
 }, async (t) => {
   assert.ok(supabaseUrl && anonKey && serviceRoleKey && databaseUrl, "authority browser requires isolated Supabase configuration");
@@ -442,7 +446,7 @@ for (const { lostResponse, crash, beforeMutation } of ["main", "child", "confirm
     const sourceArchive = await exerciseFullYearSourceJourney({ page, siteOrigin, company: primary, incomeYear: sourceYear, database, ownerId: owner.id,
       openingHolderId: sourceOpening.holderId, entitlementId: sourceEntitlement, api, authorization,
       storage: createClient(supabaseUrl, anonKey, { auth: { autoRefreshToken: false, persistSession: false } }).storage,
-      mock: resources.mock, python, environment: runtimeEnvironment(), apiCalls, lostResponse,
+      mock: resources.mock, python, environment: runtimeEnvironment(), apiCalls, lostResponse, predecessorFeedback,
       crashBackend: crash ? crashBackend : undefined,
       armPreparedCrash: beforeMutation ? armPreparedCrash : undefined }).catch(async error => {
       const alerts = await page.getByRole("alert").allTextContents();

@@ -368,13 +368,14 @@ function approvalPage(requestId) {
   ].join("");
 }
 
-export function feedbackBytes({ incomeYear, organizationNumber }) {
+export function feedbackBytes({ incomeYear, organizationNumber, feedbackState = "accepted" }) {
+  assert.ok(["accepted", "rejected"].includes(feedbackState));
   const element = (name, content, attributes = "") => {
     const left = String.fromCodePoint(60);
     const right = String.fromCodePoint(62);
     return `${left}${name}${attributes}${right}${content}${left}/${name}${right}`;
   };
-  const innsendingsstatus = element("leveransestatus", "godkjent");
+  const innsendingsstatus = element("leveransestatus", feedbackState === "accepted" ? "godkjent" : "avvist");
   const inntektsaar = element("inntektsaar", String(incomeYear));
   const oppgavegiver = element("oppgavegiver", element("organisasjonsnummer", organizationNumber));
   const leveranse = element("leveranse", `${oppgavegiver}${inntektsaar}${element("leveranseoppsummering", innsendingsstatus)}`);

@@ -960,3 +960,26 @@ before provider mutation. Rejected-predecessor correction, remaining security an
 provider conformance, unknown-operation reconciliation, broader object/role
 restore and retention, legacy feedback backfill, HTTP/concurrency sizing and both
 immutable acceptance gates remain. All seven RF acceptance criteria stay pending.
+
+## Rejected-predecessor correction — 30 September
+
+The browser now receives a real loopback rejection through the shipped XML and
+Dialogporten adapters, then captures corrected source evidence, explicitly
+approves replacement of that rejected submission and receives acceptance for the
+new filing. The original remains `rejected` with its exact feedback artifacts and
+journal. Reloading the old approval still shows `Avvist` without a send/continue
+action; the new approval identifies the accepted replacement.
+
+Both accepted- and rejected-predecessor browser journeys pass, including a later
+unknown main response, strict three-version archives, actual same-cluster database
+restore and retained-original bytes. The 21 RF and seven existing Authority
+fixture checks pass. The full CI matrix now contains ten browser histories; its
+new-revision result remains required. See
+`rejected-predecessor-browser-20260930.json`.
+
+The rejection fixture consumes its selected outcome at confirmation and returns
+to acceptance for the next filing. No production behavior changes. Remaining
+security/conformance, unknown-operation reconciliation, broader object/role
+restore and retention, legacy feedback backfill, HTTP/concurrency sizing and both
+immutable acceptance gates stay open. All seven RF acceptance criteria remain
+pending.

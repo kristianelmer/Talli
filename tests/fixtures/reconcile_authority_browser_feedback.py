@@ -81,9 +81,12 @@ async def main():
             ),
             discovery=binding.feedback_discovery, initial_poll=False,
         )
-        assert result.state == "accepted", result.state
-        assert len(journal.events) == 1 and journal.events[0].state == "accepted"
+        expected = os.environ.get("TALLI_FIXTURE_FEEDBACK_STATE", "accepted")
+        assert expected in ("accepted", "rejected")
+        assert result.state == expected, result.state
+        assert len(journal.events) == 1 and journal.events[0].state == expected
         assert len(journal.artifacts) == 2
+        assert {artifact.classification for artifact in journal.artifacts.values()} == {expected}
         print(json.dumps({"state": result.state, "artifacts": len(journal.artifacts)}))
     finally:
         binding.discard()
