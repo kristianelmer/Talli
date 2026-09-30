@@ -1,0 +1,349 @@
+{
+  "date": "2026-09-30",
+  "scope": "All 23 catalogued RF relations plus Documents stores and relevant external-owner dependencies; not a complete Talli-wide retention inventory",
+  "status": "INVENTORIED_WITH_OPEN_IMPLEMENTATION_GAPS",
+  "policyAuthority": "docs/legal/founder-legal-security-decision-2026-08-30.md, points 12, 13, 18 and 19",
+  "policyClasses": {
+    "customer_content": "After agreed access/export period, return/delete according to documented customer choice. A direct Talli legal duty or lawful instruction requires recorded justification. No blanket five-year Talli right is inferred.",
+    "customer_derived_migration_evidence": "Company-linked migration evidence remains personal/customer-derived; minimize and review with the customer-content lifecycle, not indefinitely merely because the table is technical.",
+    "customer_content_in_technical_store": "Quarantine may contain full original personal/customer rows. Attribution and authorized disposition require review; never expose unattributed rows as another company’s export.",
+    "operational_configuration": "Review operational need and embedded identifiers separately. A table being technical is not proof of anonymization or unlimited retention."
+  },
+  "rfRelations": [
+    {
+      "relation": "shareholder_register_filing.authority_permissions",
+      "data": "Permission confirmation, actor and timestamps",
+      "scope": "company",
+      "portableExport": "rf_canonical_permissions",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.authority_test_runs",
+      "data": "Test evidence, provider references and recording actor",
+      "scope": "company; linked simulations determine year export",
+      "portableExport": "linked_simulations_only",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.filing_approval_snapshots",
+      "data": "Approved manifest, XML commitments, source and actor evidence",
+      "scope": "company_year",
+      "portableExport": "rf_canonical_approvals",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.filing_overrides",
+      "data": "Readiness overrides, reason, status and actor",
+      "scope": "company_year",
+      "portableExport": "missing",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.filing_previews",
+      "data": "Rendered preview, payload and readiness",
+      "scope": "company_year",
+      "portableExport": "rf_canonical_previews",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.filing_review_comments",
+      "data": "Review text, author and acknowledgement",
+      "scope": "company",
+      "portableExport": "rf_canonical_review_comments",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.filing_submissions",
+      "data": "Simulation/test submission history and receipts",
+      "scope": "company_year",
+      "portableExport": "rf_canonical_simulations",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.migration_inventory",
+      "data": "Company/year counts, digests, quarantine counts and capture time",
+      "scope": "company_year",
+      "portableExport": "not_customer_exported",
+      "policyClass": "customer_derived_migration_evidence",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.migration_quarantine",
+      "data": "Original unclassified legacy row, reason and optional company/year",
+      "scope": "may_be_unattributed",
+      "portableExport": "not_customer_exported",
+      "policyClass": "customer_content_in_technical_store",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.migration_state",
+      "data": "Topology phase, original definitions/ACLs and aggregate reconciliation",
+      "scope": "global",
+      "portableExport": "not_customer_exported",
+      "policyClass": "operational_configuration",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.opening_balance_setups",
+      "data": "Opening balances and shareholder identity/holdings",
+      "scope": "company_year",
+      "portableExport": "company_archive_opening_projection",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.opening_shareholders",
+      "data": "Opening balances and shareholder identity/holdings",
+      "scope": "company_year",
+      "portableExport": "company_archive_opening_projection",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.production_feedback_artifacts",
+      "data": "Provider feedback identity, status and exact retained-original binding",
+      "scope": "parent_submission_company_year",
+      "portableExport": "rf_canonical_feedback_and_originals",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.production_filing_events",
+      "data": "Durable operation intents, mutation keys, outcomes, safe diagnostics and actors",
+      "scope": "parent_submission_company_year",
+      "portableExport": "rf_canonical_production_events",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.production_filing_submissions",
+      "data": "Approved filing, provider identifiers, outcomes and correction chain",
+      "scope": "company_year",
+      "portableExport": "rf_canonical_production_submissions",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.register_observations",
+      "data": "Observed holdings, confirmation, source evidence and capture identity",
+      "scope": "company_year",
+      "portableExport": "rf_canonical_source_history",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.source_approval_bindings",
+      "data": "Approval-to-source/review binding and annual-readiness commitment",
+      "scope": "company_year",
+      "portableExport": "rf_canonical_approval_lineage",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.source_previews",
+      "data": "Immutable source-bound statutory payload and readiness",
+      "scope": "company_year",
+      "portableExport": "rf_canonical_source_history",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.source_review_bridges",
+      "data": "Retained review/freshness evidence and captured source identities",
+      "scope": "company_year",
+      "portableExport": "rf_canonical_source_history",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.source_submission_bindings",
+      "data": "Submission claim, approval, expected predecessor and mutation identity",
+      "scope": "company_year",
+      "portableExport": "rf_canonical_submission_claims",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.submission_heads",
+      "data": "Managed production predecessor/head identity",
+      "scope": "company_year",
+      "portableExport": "rf_canonical_submission_head",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.year_source_heads",
+      "data": "Current source identity, version and digest",
+      "scope": "company_year",
+      "portableExport": "rf_canonical_source_history",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    },
+    {
+      "relation": "shareholder_register_filing.year_source_versions",
+      "data": "Immutable source facts, shareholder identity, document/Governance evidence and capture identity",
+      "scope": "company_year",
+      "portableExport": "rf_canonical_source_history",
+      "policyClass": "customer_content",
+      "backup": "owned_database_dump",
+      "physicalDeletion": "not_implemented"
+    }
+  ],
+  "documentsStores": [
+    {
+      "relation": "public.documents",
+      "owner": "backend:documents",
+      "data": "Mutable metadata, object key, actor and configured retention_years",
+      "export": "Selected-year company metadata plus exact historical metadata in RF original bundles",
+      "backup": "owned_database_dump",
+      "limitation": "retention_years alone is not a lawful basis or an implemented expiry/purge clock"
+    },
+    {
+      "relation": "documents.evidence_references",
+      "owner": "backend:documents",
+      "data": "Cross-capability retention references and source identity",
+      "export": "RF archive carries its source bindings; complete registry is not portable-exported",
+      "backup": "owned_database_dump",
+      "limitation": "All referring capabilities must participate before any physical deletion"
+    },
+    {
+      "relation": "documents.retained_originals",
+      "owner": "backend:documents",
+      "data": "Immutable metadata generations and actual source/feedback bytes, including earlier years",
+      "export": "Exact versions referenced by RF source history and bound feedback; unused verified copies are not included",
+      "backup": "owned_database_dump",
+      "limitation": "Copies may exist before source capture; no automatic retained-copy expiry or physical purge"
+    },
+    {
+      "bucket": "company-documents",
+      "owner": "backend:documents",
+      "data": "Ordinary current document objects",
+      "export": "RF referenced originals have inline/streamed immutable copies; general company metadata has object references and missing-object warnings",
+      "backup": "separate owned file-store copy and extended attributes",
+      "limitation": "Hosted storage backup, rotation and deletion are unverified"
+    }
+  ],
+  "externalOwnerDependencies": [
+    {
+      "owner": "backend:company_access",
+      "data": "Company/member/actor identity, admission, legal agreement, cancellation and independent support review; archive receipts/source generations",
+      "role": "Authorization and lifecycle evidence; cancellation and deleted marker preserve business data"
+    },
+    {
+      "owner": "backend:billing",
+      "data": "Exact pilot entitlement and payment/transaction records",
+      "role": "Expiry denies new entitlement; complete snapshot and denied decision verified through local restores; Billing owns monetary and billing-record retention rules"
+    },
+    {
+      "owner": "backend:authority_connections",
+      "data": "Authority permission/request/operation identity",
+      "role": "Historical RF bindings retain exact references; expiry is not evidence erasure"
+    },
+    {
+      "owner": "backend:corporate_governance, backend:ledger, backend:banking, frozen annual_data reader",
+      "data": "Versioned source facts used in RF readiness/approval",
+      "role": "RF retains captured public evidence; source owners retain their own records and deletion rules"
+    },
+    {
+      "owner": "Auth and backend credential configuration",
+      "data": "Accounts, sessions, password/MFA secrets, signing material and service credentials",
+      "role": "Never customer-archive credentials; independent Auth/cluster-role restore and revocation proof remains open"
+    },
+    {
+      "owner": "Operations and support",
+      "data": "Audit/security logs, traces, exports, temporary downloads, backups and operator copies",
+      "role": "Separate purpose, access and expiry review; local test cleanup does not establish hosted lifecycle"
+    }
+  ],
+  "openFindings": [
+    {
+      "id": "RF-RET-001",
+      "finding": "RF filing_overrides are absent from both canonical RF archive and company-archive input/output",
+      "next": "Add an owner-scoped, versioned export contract and verify override history without widening other filing owners"
+    },
+    {
+      "id": "RF-RET-002",
+      "finding": "Only authority-test evidence referenced by selected-year simulations is exported",
+      "next": "Decide and implement scoped export of unreferenced customer-owned test evidence; preserve cross-year isolation"
+    },
+    {
+      "id": "RF-RET-003",
+      "finding": "Migration quarantine and unreferenced retained byte copies exist outside the RF portable bundle",
+      "next": "Provide company-attributed inventory and owner-controlled disposition; never dump unattributed quarantine through customer APIs"
+    },
+    {
+      "id": "RF-RET-004",
+      "finding": "Cancellation always enters review hold; finalization only records a marker. No documented-choice/access-deadline/hold-expiry/backup-rotation purge is implemented by this lifecycle",
+      "next": "Keep real-customer deletion signoff open; implement through approved owner contracts, not an RF-owned delete or retention policy"
+    },
+    {
+      "id": "RF-RET-005",
+      "finding": "Original Auth and cluster roles support current local restores; independent recovery, pseudonymization and account-deletion behavior are not established",
+      "next": "Rehearse independent Auth/role recovery and revoked/deleted actor cases with synthetic identities"
+    }
+  ],
+  "validation": {
+    "rfBusinessRelations": 20,
+    "rfTechnicalRelations": 3,
+    "catalogAndModuleCoverage": "passed: exact 23 catalog entries, all 20 declared RF-owned business tables, no duplicates or omissions",
+    "localRestoreEvidence": [
+      "original-generations-restore-20260930.json",
+      "expiry-restore-20260930.json",
+      "deletion-restore-20260930.json"
+    ],
+    "allRfCriteria": "PENDING",
+    "cancellationPresentationAndTransportChecksPassed": 12,
+    "typecheck": "passed",
+    "whitespace": "passed"
+  },
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "31028209ac7c049fc6ffdcf431abb5c79f5012082898a804c65e72434d488ce2",
+    "architecture/database-catalog.json": "78602d094a6ed1721eea50ddd0df2513e13150f8ced0076b297f8437ee826c26",
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "aa7bfcbbffa45bdce53f080a4ff0e63b518888954023a1f4e26208092f937e75",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_storage.py": "d4372ea386f1cfa8fbbf8b1def0f7eaa68923022a77614b2244ac126ee1ff026",
+    "apps/web/app/lib/archive.ts": "69c803bac327ac5c5b5b25a95cf021c3b4fa9225ce54ef9a7cd31403940434b4",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": "cd62d8c15c0de3e3ef00e9d141f260cbd49e238268939dff5e7ccac06160b9ff",
+    "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql": "2d9e10172c2e491dc59d25d8a1f79e578e4498f3663e81242ecd8c8e72194e5f",
+    "docs/legal/founder-legal-security-decision-2026-08-30.md": "4719f945cb70e76a0e0710bd4aec2f3a168b637eda012bf0bf53ef276dc0ebf6",
+    "docs/legal/retention-delete-export-policy-draft.md": "cf2c27a61ae7e46143e23a39451ae84fc338f85fd93d02542f3f32df853a2627",
+    "apps/web/app/lib/cancellation.ts": "fe5bfe5b79552c7db3d4652bcef78d54773b6684a0f103088d85587dcacfacdc",
+    "apps/web/app/(owner)/workspace/page.tsx": "060af52a9da8011f743ae96407d33710515bde830f70347d22c83d19de6a1f13"
+  },
+  "baseRevision": "e0e222a50c45c124dcb63fcfdad78694019fdcc9",
+  "resolvedFindings": [
+    {
+      "id": "RF-RET-006",
+      "finding": "The UI called the retained lifecycle marker final deletion and implied all retained data was legally required",
+      "resolution": "Presentation now says marked deleted, data remains stored and no physical deletion occurred; lifecycle commands and persisted status values are unchanged"
+    }
+  ]
+}

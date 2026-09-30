@@ -1183,3 +1183,28 @@ The complete journey passed in 159.47 seconds. Another 43 restore-boundary and
 recovery, not a new metadata-edit feature or writer-concurrency policy. Complete
 retention inventory/policy, legacy feedback backfill, independent Auth/role and
 hosted Storage recovery remain. All seven RF criteria remain pending.
+
+
+### 30 September — retention inventory and honest deletion copy
+
+The RF inventory now classifies all 23 catalogued relations, including all 20
+owned business tables, and records Documents stores and external-owner lifecycle
+dependencies. Exact catalog/module coverage is verified. The inventory is scoped
+to RF; it does not claim service-wide privacy or deletion compliance.
+
+The audit found missing portable RF override history, linked-only authority-test
+export, and unreferenced retained copies/quarantine outside the RF bundle. It also
+confirms that the Company Access lifecycle records a deleted marker without a
+physical purge, documented-choice/access-deadline handling or verified hosted
+backup expiry. Technical quarantine can still hold original customer data.
+The approved owner policy does not grant Talli blanket retention rights based on
+the customer's bookkeeping duty.
+
+The UI previously described the marker as final deletion and referred to retained
+data as legally required. Its labels and messages now state that the company is
+marked deleted and data remains stored. This changes presentation only; it adds
+no Company Access writer, purge or RF-owned retention policy. See
+`retention-inventory-20260930.json` for source hashes, five open findings and the corrected copy finding. Twelve focused
+cancellation presentation/transport checks pass.
+The next RF export work must address the missing override records through the
+owner contract. All seven RF acceptance criteria remain pending.

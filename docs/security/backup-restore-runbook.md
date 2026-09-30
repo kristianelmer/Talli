@@ -65,6 +65,32 @@ Machine-checkable signoff gate:
 - Closure rule: reviewer, review date, evidence link, and decision must be
   recorded as `approved`; the review date must be 30 days old or newer.
 
+## RF retention inventory and current deletion limits
+
+The [30 September RF inventory](../../architecture/evidence/issues/193/rf/retention-inventory-20260930.json)
+classifies all 20 declared RF business tables and three technical tables against
+the database catalog. It also records Documents' metadata, retention references,
+immutable copies and ordinary objects, plus the relevant owner dependencies.
+This is an inventory of the RF slice, not the entire Talli service.
+
+The approved customer-content rule is documented choice after the agreed access
+and export period, unless a direct Talli duty or lawful instruction justifies
+retention. A `retention_years` value, technical table, cancellation hold or deleted
+marker is not itself proof of that duty. Cancellation finalization preserves
+business data; it does not implement physical deletion or backup expiry.
+
+The audit leaves explicit gaps: RF overrides are not portable-exported;
+authority-test export includes only evidence linked to selected-year simulations;
+unreferenced retained copies and migration quarantine need attributed inventory
+and disposition; documented-choice/access-deadline/hold-expiry purge and hosted
+backup rotation remain unimplemented or unverified. Quarantine can contain full
+original customer rows despite being technical. Do not expose unattributed rows
+through another company's export or treat successful restoration as deletion
+compliance. Independent Auth/role recovery and deleted-actor handling also remain.
+
+The lifecycle UI describes a retained deletion marker and states that data remains
+stored. These findings keep retention/deletion and real-customer signoff open.
+
 ## Full-year RF evidence
 
 Include the RF register observations, source versions and heads, source previews,

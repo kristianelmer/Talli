@@ -180,5 +180,6 @@
   "independentDeletionRestore": "deletion-restore-20260930.json",
   "nextSecurityPatch": "next-security-patch-20260930.json",
   "expiredPilotRestore": "expiry-restore-20260930.json",
-  "retainedOriginalGenerationsRestore": "original-generations-restore-20260930.json"
+  "retainedOriginalGenerationsRestore": "original-generations-restore-20260930.json",
+  "retentionInventory": "retention-inventory-20260930.json"
 }
