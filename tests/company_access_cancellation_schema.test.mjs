@@ -104,6 +104,11 @@ test("archive route and generation triggers share one complete source inventory"
   const billingCapability = sql(billingCapabilityPath);
   const rfCutover = sql(rfCutoverPath);
   const rfProductionArchive = sql(new URL("../supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql", import.meta.url));
+  const retainedGeneration = sql(new URL("../supabase/migrations/20260930160335_rf1086_retained_archive_generations.sql", import.meta.url));
+  const retainedSources = [...retainedGeneration.matchAll(/\('((?:shareholder_register_filing|documents)\.[a-z_]+)','(year|company)','[a-z_]+'\)/gu)]
+    .map(match => [match[1], match[2]]);
+  assert.equal(retainedSources.length, 10);
+  assert.match(retainedGeneration, /create trigger company_archive_track_retained_rf before insert or update or delete on %s/u);
   const taxCutover = sql(taxCutoverPath);
   const taxFilingCutover = sql(taxFilingCutoverPath);
   const accountsCutover = sql(accountsCutoverPath);
@@ -113,6 +118,17 @@ test("archive route and generation triggers share one complete source inventory"
   assert.match(route, /loadAcceptedMembershipCompany\(companyId\)/u);
   const logicalRouteSources = new Set([
     ...routeTables,
+    // Complete RF history and Documents retention arrive through the RF archive owner.
+    "shareholder_register_filing.year_source_versions",
+    "shareholder_register_filing.year_source_heads",
+    "shareholder_register_filing.register_observations",
+    "shareholder_register_filing.source_previews",
+    "shareholder_register_filing.source_review_bridges",
+    "shareholder_register_filing.source_approval_bindings",
+    "shareholder_register_filing.source_submission_bindings",
+    "shareholder_register_filing.submission_heads",
+    "documents.evidence_references",
+    "documents.retained_originals",
     "companies",
     // Ledger is now loaded through its generated capability query instead of
     // a direct Supabase `.from("ledger_entries")` call.
@@ -230,6 +246,7 @@ test("archive route and generation triggers share one complete source inventory"
   ]);
   assert.equal(canonicalTaxFilingTriggers.length, 5);
   const triggerInventory = new Map([
+    ...retainedSources,
     ...[...rfProductionArchive.matchAll(
       /before insert or update or delete on (shareholder_register_filing\.[a-z0-9_]+)\s+for each row execute function public\.company_archive_track_source_write_v1\('(year|company)', 'company_id'\)/giu,
     )].map((match) => [match[1], match[2]]),

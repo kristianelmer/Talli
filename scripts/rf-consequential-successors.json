@@ -74,5 +74,9 @@
   {
     "migration": "20260930083000_rf1086_override_receiver_cutover.sql",
     "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='backend_system' and p.proname='rf1086_other_overrides_ready_v1' and position('annual_accounts_filing.has_blocking_override_v1' in pg_get_functiondef(p.oid))>0)"
+  },
+  {
+    "migration": "20260930160335_rf1086_retained_archive_generations.sql",
+    "presenceQuery": "select exists(select 1 from pg_trigger where tgrelid=to_regclass('shareholder_register_filing.year_source_versions') and tgname='company_archive_track_retained_rf')"
   }
 ]

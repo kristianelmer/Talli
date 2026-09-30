@@ -74,6 +74,17 @@ V2 company archives include all scoped source versions and observations, includi
 unapproved history, previews, bridges and original capture/idempotency records.
 They do not replace a full owner database/object backup or perform restoration.
 
+`20260930160335_rf1086_retained_archive_generations.sql` extends the existing
+generation protocol to the eight RF source-history/head/binding tables and both
+Documents retention tables. New evidence invalidates earlier export receipts;
+Documents retention is company-scoped because a prior-year original can support
+a later filing. Existing before-write company guards remain. Documents tracks
+actual changes after the write so an identical retained-copy read does not
+invalidate a receipt. First activation invalidates affected companies' existing
+generations once. Replay preserves generations, source content, roles, grants and
+RLS settings. Application rollback keeps these invalidation triggers. This does
+not establish complete cancellation/deletion inventory or retention-expiry policy.
+
 The archive restore fixture preserves captured source-company identities rather
 than rewriting historical approvals or claim actors to the target company's ID.
 Its full-year checks verify retained manifest/review text hashes, XML and preview

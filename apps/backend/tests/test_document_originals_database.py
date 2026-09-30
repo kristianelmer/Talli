@@ -453,3 +453,31 @@ def test_historical_assertion_refreshes_owner_after_company_guard_wait(original)
             blocker.execute("update public.company_memberships set role='read_only' where company_id=%s",(original['company'],))
         with pytest.raises(psycopg.Error,match='documents_forbidden'):await task
     asyncio.run(run())
+
+
+def test_retained_prior_year_original_invalidates_later_archives_atomically(original):
+    from test_rf1086_retained_archive_generations import begin, generations
+    with psycopg.connect(DATABASE_URL) as db:
+        original['now'] = db.execute('select clock_timestamp()').fetchone()[0]
+    begin(original, year=2025, complete=True)
+    later = begin(original, year=2026)
+    before = generations(original)
+
+    async def aborted_copy():
+        db, adapter = await connect(original)
+        async with db:
+            await adapter.retain_verified_original(original['document'], PDF)
+            raise RuntimeError('abort retained copy')
+    with pytest.raises(RuntimeError, match='abort retained copy'):
+        asyncio.run(aborted_copy())
+    assert count(original) == 0
+    assert generations(original) == before
+    receipt = retain(original)
+    assert generations(original) == {year: value + 1 for year, value in before.items()}
+    assert read(original, receipt).content == PDF
+    stable = generations(original)
+    assert retain(original) == receipt
+    assert generations(original) == stable, 'reading an existing copy must not invalidate an archive'
+    with psycopg.connect(DATABASE_URL) as db:
+        with pytest.raises(psycopg.Error, match='archive_export_stale'):
+            db.execute('select public.company_archive_complete_export(%s,%s)', (later, 'd' * 64))

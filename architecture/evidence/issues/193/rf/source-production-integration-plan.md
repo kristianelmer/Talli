@@ -1032,3 +1032,36 @@ object-store recovery. Cancellation, expiry, deletion, retention generations,
 remaining security/conformance, unknown-operation reconciliation, legacy
 feedback backfill, HTTP/concurrency sizing and both immutable acceptance gates
 remain. All seven RF acceptance criteria stay pending.
+
+## Retained evidence invalidates stale archive receipts — 30 September
+
+The existing company-archive generation inventory omitted eight RF source-history,
+head and binding tables plus Documents' two retention tables. Their company locks
+serialized writes but did not invalidate an earlier completed export receipt.
+The additive `20260930160335_rf1086_retained_archive_generations.sql` migration
+connects those sources to the existing generation tracker. It invalidates affected
+companies' pre-activation generations once and preserves source content, exact
+role/grant/RLS settings and the existing cancellation policy. Application rollback
+keeps the safety triggers; the ordered local recutover reapplies the migration.
+
+Documents invalidation is company-wide because older originals can support newer
+filings. Its existing before-write guard remains; after-change tracking avoids
+invalidating exports on an identical retained-copy read. Database checks prove
+that a current receipt admits cancellation, new unapproved sources/previews make
+both completed and in-flight exports stale, and a prior-year retained original
+invalidates a later-year export. Aborted writes and migration rollback undo their
+generation changes; replay preserves generations, original source and authority.
+All 55 targeted database checks and 101 CI/inventory checks pass. Supabase advisors
+report no blocking security/error findings. The complete rejected-predecessor
+browser journey and actual database/eight-object restoration also pass. Final-
+revision CI remains required. See `retained-archive-generations-20260930.json`.
+
+The preceding CI at `256c3602` passed Application and nine browser histories but
+hit the Database job's explicit 45-minute timeout as the tenth history began.
+GitHub's annotation confirms that limit. The job now has a 60-minute bound; no
+coverage is removed. This is not a successful base release gate.
+
+This closes the missing archive-generation backstops, not the broader retention
+policy/inventory or cancellation, expiry and deletion restore histories. All
+seven RF acceptance criteria stay pending; no hosted change, genuine provider
+operation or production enablement occurred.

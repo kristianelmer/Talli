@@ -45,6 +45,16 @@
     { "table": "corporate_governance.annual_close_decisions", "scope": "year" },
     { "table": "corporate_governance.annual_close_artifacts", "scope": "year" },
     { "table": "corporate_governance.annual_close_events", "scope": "year" },
-    { "table": "corporate_governance.annual_close_finalizations", "scope": "year" }
+    { "table": "corporate_governance.annual_close_finalizations", "scope": "year" },
+    { "table": "shareholder_register_filing.year_source_versions", "scope": "year" },
+    { "table": "shareholder_register_filing.year_source_heads", "scope": "year" },
+    { "table": "shareholder_register_filing.register_observations", "scope": "year" },
+    { "table": "shareholder_register_filing.source_previews", "scope": "year" },
+    { "table": "shareholder_register_filing.source_review_bridges", "scope": "year" },
+    { "table": "shareholder_register_filing.source_approval_bindings", "scope": "year" },
+    { "table": "shareholder_register_filing.source_submission_bindings", "scope": "year" },
+    { "table": "shareholder_register_filing.submission_heads", "scope": "year" },
+    { "table": "documents.evidence_references", "scope": "company" },
+    { "table": "documents.retained_originals", "scope": "company" }
   ]
 }
