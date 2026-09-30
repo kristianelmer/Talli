@@ -2289,11 +2289,16 @@ export function validateCompatibilityRegistry(path, {
   };
   const rfProductionArchiveComposition = (scope) => {
     const analysis = currentOperationAnalysis(scope);
+    const resources = ["filing_previews", "filing_submissions", "filing_overrides",
+      "filing_review_comments", "authority_permissions", "authority_test_runs"].map(name => `table:${name}`);
     return scope.path === "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts"
       && scope.operation === "GET" && exitedCapabilities.has("shareholder_register_filing")
       && (exitedCapabilities.has("annual_accounts_filing")
         || (currentCapability === "annual_accounts_filing" && registry.migration?.currentIssue === "#153"))
+      && !registry.records.some(record => ["compat-annual-accounts-persistence", "compat-company-tax-persistence"].includes(record.id))
       && analysis?.state === "found" && analysis.sourceDigest === RF_PRODUCTION_ARCHIVE_COMPOSITION_DIGEST
+      && resources.every(resource => resourceOwner?.(resource) === "backend:annual_accounts_filing"
+        && (analysis.persistenceOccurrences.get(resource) ?? 0) === 0)
       && ![...analysis.persistenceOccurrences.keys()].some(resource => resource.endsWith(":*"));
   };
   // Archive's older completed deletions must not authorize arbitrary edits to

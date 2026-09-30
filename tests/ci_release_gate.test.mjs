@@ -160,6 +160,7 @@ test("release gate runs every customer-readiness check before promotion", () => 
     "npx playwright install --with-deps chromium",
     "npm run typecheck",
     "npm run check:architecture",
+    "node --test tests/company_tax_architecture.test.mjs",
     "npm run test:boundary",
     "npm run test:boundary-smoke",
     "npm run test:launch-rehearsal",

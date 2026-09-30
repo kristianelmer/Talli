@@ -183,6 +183,7 @@ SUPABASE_URL="$API_URL" \
 SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
+TALLI_SUPABASE_WORKDIR="$isolated_workdir" \
 npm run test:browser-shareholder-register-filing
 
 # Tax uses the final private storage and the normal owner login/MFA flow.

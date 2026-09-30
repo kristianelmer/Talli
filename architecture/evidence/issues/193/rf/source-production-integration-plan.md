@@ -883,3 +883,33 @@ This closes the three lost-response browser scenarios. Process crashes, prepared
 intents, rejected-predecessor correction and remaining security/conformance cases
 still need browser evidence. Actual restore, retention and both immutable
 acceptance gates remain open. All seven RF acceptance criteria remain pending.
+
+## Owned local RF database restore — 30 September
+
+The full-year browser journey now restores a custom-format database dump into a
+fresh database in the same owned disposable cluster. Recovered RF source history,
+approvals, claims, journals and filings must equal the strict browser archive.
+Documents reads and validates all three source originals and four feedback
+originals, including their captured metadata and bytes. An unrelated actor is
+denied both RF history and Documents originals. The clone is removed, with source
+history and cluster role memberships unchanged.
+
+Owner reads use the existing restricted backend login, with its endpoint checked
+against the owned source. The maintenance login is used only for source identity
+verification and backup/restore operations. No role grants are added. The initial
+rehearsal correctly failed when its owner reader used the maintenance login; that
+runner wiring is corrected and 13 boundary/cleanup tests pass.
+
+This proves recovery of this synthetic full-year history and database-retained
+original bytes. It does not recover ordinary Storage objects or roles into a new
+cluster, nor cover restored prior-year/unapproved history, cancellation, expiry or
+deletion. The broader restore signoff and all seven RF acceptance criteria remain
+pending. No product behavior or production enablement changes.
+
+The broader architecture unit suite also exposed a missing RF archive condition:
+its exact-body exception did not require retired Tax/Accounts facades and
+exclusive Accounts ownership of all six shared filing sources. The existing
+negative regression reproduced the gap. The RF exception now preserves both
+requirements, and CI runs that regression suite as well as the current-state
+architecture check. This changes the RF architecture guard, not Tax or Accounts
+business behavior.

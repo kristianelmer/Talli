@@ -408,13 +408,26 @@ for (const lostResponse of ["main", "child", "confirmation"]) test(`owner comple
     const sourceOpening = await seedFreshBasis(database, primary.id, owner.id, sourceYear, false);
     const sourceEntitlement = await grant(session.access_token, primary.id, owner.id, original.id,
       { incomeYear: sourceYear, caseProfile: "rf1086_full_year_v1" });
-    await exerciseFullYearSourceJourney({ page, siteOrigin, company: primary, incomeYear: sourceYear, database, ownerId: owner.id,
+    const sourceArchive = await exerciseFullYearSourceJourney({ page, siteOrigin, company: primary, incomeYear: sourceYear, database, ownerId: owner.id,
       openingHolderId: sourceOpening.holderId, entitlementId: sourceEntitlement, api, authorization,
       storage: createClient(supabaseUrl, anonKey, { auth: { autoRefreshToken: false, persistSession: false } }).storage,
       mock: resources.mock, python, environment: runtimeEnvironment(), apiCalls, lostResponse }).catch(async error => {
       const alerts = await page.getByRole("alert").allTextContents();
       throw new Error(`full_year_source_journey_failed: ${error.message}; alerts=${JSON.stringify(alerts)}`, { cause: error });
     });
+    if (lostResponse === "main") {
+      assert.ok(process.env.TALLI_SUPABASE_WORKDIR, "RF restore requires the explicit owned Supabase workdir");
+      const restored = JSON.parse(execFileSync(python, ["scripts/rehearse-rf1086-owned-restore.py", sourceArchive.path,
+        "--company-id", primary.id, "--income-year", String(sourceYear), "--actor-id", owner.id],
+      { cwd: process.cwd(), env: { ...runtimeEnvironment(), DATABASE_URL: databaseUrl,
+        TALLI_LEDGER_DATABASE_URL: databases.talli_ledger_backend,
+        TALLI_SUPABASE_WORKDIR: process.env.TALLI_SUPABASE_WORKDIR,
+        ...(process.env.DOCKER_CONTEXT ? { DOCKER_CONTEXT: process.env.DOCKER_CONTEXT } : {}) }, encoding: "utf8", timeout: 180_000 }));
+      assert.deepEqual(restored, { status: "verified_owned_rf_database_restore", databaseRestorePerformed: true,
+        retainedOriginalBytesRestored: true, objectStorageRestorePerformed: false,
+        sourceOriginals: 3, feedbackOriginals: 4, sourceVersions: 3, submissions: 3,
+        crossOwnerReadsDenied: true, sourceHistoryUnchanged: true, cloneRemoved: true, clusterMembershipsUnchanged: true });
+    }
     await context.close();
     assert.deepEqual(health, []);
     assert.deepEqual(egressViolations, []);

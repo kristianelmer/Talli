@@ -164,3 +164,29 @@ and source-original command to require the same feedback completeness. In either
 format, verification performs no database or object-store writes. It does not
 replace an isolated restore of owner-held records and actual stored bytes;
 `databaseRestorePerformed` and the broader `objectBytesVerified` remain false.
+
+### Rehearse the owned local database restore
+
+The RF browser suite invokes `scripts/rehearse-rf1086-owned-restore.py` after
+creating an accepted filing, an accepted correction and an unknown send through
+the application. It supplies the downloaded NDJSON archive, company, year and
+owner, together with the disposable runner's explicit `DATABASE_URL`,
+`TALLI_SUPABASE_WORKDIR` and existing `TALLI_LEDGER_DATABASE_URL` for owner reads.
+The command rejects targets outside that owned local
+workdir/container boundary, including a connection not observed in the pinned
+container. Do not use it against a hosted database.
+
+The rehearsal takes a custom-format `pg_dump`, restores it into a fresh randomly
+named database in the same disposable cluster, and preserves database ownership
+and grants. It compares the restored RF owner-policy archive with the browser
+download and reads the retained source and feedback bytes through Documents.
+Unrelated actors must be denied both reads. Cleanup removes only the newly
+created database; source RF history and cluster role memberships must remain
+unchanged.
+
+A pass reports `databaseRestorePerformed: true` and
+`retainedOriginalBytesRestored: true`. These retained originals are database
+bytes. `objectStorageRestorePerformed` remains false: ordinary private Storage
+objects and recovery of roles into an independent cluster are not covered.
+Prior-year/unapproved history and cancellation, expiry and deletion still need
+their own restored scenarios before the broader restore signoff can pass.

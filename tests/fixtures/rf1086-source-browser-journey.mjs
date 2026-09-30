@@ -167,7 +167,7 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
     assert.ok(apiCalls.some(call => call.endsWith(`POST:/api/v1/shareholder-register-filings/${endpoint}:200`)), `missing full-year backend operation ${endpoint}`);
   const correction = await exerciseSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
     mock, python, environment, source, approved, accepted, documentId });
-  await exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeYear, api, scope, options, storage,
+  return await exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeYear, api, scope, options, storage,
     mock, python, environment, documentId, correction, lostResponse });
 }
 
@@ -394,6 +394,7 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
     assert.equal(verification[key], 3, key);
   assert.equal(verification.feedbackOriginals, 4, "an unknown send must not invent feedback");
   assert.equal(verification.databaseRestorePerformed, false);
+  return { path: await download.path(), verification };
 }
 
 function syntheticPdf(consideration) {
