@@ -209,14 +209,19 @@ copying only file contents can produce unreadable objects.
 
 The real Documents adapter verifies the browser's existing local Auth sessions,
 reads Company Access and document metadata from the restored database, checks
-owner/MFA policy, and downloads all eight ordinary source/feedback objects. Bytes
-must equal the retained originals and metadata must equal the source. An unrelated
+owner/MFA policy, and downloads all eight ordinary source/feedback objects. Each
+object is matched to its retained generation by the complete current Documents
+metadata hash, never by the latest retention timestamp. Missing, ambiguous or
+conflicting matches fail. Downloaded bytes must equal that generation; all
+historical generations are separately read and compared through Documents in the
+database restore. Current metadata must equal the source. An unrelated
 actor and the owner's pre-MFA session cannot download. Direct owner, outsider and
 unauthenticated Storage reads remain denied. The original gateway's opaque key
 and Storage's internal JWT are kept distinct; neither is logged.
 
 This optional proof reports `objectStorageRestorePerformed: true`,
-`storageAttributesRestored: true` and the ordinary object count. Cleanup removes
+`storageAttributesRestored: true`, the ordinary object count, the number of retained
+generations and the number of documents with multiple generations. Cleanup removes
 only the created container, volume and database. Source files, extended attributes,
 document metadata, RF history and cluster memberships must remain unchanged.
 
@@ -226,7 +231,12 @@ storage are not covered. The browser saves an additional unapproved source and
 preview backed by a prior-year original, then restores four source versions,
 three approvals/submissions and eight ordinary objects. Existing sources,
 previews, approvals, submissions, claims, feedback and provider calls remain
-unchanged when that draft is saved. The canonical archive includes the unreviewed
+unchanged when that draft is saved. A bounded Documents fixture renames the first
+original after its initial filing; the real owner UI re-verifies it before approving
+the correction. This produces two retained generations for the same document ID.
+Both restores must retain all nine original generations across eight ordinary
+objects, including the older name and unchanged bytes. This fixture models metadata
+maintenance; it is not a public metadata-edit feature. The canonical archive includes the unreviewed
 preview even though the approval workspace does not materialize it.
 
 Before cancellation, that case expires the exact synthetic full-year pilot through
@@ -269,7 +279,7 @@ source, alongside the owner cancellation, RF history and all eight objects.
 checks. The source case must remain unchanged after recovery. Both restorations
 are required; the second does not replace the `retention_hold` proof.
 
-Retained-original generation scenarios still need restored histories before the
-broader restore signoff can pass. These proofs do not establish a full
-retention inventory or change retention policy. Finalization retains business
+These proofs do not establish a full retention inventory or change retention
+policy. Independent Auth/role recovery, hosted Storage and legacy feedback
+backfill remain outside this local rehearsal. Finalization retains business
 records; it does not purge them.

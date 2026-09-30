@@ -286,6 +286,8 @@ def main():
             if asyncio.run(verify_objects(reader_url, access_url, os.environ['SUPABASE_URL'], ordinary)) != source_documents:
                 raise ValueError('Restore rehearsal changed source document metadata')
             storage_proof = {'ordinaryObjects': len(ordinary), 'storageVolumeRemoved': True,
+                             'ordinaryRetainedGenerations': sum(len(group) for group in ordinary),
+                             'multiGenerationDocuments': sum(len(group) > 1 for group in ordinary),
                              'storageAttributesRestored': True,
                              'storageSourceUnchanged': True, 'storageAuthenticatedDownloadsVerified': True,
                              'storageDirectReadsDenied': True, 'storageMfaEnforced': True}

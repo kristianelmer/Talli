@@ -26,7 +26,9 @@ from psycopg.conninfo import conninfo_to_dict
 from talli_backend.adapters.supabase_documents import (
     DocumentsSupabaseConfiguration, SupabaseDocumentsAdapter, SupabaseDocumentObjectStorage,
 )
-from talli_backend.modules.documents.public import DocumentErrorCode, DocumentTransferKind, DocumentsError
+from talli_backend.modules.documents.public import (
+    DocumentErrorCode, DocumentTransferKind, DocumentsError, document_metadata_sha256,
+)
 
 # BusyBox tar in the pinned Storage image does not preserve Linux xattrs.
 # Its own installed fs-xattr library carries Storage's content type/cache/etag.
@@ -61,14 +63,28 @@ def attributes(container):
 
 
 def ordinary_originals(snapshots):
+    """One ordinary object can have several independently retained generations."""
     originals = {}
     for snapshot in snapshots:
         original = snapshot.original
         identity = str(original.receipt.document_id)
-        if identity in originals and originals[identity] != original:
-            raise ValueError('Ordinary object has conflicting retained generations')
-        originals[identity] = original
-    return list(originals.values())
+        generations = originals.setdefault(identity, {})
+        metadata = original.receipt.metadata_sha256
+        if metadata in generations and generations[metadata] != original:
+            raise ValueError('Retained metadata identity has conflicting originals')
+        generations[metadata] = original
+    return [tuple(generations.values()) for generations in originals.values()]
+
+
+def current_original(document, generations):
+    """Match current owner metadata exactly; retention time is not a selector."""
+    metadata = document_metadata_sha256(document)
+    matches = [original for original in generations
+               if original.receipt.document_id == document.document_id
+               and original.receipt.metadata_sha256 == metadata]
+    if len(matches) != 1:
+        raise ValueError('Current ordinary document has no unique retained generation')
+    return matches[0]
 
 
 def storage_source(workdir, database_url, boundary):
@@ -275,9 +291,10 @@ async def verify_objects(database_url, company_access_url, storage_url, original
                 for name in ('OWNER', 'OUTSIDER', 'LOW_AAL')}
     documents = []
     async with httpx.AsyncClient(trust_env=False, follow_redirects=False, timeout=15) as client:
-        for original in originals:
-            identity = original.receipt.document_id
+        for generations in originals:
+            identity = generations[0].receipt.document_id
             transfer = await sessions['OWNER'].create_transfer(identity, DocumentTransferKind.DOWNLOAD)
+            original = current_original(transfer.document, generations)
             if urlsplit(transfer.signed_url).netloc != urlsplit(storage_url).netloc:
                 raise ValueError('Signed object URL left the restored store')
             response = await client.get(transfer.signed_url)

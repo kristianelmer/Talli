@@ -496,11 +496,12 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
           ...(process.env.DOCKER_CONTEXT ? { DOCKER_CONTEXT: process.env.DOCKER_CONTEXT } : {}) }, encoding: "utf8", timeout: 180_000 }));
         assert.deepEqual(restored, { status: "verified_owned_rf_database_restore", databaseRestorePerformed: true,
           retainedOriginalBytesRestored: true, objectStorageRestorePerformed: restoreStorage,
-          sourceOriginals: restoreStorage ? 4 : 3, feedbackOriginals: 4, sourceVersions: restoreStorage ? 4 : 3, submissions: 3,
+          sourceOriginals: restoreStorage ? 5 : 3, feedbackOriginals: 4, sourceVersions: restoreStorage ? 4 : 3, submissions: 3,
           crossOwnerReadsDenied: true, sourceHistoryUnchanged: true, cloneRemoved: true, clusterMembershipsUnchanged: true,
           ...(restoreStorage ? { expiredPilotRestored: true, cancellationRestored: true, cancellationStatus: state,
             ...(deletion ? { deletionReviewRestored: true, deletedCompanyRestored: true } : {}),
             ordinaryObjects: 8, storageVolumeRemoved: true, storageSourceUnchanged: true,
+            ordinaryRetainedGenerations: 9, multiGenerationDocuments: 1,
             storageAttributesRestored: true,
             storageAuthenticatedDownloadsVerified: true, storageDirectReadsDenied: true, storageMfaEnforced: true } : {}) });
       }

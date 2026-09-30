@@ -1157,3 +1157,29 @@ listed as wholly pending. All seven overall RF acceptance criteria remain open.
 Retained-original generations, full retention inventory/policy, legacy feedback
 backfill and independent Auth/role/hosted recovery remain. No genuine AS or
 provider operation was used. Exact-revision CI remains required.
+
+
+### 30 September — several retained originals for one document
+
+Owned object restoration previously rejected different retained generations with
+the same document ID. It now groups them by document and metadata identity and
+matches each ordinary download to the exact current Documents metadata hash.
+Retention time never selects the current original. Missing, ambiguous, conflicting
+and foreign-document matches fail. All historical generations remain separately
+verified through the Documents owner against the restored database.
+
+The rejected-predecessor browser case uses a bounded Documents fixture to rename
+the first original after its initial filing. The actual owner UI re-verifies it
+before the correction is approved and submitted. The new metadata digest differs;
+the document ID and content digest remain unchanged. Strict archive verification
+and both database/Storage restores preserve five source originals and four feedback
+originals across eight ordinary files. One file has two retained generations.
+The existing expiry, cancellation, independent deletion, MFA and tenant-isolation
+checks still pass.
+
+The complete journey passed in 159.47 seconds. Another 43 restore-boundary and
+38 fixture checks pass, alongside architecture and whitespace. See
+`original-generations-restore-20260930.json`. This demonstrates metadata-generation
+recovery, not a new metadata-edit feature or writer-concurrency policy. Complete
+retention inventory/policy, legacy feedback backfill, independent Auth/role and
+hosted Storage recovery remain. All seven RF criteria remain pending.

@@ -170,8 +170,20 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   assert.equal(operations.filter(({ operation }) => ["replayed_mutation", "request_rejected"].includes(operation)).length, 0);
   for (const endpoint of ["year-sources", "source-previews", "source-production-reviews", "source-production-approvals", "source-production-filings"])
     assert.ok(apiCalls.some(call => call.endsWith(`POST:/api/v1/shareholder-register-filings/${endpoint}:200`)), `missing full-year backend operation ${endpoint}`);
+  let renamedOriginal;
+  if (predecessorFeedback === "rejected") {
+    // No public metadata-edit command exists. This bounded Documents fixture
+    // changes only the display name; re-verification, retention and correction
+    // below still run through the actual owner UI and application.
+    renamedOriginal = "Renamed synthetic opening and transfer original.pdf";
+    await fixtureTableTransaction(database, ["public.documents"], async () => {
+      const changed = await database.query("update public.documents set name=$1 where id=$2 and company_id=$3 and name=$4 returning id",
+        [renamedOriginal, documentId, company.id, document.name]);
+      assert.equal(changed.rowCount, 1);
+    });
+  }
   const correction = await exerciseSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-    mock, python, environment, source, approved, processed, documentId, predecessorLabel });
+    mock, python, environment, source, approved, processed, documentId, predecessorLabel, renamedOriginal });
   return await exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeYear, api, scope, options, storage,
     mock, python, environment, documentId, correction, lostResponse, crashBackend, armPreparedCrash,
     includeUnapprovedHistory: predecessorFeedback === "rejected" });
@@ -195,17 +207,23 @@ async function uploadOriginal({ api, options, storage, company, incomeYear, cons
 }
 
 async function approveSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-  source, prior, documentId, consideration, previousConsideration }) {
+  source, prior, documentId, consideration, previousConsideration, renamedOriginal }) {
   const before = await api.rf1086Workspace(company.id, incomeYear, options);
   const corrected = await uploadOriginal({ api, options, storage, company, incomeYear, consideration });
   await page.goto(sourceHref);
   await page.getByRole("heading", { name: "Gjeldende årsgrunnlag", exact: true }).waitFor();
+  if (renamedOriginal) {
+    await page.getByRole("combobox", { name: /^Velg originaldokument/ }).selectOption(documentId);
+    await page.getByRole("button", { name: "Hent dokumentopplysninger", exact: true }).click();
+    await page.getByRole("group", { name: "Grunnlag ved årets start", exact: true })
+      .getByRole("checkbox", { name: `${renamedOriginal} · ${incomeYear}`, exact: true }).waitFor();
+  }
   await page.getByRole("combobox", { name: /^Velg originaldokument/ }).selectOption(corrected.documentId);
   await page.getByRole("button", { name: "Hent dokumentopplysninger", exact: true }).click();
   const event = page.getByRole("group", { name: "1. Overdragelse av aksjer", exact: true });
   const documents = event.getByRole("group", { name: "Dokumenter for denne hendelsen", exact: true });
   await documents.getByRole("checkbox", { name: `${corrected.name} · ${incomeYear}`, exact: true }).check();
-  await documents.getByRole("checkbox", { name: `Synthetic full-year share transfer ${previousConsideration}.pdf · ${incomeYear}`, exact: true }).uncheck();
+  await documents.getByRole("checkbox", { name: `${renamedOriginal ?? `Synthetic full-year share transfer ${previousConsideration}.pdf`} · ${incomeYear}`, exact: true }).uncheck();
   await event.getByLabel("Samlet vederlag (kr)", { exact: true }).fill(consideration);
   await page.getByLabel("Hvorfor korrigeres det tidligere årsgrunnlaget?", { exact: true }).fill(`Originaldokumentet viser korrigert vederlag på ${consideration} kroner.`);
   for (const checkbox of await page.getByRole("group", { name: "Gjennomgang av hele året", exact: true }).getByRole("checkbox").all())
@@ -221,6 +239,12 @@ async function approveSourceCorrection({ page, sourceHref, company, incomeYear, 
   assert.equal(current.draft.supersedesSourceSha256, current.receipt.sourceSha256);
   assert.equal(current.draft.documents.find(row => row.documentId === corrected.documentId).contentSha256, corrected.document.contentSha256);
   assert.ok(current.draft.documents.some(row => row.documentId === documentId), "opening original retained in the corrected source");
+  if (renamedOriginal) {
+    const previous = source.draft.documents.find(row => row.documentId === documentId);
+    const updated = current.draft.documents.find(row => row.documentId === documentId);
+    assert.notEqual(updated.metadataSha256, previous.metadataSha256);
+    assert.equal(updated.contentSha256, previous.contentSha256);
+  }
   await page.getByRole("button", { name: "Lag forhåndsvisning av lagret grunnlag", exact: true }).click();
   await page.getByRole("button", { name: "Kontroller vilkår for godkjenning", exact: true }).click();
   const review = page.getByRole("group", { name: "Din gjennomgang", exact: true });
@@ -243,13 +267,13 @@ async function approveSourceCorrection({ page, sourceHref, company, incomeYear, 
 }
 
 async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-  mock, python, environment, source, approved, processed, documentId, predecessorLabel }) {
+  mock, python, environment, source, approved, processed, documentId, predecessorLabel, renamedOriginal }) {
   const prior = processed.productionSubmissions[0];
   const historyBefore = await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options);
   const callsBefore = mock.snapshot().filter(({ service }) => service === "skatteetaten").length;
   const { current, nextApproval, nextPreview, panel } = await approveSourceCorrection({ page, sourceHref,
     company, incomeYear, api, scope, options, storage, source, prior, documentId,
-    consideration: "18000", previousConsideration: "15000" });
+    consideration: "18000", previousConsideration: "15000", renamedOriginal });
   await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
   await panel.getByRole("checkbox").check();
   await panel.getByRole("button", { name: "Send godkjent oppgave", exact: true }).click();
@@ -289,8 +313,9 @@ async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear,
   const verification = JSON.parse(execFileSync(python, ["apps/backend/scripts/verify_rf1086_archive.py", await download.path(),
     "--stream", "--company-id", company.id, "--income-year", String(incomeYear), "--require-source-history", "--require-feedback-originals"],
   { cwd: process.cwd(), env: environment, encoding: "utf8", timeout: 30_000 }));
-  for (const key of ["sourceVersions", "sourceApprovals", "sourceClaims", "submissions", "sourceOriginals"])
+  for (const key of ["sourceVersions", "sourceApprovals", "sourceClaims", "submissions"])
     assert.equal(verification[key], 2, key);
+  assert.equal(verification.sourceOriginals, renamedOriginal ? 3 : 2);
   assert.equal(verification.feedbackOriginals, 4);
   assert.equal(verification.feedbackOriginalsComplete, true);
   assert.equal(verification.databaseRestorePerformed, false);
@@ -467,8 +492,8 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
   { cwd: process.cwd(), env: environment, encoding: "utf8", timeout: 30_000 }));
   for (const key of ["sourceApprovals", "sourceClaims", "submissions"])
     assert.equal(verification[key], 3, key);
-  for (const key of ["sourceVersions", "sourceOriginals"])
-    assert.equal(verification[key], includeUnapprovedHistory ? 4 : 3, key);
+  assert.equal(verification.sourceVersions, includeUnapprovedHistory ? 4 : 3);
+  assert.equal(verification.sourceOriginals, includeUnapprovedHistory ? 5 : 3);
   assert.equal(verification.feedbackOriginals, 4, "an unknown send must not invent feedback");
   assert.equal(verification.databaseRestorePerformed, false);
   return { path: await download.path(), verification };

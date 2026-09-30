@@ -1,6 +1,9 @@
 """Object restoration rejects foreign sources and cleans only its own resources."""
 from contextlib import contextmanager
 from copy import deepcopy
+from dataclasses import replace
+from datetime import datetime, timedelta, timezone
+from hashlib import sha256
 import json
 from pathlib import Path
 import subprocess
@@ -8,6 +11,11 @@ from types import SimpleNamespace
 import sys
 
 import pytest
+from talli_backend.modules.documents.public import (
+    DocumentId, DocumentRecord, DocumentStatus, RetainedDocumentOriginal,
+    RetainedDocumentOriginalReceipt, RetainedDocumentOriginalSnapshot,
+)
+from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, UserId
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'scripts'))
@@ -26,14 +34,48 @@ ENV = dict(item.split('=', 1) for item in SOURCE['Config']['Env'])
 CLONE = 'postgresql://postgres:local@127.0.0.1:55001/rf193_restore_' + 'c' * 32
 
 
-def test_documents_snapshots_preserve_retained_bytes_and_reject_conflicting_generations():
-    original = SimpleNamespace(receipt=SimpleNamespace(document_id='one'), content=b'original')
-    snapshot = SimpleNamespace(document=SimpleNamespace(storage_key='one/key'), original=original)
-    assert storage.ordinary_originals([snapshot, deepcopy(snapshot)]) == [original]
-    changed = deepcopy(snapshot)
-    changed.original.content = b'changed'
-    with pytest.raises(ValueError, match='conflicting retained generations'):
-        storage.ordinary_originals([snapshot, changed])
+def retained_generations():
+    timestamp = datetime(2026, 9, 30, tzinfo=timezone.utc)
+    content = b'%PDF-1.7\noriginal'
+    document = DocumentRecord(DocumentId('00000000-0000-4000-8000-000000000001'),
+        CompanyId('00000000-0000-4000-8000-000000000002'), IncomeYear(2025),
+        'accounting_document', 'Original.pdf', 'workspace', DocumentStatus.ATTACHED, 5,
+        'company/2025/document/original.pdf', 'application/pdf', len(content), sha256(content).hexdigest(),
+        ActorId(ActorKind.USER, UserId('00000000-0000-4000-8000-000000000003')), timestamp, None, None)
+    snapshots = []
+    for index, record in enumerate((document, replace(document, name='Renamed.pdf'))):
+        receipt = RetainedDocumentOriginalReceipt(f'00000000-0000-4000-8000-{index + 10:012d}', record.document_id, record.company_id,
+            record.income_year, storage.document_metadata_sha256(record), record.content_sha256,
+            len(content), timestamp + timedelta(seconds=index))
+        snapshots.append(RetainedDocumentOriginalSnapshot(record, RetainedDocumentOriginal(receipt, content)))
+    return snapshots
+
+
+def test_distinct_generations_share_one_ordinary_object_and_metadata_selects_even_older_version():
+    first, second = retained_generations()
+    grouped = storage.ordinary_originals([second, first, deepcopy(first)])
+    assert grouped == [(second.original, first.original)]
+    assert storage.current_original(first.document, grouped[0]) == first.original
+    assert storage.current_original(second.document, grouped[0]) == second.original
+
+
+def test_same_metadata_identity_cannot_silently_replace_retained_bytes():
+    first, _ = retained_generations()
+    changed = replace(first, original=replace(first.original, content=b'changed'))
+    with pytest.raises(ValueError, match='conflicting originals'):
+        storage.ordinary_originals([first, changed])
+
+
+@pytest.mark.parametrize('fault', ['missing', 'ambiguous', 'foreign_document'])
+def test_current_object_never_falls_back_to_latest_or_wrong_retained_generation(fault):
+    first, second = retained_generations()
+    document, originals = first.document, [second.original]
+    if fault == 'ambiguous': originals = [first.original, first.original]
+    if fault == 'foreign_document':
+        originals = [replace(first.original, receipt=replace(first.original.receipt,
+            document_id=DocumentId('00000000-0000-4000-8000-000000000004')))]
+    with pytest.raises(ValueError, match='no unique retained generation'):
+        storage.current_original(document, originals)
 
 
 @pytest.mark.parametrize('fault', [None, 'not_running', 'network', 'image', 'mount', 'remote_db',
