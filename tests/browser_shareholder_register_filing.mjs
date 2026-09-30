@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash, createHmac, generateKeyPairSync, randomInt, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
+import { once } from "node:events";
 import { createRequire } from "node:module";
 import test from "node:test";
 
@@ -28,7 +29,8 @@ const databaseUrl = process.env.DATABASE_URL;
 
 // This is a mandatory local lane: absent or non-loopback configuration fails;
 // it never converts the full-stack authority journey into a skipped test.
-for (const lostResponse of ["main", "child", "confirmation"]) test(`owner completes RF capture, correction and lost ${lostResponse} response through the canonical backend`, {
+for (const { lostResponse, crash } of ["main", "child", "confirmation"].flatMap(lostResponse =>
+  [{ lostResponse, crash: false }, { lostResponse, crash: true }])) test(`owner completes RF capture, correction and ${crash ? "process crash at" : "lost"} ${lostResponse} response through the canonical backend`, {
   timeout: 360_000,
 }, async (t) => {
   assert.ok(supabaseUrl && anonKey && serviceRoleKey && databaseUrl, "authority browser requires isolated Supabase configuration");
@@ -120,7 +122,7 @@ for (const lostResponse of ["main", "child", "confirmation"]) test(`owner comple
     const nonce = randomUUID();
     const python = process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python";
     assert.ok(existsSync(python), "backend Python runtime is absent");
-    resources.backend = startOwnedProcess({ command: python, args: ["tests/fixtures/start_shareholder_register_filing_backend.py"],
+    const backendSpec = { command: python, args: ["tests/fixtures/start_shareholder_register_filing_backend.py"],
       cwd: process.cwd(), readinessProof: `TALLI_BACKEND_BOUND:${nonce}`, env: {
         ...runtimeEnvironment(), DATABASE_URL: databaseUrl, TALLI_LOCAL_RF1086_FRESH_SEND_FIXTURE: "true",
         SUPABASE_URL: supabaseUrl, SUPABASE_ANON_KEY: anonKey, SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
@@ -132,17 +134,30 @@ for (const lostResponse of ["main", "child", "confirmation"]) test(`owner comple
         TALLI_PROD_MASKINPORTEN_CLIENT_ID: randomUUID(), TALLI_PROD_MASKINPORTEN_KEY_ID: randomUUID(),
         TALLI_PROD_MASKINPORTEN_PRIVATE_KEY_PEM: privateKey,
         TALLI_BACKEND_PORT: String(backendPort), TALLI_READINESS_NONCE: nonce,
-      } });
-    let httpOutput = "";
-    resources.backend.stdout.on("data", (chunk) => {
-      httpOutput += chunk.toString();
-      let newline;
-      while ((newline = httpOutput.indexOf("\n")) >= 0) {
-        const line = httpOutput.slice(0, newline);
-        httpOutput = httpOutput.slice(newline + 1);
-        if (line.startsWith("TALLI_AUTHORITY_HTTP:")) apiCalls.push(line);
-      }
-    });
+      } };
+    const launchBackend = () => {
+      resources.backend = startOwnedProcess(backendSpec);
+      let httpOutput = "";
+      resources.backend.stdout.on("data", (chunk) => {
+        httpOutput += chunk.toString();
+        let newline;
+        while ((newline = httpOutput.indexOf("\n")) >= 0) {
+          const line = httpOutput.slice(0, newline);
+          httpOutput = httpOutput.slice(newline + 1);
+          if (line.startsWith("TALLI_AUTHORITY_HTTP:")) apiCalls.push(line);
+        }
+      });
+    };
+    launchBackend();
+    const crashBackend = async () => {
+      const previous = resources.backend;
+      const exited = once(previous, "exit", { signal: AbortSignal.timeout(5_000) });
+      assert.ok(previous.kill("SIGKILL"));
+      assert.deepEqual(await exited, [null, "SIGKILL"]);
+      launchBackend();
+      assert.notEqual(resources.backend.pid, previous.pid);
+      await waitForOwnedReadiness({ process: resources.backend, url: `${backendOrigin}/health/ready` });
+    };
     await waitForOwnedReadiness({ process: resources.backend, url: `${backendOrigin}/health/ready` });
     resources.web = startOwnedProcess({ command: process.execPath,
       args: [nextCli, "dev", "apps/web", "--hostname", "127.0.0.1", "--port", String(webPort)],
@@ -411,7 +426,8 @@ for (const lostResponse of ["main", "child", "confirmation"]) test(`owner comple
     const sourceArchive = await exerciseFullYearSourceJourney({ page, siteOrigin, company: primary, incomeYear: sourceYear, database, ownerId: owner.id,
       openingHolderId: sourceOpening.holderId, entitlementId: sourceEntitlement, api, authorization,
       storage: createClient(supabaseUrl, anonKey, { auth: { autoRefreshToken: false, persistSession: false } }).storage,
-      mock: resources.mock, python, environment: runtimeEnvironment(), apiCalls, lostResponse }).catch(async error => {
+      mock: resources.mock, python, environment: runtimeEnvironment(), apiCalls, lostResponse,
+      crashBackend: crash ? crashBackend : undefined }).catch(async error => {
       const alerts = await page.getByRole("alert").allTextContents();
       throw new Error(`full_year_source_journey_failed: ${error.message}; alerts=${JSON.stringify(alerts)}`, { cause: error });
     });

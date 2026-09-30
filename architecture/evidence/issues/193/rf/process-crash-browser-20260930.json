@@ -1,0 +1,91 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "583eb32d21083e4df14d5c892e69700ba9c418bc",
+  "scope": "Real owned backend process crashes after loopback provider mutations, before response delivery or durable outcome recording",
+  "validation": {
+    "browser": {
+      "passed": 26,
+      "journeys": [
+        {
+          "failure": "lost",
+          "stage": "main",
+          "durationMs": 121026.19
+        },
+        {
+          "failure": "process crash at",
+          "stage": "main",
+          "durationMs": 117704.920625
+        },
+        {
+          "failure": "lost",
+          "stage": "child",
+          "durationMs": 105913.39725
+        },
+        {
+          "failure": "process crash at",
+          "stage": "child",
+          "durationMs": 112109.498125
+        },
+        {
+          "failure": "lost",
+          "stage": "confirmation",
+          "durationMs": 105647.25625
+        },
+        {
+          "failure": "process crash at",
+          "stage": "confirmation",
+          "durationMs": 108460.432708
+        }
+      ],
+      "durationMs": 681694.538375
+    },
+    "preparedIntentRestoreRerun": {
+      "passed": 1,
+      "stage": "main",
+      "durationMs": 112185.431416,
+      "databaseRestorePerformed": true,
+      "retainedOriginalBytesRestored": true,
+      "objectStorageRestorePerformed": false
+    },
+    "fixtureSafetyPassed": 20,
+    "credentialScan": "passed",
+    "whitespace": "passed",
+    "cleanup": "Passed: owned stack removed, 42 pre-existing containers restored, Colima stopped and generated Next files restored",
+    "baseCi": {
+      "runId": 36709445087,
+      "revision": "583eb32d21083e4df14d5c892e69700ba9c418bc",
+      "result": "success",
+      "application": "success",
+      "databaseIsolation": "success",
+      "releaseGate": "success",
+      "immutableEvidence": "skipped"
+    },
+    "currentRevisionCi": "pending"
+  },
+  "assertions": [
+    "Mock records the mutation and holds its HTTP response; the API observes exactly one prepared intent for the held key",
+    "Actual SIGKILL exit is verified and a different owned backend process restarts with the same database",
+    "Prepared intent remains without an invented outcome; raw submission stays sending while owner status requires recovery",
+    "Initial reads after restart acquire no provider tokens and perform no provider calls",
+    "Claims, managed head, journal, successful references and feedback equal the pre-crash snapshot",
+    "Two exact retries return 409; reloads and status reads add no provider calls or durable changes",
+    "Owner has no send/continue/feedback action; mobile layout, browser health and egress checks pass",
+    "Strict archives preserve three source versions/approvals/claims/submissions/originals and four previous feedback originals",
+    "Confirmation crash invents no receipt or feedback despite the mock recording confirmation",
+    "Main-crash prepared history also survives actual same-cluster database restore and retained byte verification; unrelated actors denied"
+  ],
+  "limitations": [
+    "Loopback mock results do not establish real provider idempotency or authorize replay",
+    "Before-I/O process-loss browser coverage, rejected-predecessor and remaining security/conformance checks remain",
+    "Ordinary Storage objects, independent-cluster role recovery, prior-year/unapproved restore, cancellation/expiry/deletion and retention generations remain",
+    "Unknown-operation reconciliation, legacy feedback backfill, HTTP/concurrency sizing and both immutable acceptance gates remain",
+    "All seven RF acceptance criteria pending; draft PR only, no production enablement, hosted database change, genuine provider effect or real AS data"
+  ],
+  "sha256": {
+    "tests/browser_shareholder_register_filing.mjs": "a6fef34c4ba0c0b636e0c167695613b98a4b80bb87574d7ed42593aa5df6344a",
+    "tests/fixtures/rf1086-filing-authority-mock.mjs": "d4372f385f3b7511b89f45f96f460e0dac54fad9fc71aeae256a7d34b4fd43e7",
+    "tests/fixtures/rf1086-source-browser-journey.mjs": "31629bfb4a7de1e535af4f688ccf102a14a07979dcccd0104de23509915c2804",
+    "tests/shareholder_register_browser_fixture_safety.test.mjs": "14264f6b5203dcb2e5844139418992be3ecd960dbab9f9fdf2534cfec1114731",
+    "docs/filing/rf1086-production-pilot-runbook.md": "81ea09cbec97d3a325b64f87344faff5f5565a463a9e2da165080f770b9df09f"
+  }
+}

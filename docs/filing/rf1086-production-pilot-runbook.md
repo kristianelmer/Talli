@@ -75,6 +75,14 @@ feedback. A statutory filing is never used as a connectivity probe.
   identifiers, or organization numbers in logs), and reconcile read-only with
   Skatteetaten/support before any retry decision.
 
+A process crash can leave the submission projection at `sending` with a committed
+`prepared` operation and no outcome. That is uncertain delivery, even if no
+`unknown` result was written. The full-year source status read returns
+`recovery_required`; restarting the backend does not grant permission to resend.
+Use the original approval's saved-status action, preserve its claim, key, payload
+hash and journal, and follow the same read-only reconciliation path. Do not turn
+the prepared intent into a fresh operation or create another filing to bypass it.
+
 Escalate authentication/delegation failures immediately. Alert when `sending`
 lasts 10 minutes, receipt retrieval fails after its bounded polling window, or an
 `unknown` event exists. Escalate rejection/schema-error clusters to the filing

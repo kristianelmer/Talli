@@ -8,7 +8,7 @@ import { isLoopbackSupabaseUrl } from "../support/supabase_fixture_safety.mjs";
 // Only admission, opening facts and a pilot entitlement are prepared. Every
 // source, preview, approval, operation and receipt below is created by the app.
 export async function exerciseFullYearSourceJourney({ page, siteOrigin, company, incomeYear, database, ownerId,
-  openingHolderId, entitlementId, api, authorization, storage, mock, python, environment, apiCalls, lostResponse }) {
+  openingHolderId, entitlementId, api, authorization, storage, mock, python, environment, apiCalls, lostResponse, crashBackend }) {
   const scope = { companyId: company.id, incomeYear, headers: authorization };
   const options = { headers: authorization };
   const before = await api.rf1086Workspace(company.id, incomeYear, options);
@@ -168,7 +168,7 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   const correction = await exerciseSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
     mock, python, environment, source, approved, accepted, documentId });
   return await exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-    mock, python, environment, documentId, correction, lostResponse });
+    mock, python, environment, documentId, correction, lostResponse, crashBackend });
 }
 
 async function uploadOriginal({ api, options, storage, company, incomeYear, consideration }) {
@@ -292,7 +292,7 @@ async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear,
 }
 
 async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-  mock, python, environment, documentId, correction, lostResponse }) {
+  mock, python, environment, documentId, correction, lostResponse, crashBackend }) {
   const { nextApproval, nextPreview, panel } = await approveSourceCorrection({ page, sourceHref,
     company, incomeYear, api, scope, options, storage, source: correction.source, prior: correction.submission,
     documentId, consideration: "19000", previousConsideration: "18000" });
@@ -303,11 +303,34 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
   const callsBefore = mock.snapshot().filter(row => row.service === "skatteetaten").length;
   const fail = { main: "failNextMainResponse", child: "failNextChildResponse", confirmation: "failNextConfirmationResponse" }[lostResponse];
   assert.ok(fail);
-  mock[fail]();
+  const operation = { main: "post_hovedskjema", child: "post_underskjema", confirmation: "confirm" }[lostResponse];
+  const held = crashBackend ? mock.holdNextResponse(operation) : undefined;
+  let beforeCrashArchive, callsAtCrash;
+  if (!crashBackend) mock[fail]();
   await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
   await panel.getByRole("checkbox").check();
   await panel.getByRole("button", { name: "Send godkjent oppgave", exact: true }).click();
-  await panel.getByText("Innsendingsutfallet er ukjent. Kontroller lagret status og avklar utfallet før du gjør noe mer.", { exact: true }).waitFor();
+  if (crashBackend) {
+    let timer;
+    try {
+      await Promise.race([held, new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("mock_mutation_hold_deadline_exceeded")), 10_000);
+      })]);
+    } finally { clearTimeout(timer); }
+    const atCrash = await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options);
+    const active = atCrash.productionSubmissions.find(row => row.approvalId === nextApproval.id);
+    const lastMutation = mock.snapshot().filter(row => row.service === "skatteetaten").at(-1);
+    const intent = atCrash.productionEvents.filter(row => row.submissionId === active.id && row.idempotencyKey === lastMutation.key);
+    assert.equal(intent.length, 1, "provider mutation must have exactly one already committed intent");
+    assert.equal(intent[0].operationState, "prepared");
+    assert.equal(active.status, "sending");
+    beforeCrashArchive = atCrash;
+    callsAtCrash = mock.snapshot();
+    await crashBackend();
+    await page.reload();
+  } else {
+    await panel.getByText("Innsendingsutfallet er ukjent. Kontroller lagret status og avklar utfallet før du gjør noe mer.", { exact: true }).waitFor();
+  }
   await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
   const unknownText = "En operasjon har ukjent utfall. Utfallet må avklares før innsendingen kan fortsette.";
   await panel.getByText(unknownText, { exact: true }).waitFor();
@@ -317,9 +340,14 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `unknown-outcome overflow at ${width}`);
   }
   const retained = await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options);
+  if (crashBackend) {
+    assert.deepEqual(mock.snapshot(), callsAtCrash, "restart and initial reads must not acquire tokens or call providers");
+    for (const field of ["productionSubmissions", "productionEvents", "sourceSubmissionClaims", "submissionHead", "feedbackArtifacts"])
+      assert.deepEqual(retained[field], beforeCrashArchive[field], `restart changed ${field}`);
+  }
   const unknown = retained.productionSubmissions.find(row => row.approvalId === nextApproval.id);
   assert.equal(retained.productionSubmissions.length, 3);
-  assert.equal(unknown.status, "unknown");
+  assert.equal(unknown.status, crashBackend ? "sending" : "unknown");
   assert.equal(unknown.supersedesSubmissionId, correction.submission.id);
   assert.equal(retained.submissionHead.submissionId, unknown.id);
   assert.equal(retained.sourceSubmissionClaims.length, 3);
@@ -330,21 +358,25 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
     confirmation: ["post_hovedskjema", "post_underskjema", "post_underskjema", "confirm"] }[lostResponse];
   assert.deepEqual(mutations.map(row => row.operation), expectedOperations);
   assert.equal(mutations[0].digest, createHash("sha256").update(nextPreview.hovedskjemaXml).digest("hex"));
-  assert.equal(journal.length, mutations.length * 2);
+  assert.equal(journal.length, mutations.length * 2 - (crashBackend ? 1 : 0));
   const succeeded = journal.filter(row => row.operationState === "succeeded");
   const uncertain = journal.filter(row => row.operationState === "unknown");
   assert.equal(succeeded.length, mutations.length - 1);
-  assert.equal(uncertain.length, 1);
-  assert.equal(uncertain[0].failureClass, "unknown");
-  assert.equal(uncertain[0].authorityReference, null);
+  assert.equal(uncertain.length, crashBackend ? 0 : 1);
+  if (!crashBackend) {
+    assert.equal(uncertain[0].failureClass, "unknown");
+    assert.equal(uncertain[0].authorityReference, null);
+  }
   const knownReferences = {};
   const childHashes = Object.values(nextPreview.underskjemaXml).map(xml => createHash("sha256").update(xml).digest("hex"));
   if (lostResponse === "confirmation")
     assert.deepEqual(mutations.filter(row => row.operation === "post_underskjema").map(row => row.digest).sort(), childHashes.sort());
   for (const [index, mutation] of mutations.entries()) {
     const events = journal.filter(row => row.idempotencyKey === mutation.key);
-    assert.equal(events.length, 2);
-    assert.deepEqual(events.map(row => row.operationState).sort(), ["prepared", index === mutations.length - 1 ? "unknown" : "succeeded"].sort());
+    const incomplete = crashBackend && index === mutations.length - 1;
+    assert.equal(events.length, incomplete ? 1 : 2);
+    assert.deepEqual(events.map(row => row.operationState).sort(), incomplete ? ["prepared"]
+      : ["prepared", index === mutations.length - 1 ? "unknown" : "succeeded"].sort());
     const bodyHash = mutation.operation === "confirm"
       ? createHash("sha256").update(`${mutations[0].id}:2`).digest("hex") : mutation.digest;
     for (const event of events) {
@@ -355,7 +387,7 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
         assert.ok(childHashes.includes(mutation.digest));
       } else assert.equal(event.operationName, mutation.operation);
     }
-    assert.equal(events[0].operationName, events[1].operationName);
+    if (!incomplete) assert.equal(events[0].operationName, events[1].operationName);
     const completed = events.find(row => row.operationState === "succeeded");
     if (completed) {
       const reference = mutation.operation === "post_hovedskjema" ? mutations[0].id : "posted";

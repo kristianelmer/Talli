@@ -913,3 +913,27 @@ negative regression reproduced the gap. The RF exception now preserves both
 requirements, and CI runs that regression suite as well as the current-state
 architecture check. This changes the RF architecture guard, not Tax or Accounts
 business behavior.
+
+## Process-crash browser recovery — 30 September
+
+The full-year browser now covers actual backend process loss after main-form,
+child-form and confirmation mutations. The loopback mock records each selected
+mutation and holds its response. The browser observes the committed prepared
+intent, kills its owned backend with SIGKILL, verifies the exit signal, and starts
+a new process against the same durable database.
+
+After restart, the submission remains `sending` with a prepared intent and no
+fabricated outcome. The owner sees `recovery_required` and has no send, continue
+or feedback action. Initial reads, reloads and two exact retries produce no token
+or provider calls; the retries return 409. Claims, head, journal, references and
+feedback remain identical to the pre-crash snapshot. The strict archive keeps
+all three source versions and submissions, three source originals and four
+earlier feedback originals. The confirmation crash does not invent a receipt.
+
+All six lost-response/crash journeys and 20 fixture checks pass (26 total). A
+focused main-crash rerun also passes after adding actual database restoration for
+that prepared-intent history, including retained bytes and unrelated-actor denial.
+These are synthetic provider effects. Before-I/O process-loss browser coverage,
+rejected-predecessor and remaining security/conformance cases, broader object
+restore/retention and both immutable acceptance gates remain open. All seven RF
+acceptance criteria stay pending.

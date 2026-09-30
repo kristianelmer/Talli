@@ -150,6 +150,41 @@ for (const stage of ["child", "confirmation"]) test(`lost ${stage} mock response
   assert.equal(mock.snapshot().filter(row => row.operation === recorded[0].operation && row.key === key).length, 1);
 });
 
+for (const stage of ["main", "child", "confirmation"]) test(`held ${stage} response records the mutation before a process can crash`, { timeout: 10_000 }, async (t) => {
+  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001", organizationNumber: "999999999" });
+  t.after(() => mock.close());
+  const base = `${mock.baseUrl}/skatte/2025`;
+  const headers = key => ({ authorization: "Bearer opaque-synthetic-fixture", idempotencykey: key });
+  let path = "/1086H", body = "<H>original</H>";
+  if (stage !== "main") {
+    const main = await fetch(base + path, { method: "POST", headers: headers(randomUUID()), body });
+    const { hovedskjemaId } = await main.json();
+    path = `/${hovedskjemaId}/1086U`; body = "<U>original</U>";
+    if (stage === "confirmation") {
+      assert.equal((await fetch(base + path, { method: "POST", headers: headers(randomUUID()), body })).status, 204);
+      path = `/${hovedskjemaId}/bekreft?antall_underskjema=1`; body = undefined;
+    }
+  }
+  const operation = { main: "post_hovedskjema", child: "post_underskjema", confirmation: "confirm" }[stage];
+  const held = mock.holdNextResponse(operation);
+  const key = randomUUID(), controller = new AbortController();
+  t.after(() => controller.abort());
+  let settled = false;
+  const pending = fetch(base + path, { method: "POST", headers: headers(key), body, signal: controller.signal })
+    .then(response => ({ response }), error => ({ error })).finally(() => { settled = true; });
+  await held;
+  assert.equal(settled, false, "the mock must hold the response until the caller disappears");
+  const recorded = mock.snapshot().filter(row => row.key === key);
+  assert.equal(recorded.length, 1);
+  assert.equal(recorded[0].operation, operation);
+  controller.abort();
+  assert.ok((await pending).error);
+  const replay = await fetch(base + path, { method: "POST", headers: headers(key), body });
+  assert.equal(replay.status, stage === "main" ? 201 : stage === "child" ? 204 : 200);
+  await replay.arrayBuffer();
+  assert.equal(mock.snapshot().filter(row => row.operation === operation && row.key === key).length, 1);
+});
+
 test("fresh RF browser uses finite fixture authority while preserving foreign keys and signoff storage", () => {
   const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
   assert.doesNotMatch(source, /session_replication_role|no force row level security|disable trigger/iu);
