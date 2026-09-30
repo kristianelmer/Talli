@@ -1089,3 +1089,43 @@ revision CI remains required.
 Expiry, final deletion, complete retention inventory/policy, retained-original
 generations and independent Auth/role/hosted recovery remain open. No RF acceptance
 criterion is promoted, and no genuine company/provider operation occurred.
+
+
+### 30 September — independent deletion review and retained recovery
+
+The same application-created history now exercises a separate synthetic admin
+reviewer with a scoped support grant. An unopened case cannot approve deletion.
+After opening, approval and exact replay succeed. Finalization rejects the stale
+archive receipt, then succeeds only after the owner downloads a fresh complete
+company archive. Its replay is identical. New consequential RF review is denied
+for the deleted company, while retained RF projections and provider calls stay
+unchanged.
+
+The browser preserves the existing `retention_hold` restoration and adds another
+complete database/eight-object restoration after finalization. Company Access
+verifies the owner's full cancellation and the independent reviewer's full case
+projection, approved review and `deleted_retention_record` marker before, within
+and after recovery. Existing outsider/MFA/direct-Storage denials remain. The
+complete journey passed on both Next 16.3.4 (153.44 seconds) and patched 16.3.8
+(164.01 seconds). Another 38 fixture checks, 14 restore-boundary checks and the
+architecture check pass. See `deletion-restore-20260930.json`.
+
+Expiry, retained-original generations, the full retention inventory/policy and
+independent Auth/role/hosted restoration remain open. The lifecycle marker retains
+business records; this proof neither implements a purge nor promotes an RF
+acceptance criterion.
+
+### 30 September — Next.js security patch after CI audit
+
+CI `36752628443` completed with two failures: the onboarding startup race already
+fixed in `e39dbd94`, and the final production dependency audit. All Application
+checks before that audit, including production builds and the complete launch
+rehearsal, passed. The audit identified `GHSA-vcvr-r3jv-pc5j` in Next 16.3.4.
+
+Both manifests and lockfiles now pin Next 16.3.8 and its matching packages. The
+vendor advisory identifies 16.3.6 as the first patched version; the selected patch
+preserves the existing React and Node peer requirements. Both production audits
+report zero vulnerabilities. The production web build, typecheck, architecture
+check and full deletion/recovery browser journey pass. No codemod applies to this
+same-16.3 patch update. See `next-security-patch-20260930.json` for official source
+links and exact file hashes. A new exact-revision CI run is still required.

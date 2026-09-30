@@ -130,7 +130,7 @@ async def verify_restored(url, query, expected_canonical, expected_originals, qu
     return archive
 
 
-async def cancellation_evidence(url, query, cancellation_id):
+async def cancellation_evidence(url, query, cancellation_id, status):
     """Read through Company Access with the browser's real authenticated users."""
     adapter = SupabaseCompanyAccessAdapter(SupabaseConfiguration(
         url=os.environ['SUPABASE_URL'], anon_key=os.environ['SUPABASE_ANON_KEY'], database_url=url))
@@ -138,12 +138,29 @@ async def cancellation_evidence(url, query, cancellation_id):
     if (len(rows) != 1 or str(rows[0]['id']) != str(cancellation_id)
             or str(rows[0]['company_id']) != str(query.company_id)
             or str(rows[0]['requested_by']) != str(query.actor_id.subject)
-            or rows[0]['status'] != 'retention_hold'
+            or rows[0]['status'] != status
             or rows[0]['evidence']['archiveIncomeYear'] != int(query.income_year)):
         raise ValueError('Expected owner cancellation evidence is absent')
     if await adapter.cancellations(os.environ['TALLI_RF_RESTORE_OUTSIDER_TOKEN'], str(query.company_id)):
         raise ValueError('Restored cancellation admitted an unrelated owner')
     return rows
+
+
+async def deletion_evidence(url, query, cancellation_id, case_id, review_id):
+    adapter = SupabaseCompanyAccessAdapter(SupabaseConfiguration(
+        url=os.environ['SUPABASE_URL'], anon_key=os.environ['SUPABASE_ANON_KEY'], database_url=url))
+    case = await adapter.read_support_case(os.environ['TALLI_RF_RESTORE_REVIEWER_TOKEN'], str(case_id))
+    if not case or str(case['company_id']) != str(query.company_id) or str(case['case_id']) != str(case_id):
+        raise ValueError('Restored independent review case is absent')
+    resources = case['resources']
+    companies = resources['companies']
+    reviews = resources['company_deletion_reviews']
+    if (len(companies) != 1 or companies[0]['status_text'] != 'deleted_retention_record'
+            or len(reviews) != 1 or reviews[0]['id'] != str(review_id)
+            or reviews[0]['cancellation_id'] != str(cancellation_id)
+            or reviews[0]['support_case_id'] != str(case_id) or reviews[0]['decision'] != 'approved'):
+        raise ValueError('Restored company deletion marker or independent review differs')
+    return case
 
 
 def main():
@@ -154,7 +171,16 @@ def main():
     parser.add_argument('--actor-id', required=True, type=UUID)
     parser.add_argument('--restore-storage', action='store_true')
     parser.add_argument('--cancellation-id', type=UUID)
+    parser.add_argument('--cancellation-status', choices=('retention_hold', 'deleted'), default='retention_hold')
+    parser.add_argument('--support-case-id', type=UUID)
+    parser.add_argument('--deletion-review-id', type=UUID)
     args = parser.parse_args()
+    if bool(args.support_case_id) != bool(args.deletion_review_id):
+        parser.error('Support case and deletion review must be supplied together')
+    if args.support_case_id and args.cancellation_status != 'deleted':
+        parser.error('Independent deletion evidence requires deleted cancellation status')
+    if args.cancellation_status == 'deleted' and not (args.cancellation_id and args.support_case_id):
+        parser.error('Deleted recovery requires cancellation, independent review and support case')
     source_url = os.environ.get('DATABASE_URL')
     workdir = os.environ.get('TALLI_SUPABASE_WORKDIR')
     if not source_url or not workdir:
@@ -179,11 +205,15 @@ def main():
     originals = asyncio.run(read_originals(reader_url, actor, queries))
     storage_proof = {}
     cancellation_proof = {}
+    deletion_proof = {}
     if args.cancellation_id or args.restore_storage:
         access_url = owner_read_url(source_url, os.environ.get('TALLI_COMPANY_ACCESS_DATABASE_URL', ''),
                                     'talli_company_access_backend')
     if args.cancellation_id:
-        cancellation_before = asyncio.run(cancellation_evidence(access_url, query, args.cancellation_id))
+        cancellation_before = asyncio.run(cancellation_evidence(access_url, query, args.cancellation_id, args.cancellation_status))
+    if args.support_case_id:
+        deletion_before = asyncio.run(deletion_evidence(access_url, query, args.cancellation_id,
+                                                       args.support_case_id, args.deletion_review_id))
     if args.restore_storage:
         from rf1086_storage_restore import ordinary_originals, storage_source, restored_storage, verify_objects
         source_storage, storage_env, network = storage_source(workdir, source_url, boundary)
@@ -197,9 +227,14 @@ def main():
         if args.cancellation_id or args.restore_storage:
             restored_access = make_conninfo(access_url, dbname=conninfo_to_dict(restored_url)['dbname'])
         if args.cancellation_id:
-            if asyncio.run(cancellation_evidence(restored_access, query, args.cancellation_id)) != cancellation_before:
+            if asyncio.run(cancellation_evidence(restored_access, query, args.cancellation_id, args.cancellation_status)) != cancellation_before:
                 raise ValueError('Restored cancellation differs from source')
-            cancellation_proof = {'cancellationRestored': True, 'cancellationStatus': 'retention_hold'}
+            cancellation_proof = {'cancellationRestored': True, 'cancellationStatus': args.cancellation_status}
+        if args.support_case_id:
+            if asyncio.run(deletion_evidence(restored_access, query, args.cancellation_id,
+                                            args.support_case_id, args.deletion_review_id)) != deletion_before:
+                raise ValueError('Restored independent deletion evidence differs from source')
+            deletion_proof = {'deletionReviewRestored': True, 'deletedCompanyRestored': True}
         if args.restore_storage:
             with restored_storage(source_storage, storage_env, network, restored_url, boundary) as gateway:
                 restored_documents = asyncio.run(verify_objects(restored_reader, restored_access, gateway, ordinary,
@@ -216,15 +251,19 @@ def main():
     if after != before:
         raise ValueError('Restore rehearsal changed source RF history')
     if args.cancellation_id:
-        if asyncio.run(cancellation_evidence(access_url, query, args.cancellation_id)) != cancellation_before:
+        if asyncio.run(cancellation_evidence(access_url, query, args.cancellation_id, args.cancellation_status)) != cancellation_before:
             raise ValueError('Restore rehearsal changed source cancellation')
+    if args.support_case_id:
+        if asyncio.run(deletion_evidence(access_url, query, args.cancellation_id,
+                                        args.support_case_id, args.deletion_review_id)) != deletion_before:
+            raise ValueError('Restore rehearsal changed independent deletion evidence')
     print(json.dumps({'status': 'verified_owned_rf_database_restore', 'databaseRestorePerformed': True,
         'retainedOriginalBytesRestored': True, 'objectStorageRestorePerformed': args.restore_storage,
         'sourceOriginals': sources, 'feedbackOriginals': feedback,
         'sourceVersions': len(recovered.source_history.year_sources),
         'submissions': len(recovered.production_submissions), 'crossOwnerReadsDenied': True,
         'sourceHistoryUnchanged': True, 'cloneRemoved': True, 'clusterMembershipsUnchanged': True,
-        **storage_proof, **cancellation_proof}))
+        **storage_proof, **cancellation_proof, **deletion_proof}))
     return 0
 
 

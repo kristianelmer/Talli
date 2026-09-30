@@ -240,6 +240,23 @@ session. An unrelated owner's query must return no cancellation. A pass reports
 the RF and eight-object checks. It does not seed an export receipt or cancellation
 row to establish this result.
 
-Expiry, final deletion and retained-original generation scenarios still need
-restored histories before the broader restore signoff can pass. This cancellation
-proof does not establish a full retention inventory or change retention policy.
+The same browser case then opens a scoped support case for a separate synthetic
+admin reviewer. Review fails before the case is opened. The independent approval
+and its replay succeed; finalization rejects the now-stale archive receipt until
+the owner downloads a fresh full archive. Finalization and its replay return
+`deleted`, while a new RF production review is denied. Retained RF history and
+provider calls remain unchanged.
+
+A second database/object restoration passes `--cancellation-status deleted`,
+`--support-case-id` and `--deletion-review-id`. The reviewer's real Auth session
+reads the restored Company Access support case. Its complete projection,
+independent approval and `deleted_retention_record` company marker must equal the
+source, alongside the owner cancellation, RF history and all eight objects.
+`deletionReviewRestored` and `deletedCompanyRestored` report those additional
+checks. The source case must remain unchanged after recovery. Both restorations
+are required; the second does not replace the `retention_hold` proof.
+
+Expiry and retained-original generation scenarios still need restored histories
+before the broader restore signoff can pass. These proofs do not establish a full
+retention inventory or change retention policy. Finalization retains business
+records; it does not purge them.

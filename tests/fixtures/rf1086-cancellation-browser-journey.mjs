@@ -29,3 +29,44 @@ export async function exerciseRfCancellation({ page, siteOrigin, companyId, inco
   assert.deepEqual(mock.snapshot(), providerCalls, "archive/cancellation must not call a filing provider");
   return result.cancellation;
 }
+
+export async function exerciseRfFinalDeletion({ page, siteOrigin, companyId, incomeYear, api, authorization,
+  reviewerId, reviewerAuthorization, cancellation, entitlementId, mock }) {
+  const options = { headers: authorization };
+  const reviewOptions = { headers: reviewerAuthorization };
+  const before = await api.rf1086GetProductionArchiveSource(companyId, incomeYear, options);
+  const previewId = (await api.rf1086Workspace(companyId, incomeYear, options)).previews[0].id;
+  const providerCalls = mock.snapshot();
+  const { grant } = await api.companyAccessGrantSupportAccess({ companyId, operatorUserId: reviewerId,
+    operationId: randomUUID(), reason: "service_recovery", scopes: ["profile", "cancellation"],
+    startsAt: new Date(Date.now() - 5_000).toISOString(), expiresAt: new Date(Date.now() + 600_000).toISOString() }, options);
+  const reviewCommand = { companyId, expectedUpdatedAt: cancellation.updatedAt, operationId: randomUUID(),
+    decision: "approved", evidenceReference: "synthetic-local-retention-review" };
+  await assert.rejects(() => api.companyAccessReviewDeletion(cancellation.id, grant.caseId, reviewCommand, reviewOptions),
+    error => error.status === 404 && error.problem?.code === "COMPANY_ACCESS_NOT_FOUND", "unopened support case admitted review");
+  await api.companyAccessOpenSupportCase(grant.caseId, { operationId: randomUUID() }, reviewOptions);
+  const review = await api.companyAccessReviewDeletion(cancellation.id, grant.caseId, reviewCommand, reviewOptions);
+  assert.equal(review.cancellation.status, "deletion_approved");
+  assert.equal(review.review.reviewedBy, reviewerId);
+  assert.notEqual(reviewerId, cancellation.requestedBy);
+  assert.deepEqual(await api.companyAccessReviewDeletion(cancellation.id, grant.caseId, reviewCommand, reviewOptions), review);
+
+  // Review and support audit writes invalidate the earlier export. Finalization
+  // must reject it, then admit an actual new complete company archive.
+  const finalCommand = { companyId, operationId: randomUUID(), expectedUpdatedAt: review.cancellation.updatedAt };
+  await assert.rejects(() => api.companyAccessFinalizeDeletion(cancellation.id, finalCommand, options),
+    error => error.problem?.code === "CANCELLATION_PREREQUISITE_FAILED", "stale export admitted final deletion");
+  const exported = await page.request.get(`${siteOrigin}/archive/${companyId}/${incomeYear}/download`);
+  assert.equal(exported.status(), 200, `final archive failed: ${await exported.text()}`);
+  assert.equal((await exported.json()).rf1086Production.canonicalArchive, before.canonicalArchive);
+  const finalized = await api.companyAccessFinalizeDeletion(cancellation.id, finalCommand, options);
+  assert.equal(finalized.cancellation.status, "deleted");
+  assert.equal(finalized.cancellation.deletedBy, cancellation.requestedBy);
+  assert.deepEqual(await api.companyAccessFinalizeDeletion(cancellation.id, finalCommand, options), finalized);
+  assert.deepEqual(await api.rf1086GetProductionArchiveSource(companyId, incomeYear, options), before);
+  await assert.rejects(() => api.rf1086PrepareSourceProductionReview({ companyId, incomeYear, previewId, entitlementId }, options),
+    error => error.problem?.code === "SHAREHOLDER_REGISTER_FILING_COMPANY_YEAR_NOT_ADMITTED",
+    "deleted company admitted a new consequential RF review");
+  assert.deepEqual(mock.snapshot(), providerCalls, "deletion/recovery called a filing provider");
+  return { cancellation: finalized.cancellation, supportCaseId: grant.caseId, reviewId: review.review.id };
+}

@@ -22,7 +22,7 @@ import { fixtureTableTransaction, deleteRfFixtureCompanies, rfPublicProjectionRe
 
 import { startRf1086FilingAuthorityMock } from "./fixtures/rf1086-filing-authority-mock.mjs";
 import { exerciseFullYearSourceJourney, seedFullYearAdmission } from "./fixtures/rf1086-source-browser-journey.mjs";
-import { exerciseRfCancellation } from "./fixtures/rf1086-cancellation-browser-journey.mjs";
+import { exerciseRfCancellation, exerciseRfFinalDeletion } from "./fixtures/rf1086-cancellation-browser-journey.mjs";
 
 const nextCli = createRequire(new URL("../apps/web/package.json", import.meta.url)).resolve("next/dist/bin/next");
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -99,12 +99,14 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
     resources.connected = true;
     const owner = await createUser(admin, "authority-owner", resources.users);
     const other = await createUser(admin, "authority-other", resources.users);
+    const reviewer = predecessorFeedback === "rejected" ? await createUser(admin, "retention-reviewer", resources.users) : null;
 
     const primary = await seedCompany(admin, database, owner.id, "Synthetic Authority Holding", resources.companies);
     const otherCompany = await seedCompany(admin, database, other.id, "Synthetic Other Owner", resources.companies);
+    if (reviewer) await seedCompany(admin, database, reviewer.id, "Synthetic Retention Reviewer", resources.companies);
     await seedFreshBasis(database, primary.id, owner.id);
     await seedFreshBasis(database, otherCompany.id, other.id);
-    assert.ifError((await admin.from("support_operators").insert([{ user_id: owner.id, role: "admin", active: true }, { user_id: other.id, role: "admin", active: true }])).error);
+    assert.ifError((await admin.from("support_operators").insert([{ user_id: owner.id, role: "admin", active: true }, { user_id: other.id, role: "admin", active: true }, ...(reviewer ? [{ user_id: reviewer.id, role: "admin", active: true }] : [])])).error);
     resources.signoffs = await seedLocalReleaseSignoffs(database, owner.id);
     await seedCallbackAudit(database, owner.id);
     const databases = {};
@@ -456,28 +458,49 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
     });
     if (lostResponse === "main") {
       const restoreStorage = predecessorFeedback === "rejected";
-      const cancellation = restoreStorage ? await exerciseRfCancellation({ page, siteOrigin, companyId: primary.id,
+      let cancellation = restoreStorage ? await exerciseRfCancellation({ page, siteOrigin, companyId: primary.id,
         incomeYear: sourceYear, api, authorization, mock: resources.mock }) : null;
       assert.ok(process.env.TALLI_SUPABASE_WORKDIR, "RF restore requires the explicit owned Supabase workdir");
-      const restored = JSON.parse(execFileSync(python, ["scripts/rehearse-rf1086-owned-restore.py", sourceArchive.path,
-        "--company-id", primary.id, "--income-year", String(sourceYear), "--actor-id", owner.id,
-        ...(restoreStorage ? ["--restore-storage", "--cancellation-id", cancellation.id] : [])],
-      { cwd: process.cwd(), env: { ...runtimeEnvironment(), DATABASE_URL: databaseUrl,
-        TALLI_LEDGER_DATABASE_URL: databases.talli_ledger_backend,
-        ...(restoreStorage ? { TALLI_COMPANY_ACCESS_DATABASE_URL: databases.talli_company_access_backend,
-          SUPABASE_URL: supabaseUrl, SUPABASE_ANON_KEY: anonKey, SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
-          TALLI_RF_RESTORE_OWNER_TOKEN: session.access_token, TALLI_RF_RESTORE_OUTSIDER_TOKEN: otherSession.access_token,
-          TALLI_RF_RESTORE_LOW_AAL_TOKEN: lowAalSession.access_token } : {}),
-        TALLI_SUPABASE_WORKDIR: process.env.TALLI_SUPABASE_WORKDIR,
-        ...(process.env.DOCKER_CONTEXT ? { DOCKER_CONTEXT: process.env.DOCKER_CONTEXT } : {}) }, encoding: "utf8", timeout: 180_000 }));
-      assert.deepEqual(restored, { status: "verified_owned_rf_database_restore", databaseRestorePerformed: true,
-        retainedOriginalBytesRestored: true, objectStorageRestorePerformed: restoreStorage,
-        sourceOriginals: restoreStorage ? 4 : 3, feedbackOriginals: 4, sourceVersions: restoreStorage ? 4 : 3, submissions: 3,
-        crossOwnerReadsDenied: true, sourceHistoryUnchanged: true, cloneRemoved: true, clusterMembershipsUnchanged: true,
-        ...(restoreStorage ? { cancellationRestored: true, cancellationStatus: "retention_hold",
-          ordinaryObjects: 8, storageVolumeRemoved: true, storageSourceUnchanged: true,
-          storageAttributesRestored: true,
-          storageAuthenticatedDownloadsVerified: true, storageDirectReadsDenied: true, storageMfaEnforced: true } : {}) });
+      let reviewerSession;
+      let deletion;
+      for (const state of restoreStorage ? ["retention_hold", "deleted"] : [null]) {
+        if (state === "deleted") {
+          const reviewContext = await resources.browser.newContext({ viewport: { width: 1440, height: 900 } });
+          captureBrowserHealth(reviewContext, health);
+          await installBrowserEgressGuard(reviewContext, { blockedRequests: egressViolations, mockBaseUrl: resources.mock.baseUrl });
+          const reviewPage = await reviewContext.newPage();
+          await login(reviewPage, siteOrigin, reviewer);
+          await establishOwnerAal2(reviewPage, siteOrigin);
+          reviewerSession = await browserSession(reviewContext);
+          deletion = await exerciseRfFinalDeletion({ page, siteOrigin, companyId: primary.id, incomeYear: sourceYear,
+            api, authorization, reviewerId: reviewer.id, reviewerAuthorization: { Authorization: `Bearer ${reviewerSession.access_token}` },
+            cancellation, entitlementId: sourceEntitlement, mock: resources.mock });
+          cancellation = deletion.cancellation;
+          await reviewContext.close();
+        }
+        const restored = JSON.parse(execFileSync(python, ["scripts/rehearse-rf1086-owned-restore.py", sourceArchive.path,
+          "--company-id", primary.id, "--income-year", String(sourceYear), "--actor-id", owner.id,
+          ...(restoreStorage ? ["--restore-storage", "--cancellation-id", cancellation.id, "--cancellation-status", state,
+            ...(deletion ? ["--support-case-id", deletion.supportCaseId, "--deletion-review-id", deletion.reviewId] : [])] : [])],
+        { cwd: process.cwd(), env: { ...runtimeEnvironment(), DATABASE_URL: databaseUrl,
+          TALLI_LEDGER_DATABASE_URL: databases.talli_ledger_backend,
+          ...(restoreStorage ? { TALLI_COMPANY_ACCESS_DATABASE_URL: databases.talli_company_access_backend,
+            SUPABASE_URL: supabaseUrl, SUPABASE_ANON_KEY: anonKey, SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
+            TALLI_RF_RESTORE_OWNER_TOKEN: session.access_token, TALLI_RF_RESTORE_OUTSIDER_TOKEN: otherSession.access_token,
+            TALLI_RF_RESTORE_LOW_AAL_TOKEN: lowAalSession.access_token,
+            ...(reviewerSession ? { TALLI_RF_RESTORE_REVIEWER_TOKEN: reviewerSession.access_token } : {}) } : {}),
+          TALLI_SUPABASE_WORKDIR: process.env.TALLI_SUPABASE_WORKDIR,
+          ...(process.env.DOCKER_CONTEXT ? { DOCKER_CONTEXT: process.env.DOCKER_CONTEXT } : {}) }, encoding: "utf8", timeout: 180_000 }));
+        assert.deepEqual(restored, { status: "verified_owned_rf_database_restore", databaseRestorePerformed: true,
+          retainedOriginalBytesRestored: true, objectStorageRestorePerformed: restoreStorage,
+          sourceOriginals: restoreStorage ? 4 : 3, feedbackOriginals: 4, sourceVersions: restoreStorage ? 4 : 3, submissions: 3,
+          crossOwnerReadsDenied: true, sourceHistoryUnchanged: true, cloneRemoved: true, clusterMembershipsUnchanged: true,
+          ...(restoreStorage ? { cancellationRestored: true, cancellationStatus: state,
+            ...(deletion ? { deletionReviewRestored: true, deletedCompanyRestored: true } : {}),
+            ordinaryObjects: 8, storageVolumeRemoved: true, storageSourceUnchanged: true,
+            storageAttributesRestored: true,
+            storageAuthenticatedDownloadsVerified: true, storageDirectReadsDenied: true, storageMfaEnforced: true } : {}) });
+      }
     }
     await context.close();
     assert.deepEqual(health, []);
@@ -568,7 +591,8 @@ async function cleanupFixture(database, companyIds, userIds) {
     "public.audit_events", "public.support_operators", "public.customer_agreement_acceptances",
     "public.company_memberships", "public.companies",
     "public.company_year_acceptances", "public.company_year_admissions", "public.company_eligibility_assessments",
-    "public.company_cancellations", "public.company_access_command_receipts",
+    "public.company_cancellations", "public.company_access_command_receipts", "public.company_deletion_reviews",
+    "public.support_access_grants", "public.support_case_openings", "public.support_access_operation_receipts",
     "public.company_archive_export_receipts", "public.company_archive_export_attempts",
   ], async () => {
     await database.query("delete from shareholder_register_filing.production_feedback_artifacts where company_id=any($1::uuid[])", [companyIds]);
@@ -588,12 +612,15 @@ async function cleanupFixture(database, companyIds, userIds) {
     await database.query("delete from public.filing_readiness_snapshots where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from public.documents where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from billing.production_pilot_entitlements where company_id=any($1::uuid[])", [companyIds]);
-    for (const table of ["company_access_command_receipts", "company_cancellations", "company_archive_export_receipts", "company_archive_export_attempts"])
+    for (const table of ["company_access_command_receipts", "company_deletion_reviews", "company_cancellations", "company_archive_export_receipts", "company_archive_export_attempts"])
       await database.query(`delete from public.${table} where company_id=any($1::uuid[])`, [companyIds]);
     await database.query("delete from public.company_archive_source_generations where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from authority_connections.system_user_requests where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from authority_connections.authority_operations where actor_id=any($1::uuid[])", [userIds]);
     await database.query("delete from public.audit_events where actor_id=any($1::uuid[])", [userIds]);
+    await database.query("delete from public.support_access_operation_receipts where case_id in (select case_id from public.support_access_grants where company_id=any($1::uuid[]))", [companyIds]);
+    await database.query("delete from public.support_case_openings where company_id=any($1::uuid[])", [companyIds]);
+    await database.query("delete from public.support_access_grants where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from public.support_operators where user_id=any($1::uuid[])", [userIds]);
     for (const table of ["company_year_acceptances", "company_year_admissions", "company_eligibility_assessments"])
       await database.query(`delete from public.${table} where company_id=any($1::uuid[])`, [companyIds]);
