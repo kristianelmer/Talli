@@ -441,3 +441,61 @@ for (const patch of [{ companyId: other }, { incomeYear: 2024 }]) {
       reviewSha256: hash, acknowledgedWarningCodes: [], realFilingConfirmed: true }), TalliApiError);
   });
 }
+
+test('source send preserves approval, manifest and correction head in one authenticated call', async t => {
+  const result = { submissionId: sourceId };
+  const calls = environment(t, result);
+  const command = { approvalId: other, manifestSha256: hash, expectedHead: previewId };
+  assert.deepEqual(await approvalTransport.sendRf1086SourceProduction('owner-token', command), result);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url.pathname, `${base}/source-production-filings`);
+  assert.equal(calls[0].request.headers.Authorization, 'Bearer owner-token');
+  assert.deepEqual(JSON.parse(calls[0].request.body), command);
+});
+
+for (const response of [{}, { submissionId: null }, { submissionId: 'invalid' }]) {
+  test(`source send refuses malformed receipt ${JSON.stringify(response)}`, async t => {
+    const calls = environment(t, response);
+    await assert.rejects(approvalTransport.sendRf1086SourceProduction('owner-token', {
+      approvalId: other, manifestSha256: hash, expectedHead: null }), TalliApiError);
+    assert.equal(calls.length, 1);
+  });
+}
+
+for (const code of ['rf1086_unknown_production_outcome', 'rf1086_blocked_production_operation', 'send_unavailable']) {
+  test(`source send preserves ${code} without automatic retry`, async t => {
+    const problem = { type: 'about:blank', title: 'Secret title', detail: 'Secret original',
+      status: 409, code, instance: '/fixture', requestId: 'fixture' };
+    const calls = environment(t, problem, 409);
+    await assert.rejects(approvalTransport.sendRf1086SourceProduction('owner-token', {
+      approvalId: other, manifestSha256: hash, expectedHead: null }), error => {
+      assert.equal(error.problem.code, code);
+      const message = approvalTransport.rf1086ActionErrorMessage(error);
+      assert.doesNotMatch(message, /Secret/);
+      if (code === 'rf1086_unknown_production_outcome') assert.match(message, /ukjent.*avklar/);
+      if (code === 'rf1086_blocked_production_operation') assert.match(message, /ikke et nytt forsøk/);
+      return true;
+    });
+    assert.equal(calls.length, 1);
+  });
+}
+
+const positionResponse = () => ({ companyId: company, incomeYear: 2025, approvalId: other,
+  manifestSha256: hash, expectedHead: null, submissionId: sourceId, disposition: 'confirmed', feedbackState: 'sent',
+  approvedAt: '2026-09-29T12:00:00Z', previewText: 'Exact approved æ preview\r\n' });
+test('retained dispatch status is a scoped authenticated read, never a send', async t => {
+  const calls = environment(t, positionResponse());
+  assert.deepEqual(await approvalTransport.loadRf1086SourceProductionPosition('owner-token', other, company, 2025), positionResponse());
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].request.method, 'GET');
+  assert.equal(calls[0].request.cache, 'no-store');
+  assert.equal(calls[0].url.pathname, `${base}/source-production-filings/${other}`);
+});
+for (const [name, patch] of Object.entries({ company: { companyId: other }, year: { incomeYear: 2024 },
+  approval: { approvalId: sourceId }, absentClaim: { submissionId: null }, absentFeedback: { feedbackState: null },
+  unknownDisposition: { disposition: 'ready' }, unclaimedWithSubmission: { disposition: 'unclaimed' } })) {
+  test(`dispatch status rejects ${name} mismatch`, async t => {
+    environment(t, { ...positionResponse(), ...patch });
+    await assert.rejects(approvalTransport.loadRf1086SourceProductionPosition('owner-token', other, company, 2025), TalliApiError);
+  });
+}

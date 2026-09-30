@@ -910,13 +910,13 @@ archive codec remains unchanged; these stricter checks govern recovery use.
 
 The next dispatch step must commit its initial/retry intent under current source,
 annual and authorization admission before network I/O. This assessment is a
-read-only position, not that admission; full-year provider dispatch remains closed.
+read-only position, not that admission; it grants no provider operation.
 
 
 ### Durable source operation intent
 
 `Rf1086SourceOperationPreparation` reports the persisted journal event and whether
-this transaction created it. The backend-only `prepare_source_operation_v1`
+this transaction created it. The private underlying `prepare_source_operation_v1`
 serializes company/year and submission scope, checks original claim/manifest,
 operation order, payload hashes and current owner/MFA, Authority, Billing,
 permission, overrides and technical release gates. Before the main POST it also
@@ -934,7 +934,7 @@ Exact replay is idempotent; contradictory outcomes and stale intent IDs fail.
 Recording a completed request does not require the earlier MFA or entitlement
 to remain fresh. Rollback suspends preparation while preserving this outcome
 recording and historical recovery. No new tables or archive codecs are added.
-Application dispatch integration and provider interaction remain unexposed.
+The application component consumes these intents through the authenticated full-year send route.
 
 
 `Rf1086SourceOperationJournal` binds each admitted intent and exact outcome.
@@ -945,10 +945,12 @@ identity, acquires and discards the provider binding outside database admission,
 commits current annual evidence for the main document, and preserves approved
 bytes during subsequent current-authority admissions. It performs no provider
 mutation while a database guard is held. A generic transport or persistence
-exception leaves an unknown outcome. No full-year HTTP route is composed yet.
+exception leaves an unknown outcome. The authenticated full-year route accepts only retained approval identity; production configuration and current release gates remain mandatory.
 
 Migration `20260929192057_rf1086_dispatch_binding_identity.sql` binds the exact
 credential request/external identity to each intent under Authority/Billing locks.
 It closes the older prepare RPC; rollback also keeps that bypass closed while
 preserving in-flight completion. Tests cover simulated dispatch/crash behavior,
 exact replay, and database binding changes without actual provider credentials.
+
+`inspect_rf1086_source_dispatch_position` returns `Rf1086SourceDispatchPosition` from validated retained approval/claim/archive evidence. Unclaimed, current-admission, retry, uncertainty, blocked, fresh-approval and confirmed states never grant a provider operation. The read requires original actor identity and does not acquire credentials, claim a filing, or reread current originals.

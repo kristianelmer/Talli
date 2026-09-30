@@ -1,6 +1,7 @@
 """Dispatch original full-year bytes through committed, currently admitted intents."""
 from talli_backend.modules.billing.public import BillingSnapshotQuery
 from talli_backend.modules.shareholder_register_filing import public as rf
+from talli_backend.shared.kernel import CompanyId, IncomeYear
 from .shareholder_register_annual_readiness import read_annual_readiness
 from .shareholder_register_source_admission import ShareholderRegisterSourceAdmission
 from .shareholder_register_source_claim import ShareholderRegisterSourceClaimWorkflow
@@ -51,6 +52,16 @@ class ShareholderRegisterSourceDispatchWorkflow:
         self._sessions = sessions
         self._claim = ShareholderRegisterSourceClaimWorkflow(sessions, documents)
         self._admission = ShareholderRegisterSourceAdmission(sessions, documents)
+
+    async def position(self, access_token, *, approval_id):
+        session = await self._sessions.session(access_token)
+        retained = await session.read_source_claim_approval(approval_id)
+        if retained is None:
+            raise rf.ShareholderRegisterFilingError.not_found()
+        query = rf.Rf1086ArchiveQuery(CompanyId(retained.approval.company_id),
+            IncomeYear(retained.approval.income_year), session.actor_id)
+        archive = await session.archive_source(query)
+        return rf.inspect_rf1086_source_dispatch_position(archive, query=query, approval_id=approval_id)
 
     async def send(self, access_token, *, approval_id, manifest_sha256, expected_head=None, correlation_id):
         session = await self._sessions.session(access_token)

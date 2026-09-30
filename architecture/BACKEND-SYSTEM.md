@@ -852,7 +852,20 @@ The source-dispatch component of `shareholder-register-filing` binds the
 `Rf1086SourceOperationJournal` port to
 `talli_backend.application.shareholder_register_source_dispatch._AdmittedJournal`.
 It commits each currently admitted full-year intent before external I/O and uses
-retained original bytes for continuation. It has no composed HTTP route yet.
+retained original bytes for continuation. Its HTTP composition is described below.
 Technical migration inventory also includes
 `supabase/migrations/20260929192057_rf1086_dispatch_binding_identity.sql` and
 `supabase/rollback/20260929192057_rf1086_dispatch_binding_identity.sql`.
+
+
+`/api/v1/shareholder-register-filings/source-production-filings` composes the guarded full-year dispatch component through the existing RF filing workflow. Its strict command contains only approval ID, exact manifest hash and expected predecessor. Caller XML, annual proof, actor, ready flags and operation keys are rejected. Unknown and blocked outcomes have distinct problem codes; unclassified failures direct the owner to retained status. Approval and send remain separate actions. Production configuration and current release gates still control dispatch.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/shareholder-register-filings/source-production-filings"],"transportDependencies":["talli_backend.application.shareholder_register_source_dispatch"]}
+-->
+
+The companion GET `/api/v1/shareholder-register-filings/source-production-filings/{approvalId}` publishes RF-owned retained dispatch position without configuration, current-byte preflight, claim mutation or provider credentials. Every subsequent POST still repeats consequential admission.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/shareholder-register-filings/source-production-filings/{approvalId}"]}
+-->

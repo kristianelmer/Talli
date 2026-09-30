@@ -121,3 +121,30 @@ def assess(archive, *, query, submission_id):
     except (ValueError, TypeError, KeyError, AttributeError, StopIteration,
             rf.ShareholderRegisterFilingError, rf.Rf1086YearSourceError):
         raise rf.Rf1086ProductionError('basis_unavailable') from None
+
+
+def position(archive, *, query, approval_id):
+    try:
+        _validate_archive_source(query, archive)
+        approval = next(row for row in archive.approvals if row.id == approval_id.value)
+        lineage = next(row for row in archive.source_approval_lineage if row.approval_id == approval_id.value)
+        prior = rf.inspect_rf1086_retained_source_approval(
+            rf.Rf1086RetainedSourceApproval(approval, lineage.manifest_text),
+            approval_id=approval_id, manifest_sha256=approval.manifest_hash, actor_id=query.actor_id)
+        claim = next((row for row in archive.source_submission_claims if row.approval_id == approval_id), None)
+        if claim is None:
+            disposition = ('unclaimed' if approval.invalidated_at is None
+                and approval.manifest['schemaVersion'] == 'production-source-approval-v2'
+                else 'current_approval_required')
+            feedback = None
+        else:
+            assessment = assess(archive, query=query, submission_id=claim.submission_id)
+            disposition = assessment.disposition
+            feedback = next(row.feedback_state for row in archive.production_submissions if row.id == claim.submission_id.value)
+        return rf.Rf1086SourceDispatchPosition(query.company_id, query.income_year,
+            approval_id, approval.manifest_hash, None if prior is None else prior.submission_id,
+            None if claim is None else claim.submission_id, disposition, feedback,
+            approval.approved_at, lineage.source_preview.preview_text)
+    except (ValueError, TypeError, KeyError, AttributeError, StopIteration,
+            rf.ShareholderRegisterFilingError, rf.Rf1086YearSourceError):
+        raise rf.Rf1086ProductionError('basis_unavailable') from None

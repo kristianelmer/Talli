@@ -61,6 +61,48 @@ def events_for(snapshot, index, states):
     return with_events(snapshot, rows)
 
 
+@pytest.mark.parametrize('state', ['unclaimed', 'current_approval_required', 'current_admission_required',
+    'retry_admission_required', 'recovery_required', 'blocked', 'confirmed'])
+def test_read_only_position_preserves_retained_identity_and_recovery_state(state):
+    archive = annual_submission(status='accepted' if state == 'confirmed' else 'approved')
+    if state in ('unclaimed', 'current_approval_required'):
+        archive = replace(archive, source_submission_claims=(), production_submissions=(), submission_head=None)
+        if state == 'current_approval_required':
+            archive = replace(archive, approvals=(replace(archive.approvals[0],
+                invalidated_at=archive.approvals[0].approved_at, invalidation_reason='Changed facts'),))
+    elif state in ('retry_admission_required', 'recovery_required', 'blocked'):
+        failure = {'retry_admission_required': 'retryable', 'recovery_required': 'unknown', 'blocked': 'blocked'}[state]
+        archive = events_for(archive, 0, [(1, 'unknown' if failure == 'unknown' else 'failed', failure)])
+    approval = archive.approvals[0]
+    result = rf.inspect_rf1086_source_dispatch_position(archive,
+        query=rf.Rf1086ArchiveQuery(archive.company_id, archive.income_year, ACTOR), approval_id=rf.ApprovalId(approval.id))
+    assert result.disposition == state and result.manifest_sha256 == approval.manifest_hash
+    assert result.company_id == archive.company_id and result.income_year == archive.income_year
+    assert result.preview_text == archive.source_approval_lineage[0].source_preview.preview_text
+    assert result.approved_at == approval.approved_at
+    assert (result.submission_id is None) == (state in ('unclaimed', 'current_approval_required'))
+    assert result.feedback_state == (archive.production_submissions[0].feedback_state if archive.production_submissions else None)
+
+
+def test_position_rejects_incomplete_journal_instead_of_showing_send():
+    archive = annual_submission(status='accepted')
+    archive = replace(archive, production_events=archive.production_events[1:])
+    with pytest.raises(rf.Rf1086ProductionError):
+        rf.inspect_rf1086_source_dispatch_position(archive,
+            query=rf.Rf1086ArchiveQuery(archive.company_id, archive.income_year, ACTOR),
+            approval_id=rf.ApprovalId(archive.approvals[0].id))
+
+
+@pytest.mark.parametrize('change', ['actor', 'approval'])
+def test_position_cannot_rebind_retained_approval_to_another_identity(change):
+    archive = annual_submission()
+    actor = replace(ACTOR, subject=type(ACTOR.subject)(str(uuid4()))) if change == 'actor' else ACTOR
+    approval_id = rf.ApprovalId(str(uuid4()) if change == 'approval' else archive.approvals[0].id)
+    with pytest.raises(rf.Rf1086ProductionError):
+        rf.inspect_rf1086_source_dispatch_position(archive,
+            query=rf.Rf1086ArchiveQuery(archive.company_id, archive.income_year, actor), approval_id=approval_id)
+
+
 @pytest.mark.parametrize('kind', KINDS)
 def test_unstarted_v2_requires_current_admission_with_exact_immutable_payload(kind):
     archive = annual_submission(kind)

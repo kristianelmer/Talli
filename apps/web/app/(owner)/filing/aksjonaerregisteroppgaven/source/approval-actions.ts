@@ -46,6 +46,7 @@ export async function approveSourceProductionAction(command: RfSourceProductionA
     const token = await getCurrentSessionAccessToken();
     if (!token) return { ok: false, message: "Logg inn på nytt for å fortsette." };
     const value = await approveRf1086SourceProduction(token, command);
+    revalidatePath("/filing/aksjonaerregisteroppgaven/source");
     revalidatePath("/filing/aksjonaerregisteroppgaven");
     return { ok: true, value };
   } catch (error) { return { ok: false, message: rf1086ActionErrorMessage(error) }; }

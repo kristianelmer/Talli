@@ -31,6 +31,7 @@ from talli_backend.application.shareholder_register_filing_session import (
 from talli_backend.application.shareholder_register_filing_workflow import ShareholderRegisterFilingWorkflow
 from talli_backend.application.shareholder_register_source_workflow import ShareholderRegisterSourceWorkflow
 from talli_backend.application.shareholder_register_source_approval import ShareholderRegisterSourceApprovalWorkflow
+from talli_backend.application.shareholder_register_source_dispatch import ShareholderRegisterSourceDispatchWorkflow
 from talli_backend.application.corporate_register_evidence import CorporateRegisterEvidenceVerifier
 from talli_backend.application.launch_signoffs import (
     LaunchSignoffAuthenticationError, LaunchSignoffError, LaunchSignoffKey,
@@ -458,6 +459,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     Rf1086ArchiveQuery, Rf1086ArchiveError, serialize_rf1086_archive, OpeningSnapshotId, PreviewId, ReadRf1086PreviewQuery, ReconcileRf1086FeedbackCommand,
     RecordRf1086OverrideCommand, RecordRf1086TestEvidenceCommand, ReviewCommentId,
     Rf1086ProductionError, Rf1086RecordedResult, Rf1086WorkspaceQuery, Rf1086SourceCorrectionPredecessor,
+    Rf1086UnknownProductionOutcomeError, Rf1086BlockedProductionOperationError,
     SendApprovedRf1086Command, ShareholderRegisterFilingError, SubmissionId,
     RecordRf1086YearSource, RecordRf1086RegisterObservation, Rf1086YearSourceError,
     Rf1086RegisterObservationError, Rf1086YearSourceSnapshot, Rf1086YearSourceId, Rf1086RegisterObservationId,
@@ -1852,6 +1854,30 @@ class RfSourceProductionReviewRequestWire(StrictTransportModel):
     income_year: RfSourceYear
     preview_id: UUID
     entitlement_id: UUID
+
+
+class RfSourceProductionSendCommandWire(StrictTransportModel):
+    approval_id: UUID
+    manifest_sha256: RfSourceHash
+    expected_head: UUID | None = None
+
+
+class RfSourceProductionSendResultWire(TransportModel):
+    submission_id: UUID
+
+
+class RfSourceProductionPositionWire(TransportModel):
+    company_id: UUID
+    income_year: RfSourceYear
+    approval_id: UUID
+    manifest_sha256: RfSourceHash
+    expected_head: UUID | None
+    submission_id: UUID | None
+    disposition: Literal['unclaimed', 'confirmed', 'recovery_required', 'blocked',
+        'current_approval_required', 'current_admission_required', 'retry_admission_required']
+    feedback_state: Literal['sent', 'processing', 'accepted', 'rejected', 'action_required', 'unknown'] | None
+    approved_at: AwareDatetime
+    preview_text: str
 
 
 class RfSourceCorrectionPredecessorWire(StrictTransportModel):
@@ -5309,6 +5335,9 @@ def create_app(
         documents_application, corporate_governance_application,
     )
     shareholder_register_source_approval = ShareholderRegisterSourceApprovalWorkflow(
+        shareholder_register_filing_session_factory, documents_application,
+    )
+    shareholder_register_source_dispatch = ShareholderRegisterSourceDispatchWorkflow(
         shareholder_register_filing_session_factory, documents_application,
     )
 
@@ -12453,6 +12482,63 @@ def create_app(
                 real_filing_confirmed=body.real_filing_confirmed, predecessor=predecessor,
                 correlation_id=CorrelationId(request.state.request_id))
             return rf1086_recorded_wire(value)
+        return await shareholder_register_source_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/source-production-filings",
+        operation_id="rf1086SendSourceProduction", response_model=RfSourceProductionSendResultWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_send_source_production(
+        body: RfSourceProductionSendCommandWire, request: Request,
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfSourceProductionSendResultWire:
+        async def execute():
+            try:
+                value = await shareholder_register_source_dispatch.send(bearer_token(credentials),
+                    approval_id=ApprovalId(str(body.approval_id)), manifest_sha256=body.manifest_sha256,
+                    expected_head=None if body.expected_head is None else SubmissionId(str(body.expected_head)),
+                    correlation_id=CorrelationId(request.state.request_id))
+                return RfSourceProductionSendResultWire(submission_id=UUID(value.submission_id))
+            except ValueError:
+                # Transport is already validated. A provider/result decoding
+                # failure cannot be presented as an invalid caller command.
+                raise Rf1086ProductionError("send_unavailable") from None
+        try:
+            return await shareholder_register_source_call(lambda: billing_call(
+                lambda: shareholder_register_filing_call(execute)))
+        except Rf1086UnknownProductionOutcomeError as error:
+            raise ApiProblem(status=409, code=error.code, title="Innsendingsutfallet må avklares",
+                detail="En operasjon har ukjent utfall. Kontroller lagret status og avklar utfallet før du gjør noe mer.") from None
+        except Rf1086BlockedProductionOperationError as error:
+            raise ApiProblem(status=409, code=error.code, title="Innsendingen er stanset",
+                detail="Den lagrede operasjonen tillater ikke et nytt forsøk. Kontroller innsendingsstatus.") from None
+        except ApiProblem:
+            raise
+        except Exception:
+            raise ApiProblem(status=503, code="send_unavailable", title="Innsendingen kunne ikke bekreftes",
+                detail="Kontroller lagret innsendingsstatus før du gjør noe mer. Innsendingen kan ha blitt mottatt.") from None
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/source-production-filings/{approvalId}",
+        operation_id="rf1086ReadSourceProductionPosition", response_model=RfSourceProductionPositionWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_read_source_production_position(
+        approvalId: UUID, credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfSourceProductionPositionWire:
+        async def execute():
+            value = await shareholder_register_source_dispatch.position(bearer_token(credentials),
+                approval_id=ApprovalId(str(approvalId)))
+            return RfSourceProductionPositionWire(company_id=UUID(str(value.company_id)),
+                income_year=int(value.income_year), approval_id=UUID(value.approval_id.value),
+                manifest_sha256=value.manifest_sha256,
+                expected_head=None if value.expected_head is None else UUID(value.expected_head.value),
+                submission_id=None if value.submission_id is None else UUID(value.submission_id.value),
+                disposition=value.disposition, feedback_state=value.feedback_state,
+                approved_at=value.approved_at, preview_text=value.preview_text)
         return await shareholder_register_source_call(execute)
 
     @application.get(

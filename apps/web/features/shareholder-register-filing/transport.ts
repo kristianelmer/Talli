@@ -11,6 +11,7 @@ import {
   type RfCurrentYearSourceWire, type RfRegisterObservationsWire,
   type RfSourceProductionReviewRequestWire, type RfSourceProductionReviewWire,
   type RfSourceProductionApprovalCommandWire,
+  type RfSourceProductionSendCommandWire,
 } from "@talli/talli-api-client";
 import { backendBaseUrl } from "#backend-configuration";
 
@@ -400,6 +401,8 @@ export function rf1086ApiErrorCode(error: unknown) {
 }
 export function rf1086ActionErrorMessage(error: unknown) {
   const code = error instanceof TalliApiError ? error.problem?.code : undefined;
+  if (code === "rf1086_unknown_production_outcome") return "Innsendingsutfallet er ukjent. Kontroller lagret status og avklar utfallet før du gjør noe mer.";
+  if (code === "rf1086_blocked_production_operation") return "Innsendingen er stanset. Den lagrede operasjonen tillater ikke et nytt forsøk.";
   if (code === "authentication_required") return "Innlogging kreves.";
   if (code === "step_up_required") return "Ekstra identitetsbekreftelse med tofaktorautentisering kreves.";
   if (code === "SHAREHOLDER_REGISTER_FILING_NOT_FOUND") return "Fant ikke RF-1086-grunnlaget.";
@@ -424,5 +427,22 @@ export async function prepareRf1086SourceProductionReview(accessToken: string,
 export async function approveRf1086SourceProduction(accessToken: string, body: RfSourceProductionApprovalCommandWire) {
   const value = await client(accessToken).rf1086ApproveSourceProduction(body, request());
   if (value.companyId !== body.companyId || value.incomeYear !== body.incomeYear) throw new TalliApiError(502, undefined);
+  return value;
+}
+
+export async function sendRf1086SourceProduction(accessToken: string, body: RfSourceProductionSendCommandWire) {
+  // The generated client validates the response. Neither timeout nor a lost
+  // response authorizes transport-level retries of a consequential operation.
+  return client(accessToken).rf1086SendSourceProduction(body, authorityRequest());
+}
+
+export async function loadRf1086SourceProductionPosition(accessToken: string, approvalId: string,
+  companyId: string, incomeYear: number) {
+  const value = await client(accessToken).rf1086ReadSourceProductionPosition(approvalId, request());
+  sourceScope(value, companyId, incomeYear);
+  if (value.approvalId !== approvalId
+      || ((value.disposition === "unclaimed") && (value.submissionId !== null || value.feedbackState !== null))
+      || (value.submissionId === null && !["unclaimed", "current_approval_required"].includes(value.disposition))
+      || ((value.submissionId === null) !== (value.feedbackState === null))) throw new TalliApiError(502, undefined);
   return value;
 }

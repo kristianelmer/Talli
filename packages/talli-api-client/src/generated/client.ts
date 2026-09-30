@@ -3966,6 +3966,29 @@ export interface RfSourceProductionApprovalCommandWire {
   reviewSha256: string;
 }
 
+export interface RfSourceProductionSendCommandWire {
+  approvalId: string;
+  expectedHead?: string | null;
+  manifestSha256: string;
+}
+
+export interface RfSourceProductionSendResultWire {
+  submissionId: string;
+}
+
+export interface RfSourceProductionPositionWire {
+  approvalId: string;
+  approvedAt: string;
+  companyId: string;
+  disposition: "unclaimed" | "confirmed" | "recovery_required" | "blocked" | "current_approval_required" | "current_admission_required" | "retry_admission_required";
+  expectedHead: string | null;
+  feedbackState: "sent" | "processing" | "accepted" | "rejected" | "action_required" | "unknown" | null;
+  incomeYear: number;
+  manifestSha256: string;
+  previewText: string;
+  submissionId: string | null;
+}
+
 export interface RfSourceCorrectionPredecessorWire {
   manifestSha256: string;
   reason: string;
@@ -9990,6 +10013,41 @@ function isRfSourceProductionApprovalCommandWire(value: unknown): value is RfSou
   );
 }
 
+function isRfSourceProductionSendCommandWire(value: unknown): value is RfSourceProductionSendCommandWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvalId","expectedHead","manifestSha256"]) &&
+    isUuid(value.approvalId) &&
+    (value.expectedHead === undefined || (isUuid(value.expectedHead) || value.expectedHead === null)) &&
+    (typeof value.manifestSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.manifestSha256))
+  );
+}
+
+function isRfSourceProductionSendResultWire(value: unknown): value is RfSourceProductionSendResultWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["submissionId"]) &&
+    isUuid(value.submissionId)
+  );
+}
+
+function isRfSourceProductionPositionWire(value: unknown): value is RfSourceProductionPositionWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvalId","approvedAt","companyId","disposition","expectedHead","feedbackState","incomeYear","manifestSha256","previewText","submissionId"]) &&
+    isUuid(value.approvalId) &&
+    isDateTime(value.approvedAt) &&
+    isUuid(value.companyId) &&
+    (value.disposition === "unclaimed" || value.disposition === "confirmed" || value.disposition === "recovery_required" || value.disposition === "blocked" || value.disposition === "current_approval_required" || value.disposition === "current_admission_required" || value.disposition === "retry_admission_required") &&
+    (isUuid(value.expectedHead) || value.expectedHead === null) &&
+    ((value.feedbackState === "sent" || value.feedbackState === "processing" || value.feedbackState === "accepted" || value.feedbackState === "rejected" || value.feedbackState === "action_required" || value.feedbackState === "unknown") || value.feedbackState === null) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    (typeof value.manifestSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.manifestSha256)) &&
+    typeof value.previewText === "string" &&
+    (isUuid(value.submissionId) || value.submissionId === null)
+  );
+}
+
 function isRfSourceCorrectionPredecessorWire(value: unknown): value is RfSourceCorrectionPredecessorWire {
   return (
     isRecord(value) &&
@@ -12926,6 +12984,20 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     ): Promise<Rf1086RecordedResultWire> {
       return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-production-approvals",
         "POST", request, input, isRf1086RecordedResultWire);
+    },
+
+    async rf1086ReadSourceProductionPosition(
+      approvalId: string, request: TalliRequestOptions = {},
+    ): Promise<RfSourceProductionPositionWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-production-filings/" + encodeURIComponent(approvalId),
+        "GET", request, undefined, isRfSourceProductionPositionWire);
+    },
+
+    async rf1086SendSourceProduction(
+      input: RfSourceProductionSendCommandWire, request: TalliRequestOptions = {},
+    ): Promise<RfSourceProductionSendResultWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/source-production-filings",
+        "POST", request, input, isRfSourceProductionSendResultWire);
     },
 
     async rf1086ReadSourcePreview(

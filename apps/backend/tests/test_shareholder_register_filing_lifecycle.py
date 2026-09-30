@@ -30,6 +30,11 @@ def migration(db, path):
     original_search_path = db.execute("select current_setting('search_path')").fetchone()[0]
     try:
         db.execute(body)
+        # The stripped COMMIT would drop these migration-local tables. Keep
+        # that behavior when consecutive migrations reuse a temporary name.
+        db.execute('reset role')
+        for name in re.findall(r'\bcreate\s+(?:temporary|temp)\s+table\s+([a-zA-Z_]\w*)\s*\([^;]*\)\s+on\s+commit\s+drop\s*;', body, re.I):
+            db.execute(sql.SQL('drop table if exists {}').format(sql.Identifier('pg_temp', name)))
         # Each shipped migration owns a transaction; SET LOCAL must not leak
         # into the next migration when this rehearsal strips those boundaries.
         db.execute("select set_config('search_path',%s,true)", (original_search_path,))

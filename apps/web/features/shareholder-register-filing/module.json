@@ -40,7 +40,9 @@
     "rf1086ReadSourcePreview",
     "rf1086RecordOverride",
     "rf1086RecordTestEvidence",
-    "rf1086Workspace"
+    "rf1086Workspace",
+    "rf1086SendSourceProduction",
+    "rf1086ReadSourceProductionPosition"
   ],
   "dependencies": [],
   "allowedImports": [

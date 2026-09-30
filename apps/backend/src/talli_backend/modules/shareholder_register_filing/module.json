@@ -133,7 +133,9 @@
       "Rf1086SourceDispatchAssessment",
       "assess_rf1086_source_dispatch",
       "Rf1086SourceOperationPreparation",
-      "execute_rf1086_source_dispatch"
+      "execute_rf1086_source_dispatch",
+      "Rf1086SourceDispatchPosition",
+      "inspect_rf1086_source_dispatch_position"
     ],
     "events": [],
     "errors": [
@@ -475,7 +477,8 @@
     "sourceDispatch": "apps/backend/tests/test_rf1086_source_dispatch.py",
     "durableSourceOperationDatabase": "apps/backend/tests/test_rf1086_durable_source_operation_database.py",
     "durableSourceExecution": "apps/backend/tests/test_rf1086_source_dispatch_execution.py",
-    "sourceDispatchWorkflow": "apps/backend/tests/test_rf1086_source_dispatch_workflow.py"
+    "sourceDispatchWorkflow": "apps/backend/tests/test_rf1086_source_dispatch_workflow.py",
+    "sourceDispatchApi": "apps/backend/tests/test_rf1086_source_dispatch_api.py"
   },
   "compatibilityExceptions": []
 }

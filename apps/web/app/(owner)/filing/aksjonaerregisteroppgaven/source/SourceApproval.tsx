@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import type { RfSourcePreviewWire, RfSourceProductionReviewWire, RfSourceProductionApprovalCommandWire } from "../../../../../features/shareholder-register-filing";
 import { Banner } from "../../../../components/ui";
 import { approveSourceProductionAction, reviewSourceProductionAction, type PriorFiling } from "./approval-actions";
@@ -54,10 +55,10 @@ export function SourceApproval({ preview, onLockChange, busy }: { preview: RfSou
       } catch { setMessage("Svaret ble borte. Godkjenningen kan være lagret. Prøv samme godkjenning igjen."); }
     });
   }
-  if (approved) return <Banner variant="info">Godkjenningen er lagret. Oppgaven er ikke sendt. Innsending av hele årsgrunnlaget er foreløpig ikke tilgjengelig.</Banner>;
+  if (approved) return <Banner variant="info">Godkjenningen er lagret. Oppgaven er ikke sendt. <Link href={`/filing/aksjonaerregisteroppgaven/source?companyId=${preview.companyId}&incomeYear=${preview.incomeYear}#innsending`}>Gå til innsending og status</Link>.</Banner>;
   return <section className="wizardSection" aria-label="Godkjenning av årsgrunnlag">
     <h3>Godkjenn oppgaven</h3>
-    <p>Kontroller forhåndsvisningen før du godkjenner. Innsending av hele årsgrunnlaget er foreløpig ikke tilgjengelig.</p>
+    <p>Kontroller forhåndsvisningen før du godkjenner. Du sender oppgaven i et eget steg etter godkjenningen.</p>
     <button type="button" className="btn btn--secondary" disabled={busy || pending || attempt !== null}
       onClick={prepare}>{pending ? "Kontrollerer …" : "Kontroller vilkår for godkjenning"}</button>
     {message ? <div role="alert"><Banner variant="danger">{message}</Banner></div> : null}

@@ -396,7 +396,9 @@
         "/api/v1/shareholder-register-filings/source-previews/{previewId}",
         "/api/v1/shareholder-register-filings/source-documents/{documentId}",
         "/api/v1/shareholder-register-filings/current-year-source",
-        "/api/v1/shareholder-register-filings/source-intake-basis"
+        "/api/v1/shareholder-register-filings/source-intake-basis",
+        "/api/v1/shareholder-register-filings/source-production-filings",
+        "/api/v1/shareholder-register-filings/source-production-filings/{approvalId}"
       ]
     },
     {
@@ -1152,7 +1154,8 @@
       "talli_backend.application.shareholder_register_source_workflow",
       "talli_backend.application.corporate_register_evidence",
       "talli_backend.application.shareholder_register_source_approval",
-      "talli_backend.application.shareholder_register_archive"
+      "talli_backend.application.shareholder_register_archive",
+      "talli_backend.application.shareholder_register_source_dispatch"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",

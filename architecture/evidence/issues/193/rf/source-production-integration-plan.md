@@ -634,3 +634,36 @@ outcome reconciliation, actual database/object restore, retention generations,
 streaming archives and final security/browser/recovery acceptance remain. Local
 PostgreSQL Auth/Storage shims do not substitute for exact-revision Supabase CI.
 All seven RF acceptance criteria remain pending; no real AS or provider was used.
+
+
+## Authenticated dispatch and owner status — 30 September
+
+Strict full-year send HTTP and generated client contracts now compose the guarded
+dispatch path. Only approval ID, exact manifest hash and expected predecessor
+are accepted. Unknown/blocked operations retain distinct errors; a lost response
+never causes a transport retry. A separate authenticated read publishes validated
+retained dispatch position without a claim, configuration requirement, current
+original download or provider credentials. Existing API contracts are unchanged.
+
+The source screen lists retained full-year approvals independently of current
+source availability. Approval and send are separate owner actions. The server
+action rechecks scope and exact retained identity; the backend alone authorizes
+each effect. The screen clears send controls after every attempt until a new
+status read. Unknown and blocked positions expose no send control. Confirmed
+positions use the existing read-only feedback flow. A synthetic browser check
+caught a misleading default “Sent” feedback label on uncertain history; feedback
+labels now appear only after confirmation. This isolated component check is not
+the authenticated full-stack browser acceptance journey.
+
+Predecessor CI cf0ae48d passed Application and 700 Authority/RF database cases.
+The following database lane stopped after 496 passes: its rollback rehearsal
+stripped COMMIT but did not emulate ON COMMIT DROP, leaving migration-local
+temporary tables across boundaries. The rehearsal helper now cleans only tables
+declared ON COMMIT DROP by that migration. All 110 affected lifecycle and durable
+operation cases pass locally. Exact-revision Supabase CI still remains required.
+
+Remaining RF work includes uncertain-operation reconciliation, full authenticated
+browser/security/recovery journeys, legacy feedback backfill, actual database and
+object restoration, retention generations, streaming archive bundles and the two
+immutable acceptance gates. All seven acceptance criteria remain pending. No
+production setting, actual provider operation or real AS data was used.
