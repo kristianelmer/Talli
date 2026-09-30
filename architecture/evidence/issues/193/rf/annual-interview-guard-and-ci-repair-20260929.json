@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_ANNUAL_GUARD_AND_RF_DATABASE_REPAIR",
+  "baseCommit": "2dd9ac832e95a783f4c59ce7127b53fbf9aded3e",
+  "scope": "Serialize frozen annual-interview writes with company admission; repair two RF database test fixtures exposed after the Banking fixture repair.",
+  "changes": [
+    "A private infrastructure trigger guards INSERT/UPDATE/DELETE on public.annual_data, locking both sorted company scopes on reassignment. It changes no writer rules, RLS, values, ownership or frozen historical read semantics.",
+    "The existing company_archive_projection_executor owns the helper; the frozen annual reader gains no privileges or dependencies. The migration temporarily borrows and restores exact role membership, schema privileges and trigger-creation EXECUTE authority.",
+    "Rollback suspends changes without deleting facts; replay restores writes. Add seven actual PostgreSQL cases to the mandatory authority lane.",
+    "The preview revocation test commits membership revocation on its company-guard holder, bounds lock/wait failure and requires FORBIDDEN after release. The old second synchronous connection blocked on the holder and exhausted CI.",
+    "The legacy source approval test binds both verified actor ID and claims and proves protected source visibility before asserting its production rejection."
+  ],
+  "verification": {
+    "focused": "18 passed: seven annual-interview and eleven preview cases.",
+    "restricted": "Seven annual-interview cases pass under a non-superuser. Two additional rollback/replays starting without guard-owner SET preserve exact memberships and backend_system schema ACLs; test-fixture memberships restore exactly.",
+    "architecture": "Checker exit 0; whitespace check passes.",
+    "harness": "All 70 CI/rehearsal harness cases pass.",
+    "database": "405 passed in one fresh PostgreSQL17 run: RF runtime, Banking observations/guards, annual-interview guards, full-year sources/previews/bridges/approvals/claims, other company guards, Documents retention/originals and RF lifecycle including repeated predecessor migrations.",
+    "ci": "Previous run 36548714542 at84cef18a: Application passed, Database cancelled at the 30-minute bound. Stack identifies the synchronous revocation wait. New revision CI required."
+  },
+  "limits": [
+    "Disposable PostgreSQL17 with minimal Auth/Storage shims is not full Supabase CI. A whole Authority lane attempt stopped after 21 passes at its required real temporary-grant assertion: the local superuser fixture does not create those overlap grants. It is not claimed as passed.",
+    "An earlier 256MiB disposable PGDATA run passed 279 remaining RF cases before catalog growth exhausted space during repeated historical migration replay. Final verification uses a fresh 1GiB disposable fixture.",
+    "Raw annual/browser writes still acquire their row locks before the row-trigger guard; this does not prove company-first ordering or retire those writers.",
+    "Current RF-owned annual readiness, final dispatch and production AS evidence remain pending. This introduces no Annual Compliance coordinator or annual checkout authority. All seven RF criteria remain pending; PR216 remains draft."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-annual-guard-20260929-14d7",
+  "sha256": {
+    "talli-84cef-database.log": "055d605ac94a95bd478f2b8387c9b2981ef92c401bc29416987b3a675c228632",
+    "talli-annual-authority-lane.log": "f1da6e1081a5fcc44e25fe03eb5d1495a8afca12db379f27f03373dbfff1c6c6",
+    "talli-annual-rf-lane.log": "bf129fc8b883f9aa5d24e143e9a6dd0d262317809e750db8d8936391054fe879",
+    "talli-annual-rf-remaining.log": "3e74f7e1cd12264b450efc2d9f7f8c9e9330517aab7c6ffb7e6ee1e52752f9b6",
+    "talli-annual-final-build.log": "8138fa7ded537f847569bdb0d47dbf0f275623668f3d4112886f8c59b970beb7",
+    "talli-annual-rf-final.log": "d4872d323d9450d3bd0432fc78bdc403780a44177e47eb2c770f5cb196d1395e",
+    "talli-annual-restricted.log": "37afa4b9975027fd382299bf2cdeef140e4056a7c0e71eae8dcabb7426f3c7cc",
+    "talli-annual-restricted.py": "b9d3b602d7b28a823667ab8054872d18063bb42920ee61f0948cabdaa6a3e3bd",
+    "talli-annual-architecture.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "talli-annual-ci-harness.log": "044b32cd0224d3408b50783a09416c657e2620712e1add718fc76378216f5637",
+    "talli-build-owned-bank-db.py": "79eac3a484bdedaa697e0888fc5e0a60381976e3cd71b1905153bccd973d7602"
+  }
+}

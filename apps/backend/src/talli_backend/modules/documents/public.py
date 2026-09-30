@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+import re
 from collections.abc import Callable, Mapping
 from typing import Protocol, TypeVar
 from uuid import UUID
@@ -166,6 +167,65 @@ class DocumentBackupObject:
 
 
 @dataclass(frozen=True, slots=True)
+class RetainedDocumentOriginalReceipt:
+    """An immutable Documents-owned byte copy; not a filing authorization."""
+    original_id: str
+    document_id: DocumentId
+    company_id: CompanyId
+    source_income_year: IncomeYear
+    metadata_sha256: str
+    content_sha256: str
+    byte_length: int
+    retained_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class RetainedDocumentOriginal:
+    receipt: RetainedDocumentOriginalReceipt
+    content: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class RetainedDocumentOriginalQuery:
+    """Exact historical evidence identity; the source year can precede a filing."""
+    document_id: DocumentId
+    company_id: CompanyId
+    source_income_year: IncomeYear
+    metadata_sha256: str
+    content_sha256: str
+    byte_length: int
+
+    def __post_init__(self) -> None:
+        if (not isinstance(self.document_id, DocumentId) or not isinstance(self.company_id, CompanyId)
+                or not isinstance(self.source_income_year, IncomeYear)
+                or any(not isinstance(value, str) or re.fullmatch(r"[a-f0-9]{64}", value) is None
+                       for value in (self.metadata_sha256, self.content_sha256))
+                or type(self.byte_length) is not int or not 1 <= self.byte_length <= 10485760):
+            raise DocumentsError.invalid_input()
+
+
+@dataclass(frozen=True, slots=True)
+class RetainedDocumentOriginalSnapshot:
+    document: DocumentRecord
+    original: RetainedDocumentOriginal
+
+
+@dataclass(frozen=True, slots=True)
+class VerifiedDocumentEvidence:
+    """Accepted metadata whose private object bytes were just reverified.
+
+    Metadata is a point-in-time observation, not a filing lease or proof of legal
+    signature. A retained_original receipt additionally pins an immutable byte
+    copy; it creates no filing evidence reference or current-source approval.
+    """
+    document: DocumentRecord
+    content_sha256: str
+    byte_length: int
+    integrity_status: DocumentStatus
+    retained_original: RetainedDocumentOriginalReceipt | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class DocumentRestoreObject:
     document: DocumentBackupObject
     target_storage_key: str
@@ -188,9 +248,15 @@ class DocumentsPersistence(Protocol):
     def aal2(self) -> bool: ...
 
     async def actor_role(self, company_id: CompanyId) -> str | None: ...
+    async def refresh_actor_role(self, company_id: CompanyId) -> str | None:
+        """Reread accepted authorization; never fall back to session-cached roles."""
+        ...
     async def stage_upload(self, command: BeginDocumentUploadCommand, *, name: str, storage_key: str) -> DocumentRecord: ...
     async def quarantine_upload(self, document_id: DocumentId, reason: str) -> None: ...
     async def finalize_upload(self, document_id: DocumentId, *, byte_length: int, content_sha256: str) -> DocumentRecord: ...
+    async def retain_verified_original(self, document: DocumentRecord, content: bytes) -> RetainedDocumentOriginalReceipt: ...
+    async def read_retained_original(self, original_id: str, company_id: CompanyId) -> RetainedDocumentOriginal: ...
+    async def read_retained_evidence(self, query: RetainedDocumentOriginalQuery) -> RetainedDocumentOriginalSnapshot: ...
     async def get_document(self, document_id: DocumentId) -> DocumentRecord | None: ...
     async def list_documents(self, company_ids: tuple[CompanyId, ...]) -> tuple[DocumentRecord, ...]: ...
     async def has_evidence_references(self, document_id: DocumentId) -> bool: ...
@@ -216,8 +282,10 @@ class DocumentsSession(Protocol):
     async def begin_upload(self, command: BeginDocumentUploadCommand) -> DocumentUploadTransfer: ...
     async def finalize_upload(self, document_id: DocumentId) -> DocumentRecord: ...
     async def list_documents(self, company_ids: tuple[CompanyId, ...]) -> tuple[DocumentRecord, ...]: ...
+    async def verify_document_evidence(self, document_id: DocumentId) -> VerifiedDocumentEvidence: ...
     async def create_transfer(self, document_id: DocumentId, kind: DocumentTransferKind) -> DocumentObjectTransfer: ...
     async def remove_document(self, document_id: DocumentId, *, reason: str) -> DocumentRecord: ...
+    async def read_retained_evidence(self, query: RetainedDocumentOriginalQuery) -> RetainedDocumentOriginalSnapshot: ...
     async def backup_projection(self, company_id: CompanyId, income_year: IncomeYear) -> tuple[DocumentBackupObject, ...]: ...
     async def prepare_isolated_restore(
         self,
@@ -301,7 +369,91 @@ def document_binding_persistence_adapter(
     return declare
 
 
+@dataclass(frozen=True, slots=True)
+class DocumentEvidenceRetentionCommand:
+    """Retain one verified original inside the caller's source transaction."""
+
+    source_record_type: str
+    source_record_id: str
+    document_id: DocumentId
+    company_id: CompanyId
+    source_income_year: IncomeYear
+    status: DocumentStatus
+    content_sha256: str
+    byte_length: int
+    metadata_sha256: str
+
+
+class DocumentEvidenceRetentionPersistence(Protocol):
+    async def retain_verified_evidence(self, command: DocumentEvidenceRetentionCommand) -> None:
+        """Lock and compare complete metadata, then retain until caller commits.
+
+        A failed comparison must abort that same transaction. Implementations
+        cannot use a separately committed connection for this operation.
+        """
+        ...
+
+
+def document_evidence_retention_adapter(
+    contract: type[object],
+) -> Callable[[DocumentsAdapter], DocumentsAdapter]:
+    def declare(adapter: DocumentsAdapter) -> DocumentsAdapter:
+        _ = contract
+        return adapter
+    return declare
+
+
+class DocumentOriginalPersistence(Protocol):
+    async def retain_verified_original(self, document: DocumentRecord, content: bytes) -> RetainedDocumentOriginalReceipt: ...
+    async def read_retained_original(self, original_id: str, company_id: CompanyId) -> RetainedDocumentOriginal: ...
+    async def read_retained_evidence(self, query: RetainedDocumentOriginalQuery) -> RetainedDocumentOriginalSnapshot: ...
+    async def assert_historical_original(self, receipt: RetainedDocumentOriginalReceipt) -> None:
+        """Assert an exact immutable receipt under the company guard and live ownership.
+
+        Return no bytes and do not require current document metadata. Mismatch
+        must abort the caller's transaction. This does not prove source freshness.
+        """
+        ...
+
+    async def assert_retained_original(self, receipt: RetainedDocumentOriginalReceipt) -> None:
+        """Assert immutable bytes and current metadata in the caller's transaction.
+
+        The assertion acquires the company guard and document row lock. Any
+        mismatch must abort the SQL transaction, even if caught by a caller.
+        """
+        ...
+
+
+def document_original_persistence_adapter(contract: type[object]) -> Callable[[DocumentsAdapter], DocumentsAdapter]:
+    def declare(adapter: DocumentsAdapter) -> DocumentsAdapter:
+        _ = contract
+        return adapter
+    return declare
+
+
+def document_metadata_sha256(document: DocumentRecord) -> str:
+    """Documents-owned complete public metadata digest, including storage binding."""
+    from .evidence import metadata_sha256
+    return metadata_sha256(document)
+
+
+def serialize_retained_document_original(snapshot: RetainedDocumentOriginalSnapshot, *, query: RetainedDocumentOriginalQuery) -> str:
+    """Encode verified captured metadata and exact bytes, without filing authority."""
+    from .archive_storage import serialize
+    return serialize(snapshot, query=query)
+
+
+def parse_retained_document_original(value: str, *, query: RetainedDocumentOriginalQuery) -> RetainedDocumentOriginalSnapshot:
+    """Verify portable evidence against an independently retained source identity."""
+    from .archive_storage import parse
+    return parse(value, query=query)
+
+
 __all__ = [
+    "serialize_retained_document_original", "parse_retained_document_original",
+    "RetainedDocumentOriginalQuery", "RetainedDocumentOriginalSnapshot",
+    "RetainedDocumentOriginalReceipt", "RetainedDocumentOriginal", "DocumentOriginalPersistence",
+    "document_original_persistence_adapter",
     "BeginDocumentUploadCommand",
     "DocumentBackupObject",
     "DocumentErrorCode",
@@ -320,9 +472,14 @@ __all__ = [
     "DocumentTransferKind",
     "DocumentUploadTransfer",
     "StoredDocumentObject",
+    "VerifiedDocumentEvidence",
     "document_object_storage_adapter",
     "documents_authorization_adapter",
     "documents_persistence_adapter",
+    "DocumentEvidenceRetentionCommand",
+    "DocumentEvidenceRetentionPersistence",
+    "document_evidence_retention_adapter",
+    "document_metadata_sha256",
     "DocumentBindingQuery",
     "DocumentBindingPersistence",
     "document_binding_persistence_adapter"

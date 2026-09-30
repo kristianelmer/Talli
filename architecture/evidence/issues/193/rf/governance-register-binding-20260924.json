@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "11f461ede38325a80e2d2317908d1cb7fee8657a",
+  "status": "PASS_BOUNDED_GOVERNANCE_REGISTER_BINDING",
+  "scope": "Direct Governance application/HTTP point-in-time independent RF register evidence admission before Ledger recognition; exact completed replay skips the new live checks.",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/application/corporate_register_evidence.py": "ff94a984fe9c79f85f12bbe6c0434e65f29a91a578f00c42610fd5a0f80c2248",
+    "apps/backend/src/talli_backend/application/corporate_governance_workflow.py": "8d5649276d246c7f5dd05fbb1cb39e0598d21999c9d1df89b0e2c47984f3a683",
+    "apps/backend/src/talli_backend/adapters/supabase_corporate_governance.py": "5b3bb9455d73b788ae839664a14c3c463d8bc6d4bcb66f886e744e060f7aaaa1",
+    "apps/backend/src/talli_backend/main.py": "754bdf992cfaff2c5bc7209789fbdc00634ee7c1003d16be08ff9a71493617ae",
+    "apps/backend/tests/test_corporate_register_evidence.py": "a4f2f36e1509387d17cccdd8691cb1b3e6f0c08163d7214c5d8c02f7a56db664",
+    "architecture/backend-system.json": "b6a87acab45be2780f13bacfd2ab6160df35f5751b620e9dbc27d3b58ef496b4",
+    "architecture/BACKEND-SYSTEM.md": "915d15657902020e3a1638ce33aa20e8acc7d83bf17d87d56355cbec5a478950",
+    "architecture/dependency-evidence.json": "2005537c71837b3275c3e7a1d400ed717c3c2239bcad6bc622ad57b4f614841a"
+  },
+  "verification": {
+    "combined_affected_suite_before_integer_revision_hardening": {
+      "passed": 348,
+      "log": "focused-tests.log"
+    },
+    "final_verifier_workflow_http_suite": {
+      "passed": 55,
+      "log": "verifier-final.log"
+    },
+    "unmodified_existing_affected_regression_suites": {
+      "passed": 295,
+      "included_in": "focused-tests.log"
+    },
+    "architecture": {
+      "exit_code": 0,
+      "log": "architecture.log",
+      "dependency_evidence_generated": true
+    },
+    "diff_check": {
+      "exit_code": 0
+    },
+    "independent_review": "rf_manifest_review found no actionable blocker; point-in-time limitation explicitly excluded"
+  },
+  "privateProofSha256": "b53318cf855c3f8ec17c943c5971cbc232996ff10da9e6c1555a8256ea7facde",
+  "limits": [
+    "RF currentness and Documents verification use separate owner transactions, not shared company-guard transaction",
+    "No database/provider/hosted actions performed; transaction rollback tests use a behavioral transaction double",
+    "Original document list checks remain before exact replay as before; new RF/original checks occur only after exact replay",
+    "Register observation does not contain share premium or full Governance allocations; existing payment validation and later full RF source reconciliation retain those checks",
+    "No new company guards, role grants, owner-table access or SQL migrations",
+    "All seven full RF criteria remain pending. No real AS or production filing evidence."
+  ]
+}

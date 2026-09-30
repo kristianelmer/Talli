@@ -1,0 +1,104 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "242cb29f790695495a305dcf094617e179a6b81c",
+  "scope": "Authenticated full-year RF source capture, approval, guarded mock send, feedback and archive",
+  "validation": {
+    "baseRevisionCi": {
+      "runId": 36682150018,
+      "result": "success",
+      "jobs": [
+        "Application",
+        "Database isolation",
+        "Release gate"
+      ],
+      "immutableEvidence": "skipped"
+    },
+    "browser": {
+      "status": "passed",
+      "tests": 16,
+      "fixtureSafetyTests": 15,
+      "journeyDurationMs": 77167.346541,
+      "topology": "Real disposable Supabase Auth/Storage/Postgres with final capability contracts, Next, FastAPI and loopback-only authority mock",
+      "incomeYear": 2026,
+      "seededPrerequisites": [
+        "accepted owner and synthetic company-year admission using current manifest/legal constants",
+        "opening shares and matching ledger opening bank input",
+        "billing-exempt pilot entitlement through actual API",
+        "local-only release-signoff fixture"
+      ],
+      "applicationCreated": [
+        "signed-upload original PDF and verified content hash",
+        "one immutable source version with two shareholders and one share transfer",
+        "preview and current annual review",
+        "one full-year approval and submission claim",
+        "one main XML, two child XMLs and confirmation",
+        "accepted feedback with two retained originals",
+        "native browser NDJSON archive download verified offline with strict source history and feedback originals"
+      ],
+      "additionalAssertions": [
+        "frozen legacy readiness false does not decide full-year review",
+        "canonical non-RF blocking override prevents review after shared-table retirement",
+        "new approval becomes the selected send scope without a reload",
+        "post-send controls require a status reread",
+        "reload preserves confirmed status and private feedback links",
+        "no horizontal overflow at 320 and 1440 pixels",
+        "exact sent XML hashes match approved preview",
+        "no duplicate/rejected provider mutation",
+        "no browser health or egress violations",
+        "fixture source histories, retained originals and uploaded objects cleaned"
+      ]
+    },
+    "focusedWebTests": 200,
+    "ciControlTests": 83,
+    "typecheck": "passed",
+    "architecture": "passed",
+    "localCleanup": "passed: owned Supabase stack removed, all 42 pre-existing dormant containers restored, Colima returned to stopped, generated Next files restored",
+    "currentRevisionCi": {
+      "revision": "87549d59c61ebbca72602ce1ed77c7da25458e24",
+      "runId": 36687670485,
+      "result": "failure",
+      "cause": "Historical source approval fixture overwrote the cutover-aware receiver before the browser; see historical-source-fixture-restoration-20260930.json"
+    }
+  },
+  "fixes": [
+    {
+      "symptom": "Exact active pilot rejected before current full-year review",
+      "cause": "Web action used Billing allowed derived from frozen legacy readiness",
+      "fix": "Use exact exempt pilot discovery for review; backend still checks current approval/send authority"
+    },
+    {
+      "symptom": "Full-year review returned 503 after final database cutover",
+      "cause": "RF other-overrides predicate referenced retired public.filing_overrides",
+      "fix": "Preserve legacy query before cutover; use existing owned Accounts blocker query after validated cutover fence or removal; absent/unready owner contract fails closed"
+    },
+    {
+      "symptom": "New approval displayed but status action received empty approval ID",
+      "cause": "Client state initialized before approval existed and survived server revalidation",
+      "fix": "Reset send panel selection/status/consent when newest approval ID changes"
+    },
+    {
+      "symptom": "Annual warnings repeated generic text",
+      "fix": "Explain annual interview, period lock and bank balance warnings individually"
+    }
+  ],
+  "limitations": [
+    "Synthetic mock authority acceptance is not external provider conformance or a real AS pilot",
+    "No real provider operation, hosted database change, production enablement or merge",
+    "New migration tested on final local topology; complete ordered CI including pre-cutover and rollback regressions is pending",
+    "Full-year correction, crash/unknown-outcome and adversarial browser journeys remain",
+    "Actual database/object restore, legacy feedback backfill, retention generations and HTTP concurrency memory sizing remain",
+    "Prior intermittent exact operation replay failure remains unexplained; no speculative runtime change",
+    "All seven RF acceptance criteria remain pending"
+  ],
+  "sha256": {
+    "tests/browser_shareholder_register_filing.mjs": "027beda94f4b3e2623700b28bd8b050323099f9146c8959269364f03ba8119aa",
+    "tests/fixtures/rf1086-source-browser-journey.mjs": "3317c2480fa68940ab759f7dde7689a4ec7f88c90a4ad557fe68bbcb08be60ba",
+    "tests/support/rf1086-fixture-access.mjs": "62e47d87f182b7a7427b4af6ff9ba921acd948b16d9e664e76b5dd74126febda",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/SourceApproval.tsx": "fd3f00b0f0b847cf7e16ec65b40bb0828f4f28df0eddd14d0b8ec440aba7189f",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/approval-actions.ts": "f527806f33d314feffec63c614fc225cbc2a464e3030e2adeec7a10876553bfe",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/page.tsx": "51124818bfbc017cd743ad8eba1704744fc05e04dbb5de7022cd2653304e23ce",
+    "supabase/migrations/20260930083000_rf1086_override_receiver_cutover.sql": "0e59ba3401c90336e3a766de1709cd1f2557d10776f6a8b0ec079d2dcec13ed5",
+    "scripts/rf-consequential-successors.json": "f2724699b24c9080876adf9955ec80664943241159231be549848dcb06fc16c7",
+    "apps/backend/tests/test_rf1086_annual_approval_database.py": "1a38be72e41d2d6cfcf9db4bce0279bac2b54fe71702b0e83d3aa42efe76a87a"
+  }
+}

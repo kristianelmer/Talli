@@ -44,6 +44,8 @@
       "BankSyncResult",
       "BankTransaction",
       "BankTransactionPage",
+      "BankYearReconciliation",
+      "BankYearReconciliationEvidence",
       "BankingQueries",
       "PersistedBankFilePreview",
       "PreparedBankSuggestion"
@@ -105,7 +107,7 @@
     "projections": [
       "public.bank_transactions"
     ],
-    "migrations": "supabase/migrations/20260828100000_banking_capability.sql"
+    "migrations": "supabase/migrations/20260828100000_banking_capability.sql; supabase/migrations/20260929073756_banking_year_reconciliation_projection.sql; supabase/migrations/20260929092425_banking_company_write_guards.sql; supabase/migrations/20260929125448_banking_year_reconciliation_evidence.sql"
   },
   "ports": [
     {
@@ -174,7 +176,8 @@
   "tests": {
     "contract": "apps/backend/tests/test_banking_public_contract.py",
     "policy": "apps/backend/tests/test_banking.py",
-    "architecture": "tests/architecture_foundation.test.mjs"
+    "architecture": "tests/architecture_foundation.test.mjs",
+    "yearEvidence": "apps/backend/tests/test_banking_year_reconciliation_evidence_database.py"
   },
   "compatibilityExceptions": []
 }

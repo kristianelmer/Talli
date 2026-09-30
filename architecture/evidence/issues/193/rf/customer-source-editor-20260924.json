@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "068acb799e0a576c8c40d7134a0f86c4fde1f65c",
+  "status": "PASS_BOUNDED_CUSTOMER_SOURCE_EDITOR",
+  "sourceSha256": {
+    "apps/web/app/(owner)/filing/[obligation]/page.tsx": "f4d79f0299f70ba5f753a14cf4595e0d582bb5a9ec0477b1591140b6ef713a9f",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/SourceEditor.tsx": "aefa7e11b807ae45e12b3326bf48bdc9b1436a800eafd4a8b7afff95877e1342",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/actions.ts": "463a9aabed18582547a1a1b454b81f255f02b03afd818bea5464dc6b9a151b6a",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/model.ts": "e1bc891e20835a17267051737378f5425aa00b65e571948dc7b1af4e58bb6e3e",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/page.tsx": "9108e11e33909d0ff38f277318aec1cfeb93441d1dd1721916ef551e274c9967",
+    "apps/web/features/shareholder-register-filing/MODULE.md": "7b16972e57b6aa223b0b0b15311d18482a4ff08af0868b64e2f650fe7a2fcf5a",
+    "apps/web/features/shareholder-register-filing/index.ts": "33a83557fc94e1d4797c13423011e6f9bb0eb985033205037cc2477b6021a371",
+    "apps/web/features/shareholder-register-filing/module.json": "68494ee21e987cc7e9010fa8f5c098ee707981527e2865929ded60f99fc174c1",
+    "apps/web/features/shareholder-register-filing/transport.ts": "fc32c152e2e795b3854358afaa29c741e8da07b3981d6e20fdd1252a7e8063b3",
+    "apps/web/tests/shareholder-register-source-editor.test.mjs": "d7348d370472c6b86ae3c0ca2e3da35f9df5b94e850e4cced5d582485583a12b",
+    "apps/web/tests/shareholder-register-source-transport.test.mjs": "5c49deb3b3e92d831ec6d8c88054d2760b9fe1f74e247be136517e82670558c8",
+    "package.json": "06a46ebe250be652e7dd6f5379d1e8565dac48cce3a625133f72c419f17f1259"
+  },
+  "verification": {
+    "webBoundaryTestsPassed": 470,
+    "modelTestsPassed": 45,
+    "transportTestsPassed": 106,
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "productionWebpackBuild": "PASS",
+    "browserComponentHarness": "PASS: correction, exact money, review resets, rejected/uncertain retries, receipt-bound preview, desktop and mobile; server actions mocked",
+    "realDatabaseBrowserJourney": "PENDING"
+  },
+  "limits": [
+    "Normal local Turbopack build could not resolve the shared node_modules/next symlink outside its workspace root; webpack compiled and built the final routes successfully. Normal CI build remains required.",
+    "UI consumes typed backend APIs; generated-client transport and component behavior were tested separately. This is not an authenticated persisted end-to-end filing test.",
+    "Independent capital register-observation entry screen remains pending. Increased nominal value is editable but explicitly unavailable for full capture until Governance support lands.",
+    "Approval/send composition, current-evidence locking across all owners, correction admission, archive/backup/deletion integration, broader acceptance and genuine production pilot remain pending.",
+    "No provider submission, hosted migration or production activation. All seven full RF acceptance criteria remain pending."
+  ],
+  "privateProofSha256": "fda2108a67b3b8d3e44ac189ef9ef1cee3361cb668fca153c939c44f10c94f6f"
+}

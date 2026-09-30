@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import fields, is_dataclass
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 import hashlib
 import json
 import re
@@ -22,10 +23,19 @@ _REQUIRED_FAMILIES = frozenset((
     'filing_approval_snapshots','production_filing_submissions','production_filing_events','production_feedback_artifacts',
 ))
 _SCHEMA = 'rf1086-source-v1'
+_FULL_YEAR_SCHEMA = 'rf1086-source-v2'
+_FULL_YEAR_FAMILIES = frozenset(('year_source_versions','year_source_heads','register_observations',
+    'source_previews','source_review_bridges','source_approval_bindings','source_submission_bindings','submission_heads'))
+
+
+def _schema(snapshot):
+    return _SCHEMA if snapshot.full_year_archive is None and snapshot.full_year_family_counts is None else _FULL_YEAR_SCHEMA
+
 
 
 def _value(value):
-    if isinstance(value, datetime): return value.isoformat()
+    if isinstance(value, (date, datetime)): return value.isoformat()
+    if isinstance(value, Decimal): return format(value, "f")
     if is_dataclass(value): return {item.name:_value(getattr(value,item.name)) for item in fields(value)}
     if isinstance(value, Mapping): return {key:_value(child) for key,child in value.items()}
     if isinstance(value, (list,tuple)): return [_value(child) for child in value]
@@ -37,7 +47,11 @@ def _source_digest(snapshot: Rf1086SourceSnapshot) -> str:
     # or production approval hashes. Read timestamps are not mutable facts.
     payload = _value(snapshot)
     payload.pop('as_of')
-    payload['schema'] = _SCHEMA
+    if _schema(snapshot) == _SCHEMA:
+        # Preserve historical V1 evidence byte-for-byte.
+        payload.pop('full_year_archive')
+        payload.pop('full_year_family_counts')
+    payload['schema'] = _schema(snapshot)
     return hashlib.sha256(json.dumps(payload,sort_keys=True,separators=(',',':'),ensure_ascii=True,allow_nan=False).encode('utf-8')).hexdigest()
 
 
@@ -95,6 +109,7 @@ def _coverage(query: Rf1086SourceQuery, snapshot: Rf1086SourceSnapshot) -> Rf108
         reasons.append('correction_history_missing')
     if any(artifact.submission_id not in submissions for artifact in snapshot.workspace.feedback_artifacts):
         reasons.append('artifact_submission_link_missing')
+    reasons.extend(_full_year_coverage(query, snapshot))
     status = 'unavailable' if inventory is None else 'incomplete' if reasons else 'complete'
     return Rf1086HistoryCoverage(status,inventory.reference if inventory else None,tuple(reasons),snapshot.as_of,
         len(snapshot.journal_events),max((event.sequence for event in snapshot.journal_events),default=None))
@@ -118,6 +133,11 @@ def _assert_scope(query: Rf1086SourceQuery, snapshot: Rf1086SourceSnapshot):
 
 def _readiness(snapshot: Rf1086SourceSnapshot):
     workspace = snapshot.workspace
+    archive = snapshot.full_year_archive
+    if (archive is not None and archive.source_history is not None and archive.source_history.year_sources
+            or any(row.source == 'rf1086-full-year-v1' for row in workspace.previews)):
+        # Retained history alone cannot prove current cross-owner admission.
+        return 'unavailable', ('rf1086_full_year_readiness_not_evaluated',), ()
     hard_blocks = []; warnings = []
     preview = max(workspace.previews,key=lambda row:(row.created_at,row.id),default=None)
     if preview is None: return 'unavailable',('rf1086_preview_missing',),()
@@ -151,7 +171,7 @@ def build_source_facts(query: Rf1086SourceQuery, snapshot: Rf1086SourceSnapshot)
     _assert_scope(query,snapshot)
     digest = _source_digest(snapshot)
     evidence = Rf1086SourceEvidence(query.company_id,query.income_year,
-        f'rf1086:{query.company_id}:{query.income_year.value}',_SCHEMA+':'+digest,digest,snapshot.as_of)
+        f'rf1086:{query.company_id}:{query.income_year.value}',_schema(snapshot)+':'+digest,digest,snapshot.as_of)
     coverage = _coverage(query,snapshot)
     readiness,blocks,warnings = _readiness(snapshot)
     attempts = []
@@ -186,3 +206,51 @@ def verify_source_evidence(query: VerifyRf1086SourceEvidenceQuery, snapshot: Rf1
     return (query.evidence.obligation == expected.obligation and query.evidence.reference == expected.reference
         and query.evidence.version == expected.version and query.evidence.digest == expected.digest
         and current.history_coverage.status == 'complete')
+
+
+def _full_year_coverage(query, snapshot):
+    from .preparation import _validate_archive_source
+    from .public import Rf1086ArchiveQuery, Rf1086ArchiveSnapshot
+    archive, counts = snapshot.full_year_archive, snapshot.full_year_family_counts
+    source_rows = any(row.source == 'rf1086-full-year-v1' for row in snapshot.workspace.previews)
+    source_rows = source_rows or any(row.case_profile == 'rf1086_full_year_v1'
+        for row in (*snapshot.workspace.approvals, *snapshot.workspace.production_submissions))
+    if archive is None:
+        return ['full_year_history_missing'] if source_rows or counts is not None else []
+    try:
+        if not isinstance(archive, Rf1086ArchiveSnapshot) or archive.source_history is None:
+            raise ValueError()
+        _validate_archive_source(Rf1086ArchiveQuery(query.company_id, query.income_year, query.actor_id), archive)
+        # Both projections came from one scoped snapshot. Neither can omit a
+        # parent or substitute a different record behind matching family counts.
+        for name in ('previews','simulations','approvals','production_submissions','permissions'):
+            left={row.id:row for row in getattr(archive,name)}
+            right={row.id:row for row in getattr(snapshot.workspace,name)}
+            if left != right: raise ValueError()
+        preview_ids={row.id for row in snapshot.workspace.previews}
+        if {row.id:row for row in archive.review_comments if row.preview_id in preview_ids} != {
+                row.id:row for row in snapshot.workspace.review_comments}: raise ValueError()
+        events={row.id:row for row in archive.production_events}
+        if set(events) != {row.id for row in snapshot.journal_events}: raise ValueError()
+        for row in snapshot.journal_events:
+            for name in ('submission_id','operation_name','body_hash','idempotency_key','authority_reference',
+                         'safe_error_code','created_at','attempt','resulting_status'):
+                if getattr(row,name) != getattr(events[row.id],name): raise ValueError()
+            if row.state != events[row.id].operation_state or row.failure_classification != events[row.id].failure_class:
+                raise ValueError()
+        artifacts={row.id:row for row in archive.feedback_artifacts}
+        if set(artifacts) != {row.id for row in snapshot.workspace.feedback_artifacts}: raise ValueError()
+        for row in snapshot.workspace.feedback_artifacts:
+            if any(getattr(row,field.name) != getattr(artifacts[row.id],field.name) for field in fields(row)):
+                raise ValueError()
+        h=archive.source_history
+        actual={'year_source_versions':len(h.year_sources),'year_source_heads':int(h.year_source_head is not None),
+            'register_observations':len(h.register_observations),'source_previews':len(h.source_previews),
+            'source_review_bridges':len(h.review_bridges),'source_approval_bindings':len(archive.source_approval_lineage),
+            'source_submission_bindings':len(archive.source_submission_claims),'submission_heads':int(archive.submission_head is not None)}
+        if (not isinstance(counts, Mapping) or set(counts) != _FULL_YEAR_FAMILIES
+                or any(type(value) is not int or value < 0 for value in counts.values()) or counts != actual):
+            return ['full_year_enumeration_incomplete']
+        return []
+    except (ValueError, TypeError, AttributeError, KeyError, ShareholderRegisterFilingError):
+        return ['full_year_history_inconsistent']

@@ -441,16 +441,19 @@ test(
          )`,
         [submissionId, approvalId, entitlementId, companyId, ownerUser.id, "b".repeat(64)],
       );
+      // Fixture access suspends user triggers; retain the company/year normally
+      // copied from the submission by the production archive scope trigger.
       await fixtureQuery(
         `insert into shareholder_register_filing.production_filing_events (
            submission_id, operation_name, operation_state, attempt, body_hash,
-           idempotency_key, authority_reference, failure_class, resulting_status
-         ) values ($1, 'confirm', 'succeeded', 1, $2, $3, $4, null, 'received')`,
+           idempotency_key, authority_reference, failure_class, resulting_status, company_id, income_year
+         ) values ($1, 'confirm', 'succeeded', 1, $2, $3, $4, null, 'received', $5, 2025)`,
         [
           submissionId,
           "d".repeat(64),
           randomUUID(),
           JSON.stringify({ dialogId, forsendelseId }),
+          companyId,
         ],
       );
 
@@ -581,13 +584,14 @@ test(
       await fixtureQuery(
         `insert into shareholder_register_filing.production_filing_events (
            submission_id, operation_name, operation_state, attempt, body_hash,
-           idempotency_key, authority_reference, failure_class, resulting_status
-         ) values ($1, 'confirm', 'succeeded', 2, $2, $3, $4, null, 'received')`,
+           idempotency_key, authority_reference, failure_class, resulting_status, company_id, income_year
+         ) values ($1, 'confirm', 'succeeded', 2, $2, $3, $4, null, 'received', $5, 2025)`,
         [
           submissionId,
           "e".repeat(64),
           randomUUID(),
           JSON.stringify({ dialogId, forsendelseId: "not-a-uuid" }),
+          companyId,
         ],
       );
       const malformedClaim = await actorStore.rpc(owner, "claim_production_feedback_reconciliation", {
@@ -599,9 +603,9 @@ test(
       await fixtureQuery(
         `insert into shareholder_register_filing.production_filing_events (
            submission_id, operation_name, operation_state, attempt, body_hash,
-           idempotency_key, authority_reference, failure_class, resulting_status
-         ) values ($1, 'confirm', 'succeeded', 3, $2, $3, '{malformed', null, 'received')`,
-        [submissionId, "f".repeat(64), randomUUID()],
+           idempotency_key, authority_reference, failure_class, resulting_status, company_id, income_year
+         ) values ($1, 'confirm', 'succeeded', 3, $2, $3, '{malformed', null, 'received', $4, 2025)`,
+        [submissionId, "f".repeat(64), randomUUID(), companyId],
       );
       const invalidJsonClaim = await actorStore.rpc(owner, "claim_production_feedback_reconciliation", {
         p_submission_id: submissionId,

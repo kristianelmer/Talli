@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-28",
+  "status": "PASS_BOUNDED_PORTABLE_SOURCE_ORIGINALS",
+  "baseCommit": "c5e29ae5c24ce6eff5b7aacb42ee46618b7ad6c8",
+  "scope": "Production RF archive endpoint composes all exact approved-source document versions with Documents-owned historical originals, retains portable metadata/receipt/bytes, preserves them in company downloads, and verifies them offline.",
+  "behavior": [
+    "Closed Documents codec preserves canonical metadata text without changing existing metadata hashes, plus receipt and exact base64 bytes.",
+    "Independent expected document/company/source year, metadata hash, content hash and length bind portable decoding; missing, duplicate, changed and surplus evidence fails closed.",
+    "Shared source versions deduplicate by complete identity, while changed metadata versions retain separate originals.",
+    "Owner/AAL2 Documents retrieval uses the same authenticated actor as the RF session; source labels/status/creation time corroborate captured metadata.",
+    "Web checks technical commitments; source originals no longer depend on current-year mutable document metadata.",
+    "CLI validates included sourceOriginals and supports --require-source-originals; source-byte verification is distinct from database restore or all-object verification."
+  ],
+  "verification": {
+    "backend": "501 passed in the combined RF/Documents/backend suite before the final source-label corroboration addition.",
+    "finalDelta": "36 passed for codec, bundle, HTTP fail-closed behavior and offline verifier; 8 actual HTTP archive export cases passed after final composition change.",
+    "web": "110 passed for archive download and restore consistency.",
+    "contract": "95 passed including generated OpenAPI/client checks.",
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "actualExport": "Updated tracked fixture generated through FastAPI/TestClient. Python CLI with --require-source-originals verifies its actual retained prior-year bytes."
+  },
+  "limits": [
+    "Inline record max 16 MiB, original max 10 MiB, total inline source bytes max 128 MiB; larger bundles fail closed pending streaming export.",
+    "Source-original verification does not prove authenticity against an independent signature.",
+    "Feedback and unrelated company object byte bundles, unapproved source/observation history, actual database/object restoration, retention generations, expiry and cancellation/deletion remain pending.",
+    "Complete final-revision database CI remains pending; the preceding b528778d database job passed earlier Governance replay and failed final authority recutover with permission denied for function lock_ledger_writer_year_v1.",
+    "All seven RF acceptance criteria remain PENDING."
+  ],
+  "authority": {
+    "hostedChanges": false,
+    "providerCalls": false,
+    "productionAsDataUsed": false,
+    "filingAuthorityAdded": false
+  },
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-source-original-bundle-20260928-14d7",
+  "sha256": {
+    "talli-source-originals-backend-final.log": "107da5b075604c6b7ea63f3dfe7fd0e873304a8e9987663c76f9f22f6ee9b4a7",
+    "talli-source-originals-new-tests.log": "c45dd5d9c8b1238b5f9c76baa88de0efb4d336558fb42742d5d957ff3237c6f5",
+    "talli-source-originals-web.log": "2c46e259e333fd8aa6655e02cc2811882db7812e2f6f2faa814491ef73f382a5",
+    "talli-source-originals-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "talli-source-originals-contract.log": "f544a0fae2a39eaaf03dc01a2052bf0dc7195ac0fbe68cc395d92a0e6cb4d7e8",
+    "talli-source-originals-architecture.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "talli-source-originals-cli.log": "4faa6a6af15a0d113c620c985058d64b39cb09bb81b2bec1638702cec7a79a33",
+    "talli-source-originals-api-final.log": "2673fe08bdc0f5ba79812d37a991f04b5bc3b48577b1cb5b4c498374912a332a",
+    "fixture.py": "165c51662d0d47b92628be4ff1bc263e607e6f75365a21d8fa0c0fc267e15f23"
+  }
+}

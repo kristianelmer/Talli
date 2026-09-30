@@ -1,0 +1,67 @@
+{
+  "baseCommit": "3bd993c20ffdc37bb6b05e2ca213d3f103c9e115",
+  "status": "PASS_BOUNDED_HISTORY_AND_REPLAY_FULL_DATABASE_INTEGRATION_PENDING",
+  "scope": [
+    "Full-year approval enumerates all production submissions for company/year under the held admission guards and requires empty history or its exact terminal leaf",
+    "Reject competing roots, forks, missing ancestors, cycles, stale predecessors and unresolved outcomes without timestamp or actor filtering",
+    "Documents historical lifecycle restores only affected Governance guards while Ledger/RF remain at their required predecessor topology"
+  ],
+  "verification": {
+    "focusedBackendPassed": 191,
+    "replayScopePassed": 12,
+    "architecture": "PASS",
+    "architectureContractPassed": 1,
+    "testPartitionPassed": 2,
+    "databaseCasesCollected": 47,
+    "newHistoryDatabaseCasesCollected": 2,
+    "newHistoryDatabaseCasesExecutedLocally": 0,
+    "postgresReplay": "PASS: full production migration reproduces absent ledger.opening_bank_inputs failure; exact Governance-only projection replays twice, preserves 19 routine identities/ACLs, restores 11 guards, leaves Ledger body and absent table unchanged, and executes the guarded routine with synthetic authorization seams"
+  },
+  "ciPredecessor": {
+    "run": 35985351807,
+    "head": "3bd993c20ffdc37bb6b05e2ca213d3f103c9e115",
+    "application": "SUCCESS",
+    "database": "FAILURE",
+    "cause": "Historical Documents replay applied the full Governance/Ledger migration after RF rollback removed ledger.opening_bank_inputs",
+    "repair": "Replay closed Governance-only table/routine inventory and original guard bodies during Documents rehearsal; production migration unchanged",
+    "completeRerun": "PENDING"
+  },
+  "limits": [
+    "History validation protects approval only; a durable company/year submission head and atomic claim remain unimplemented",
+    "Original feedback-byte and manifest verification remain separately required; full-year predecessor/archive/recovery dispatch remains pending",
+    "PostgreSQL replay uses a minimal synthetic historical topology and authorization seams, not the full Supabase stack",
+    "New restricted-role history and post-wait database cases are collected but await CI execution",
+    "No hosted changes, external provider calls, real AS data or production activation; all seven RF criteria remain PENDING"
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "cfe712494677b7d09083e26599bb4f10bcadf65679521f9795afdea94070982e",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_admission.py": "4e9e7d7c5cd26f22d7e827edeb4ca64f1f8894081ee9a33aeb4ef4469face611",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_approval.py": "15e4ce49b27637979a6b667c6d5a5e1bb3e1c9cf6e34405d3f175112162546a2",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "532391aa31b4ecd50e6bf5b2b7bf77c7476c88ddfe0ae89c779e4eae139440cf",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "d9576a2a8e9c5ba760c3d133d8b0e6ec0b0294dcb52f797ae11ec6df8e3f454b",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "415a4f49505512994c6ad5a8938d0f19f721b253bcbc8bb718260ce098eec649",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/submission_history.py": "9a6d488122e1486630f12538a53a485f402e51f93724bafe4474c8d9955e127d",
+    "apps/backend/tests/test_postgres_rf_source_admission.py": "b337d60c6800d3f998b1afc394d5ad10ac9b494bcc3955543777392f2b33e56c",
+    "apps/backend/tests/test_rf1086_source_approval.py": "11e2152d7a80f9d44704ce4ef2a540f3431efc9ae10f4ad5bc6bbfb29f5d3438",
+    "apps/backend/tests/test_rf1086_source_approval_api.py": "678b79ec321eb9ee0ed0cc20b62c1dc0abf3ce711faffa54a4b836a02740a653",
+    "apps/backend/tests/test_rf1086_source_approval_database.py": "98016f8b25c20187f482e07c4329f593160aee3dab940abd50d2fbb0086e45eb",
+    "apps/backend/tests/test_rf1086_source_correction.py": "1f9b65e4186fb5f322066ba27edb6954b7d2a7f4705b0be7420eb34c71e3db8c",
+    "apps/backend/tests/test_rf1086_submission_history.py": "a0cd6788df9d6f414a228ff8ab1e175f47c315249b099c11870364d6fb72f0aa",
+    "architecture/evidence/issues/193/rf/source-production-integration-plan.md": "4d0504efbe128bf22a8a331fa6deecd6e18f52ec02eab69dc77e210ab5865ec3",
+    "tests/documents_guard_replay_scope.test.mjs": "dbf1fa4ccf21fddc5c988e1989857f6b9dacba39f541fb1bf7e7fd352e7b4672",
+    "tests/documents_migration_lifecycle.test.mjs": "549aabffad7c248e0d439026221407962a2bb43dd218e08102d5ed6e03c20b9e",
+    "tests/support/documents_retention_rehearsal.mjs": "56191c9e3c4dd954a049f6dcfc811977d8d150671d2fa2dfc4f32f87f4d34cef"
+  },
+  "logsSha256": {
+    "talli-submission-history-final.log": "ce29557defd1bde390c962e78e18fd4adb2f774d7d01252e6df69fdb85f65cf5",
+    "talli-history-database-collection.log": "71cee941b0b31718b7417de2b7d777c9f12a1d6a54a2c0030c4c60955c36840b",
+    "talli-history-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-history-architecture-contract.log": "90ac7ea5a7cf7b6cbbda7d3e0c80ae3b22cf6c38ee140f2e42779aa267a4a14d",
+    "talli-history-partition.log": "ff1b66ba4ecb27189b73399ce7951999d187c9e444ad0985554f9a9a8551a2d4",
+    "talli-governance-replay-scope.log": "ede5e39e25c1cf0620b657a300b6fd1d338a968e7c1afd4b10724d7a56baf04b",
+    "talli-3bd993c2-failed.log": "478acdba6991b1d1f98730fabe673820f4a064f19498ab063f74a93b00436cfc"
+  },
+  "postgresProofSha256": "fe1cff6434dd6aa78f853165e190709ceece9c1643dab6dd374b9b1f5594e3d9",
+  "postgresProbeSha256": "34c8367af65285348e0e367f8b0eb778ab7ea38021f087b84695d45197c8a789",
+  "privateProofSha256": "558ad121e3c412f53e372fbdc958ed4cbbd5841a5ff0954e0b4e0f55d2c722c5"
+}

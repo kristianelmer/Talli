@@ -2,12 +2,15 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import pg from "pg";
+import { emptyDocumentsRetentionTeardown, documentsOnlyCompanyGuards, governanceOnlyCompanyGuards } from "./support/documents_retention_rehearsal.mjs";
 
 const { Client } = pg;
 const databaseUrl = process.env.DATABASE_URL;
 const migrationName = "20260901233000_documents_capability.sql";
 const registryMigrationName =
   "20260902030000_documents_evidence_reference_registry.sql";
+const originalsMigrationName = "20260924062717_documents_immutable_retained_originals.sql";
+const retentionMigrationName = "20260923102419_documents_verified_rf_evidence_retention.sql";
 const governanceLifecycleMigrationName =
   "20260902100000_corporate_governance_artifact_lifecycle.sql";
 
@@ -41,6 +44,16 @@ test(
       registryRollback,
       governanceForward,
       governanceRollback,
+      retentionForward,
+      ledgerGuardForward,
+      originalsForward,
+      originalsRollback,
+      documentsGuardForward,
+      governanceGuardForward,
+      historicalForward,
+      historicalRollback,
+      historicalAssertionForward,
+      historicalAssertionRollback,
     ] = await Promise.all([
       readFile(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/rollback/${migrationName}`, import.meta.url), "utf8"),
@@ -48,16 +61,43 @@ test(
       readFile(new URL(`../supabase/rollback/${registryMigrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/migrations/${governanceLifecycleMigrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/rollback/${governanceLifecycleMigrationName}`, import.meta.url), "utf8"),
+      readFile(new URL(`../supabase/migrations/${retentionMigrationName}`, import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql", import.meta.url), "utf8"),
+      readFile(new URL(`../supabase/migrations/${originalsMigrationName}`, import.meta.url), "utf8"),
+      readFile(new URL(`../supabase/rollback/${originalsMigrationName}`, import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260928083000_documents_historical_original_recovery.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260928083000_documents_historical_original_recovery.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/migrations/20260928124000_documents_historical_original_assertion.sql", import.meta.url), "utf8"),
+      readFile(new URL("../supabase/rollback/20260928124000_documents_historical_original_assertion.sql", import.meta.url), "utf8"),
     ]);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
     try {
       const initial = await state(client);
+      const { rows: [guards] } = await client.query(`select
+        to_regprocedure('documents.lock_company_write_v1(uuid,text)') is not null as documents,
+        to_regprocedure('ledger.acquire_company_write_guard_v1(uuid,text)') is not null as governance,
+        to_regprocedure('documents.assert_historical_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)') is not null as historical_assertion`);
       assert.equal(initial.table_owner, "documents_store_owner");
       assert.equal(initial.capability_schema, true);
 
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        // The originals rollback is empty-only and sees all rows under FORCE RLS.
+        // Never use CASCADE or a test cleanup to discard retained customer bytes.
+        if (guards.historical_assertion) await client.query(historicalAssertionRollback);
+        await client.query(historicalRollback);
+        await client.query(originalsRollback);
         await client.query(governanceRollback);
+        await client.query("begin");
+        try {
+          await client.query(emptyDocumentsRetentionTeardown);
+          await client.query("commit");
+        } catch (error) {
+          await client.query("rollback");
+          throw error;
+        }
         await client.query(registryRollback);
         await client.query(rollback);
         const predecessor = await state(client);
@@ -82,6 +122,13 @@ test(
         await client.query(forward);
         await client.query(registryForward);
         await client.query(governanceForward);
+        await client.query(retentionForward);
+        await client.query(ledgerGuardForward);
+        await client.query(originalsForward);
+        await client.query(historicalForward);
+        if (guards.documents) await client.query(documentsOnlyCompanyGuards(documentsGuardForward));
+        if (guards.governance) await client.query(governanceOnlyCompanyGuards(governanceGuardForward));
+        if (guards.historical_assertion) await client.query(historicalAssertionForward);
         const successor = await state(client);
         assert.deepEqual(
           {
@@ -109,6 +156,43 @@ test(
           ) as allowed
         `);
         assert.equal(workflowGrant.rows[0].allowed, true);
+        const retentionGrant = await client.query(`select
+          has_function_privilege('shareholder_register_filing_executor',
+            'documents.retain_verified_rf_evidence_v1(text,uuid,uuid,uuid,integer,text,text,bigint,text,uuid)',
+            'EXECUTE') as capture,
+          has_function_privilege('shareholder_register_filing_executor',
+            'documents.assert_retained_metadata_v1(text,text)', 'EXECUTE') as metadata`);
+        assert.deepEqual(retentionGrant.rows[0], { capture: true, metadata: true });
+        const originalState = await client.query(`select
+          relrowsecurity as rls, relforcerowsecurity as force_rls,
+          has_table_privilege('shareholder_register_filing_executor',
+            'documents.retained_originals','SELECT') as filing_reads_bytes,
+          has_function_privilege('shareholder_register_filing_executor',
+            'documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)',
+            'EXECUTE') as filing_asserts,
+          has_function_privilege('documents_executor',
+            'documents.read_retained_original_v1(uuid,uuid,text)','EXECUTE') as owner_reads,
+          has_function_privilege('documents_executor',
+            'documents.read_retained_evidence_v1(uuid,uuid,integer,text,text,integer,text)','EXECUTE') as owner_recovers,
+          has_function_privilege('shareholder_register_filing_executor',
+            'documents.read_retained_evidence_v1(uuid,uuid,integer,text,text,integer,text)','EXECUTE') as filing_recovers
+          from pg_catalog.pg_class where oid='documents.retained_originals'::regclass`);
+        assert.deepEqual(originalState.rows[0], {
+          rls: true, force_rls: true, filing_reads_bytes: false, filing_asserts: true, owner_reads: true, owner_recovers: true, filing_recovers: false,
+        });
+        const assertionState = await client.query(`select
+          to_regprocedure('documents.assert_historical_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)') is not null as installed,
+          has_function_privilege('shareholder_register_filing_executor',
+            to_regprocedure('documents.assert_historical_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)'),
+            'EXECUTE') as filing_asserts,
+          has_function_privilege('authenticated',
+            to_regprocedure('documents.assert_historical_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)'),
+            'EXECUTE') as browser_asserts`);
+        assert.deepEqual(assertionState.rows[0], {
+          installed: guards.historical_assertion,
+          filing_asserts: guards.historical_assertion ? true : null,
+          browser_asserts: guards.historical_assertion ? false : null,
+        });
       }
     } finally {
       await client.end();

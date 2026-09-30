@@ -272,3 +272,15 @@ def test_token_response_rejects_non_json_constants_even_in_ignored_nested_values
     token = asyncio.run(client.request_token(SYSTEM_USER_CONTROL_READ_SCOPE))
     assert token.access_token == "synthetic-local-only"
     token.discard()
+
+
+@pytest.mark.parametrize("environment", ["test", "production"])
+def test_dialogporten_scope_uses_same_exact_system_user_delegation(environment):
+    from talli_backend.adapters.maskinporten import SYSTEM_USER_DIALOGPORTEN_SCOPE
+    config = configuration(environment=environment)
+    _, rf_claims = grant(config)
+    _, dialog_claims = grant(config, scope=SYSTEM_USER_DIALOGPORTEN_SCOPE,
+        system_user_org_number="310279617", system_user_external_ref=EXTERNAL_REF)
+    assert dialog_claims == dict(rf_claims, scope=SYSTEM_USER_DIALOGPORTEN_SCOPE)
+    with pytest.raises(MaskinportenTokenError):
+        build_maskinporten_grant(config, SYSTEM_USER_DIALOGPORTEN_SCOPE)

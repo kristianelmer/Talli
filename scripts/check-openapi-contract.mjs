@@ -32,13 +32,113 @@ function resolveSchema(document, schema, location) {
   return resolved;
 }
 
-function validateSchema(document, schema, location) {
+// We can prove these alternatives disjoint without attempting general JSON
+// Schema implication: every object requires a different string const tag.
+// Refuse other oneOf shapes rather than silently giving them anyOf semantics.
+function discriminatedVariants(document, schema, location) {
+  if (!Array.isArray(schema.oneOf) || schema.oneOf.length === 0) {
+    throw new Error(`${location} has invalid oneOf`);
+  }
+  const allowed = new Set(["oneOf", "discriminator", "title", "description", "examples", "default"]);
+  if (Object.keys(schema).some((key) => !allowed.has(key))) {
+    throw new Error(`${location} has unsupported oneOf sibling keywords`);
+  }
+  const discriminator = requireObject(schema.discriminator, `${location}.discriminator`);
+  const property = discriminator.propertyName;
+  if (typeof property !== "string" || !property ||
+      Object.keys(discriminator).some((key) => !["propertyName", "mapping"].includes(key))) {
+    throw new Error(`${location} has unsupported oneOf discriminator`);
+  }
+  const mapping = requireObject(discriminator.mapping, `${location}.discriminator.mapping`);
+  const variants = new Map();
+  for (const [index, member] of schema.oneOf.entries()) {
+    requireObject(member, `${location}.oneOf[${index}]`);
+    if (typeof member.$ref !== "string" || Object.keys(member).length !== 1) {
+      throw new Error(`${location} oneOf alternatives must be plain local schema references`);
+    }
+    const variant = resolveSchema(document, member, location);
+    const tag = variant.properties?.[property];
+    if (variant.type !== "object" || variant.anyOf || variant.oneOf || variant.allOf ||
+        !Array.isArray(variant.required) || !variant.required.includes(property) ||
+        tag?.type !== "string" || typeof tag.const !== "string" ||
+        tag.anyOf || tag.oneOf || tag.allOf || tag.$ref) {
+      throw new Error(`${location} oneOf alternatives require a string const discriminator`);
+    }
+    if (variants.has(tag.const)) {
+      throw new Error(`${location} has ambiguous oneOf discriminator ${tag.const}`);
+    }
+    if (!Object.hasOwn(mapping, tag.const) || mapping[tag.const] !== member.$ref) {
+      throw new Error(`${location} has inconsistent oneOf discriminator mapping`);
+    }
+    variants.set(tag.const, member);
+  }
+  if (Object.keys(mapping).length !== variants.size) {
+    throw new Error(`${location} has extra oneOf discriminator mappings`);
+  }
+  return variants;
+}
+
+// Strict comparison inside unions: preserve every keyword, including ones the
+// ordinary additive response comparison does not interpret. Expand references
+// so an unchanged $ref cannot conceal a changed component. Cycles are outside
+// this deliberately finite supported subset.
+function unionSchemaIdentity(document, schema, location, references = new Set()) {
+  requireObject(schema, location);
+  if (Object.hasOwn(schema, "$ref")) {
+    if (Object.keys(schema).length !== 1 || references.has(schema.$ref)) {
+      throw new Error(`${location} has unsupported recursive or sibling schema reference`);
+    }
+    return unionSchemaIdentity(document, resolveSchema(document, schema, location), location,
+      new Set([...references, schema.$ref]));
+  }
+  const result = {};
+  for (const key of Object.keys(schema).sort()) {
+    const value = schema[key];
+    if (key === "properties") {
+      result[key] = Object.fromEntries(Object.keys(value).sort().map((name) => [name,
+        unionSchemaIdentity(document, value[name], `${location}.${name}`, references)]));
+    } else if (["items", "additionalProperties"].includes(key) && typeof value === "object" && value !== null) {
+      result[key] = unionSchemaIdentity(document, value, `${location}.${key}`, references);
+    } else if (["oneOf", "anyOf", "allOf"].includes(key)) {
+      result[key] = value.map((member) => unionSchemaIdentity(document, member, location, references))
+        .sort((a, b) => {
+          const left = JSON.stringify(a), right = JSON.stringify(b);
+          return left < right ? -1 : left > right ? 1 : 0;
+        });
+    } else if (key === "required" || key === "enum") {
+      result[key] = [...value].sort();
+    } else {
+      result[key] = sortJsonKeys(value);
+    }
+  }
+  return result;
+}
+
+function sortJsonKeys(value) {
+  if (Array.isArray(value)) return value.map(sortJsonKeys);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortJsonKeys(value[key])]));
+  }
+  return value;
+}
+
+function validateSchema(document, schema, location, references = new Set()) {
   const resolved = resolveSchema(document, schema, location);
-  if (resolved.anyOf) {
+  if (schema.$ref) {
+    if (references.has(schema.$ref)) throw new Error(`${location} has unsupported recursive schema reference`);
+    references = new Set([...references, schema.$ref]);
+  }
+  if (Object.hasOwn(resolved, "oneOf")) {
+    for (const [tag, member] of discriminatedVariants(document, resolved, location)) {
+      validateSchema(document, member, `${location}.oneOf[${tag}]`, references);
+    }
+    return;
+  }
+  if (Object.hasOwn(resolved, "anyOf")) {
     if (!Array.isArray(resolved.anyOf) || resolved.anyOf.length === 0) {
       throw new Error(`${location} has invalid anyOf`);
     }
-    for (const member of resolved.anyOf) validateSchema(document, member, location);
+    for (const member of resolved.anyOf) validateSchema(document, member, location, references);
     return;
   }
   if (!["array", "boolean", "integer", "null", "number", "object", "string"].includes(resolved.type)) {
@@ -52,11 +152,11 @@ function validateSchema(document, schema, location) {
       }
     }
     for (const [name, propertySchema] of Object.entries(properties)) {
-      validateSchema(document, propertySchema, `${location}.${name}`);
+      validateSchema(document, propertySchema, `${location}.${name}`, references);
     }
   }
   if (resolved.type === "array") {
-    validateSchema(document, resolved.items, `${location}.items`);
+    validateSchema(document, resolved.items, `${location}.items`, references);
   }
 }
 
@@ -103,6 +203,20 @@ export function validateOpenApiDocument(document) {
 
 export function assertValueMatchesSchema(document, schema, value, location = "response") {
   const resolved = resolveSchema(document, schema, location);
+  if (Object.hasOwn(resolved, "oneOf")) {
+    const variants = discriminatedVariants(document, resolved, location);
+    let matches = 0;
+    for (const member of variants.values()) {
+      try {
+        assertValueMatchesSchema(document, member, value, location);
+        matches += 1;
+      } catch {
+        // oneOf requires exactly one successful branch, not the first success.
+      }
+    }
+    if (matches !== 1) throw new Error(`${location} must match exactly one schema`);
+    return;
+  }
   if (resolved.anyOf) {
     for (const member of resolved.anyOf) {
       try {
@@ -117,13 +231,30 @@ export function assertValueMatchesSchema(document, schema, value, location = "re
   if (resolved.const !== undefined && value !== resolved.const) {
     throw new Error(`${location} does not match const ${resolved.const}`);
   }
+  if (resolved.enum && !resolved.enum.includes(value)) {
+    throw new Error(`${location} does not match enum`);
+  }
+  if (resolved.type === "array") {
+    if (!Array.isArray(value)) throw new Error(`${location} must be array`);
+    for (const [index, item] of value.entries()) {
+      assertValueMatchesSchema(document, resolved.items, item, `${location}[${index}]`);
+    }
+    return;
+  }
   if (resolved.type === "object") {
     requireObject(value, location);
     for (const required of resolved.required ?? []) {
-      if (!(required in value)) throw new Error(`${location}.${required} is required`);
+      if (!Object.hasOwn(value, required)) throw new Error(`${location}.${required} is required`);
+    }
+    for (const property of Object.keys(value)) {
+      if (Object.hasOwn(resolved.properties ?? {}, property)) continue;
+      if (resolved.additionalProperties === false) throw new Error(`${location}.${property} is not allowed`);
+      if (typeof resolved.additionalProperties === "object" && resolved.additionalProperties !== null) {
+        assertValueMatchesSchema(document, resolved.additionalProperties, value[property], `${location}.${property}`);
+      }
     }
     for (const [property, propertySchema] of Object.entries(resolved.properties ?? {})) {
-      if (property in value) {
+      if (Object.hasOwn(value, property)) {
         assertValueMatchesSchema(
           document,
           propertySchema,
@@ -146,6 +277,14 @@ export function assertValueMatchesSchema(document, schema, value, location = "re
   if (resolved.type === "integer" && !Number.isInteger(value)) {
     throw new Error(`${location} must be integer`);
   }
+  if ((resolved.type === "number" || resolved.type === "integer") &&
+      (!Number.isFinite(value) || (resolved.minimum !== undefined && value < resolved.minimum) ||
+      (resolved.maximum !== undefined && value > resolved.maximum))) {
+    throw new Error(`${location} is outside numeric bounds`);
+  }
+  if (resolved.type === "string" && resolved.pattern !== undefined && !new RegExp(resolved.pattern, "u").test(value)) {
+    throw new Error(`${location} does not match pattern`);
+  }
 }
 
 function compareResponseSchema(
@@ -157,6 +296,17 @@ function compareResponseSchema(
 ) {
   const baseline = resolveSchema(baselineDocument, baselineSchema, location);
   const current = resolveSchema(currentDocument, currentSchema, location);
+  if ([baseline, current].some((schema) => Object.hasOwn(schema, "oneOf") || Object.hasOwn(schema, "anyOf"))) {
+    // Strict union identity also checks oneOf nested within a nullable anyOf.
+    // Reordering alternatives is harmless; additions, removals, discriminator
+    // changes, or any referenced variant change require an explicit new contract.
+    const before = unionSchemaIdentity(baselineDocument, baselineSchema, location);
+    const after = unionSchemaIdentity(currentDocument, currentSchema, location);
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      throw new Error(`${location} changed union schema`);
+    }
+    return;
+  }
   if (baseline.type !== current.type) {
     throw new Error(`${location} changed type from ${baseline.type} to ${current.type}`);
   }

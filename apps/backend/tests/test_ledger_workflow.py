@@ -198,7 +198,7 @@ class WorkflowSessionStub:
         return ACTOR_ID
 
     @asynccontextmanager
-    async def transaction(self):
+    async def transaction(self, *, guarded_company_id=None):
         self._transaction.events.append("begin")
         try:
             yield self._transaction
@@ -357,7 +357,7 @@ def test_new_year_start_retries_one_unknown_commit_with_the_same_command() -> No
             self.attempts = 0
 
         @asynccontextmanager
-        async def transaction(self):
+        async def transaction(self, *, guarded_company_id=None):
             self.attempts += 1
             transaction.events.append(f"begin:{self.attempts}")
             yield transaction

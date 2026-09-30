@@ -15,6 +15,7 @@ from talli_backend.modules.documents.public import (
     DocumentStatus,
     DocumentTransferKind,
     StoredDocumentObject,
+    RetainedDocumentOriginalReceipt, document_metadata_sha256,
 )
 from talli_backend.modules.documents.service import (
     DocumentsService,
@@ -67,6 +68,9 @@ class Persistence:
     async def actor_role(self, company_id):
         return "owner" if company_id in {COMPANY_ID, TARGET_COMPANY_ID} else None
 
+    async def refresh_actor_role(self, company_id):
+        return await self.actor_role(company_id)
+
     async def stage_upload(self, command, *, name, storage_key):
         self.staged_command = command
         self.current = record()
@@ -80,6 +84,14 @@ class Persistence:
         assert byte_length == len(PDF)
         assert content_sha256 == sha256(PDF).hexdigest()
         return self.current
+
+    async def retain_verified_original(self, document, content):
+        assert document == self.current
+        assert len(content) == document.byte_length and sha256(content).hexdigest() == document.content_sha256
+        self.retained_content = bytes(content)
+        return RetainedDocumentOriginalReceipt("40000000-0000-4000-8000-000000000001", document.document_id,
+            document.company_id, document.income_year, document_metadata_sha256(document), document.content_sha256,
+            document.byte_length, datetime(2026, 9, 24, tzinfo=UTC))
 
     async def get_document(self, document_id):
         return self.current
@@ -296,3 +308,70 @@ def test_isolated_restore_plan_rejects_noncanonical_source_object_identity() -> 
             )
         )
     assert failure.value.code == "DOCUMENT_INTEGRITY_FAILED"
+
+@pytest.mark.parametrize("status", [
+    DocumentStatus.ATTACHED,
+    DocumentStatus.GENERATED_UNSIGNED,
+    DocumentStatus.SIGNED_OWNER_ATTESTED,
+    DocumentStatus.STORED,
+])
+def test_source_evidence_reverifies_bytes_and_preserves_integrity_classification(status):
+    persistence = Persistence()
+    persistence.current = replace(record(DocumentStatus.ATTACHED), status=status)
+    evidence = asyncio.run(DocumentsService(persistence, Storage()).verify_document_evidence(DOCUMENT_ID))
+    assert evidence.document == persistence.current
+    assert evidence.content_sha256 == sha256(PDF).hexdigest()
+    assert evidence.byte_length == len(PDF)
+    assert evidence.integrity_status == status
+    assert not hasattr(evidence, "content")
+
+
+@pytest.mark.parametrize("status", [DocumentStatus.STAGED, DocumentStatus.QUARANTINED])
+def test_source_evidence_refuses_unverified_documents_before_storage(status):
+    persistence = Persistence()
+    persistence.current = record(status)
+    class UnreachableStorage(Storage):
+        async def read_object(self, **kwargs):
+            pytest.fail("Unverified document must not reach private storage")
+    with pytest.raises(DocumentsError) as error:
+        asyncio.run(DocumentsService(persistence, UnreachableStorage()).verify_document_evidence(DOCUMENT_ID))
+    assert error.value.code == "DOCUMENT_NOT_FOUND"
+
+
+def test_source_evidence_refuses_changed_private_bytes():
+    persistence = Persistence()
+    persistence.current = record(DocumentStatus.ATTACHED)
+    with pytest.raises(DocumentsError) as error:
+        asyncio.run(DocumentsService(persistence, Storage(content=b"%PDF-1.7\ntampered")).verify_document_evidence(DOCUMENT_ID))
+    assert error.value.code == "DOCUMENT_INTEGRITY_FAILED"
+
+
+@pytest.mark.parametrize("change", ["removed", "metadata", "owner_revoked"])
+def test_source_evidence_rechecks_metadata_and_owner_after_object_io(change):
+    class ChangingPersistence(Persistence):
+        revoked = False
+        async def actor_role(self, company_id):
+            return None if self.revoked else await super().actor_role(company_id)
+    persistence = ChangingPersistence()
+    persistence.current = record(DocumentStatus.ATTACHED)
+    class ChangingStorage(Storage):
+        async def read_object(self, **kwargs):
+            if change == "removed": persistence.current = None
+            elif change == "metadata": persistence.current = replace(persistence.current, document_type="changed")
+            else: persistence.revoked = True
+            return await super().read_object(**kwargs)
+    with pytest.raises(DocumentsError) as error:
+        asyncio.run(DocumentsService(persistence, ChangingStorage()).verify_document_evidence(DOCUMENT_ID))
+    assert error.value.code == ("DOCUMENT_FORBIDDEN" if change == "owner_revoked" else "DOCUMENT_CONFLICT")
+
+
+def test_source_evidence_requires_owner_before_private_object_read():
+    class OtherCompanyPersistence(Persistence):
+        async def actor_role(self, company_id): return None
+    persistence = OtherCompanyPersistence()
+    persistence.current = record(DocumentStatus.ATTACHED)
+    class UnreachableStorage(Storage):
+        async def read_object(self, **kwargs): pytest.fail("Unauthorized storage read")
+    with pytest.raises(DocumentsError) as error:
+        asyncio.run(DocumentsService(persistence, UnreachableStorage()).verify_document_evidence(DOCUMENT_ID))
+    assert error.value.code == "DOCUMENT_FORBIDDEN"

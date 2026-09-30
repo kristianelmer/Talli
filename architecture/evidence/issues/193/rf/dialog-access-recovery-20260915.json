@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "issue": "#193",
+  "slice": "RF-1086",
+  "status": "DIALOG_ACCESS_VERIFIED_FINAL_RECEIPT_CONTENT_PENDING",
+  "executionRevision": "1d44c36c98c9f12afc35646a6f5023061f40916a",
+  "ownerAuthorization": {
+    "message": "approved",
+    "planSha256": "33d3efe9f0834ac9891e3518811691f67dbf827b2f61346d9c35382181388c63",
+    "loginCompletedByOwner": true
+  },
+  "clientScopeChange": {
+    "environment": "test",
+    "ownerOrganization": "930835978",
+    "clientId": "7166e743-978e-4a60-8a2d-0a5c00fe6ad0",
+    "addedScope": "digdir:dialogporten",
+    "saveActions": 1,
+    "browserSuccessText": "Scope lagt til p\u00e5 klient: digdir:dialogporten",
+    "otherScopeOrSettingEdits": false
+  },
+  "providerResult": {
+    "status": "BOUND_DOCUMENTS_RETRIEVED",
+    "documents": [
+      {
+        "file": "document-01.xml",
+        "url": "https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/01a0a376-44d7-7535-845a-322691b770c2/dokumenter/01a0a377-06b4-7508-8096-0469bc776e4e",
+        "sha256": "dee9f16ab1bd114db54b15e5a5e3825919e4b15e15a1c76cb201860fdad08d5d",
+        "byteLength": 3118,
+        "classification": "action_required",
+        "feedbackSchema": "unknown",
+        "finalBusinessAcceptanceVerified": false
+      },
+      {
+        "file": "document-02.xml",
+        "url": "https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/01a0a376-44d7-7535-845a-322691b770c2/dokumenter/01a0a377-0770-746e-bfed-68c0795ae282",
+        "sha256": "4d1e0d131ab24969e212ea6628662ad40d1b59df56351df61d4614a6b5d7238b",
+        "byteLength": 1441,
+        "classification": "action_required",
+        "feedbackSchema": "unknown",
+        "finalBusinessAcceptanceVerified": false
+      }
+    ],
+    "finalBusinessAcceptanceVerified": false,
+    "finishedAt": "2026-09-15T07:23:43.144688+00:00",
+    "trace": [
+      {
+        "kind": "token",
+        "method": "POST",
+        "url": "https://test.maskinporten.no/token",
+        "at": "2026-09-15T07:23:39.549482+00:00",
+        "status": 200
+      },
+      {
+        "kind": "dialog",
+        "method": "GET",
+        "url": "https://platform.tt02.altinn.no/dialogporten/api/v1/enduser/dialogs/019f5fce-2119-7570-a78b-db0a9b0a5c1f",
+        "at": "2026-09-15T07:23:39.743057+00:00",
+        "status": 200
+      },
+      {
+        "kind": "token",
+        "method": "POST",
+        "url": "https://test.maskinporten.no/token",
+        "at": "2026-09-15T07:23:40.657549+00:00",
+        "status": 200
+      },
+      {
+        "kind": "document",
+        "method": "GET",
+        "url": "https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/01a0a376-44d7-7535-845a-322691b770c2/dokumenter/01a0a377-06b4-7508-8096-0469bc776e4e",
+        "at": "2026-09-15T07:23:40.782741+00:00",
+        "status": 200
+      },
+      {
+        "kind": "document",
+        "method": "GET",
+        "url": "https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/01a0a376-44d7-7535-845a-322691b770c2/dokumenter/01a0a377-0770-746e-bfed-68c0795ae282",
+        "at": "2026-09-15T07:23:42.896622+00:00",
+        "status": 200
+      }
+    ],
+    "filingPosts": 0,
+    "originalJournalUnchanged": true
+  },
+  "dialogProjection": {
+    "id": "019f5fce-2119-7570-a78b-db0a9b0a5c1f",
+    "party": "urn:altinn:organization:identifier-no:310279617",
+    "serviceResource": "urn:altinn:resource:ske-innrapportering-aksjonaerregisteroppgave",
+    "revision": "823942d2-006d-40a0-9e35-9bd9fb9faca7",
+    "transmissions": [
+      {
+        "id": "01a0a376-44d7-7535-845a-322691b770c2",
+        "type": "Submission",
+        "relatedTransmissionId": null,
+        "createdAt": "2026-09-15T05:07:12.215710+00:00",
+        "isAuthorized": true,
+        "excludedAttachmentsPresent": false,
+        "documentUrls": [
+          "https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/01a0a376-44d7-7535-845a-322691b770c2/dokumenter/01a0a377-06b4-7508-8096-0469bc776e4e",
+          "https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/01a0a376-44d7-7535-845a-322691b770c2/dokumenter/01a0a377-0770-746e-bfed-68c0795ae282"
+        ],
+        "unavailableOrOtherAttachmentUrls": 0
+      },
+      {
+        "id": "01a0a378-9500-73e4-acaa-5c06d5eb3293",
+        "type": "Acceptance",
+        "relatedTransmissionId": "01a0a376-44d7-7535-845a-322691b770c2",
+        "createdAt": "2026-09-15T05:09:44.935459+00:00",
+        "isAuthorized": true,
+        "excludedAttachmentsPresent": false,
+        "documentUrls": [],
+        "unavailableOrOtherAttachmentUrls": 2
+      }
+    ],
+    "excludedTransmissionsPresent": false,
+    "finalBusinessAcceptanceVerified": false
+  },
+  "interpretation": [
+    "Both retrieved XML hashes exactly match the already submitted main and shareholder forms",
+    "Their local classifier labels action_required/unknown are not provider rejection results",
+    "An authorized Acceptance transmission is directly related to the submitted transmission",
+    "Its two excluded attachment URLs were not retained, so their formats and exclusion reasons are unproven",
+    "Final feedback document contents and business acceptance remain unverified"
+  ],
+  "review": {
+    "status": "PASS_BOUNDED_EXECUTION_ACCOUNTING",
+    "checksPassed": 47,
+    "report": "reviews/dialog-access-recovery-20260915-spec.md",
+    "sha256": "1f53814d488a0c36178fc127118809c08b6d4260616294332ccf75d85f39eab9"
+  },
+  "privateArtifactHashes": {
+    "action-plan.json": "33d3efe9f0834ac9891e3518811691f67dbf827b2f61346d9c35382181388c63",
+    "owner-approval-and-login-handoff.json": "7e57a46c136cfae63d67167126908722bb048967d2ea705ba6c8add1713f8154",
+    "client-scope-verification.json": "b5a98f791f968debc9b6a49047f7b3b77d8058e9ee81ebe6c62b53de787885c2",
+    "authorization.json": "9b491a9b08ac38fffe7ebf136e02633604127b56f63575e0a8a9bc7caadb117e",
+    "result.json": "b1833047f6f3113c120beda9162fbd9866ba15334c58810da11acd7105bf25c8",
+    "dialog-projection.json": "d9a890b3166790b400c2cfcac1b2e2502d186369718e9e64d6cb4b2b65057007",
+    "document-01.xml": "dee9f16ab1bd114db54b15e5a5e3825919e4b15e15a1c76cb201860fdad08d5d",
+    "document-02.xml": "4d1e0d131ab24969e212ea6628662ad40d1b59df56351df61d4614a6b5d7238b",
+    "execution-spec-review.json": "c346d8d3564dcfdcfa6c7191477f388af9502b4e17dacc9532dc2c8bf50af975"
+  },
+  "limits": [
+    "The bounded action completed; no further provider calls are authorized",
+    "No filing POST, production interaction or original journal mutation",
+    "No final business acceptance, complete RF gate or later filing-stage credit"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_BOUNDED_BROWSER_FIXTURE_REPAIR",
+  "baseCommit": "b0b066b76f78d23416c9483b053d42bccc7a02d2",
+  "sourceSha256": {
+    "tests/browser_process_lifecycle.test.mjs": "2571114e68968293c177ec75da0b4e3fcef3c030bf35415b74487349dad846ce",
+    "tests/browser_fixture_safety.test.mjs": "018ee1cdd0bd760d609838c2cf7bc73714a00be5e1e11f6ec77d3dac3345159f",
+    "tests/support/browser-owner-cleanup.mjs": "aaef07dad4bad9931503daa7c229c13152bf4e2a6f5f007659981a13469d10e5",
+    "tests/support/rf1086-fixture-access.mjs": "b91fdf5b688b180a703642b70b91567154400cace12bebd292e6c9927a38a362",
+    "scripts/prepare-isolated-supabase-workdir.mjs": "c002e9be60464c8cb54ed6ac088b879598e1ce09da6a617e8bd296ceca28c5ca",
+    "scripts/rehearse-authority-topology.mjs": "642dd41d1e1b8e1b882fdc3012ffafdff6e3058adf0e82cb1ce9321795870b23",
+    "supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql": "d8d267f1e79d8eed2bc28a18622371a9c3c6be2288039c28fef5691434f50a44"
+  },
+  "cause": "Fixture disables noninternal scope population trigger while owned production_filing_events requires company_id and income_year. Insert now explicitly supplies matching company/year; public predecessor insert is preserved.",
+  "verification": {
+    "red_workspace": {
+      "tests": 23,
+      "passed": 22,
+      "failed": 1,
+      "skipped": 0,
+      "expected_error": "23502 missing production_filing_events.company_id"
+    },
+    "green_workspace": {
+      "tests": 28,
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0
+    },
+    "green_public_predecessor": {
+      "tests": 23,
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "privateProofSha256": "a5c4eb79089efa5f1310c84604d3fec5a20f4ed684a9cfd8538854a18acac111",
+  "environment": "Fresh owned disposable local instance; verified predecessor and workspace topologies; removed owned containers and volumes afterward.",
+  "limits": [
+    "Focused browser safety and process lifecycle only; no full CI rerun",
+    "No production/schema/retention changes",
+    "No hosted database or provider calls",
+    "Full RF acceptance and genuine-company production evidence remain pending."
+  ]
+}

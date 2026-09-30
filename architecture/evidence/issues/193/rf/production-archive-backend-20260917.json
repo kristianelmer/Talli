@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "issue": 193,
+  "scope": "RF production archive backend; working-tree source digest proof, not full issue acceptance",
+  "status": "PASS",
+  "testedAt": "2026-09-17",
+  "tests": {
+    "restrictedRoleDatabase": {
+      "passed": 34,
+      "providerCalls": 0,
+      "objectTransfers": "local httpx.MockTransport",
+      "database": "actual disposable local PostgreSQL clone",
+      "cloneDropped": true,
+      "proofs": [
+        "owner archive after entitlement expiry",
+        "other company/year denied or excluded",
+        "original approval manifest, journal and Document references",
+        "derived event scope immutable against parent",
+        "generation exactly once per event and transaction rollback",
+        "feedback makes in-flight export completion stale",
+        "migration replay preserves membership/ACL/FORCE RLS",
+        "rollback/recutover preserves original rows and v1 scope digest",
+        "first activation invalidates old archive generation without business writes"
+      ]
+    },
+    "archiveDomainAndApiPassed": 166,
+    "archiveSourceInventoryPassed": 16,
+    "terminalJournalDomainRegressionsPassed": 6
+  },
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "dfd74164974598626d914aaa2dbb0b91b88379f4261f2f0149e10f3cf4ee222b",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py": "5b2c3e244a0e1a85734dee55a2c9cf44445a1c18966470f481e2143c5acd1e69",
+    "apps/backend/tests/test_rf1086_archive_source.py": "daa2897fa18b15ebc2ed9217e22123ec2f253063c2666adaba81c84da91f9901",
+    "apps/backend/tests/test_rf1086_database_runtime.py": "bdccea03ac07fbd90fb461fba6e206fa88ba8b090d24be8fdbc96e4cdadfee13",
+    "supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql": "d8d267f1e79d8eed2bc28a18622371a9c3c6be2288039c28fef5691434f50a44",
+    "supabase/rollback/20260917114424_rf1086_production_archive_evidence.sql": "241d95086b295766a301af51863331e085144d8e53bec781898e8610064c476e"
+  },
+  "limits": [
+    "No hosted migration or provider action.",
+    "Web archive and byte-transfer verification owned by parent task.",
+    "Full customer-ready and independent review evidence pending."
+  ]
+}

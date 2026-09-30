@@ -1,0 +1,43 @@
+{
+  "baseCommit": "a615cd4a3940cf7c266dd29e0abda86fce5b55a6",
+  "status": "PASS_BOUNDED_GOVERNANCE_ROLLBACK_FULL_STACK_PENDING",
+  "failure": {
+    "ciRun": 36389099367,
+    "revision": "52c750232ac94694f375cc20844ec43b1023b006",
+    "application": "PASS",
+    "database": "FAIL",
+    "causes": [
+      "Legacy replay fixture lacked verified actor and accepted owner required by the company guard",
+      "Complete older Governance rollback left additive guard/read functions and external grants behind"
+    ]
+  },
+  "changes": [
+    "Seed accepted membership and matching verified session in the existing legacy replay fixture; real guard stays active",
+    "Explicitly retire only Governance successor functions and grants when removing the entire capability",
+    "Replay company guards and guarded reporting reader after recutover; assert 11 table guards, loan wrapper, RF reader and Ledger grants"
+  ],
+  "verification": {
+    "boundedPostgreSQL": "Original guard denial and schema dependency failure reproduced; corrected fixture accepted; exact successor cleanup and definition replay twice; Ledger authority preserved",
+    "staticContractsPassed": 13,
+    "databaseCasesSkippedLocally": 7,
+    "architecture": "PASS"
+  },
+  "limits": [
+    "The bounded probe uses actual guard definitions and cleanup SQL with minimal surrounding schema; it is not the complete capability lifecycle",
+    "Full Supabase lifecycle and latest RF correction/archive database integration require CI",
+    "No production/provider operations or genuine company data; all seven RF criteria remain PENDING"
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md": "a77be23f05644c95b9051fff392ac4be3b205fbd7580c812b2ff05d5c26bc67a",
+    "supabase/rollback/20260902040000_corporate_governance_owner_dividend.sql": "821c58ae6efad18687e2a87031ab099ee3e7b17363a46ed03d8d86ef42b82c29",
+    "tests/corporate_governance_database_runtime.test.mjs": "270ad2b22d4e76cabfb84e0d5cba72203e587e35400ca6c585184fb15eba110e",
+    "tests/corporate_governance_migration_lifecycle.test.mjs": "9826d555e533b725b60f773027534d7d20ea5235101e5ecb8f199a9dd128b31e"
+  },
+  "privateProofSha256": {
+    "talli-governance-rollback-red.log": "322cbf6e8d01b8eea60ed788782d128f78a8d5964b8dbe61de2aad0497c611e2",
+    "talli-governance-rollback-green.log": "f8dd519848b9545158643cc7ea816b84773d83fb877358c15b0f8c789c21c7bc",
+    "talli-governance-rollback-contract.log": "85a77a2753a3f73468148f1e15cdf7718b67f9021f67a13bad2f5bdfd3d00e67",
+    "talli-governance-rollback-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "probe.py": "0e2bb5c9e38b112dec361ea50d7fcb96781ee92ef445edc06ad61a6c5d9983e5"
+  }
+}

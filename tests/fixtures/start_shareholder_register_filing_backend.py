@@ -3,7 +3,8 @@
 This launcher is test-only. It refuses non-loopback databases, Supabase, and mock
 addresses, and its process-wide socket guard denies all external connections.
 Global production flags remain disabled. This separately selected fresh-send
-fixture admits exactly five RF method templates, mapped to a loopback mock.
+fixture admits five RF method templates and the exact Dialogporten discovery GET,
+all mapped to a loopback mock.
 """
 
 from __future__ import annotations
@@ -40,6 +41,10 @@ def provider_mock_url(original: str, mock_origin: str, method: str = "GET") -> s
     elif (provider.scheme == "https" and provider.netloc == "platform.altinn.no"
           and provider.path.startswith("/authentication/api/v1/systemuser/")):
         path = "/altinn" + provider.path + ("?" + provider.query if provider.query else "")
+    elif (provider.scheme == "https" and provider.netloc == "platform.altinn.no" and method == "GET"
+          and re.fullmatch(r"/dialogporten/api/v1/enduser/dialogs/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", provider.path)
+          and not provider.query):
+        path = "/dialogporten/dialogs/" + provider.path.rsplit("/", 1)[1]
     elif (provider.scheme == "https" and provider.netloc == "api.skatteetaten.no"
           and rf1086_fixture_template(method, provider.path, provider.query)):
         path = "/skatte" + provider.path.removeprefix("/api/aksjonaerregister/v1") + ("?" + provider.query if provider.query else "")
@@ -74,6 +79,32 @@ def guard_socket(event: str, arguments: tuple[object, ...]) -> None:
             raise PermissionError("authority_browser_fixture_blocked_external_connection")
 
 
+def install_prepared_stop(journal_type, raw_path: str, nonce: str) -> None:
+    """Test-only barrier after the real admission context has committed."""
+    path = Path(raw_path).resolve()
+    if (path.name != 'stop-after-prepare' or not path.parent.name.startswith('talli-rf-prepared-crash-')
+            or not path.parent.is_dir() or not re.fullmatch(r'[A-Za-z0-9-]{1,80}', nonce)):
+        raise ValueError('prepared_crash_control_path_invalid')
+    original = journal_type.prepare
+
+    async def prepare(self, **kwargs):
+        result = await original(self, **kwargs)
+        operation = kwargs['name'].split(':', 1)[0]
+        if result.newly_prepared and operation in ('post_hovedskjema', 'post_underskjema', 'confirm'):
+            try:
+                with path.open() as control:
+                    armed = control.read(256)
+            except FileNotFoundError:
+                armed = None
+            if armed == f'{nonce}:{operation}':
+                path.unlink()
+                print(f'TALLI_RF_PREPARED_STOP:{nonce}:{operation}', flush=True)
+                await asyncio.Event().wait()
+        return result
+
+    journal_type.prepare = prepare
+
+
 def main() -> None:
     if os.environ.get("TALLI_LOCAL_RF1086_FRESH_SEND_FIXTURE") != "true":
         raise SystemExit("rf1086_fresh_send_fixture_not_selected")
@@ -92,6 +123,10 @@ def main() -> None:
     from talli_backend.adapters.altinn_system_user import AltinnSystemUserAdapter
     from talli_backend.adapters.maskinporten import MaskinportenClient, MaskinportenConfiguration
     from talli_backend.main import create_app
+    prepared_stop = os.environ.get('TALLI_RF_STOP_AFTER_PREPARE_FILE')
+    if prepared_stop:
+        from talli_backend.application.shareholder_register_source_dispatch import _AdmittedJournal
+        install_prepared_stop(_AdmittedJournal, prepared_stop, nonce)
 
     async def mock_transport(request: httpx.Request) -> httpx.Response:
         target = provider_mock_url(str(request.url), mock_origin, request.method)

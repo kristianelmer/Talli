@@ -1,0 +1,39 @@
+{
+  "baseHead": "fba0ac6401d2e5f30afd74e6ad3cfa279b5cf358",
+  "ciRun": 35972561242,
+  "symptom": "browser_shareholder_register_filing.mjs:259 provenance count 0 !== 1 after accepted submission and 2 feedback artifacts",
+  "rootCause": "Prior test repair read authorityReference from ordinary workspace DTO. Actual projection intentionally omits provider attribution; it is available only on retained/archive records.",
+  "redLoop": "Actual PostgresShareholderRegisterFilingSession._wire_record -> actual FastAPI workspace HTTP -> extracted browser artifact selection reproduces exact0!==1 with both retained records already present.",
+  "fix": "Synthetic browser reads 2 scoped retained receipt rows by company+submission, verifies exactly1provenance, matches all wire IDs/company/submission/document/hash, selects original feedback by its retained receipt ID. No production projection expansion.",
+  "validation": {
+    "passed": 27,
+    "failed": 0,
+    "skipped": 0,
+    "command": "NODE24 --test tests/shareholder_register_browser_fixture_safety.test.mjs tests/authority_browser_fixture_safety.test.mjs tests/browser_authority_connections_contract.test.mjs",
+    "negativeChecks": [
+      "mismatched company",
+      "mismatched submission",
+      "mismatched document",
+      "mismatched hash",
+      "missing provenance",
+      "duplicate retained ID",
+      "missing public artifact"
+    ],
+    "diffCheck": "clean"
+  },
+  "limits": [
+    "No DB stack, provider call, hosted mutation, or full browser rerun. Fresh browser still needs isolated CI.",
+    "No production code, guard migrations, root tests, commit or push modified by this subtask."
+  ],
+  "sourceSha256": {
+    "tests/browser_shareholder_register_filing.mjs": "ad73e61473e449b9f82612e2adc3654baba58d37f5aa7a5f815ed224934b8f84",
+    "tests/shareholder_register_browser_fixture_safety.test.mjs": "09d68969d3788a07c43b1ab9ad2a72745f93d06a8b37d56185186540abbcc204",
+    "tests/fixtures/rf1086_workspace_feedback.py": "dc4378f0a3743d7d13624f84de8f96e86ee00fa300290428fe3b09b44a8f99dd"
+  },
+  "logs": {
+    "red.log": "2d803d4637e09f4f825beb9bcb2dc7ee6b6a3f39b19f656710fe269879c9cae5",
+    "green.log": "83ca70bafbc9b01cec7d2313de4f2624855290c0e56d239392cfe97b41a98931"
+  },
+  "status": "PASS_BOUNDED_FIXTURE_REPAIR_FULL_BROWSER_PENDING",
+  "privateProofSha256": "5cea36c788ff1bc1a895d1bd81ce6ab2e0c0cbf697b1976803c3d60280c0b404"
+}

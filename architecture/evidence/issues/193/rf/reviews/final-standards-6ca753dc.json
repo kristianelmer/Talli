@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "axis": "standards",
+  "reviewedSha": "6ca753dc0d64788430430ed8c50f268f06de9c80",
+  "baseSha": "56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd",
+  "diffCommand": "git diff 56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd...6ca753dc0d64788430430ed8c50f268f06de9c80",
+  "status": "PASS",
+  "findings": [],
+  "resolvedFindings": [
+    "ADR0012 web-first archive contract compatibility",
+    "Malformed successful production response could downgrade to legacy coverage"
+  ],
+  "independentBackendTestsPassed": 253,
+  "independentFinalWebTestsPassed": 61,
+  "priorTargetedArchitectureTestsPassed": 13,
+  "sourceBindingsVerified": 34,
+  "databaseProofSourceBindingsVerified": 8,
+  "databaseProofTestsPassed": 35,
+  "databaseTestsIndependentlyRerun": false,
+  "verifiedEvidenceSha256": {
+    "archive-overlap-runtime-20260923.json": "81e8436b1180a5f15ab8e0fc255c3eb76758d9dddd2dcb2a695d3677ce2c40b1",
+    "source-archive-verification-20260923.json": "611a2eec14cc9ba43c0cebed5c99ff02a766631f851921e936066b2ac9165898"
+  },
+  "legacyOpenApiSchemaAndOperationEqualBase": true,
+  "providerCalls": false,
+  "completeIssueAcceptance": false,
+  "originalReviewsPreserved": true,
+  "report": "final-standards-6ca753dc.md"
+}

@@ -9,6 +9,7 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const contractPath = "/repo/supabase/contract-migrations/20260828101000_banking_capability_contract.sql";
 const rollbackPath = "/repo/supabase/rollback/20260828101000_banking_capability_contract.sql";
 const workflowPath = "/repo/supabase/migrations/20260828100500_banking_workflows.sql";
+const companyGuardPath = "/repo/supabase/migrations/20260929092425_banking_company_write_guards.sql";
 const ledgerContractPath = "/repo/supabase/contract-migrations/20260827101000_ledger_capability_contract.sql";
 const dockerHost = process.env.TALLI_DOCKER_HOST;
 
@@ -303,6 +304,7 @@ test("banking authority survives reconciliation, contract, rollback, security, a
     `), "false:true");
 
     psql(containerName, ["--file", workflowPath]);
+    psql(containerName, ["--file", companyGuardPath]);
     psql(containerName, ["--file", contractPath]);
     assert.equal(scalar(containerName, String.raw`
       select

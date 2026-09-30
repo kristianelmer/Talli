@@ -2,6 +2,7 @@
 
 from contextlib import AbstractAsyncContextManager
 from typing import Protocol
+from talli_backend.application.corporate_register_evidence import VerifiedCorporateRegisterEvidence
 
 from talli_backend.application.annual_data_compatibility import LegacyAnnualDataView
 from talli_backend.application.new_year_opening import (
@@ -29,6 +30,8 @@ class CorporateGovernanceWorkflowTransaction(
 ):
     @property
     def actor_id(self) -> ActorId: ...
+
+    async def assert_register_evidence(self, evidence: VerifiedCorporateRegisterEvidence) -> None: ...
 
     async def list_opening_snapshots(
         self,
@@ -59,6 +62,7 @@ class AuthenticatedCorporateGovernanceSession(Protocol):
 
     def transaction(
         self,
+        *, guarded_company_id: CompanyId | None = None,
     ) -> AbstractAsyncContextManager[CorporateGovernanceWorkflowTransaction]: ...
 
 

@@ -1216,7 +1216,7 @@ export const ownerCopy = {
         },
         action_required: {
           label: "Trenger oppfølging",
-          body: "Tilbakemeldingen må følges opp før saken kan avsluttes.",
+          body: "Tilbakemeldingen må følges opp før saken kan avsluttes. Når problemet er løst, kan du kontrollere statusen på nytt. Det sender ikke oppgaven på nytt.",
           variant: "danger",
         },
         approved: {

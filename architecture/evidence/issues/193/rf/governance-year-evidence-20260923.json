@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "issue": 193,
+  "testedAt": "2026-09-23T10:12:25.023046+00:00",
+  "checkpoint": "6ca753dc",
+  "scope": "Governance reporting-year owner projection with original Ledger amendment receipts; no RF admission or production enablement",
+  "status": "LOCAL_TESTS_PASS_ARCHITECTURE_RECHECK_PENDING",
+  "tests": {
+    "governanceAndLedgerUnitContractAdapterWorkflow": {
+      "passed": 201,
+      "elapsedSeconds": 31.9
+    },
+    "publicExportContractsAfterFinalExportFix": {
+      "passed": 11,
+      "elapsedSeconds": 0.36
+    },
+    "restrictedRoleDatabase": {
+      "passed": 6,
+      "elapsedSeconds": 2.6,
+      "cloneDropped": true,
+      "hostedChanges": false,
+      "providerCalls": 0,
+      "objectTransfers": 0,
+      "proofs": [
+        "Historical Ledger-only standalone reversal changes Governance evidence without a Governance reversal row.",
+        "Original replacement then reversal chain remains linked and retained.",
+        "Other-company receipts excluded; other-owner Governance access denied.",
+        "Concurrent committed reversal between owner reads remains invisible within the SERIALIZABLE snapshot and visible in a subsequent transaction.",
+        "Migration replay preserves original role memberships, schema/table ACLs and FORCE RLS; no direct table grant or browser RPC access.",
+        "Rollback and recutover preserve original immutable Ledger receipts."
+      ]
+    }
+  },
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/modules/corporate_governance/public.py": "99810ab3f9477dbb07d294007f600c3ab4e46d5f27679cd3ff5df284707d674f",
+    "apps/backend/src/talli_backend/modules/corporate_governance/reporting_year.py": "97767366f5a2acf49feb49767fdd650d732d8e0649b6b3f323254fe7fd4c1224",
+    "apps/backend/src/talli_backend/modules/corporate_governance/module.json": "0a50d5e08a2f52e1af36b688f1f733d70292182975771e7ff73995afd12cebb1",
+    "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md": "2c85ef9aebef5a23396fa312c6e00fc949b3cdac4e9a13a6888e384acd9b380a",
+    "apps/backend/src/talli_backend/adapters/supabase_corporate_governance.py": "63afc2dc1dc6184645fbd1d81cdbc43c80894cb5ab4303f226911d682e161113",
+    "apps/backend/src/talli_backend/application/corporate_governance_workflow.py": "069696be7e361089291cef49522bc4323fc113aab072009807fa28cc9b5f391e",
+    "apps/backend/src/talli_backend/modules/ledger/public.py": "1e58c4c51348920cd262056a7c820f2a3886ec1324d6ab2aed23b7358793fa38",
+    "apps/backend/src/talli_backend/modules/ledger/service.py": "5b3ee0ae6ec685688a29a827a9df167c949bdb83c61ac1588fe585c1eb9d4c06",
+    "apps/backend/src/talli_backend/modules/ledger/module.json": "668ef1693740893257f2bb082e3ec36ebfc061e471950f3eedef96fede41668f",
+    "apps/backend/src/talli_backend/modules/ledger/MODULE.md": "1678bffb2b45f0de33496cb2bf7a54b4c2c1beb6f3914c8ea17faf00a1511cd1",
+    "apps/backend/src/talli_backend/adapters/supabase_ledger.py": "64ec8bed17814b3d56a90186d246e44bf18960a0afcd62243bf3aa816f01595f",
+    "apps/backend/tests/test_corporate_governance_reporting_year.py": "8506d26cb6d9358fce456c4d9fa850e170032f1994936e8de7217e74cd0f2065",
+    "apps/backend/tests/test_corporate_reporting_year_database_runtime.py": "135d7b71fbfdfe35ddddd7e3655f42b944e91ae8402ee56dea7bcff77787e8a9",
+    "supabase/migrations/20260923090824_ledger_reporting_amendment_read.sql": "fd654892335fb12cacb1d65e6b194dbec6a9487dadc06012e9df27c4fa5d9283",
+    "supabase/rollback/20260923090824_ledger_reporting_amendment_read.sql": "32ccba9c96f864d5df44073f853f34f32772df3f4b6609f48ab146d886a27caa"
+  },
+  "logSha256": {
+    "final-unit-tests.log": "31b84054966069321bf653d049bd663745ebb3ac4ac5c50d81cfb4c20d742521",
+    "targeted-final.log": "540fd01bd09bc6a04c45ed465535e5b94c5f59d82b7ac8ebd0e233c4a5d6666e",
+    "local-runtime.log": "edb5eef74b67d319063d240e707f3956ba7de6e50dd453fb43db9253c8ca928c",
+    "local-runtime-result.json": "508618298a4bdce869214942bb9da0caddbcc01c0a743eda57ea9bbd60d2b1ac",
+    "architecture.log": "a84e79738b04964df3d84bb5965ff8089185f64967f60c104617444390547a73"
+  },
+  "officialSource": {
+    "url": "https://www.skatteetaten.no/bedrift-og-organisasjon/rapportering-og-bransjer/aksjonarregisteroppgaven/eksempler-pa-utfylling-av-aksjonarregisteroppgaven/",
+    "verifiedAt": "2026-09-23",
+    "rule": "For the supported ordinary dividend, the general-meeting decision date determines RF dividend reporting time.",
+    "productInference": "Use canonical generalMeeting.meetingDate as the decision civil date; do not substitute annual-basis year, payment date or persistence timestamp."
+  },
+  "architecture": {
+    "newCapabilityDependency": false,
+    "newHttpEndpoint": false,
+    "ownerRead": "Ledger tables remain Ledger-owned; named Governance application composes existing owner ports in one SERIALIZABLE transaction.",
+    "remaining": "Parent final architecture run must cover ongoing system migration/documentation and RF table-catalog inventory updates. Own public-export and documentation omissions found in first run were fixed."
+  },
+  "limits": [
+    "This projection does not establish cross-owner Documents freshness, a production lease, RF readiness or production authorization.",
+    "Original source lifecycle evidence and corrections are retained, including connected decisions whose dates fall outside the requested reporting year.",
+    "Root owns the RF source-capture integration and final architecture inventories; no requirements index changed by this subtask."
+  ],
+  "privateProofSha256": "462f062ffecd7938697b5d2c38fceb83644f0c3da3059b7c06e7b9040a4b362f"
+}

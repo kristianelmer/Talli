@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
+import { promisify } from "node:util";
 
 import { startRf1086FilingAuthorityMock } from "./fixtures/rf1086-filing-authority-mock.mjs";
 import { fixtureTableTransaction } from "./support/rf1086-fixture-access.mjs";
@@ -36,7 +37,7 @@ print('exact-local-templates')`;
 });
 
 test("fresh local RF mock preserves request identity and emits relationship-bound feedback", async (t) => {
-  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001" });
+  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001", organizationNumber: "999999999" });
   t.after(() => mock.close());
   const base = `${mock.baseUrl}/skatte/2025`;
   const key = randomUUID();
@@ -55,19 +56,49 @@ test("fresh local RF mock preserves request identity and emits relationship-boun
     method: "POST", headers: { ...headers, idempotencykey: randomUUID() },
   });
   assert.equal(confirmed.status, 200);
-  const { forsendelseId } = await confirmed.json();
-  const list = await fetch(`${base}/forsendelser/${forsendelseId}/dokumenter?page=0&size=50`, { headers });
-  assert.equal(list.status, 200);
-  const { dokumenter } = await list.json();
-  const artifact = await fetch(`${base}/forsendelser/${forsendelseId}/dokumenter/${dokumenter[0].dokumentId}`, { headers });
-  assert.equal(artifact.status, 200);
-  const xml = await artifact.text();
-  assert.ok(xml.includes(`<forsendelseid>${forsendelseId}</forsendelseid>`));
-  assert.ok(xml.includes("<inntektsaar>2025</inntektsaar>"));
-  assert.ok(xml.includes("<leveransestatus>godkjent</leveransestatus>"));
-  assert.deepEqual(mock.snapshot().map(({ operation }) => operation), [
-    "post_hovedskjema", "replayed_mutation", "request_rejected", "post_underskjema", "confirm", "list_documents", "read_feedback",
+  const { forsendelseId, dialogId } = await confirmed.json();
+  const result = await promisify(execFile)(process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python",
+    ["tests/fixtures/reconcile_authority_browser_feedback.py"], {
+      env: { ...process.env, TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL: mock.baseUrl,
+        TALLI_FIXTURE_ORG: "999999999", TALLI_FIXTURE_SUBMISSION: forsendelseId, TALLI_FIXTURE_DIALOG: dialogId,
+        TALLI_FIXTURE_LAUNCHER: "start_shareholder_register_filing_backend.py" }, timeout: 15_000,
+    });
+  assert.deepEqual(JSON.parse(result.stdout), { state: "accepted", artifacts: 2 });
+  assert.deepEqual(mock.snapshot().filter(({ service }) => service === "skatteetaten").map(({ operation }) => operation), [
+    "post_hovedskjema", "replayed_mutation", "request_rejected", "post_underskjema", "confirm", "read_dialog", "read_feedback",
   ]);
+});
+
+test("fresh RF mock supports the shipped send journal before dialog feedback discovery", async (t) => {
+  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001", organizationNumber: "999999999" });
+  t.after(() => mock.close());
+  const result = await promisify(execFile)(process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python",
+    ["tests/fixtures/reconcile_authority_browser_feedback.py"], {
+      env: { ...process.env, TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL: mock.baseUrl,
+        TALLI_FIXTURE_ORG: "999999999", TALLI_FIXTURE_FRESH_SEND: "true",
+        TALLI_FIXTURE_LAUNCHER: "start_shareholder_register_filing_backend.py" }, timeout: 15_000,
+    });
+  assert.deepEqual(JSON.parse(result.stdout), { state: "accepted", artifacts: 2 });
+  assert.deepEqual(mock.snapshot().filter(({ service }) => service === "skatteetaten").map(({ operation }) => operation), [
+    "post_hovedskjema", "post_underskjema", "confirm", "list_documents", "read_dialog", "read_feedback",
+  ]);
+});
+
+test("fresh RF mock rejects one filing with matching XML and dialog type, then accepts the next filing", async (t) => {
+  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001", organizationNumber: "999999999" });
+  t.after(() => mock.close());
+  mock.rejectNextFeedback();
+  for (const state of ["rejected", "accepted"]) {
+    const result = await promisify(execFile)(process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python",
+      ["tests/fixtures/reconcile_authority_browser_feedback.py"], {
+        env: { ...process.env, TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL: mock.baseUrl,
+          TALLI_FIXTURE_ORG: "999999999", TALLI_FIXTURE_FRESH_SEND: "true", TALLI_FIXTURE_FEEDBACK_STATE: state,
+          TALLI_FIXTURE_LAUNCHER: "start_shareholder_register_filing_backend.py" }, timeout: 15_000,
+      });
+    assert.deepEqual(JSON.parse(result.stdout), { state, artifacts: 2 });
+  }
+  assert.equal(mock.snapshot().filter(row => row.operation === "confirm").length, 2);
+  assert.equal(mock.snapshot().filter(row => ["request_rejected", "replayed_mutation"].includes(row.operation)).length, 0);
 });
 
 test("fresh browser starts without a preview or approval and verifies the complete durable result", () => {
@@ -96,7 +127,7 @@ test("fresh browser starts without a preview or approval and verifies the comple
 });
 
 test("ambiguous fresh mock response records the original mutation before disconnecting", async (t) => {
-  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001" });
+  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001", organizationNumber: "999999999" });
   t.after(() => mock.close());
   mock.failNextMainResponse();
   const key = randomUUID();
@@ -107,6 +138,68 @@ test("ambiguous fresh mock response records the original mutation before disconn
   assert.equal(mock.snapshot()[0].operation, "post_hovedskjema");
   assert.equal(mock.snapshot()[0].key, key);
   assert.ok(mock.snapshot()[0].id);
+});
+
+for (const stage of ["child", "confirmation"]) test(`lost ${stage} mock response preserves the completed mutation`, async (t) => {
+  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001", organizationNumber: "999999999" });
+  t.after(() => mock.close());
+  const base = `${mock.baseUrl}/skatte/2025`;
+  const post = (path, key, body) => fetch(base + path, { method: "POST",
+    headers: { authorization: "Bearer opaque-synthetic-fixture", idempotencykey: key }, body });
+  const main = await post("/1086H", randomUUID(), "<H>original</H>");
+  const { hovedskjemaId } = await main.json();
+  const childPath = `/${hovedskjemaId}/1086U`;
+  if (stage === "confirmation") assert.equal((await post(childPath, randomUUID(), "<U>original</U>")).status, 204);
+  const key = randomUUID();
+  const path = stage === "child" ? childPath : `/${hovedskjemaId}/bekreft?antall_underskjema=1`;
+  const body = stage === "child" ? "<U>original</U>" : undefined;
+  mock[stage === "child" ? "failNextChildResponse" : "failNextConfirmationResponse"]();
+  await assert.rejects(post(path, key, body));
+  const recorded = mock.snapshot().filter(row => row.key === key);
+  assert.equal(recorded.length, 1);
+  assert.equal(recorded[0].operation, stage === "child" ? "post_underskjema" : "confirm");
+  assert.equal(recorded[0].id, hovedskjemaId);
+  // This verifies the mock, not permission for the product to replay an unknown operation.
+  const replay = await post(path, key, body);
+  assert.equal(replay.status, stage === "child" ? 204 : 200);
+  if (stage === "confirmation") assert.equal((await replay.json()).forsendelseId, recorded[0].transmission);
+  else assert.equal((await post(`/${hovedskjemaId}/bekreft?antall_underskjema=1`, randomUUID())).status, 200);
+  assert.equal(mock.snapshot().filter(row => row.operation === recorded[0].operation && row.key === key).length, 1);
+});
+
+for (const stage of ["main", "child", "confirmation"]) test(`held ${stage} response records the mutation before a process can crash`, { timeout: 10_000 }, async (t) => {
+  const mock = await startRf1086FilingAuthorityMock({ callbackOrigin: "http://localhost:45001", organizationNumber: "999999999" });
+  t.after(() => mock.close());
+  const base = `${mock.baseUrl}/skatte/2025`;
+  const headers = key => ({ authorization: "Bearer opaque-synthetic-fixture", idempotencykey: key });
+  let path = "/1086H", body = "<H>original</H>";
+  if (stage !== "main") {
+    const main = await fetch(base + path, { method: "POST", headers: headers(randomUUID()), body });
+    const { hovedskjemaId } = await main.json();
+    path = `/${hovedskjemaId}/1086U`; body = "<U>original</U>";
+    if (stage === "confirmation") {
+      assert.equal((await fetch(base + path, { method: "POST", headers: headers(randomUUID()), body })).status, 204);
+      path = `/${hovedskjemaId}/bekreft?antall_underskjema=1`; body = undefined;
+    }
+  }
+  const operation = { main: "post_hovedskjema", child: "post_underskjema", confirmation: "confirm" }[stage];
+  const held = mock.holdNextResponse(operation);
+  const key = randomUUID(), controller = new AbortController();
+  t.after(() => controller.abort());
+  let settled = false;
+  const pending = fetch(base + path, { method: "POST", headers: headers(key), body, signal: controller.signal })
+    .then(response => ({ response }), error => ({ error })).finally(() => { settled = true; });
+  await held;
+  assert.equal(settled, false, "the mock must hold the response until the caller disappears");
+  const recorded = mock.snapshot().filter(row => row.key === key);
+  assert.equal(recorded.length, 1);
+  assert.equal(recorded[0].operation, operation);
+  controller.abort();
+  assert.ok((await pending).error);
+  const replay = await fetch(base + path, { method: "POST", headers: headers(key), body });
+  assert.equal(replay.status, stage === "main" ? 201 : stage === "child" ? 204 : 200);
+  await replay.arrayBuffer();
+  assert.equal(mock.snapshot().filter(row => row.operation === operation && row.key === key).length, 1);
 });
 
 test("fresh RF browser uses finite fixture authority while preserving foreign keys and signoff storage", () => {
@@ -275,4 +368,31 @@ for (const failureAt of [null, "seed", "restore"]) test(`fresh signoff fixture r
   assert.deepEqual(rows.sort((a, b) => a.key.localeCompare(b.key)), original.sort((a, b) => a.key.localeCompare(b.key)));
   assert.deepEqual(triggers, originalTriggers);
   assert.doesNotMatch(statements.join("\n"), /session_replication_role|no force row level security|disable trigger (?:all|user)/iu);
+});
+
+
+test("fresh browser selects retained feedback using the actual redacted workspace wire", () => {
+  const result = spawnSync(process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python",
+    ["tests/fixtures/rf1086_workspace_feedback.py"], { encoding: "utf8", timeout: 10_000 });
+  assert.equal(result.status, 0, result.stderr);
+  const { accepted, retained } = JSON.parse(result.stdout);
+  assert.equal(accepted.feedbackArtifacts.length, 2);
+  assert.ok(accepted.feedbackArtifacts.every(row => !("authorityReference" in row)));
+  const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
+  const body = source.slice(source.indexOf("function selectFreshFeedbackArtifact("), source.indexOf("async function seedCompany("));
+  const selectFreshFeedbackArtifact = vm.runInNewContext(`(${body.trim()})`, { assert });
+  const artifact = selectFreshFeedbackArtifact(accepted, retained);
+  const original = retained.find(row => row.authority_reference !== "talli:rf1086-feedback-provenance:v1");
+  assert.equal(artifact.documentId, original.document_id);
+  assert.equal(artifact.sha256, original.sha256);
+  assert.equal(selectFreshFeedbackArtifact(accepted, [...retained].reverse()).id, artifact.id);
+  for (const field of ["company_id", "submission_id", "document_id", "sha256"]) {
+    const changed = structuredClone(retained);
+    changed[0][field] = "mismatched-original";
+    assert.throws(() => selectFreshFeedbackArtifact(accepted, changed));
+  }
+  const missingProvenance = retained.map(row => ({ ...row, authority_reference: "original-only" }));
+  assert.throws(() => selectFreshFeedbackArtifact(accepted, missingProvenance));
+  assert.throws(() => selectFreshFeedbackArtifact(accepted, [retained[0], retained[0]]));
+  assert.throws(() => selectFreshFeedbackArtifact({ ...accepted, feedbackArtifacts: accepted.feedbackArtifacts.slice(1) }, retained));
 });

@@ -1,3 +1,4 @@
+import { rf1086SourceOriginalsMatch, rf1086FeedbackOriginalsMatch } from "./rf1086-original-integrity.ts";
 import type {
   AuthorityPermissionRow,
   AuthorityTestRunRow,
@@ -26,6 +27,29 @@ import type {
 } from "../../features/investments";
 import type { DocumentBackupProjectionWire } from "../../features/documents";
 import type { RecordedSupportedCorporateEventWire } from "../../features/corporate-governance";
+import type { Rf1086ProductionArchiveSourceWire } from "../../features/shareholder-register-filing";
+
+export type Rf1086ProductionArchive = Pick<Rf1086ProductionArchiveSourceWire,
+  "companyId" | "incomeYear" | "approvals" | "productionSubmissions" | "productionEvents" | "feedbackArtifacts" | "sourceApprovalLineage" | "sourceSubmissionClaims" | "submissionHead" | "canonicalArchive" | "sourceOriginals" | "sourceHistoryDocuments" | "feedbackOriginals">;
+
+/** Each retained RF receipt must resolve to the exact Documents-owned object. */
+export function rf1086ArchiveReceiptsMatch(
+  filing: Rf1086ProductionArchive, documents: DocumentBackupProjectionWire,
+): boolean {
+  if (filing.companyId !== documents.companyId || filing.incomeYear !== documents.incomeYear) return false;
+  const objects = new Map(documents.objects.map(row => [row.documentId, row]));
+  if (objects.size !== documents.objects.length) return false;
+  const receiptsMatch = filing.feedbackArtifacts.every(receipt => {
+    // Bound receipts are checked against their retained original below.
+    if (receipt.originalId != null) return receipt.companyId === filing.companyId;
+    const object = objects.get(receipt.documentId);
+    return receipt.companyId === filing.companyId && object !== undefined
+      && object.contentSha256 === receipt.sha256 && object.byteLength === receipt.byteLength
+      && object.contentType === receipt.contentType && Boolean(object.storageKey)
+      && object.status === "stored" && object.removedAt === null;
+  });
+  return receiptsMatch && rf1086SourceOriginalsMatch(filing) && rf1086FeedbackOriginalsMatch(filing);
+}
 
 export type LedgerEntryRow = {
   id: string;
@@ -77,6 +101,7 @@ export function buildPersistedCompanyArchive(input: {
   reviewComments?: FilingReviewCommentRow[];
   filingPreviews: FilingPreviewRow[];
   filingSubmissions: FilingSubmissionRow[];
+  rf1086Production?: Rf1086ProductionArchive;
   corporateDecisions?: CorporateDecisionRow[];
   corporateDocumentSets?: CorporateDocumentSetRow[];
   corporateDocumentArtifacts?: CorporateDocumentArtifactRow[];
@@ -257,6 +282,9 @@ export function buildPersistedCompanyArchive(input: {
         createdAt: submission.created_at,
         updatedAt: submission.updated_at,
       })),
+    // Canonical immutable records, separate from historical simulation shapes.
+    rf1086Production: input.rf1086Production ?? null,
+    rf1086ProductionEvidenceAvailability: input.rf1086Production ? "included" : "unavailable",
     companyTaxSubmissions: input.filingSubmissions
       .filter(
         (submission) => submission.filing === "skattemelding for AS" && submission.mode === "test_authority",

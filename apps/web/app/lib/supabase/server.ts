@@ -338,7 +338,7 @@ export type ProductionPilotEntitlementRow = {
   user_id: string;
   income_year: number;
   obligation: "aksjonaerregisteroppgaven";
-  case_profile: "rf1086_no_activity_v1";
+  case_profile: "rf1086_no_activity_v1" | "rf1086_full_year_v1";
   status: "pending" | "active" | "suspended" | "completed" | "revoked";
   billing_exempt: boolean;
   system_user_request_id: string | null;

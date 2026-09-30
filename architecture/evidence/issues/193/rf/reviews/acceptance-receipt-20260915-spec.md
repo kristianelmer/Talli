@@ -1,0 +1,11 @@
+Spec execution review — **PASS: synthetic receipt identity and provider godkjent status verified**, within the recorded evidence limits.
+
+Fifty-two checks bind the owner-approved plan, unchanged sources, request checkpoints and exact retrieved PDF/XML hashes. The trace records two token POST200s, one exact Acceptance-transmission GET200 and two document GET200s, no filing POST, within five minutes. The original submission journal remains byte-identical.
+
+The identity chain is preserved: baseline confirmation identifies the known dialog and submission transmission; the previously company/service-bound dialog and fresh Acceptance projection identify the directly related Acceptance01a0a378-9500-73e4-acaa-5c06d5eb3293; returned attachment UUIDs map through the official RF document route to the retained receipt bytes. The XML independently contains one delivery, organization310279617, income year2025, direct leveranse/leveranseoppsummering/leveransestatus=godkjent and consistent referenceAKRE22100.
+
+The XML namespace is urn:ske:fastsetting:innsamling:aksjonaeroppgave:ar_til_mag:v0_1. Its innsendingsId and oppgavegiversLeveransereferanse both contain01a0a377-088d-767f-a638-83d7132fb20b, distinct from the HTTP main/submission references. No XML forsendelseId exists; identity is established through the recorded relationship/attachment chain and matching party/year, not a fabricated direct XML transmission-ID equality.
+
+An independent pure invocation of the current canonical classifier returns action_required/schema unknown for these bytes. That means this namespace is unsupported by the parser; it does not negate the provider’s recorded godkjent status. Retrieval outputs intentionally remain provisional and unchanged. This review reads XML fields without claiming official XSD validation; PDF visual review belongs to the parent, while its file hash is independently checked here.
+
+The evidence concerns the approved synthetic one-owner no-activity2025 baseline only. No broader event/correction coverage, genuine-production evidence, complete-RF gate, parser-support completion or later-obligation credit follows. No provider/browser/key operation was performed by this reviewer, and the completed retrieval authorizes no further calls.

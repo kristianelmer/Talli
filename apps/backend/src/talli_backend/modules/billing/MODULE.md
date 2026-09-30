@@ -804,3 +804,20 @@ Authority verification failure uses `SuspendProductionPilotForAuthorityFailureCo
 <!-- architecture-inventory
 {"ports":["AuthorityFailurePilotSuspension"]}
 -->
+
+### RF full-year pilot profile prerequisite
+
+`ManageProductionPilotEntitlementCommand` admits exactly `rf1086_no_activity_v1`
+and `rf1086_full_year_v1`; omission retains the historical no-activity default.
+The operator chooses the profile explicitly. Existing grant/update identity,
+command fingerprint, verified Authority request, admin/MFA and accepted owner
+checks are unchanged. The full-year profile alone grants neither RF approval nor
+send readiness and does not activate charging or a provider.
+
+`20260924084752_billing_rf_full_year_pilot_profile.sql` widens only Billing's
+pilot profile CHECK. Its rollback validates the historical CHECK against every
+retained row and fails atomically if any full-year entitlement exists, including
+under FORCE RLS. Neither direction changes data, ACLs or role membership options;
+replay preserves both profile histories. Existing unknown-profile entitlement
+queries continue ordinary Billing fallback; consequential RF admission must bind
+an exact supported profile and entitlement separately.

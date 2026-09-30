@@ -1,0 +1,82 @@
+[
+  {
+    "migration": "20260924080208_company_access_rf_admission_guard.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='company_access_read_rf_admission_v1')"
+  },
+  {
+    "migration": "20260924080249_documents_rf_consequential_company_guards.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='documents' and p.proname='lock_company_write_v1')"
+  },
+  {
+    "migration": "20260924080355_governance_ledger_company_write_guards.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.proname='acquire_company_write_guard_v1')"
+  },
+  {
+    "migration": "20260924083154_governance_guarded_reporting_year_read.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.proname='read_guarded_reporting_year_inputs_v1')"
+  },
+  {
+    "migration": "20260924084752_billing_rf_full_year_pilot_profile.sql",
+    "presenceQuery": "select exists(select 1 from pg_constraint where conrelid=to_regclass('billing.production_pilot_entitlements') and pg_get_constraintdef(oid) like '%rf1086_full_year_v1%')"
+  },
+  {
+    "migration": "20260924085227_rf1086_source_review_bridge.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='bridge_source_preview_v1')"
+  },
+  {
+    "migration": "20260924091015_rf1086_source_approval_foundation.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='append_source_approval_v1')"
+  },
+  {
+    "migration": "20260924094631_rf1086_journal_company_guard.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='lock_submission_company_write_v1')"
+  },
+  {
+    "migration": "20260928060732_rf1086_source_submission_claim.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='claim_source_submission_v1')"
+  },
+  {
+    "migration": "20260928110000_rf1086_feedback_original_binding.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='record_retained_feedback_artifact_v1')"
+  },
+  {
+    "migration": "20260928124000_documents_historical_original_assertion.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='documents' and p.proname='assert_historical_original_v1')"
+  },
+  {
+    "migration": "20260929092425_banking_company_write_guards.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='banking' and p.proname='acquire_company_write_guard_v1')"
+  },
+  {
+    "migration": "20260929144619_rf_annual_interview_read_admission.sql",
+    "presenceQuery": "select coalesce(has_function_privilege('shareholder_register_filing_executor',to_regprocedure('backend_system.list_annual_data_legacy_v1(uuid,integer,text)'),'EXECUTE'),false)"
+  },
+  {
+    "migration": "20260929160247_rf_annual_ledger_read_admission.sql",
+    "presenceQuery": "select coalesce(has_function_privilege('shareholder_register_filing_executor',to_regprocedure('ledger.list_period_locks(uuid[],text,integer,text)'),'EXECUTE'),false)"
+  },
+  {
+    "migration": "20260929162030_rf_annual_document_read_admission.sql",
+    "presenceQuery": "select coalesce(has_function_privilege('shareholder_register_filing_executor',to_regprocedure('documents.list_documents_v1(uuid[],text)'),'EXECUTE'),false)"
+  },
+  {
+    "migration": "20260929173935_rf1086_annual_approval_binding.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='append_source_approval_v2')"
+  },
+  {
+    "migration": "20260929182856_rf1086_durable_source_operation_intent.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='prepare_source_operation_v1')"
+  },
+  {
+    "migration": "20260929192057_rf1086_dispatch_binding_identity.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='prepare_source_operation_v2')"
+  },
+  {
+    "migration": "20260930083000_rf1086_override_receiver_cutover.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='backend_system' and p.proname='rf1086_other_overrides_ready_v1' and position('annual_accounts_filing.has_blocking_override_v1' in pg_get_functiondef(p.oid))>0)"
+  },
+  {
+    "migration": "20260930160335_rf1086_retained_archive_generations.sql",
+    "presenceQuery": "select exists(select 1 from pg_trigger where tgrelid=to_regclass('shareholder_register_filing.year_source_versions') and tgname='company_archive_track_retained_rf')"
+  }
+]

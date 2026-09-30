@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "4bac25af00adc5d852189411fee18be7215f72ff",
+  "status": "PASS_BOUNDED_AUTHORITY_TOPOLOGY_AND_OWNED_CLONE",
+  "scope": "Owned local authority predecessor restoration, RF lifecycle and reporting clone verification. No production activation or full release gate claim.",
+  "sourceSha256": {
+    "apps/backend/tests/test_authority_connections_database_runtime.py": "475a302d3ef4df7ed177d1cc27c598cd1eefbd0d307b86befbbb6d45d43e98e0",
+    "apps/backend/tests/test_rf1086_year_source_database.py": "ba5fe8037df1e3f5d0019e53003f66271776d175329e3f96b810dedbf18c341c",
+    "apps/backend/tests/test_rf1086_register_observation_database.py": "05c6603320c162be3cb64706141facd4660f5f29e2b1da799ca7445ad48e924d",
+    "apps/backend/tests/test_shareholder_register_filing_lifecycle.py": "48a0dfead1ccce5cdc49d0ba226dd6dbecfcb6cb563bed6a2c9f5d17c4cfbb92",
+    "apps/backend/tests/test_corporate_reporting_clone_runner.py": "f4dba76b1634e21268d49b22e986efd9bc3e4dde7c0e762a8c139a7ac1c104ec",
+    "scripts/test-corporate-reporting-owned-clone.py": "ce534ccd76834cdff620a3320d56c33e40c85d014b5885bfe63da0c4c4a0dc3f",
+    "package.json": "669afbbe5c9296c31e364ed44b0d4f3201ceadd1d3457997c9eb48fd1eb24bea",
+    "scripts/rehearse-authority-topology.mjs": "76f69f8ed96412aa2769d68194e576506dd0fecd0f9d31685075b73d903bd9a0",
+    "scripts/test-supabase-local.sh": "c75050da7a2b5142398e1ed7bd0fce80df5d0d8935eb0cb9550f547652a16cd2",
+    "tests/ci_release_gate.test.mjs": "827d5a133e2346ccec8ec3d8d012ee413b4bf2d9a98b603b63a0e5e69b07d97a"
+  },
+  "verification": {
+    "ordinaryAuthorityRfDocumentsLifecyclePassed": 196,
+    "ownedReportingClonePassed": 6,
+    "ciContractsPassed": 57,
+    "cloneSafetyPassed": 16,
+    "independentReview": "No actionable findings; read-only topology and cleanup review",
+    "instrumentedDiagnosticRepetitionsPassed": 400,
+    "instrumentationRestoredBeforeOrdinaryTests": true,
+    "ownedContainersAndVolumesRemoved": true,
+    "boundInputsVerified": 239
+  },
+  "privateProofSha256": "beef7b62aed909e091adf6ab705b6cfcd0efa54153b484a807adda7a6ae79a18",
+  "limits": [
+    "Original intermittent SQL source storage rejection is not reproduced; no speculative fix claimed.",
+    "Consumed Ledger helper prevents rerunning old full aggregate on this stack; preserved resumed-final-lane.log; full clean gate requires new fresh CI.",
+    "All full RF acceptance criteria remain pending. No hosted/provider action."
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "baseCommit": "980f9f1e2971cdcc39bcffa30e5412c2af8fc60e",
+  "status": "PASS_GOVERNANCE_SCOPED_RECUTOVER_FULL_STACK_PENDING",
+  "failure": {
+    "ciRun": 36393914126,
+    "revision": "fda029c213990eb885e8ec9860ac4245801b2dec",
+    "database": "FAIL",
+    "cause": "Full combined writer migration was replayed in the historical Governance lane while ledger.opening_bank_inputs is intentionally absent"
+  },
+  "changes": [
+    "Scope the maintained rehearsal to actual Governance definitions and inventories from the existing migration; leave production full migration strict",
+    "Preserve Ledger routine bodies, schema shape and table triggers; restore only the required existing guard grant",
+    "Extend the real RF claim adapter test to serialize/parse its canonical database archive"
+  ],
+  "verification": {
+    "boundedPostgreSQL": "Exact full migration reproduces missing Ledger table; actual scoped SQL replays twice restoring 11 Governance table guards and 19 routine wrappers while Ledger remains unchanged",
+    "negativeProbes": "Unauthenticated guarded calls and missing Governance table rejected",
+    "staticContractsPassed": 13,
+    "databaseCasesSkippedLocally": 7,
+    "rfDatabaseCasesCollected": 47,
+    "rfDatabaseArchiveRoundtripExecuted": false,
+    "architecture": "PASS"
+  },
+  "limits": [
+    "Minimal topology proof is not full Supabase lifecycle execution",
+    "Canonical RF archive database roundtrip added to maintained fixture but only collected locally",
+    "Prior Application CI still running; preserve it and run full next revision later",
+    "No provider operations or real AS data; all seven RF criteria PENDING"
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md": "984b8ae1744c5e9d17790b69d0a27325899bef210886850610cd2a0731286151",
+    "apps/backend/tests/test_rf1086_source_approval_database.py": "f58d1e8105e96d36dbd57045f3348e5a4d863d1132e2bfae7c4c5e18ad120a08",
+    "tests/corporate_governance_migration_lifecycle.test.mjs": "4c7c43a0a17205800779c105c3b9a10f09969f2f001a8335925fbae427289ce3",
+    "tests/support/governance_guard_replay.mjs": "1fd902ac8e8d05ec36204ede634ad3614e1bb9ddebfb679d58ff952f25347e51"
+  },
+  "privateProofSha256": {
+    "talli-governance-scope-probe.log": "a8815f03f4ec375227458981691877113cde3283210e1081d8d84803ce2f7c1d",
+    "talli-governance-scope-contract.log": "5e15a5b5b631f0099aeba6125bba3dadcf378f6ecca01a802c29bb0c48b8079f",
+    "talli-governance-scope-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-archive-db-collection.log": "a0281a06ff684584fe27c673ab62fcd4d780174ae850a6f5f625503a657f8147",
+    "probe.py": "cbcf78672600574acf0b4b9821a7b1a50d26d7a857b459a0a26e2fed55ad15ea",
+    "scoped.sql": "f590b6deb14d0146b6aaed3762050c71a497d3ff57821b34d7794a5133184fd4"
+  }
+}

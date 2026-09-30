@@ -1,0 +1,818 @@
+"""Real restricted-role full-year approval and claims; provider dispatch stays closed."""
+import asyncio
+import base64
+from dataclasses import replace
+from datetime import timedelta
+import hashlib
+import json
+from uuid import uuid4
+
+import psycopg
+import pytest
+from psycopg.types.json import Jsonb
+
+from talli_backend.modules.shareholder_register_filing import public as rf
+from test_annual_purchase_basis_runtime import admitted
+from test_rf1086_database_runtime import backend_url, rf_fixture_admin_access, insert, SIGNOFFS
+from test_rf1086_year_source_database import DATABASE_URL, ROOT, capture, remove_only_owned_source_fixture
+from test_rf1086_source_preview_database import remove_only_preview_fixture
+from test_rf1086_source_review_bridge_database import prepare, bridge, remove_only_bridge_fixture
+from test_authority_connections_database_runtime import rf193_consequential_topology
+
+pytestmark=pytest.mark.authority_database
+MIGRATION='20260924091015_rf1086_source_approval_foundation.sql'
+
+
+@pytest.fixture(scope='module', autouse=True)
+def historical_source_command_revision():
+    """Rehearse V1, then restore every successor installed before the rewind."""
+    with psycopg.connect(DATABASE_URL) as db:
+        successors = [name for name in rf193_consequential_topology(db) if name > MIGRATION]
+        db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+        db.execute((ROOT/'supabase/migrations/20260928060732_rf1086_source_submission_claim.sql').read_text())
+    try:
+        yield
+    finally:
+        with psycopg.connect(DATABASE_URL) as db:
+            for migration in successors:
+                db.execute((ROOT/'supabase/migrations'/migration).read_text())
+
+
+@pytest.fixture
+def approval_fixture(admitted,backend_url,remove_only_bridge_fixture):
+    store,command,context,source,preview=prepare(admitted,backend_url)
+    claims=json.loads(store._verified.claims_json)
+    claims['amr'][0]['timestamp']=int(claims['amr'][0]['timestamp'])
+    store._verified=replace(store._verified,claims_json=json.dumps(claims))
+    asyncio.run(bridge(store,preview))
+    request,entitlement=uuid4(),uuid4()
+    external=base64.urlsafe_b64encode(hashlib.sha256(str(request).encode()).digest()).decode().rstrip('=')
+    with psycopg.connect(DATABASE_URL) as db:
+        now=db.execute("select clock_timestamp()-interval '1 second'").fetchone()[0]
+        signoffs=db.execute('select to_jsonb(s) from public.launch_signoffs s where key=any(%s)',(list(SIGNOFFS),)).fetchall()
+        insert(db,'authority_connections.system_user_requests',dict(id=request,company_id=admitted['company'],
+            initiating_owner_user_id=admitted['owner'],external_ref=external,status='accepted',preflight_verified_at=now))
+        insert(db,'billing.production_pilot_entitlements',dict(id=entitlement,company_id=admitted['company'],user_id=admitted['owner'],
+            income_year=2026,obligation='aksjonaerregisteroppgaven',case_profile='rf1086_full_year_v1',status='active',billing_exempt=True,
+            system_user_request_id=request,system_user_external_reference=external,starts_at=now,expires_at=now+timedelta(days=30),
+            evidence_reference='local-full-year-approval',approved_by=admitted['owner']))
+        insert(db,'shareholder_register_filing.authority_permissions',dict(company_id=admitted['company'],obligation='aksjonaerregisteroppgaven',
+            submitter_user_id=admitted['owner'],confirmed_by=admitted['owner'],production_enabled=True))
+        insert(db,'public.filing_readiness_snapshots',dict(company_id=admitted['company'],income_year=2026,obligation='aksjonaerregisteroppgaven',
+            status='ready',ready=True,created_by=admitted['owner']))
+        for key in SIGNOFFS:
+            db.execute("insert into public.launch_signoffs(key,status,reviewer,reviewed_at,evidence_link,decision,recorded_by) "
+                "values(%s,'approved','Local fixture',%s,'local-full-year-approval','approved',%s) on conflict(key) do update "
+                "set status=excluded.status,reviewer=excluded.reviewer,reviewed_at=excluded.reviewed_at,evidence_link=excluded.evidence_link,"
+                "decision=excluded.decision,recorded_by=excluded.recorded_by",(key,now,admitted['owner']))
+    fixture=dict(seed=admitted,store=store,command=command,context=context,source=source,preview=preview,request=request,entitlement=entitlement)
+    try:yield fixture
+    finally:
+        with psycopg.connect(DATABASE_URL) as db:
+            db.execute('set local role shareholder_register_filing_store_owner')
+            db.execute('alter table shareholder_register_filing.source_submission_bindings disable trigger source_claim_immutable')
+            db.execute('alter table shareholder_register_filing.source_submission_bindings no force row level security')
+            db.execute('alter table shareholder_register_filing.submission_heads no force row level security')
+            db.execute('delete from shareholder_register_filing.submission_heads where company_id=%s',(admitted['company'],))
+            db.execute('delete from shareholder_register_filing.source_submission_bindings where company_id=%s',(admitted['company'],))
+            db.execute('alter table shareholder_register_filing.source_submission_bindings force row level security')
+            db.execute('alter table shareholder_register_filing.submission_heads force row level security')
+            db.execute('alter table shareholder_register_filing.source_submission_bindings enable trigger source_claim_immutable')
+            db.execute('alter table shareholder_register_filing.source_approval_bindings disable trigger source_approval_binding_immutable')
+            db.execute('alter table shareholder_register_filing.source_approval_bindings no force row level security')
+            db.execute('delete from shareholder_register_filing.source_approval_bindings where company_id=%s',(admitted['company'],))
+            db.execute('alter table shareholder_register_filing.source_approval_bindings force row level security')
+            db.execute('alter table shareholder_register_filing.source_approval_bindings enable trigger source_approval_binding_immutable')
+            db.execute('reset role')
+            db.execute('delete from shareholder_register_filing.production_feedback_artifacts where company_id=%s',(admitted['company'],))
+            db.execute('delete from shareholder_register_filing.production_filing_submissions where company_id=%s',(admitted['company'],))
+            db.execute('delete from shareholder_register_filing.filing_approval_snapshots where company_id=%s',(admitted['company'],))
+            db.execute("delete from shareholder_register_filing.filing_previews where company_id=%s and source<>'rf1086-full-year-v1'",(admitted['company'],))
+            db.execute('delete from shareholder_register_filing.authority_permissions where company_id=%s',(admitted['company'],))
+            deleted = db.execute('delete from billing.production_pilot_entitlements where id=%s and company_id=%s returning id',
+                                 (entitlement,admitted['company'])).fetchall()
+            assert deleted == [(entitlement,)], 'full-year approval fixture must remove its exact pilot entitlement'
+            db.execute('delete from authority_connections.system_user_requests where id=%s',(request,))
+            db.execute('delete from public.filing_readiness_snapshots where company_id=%s',(admitted['company'],))
+            db.execute('delete from public.launch_signoffs where key=any(%s)',(list(SIGNOFFS),))
+            for row in signoffs:db.execute('insert into public.launch_signoffs select * from jsonb_populate_record(null::public.launch_signoffs,%s::jsonb)',(json.dumps(row[0]),))
+
+
+async def lock(db,f):
+    await db.execute('select shareholder_register_filing.lock_year_source_v1(%s,%s)',(f['seed']['company'],2026))
+
+
+def bind_fixture_owner(db,f):
+    db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true)",
+               (str(f['store'].actor_id.subject),f['store']._verified.claims_json))
+
+
+async def context(db,f):
+    return (await (await db.execute('select shareholder_register_filing.read_source_approval_context_v1(%s,%s,%s) as result',
+        (f['preview'].preview_id.value,f['entitlement'],str(f['store'].actor_id.subject)))).fetchone())['result']
+
+
+def manifest(f,review):
+    return rf.build_rf1086_source_approval_manifest(rf.Rf1086SourceApprovalManifestBasis(
+        source=f['source'],preview=f['preview'],actor_id=f['store'].actor_id,entitlement_id=str(f['entitlement']),
+        review_sha256=review['reviewSha256'],acknowledged_warning_codes=tuple(review['warningCodes'])))
+
+
+def canonical(value):
+    # The domain returns immutable mappings; its canonical JSON is reconstructed
+    # with ordinary containers without changing any bytes, order, or numbers.
+    from collections.abc import Mapping
+    def plain(v):
+        if isinstance(v,Mapping):return {k:plain(x) for k,x in v.items()}
+        if isinstance(v,(list,tuple)):return [plain(x) for x in v]
+        return v
+    return json.dumps(plain(value),sort_keys=True,separators=(',',':'),ensure_ascii=False,allow_nan=False)
+
+
+async def append(db,f,review,*,change=None,sha=None):
+    body=json.loads(canonical(manifest(f,review).manifest))
+    if change:change(body)
+    text=canonical(body)
+    return await (await db.execute('select * from shareholder_register_filing.append_source_approval_v1(%s,%s,%s,%s,%s,%s)',
+        (f['preview'].preview_id.value,f['entitlement'],text,sha or hashlib.sha256(text.encode()).hexdigest(),
+         review['reviewSha256'],str(f['store'].actor_id.subject)))).fetchone()
+
+
+def test_exact_approval_replay_retains_original_manifest_review_and_source_bytes(approval_fixture):
+    f=approval_fixture
+    async def run():
+        async with f['store']._transaction() as db:
+            await lock(db,f);review=await context(db,f)
+            assert set(review)=={'companyId','incomeYear','previewId','sourceId','sourceSha256','entitlementId','reviewSha256','warningCodes','blockers'}
+            assert review['blockers']==[]
+            first=await append(db,f,review);assert await append(db,f,review)==first
+            binding=await (await db.execute('select * from shareholder_register_filing.source_approval_bindings where approval_id=%s',(first['id'],))).fetchone()
+            assert hashlib.sha256(binding['manifest_text'].encode()).hexdigest()==first['manifest_hash']
+            assert hashlib.sha256(binding['review_text'].encode()).hexdigest()==review['reviewSha256']
+            assert json.loads(binding['manifest_text'])==first['manifest']
+            retained=json.loads(binding['review_text'])
+            assert retained['scope']['previewId']==f['preview'].preview_id.value
+            assert retained['permission']['production_enabled'] is True
+            assert first['payload_hash']==hashlib.sha256(rf.serialize_rf1086_source_preview(f['preview']).encode()).hexdigest()
+            return first['id']
+    assert asyncio.run(run())
+
+
+@pytest.mark.parametrize('guard',['none','company-only','repeatable-read'])
+def test_context_requires_same_connection_company_and_year_guards(approval_fixture,guard):
+    f=approval_fixture
+    async def run():
+        async with f['store']._transaction(snapshot=guard=='repeatable-read') as db:
+            if guard=='company-only':
+                # The private lock RPC is deliberately not granted to RF. Take
+                # only its advisory key to exercise the missing year guard.
+                await db.execute('select pg_advisory_xact_lock(hashtextextended(%s,157))',(str(f['seed']['company']),))
+            if guard=='repeatable-read':
+                await db.execute('select pg_advisory_xact_lock(hashtextextended(%s,157)),pg_advisory_xact_lock(hashtextextended(%s,0))',
+                    (str(f['seed']['company']),f"rf1086:year-source:{f['seed']['company']}:2026"))
+            await context(db,f)
+    with pytest.raises(Exception,match='source_approval_guard_required|basis_unavailable'):asyncio.run(run())
+
+
+@pytest.mark.parametrize('field',['permission','readiness','technical','hard-comment','acknowledged-hard-comment','override'])
+def test_review_blockers_are_visible_and_append_is_closed(approval_fixture,field):
+    f=approval_fixture
+    with psycopg.connect(DATABASE_URL) as db:
+        if field=='permission':db.execute('update shareholder_register_filing.authority_permissions set production_enabled=false where company_id=%s',(f['seed']['company'],))
+        elif field=='readiness':db.execute('update public.filing_readiness_snapshots set ready=false where company_id=%s',(f['seed']['company'],))
+        elif field=='technical':db.execute("update public.launch_signoffs set status='pending' where key='rf1086_authority'")
+        else:
+            # Exercise the actual RF review APIs and their company guard.
+            async def mutate():
+                async with f['store']._transaction() as conn:
+                    if field in ('hard-comment','acknowledged-hard-comment'):await conn.execute("select shareholder_register_filing.add_review_comment_v1(%s,'hard_block','Review needed')",(f['preview'].preview_id.value,))
+                    else:await conn.execute("select shareholder_register_filing.record_override_v1(%s,'preview','old','new','Reason','block',true)",(f['preview'].preview_id.value,))
+            asyncio.run(mutate())
+            if field=='acknowledged-hard-comment':
+                db.execute('set local role shareholder_register_filing_store_owner')
+                db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true)",(str(f['store'].actor_id.subject),f['store']._verified.claims_json))
+                db.execute("update shareholder_register_filing.filing_review_comments set acknowledged_by=%s,acknowledged_at=clock_timestamp() where preview_id=%s",(f['seed']['owner'],f['preview'].preview_id.value))
+    async def run():
+        async with f['store']._transaction() as db:
+            await lock(db,f);review=await context(db,f);assert review['blockers']
+            await append(db,f,review)
+    with pytest.raises(Exception,match='source_approval_blocked|basis_unavailable'):asyncio.run(run())
+
+
+@pytest.mark.parametrize('change',[lambda m:m.update(extra='unknown'),lambda m:m['source'].update(sha256='f'*64),
+    lambda m:m['review'].update(acknowledgedWarningCodes=['not-in-preview']),lambda m:m['documentHashes'][0].update(sha256='f'*64),
+    lambda m:m.update(userId=str(uuid4())),lambda m:m.update(caseProfile='rf1086_no_activity_v1')])
+def test_manifest_must_match_every_stored_source_and_review_field(approval_fixture,change):
+    f=approval_fixture
+    async def run():
+        async with f['store']._transaction() as db:
+            await lock(db,f);await append(db,f,await context(db,f),change=change)
+    with pytest.raises(Exception,match='source_approval_manifest_invalid|basis_unavailable'):asyncio.run(run())
+
+
+def test_changed_review_requires_new_digest_and_supersedes_prior_approval(approval_fixture):
+    f=approval_fixture
+    async def run():
+        async with f['store']._transaction() as db:
+            await lock(db,f);old=await context(db,f);first=await append(db,f,old)
+        async with f['store']._transaction() as db:
+            await db.execute("select shareholder_register_filing.add_review_comment_v1(%s,'advisory','New review note')",(f['preview'].preview_id.value,))
+        with pytest.raises(Exception,match='source_review_changed|payload_changed'):
+            async with f['store']._transaction() as db:
+                await lock(db,f);await append(db,f,old)
+        async with f['store']._transaction() as db:
+            await lock(db,f);new=await context(db,f);assert new['reviewSha256']!=old['reviewSha256']
+            second=await append(db,f,new);assert second['id']!=first['id']
+            prior=await (await db.execute('select invalidated_at,invalidation_reason from shareholder_register_filing.filing_approval_snapshots where id=%s',(first['id'],))).fetchone()
+            assert prior['invalidated_at'] and prior['invalidation_reason']=='superseded_by_new_approval'
+    asyncio.run(run())
+
+
+def test_source_correction_invalidates_old_preview_admission(approval_fixture):
+    f=approval_fixture
+    capture(f['store'],replace(f['command'],supersedes_source_id=f['source'].source_id,
+        supersedes_source_sha256=f['source'].source_sha256,correction_reason='Corrected source'),f['context'])
+    async def run():
+        async with f['store']._transaction() as db:await lock(db,f);await context(db,f)
+    with pytest.raises(Exception,match='source_preview_stale|payload_changed'):asyncio.run(run())
+
+
+def test_full_approval_does_not_enable_legacy_approve_or_send(approval_fixture):
+    f=approval_fixture
+    async def run():
+        async with f['store']._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+        for command,args in [
+            ('select shareholder_register_filing.approve_production_filing(%s,%s,%s,%s,%s)',
+             (f['preview'].preview_id.value,f['entitlement'],Jsonb({}),'a'*64,'rf1086-production-v1')),
+            ('select shareholder_register_filing.begin_production_filing(%s)',(approval['id'],))]:
+            with pytest.raises(Exception,match='source_production_admission_required|basis_unavailable'):
+                async with f['store']._transaction() as db:await db.execute(command,args)
+    asyncio.run(run())
+
+
+def test_private_binding_and_helpers_have_no_runtime_write_or_browser_access(approval_fixture):
+    with psycopg.connect(DATABASE_URL) as db:
+        for role in ('anon','authenticated','service_role','shareholder_register_filing_executor'):
+            assert not db.execute("select has_table_privilege(%s,'shareholder_register_filing.source_approval_bindings','INSERT,UPDATE,DELETE')",(role,)).fetchone()[0]
+            assert not db.execute("select has_function_privilege(%s,'shareholder_register_filing.source_approval_context_internal_v1(uuid,uuid,text)','execute')",(role,)).fetchone()[0]
+        for role in ('anon','authenticated','service_role'):
+            assert not db.execute("select has_function_privilege(%s,'shareholder_register_filing.append_source_approval_v1(uuid,uuid,text,text,text,text)','execute')",(role,)).fetchone()[0]
+
+
+def test_rollback_preserves_retained_approval_and_replay_restores_only_authorized_command(approval_fixture):
+    f=approval_fixture
+    async def approve():
+        async with f['store']._transaction() as db:await lock(db,f);return await append(db,f,await context(db,f))
+    first=asyncio.run(approve())
+    with psycopg.connect(DATABASE_URL) as db:
+        roles=db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()
+        db.execute((ROOT/'supabase/rollback'/MIGRATION).read_text())
+    try:
+        with pytest.raises(Exception):asyncio.run(approve())
+    finally:
+        with psycopg.connect(DATABASE_URL) as db:
+            db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+            assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()==roles
+    assert asyncio.run(approve())==first
+    # Earlier successor rehearsals validate80249's exact outer guard prefix.
+    # Source approval inserts its own rejection after that prefix, so replaying
+    # the real wrapper block followed by both successors must preserve identity.
+    guard=(ROOT/'supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql').read_text()
+    block=guard[guard.index('do $wrap$'):guard.index('end; $wrap$;')+len('end; $wrap$;')]
+    with psycopg.connect(DATABASE_URL) as db:
+        identity=db.execute("select oid,proowner,proacl::text,proconfig,prosrc from pg_proc where oid='shareholder_register_filing.approve_production_filing(uuid,uuid,jsonb,text,text)'::regprocedure").fetchone()
+    try:
+        with psycopg.connect(DATABASE_URL) as db:
+            db.execute(block)
+            db.execute((ROOT/'supabase/migrations/20260924085227_rf1086_source_review_bridge.sql').read_text())
+    finally:
+        with psycopg.connect(DATABASE_URL) as db:db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+    with psycopg.connect(DATABASE_URL) as db:
+        assert db.execute("select oid,proowner,proacl::text,proconfig,prosrc from pg_proc where oid='shareholder_register_filing.approve_production_filing(uuid,uuid,jsonb,text,text)'::regprocedure").fetchone()==identity
+    assert asyncio.run(approve())==first
+
+
+def test_blocked_company_admission_rereads_current_owner(approval_fixture):
+    from test_rf1086_source_company_guard_database import waiting
+    f=approval_fixture
+    async def run():
+        ready=asyncio.get_running_loop().create_future()
+        async def writer():
+            async with f['store']._transaction() as db:
+                ready.set_result((await (await db.execute('select pg_backend_pid() as pid')).fetchone())['pid'])
+                await lock(db,f);return await context(db,f)
+        with psycopg.connect(DATABASE_URL) as blocker:
+            blocker.execute('select public.company_archive_lock_company_v1(%s)',(f['seed']['company'],))
+            task=asyncio.create_task(writer());await waiting(await ready)
+            blocker.execute("update public.company_memberships set role='read_only' where company_id=%s",(f['seed']['company'],))
+        with pytest.raises(Exception,match='(?i)forbidden|owner|not_found'):await task
+    asyncio.run(run())
+
+
+def test_authority_lock_precedes_billing_and_rechecks_preflight_after_wait(approval_fixture):
+    f=approval_fixture
+    async def run():
+        ready=asyncio.get_running_loop().create_future()
+        async def writer():
+            async with f['store']._transaction() as db:
+                await lock(db,f)
+                ready.set_result((await (await db.execute('select pg_backend_pid() as pid')).fetchone())['pid'])
+                return await context(db,f)
+        with psycopg.connect(DATABASE_URL) as blocker:
+            blocker.execute('select id from authority_connections.system_user_requests where id=%s for update',(f['request'],))
+            task=asyncio.create_task(writer());pid=await ready
+            for _ in range(100):
+                with psycopg.connect(DATABASE_URL) as observer:
+                    waiting=observer.execute("select exists(select 1 from pg_stat_activity where pid=%s and wait_event_type='Lock')",(pid,)).fetchone()[0]
+                if waiting:break
+                await asyncio.sleep(.01)
+            else:raise AssertionError('Context did not wait on exact Authority request')
+            with psycopg.connect(DATABASE_URL) as observer:
+                # NOWAIT proves the later Billing row was not acquired first.
+                observer.execute('select id from billing.production_pilot_entitlements where id=%s for update nowait',(f['entitlement'],))
+            blocker.execute('update authority_connections.system_user_requests set preflight_verified_at=null where id=%s',(f['request'],))
+        with pytest.raises(Exception,match='(?i)pilot_entitlement_required|basis_unavailable|company_year_not_admitted'):await task
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('state',['valid','unconfirmed','wrong-hash','wrong-scope'])
+def test_correction_predecessor_requires_exact_terminal_retained_journal(approval_fixture,state):
+    f=approval_fixture;preview,approval,submission=[uuid4() for _ in range(3)];digest='d'*64
+    with psycopg.connect(DATABASE_URL) as db:
+        insert(db,'shareholder_register_filing.filing_previews',dict(id=preview,company_id=f['seed']['company'],income_year=2026,
+            filing='aksjonaerregisteroppgaven',status='ready',preview='Historical fixture',created_by=f['seed']['owner']))
+        insert(db,'shareholder_register_filing.filing_approval_snapshots',dict(id=approval,entitlement_id=f['entitlement'],preview_id=preview,
+            company_id=f['seed']['company'],user_id=f['seed']['owner'],income_year=2026,obligation='aksjonaerregisteroppgaven',
+            case_profile='rf1086_no_activity_v1',adapter_version='rf1086-production-v1',payload_hash='a'*64,manifest_hash='b'*64,
+            manifest=Jsonb({}),approved_by=f['seed']['owner']))
+        insert(db,'shareholder_register_filing.production_filing_submissions',dict(id=submission,approval_id=approval,entitlement_id=f['entitlement'],
+            company_id=f['seed']['company'],user_id=f['seed']['owner'],income_year=2025 if state=='wrong-scope' else 2026,
+            obligation='aksjonaerregisteroppgaven',case_profile='rf1086_no_activity_v1',adapter_version='rf1086-production-v1',payload_hash='a'*64,
+            environment='production',status='accepted',feedback_state='accepted',feedback_artifact_count=1,submitted_by=f['seed']['owner']))
+        insert(db,'shareholder_register_filing.production_feedback_artifacts',dict(company_id=f['seed']['company'],submission_id=submission,
+            document_id=f['command'].documents[0].document_id,authority_reference='local-terminal-fixture',content_type='application/pdf',
+            byte_length=100,sha256=digest,classification='accepted'))
+        if state!='unconfirmed':
+            insert(db,'shareholder_register_filing.production_filing_events',dict(submission_id=submission,company_id=f['seed']['company'],
+                income_year=2025 if state=='wrong-scope' else 2026,operation_name='reconciliation:fixture',operation_state='succeeded',attempt=1,
+                resulting_status='accepted',artifact_hashes=[digest]))
+    def change(m):m['predecessor']={'submissionId':str(submission),'manifestSha256':'f'*64 if state=='wrong-hash' else 'b'*64,'reason':'Corrected source'}
+    async def run():
+        async with f['store']._transaction() as db:
+            await lock(db,f);return await append(db,f,await context(db,f),change=change)
+    if state=='valid':assert asyncio.run(run())['manifest']['predecessor']['submissionId']==str(submission)
+    else:
+        with pytest.raises(Exception,match='source_predecessor_mismatch|payload_changed'):asyncio.run(run())
+
+
+@pytest.mark.parametrize('expired',['pilot','mfa'])
+def test_authority_wait_uses_wall_clock_for_expiry(approval_fixture,expired):
+    f=approval_fixture
+    async def run():
+        ready=asyncio.get_running_loop().create_future()
+        async def writer():
+            async with f['store']._transaction() as db:
+                await db.execute("set local lock_timeout='3s'")
+                await lock(db,f)
+                ready.set_result((await (await db.execute('select pg_backend_pid() as pid')).fetchone())['pid'])
+                return await context(db,f)
+        with psycopg.connect(DATABASE_URL) as blocker:
+            blocker.execute('select id from authority_connections.system_user_requests where id=%s for update',(f['request'],))
+            if expired=='pilot':
+                blocker.execute("update billing.production_pilot_entitlements set expires_at=clock_timestamp()+interval '0.3 seconds' where id=%s",(f['entitlement'],))
+            else:
+                claims=json.loads(f['store']._verified.claims_json)
+                claims['amr'][0]['timestamp']=int(blocker.execute('select extract(epoch from clock_timestamp())').fetchone()[0])-898
+                f['store']._verified=replace(f['store']._verified,claims_json=json.dumps(claims))
+            task=asyncio.create_task(writer());pid=await ready
+            for _ in range(100):
+                with psycopg.connect(DATABASE_URL) as observer:
+                    blocked=observer.execute("select exists(select 1 from pg_stat_activity where pid=%s and wait_event_type='Lock')",(pid,)).fetchone()[0]
+                if blocked:break
+                await asyncio.sleep(.01)
+            else:raise AssertionError('Context did not reach Authority lock wait')
+            await asyncio.sleep(.4 if expired=='pilot' else 2.1)
+        with pytest.raises(Exception,match='(?i)pilot_entitlement_required|step_up_required|basis_unavailable|company_year_not_admitted'):await task
+    asyncio.run(run())
+
+
+def history_submission(f, *, actor=None):
+    preview,approval,submission=[uuid4() for _ in range(3)]
+    owner=f['seed']['owner']; company=f['seed']['company']
+    with psycopg.connect(DATABASE_URL) as db:
+        bind_fixture_owner(db,f)
+        insert(db,'shareholder_register_filing.filing_previews',dict(id=preview,company_id=company,income_year=2026,
+            filing='aksjonaerregisteroppgaven',status='ready',preview='History fixture',created_by=owner))
+        insert(db,'shareholder_register_filing.filing_approval_snapshots',dict(id=approval,entitlement_id=f['entitlement'],preview_id=preview,
+            company_id=company,user_id=actor or owner,income_year=2026,obligation='aksjonaerregisteroppgaven',
+            case_profile='rf1086_no_activity_v1',adapter_version='rf1086-production-v1',payload_hash='a'*64,manifest_hash='b'*64,
+            manifest=Jsonb({}),approved_by=actor or owner))
+        insert(db,'shareholder_register_filing.production_filing_submissions',dict(id=submission,approval_id=approval,entitlement_id=f['entitlement'],
+            company_id=company,user_id=actor or owner,income_year=2026,obligation='aksjonaerregisteroppgaven',
+            case_profile='rf1086_no_activity_v1',adapter_version='rf1086-production-v1',payload_hash='a'*64,
+            environment='production',status='processing',feedback_state='processing',submitted_by=actor or owner))
+    return str(submission)
+
+
+def test_guarded_history_includes_other_submitters_and_cannot_be_read_after_scope_exit(approval_fixture):
+    from talli_backend.shared.kernel import CompanyId, IncomeYear
+    from test_rf1086_year_source_database import session as year_session
+    f=approval_fixture; fixture=f['seed']; session=f['store']
+    submission=history_submission(f,actor=fixture['outsider'])
+    query=rf.Rf1086SourceQuery(CompanyId(str(fixture['company'])), IncomeYear(2026), session.actor_id)
+    async def run():
+        async with session.source_admission(query) as scope:
+            rows=await scope.submission_history()
+            assert len(rows)==1 and rows[0].id==submission and rows[0].user_id==str(fixture['outsider'])
+            with pytest.raises(rf.Rf1086ProductionError):
+                rf.assert_rf1086_submission_predecessor(rows,company_id=query.company_id,
+                    income_year=query.income_year,predecessor=None)
+        with pytest.raises(rf.ShareholderRegisterFilingError): await scope.submission_history()
+        outsider=year_session(fixture,session._configuration.database_url,actor=fixture['outsider'])
+        with pytest.raises(Exception):
+            async with outsider.source_admission(rf.Rf1086SourceQuery(query.company_id,query.income_year,outsider.actor_id)):
+                pytest.fail('outsider entered owner admission')
+    asyncio.run(run())
+
+
+def test_guarded_history_observes_writer_commit_after_waiting_for_company(approval_fixture):
+    from talli_backend.shared.kernel import CompanyId, IncomeYear
+    from test_rf1086_source_company_guard_database import waiting
+    f=approval_fixture; fixture=f['seed']; session=f['store']
+    submission=history_submission(f)
+    query=rf.Rf1086SourceQuery(CompanyId(str(fixture['company'])), IncomeYear(2026), session.actor_id)
+    async def run():
+        task=None
+        ready=asyncio.get_running_loop().create_future()
+        original=session._transaction
+        from contextlib import asynccontextmanager
+        @asynccontextmanager
+        async def observed_transaction(*args,**kwargs):
+            async with original(*args,**kwargs) as db:
+                ready.set_result((await (await db.execute('select pg_backend_pid() as pid')).fetchone())['pid'])
+                yield db
+        session._transaction=observed_transaction
+        async def reader():
+            async with session.source_admission(query) as scope: return await scope.submission_history()
+        try:
+            with psycopg.connect(DATABASE_URL) as writer:
+                writer.execute('select public.company_archive_lock_company_v1(%s)',(fixture['company'],))
+                task=asyncio.create_task(reader())
+                await waiting(await ready)
+                writer.execute("update shareholder_register_filing.production_filing_submissions set status='accepted',feedback_state='accepted' where id=%s",(submission,))
+            rows=await task
+            assert len(rows)==1 and rows[0].id==submission and rows[0].status=='accepted'
+        finally:
+            if task and not task.done():
+                task.cancel(); await asyncio.gather(task,return_exceptions=True)
+    asyncio.run(run())
+
+
+CLAIM_MIGRATION='20260928060732_rf1086_source_submission_claim.sql'
+
+
+@pytest.fixture
+def claim_fixture(approval_fixture):
+    # Historical approval/review tests intentionally replay predecessor bodies.
+    # Restore the successor before exercising its retained claim contract.
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute((ROOT/'supabase/migrations'/CLAIM_MIGRATION).read_text())
+    return approval_fixture
+
+
+async def claim_source(db,f,approval,*,expected_head=None,sha=None,subject=None):
+    return (await (await db.execute(
+        'select shareholder_register_filing.claim_source_submission_v1(%s,%s,%s,%s) as result',
+        (approval['id'],sha or approval['manifest_hash'],expected_head,subject or str(f['store'].actor_id.subject)))).fetchone())['result']
+
+
+def invalidate_fixture_approval(db,f,approval_id):
+    # The full-year trigger reads its binding under FORCE RLS. Use the actual
+    # fixture owner context rather than treating the disposable admin as owner.
+    bind_fixture_owner(db,f)
+    db.execute("update shareholder_register_filing.filing_approval_snapshots set invalidated_at=clock_timestamp(),invalidation_reason='later review' where id=%s",(approval_id,))
+
+
+def test_source_claim_retains_exact_identity_after_invalidation_and_expiry(claim_fixture):
+    f=claim_fixture
+    async def create():
+        async with f['store']._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+            first=await claim_source(db,f,approval)
+            assert first['newlyClaimed'] and first['claim']['approval_id']==str(approval['id'])
+            assert first['claim']['manifest_sha256']==approval['manifest_hash']
+            assert first['claim']['predecessor_submission_id'] is None
+            return approval,first
+    approval,first=asyncio.run(create())
+    with psycopg.connect(DATABASE_URL) as db:
+        invalidate_fixture_approval(db,f,approval['id'])
+        db.execute("update billing.production_pilot_entitlements set expires_at=clock_timestamp()-interval '1 second' where id=%s",(f['entitlement'],))
+    async def replay():
+        # No company/year admission or fresh pilot validation for exact recovery.
+        async with f['store']._transaction() as db:
+            again=await claim_source(db,f,approval)
+            assert not again['newlyClaimed'] and again['claim']==first['claim']
+            retained=await (await db.execute('select * from shareholder_register_filing.read_source_submission_claim_v1(%s,%s,%s)',
+                (approval['id'],approval['manifest_hash'],str(f['store'].actor_id.subject)))).fetchone()
+            assert str(retained['submission_id'])==first['claim']['submission_id']
+    asyncio.run(replay())
+
+
+@pytest.mark.parametrize('invalid',['head','manifest','subject','guards'])
+def test_invalid_source_claim_cannot_leave_a_head_or_submission(claim_fixture,invalid):
+    f=claim_fixture
+    async def approve():
+        async with f['store']._transaction() as db:
+            await lock(db,f);return await append(db,f,await context(db,f))
+    approval=asyncio.run(approve())
+    async def denied():
+        async with f['store']._transaction() as db:
+            if invalid!='guards':await lock(db,f)
+            await claim_source(db,f,approval,expected_head=uuid4() if invalid=='head' else None,
+                sha='f'*64 if invalid=='manifest' else None,subject=str(uuid4()) if invalid=='subject' else None)
+    error_type,code = ((rf.ShareholderRegisterFilingError,'SHAREHOLDER_REGISTER_FILING_FORBIDDEN') if invalid=='subject'
+                      else (rf.Rf1086ProductionError,'basis_unavailable' if invalid=='guards' else 'payload_changed'))
+    with pytest.raises(error_type) as rejected:
+        asyncio.run(denied())
+    assert rejected.value.code==code
+    with psycopg.connect(DATABASE_URL) as db:
+        for table in ['source_submission_bindings','submission_heads','production_filing_submissions']:
+            assert db.execute(f'select count(*) from shareholder_register_filing.{table} where company_id=%s',(f['seed']['company'],)).fetchone()[0]==0
+
+
+def test_later_approval_cannot_claim_a_second_initial_filing(claim_fixture):
+    f=claim_fixture
+    async def first_claim():
+        async with f['store']._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+            return approval,await claim_source(db,f,approval)
+    approval,first=asyncio.run(first_claim())
+    with psycopg.connect(DATABASE_URL) as db:
+        invalidate_fixture_approval(db,f,approval['id'])
+    async def later():
+        async with f['store']._transaction() as db:
+            await lock(db,f);return await append(db,f,await context(db,f))
+    second=asyncio.run(later());assert second['id']!=approval['id']
+    async def denied():
+        async with f['store']._transaction() as db:
+            await lock(db,f);await claim_source(db,f,second)
+    with pytest.raises(rf.Rf1086ProductionError) as rejected:asyncio.run(denied())
+    assert rejected.value.code=='payload_changed'
+    with psycopg.connect(DATABASE_URL) as db:
+        assert db.execute('select count(*) from shareholder_register_filing.production_filing_submissions where company_id=%s',(f['seed']['company'],)).fetchone()[0]==1
+        assert str(db.execute('select submission_id from shareholder_register_filing.submission_heads where company_id=%s',(f['seed']['company'],)).fetchone()[0])==first['claim']['submission_id']
+
+
+def test_concurrent_same_approval_claims_converge_after_company_guard_wait(claim_fixture):
+    from test_rf1086_source_company_guard_database import waiting
+    f=claim_fixture
+    async def run():
+        async with f['store']._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+        ready=asyncio.get_running_loop().create_future();task=None
+        async def competing():
+            async with f['store']._transaction() as db:
+                ready.set_result((await (await db.execute('select pg_backend_pid() as pid')).fetchone())['pid'])
+                await lock(db,f)
+                return await claim_source(db,f,approval)
+        try:
+            async with f['store']._transaction() as db:
+                await lock(db,f)
+                first=await claim_source(db,f,approval)
+                task=asyncio.create_task(competing())
+                await waiting(await ready)
+                assert not task.done()
+            second=await task
+            assert first['newlyClaimed'] and not second['newlyClaimed']
+            assert first['claim']==second['claim']
+        finally:
+            if task and not task.done():task.cancel();await asyncio.gather(task,return_exceptions=True)
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize('shape',['roots','fork','unresolved-ancestor'])
+def test_source_claim_rejects_ambiguous_complete_legacy_history(claim_fixture,shape):
+    f=claim_fixture
+    history=[history_submission(f) for _ in range(3 if shape=='fork' else 2)]
+    with psycopg.connect(DATABASE_URL) as db:
+        if shape!='roots':
+            for child in history[1:]:
+                db.execute('update shareholder_register_filing.production_filing_submissions set supersedes_submission_id=%s where id=%s',(history[0],child))
+        if shape!='unresolved-ancestor':
+            db.execute("update shareholder_register_filing.production_filing_submissions set status='accepted',feedback_state='accepted' where company_id=%s",(f['seed']['company'],))
+    async def denied():
+        async with f['store']._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+            await claim_source(db,f,approval)
+    with pytest.raises(Exception,match='submission_history_ambiguous|basis_unavailable'):asyncio.run(denied())
+    with psycopg.connect(DATABASE_URL) as db:
+        assert db.execute('select count(*) from shareholder_register_filing.submission_heads where company_id=%s',(f['seed']['company'],)).fetchone()[0]==0
+
+
+def test_managed_source_head_rejects_a_new_legacy_filing(claim_fixture):
+    f=claim_fixture
+    async def create():
+        async with f['store']._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+            return await claim_source(db,f,approval)
+    first=asyncio.run(create())
+    with pytest.raises(psycopg.errors.RaiseException,match='managed_submission_head_required'):
+        history_submission(f)
+    with psycopg.connect(DATABASE_URL) as db:
+        assert str(db.execute('select submission_id from shareholder_register_filing.submission_heads where company_id=%s',(f['seed']['company'],)).fetchone()[0])==first['claim']['submission_id']
+
+
+def test_claim_rollback_retains_recovery_and_recutover_identity(claim_fixture):
+    f=claim_fixture
+    async def create():
+        async with f['store']._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+            return approval,await claim_source(db,f,approval)
+    approval,first=asyncio.run(create())
+    try:
+        with psycopg.connect(DATABASE_URL) as db:
+            db.execute((ROOT/'supabase/rollback'/CLAIM_MIGRATION).read_text())
+        async def read_and_denied():
+            async with f['store']._transaction() as db:
+                retained=await (await db.execute('select * from shareholder_register_filing.read_source_submission_claim_v1(%s,%s,%s)',
+                    (approval['id'],approval['manifest_hash'],str(f['store'].actor_id.subject)))).fetchone()
+                assert str(retained['submission_id'])==first['claim']['submission_id']
+            async with f['store']._transaction() as db:
+                await claim_source(db,f,approval)
+        with pytest.raises(rf.ShareholderRegisterFilingError) as rejected:asyncio.run(read_and_denied())
+        assert rejected.value.code=='SHAREHOLDER_REGISTER_FILING_FORBIDDEN'
+    finally:
+        with psycopg.connect(DATABASE_URL) as db:
+            db.execute((ROOT/'supabase/migrations'/CLAIM_MIGRATION).read_text())
+    async def replay():
+        async with f['store']._transaction() as db:
+            result=await claim_source(db,f,approval)
+            assert result['claim']==first['claim'] and not result['newlyClaimed']
+    asyncio.run(replay())
+
+
+def test_historical_v1_claim_adapter_reads_retained_approval_and_claim(claim_fixture):
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    f=claim_fixture;store=f['store']
+    async def run():
+        async with store._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+            query=rf.Rf1086SourceQuery(f['source'].company_id,f['source'].income_year,store.actor_id)
+            scope=_SourceAdmission(store,db,query,None)
+            approval_id=rf.ApprovalId(str(approval['id']))
+            retained=await scope.read_source_claim_approval(approval_id)
+            assert retained.approval.manifest_hash==approval['manifest_hash']
+            assert rf.inspect_rf1086_retained_source_approval(retained,approval_id=approval_id,
+                manifest_sha256=approval['manifest_hash'],actor_id=store.actor_id) is None
+            historical=await claim_source(db,f,approval)
+            first=rf.Rf1086SourceSubmissionClaimResult(
+                await scope.read_source_submission_claim(approval_id,approval['manifest_hash'],None),historical['newlyClaimed'])
+            assert first.newly_claimed is True
+            assert await scope.read_source_submission_claim(approval_id,approval['manifest_hash'],None)==first.claim
+            scope.close()
+        assert await store.read_source_claim_approval(approval_id)==retained
+        assert await store.read_source_submission_claim(approval_id,approval['manifest_hash'],None)==first.claim
+        archive_query=rf.Rf1086ArchiveQuery(f['source'].company_id,f['source'].income_year,store.actor_id)
+        archive=await rf.create_rf1086_preparation_service(store).archive_source(archive_query)
+        assert archive.source_submission_claims==(first.claim,)
+        assert archive.submission_head.submission_id==first.claim.submission_id
+        canonical_archive=rf.serialize_rf1086_archive(archive,query=archive_query)
+        assert rf.parse_rf1086_archive(canonical_archive,query=archive_query)==archive
+    asyncio.run(run())
+
+
+def test_archive_rollback_preserves_durable_claim_scope_foreign_keys(claim_fixture):
+    import re
+    f=claim_fixture
+    async def create():
+        async with f['store']._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+            return await claim_source(db,f,approval)
+    first=asyncio.run(create())
+    with psycopg.connect(DATABASE_URL) as db:
+        try:
+            def state():
+                return db.execute("select to_jsonb(b) from shareholder_register_filing.source_submission_bindings b where submission_id=%s union all select to_jsonb(h) from shareholder_register_filing.submission_heads h where submission_id=%s",
+                    (first['claim']['submission_id'],first['claim']['submission_id'])).fetchall()
+            before=state();assert len(before)==2
+            constraints=db.execute("select oid,conname,conindid,convalidated from pg_constraint where conrelid in ('shareholder_register_filing.source_submission_bindings'::regclass,'shareholder_register_filing.submission_heads'::regclass) and contype='f' order by oid").fetchall()
+            rollback=(ROOT/'supabase/rollback/20260917114424_rf1086_production_archive_evidence.sql').read_text()
+            rollback=re.sub(r'commit;\s*$','',re.sub(r'(?m)^begin;\s*$','',rollback,count=1))
+            db.execute(rollback)
+            assert state()==before
+            assert db.execute("select oid,conname,conindid,convalidated from pg_constraint where conrelid in ('shareholder_register_filing.source_submission_bindings'::regclass,'shareholder_register_filing.submission_heads'::regclass) and contype='f' order by oid").fetchall()==constraints
+        finally:db.rollback()
+
+
+@pytest.mark.parametrize('guarded',[False,True])
+def test_full_year_predecessor_reads_original_approval_and_claim_under_restricted_role(claim_fixture,guarded):
+    from talli_backend.adapters.postgres_shareholder_register_filing import _SourceAdmission
+    f=claim_fixture;store=f['store']
+    async def create():
+        async with store._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+            return approval,await claim_source(db,f,approval)
+    approval,first=asyncio.run(create());submission=first['claim']['submission_id'];digest='d'*64
+    # Synthetic terminal RF evidence only; Documents original-byte verification
+    # is separately exercised by the application correction harness.
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true),set_config('request.jwt.claims',%s,true)",
+            (str(store.actor_id.subject),store._verified.claims_json,store._verified.claims_json))
+        db.execute("update shareholder_register_filing.production_filing_submissions set status='accepted',feedback_state='accepted',feedback_artifact_count=1 where id=%s",(submission,))
+        insert(db,'shareholder_register_filing.production_feedback_artifacts',dict(company_id=f['seed']['company'],submission_id=submission,
+            document_id=f['command'].documents[0].document_id,authority_reference='synthetic-full-year-terminal',
+            content_type='application/pdf',byte_length=100,sha256=digest,classification='accepted'))
+        insert(db,'shareholder_register_filing.production_filing_events',dict(submission_id=submission,company_id=f['seed']['company'],
+            income_year=2026,operation_name='reconciliation:synthetic-full-year',operation_state='succeeded',attempt=1,
+            resulting_status='accepted',artifact_hashes=[digest]))
+    query=rf.Rf1086SourceQuery(f['source'].company_id,f['source'].income_year,store.actor_id)
+    prior=rf.Rf1086SourceCorrectionPredecessor(rf.SubmissionId(submission),approval['manifest_hash'],'Synthetic correction')
+    async def read():
+        if not guarded:return await store.read_correction_predecessor(query,prior.submission_id)
+        async with store._transaction() as db:
+            await lock(db,f)
+            scope=_SourceAdmission(store,db,query,None)
+            return await scope.read_correction_predecessor(query,prior.submission_id)
+    snapshot=asyncio.run(read())
+    assert snapshot.source_approval_lineage.source==f['source']
+    assert snapshot.source_claim.submission_id==prior.submission_id
+    rf.assert_rf1086_correction_predecessor(snapshot,company_id=query.company_id,income_year=query.income_year,predecessor=prior)
+    with pytest.raises(rf.Rf1086ProductionError):
+        rf.assert_rf1086_correction_predecessor(replace(snapshot,source_claim=None),
+            company_id=query.company_id,income_year=query.income_year,predecessor=prior)
+
+
+def test_confirmed_source_claim_reconstructs_read_only_payload_after_live_approval_expiry(claim_fixture):
+    # Preserve V1 history coverage by importing committed historical evidence.
+    # Generic full-year mutation commands are now intentionally closed; current
+    # journal execution is covered by the durable-operation database suite.
+    from types import SimpleNamespace
+    f = claim_fixture
+    store = f['store']
+    async def create():
+        async with store._transaction() as db:
+            await lock(db, f)
+            review = await context(db, f)
+            approval = await append(db, f, review)
+            claimed = await claim_source(db, f, approval)
+            return approval, claimed['claim']['submission_id'], manifest(f, review)
+    approval, submission_id, payload = asyncio.run(create())
+    result = SimpleNamespace(forsendelse_id=str(uuid4()), dialog_id=str(uuid4()))
+    refs = {}
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute('set local role shareholder_register_filing_store_owner')
+        db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true),set_config('request.jwt.claims',%s,true)",
+            (str(store.actor_id.subject),store._verified.claims_json,store._verified.claims_json))
+        for doc in payload.manifest['documentHashes']:
+            name = 'post_hovedskjema' if doc['name'] == 'hovedskjema' else 'post_underskjema:' + doc['name'].removeprefix('underskjema_')
+            refs[name] = 'historical-main' if name == 'post_hovedskjema' else 'posted'
+            insert(db, 'shareholder_register_filing.production_filing_events', dict(submission_id=submission_id,
+                operation_name=name, operation_state='succeeded', attempt=1, body_hash=doc['sha256'],
+                idempotency_key=uuid4(), authority_reference=refs[name], resulting_status='sending'))
+        refs['confirm'] = json.dumps(dict(dialogId=result.dialog_id, forsendelseId=result.forsendelse_id), separators=(',', ':'))
+        insert(db, 'shareholder_register_filing.production_filing_events', dict(submission_id=submission_id,
+            operation_name='confirm', operation_state='succeeded', attempt=1,
+            body_hash=hashlib.sha256(f'historical-main:{len(payload.document_order)}'.encode()).hexdigest(),
+            idempotency_key=uuid4(), authority_reference=refs['confirm'], resulting_status='received'))
+        db.execute("update shareholder_register_filing.production_filing_submissions set status='received',authority_references=%s where id=%s",
+            (Jsonb(refs), submission_id))
+    with psycopg.connect(DATABASE_URL) as db:
+        invalidate_fixture_approval(db,f,approval['id'])
+        db.execute("update billing.production_pilot_entitlements set expires_at=clock_timestamp()-interval '1 second' where id=%s", (f['entitlement'],))
+    async def recover():
+        lease = str(uuid4())
+        assert await store.claim_feedback_lease(submission_id, lease)
+        try:
+            reference = await store.read_claimed_reference(submission_id, lease)
+            dialog = await store.read_claimed_dialog_id(submission_id, lease)
+            query = rf.Rf1086ArchiveQuery(f['source'].company_id, f['source'].income_year, store.actor_id)
+            archive = await store.archive_source(query)
+            recovered = rf.prepare_rf1086_source_reconciliation(archive, query=query,
+                submission=await store.read_submission(submission_id), forsendelse_id=reference, dialog_id=dialog)
+            assert recovered.hovedskjema_xml == f['preview'].hovedskjema_xml
+            assert recovered.underskjema_xml == payload.underskjema_xml
+            assert (reference, dialog) == (result.forsendelse_id, result.dialog_id)
+        finally:
+            await store.release_feedback_lease(submission_id, lease)
+    asyncio.run(recover())
+
+
+def test_full_year_source_facts_include_claim_and_positive_family_counts(claim_fixture):
+    from talli_backend.modules.shareholder_register_filing.source_facts import build_source_facts
+    f=claim_fixture;store=f['store']
+    async def run():
+        async with store._transaction() as db:
+            await lock(db,f);approval=await append(db,f,await context(db,f))
+            claimed=await claim_source(db,f,approval)
+        q=rf.Rf1086SourceQuery(f['source'].company_id,f['source'].income_year,store.actor_id)
+        source=await store.source_snapshot(q)
+        assert source.full_year_family_counts=={'year_source_versions':1,'year_source_heads':1,
+            'register_observations':0,'source_previews':1,'source_review_bridges':1,
+            'source_approval_bindings':1,'source_submission_bindings':1,'submission_heads':1}
+        assert source.full_year_archive.source_submission_claims[0].submission_id.value==claimed['claim']['submission_id']
+        facts=build_source_facts(q,source)
+        assert facts.evidence.version.startswith('rf1086-source-v2:')
+        assert not any(reason.startswith('full_year_') for reason in facts.history_coverage.reasons)
+        assert facts.readiness_status=='unavailable' and facts.hard_blocks==('rf1086_full_year_readiness_not_evaluated',)
+    asyncio.run(run())

@@ -449,7 +449,7 @@ class LedgerApplicationSession:
     ) -> NewYearStartResult:
         operation_name = "new_year_start"
         request = _new_year_request(command)
-        async with self._persistence.transaction() as transaction:
+        async with self._persistence.transaction(guarded_company_id=command.company_id) as transaction:
             replay = await transaction.claim_workflow(
                 operation_name=operation_name,
                 command=command,
@@ -513,7 +513,7 @@ class LedgerApplicationSession:
     ) -> LedgerWriterResult:
         if command.actor_id != self.actor_id:
             raise LedgerError.forbidden()
-        async with self._persistence.transaction() as transaction:
+        async with self._persistence.transaction(guarded_company_id=command.company_id) as transaction:
             prepared = await transaction.prepare_administrative_cost(command)
             replay = prepared.get("replay")
             if replay is not None:

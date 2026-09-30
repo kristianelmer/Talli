@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_ANNUAL_APPROVAL_RETENTION",
+  "baseCommit": "b420b039",
+  "change": "Canonical RF annual-proof storage and production-source-approval-v2 bind full annual evidence and required warnings. Historical archive verification rebuilds retained policy and the matching V2 review, preserving V1 manifest/source bytes and old recovery. Live approval and first-claim enforcement remain V1 pending the next integration.",
+  "verification": {
+    "unit": "285 focused cases pass, including30 new codec/manifest/archive cases; V1 hashes recorded from the prior committed implementation remain exact. Changed evidence changes approval identity with unchanged XML. Blocked proofs, missing acknowledgements, malformed/foreign/noncanonical proofs, weakened reviews and damaged bindings are rejected. V2 first claims remain disabled; exact historical claims remain recoverable.",
+    "architecture": "Architecture check passes.",
+    "ciHarness": "79 CI/rehearsal harness cases pass."
+  },
+  "limits": [
+    "Retention foundation only; no live V2 approval/claim SQL, stored-ready replacement or provider dispatch.",
+    "All seven RF acceptance criteria remain pending. No real AS data, hosted changes or provider operations."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-annual-approval-20260929-14d7",
+  "sha256": {
+    "unit.log": "b3533cd7438137fc0040d3f380fa8ad8b1806a4b31e0bc035054ac33ef0bc4cd",
+    "architecture.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "ci-harness.log": "2f9bfdb5b460d3673b4f08a8310951d0a02256cae24453c46d1a0fce3eca9c54"
+  }
+}

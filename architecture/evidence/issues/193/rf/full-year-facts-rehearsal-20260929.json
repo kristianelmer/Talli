@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_FULL_YEAR_FACTS_AND_REHEARSAL",
+  "baseCommit": "bdbc2989",
+  "scope": "Complete RF-owned full-year history facts and restoration of installed RF successors after frozen Authority rehearsal.",
+  "behavior": [
+    "Source-facts V2 commits retained full-year sources, heads, observations, capture records, previews, bridges, approvals, claims, journal and bound feedback; legacy V1 hashes are unchanged.",
+    "One repeatable snapshot reads legacy and full-year projections plus independent counts for eight new storage families. Missing counts, invalid lineage and conflicting projections cannot certify complete history.",
+    "Historical coverage explicitly does not prove current full-year readiness: no opening-only fallback or source-only production authorization.",
+    "The Authority predecessor fixture captures installed successor migrations using the same inventory as the final database harness, restores them after RF contract, and checks their presence. Populated source/binding/head families and bound original feedback prevent destructive fixture teardown."
+  ],
+  "verification": {
+    "focusedFactsAndArchives": "173 passed",
+    "rehearsalOrchestration": "7 passed: overlap/contract restoration, preservation of only installed successors and restoration after test failure. Uses fake SQL execution; not migration proof.",
+    "ciHarness": "69 passed",
+    "broaderRfSelection": "2101 passed, 6590 deselected, 3 existing warnings.",
+    "architecture": "PASS",
+    "databaseCollection": "71 Authority and source-approval/claim tests collected, including new real-role full-year facts case; full-schema execution pending.",
+    "previousCi": "Run 36417395568 at 7e7382c7: Application passed; Database reached RF and failed after 65 passed because record_retained_feedback_artifact_v1 was missing (42883). Earlier Authority fixture restored only older RF layers after full-schema rollback. No final-revision full-schema pass is claimed."
+  },
+  "limits": [
+    "Owned current full-year/annual readiness, full-year dispatch and unconfirmed unknown-outcome recovery remain open.",
+    "Final-revision CI, historical correction database integration and the earlier year-scoped archive SQL failure remain pending.",
+    "No real AS records, hosted changes, production provider operation, actual database/object restore or acceptance completion. All seven RF criteria remain pending."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-full-year-facts-rehearsal-20260929-14d7",
+  "sha256": {
+    "talli-source-facts-v2-tests.log": "09ad70446861705a833632c5690b220b75c2dce8ad0da387c89eb8bc31222b0e",
+    "talli-rf-successor-harness.log": "e56a4e96d923e598ebdd00506354d69709deef68d34a9d3a9f9a760234b222ea",
+    "talli-rf-predecessor-tests.log": "3b699c09a131f6fce9f8c5f77719de7f8be6f3d226bd0fbfbe7c408b1742ff02",
+    "talli-rf-facts-replay-suite.log": "ff7d1ca81d4e4188d42b7468776cad961bd82e5efbb03025d15c3202e21e264d",
+    "talli-rf-facts-replay-architecture.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "talli-rf-facts-replay-db-collection.log": "54dd97cabff955411b2ab220ba74b3fe31d665eb26f31eba51b030d2e7788b26",
+    "talli-7e738-database.log": "13e813c14a4785cb36c163362fc7122ec6ec758d7311c54ed62747d990aaa25b"
+  }
+}

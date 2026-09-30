@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from fastapi.testclient import TestClient
 
 from talli_backend.main import create_app
@@ -174,3 +176,41 @@ def test_unknown_case_profiles_keep_ordinary_entitlement_fallback() -> None:
         assert response.status_code == 200
         assert response.json()["status"] == "annual_billing_unavailable"
         assert response.json()["billingExempt"] is False
+
+
+def pilot_command():
+    return {
+        "companyId": COMPANY, "userId": str(ACTOR.subject), "incomeYear": 2025,
+        "status": "active", "billingExempt": True,
+        "systemUserRequestId": "30000000-0000-4000-8000-000000000001",
+        "startsAt": "2026-01-01T00:00:00Z", "expiresAt": "2027-01-01T00:00:00Z",
+        "evidenceReference": "synthetic-approved-validation",
+    }
+
+
+@pytest.mark.parametrize("profile", [None, "rf1086_no_activity_v1", "rf1086_full_year_v1"],
+                         ids=["historical-default", "explicit-historical", "full-year"])
+def test_pilot_grant_http_admits_exact_profile_and_snapshot_reads_it(profile):
+    stub = BillingSessionStub(ready=True)
+    command = pilot_command()
+    if profile is not None:
+        command["caseProfile"] = profile
+    api = client(stub)
+    response = api.post("/api/v1/billing/pilot-entitlements", headers=headers("pilot-profile"), json=command)
+    assert response.status_code == 200, response.text
+    expected = profile or "rf1086_no_activity_v1"
+    assert response.json()["caseProfile"] == expected
+    assert stub.pilot.case_profile.value == expected
+    snapshot = api.get("/api/v1/billing/snapshot", headers=headers("snapshot"), params={"companyIds": COMPANY})
+    assert snapshot.status_code == 200
+    assert snapshot.json()["pilotEntitlements"][0]["caseProfile"] == expected
+
+
+@pytest.mark.parametrize("profile", ["future_profile_v2", "rf1086-full-year-v1", "", None],
+                         ids=["unknown", "renderer-profile", "empty", "explicit-null"])
+def test_pilot_grant_http_rejects_unknown_profile_before_persistence(profile):
+    stub = BillingSessionStub(ready=True)
+    response = client(stub).post("/api/v1/billing/pilot-entitlements", headers=headers("unknown-pilot"),
+                                 json={**pilot_command(), "caseProfile": profile})
+    assert response.status_code == 422
+    assert stub.pilot is None

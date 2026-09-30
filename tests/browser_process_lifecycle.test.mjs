@@ -475,12 +475,16 @@ test("browser owner cleanup removes immutable corporate and production filing gr
         )`,
         [submissionId, approvalId, entitlementId, companyId, ownerId, "a".repeat(64)],
       );
+      // Fixture access disables user triggers, so supply the owned event scope
+      // normally populated from its submission by the archive scope trigger.
+      const eventScopeColumns = rfSchema === "shareholder_register_filing" ? ", company_id, income_year" : "";
+      const eventScopeValues = rfSchema === "shareholder_register_filing" ? ", $4, 2025" : "";
       await database.query(
         `insert into ${rfSchema}.production_filing_events (
            submission_id, operation_name, operation_state, attempt, body_hash,
-           idempotency_key, resulting_status
-         ) values ($1, 'confirm', 'succeeded', 1, $2, $3, 'received')`,
-        [submissionId, "e".repeat(64), randomUUID()],
+           idempotency_key, resulting_status${eventScopeColumns}
+         ) values ($1, 'confirm', 'succeeded', 1, $2, $3, 'received'${eventScopeValues})`,
+        [submissionId, "e".repeat(64), randomUUID(), ...(rfSchema === "shareholder_register_filing" ? [companyId] : [])],
       );
       const sourceHash = "c".repeat(64);
       const decisionHash = "d".repeat(64);

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "35fa86cc7cdfcf4055511c087329b9a1d22e0059",
+  "status": "PASS_BOUNDED_SOURCE_WRITER_COMPANY_GUARD",
+  "scope": "RF source writer company guard, guarded post-wait owner/eligibility reads, safe source-API rollback, and disposable lifecycle fixture locking. No claim of cross-owner production freshness, archive generation coverage, full release gate or real AS pilot.",
+  "sourceSha256": {
+    "apps/backend/tests/test_rf1086_source_company_guard_database.py": "bba96d3425ef4c00bae589975e77edcc6d92437d002a60bf0dae7d0049744e3b",
+    "apps/backend/tests/test_shareholder_register_filing_lifecycle.py": "fe44e4d8774ca7f5c307339f8f1749e001aba45a10cb59c19cfe5dbfe6124f52",
+    "apps/backend/tests/test_authority_connections_database_runtime.py": "14f46f7ca4b0bea565d2d7e6f437e59558873cedbd041182f14452c1f3c658af",
+    "apps/backend/tests/test_rf1086_year_source_database.py": "383361154abdfab809a3f6170c9437ef295ddaabae873b5612b0aa899b88b71e",
+    "scripts/rehearse-authority-topology.mjs": "77d30da36cc6e93582720f04baea45c7f1ff87111e295b75bfc8e856f51bb7cc",
+    "tests/ci_release_gate.test.mjs": "7c2fa4486a41a0f142b2bff849b41f0e9e5eef6b4ddeed13ddf69541e919ba3c",
+    "package.json": "bcd0168846f3c7ce2d8dc3699b4d9a11bc0660e9a075b104a3160f7e6914f96b",
+    "supabase/migrations/20260924062746_rf1086_source_company_guard.sql": "d3a17cfb8170e3b6034cb167be5850b9e1f59e800df04ad79b0cf30ea1316fba",
+    "supabase/rollback/20260924062746_rf1086_source_company_guard.sql": "036f5929fb73ac5d24f27e54fd0a562eced49f7dba2cbcc1bb4879dd3beede68",
+    "tests/rf1086_feedback_schema.test.mjs": "663d4ea6c56609f503decd73684c74fd8bda23075e09122247203d868de18d79"
+  },
+  "verification": {
+    "boundedPythonPassed": 12,
+    "sourceGuardCases": 11,
+    "ddlAnalyzeCycles": 2,
+    "feedbackRecoveryFixture": "PASS for corrected actual recovery case",
+    "feedbackSuite": "12 passed; workspace-overlap ACL assertion fails as it requires contracted topology",
+    "freshEarlierPhases": {
+      "ledgerAuthority": 1,
+      "governance": 24,
+      "governanceContract": 2,
+      "billingPython": 699,
+      "billingLifecycle": 1,
+      "log": "fresh-serial-lane.log"
+    },
+    "ownedResourcesRemoved": true
+  },
+  "privateProofSha256": "4983c8e03d0d17c93c8d5988a994a5b2b66409601e14b8ba28e9c1e7b6b25ee7",
+  "limits": [
+    "Broad mixed run was interrupted by Docker VM disk exhaustion during WAL writes;187 tests passed, then1 failure+20 recovery errors. This is not a passing full gate.",
+    "Only exact owned tallig29027 resources were removed to recover space. No unowned resources removed or disk expanded.",
+    "First lock-all probe was invalid due permission denied on postgres-owned migration_inventory; not counted as green.",
+    "Fresh GitHub CI must verify full contracted aggregate and feedback13/13.",
+    "Other owners and production admission still require shared guard coverage.",
+    "All full RF acceptance criteria remain pending."
+  ]
+}

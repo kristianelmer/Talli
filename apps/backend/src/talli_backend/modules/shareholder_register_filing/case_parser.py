@@ -119,6 +119,42 @@ class DividendEvent(BaseModel):
     allocations: list[DividendAllocation]
 
 
+class CashIssueEvent(FormationEvent):
+    type: Literal["cash_issue"] = "cash_issue"
+    registration_confirmed: Literal[True]
+
+
+class NominalIncreaseAllocation(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    shareholder_id: str
+    share_count_basis: Annotated[int, Field(gt=0)]
+    capital_increase: Annotated[float, Field(gt=0)]
+    premium: NonNegativeFloat = 0
+
+
+class CashNominalIncreaseEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    type: Literal["cash_nominal_increase"] = "cash_nominal_increase"
+    timestamp: datetime
+    capital_increase: Annotated[float, Field(gt=0)]
+    nominal_value_increase: Annotated[float, Field(gt=0)]
+    nominal_value_after: Annotated[float, Field(gt=0)]
+    allocations: list[NominalIncreaseAllocation]
+    registration_confirmed: Literal[True]
+    premium: NonNegativeFloat = 0
+
+
+class LossCoveringReductionEvent(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    type: Literal["loss_covering_reduction"] = "loss_covering_reduction"
+    timestamp: datetime
+    capital_reduction: Annotated[float, Field(gt=0)]
+    nominal_value_reduction: Annotated[float, Field(gt=0)]
+    nominal_value_after: Annotated[float, Field(gt=0)]
+    registration_confirmed: Literal[True]
+    fund_issued_capital_before: Literal[0]
+
+
 class FilingCase(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -127,7 +163,7 @@ class FilingCase(BaseModel):
     share_snapshot: ShareSnapshot
     shareholders: list[Shareholder]
     shareholder_snapshots: list[ShareholderSnapshot]
-    events: list[FormationEvent | ShareSaleEvent | DividendEvent] = []
+    events: list[FormationEvent | ShareSaleEvent | DividendEvent | CashIssueEvent | CashNominalIncreaseEvent | LossCoveringReductionEvent] = []
 
     @model_validator(mode="after")
     def validate_case(self) -> "FilingCase":
@@ -163,6 +199,8 @@ class FilingCase(BaseModel):
                 for allocation in event.allocations:
                     if allocation.shareholder_id not in shareholder_ids:
                         raise ValueError("dividend allocation shareholder must exist")
+        from .readiness import validate_capital_case
+        validate_capital_case(self)
         return self
 
 

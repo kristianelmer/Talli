@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "96a1ad32a12b12b869b495a97877426a048d0b3e",
+  "status": "PASS_BOUNDED_SERVER_DERIVED_EVENT_DIGEST",
+  "scope": "Request-only optional event digest; domain hashes remain mandatory and explicit mismatches fail",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/main.py": "11e5da585e37d6fdd8f94439e1531af2d6c79e809f0f0866b0c097ef34468149",
+    "apps/backend/tests/test_shareholder_register_source_api.py": "9f515f7fb0f94e9c81e9790d5dd1172720b6340217c2a6d3ce4bc86f6f5ba62e",
+    "contracts/openapi/talli-v1.json": "3a6700d480319f51ec4bfd26c4969dcc635ca4af04a46f8f720f7410eb39b291",
+    "packages/talli-api-client/src/generated/client.ts": "186da228349c39ad47fb5250e790931a0f61364ad8173be50e183442e5df3763"
+  },
+  "verification": {
+    "focusedSourceTests": {
+      "passed": 176,
+      "provenance": "source_metadata_compat tool transcript session2529 output e2b1b8; no persisted log"
+    },
+    "deterministicApiTestCollection": {
+      "nodeIds": 84,
+      "independentCollections": 2,
+      "provenance": "source_metadata_compat tool transcript session26530 output5cfb72; no persisted log"
+    },
+    "boundaryContractPassed": 55,
+    "typecheck": "PASS",
+    "architecture": "PASS"
+  },
+  "logSha256": {
+    "contract.log": "d5132cb679ffbbfcbaed4b65587f8ad6122e9d30bb6c697128d9c341e6ff4c89",
+    "typecheck.log": "b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+    "architecture.log": "cf5cb43ff52df2a92eafff4f541662c527a5741846a5a50949d9646e2822ae82"
+  },
+  "limits": [
+    "Only source input eventSha256 is optional; retained domain values and all existing responses preserve their contracts.",
+    "No provider calls, production activation or complete RF acceptance."
+  ],
+  "privateProofSha256": "decdfc265288f0ee64e723f0e2f368205ab69708786d36a7851e09592f1c2e1f"
+}

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_BOUNDED_DOCUMENTS_LEDGER_RETENTION",
+  "scope": "Retain company-scoped Ledger memo references after Ledger predecessor contraction while preserving other Documents retention branches",
+  "sourceSha256": {
+    "supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql": "88196ec9a1d7839af845081e69e6ba2a0a57bdf2d6dd2dfd24e696c5b170f1d2",
+    "supabase/rollback/20260923125730_documents_ledger_evidence_guard.sql": "f78ee9af74f49d3728bf9115ba4bf22561e7be70a04b747d42b13c383136013f",
+    "apps/backend/src/talli_backend/modules/documents/module.json": "c6d8e1e1bb8b14d3e5a14764ec47470d655aa6c89f1c342de57b29db7b4e646c",
+    "apps/backend/src/talli_backend/modules/documents/MODULE.md": "ace43d50a2135b61ec41cb798026881b4c498ee0f3ac1f38bd290641c4087608",
+    "apps/backend/tests/test_document_evidence_retention_database.py": "27e23a324f135b4f72cda98cc3c72db34b373e8042ca2ac77b8cfea92ffd5bcf",
+    "tests/corporate_governance_review_fixes.test.mjs": "0a787f4d6caa2c7eb741ab9d7e32d2718cba4a7cd9479557e69d6e135a28df3b",
+    "tests/documents_migration_lifecycle.test.mjs": "5071ca0f095b07f5c3a427e0af6e99cec2a5cbd1970669d31184670a92a7ed3a"
+  },
+  "verification": {
+    "contractedDatabaseTestsPassed": 23,
+    "contractTestsPassed": 11,
+    "freshDocumentsLifecycleTestsPassed": 3,
+    "freshDocumentsLifecycleSkipped": 0,
+    "fullRollbackRecutoverCycles": 2,
+    "transform": {
+      "legacy_transform_preserves_all_other_branches": true,
+      "unknown_predecessor_rejected_atomically": true,
+      "owner_and_acl_preserved": true,
+      "schema_acl_and_role_options_preserved": true,
+      "predecessor_ledger_relation_absent": true,
+      "function_sha256": "1a55bf17710a29861f393e1b1a01d68973feb343f80170a21bf55f019fcf0406"
+    },
+    "securityAdvisors": "No issues found",
+    "ownedResourcesCleaned": true
+  },
+  "privateProofSha256": {
+    "contracted": "0bb0204d37bbc15f292c458e0abc96686f10a79442405e02d4466549864670f5",
+    "freshLifecycle": "a9f9a0807f78b170336ee66260b8f0d56659e9e76e74791136d490ea7a83ca67"
+  },
+  "limits": [
+    "Additive migration grants the existing narrow Ledger lookup only to the actual Documents aggregate owner.",
+    "Rollback deliberately retains the corrected guard because reinstating a removed predecessor table would disable document removal.",
+    "Full combined release gate remains pending; no hosted migration or provider action."
+  ]
+}

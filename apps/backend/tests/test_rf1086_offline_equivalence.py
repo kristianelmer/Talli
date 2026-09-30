@@ -65,14 +65,18 @@ def test_original_validation_report_values_and_limitations():
 
 
 @pytest.mark.parametrize('case',VALIDATION['readiness'],ids=lambda case:Path(case['path']).stem)
-def test_original_readiness_text_and_case_specific_code_evidence(case):
+def test_original_readiness_text_with_current_case_specific_code_evidence(case):
     parsed=parse_rf1086_case(ORIGINAL_CASES[Path(case['path']).stem]['input'])
     assert format_rf1086_readiness_report(assess_rf1086_readiness(parsed))==case['text']
-    assert [value.code_value for value in rf1086_production_scope_exclusions(parsed)]==case['excludedCodes']
+    assert rf1086_production_scope_exclusions(parsed)==()
     assert rf1086_production_code_blockers(parsed)==()
 
 
-def test_original_code_evidence_preserved_without_expanding_live_scope():
-    assert values(rf1086_code_decisions())==VALIDATION['codes']
-    assert {item.code_value for item in rf1086_production_scope_exclusions()}=={'K','S','U'}
+def test_current_first_party_codes_supersede_historical_unverified_inferences():
+    decisions = {item.event:item for item in rf1086_code_decisions()}
+    assert {name:decisions[name].code_value for name in ('stiftelse','kjop','salg','utbytte')} == {
+        'stiftelse':'T', 'kjop':'K', 'salg':'R', 'utbytte':'Y',
+    }
+    assert all(decisions[name].verification_status == 'verified' for name in ('stiftelse','kjop','salg','utbytte'))
+    assert rf1086_production_scope_exclusions()==()
     assert rf1086_production_code_blockers()==()

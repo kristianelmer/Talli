@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_SYNTHETIC_APPLICATION_DISPATCH",
+  "baseRevision": "3c92e50937516dff39e1b46b243df2319952164d",
+  "changes": [
+    "RF domain executor consumes only newly committed send grants; false retryable results never authorize provider I/O.",
+    "Thin application dispatch rebuilds main admission, commits before each mutation, retains original continuation bytes, and disposes its external credential binding.",
+    "Versioned intent command binds current locked request ID/external reference to the acquired binding; runtime access to the prior unbound command is revoked.",
+    "Confirmed replay skips current originals and credentials. Prepared, cancelled, uncertain or unclassified outcomes never grant repeat POSTs."
+  ],
+  "verification": {
+    "unitApiDomainCases": 391,
+    "databaseSequenceBeforeCompleteFlow": 90,
+    "finalDurableDatabaseModuleCases": 46,
+    "completeFlowCasesIncludedInFinalModule": 3,
+    "providerBoundaryCasesIncludedInFinalModule": 4,
+    "countsOverlap": true,
+    "ciHarnessCases": 82,
+    "restrictedMigrator": "Two rollback/replay cycles; non-superuser/non-bypass with no initial owner SET/schema USAGE; exact memberships and ACL restored.",
+    "architecture": "PASS independently, exit 0; generated dependency evidence unchanged.",
+    "predecessorCi": {
+      "revision": "3c92e50937516dff39e1b46b243df2319952164d",
+      "run": "https://github.com/kristianelmer/Talli/actions/runs/36617963801",
+      "application": "PASS",
+      "databaseIsolation": "PASS",
+      "releaseGate": "PASS",
+      "immutableEvidence": "SKIPPED"
+    }
+  },
+  "coverage": [
+    "All seven supported source profiles; original XML/order/keys; competing initial sends and known retries.",
+    "Lost response/cancellation/persistence outage at main, shareholder and confirmation; commit failure cannot grant a POST.",
+    "Actual PostgreSQL observer during synthetic POST acquires the released company guard and sees the committed exact intent.",
+    "Actual source capture, Documents original verification and retention, approval, claim, dispatch, archive assessment and replay. Company/Governance test gateways read the actual guarded owner contracts; storage and Authority are synthetic.",
+    "Changed original bytes after approval and changed annual answers during credential acquisition reject before provider I/O.",
+    "Authority request/external reference changes reject at initial and continuation admission."
+  ],
+  "limits": [
+    "No HTTP dispatch composition or actual provider operation.",
+    "Full Supabase exact-revision CI still required for this implementation; local PostgreSQL has minimal Auth/Storage shims.",
+    "No actual database/object restore, retention/streaming acceptance or immutable acceptance-gate claim.",
+    "All seven RF acceptance criteria remain pending. No real AS or private source/authority bundle available."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-dispatch-execution-20260929-14d7",
+  "sha256": {
+    "unit.log": "a572ec05d5b6f23f9533e4c60b984d7b1e87a8b9559e026fbf000cf0f3383c0f",
+    "database.log": "1e4019dc2a9d5289b4bc5a2f2dabd59015a3e4b9d508a8ce2c6e405c27d7a4ba",
+    "database-final.log": "6290cf7725b97acde228763862377f0eff756daf99267fb59b61624b0e015b09",
+    "database-complete-flow.log": "4952a411e735ab53b2d53523baeb7987e92fdbc28368bea2a483dd8bb0990d9c",
+    "database-provider-boundary.log": "c238af3892341cecdb4355d0d6758888a83ae4712e1854f37a941af91ba9c907",
+    "migration-authority.log": "b861fd894cfdc6f0a36e86f83d36cb2a159e806dae0382bb9ed19524861fc5c3",
+    "ci-harness.log": "d4812181b8240bd450a91d1eb2695b36bba3a259f466d1a0efdb693b0671c008",
+    "architecture-final.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-28",
+  "status": "PASS_BOUNDED_NEW_FEEDBACK_ORIGINAL_RETENTION",
+  "baseCommit": "8e6dbc3ae4d5c24ce8581011ac9db9cdec1b62a8",
+  "scope": "Retain each newly uploaded authority feedback original through Documents before acknowledging its RF artifact metadata.",
+  "behavior": [
+    "Documents re-reads and verifies the uploaded original and creates immutable byte evidence before the RF metadata write.",
+    "RF checks exact document, company, year, metadata digest, content digest, byte length and stored status.",
+    "Ambiguous retention failure preserves uploaded evidence and does not acknowledge RF metadata. Existing canonical artifacts retain idempotent reuse."
+  ],
+  "verification": {
+    "focusedBackend": "334 passed",
+    "architecture": "PASS",
+    "database": "Extended actual Documents integration case checks immutable bytes and recovery after removing the mutable storage object; case collected, database execution pending.",
+    "previousCi": "Run 36400398886: Application passed; Database isolation timed out after an RF test failure and subsequent stall. Not a passing release gate."
+  },
+  "limits": [
+    "Older artifacts are not backfilled. RF still needs durable original-receipt linkage for portable feedback composition.",
+    "This is not portable feedback export or database/object restoration.",
+    "All seven RF acceptance criteria remain PENDING."
+  ],
+  "authority": {
+    "hostedChanges": false,
+    "providerCalls": false,
+    "productionAsDataUsed": false
+  },
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-feedback-retention-20260928-14d7",
+  "sha256": {
+    "talli-feedback-retention.log": "27f0127d85303a58abad90770a1a75e0dda57734817fb1b0e675d1d9dfaef608",
+    "talli-feedback-retention-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-stalled-collection.log": "ca911f94bcaba7fe35ef73b7a6f1dd3d1c696ad2700d18aa1ed2b9ba88118f21",
+    "talli-e9bb-database.log": "552f12852c2228e3d113ccedd9c5b6e51e35e350ce409584b4cebfcdb45f7cb0"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "6d346665795c44e1b5648e4a881c0c3483fc315c",
+  "scope": "Synthetic expired pilot preserved through two actual database/object restores, after retention_hold and independently approved deletion",
+  "assertions": [
+    "Existing Billing admin API expires the exact full-year pilot; active status is retained to isolate expiry from revocation",
+    "Exact command replay returns the same expired receipt; Billing snapshot retains it and no payment event is created",
+    "Entitlement query has no active pilot, denies submission and denies charges",
+    "RF owner archive and filing provider journal remain unchanged by expiry",
+    "Before, within and after each restoration, the real authenticated Billing workflow compares the complete Billing snapshot and denied entitlement decision",
+    "Unrelated authenticated owner cannot read the restored company Billing records",
+    "Both restorations preserve four RF source versions, three submissions and eight ordinary source/feedback objects",
+    "Existing cancellation, independent deletion review, owner/MFA/direct-Storage and unchanged-source assertions all pass"
+  ],
+  "validation": {
+    "browserPassed": 1,
+    "browserDurationMilliseconds": 167348.841042,
+    "fixtureChecksPassed": 38,
+    "restoreBoundaryChecksPassed": 39,
+    "architecture": "passed",
+    "credentialScan": "passed",
+    "whitespace": "passed",
+    "finalRevisionCi": "pending",
+    "cleanup": "passed; restored all 42 recorded preexisting containers and stopped Colima"
+  },
+  "interruptedAttempt": {
+    "result": "cancelled by existing six-minute browser timeout",
+    "cause": "Host clamshell sleep interrupted the run; no application result",
+    "cleanupExitCodes": [
+      0,
+      0
+    ],
+    "retry": "Fresh owned stack; unchanged test limit; passed"
+  },
+  "limitations": [
+    "Synthetic local evidence, not a genuine AS pilot or provider conformance",
+    "Original Auth still verifies sessions; independent Auth/cluster-role/hosted object-store recovery remains",
+    "Retained-original generations, complete retention inventory/policy and legacy feedback backfill remain",
+    "Lifecycle deletion retains business records; no purge or retention-policy change",
+    "All seven RF acceptance criteria pending; PR remains draft"
+  ],
+  "sha256": {
+    "tests/fixtures/rf1086-cancellation-browser-journey.mjs": "ce4f4a84613833699289cc6f5a30a93d1b45de825f06e67a8512e938a110e823",
+    "tests/browser_shareholder_register_filing.mjs": "9549760288b91544c1a2b67f0147446a82434470e60cfa67651a4c5804b5473d",
+    "scripts/rehearse-rf1086-owned-restore.py": "d19a71f04cc8be2b694d8fd35251997a7481edbb558e5315a15f54b4fb17b811",
+    "docs/security/backup-restore-runbook.md": "6a6a77a4097b6ea9ec0291f0a6814b3d04e5279987dbef5f8df0a39b23d31c1e"
+  }
+}

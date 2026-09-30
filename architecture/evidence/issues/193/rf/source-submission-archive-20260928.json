@@ -1,0 +1,60 @@
+{
+  "baseCommit": "129a3c195ec66f299b508eb8f0b6394e170d9ea6",
+  "status": "PASS_BOUNDED_SOURCE_ARCHIVE_FULL_STACK_PENDING",
+  "scope": [
+    "Retained source approval, claim and managed-head identity in one archive snapshot",
+    "Complete linear correction ancestry and exact original journal hashes/keys/references",
+    "API and web transport preserve full-year lineage, claims and filing head",
+    "Company download checks source-original object identity/hash/length/type/status"
+  ],
+  "verification": {
+    "focusedBackendPassed": 446,
+    "finalDeltaBackendPassed": 87,
+    "focusedWebPassed": 81,
+    "contractPassed": 64,
+    "webTypecheck": "PASS",
+    "architecture": "PASS"
+  },
+  "remaining": [
+    "Consolidated backup/restore validation, retention generation and cross-year original-object inclusion",
+    "Full-year provider dispatch and uncertain-outcome recovery",
+    "Owned annual readiness and complete database/browser/security/recovery gates",
+    "Real AS pilot after recruitment; seven RF acceptance criteria remain PENDING"
+  ],
+  "limits": [
+    "No provider calls, production activation or genuine AS data",
+    "Latest CI on 52c7502 passed Application but failed Governance database lifecycle; this archive revision not yet run in CI"
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "173a23001c8ecd902d96539876c6d90e895eb527663dc74a3a626588fbace494",
+    "apps/backend/src/talli_backend/main.py": "da51fe349688881f61dc667ede726123a99cdc2f302612b64f2e27c1993f3d25",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "5d1f4b321845edc60ad11b01a22cd86d9cf4217ad6f26f02b54cb50625f7141c",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "e751427d98e51f6abd1bb55d202791b8d0ed29407ff5c9150268c51c7168d8ae",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py": "ba91278a435bb3bd1604449e01c4342c3c51f7ba03ba863a77b5aaaa8d8126ed",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "cf0ae9546133dbd8767d45abfcbd6138fc6c511943ca65b7411cfd94ea9466ff",
+    "apps/backend/tests/test_rf1086_source_approval_api.py": "e05ac513e1c0926a3c691f6e265e7e7768b6f4cdd5a0116b145400e3c4aaaf95",
+    "apps/backend/tests/test_rf1086_source_approval_archive.py": "7fb4408fcad330f43d922ed735aba0714960951e559ddf96673217d9bd7bc368",
+    "apps/backend/tests/test_shareholder_register_filing_api.py": "59a35b90ece1808d13274cd1fdce1a2957eb75856c4deb8b2f82f72075c5479f",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": "7de32d3b1dd9b1c0c8ad503d15985dff89a3068d2caa6c1a6b627f9b93a9d2ca",
+    "apps/web/app/lib/archive.ts": "26d8a2ef8f155b5d16da22b02e0a2a41240ef14d1c9d223cfbce1ee3e493e483",
+    "apps/web/features/shareholder-register-filing/MODULE.md": "09e6a955b1ece08de4ae81c649eb825beae8a3e0e5c0f6db7186d7391483dce8",
+    "apps/web/features/shareholder-register-filing/transport.ts": "c397702daa22f76dfed5ca2785319db30517601721ea55b1117502736dbfc8c2",
+    "apps/web/tests/archive-rf1086-source.test.mjs": "b925d6fcab1af5224d8f191bc597f673351ef8edb54766d0c5f1b505ee1f81d2",
+    "apps/web/tests/shareholder-register-filing-transport.test.mjs": "81cd2014233e9fe659d2b3bfb43de593d2f6f4f4c2710442d7f4eab14f648914",
+    "architecture/evidence/issues/193/rf/source-production-integration-plan.md": "27b9af59d1836053bc623ba7336a2f0e30c7dd5dea80e056f97a0c4163a627b3",
+    "contracts/openapi/talli-v1.json": "9d0244ed9e55a2ca528e9a726a99e6e923c8a7312ca227dd6a30cd1f5235e0ab",
+    "packages/talli-api-client/src/generated/client.ts": "a111cd29ae3c79bb0d28b5c6d8f28e0444b4204117d5c933f4eb0ab5f89c7d86",
+    "scripts/generate-api-client.mjs": "3a6d86e66fca3680d187113749d24d161a31a2a910c58af8e9c8dda39ac26aac",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_archive.py": "590f6cffffa74b50f70447d4501984130318fa7406eb683702ca245e77b0f284",
+    "apps/backend/tests/test_rf1086_source_submission_archive.py": "5782eba606525bbdab551b604508473ff627e281e759ba0b210bdd72816c6db4",
+    "apps/web/tests/fixtures/rf1086-source-submission-archive.json": "a59d67891723ab14c78ed46d3abb29c298dada87c068e6b5a229ba78768e35ed"
+  },
+  "privateProofSha256": {
+    "talli-source-archive-backend-final.log": "d3bcc20437f88f4bd150934f79ebe9ddf3e6a2cdfb4a3ba3cd6abc5a2f163100",
+    "talli-source-archive-final-delta.log": "001b2b459315e4fc8b73bced2f7ea9a608aa96fa1056f7c3e6c472be14ad7833",
+    "talli-source-archive-web.log": "cb5e04815b0109b51ebf9ec044a39d9aaae0241fda55155589e740a2995da954",
+    "talli-source-archive-contract.log": "80cfc996cf6141d0ff0398cdc739ae4ee7b21ea1980c57cc81b40d4ae0b7c9fc",
+    "talli-source-archive-typecheck.log": "1b85ec42eb3479dd4fe556de8dba3da6aa92ac9d4f244e1193442e35426d0531",
+    "talli-source-archive-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e"
+  }
+}

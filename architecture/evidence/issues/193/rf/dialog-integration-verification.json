@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "issue": "#193",
+  "scope": "Canonical RF related-feedback discovery and durable receipt reconciliation",
+  "status": "PASS_BOUNDED_LOCAL_INTEGRATION",
+  "base": "c4d9fb2fe27b2d2c3e9be077f03146c0b391bfe2",
+  "sourceBindings": {
+    "apps/backend/src/talli_backend/adapters/maskinporten.py": "21df58ef0596ec23a422168f327a514873993770f82d4695ede7331ac8fbf355",
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "05247f63b86ecfa5e73ae8d645019e2616256a60baf78dc33045eb3777db8a77",
+    "apps/backend/src/talli_backend/application/shareholder_register_filing_session.py": "b501cf4b47a4c57c4c2d66c187a5648d9b9638e79102f944290a8c941e11165a",
+    "apps/backend/src/talli_backend/application/shareholder_register_filing_workflow.py": "3ca08ca70c5711e4660054ba0358323efca69ec4cf116b7aa25253db420a5dfd",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "99568092c312c57442b84f27c522c288c2b91f417d6b9b0aa4c09ae2f874dfb5",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/feedback.py": "9a5ccd3d319a62bbe45363bc8fbeda62fceedd3cdcef2da943fdbd0350ab56c5",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "7057492099a062e6924b587e2f95d7043aa662fdbe4a17bcc916e8bfae53b45d",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "f5c7232d1ff6babb41643b1f057734ca0fddceab93be4b741ee74d57ae6d388e",
+    "apps/backend/tests/test_maskinporten.py": "5502c0d8502b29f89263e7eb0f23078047714f39095edb78d64a84cd58c0aa1b",
+    "apps/backend/tests/test_postgres_shareholder_register_filing.py": "88568bc70100aac424046e04e0e3c3e2f60258c2f100ffe8996f79676e6dea0a",
+    "apps/backend/tests/test_rf1086_database_runtime.py": "2c48dc90d3a3906d659dacd48647891b24d426e4fe608eefbd40f527a142b4b8",
+    "apps/backend/tests/test_shareholder_register_filing_production.py": "7e5f0057a565a76324f8c44dcbc31273f9d5bea042a0b8bd6861ed10fe9a8c72",
+    "apps/backend/src/talli_backend/adapters/rf1086_dialogporten.py": "7947d6536473ca58332d044c7fde939be86de3423eda53c69c2693bdfa45a411",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/dialog_feedback.py": "7376db717b43b3eddc18ddf9ef9b2c55b68c28657819afd08d33a72d474cb613",
+    "apps/backend/tests/test_rf1086_dialogporten.py": "2b590ae40f0a7baaa79145150e969a77fb7d1fe65339d809b9b982efde2f2426",
+    "apps/backend/tests/test_rf1086_dialog_feedback.py": "364f39887fd72c51d72c4622f5e26e09d2c1658c149e8982fc10127c2d80a66e"
+  },
+  "checks": {
+    "rootFocused": 608,
+    "rootRestrictedSqlRuntime": 25,
+    "specFinal": 256,
+    "standardsFinal": 501,
+    "architecture": "PASS after allowed import spelling fix; alias-normalized AST verified unchanged by both reviewers"
+  },
+  "runtime": {
+    "status": "PASS",
+    "exitCode": 0,
+    "target": "rf193_dialog_d060_a2966ed6",
+    "host": "127.0.0.1",
+    "port": 52966,
+    "source": "owned disposable accounts153_setup_fix_d060",
+    "createdCloneDropped": true,
+    "hostedChanges": false,
+    "providerCalls": 0,
+    "objectTransfers": "httpx.MockTransport",
+    "databasePersistence": "actual restricted-role PostgreSQL RF/Document operations"
+  },
+  "reviews": {
+    "dialog-integration-spec-review-original": "aacb12904b40841ba6e6cd806a5acadeb0f5451a4f688d2009fa507bf4ca5bb0",
+    "dialog-integration-standards-review-original": "58804781307d217cb66885d59897cdd84a97c39e7b25a9089ec1477e55045175",
+    "dialog-integration-spec-review-final": "e7a5b38e9b4a56053266b625a4da195058f0d07b1069946b84d1c51cf2cf215c",
+    "dialog-integration-standards-review-final": "3a86885fb90dc2b503466f1a6b6c5d4ebb0215733deaf14b54e78c2ec4342824",
+    "dialog-integration-spec-import-addendum": "051a583835f17e23de453f474657b1cc4cbd2e61ab0ad8c09ace438f8c17f828",
+    "dialog-integration-standards-import-addendum": "7c80e08ed6b67ea9fac8c68ed5522a7f0eceb704ba89d0cae8418882d1d73c10"
+  },
+  "closedFindings": [
+    "STD-193-RF-DIALOG-1: preserve every attachment identity in a durable owned provenance manifest independently of provider-byte SHA deduplication",
+    "SPEC-193-RF-DIALOG-1: preserve and validate transmission category, fail closed on category/XML conflicts"
+  ],
+  "privateEvidence": {
+    "final-focused-tests.log": "c66a243546e9c98fa398e0c20a995a85afcc14215a18265042a4afb987a0fbd6",
+    "local-runtime.log": "b207e4ae1733908ff43017ff5915c479086f7f0f93cebff8844edfcf2c71a105",
+    "local-runtime-result.json": "64b6d6d42b717e8673dd2cbebaea0d7cf079df10e3b6bf7fcdc96eeea95f9d38",
+    "final-architecture-fixed.log": "23091325e26ea3bbb93531a2dafd538355890112315f0b6bcc130fa06bec06be"
+  },
+  "limits": [
+    "No live provider call or credential activation in this local integration work",
+    "Original receipt bytes replayed using reconstructed minimal dialog metadata and mocked HTTP; live canonical conformance remains pending",
+    "Current synthetic final business acceptance already verified separately in acceptance-receipt-20260915.json",
+    "No broader cases, complete RF gate, genuine-company production or later-stage credit"
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "baseCommit": "12a7c33ace68a1e91b56daf7a8f2b195df230b43",
+  "status": "PASS_BOUNDED_APPROVAL_AND_ARCHIVE_FULL_DATABASE_INTEGRATION_PENDING",
+  "scope": [
+    "Fresh same-connection full-year source approval with exact review, Authority and Billing commitments",
+    "Immutable canonical approval and historical source/preview/review archive lineage",
+    "Authenticated review/approval APIs and generated contracts",
+    "Historical Documents empty teardown repair and mixed migration replay preservation"
+  ],
+  "verification": {
+    "ordinaryBackend": {
+      "passed": 6950,
+      "skipped": 2,
+      "deselected": 1122
+    },
+    "finalFocusedAfterAdapterCorrection": 144,
+    "apiFocused": 165,
+    "contractFocused": 64,
+    "archiveFocused": 134,
+    "actualMinimalPostgresChecks": 49,
+    "approvalDatabaseCasesCollected": 29,
+    "approvalAndBridgeDatabaseCasesCollected": 41,
+    "fullDatabaseCasesExecutedLocally": 0,
+    "architecture": "PASS",
+    "architectureContract": "PASS",
+    "testPartition": "PASS after stable parameter IDs",
+    "typecheck": "PASS",
+    "openapi": "PASS"
+  },
+  "ciPredecessor": {
+    "run": 35979244560,
+    "head": "12a7c33ace68a1e91b56daf7a8f2b195df230b43",
+    "application": "SUCCESS",
+    "database": "FAILURE",
+    "cause": "Historical Documents teardown left three successor guard helpers",
+    "boundedRepair": "Exact helpers removed only after empty registry assertion; hidden rows refuse; role grants and FORCE RLS preserved",
+    "completeRerun": "PENDING"
+  },
+  "limits": [
+    "Full-year submission remains blocked pending guarded claim, company/year head and correction handling",
+    "Owned full-year readiness replacement and prior feedback original-byte verification remain pending",
+    "Minimal PostgreSQL probes use synthetic authorization seams, not the full hosted or Supabase stack",
+    "Complete ACL/race/database/browser integration remains pending CI",
+    "No hosted changes, provider calls or real AS data; all seven RF acceptance criteria remain PENDING"
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "25216247dbf9c9561b2761eed0096f5db49508156b2876d5eb00b8cb4c5a8e75",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_admission.py": "2522a434ec7f8e5eba215729fbbbbce34e2f7915cfbc9c68256a18864e9b1be9",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_approval.py": "f8750b30dfa6b30d3f604e5f945b81c1102d5ef817888b6cee8143aa481aae19",
+    "apps/backend/src/talli_backend/main.py": "343298ea79fe39d09e3becf4a77f153f0e48bc042532b85dd0ce7da991c74530",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "65b8b2178a13143a4d33ee04bc398c3ffa7c4193c6693335ff126e26a24d43fc",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "276d462e98de4719ec03779a25741882bf4c133b5bb1ec91a5c00557db1c973d",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py": "361e9de66e9d539455fb43450b8daf63530a346aacad7eeec38bd28b21cc0b9f",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "c1c91369d5dba822ef8d016226ab3a1a96cc1121b35442c7264ec3bbc314c13a",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_production.py": "1be1f6d08312aa61cb1876297acf60090dfaf132bb35f52ed6fbb649f09a915f",
+    "apps/backend/tests/test_postgres_rf_source_admission.py": "9443e0c74b486c432b87ae3e961ae379ef55524413ce42a09a7ad0419f1086e6",
+    "apps/backend/tests/test_rf1086_source_approval.py": "0eeb07437787727becb4306e242932e50792aa2f96ba46e8935dacce820ac8fa",
+    "apps/backend/tests/test_rf1086_source_approval_api.py": "44bec732aeb529c46e7c69019cc439dab20e1d4a3810c61cd0c342a477654d5d",
+    "apps/backend/tests/test_rf1086_source_approval_archive.py": "fe86e0a3a503cbc912d93345634654b5a40e9730ffdb9af01d919a49dc0275db",
+    "apps/backend/tests/test_rf1086_source_approval_database.py": "31491e35550fb3e9ee6f07a9a6742cc04305b0f75235136a31b0e66b17e1132e",
+    "apps/backend/tests/test_rf1086_source_review_bridge_database.py": "664385c0f0ce37d2444f7d7335215aa0911632beeca492abdefc3fdad7f619c1",
+    "apps/backend/tests/test_shareholder_register_filing_api.py": "0fdc2b5bb8d2adee10052a21b607a4cdcdc86f8aadc4f6a553ac4e4d25bdfea5",
+    "architecture/BACKEND-SYSTEM.md": "067d2e8f71b733d17d7427f041ecd82935e13e410442cba231d0bbaf272d0eea",
+    "architecture/backend-system.json": "046726cf6c1dbd7e28b76e21288bcac0d86eced3b257a68e9eb99bdbcc0c6af9",
+    "architecture/database-catalog.json": "18565d21440bc98e8b73cbf652d4f4ec85e237b9b1e60080ec23c7d45113cc59",
+    "architecture/dependency-evidence.json": "80e04e7f8e7c005ead224c7a80ba7a66c2a4d7f7b7743db143f4f959fbaca2b3",
+    "architecture/evidence/issues/193/rf/requirements.json": "f77cf43133d6a768ac45789017b13d94f92ac747f5411bdbc8a1c418f215ceac",
+    "architecture/evidence/issues/193/rf/source-production-integration-plan.md": "d3a8cd354261df80c0a66e75ba8e78335a48c1657f144bf6651dfacea180c074",
+    "contracts/openapi/talli-v1.json": "89a8b004b7a57eef97f60264ff77fd05bba8f0ff1ae28060a1ae5a4e98722c37",
+    "package.json": "b04bf18500f8cc95c437fb90e8e40f426b26d3e0ff3e67d801e8dea27da3cf9e",
+    "packages/talli-api-client/src/generated/client.ts": "e08dbf50d226e3064149d2fbe770eda2746b602815425a5c1e31cb7d72c5fe77",
+    "scripts/generate-api-client.mjs": "41377fc2d81ca2d368dbe3c1e1708fbe0d1bf3a9146425dc58821d8c747cad3e",
+    "scripts/rehearse-authority-topology.mjs": "f77a4d401190efd9995e542f38e6e6387ccc46fa5d724d230dd3e90d8bc8686f",
+    "supabase/migrations/20260924091015_rf1086_source_approval_foundation.sql": "311f01ac05cb90222eaa452be87f0f603ec8100c73406ca3d307ab73186caac5",
+    "supabase/rollback/20260924091015_rf1086_source_approval_foundation.sql": "6462f899a7e3cbd86302dac4fc358c8a5ffb4ea52a94caebfbd59eef522356ec",
+    "tests/architecture_foundation.test.mjs": "0f0eb0bbe81ffc9be4ef3c89ade058ab327fffa4a58e52bd5f2ae16324aa3401",
+    "tests/ci_release_gate.test.mjs": "aba7f7fac4a839193211deb8eb9eed5358d4c57a4025fab88c093a9d3c3ef5cc",
+    "tests/contract/web_fastapi_boundary.test.mjs": "fcef9700d1cf8aae409f1ec1de9a221126816e6cc1f0fc53f784bae42d82f424",
+    "tests/documents_migration_lifecycle.test.mjs": "3885d6fbd68d7f806dfa93a3c5f798093b3f4f31eec206d24d8a5a2a702f7af5",
+    "tests/support/documents_retention_rehearsal.mjs": "012c81a3df99fac6e39af9d6257f27823f87f407edca7d4c00710b9477e4b4b2"
+  },
+  "logsSha256": {
+    "talli-source-approval-all-backend.log": "a491a88cd9c58766780d90c0e71e2b13a9eb644bf2c46204d5cf1940dd71fb0c",
+    "talli-source-approval-final-focused.log": "0e55ec46a1110eac79e9b6efbe9133f4195d141a68dc4a449a6448ca440a10ee",
+    "talli-source-approval-ci-contract.log": "033aa2e500a7996b862d63961e4c2662dc2a7c575dcc04b81e89f826c95415dd",
+    "talli-source-approval-partition.log": "3a5534734dab4ae01c16f5908a5c27915512380761310f50338ded0f6a4f7b17",
+    "talli-source-approval-architecture-contract.log": "e169845902918ac64df6ef7d999dedf4476420cb50c8905a3e832db85d860545",
+    "talli-source-approval-architecture.log": "6c4831903113b997cd7c48fdd7cc220132a40576de29e29b82e5ffdffec9fcf7",
+    "talli-source-approval-db-collection.log": "5404c2361ae937cd0a22abd97fc008ca75b681ab48507bc9b443f793a453400a",
+    "rf193-documents-teardown-repro.json": "f47d926b91685a767c52973798ab807f4329e4ec69e96907bed85acc5f758d0e"
+  },
+  "componentProofSha256": {
+    "sql": "3e541f5f373a82e959a57694681600b289d6f70b30847643e501312da36de1a5",
+    "http": "0b43f60a8c55d827ac12b762fb39c3bf61e7c49298956b15bdb57275b58f6c96"
+  },
+  "privateProofSha256": "5cbd1186d47b3c3ed312ae2aa9356df3f3d081970793f911981cca0c3d8ea69e"
+}

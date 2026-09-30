@@ -1,0 +1,42 @@
+{
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/main.py": "e1be22ce07c2a4beb55b6e43d905622c64a5fd40427d0a72a9b274a0a084804d",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py": "dcdacaa1301eba2633b0ced41879ceeb1e43ec745b7b1d2d2a1ac0069ad8fc22",
+    "apps/backend/tests/test_shareholder_register_source_api.py": "946ab383aa7aa18b9e04db5cf610ee3dfec0c70bdb5a9585e0ce17fd65541824",
+    "scripts/generate-api-client.mjs": "112578aa149d23a06ec267794379a0336229afa8079d85333469da2f3ef23c69",
+    "packages/talli-api-client/src/generated/client.ts": "5e6bfae613384ac28c6794b7f07b080dbe5cf4c4b9c341ed8624c43a89156119",
+    "contracts/openapi/talli-v1.json": "afd5cd49cde366194ce5e42a166ebea00d55446c8cde83852702870bbd93cc48",
+    "tests/contract/web_fastapi_boundary.test.mjs": "b56f988edf535716168dc8731b225380c53a82c42808f99ff315133b0dcb1383",
+    "architecture/backend-system.json": "c2a1a75b99065028ad19827b4947cca4531221752a197738b20b95bdbe50e2f1",
+    "architecture/BACKEND-SYSTEM.md": "4dbcf5d2cadbc4f476ded33f3492ec793c1534baa891f24ff253f3c6c499d3d9",
+    "architecture/dependency-evidence.json": "2d5c3913df6b52bc58bb0b14ef57f05ea8e9d068627122c0e4b314062ea1dd10"
+  },
+  "baseCommit": "3a575cd037761d285f52bbb42590d45f49136a59",
+  "scope": "Authenticated RF source intake and point-in-time preview review, generated API client and transport contract",
+  "verification": {
+    "backendBeforeFinalCivilSchema": {
+      "passed": 6492,
+      "skipped": 2,
+      "deselected": 969
+    },
+    "finalSourceApiAndWorkflows": {
+      "passed": 141
+    },
+    "finalBoundaryContract": {
+      "passed": 54
+    },
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "openApiCompatibilityWithPriorHead": "PASS",
+    "independentReview": "PASS; 12 civil timestamp tests and generated client query/idempotency test independently passed"
+  },
+  "limits": [
+    "Full backend run preceded final civil timestamp schema tightening; final141 source/workflow checks cover final code.",
+    "No live provider calls or production enablement.",
+    "Customer UI, source-bound approval/send, action-time consistency and correction/archive integration remain open.",
+    "Full Database isolation CI at3a575cd0 failed later topology/retention lanes; separate repairs in progress."
+  ],
+  "schemaVersion": 1,
+  "status": "PASS_BOUNDED_SOURCE_API",
+  "privateProofSha256": "b7bf02b4058768e8a566efb251a893b795973a7dab585444726e010dd669554e"
+}

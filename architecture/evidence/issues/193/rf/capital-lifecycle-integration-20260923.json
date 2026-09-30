@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_BOUNDED_CAPITAL_LIFECYCLE_SOURCE_INTEGRATION",
+  "baseCommit": "315ebb0f3181396b62e49c8252ad6a61acf7ab58",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/modules/corporate_governance/public.py": "0992dc4bd0796414971e66346d653c28d5482de35de5cb3fc78425ca776f950b",
+    "apps/backend/src/talli_backend/modules/corporate_governance/reporting_year.py": "6269f9658f1b9df18b743ddfe93b75548eac4af323d511d747328829f1859fa9",
+    "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md": "dddc776be054b85067ec248ee00554bf2f3e2c3c72b47973cc356e500dcce36a",
+    "apps/backend/tests/test_corporate_governance_reporting_year.py": "336667ba26295bcd914cf5474ad4135587212e42b23f868ef25789473318932f",
+    "apps/backend/tests/test_shareholder_register_capital_source_workflow.py": "7750cd1edc018fa9fa803dad83fffbb9d77da26ebde363a8b2fc3692827dd7d0"
+  },
+  "behavior": [
+    "Groups explicitly linked cash-capital phases under the trusted registered receipt while retaining every original phase.",
+    "Checks all available phase economics, policy, chronology, distinct entries and payment-to-registration bank binding; preserves registered-only and valid opening-anchor subsets.",
+    "No registration, duplicate or unknown phases, inconsistent evidence and any visible correction or Ledger amendment remain blockers.",
+    "Reporting digest version 2 includes complete phase history; source preview rejects prior-phase drift."
+  ],
+  "verification": {
+    "offline": {
+      "passed": 1180,
+      "databaseTestsDeselected": 63,
+      "fileCount": 33,
+      "result": "PASS"
+    },
+    "architecture": "PASS npm run check:architecture",
+    "independentReview": {
+      "result": "PASS_BOUNDED_SCOPE",
+      "independentlyRunTests": 112,
+      "sourceHashesVerified": true
+    },
+    "redRegression": "Completed three-phase increase previously failed trusted source capture with rf1086_source_governance_unresolved."
+  },
+  "privateEvidenceSha256": {
+    "source-workflow-red.log": "2a6016a7e248a54a6ce269eac347c596f20ff6175716cbdae25c4a34bf13b1c8",
+    "final/run-offline.py": "0a41848cba1e458cacf0a2945833093b66538f103857fa7c347a941dc7f4641a",
+    "final/offline.log": "05e680e35a2468f5e625c1f6aa0e800df53026c87d22979b89042fab21bd8e41",
+    "final/offline-result.json": "c7f6865564822633b80bf02374f2c1129540f9005002b670e5d5f48fc3b919ed",
+    "architecture.log": "23091325e26ea3bbb93531a2dafd538355890112315f0b6bcc130fa06bec06be"
+  },
+  "limits": [
+    "No database, provider, hosted deployment or production activation change.",
+    "Existing registered authority is retained; this does not add typed Ledger opening-anchor provenance or visibility into amendments of absent opening anchors.",
+    "Nominal-increase Governance integration and all seven full RF criteria remain pending.",
+    "No production AS has been recruited; genuine-company records, authority and final production evidence remain unavailable."
+  ]
+}

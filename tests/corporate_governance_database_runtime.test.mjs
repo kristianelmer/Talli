@@ -173,6 +173,16 @@ test(
         "insert into public.companies (id, org_number, name, entity_type, created_by) values ($1::uuid, '900000145', 'Replay AS', 'AS', $2::uuid)",
         [companyId, actorId],
       );
+      // Exercise the real company-write guard with the same verified owner as
+      // the legacy replay. The assert_owner stub below isolates loan facts only.
+      await client.query(
+        "insert into public.company_memberships (company_id, user_id, role, accepted_at) values ($1::uuid, $2::uuid, 'owner', pg_catalog.now())",
+        [companyId, actorId],
+      );
+      await client.query(
+        "select pg_catalog.set_config('talli.verified_actor_id', $1, true), pg_catalog.set_config('request.jwt.claim.sub', $1, true), pg_catalog.set_config('request.jwt.claims', $2, true)",
+        [actorId, JSON.stringify({ sub: actorId, aal: "aal2" })],
+      );
       await client.query(String.raw`
         do $authority$ begin
           execute pg_catalog.format(

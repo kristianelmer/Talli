@@ -1,0 +1,49 @@
+{
+  "status": "SUPERSEDED_PRIVATE_BACKING_UNAVAILABLE",
+  "scope": "immutable year-source persistence before Documents retention addition",
+  "databaseTests": 9,
+  "unitTests": 56,
+  "topologyTests": 30,
+  "localRuntime": {
+    "status": "PASS",
+    "exitCode": 0,
+    "target": "rf193_year_source_14d7_02f15a85",
+    "host": "127.0.0.1",
+    "port": 52966,
+    "source": "owned disposable accounts153_setup_fix_d060",
+    "createdCloneDropped": true,
+    "hostedChanges": false,
+    "providerCalls": 0,
+    "objectTransfers": "httpx.MockTransport",
+    "databasePersistence": "actual restricted-role PostgreSQL RF/Document operations"
+  },
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "94bb3a90c69e573e060f5a3d1a8cdb289d23e86980ef71269caa851787a23b68",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source.py": "e071b1310816be189664ca4f8abae4b86833527ffdc3fdcce1e418e4557c2078",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source_storage.py": "dd3cd65f33e716e647f61ba8d52976f41358519f7b8824e24f4e6aa363f665ff",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "d6e3958e7d8ab100f8f0838b2759a26a524d8e57a3f4e9fcbb585c12e8b0f3d8",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "20812398c437cdb3786eba5fc221dd9afecaee600ffcf68a0579a4f6a6ed1b6b",
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "38c6d6196fed51370f237836bdc74dd66a2c2afb3883615ac91285e0dc142d5f",
+    "apps/backend/tests/test_rf1086_year_source_database.py": "01f8846869316fd78b11d83fe7926278d1322a1fff35bcc19dda25d28478a64c",
+    "apps/backend/tests/test_rf1086_year_source_storage.py": "bafa91aaf7cba0a52eec020ee6f3112fa52b7a406d35d3cfa946b6e1cf09e52a",
+    "apps/backend/tests/test_rf1086_year_source.py": "374c26e882b20b8fee7d9ebd74dd1dfd1ec980defcdbdf30700f7cfdbd57fad3",
+    "supabase/migrations/20260923091509_rf1086_immutable_year_source.sql": "f0d79e1af3c918810afcae072a9fa653e998938ac00f3439625c6001fd05a52e",
+    "supabase/rollback/20260923091509_rf1086_immutable_year_source.sql": "56b94dfedbc3c31521676b6d61ff0127f1b620c3c4b5583a9846979380b70526",
+    "scripts/rehearse-authority-topology.mjs": "d069a9a00e7042f189ad14a53577d840bf431092e0bba5011359bf486b2d4e47",
+    "tests/ci_release_gate.test.mjs": "833c113c0eae09f9fd8fe8e61b2180402a92cc2cfc3df913539de98d4f010766",
+    "package.json": "b2ea3aaad2b7021f46a3132f13fd6a8c5ab7d3edfab47e52649f7f630ab9a3f2"
+  },
+  "evidenceSha256": {
+    "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-year-source-14d7/local-runtime.log": "5cbb1022ab50bbce9c4acaaaf48994a88e0827d02b119691b20dac1740926fe0",
+    "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-year-source-14d7/local-runtime-result.json": "419a1684a6bf0b39aea534132040bddec449c4fc593216e3f681b6e453fb4161",
+    "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-year-source-14d7/run-local-runtime.py": "6d6985134338a72474e8522c1bf66ba2cf5e37563675baf7557ec8640a45321f"
+  },
+  "limits": [
+    "No production or hosted operations",
+    "Mandatory lane partition pending concurrent Governance test mapping",
+    "Documents retention being added separately; rerun required after integration"
+  ],
+  "originalReportedStatus": "PASS",
+  "verificationNotice": "The three private helper/log/result files named below were overwritten by later reruns. Their original bytes are unavailable, so this earlier receipt cannot be independently verified and must not supply acceptance credit. Recorded original hashes and counts remain historical only.",
+  "supersededBy": "source-retention-runtime-20260923.json"
+}

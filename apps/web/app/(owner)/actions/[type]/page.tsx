@@ -7,6 +7,7 @@ import {
   listSupportedCorporateEvents,
   type CorporateDecisionFactsWire,
 } from "../../../../features/corporate-governance";
+import { loadRf1086RegisterObservations, rf1086RegisterErrorMessage } from "../../../../features/shareholder-register-filing";
 
 import { Banner, EmptyState, LinkButton, WizardShell } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
@@ -463,13 +464,21 @@ export default async function ActionPage({
       break;
     case "corporate-event": {
       const accessToken = await getCurrentSessionAccessToken();
+      const registerObservationLoad = accessToken
+        ? loadRf1086RegisterObservations(accessToken, companyId, incomeYear)
+          .then(value => ({ value, error: null }))
+          .catch(error => ({ value: null, error: rf1086RegisterErrorMessage(error) }))
+        : Promise.resolve({ value: null, error: "Innlogging kreves." });
       const existingEvents = accessToken
         ? await listSupportedCorporateEvents(accessToken, [companyId])
         : [];
+      const registerResult = await registerObservationLoad;
       body = (
         <SupportedCorporateEventWizard
           companyId={companyId}
           incomeYear={incomeYear}
+          registerObservations={registerResult.value}
+          registerObservationsError={registerResult.error}
           operationId={query?.corporateEventOperationId}
           existingEvents={existingEvents.filter(
             (event) => event.incomeYear === incomeYear,

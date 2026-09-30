@@ -1,0 +1,69 @@
+{
+  "baseCommit": "06ba88bf7984f525ce0a66f102022d5ee330832c",
+  "status": "PASS_BOUNDED_APPLICATION_CLAIM_FULL_STACK_PENDING",
+  "scope": [
+    "Source claim workflow derives company, year, preview and entitlement from exact retained approval bytes",
+    "Original source and correction byte preflight followed by same-connection source, Governance, receipt, history, approval and review validation",
+    "Exact historical claim recovery before fresh admission and after concurrent commit; historical recovery never authorizes another provider POST",
+    "Strict claim result and actor/scope/hash/predecessor decoding in the PostgreSQL adapter",
+    "Archive rollback preserves submission identity key required by retained source claim/head foreign keys"
+  ],
+  "verification": {
+    "focusedBackendPassed": 210,
+    "newApplicationCasesPassed": 40,
+    "architecture": "PASS",
+    "architectureContractPassed": 1,
+    "backendPartitionAndPackageContractPassed": 2,
+    "databaseCasesCollected": 45,
+    "newFullStackCasesCollected": 2,
+    "newFullStackCasesExecuted": 0,
+    "postgresRollback": "Exact prior rollback reproduced DependentObjectsStillExist; exact repaired rollback preserved retained claim/head bytes and all five foreign keys; wrong-scope head still rejected",
+    "postgresScope": "Disposable PostgreSQL 17, actual source claim/head table DDL and complete archive rollback; minimal archive tables and tracker seam; not the full Supabase topology"
+  },
+  "ciPredecessor": {
+    "run": 36387501836,
+    "job": 108815998732,
+    "database": "FAILURE",
+    "cause": "Archive rollback dropped rf193_submission_archive_scope while durable claim/head foreign keys still depended on it",
+    "repair": "Keep the redundant submission identity constraint during archive behavior rollback",
+    "completeRerun": "PENDING"
+  },
+  "remaining": [
+    "Owned full-year annual readiness projections; current legacy readiness prerequisite remains enforced",
+    "Full-year provider dispatch and uncertain-outcome recovery, source operation keys",
+    "Full-year correction predecessor archive validation and claim/head archive lineage",
+    "Maintained database tests and complete synthetic/browser/security/recovery release gates",
+    "Real AS pilot after recruitment; all seven RF criteria remain PENDING"
+  ],
+  "limits": [
+    "No HTTP source send route or provider binding exposed",
+    "Application corrections currently verify the supported legacy predecessor archive shape; full-year predecessor lineage remains pending",
+    "No hosted changes, provider calls or real AS data; Tax and Accounts unchanged"
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "add3df5c67308fc530f965b61466b803bc78acbdb34ec44f7680a33001f73ad1",
+    "apps/backend/src/talli_backend/application/shareholder_register_filing_session.py": "4d6b0f333770a24f82dd82cd46f8fdd1cde82c4aaef9efadbcdbd836267498fc",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_admission.py": "88071d7f4ffbfebb2017bcc041a889dc00db19fa2a310da97b442013b17cb0ff",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "83243c9b95a2d19e51d40ca3ddde9de13e14885d73387bd35b8c2cc8cb73bb3e",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "4993ae0903a795c1ed4006fe20cbfbc06c86eb01d8cd66e764fe09d23eb3d5db",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "741140bc2254b2f5cffe02499a8cfd806a9754e151264ab404d46b4e670ca365",
+    "apps/backend/tests/test_postgres_rf_source_admission.py": "d8ad80e79f14d6461a1823cac974415591f7b284b83809020d7ac977ed7c0a3e",
+    "apps/backend/tests/test_rf1086_source_approval_database.py": "dd5310b4743f3af0d70503d09e3ece2e506b7028d36597488c7770d4540991e4",
+    "architecture/evidence/issues/193/rf/source-production-integration-plan.md": "9279f26de1722d0202b25842c72d999ea560893a45ffaf420ef55f599044f9ad",
+    "architecture/evidence/issues/193/rf/source-submission-claim-contract.md": "9add805aac9c2a6b989f5b89552c4308f171916c81217fd94c4e04bc085aaf91",
+    "supabase/rollback/20260917114424_rf1086_production_archive_evidence.sql": "b8508d25bc2caf57f79a7a45b1624f9c3fa267f27f437cf4baac37844d28df1b",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_claim.py": "c0a69f53af0b0319c1be7715b43c620e92874d1fac6332547208b34dea60a1b1",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_claim.py": "f9dde220c7771b4f1657de873061b14ebf4935a8dc141d2ae4a1efa1f74acce8",
+    "apps/backend/tests/test_rf1086_source_claim.py": "532dd0ee238bd7d0b908c52fe1d869bb1408f62b5f2a78967c94357ea580ece8"
+  },
+  "privateProofSha256": {
+    "ci-db.log": "d585195e04423721fa0d654afbfd706497989f0d92c1739feb9349175272bed6",
+    "rollback-result.log": "6aa01f09e7b3a386bb337e4c53a65af6a379ff4ab3d0d965e0c48a5c76df0fe4",
+    "rollback_probe.py": "b877ef7da09416cdb1244a8ef0ea4ab28a636e1c5635748ebae3e996152cd3e2",
+    "talli-claim-app-architecture-contract.log": "b3d715805bf43182ef6b01747ee569f2f4766e23fc8cf4a09b66413d37af59bb",
+    "talli-claim-app-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-claim-app-backend.log": "21731221f534b676b062f557cdfcf1777d4ba25548542ed235b77494cae404f4",
+    "talli-claim-app-ci-contract.log": "9ca5cbbd98788c2aaad911b860a86c21012da517f7fbb6e161e28a4367451c81",
+    "talli-claim-app-db-collection.log": "eacb111f530cee566ac3aa6e164972ea47d75ff50871ab9bd2ae6a0f787a14c8"
+  }
+}

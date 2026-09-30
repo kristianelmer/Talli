@@ -25,7 +25,7 @@ It owns `public.companies`, `public.company_cancellations`,
 `public.support_access_operation_receipts`, `public.support_case_openings`, and
 `public.support_operators`, with
 the latest ownership migration declared as
-`20260905003000_company_access_billing_owner_subject.sql`. The backend system owns
+`20260924080208_company_access_rf_admission_guard.sql`. The backend system owns
 `public.company_access_command_receipts` as technical idempotency state. It must
 not claim eligibility outside the immutable active manifest, own physical
 business-data deletion, or own unrestricted general operator workflows.
@@ -310,3 +310,56 @@ matching rollback removes the function and preserves all immutable evidence.
 The locking projection uses an asynchronous connection, a ten-second total
 deadline, five-second statements and a one-second lock timeout. A lock failure
 returns the typed unavailable response and a later request reuses the same basis.
+
+
+## Guarded RF admission projection (#193)
+
+`public.company_access_read_rf_admission_v1(company_id, income_year, verified_subject)`
+is the narrow Company Access SQL contract for RF consequential admission. Only
+RF's restricted executor and store owner receive EXECUTE; no consumer receives
+Company Access table privileges. The non-bypass Company Access executor owns the
+SECURITY DEFINER function, with an empty search path and its existing RLS policies.
+It verifies the explicit subject, accepted owner and fresh MFA, then acquires the
+company-wide archive advisory guard before rereading owner, current agreement,
+year eligibility and confirmed/locked active AS identity. Its JSON projection
+contains only company/year, organization number, legal name, entity type, address,
+postal code, city, identity timestamps and the two affirmative admission flags.
+Failure returns no partially authorized identity.
+
+This new VOLATILE admission query requires READ COMMITTED. Each post-wait query
+therefore receives a fresh statement snapshot; a transaction snapshot established
+before waiting is expressly rejected. The existing company-year eligibility
+predicate now acquires company before its eligibility advisory lock, preserving
+legacy read isolation compatibility. No claim of consequential freshness is made
+for a legacy REPEATABLE READ caller. The existing MFA predicate now uses a
+VOLATILE wall-clock check so its unchanged 15-minute rule also expires during a
+guard wait, instead of continuing to compare with the outer statement start.
+
+The additive migration acquires company guards before local locks in company-year
+admission, agreement reacceptance, eligibility recheck, invitation acceptance,
+membership administration, and cancellation request/resume/review/finalization.
+Invitation acceptance binds its initial company lookup to the subsequent locked
+reread. New company creation reaches its guard through the BEFORE INSERT trigger;
+the removed AS-only onboarding SQL writer stays absent. Current function bodies,
+legal constants, signatures, owners and ACLs are preserved by a checked,
+idempotent entry-point rewrite. Authority-request/Billing-entitlement functions
+are not rewritten by this migration.
+
+Six owner-table INSERT/UPDATE/DELETE backstops cover companies, memberships,
+eligibility assessments, admissions, year acceptances and customer agreement
+acceptances. They lock changed company IDs in sorted order, including allowed
+legacy direct writes in overlap topology. A row trigger by itself cannot establish
+pre-row-lock order, so public commands acquire the guard first. Operator access
+and invitation delivery state do not grant RF accepted-owner admission and are
+outside this projection. Existing privileged maintenance still must respect
+company-first ordering when deliberately taking local row locks before writes.
+
+Safe rollback revokes only the new RF admission contract, preserving guarded
+writers, evidence, role options and existing narrow helper grants. Migration
+setup borrows only missing role SET, public-schema CREATE and trigger-function
+EXECUTE privileges and restores their prior state. Replay restores
+the admission grant. Mandatory two-session, ACL, isolation and migration replay
+coverage is in `test_company_access_rf_admission_database.py`; collection is not
+runtime acceptance. This owner contract alone does not complete RF's cross-owner
+approval/send transaction, which must compose every owner projection before its
+durable claim.

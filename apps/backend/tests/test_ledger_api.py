@@ -119,7 +119,7 @@ class LedgerSessionStub:
         return self
 
     @asynccontextmanager
-    async def transaction(self):
+    async def transaction(self, *, guarded_company_id=None):
         self.calls.append(("transaction", "begin"))
         yield self
         self.calls.append(("transaction", "commit"))

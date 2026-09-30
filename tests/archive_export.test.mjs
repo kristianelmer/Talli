@@ -574,3 +574,23 @@ test("archive ledger facts come through the generated capability query with a fr
   assert.match(route, /supportedCorporateEvents: corporateLifecycle\?\.supportedCorporateEvents \?\? \[\]/u);
   assert.match(route, /firstArchiveSourceError\(sourceResults\)/u);
 });
+
+test("production RF archive retains immutable canonical approval, journal and receipt metadata", () => {
+  const production = { companyId: "company-id", incomeYear: 2025,
+    approvals: [{ id: "approval", manifest: { payload: { main: "<original />\r\n" } } }],
+    productionSubmissions: [{ id: "submission", supersedesSubmissionId: "prior" }],
+    productionEvents: [{ id: "event", bodyHash: "a".repeat(64), resultingStatus: "unknown" }],
+    feedbackArtifacts: [{ id: "receipt", documentId: "document", sha256: "b".repeat(64) }] };
+  const archive = buildPersistedCompanyArchive({ company: { id: "company-id" }, incomeYear: 2025,
+    setups: [], shareholders: [], ledgerEntries: [], documents: [], filingPreviews: [], filingSubmissions: [],
+    rf1086Production: production });
+  assert.deepEqual(archive.rf1086Production, production);
+  assert.equal(archive.rf1086Production.approvals[0].manifest.payload.main, "<original />\r\n");
+});
+
+test("legacy archive explicitly marks production evidence unavailable instead of claiming none exists", () => {
+  const archive = buildPersistedCompanyArchive({ company: { id: "company-id" }, incomeYear: 2025,
+    setups: [], shareholders: [], ledgerEntries: [], documents: [], filingPreviews: [], filingSubmissions: [] });
+  assert.equal(archive.rf1086Production, null);
+  assert.equal(archive.rf1086ProductionEvidenceAvailability, "unavailable");
+});

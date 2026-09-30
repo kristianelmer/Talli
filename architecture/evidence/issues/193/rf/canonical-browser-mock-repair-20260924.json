@@ -1,0 +1,42 @@
+{
+  "baseHead": "dccc676bae4c621d0a0b36cbced63bed2deaf4e3",
+  "authoritativeCi": {
+    "run": 35969629513,
+    "head": "a8ce2fc9",
+    "databaseMainPassed": 235,
+    "browserFailure": "tests/browser_authority_connections.mjs:200 waiting Godkjent after HTTP200 reconciliation"
+  },
+  "rootCause": "Test-only browser mocks omitted digdir:dialogporten token scope and exact Dialogporten discovery GET, and still returned legacy feedback without canonical company/year identity. Fresh RF fixture had the same obsolete discovery/receipt assumptions.",
+  "regressionPath": "PostgresShareholderRegisterFilingSession.bind_read_only_authority -> real Maskinporten HTTP -> real Dialogporten discovery -> real read-only RF adapter -> reconcile_journaled_rf1086_production; exact launcher URL mapper and socket guard, loopback HTTP mock, in-memory journal, no DB",
+  "redEvidence": {
+    "red.log": "historical token request failed maskinporten_http_error",
+    "probe-scope.log": "scope-only repair yielded unknown",
+    "probe-route.log": "scope + exact route still did not accept legacy mock receipt",
+    "sibling-red.log": "fresh mock reconciliation state unknown"
+  },
+  "green": {
+    "command": "NODE24 --test tests/authority_browser_fixture_safety.test.mjs tests/browser_authority_connections_contract.test.mjs tests/shareholder_register_browser_fixture_safety.test.mjs",
+    "passed": 26,
+    "failed": 0,
+    "skipped": 0,
+    "result": "Both real-adapter regressions accepted; each retained 2 artifacts (canonical feedback XML and discovery provenance)."
+  },
+  "sourceSha256": {
+    "tests/authority_browser_fixture_safety.test.mjs": "4d8e25ac7082c92ba79b13e9bdc18936aea7b2f2685f256687a2a54845efe64c",
+    "tests/browser_authority_connections.mjs": "1e8b6181daca797750129e9149ebb818c2277702d4d2ad4648087f828f381334",
+    "tests/browser_shareholder_register_filing.mjs": "84c206df149c6e0a260f5291e07b25a1ed004de353cd7e5f5bcde5b7d14e8494",
+    "tests/fixtures/reconcile_authority_browser_feedback.py": "abe53d1a6100a7e9191fde3f31cda39c04a9772f8cf7b8570608054611dab24f",
+    "tests/fixtures/rf1086-filing-authority-mock.mjs": "61e33ec1cb7d88870ed917bf261c27ede2bd91afc00dc58c1d35f8ec6d269782",
+    "tests/fixtures/start_authority_connections_backend.py": "5834cd84ebac9a8c0ca2e05b1d29c39f7646664e7000ab8ad70bd69843efc448",
+    "tests/fixtures/start_shareholder_register_filing_backend.py": "42902e3ee43eada423bb4f3ba03a63c16e0800bf427ca3de16ae6ee4425b08fd",
+    "tests/fixtures/system-user-authority-mock.mjs": "771eca81cb4fb0669956122c1134920b06ef78235fbfcf582bc75592c601727e",
+    "tests/shareholder_register_browser_fixture_safety.test.mjs": "9c338ca50c5bd8f9b820bcc064b33a36bbcf09e6841483073796a1f8e18bac3f"
+  },
+  "limits": [
+    "No full hydrated browser or DB/RLS rerun locally; next CI must verify those.",
+    "No production provider requests, hosted changes, database stack creation, production source changes, commit, or push by this subtask."
+  ],
+  "schemaVersion": 1,
+  "status": "PASS_BOUNDED_CANONICAL_BROWSER_MOCK_REPAIR",
+  "privateProofSha256": "5c27deb4ff0da7f18df20f965dab3c6391805adf515a516348cfa23c16b22233"
+}

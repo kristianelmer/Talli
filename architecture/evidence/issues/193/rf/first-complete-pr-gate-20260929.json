@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_COMPLETE_FIXED_REVISION_PR_GATE",
+  "revision": "08d131c418a71cd2be6380bbc9aeb3dd4707af9f",
+  "run": 36591374791,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/36591374791",
+  "jobs": {
+    "Immutable evidence": "skipped",
+    "Database isolation": "success",
+    "Application": "success",
+    "Release gate": "success"
+  },
+  "behavior": "Complete application and disposable Supabase/database gates passed together at one unchanged revision, including the fresh RF browser send/feedback and unknown-outcome recovery journey. The original send succeeded and repeated uncertain send did not duplicate provider writes.",
+  "limits": [
+    "This ordinary PR gate is not the separately requested immutable evidence workflow; its evidence job correctly skipped.",
+    "This revision precedes the exact-year annual interview reader integration.",
+    "All seven RF acceptance criteria remain pending; owned annual readiness and full-year dispatch/recovery remain incomplete.",
+    "No production enablement, external authority operation or genuine-company evidence."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-browser-gate-20260929-14d7",
+  "sha256": {
+    "ci-08d131c4-result.json": "321c39f80676b36e24370f310724f582c3d245b16b2915a5fe07e670a92ca8e1",
+    "ci-08d131c4-complete.log": "b04c98a539fa8d32fe35e2259b523d9f180b6efa3976a7457e30eeb5768e95ad"
+  }
+}

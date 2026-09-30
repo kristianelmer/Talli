@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { createHash, createHmac, generateKeyPairSync, randomInt, randomUUID } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { once } from "node:events";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createRequire } from "node:module";
 import test from "node:test";
 
@@ -17,6 +21,8 @@ import { isLoopbackPostgresUrl, isLoopbackSupabaseUrl } from "./support/supabase
 import { fixtureTableTransaction, deleteRfFixtureCompanies, rfPublicProjectionRelations } from "./support/rf1086-fixture-access.mjs";
 
 import { startRf1086FilingAuthorityMock } from "./fixtures/rf1086-filing-authority-mock.mjs";
+import { exerciseFullYearSourceJourney, seedFullYearAdmission } from "./fixtures/rf1086-source-browser-journey.mjs";
+import { exerciseRfPilotExpiry, exerciseRfCancellation, exerciseRfFinalDeletion } from "./fixtures/rf1086-cancellation-browser-journey.mjs";
 
 const nextCli = createRequire(new URL("../apps/web/package.json", import.meta.url)).resolve("next/dist/bin/next");
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -26,8 +32,13 @@ const databaseUrl = process.env.DATABASE_URL;
 
 // This is a mandatory local lane: absent or non-loopback configuration fails;
 // it never converts the full-stack authority journey into a skipped test.
-test("owner completes fresh RF preview, review, approval, send and private feedback through the canonical backend", {
-  timeout: 300_000,
+const scenarios = [
+  ...["main", "child", "confirmation"].flatMap(lostResponse =>
+    [{ lostResponse, crash: false }, { lostResponse, crash: true }, { lostResponse, crash: true, beforeMutation: true }]),
+  { lostResponse: "main", crash: false, predecessorFeedback: "rejected" },
+];
+for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepted" } of scenarios) test(`owner completes RF capture, ${predecessorFeedback === "rejected" ? "rejected-predecessor correction" : "correction"} and ${beforeMutation ? "process crash before" : crash ? "process crash at" : "lost"} ${lostResponse} ${beforeMutation ? "provider mutation" : "response"} through the canonical backend`, {
+  timeout: 360_000,
 }, async (t) => {
   assert.ok(supabaseUrl && anonKey && serviceRoleKey && databaseUrl, "authority browser requires isolated Supabase configuration");
   assert.ok(isLoopbackSupabaseUrl(supabaseUrl) && isLoopbackPostgresUrl(databaseUrl), "authority browser fixtures require loopback");
@@ -35,7 +46,7 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
   assert.notEqual(process.env.TALLI_RF1086_PRODUCTION_ENABLED, "true");
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
   const database = new pg.Client({ connectionString: databaseUrl });
-  const resources = { connected: false, users: [], companies: [], roles: [], backend: null, web: null, browser: null, mock: null };
+  const resources = { connected: false, users: [], companies: [], roles: [], backend: null, web: null, browser: null, mock: null, preparedControl: null };
   const health = [];
   const egressViolations = [];
   const apiCalls = [];
@@ -47,10 +58,11 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     await attempt(() => stopOwnedProcess(resources.web));
     await attempt(() => stopOwnedProcess(resources.backend));
     await attempt(() => resources.mock?.close());
+    if (resources.preparedControl) await attempt(() => rmSync(resources.preparedControl, { recursive: true }));
     if (resources.connected) {
       for (const role of resources.roles) await attempt(() => database.query(`alter role ${role} nologin password null`));
       await attempt(async () => {
-        const objects = await rfFixtureTransaction(database, () => database.query("select d.storage_key from public.documents d join shareholder_register_filing.production_feedback_artifacts a on a.document_id=d.id where a.company_id=any($1::uuid[])", [resources.companies]));
+        const objects = await rfFixtureTransaction(database, () => database.query("select storage_key from public.documents where company_id=any($1::uuid[])", [resources.companies]));
         if (objects.rows.length) assert.ifError((await admin.storage.from("company-documents").remove(objects.rows.map(({ storage_key }) => storage_key))).error);
       });
       await attempt(() => restoreLocalReleaseSignoffs(database, resources.signoffs));
@@ -64,12 +76,13 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
           (select count(*)::int from authority_connections.system_user_requests where company_id=any($1::uuid[])) requests,
           (select count(*)::int from authority_connections.authority_operations where actor_id=any($2::uuid[])) operations`, [resources.companies, resources.users]));
         await rfFixtureTransaction(database, async () => {
-          for (const table of RF_TABLES) {
+          for (const table of [...RF_TABLES, ...RF_SOURCE_TABLES]) {
             if (table === "production_filing_events") continue;
             const count = (await database.query(`select count(*)::int count from shareholder_register_filing.${table} where company_id=any($1::uuid[])`, [resources.companies])).rows[0];
             assert.equal(count.count, 0, `RF fixture residue in ${table}`);
           }
           assert.equal((await database.query("select count(*)::int count from ledger.opening_bank_inputs where company_id=any($1::uuid[])", [resources.companies])).rows[0].count, 0);
+          assert.equal((await database.query("select count(*)::int count from documents.retained_originals where company_id=any($1::uuid[])", [resources.companies])).rows[0].count, 0);
         });
         const identities = await database.query(`select
           (select count(*)::int from public.companies where id=any($1::uuid[])) companies,
@@ -86,12 +99,14 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     resources.connected = true;
     const owner = await createUser(admin, "authority-owner", resources.users);
     const other = await createUser(admin, "authority-other", resources.users);
+    const reviewer = predecessorFeedback === "rejected" ? await createUser(admin, "retention-reviewer", resources.users) : null;
 
     const primary = await seedCompany(admin, database, owner.id, "Synthetic Authority Holding", resources.companies);
     const otherCompany = await seedCompany(admin, database, other.id, "Synthetic Other Owner", resources.companies);
+    if (reviewer) await seedCompany(admin, database, reviewer.id, "Synthetic Retention Reviewer", resources.companies);
     await seedFreshBasis(database, primary.id, owner.id);
     await seedFreshBasis(database, otherCompany.id, other.id);
-    assert.ifError((await admin.from("support_operators").insert([{ user_id: owner.id, role: "admin", active: true }, { user_id: other.id, role: "admin", active: true }])).error);
+    assert.ifError((await admin.from("support_operators").insert([{ user_id: owner.id, role: "admin", active: true }, { user_id: other.id, role: "admin", active: true }, ...(reviewer ? [{ user_id: reviewer.id, role: "admin", active: true }] : [])])).error);
     resources.signoffs = await seedLocalReleaseSignoffs(database, owner.id);
     await seedCallbackAudit(database, owner.id);
     const databases = {};
@@ -110,14 +125,21 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     const backendPort = await allocateLoopbackPort();
     const siteOrigin = `http://localhost:${webPort}`;
     const backendOrigin = `http://127.0.0.1:${backendPort}`;
-    resources.mock = await startRf1086FilingAuthorityMock({ callbackOrigin: siteOrigin });
+    resources.mock = await startRf1086FilingAuthorityMock({ callbackOrigin: siteOrigin, organizationNumber: primary.organizationNumber });
     const callbackKey = `local-authority-browser-${randomUUID()}`;
     const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048,
       privateKeyEncoding: { type: "pkcs8", format: "pem" }, publicKeyEncoding: { type: "spki", format: "pem" } });
     const nonce = randomUUID();
+    if (beforeMutation) resources.preparedControl = mkdtempSync(join(tmpdir(), "talli-rf-prepared-crash-"));
+    const preparedSignals = new Map();
+    const armPreparedCrash = operation => {
+      const held = new Promise(resolve => preparedSignals.set(operation, resolve));
+      writeFileSync(join(resources.preparedControl, "stop-after-prepare"), `${nonce}:${operation}`, { mode: 0o600 });
+      return held;
+    };
     const python = process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python";
     assert.ok(existsSync(python), "backend Python runtime is absent");
-    resources.backend = startOwnedProcess({ command: python, args: ["tests/fixtures/start_shareholder_register_filing_backend.py"],
+    const backendSpec = { command: python, args: ["tests/fixtures/start_shareholder_register_filing_backend.py"],
       cwd: process.cwd(), readinessProof: `TALLI_BACKEND_BOUND:${nonce}`, env: {
         ...runtimeEnvironment(), DATABASE_URL: databaseUrl, TALLI_LOCAL_RF1086_FRESH_SEND_FIXTURE: "true",
         SUPABASE_URL: supabaseUrl, SUPABASE_ANON_KEY: anonKey, SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
@@ -129,23 +151,42 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
         TALLI_PROD_MASKINPORTEN_CLIENT_ID: randomUUID(), TALLI_PROD_MASKINPORTEN_KEY_ID: randomUUID(),
         TALLI_PROD_MASKINPORTEN_PRIVATE_KEY_PEM: privateKey,
         TALLI_BACKEND_PORT: String(backendPort), TALLI_READINESS_NONCE: nonce,
-      } });
-    let httpOutput = "";
-    resources.backend.stdout.on("data", (chunk) => {
-      httpOutput += chunk.toString();
-      let newline;
-      while ((newline = httpOutput.indexOf("\n")) >= 0) {
-        const line = httpOutput.slice(0, newline);
-        httpOutput = httpOutput.slice(newline + 1);
-        if (line.startsWith("TALLI_AUTHORITY_HTTP:")) apiCalls.push(line);
-      }
-    });
+        ...(beforeMutation ? { TALLI_RF_STOP_AFTER_PREPARE_FILE: join(resources.preparedControl, "stop-after-prepare") } : {}),
+      } };
+    const launchBackend = () => {
+      resources.backend = startOwnedProcess(backendSpec);
+      let httpOutput = "";
+      resources.backend.stdout.on("data", (chunk) => {
+        httpOutput += chunk.toString();
+        let newline;
+        while ((newline = httpOutput.indexOf("\n")) >= 0) {
+          const line = httpOutput.slice(0, newline);
+          httpOutput = httpOutput.slice(newline + 1);
+          if (line.startsWith("TALLI_AUTHORITY_HTTP:")) apiCalls.push(line);
+          if (line.startsWith(`TALLI_RF_PREPARED_STOP:${nonce}:`)) {
+            const operation = line.slice(`TALLI_RF_PREPARED_STOP:${nonce}:`.length);
+            preparedSignals.get(operation)?.();
+            preparedSignals.delete(operation);
+          }
+        }
+      });
+    };
+    launchBackend();
+    const crashBackend = async () => {
+      const previous = resources.backend;
+      const exited = once(previous, "exit", { signal: AbortSignal.timeout(5_000) });
+      assert.ok(previous.kill("SIGKILL"));
+      assert.deepEqual(await exited, [null, "SIGKILL"]);
+      launchBackend();
+      assert.notEqual(resources.backend.pid, previous.pid);
+      await waitForOwnedReadiness({ process: resources.backend, url: `${backendOrigin}/health/ready` });
+    };
     await waitForOwnedReadiness({ process: resources.backend, url: `${backendOrigin}/health/ready` });
     resources.web = startOwnedProcess({ command: process.execPath,
       args: [nextCli, "dev", "apps/web", "--hostname", "127.0.0.1", "--port", String(webPort)],
       cwd: process.cwd(), readinessProof: "Ready in", env: {
         ...runtimeEnvironment(), NEXT_PUBLIC_SUPABASE_URL: supabaseUrl, NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKey,
-        SUPABASE_URL: supabaseUrl, SUPABASE_ANON_KEY: anonKey,
+        SUPABASE_URL: supabaseUrl, SUPABASE_ANON_KEY: anonKey, SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
         TALLI_BACKEND_URL: backendOrigin, SITE_URL: siteOrigin,
         TALLI_AUTHORITY_CALLBACK_INTERNAL_KEY: callbackKey,
         TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL: resources.mock.baseUrl,
@@ -158,6 +199,12 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     await installBrowserEgressGuard(context, { approvalEnabled: true, blockedRequests: egressViolations, mockBaseUrl: resources.mock.baseUrl });
     const page = await context.newPage();
     await login(page, siteOrigin, owner);
+    const lowAalSession = await browserSession(context);
+    const rfArchiveUrl = `${siteOrigin}/filing/aksjonaerregisteroppgaven/source/archive?companyId=${primary.id}&incomeYear=2025`;
+    const noMfaArchive = await context.request.get(rfArchiveUrl, { maxRedirects: 0 });
+    assert.equal(noMfaArchive.status(), 403);
+    assert.equal(noMfaArchive.headers()["content-disposition"], undefined);
+    assert.ok(!(await noMfaArchive.text()).includes("canonicalArchive"));
     await establishOwnerAal2(page, siteOrigin);
     const session = await browserSession(context);
     const api = createTalliApiClient({ baseUrl: backendOrigin });
@@ -189,16 +236,16 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     const body = await page.locator("body").innerText();
     assert.ok(!body.includes(original.external_ref) && !body.includes(original.altinn_request_id));
     assert.ok(!body.includes(callbackKey) && !body.includes(privateKey));
-    const grant = async (token, companyId, userId, requestId) => {
+    const grant = async (token, companyId, userId, requestId, { incomeYear = 2025, caseProfile = "rf1086_no_activity_v1" } = {}) => {
       const headers = { Authorization: `Bearer ${token}` };
       await api.rf1086ConfirmFilingPermission({ companyId, productionEnabled: true }, { headers });
-      const result = await api.billingManagePilotEntitlement({ companyId, userId, incomeYear: 2025,
+      const result = await api.billingManagePilotEntitlement({ companyId, userId, incomeYear, caseProfile,
         status: "active", billingExempt: true, systemUserRequestId: requestId,
         startsAt: new Date(Date.now() - 60_000).toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
         evidenceReference: `synthetic-rf-browser:${requestId}`,
-      }, { headers, idempotencyKey: `synthetic-rf-browser-${requestId}` });
+      }, { headers, idempotencyKey: `synthetic-rf-browser-${requestId}-${incomeYear}-${caseProfile}` });
       assert.equal(result.billingExempt, true);
-      assert.equal(result.caseProfile, "rf1086_no_activity_v1");
+      assert.equal(result.caseProfile, caseProfile);
       return result.entitlementId;
     };
     const entitlementId = await grant(session.access_token, primary.id, owner.id, original.id);
@@ -255,20 +302,24 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     assert.equal(accepted.productionSubmissions.length, 1);
     assert.equal(accepted.productionSubmissions[0].feedbackState, "accepted");
     assert.equal(accepted.productionSubmissions[0].payloadHash, payloadHash);
-    assert.equal(accepted.feedbackArtifacts.length, 1);
-    const artifact = accepted.feedbackArtifacts[0];
+    const retained = (await rfFixtureTransaction(database, () => database.query(
+      "select id,company_id,submission_id,document_id,sha256,authority_reference from shareholder_register_filing.production_feedback_artifacts where company_id=$1 and submission_id=$2",
+      [primary.id, accepted.productionSubmissions[0].id],
+    ))).rows;
+    const artifact = selectFreshFeedbackArtifact(accepted, retained);
     assert.equal(artifact.submissionId, accepted.productionSubmissions[0].id);
     assert.equal(artifact.classification, "accepted");
+    const download = productionSection.locator(`a[href="/documents/${artifact.documentId}/download"]`);
     for (const width of [320, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `fresh RF overflow at ${width}`);
-      assert.ok(await productionSection.getByRole("link", { name: /Last ned .*tilbakemelding/u }).isVisible());
+      assert.equal(await productionSection.getByRole("link", { name: /Last ned .*tilbakemelding/u }).count(), 2);
+      assert.ok(await download.isVisible());
     }
     for (let reload = 0; reload < 2; reload += 1) {
       await page.reload();
       await productionSection.getByText("Godkjent", { exact: true }).waitFor();
     }
-    const download = productionSection.getByRole("link", { name: /Last ned .*tilbakemelding/u });
     await download.focus();
     assert.equal(await download.evaluate((element) => element === document.activeElement), true);
     const receipt = await context.request.get(new URL(await download.getAttribute("href"), siteOrigin).href, { maxRedirects: 0 });
@@ -278,7 +329,41 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     const bytes = await context.request.get(signed.href, { maxRedirects: 0 });
     assert.equal(bytes.status(), 200);
     assert.equal(createHash("sha256").update(await bytes.body()).digest("hex"), artifact.sha256);
+    // Use the actual owner page, native browser download, Next route, FastAPI,
+    // RF snapshot and Documents retained-original reads. The provider stays local.
+    await page.goto(`${siteOrigin}/filing/aksjonaerregisteroppgaven/source?companyId=${primary.id}&incomeYear=2025`);
+    const archiveLink = page.getByRole("link", { name: "Last ned RF-arkiv", exact: true });
+    await archiveLink.waitFor();
+    for (const width of [320, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      assert.ok(await archiveLink.isVisible());
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `RF archive overflow at ${width}`);
+    }
+    const archived = page.waitForEvent("download");
+    await archiveLink.click();
+    const archiveDownload = await archived;
+    assert.equal(await archiveDownload.failure(), null);
+    assert.equal(archiveDownload.suggestedFilename(), `rf1086-${primary.id}-2025.ndjson`);
+    const archivePath = await archiveDownload.path();
+    assert.ok(archivePath); // Playwright owns and removes it when its context closes.
+    const verification = JSON.parse(execFileSync(python, ["apps/backend/scripts/verify_rf1086_archive.py", archivePath,
+      "--stream", "--company-id", primary.id, "--income-year", "2025", "--require-source-history", "--require-feedback-originals"],
+      { cwd: process.cwd(), env: runtimeEnvironment(), encoding: "utf8", timeout: 30_000 }));
+    assert.equal(verification.status, "verified_rf_canonical_record");
+    assert.equal(verification.companyId, primary.id);
+    assert.equal(verification.incomeYear, 2025);
+    assert.equal(verification.submissions, 1);
+    assert.equal(verification.feedbackArtifacts, 2);
+    assert.equal(verification.feedbackOriginals, 2);
+    assert.equal(verification.feedbackOriginalsComplete, true);
+    assert.equal(verification.sourceHistoryIncluded, true);
+    assert.equal(verification.databaseRestorePerformed, false);
     const successfulCalls = resources.mock.snapshot();
+    const archiveReads = successfulCalls.filter(({ operation }) => operation === "list_documents");
+    assert.equal(archiveReads.length, 1);
+    assert.equal(archiveReads[0].transmission, successfulCalls.find(({ operation }) => operation === "confirm").transmission);
+    assert.equal(successfulCalls.filter(({ operation }) => operation === "read_dialog").length, 1);
+    assert.equal(successfulCalls.filter(({ operation }) => operation === "read_feedback").length, 1);
     assert.equal(successfulCalls.filter(({ operation }) => operation === "post_hovedskjema").length, 1);
     assert.equal(successfulCalls.filter(({ operation }) => operation === "post_underskjema").length, 1);
     assert.equal(successfulCalls.filter(({ operation }) => operation === "confirm").length, 1);
@@ -303,6 +388,10 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     assert.equal(deniedReceipt.status(), 403);
     assert.equal(deniedReceipt.headers().location, undefined);
     assert.ok(!(await deniedReceipt.text()).includes(artifact.documentId));
+    const deniedArchive = await otherContext.request.get(rfArchiveUrl, { maxRedirects: 0 });
+    assert.equal(deniedArchive.status(), 403);
+    assert.equal(deniedArchive.headers()["content-disposition"], undefined);
+    assert.ok(!(await deniedArchive.text()).includes(artifact.documentId));
     const deniedRecovery = await api.legacyRf1086ReconcileFeedback({ submissionId: accepted.productionSubmissions[0].id }, { headers: otherHeaders });
     assert.deepEqual(deniedRecovery, { state: null, errorCode: "basis_unavailable", requiresManualRetry: true });
 
@@ -341,14 +430,81 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     assert.equal(recovery.requiresManualRetry, true);
     assert.notEqual(recovery.state, "accepted");
     assert.equal(resources.mock.snapshot().filter(({ operation }) => operation.startsWith("post_")).length, mutationCount);
-    assert.ok(!resources.mock.snapshot().some(({ operation }) => operation === "replayed_mutation" || operation === "request_rejected"));
-    for (const event of ["POST:/api/v1/shareholder-register-filings/previews:200",
+    assert.deepEqual(resources.mock.snapshot()
+      .filter(({ operation }) => operation === "replayed_mutation" || operation === "request_rejected")
+      .map(({ service, operation }) => ({ service, operation })), []);
+    for (const event of ["GET:/api/v1/shareholder-register-filings/archive-source/production-stream:200",
+      "POST:/api/v1/shareholder-register-filings/previews:200",
       "POST:/api/v1/shareholder-register-filings/review-comments:200",
       "POST:/api/v1/shareholder-register-filings/production-approvals:200",
       "POST:/api/v1/legacy-rf1086/production-filings:200", "POST:/api/v1/legacy-rf1086/production-filings:503"])
       assert.ok(apiCalls.some((call) => call.endsWith(event)), `missing actual canonical backend request ${event}`);
     assert.ok(!(await page.locator("body").innerText()).includes(original.external_ref));
     await otherContext.close();
+    // A distinct year keeps the first full-year submission independent of the
+    // accepted legacy filing and its correction head. No source/approval is seeded.
+    const sourceYear = await seedFullYearAdmission(database, primary, owner.id, python, runtimeEnvironment());
+    const sourceOpening = await seedFreshBasis(database, primary.id, owner.id, sourceYear, false);
+    const sourceEntitlement = await grant(session.access_token, primary.id, owner.id, original.id,
+      { incomeYear: sourceYear, caseProfile: "rf1086_full_year_v1" });
+    const sourceArchive = await exerciseFullYearSourceJourney({ page, siteOrigin, company: primary, incomeYear: sourceYear, database, ownerId: owner.id,
+      openingHolderId: sourceOpening.holderId, entitlementId: sourceEntitlement, api, authorization,
+      storage: createClient(supabaseUrl, anonKey, { auth: { autoRefreshToken: false, persistSession: false } }).storage,
+      mock: resources.mock, python, environment: runtimeEnvironment(), apiCalls, lostResponse, predecessorFeedback,
+      crashBackend: crash ? crashBackend : undefined,
+      armPreparedCrash: beforeMutation ? armPreparedCrash : undefined }).catch(async error => {
+      const alerts = await page.getByRole("alert").allTextContents();
+      throw new Error(`full_year_source_journey_failed: ${error.message}; alerts=${JSON.stringify(alerts)}`, { cause: error });
+    });
+    if (lostResponse === "main") {
+      const restoreStorage = predecessorFeedback === "rejected";
+      if (restoreStorage) await exerciseRfPilotExpiry({ companyId: primary.id, incomeYear: sourceYear,
+        entitlementId: sourceEntitlement, api, authorization, mock: resources.mock });
+      let cancellation = restoreStorage ? await exerciseRfCancellation({ page, siteOrigin, companyId: primary.id,
+        incomeYear: sourceYear, api, authorization, mock: resources.mock }) : null;
+      assert.ok(process.env.TALLI_SUPABASE_WORKDIR, "RF restore requires the explicit owned Supabase workdir");
+      let reviewerSession;
+      let deletion;
+      for (const state of restoreStorage ? ["retention_hold", "deleted"] : [null]) {
+        if (state === "deleted") {
+          const reviewContext = await resources.browser.newContext({ viewport: { width: 1440, height: 900 } });
+          captureBrowserHealth(reviewContext, health);
+          await installBrowserEgressGuard(reviewContext, { blockedRequests: egressViolations, mockBaseUrl: resources.mock.baseUrl });
+          const reviewPage = await reviewContext.newPage();
+          await login(reviewPage, siteOrigin, reviewer);
+          await establishOwnerAal2(reviewPage, siteOrigin);
+          reviewerSession = await browserSession(reviewContext);
+          deletion = await exerciseRfFinalDeletion({ page, siteOrigin, companyId: primary.id, incomeYear: sourceYear,
+            api, authorization, reviewerId: reviewer.id, reviewerAuthorization: { Authorization: `Bearer ${reviewerSession.access_token}` },
+            cancellation, entitlementId: sourceEntitlement, mock: resources.mock });
+          cancellation = deletion.cancellation;
+          await reviewContext.close();
+        }
+        const restored = JSON.parse(execFileSync(python, ["scripts/rehearse-rf1086-owned-restore.py", sourceArchive.path,
+          "--company-id", primary.id, "--income-year", String(sourceYear), "--actor-id", owner.id,
+          ...(restoreStorage ? ["--restore-storage", "--expired-pilot-id", sourceEntitlement,
+            "--cancellation-id", cancellation.id, "--cancellation-status", state,
+            ...(deletion ? ["--support-case-id", deletion.supportCaseId, "--deletion-review-id", deletion.reviewId] : [])] : [])],
+        { cwd: process.cwd(), env: { ...runtimeEnvironment(), DATABASE_URL: databaseUrl,
+          TALLI_LEDGER_DATABASE_URL: databases.talli_ledger_backend,
+          ...(restoreStorage ? { TALLI_COMPANY_ACCESS_DATABASE_URL: databases.talli_company_access_backend,
+            SUPABASE_URL: supabaseUrl, SUPABASE_ANON_KEY: anonKey, SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
+            TALLI_RF_RESTORE_OWNER_TOKEN: session.access_token, TALLI_RF_RESTORE_OUTSIDER_TOKEN: otherSession.access_token,
+            TALLI_RF_RESTORE_LOW_AAL_TOKEN: lowAalSession.access_token,
+            ...(reviewerSession ? { TALLI_RF_RESTORE_REVIEWER_TOKEN: reviewerSession.access_token } : {}) } : {}),
+          TALLI_SUPABASE_WORKDIR: process.env.TALLI_SUPABASE_WORKDIR,
+          ...(process.env.DOCKER_CONTEXT ? { DOCKER_CONTEXT: process.env.DOCKER_CONTEXT } : {}) }, encoding: "utf8", timeout: 180_000 }));
+        assert.deepEqual(restored, { status: "verified_owned_rf_database_restore", databaseRestorePerformed: true,
+          retainedOriginalBytesRestored: true, objectStorageRestorePerformed: restoreStorage,
+          sourceOriginals: restoreStorage ? 4 : 3, feedbackOriginals: 4, sourceVersions: restoreStorage ? 4 : 3, submissions: 3,
+          crossOwnerReadsDenied: true, sourceHistoryUnchanged: true, cloneRemoved: true, clusterMembershipsUnchanged: true,
+          ...(restoreStorage ? { expiredPilotRestored: true, cancellationRestored: true, cancellationStatus: state,
+            ...(deletion ? { deletionReviewRestored: true, deletedCompanyRestored: true } : {}),
+            ordinaryObjects: 8, storageVolumeRemoved: true, storageSourceUnchanged: true,
+            storageAttributesRestored: true,
+            storageAuthenticatedDownloadsVerified: true, storageDirectReadsDenied: true, storageMfaEnforced: true } : {}) });
+      }
+    }
     await context.close();
     assert.deepEqual(health, []);
     assert.deepEqual(egressViolations, []);
@@ -376,6 +532,25 @@ async function createUser(admin, prefix, users) {
   return { id: result.data.user.id, email, password };
 }
 
+function selectFreshFeedbackArtifact(accepted, retained) {
+  assert.equal(accepted.feedbackArtifacts.length, 2);
+  assert.equal(retained.length, 2);
+  assert.equal(new Set(retained.map(row => row.id)).size, 2);
+  assert.equal(retained.filter(row => row.authority_reference === "talli:rf1086-feedback-provenance:v1").length, 1);
+  // Provider attribution belongs to retained/archive evidence. The ordinary
+  // workspace deliberately omits it; bind each public artifact by receipt ID.
+  for (const row of retained) {
+    const wire = accepted.feedbackArtifacts.find(artifact => artifact.id === row.id);
+    assert.ok(wire);
+    assert.equal(wire.companyId, row.company_id);
+    assert.equal(wire.submissionId, row.submission_id);
+    assert.equal(wire.documentId, row.document_id);
+    assert.equal(wire.sha256, row.sha256);
+  }
+  const original = retained.find(row => row.authority_reference !== "talli:rf1086-feedback-provenance:v1");
+  return accepted.feedbackArtifacts.find(artifact => artifact.id === original.id);
+}
+
 async function seedCompany(admin, database, ownerId, name, companies) {
   const id = randomUUID();
   const organizationNumber = String(randomInt(100000000, 999999999));
@@ -394,7 +569,7 @@ async function seedCompany(admin, database, ownerId, name, companies) {
     values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'authority-v1','in_app_clickwrap',now())`,
     [id, ownerId, name, organizationNumber, terms.version, terms.effectiveDate, terms.path, terms.contentSha256,
       dpa.version, dpa.effectiveDate, dpa.path, dpa.contentSha256]);
-  return { id, name };
+  return { id, name, organizationNumber };
 }
 
 async function authorityFixtureTransaction(database, operation) {
@@ -418,9 +593,16 @@ async function cleanupFixture(database, companyIds, userIds) {
     "authority_connections.system_user_requests", "authority_connections.authority_operations",
     "public.audit_events", "public.support_operators", "public.customer_agreement_acceptances",
     "public.company_memberships", "public.companies",
+    "public.company_year_acceptances", "public.company_year_admissions", "public.company_eligibility_assessments",
+    "public.company_cancellations", "public.company_access_command_receipts", "public.company_deletion_reviews",
+    "public.support_access_grants", "public.support_case_openings", "public.support_access_operation_receipts",
+    "public.company_archive_export_receipts", "public.company_archive_export_attempts",
   ], async () => {
     await database.query("delete from shareholder_register_filing.production_feedback_artifacts where company_id=any($1::uuid[])", [companyIds]);
+    for (const table of RF_SOURCE_TABLES)
+      await database.query(`delete from shareholder_register_filing.${table} where company_id=any($1::uuid[])`, [companyIds]);
     await database.query("delete from documents.evidence_references where document_id in (select id from public.documents where company_id=any($1::uuid[]))", [companyIds]);
+    await database.query("delete from documents.retained_originals where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from shareholder_register_filing.production_filing_events where submission_id in (select id from shareholder_register_filing.production_filing_submissions where company_id=any($1::uuid[]))", [companyIds]);
     await database.query("delete from shareholder_register_filing.production_filing_submissions where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from shareholder_register_filing.filing_approval_snapshots where company_id=any($1::uuid[])", [companyIds]);
@@ -433,11 +615,18 @@ async function cleanupFixture(database, companyIds, userIds) {
     await database.query("delete from public.filing_readiness_snapshots where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from public.documents where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from billing.production_pilot_entitlements where company_id=any($1::uuid[])", [companyIds]);
+    for (const table of ["company_access_command_receipts", "company_deletion_reviews", "company_cancellations", "company_archive_export_receipts", "company_archive_export_attempts"])
+      await database.query(`delete from public.${table} where company_id=any($1::uuid[])`, [companyIds]);
     await database.query("delete from public.company_archive_source_generations where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from authority_connections.system_user_requests where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from authority_connections.authority_operations where actor_id=any($1::uuid[])", [userIds]);
     await database.query("delete from public.audit_events where actor_id=any($1::uuid[])", [userIds]);
+    await database.query("delete from public.support_access_operation_receipts where case_id in (select case_id from public.support_access_grants where company_id=any($1::uuid[]))", [companyIds]);
+    await database.query("delete from public.support_case_openings where company_id=any($1::uuid[])", [companyIds]);
+    await database.query("delete from public.support_access_grants where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from public.support_operators where user_id=any($1::uuid[])", [userIds]);
+    for (const table of ["company_year_acceptances", "company_year_admissions", "company_eligibility_assessments"])
+      await database.query(`delete from public.${table} where company_id=any($1::uuid[])`, [companyIds]);
     await database.query("delete from public.customer_agreement_acceptances where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from public.company_memberships where company_id=any($1::uuid[])", [companyIds]);
     await deleteRfFixtureCompanies(database, companyIds);
@@ -450,6 +639,7 @@ async function login(page, origin, user) {
   await form.getByLabel("E-post").fill(user.email);
   await form.getByLabel("Passord").fill(user.password);
   await form.getByRole("button", { name: "Logg inn", exact: true }).click();
+  await page.waitForURL((url) => url.origin === origin && url.pathname === "/dashboard");
   await page.waitForLoadState("networkidle");
 }
 
@@ -489,10 +679,14 @@ async function browserSession(context) {
 const RF_TABLES = ["opening_balance_setups", "opening_shareholders", "filing_previews", "filing_submissions",
   "filing_overrides", "filing_review_comments", "authority_permissions", "authority_test_runs", "filing_approval_snapshots",
   "production_filing_submissions", "production_filing_events", "production_feedback_artifacts", "migration_inventory", "migration_quarantine"];
+const RF_SOURCE_TABLES = ["submission_heads", "source_submission_bindings", "source_approval_bindings",
+  "source_review_bridges", "source_previews", "year_source_heads", "year_source_versions", "register_observations"];
 const SIGNOFF_KEYS = ["launch_legal_name_public_copy", "legal_policy_pack", "security_restore", "support_rollback", "founder_production_go_live", "rf1086_authority"];
 const RF_FIXTURE_RELATIONS = Object.freeze([
   ...RF_TABLES.map((name) => `shareholder_register_filing.${name}`),
+  ...RF_SOURCE_TABLES.map((name) => `shareholder_register_filing.${name}`),
   "ledger.opening_bank_inputs", "billing.production_pilot_entitlements", "documents.evidence_references",
+  "documents.retained_originals",
   "public.documents", "public.filing_readiness_snapshots", "public.company_archive_source_generations",
 ]);
 
@@ -500,23 +694,25 @@ async function rfFixtureTransaction(database, operation) {
   return fixtureTableTransaction(database, [...RF_FIXTURE_RELATIONS, ...await rfPublicProjectionRelations(database)], operation);
 }
 
-async function seedFreshBasis(database, companyId, ownerId) {
+async function seedFreshBasis(database, companyId, ownerId, incomeYear = 2025, ready = true) {
   const setupId = randomUUID();
+  const holderId = randomUUID();
   await rfFixtureTransaction(database, async () => {
     await database.query(`insert into shareholder_register_filing.opening_balance_setups
       (id,company_id,income_year,share_capital,share_count,nominal_value,created_by)
-      values($1,$2,2025,30000,100,300,$3)`, [setupId, companyId, ownerId]);
+      values($1,$2,$4,30000,100,300,$3)`, [setupId, companyId, ownerId, incomeYear]);
     await database.query(`insert into ledger.opening_bank_inputs(snapshot_id,company_id,income_year,bank_balance_nok,recorded_by,recorded_at)
-      values($1,$2,2025,30000,$3,now())`, [setupId, companyId, ownerId]);
+      values($1,$2,$4,30000,$3,now())`, [setupId, companyId, ownerId, incomeYear]);
     await database.query(`insert into shareholder_register_filing.opening_shareholders
       (id,setup_id,company_id,name,shareholder_kind,org_number,share_count,created_by)
-      values($1,$2,$3,'Synthetic Fixture Owner AS','norwegian_company','999999999',100,$4)`, [randomUUID(), setupId, companyId, ownerId]);
-    // This local prerequisite records the exact supported no-activity case;
-    // no paid account, preview, approval, journal or provider receipt is seeded.
+      values($1,$2,$3,'Synthetic Fixture Owner AS','norwegian_company','999999999',100,$4)`, [holderId, setupId, companyId, ownerId]);
+    // The legacy case uses its frozen prerequisite. The full-year case keeps
+    // it false and must derive current readiness. No approval/journal is seeded.
     await database.query(`insert into public.filing_readiness_snapshots
       (company_id,income_year,obligation,status,ready,created_by)
-      values($1,2025,'aksjonaerregisteroppgaven','ready',true,$2)`, [companyId, ownerId]);
+      values($1,$3,'aksjonaerregisteroppgaven',$4,$5,$2)`, [companyId, ownerId, incomeYear, ready ? "ready" : "blocked", ready]);
   });
+  return { setupId, holderId };
 }
 
 async function seedLocalReleaseSignoffs(database, actorId) {

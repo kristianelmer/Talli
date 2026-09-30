@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "issue": "#193",
+  "slice": "RF-1086",
+  "status": "FINAL_FEEDBACK_LOOKUP_STOPPED_AT_TOKEN_GRANT",
+  "sourceRevision": "5f508585",
+  "ownerAuthorization": {
+    "message": "yes",
+    "planSha256": "847c63e04dff1f53167b5c31d99ea4791fba803672df9d2d163a79cf687101bc",
+    "recordedAt": "2026-09-15T07:06:09.706136+00:00"
+  },
+  "companyOrgNumber": "310279617",
+  "incomeYear": 2025,
+  "dialogId": "019f5fce-2119-7570-a78b-db0a9b0a5c1f",
+  "submissionTransmissionId": "01a0a376-44d7-7535-845a-322691b770c2",
+  "outcome": {
+    "status": "LOOKUP_STOPPED",
+    "errorType": "MaskinportenTokenError",
+    "httpStatus": 400,
+    "finalBusinessAcceptanceVerified": false,
+    "finishedAt": "2026-09-15T07:06:10.744862+00:00",
+    "trace": [
+      {
+        "kind": "token",
+        "method": "POST",
+        "url": "https://test.maskinporten.no/token",
+        "at": "2026-09-15T07:06:10.218519+00:00",
+        "status": 400
+      }
+    ],
+    "filingPosts": 0,
+    "originalJournalUnchanged": true
+  },
+  "diagnosticLimit": "The first digdir:dialogporten token request returned HTTP400. No specific OAuth error code or body was retained, so the cause is unproven.",
+  "review": {
+    "status": "PASS_EXECUTION_ACCOUNTING_ONLY",
+    "checksPassed": 47,
+    "report": "reviews/feedback-lookup-20260915-spec.md",
+    "sha256": "8a5db25ab6c4d1eebf53bcfdec182a51fccddd608150e93e0ee3a55c1bf137e4"
+  },
+  "privateArtifactHashes": {
+    "action-plan.json": "847c63e04dff1f53167b5c31d99ea4791fba803672df9d2d163a79cf687101bc",
+    "discover_feedback.py": "0cfedf005a245a20e2326ff48691374c98a2014766201aad55bbc868aacec0ac",
+    "authorization.json": "f69639ea4bc5d60a9abc717969bcbdb2ee912e690ed0c5bc30ecbea5fd41756f",
+    "request-01.json": "018fe5e27c5d35ab25948ebb4ea4f35383ac57bb1fb791edc55a8de82dc4e498",
+    "result.json": "dc94ec8745d361ebe2b31e40eb915052751a7e25c6d648fffe129011d3624ebc",
+    "execution-spec-review.json": "42534293afcb06a8a3d294b19bad2fc0fa944ed11d1e6f703b85e7666b940aed"
+  },
+  "limits": [
+    "Zero dialog/document reads and zero filing POSTs",
+    "Original submission evidence unchanged",
+    "First-failure stop condition reached; no remaining calls authorized",
+    "No final business acceptance, genuine-company production or complete RF credit"
+  ]
+}

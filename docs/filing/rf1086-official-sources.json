@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "issue": "#193",
+  "revision": "4c905cc81af44606fb1ab49132c46c49717e189b",
+  "verifiedAt": "2026-09-17",
+  "sources": [
+    {
+      "path": "static/download/aksjonaerregisteroppgaveHovedskjema.xsd",
+      "sha256": "194670070a54772ad7e026e37be1d87e7840dab7621c966a881e909d00d119df",
+      "localPaths": [
+        "docs/filing/aksjonaerregisteroppgaveHovedskjema.xsd",
+        "apps/backend/src/talli_backend/modules/shareholder_register_filing/schemas/aksjonaerregisteroppgaveHovedskjema.xsd"
+      ]
+    },
+    {
+      "path": "static/download/aksjonaerregisteroppgaveUnderskjema.xsd",
+      "sha256": "a0f6b2a8d249f3f40290036314d3b1f5c1b3aed3ba90f58e5ce7b264c9ec33b7",
+      "localPaths": [
+        "docs/filing/aksjonaerregisteroppgaveUnderskjema.xsd",
+        "apps/backend/src/talli_backend/modules/shareholder_register_filing/schemas/aksjonaerregisteroppgaveUnderskjema.xsd"
+      ]
+    },
+    {
+      "path": "static/download/aksjeklasse_kodeliste.xml",
+      "sha256": "a50b180de6b6538853eff7087df609e4f54132405e6057fdf8914b1a9f162ffd",
+      "localPaths": [
+        "docs/filing/aksjeklasse_kodeliste.xml"
+      ]
+    }
+  ],
+  "limits": [
+    "A matching XSD/code-list pin proves published bytes and allowed values, not event semantics or provider acceptance.",
+    "Event meanings and service conformance have separate evidence."
+  ],
+  "codeEvidence": [
+    {
+      "url": "https://www.skatteetaten.no/contentassets/050b9c39dcdd460d91a2addaf67a6eeb/kjopogsalg_underskjema_en.txt",
+      "sha256": "41a150eba0eec7e11aa57d1e2c48ce9b8bf868229b5a1a5294461423b5f3b65d"
+    },
+    {
+      "url": "https://www.skatteetaten.no/contentassets/050b9c39dcdd460d91a2addaf67a6eeb/kjopogsalg_underskjema_to.txt",
+      "sha256": "795311baa395715a5c413a5da818f5204c1cac4b67bbea6a3a2fdc87334e6054"
+    },
+    {
+      "url": "https://www.skatteetaten.no/contentassets/050b9c39dcdd460d91a2addaf67a6eeb/nyemisjon_hovedskjema.txt",
+      "sha256": "97834a7470cc998380084b5d8c9ad12ce51b4636d75a324f587f2b220cec6d20"
+    },
+    {
+      "url": "https://www.skatteetaten.no/contentassets/050b9c39dcdd460d91a2addaf67a6eeb/stiftelseavselskap_hovedskjema.txt",
+      "sha256": "e17122a053a5afbbbc22fc973b14237a4333e8eaac2242d99729770210ff6c20"
+    },
+    {
+      "url": "https://www.skatteetaten.no/contentassets/050b9c39dcdd460d91a2addaf67a6eeb/stiftelseavselskap_underskjema.txt",
+      "sha256": "78178e1b040adcf13a0f813217788ad9f4757f96b1075a61a8e56ca00ac8b43e"
+    },
+    {
+      "url": "https://www.skatteetaten.no/contentassets/050b9c39dcdd460d91a2addaf67a6eeb/utbytte_hovedskjema.txt",
+      "sha256": "1d94f08caa2182e70c73b92c08324b15d29a3c6acf956d4796bfef71c9ce039a"
+    },
+    {
+      "url": "https://www.skatteetaten.no/contentassets/d70d335c2a024f7ea7eb421fc53f4ec7/rf-1086_detaljert_design_2024.xlsx",
+      "sha256": "7db3fed16350832056c3b363eb16ee03df49031358372026af73b6c899bc5c7d"
+    }
+  ]
+}

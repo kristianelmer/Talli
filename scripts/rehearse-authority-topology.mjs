@@ -12,10 +12,27 @@ const SIGNOFF_CONTRACT = "20260909125250_backend_system_launch_signoffs_contract
 const RF151 = "20260909190548_shareholder_register_filing_capability.sql";
 const RF151_CUTOVER = "20260909190905_shareholder_register_filing_cutover.sql";
 const RF151_CONTRACT = "20260909190955_shareholder_register_filing_contract.sql";
+const RF193_READ_RECOVERY = "20260917110951_rf1086_action_required_read_recovery.sql";
+const RF193_ARCHIVE = "20260917114424_rf1086_production_archive_evidence.sql";
+const DOCUMENTS_LEDGER_GUARD = "20260923125730_documents_ledger_evidence_guard.sql";
+const RF193_YEAR_SOURCE = "20260923091509_rf1086_immutable_year_source.sql";
+
+const RF193_OBSERVATION = "20260923102314_rf1086_register_observation_store.sql";
+const RF193_SOURCE_COMPANY_GUARD = "20260924062746_rf1086_source_company_guard.sql";
+const TAX_SETTLEMENT = "20260913171000_company_tax_settlement_expand.sql";
+const CONSEQUENTIAL_GUARDS = JSON.parse(await readFile(
+  new URL("./rf-consequential-successors.json", import.meta.url), "utf8",
+)).map(layer => layer.migration);
+const RF193_SOURCE_PREVIEW = "20260923105912_rf1086_source_backed_preview.sql";
 
 async function topology(database) {
   const { rows: [state] } = await database.query(`select
     to_regclass('shareholder_register_filing.migration_state') is not null as rf_owned,
+    to_regclass('shareholder_register_filing.source_previews') is not null as rf_source_previews,
+    to_regprocedure('shareholder_register_filing.lock_source_company_write_v1()') is not null as rf_source_company_guard,
+    to_regclass('shareholder_register_filing.register_observations') is not null as rf_register_observations,
+    to_regclass('shareholder_register_filing.year_source_versions') is not null as rf_year_sources,
+    to_regclass('backend_system.tax_settlement_migration_state') is not null as tax_settlement,
     (select c.relkind::text from pg_class c join pg_namespace n on n.oid=c.relnamespace
       where n.nspname='public' and c.relname='system_user_requests') as authority_kind,
     (select c.relkind::text from pg_class c join pg_namespace n on n.oid=c.relnamespace
@@ -30,12 +47,35 @@ async function topology(database) {
 export async function rehearseAuthorityTopology({ direction, database, loadSql = (relative) => readFile(new URL(`../supabase/${relative}`, import.meta.url), "utf8") }) {
   if (!new Set(["rollback", "workspace", "recutover"]).has(direction)) throw new Error("invalid_authority_rehearsal_direction");
   let state = await topology(database);
-  const apply = async (files) => { for (const file of files) await database.query(await loadSql(file)); };
+  const apply = async (files) => {
+    for (const file of files) {
+      try {
+        await database.query(await loadSql(file));
+      } catch (error) {
+        // Keep the migration and routine location: permission errors otherwise
+        // lose the exact failed recutover stage. Never print SQL statements/data.
+        const code = /^[A-Z0-9]{5}$/u.test(error.code ?? "") ? error.code : "unknown";
+        const frames = typeof error.where === "string" ? error.where.split("\n")
+          .filter(line => /^(?:PL\/pgSQL|SQL) function /u.test(line)).slice(0, 4)
+          .map(line => line.slice(0, 300)) : [];
+        throw new Error([`authority_rehearsal_sql_failed: ${file} [${code}] ${error.message}`,
+          ...frames].join("\n"), { cause: error });
+      }
+    }
+  };
   if (direction === "rollback") {
     // The exact RF full rollback restores #150 routines and original openings.
     // Never run the frozen #150 rollback against a later owner's physical tables.
     if (state.rf_owned) {
-      await apply([`rollback/${RF151}`]);
+      if (state.rf_register_observations) {
+        const { rows: [observation] } = await database.query("select exists(select 1 from shareholder_register_filing.register_observations) as retained_observations");
+        if (observation.retained_observations) throw new Error("rf1086_retained_register_observations_block_full_schema_rollback");
+      }
+      if (state.rf_year_sources) {
+        const { rows: [source] } = await database.query("select exists(select 1 from shareholder_register_filing.year_source_versions) as retained_sources");
+        if (source.retained_sources) throw new Error("rf1086_retained_year_sources_block_full_schema_rollback");
+      }
+      await apply([...(state.rf_source_company_guard ? [`rollback/${RF193_SOURCE_COMPANY_GUARD}`] : []), ...(state.rf_source_previews ? [`rollback/${RF193_SOURCE_PREVIEW}`] : []), ...(state.rf_register_observations ? [`rollback/${RF193_OBSERVATION}`] : []), ...(state.rf_year_sources ? [`rollback/${RF193_YEAR_SOURCE}`] : []), `rollback/${RF193_ARCHIVE}`, `rollback/${RF151}`]);
       state = await topology(database);
     }
     if (state.rf_owned || ![null, "v"].includes(state.authority_kind)) throw new Error("authority_overlap_topology_required");
@@ -50,13 +90,28 @@ export async function rehearseAuthorityTopology({ direction, database, loadSql =
     if (direction === "recutover" && (state.ledger_kind !== null || state.ledger_setup || state.opening_kind !== "r")) {
       throw new Error("final_rf_requires_ledger_contract");
     }
+    // The historical Ledger close rehearsal recreates post_entry and therefore
+    // loses grants installed by later consumers. Restore the shipped inactive
+    // Tax expansion before the RF guards; never replace an active Tax writer.
+    let restoreTaxExpansion = false;
+    if (direction === "recutover" && state.tax_settlement) {
+      const { rows: [settlement] } = await database.query("select phase from backend_system.tax_settlement_migration_state where singleton");
+      if (!["expanded", "rolled_back"].includes(settlement?.phase)) {
+        throw new Error("authority_rehearsal_requires_inactive_tax_settlement");
+      }
+      restoreTaxExpansion = true;
+    }
     // Billing's ordinary pilot coordinator still reads the AU overlap view.
     // Its lifecycle retires that dependency before the final recutover phase.
     await apply([`migrations/${AUTHORITY}`, `migrations/${OPERATIONS}`, `migrations/${RF}`,
       ...(direction === "recutover" ? [`contract-migrations/${CONTRACT}`] : []),
       `contract-migrations/${SIGNOFF_CONTRACT}`,
-      `migrations/${RF151}`, `migrations/${RF151_CUTOVER}`,
-      ...(direction === "recutover" ? [`contract-migrations/${RF151_CONTRACT}`] : [])]);
+      `migrations/${RF151}`, `migrations/${RF151_CUTOVER}`, `migrations/${DOCUMENTS_LEDGER_GUARD}`, `migrations/${RF193_READ_RECOVERY}`, `migrations/${RF193_ARCHIVE}`, `migrations/${RF193_YEAR_SOURCE}`, `migrations/${RF193_OBSERVATION}`, `migrations/${RF193_SOURCE_PREVIEW}`, `migrations/${RF193_SOURCE_COMPANY_GUARD}`,
+      ...(direction === "recutover" ? [`contract-migrations/${RF151_CONTRACT}`] : []),
+      ...(restoreTaxExpansion ? [`migrations/${TAX_SETTLEMENT}`] : []),
+      // Historical owner lifecycles can replace entire routine bodies. Reapply
+      // the ordered additive guards only after every predecessor/contract body.
+      ...CONSEQUENTIAL_GUARDS.map(file => `migrations/${file}`)]);
   }
   const result = await topology(database);
   const valid = direction === "rollback"

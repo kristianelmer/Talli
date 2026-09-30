@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "issue": 193,
+  "scope": "RF archive API overlap and additive production archive; bounded local runtime verification only",
+  "status": "PASS",
+  "testedAt": "2026-09-23",
+  "gitHead": "56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd",
+  "workingTreeChangesIncluded": true,
+  "tests": {
+    "restrictedRoleDatabase": {
+      "passed": 35,
+      "elapsedSeconds": 14.32,
+      "providerCalls": 0,
+      "objectTransfers": "local httpx.MockTransport",
+      "database": "actual owned disposable local PostgreSQL clone",
+      "cloneDropped": true,
+      "proofs": [
+        "All 34 previous RF database runtime cases remain passing.",
+        "Malformed production approval metadata does not prevent reading original legacy archive previews.",
+        "Legacy archive source does not invoke production metadata decoders.",
+        "Additive production archive source fails closed for malformed production approval metadata."
+      ]
+    }
+  },
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "254816fb4432b208ffb534ee6a9405fa4ce4ea4dd8789e5a385c64e16683c62a",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "925f05774c71554c43c4b76439f9502946962ec3f39fd80ed21891b702c366ac",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py": "784b19fab69a1270aab0fb1d7589801e8db88e9cdd1a39e0378ab7346c429ee4",
+    "apps/backend/src/talli_backend/application/shareholder_register_filing_workflow.py": "63aef0b32332a2496600120eb4a0ec0539bbb48e3ac0599d0ecad821bc035f6f",
+    "apps/backend/src/talli_backend/main.py": "59f7609a11b73e589cf83d6f5f20534d74aaf1b1e1c8fa3d0990fbfeeeaeb55d",
+    "apps/backend/tests/test_rf1086_database_runtime.py": "d2f7e1d9443fc9ea13aae0a400f75bc1e117272c652430517c66c8f4c6e360f2",
+    "supabase/migrations/20260917110951_rf1086_action_required_read_recovery.sql": "b3d1ad90d94e8c78c3d09592fdfa78e1148b209e0b04bb87f5c16caddb8425b1",
+    "supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql": "d8d267f1e79d8eed2bc28a18622371a9c3c6be2288039c28fef5691434f50a44"
+  },
+  "sourceHashesMatchedCurrentFilesAtArtifactCreation": true,
+  "privateProof": {
+    "artifact": "source-binding-proof.json",
+    "sha256": "c150941b4991a04d0298927b176f8acb62fc6134eaf77c6d745fb4eaeec0e555",
+    "logSha256": "6f26d06cd2d79bb46fc2b71a1a73a5d34dd640063f3d0f1276971986077eb199",
+    "helperSha256": "3ea2257b9a22f17a20b615ecee9f30beb74cbaa3b31adfff140fc91b0a3c487f"
+  },
+  "supersedes": null,
+  "preserves": "architecture/evidence/issues/193/rf/production-archive-backend-20260917.json",
+  "limits": [
+    "No hosted database changes or provider calls.",
+    "Only a newly created owned disposable clone was modified and dropped; source database and unrelated databases were preserved.",
+    "No production filing, genuine-company proof, full-year source integration, browser byte-transfer proof, or full issue acceptance is claimed.",
+    "Evidence binds the listed working-tree file bytes; subsequent file changes require appropriate re-verification."
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_BOUNDED_SOURCE_PREVIEW_INTEGRATION",
+  "baseCommit": "efbea434d07b5530618dabbeb8645d0208b554dd",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "2bb2f6fa177a49f540a5f2df3452b16a9f9820076d70d6e24fa19583e09bc730",
+    "apps/backend/src/talli_backend/application/shareholder_register_filing_session.py": "aa8f79f35f5a385c90c09bef2310952ccee21f0eadd558819113248c5cf713e5",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py": "ca3ad0c4206096a5d86f997cfea95dc5473d87ffc190742cd0eadaf53b44ace1",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "84176c00cb6b25b21e5c0a2c74dc438d03e9da8ab2dc5c3952a2f9a8451af0d8",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "0e6ae67c56706ba443b6915b8ae6427d4be9023c419248ae5f40a3f26b940b00",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py": "30a5aab22eb59d0a45f611eed9f92e2748cb50b63665e771bf0f27bc09810b0e",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "aed2e9a969e1e7a8f94b270e3b14363efc8f199ac61faa489ee8a1d5cafa9ac7",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/rendering.py": "f93d5988df1b024cecddec12e67ef3d04eed35e1e2667d8efd4ac1ed208c4ca0",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_preview.py": "1a5ef0edbabb92abf2a0e78f705776e805c6c430c4086386e7c893c164348168",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source_storage.py": "531dd01dd9870ce2fbbf963834dbfd30dffd5db9e2dbf8c89b4b233d90adefcb",
+    "apps/backend/tests/test_rf1086_source_preview.py": "1229b52968e9779c865e707faae380e567511a8aca5c2c0aa329bee0bb6fc545",
+    "apps/backend/tests/test_rf1086_source_preview_database.py": "cf6273d4e9ee8f21f95cf33afb26aeb450ee9739d069c8057f9832abcd177bc7",
+    "apps/backend/tests/test_shareholder_register_source_preview_workflow.py": "2be38e0e16b4daf8e5055fd3b0f7db6a8f4abd0e875b6555c14d47bba41b8255",
+    "apps/backend/tests/test_shareholder_register_source_workflow.py": "fed5727db4625e968726584e280ee2990198a567417195c645911b020ff5b9b6",
+    "architecture/BACKEND-SYSTEM.md": "6301b898b1e0d757c8cfc238165b3403511068952350d2670cc5ec69f250c097",
+    "architecture/backend-system.json": "51e65024196f4d4387a1caa15330cc6698ad1c3403635de191330204db966ad8",
+    "architecture/database-catalog.json": "1dc1f187baf03a5fec0cd44325f9010c411eabf6251a99165b1e3e183b9d55ef",
+    "package.json": "a3df78b4c6437f9a45cee6e15c812cdc2fdccc9ddb1f7e75961a8c88aa839061",
+    "scripts/rehearse-authority-topology.mjs": "642dd41d1e1b8e1b882fdc3012ffafdff6e3058adf0e82cb1ce9321795870b23",
+    "supabase/migrations/20260923105912_rf1086_source_backed_preview.sql": "b601980eeb634cf469d924187c890c4909e8bcde694f93718aa6770bb7d5bea7",
+    "supabase/rollback/20260923105912_rf1086_source_backed_preview.sql": "2c277f06b3fca4adcd8bd6a24c7fa04e088b1637ee1f12f2f2e0b88541306f45",
+    "tests/ci_release_gate.test.mjs": "e77f9b2953050d34252728270a593128114f2af8e7a1a98a811e849f2e4d923f"
+  },
+  "verification": {
+    "offline": {
+      "passed": 1076,
+      "databaseTestsDeselected": 63,
+      "fileCount": 28,
+      "result": "PASS"
+    },
+    "database": "source-preview-persistence-runtime-20260923.json",
+    "architecture": "PASS npm run check:architecture",
+    "independentReview": "review-source-preview.json"
+  },
+  "privateEvidenceSha256": {
+    "offline-pass/run-offline.py": "4b6eb68718c8834354b83db5b7c9410a496cd284aee012d1b89e0ef1e888e5a0",
+    "offline-pass/offline.log": "5b90828b0e2ca6bbdc3e42af51afee51cdce1ec48abdd02de9f09c2889953f44",
+    "offline-pass/offline-result.json": "2fd45bc39afa53ce48132954fb4a1ab44f39a88abcfa9ee8f4a39383bfa53383",
+    "architecture.log": "23091325e26ea3bbb93531a2dafd538355890112315f0b6bcc130fa06bec06be"
+  },
+  "earlierAttempt": {
+    "preserved": "offline.log and offline-result.json",
+    "outcome": "1076 passed; 63 database fixture errors because DATABASE_URL was intentionally absent. No database connection occurred. Corrected offline marker selection deselected those tests; actual new preview database coverage is separate."
+  },
+  "limits": [
+    "Internal authenticated source preview only; no customer route or provider activation.",
+    "Capture and preview verify point-in-time external owner evidence. Cross-owner action-time consistency is still required for approval/send.",
+    "Full RF acceptance remains pending; owner has not recruited a production AS.",
+    "Tax and Accounts progression remains gated on full RF completion."
+  ]
+}

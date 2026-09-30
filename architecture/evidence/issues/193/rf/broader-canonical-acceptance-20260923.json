@@ -1,0 +1,80 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "environment": "test",
+  "sourceCommit": "56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd",
+  "status": "CANONICAL_SYNTHETIC_MIXED_RECEIPT_ACCEPTED",
+  "canonicalAcceptanceVerified": true,
+  "scope": "Original synthetic mixed TT02 submission; new read-only recovery03 only",
+  "previousSubmissionEvidence": "broader-submission-20260917.json",
+  "previousReadEvidence": "broader-read-recovery-20260917.json",
+  "eventTypes": [
+    "share_sale",
+    "cash_issue",
+    "cash_nominal_increase",
+    "dividend",
+    "loss_covering_reduction"
+  ],
+  "eventOrderNote": "Dividend precedes loss-covering reduction. Formation is not part of this case.",
+  "requests": [
+    {
+      "sequence": 1,
+      "kind": "token",
+      "httpStatus": 200,
+      "byteLength": 1504
+    },
+    {
+      "sequence": 2,
+      "kind": "token",
+      "httpStatus": 200,
+      "byteLength": 1427
+    },
+    {
+      "sequence": 3,
+      "kind": "dialog",
+      "httpStatus": 200,
+      "byteLength": 17589
+    },
+    {
+      "sequence": 4,
+      "kind": "document",
+      "httpStatus": 200,
+      "byteLength": 63839
+    },
+    {
+      "sequence": 5,
+      "kind": "document",
+      "httpStatus": 200,
+      "byteLength": 1998
+    }
+  ],
+  "filingMutationRequests": 0,
+  "requestRetries": 0,
+  "originalProviderReceiptsRetained": 2,
+  "canonicalProvenanceArtifactsRetained": 1,
+  "canonicalArtifactReplayVerified": true,
+  "originalSubmissionPayloadHashesVerified": true,
+  "priorAttemptsUnchanged": true,
+  "rawDialogBodyRetained": false,
+  "dialogEvidence": "Original response hash/status/size plus explicitly labelled canonical typed transmission projection; projection is not the original response.",
+  "privateEvidenceAlias": "issue193-rf-broader-read-recovery-14d7-03",
+  "privateArtifactHashes": {
+    "action-plan.json": "f319234b66d145f60ad467cd407df3f8b23109ed200d2d6caf4488737f4347e0",
+    "preparation-proof.json": "ad4d6116bb9754dda82d060fed1a953b34ac748d7a0f9f788cfb79af2cfb99da",
+    "prep-spec-review.json": "fecea762d3929ec5b43ac793b2abf7765d10efadd3350492921a467cfb04e243",
+    "prep-standards-review.json": "54f6bdaa6c3fa26be73e0d9541d8c761829d9c416e7ba827ad8e8d038aeeed7a",
+    "independent-review-gate.json": "3ac313434f6a8bffbafc3a199e3474d55d9cc4936fe59a280ea500d29b072003",
+    "execution-claim.json": "e1bbdc93ccdc04fde1a4e4ebe12d3186743203542a526799ab139e704d4a7be4",
+    "execution-spec-review.json": "5e350bab3c9544d533c9589d8c6cb8d08fa0ff929360c3ff8884679c7ffb2295",
+    "execution/result.json": "97f74cb75380d209f9446f13ad742ca0f8e3611f6704fa8c6232a71002020594",
+    "execution/reconciliation.json": "a0a43cec22b67ab2d6ed78ac6b32e700e91815a105e8575ae3a89aa2ebda3e9d",
+    "execution/dialog-transmission-projection.json": "9a8167c51135926530b6062c533d68dfbb11e4bd6e42904e59d32f3f0d049fe4",
+    "execution-standards-audit.json": "2b64928d36b22940c1f63eb516e045f30fe315cce8f03cf7b427df3ce86d383a"
+  },
+  "limits": [
+    "Synthetic service conformance only; no genuine-company production filing or production authority inferred.",
+    "No hosted production-persistence proof, formation test or complete supported-case matrix.",
+    "All seven full RF acceptance criteria remain pending; later obligations are not cleared.",
+    "Consumed helpers remain immutable and must not be rerun."
+  ]
+}

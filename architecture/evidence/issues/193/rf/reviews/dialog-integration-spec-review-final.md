@@ -1,0 +1,11 @@
+# Bounded Spec follow-up — corrected Dialogporten integration
+
+Verdict: **PASS for the frozen bounded correction.** No actionable new defect found.
+
+**SPEC-193-RF-DIALOG-1 closes.** The adapter now validates the provider’s string enum and preserves transmission type. The owner limits terminal XML decisions to Acceptance, Rejection and Decision; contradictory Acceptance/rejected or Rejection/accepted evidence and other categories remain `action_required`. All five unchanged original conflict/malformed-type regressions now pass. This resolves the identified failure against GH-193-RF-A2’s “feedback/correction, final decision/receipt, and archive” and A4’s “safe unknown-outcome reconciliation.” It does not establish live conformance for every category.
+
+**STD-193-RF-DIALOG-1 closes within this review’s scope.** The deterministic owned XML manifest preserves every transmission/attachment identity, category, creation time and raw-content hash even when original document bytes deduplicate by SHA. The adapted original probe through actual `_FeedbackJournal.record_artifact` retains all three attachment identities in the manifest, stores two unique provider byte objects plus the manifest, and records acceptance only afterward. Its SQL/Document ports are local fakes. Current tests also prove manifest persistence failure blocks a terminal decision and attachment ordering does not create a different manifest.
+
+Independent result: **256 passing tests** (241 current focused tests plus all 15 unchanged private edge regressions/controls), and the separate actual-adapter attribution probe passes. Exact source and artifact bindings are in the paired JSON. The additional real-DB test was inspected for lease identity, RF/Document persistence and replay assertions; I did not execute it or claim the parent’s runtime result as my own.
+
+Original reports and reds remain unchanged. The review covers final frozen worktree bytes against `c4d9fb2fe27b2d2c3e9be077f03146c0b391bfe2`, not an immutable candidate commit. No provider, browser, key, DB or shared-source operation occurred. Prior live receipts prove their historical synthetic action; these mocks do not supply new canonical live conformance, production authority, XSD/correction coverage or full RF/#193 acceptance.

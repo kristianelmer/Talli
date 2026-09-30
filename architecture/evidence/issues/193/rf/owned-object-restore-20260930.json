@@ -1,0 +1,79 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "e043c4f7d34458a3374172781e5424657b4030b1",
+  "scope": "Actual ordinary file-backed Storage recovery paired with the restored RF database; seven synthetic source and feedback objects after rejection, correction and unknown send",
+  "validation": {
+    "targetedBrowser": {
+      "passed": 1,
+      "scenario": "rejected-predecessor correction and lost main response, database/retained-original and ordinary-object recovery",
+      "journeyDurationMs": 127296.152,
+      "durationMs": 127640.383625
+    },
+    "runnerTestsPassed": 39,
+    "rfFixtureSafetyPassed": 21,
+    "architecture": "passed",
+    "credentialScan": "passed",
+    "whitespace": "passed",
+    "cleanup": "Passed: all created restore resources removed, owned stack removed, 42 recorded containers restored, Colima stopped and generated Next files restored",
+    "lastCompletedCi": {
+      "runId": 36733220164,
+      "revision": "8c01b07fc83457624ef801100f6b873cd599f2f2",
+      "result": "success",
+      "application": "success",
+      "databaseIsolation": "success",
+      "databaseDurationSeconds": 2335,
+      "releaseGate": "success",
+      "immutableEvidence": "skipped"
+    },
+    "currentRevisionCi": "pending"
+  },
+  "proof": {
+    "databaseRestorePerformed": true,
+    "retainedOriginalBytesRestored": true,
+    "objectStorageRestorePerformed": true,
+    "ordinaryObjects": 7,
+    "storageAttributesRestored": true,
+    "storageAuthenticatedDownloadsVerified": true,
+    "storageDirectReadsDenied": true,
+    "storageMfaEnforced": true,
+    "sourceVersions": 3,
+    "submissions": 3,
+    "sourceOriginals": 3,
+    "feedbackOriginals": 4,
+    "sourceHistoryUnchanged": true,
+    "storageSourceUnchanged": true,
+    "clusterMembershipsUnchanged": true,
+    "cloneRemoved": true,
+    "storageVolumeRemoved": true
+  },
+  "assertions": [
+    "Exact workdir, live database session, Storage container, network and published local gateway bind the source before reads or Docker mutations",
+    "Fresh volume receives the tar file tree plus a separately captured extended-attribute manifest; restored attributes must exactly match source before service startup",
+    "Only the cached source image ID is used, with pulling disabled; both Storage database URLs point to the fresh RF clone and the source migration freeze settings are preserved",
+    "Actual Documents adapter verifies real local browser owner/outsider/pre-MFA sessions and uses restored Company Access and Documents records",
+    "Every owner download matches retained bytes and source document metadata; unrelated actor and low-AAL downloads fail",
+    "Direct owner, outsider and unauthenticated Storage object reads remain denied despite successful authorized signed downloads",
+    "Source tar digest and attributes are unchanged; source document metadata, RF history and cluster memberships remain unchanged",
+    "Created Storage container and volume are removed before dropping the database; post-run Docker inventory contains no restore container or volume"
+  ],
+  "diagnosticsResolved": [
+    "Owned gateway uses an opaque API key while direct Storage uses its internal JWT; validate gateway binding and keep those keys distinct",
+    "Documents retained-evidence reader returns a metadata/original snapshot; explicitly extract originals and reject conflicting generations",
+    "Plain BusyBox tar lost Linux file attributes and caused Storage ENODATA/500. A disposable focused probe reproduced the failure and returned exact original bytes with HTTP 200 after attribute recovery"
+  ],
+  "limitations": [
+    "Quiescent synthetic local file-backed store; no hosted object-storage recovery or concurrent-production consistency proof",
+    "Original local Auth still verifies sessions; independent Auth service and cluster-role recovery are not demonstrated",
+    "Prior-year/unapproved history, cancellation/expiry/deletion and broader retention generations remain",
+    "Remaining security/conformance, unknown-operation reconciliation, legacy feedback backfill, HTTP/concurrency sizing and both immutable acceptance gates remain",
+    "All seven RF acceptance criteria pending; draft PR only, no real AS data, hosted database change, production enablement or genuine provider operation"
+  ],
+  "sha256": {
+    "scripts/rf1086_storage_restore.py": "83e7423a4fb5ea2bafc8d9faac1742bd96d1747a6641c37be18611c7b9798422",
+    "scripts/rehearse-rf1086-owned-restore.py": "07db341ec7fe7d69a6fc92e79ce131b0e46bc65427d5d2388a8b5ff08d41ab36",
+    "apps/backend/tests/test_rf1086_storage_restore_runner.py": "6be2d3c415b0d7695c67b648798e0335ec86695d6df8359662f2c2f46f1e68e3",
+    "apps/backend/tests/test_rf1086_owned_restore_runner.py": "0bfda99385256d15db337296bae72c35ee3a225a273bcadd99fa710983ee6dcb",
+    "tests/browser_shareholder_register_filing.mjs": "ea4b3c1efd6b09f1fef1dfc10e750950c583446e88d8d567e834e0186356ba18",
+    "docs/security/backup-restore-runbook.md": "1dce3f3349abc0d65d9fbd3b034d2892f3ea2cbf1813c915e7dcdb726970f4c1"
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "78c19b38efb937012329ad678714f8154fbee69e",
+  "scope": "Authenticated RF archive browser download and CI allocation regression",
+  "validation": {
+    "baseRevisionCi": {
+      "runId": 36677401424,
+      "result": "success",
+      "jobs": [
+        "Application",
+        "Database isolation",
+        "Release gate"
+      ],
+      "immutableEvidence": "skipped"
+    },
+    "fixtureSafetyTests": 15,
+    "ciControlTests": 88,
+    "diagnosticAuthorityDatabaseCases": 619,
+    "isolatedReplayRepetitions": 60,
+    "supabaseReplayRepetitions": 60,
+    "authenticatedArchiveBrowser": {
+      "status": "passed",
+      "journeys": 1,
+      "fixtureChecksInSameCommand": 15,
+      "durationMs": 50417.787958,
+      "topology": "Real disposable Supabase Auth/Storage/Postgres with final capability contracts, Next, FastAPI and loopback-only authority mocks",
+      "assertions": [
+        "native browser download from owner source page",
+        "strict offline stream verification with required source history and feedback originals",
+        "expected company/year, one submission and two retained feedback originals",
+        "denied before MFA and to another company owner",
+        "visible download and no horizontal overflow at 320 and 1440 pixels",
+        "no extra provider mutations",
+        "empty browser health and egress violations"
+      ],
+      "scopeLimit": "Legacy no-activity submission; no full-year source capture/approval/send acceptance claim"
+    },
+    "focusedWebTests": 74,
+    "currentRevisionCi": "pending",
+    "localCleanup": "passed: owned Supabase stack removed, all 42 pre-existing dormant containers restored, Colima returned to stopped, generated Next files restored"
+  },
+  "unresolvedObservation": {
+    "initialRun": "failed before browser at exact completed source-operation replay",
+    "exception": "RF1086_PERSISTENCE_UNAVAILABLE",
+    "reproduced": false,
+    "behavioralFixApplied": false,
+    "testDiagnostic": "Preserve safe SQLSTATE as an exception note in the durable-operation test helper"
+  },
+  "limitations": [
+    "The browser journey uses the legacy no-activity filing; full-year capture/approval/send browser acceptance remains open",
+    "No real AS, external business-provider operation, hosted database change or production enablement",
+    "Linux allocation profile is added to the next CI rehearsal; not yet run there",
+    "No real HTTP concurrency memory budget, database/object restore, legacy feedback backfill or retention-generation acceptance",
+    "All seven RF acceptance criteria remain pending"
+  ],
+  "browserRegression": {
+    "symptom": "RF owner source page logged duplicate React sibling keys",
+    "cause": "SourceProduction and SourceEditor both used companyId:incomeYear as their sibling key",
+    "fix": "Distinct production: and source: prefixes preserve per-scope state reset",
+    "regression": "Actual browser clean-console assertion failed twice before the key fix and passed afterwards",
+    "temporaryLogging": "Removed before verification"
+  },
+  "sha256": {
+    "tests/browser_shareholder_register_filing.mjs": "fb671a76f97b6712d27d02ba074d08ebdc419d41629f468234abff582e8fefdb",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/page.tsx": "5b281a883b2cd7cba832c6453770571a9b83be556c4b768f8728b22d42f47982",
+    "apps/backend/tests/test_rf1086_durable_source_operation_database.py": "e7c8a93d68b69e6ab3683ec253d74f847e2df511e794d29cf763f0a6d1d1900c",
+    "package.json": "0093fc3a00808dbe11faf416f704e678652d828fee8bb73258e842da577016e9"
+  }
+}

@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from talli_backend.modules.shareholder_register_filing.public import JournaledRf1086ProductionInput, ProductionOperation, Rf1086AuthorityCall, Rf1086AuthorityDocument, Rf1086AuthorityError, Rf1086BlockedProductionOperationError, Rf1086Confirmation, Rf1086DocumentPage, Rf1086DocumentReference, Rf1086FeedbackArtifactPersistenceError, Rf1086MainResponse, Rf1086PostResponse, Rf1086ReconciliationInput, Rf1086ReconciliationSnapshot, Rf1086UnknownProductionOutcomeError
+from talli_backend.modules.shareholder_register_filing.public import JournaledRf1086ProductionInput, ProductionOperation, Rf1086AuthorityCall, Rf1086AuthorityDocument, Rf1086AuthorityError, Rf1086BlockedProductionOperationError, Rf1086Confirmation, Rf1086DocumentPage, Rf1086DocumentReference, Rf1086FeedbackArtifactPersistenceError, Rf1086FeedbackTransmission, Rf1086MainResponse, Rf1086PostResponse, Rf1086ReconciliationInput, Rf1086ReconciliationSnapshot, Rf1086UnknownProductionOutcomeError
 from talli_backend.modules.shareholder_register_filing.feedback import RF1086_FEEDBACK_NAMESPACES, classify_rf1086_feedback, create_rf1086_feedback_artifact_persistence_error, reconcile_journaled_rf1086_production
 from talli_backend.modules.shareholder_register_filing.production import execute_journaled_rf1086_production, execute_rf1086_production_release, resume_production_operation
 
@@ -482,6 +482,12 @@ class BillingQueries:
         return self.decision
 
 
+class CoordinatorDiscovery:
+    async def read_feedback_transmissions(self, *, organization_number, dialog_id, forsendelse_id):
+        assert (organization_number, dialog_id, forsendelse_id) == ("310279617", DIALOG, TRANSMISSION)
+        return (Rf1086FeedbackTransmission(DIALOG, DOCUMENT, TRANSMISSION, NOW.isoformat(), (DOCUMENT,), "Acceptance"),)
+
+
 class CoordinatorSession:
     def __init__(self):
         self.events = []
@@ -501,7 +507,9 @@ class CoordinatorSession:
         self.operations = OperationJournal()
         self.journal = FeedbackJournal()
         self.mutation_authority = Authority()
-        self.read_only_authority = ReadOnlyArchive([page([feedback()])])
+        self.read_only_authority = ReadOnlyArchive([page([feedback()])],
+            {DOCUMENT: Rf1086AuthorityDocument(DOCUMENT, "application/xml", feedback().encode())})
+        self.discovery = CoordinatorDiscovery()
         self.failure = None
         self.busy = False
         self.reference = TRANSMISSION
@@ -539,10 +547,10 @@ class CoordinatorSession:
     async def bind_mutation_authority(self, company, connection):
         self.event("mutation_token")
         assert company == self.company and connection == self.connection
-        return Rf1086MutationBinding(self.mutation_authority, self.read_only_authority, self.discard)
+        return Rf1086MutationBinding(self.mutation_authority, self.read_only_authority, self.discard, self.discovery)
     async def bind_read_only_authority(self, company, connection):
         self.event("recovery_token")
-        return Rf1086ReadOnlyBinding(self.read_only_authority, self.discard)
+        return Rf1086ReadOnlyBinding(self.read_only_authority, self.discard, self.discovery)
     async def begin_production_filing(self, value):
         self.event("begin")
         assert value == APPROVAL
@@ -560,6 +568,10 @@ class CoordinatorSession:
         self.event("reference")
         assert submission_id == SUBMISSION and lease_id == self.lease
         return self.reference
+    async def read_claimed_dialog_id(self, submission_id, lease_id):
+        self.event("dialog")
+        assert submission_id == SUBMISSION and lease_id == self.lease
+        return DIALOG
     async def release_feedback_lease(self, submission_id, lease_id):
         self.event("release")
         assert submission_id == SUBMISSION and lease_id == self.lease
@@ -637,11 +649,11 @@ def test_recovery_preserves_expired_entitlement_invalidated_approval_without_new
     result = recover(session)
     assert result.state == "accepted" and result.error_code is None and not result.requires_manual_retry
     assert session.events == ["submission", "company", "approval", "billing_snapshot", "connection", "preview", "configuration",
-        "claim", "reference", "recovery_token", "feedback_journal", "discard", "release"]
+        "claim", "reference", "dialog", "recovery_token", "feedback_journal", "discard", "release"]
     assert not session.mutation_authority.calls
 
 
-@pytest.mark.parametrize("state", ["accepted", "rejected", "action_required"])
+@pytest.mark.parametrize("state", ["accepted", "rejected"])
 def test_terminal_recovery_returns_stored_state_before_configuration_or_new_eligibility(state):
     session = CoordinatorSession()
     session.submission = replace(session.submission, feedback_state=state)
@@ -684,8 +696,10 @@ def test_recovery_failure_always_releases_only_claimed_lease_and_discards_acquir
     (lambda s: setattr(s, "preview", replace(s.preview, company_id=DOCUMENT)), "connection_unavailable"),
     (lambda s: setattr(s, "preview", replace(s.preview, income_year=2024)), "connection_unavailable"),
 ])
-def test_recovery_exact_relationship_mismatch_is_rejected_before_claim_or_token(change, code):
+@pytest.mark.parametrize("state", ["processing", "action_required"])
+def test_recovery_exact_relationship_mismatch_is_rejected_before_claim_or_token(change, code, state):
     session = CoordinatorSession()
+    session.submission = replace(session.submission, feedback_state=state)
     change(session)
     result = recover(session)
     assert result.error_code == code and result.requires_manual_retry
@@ -808,3 +822,27 @@ def test_approved_payload_is_recursively_immutable_without_changing_original_has
         session.preview.underskjema_xml[MAIN] = "<changed/>"
     assert rf1086_current_manifest_hash(session.preview, actor_id=OWNER, organization_number="310279617",
         approved_manifest=manifest) == session.approval.manifest_hash
+
+
+def test_action_required_recovers_only_by_reading_original_confirmation():
+    session = CoordinatorSession()
+    session.submission = replace(session.submission, feedback_state="action_required")
+    session.journal.snapshot = Rf1086ReconciliationSnapshot("action_required", safe_error_code="GLD_005")
+    session.approval = replace(session.approval, invalidated=True)
+    session.billing.pilot = replace(session.billing.pilot, status=ProductionPilotStatus.REVOKED)
+    result = recover(session)
+    assert result.state == "accepted" and result.error_code is None
+    assert "reference" in session.events and "dialog" in session.events
+    assert "recovery_token" in session.events and "mutation_token" not in session.events
+    assert "begin" not in session.events and not session.mutation_authority.calls
+    assert session.events[-2:] == ["discard", "release"]
+
+
+def test_action_required_recovery_failure_preserves_status_and_manual_retry():
+    session = CoordinatorSession()
+    session.submission = replace(session.submission, feedback_state="action_required")
+    session.failure = "configuration"
+    result = recover(session)
+    assert (result.state, result.error_code, result.requires_manual_retry) == (
+        "action_required", "configuration_unavailable", True)
+    assert "claim" not in session.events and not session.mutation_authority.calls

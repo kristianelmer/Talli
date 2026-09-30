@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "35fa86cc7cdfcf4055511c087329b9a1d22e0059",
+  "status": "PASS_BOUNDED_SOURCE_INTAKE_BASIS",
+  "scope": "Accepted confirmed AS owner discovers full Governance reporting-year evidence through typed RF intake API; no source capture or approval authority.",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py": "08d3ad245d8fa0af7fd85e36f2acad930f14e2a8629d3d94357127b871f63976",
+    "apps/backend/src/talli_backend/main.py": "b3749e6d3e55147912416df0ba5e2c664540f3a32c0caacf84a7befdbffef4fb",
+    "apps/backend/tests/test_shareholder_register_source_workflow.py": "75a6f84a61ca3a508e409c27162f68f48d5ae86e04240e1ad7eeaa4b09602546",
+    "apps/backend/tests/test_shareholder_register_source_api.py": "10896b4e36c4c3da44e16f5e7293d8d4f23025b6a8ed93c579e4c9b1507efbdc",
+    "scripts/generate-api-client.mjs": "ca90f6237f53660661826ce018aeb83f2241285929dc201cd31da0471d205e7e",
+    "contracts/openapi/talli-v1.json": "233c858252ad95a936075f9ef7f24c0f76a4c85d087de19e0c0244bac3032358",
+    "packages/talli-api-client/src/generated/client.ts": "1780df7e605c3d57fac4deb566988bf03d3af23c2894ca0946776df7062d1aab",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "8b517deaafb1296919bfba0e0a9abad79dcfc60016a16f7b3fe8f498300bcb16"
+  },
+  "verification": {
+    "focusedBackendPassed": 248,
+    "actualGeneratedClientCasesPassed": 5,
+    "alteredNumericMoneyRejected": true,
+    "typecheck": "PASS",
+    "boundaryContractsPassed": 93,
+    "priorPathsUnchanged": 166,
+    "priorSchemasUnchanged": 475
+  },
+  "logSha256": {
+    "rf-intake-final-tests.log": "d8606a49c828666497c93ce7eb62edc55317ca9a8f5bf527b662f9865adb284a",
+    "rf-intake-client-tests.log": "8cbf79f40678ed01382e4a25ad93f5a2d0f0504f82e9b58f0365578bc3e2b7c5",
+    "rf-intake-typecheck.log": "b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+    "rf-intake-contract.log": "7973331e120864bb3581c331021174591270e6665fea1ff964e456ecdb15186e",
+    "rf-intake-compatibility.json": "e2f6f9c7f3c2948d663ce9b27e12898c06e65c39e06bfd4d1b659ab9f07a52c9",
+    "contract-final.log": "fe35dc941f5a4cc1b790e9dad21175e52476369ef0ed886d9f4787148d18bae9"
+  },
+  "privateProofSha256": "4a63271979697373cbde79e5425c51ffff44e1f25c27bfde6bf80bb564b711d3",
+  "limits": [
+    "No customer screens, immutable approval or production admission are implemented by this endpoint.",
+    "An empty blocker list and complete enumeration do not verify originals or grant capture/readiness/send permission.",
+    "Capital document source years are absent from Governance receipts and deliberately remain null until verified Documents metadata supplies them.",
+    "All full RF acceptance criteria remain pending; no hosted/provider action."
+  ]
+}

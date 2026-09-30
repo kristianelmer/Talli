@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_ANNUAL_INTERVIEW_INPUT",
+  "baseCommit": "b11356fe86c845534d4cb92499f523412e5dfb6d",
+  "change": "RF source admission reads the unchanged frozen annual interview history contract on its held company/year transaction. The RF decoder validates company, UUID identity, integer year, uniqueness, exact selected record shape, aware timestamps and boolean prerequisite flags, selects only the requested year and returns a deeply immutable view. A successful history without that year returns None; malformed/unavailable evidence raises dependency unavailable.",
+  "authority": "Grant only EXECUTE on backend_system.list_annual_data_legacy_v1 to the RF executor. No table access, browser grants, writer or frozen reader semantic change. Temporary owner SET is borrowed and restored exactly.",
+  "verification": {
+    "unit": "95 decoder and source-admission unit tests passed, including33 exact-year consumer cases.",
+    "database": "12 real database tests passed:5 new RF consumer/grant cases and7 existing annual writer-guard cases. Committed changes after guard waits are observed, revoked ownership is rejected, and expired scopes fail.",
+    "restrictedMigration": "Twice rollback/replay under a nonsuperuser without BYPASSRLS or initial owner SET restores exact role memberships, function source/owner/config/ACL and schema ACLs.",
+    "architecture": "npm run check:architecture passed after documenting both technical migrations.",
+    "baseline": "Disposable PostgreSQL17 with minimal Auth/Storage shims. Full Supabase CI on this change remains required.",
+    "historicalReplay": "Reader drop/recreation loses RF EXECUTE. Exact migration replay restores it; successor inventory now reapplies it during final RF recutover. Actual rollback/recutover followed by12 interview/guard tests passed. All64 RF lifecycle tests and77 CI harness tests passed.",
+    "harnessLimit": "Full Governance lifecycle was not runnable against the minimal post-contract shim: missing Auth fields, then predecessor corporate/opening tables. Reader recreation and final RF recutover were verified separately; full Supabase remains required."
+  },
+  "limits": [
+    "This is an annual-readiness input, not the completed annual policy or a replacement for the stored release flag.",
+    "Null full-time-equivalent values retain the existing frozen-view normalization to zero; this field grants no readiness or no-activity conclusion.",
+    "Opening/period/document input composition remains pending. All seven RF criteria remain pending. No real AS or production provider operation."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-interview-read-20260929-14d7",
+  "sha256": {
+    "talli-rf-interview-unit-combined.log": "32124180ef5242b82f51f4c8701bef7bf8e932372f3c796341bb2b271c3b965c",
+    "talli-rf-interview-database.log": "fae44fd8fb37c7ac73039b0b22e5e58ee7cb7497400b264cf98bdaadc2cb32a1",
+    "talli-rf-interview-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-rf-interview-reader-recreate.log": "8e6bc689215aed2b881219cdd7ed6025317ebc563dccd254136d08915a8cf7f1",
+    "talli-rf-interview-recutover.log": "d24f1cad46d1cba6f2928294c912120d4dfd634a93fc7fd3656605b64becf750",
+    "talli-rf-interview-ci-harness.log": "81545789ede75dc82484f106fbdb7c2fc45f0363f59261ad8de248f605a46362",
+    "talli-rf-interview-rf-lifecycle.log": "7c3b293d4c67c915e6246a86eeb9dacbd4cfa7dff157df9649360d5ae0413fdc"
+  }
+}

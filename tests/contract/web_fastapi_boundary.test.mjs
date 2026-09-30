@@ -600,3 +600,129 @@ test("annual checkout withdrawal uses the original accepted body and key with a 
   assert.deepEqual(fields.state.enum, ["existing", "withdrawn"]);
   assert.equal(contract.components.schemas.AnnualCheckoutCommandWire.additionalProperties, false);
 });
+
+test("source preview client carries required company/year scope and capture idempotency", async () => {
+  const { createTalliApiClient } = await import(generatedClientPath.href);
+  const requests = [];
+  const captured = new Error("request captured without network");
+  const client = createTalliApiClient({
+    baseUrl: "https://backend.example",
+    fetch: async (url, init) => {
+      requests.push({ url: new URL(url), init });
+      throw captured;
+    },
+  });
+  const companyId = "11111111-1111-4111-8111-111111111111";
+  await assert.rejects(client.rf1086ReadSourcePreview("preview/id", {
+    companyId, incomeYear: 2025, requestId: "source-review",
+    headers: { Authorization: "Bearer owner-token" },
+  }), (error) => error === captured);
+  assert.equal(requests[0].url.pathname,
+    "/api/v1/shareholder-register-filings/source-previews/preview%2Fid");
+  assert.deepEqual([...requests[0].url.searchParams], [["companyId", companyId], ["incomeYear", "2025"]]);
+  assert.equal(requests[0].init.headers.Authorization, "Bearer owner-token");
+  assert.equal(requests[0].init.cache, "no-store");
+  const body = { companyId, incomeYear: 2025, paidIn: { openingCapital: "9007199254740993.000001" } };
+  for (const operation of ["rf1086CaptureRegisterObservation", "rf1086CaptureYearSource"]) {
+    await assert.rejects(client[operation](body, { idempotencyKey: "source-capture-0001" }),
+      (error) => error === captured);
+    const { init } = requests.at(-1);
+    assert.equal(init.headers["Idempotency-Key"], "source-capture-0001");
+    assert.equal(init.body, JSON.stringify(body));
+  }
+});
+
+test("source metadata uses a separate route while existing documents retain their exact shape", async () => {
+  const { createTalliApiClient } = await import(generatedClientPath.href);
+  const companyId = "11111111-1111-4111-8111-111111111111";
+  const previousDocument = {
+    id: "22222222-2222-4222-8222-222222222222", companyId, incomeYear: 2025,
+    documentType: "accounting_document", name: "Original.pdf", linkedTo: "workspace",
+    status: "attached", retentionYears: 5, storageKey: "synthetic/original.pdf",
+    contentType: "application/pdf", byteLength: 10, contentSha256: "a".repeat(64),
+    createdBy: "33333333-3333-4333-8333-333333333333", createdAt: "2025-01-01T12:00:00Z",
+    removedAt: null, removalReason: null,
+  };
+  const sourceDocument = {
+    documentId: previousDocument.id, companyId, sourceIncomeYear: 2024,
+    documentType: "accounting_document", integrityStatus: "attached", byteLength: 10,
+    contentVersionSha256: "a".repeat(64), contentSha256: "a".repeat(64),
+    metadataSha256: "b".repeat(64), createdAt: previousDocument.createdAt,
+  };
+  const requests = [];
+  const client = createTalliApiClient({
+    baseUrl: "https://backend.example",
+    fetch: async (url, init) => {
+      requests.push({ url: new URL(url), init });
+      const body = url.includes("/source-documents/") ? sourceDocument : { documents: [previousDocument] };
+      return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+    },
+  });
+  assert.deepEqual(await client.documentsList({ companyId }), { documents: [previousDocument] });
+  assert.deepEqual(await client.rf1086ReadSourceDocument(previousDocument.id, companyId,
+    { headers: { Authorization: "Bearer owner-token" } }), sourceDocument);
+  assert.deepEqual([...requests[1].url.searchParams], [["companyId", companyId]]);
+  assert.equal(requests[1].init.cache, "no-store");
+  assert.equal(requests[1].init.headers.Authorization, "Bearer owner-token");
+  const contract = JSON.parse(readFileSync(contractPath, "utf8"));
+  assert.equal(contract.components.schemas.DocumentWire.properties.metadataSha256, undefined);
+  assert.ok(contract.components.schemas.RfSourceDocumentWire.required.includes("metadataSha256"));
+});
+
+test("current source client scopes the owner read and preserves an explicit absent source", async () => {
+  const { createTalliApiClient } = await import(generatedClientPath.href);
+  const companyId = "11111111-1111-4111-8111-111111111111";
+  const calls = [];
+  const client = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async (url, init) => {
+    calls.push({ url: new URL(url), init });
+    return new Response(JSON.stringify({ currentSource: null }), { status: 200 });
+  } });
+  assert.deepEqual(await client.rf1086ReadCurrentYearSource({ companyId, incomeYear: 2025,
+    headers: { Authorization: "Bearer owner-token" } }), { currentSource: null });
+  assert.equal(calls[0].url.pathname, "/api/v1/shareholder-register-filings/current-year-source");
+  assert.deepEqual([...calls[0].url.searchParams], [["companyId", companyId], ["incomeYear", "2025"]]);
+  assert.equal(calls[0].init.cache, "no-store");
+  assert.equal(calls[0].init.method, "GET");
+  assert.equal(calls[0].init.headers.Authorization, "Bearer owner-token");
+});
+
+test("full-year production review and approval client preserve exact scoped commands", async () => {
+  const { createTalliApiClient } = await import(generatedClientPath.href);
+  const scope = { companyId: "10000000-0000-4000-8000-000000000001", incomeYear: 2025,
+    previewId: "10000000-0000-4000-8000-000000000002", entitlementId: "10000000-0000-4000-8000-000000000003" };
+  const review = { ...scope, sourceId: scope.previewId, sourceSha256: "a".repeat(64),
+    reviewSha256: "b".repeat(64), warningCodes: ["review_warning"], blockers: [], canApprove: true };
+  const requests = [];
+  const receipt = { recordId: scope.previewId, companyId: scope.companyId, incomeYear: scope.incomeYear };
+  const client = createTalliApiClient({ baseUrl: "https://backend.example", fetch: async (url, init) => {
+    requests.push({url:new URL(url),init});
+    return Response.json(requests.length === 1 ? review : receipt);
+  }});
+  const options = {requestId:"source-production-proof",headers:{Authorization:"Bearer owner-token"}};
+  assert.deepEqual(await client.rf1086PrepareSourceProductionReview(scope,options),review);
+  const command = {...scope,reviewSha256:review.reviewSha256,acknowledgedWarningCodes:review.warningCodes,
+    realFilingConfirmed:true,predecessor:{submissionId:scope.previewId,manifestSha256:"c".repeat(64),reason:"Reviewed correction"}};
+  assert.deepEqual(await client.rf1086ApproveSourceProduction(command,options),receipt);
+  assert.deepEqual(requests.map(row=>row.url.pathname),[
+    "/api/v1/shareholder-register-filings/source-production-reviews",
+    "/api/v1/shareholder-register-filings/source-production-approvals"]);
+  for (const row of requests) {
+    assert.equal(row.init.method,"POST");assert.equal(row.init.cache,"no-store");
+    assert.equal(row.init.headers.Authorization,"Bearer owner-token");
+    assert.equal(row.init.headers["X-Request-ID"],"source-production-proof");
+  }
+  assert.deepEqual(JSON.parse(requests[0].init.body),scope);
+  assert.deepEqual(JSON.parse(requests[1].init.body),command);
+});
+
+test("full-year review client rejects malformed owner response fields", async () => {
+  const { createTalliApiClient, TalliApiError } = await import(generatedClientPath.href);
+  const scope = {companyId:"10000000-0000-4000-8000-000000000001",incomeYear:2025,
+    previewId:"10000000-0000-4000-8000-000000000002",entitlementId:"10000000-0000-4000-8000-000000000003"};
+  const good = {...scope,sourceId:scope.previewId,sourceSha256:"a".repeat(64),reviewSha256:"b".repeat(64),
+    warningCodes:[],blockers:[],canApprove:true};
+  for (const changed of [{canApprove:"true"},{reviewSha256:"not-a-hash"},{sourceId:null},{blockers:null}]) {
+    const client=createTalliApiClient({baseUrl:"https://backend.example",fetch:async()=>Response.json({...good,...changed})});
+    await assert.rejects(client.rf1086PrepareSourceProductionReview(scope),error=>error instanceof TalliApiError && error.status===502);
+  }
+});

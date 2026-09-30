@@ -1,0 +1,11 @@
+# Capital-source scope still pending
+
+This is an implementation gap record for #193, not a change to #172's accepted boundary. No full RF criterion is complete.
+
+The September 23 source integration can establish independent before/after register observations and corroborate the existing Governance cash-new-share and registered loss-covering contracts. Governance's current cash-capital input requires a positive new-share count. A cash increase in nominal value instead requires unchanged share count and every current holder's allocation. That variant needs a coherent Governance document, posting and receipt contract; relaxing a count check alone is insufficient.
+
+The RF deterministic loss branch currently requires zero fund-issued capital and blocks a later dividend in the same year. Historical loss reductions and independently established distribution clearance are not represented. Those are explicit remaining gaps, not evidence that those companies fall outside the approved launch scope.
+
+Official source check on 2026-09-23: the pinned [main RF XSD](../../../../../docs/filing/aksjonaerregisteroppgaveHovedskjema.xsd) describes post 16 (`NedsettelseAvInnbetaltOgFondsemittertAK-grp-3464`) with separate paid-in reduction field 17717 and fund-issued reduction field 17721. Its annotation applies a reduction against fund-issued capital before paid-in capital. The current [Skatte-ABC, A-6-7.6.2](https://oppslag.rettskilder.skatteetaten.no/rettskilder2/type/handboker/skatte-abc/gjeldende/skatteabc-A-6) also states this order. A-6-7.1 and A-6-7.7 preserve the potential tax treatment of earlier paid-in amounts written down without distribution. Registered capital and tax paid-in capital therefore need distinct source facts. These sources establish accounting/reporting research inputs; they do not provide live acceptance or a customer's original evidence.
+
+Next implementation must establish historical fund-issued balances and reduction allocation from explicit verified originals, preserve the tax paid-in source separately, and prove chronological reconciliation and current authority conformance. Distribution clearance requires its own current official-rule mapping and verified historical evidence before admission. No production switch is enabled by this record.

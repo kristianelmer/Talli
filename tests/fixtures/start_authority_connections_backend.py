@@ -3,7 +3,7 @@
 This launcher is test-only. It refuses non-loopback databases, Supabase, and mock
 addresses, and its process-wide socket guard denies all external connections.
 Global production flags remain disabled. The explicitly injected RF fixture
-permits historical recovery through the two fixed GETs and denies send effects.
+permits historical recovery through fixed Dialogporten/Skatteetaten GETs and denies send effects.
 """
 
 from __future__ import annotations
@@ -40,6 +40,10 @@ def provider_mock_url(original: str, mock_origin: str, method: str = "GET") -> s
     elif (provider.scheme == "https" and provider.netloc == "platform.altinn.no"
           and provider.path.startswith("/authentication/api/v1/systemuser/")):
         path = "/altinn" + provider.path + ("?" + provider.query if provider.query else "")
+    elif (provider.scheme == "https" and provider.netloc == "platform.altinn.no" and method == "GET"
+          and re.fullmatch(r"/dialogporten/api/v1/enduser/dialogs/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", provider.path)
+          and not provider.query):
+        path = "/dialogporten/dialogs/" + provider.path.rsplit("/", 1)[1]
     elif (provider.scheme == "https" and provider.netloc == "api.skatteetaten.no" and method == "GET"
           and re.fullmatch(r"/api/aksjonaerregister/v1/[0-9]{4}/forsendelser/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}/dokumenter(?:/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})?", provider.path)
           and (provider.query == "page=0&size=50" if provider.path.endswith("/dokumenter") else not provider.query)):
