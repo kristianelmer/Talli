@@ -196,6 +196,7 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
     await installBrowserEgressGuard(context, { approvalEnabled: true, blockedRequests: egressViolations, mockBaseUrl: resources.mock.baseUrl });
     const page = await context.newPage();
     await login(page, siteOrigin, owner);
+    const lowAalSession = await browserSession(context);
     const rfArchiveUrl = `${siteOrigin}/filing/aksjonaerregisteroppgaven/source/archive?companyId=${primary.id}&incomeYear=2025`;
     const noMfaArchive = await context.request.get(rfArchiveUrl, { maxRedirects: 0 });
     assert.equal(noMfaArchive.status(), 403);
@@ -453,17 +454,26 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
       throw new Error(`full_year_source_journey_failed: ${error.message}; alerts=${JSON.stringify(alerts)}`, { cause: error });
     });
     if (lostResponse === "main") {
+      const restoreStorage = predecessorFeedback === "rejected";
       assert.ok(process.env.TALLI_SUPABASE_WORKDIR, "RF restore requires the explicit owned Supabase workdir");
       const restored = JSON.parse(execFileSync(python, ["scripts/rehearse-rf1086-owned-restore.py", sourceArchive.path,
-        "--company-id", primary.id, "--income-year", String(sourceYear), "--actor-id", owner.id],
+        "--company-id", primary.id, "--income-year", String(sourceYear), "--actor-id", owner.id,
+        ...(restoreStorage ? ["--restore-storage"] : [])],
       { cwd: process.cwd(), env: { ...runtimeEnvironment(), DATABASE_URL: databaseUrl,
         TALLI_LEDGER_DATABASE_URL: databases.talli_ledger_backend,
+        ...(restoreStorage ? { TALLI_COMPANY_ACCESS_DATABASE_URL: databases.talli_company_access_backend,
+          SUPABASE_URL: supabaseUrl, SUPABASE_ANON_KEY: anonKey, SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
+          TALLI_RF_RESTORE_OWNER_TOKEN: session.access_token, TALLI_RF_RESTORE_OUTSIDER_TOKEN: otherSession.access_token,
+          TALLI_RF_RESTORE_LOW_AAL_TOKEN: lowAalSession.access_token } : {}),
         TALLI_SUPABASE_WORKDIR: process.env.TALLI_SUPABASE_WORKDIR,
         ...(process.env.DOCKER_CONTEXT ? { DOCKER_CONTEXT: process.env.DOCKER_CONTEXT } : {}) }, encoding: "utf8", timeout: 180_000 }));
       assert.deepEqual(restored, { status: "verified_owned_rf_database_restore", databaseRestorePerformed: true,
-        retainedOriginalBytesRestored: true, objectStorageRestorePerformed: false,
+        retainedOriginalBytesRestored: true, objectStorageRestorePerformed: restoreStorage,
         sourceOriginals: 3, feedbackOriginals: 4, sourceVersions: 3, submissions: 3,
-        crossOwnerReadsDenied: true, sourceHistoryUnchanged: true, cloneRemoved: true, clusterMembershipsUnchanged: true });
+        crossOwnerReadsDenied: true, sourceHistoryUnchanged: true, cloneRemoved: true, clusterMembershipsUnchanged: true,
+        ...(restoreStorage ? { ordinaryObjects: 7, storageVolumeRemoved: true, storageSourceUnchanged: true,
+          storageAttributesRestored: true,
+          storageAuthenticatedDownloadsVerified: true, storageDirectReadsDenied: true, storageMfaEnforced: true } : {}) });
     }
     await context.close();
     assert.deepEqual(health, []);

@@ -1,8 +1,8 @@
 """Restore an explicitly owned local RF database and verify retained evidence.
 
 This is a disposable rehearsal, never an importer or hosted recovery command.
-The restored database keeps captured identities. Ordinary Storage objects and
-cluster-wide role recovery are outside this database-and-retained-bytes proof.
+The restored database keeps captured identities. Optional file-backed Storage
+recovery uses a fresh volume and service; cluster-wide role recovery is separate.
 """
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ from psycopg.rows import dict_row
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'apps/backend/src'))
+sys.path.insert(0, str(ROOT / 'scripts'))
 from talli_backend.adapters.postgres_document_originals import PostgresDocumentOriginals
 from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingSession
 from talli_backend.adapters.supabase_ledger import LedgerSupabaseConfiguration, _VerifiedActor
@@ -71,10 +72,11 @@ def owner_session(url, actor):
         access_token='owned-local-restore-rehearsal', billing=None, documents=None, company_access=None)
 
 
-def owner_read_url(source_url, reader_url):
+def owner_read_url(source_url, reader_url, role='talli_ledger_backend'):
     source, reader = conninfo_to_dict(source_url), conninfo_to_dict(reader_url)
     endpoint = lambda info: {key: value for key, value in info.items() if key not in ('user', 'password')}
-    if reader.get('user') != 'talli_ledger_backend' or endpoint(reader) != endpoint(source):
+    if (role not in ('talli_ledger_backend', 'talli_company_access_backend')
+            or reader.get('user') != role or endpoint(reader) != endpoint(source)):
         raise ValueError('RF reader must use the existing backend role on the owned source')
     return reader_url
 
@@ -133,6 +135,7 @@ def main():
     parser.add_argument('--company-id', required=True, type=UUID)
     parser.add_argument('--income-year', required=True, type=int)
     parser.add_argument('--actor-id', required=True, type=UUID)
+    parser.add_argument('--restore-storage', action='store_true')
     args = parser.parse_args()
     source_url = os.environ.get('DATABASE_URL')
     workdir = os.environ.get('TALLI_SUPABASE_WORKDIR')
@@ -156,18 +159,41 @@ def main():
         raise ValueError('Source database differs from downloaded RF archive')
     queries = source_original_queries(expected) + feedback_original_queries(expected, require_complete=True)
     originals = asyncio.run(read_originals(reader_url, actor, queries))
+    storage_proof = {}
+    if args.restore_storage:
+        from rf1086_storage_restore import ordinary_originals, storage_source, restored_storage, verify_objects
+        source_storage, storage_env, network = storage_source(workdir, source_url, boundary)
+        access_url = owner_read_url(source_url, os.environ.get('TALLI_COMPANY_ACCESS_DATABASE_URL', ''),
+                                    'talli_company_access_backend')
+        # The browser is quiescent here. Authenticate its real sessions, read
+        # restored memberships through Company Access and enforce Documents policy.
+        ordinary = ordinary_originals(originals)
+        source_documents = asyncio.run(verify_objects(reader_url, access_url, os.environ['SUPABASE_URL'], ordinary))
     with restored_database(source_url, workdir) as restored_url:
         restored_reader = make_conninfo(reader_url, dbname=conninfo_to_dict(restored_url)['dbname'])
         recovered = asyncio.run(verify_restored(restored_reader, query, expected_canonical, originals, queries))
+        if args.restore_storage:
+            restored_access = make_conninfo(access_url, dbname=conninfo_to_dict(restored_url)['dbname'])
+            with restored_storage(source_storage, storage_env, network, restored_url, boundary) as gateway:
+                restored_documents = asyncio.run(verify_objects(restored_reader, restored_access, gateway, ordinary,
+                                                               storage_key=storage_env['SERVICE_KEY']))
+                if restored_documents != source_documents:
+                    raise ValueError('Restored ordinary document metadata differs from source')
+            if asyncio.run(verify_objects(reader_url, access_url, os.environ['SUPABASE_URL'], ordinary)) != source_documents:
+                raise ValueError('Restore rehearsal changed source document metadata')
+            storage_proof = {'ordinaryObjects': len(ordinary), 'storageVolumeRemoved': True,
+                             'storageAttributesRestored': True,
+                             'storageSourceUnchanged': True, 'storageAuthenticatedDownloadsVerified': True,
+                             'storageDirectReadsDenied': True, 'storageMfaEnforced': True}
     after, _ = asyncio.run(canonical(reader_url, query))
     if after != before:
         raise ValueError('Restore rehearsal changed source RF history')
     print(json.dumps({'status': 'verified_owned_rf_database_restore', 'databaseRestorePerformed': True,
-        'retainedOriginalBytesRestored': True, 'objectStorageRestorePerformed': False,
+        'retainedOriginalBytesRestored': True, 'objectStorageRestorePerformed': args.restore_storage,
         'sourceOriginals': sources, 'feedbackOriginals': feedback,
         'sourceVersions': len(recovered.source_history.year_sources),
         'submissions': len(recovered.production_submissions), 'crossOwnerReadsDenied': True,
-        'sourceHistoryUnchanged': True, 'cloneRemoved': True, 'clusterMembershipsUnchanged': True}))
+        'sourceHistoryUnchanged': True, 'cloneRemoved': True, 'clusterMembershipsUnchanged': True, **storage_proof}))
     return 0
 
 

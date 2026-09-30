@@ -983,3 +983,28 @@ security/conformance, unknown-operation reconciliation, broader object/role
 restore and retention, legacy feedback backfill, HTTP/concurrency sizing and both
 immutable acceptance gates stay open. All seven RF acceptance criteria remain
 pending.
+
+## Ordinary document Storage restoration — 30 September
+
+The rejected-predecessor browser journey now restores its seven ordinary source
+and feedback objects into a separate volume and Storage API paired with the
+cloned database. It preserves file bytes and Linux extended attributes; a focused
+probe reproduced `ENODATA` when plain tar lost those attributes, then returned the
+exact original bytes after the fix. The runner uses only the owned source, a
+pinned cached image, private temporary configuration and loopback ports.
+
+The actual Documents adapter verifies real browser sessions through the original
+local Auth service, then reads restored Company Access and Documents data. Owner
+downloads match all seven retained originals. Cross-owner and pre-MFA downloads
+are denied; direct owner, outsider and unauthenticated Storage reads stay denied.
+The source file tree/attributes, metadata, RF history and cluster memberships
+remain unchanged. All created restore containers, volumes and databases are
+removed. The complete targeted browser journey, 39 runner tests and 21 RF fixture
+checks pass. See `owned-object-restore-20260930.json`.
+
+This covers the synthetic, quiescent file-backed store. Independent Auth/role
+recovery, hosted object storage, prior-year/unapproved history, cancellation,
+expiry, deletion and retention generations remain outside this proof. Remaining
+security/conformance, unknown-operation reconciliation, legacy feedback backfill,
+HTTP/concurrency sizing and both immutable acceptance gates stay open. All seven
+RF acceptance criteria remain pending.

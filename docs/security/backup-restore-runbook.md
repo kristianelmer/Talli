@@ -186,7 +186,31 @@ unchanged.
 
 A pass reports `databaseRestorePerformed: true` and
 `retainedOriginalBytesRestored: true`. These retained originals are database
-bytes. `objectStorageRestorePerformed` remains false: ordinary private Storage
-objects and recovery of roles into an independent cluster are not covered.
-Prior-year/unapproved history and cancellation, expiry and deletion still need
-their own restored scenarios before the broader restore signoff can pass.
+bytes. By default `objectStorageRestorePerformed` remains false.
+
+The rejected-predecessor browser case additionally selects `--restore-storage`.
+It pins the owned file-backed Storage container and its cached image, copies the
+file tree into a fresh volume, and starts a separate Storage API against the
+cloned database. BusyBox tar omits Linux extended attributes, so the runner also
+captures, restores and compares the attributes with the image's installed
+`fs-xattr` library. Content type, cache control and etag attributes must survive;
+copying only file contents can produce unreadable objects.
+
+The real Documents adapter verifies the browser's existing local Auth sessions,
+reads Company Access and document metadata from the restored database, checks
+owner/MFA policy, and downloads all seven ordinary source/feedback objects. Bytes
+must equal the retained originals and metadata must equal the source. An unrelated
+actor and the owner's pre-MFA session cannot download. Direct owner, outsider and
+unauthenticated Storage reads remain denied. The original gateway's opaque key
+and Storage's internal JWT are kept distinct; neither is logged.
+
+This optional proof reports `objectStorageRestorePerformed: true`,
+`storageAttributesRestored: true` and the ordinary object count. Cleanup removes
+only the created container, volume and database. Source files, extended attributes,
+document metadata, RF history and cluster memberships must remain unchanged.
+
+This is a quiescent local file-store rehearsal. The original local Auth service
+still verifies sessions; independent Auth/cluster-role recovery and hosted object
+storage are not covered. Prior-year/unapproved history and cancellation, expiry,
+deletion and retention generations still need their own restored scenarios before
+the broader restore signoff can pass.

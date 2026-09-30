@@ -72,3 +72,11 @@ def test_reader_uses_only_existing_backend_credentials_on_the_owned_endpoint(cha
             runner.owner_read_url(source, runner.make_conninfo(reader, **change))
     else:
         assert runner.owner_read_url(source, reader) == reader
+
+
+def test_company_access_reader_keeps_the_same_boundary_and_cannot_select_an_admin():
+    source = 'postgresql://postgres:local@127.0.0.1:55001/postgres'
+    reader = runner.make_conninfo(source, user='talli_company_access_backend', password='disposable')
+    assert runner.owner_read_url(source, reader, 'talli_company_access_backend') == reader
+    with pytest.raises(ValueError, match='existing backend role'):
+        runner.owner_read_url(source, source, 'postgres')
