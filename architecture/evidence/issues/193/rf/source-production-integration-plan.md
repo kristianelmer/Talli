@@ -841,3 +841,24 @@ append, and forward replay restores admission. After those checks, final contrac
 and all 16 legacy/full-year/correction browser checks pass. All 90 CI-control
 checks pass. See `override-receiver-rollback-20260930.json`. Complete ordered CI
 at the new revision remains required; all seven RF acceptance criteria are pending.
+
+## Full-year lost-response browser journey — 30 September
+
+The correction journey now adds a third source version and explicit replacement
+approval, then loses the main-form response after the loopback mock records its
+mutation. The owner sees an unknown outcome with no send, continue or feedback
+action. Two repeated exact commands return 409; status rereads and reloads add no
+provider call or token acquisition and leave the claim, head and journal unchanged.
+
+The journal retains one prepared intent and its unknown result with the same key,
+approved XML hash and attempt. No receipt or feedback is invented. The downloaded
+archive verifies three source versions, approvals, claims, submissions and source
+originals, plus the four feedback originals from the two earlier accepted filings.
+All 16 combined browser cases and 15 fixture-safety cases pass; owned-environment
+cleanup passes. See `full-year-unknown-browser-20260930.json`. Exact-revision CI
+remains required.
+
+This covers a lost main-form response, not lost child/confirmation responses or
+external recovery conformance. Remaining crash, rejected-predecessor, security,
+restore, retention and immutable-acceptance work stays open. All seven RF
+acceptance criteria remain pending.
