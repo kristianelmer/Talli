@@ -1,6 +1,39 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 
+export async function exerciseRfPilotExpiry({ companyId, incomeYear, entitlementId, api, authorization, mock }) {
+  const options = { headers: authorization };
+  const query = { companyId, incomeYear, obligation: "aksjonaerregisteroppgaven",
+    caseProfile: "rf1086_full_year_v1", ...options };
+  const before = await api.rf1086GetProductionArchiveSource(companyId, incomeYear, options);
+  const providerCalls = mock.snapshot();
+  assert.equal((await api.billingReadEntitlement(query)).pilotEntitlementId, entitlementId);
+  const snapshot = await api.billingReadSnapshot({ companyIds: [companyId], ...options });
+  const pilot = snapshot.pilotEntitlements.find(row => row.entitlementId === entitlementId);
+  assert.ok(pilot, "exact pilot is missing before expiry");
+  const command = { companyId, incomeYear, entitlementId, userId: pilot.userId,
+    caseProfile: pilot.caseProfile, status: pilot.status, billingExempt: pilot.billingExempt,
+    systemUserRequestId: pilot.systemUserRequestId, startsAt: pilot.startsAt,
+    expiresAt: new Date(Date.now() - 1_000).toISOString(),
+    evidenceReference: "synthetic-rf-expired-pilot-recovery" };
+  assert.ok(Date.parse(command.startsAt) < Date.parse(command.expiresAt));
+  const mutation = { ...options, idempotencyKey: randomUUID() };
+  const expired = await api.billingManagePilotEntitlement(command, mutation);
+  assert.equal(expired.entitlementId, entitlementId);
+  assert.equal(expired.status, "active", "expiry must be tested independently of status revocation");
+  assert.ok(Date.parse(expired.expiresAt) < Date.now());
+  assert.deepEqual(await api.billingManagePilotEntitlement(command, mutation), expired);
+  const denied = await api.billingReadEntitlement(query);
+  assert.equal(denied.pilotEntitlementId, null);
+  assert.equal(denied.allowed, false);
+  assert.equal(denied.chargeAllowed, false);
+  const after = await api.billingReadSnapshot({ companyIds: [companyId], ...options });
+  assert.deepEqual(after.pilotEntitlements.find(row => row.entitlementId === entitlementId), expired);
+  assert.deepEqual(after.paymentEvents, snapshot.paymentEvents, "expiry created a payment event");
+  assert.deepEqual(await api.rf1086GetProductionArchiveSource(companyId, incomeYear, options), before);
+  assert.deepEqual(mock.snapshot(), providerCalls, "expiry called a filing provider");
+}
+
 // Exercise the actual server export receipt and Company Access command. No
 // fixture receipt or cancellation row substitutes for the owner operations.
 export async function exerciseRfCancellation({ page, siteOrigin, companyId, incomeYear, api, authorization, mock }) {

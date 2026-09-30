@@ -106,7 +106,7 @@
     "integration": "source-preview-integration-20260923.json",
     "persistence": "source-preview-persistence-runtime-20260923.json",
     "review": "review-source-preview.json",
-    "remaining": "Shared-transaction Governance/RF admission freshness, observation withdrawal/invalidation, authenticated persisted source journeys, source-bound approval/send, correction admission and source archive lineage remain pending."
+    "remaining": "Observation withdrawal/invalidation and complete supported-case conformance remain. Later bounded source approval/send, correction, archive and authenticated recovery evidence is indexed below; these do not close the full RF criteria."
   },
   "ciRegressionVerification": "ci-regressions-20260923.json",
   "capitalLifecycleSourceIntegration": "capital-lifecycle-integration-20260923.json",
@@ -158,5 +158,26 @@
   "fullYearFactsAndRehearsal": "full-year-facts-rehearsal-20260929.json",
   "bankYearProjectionAndArchiveRepair": "bank-year-archive-repair-20260929.json",
   "bankFixtureAuthorityRepair": "bank-fixture-authority-repair-20260929.json",
-  "bankingCompanyWriteGuards": "banking-company-guards-20260929.json"
+  "bankingCompanyWriteGuards": "banking-company-guards-20260929.json",
+  "currentAnnualReadiness": "annual-readiness-decision-20260929.json",
+  "annualApprovalEnforcement": "annual-approval-enforcement-20260929.json",
+  "durableSourceOperationIntent": "durable-source-operation-intent-20260929.json",
+  "sourceDispatchExecution": "source-dispatch-execution-20260929.json",
+  "sourceSendUiApi": "source-send-ui-api-20260930.json",
+  "authenticatedFullYearSource": "full-year-source-browser-20260930.json",
+  "authenticatedFullYearCorrection": "full-year-correction-browser-20260930.json",
+  "authenticatedRejectedPredecessor": "rejected-predecessor-browser-20260930.json",
+  "allUnknownOperationsBrowser": "full-year-all-unknown-browser-20260930.json",
+  "processCrashRecoveryBrowser": "process-crash-browser-20260930.json",
+  "preparedBeforeMutationBrowser": "prepared-before-mutation-browser-20260930.json",
+  "streamingArchive": "streaming-archive-20260930.json",
+  "authenticatedArchiveBrowser": "authenticated-archive-browser-20260930.json",
+  "ownedDatabaseRestore": "owned-database-restore-20260930.json",
+  "ownedObjectRestore": "owned-object-restore-20260930.json",
+  "priorYearUnapprovedRestore": "prior-year-unapproved-restore-20260930.json",
+  "retainedArchiveGenerationGuards": "retained-archive-generations-20260930.json",
+  "cancellationRestore": "cancellation-restore-20260930.json",
+  "independentDeletionRestore": "deletion-restore-20260930.json",
+  "nextSecurityPatch": "next-security-patch-20260930.json",
+  "expiredPilotRestore": "expiry-restore-20260930.json"
 }

@@ -149,7 +149,7 @@ transport allows up to 128 MiB of retained original bytes; larger bundles fail
 closed. Use the authenticated streaming RF download for larger bundles, as below.
 Feedback originals and other company objects are not covered by the source-byte
 result alone. `objectBytesVerified` and `databaseRestorePerformed` remain false.
-Actual restoration and retention/expiry coverage still need proof.
+Actual restoration and retention/expiry coverage are separate checks described below.
 
 ### Verify a streaming RF download and feedback originals
 
@@ -229,6 +229,19 @@ previews, approvals, submissions, claims, feedback and provider calls remain
 unchanged when that draft is saved. The canonical archive includes the unreviewed
 preview even though the approval workspace does not materialize it.
 
+Before cancellation, that case expires the exact synthetic full-year pilot through
+the existing Billing admin command. The status stays `active` and the expiry is
+in the past, so the check exercises the time boundary independently of revocation.
+The exact command replay must match; the owner retains the expired receipt, loses
+the active entitlement and cannot charge. RF history, payment events and filing
+provider calls must remain unchanged.
+
+Both restorations receive `--expired-pilot-id`. Billing's authenticated application
+workflow compares the complete snapshot and denied entitlement decision before,
+within and after restoration. The unrelated owner must see no Billing records for
+that company. `expiredPilotRestored: true` reports these additional assertions;
+it does not establish production provider conformance.
+
 That case also downloads the full company archive through the authenticated Next
 route, which records its actual export receipt, then requests cancellation through
 Company Access. The request and its idempotent replay must return `retention_hold`;
@@ -256,7 +269,7 @@ source, alongside the owner cancellation, RF history and all eight objects.
 checks. The source case must remain unchanged after recovery. Both restorations
 are required; the second does not replace the `retention_hold` proof.
 
-Expiry and retained-original generation scenarios still need restored histories
-before the broader restore signoff can pass. These proofs do not establish a full
+Retained-original generation scenarios still need restored histories before the
+broader restore signoff can pass. These proofs do not establish a full
 retention inventory or change retention policy. Finalization retains business
 records; it does not purge them.

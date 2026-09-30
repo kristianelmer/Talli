@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from contextlib import contextmanager
+from datetime import datetime, timezone
 import importlib.util
 import json
 import os
@@ -29,11 +30,15 @@ from talli_backend.adapters.postgres_document_originals import PostgresDocumentO
 from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingSession
 from talli_backend.adapters.supabase_ledger import LedgerSupabaseConfiguration, _VerifiedActor
 from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter, SupabaseConfiguration
+from talli_backend.adapters.supabase_billing import SupabaseBillingAdapter
+from talli_backend.adapters.simulation_billing import SimulationBillingProvider
+from talli_backend.application.billing_workflow import BillingWorkflow
 from talli_backend.application.shareholder_register_archive import (
     source_original_queries, feedback_original_queries, verify_archive_stream,
 )
 from talli_backend.modules.shareholder_register_filing import public as rf
-from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, UserId
+from talli_backend.modules.billing import public as billing
+from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, CorrelationId, IncomeYear, UserId
 
 # Reuse the established exact-workdir, pinned-container and live-session boundary.
 spec = importlib.util.spec_from_file_location('owned_reporting_clone', ROOT / 'scripts/test-corporate-reporting-owned-clone.py')
@@ -130,6 +135,35 @@ async def verify_restored(url, query, expected_canonical, expected_originals, qu
     return archive
 
 
+async def expired_pilot_evidence(url, query, entitlement_id):
+    """Preserve the expired receipt without reactivating access after recovery."""
+    adapter = SupabaseBillingAdapter(LedgerSupabaseConfiguration(
+        url=os.environ['SUPABASE_URL'], anon_key=os.environ['SUPABASE_ANON_KEY'], database_url=url))
+    session = await adapter.session(os.environ['TALLI_RF_RESTORE_OWNER_TOKEN'])
+    workflow = BillingWorkflow(session, SimulationBillingProvider())
+    correlation = CorrelationId('owned-rf-expiry-restore')
+    snapshot = await workflow.snapshot(billing.BillingSnapshotQuery((query.company_id,), query.actor_id, correlation))
+    pilots = [row for row in snapshot.pilot_entitlements if str(row.entitlement_id) == str(entitlement_id)]
+    if (len(pilots) != 1 or pilots[0].company_id != query.company_id
+            or pilots[0].user_id != query.actor_id.subject or pilots[0].income_year != query.income_year
+            or pilots[0].obligation is not billing.BillingObligation.SHAREHOLDER_REGISTER
+            or pilots[0].status is not billing.ProductionPilotStatus.ACTIVE
+            or pilots[0].case_profile.value != 'rf1086_full_year_v1'
+            or not pilots[0].billing_exempt or pilots[0].expires_at.value >= datetime.now(timezone.utc)):
+        raise ValueError('Expected expired pilot evidence is absent')
+    decision = await workflow.entitlement(billing.BillingEntitlementQuery(
+        query.company_id, query.actor_id, correlation, query.income_year,
+        billing.BillingObligation.SHAREHOLDER_REGISTER, 'rf1086_full_year_v1'))
+    if decision.pilot_entitlement_id is not None or decision.allowed or decision.charge_allowed:
+        raise ValueError('Expired pilot admitted a current entitlement')
+    outsider = await adapter.session(os.environ['TALLI_RF_RESTORE_OUTSIDER_TOKEN'])
+    other = await BillingWorkflow(outsider, SimulationBillingProvider()).snapshot(
+        billing.BillingSnapshotQuery((query.company_id,), outsider.actor_id, correlation))
+    if other.pilot_entitlements or other.payment_events or other.accounts:
+        raise ValueError('Expired pilot recovery admitted an unrelated owner')
+    return snapshot, decision
+
+
 async def cancellation_evidence(url, query, cancellation_id, status):
     """Read through Company Access with the browser's real authenticated users."""
     adapter = SupabaseCompanyAccessAdapter(SupabaseConfiguration(
@@ -170,6 +204,7 @@ def main():
     parser.add_argument('--income-year', required=True, type=int)
     parser.add_argument('--actor-id', required=True, type=UUID)
     parser.add_argument('--restore-storage', action='store_true')
+    parser.add_argument('--expired-pilot-id', type=UUID)
     parser.add_argument('--cancellation-id', type=UUID)
     parser.add_argument('--cancellation-status', choices=('retention_hold', 'deleted'), default='retention_hold')
     parser.add_argument('--support-case-id', type=UUID)
@@ -206,6 +241,9 @@ def main():
     storage_proof = {}
     cancellation_proof = {}
     deletion_proof = {}
+    expiry_proof = {}
+    if args.expired_pilot_id:
+        expiry_before = asyncio.run(expired_pilot_evidence(reader_url, query, args.expired_pilot_id))
     if args.cancellation_id or args.restore_storage:
         access_url = owner_read_url(source_url, os.environ.get('TALLI_COMPANY_ACCESS_DATABASE_URL', ''),
                                     'talli_company_access_backend')
@@ -224,6 +262,10 @@ def main():
     with restored_database(source_url, workdir) as restored_url:
         restored_reader = make_conninfo(reader_url, dbname=conninfo_to_dict(restored_url)['dbname'])
         recovered = asyncio.run(verify_restored(restored_reader, query, expected_canonical, originals, queries))
+        if args.expired_pilot_id:
+            if asyncio.run(expired_pilot_evidence(restored_reader, query, args.expired_pilot_id)) != expiry_before:
+                raise ValueError('Restored expired pilot or entitlement decision differs from source')
+            expiry_proof = {'expiredPilotRestored': True}
         if args.cancellation_id or args.restore_storage:
             restored_access = make_conninfo(access_url, dbname=conninfo_to_dict(restored_url)['dbname'])
         if args.cancellation_id:
@@ -250,6 +292,9 @@ def main():
     after, _ = asyncio.run(canonical(reader_url, query))
     if after != before:
         raise ValueError('Restore rehearsal changed source RF history')
+    if args.expired_pilot_id:
+        if asyncio.run(expired_pilot_evidence(reader_url, query, args.expired_pilot_id)) != expiry_before:
+            raise ValueError('Restore rehearsal changed source expired pilot or entitlement decision')
     if args.cancellation_id:
         if asyncio.run(cancellation_evidence(access_url, query, args.cancellation_id, args.cancellation_status)) != cancellation_before:
             raise ValueError('Restore rehearsal changed source cancellation')
@@ -263,7 +308,7 @@ def main():
         'sourceVersions': len(recovered.source_history.year_sources),
         'submissions': len(recovered.production_submissions), 'crossOwnerReadsDenied': True,
         'sourceHistoryUnchanged': True, 'cloneRemoved': True, 'clusterMembershipsUnchanged': True,
-        **storage_proof, **cancellation_proof, **deletion_proof}))
+        **storage_proof, **cancellation_proof, **deletion_proof, **expiry_proof}))
     return 0
 
 

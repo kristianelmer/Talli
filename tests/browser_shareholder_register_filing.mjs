@@ -22,7 +22,7 @@ import { fixtureTableTransaction, deleteRfFixtureCompanies, rfPublicProjectionRe
 
 import { startRf1086FilingAuthorityMock } from "./fixtures/rf1086-filing-authority-mock.mjs";
 import { exerciseFullYearSourceJourney, seedFullYearAdmission } from "./fixtures/rf1086-source-browser-journey.mjs";
-import { exerciseRfCancellation, exerciseRfFinalDeletion } from "./fixtures/rf1086-cancellation-browser-journey.mjs";
+import { exerciseRfPilotExpiry, exerciseRfCancellation, exerciseRfFinalDeletion } from "./fixtures/rf1086-cancellation-browser-journey.mjs";
 
 const nextCli = createRequire(new URL("../apps/web/package.json", import.meta.url)).resolve("next/dist/bin/next");
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -458,6 +458,8 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
     });
     if (lostResponse === "main") {
       const restoreStorage = predecessorFeedback === "rejected";
+      if (restoreStorage) await exerciseRfPilotExpiry({ companyId: primary.id, incomeYear: sourceYear,
+        entitlementId: sourceEntitlement, api, authorization, mock: resources.mock });
       let cancellation = restoreStorage ? await exerciseRfCancellation({ page, siteOrigin, companyId: primary.id,
         incomeYear: sourceYear, api, authorization, mock: resources.mock }) : null;
       assert.ok(process.env.TALLI_SUPABASE_WORKDIR, "RF restore requires the explicit owned Supabase workdir");
@@ -480,7 +482,8 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
         }
         const restored = JSON.parse(execFileSync(python, ["scripts/rehearse-rf1086-owned-restore.py", sourceArchive.path,
           "--company-id", primary.id, "--income-year", String(sourceYear), "--actor-id", owner.id,
-          ...(restoreStorage ? ["--restore-storage", "--cancellation-id", cancellation.id, "--cancellation-status", state,
+          ...(restoreStorage ? ["--restore-storage", "--expired-pilot-id", sourceEntitlement,
+            "--cancellation-id", cancellation.id, "--cancellation-status", state,
             ...(deletion ? ["--support-case-id", deletion.supportCaseId, "--deletion-review-id", deletion.reviewId] : [])] : [])],
         { cwd: process.cwd(), env: { ...runtimeEnvironment(), DATABASE_URL: databaseUrl,
           TALLI_LEDGER_DATABASE_URL: databases.talli_ledger_backend,
@@ -495,7 +498,7 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
           retainedOriginalBytesRestored: true, objectStorageRestorePerformed: restoreStorage,
           sourceOriginals: restoreStorage ? 4 : 3, feedbackOriginals: 4, sourceVersions: restoreStorage ? 4 : 3, submissions: 3,
           crossOwnerReadsDenied: true, sourceHistoryUnchanged: true, cloneRemoved: true, clusterMembershipsUnchanged: true,
-          ...(restoreStorage ? { cancellationRestored: true, cancellationStatus: state,
+          ...(restoreStorage ? { expiredPilotRestored: true, cancellationRestored: true, cancellationStatus: state,
             ...(deletion ? { deletionReviewRestored: true, deletedCompanyRestored: true } : {}),
             ordinaryObjects: 8, storageVolumeRemoved: true, storageSourceUnchanged: true,
             storageAttributesRestored: true,

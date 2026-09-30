@@ -1129,3 +1129,31 @@ report zero vulnerabilities. The production web build, typecheck, architecture
 check and full deletion/recovery browser journey pass. No codemod applies to this
 same-16.3 patch update. See `next-security-patch-20260930.json` for official source
 links and exact file hashes. A new exact-revision CI run is still required.
+
+
+### 30 September — expired pilot recovery
+
+The rejected-predecessor browser journey now expires its exact synthetic full-year
+pilot through Billing's existing admin API before cancellation. The status stays
+active and expiry moves into the past; this isolates the time boundary from
+revocation. Exact replay returns the retained receipt, no payment event appears,
+and Billing denies submission and charges without an active pilot. RF archive
+content and filing provider calls remain unchanged.
+
+Both the retention-hold and independently reviewed deletion restores now read
+Billing through its actual authenticated application workflow. The full snapshot
+and denied entitlement decision must match before, within and after recovery.
+The unrelated owner must see no company Billing records. Existing RF history,
+eight-object Storage, cancellation and independent-review assertions also pass.
+The full browser journey passed in 167.35 seconds; 38 fixture checks, 39 database/
+Storage boundary checks, architecture, credential scan and whitespace pass. See
+`expiry-restore-20260930.json`. The first attempt was interrupted by confirmed host
+sleep and cancelled by the existing browser timer; a fresh stack passed with the
+same timeout.
+
+The evidence index now links the later approval/send, correction, crash/unknown,
+archive and recovery results instead of leaving those bounded implementations
+listed as wholly pending. All seven overall RF acceptance criteria remain open.
+Retained-original generations, full retention inventory/policy, legacy feedback
+backfill and independent Auth/role/hosted recovery remain. No genuine AS or
+provider operation was used. Exact-revision CI remains required.
