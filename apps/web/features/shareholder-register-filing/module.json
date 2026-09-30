@@ -14,6 +14,7 @@
   ],
   "ownedRoutes": [
     "/filing/aksjonaerregisteroppgaven/source",
+    "/filing/aksjonaerregisteroppgaven/source/archive",
     "/filing/aksjonaerregisteroppgaven/register"
   ],
   "apiOperations": [
@@ -30,6 +31,7 @@
     "rf1086GeneratePreview",
     "rf1086GenerateSourcePreview",
     "rf1086GetArchiveSource",
+    "rf1086DownloadProductionArchive",
     "rf1086GetProductionArchiveSource",
     "rf1086ListRegisterObservations",
     "rf1086PrepareSourceProductionReview",

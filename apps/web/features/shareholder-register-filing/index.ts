@@ -78,3 +78,5 @@ export { prepareRf1086SourceProductionReview, approveRf1086SourceProduction, sen
 export type { RfSourceProductionReviewWire, RfSourceProductionReviewRequestWire,
   RfSourceProductionApprovalCommandWire, RfSourceCorrectionPredecessorWire,
   RfSourceProductionSendCommandWire, RfSourceProductionSendResultWire, RfSourceProductionPositionWire } from "@talli/talli-api-client";
+
+export { downloadRf1086Archive } from "./transport.ts";

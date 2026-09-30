@@ -1,10 +1,16 @@
 # RF streaming archive format
 
 Authenticated endpoint: `GET /api/v1/shareholder-register-filings/archive-source/production-stream?companyId=<uuid>&incomeYear=<year>`.
+Owners can use **Last ned RF-arkiv** on the scoped source page. Its separate
+`/filing/aksjonaerregisteroppgaven/source/archive` route checks accepted ownership
+and the existing archive-export MFA requirement before forwarding the backend
+stream. It uses a private attachment filename and does not forward upstream
+cookies or arbitrary headers. Browser cancellation and a five-minute deadline
+propagate to the backend request.
+
 The generated client's `rf1086DownloadProductionArchive` returns an unconsumed
 `Response`; save its body directly to a private `.ndjson` file. Do not buffer it
-through `json()` or treat receiving HTTP 200 as a completed archive. Owner browser
-download integration remains separate work.
+through `json()` or treat receiving HTTP 200 as a completed archive. Authenticated full-stack browser acceptance remains separate work.
 
 Verify a saved download with the backend Python environment:
 
@@ -50,3 +56,17 @@ company/year, performs no writes, and claims no database/object restoration or
 provider acceptance. Strict feedback completeness rejects historical artifacts
 without retained-original bindings. Local validation uses synthetic fixtures and
 scaled size limits; full-size load and authenticated browser acceptance remain.
+
+
+Manual load regression: `npm run test:rf1086-archive-stream-load` pipes exactly
+1 GiB across 103 synthetic retained originals between separate exporter/verifier
+processes. `--small` or `--single` can be passed to the Python script for 130 MiB
+or 10 MiB. No full archive file, database or provider is used. The development
+Python environment is required because the fixture imports existing RF tests.
+Both processes must stay below a 256 MiB **traced Python-allocation** regression
+ceiling after fixture construction. This is not a production RSS or concurrency
+budget. The macOS probe passed with roughly 70 MB export/81 MB verification peak
+Python allocations; its process RSS remained near 0.8–0.9 GB. Traces show stable
+live Python allocations across records, so a retained list of document bytes is
+not supported as the explanation. Platform/native memory and real HTTP/browser
+load remain to be measured before production sizing.

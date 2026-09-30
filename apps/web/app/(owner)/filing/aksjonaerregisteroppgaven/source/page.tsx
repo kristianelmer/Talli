@@ -56,6 +56,10 @@ export default async function Rf1086SourcePage({ searchParams }: Props) {
       || !company.identity_confirmed_at || !company.identity_locked_at) {
     return <div>{header}<Banner variant="danger">Årsgrunnlaget er ikke tilgjengelig. Kontroller eiertilgangen og at selskapsopplysningene er bekreftet.</Banner></div>;
   }
+  const archiveDownload = <div className="card">
+    <a className="btn btn--secondary" href={`/filing/aksjonaerregisteroppgaven/source/archive?${new URLSearchParams({ companyId, incomeYear: String(incomeYear) })}`}>Last ned RF-arkiv</a>
+    <p className="cardNote">Lagret årsgrunnlag, innsendingshistorikk og bevarte originaldokumenter for {incomeYear}. Ekstra identitetsbekreftelse kreves.</p>
+  </div>;
   const production = SourceProductionPanel({ token, companyId, incomeYear });
   try {
     const [basis, source, documents] = await Promise.all([
@@ -66,10 +70,10 @@ export default async function Rf1086SourcePage({ searchParams }: Props) {
     if (documents.documents.some((document) => document.companyId !== companyId)) {
       throw new Error("Document scope mismatch");
     }
-    return <div>{header}{await production}<SourceEditor key={`${companyId}:${incomeYear}`} basis={basis} current={source.currentSource}
+    return <div>{header}{archiveDownload}{await production}<SourceEditor key={`${companyId}:${incomeYear}`} basis={basis} current={source.currentSource}
       documentOptions={documents.documents.filter(document => document.removedAt === null).map((document) => ({ id: document.id, name: document.name, incomeYear: document.incomeYear }))}
       caseId={randomUUID()} /></div>;
   } catch (error) {
-    return <div>{header}{await production}<Banner variant="danger">{rf1086SourceErrorMessage(error)}</Banner></div>;
+    return <div>{header}{archiveDownload}{await production}<Banner variant="danger">{rf1086SourceErrorMessage(error)}</Banner></div>;
   }
 }

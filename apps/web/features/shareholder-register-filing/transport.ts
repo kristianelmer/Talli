@@ -53,6 +53,19 @@ export async function loadRf1086Workspaces(accessToken: string, companyIds: read
   return results;
 }
 
+// Keep the response body streaming through the owner route. The backend owns
+// archive identity/byte validation; receiving headers is not archive completion.
+export async function downloadRf1086Archive(
+  accessToken: string, companyId: string, incomeYear: number, signal: AbortSignal, requestId: string,
+): Promise<Response> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(companyId)
+      || !Number.isInteger(incomeYear) || incomeYear < 2000 || incomeYear > 2100) {
+    throw new TalliApiError(400, undefined);
+  }
+  return client(accessToken).rf1086DownloadProductionArchive(companyId, incomeYear,
+    { signal: AbortSignal.any([signal, AbortSignal.timeout(300_000)]), requestId });
+}
+
 export async function loadRf1086ArchiveSource(
   accessToken: string, companyId: string, incomeYear: number, requestId?: string,
 ): Promise<Rf1086ArchiveSourceWire | Rf1086ProductionArchiveSourceWire> {

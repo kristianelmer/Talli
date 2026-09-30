@@ -694,3 +694,27 @@ replay window or negative discovery proof was invented. See
 remaining provider clarification/conformance requirements. This does not require
 an AS to continue independent software work. All seven RF acceptance criteria
 remain pending; no live business-provider action or production setting changed.
+
+
+## Owner archive download and allocation profile — 30 September
+
+The owner source screen now links a separate RF archive download. Its route
+validates exact company/year, requires accepted ownership and the existing
+archive-export MFA check, and forwards the backend stream without materializing
+it. It keeps only local attachment/security headers; cancellation and a bounded
+five-minute lifetime reach the backend. The download remains available when the
+current editable source cannot be read. Existing company-wide exports are unchanged.
+
+Executable tests import the actual route with explicit identity/dependency stubs;
+they cover authorization order, missing login, wrong company, non-owner roles,
+MFA failure, malformed/duplicate scope, safe errors, cancellation and body failure.
+They do not establish authenticated full-stack browser acceptance. The Next
+production build checks route integration.
+
+The committed manual load regression sends exactly 1 GiB/103 synthetic retained
+originals through an OS pipe with strict history/feedback verification. It passes
+its 256 MiB live Python-allocation ceiling: measured export peak ~70 MB and
+verification ~81 MB. macOS peak RSS remains ~0.8–0.9 GB, including fixture/application
+imports. Stable live allocations across records argue against retained document
+collections; platform/native memory and real HTTP/browser concurrency sizing remain
+open. No allocator workaround or weaker byte verification was introduced.
