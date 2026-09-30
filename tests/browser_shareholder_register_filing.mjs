@@ -18,6 +18,7 @@ import { isLoopbackPostgresUrl, isLoopbackSupabaseUrl } from "./support/supabase
 import { fixtureTableTransaction, deleteRfFixtureCompanies, rfPublicProjectionRelations } from "./support/rf1086-fixture-access.mjs";
 
 import { startRf1086FilingAuthorityMock } from "./fixtures/rf1086-filing-authority-mock.mjs";
+import { exerciseFullYearSourceJourney, seedFullYearAdmission } from "./fixtures/rf1086-source-browser-journey.mjs";
 
 const nextCli = createRequire(new URL("../apps/web/package.json", import.meta.url)).resolve("next/dist/bin/next");
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -27,7 +28,7 @@ const databaseUrl = process.env.DATABASE_URL;
 
 // This is a mandatory local lane: absent or non-loopback configuration fails;
 // it never converts the full-stack authority journey into a skipped test.
-test("owner completes fresh RF preview, review, approval, send and private feedback through the canonical backend", {
+test("owner completes legacy and full-year RF capture, approval, send, feedback and archive through the canonical backend", {
   timeout: 360_000,
 }, async (t) => {
   assert.ok(supabaseUrl && anonKey && serviceRoleKey && databaseUrl, "authority browser requires isolated Supabase configuration");
@@ -51,7 +52,7 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     if (resources.connected) {
       for (const role of resources.roles) await attempt(() => database.query(`alter role ${role} nologin password null`));
       await attempt(async () => {
-        const objects = await rfFixtureTransaction(database, () => database.query("select d.storage_key from public.documents d join shareholder_register_filing.production_feedback_artifacts a on a.document_id=d.id where a.company_id=any($1::uuid[])", [resources.companies]));
+        const objects = await rfFixtureTransaction(database, () => database.query("select storage_key from public.documents where company_id=any($1::uuid[])", [resources.companies]));
         if (objects.rows.length) assert.ifError((await admin.storage.from("company-documents").remove(objects.rows.map(({ storage_key }) => storage_key))).error);
       });
       await attempt(() => restoreLocalReleaseSignoffs(database, resources.signoffs));
@@ -65,12 +66,13 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
           (select count(*)::int from authority_connections.system_user_requests where company_id=any($1::uuid[])) requests,
           (select count(*)::int from authority_connections.authority_operations where actor_id=any($2::uuid[])) operations`, [resources.companies, resources.users]));
         await rfFixtureTransaction(database, async () => {
-          for (const table of RF_TABLES) {
+          for (const table of [...RF_TABLES, ...RF_SOURCE_TABLES]) {
             if (table === "production_filing_events") continue;
             const count = (await database.query(`select count(*)::int count from shareholder_register_filing.${table} where company_id=any($1::uuid[])`, [resources.companies])).rows[0];
             assert.equal(count.count, 0, `RF fixture residue in ${table}`);
           }
           assert.equal((await database.query("select count(*)::int count from ledger.opening_bank_inputs where company_id=any($1::uuid[])", [resources.companies])).rows[0].count, 0);
+          assert.equal((await database.query("select count(*)::int count from documents.retained_originals where company_id=any($1::uuid[])", [resources.companies])).rows[0].count, 0);
         });
         const identities = await database.query(`select
           (select count(*)::int from public.companies where id=any($1::uuid[])) companies,
@@ -195,16 +197,16 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
     const body = await page.locator("body").innerText();
     assert.ok(!body.includes(original.external_ref) && !body.includes(original.altinn_request_id));
     assert.ok(!body.includes(callbackKey) && !body.includes(privateKey));
-    const grant = async (token, companyId, userId, requestId) => {
+    const grant = async (token, companyId, userId, requestId, { incomeYear = 2025, caseProfile = "rf1086_no_activity_v1" } = {}) => {
       const headers = { Authorization: `Bearer ${token}` };
       await api.rf1086ConfirmFilingPermission({ companyId, productionEnabled: true }, { headers });
-      const result = await api.billingManagePilotEntitlement({ companyId, userId, incomeYear: 2025,
+      const result = await api.billingManagePilotEntitlement({ companyId, userId, incomeYear, caseProfile,
         status: "active", billingExempt: true, systemUserRequestId: requestId,
         startsAt: new Date(Date.now() - 60_000).toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
         evidenceReference: `synthetic-rf-browser:${requestId}`,
-      }, { headers, idempotencyKey: `synthetic-rf-browser-${requestId}` });
+      }, { headers, idempotencyKey: `synthetic-rf-browser-${requestId}-${incomeYear}-${caseProfile}` });
       assert.equal(result.billingExempt, true);
-      assert.equal(result.caseProfile, "rf1086_no_activity_v1");
+      assert.equal(result.caseProfile, caseProfile);
       return result.entitlementId;
     };
     const entitlementId = await grant(session.access_token, primary.id, owner.id, original.id);
@@ -400,6 +402,19 @@ test("owner completes fresh RF preview, review, approval, send and private feedb
       assert.ok(apiCalls.some((call) => call.endsWith(event)), `missing actual canonical backend request ${event}`);
     assert.ok(!(await page.locator("body").innerText()).includes(original.external_ref));
     await otherContext.close();
+    // A distinct year keeps the first full-year submission independent of the
+    // accepted legacy filing and its correction head. No source/approval is seeded.
+    const sourceYear = await seedFullYearAdmission(database, primary, owner.id, python, runtimeEnvironment());
+    const sourceOpening = await seedFreshBasis(database, primary.id, owner.id, sourceYear, false);
+    const sourceEntitlement = await grant(session.access_token, primary.id, owner.id, original.id,
+      { incomeYear: sourceYear, caseProfile: "rf1086_full_year_v1" });
+    await exerciseFullYearSourceJourney({ page, siteOrigin, company: primary, incomeYear: sourceYear, database, ownerId: owner.id,
+      openingHolderId: sourceOpening.holderId, entitlementId: sourceEntitlement, api, authorization,
+      storage: createClient(supabaseUrl, anonKey, { auth: { autoRefreshToken: false, persistSession: false } }).storage,
+      mock: resources.mock, python, environment: runtimeEnvironment(), apiCalls }).catch(async error => {
+      const alerts = await page.getByRole("alert").allTextContents();
+      throw new Error(`full_year_source_journey_failed: ${error.message}; alerts=${JSON.stringify(alerts)}`, { cause: error });
+    });
     await context.close();
     assert.deepEqual(health, []);
     assert.deepEqual(egressViolations, []);
@@ -488,9 +503,13 @@ async function cleanupFixture(database, companyIds, userIds) {
     "authority_connections.system_user_requests", "authority_connections.authority_operations",
     "public.audit_events", "public.support_operators", "public.customer_agreement_acceptances",
     "public.company_memberships", "public.companies",
+    "public.company_year_acceptances", "public.company_year_admissions", "public.company_eligibility_assessments",
   ], async () => {
     await database.query("delete from shareholder_register_filing.production_feedback_artifacts where company_id=any($1::uuid[])", [companyIds]);
+    for (const table of RF_SOURCE_TABLES)
+      await database.query(`delete from shareholder_register_filing.${table} where company_id=any($1::uuid[])`, [companyIds]);
     await database.query("delete from documents.evidence_references where document_id in (select id from public.documents where company_id=any($1::uuid[]))", [companyIds]);
+    await database.query("delete from documents.retained_originals where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from shareholder_register_filing.production_filing_events where submission_id in (select id from shareholder_register_filing.production_filing_submissions where company_id=any($1::uuid[]))", [companyIds]);
     await database.query("delete from shareholder_register_filing.production_filing_submissions where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from shareholder_register_filing.filing_approval_snapshots where company_id=any($1::uuid[])", [companyIds]);
@@ -508,6 +527,8 @@ async function cleanupFixture(database, companyIds, userIds) {
     await database.query("delete from authority_connections.authority_operations where actor_id=any($1::uuid[])", [userIds]);
     await database.query("delete from public.audit_events where actor_id=any($1::uuid[])", [userIds]);
     await database.query("delete from public.support_operators where user_id=any($1::uuid[])", [userIds]);
+    for (const table of ["company_year_acceptances", "company_year_admissions", "company_eligibility_assessments"])
+      await database.query(`delete from public.${table} where company_id=any($1::uuid[])`, [companyIds]);
     await database.query("delete from public.customer_agreement_acceptances where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from public.company_memberships where company_id=any($1::uuid[])", [companyIds]);
     await deleteRfFixtureCompanies(database, companyIds);
@@ -560,10 +581,14 @@ async function browserSession(context) {
 const RF_TABLES = ["opening_balance_setups", "opening_shareholders", "filing_previews", "filing_submissions",
   "filing_overrides", "filing_review_comments", "authority_permissions", "authority_test_runs", "filing_approval_snapshots",
   "production_filing_submissions", "production_filing_events", "production_feedback_artifacts", "migration_inventory", "migration_quarantine"];
+const RF_SOURCE_TABLES = ["submission_heads", "source_submission_bindings", "source_approval_bindings",
+  "source_review_bridges", "source_previews", "year_source_heads", "year_source_versions", "register_observations"];
 const SIGNOFF_KEYS = ["launch_legal_name_public_copy", "legal_policy_pack", "security_restore", "support_rollback", "founder_production_go_live", "rf1086_authority"];
 const RF_FIXTURE_RELATIONS = Object.freeze([
   ...RF_TABLES.map((name) => `shareholder_register_filing.${name}`),
+  ...RF_SOURCE_TABLES.map((name) => `shareholder_register_filing.${name}`),
   "ledger.opening_bank_inputs", "billing.production_pilot_entitlements", "documents.evidence_references",
+  "documents.retained_originals",
   "public.documents", "public.filing_readiness_snapshots", "public.company_archive_source_generations",
 ]);
 
@@ -571,23 +596,25 @@ async function rfFixtureTransaction(database, operation) {
   return fixtureTableTransaction(database, [...RF_FIXTURE_RELATIONS, ...await rfPublicProjectionRelations(database)], operation);
 }
 
-async function seedFreshBasis(database, companyId, ownerId) {
+async function seedFreshBasis(database, companyId, ownerId, incomeYear = 2025, ready = true) {
   const setupId = randomUUID();
+  const holderId = randomUUID();
   await rfFixtureTransaction(database, async () => {
     await database.query(`insert into shareholder_register_filing.opening_balance_setups
       (id,company_id,income_year,share_capital,share_count,nominal_value,created_by)
-      values($1,$2,2025,30000,100,300,$3)`, [setupId, companyId, ownerId]);
+      values($1,$2,$4,30000,100,300,$3)`, [setupId, companyId, ownerId, incomeYear]);
     await database.query(`insert into ledger.opening_bank_inputs(snapshot_id,company_id,income_year,bank_balance_nok,recorded_by,recorded_at)
-      values($1,$2,2025,30000,$3,now())`, [setupId, companyId, ownerId]);
+      values($1,$2,$4,30000,$3,now())`, [setupId, companyId, ownerId, incomeYear]);
     await database.query(`insert into shareholder_register_filing.opening_shareholders
       (id,setup_id,company_id,name,shareholder_kind,org_number,share_count,created_by)
-      values($1,$2,$3,'Synthetic Fixture Owner AS','norwegian_company','999999999',100,$4)`, [randomUUID(), setupId, companyId, ownerId]);
-    // This local prerequisite records the exact supported no-activity case;
-    // no paid account, preview, approval, journal or provider receipt is seeded.
+      values($1,$2,$3,'Synthetic Fixture Owner AS','norwegian_company','999999999',100,$4)`, [holderId, setupId, companyId, ownerId]);
+    // The legacy case uses its frozen prerequisite. The full-year case keeps
+    // it false and must derive current readiness. No approval/journal is seeded.
     await database.query(`insert into public.filing_readiness_snapshots
       (company_id,income_year,obligation,status,ready,created_by)
-      values($1,2025,'aksjonaerregisteroppgaven','ready',true,$2)`, [companyId, ownerId]);
+      values($1,$3,'aksjonaerregisteroppgaven',$4,$5,$2)`, [companyId, ownerId, incomeYear, ready ? "ready" : "blocked", ready]);
   });
+  return { setupId, holderId };
 }
 
 async function seedLocalReleaseSignoffs(database, actorId) {

@@ -1,0 +1,233 @@
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
+import { fixtureTableTransaction } from "../support/rf1086-fixture-access.mjs";
+import { isLoopbackSupabaseUrl } from "../support/supabase_fixture_safety.mjs";
+
+// Uses the already authenticated owner and the loopback-only fresh filing mock.
+// Only admission, opening facts and a pilot entitlement are prepared. Every
+// source, preview, approval, operation and receipt below is created by the app.
+export async function exerciseFullYearSourceJourney({ page, siteOrigin, company, incomeYear, database, ownerId,
+  openingHolderId, entitlementId, api, authorization, storage, mock, python, environment, apiCalls }) {
+  const scope = { companyId: company.id, incomeYear, headers: authorization };
+  const options = { headers: authorization };
+  const before = await api.rf1086Workspace(company.id, incomeYear, options);
+  assert.deepEqual(before.previews, []);
+  assert.deepEqual(before.approvals, []);
+  assert.deepEqual(before.productionSubmissions, []);
+  assert.equal((await api.rf1086ReadCurrentYearSource(scope)).currentSource, null);
+  const entitlement = await api.billingReadEntitlement({ ...scope,
+    obligation: "aksjonaerregisteroppgaven", caseProfile: "rf1086_full_year_v1" });
+  assert.equal(entitlement.pilotEntitlementId, entitlementId);
+  assert.equal(entitlement.billingExempt, true);
+  assert.equal(entitlement.allowed, false, "legacy frozen readiness must not decide full-year review");
+  const callsBefore = mock.snapshot().filter(({ service }) => service === "skatteetaten").length;
+
+  // Upload original bytes via Documents' actual signed-upload and finalize API.
+  const content = syntheticPdf();
+  const documentId = randomUUID();
+  const name = "Synthetic full-year share transfer.pdf";
+  const transfer = await api.documentsBeginUpload({ documentId, companyId: company.id, incomeYear,
+    fileName: name, contentType: "application/pdf", byteLength: content.length,
+    headerBase64: content.subarray(0, 5).toString("base64"), documentType: "corporate_document",
+    finalStatus: "attached", linkedTo: "aksjonaerregisteroppgaven" },
+  { ...options, idempotencyKey: randomUUID() });
+  assert.ok(isLoopbackSupabaseUrl(new URL(transfer.signedUrl).origin));
+  assert.ifError((await storage.from(transfer.bucket).uploadToSignedUrl(transfer.storageKey,
+    transfer.token, content, { contentType: "application/pdf" })).error);
+  const document = await api.documentsFinalizeUpload(documentId, { ...options, idempotencyKey: randomUUID() });
+  assert.equal(document.contentSha256, createHash("sha256").update(content).digest("hex"));
+
+  const sourceHref = `${siteOrigin}/filing/aksjonaerregisteroppgaven/source?companyId=${company.id}&incomeYear=${incomeYear}`;
+  await page.goto(sourceHref);
+  await page.getByRole("heading", { name: "Årsgrunnlag for aksjonærregisteroppgaven", exact: true }).waitFor();
+  await page.getByRole("combobox", { name: /^Aksjeklasse/ }).selectOption("01");
+  for (const [label, value] of [
+    ["Aksjekapital ved årets start (kr)", "30000"], ["Aksjekapital ved årets slutt (kr)", "30000"],
+    ["Pålydende per aksje ved årets start (kr)", "300"], ["Pålydende per aksje ved årets slutt (kr)", "300"],
+    ["Antall aksjer ved årets start", "100"], ["Antall aksjer ved årets slutt", "100"],
+    ["Innbetalt aksjekapital ved årets start (kr)", "30000"], ["Innbetalt aksjekapital ved årets slutt (kr)", "30000"],
+    ["Innbetalt overkurs ved årets start (kr)", "0"], ["Innbetalt overkurs ved årets slutt (kr)", "0"],
+  ]) await page.getByLabel(label, { exact: true }).fill(value);
+  const buyer = randomUUID();
+  for (const [index, id, holderName, org, opening, closing] of [
+    [1, openingHolderId, "Synthetic Fixture Owner AS", "999999999", "100", "50"],
+    [2, buyer, "Synthetic Buyer AS", "888888888", "0", "50"],
+  ]) {
+    await page.getByRole("button", { name: "Legg til aksjonær", exact: true }).click();
+    const holder = page.getByRole("group", { name: `Aksjonær ${index}`, exact: true });
+    await holder.getByLabel("Aksjonærreferanse", { exact: true }).fill(id);
+    await holder.getByLabel("Navn", { exact: true }).fill(holderName);
+    await holder.getByRole("combobox", { name: /^Type aksjonær/ }).selectOption("norwegian_company");
+    await holder.getByLabel("Organisasjonsnummer (9 siffer)", { exact: true }).fill(org);
+    await holder.getByLabel("Aksjer ved årets start", { exact: true }).fill(opening);
+    await holder.getByLabel("Aksjer ved årets slutt", { exact: true }).fill(closing);
+  }
+  await page.getByRole("combobox", { name: /^Velg originaldokument/ }).selectOption(documentId);
+  await page.getByRole("button", { name: "Hent dokumentopplysninger", exact: true }).click();
+  await page.getByRole("button", { name: "Oppdater dokumentopplysninger", exact: true }).waitFor();
+  for (const label of ["Grunnlag ved årets start", "Grunnlag ved årets slutt", "Innbetalt kapital og overkurs"])
+    await page.getByRole("group", { name: label, exact: true }).getByRole("checkbox").check();
+  await page.getByRole("combobox", { name: /^Ny hendelse/ }).selectOption("share_sale");
+  await page.getByRole("button", { name: "Legg til hendelse", exact: true }).click();
+  const event = page.getByRole("group", { name: "1. Overdragelse av aksjer", exact: true });
+  await event.getByLabel("Dato og lokalt klokkeslett", { exact: true }).fill(`${incomeYear}-07-01T12:00`);
+  await event.getByLabel("Antall overdratte aksjer", { exact: true }).fill("50");
+  await event.getByLabel("Samlet vederlag (kr)", { exact: true }).fill("15000");
+  await event.getByRole("combobox", { name: /^Selger/ }).selectOption(openingHolderId);
+  await event.getByRole("combobox", { name: /^Kjøper/ }).selectOption(buyer);
+  await event.getByRole("group", { name: "Dokumenter for denne hendelsen", exact: true }).getByRole("checkbox").check();
+  for (const checkbox of await page.getByRole("group", { name: "Gjennomgang av hele året", exact: true }).getByRole("checkbox").all())
+    await checkbox.check();
+  await page.getByRole("button", { name: "Lagre årsgrunnlag", exact: true }).click();
+  await page.getByRole("heading", { name: "Årsgrunnlaget er lagret", exact: true }).waitFor();
+  const source = (await api.rf1086ReadCurrentYearSource(scope)).currentSource;
+  assert.equal(source.draft.case.events.length, 1);
+  assert.equal(source.draft.case.events[0].type, "share_sale");
+  assert.equal(source.draft.case.shareholders.length, 2);
+  assert.equal(source.receipt.version, 1);
+  assert.equal(source.draft.documents[0].documentId, documentId);
+  assert.equal(source.draft.documents[0].contentSha256, document.contentSha256);
+  await page.getByRole("button", { name: "Lag forhåndsvisning av lagret grunnlag", exact: true }).click();
+  const reviewButton = page.getByRole("button", { name: "Kontroller vilkår for godkjenning", exact: true });
+  await reviewButton.waitFor();
+  await reviewButton.click();
+  const review = page.getByRole("group", { name: "Din gjennomgang", exact: true });
+  await review.waitFor();
+  // Preserve the existing non-RF blocking predicate after the generic table's
+  // physical retirement. The owned Accounts query must still veto RF review.
+  const previewId = (await api.rf1086Workspace(company.id, incomeYear, options)).previews[0].id;
+  const overrideId = randomUUID();
+  const overrideScope = ["annual_accounts_filing.filing_overrides"];
+  await fixtureTableTransaction(database, overrideScope, () => database.query(
+    `insert into annual_accounts_filing.filing_overrides
+      (id,company_id,income_year,filing,field_target,old_value,new_value,reason,risk_level,created_by,owner_confirmed_by,owner_confirmed_at)
+     values($1,$2,$3,'årsregnskap','synthetic-check','a','b','Synthetic blocking prerequisite','block',$4,$4,clock_timestamp())`,
+    [overrideId, company.id, incomeYear, ownerId]));
+  try {
+    const blocked = await api.rf1086PrepareSourceProductionReview({ companyId: company.id, incomeYear, previewId, entitlementId }, options);
+    assert.equal(blocked.canApprove, false);
+    assert.ok(blocked.blockers.includes("other_blocking_override"));
+  } finally {
+    await fixtureTableTransaction(database, overrideScope, () => database.query(
+      "delete from annual_accounts_filing.filing_overrides where id=$1 and company_id=$2", [overrideId, company.id]));
+  }
+  await reviewButton.click();
+  await review.waitFor();
+  await review.getByLabel("Årsavslutningsintervjuet er ikke fullført.", { exact: true }).waitFor();
+  await review.getByLabel("Inntektsåret er ikke periode-låst.", { exact: true }).waitFor();
+  // Missing annual interview/period lock are explicit warnings in this fixture.
+  // The frozen browser-written ready row is false; approval uses current facts.
+  for (const checkbox of await review.getByRole("checkbox").all()) await checkbox.check();
+  await page.getByRole("button", { name: "Lagre godkjenning", exact: true }).click();
+  await page.getByRole("link", { name: "Gå til innsending og status", exact: true }).click();
+  const approved = await api.rf1086Workspace(company.id, incomeYear, options);
+  assert.equal(approved.approvals.length, 1);
+  assert.equal(approved.approvals[0].caseProfile, "rf1086_full_year_v1");
+  assert.equal(approved.approvals[0].entitlementId, entitlementId);
+  assert.equal(Object.keys(approved.previews[0].underskjemaXml).length, 2);
+  const panel = page.getByRole("region", { name: "Innsending og status", exact: true });
+  assert.equal(await panel.getByRole("combobox", { name: /^Lagret godkjenning/ }).inputValue(), approved.approvals[0].id);
+  await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
+  await panel.getByRole("checkbox").check();
+  const send = panel.getByRole("button", { name: "Send godkjent oppgave", exact: true });
+  await send.focus();
+  await send.press("Enter");
+  await panel.getByText("Innsendingen er bekreftet. Hent lagret status og tilbakemelding.", { exact: true }).waitFor();
+  assert.equal(await panel.getByRole("button", { name: "Send godkjent oppgave", exact: true }).count(), 0);
+  await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
+  await panel.getByRole("button", { name: "Hent tilbakemelding", exact: true }).click();
+  await panel.getByText("Tilbakemelding: Godkjent.", { exact: true }).waitFor();
+  const accepted = await api.rf1086Workspace(company.id, incomeYear, options);
+  assert.equal(accepted.productionSubmissions.length, 1);
+  assert.equal(accepted.productionSubmissions[0].feedbackState, "accepted");
+  assert.equal(accepted.feedbackArtifacts.length, 2);
+  const position = await api.rf1086ReadSourceProductionPosition(approved.approvals[0].id, options);
+  assert.equal(position.disposition, "confirmed");
+  assert.equal(position.submissionId, accepted.productionSubmissions[0].id);
+  for (const width of [320, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `full-year source overflow at ${width}`);
+  }
+  await page.reload();
+  await panel.getByRole("button", { name: "Hent lagret status", exact: true }).click();
+  assert.equal(await panel.getByRole("button", { name: "Send godkjent oppgave", exact: true }).count(), 0);
+  await panel.getByRole("link", { name: "Tilbakemelding: Godkjent", exact: true }).first().waitFor();
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Last ned RF-arkiv", exact: true }).click();
+  const download = await downloading;
+  assert.equal(await download.failure(), null);
+  const verification = JSON.parse(execFileSync(python, ["apps/backend/scripts/verify_rf1086_archive.py", await download.path(),
+    "--stream", "--company-id", company.id, "--income-year", String(incomeYear), "--require-source-history", "--require-feedback-originals"],
+  { cwd: process.cwd(), env: environment, encoding: "utf8", timeout: 30_000 }));
+  for (const key of ["sourceVersions", "sourceApprovals", "sourceClaims", "submissions", "sourceOriginals"])
+    assert.equal(verification[key], 1, key);
+  assert.equal(verification.feedbackOriginals, 2);
+  assert.equal(verification.feedbackOriginalsComplete, true);
+  assert.equal(verification.databaseRestorePerformed, false);
+  const operations = mock.snapshot().filter(({ service }) => service === "skatteetaten").slice(callsBefore);
+  assert.equal(operations.filter(({ operation }) => operation === "post_hovedskjema").length, 1);
+  assert.equal(operations.filter(({ operation }) => operation === "post_underskjema").length, 2);
+  assert.equal(operations.filter(({ operation }) => operation === "confirm").length, 1);
+  assert.equal(operations.find(({ operation }) => operation === "post_hovedskjema").digest,
+    createHash("sha256").update(approved.previews[0].hovedskjemaXml).digest("hex"));
+  assert.deepEqual(operations.filter(({ operation }) => operation === "post_underskjema").map(row => row.digest).sort(),
+    Object.values(approved.previews[0].underskjemaXml).map(xml => createHash("sha256").update(xml).digest("hex")).sort());
+  assert.equal(operations.filter(({ operation }) => ["replayed_mutation", "request_rejected"].includes(operation)).length, 0);
+  for (const endpoint of ["year-sources", "source-previews", "source-production-reviews", "source-production-approvals", "source-production-filings"])
+    assert.ok(apiCalls.some(call => call.endsWith(`POST:/api/v1/shareholder-register-filings/${endpoint}:200`)), `missing full-year backend operation ${endpoint}`);
+}
+
+function syntheticPdf() {
+  const stream = "BT /F1 12 Tf 20 100 Td (Synthetic share transfer: 50 of 100 shares, NOK 15000.) Tj ET";
+  const objects = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 500 200] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"];
+  let pdf = "%PDF-1.7\n";
+  const offsets = [0];
+  for (const [i, body] of objects.entries()) { offsets.push(pdf.length); pdf += `${i + 1} 0 obj\n${body}\nendobj\n`; }
+  const xref = pdf.length;
+  pdf += `xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map(n => `${String(n).padStart(10, "0")} 00000 n \n`).join("")}`;
+  return Buffer.from(`${pdf}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+}
+
+// An admitted company/year is a prerequisite, not an RF result. Read the current
+// manifest/legal constants so this synthetic seed cannot silently use old terms.
+export async function seedFullYearAdmission(database, company, ownerId, python, environment) {
+  const facts = JSON.parse(execFileSync(python, ["-c", `import json
+from talli_backend.modules.company_access import public as a
+legal = {p + "_" + s: str(getattr(a, "CURRENT_" + (p + "_" + s).upper()))
+    for p in ("business_terms", "dpa", "privacy_notice") for s in ("version", "effective_date", "path", "sha256")}
+promise = {"accountingYear": a.CAPABILITY_MANIFEST["accountingYear"],
+    "startsOn": a.CAPABILITY_MANIFEST["promise"]["startsOn"], "endsOn": a.CAPABILITY_MANIFEST["promise"]["endsOn"],
+    "reconstructionRequiredFrom": a.CAPABILITY_MANIFEST["promise"]["startsOn"],
+    "onlyAccountingAndFilingProduct": True, "customerClaims": a.CAPABILITY_MANIFEST["promise"]["customerClaims"]}
+print(json.dumps({"manifest": a.CAPABILITY_MANIFEST, "version": a.CURRENT_CAPABILITY_MANIFEST_VERSION,
+    "hash": a.CURRENT_CAPABILITY_MANIFEST_SHA256, "legal": legal, "promise": promise, "promiseHash": a._canonical_sha256(promise)}))`],
+    { cwd: process.cwd(), env: environment, encoding: "utf8", timeout: 10_000 }));
+  const incomeYear = facts.manifest.accountingYear;
+  const now = (await database.query("select clock_timestamp() now")).rows[0].now;
+  const assessment = randomUUID(), admission = randomUUID();
+  const common = { company_id: company.id, accounting_year: incomeYear,
+    capability_manifest: facts.manifest, capability_manifest_version: facts.version, capability_manifest_sha256: facts.hash };
+  const rows = [
+    ["public.company_eligibility_assessments", { ...common, id: assessment, operation_id: randomUUID(),
+      trigger: "initial_admission", decision: "supported", public_facts: { source: "synthetic-browser-fixture" },
+      public_facts_sha256: "a".repeat(64), answers: { fixture: true }, answers_sha256: "b".repeat(64),
+      consequential_operations_allowed: true, archive_export_available: true, evaluator_version: facts.version,
+      assessed_by: ownerId, assessed_at: now, next_step_code: "CONTINUE_COMPANY_YEAR", next_step: "Synthetic browser prerequisite." }],
+    ["public.company_year_admissions", { ...common, id: admission, eligibility_assessment_id: assessment,
+      company_year_promise: facts.promise, company_year_promise_sha256: facts.promiseHash,
+      reconstruct_from: facts.promise.startsOn, admitted_by: ownerId, admitted_at: now }],
+    ["public.company_year_acceptances", { ...facts.legal, id: randomUUID(), company_year_admission_id: admission,
+      company_id: company.id, accounting_year: incomeYear, accepted_by: ownerId, accepted_at: now, customer_legal_name: company.name,
+      customer_org_number: company.organizationNumber, capability_manifest_version: facts.version,
+      capability_manifest_sha256: facts.hash, authority_statement_version: "authority-v1", acceptance_method: "in_app_clickwrap" }],
+  ];
+  await fixtureTableTransaction(database, rows.map(([table]) => table), async () => {
+    for (const [table, values] of rows) await database.query(
+      `insert into ${table} (${Object.keys(values).join(",")}) values (${Object.keys(values).map((_, i) => `$${i + 1}`).join(",")})`,
+      Object.values(values));
+  });
+  return incomeYear;
+}

@@ -36,6 +36,23 @@ const preview = { companyId, incomeYear: 2025, previewId: '20000000-0000-4000-80
   sourceId: '30000000-0000-4000-8000-000000000001', sourceSha256: 'a'.repeat(64), readinessStatus: 'ready',
   readinessIssues: [], previewText: 'Captured annual preview', hovedskjemaXml: '<H/>', underskjemaXml: { holder: '<U/>' } };
 
+test('annual warnings absent from the statutory preview explain each required acknowledgement', async () => {
+  const state = hooks();
+  const warningCodes = ['annual_data_missing', 'period_not_locked', 'bank_balance_not_confirmed'];
+  const review = { ...preview, entitlementId: '40000000-0000-4000-8000-000000000001', reviewSha256: 'b'.repeat(64),
+    warningCodes, blockers: [], canApprove: true };
+  const { SourceApproval } = compile('SourceApproval.tsx', { react: state.react,
+    '../../../../components/ui': { Banner: 'aside' }, './approval-actions': {
+      reviewSourceProductionAction: async () => ({ ok: true, value: { review, priorFilings: [] } }),
+    } });
+  function render() { state.reset(); return SourceApproval({ preview, busy: false, onLockChange: () => true }); }
+  button(render(), 'Kontroller vilkår').props.onClick(); await Promise.all(state.tasks);
+  const tree = render();
+  for (const message of ['Årsavslutningsintervjuet er ikke fullført.', 'Inntektsåret er ikke periode-låst.',
+    'Bankbalanse er ikke bekreftet i årsavslutningsintervjuet.']) assert.ok(text(tree).includes(message), message);
+  assert.equal(button(tree, 'Lagre godkjenning').props.disabled, true);
+});
+
 test('uncertain approval locks parent edits and regeneration and retries the identical command', async () => {
   const parent = hooks(), child = hooks(), calls = []; let success = false; let previewCalls = 0; let finishDocument;
   const pendingDocument = new Promise(resolve => { finishDocument = resolve; });
@@ -84,7 +101,7 @@ test('uncertain approval locks parent edits and regeneration and retries the ide
   assert.match(text(renderChild(renderParent())), /Godkjenningen er lagret/);
 });
 
-function serverActions({ token = 'owner-token', mismatch = false, allowed = true } = {}) {
+function serverActions({ token = 'owner-token', mismatch = false, allowed = true, billingExempt = true, readinessAllowed = true, pilotEntitlementId = 'exact-pilot' } = {}) {
   const calls = [];
   const feature = {
     rf1086ActionErrorMessage: () => 'Safe failure',
@@ -98,7 +115,7 @@ function serverActions({ token = 'owner-token', mismatch = false, allowed = true
     '../../../../lib/supabase/auth-session': { getCurrentSessionAccessToken: async () => token },
     '../../../../../features/billing': { loadBillingEntitlement: async (...args) => {
       calls.push(['entitlement', ...args]); return { companyId: mismatch ? 'foreign' : companyId, incomeYear: 2025,
-        obligation: 'aksjonaerregisteroppgaven', allowed, pilotEntitlementId: 'exact-pilot' };
+        obligation: 'aksjonaerregisteroppgaven', allowed, billingExempt, readinessAllowed, pilotEntitlementId };
     } },
   }) };
 }
@@ -110,7 +127,14 @@ test('review server action selects exact full-year entitlement and preserves bac
   assert.equal(h.calls[0][2].caseProfile, 'rf1086_full_year_v1');
   assert.equal(h.calls.find(call => call[0] === 'review')[2].entitlementId, 'exact-pilot');
 });
-for (const config of [{ token: null }, { mismatch: true }, { allowed: false }]) {
+test('full-year review reaches current backend evidence even when legacy readiness is false', async () => {
+  const h = serverActions({ allowed: false });
+  const result = await h.reviewSourceProductionAction(preview);
+  assert.equal(result.ok, true);
+  assert.equal(result.value.review.canApprove, false, 'backend blockers still control approval');
+  assert.equal(h.calls.find(call => call[0] === 'review')[2].entitlementId, 'exact-pilot');
+});
+for (const config of [{ token: null }, { mismatch: true }, { billingExempt: false }, { readinessAllowed: false }, { pilotEntitlementId: null }]) {
   test(`review server action refuses unavailable authority ${JSON.stringify(config)}`, async () => {
     const h = serverActions(config); assert.equal((await h.reviewSourceProductionAction(preview)).ok, false);
     assert.ok(!h.calls.some(call => ['review', 'workspace', 'approve'].includes(call[0])));

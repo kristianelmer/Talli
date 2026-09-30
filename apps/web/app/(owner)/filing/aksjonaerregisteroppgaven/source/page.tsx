@@ -28,7 +28,8 @@ async function SourceProductionPanel({ token, companyId, incomeYear }: { token: 
       .sort((a, b) => b.approvedAt.localeCompare(a.approvedAt)).map(row => ({ id: row.id, approvedAt: row.approvedAt }));
     const artifacts = workspace.feedbackArtifacts.map(row => ({ id: row.id, submissionId: row.submissionId,
       documentId: row.documentId, classification: row.classification }));
-    return <SourceProduction key={`production:${companyId}:${incomeYear}`} companyId={companyId} incomeYear={incomeYear} approvals={approvals} artifacts={artifacts} />;
+    // A newly saved approval replaces selection and clears any prior send consent/status.
+    return <SourceProduction key={`production:${companyId}:${incomeYear}:${approvals[0]?.id ?? "none"}`} companyId={companyId} incomeYear={incomeYear} approvals={approvals} artifacts={artifacts} />;
   } catch {
     return <Banner variant="danger">Lagrede godkjenninger og innsendingsstatus kunne ikke hentes. Last siden på nytt før du gjør noe mer.</Banner>;
   }

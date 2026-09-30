@@ -22,8 +22,11 @@ export async function reviewSourceProductionAction(input: { companyId: string; i
     if (!token) return { ok: false, message: "Logg inn på nytt for å fortsette." };
     const entitlement = await loadBillingEntitlement(token, { companyId: input.companyId, incomeYear: input.incomeYear,
       obligation: "aksjonaerregisteroppgaven", caseProfile: "rf1086_full_year_v1" });
+    // Billing identifies the exact pilot. Its legacy `allowed` flag depends on
+    // a frozen readiness row; the full-year backend assesses current evidence.
     if (entitlement.companyId !== input.companyId || entitlement.incomeYear !== input.incomeYear
-        || entitlement.obligation !== "aksjonaerregisteroppgaven" || !entitlement.allowed || !entitlement.pilotEntitlementId) {
+        || entitlement.obligation !== "aksjonaerregisteroppgaven" || !entitlement.billingExempt
+        || !entitlement.readinessAllowed || !entitlement.pilotEntitlementId) {
       return { ok: false, message: "Godkjenning krever en aktiv pilotavtale for dette selskapet og inntektsåret." };
     }
     const [review, [workspace]] = await Promise.all([

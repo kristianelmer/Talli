@@ -14,6 +14,11 @@ const blockers: Record<string, string> = {
   stored_release_inputs_not_ready: "Årskontrollen er ikke klar. Kontroller bank, åpningsbalanse og årsopplysninger.",
   technical_release_not_ready: "Talli har ikke åpnet for produksjonsgodkjenning ennå.",
 };
+const annualWarnings: Record<string, string> = {
+  annual_data_missing: "Årsavslutningsintervjuet er ikke fullført.",
+  period_not_locked: "Inntektsåret er ikke periode-låst.",
+  bank_balance_not_confirmed: "Bankbalanse er ikke bekreftet i årsavslutningsintervjuet.",
+};
 
 export function SourceApproval({ preview, onLockChange, busy }: { preview: RfSourcePreviewWire; onLockChange(locked: boolean): boolean; busy: boolean }) {
   const [review, setReview] = useState<RfSourceProductionReviewWire | null>(null);
@@ -66,7 +71,7 @@ export function SourceApproval({ preview, onLockChange, busy }: { preview: RfSou
     {review?.canApprove ? <fieldset disabled={busy || pending || attempt !== null} className="wizardForm"><legend>Din gjennomgang</legend>
       {review.warningCodes.map(code => <label className="checkRow" key={code}>
         <input type="checkbox" checked={warnings.includes(code)} onChange={e => { setConfirmed(false); setWarnings(values => e.target.checked ? [...values, code] : values.filter(value => value !== code)); }} />
-        {preview.readinessIssues.find(issue => issue.code === code)?.message ?? "Kontroller advarselen i forhåndsvisningen før godkjenning."}
+        {preview.readinessIssues.find(issue => issue.code === code)?.message ?? annualWarnings[code] ?? "Kontroller advarselen i forhåndsvisningen før godkjenning."}
       </label>)}
       {priorFilings.length ? <><label className="field"><span className="fieldLabel">Oppgaven som skal erstattes</span>
         <select value={priorId} onChange={e => { setPriorId(e.target.value); setConfirmed(false); }}><option value="">Velg tidligere innsending</option>

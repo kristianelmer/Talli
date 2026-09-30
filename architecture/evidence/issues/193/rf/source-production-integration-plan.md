@@ -753,3 +753,37 @@ passed after the fix. Current-revision CI remains required. See
 `authenticated-archive-browser-20260930.json`. All seven RF acceptance criteria
 remain pending; restoration, retention generations, full-year browser/recovery
 acceptance and both immutable gates remain open.
+
+
+## Full-year authenticated browser journey — 30 September
+
+The synthetic 2026 owner journey now uploads a real original through Documents,
+captures two shareholders and a share transfer, previews and approves current
+annual evidence, sends through the guarded source path to the loopback authority
+mock, reads accepted feedback, and downloads/verifies the retained RF archive.
+Only admission, opening facts, a pilot entitlement and local release prerequisites
+are prepared; no source, approval, submission or provider receipt is seeded.
+The legacy no-activity journey still runs in the same command. All 16 cases pass,
+with 200 focused web/fixture checks and 83 CI control checks also passing.
+
+The browser exposed three integration defects: the web review gate used a frozen
+legacy readiness flag; the non-RF override receiver still referenced the generic
+table after Accounts retired it; and a new approval did not update the send
+panel's initial selection. Review now discovers the exact exempt pilot before
+backend assessment; the receiver follows the existing owned override contract
+after cutover; and a newly approved ID resets selection/status/consent. Annual
+warnings also have distinct explanatory text. Current backend approval/send
+checks remain authoritative. A canonical blocking override still prevents review
+in the final topology, and legacy readiness is deliberately false throughout.
+
+The archive verifier confirms one source version/approval/claim/submission,
+one source original and two feedback originals. Sent main/child XML hashes match
+the approved preview. Reload, mobile widths, clean browser/egress checks and
+fixture cleanup are included. This proves a mock happy path, not correction,
+crash/unknown-outcome acceptance, external conformance or a real AS pilot.
+
+CI at 242cb29f passed all required jobs, including the Linux allocation rehearsal;
+immutable evidence was skipped. Current-revision CI remains required, including
+the new receiver's pre-cutover/rollback regression and the full ordered topology.
+See `full-year-source-browser-20260930.json`. All seven RF acceptance criteria
+remain pending. No production setting, hosted database or genuine filing changed.

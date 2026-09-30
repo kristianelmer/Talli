@@ -32,6 +32,7 @@ def annual_fixture(approval_fixture):
     f = approval_fixture
     with psycopg.connect(DATABASE_URL) as db:
         db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+        db.execute((ROOT/'supabase/migrations/20260930083000_rf1086_override_receiver_cutover.sql').read_text())
         opening, _ = add_opening(db, f['seed'])
         # The old browser-written prerequisite is deliberately false.
         db.execute('update public.filing_readiness_snapshots set ready=false where company_id=%s', (f['seed']['company'],))
@@ -228,10 +229,12 @@ def test_rollback_retains_history_closes_new_effects_and_replay_restores_exact_a
                 retained=asyncio.run(f['store'].read_source_claim_approval(rf.ApprovalId(result.record_id)))
                 assert retained.manifest_text==rf.serialize_rf1086_source_approval_manifest(manifest)
                 db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+                db.execute((ROOT/'supabase/migrations/20260930083000_rf1086_override_receiver_cutover.sql').read_text())
                 assert state(db)==before
                 assert asyncio.run(approve()) == (result,manifest,annual)
         finally:
             db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+            db.execute((ROOT/'supabase/migrations/20260930083000_rf1086_override_receiver_cutover.sql').read_text())
 
 
 @pytest.mark.parametrize('revoke_owner', [False, True])
