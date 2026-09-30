@@ -39,7 +39,9 @@ Document object storage is represented by document metadata plus `storage_key`. 
 2. Build a backup manifest from the archive.
 3. Restore the archive into an isolated workspace/test schema or fixture target.
 4. Verify ledger entries, holding actions, document metadata, filing previews, filing submissions, receipts, review comments, billing, and audit events are present.
-5. Verify restored data uses a different target company id for isolation.
+5. For the legacy fixture, verify its target company ID differs. For full-year RF,
+   isolate the target database and object store while preserving captured company,
+   actor and source identities; do not rewrite historical approvals or claims.
 6. Record restore test date, target, operator, result, and missing-object warnings.
 
 ## Launch Gate
@@ -132,8 +134,33 @@ of distinct retained source versions. Any missing, duplicate, changed or surplus
 original fails. With or without the flag, an included `sourceOriginals` field is
 always checked. A bare canonical record remains usable for RF-only diagnosis
 without the flag; its result does not claim source-byte verification. The inline
-transport allows up to 128 MiB of original source bytes; larger bundles fail
-closed and require a future streaming export. Feedback originals and other
-company objects are not covered by this source-byte result, and
-`objectBytesVerified` and `databaseRestorePerformed` remain false. Actual
-restoration and retention/expiry coverage still need proof.
+transport allows up to 128 MiB of retained original bytes; larger bundles fail
+closed. Use the authenticated streaming RF download for larger bundles, as below.
+Feedback originals and other company objects are not covered by the source-byte
+result alone. `objectBytesVerified` and `databaseRestorePerformed` remain false.
+Actual restoration and retention/expiry coverage still need proof.
+
+### Verify a streaming RF download and feedback originals
+
+The owner-facing RF archive download uses NDJSON and verifies each retained
+original separately, with a 1 GiB aggregate original-byte limit. Verify the
+complete file using the expected company and year supplied independently:
+
+```sh
+apps/backend/.venv/bin/python apps/backend/scripts/verify_rf1086_archive.py rf-archive.ndjson --stream --company-id COMPANY_UUID --income-year 2025 --require-source-history --require-feedback-originals
+```
+
+Streaming verification always requires every retained source original. The
+feedback flag additionally rejects historical feedback without a bound original;
+omitting it does not establish that legacy feedback is complete. A passing strict
+result reports `sourceOriginalBytesVerified: true`,
+`feedbackOriginalBytesVerified: true` and `feedbackOriginalsComplete: true`, with
+separate original counts. The required terminal counts and hash reject truncated,
+changed or surplus records. They are integrity checks, not an independent
+signature or proof of provenance.
+
+For inline JSON, add `--require-feedback-originals` to the preceding source-history
+and source-original command to require the same feedback completeness. In either
+format, verification performs no database or object-store writes. It does not
+replace an isolated restore of owner-held records and actual stored bytes;
+`databaseRestorePerformed` and the broader `objectBytesVerified` remain false.
