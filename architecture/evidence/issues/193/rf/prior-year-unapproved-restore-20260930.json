@@ -1,0 +1,60 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "256c3602a1eb883d0703867be40e7e6691da9c5f",
+  "scope": "Actual restoration of a synthetic unapproved RF source and unreviewed preview with a prior-year original, alongside rejected, accepted correction and unknown submission histories",
+  "validation": {
+    "browserPassed": 1,
+    "browserDurationMilliseconds": 138209.87475,
+    "fixtureChecksPassed": 38,
+    "architecture": "passed",
+    "credentialScan": "passed",
+    "whitespace": "passed",
+    "cleanup": "Passed: runner exited zero, disposable stack removed, all 42 recorded running containers restored, Colima stopped and generated Next files restored",
+    "currentRevisionCi": "not pushed; base exact-revision CI still running"
+  },
+  "proof": {
+    "sourceVersions": 4,
+    "sourceApprovals": 3,
+    "sourceClaims": 3,
+    "submissions": 3,
+    "sourceOriginals": 4,
+    "feedbackOriginals": 4,
+    "ordinaryObjects": 8,
+    "databaseRestorePerformed": true,
+    "retainedOriginalBytesRestored": true,
+    "objectStorageRestorePerformed": true,
+    "storageAttributesRestored": true,
+    "storageAuthenticatedDownloadsVerified": true,
+    "storageDirectReadsDenied": true,
+    "storageMfaEnforced": true,
+    "sourceHistoryUnchanged": true,
+    "storageSourceUnchanged": true,
+    "clusterMembershipsUnchanged": true,
+    "cloneRemoved": true,
+    "storageVolumeRemoved": true
+  },
+  "assertions": [
+    "Actual Documents signed upload and finalize retain the prior-year document year and bytes",
+    "Owner uses the source editor to attach that original to opening evidence, save a fourth source and generate an unreviewed preview",
+    "Canonical history adds exactly one source and preview and preserves every previous source and preview record",
+    "Approval workspace previews, approvals, submission claims/head/events/feedback and provider-call history remain unchanged",
+    "Native browser download passes the strict stream verifier with four source originals and four feedback originals",
+    "Actual restored database reproduces complete canonical history and retained metadata/bytes through owner adapters",
+    "Restored ordinary object downloads retain exact bytes and access/MFA policy; source and cluster memberships stay unchanged"
+  ],
+  "diagnosis": "Initial fixture assertion expected the unreviewed preview in the approval workspace. Source previews are only materialized there during review preparation. Corrected assertion checks the complete canonical source history and unchanged workspace instead. No product code changed.",
+  "limitations": [
+    "Quiescent synthetic local file-backed store; original local Auth verifies sessions",
+    "Independent Auth/cluster-role and hosted object-store recovery remain unproved",
+    "Cancellation, expiry, deletion and retention generations remain outside this scenario",
+    "Remaining security/conformance, unknown-operation reconciliation, legacy feedback backfill, HTTP/concurrency sizing and both immutable acceptance gates remain",
+    "All seven RF acceptance criteria pending; no real AS data, hosted change, production enablement or genuine provider operation"
+  ],
+  "sha256": {
+    "tests/fixtures/rf1086-source-browser-journey.mjs": "8dddc473ce6c9644d7dc0ceb371fa17a37d8463968e8f5b8f32ad84b05c517df",
+    "tests/browser_shareholder_register_filing.mjs": "fdbd845e93a638caf9422715a067b6d947c0f36a3f2a368755cc8aff4071392f",
+    "scripts/rehearse-rf1086-owned-restore.py": "07db341ec7fe7d69a6fc92e79ce131b0e46bc65427d5d2388a8b5ff08d41ab36",
+    "scripts/rf1086_storage_restore.py": "83e7423a4fb5ea2bafc8d9faac1742bd96d1747a6641c37be18611c7b9798422",
+    "docs/security/backup-restore-runbook.md": "66df1a019f2ad269ec75b4e7d8a4c7c9935cafc0448ef7307ae6307c8785cb61"
+  }
+}

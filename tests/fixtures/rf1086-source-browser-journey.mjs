@@ -173,7 +173,8 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   const correction = await exerciseSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
     mock, python, environment, source, approved, processed, documentId, predecessorLabel });
   return await exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-    mock, python, environment, documentId, correction, lostResponse, crashBackend, armPreparedCrash });
+    mock, python, environment, documentId, correction, lostResponse, crashBackend, armPreparedCrash,
+    includeUnapprovedHistory: predecessorFeedback === "rejected" });
 }
 
 async function uploadOriginal({ api, options, storage, company, incomeYear, consideration }) {
@@ -306,7 +307,7 @@ async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear,
 }
 
 async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeYear, api, scope, options, storage,
-  mock, python, environment, documentId, correction, lostResponse, crashBackend, armPreparedCrash }) {
+  mock, python, environment, documentId, correction, lostResponse, crashBackend, armPreparedCrash, includeUnapprovedHistory }) {
   const { nextApproval, nextPreview, panel } = await approveSourceCorrection({ page, sourceHref,
     company, incomeYear, api, scope, options, storage, source: correction.source, prior: correction.submission,
     documentId, consideration: "19000", previousConsideration: "18000" });
@@ -450,6 +451,13 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
   for (const field of ["productionSubmissions", "productionEvents", "sourceSubmissionClaims", "submissionHead", "feedbackArtifacts"])
     assert.deepEqual(after[field], retained[field], field);
   assert.equal(after.feedbackArtifacts.some(row => row.submissionId === unknown.id), false);
+  if (includeUnapprovedHistory) {
+    await exerciseUnapprovedPriorYearSource({ page, sourceHref, company, incomeYear, api, scope, options, storage });
+    const withDraft = await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options);
+    for (const field of ["approvals", "sourceApprovalLineage", "productionSubmissions", "productionEvents", "sourceSubmissionClaims", "submissionHead", "feedbackArtifacts"])
+      assert.deepEqual(withDraft[field], after[field], `unapproved source changed ${field}`);
+    assert.deepEqual(mock.snapshot(), callsAfterLoss, "saving an unapproved source must not call a provider");
+  }
   const downloading = page.waitForEvent("download");
   await page.getByRole("link", { name: "Last ned RF-arkiv", exact: true }).click();
   const download = await downloading;
@@ -457,11 +465,55 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
   const verification = JSON.parse(execFileSync(python, ["apps/backend/scripts/verify_rf1086_archive.py", await download.path(),
     "--stream", "--company-id", company.id, "--income-year", String(incomeYear), "--require-source-history", "--require-feedback-originals"],
   { cwd: process.cwd(), env: environment, encoding: "utf8", timeout: 30_000 }));
-  for (const key of ["sourceVersions", "sourceApprovals", "sourceClaims", "submissions", "sourceOriginals"])
+  for (const key of ["sourceApprovals", "sourceClaims", "submissions"])
     assert.equal(verification[key], 3, key);
+  for (const key of ["sourceVersions", "sourceOriginals"])
+    assert.equal(verification[key], includeUnapprovedHistory ? 4 : 3, key);
   assert.equal(verification.feedbackOriginals, 4, "an unknown send must not invent feedback");
   assert.equal(verification.databaseRestorePerformed, false);
   return { path: await download.path(), verification };
+}
+
+async function exerciseUnapprovedPriorYearSource({ page, sourceHref, company, incomeYear, api, scope, options, storage }) {
+  const before = await api.rf1086Workspace(company.id, incomeYear, options);
+  const history = archive => JSON.parse(JSON.parse(archive.canonicalArchive).snapshotText).fields.source_history.fields;
+  const historyBefore = history(await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options));
+  const originalSource = (await api.rf1086ReadCurrentYearSource(scope)).currentSource;
+  const priorYear = incomeYear - 1;
+  const original = await uploadOriginal({ api, options, storage, company, incomeYear: priorYear, consideration: "20000" });
+  assert.equal(original.document.incomeYear, priorYear);
+  await page.goto(sourceHref);
+  await page.getByRole("heading", { name: "Gjeldende årsgrunnlag", exact: true }).waitFor();
+  await page.getByRole("combobox", { name: /^Velg originaldokument/ }).selectOption(original.documentId);
+  await page.getByRole("button", { name: "Hent dokumentopplysninger", exact: true }).click();
+  // Prior-year evidence can support this year's opening basis. It is not an
+  // invented current-year transfer and must retain its actual document year.
+  const opening = page.getByRole("group", { name: "Grunnlag ved årets start", exact: true });
+  await opening.getByRole("checkbox", { name: `${original.name} · ${priorYear}`, exact: true }).check();
+  await page.getByLabel("Hvorfor korrigeres det tidligere årsgrunnlaget?", { exact: true }).fill("Tilleggsdokument fra tidligere år for inngående grunnlag; ikke godkjent for innsending.");
+  for (const checkbox of await page.getByRole("group", { name: "Gjennomgang av hele året", exact: true }).getByRole("checkbox").all())
+    await checkbox.check();
+  await page.getByRole("button", { name: "Lagre korrigert årsgrunnlag", exact: true }).click();
+  await page.getByRole("heading", { name: "Årsgrunnlaget er lagret", exact: true }).waitFor();
+  const current = (await api.rf1086ReadCurrentYearSource(scope)).currentSource;
+  assert.equal(current.receipt.version, originalSource.receipt.version + 1);
+  const captured = current.draft.documents.find(row => row.documentId === original.documentId);
+  assert.equal(captured.sourceIncomeYear, priorYear);
+  assert.equal(captured.contentSha256, original.document.contentSha256);
+  await page.getByRole("button", { name: "Lag forhåndsvisning av lagret grunnlag", exact: true }).click();
+  await page.getByRole("button", { name: "Kontroller vilkår for godkjenning", exact: true }).waitFor();
+  const after = await api.rf1086Workspace(company.id, incomeYear, options);
+  // Workspace previews are materialized by review preparation. An unreviewed
+  // preview belongs only to the complete source history in the canonical archive.
+  assert.deepEqual(after.previews, before.previews);
+  const historyAfter = history(await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options));
+  for (const field of ["year_sources", "source_previews"]) {
+    assert.equal(historyAfter[field].length, historyBefore[field].length + 1, field);
+    for (const record of historyBefore[field])
+      assert.ok(historyAfter[field].some(row => JSON.stringify(row) === JSON.stringify(record)), `existing ${field} record is immutable`);
+  }
+  assert.deepEqual(after.approvals, before.approvals, "the saved draft has no approval");
+  assert.deepEqual(after.productionSubmissions, before.productionSubmissions);
 }
 
 function syntheticPdf(consideration) {

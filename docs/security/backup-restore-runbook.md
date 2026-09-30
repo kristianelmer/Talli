@@ -198,7 +198,7 @@ copying only file contents can produce unreadable objects.
 
 The real Documents adapter verifies the browser's existing local Auth sessions,
 reads Company Access and document metadata from the restored database, checks
-owner/MFA policy, and downloads all seven ordinary source/feedback objects. Bytes
+owner/MFA policy, and downloads all eight ordinary source/feedback objects. Bytes
 must equal the retained originals and metadata must equal the source. An unrelated
 actor and the owner's pre-MFA session cannot download. Direct owner, outsider and
 unauthenticated Storage reads remain denied. The original gateway's opaque key
@@ -211,6 +211,11 @@ document metadata, RF history and cluster memberships must remain unchanged.
 
 This is a quiescent local file-store rehearsal. The original local Auth service
 still verifies sessions; independent Auth/cluster-role recovery and hosted object
-storage are not covered. Prior-year/unapproved history and cancellation, expiry,
-deletion and retention generations still need their own restored scenarios before
-the broader restore signoff can pass.
+storage are not covered. The browser saves an additional unapproved source and
+preview backed by a prior-year original, then restores four source versions,
+three approvals/submissions and eight ordinary objects. Existing sources,
+previews, approvals, submissions, claims, feedback and provider calls remain
+unchanged when that draft is saved. The canonical archive includes the unreviewed
+preview even though the approval workspace does not materialize it. Cancellation,
+expiry, deletion and retention generations still need their own restored
+scenarios before the broader restore signoff can pass.

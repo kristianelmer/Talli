@@ -1008,3 +1008,27 @@ expiry, deletion and retention generations remain outside this proof. Remaining
 security/conformance, unknown-operation reconciliation, legacy feedback backfill,
 HTTP/concurrency sizing and both immutable acceptance gates stay open. All seven
 RF acceptance criteria remain pending.
+
+## Prior-year original and unapproved source restoration — 30 September
+
+The rejected-predecessor browser journey now saves a fourth source with a
+prior-year original supporting its opening basis, generates an unreviewed preview
+and downloads the complete archive. The source retains the document's actual
+year and hash. Earlier sources/previews, approvals, submission claims, head,
+journal and feedback remain unchanged; no provider call occurs.
+
+The actual database and file-backed Storage restoration passes with four source
+versions, three approvals/submissions, four source originals, four feedback
+originals and eight ordinary objects. The canonical history preserves the
+unreviewed preview, which is not materialized in the approval workspace. Owner
+downloads, MFA and unrelated-actor denial, original-byte comparisons, extended
+attributes and unchanged source state all pass. The targeted browser journey,
+38 fixture checks, architecture and credential checks pass. See
+`prior-year-unapproved-restore-20260930.json`.
+
+This supersedes the prior-year/unapproved-source gap in the preceding ordinary
+Storage proof. It does not establish independent Auth/cluster-role or hosted
+object-store recovery. Cancellation, expiry, deletion, retention generations,
+remaining security/conformance, unknown-operation reconciliation, legacy
+feedback backfill, HTTP/concurrency sizing and both immutable acceptance gates
+remain. All seven RF acceptance criteria stay pending.
