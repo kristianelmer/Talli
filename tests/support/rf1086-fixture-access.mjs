@@ -91,6 +91,8 @@ const allowed = new Set([
   "public.company_memberships",
   "public.companies",
   "public.company_archive_source_generations",
+  "public.company_cancellations",
+  "public.company_access_command_receipts",
   "public.opening_balance_setups",
   "public.opening_shareholders",
   "public.company_year_acceptances",

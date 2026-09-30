@@ -1,0 +1,57 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "e32a0a74d3ea63a57206fa03cfe39740e7be50a7",
+  "scope": "Synthetic full company archive, owner cancellation and RF database/object restoration",
+  "assertions": [
+    "Owner-authenticated Next company archive route completes its real export receipt",
+    "Company archive canonical RF record, original bytes and history documents equal the RF owner projection",
+    "Actual Company Access cancellation enters retention_hold with year-bound archive evidence and required legal review",
+    "Same operation replays identically; cancellation listing contains the exact result",
+    "Cancellation leaves complete RF projections and provider journal unchanged",
+    "Restored complete cancellation record equals source through authenticated Company Access reads; unrelated owner sees none",
+    "Four source versions, three approvals/submissions, four source originals and four feedback originals survive database restoration",
+    "All eight ordinary objects survive actual separate Storage restoration with owner/MFA/direct-read denials and original Linux attributes",
+    "Source RF/cancellation/document state and cluster memberships remain unchanged"
+  ],
+  "validation": {
+    "browserPassed": 1,
+    "browserDurationMilliseconds": 149130.809417,
+    "fixtureAndArchiveChecksPassed": 110,
+    "restoreBoundaryChecksPassed": 14,
+    "onboardingDatabasePassed": 1,
+    "onboardingDatabaseDurationMilliseconds": 13920.912125,
+    "architecture": "passed",
+    "ownedCleanup": {
+      "rehearsalExitCode": 0,
+      "cleanupExitCodes": [
+        0,
+        0
+      ],
+      "previouslyRunningContainersRestored": 42,
+      "colima": "stopped"
+    },
+    "finalRevisionCi": "pending"
+  },
+  "baseCi": {
+    "runId": 36752628443,
+    "database": "failure",
+    "diagnosis": "Onboarding fixture Unix-socket readiness saw the temporary PostgreSQL bootstrap server; first setup statement encountered server shutdown",
+    "evidence": "Cached postgres:17 entrypoint starts bootstrap with listen_addresses empty",
+    "fix": "Require loopback TCP pg_isready in onboarding test",
+    "status": "Application still running at evidence capture"
+  },
+  "limitations": [
+    "Retention_hold recovery only; final deletion, expiry and retained-original generations remain",
+    "Full retention inventory/policy, independent Auth/cluster-role and hosted storage recovery remain",
+    "Original local Auth service verifies browser sessions during clone reads",
+    "All seven RF acceptance criteria remain pending; draft PR; no real AS, hosted mutation or genuine provider operation"
+  ],
+  "sha256": {
+    "tests/fixtures/rf1086-cancellation-browser-journey.mjs": "d5130502211f13d85f8f675cd5c74e02709cf217c8ff6bbc87a62bcb85ba479e",
+    "tests/browser_shareholder_register_filing.mjs": "16b74ec1bff2b7565405c2f55e03edf5d61b0cb2c11b97074103d19371b046bf",
+    "tests/support/rf1086-fixture-access.mjs": "9fe98227ca6aad5a1c944a1bb83508b3a7b485179cdea8d3101a6375c3cda3e6",
+    "scripts/rehearse-rf1086-owned-restore.py": "68cc75f70101829a20064be8504bec1693096ff753308514bc3c988c4c609dfb",
+    "tests/company_access_onboarding_database_runtime.test.mjs": "f56f7f7bc15127de358f76a4b77b13e9d3ecdead42fce3d23f3194af6ae62e4e",
+    "docs/security/backup-restore-runbook.md": "13a1646c619a744be910ce68ee54c73db71c3560d3de8cab034ff450ef545a15"
+  }
+}

@@ -1065,3 +1065,27 @@ This closes the missing archive-generation backstops, not the broader retention
 policy/inventory or cancellation, expiry and deletion restore histories. All
 seven RF acceptance criteria stay pending; no hosted change, genuine provider
 operation or production enablement occurred.
+
+### 30 September — actual archive, cancellation and recovery
+
+The rejected-predecessor browser history now downloads the full company archive
+through the owner-authenticated Next route before requesting cancellation through
+Company Access. Its actual completed export receipt admits `retention_hold`; the
+same cancellation operation replays identically. All retained RF projections and
+provider calls remain unchanged. The subsequent database/eight-object restore
+also compares the complete cancellation record through authenticated Company
+Access reads before, within and after restoration, and denies an unrelated owner.
+The full browser rehearsal passed in 149.13 seconds. Another 124 focused fixture,
+archive and restore-boundary checks, the onboarding database rehearsal, and the
+architecture check pass. See `cancellation-restore-20260930.json`.
+
+Base CI `36752628443` failed during onboarding fixture startup: two Unix-socket
+readiness probes observed the PostgreSQL image's temporary initialization server,
+then the first setup statement met its shutdown. The cached image entrypoint
+confirms that temporary server disables TCP. The onboarding probe now requires
+loopback TCP readiness; its actual disposable-database rehearsal passes. Final
+revision CI remains required.
+
+Expiry, final deletion, complete retention inventory/policy, retained-original
+generations and independent Auth/role/hosted recovery remain open. No RF acceptance
+criterion is promoted, and no genuine company/provider operation occurred.

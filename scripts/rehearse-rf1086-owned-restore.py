@@ -28,6 +28,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 from talli_backend.adapters.postgres_document_originals import PostgresDocumentOriginals
 from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingSession
 from talli_backend.adapters.supabase_ledger import LedgerSupabaseConfiguration, _VerifiedActor
+from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter, SupabaseConfiguration
 from talli_backend.application.shareholder_register_archive import (
     source_original_queries, feedback_original_queries, verify_archive_stream,
 )
@@ -129,6 +130,22 @@ async def verify_restored(url, query, expected_canonical, expected_originals, qu
     return archive
 
 
+async def cancellation_evidence(url, query, cancellation_id):
+    """Read through Company Access with the browser's real authenticated users."""
+    adapter = SupabaseCompanyAccessAdapter(SupabaseConfiguration(
+        url=os.environ['SUPABASE_URL'], anon_key=os.environ['SUPABASE_ANON_KEY'], database_url=url))
+    rows = await adapter.cancellations(os.environ['TALLI_RF_RESTORE_OWNER_TOKEN'], str(query.company_id))
+    if (len(rows) != 1 or str(rows[0]['id']) != str(cancellation_id)
+            or str(rows[0]['company_id']) != str(query.company_id)
+            or str(rows[0]['requested_by']) != str(query.actor_id.subject)
+            or rows[0]['status'] != 'retention_hold'
+            or rows[0]['evidence']['archiveIncomeYear'] != int(query.income_year)):
+        raise ValueError('Expected owner cancellation evidence is absent')
+    if await adapter.cancellations(os.environ['TALLI_RF_RESTORE_OUTSIDER_TOKEN'], str(query.company_id)):
+        raise ValueError('Restored cancellation admitted an unrelated owner')
+    return rows
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('archive', type=Path)
@@ -136,6 +153,7 @@ def main():
     parser.add_argument('--income-year', required=True, type=int)
     parser.add_argument('--actor-id', required=True, type=UUID)
     parser.add_argument('--restore-storage', action='store_true')
+    parser.add_argument('--cancellation-id', type=UUID)
     args = parser.parse_args()
     source_url = os.environ.get('DATABASE_URL')
     workdir = os.environ.get('TALLI_SUPABASE_WORKDIR')
@@ -160,11 +178,15 @@ def main():
     queries = source_original_queries(expected) + feedback_original_queries(expected, require_complete=True)
     originals = asyncio.run(read_originals(reader_url, actor, queries))
     storage_proof = {}
+    cancellation_proof = {}
+    if args.cancellation_id or args.restore_storage:
+        access_url = owner_read_url(source_url, os.environ.get('TALLI_COMPANY_ACCESS_DATABASE_URL', ''),
+                                    'talli_company_access_backend')
+    if args.cancellation_id:
+        cancellation_before = asyncio.run(cancellation_evidence(access_url, query, args.cancellation_id))
     if args.restore_storage:
         from rf1086_storage_restore import ordinary_originals, storage_source, restored_storage, verify_objects
         source_storage, storage_env, network = storage_source(workdir, source_url, boundary)
-        access_url = owner_read_url(source_url, os.environ.get('TALLI_COMPANY_ACCESS_DATABASE_URL', ''),
-                                    'talli_company_access_backend')
         # The browser is quiescent here. Authenticate its real sessions, read
         # restored memberships through Company Access and enforce Documents policy.
         ordinary = ordinary_originals(originals)
@@ -172,8 +194,13 @@ def main():
     with restored_database(source_url, workdir) as restored_url:
         restored_reader = make_conninfo(reader_url, dbname=conninfo_to_dict(restored_url)['dbname'])
         recovered = asyncio.run(verify_restored(restored_reader, query, expected_canonical, originals, queries))
-        if args.restore_storage:
+        if args.cancellation_id or args.restore_storage:
             restored_access = make_conninfo(access_url, dbname=conninfo_to_dict(restored_url)['dbname'])
+        if args.cancellation_id:
+            if asyncio.run(cancellation_evidence(restored_access, query, args.cancellation_id)) != cancellation_before:
+                raise ValueError('Restored cancellation differs from source')
+            cancellation_proof = {'cancellationRestored': True, 'cancellationStatus': 'retention_hold'}
+        if args.restore_storage:
             with restored_storage(source_storage, storage_env, network, restored_url, boundary) as gateway:
                 restored_documents = asyncio.run(verify_objects(restored_reader, restored_access, gateway, ordinary,
                                                                storage_key=storage_env['SERVICE_KEY']))
@@ -188,12 +215,16 @@ def main():
     after, _ = asyncio.run(canonical(reader_url, query))
     if after != before:
         raise ValueError('Restore rehearsal changed source RF history')
+    if args.cancellation_id:
+        if asyncio.run(cancellation_evidence(access_url, query, args.cancellation_id)) != cancellation_before:
+            raise ValueError('Restore rehearsal changed source cancellation')
     print(json.dumps({'status': 'verified_owned_rf_database_restore', 'databaseRestorePerformed': True,
         'retainedOriginalBytesRestored': True, 'objectStorageRestorePerformed': args.restore_storage,
         'sourceOriginals': sources, 'feedbackOriginals': feedback,
         'sourceVersions': len(recovered.source_history.year_sources),
         'submissions': len(recovered.production_submissions), 'crossOwnerReadsDenied': True,
-        'sourceHistoryUnchanged': True, 'cloneRemoved': True, 'clusterMembershipsUnchanged': True, **storage_proof}))
+        'sourceHistoryUnchanged': True, 'cloneRemoved': True, 'clusterMembershipsUnchanged': True,
+        **storage_proof, **cancellation_proof}))
     return 0
 
 

@@ -22,6 +22,7 @@ import { fixtureTableTransaction, deleteRfFixtureCompanies, rfPublicProjectionRe
 
 import { startRf1086FilingAuthorityMock } from "./fixtures/rf1086-filing-authority-mock.mjs";
 import { exerciseFullYearSourceJourney, seedFullYearAdmission } from "./fixtures/rf1086-source-browser-journey.mjs";
+import { exerciseRfCancellation } from "./fixtures/rf1086-cancellation-browser-journey.mjs";
 
 const nextCli = createRequire(new URL("../apps/web/package.json", import.meta.url)).resolve("next/dist/bin/next");
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -183,7 +184,7 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
       args: [nextCli, "dev", "apps/web", "--hostname", "127.0.0.1", "--port", String(webPort)],
       cwd: process.cwd(), readinessProof: "Ready in", env: {
         ...runtimeEnvironment(), NEXT_PUBLIC_SUPABASE_URL: supabaseUrl, NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKey,
-        SUPABASE_URL: supabaseUrl, SUPABASE_ANON_KEY: anonKey,
+        SUPABASE_URL: supabaseUrl, SUPABASE_ANON_KEY: anonKey, SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
         TALLI_BACKEND_URL: backendOrigin, SITE_URL: siteOrigin,
         TALLI_AUTHORITY_CALLBACK_INTERNAL_KEY: callbackKey,
         TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL: resources.mock.baseUrl,
@@ -455,10 +456,12 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
     });
     if (lostResponse === "main") {
       const restoreStorage = predecessorFeedback === "rejected";
+      const cancellation = restoreStorage ? await exerciseRfCancellation({ page, siteOrigin, companyId: primary.id,
+        incomeYear: sourceYear, api, authorization, mock: resources.mock }) : null;
       assert.ok(process.env.TALLI_SUPABASE_WORKDIR, "RF restore requires the explicit owned Supabase workdir");
       const restored = JSON.parse(execFileSync(python, ["scripts/rehearse-rf1086-owned-restore.py", sourceArchive.path,
         "--company-id", primary.id, "--income-year", String(sourceYear), "--actor-id", owner.id,
-        ...(restoreStorage ? ["--restore-storage"] : [])],
+        ...(restoreStorage ? ["--restore-storage", "--cancellation-id", cancellation.id] : [])],
       { cwd: process.cwd(), env: { ...runtimeEnvironment(), DATABASE_URL: databaseUrl,
         TALLI_LEDGER_DATABASE_URL: databases.talli_ledger_backend,
         ...(restoreStorage ? { TALLI_COMPANY_ACCESS_DATABASE_URL: databases.talli_company_access_backend,
@@ -471,7 +474,8 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
         retainedOriginalBytesRestored: true, objectStorageRestorePerformed: restoreStorage,
         sourceOriginals: restoreStorage ? 4 : 3, feedbackOriginals: 4, sourceVersions: restoreStorage ? 4 : 3, submissions: 3,
         crossOwnerReadsDenied: true, sourceHistoryUnchanged: true, cloneRemoved: true, clusterMembershipsUnchanged: true,
-        ...(restoreStorage ? { ordinaryObjects: 8, storageVolumeRemoved: true, storageSourceUnchanged: true,
+        ...(restoreStorage ? { cancellationRestored: true, cancellationStatus: "retention_hold",
+          ordinaryObjects: 8, storageVolumeRemoved: true, storageSourceUnchanged: true,
           storageAttributesRestored: true,
           storageAuthenticatedDownloadsVerified: true, storageDirectReadsDenied: true, storageMfaEnforced: true } : {}) });
     }
@@ -564,6 +568,8 @@ async function cleanupFixture(database, companyIds, userIds) {
     "public.audit_events", "public.support_operators", "public.customer_agreement_acceptances",
     "public.company_memberships", "public.companies",
     "public.company_year_acceptances", "public.company_year_admissions", "public.company_eligibility_assessments",
+    "public.company_cancellations", "public.company_access_command_receipts",
+    "public.company_archive_export_receipts", "public.company_archive_export_attempts",
   ], async () => {
     await database.query("delete from shareholder_register_filing.production_feedback_artifacts where company_id=any($1::uuid[])", [companyIds]);
     for (const table of RF_SOURCE_TABLES)
@@ -582,6 +588,8 @@ async function cleanupFixture(database, companyIds, userIds) {
     await database.query("delete from public.filing_readiness_snapshots where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from public.documents where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from billing.production_pilot_entitlements where company_id=any($1::uuid[])", [companyIds]);
+    for (const table of ["company_access_command_receipts", "company_cancellations", "company_archive_export_receipts", "company_archive_export_attempts"])
+      await database.query(`delete from public.${table} where company_id=any($1::uuid[])`, [companyIds]);
     await database.query("delete from public.company_archive_source_generations where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from authority_connections.system_user_requests where company_id=any($1::uuid[])", [companyIds]);
     await database.query("delete from authority_connections.authority_operations where actor_id=any($1::uuid[])", [userIds]);

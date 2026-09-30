@@ -227,6 +227,19 @@ preview backed by a prior-year original, then restores four source versions,
 three approvals/submissions and eight ordinary objects. Existing sources,
 previews, approvals, submissions, claims, feedback and provider calls remain
 unchanged when that draft is saved. The canonical archive includes the unreviewed
-preview even though the approval workspace does not materialize it. Cancellation,
-expiry, deletion and retention generations still need their own restored
-scenarios before the broader restore signoff can pass.
+preview even though the approval workspace does not materialize it.
+
+That case also downloads the full company archive through the authenticated Next
+route, which records its actual export receipt, then requests cancellation through
+Company Access. The request and its idempotent replay must return `retention_hold`;
+RF history and provider calls remain unchanged. The restore runner receives
+`--cancellation-id` and compares the complete cancellation record before, within
+and after restoration through Company Access using the browser's real owner
+session. An unrelated owner's query must return no cancellation. A pass reports
+`cancellationRestored: true` and `cancellationStatus: "retention_hold"`, alongside
+the RF and eight-object checks. It does not seed an export receipt or cancellation
+row to establish this result.
+
+Expiry, final deletion and retained-original generation scenarios still need
+restored histories before the broader restore signoff can pass. This cancellation
+proof does not establish a full retention inventory or change retention policy.
