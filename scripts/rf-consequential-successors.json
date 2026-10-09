@@ -86,5 +86,13 @@
   {
     "migration": "20261009215302_rf1086_withdrawal_source_admission_guards.sql",
     "presenceQuery": "select exists(select 1 from pg_proc where oid=to_regprocedure('shareholder_register_filing.append_year_source_v1(uuid,uuid,integer,integer,text,text,text,uuid,text,text,text,timestamptz)') and position('rf193-withdrawal-source-admission-v1' in prosrc)>0)"
+  },
+  {
+    "migration": "20261009220727_rf1086_withdrawal_archive_generation.sql",
+    "presenceQuery": "select exists(select 1 from pg_trigger where tgrelid=to_regclass('shareholder_register_filing.register_observation_withdrawals') and tgname='company_archive_track_rf_withdrawal' and tgenabled='O' and tgtype=29 and tgqual is null and not tgisinternal and tgconstraint=0 and not tgdeferrable and not tginitdeferred and tgoldtable is null and tgnewtable is null and tgnargs=2 and encode(tgargs,'escape')=E'year\\\\000company_id\\\\000' and tgfoid=to_regprocedure('public.company_archive_track_source_write_v1()'))"
+  },
+  {
+    "migration": "20261009221151_rf1086_withdrawal_review_read_guards.sql",
+    "presenceQuery": "select count(*)=2 from pg_proc where oid in (to_regprocedure('shareholder_register_filing.read_source_approval_context_v1(uuid,uuid,text)'),to_regprocedure('shareholder_register_filing.read_source_approval_context_v2(uuid,uuid,text,text)')) and position('rf1086_withdrawal_current_review_guard_v1' in prosrc)>0"
   }
 ]

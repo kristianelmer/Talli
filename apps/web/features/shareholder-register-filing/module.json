@@ -48,7 +48,8 @@
     "rf1086GetProductionArchiveSourceV4",
     "rf1086DownloadProductionArchiveV4",
     "rf1086LookupYearSourceCapture",
-    "rf1086LookupRegisterObservationCapture"
+    "rf1086LookupRegisterObservationCapture",
+    "rf1086ReadRegisterObservationLifecycle"
   ],
   "dependencies": [],
   "allowedImports": [
@@ -68,7 +69,8 @@
   "tests": {
     "architecture": "tests/architecture_foundation.test.mjs",
     "sourceTransport": "apps/web/tests/shareholder-register-source-transport.test.mjs",
-    "sourceApprovalControl": "apps/web/tests/shareholder-register-source-approval-control.test.mjs"
+    "sourceApprovalControl": "apps/web/tests/shareholder-register-source-approval-control.test.mjs",
+    "registerObservationLifecycleTransport": "apps/web/tests/shareholder-register-lifecycle-transport.test.mjs"
   },
   "compatibilityExceptions": []
 }

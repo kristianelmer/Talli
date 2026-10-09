@@ -905,3 +905,11 @@ operation, new identifier, or lock granting consequential admission occurs.
 <!-- architecture-inventory
 {"routes":["/api/v1/shareholder-register-filings/year-sources/receipt-lookup","/api/v1/shareholder-register-filings/register-observations/receipt-lookup"]}
 -->
+
+`GET /api/v1/shareholder-register-filings/register-observations/lifecycle` exposes
+RF's authorized immutable observation/withdrawal snapshot through an additive DTO.
+Existing capture and receipt lookup contracts keep their shapes.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/shareholder-register-filings/register-observations/lifecycle"]}
+-->

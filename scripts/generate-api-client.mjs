@@ -308,6 +308,7 @@ const companyTaxOperations = {
 const shareholderRegisterFilingOperations = {
   sourceIntakeBasis: ["/api/v1/shareholder-register-filings/source-intake-basis", "get", "rf1086ReadSourceIntakeBasis"],
   currentYearSource: ["/api/v1/shareholder-register-filings/current-year-source", "get", "rf1086ReadCurrentYearSource"],
+  registerObservationLifecycle: ["/api/v1/shareholder-register-filings/register-observations/lifecycle", "get", "rf1086ReadRegisterObservationLifecycle"],
   registerObservations: ["/api/v1/shareholder-register-filings/register-observations", "get", "rf1086ListRegisterObservations"],
   sourceDocument: ["/api/v1/shareholder-register-filings/source-documents/{documentId}", "get", "rf1086ReadSourceDocument"],
   captureRegisterObservation: ["/api/v1/shareholder-register-filings/register-observations", "post", "rf1086CaptureRegisterObservation"],
@@ -967,6 +968,9 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "RfRegisterObservationDraftWire",
   "RfRegisterObservationRecordWire",
   "RfRegisterObservationsWire",
+  "RfRegisterObservationLifecycleWire",
+  "RfRegisterObservationLifecycleRecordWire",
+  "RfRegisterObservationWithdrawalWire",
   "RfSourcePreviewWire",
   "LegacyRf1086SendCommandWire", "LegacyRf1086ReconcileCommandWire", "LegacyRf1086SendResultWire", "LegacyRf1086ReconcileResultWire",
   "Rf1086GeneratePreviewWire",
@@ -3193,6 +3197,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
       return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations?" + query,
         "GET", request, undefined, isRfRegisterObservationsWire);
+    },
+
+    async rf1086ReadRegisterObservationLifecycle(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfRegisterObservationLifecycleWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations/lifecycle?" + query,
+        "GET", request, undefined, isRfRegisterObservationLifecycleWire);
     },
 
     async rf1086CaptureRegisterObservation(

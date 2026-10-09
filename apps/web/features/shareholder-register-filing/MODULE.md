@@ -101,3 +101,11 @@ to a mutation. Existing manual same-key capture retry remains a separate action.
 <!-- architecture-inventory
 {"apiOperations":["rf1086LookupYearSourceCapture","rf1086LookupRegisterObservationCapture"]}
 -->
+
+`rf1086ReadRegisterObservationLifecycle` reads the additive observation lifecycle
+projection. It preserves withdrawn and superseded history while correction controls
+require a validated active head. Missing lifecycle support remains unavailable.
+
+<!-- architecture-inventory
+{"apiOperations":["rf1086ReadRegisterObservationLifecycle"]}
+-->

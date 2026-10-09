@@ -207,5 +207,11 @@
   "withdrawalDownstreamGuardProposal20261009": "observation-withdrawal-downstream-guard-proposal-20261009.md",
   "withdrawalAdmissionGuards20261009": "withdrawal-admission-guards-20261009.json",
   "governanceObservationEvidenceAmendmentProposal20261009": "governance-observation-evidence-amendment-proposal-20261009.md",
-  "technicalFirstSequencing20261009": "../../../../../docs/adr/0013-enforce-the-architecture-and-migrate-serially.md#2026-10-09-amendment-technical-readiness-before-genuine-company-validation"
+  "technicalFirstSequencing20261009": "../../../../../docs/adr/0013-enforce-the-architecture-and-migrate-serially.md#2026-10-09-amendment-technical-readiness-before-genuine-company-validation",
+  "withdrawalReviewGuards20261009": "withdrawal-review-guards-20261009.json",
+  "observationLifecycleReadinessProposal20261010": "observation-lifecycle-readiness-proposal-20261010.md",
+  "withdrawalArchiveGeneration20261009": "withdrawal-archive-generation-20261009.json",
+  "observationLifecycleRead20261009": "observation-lifecycle-read-20261009.json",
+  "historicalCi37995838406": "ci-37995838406.json",
+  "browserV4RequestEvidenceRepair20261009": "browser-v4-request-evidence-repair-20261009.json"
 }

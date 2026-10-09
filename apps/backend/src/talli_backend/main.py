@@ -2102,6 +2102,46 @@ class RfRegisterObservationsWire(TransportModel):
     observations: list[RfRegisterObservationRecordWire]
 
 
+class RfRegisterObservationWithdrawalWire(TransportModel):
+    withdrawal_id: UUID
+    withdrawn_at: datetime
+    reason: str
+    withdrawal_sha256: str
+
+
+class RfRegisterObservationLifecycleRecordWire(TransportModel):
+    receipt: RfRegisterObservationReceiptWire
+    draft: RfRegisterObservationDraftWire
+    status: Literal["active", "superseded", "withdrawn"]
+    superseded_by: UUID | None
+    withdrawal: RfRegisterObservationWithdrawalWire | None
+
+
+class RfRegisterObservationLifecycleWire(TransportModel):
+    company_id: UUID
+    income_year: RfSourceYear
+    observed_at: datetime
+    observations: list[RfRegisterObservationLifecycleRecordWire]
+
+
+def _rf_register_observation_record(snapshot, *, is_current: bool) -> RfRegisterObservationRecordWire:
+    command = snapshot.command
+    draft = RfRegisterObservationDraftWire.model_validate({
+        'company_id': str(command.company_id), 'income_year': int(command.income_year),
+        **{name: _rf_source_public_json(getattr(command, name)) for name in
+           ('effective_at', 'event_kind', 'before', 'after', 'documents')},
+        'complete_register_confirmed': False, 'registration_confirmed': False,
+        'single_share_class_confirmed': False,
+        'supersedes_observation_id': snapshot.observation_id.value,
+        'supersedes_observation_sha256': snapshot.fact_sha256, 'correction_reason': None,
+    })
+    return RfRegisterObservationRecordWire(
+        receipt=RfRegisterObservationReceiptWire(observation_id=UUID(snapshot.observation_id.value),
+            company_id=UUID(str(command.company_id)), income_year=int(command.income_year),
+            version=snapshot.version, fact_sha256=snapshot.fact_sha256, confirmed_at=snapshot.confirmed_at),
+        draft=draft, is_current=is_current)
+
+
 class RfSourcePreviewWire(TransportModel):
     preview_id: UUID
     company_id: UUID
@@ -12466,24 +12506,37 @@ def create_app(
             snapshots = await shareholder_register_source_workflow.read_register_observations(bearer_token(credentials),
                 company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year))
             superseded = {item.command.supersedes_observation_id for item in snapshots}
-            observations = []
-            for snapshot in snapshots:
-                command = snapshot.command
-                draft = RfRegisterObservationDraftWire.model_validate({
-                    'company_id': str(command.company_id), 'income_year': int(command.income_year),
-                    **{name: _rf_source_public_json(getattr(command, name)) for name in
-                       ('effective_at', 'event_kind', 'before', 'after', 'documents')},
-                    'complete_register_confirmed': False, 'registration_confirmed': False,
-                    'single_share_class_confirmed': False,
-                    'supersedes_observation_id': snapshot.observation_id.value,
-                    'supersedes_observation_sha256': snapshot.fact_sha256, 'correction_reason': None,
-                })
-                observations.append(RfRegisterObservationRecordWire(
-                    receipt=RfRegisterObservationReceiptWire(observation_id=UUID(snapshot.observation_id.value),
-                        company_id=UUID(str(command.company_id)), income_year=int(command.income_year),
-                        version=snapshot.version, fact_sha256=snapshot.fact_sha256, confirmed_at=snapshot.confirmed_at),
-                    draft=draft, is_current=snapshot.observation_id not in superseded))
+            observations = [_rf_register_observation_record(snapshot,
+                is_current=snapshot.observation_id not in superseded) for snapshot in snapshots]
             return RfRegisterObservationsWire(company_id=company_id, income_year=income_year, observations=observations)
+        return await shareholder_register_source_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/register-observations/lifecycle",
+        operation_id="rf1086ReadRegisterObservationLifecycle", response_model=RfRegisterObservationLifecycleWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_read_register_observation_lifecycle(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfRegisterObservationLifecycleWire:
+        async def execute():
+            snapshot = await shareholder_register_source_workflow.read_register_observation_lifecycle(
+                bearer_token(credentials), company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year))
+            observations = []
+            for row in snapshot.observations:
+                record = _rf_register_observation_record(row.observation, is_current=row.status == 'active')
+                withdrawal = row.withdrawal
+                observations.append(RfRegisterObservationLifecycleRecordWire(receipt=record.receipt,
+                    draft=record.draft, status=row.status,
+                    superseded_by=None if row.superseded_by is None else UUID(row.superseded_by.value),
+                    withdrawal=None if withdrawal is None else RfRegisterObservationWithdrawalWire(
+                        withdrawal_id=UUID(withdrawal.withdrawal_id.value), withdrawn_at=withdrawal.withdrawn_at,
+                        reason=withdrawal.command.reason, withdrawal_sha256=withdrawal.withdrawal_sha256)))
+            return RfRegisterObservationLifecycleWire(company_id=company_id, income_year=income_year,
+                observed_at=snapshot.observed_at.value, observations=observations)
         return await shareholder_register_source_call(execute)
 
     @application.post(

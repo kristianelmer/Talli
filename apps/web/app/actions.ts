@@ -200,7 +200,7 @@ import {
   acknowledgeOwnedRf1086Comment, confirmRf1086SimulationThroughApi,
   confirmRf1086PermissionThroughApi, recordRf1086TestEvidenceThroughApi,
   approveRf1086ProductionThroughApi, rf1086ActionErrorMessage,
-  loadRf1086RegisterObservations, rf1086RegisterErrorMessage,
+  loadRf1086RegisterObservationLifecycle, rf1086RegisterErrorMessage,
 } from "../features/shareholder-register-filing";
 import { corporateRegisterFact, needsCorporateRegisterObservation } from "./lib/corporate-register-observation";
 import { SYSTEM_USER_COOKIE, callbackStateForResult } from "./lib/system-user-presentation";
@@ -3798,7 +3798,7 @@ export async function recordSupportedCorporateEventAction(formData: FormData) {
     const observationId = requiredFormUuid(formData, "registerObservationId");
     let observations;
     try {
-      observations = await loadRf1086RegisterObservations(accessToken, companyId, incomeYear);
+      observations = await loadRf1086RegisterObservationLifecycle(accessToken, companyId, incomeYear);
     } catch (error) {
       failTo(returnTo, rf1086RegisterErrorMessage(error));
     }

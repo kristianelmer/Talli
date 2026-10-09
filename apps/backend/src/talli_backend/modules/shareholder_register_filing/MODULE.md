@@ -1149,3 +1149,28 @@ projections preserve their old codecs; no v5 route or withdrawal activation is
 provided. Shared approval-context reads remain unchanged to preserve existing
 approval replay; separate truthful current-readiness/list behavior, Governance
 final admission/repair and the archive-owner completion fence remain prerequisites.
+
+### Withdrawal archive-generation tracking (staged)
+
+`20261009220727_rf1086_withdrawal_archive_generation.sql` registers the RF-owned
+withdrawal table with the existing public archive-generation protocol. Its distinct
+AFTER row trigger requires the existing BEFORE company guard; exact replay and
+no-op inserts leave generations stable. First installation invalidates each
+company/year with retained withdrawals, preserving source rows, historical receipts,
+RLS, role memberships and runtime grants. Application rollback retains tracking.
+Tests cover generation changes, migration replay, rollback and both company-lock
+orders with export completion in
+`apps/backend/tests/test_rf1086_withdrawal_archive_generation_database.py`.
+
+This makes a pre-withdrawal receipt stale and, under READ COMMITTED, blocks an
+in-flight older export from completing after withdrawal. An old-format export
+begun **after** withdrawal can still complete under the unchanged public API.
+That API also lacks a READ COMMITTED requirement: an older REPEATABLE READ
+snapshot can still complete with a generation already stale to later readers.
+The separate Archive-owner completion fence must address both limits. No
+withdrawal command is activated here.
+
+`Rf1086RegisterObservationLifecycleSnapshot` pairs the complete immutable
+observation history with its withdrawal receipts in one authorized read snapshot.
+The additive lifecycle query derives current, superseded and withdrawn states;
+it does not grant withdrawal or establish later mutation authority.

@@ -530,6 +530,51 @@ class PostgresShareholderRegisterFilingSession:
                 raise rf.Rf1086RegisterObservationError("rf1086_register_storage_invalid")
             return snapshots
 
+    async def read_register_observation_lifecycle_snapshot(self, query):
+        self._command_actor(query)
+        async with self._transaction(snapshot=True) as connection:
+            owner = await (await connection.execute(
+                "select public.company_access_is_accepted_owner_v1(%s::uuid) as allowed",
+                (str(query.company_id),))).fetchone()
+            if owner is None or owner["allowed"] is not True:
+                raise rf.ShareholderRegisterFilingError.forbidden()
+            rows = {}
+            for table in ('register_observations', 'register_observation_withdrawals'):
+                rows[table] = await (await connection.execute(
+                    f'select * from shareholder_register_filing.{table} '
+                    'where company_id=%s::uuid and income_year=%s order by id',
+                    (str(query.company_id), int(query.income_year)),)).fetchall()
+                count = await (await connection.execute(
+                    f'select count(*) as count from shareholder_register_filing.{table} '
+                    'where company_id=%s::uuid and income_year=%s',
+                    (str(query.company_id), int(query.income_year)),)).fetchone()
+                if count is None or type(count.get('count')) is not int or count['count'] != len(rows[table]):
+                    raise rf.ShareholderRegisterFilingError.unavailable()
+            try:
+                observations = tuple(self._register_observation(row) for row in rows['register_observations'])
+                withdrawals = []
+                for row in rows['register_observation_withdrawals']:
+                    receipt = rf.parse_rf1086_register_observation_withdrawal(row['snapshot_text'])
+                    command = receipt.command
+                    if (receipt.withdrawal_id.value, str(command.company_id), int(command.income_year),
+                        str(command.actor_id.subject), command.observation_id.value, command.observation_version,
+                        command.observation_fact_sha256, command.reason, receipt.request_sha256,
+                        receipt.withdrawal_sha256, receipt.withdrawn_at) != (
+                        str(row['id']), str(row['company_id']), row['income_year'], str(row['actor_id']),
+                        str(row['observation_id']), row['observation_version'], row['observation_fact_sha256'],
+                        row['reason'], row['request_sha256'], row['withdrawal_sha256'], row['withdrawn_at']):
+                        raise ValueError('withdrawal row mismatch')
+                    withdrawals.append(receipt)
+                lifecycle = rf.derive_rf1086_register_observation_lifecycle(company_id=query.company_id,
+                    income_year=query.income_year, observations=observations, withdrawals=tuple(withdrawals))
+                observed = await (await connection.execute(
+                    'select pg_catalog.clock_timestamp() as observed_at', ())).fetchone()
+                return rf.Rf1086RegisterObservationLifecycleSnapshot(query.company_id, query.income_year,
+                    Timestamp(observed['observed_at']), tuple(sorted(lifecycle,
+                        key=lambda item: (item.observation.confirmed_at, item.observation.observation_id.value))))
+            except (ValueError, TypeError, KeyError):
+                raise rf.ShareholderRegisterFilingError.unavailable() from None
+
     async def read_register_observation(self, query, observation_id):
         self._command_actor(query)
         async with self._transaction(snapshot=True) as connection:

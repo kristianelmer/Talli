@@ -4058,6 +4058,28 @@ export interface RfRegisterObservationsWire {
   observations: RfRegisterObservationRecordWire[];
 }
 
+export interface RfRegisterObservationLifecycleWire {
+  companyId: string;
+  incomeYear: number;
+  observations: RfRegisterObservationLifecycleRecordWire[];
+  observedAt: string;
+}
+
+export interface RfRegisterObservationLifecycleRecordWire {
+  draft: RfRegisterObservationDraftWire;
+  receipt: RfRegisterObservationReceiptWire;
+  status: "active" | "superseded" | "withdrawn";
+  supersededBy: string | null;
+  withdrawal: RfRegisterObservationWithdrawalWire | null;
+}
+
+export interface RfRegisterObservationWithdrawalWire {
+  reason: string;
+  withdrawalId: string;
+  withdrawalSha256: string;
+  withdrawnAt: string;
+}
+
 export interface RfSourcePreviewWire {
   caseSha256: string;
   companyId: string;
@@ -10185,6 +10207,40 @@ function isRfRegisterObservationsWire(value: unknown): value is RfRegisterObserv
   );
 }
 
+function isRfRegisterObservationLifecycleWire(value: unknown): value is RfRegisterObservationLifecycleWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["companyId","incomeYear","observations","observedAt"]) &&
+    isUuid(value.companyId) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    Array.isArray(value.observations) && value.observations.every((item) => isRfRegisterObservationLifecycleRecordWire(item)) &&
+    isDateTime(value.observedAt)
+  );
+}
+
+function isRfRegisterObservationLifecycleRecordWire(value: unknown): value is RfRegisterObservationLifecycleRecordWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["draft","receipt","status","supersededBy","withdrawal"]) &&
+    isRfRegisterObservationDraftWire(value.draft) &&
+    isRfRegisterObservationReceiptWire(value.receipt) &&
+    (value.status === "active" || value.status === "superseded" || value.status === "withdrawn") &&
+    (isUuid(value.supersededBy) || value.supersededBy === null) &&
+    (isRfRegisterObservationWithdrawalWire(value.withdrawal) || value.withdrawal === null)
+  );
+}
+
+function isRfRegisterObservationWithdrawalWire(value: unknown): value is RfRegisterObservationWithdrawalWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["reason","withdrawalId","withdrawalSha256","withdrawnAt"]) &&
+    typeof value.reason === "string" &&
+    isUuid(value.withdrawalId) &&
+    typeof value.withdrawalSha256 === "string" &&
+    isDateTime(value.withdrawnAt)
+  );
+}
+
 function isRfSourcePreviewWire(value: unknown): value is RfSourcePreviewWire {
   return (
     isRecord(value) &&
@@ -13032,6 +13088,14 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
       return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations?" + query,
         "GET", request, undefined, isRfRegisterObservationsWire);
+    },
+
+    async rf1086ReadRegisterObservationLifecycle(
+      request: RfCurrentYearSourceReadRequest,
+    ): Promise<RfRegisterObservationLifecycleWire> {
+      const query = new URLSearchParams({ companyId: request.companyId, incomeYear: String(request.incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations/lifecycle?" + query,
+        "GET", request, undefined, isRfRegisterObservationLifecycleWire);
     },
 
     async rf1086CaptureRegisterObservation(

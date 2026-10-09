@@ -85,7 +85,9 @@ verification path can create that record.
 
 Final completion consumes that record in a short transaction, takes the existing
 company archive lock, and rechecks current generation and RF commitment before
-writing one receipt. Use a consistent lock order across begin, source writes,
+writing one receipt. Require READ COMMITTED and read generation after acquiring
+the lock; a snapshot fixed before a competing write is not a current check.
+Use a consistent lock order across begin, source writes,
 verification completion and cancellation. Verification/network work stays outside
 the transaction. Exact completion retries must recover the same receipt; a
 changed artifact/commitment under the same command cannot succeed.
@@ -99,6 +101,15 @@ RF public coverage fact and reject a scope whose required lifecycle history the
 old contract cannot represent. Attempts begun before and after withdrawal must
 both be covered. Preserve legacy receipts as history; fresh cancellation must not
 treat them as currently eligible. Never silently relabel them v5.
+
+Further source review on 2026-10-10 found that existing legacy completion does
+not require READ COMMITTED. A REPEATABLE READ transaction whose snapshot predates
+withdrawal can acquire the company lock later and still compare the old generation.
+Its resulting receipt is stale to later fresh reads, but generation tracking alone
+does not force completion itself to fail. The bounded Archive-owner change must
+close this isolation gap as well as verify coverage; test both withdrawal-first
+and completion-first lock orders with a previously fixed snapshot. This is a
+source-derived gap, not an executed race result or approval of the pending detour.
 
 No Archive grant may expose RF private tables. RF's coverage query/assertion is
 read-only and limited to the declared Archive executor. The new receipt writer
@@ -162,7 +173,8 @@ not rewrite the event, move its timestamp or claim repair through recapture.
   already-admitted outcome reconciliation survive.
 - Real transaction races in both orders: withdrawal versus old/new export,
   completion and cancellation/finalization. Test old exports started **after**
-  withdrawal, stale/fabricated coverage, omitted rows/originals, mismatched final
+  withdrawal, pre-withdrawal REPEATABLE READ/serializable snapshots,
+  stale/fabricated coverage, omitted rows/originals, mismatched final
   bytes, captured-empty coverage, expiry, cross-tenant calls and lost-response retry.
 - Immutable v1–v4 reader/route compatibility; v5 canonical/readable/original
   agreement; full family count/hash reconciliation; truthful list/browser history

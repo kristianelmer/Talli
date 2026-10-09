@@ -10,6 +10,7 @@ import {
   type RfYearSourceCaptureWire, type RfRegisterObservationCaptureWire,
   type RfYearSourceCaptureLookupWire, type RfRegisterObservationCaptureLookupWire,
   type RfCurrentYearSourceWire, type RfRegisterObservationsWire,
+  type RfRegisterObservationLifecycleWire, type RfRegisterObservationRecordWire,
   type RfSourceProductionReviewRequestWire, type RfSourceProductionReviewWire,
   type RfSourceProductionApprovalCommandWire,
   type RfSourceProductionSendCommandWire,
@@ -239,17 +240,15 @@ export async function loadRf1086CurrentYearSource(
   return value;
 }
 
-export async function loadRf1086RegisterObservations(
-  accessToken: string, companyId: string, incomeYear: number,
-): Promise<RfRegisterObservationsWire> {
-  const value = await client(accessToken).rf1086ListRegisterObservations({ ...request(), companyId, incomeYear });
-  sourceScope(value, companyId, incomeYear);
+function registerObservationRecords(
+  rows: ReadonlyArray<Pick<RfRegisterObservationRecordWire, "receipt" | "draft">>, companyId: string, incomeYear: number,
+) {
   const ids = new Set<string>();
-  for (const { receipt, draft, isCurrent } of value.observations) {
+  for (const { receipt, draft } of rows) {
     sourceScope(receipt, companyId, incomeYear);
     sourceScope(draft, companyId, incomeYear);
     if (ids.has(receipt.observationId) || receipt.version < 1 || !/^[a-f0-9]{64}$/.test(receipt.factSha256)
-        || typeof isCurrent !== "boolean" || draft.supersedesObservationId !== receipt.observationId
+        || !Number.isFinite(Date.parse(receipt.confirmedAt)) || draft.supersedesObservationId !== receipt.observationId
         || draft.supersedesObservationSha256 !== receipt.factSha256 || draft.correctionReason !== null
         || draft.completeRegisterConfirmed || draft.registrationConfirmed || draft.singleShareClassConfirmed
         || draft.documents.some(document => document.companyId !== companyId)
@@ -257,8 +256,57 @@ export async function loadRf1086RegisterObservations(
           !== draft.documents.length) throw new TalliApiError(502, undefined);
     ids.add(receipt.observationId);
   }
-  // Independent lineages can each be current. Only the backend has the original
-  // predecessor graph; preserve its currentness flags, including historical rows.
+}
+
+export async function loadRf1086RegisterObservations(
+  accessToken: string, companyId: string, incomeYear: number,
+): Promise<RfRegisterObservationsWire> {
+  const value = await client(accessToken).rf1086ListRegisterObservations({ ...request(), companyId, incomeYear });
+  sourceScope(value, companyId, incomeYear);
+  registerObservationRecords(value.observations, companyId, incomeYear);
+  // This legacy contract cannot represent withdrawals. New consumers require lifecycle.
+  return value;
+}
+
+function lifecycleInstant(value: string): bigint {
+  const match = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.(\d{1,6}))?(?:Z|[+-]\d{2}:\d{2})$/.exec(value);
+  const milliseconds = Date.parse(value);
+  if (!match || !Number.isFinite(milliseconds)) throw new TalliApiError(502, undefined);
+  // Python receipts retain microseconds; Date.parse alone rounds them down.
+  return BigInt(milliseconds) * BigInt(1000) + BigInt((match[1] ?? "").padEnd(6, "0").slice(3));
+}
+
+export async function loadRf1086RegisterObservationLifecycle(
+  accessToken: string, companyId: string, incomeYear: number,
+): Promise<RfRegisterObservationLifecycleWire> {
+  const value = await client(accessToken).rf1086ReadRegisterObservationLifecycle({ ...request(), companyId, incomeYear });
+  sourceScope(value, companyId, incomeYear);
+  registerObservationRecords(value.observations, companyId, incomeYear);
+  const observedAt = lifecycleInstant(value.observedAt);
+  const byId = new Map(value.observations.map(row => [row.receipt.observationId, row]));
+  const successors = new Set<string>(), withdrawals = new Set<string>();
+  for (const row of value.observations) {
+    const confirmedAt = lifecycleInstant(row.receipt.confirmedAt);
+    if (confirmedAt > observedAt || (row.status === "superseded") !== (row.supersededBy !== null)
+        || (row.status === "withdrawn") !== (row.withdrawal !== null)) throw new TalliApiError(502, undefined);
+    if (row.supersededBy !== null) {
+      const successor = byId.get(row.supersededBy);
+      if (!successor || successors.has(row.supersededBy) || successor.receipt.version !== row.receipt.version + 1
+          || successor.draft.eventKind !== row.draft.eventKind || successor.draft.effectiveAt !== row.draft.effectiveAt
+          || lifecycleInstant(successor.receipt.confirmedAt) <= confirmedAt) throw new TalliApiError(502, undefined);
+      successors.add(row.supersededBy);
+    }
+    if (row.withdrawal !== null) {
+      const withdrawal = row.withdrawal, withdrawnAt = lifecycleInstant(withdrawal.withdrawnAt);
+      if (withdrawals.has(withdrawal.withdrawalId) || withdrawnAt < confirmedAt || withdrawnAt > observedAt || !withdrawal.reason.trim()
+          || !/^[a-f0-9]{64}$/.test(withdrawal.withdrawalSha256)) throw new TalliApiError(502, undefined);
+      withdrawals.add(withdrawal.withdrawalId);
+    }
+  }
+  if (value.observations.some(row => (row.receipt.version > 1) !== successors.has(row.receipt.observationId))) {
+    throw new TalliApiError(502, undefined);
+  }
+  // No fallback: an old list cannot establish that a receipt remains active.
   return value;
 }
 
@@ -422,7 +470,8 @@ const registerPrewriteValidationCodes = new Set([
   "rf1086_source_register_original_required", "rf1086_source_documents_unverified",
 ]);
 const registerMessages: Record<string, string> = {
-  rf1086_register_predecessor_mismatch: "Aksjeeierboken er allerede korrigert. Last inn lagrede opplysninger på nytt før du fortsetter.",
+  rf1086_register_lifecycle_upgrade_required: "Registerhistorikken inneholder tilbaketrukne grunnlag. Oppdater siden for å se gjeldende status.",
+  rf1086_register_predecessor_mismatch: "Registergrunnlaget kan være erstattet eller trukket tilbake. Last inn lagrede opplysninger på nytt før du fortsetter.",
   rf1086_register_idempotency_conflict: "Dette lagringsforsøket er allerede brukt med andre opplysninger. Kontroller lagret status før du starter et nytt forsøk.",
   rf1086_register_correction_reason_required: "Beskriv hvorfor opplysningene fra aksjeeierboken skal korrigeres.",
   rf1086_register_correction_scope_invalid: "En korrigering må beholde selskap, år, hendelsestype og tidspunkt fra den lagrede registreringen.",

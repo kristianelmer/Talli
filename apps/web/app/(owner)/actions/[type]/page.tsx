@@ -7,7 +7,7 @@ import {
   listSupportedCorporateEvents,
   type CorporateDecisionFactsWire,
 } from "../../../../features/corporate-governance";
-import { loadRf1086RegisterObservations, rf1086RegisterErrorMessage } from "../../../../features/shareholder-register-filing";
+import { loadRf1086RegisterObservationLifecycle, rf1086RegisterErrorMessage } from "../../../../features/shareholder-register-filing";
 
 import { Banner, EmptyState, LinkButton, WizardShell } from "../../../components/ui";
 import { ownerCopy } from "../../../lib/copy";
@@ -465,7 +465,7 @@ export default async function ActionPage({
     case "corporate-event": {
       const accessToken = await getCurrentSessionAccessToken();
       const registerObservationLoad = accessToken
-        ? loadRf1086RegisterObservations(accessToken, companyId, incomeYear)
+        ? loadRf1086RegisterObservationLifecycle(accessToken, companyId, incomeYear)
           .then(value => ({ value, error: null }))
           .catch(error => ({ value: null, error: rf1086RegisterErrorMessage(error) }))
         : Promise.resolve({ value: null, error: "Innlogging kreves." });

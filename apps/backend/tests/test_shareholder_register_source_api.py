@@ -42,7 +42,7 @@ class ApiHarness:
     def __init__(self, *, capital=False, kind='no_activity'):
         self.h=capital_setup() if capital else Harness(kind)
         h=self.h; self.idempotencies=[]; self.auth_failure=False; self.persistence_error=None
-        self.reporting_basis=None; self.reporting_amendments=(); self.observations=None
+        self.reporting_basis=None; self.reporting_amendments=(); self.observations=None; self.withdrawals=(); self.lifecycle_snapshot=None
         owner=self
         class RFSession:
             def __init__(self, wrapped):self.wrapped=wrapped
@@ -65,6 +65,19 @@ class ApiHarness:
                 if owner.observations is not None:return owner.observations
                 return tuple(row for row in h.register_saved if row.command.company_id==query.company_id
                              and row.command.income_year==query.income_year)
+            async def read_register_observation_lifecycle_snapshot(self,query):
+                from talli_backend.modules.shareholder_register_filing.public import (
+                    Rf1086RegisterObservationLifecycleSnapshot, derive_rf1086_register_observation_lifecycle)
+                from talli_backend.shared.kernel import Timestamp
+                if owner.lifecycle_snapshot is not None:return owner.lifecycle_snapshot
+                observations=await self.list_register_observations(query)
+                withdrawals=tuple(row for row in owner.withdrawals if row.command.company_id==query.company_id
+                    and row.command.income_year==query.income_year)
+                rows=derive_rf1086_register_observation_lifecycle(company_id=query.company_id,
+                    income_year=query.income_year,observations=observations,withdrawals=withdrawals)
+                observed_at=max([NOW]+[row.confirmed_at for row in observations]+[row.withdrawn_at for row in withdrawals])
+                return Rf1086RegisterObservationLifecycleSnapshot(query.company_id,query.income_year,
+                    Timestamp(observed_at),tuple(sorted(rows,key=lambda row:(row.observation.confirmed_at,row.observation.observation_id.value))))
             async def record_register_observation(self,command,*,context,idempotency_key):
                 owner.idempotencies.append(idempotency_key.value)
                 if command.supersedes_observation_id is not None:

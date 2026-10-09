@@ -3,7 +3,7 @@ import type {
   SupportedCorporateEventPhase,
   SupportedCorporateEventWire,
 } from "../../features/corporate-governance";
-import type { RfRegisterObservationsWire } from "../../features/shareholder-register-filing";
+import type { RfRegisterObservationLifecycleWire } from "../../features/shareholder-register-filing";
 
 export function needsCorporateRegisterObservation(
   kind: SupportedCorporateEventKind,
@@ -15,7 +15,7 @@ export function needsCorporateRegisterObservation(
 }
 
 export function corporateRegisterObservations(
-  source: RfRegisterObservationsWire,
+  source: RfRegisterObservationLifecycleWire,
   companyId: string,
   incomeYear: number,
   kind: SupportedCorporateEventKind,
@@ -25,14 +25,14 @@ export function corporateRegisterObservations(
     : kind === "loss_coverage_capital_reduction" ? "loss_covering_reduction" : null;
   if (!expectedKind || source.companyId !== companyId || source.incomeYear !== incomeYear
       || !/^\d{4}-\d{2}-\d{2}$/.test(eventDate) || Number(eventDate.slice(0, 4)) !== incomeYear) return [];
-  return source.observations.filter(({ receipt, draft, isCurrent }) =>
-    isCurrent && receipt.companyId === companyId && receipt.incomeYear === incomeYear
+  return source.observations.filter(({ receipt, draft, status }) =>
+    status === "active" && receipt.companyId === companyId && receipt.incomeYear === incomeYear
     && draft.companyId === companyId && draft.incomeYear === incomeYear
     && draft.eventKind === expectedKind && draft.effectiveAt.slice(0, 10) === eventDate);
 }
 
 export function corporateRegisterFact(
-  source: RfRegisterObservationsWire,
+  source: RfRegisterObservationLifecycleWire,
   companyId: string,
   incomeYear: number,
   kind: SupportedCorporateEventKind,

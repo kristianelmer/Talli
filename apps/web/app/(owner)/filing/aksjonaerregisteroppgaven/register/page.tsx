@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { listDocuments } from "../../../../../features/documents";
-import { loadRf1086RegisterObservations, rf1086RegisterErrorMessage } from "../../../../../features/shareholder-register-filing";
+import { loadRf1086RegisterObservationLifecycle, rf1086RegisterErrorMessage } from "../../../../../features/shareholder-register-filing";
 import { Banner } from "../../../../components/ui";
 import { loadAcceptedMembershipCompany } from "../../../../lib/company-access-context";
 import { getCurrentSessionAccessToken } from "../../../../lib/supabase/auth-session";
@@ -28,7 +28,7 @@ export default async function RegisterPage({ searchParams }: Props) {
       || !company.identity_confirmed_at || !company.identity_locked_at) return <div>{header}<Banner variant="danger">Kontroller eiertilgangen og de bekreftede selskapsopplysningene.</Banner></div>;
   let records, documents;
   try {
-    [records, documents] = await Promise.all([loadRf1086RegisterObservations(token, companyId, incomeYear), listDocuments(token, companyId)]);
+    [records, documents] = await Promise.all([loadRf1086RegisterObservationLifecycle(token, companyId, incomeYear), listDocuments(token, companyId)]);
     if (documents.documents.some(d => d.companyId !== companyId)) throw new Error("Document scope mismatch");
   } catch (error) { return <div>{header}<Banner variant="danger">{rf1086RegisterErrorMessage(error)}</Banner></div>; }
   const current = query.observationId ? records.observations.find(row => row.receipt.observationId === query.observationId) : null;
@@ -36,7 +36,7 @@ export default async function RegisterPage({ searchParams }: Props) {
   return <div className="wizardForm">{header}
     <section className="dataPanel"><h2>Lagrede registergrunnlag</h2>
       {records.observations.length ? <ul>{records.observations.map(row => <li key={row.receipt.observationId}>
-        <Link href={`${base}&observationId=${row.receipt.observationId}`}>{registerKinds[row.draft.eventKind]} · {row.draft.effectiveAt.replace("T", " ")} · versjon {row.receipt.version} · {row.isCurrent ? "gjeldende" : "erstattet"}</Link>
+        <Link href={`${base}&observationId=${row.receipt.observationId}`}>{registerKinds[row.draft.eventKind]} · {row.draft.effectiveAt.replace("T", " ")} · versjon {row.receipt.version} · {{ active: "gjeldende", superseded: "erstattet", withdrawn: "trukket tilbake" }[row.status]}</Link>
       </li>)}</ul> : <p>Ingen registergrunnlag er lagret for dette året.</p>}
       {current ? <Link className="btn btn--secondary" href={base}>Registrer en annen kapitalendring</Link> : null}
     </section>

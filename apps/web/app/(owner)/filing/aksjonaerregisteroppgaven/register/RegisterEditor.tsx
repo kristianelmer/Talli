@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { Banner } from "../../../../components/ui";
-import type { RfRegisterObservationRecordWire, RfRegisterObservationCaptureWire, RfRegisterObservationReceiptWire, RfSourceDocumentWire } from "../../../../../features/shareholder-register-filing";
+import type { RfRegisterObservationLifecycleRecordWire, RfRegisterObservationCaptureWire, RfRegisterObservationReceiptWire, RfSourceDocumentWire } from "../../../../../features/shareholder-register-filing";
 import { readSourceDocumentAction } from "../source/actions";
 import { afterCaptureFailure, type SaveAttempt } from "../source/model";
 import { captureRegisterAction, lookupRegisterCaptureAction } from "./actions";
 import { documentRoles, editRegister, registerCommand, registerKinds, resetRegisterReview,
   type DocumentRole, type RegisterDraft, type RegisterKind, type StateDraft } from "./model";
-type Props = { companyId: string; incomeYear: number; current: RfRegisterObservationRecordWire | null;
+type Props = { companyId: string; incomeYear: number; current: RfRegisterObservationLifecycleRecordWire | null;
   documentOptions: { id: string; name: string; incomeYear: number }[] };
 function Field({ label, value, change, type = "text", count = false }: {
   label: string; value: string; change(value: string): void; type?: string; count?: boolean;
@@ -27,7 +27,7 @@ export function RegisterEditor({ companyId, incomeYear, current, documentOptions
   const captureWork = useRef(false);
   const savedHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { if (saved) savedHeading.current?.focus(); }, [saved]);
-  const historical = current !== null && !current.isCurrent;
+  const historical = current !== null && current.status !== "active";
   const frozen = pending || attempt !== null || saved !== null || historical;
   const base = `/filing/aksjonaerregisteroppgaven/register?${new URLSearchParams({ companyId, incomeYear: String(incomeYear) })}`;
   function change(update: (value: RegisterDraft) => RegisterDraft) { setDraft(value => resetRegisterReview(update(value))); setMessage(null); }
@@ -84,9 +84,9 @@ export function RegisterEditor({ companyId, incomeYear, current, documentOptions
   return <div className="wizardForm">
     <Banner variant="info">Dette grunnlaget dokumenterer én kapitalendring. Bruk originale aksjeeierbøker og registreringsdokumenter.
       Lagre grunnlaget før du bokfører kapitalhendelsen. Det erstatter ikke en selskapsbeslutning og sender ingen oppgave.</Banner>
-    {historical ? <Banner variant="warning">Dette er en erstattet versjon. Velg gjeldende versjon i listen for å korrigere opplysningene.</Banner> : null}
+    {historical ? <Banner variant="warning">{current?.status === "withdrawn" ? <>Dette registergrunnlaget er trukket tilbake og kan ikke brukes eller korrigeres. Opplysningene beholdes som historikk.<br />{current.withdrawal?.withdrawnAt} · {current.withdrawal?.reason}</> : "Dette er en erstattet versjon. Velg gjeldende versjon i listen for å korrigere opplysningene."}</Banner> : null}
     {saved ? <section className="dataPanel"><h2 ref={savedHeading} tabIndex={-1}>Registergrunnlaget er lagret</h2><p>Versjon {saved.version}. {recovered
-      ? "Kvitteringen bekrefter dette lagringsforsøket. Versjonen kan senere være erstattet. Åpne grunnlaget for kontroll før videre bruk."
+      ? "Kvitteringen bekrefter dette lagringsforsøket. Versjonen kan senere være erstattet eller trukket tilbake. Åpne grunnlaget for kontroll før videre bruk."
       : "Velg dette grunnlaget når du registrerer kapitalhendelsen."}</p>
       <a className="btn btn--primary" href="/actions/corporate-event">Åpne selskapshendelser</a>
       <p><a href={`${base}&observationId=${saved.observationId}`}>Åpne lagret grunnlag for kontroll eller korrigering</a></p>

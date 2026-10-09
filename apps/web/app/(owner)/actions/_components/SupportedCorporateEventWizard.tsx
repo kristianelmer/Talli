@@ -9,7 +9,7 @@ import type {
   SupportedCorporateEventPhase,
   SupportedCorporateEvidenceKind,
 } from "../../../../features/corporate-governance";
-import type { RfRegisterObservationsWire } from "../../../../features/shareholder-register-filing";
+import type { RfRegisterObservationLifecycleWire } from "../../../../features/shareholder-register-filing";
 import { corporateRegisterObservations, needsCorporateRegisterObservation } from "../../../lib/corporate-register-observation";
 import {
   recordSupportedCorporateEventAction,
@@ -33,7 +33,7 @@ type Props = {
   documents: EvidenceDocument[];
   bankTransactions: BankTransaction[];
   existingEvents: RecordedSupportedCorporateEventWire[];
-  registerObservations: RfRegisterObservationsWire | null;
+  registerObservations: RfRegisterObservationLifecycleWire | null;
   registerObservationsError: string | null;
   operationId?: string;
 };

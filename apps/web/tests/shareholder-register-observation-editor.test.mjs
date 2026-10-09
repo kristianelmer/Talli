@@ -178,3 +178,51 @@ test("a register attempt freezes its exact body and key through an unknown resul
   draft.roles.register_after.length = 0;
   assert.deepEqual(command, snapshot, "the attempt body must be independent of subsequent draft mutations");
 });
+
+// Render the actual client editor; only application action imports are replaced.
+// No network, actions or effects execute during this server render.
+const React = await import("react");
+const jsx = await import("react/jsx-runtime");
+const { renderToStaticMarkup } = await import("react-dom/server");
+const { readFileSync } = await import("node:fs");
+const { default: ts } = await import("typescript");
+const { default: vm } = await import("node:vm");
+const registerModel = await import("../app/(owner)/filing/aksjonaerregisteroppgaven/register/model.ts");
+const editorText = readFileSync(new URL("../app/(owner)/filing/aksjonaerregisteroppgaven/register/RegisterEditor.tsx", import.meta.url), "utf8");
+const compiledEditor = ts.transpileModule(editorText, { compilerOptions: {
+  module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX,
+} }).outputText;
+const editorContext = { exports: {}, URLSearchParams, require: name => {
+  if (name === "react") return React;
+  if (name === "react/jsx-runtime") return jsx;
+  if (name === "./model") return registerModel;
+  if (name === "../source/model") return { afterCaptureFailure };
+  if (name.endsWith("/components/ui")) return { Banner: ({ children, variant }) => React.createElement("div", { role: "status", "data-variant": variant }, children) };
+  if (name.endsWith("actions")) return {};
+  throw new Error(`Unexpected editor import: ${name}`);
+} };
+vm.runInNewContext(compiledEditor, editorContext);
+for (const status of ["active", "superseded", "withdrawn"]) {
+  test(`actual register editor renders ${status} history without granting correction to inactive rows`, () => {
+    const current = { receipt: { observationId, companyId, incomeYear: 2025, version: 2, factSha256: hash, confirmedAt: "2026-09-24T12:00:00Z" },
+      draft: retained(), status, supersededBy: status === "superseded" ? documentId : null,
+      withdrawal: status === "withdrawn" ? { withdrawalId: documentId, reason: "Feil <original> – behold teksten.", withdrawnAt: "2026-09-24T12:01:00.123456Z", withdrawalSha256: hash } : null };
+    const before = structuredClone(current);
+    const html = renderToStaticMarkup(React.createElement(editorContext.exports.RegisterEditor, {
+      companyId, incomeYear: 2025, current, documentOptions: [{ id: documentId, name: "Original", incomeYear: 2024 }],
+    }));
+    assert.deepEqual(current, before);
+    const sections = [...html.matchAll(/<fieldset class="wizardSection"([^>]*)><legend>(Kapitalendringen|Før kapitalendringen|Etter kapitalendringen|Originaldokumenter|Gjennomgang)<\/legend>/g)];
+    assert.equal(sections.length, 5);
+    if (status === "active") assert.ok(sections.every(match => !match[1].includes("disabled")));
+    else assert.ok(sections.every(match => match[1].includes("disabled")));
+    if (status === "withdrawn") {
+      assert.match(html, /trukket tilbake og kan ikke brukes eller korrigeres/);
+      assert.match(html, /Feil &lt;original&gt; – behold teksten\./);
+      assert.match(html, /2026-09-24T12:01:00\.123456Z/);
+    }
+    if (status === "superseded") assert.match(html, /Dette er en erstattet versjon/);
+    assert.match(html, /Synthetic Person/);
+    assert.doesNotMatch(html, /<button[^>]*>Trekk tilbake/);
+  });
+}

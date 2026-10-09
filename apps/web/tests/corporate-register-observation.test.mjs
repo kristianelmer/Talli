@@ -13,7 +13,7 @@ const observation = (n = 1) => ({
   receipt: { observationId: id(n), companyId, incomeYear: 2025, version: 7, factSha256: "a".repeat(64), confirmedAt: "2025-10-27T10:00:00Z" },
   draft: { companyId, incomeYear: 2025, eventKind: "cash_issue", effectiveAt: `${day}T00:30:00`,
     before: { shareCount: 100 }, after: { shareCount: 110 }, documents: [{ documentId: id(90), role: "register_before" }] },
-  isCurrent: true,
+  status: "active", supersededBy: null, withdrawal: null,
 });
 const source = (observations = [observation()]) => ({ companyId, incomeYear: 2025, observations });
 const select = data => corporateRegisterObservations(data, companyId, 2025, "cash_capital_increase", day);
@@ -44,7 +44,9 @@ test("civil effective date matches without timezone conversion", () => {
 });
 
 for (const [label, change] of [
-  ["historical observation", row => { row.isCurrent = false; }],
+  ["historical observation", row => { row.status = "superseded"; }],
+  ["withdrawn observation", row => { row.status = "withdrawn"; }],
+  ["legacy unknown status", row => { delete row.status; row.isCurrent = true; }],
   ["different event kind", row => { row.draft.eventKind = "loss_covering_reduction"; }],
   ["unsupported nominal-only increase", row => { row.draft.eventKind = "cash_nominal_increase"; }],
   ["different effective date", row => { row.draft.effectiveAt = "2025-10-27T00:30:00"; }],
@@ -90,7 +92,7 @@ function actionHarness({ data = source(), readError = false } = {}) {
     requiredFormUuid: (form, name) => { const value = form.get(name); if (!value) throw new Error(`missing ${name}`); return value; },
     requireSensitiveActionStepUp: async () => { calls.push("step-up"); },
     getCurrentSessionAccessToken: async () => "verified-owner",
-    loadRf1086RegisterObservations: async (...args) => { calls.push(args); if (readError) throw new Error("unavailable"); return data; },
+    loadRf1086RegisterObservationLifecycle: async (...args) => { calls.push(args); if (readError) throw new Error("unavailable"); return data; },
     rf1086RegisterErrorMessage: () => "Register read unavailable",
     recordSupportedCorporateEventThroughApi: async (...args) => { writes.push(JSON.parse(JSON.stringify(args))); },
     revalidatePath: () => {}, succeedTo: () => "done",
@@ -120,7 +122,8 @@ test("server action rereads scoped current observation and ignores all client re
 
 for (const [label, options] of [
   ["source read unavailable", { readError: true }],
-  ["selected observation superseded after render", { data: source([{ ...observation(), isCurrent: false }]) }],
+  ["selected observation superseded after render", { data: source([{ ...observation(), status: "superseded" }]) }],
+  ["selected observation withdrawn after render", { data: source([{ ...observation(), status: "withdrawn" }]) }],
   ["selected observation absent", { data: source([]) }],
 ]) test(`server action fails before Governance write when ${label}`, async () => {
   const h = actionHarness(options); await assert.rejects(h.run(form())); assert.equal(h.writes.length, 0);

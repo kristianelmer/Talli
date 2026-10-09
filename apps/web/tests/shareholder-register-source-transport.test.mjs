@@ -458,7 +458,7 @@ test("register capture releases only exact known prewrite refusals", () => {
 
 test("register errors give safe actionable Norwegian messages without original details", () => {
   assert.match(rf1086RegisterErrorMessage(registerProblem(409, "rf1086_register_holder_total_mismatch")), /samlet antall aksjer/);
-  assert.match(rf1086RegisterErrorMessage(registerProblem(409, "rf1086_register_predecessor_mismatch")), /allerede korrigert/);
+  assert.match(rf1086RegisterErrorMessage(registerProblem(409, "rf1086_register_predecessor_mismatch")), /erstattet eller trukket tilbake/);
   assert.match(rf1086RegisterErrorMessage(registerProblem(409, "rf1086_register_idempotency_conflict")), /lagringsforsøket/);
   assert.match(rf1086RegisterErrorMessage(registerProblem(409, "rf1086_register_amount_invalid")), /beløpene/);
   assert.match(rf1086RegisterErrorMessage(registerProblem(401, "unknown")), /Logg inn/);

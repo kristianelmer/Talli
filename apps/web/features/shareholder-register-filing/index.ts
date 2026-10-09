@@ -19,7 +19,7 @@ export type {
 } from "@talli/talli-api-client";
 
 export {
-  loadRf1086SourceIntakeBasis, loadRf1086CurrentYearSource, loadRf1086SourceDocument, loadRf1086RegisterObservations,
+  loadRf1086SourceIntakeBasis, loadRf1086CurrentYearSource, loadRf1086SourceDocument, loadRf1086RegisterObservations, loadRf1086RegisterObservationLifecycle,
   rf1086RegisterErrorMessage, rf1086RegisterCaptureRejected,
   captureRf1086YearSourceThroughApi, captureRf1086RegisterObservationThroughApi,
   lookupRf1086YearSourceCaptureThroughApi, lookupRf1086RegisterObservationCaptureThroughApi,
@@ -66,6 +66,7 @@ export type {
   RfRegisterObservationDraftWire,
   RfRegisterObservationRecordWire,
   RfRegisterObservationsWire,
+  RfRegisterObservationLifecycleWire, RfRegisterObservationLifecycleRecordWire, RfRegisterObservationWithdrawalWire,
   RfSourcePreviewRequestWire,
   RfYearSourceReceiptWire,
   RfRegisterObservationReceiptWire,
