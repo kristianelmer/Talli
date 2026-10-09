@@ -125,10 +125,14 @@ Its [Company Access admission helper](../../../../../supabase/migrations/2026082
 checks `aal2`, but does **not** establish MFA recency. For the new amendment require
 the existing [Company Access fresh-MFA contract](../../../../../supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql),
 `company_access_has_fresh_mfa_v1()`: supported MFA method and numeric AMR timestamp
-within its 15-minute statement-time window. Grant only that public function to
-the Governance store owner if needed. Check at command admission/final completion
-and retain the post-lock owner recheck; do not trust an HTTP Boolean or copy the
-MFA rule into Governance. Historical query authorization remains separate.
+within its 15-minute window. The later
+[Company Access RF admission migration](../../../../../supabase/migrations/20260924080208_company_access_rf_admission_guard.sql)
+preserves that policy, replaces both statement-time reads with `clock_timestamp()`
+and marks the helper `VOLATILE`. Use this final topology so a lock wait cannot
+reuse statement-start freshness. Grant only that public function to the Governance
+store owner if needed. Check at command admission/final completion and retain the
+post-lock owner recheck; do not trust an HTTP Boolean or copy the MFA rule into
+Governance. Historical query authorization remains separate.
 
 ## RF consumption and proof
 

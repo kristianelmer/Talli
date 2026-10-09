@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Restore installed RF withdrawal guard during Documents predecessor replay",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "9e4d498fd4731358cc02a3c2de2b900f551cd498",
+  "status": "LOCAL_FIX_REVIEWED_NATIVE_REPRODUCED_AND_REPAIRED_FULL_DATABASE_EXECUTION_PENDING",
+  "observedFailure": {
+    "run": 38004460437,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38004460437",
+    "headSha": "c7d86cc1bd12400bb4194855be714981eb4515d5",
+    "checkout": "ea7c73e6b436a4e2f9f323f8ab62520f69fef5ec",
+    "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+    "headParent": "c7d86cc1bd12400bb4194855be714981eb4515d5",
+    "databaseJobConclusion": "failure",
+    "authorityRfPassed": 410,
+    "authorityRfFailed": 1,
+    "authorityRfDurationSeconds": 131.62,
+    "message": "Exact authority/body equality fails after replaying the Documents/RF predecessor alone: assert_current_register_observation_v1 loses its successor withdrawal guard call.",
+    "wholeWorkflowAtRepair": "Application still running; this record does not claim a whole-workflow conclusion.",
+    "notReached": [
+      "later RF observation/withdrawal/current-reader and Ledger database cases",
+      "RF browser/full-year capture recovery",
+      "independent Auth/object restore"
+    ]
+  },
+  "change": "Capture whether withdrawal is installed before mutation. Reapply that exact existing successor after each Documents/RF predecessor replay and in finally restoration. Keep exact OID/owner/ACL/config/body/membership/archive-ACL equality and the original18 guarded writers. Move initial replay inside try/finally. No production migration changed.",
+  "checks": {
+    "nativeGroupsPassed": 5,
+    "nativeScope": "Exact predecessor RF assertion and successor active assertion/rewrite block on PostgreSQL17.11 with minimal retained rows and explicit CompanyAccess/company-lock/append stubs. Reproduces withdrawn acceptance after predecessor alone, then exact catalog/body restoration and withdrawn denial after successor. Repeated successor idempotent; current observation still accepted.",
+    "databaseCasesCollectedOnly": 21,
+    "independentReview": "Zero actionable findings; frozen test SHA256 bd991202ea2c7bf9ad125252fff0cf8c5322d95ed7944bd75962dccb2f1ed58b.",
+    "rootSpecReview": "Preserves final installed guard and exact equality instead of weakening expectation; predecessor-only topology stays predecessor-only.",
+    "ciHarnessAtMutableWorktree": {
+      "passed": 109,
+      "failed": 1,
+      "failure": "Mandatory-lane partition detects concurrent new Governance amendment DB tests not yet added to package.json. This is an in-progress owner change, so no complete harness pass claimed.",
+      "initialEnvironmentAttempt": "Earlier invocation omitted configured UV runtime and failed building pyicu; configured retry uses existing Python3.12 with UV_NO_SYNC=1."
+    },
+    "diffCheck": "PASS",
+    "ownedNativeClusterRemoved": true
+  },
+  "sourceFileSha256": {
+    "apps/backend/tests/test_documents_rf_company_guard_database.py": "bd991202ea2c7bf9ad125252fff0cf8c5322d95ed7944bd75962dccb2f1ed58b",
+    "supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql": "9c7f8d5f338487fca0c32171812805cc706986de4784c9d65cbee48f98c6c7e7",
+    "supabase/migrations/20261009213032_rf1086_observation_withdrawal_foundation.sql": "bbe6cb7fff945785ae31f66c71d8aa353399e7f2bf4121bba15339e628b1f77d"
+  },
+  "privateArtifacts": {
+    "check-documents-guard-successor-replay.py": {
+      "path": "/private/tmp/talli-release-20261009/check-documents-guard-successor-replay.py",
+      "sha256": "101e7b30cf7e73e454551311779f31582525f84ee1143f45eff8e5d2b5cb5b31",
+      "bytes": 7500
+    },
+    "documents-guard-successor-replay-native.json": {
+      "path": "/private/tmp/talli-release-20261009/documents-guard-successor-replay-native.json",
+      "sha256": "c47a63cdb7957594394c41cf5373b458660015b76e5756356b29ea42ba3c4549",
+      "bytes": 1229
+    },
+    "documents-guard-successor-replay-native.log": {
+      "path": "/private/tmp/talli-release-20261009/documents-guard-successor-replay-native.log",
+      "sha256": "7be7780f71cb11e0b0a933288467f09216d7803fcb7596344501dce3780aae5b",
+      "bytes": 978
+    },
+    "documents-guard-successor-ci-harness.log": {
+      "path": "/private/tmp/talli-release-20261009/documents-guard-successor-ci-harness.log",
+      "sha256": "f4a722a63473197e2592fce929a0e65c87fb325a35e04189a7f5ff83964494a1",
+      "bytes": 18645
+    },
+    "documents-guard-successor-ci-harness-configured.log": {
+      "path": "/private/tmp/talli-release-20261009/documents-guard-successor-ci-harness-configured.log",
+      "sha256": "a6bea6a0e8fad3bd256f5c8063fa38823646cbd2ceb397b75671a9d1d0d984a3",
+      "bytes": 49940
+    },
+    "ci38004460437-database-failure-context-sanitized.log": {
+      "path": "/private/tmp/talli-release-20261009/ci38004460437-database-failure-context-sanitized.log",
+      "sha256": "7e0e5eefe737e38c8c7ac6421cf46f62f90253885f195e96d4d8feec946ff511",
+      "bytes": 2834
+    }
+  },
+  "limits": [
+    "The native harness is reduced and does not execute the entire migrations, real CompanyAccess/RLS/races or Documents original-retention workflow. The modified real database test is collected, not locally executed.",
+    "c7 CI excludes this repair and the newer Documents integrity assertion. A later complete run is required. All A1-A7 and release gates remain pending."
+  ]
+}

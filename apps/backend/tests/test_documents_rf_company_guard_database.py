@@ -20,6 +20,7 @@ from test_document_originals_database import original, retain, connect
 pytestmark = pytest.mark.authority_database
 ROOT = Path(__file__).resolve().parents[3]
 MIGRATION = '20260924080249_documents_rf_consequential_company_guards.sql'
+WITHDRAWAL_SUCCESSOR = '20261009213032_rf1086_observation_withdrawal_foundation.sql'
 ASSERTION = 'shareholder_register_filing.assert_current_register_observation_v1(uuid,uuid,integer,integer,text,text)'
 
 
@@ -159,21 +160,33 @@ def authority_state(db):
     return functions,memberships,archive_acl
 
 
+def replay_guard_topology(db, installed_withdrawal):
+    db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+    if installed_withdrawal:
+        # The predecessor recreates the current-observation assertion. Restore
+        # its installed withdrawal guard before checking exact final authority.
+        db.execute((ROOT/'supabase/migrations'/WITHDRAWAL_SUCCESSOR).read_text())
+
+
 def test_exact_replay_and_fail_closed_rollback_preserve_authority_and_originals(original):
     receipt = retain(original)
     with psycopg.connect(DATABASE_URL) as db:
         before = authority_state(db)
         assert len([r for r in before[0] if 'rf193-company-guard-v1' in r[-1]]) == 18
-        db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
-        assert authority_state(db) == before
+        installed_withdrawal = db.execute(
+            "select to_regclass('shareholder_register_filing.register_observation_withdrawals') is not null"
+        ).fetchone()[0]
     try:
+        with psycopg.connect(DATABASE_URL) as db:
+            replay_guard_topology(db, installed_withdrawal)
+            assert authority_state(db) == before
         with psycopg.connect(DATABASE_URL) as db:
             db.execute((ROOT/'supabase/rollback'/MIGRATION).read_text())
         with pytest.raises(psycopg.Error, match='documents_guard_suspended'):
             retain(original)
     finally:
         with psycopg.connect(DATABASE_URL) as db:
-            db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
+            replay_guard_topology(db, installed_withdrawal)
             assert authority_state(db) == before
     assert retain(original) == receipt
 
