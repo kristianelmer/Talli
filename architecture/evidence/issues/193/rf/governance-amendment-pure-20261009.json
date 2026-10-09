@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Pure immutable Governance register-evidence amendment foundation",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "7c68d4f18e48ad2cd5b5bd06e85ed67990fbca03",
+  "status": "IMPLEMENTED_FOCUSED_CHECKS_PASS_OWNER_BACKED_PERSISTENCE_PENDING",
+  "behavior": [
+    "New versioned anchor binds the unchanged original event, full canonical facts, Ledger identity, original actor and recording time without changing existing facts/finalization hashes.",
+    "Pure domain command and receipt bind actor/company/year/event, expected anchor/head, exact withdrawn and replacement RF references, correction memo, exact reason and immutable Documents commitments; private idempotency/correlation values are excluded.",
+    "Strict canonical UTF-8 codec and linear chain reject malformed types, unknown/duplicate fields, invalid hashes, skipped/reordered/forked history, duplicate withdrawals, reused observations and non-increasing later recording times.",
+    "Original corporate documents and correction memo are mandatory commitments; same-company replacement-observation originals may add source years. These commitments describe amendment-time metadata, not previously frozen historical metadata."
+  ],
+  "checks": [
+    {
+      "kind": "pytest",
+      "passed": 233,
+      "newCases": 110,
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -q apps/backend/tests/test_corporate_register_evidence_amendment.py apps/backend/tests/test_corporate_governance_public_contract.py apps/backend/tests/test_corporate_governance_supported_events.py apps/backend/tests/test_corporate_governance_workflow.py apps/backend/tests/test_corporate_register_evidence.py apps/backend/tests/test_supabase_corporate_governance.py"
+    },
+    {
+      "kind": "architecture",
+      "status": "PASS",
+      "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node scripts/check-architecture.mjs --write-evidence",
+      "dependencyEvidenceChanged": false
+    },
+    {
+      "kind": "openapi",
+      "status": "PASS",
+      "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python apps/backend/scripts/generate_openapi.py --check"
+    },
+    {
+      "kind": "existing-public-definition-ast-comparison",
+      "compared": 112,
+      "changed": 0
+    }
+  ],
+  "sourceFileSha256": {
+    "apps/backend/src/talli_backend/modules/corporate_governance/public.py": "9c569936198b476a79ca83d8fef7e824b5e453e1ff2553701164839ec7b3e7b3",
+    "apps/backend/src/talli_backend/modules/corporate_governance/register_evidence_amendment.py": "a64408652fbd905161863510446b6bf43a45013bfd61e7bb1a0eacc013a8c4bb",
+    "apps/backend/src/talli_backend/modules/corporate_governance/module.json": "b451cb229eaa7ae28bee95f6b2c95308a0c138029cb7e94c60bfef58aee59d2e",
+    "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md": "b08c69e91c20999eae5c4a9e83efcba83e9b266f00e0fa9ec5a0a9e43cc3618b",
+    "apps/backend/tests/test_corporate_register_evidence_amendment.py": "3f623c0b8735c6f99c2ace6620361624e0156d2c650a9ba02a97ee079c0d5316"
+  },
+  "privateArtifacts": {
+    "governance-amendment-pure-tests.log": {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-pure-tests.log",
+      "sha256": "f4da08c7d99646e6b2acc83a6a97c190107084c2e9d96b37db019e8bbb24f91e",
+      "bytes": 340
+    },
+    "governance-amendment-architecture.log": {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-architecture.log",
+      "sha256": "d12ce8caa45f77561fb098ad315c5b83021dd7fb5303a13d91a843a1f0b28a69",
+      "bytes": 18484
+    },
+    "governance-amendment-openapi.log": {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-openapi.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "governance-amendment-existing-definition-check.json": {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-existing-definition-check.json",
+      "sha256": "1e128d16d1012bca32522b9b53cb7f96d2f0f8b78d3896d84781ab925423ec73",
+      "bytes": 971
+    },
+    "governance-amendment-pure-checks.json": {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-pure-checks.json",
+      "sha256": "6a35e41cf32e72b48fad7a75aec32b7cf11f2e887e5ae522e17b32e5fe30b3e8",
+      "bytes": 2971
+    },
+    "governance-amendment-spec-review-tests.log": {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-spec-review-tests.log",
+      "sha256": "8fa6768f353dc61e53ddf00a53fee8049005e9c9e282ae7496321b2dceab87fd",
+      "bytes": 180
+    },
+    "governance-amendment-spec-review-extra.log": {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-spec-review-extra.log",
+      "sha256": "d189308f077de8ede59faeeb34b02ba291e103b08621ff13d3391e1e823639c4",
+      "bytes": 896
+    }
+  },
+  "review": {
+    "root": "Read full helper, public additions, manifest/docs and focused tests; no material source finding. Source and check artifact hashes independently verified.",
+    "spec": "Independent reviewer: zero material findings; 110 focused cases passed and 49 additional hash-consistent malformed primitive payloads rejected.",
+    "standards": "Independent reviewer: zero material actionable findings against7c68d4f1; all five source hashes matched. CONTEXT, ADR0011/0013, module interface rules and smell baseline checked; no mutations or tests in this review."
+  },
+  "limits": [
+    "Pure validity proves only internal commitments and supplied ancestry. A valid prefix does not prove complete persisted history.",
+    "No persistence, authorization, fresh MFA, RF withdrawal/currentness truth, retained byte verification, economic equivalence or Ledger eligibility is implemented or claimed by this slice.",
+    "Future owner-backed SQL must derive original actor/time from stored history, verify exact complete document coverage and bind private actor/company/idempotency key to this business request.",
+    "No database, browser, HTTP route, grant, withdrawal writer, Archive behavior, migration pointer advance, criterion promotion or launch clearance is added. All A1-A7 and complete release gates remain pending."
+  ]
+}

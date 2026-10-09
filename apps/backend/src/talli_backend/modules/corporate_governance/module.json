@@ -9,6 +9,7 @@
   "publicEntryPoint": "talli_backend.modules.corporate_governance.public",
   "exports": {
     "commands": [
+      "AmendSupportedCorporateRegisterEvidence",
       "AnnualCloseProposalCommand",
       "ApproveAnnualCloseCommand",
       "ApproveOwnerDividendCommand",
@@ -22,9 +23,9 @@
       "RecordOwnerDividendPaymentCommand",
       "RecordShareholderLoanCommand",
       "RecordSupportedCorporateEventCommand",
-      "ReverseSupportedCorporateEventCommand",
       "RegisterAnnualCloseDocumentsCommand",
-      "RegisterOwnerDividendDocumentsCommand"
+      "RegisterOwnerDividendDocumentsCommand",
+      "ReverseSupportedCorporateEventCommand"
     ],
     "queries": [
       "AnnualCloseEventKind",
@@ -47,6 +48,7 @@
       "CorporateDecisionFactSources",
       "CorporateDecisionKind",
       "CorporateDecisionRecord",
+      "CorporateDocumentOriginalCommitment",
       "CorporateDocumentReadiness",
       "CorporateDocumentReadinessBlocker",
       "CorporateDocumentSetRecord",
@@ -56,6 +58,9 @@
       "CorporateLedgerAmendment",
       "CorporateLifecycleSnapshot",
       "CorporateReadinessSource",
+      "CorporateRegisterEvidenceAmendmentHead",
+      "CorporateRegisterEvidenceChain",
+      "CorporateRegisterWithdrawalReference",
       "CorporateReportingYearBasis",
       "CorporateYearDividendEvidence",
       "CorporateYearSupportedEvidence",
@@ -89,13 +94,24 @@
       "ShareholderBallot",
       "SupportedCorporateBankFact",
       "SupportedCorporateDocumentFact",
+      "SupportedCorporateEventEvidenceAnchor",
+      "SupportedCorporateRegisterEvidenceAmendment",
       "SupportedCorporateSourceFact",
-      "build_reporting_year_evidence"
+      "anchor_supported_corporate_event_evidence",
+      "assert_corporate_register_evidence_amendment_integrity",
+      "assert_corporate_register_evidence_amendment_replay",
+      "build_reporting_year_evidence",
+      "corporate_register_evidence_amendment_request_digest",
+      "derive_corporate_register_evidence_chain",
+      "parse_corporate_register_evidence_amendment",
+      "prepare_supported_corporate_register_evidence_amendment",
+      "serialize_corporate_register_evidence_amendment"
     ],
     "events": [],
     "errors": [
       "CorporateGovernanceError",
-      "CorporateGovernanceErrorCode"
+      "CorporateGovernanceErrorCode",
+      "CorporateRegisterEvidenceAmendmentError"
     ],
     "identifiers": [
       "AccountingEntryReference",
@@ -109,6 +125,7 @@
       "CorporateEventId",
       "CorporateFinalizationId",
       "CorporateGovernancePersistence",
+      "CorporateRegisterEvidenceAmendmentId",
       "CorporateSourceReference",
       "DocumentReference",
       "MeetingForm",
@@ -216,7 +233,8 @@
     "adapter": "apps/backend/tests/test_supabase_corporate_governance.py",
     "database": "tests/corporate_governance_database_runtime.test.mjs",
     "architecture": "tests/architecture_foundation.test.mjs",
-    "registerObservationCompletionDatabase": "apps/backend/tests/test_governance_register_observation_completion_database.py"
+    "registerObservationCompletionDatabase": "apps/backend/tests/test_governance_register_observation_completion_database.py",
+    "registerEvidenceAmendmentPure": "apps/backend/tests/test_corporate_register_evidence_amendment.py"
   },
   "compatibilityExceptions": []
 }

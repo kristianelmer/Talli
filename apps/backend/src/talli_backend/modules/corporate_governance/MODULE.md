@@ -315,3 +315,64 @@ apparent event; broader final-write parity remains unresolved and the owner work
 must verify admitted ledger facts and original evidence. Earlier phases/loans are
 not given a new register requirement. Rollback retains the safety fence and public
 SQL dependency; no withdrawal writer, amendment or Archive policy is activated.
+
+### Pure register-evidence amendment foundation
+
+`anchor_supported_corporate_event_evidence` creates a
+`SupportedCorporateEventEvidenceAnchor`. The domain command is
+`AmendSupportedCorporateRegisterEvidence`, using
+`CorporateRegisterEvidenceAmendmentHead`, `CorporateRegisterWithdrawalReference`
+and `CorporateDocumentOriginalCommitment` values. The result is
+`SupportedCorporateRegisterEvidenceAmendment`, identified by
+`CorporateRegisterEvidenceAmendmentId`. Invalid pure values raise
+`CorporateRegisterEvidenceAmendmentError` with a fixed safe code.
+
+`corporate_register_evidence_amendment_request_digest` commits the business
+request. `prepare_supported_corporate_register_evidence_amendment` validates the
+supplied predecessor history and builds its receipt;
+`assert_corporate_register_evidence_amendment_integrity` and
+`assert_corporate_register_evidence_amendment_replay` check retained receipts and
+exact business replay. `derive_corporate_register_evidence_chain` returns a
+`CorporateRegisterEvidenceChain`. Canonical persistence uses
+`serialize_corporate_register_evidence_amendment` and
+`parse_corporate_register_evidence_amendment`.
+
+The additive public types and private `register_evidence_amendment.py` bind an
+unchanged recorded capital event to a later evidence statement. The anchor adds
+the stored original `UserId` and recording instant to a new digest; the existing
+facts/finalization digests and `RecordedSupportedCorporateEvent` remain unchanged.
+The original projection must have `replayed=False`: response-delivery metadata
+is not a second version of stored history. Only an owner-backed storage projection
+can establish where the original actor and timestamp came from.
+
+The pure command identifies actor, company/year/event, expected anchor/head,
+exact withdrawn RF reference, replacement reference, correction memo and exact
+reason. It contains no idempotency key or correlation ID. Later persistence must
+bind the private actor-scoped key to the business request digest and recover that
+receipt before fresh-write checks or external I/O. Public historical receipts
+must not disclose those transport values.
+
+The `corporate-register-evidence-amendment-v1` codec binds the complete anchor,
+command, amendment ID/revision/time, business request digest and immutable local
+Documents commitments. The frozen original document references plus the correction
+memo are a required subset. Additional same-company commitments can bind the
+replacement RF observation's originals, with their own source years. Pure code
+does not establish exact replacement coverage; the later RF public snapshot and
+final owner assertions must do that. Their metadata is captured when verifying
+the amendment; it does not claim historical metadata was frozen at original
+recording. Revision is the event's semantic document reference, not a Documents
+revision counter. The codec requires canonical UTC microseconds, exact UTF-8
+reason text, strict primitive types and unique/known JSON fields. No verified
+Boolean substitutes for public owner evidence.
+
+Chain validation binds revision 1 to the original RF reference, each subsequent
+head to its exact prior ID/digest, and each withdrawal target to the preceding
+effective reference. It rejects forks, skipped/truncated prefixes, duplicate
+receipts/withdrawals, reused observation IDs and non-increasing later times. A
+valid prefix still cannot prove that storage contains no later amendment.
+
+This foundation performs no IO, mutation, authorization, fresh-MFA, RF lifecycle,
+original-byte, economic or Ledger checks, and certifies no full enumeration.
+These remain application and final SQL obligations through declared public owner
+contracts. It adds no persistence port, grant, HTTP operation, activation or
+Archive behavior; old reporting and API/codec projections remain frozen.

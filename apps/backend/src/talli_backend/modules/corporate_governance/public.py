@@ -23,6 +23,7 @@ from talli_backend.shared.kernel import (
     IncomeYear,
     LocalDate,
     Money,
+    UserId,
 )
 
 
@@ -1620,7 +1621,192 @@ def corporate_governance_persistence_adapter(
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
+class CorporateRegisterEvidenceAmendmentError(ValueError):
+    """Malformed pure evidence or inconsistent supplied history; no IO failure."""
+
+
+class CorporateRegisterEvidenceAmendmentId(_UuidReference):
+    def __post_init__(self) -> None:
+        from .register_evidence_amendment import validate_identity
+
+        validate_identity(self.value)
+
+
+@dataclass(frozen=True, slots=True)
+class SupportedCorporateEventEvidenceAnchor:
+    """Stored original projection, including its actor/time omitted by the old hash.
+
+    A pure commitment cannot establish that these values came from storage.
+    """
+
+    original: RecordedSupportedCorporateEvent
+    original_actor_id: UserId
+    original_recorded_at: datetime
+    anchor_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateRegisterEvidenceAmendmentHead:
+    amendment_id: CorporateRegisterEvidenceAmendmentId
+    revision: int
+    amendment_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateRegisterWithdrawalReference:
+    """Exact retained RF receipt reference; actual RF proof belongs to its owner."""
+
+    withdrawal_id: CorporateSourceReference
+    withdrawal_sha256: str
+    target: SupportedCorporateSourceFact
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateDocumentOriginalCommitment:
+    """Amendment-time Documents commitments, with no verified flag.
+
+    Revision binds the event's semantic document reference; Documents has no
+    revision counter. Metadata is not a claim about the original recording time.
+    """
+
+    original_id: CorporateSourceReference
+    document_id: DocumentReference
+    company_id: CompanyId
+    source_income_year: IncomeYear
+    revision: int
+    metadata_sha256: str
+    content_sha256: str
+    byte_length: int
+    retained_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class AmendSupportedCorporateRegisterEvidence:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+    event_id: SupportedCorporateEventId
+    expected_anchor_sha256: str
+    expected_head: CorporateRegisterEvidenceAmendmentHead | None
+    withdrawal: CorporateRegisterWithdrawalReference
+    replacement: SupportedCorporateSourceFact
+    correction_memo: SupportedCorporateDocumentFact
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class SupportedCorporateRegisterEvidenceAmendment:
+    amendment_id: CorporateRegisterEvidenceAmendmentId
+    revision: int
+    anchor: SupportedCorporateEventEvidenceAnchor
+    command: AmendSupportedCorporateRegisterEvidence
+    recorded_at: datetime
+    originals: tuple[CorporateDocumentOriginalCommitment, ...]
+    request_sha256: str
+    amendment_sha256: str
+
+    @property
+    def head(self) -> CorporateRegisterEvidenceAmendmentHead:
+        return CorporateRegisterEvidenceAmendmentHead(
+            self.amendment_id, self.revision, self.amendment_sha256
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateRegisterEvidenceChain:
+    """Validated supplied chain; not proof of complete storage or active evidence."""
+
+    anchor: SupportedCorporateEventEvidenceAnchor
+    amendments: tuple[SupportedCorporateRegisterEvidenceAmendment, ...]
+    effective_register_fact: SupportedCorporateSourceFact
+    head: CorporateRegisterEvidenceAmendmentHead | None
+
+
+def anchor_supported_corporate_event_evidence(
+    original: RecordedSupportedCorporateEvent, *, original_actor_id: UserId
+) -> SupportedCorporateEventEvidenceAnchor:
+    from .register_evidence_amendment import anchor_event
+
+    return anchor_event(original, original_actor_id=original_actor_id)
+
+
+def corporate_register_evidence_amendment_request_digest(
+    command: AmendSupportedCorporateRegisterEvidence,
+) -> str:
+    from .register_evidence_amendment import request_digest
+
+    return request_digest(command)
+
+
+def prepare_supported_corporate_register_evidence_amendment(
+    command: AmendSupportedCorporateRegisterEvidence, *,
+    anchor: SupportedCorporateEventEvidenceAnchor,
+    amendment_id: CorporateRegisterEvidenceAmendmentId,
+    recorded_at: datetime,
+    originals: tuple[CorporateDocumentOriginalCommitment, ...],
+    previous: tuple[SupportedCorporateRegisterEvidenceAmendment, ...] = (),
+) -> SupportedCorporateRegisterEvidenceAmendment:
+    from .register_evidence_amendment import prepare
+
+    return prepare(command, anchor=anchor, amendment_id=amendment_id,
+        recorded_at=recorded_at, originals=originals, previous=previous)
+
+
+def assert_corporate_register_evidence_amendment_integrity(
+    amendment: SupportedCorporateRegisterEvidenceAmendment,
+) -> None:
+    from .register_evidence_amendment import assert_integrity
+
+    assert_integrity(amendment)
+
+
+def assert_corporate_register_evidence_amendment_replay(
+    amendment: SupportedCorporateRegisterEvidenceAmendment,
+    command: AmendSupportedCorporateRegisterEvidence,
+) -> None:
+    from .register_evidence_amendment import assert_replay
+
+    assert_replay(amendment, command)
+
+
+def derive_corporate_register_evidence_chain(
+    anchor: SupportedCorporateEventEvidenceAnchor, *,
+    amendments: tuple[SupportedCorporateRegisterEvidenceAmendment, ...],
+) -> CorporateRegisterEvidenceChain:
+    from .register_evidence_amendment import derive_chain
+
+    return derive_chain(anchor, amendments=amendments)
+
+
+def serialize_corporate_register_evidence_amendment(
+    amendment: SupportedCorporateRegisterEvidenceAmendment,
+) -> str:
+    from .register_evidence_amendment import serialize
+
+    return serialize(amendment)
+
+
+def parse_corporate_register_evidence_amendment(
+    encoded: str,
+) -> SupportedCorporateRegisterEvidenceAmendment:
+    from .register_evidence_amendment import parse
+
+    return parse(encoded)
+
+
 __all__ = [
+    "CorporateRegisterEvidenceAmendmentError", "CorporateRegisterEvidenceAmendmentId",
+    "SupportedCorporateEventEvidenceAnchor", "CorporateRegisterEvidenceAmendmentHead",
+    "CorporateRegisterWithdrawalReference", "CorporateDocumentOriginalCommitment",
+    "AmendSupportedCorporateRegisterEvidence", "SupportedCorporateRegisterEvidenceAmendment",
+    "CorporateRegisterEvidenceChain", "anchor_supported_corporate_event_evidence",
+    "corporate_register_evidence_amendment_request_digest",
+    "prepare_supported_corporate_register_evidence_amendment",
+    "assert_corporate_register_evidence_amendment_integrity",
+    "assert_corporate_register_evidence_amendment_replay",
+    "derive_corporate_register_evidence_chain",
+    "serialize_corporate_register_evidence_amendment",
+    "parse_corporate_register_evidence_amendment",
     "CorporateReportingYearBasis", "CorporateLedgerAmendment", "CorporateYearDividendEvidence",
     "CorporateGovernanceYearEvidence", "CorporateYearSupportedEvidence", "build_reporting_year_evidence",
     "SHA256_PATTERN",
