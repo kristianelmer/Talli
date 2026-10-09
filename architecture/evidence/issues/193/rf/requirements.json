@@ -213,5 +213,6 @@
   "withdrawalArchiveGeneration20261009": "withdrawal-archive-generation-20261009.json",
   "observationLifecycleRead20261009": "observation-lifecycle-read-20261009.json",
   "historicalCi37995838406": "ci-37995838406.json",
-  "browserV4RequestEvidenceRepair20261009": "browser-v4-request-evidence-repair-20261009.json"
+  "browserV4RequestEvidenceRepair20261009": "browser-v4-request-evidence-repair-20261009.json",
+  "observationEvidenceAssertions20261009": "observation-evidence-assertions-20261009.json"
 }

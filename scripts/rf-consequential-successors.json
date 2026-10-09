@@ -94,5 +94,9 @@
   {
     "migration": "20261009221151_rf1086_withdrawal_review_read_guards.sql",
     "presenceQuery": "select count(*)=2 from pg_proc where oid in (to_regprocedure('shareholder_register_filing.read_source_approval_context_v1(uuid,uuid,text)'),to_regprocedure('shareholder_register_filing.read_source_approval_context_v2(uuid,uuid,text,text)')) and position('rf1086_withdrawal_current_review_guard_v1' in prosrc)>0"
+  },
+  {
+    "migration": "20261009222053_rf1086_observation_evidence_assertions.sql",
+    "presenceQuery": "select count(*)=2 from pg_proc where oid in (to_regprocedure('shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)'),to_regprocedure('shareholder_register_filing.read_retained_register_observation_withdrawal_v1(uuid,uuid,integer,uuid,integer,text,text,timestamptz,text)'))"
   }
 ]

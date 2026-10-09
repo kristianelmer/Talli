@@ -1174,3 +1174,28 @@ withdrawal command is activated here.
 observation history with its withdrawal receipts in one authorized read snapshot.
 The additive lifecycle query derives current, superseded and withdrawn states;
 it does not grant withdrawal or establish later mutation authority.
+
+### Staged public SQL evidence assertions
+
+`20261009222053_rf1086_observation_evidence_assertions.sql` adds two RF-owned
+SECURITY DEFINER contracts with an empty search path and no runtime EXECUTE grant,
+including to the Governance store owner. Existing v1 signatures and ACLs stay
+unchanged; rollback retains the staged contracts.
+
+- `assert_current_register_observation_v2(id, company, year, revision, fact_sha,
+  not_after, subject)` requires the verified subject, accepted owner, READ COMMITTED
+  and company lock through v1, then binds capture time to a finite, nonfuture cutoff.
+- `read_retained_register_observation_withdrawal_v1(id, company, year, observation,
+  revision, fact_sha, withdrawal_sha, not_after, subject)` returns the original
+  canonical receipt only after current-owner authorization, exact identity/digest
+  checks and `capture <= withdrawal <= cutoff`. It does not require the historical
+  target to remain active or its original actor to be the current owner. The recovery
+  key is not returned.
+
+These are same-transaction identity/time assertions, not original-byte verification,
+economic equivalence, MFA recency or business admission. A future owning caller must
+mint its cutoff after the company lock and persist that exact instant; RF cannot
+prove the provenance of a supplied timestamp. Authorized committed replay must
+precede mutable evidence checks in that caller. Any Governance integration/grant
+requires its own bounded owner turn. Restricted DB tests live in
+`apps/backend/tests/test_rf1086_observation_evidence_assertions_database.py`.
