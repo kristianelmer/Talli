@@ -184,8 +184,11 @@ def test_committed_capture_lookup_preserves_superseded_receipt_and_conceals_othe
     with psycopg.connect(DATABASE_URL) as db:
         db.execute("insert into public.company_memberships(company_id,user_id,role,accepted_at) values(%s,%s,'owner',clock_timestamp())",(admitted['company'],admitted['outsider']))
     assert asyncio.run(outsider.read_register_observation_capture_receipt(replace(c,actor_id=outsider.actor_id),idempotency_key=key)) is None
+    foreign_company = CompanyId(str(uuid4()))
+    foreign_command = replace(c, company_id=foreign_company,
+        documents=tuple(replace(document, company_id=foreign_company) for document in c.documents))
     with pytest.raises(rf.ShareholderRegisterFilingError,match="SHAREHOLDER_REGISTER_FILING_NOT_FOUND"):
-        asyncio.run(s.read_register_observation_capture_receipt(replace(c,company_id=CompanyId(str(uuid4()))),idempotency_key=key))
+        asyncio.run(s.read_register_observation_capture_receipt(foreign_command,idempotency_key=key))
     with psycopg.connect(DATABASE_URL) as db:
         db.execute("update public.company_memberships set role='read_only' where company_id=%s",(admitted['company'],))
     with pytest.raises(rf.ShareholderRegisterFilingError,match="SHAREHOLDER_REGISTER_FILING_NOT_FOUND"):

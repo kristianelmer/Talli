@@ -283,8 +283,8 @@
     },
     "capitalPlan": {
       "path": "architecture/evidence/issues/193/rf/capital-source-plan-20261009.md",
-      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
-      "sha256": "54b5e91e917f781173c183274b5c92df993eeab1c7fc6e7e2e9ee2293fa861f9"
+      "revision": "b5de6563d260a4e4deeb3ec4efaaaecfc0f4ff33",
+      "sha256": "90a48962d3054999b2e85bb3b1edeb3de2be83e6fbbe8d1c0ebe43a6d6865fb0"
     },
     "capitalLaw": {
       "path": "architecture/evidence/issues/193/rf/capital-law-source-20261009.json",
