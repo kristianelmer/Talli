@@ -169,7 +169,7 @@
     ],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/migrations/20260827100000_ledger_capability.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql"
+    "migrations": "supabase/migrations/20260827100000_ledger_capability.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20261009225857_ledger_governance_entry_assertion.sql"
   },
   "ports": [
     {
@@ -207,7 +207,8 @@
     "contract": "apps/backend/tests/test_ledger_public_contract.py",
     "policy": "apps/backend/tests/test_ledger.py",
     "database": "tests/ledger_database_runtime.test.mjs",
-    "architecture": "tests/architecture_foundation.test.mjs"
+    "architecture": "tests/architecture_foundation.test.mjs",
+    "governanceEntryAssertion": "apps/backend/tests/test_ledger_governance_entry_assertion_database.py"
   },
   "compatibilityExceptions": [
     "compat-ledger-persistence"

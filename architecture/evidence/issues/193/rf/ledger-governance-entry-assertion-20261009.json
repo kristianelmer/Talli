@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Staged Ledger assertion for unchanged original Governance entry",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "f03c0af3d83e0990ad22812e1c8409afa170793e",
+  "status": "IMPLEMENTED_INDEPENDENTLY_REVIEWED_LOCAL_CHECKS_PASS_FULL_DATABASE_PENDING",
+  "behavior": [
+    "Public SQL assertion validates verified current accepted owner, READ COMMITTED and company/year locks, exact stored entry actor/company/year/event/date/capital kind/fixed rule, and finite stored timestamps no later than the original recording cutoff.",
+    "Exact ordered stored five-field sources must match immutable original expectations. The primary Governance event/revision/facts hash is required; contiguous stored ordinals and the existing JSONB-text context digest are independently reconstructed.",
+    "Retained reversal or correction blocks fresh use. A different current owner may prove the retained original actor without impersonation. Assertion changes no Ledger data, command receipt or archive generation.",
+    "No runtime consumer EXECUTE grant. Reapplication closes consumer grants; a future explicit Governance suffix must restore its narrow grant. Retentive rollback preserves the assertion without changing old posting/recovery functions."
+  ],
+  "checks": {
+    "ledgerOwnerUnitTests": {
+      "status": "PASS",
+      "count": 117
+    },
+    "realDatabaseCollection": {
+      "status": "COLLECTED_ONLY",
+      "count": 66
+    },
+    "ciGate": {
+      "status": "PASS",
+      "count": 108
+    },
+    "architecture": {
+      "status": "PASS",
+      "writesGeneratedEvidence": false
+    },
+    "openapi": {
+      "status": "PASS",
+      "unchanged": true
+    },
+    "nativePostgreSQL": {
+      "status": "PASS",
+      "groupedChecks": 11,
+      "reviewerReportedClusterRemoved": true
+    },
+    "independentReview": {
+      "remainingMaterialFindings": 0,
+      "scope": "Migration/rollback,66 real DB test cases and native whole-migration probe; source review only for real RLS/posting/races"
+    }
+  },
+  "sourceFileSha256": {
+    "supabase/migrations/20261009225857_ledger_governance_entry_assertion.sql": "91b447e7916dfb896e7c43eaff329cbcbff3f34b7ff78bc3668bb86226b465b1",
+    "supabase/rollback/20261009225857_ledger_governance_entry_assertion.sql": "c19e507f6afbc81963054640f71e501593a2e61035f727cc1f89122989286857",
+    "apps/backend/tests/test_ledger_governance_entry_assertion_database.py": "aac17d0984bfb2a87c8dbb136a5bce9381a2d642e496ca03ff150cfdc8d4a082",
+    "apps/backend/src/talli_backend/modules/ledger/MODULE.md": "636419bbe1878656ce0b48c67a0f2cfd37f436e6e2d28ea7452251c8fe5c1a7d",
+    "apps/backend/src/talli_backend/modules/ledger/module.json": "d5e63b83f943f6483f9bcf03973d417a8251a2e3c1f7036cb294c8704a5ad1e1",
+    "scripts/rf-consequential-successors.json": "5acb082bc32dffac28aa2209d0f22d61e6d1f2ba7b4edcc7c9acf11d5bce1f23",
+    "tests/ci_release_gate.test.mjs": "d9d0d0f2d96da0e12fbf11f591dd917fa28c8b116f4497ab24399adb000369ce",
+    "package.json": "fc18faba84074916846e5b276ced48175746c316d6af5970306b8cbef357fee4"
+  },
+  "privateArtifacts": {
+    "ledger-governance-assertion-owner-tests.log": {
+      "path": "/private/tmp/talli-release-20261009/ledger-governance-assertion-owner-tests.log",
+      "sha256": "8ceb147ccfd2413ed5a9b7fc5dd2c7a33a08deec9c860c9fcda8107d9d82c602",
+      "bytes": 180
+    },
+    "ledger-governance-assertion-collection.log": {
+      "path": "/private/tmp/talli-release-20261009/ledger-governance-assertion-collection.log",
+      "sha256": "56e2c57249a221af08e0baa5f282cb6961fd0b3966d629aed51ca239ac0f40e6",
+      "bytes": 8227
+    },
+    "ledger-governance-assertion-ci-gate.log": {
+      "path": "/private/tmp/talli-release-20261009/ledger-governance-assertion-ci-gate.log",
+      "sha256": "dfe3f90209b2cd6ed95c1ec95f41e9ae61960c501a12f21a4fede03f51d9d89d",
+      "bytes": 11387
+    },
+    "ledger-governance-assertion-ci-gate-working-tree-collection-race.log": {
+      "path": "/private/tmp/talli-release-20261009/ledger-governance-assertion-ci-gate-working-tree-collection-race.log",
+      "sha256": "90a8979caa264d5399530805a4d7d31c66f5e650b09d5d0f9bf13f97d7bc914b",
+      "bytes": 61884
+    },
+    "ledger-governance-assertion-architecture.log": {
+      "path": "/private/tmp/talli-release-20261009/ledger-governance-assertion-architecture.log",
+      "sha256": "d12ce8caa45f77561fb098ad315c5b83021dd7fb5303a13d91a843a1f0b28a69",
+      "bytes": 18484
+    },
+    "ledger-governance-assertion-openapi.log": {
+      "path": "/private/tmp/talli-release-20261009/ledger-governance-assertion-openapi.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "ledger-governance-assertion-native.json": {
+      "path": "/private/tmp/talli-release-20261009/ledger-governance-assertion-native.json",
+      "sha256": "4b1f3e1d22f3d632dbb037b7cb086c8c210c5d51bfbda3c42a15eee554b6ef85",
+      "bytes": 1823
+    },
+    "ledger-governance-assertion-native.log": {
+      "path": "/private/tmp/talli-release-20261009/ledger-governance-assertion-native.log",
+      "sha256": "20f3497f17204874491bbe5e481e76651a174cc39ebab384a77aa3afdaeee080",
+      "bytes": 978
+    },
+    "check-ledger-governance-assertion-native.py": {
+      "path": "/private/tmp/talli-release-20261009/check-ledger-governance-assertion-native.py",
+      "sha256": "cf5d79e9a9f87baeeab13769c7a2bc8d6a48e6312968359da43b412683a441cc",
+      "bytes": 14397
+    },
+    "ledger-governance-assertion-checks.json": {
+      "path": "/private/tmp/talli-release-20261009/ledger-governance-assertion-checks.json",
+      "sha256": "5225fa214aedda9a2ed7caca1f469bb2d0b681ab827638b8b2fe9b239fb18c11",
+      "bytes": 4431
+    },
+    "ledger-governance-assertion-native-before-case-fix.json": {
+      "path": "/private/tmp/talli-release-20261009/ledger-governance-assertion-native-before-case-fix.json",
+      "sha256": "5f6031623a68ea0b90e5e93096e495dd7fcc0d839e58e8feb637d8b021e678b3",
+      "bytes": 900
+    },
+    "ledger-governance-assertion-native-before-case-fix.log": {
+      "path": "/private/tmp/talli-release-20261009/ledger-governance-assertion-native-before-case-fix.log",
+      "sha256": "9231b8227971f436b326492ad282e59dab91eaf9ef88894867850ba1f28e762a",
+      "bytes": 978
+    }
+  },
+  "review": {
+    "standards": "Independent review: zero remaining material findings after native probe found and author repaired a CASE-expression parser error.",
+    "spec": "Root reviewed full SQL, exact source/time bindings, original/current actor distinction, existing guard and ordinal invariants, no-write promise, rollback, fixture and integration registrations; no material finding. All eight sources and nine recorded artifacts independently rehashed."
+  },
+  "limits": [
+    "No full Supabase database, restricted runtime posting, RLS or two-session races executed in this turn.66 real DB cases remain for owned CI/runtime.",
+    "NativePG17.11 executes whole migration,real roles/ACLs/pgcrypto and exact Ledger guard/year lock on minimal tables;CompanyAccess/current-owner/admission and shared company-lock dependencies are explicit stubs.",
+    "Stored binding/unamended status only;no accounting economics,phase-chain,original-document-byte,RF fact authority,amendment activation or archive completion claim.",
+    "Function has no runtime consumer EXECUTE;sealed Ledger function owner retains inherent PostgreSQL authority.Reapply closes test/future consumer grants;later activating owner suffix must restore its explicit grant.",
+    "Initial gate failed solely because final replay test was added between lane collections;frozen66-case rerun108/108PASS.Failed log retained with working-tree-collection-race label.",
+    "Native probe caught CASE/IF parsing syntax,now fixed and reviewed migration91b447e7 passes;no committed predecessor edited.",
+    "All A1-A7, full CI/browser/independent restore, amendment persistence and release gates remain pending. No source-stage exit, future Archive exception or launch authority is implied."
+  ]
+}

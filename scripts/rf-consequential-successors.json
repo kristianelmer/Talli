@@ -102,5 +102,9 @@
   {
     "migration": "20261009223340_governance_register_observation_completion_guard.sql",
     "presenceQuery": "select (select count(*)=2 from pg_proc where (oid=to_regprocedure('corporate_governance.prepare_supported_event_v1(jsonb,text)') and position('rf193-governance-replay-null-safe-v1' in prosrc)>0) or (oid=to_regprocedure('corporate_governance.complete_supported_event_v1(jsonb,text)') and position('rf193-governance-register-completion-v1' in prosrc)>0)) and has_schema_privilege('corporate_governance_store_owner','shareholder_register_filing','USAGE') and has_function_privilege('corporate_governance_store_owner','shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)','EXECUTE')"
+  },
+  {
+    "migration": "20261009225857_ledger_governance_entry_assertion.sql",
+    "presenceQuery": "select to_regprocedure('ledger.assert_unamended_governance_entry_v1(uuid,uuid,integer,uuid,uuid,date,text,timestamptz,jsonb,text)') is not null"
   }
 ]
