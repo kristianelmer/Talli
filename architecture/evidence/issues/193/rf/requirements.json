@@ -214,5 +214,6 @@
   "observationLifecycleRead20261009": "observation-lifecycle-read-20261009.json",
   "historicalCi37995838406": "ci-37995838406.json",
   "browserV4RequestEvidenceRepair20261009": "browser-v4-request-evidence-repair-20261009.json",
-  "observationEvidenceAssertions20261009": "observation-evidence-assertions-20261009.json"
+  "observationEvidenceAssertions20261009": "observation-evidence-assertions-20261009.json",
+  "governanceDocumentReplay20261009": "governance-document-replay-20261009.json"
 }

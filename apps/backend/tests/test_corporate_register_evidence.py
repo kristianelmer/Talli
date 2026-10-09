@@ -37,7 +37,7 @@ def harness(kind="cash_issue"):
             str(uuid4()), source.record.document_id, COMPANY, source.record.income_year,
             document_metadata_sha256(source.record), source.record.content_sha256, source.record.byte_length, NOW))
     h = SimpleNamespace(snapshot=snapshot, evidence=evidence, rf_actor=ACTOR, document_actor=ACTOR,
-        read_error=None, document_error=None, reads=[], originals=[])
+        read_error=None, document_error=None, reads=[], originals=[], document_sessions=[], document_reads=[])
     class RFSession:
         @property
         def actor_id(self): return h.rf_actor
@@ -59,10 +59,14 @@ def harness(kind="cash_issue"):
             return h.evidence
         async def list_documents(self, companies):
             assert companies == (COMPANY,)
+            h.document_reads.append(companies)
             return h.records
     class DocumentsFactory:
         async def session(self, token):
             assert token == "owner-token"
+            h.document_sessions.append(token)
+            if getattr(h, "document_session_error", None):
+                raise h.document_session_error
             return DocumentsSession()
     doc_kinds = [EvidenceKind.SIGNED_DECISION, EvidenceKind.AMENDED_ARTICLES, EvidenceKind.REGISTRATION_RECEIPT]
     if kind == "cash_issue": doc_kinds.append(EvidenceKind.CONTRIBUTION_CONFIRMATION)
@@ -180,10 +184,12 @@ def workflow(h, *, verifier=True):
     h.guard_active, h.assert_error, h.prepare_count = False, None, 0
     class Transaction:
         actor_id = ACTOR
-        async def actor_role(self, company): return "owner"
+        async def actor_role(self, company): return getattr(h, "role", "owner")
         async def prepare_supported_event(self, command, canonical):
             h.calls.append("prepare")
             h.prepare_count += 1
+            if getattr(h, "prepare_error", None):
+                raise h.prepare_error
             if getattr(h, "intervening_replay", None) and h.prepare_count == 2:
                 h.replay = h.intervening_replay
             return PreparedSupportedCorporateEvent(canonical, h.replay)
@@ -245,6 +251,57 @@ def test_exact_completed_replay_precedes_new_live_register_checks():
     h.calls.clear(); h.reads.clear(); h.originals.clear(); before = list(h.committed)
     assert h.run() == h.replay
     assert h.calls == ["prepare"] and not h.reads and not h.originals and h.committed == before
+
+
+@pytest.mark.parametrize("kind,phase", [("cash_issue", Phase.REGISTERED),
+    ("loss_covering_reduction", Phase.REGISTERED), ("loss_covering_reduction", Phase.FIRST_RECOGNIZED_AFTER_REGISTRATION)])
+@pytest.mark.parametrize("document_state", ["removed", "missing", "unavailable"])
+def test_committed_register_event_recovers_before_mutable_document_access(kind, phase, document_state):
+    h = workflow(harness(kind)); h.command = replace(h.command, phase=phase)
+    first = h.run()
+    h.replay = replace(first, replayed=True)
+    h.snapshot = None
+    if document_state == "removed":
+        h.records = tuple(replace(record, status=DocumentStatus.REMOVED) for record in h.records)
+    elif document_state == "missing":
+        h.records = ()
+    else:
+        h.document_session_error = DocumentsError.storage_unavailable()
+    h.calls.clear(); h.reads.clear(); h.originals.clear()
+    h.document_sessions.clear(); h.document_reads.clear()
+    before = tuple(h.committed)
+    assert h.run() == h.replay
+    assert h.calls == ["prepare"]
+    assert not h.document_sessions and not h.document_reads and not h.reads and not h.originals
+    assert tuple(h.committed) == before and not h.pending
+
+
+@pytest.mark.parametrize("failure", ["owner_revoked", "changed_command"])
+def test_committed_register_event_recovery_still_requires_owner_and_exact_binding(failure):
+    h = workflow(harness()); h.replay = replace(h.run(), replayed=True)
+    if failure == "owner_revoked":
+        h.role = "reviewer"
+    else:
+        h.prepare_error = CorporateGovernanceError.conflict()
+    h.calls.clear(); h.document_sessions.clear(); h.document_reads.clear()
+    before = tuple(h.committed)
+    with pytest.raises(CorporateGovernanceError) as caught:
+        h.run()
+    assert caught.value.category is (ErrorCategory.FORBIDDEN if failure == "owner_revoked" else ErrorCategory.CONFLICT)
+    assert not h.document_sessions and not h.document_reads
+    assert tuple(h.committed) == before and not h.pending
+
+
+@pytest.mark.parametrize("document_state", ["removed", "missing"])
+def test_fresh_register_event_still_checks_documents_after_replay_miss(document_state):
+    h = workflow(harness())
+    h.records = (() if document_state == "missing" else
+                 tuple(replace(record, status=DocumentStatus.REMOVED) for record in h.records))
+    with pytest.raises(CorporateGovernanceError) as caught:
+        h.run()
+    assert caught.value.category is ErrorCategory.PRECONDITION_FAILED
+    assert h.calls == ["prepare"] and h.document_reads == [(COMPANY,)]
+    assert not h.reads and not h.originals and not h.committed
 
 
 def test_postdating_observation_rolls_back_ledger_and_governance_before_commit():

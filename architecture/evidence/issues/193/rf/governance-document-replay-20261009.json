@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Governance register-event recovery before mutable Documents access",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "c0c3f59a89dbd42e9cda7ed069098c582c078bc0",
+  "status": "IMPLEMENTED_INDEPENDENTLY_REVIEWED_FOCUSED_CHECKS_PASS",
+  "finding": "record_supported_event opened a Documents session and checked live metadata before the preliminary committed receipt lookup for register-required events. A historical committed result could become unavailable after document removal or a dependency failure.",
+  "change": "Move the existing verified-session/owner/prepare-replay transaction before Documents session/list access for the same three existing register-required kinds/phases. Close its company guard before fresh external evidence I/O. Preserve final replay, current evidence assertions, Ledger transaction, other phases and original immutable result.",
+  "checks": {
+    "newRegressionBeforeFix": {
+      "failed": 13,
+      "passed": 0
+    },
+    "afterFix": {
+      "passed": 103,
+      "files": [
+        "test_corporate_register_evidence.py",
+        "test_corporate_governance_workflow.py",
+        "test_corporate_governance_supported_events.py"
+      ]
+    },
+    "scope": "Pure/application tests with explicit persistence and external-session doubles; no live SQL/RLS/HTTP/browser proof from this check."
+  },
+  "scenarios": [
+    "Committed recovery for cash registered and loss-reduction registered/first-recognized events after document removal, absence or unavailable Documents session; no Documents/RF access or new effects.",
+    "Current owner revocation and a persisted receipt conflict still propagate before any Documents access.",
+    "Fresh misses still reject missing/removed corporate documents before RF verification or Ledger effects; existing final transaction and interposed replay regressions also pass."
+  ],
+  "sourceFileSha256": {
+    "apps/backend/src/talli_backend/application/corporate_governance_workflow.py": "df94c1bf183b8642b6df5eb0051bd2f1fc715a9b8c25a73f7e509d7c6e90b0c7",
+    "apps/backend/tests/test_corporate_register_evidence.py": "7258f8b237d5d8628d853857c6414ffc77895abd9a0b153f94b425d35288207a"
+  },
+  "privateArtifacts": {
+    "governance-document-replay-before-fix.log": {
+      "path": "/private/tmp/talli-release-20261009/governance-document-replay-before-fix.log",
+      "sha256": "db3a7c68eb2c0f8beb4c806e4fb6af5a7488ae2345b1decc93082bc590f50667",
+      "bytes": 43192
+    },
+    "governance-document-replay-after-fix.log": {
+      "path": "/private/tmp/talli-release-20261009/governance-document-replay-after-fix.log",
+      "sha256": "797cd5e9ab4b4e5bbe8e81be4d5535401748636ed618804d6031598c6b80db36",
+      "bytes": 180
+    }
+  },
+  "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -q apps/backend/tests/test_corporate_register_evidence.py apps/backend/tests/test_corporate_governance_workflow.py apps/backend/tests/test_corporate_governance_supported_events.py",
+  "limits": [
+    "The workflow relies on the public prepare contract to authorize and bind stored recovery; separately staged SQL replay hardening needs actual database verification.",
+    "This change does not add evidence-amendment persistence, original-byte/economic final-SQL parity, Archive completeness policy or writer activation. All A1-A7 and complete release gates remain pending."
+  ],
+  "review": {
+    "independentReviewer": "override_standards_review",
+    "result": "No material source findings: existing committed replay precedes Documents access; fresh-event checks remain. This review does not establish SQL/RLS/runtime proof."
+  }
+}

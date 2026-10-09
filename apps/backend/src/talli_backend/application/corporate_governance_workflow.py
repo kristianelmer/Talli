@@ -1173,6 +1173,14 @@ class CorporateGovernanceApplication:
     ) -> RecordedSupportedCorporateEvent:
         session = await self._session(access_token, command.actor_id)
         canonical = self._service.prepare_supported_event(command)
+        if requires_register_observation(command):
+            # Recover an authorized committed event before mutable Documents or
+            # RF reads. Release the company guard before any original-byte I/O.
+            async with session.transaction(guarded_company_id=command.company_id) as transaction:
+                await self._require_owner(transaction, command.company_id)
+                prepared = await transaction.prepare_supported_event(command, canonical)
+                if prepared.replay is not None:
+                    return prepared.replay
         documents = await self._documents_session_factory.session(access_token)
         if documents.actor_id != command.actor_id:
             raise CorporateGovernanceError.forbidden()
@@ -1194,13 +1202,6 @@ class CorporateGovernanceApplication:
 
         evidence = None
         if requires_register_observation(command):
-            # Recovery does not depend on re-reading mutable live evidence. This
-            # short transaction releases all guards before original-byte I/O.
-            async with session.transaction(guarded_company_id=command.company_id) as transaction:
-                await self._require_owner(transaction, command.company_id)
-                prepared = await transaction.prepare_supported_event(command, canonical)
-                if prepared.replay is not None:
-                    return prepared.replay
             if self._register_evidence is None:
                 raise CorporateGovernanceError.unavailable()
             evidence = await self._register_evidence.verify(access_token, command)
