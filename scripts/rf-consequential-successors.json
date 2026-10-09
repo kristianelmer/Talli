@@ -101,10 +101,10 @@
   },
   {
     "migration": "20261009223340_governance_register_observation_completion_guard.sql",
-    "presenceQuery": "select (select count(*)=2 from pg_proc where (oid=to_regprocedure('corporate_governance.prepare_supported_event_v1(jsonb,text)') and position('rf193-governance-replay-null-safe-v1' in prosrc)>0) or (oid=to_regprocedure('corporate_governance.complete_supported_event_v1(jsonb,text)') and position('rf193-governance-register-completion-v1' in prosrc)>0)) and has_schema_privilege('corporate_governance_store_owner','shareholder_register_filing','USAGE') and has_function_privilege('corporate_governance_store_owner','shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)','EXECUTE')"
+    "presenceQuery": "select (select count(*)=2 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.prokind='f' and pg_catalog.oidvectortypes(p.proargtypes)='jsonb, text' and ((p.proname='prepare_supported_event_v1' and position('rf193-governance-replay-null-safe-v1' in p.prosrc)>0) or (p.proname='complete_supported_event_v1' and position('rf193-governance-register-completion-v1' in p.prosrc)>0))) and coalesce((select pg_catalog.has_schema_privilege('corporate_governance_store_owner',n.oid,'USAGE') and pg_catalog.has_function_privilege('corporate_governance_store_owner',p.oid,'EXECUTE') from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.prokind='f' and p.proname='assert_current_register_observation_v2' and pg_catalog.oidvectortypes(p.proargtypes)='uuid, uuid, integer, integer, text, timestamp with time zone, text'),false)"
   },
   {
     "migration": "20261009225857_ledger_governance_entry_assertion.sql",
-    "presenceQuery": "select to_regprocedure('ledger.assert_unamended_governance_entry_v1(uuid,uuid,integer,uuid,uuid,date,text,timestamptz,jsonb,text)') is not null"
+    "presenceQuery": "select exists(select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='ledger' and p.prokind='f' and p.proname='assert_unamended_governance_entry_v1' and pg_catalog.oidvectortypes(p.proargtypes)='uuid, uuid, integer, uuid, uuid, date, text, timestamp with time zone, jsonb, text')"
   }
 ]

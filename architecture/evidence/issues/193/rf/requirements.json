@@ -222,5 +222,6 @@
   "governanceAmendmentPure20261009": "governance-amendment-pure-20261009.json",
   "governanceAmendmentOwnerPrerequisites20261009": "governance-amendment-owner-prerequisites-20261009.json",
   "withdrawalGenerationFixtureRole20261009": "withdrawal-generation-fixture-role-20261009.json",
-  "ledgerGovernanceEntryAssertion20261009": "ledger-governance-entry-assertion-20261009.json"
+  "ledgerGovernanceEntryAssertion20261009": "ledger-governance-entry-assertion-20261009.json",
+  "crossOwnerTopologyProbeRepair20261009": "cross-owner-topology-probe-repair-20261009.json"
 }
