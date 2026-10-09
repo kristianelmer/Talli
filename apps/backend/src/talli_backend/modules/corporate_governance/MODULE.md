@@ -1,7 +1,7 @@
 # Corporate governance backend capability
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["corporate_governance.annual_close_artifacts","corporate_governance.annual_close_decisions","corporate_governance.annual_close_events","corporate_governance.annual_close_finalizations","corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments","corporate_governance.shareholder_loans","corporate_governance.supported_events"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
+{"dependencies":["query:shareholder_register_filing"],"ownedTables":["corporate_governance.annual_close_artifacts","corporate_governance.annual_close_decisions","corporate_governance.annual_close_events","corporate_governance.annual_close_finalizations","corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments","corporate_governance.shareholder_loans","corporate_governance.supported_events"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
 -->
 
 ## Purpose and ownership
@@ -285,3 +285,33 @@ older topology and routine bodies stay intact; the final combined cutover still
 uses the complete strict migration. The scoped replay retains all Governance
 missing-table checks and restores the existing Ledger guard grant needed by its
 caller, without creating replacement Ledger tables.
+
+
+### Final supported-event register currentness
+
+`20261009223340_governance_register_observation_completion_guard.sql` preserves
+`prepare_supported_event_v1` and `complete_supported_event_v1` signatures, OIDs,
+ACLs, company-first/event-next locks and READ COMMITTED requirement. Existing
+prepare replay comparisons are NULL-safe. Completion replay additionally binds
+stored company/year and uses NULL-safe hash/entry comparisons before returning;
+it is not full-command equality. Authorized historical replay precedes fresh
+mutable register checks.
+
+Fresh completion first requires strict outer/canonical identity and type agreement,
+then exact frozen RF reference shape for registered cash capital increases and
+registered/first-recognized-after-registration loss reductions. The store owner
+receives only RF schema USAGE and EXECUTE on public
+`assert_current_register_observation_v2`; no RF table access or retained-reader
+permission. This directed public SQL query dependency is declared in the manifest.
+The assertion runs under the same transaction/company lock as insertion. A single
+`statement_timestamp()` supplies both RF cutoff and explicit event `created_at`.
+A capture newer than statement start is conservatively rejected after a lock wait;
+the adapter maps that result to the existing evidence precondition.
+
+This fence proves current exact identity and capture time only. It does not verify
+original bytes, economics, canonical-facts digest provenance or arbitrary fabricated
+payloads. Mutating both outer and canonical declarations can still describe another
+apparent event; broader final-write parity remains unresolved and the owner workflow
+must verify admitted ledger facts and original evidence. Earlier phases/loans are
+not given a new register requirement. Rollback retains the safety fence and public
+SQL dependency; no withdrawal writer, amendment or Archive policy is activated.

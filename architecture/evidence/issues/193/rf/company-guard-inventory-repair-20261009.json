@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "RF source company-guard inventory expectation repair",
+  "observedDateUtc": "2026-10-09",
+  "status": "EXACT_INVENTORY_UPDATED_DATABASE_RERUN_PENDING",
+  "triggeringCi": {
+    "run": "https://github.com/kristianelmer/Talli/actions/runs/37998909844",
+    "head": "243eb7fef770b63cd3312277fb7a961fa73b6088",
+    "merge": "94a59874d41a467f86f740412ddf3cee8fc0b7fa",
+    "base": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+    "databaseTestsPassedBeforeStop": 349,
+    "databaseTestsFailed": 1,
+    "failedTest": "test_all_four_backstops_and_narrow_privileges_are_installed",
+    "wholeWorkflowTerminalAtRepair": false
+  },
+  "finding": "The catalog query enumerates every RF source_company_guard trigger. The withdrawal foundation intentionally installs the same guard on register_observation_withdrawals; the historical exact expected list had only the four predecessor tables.",
+  "repair": "Expect exactly those four tables plus register_observation_withdrawals; rename the count-specific test. Preserve equality, BEFORE-row INSERT/UPDATE/DELETE trigger type, enabled status, invoker/search-path and all narrow privilege checks. Keep the separate four-table direct-insert fixture parameterization; withdrawal backstop tests live in the withdrawal suite.",
+  "checks": {
+    "databaseTestsCollected": 11,
+    "databaseTestsExecutedLocally": 0,
+    "diffCheck": "PASS",
+    "independentDiagnosis": "release_plan verified the pinned test and withdrawal migration; no protection was missing in the reported catalog list."
+  },
+  "sourceFileSha256": {
+    "apps/backend/tests/test_rf1086_source_company_guard_database.py": "d6b1d2956199c125633d81d797017622da5a8cda98713a5e5abedda2c67c401b",
+    "supabase/migrations/20261009213032_rf1086_observation_withdrawal_foundation.sql": "bbe6cb7fff945785ae31f66c71d8aa353399e7f2bf4121bba15339e628b1f77d"
+  },
+  "privateArtifacts": {
+    "collection": {
+      "path": "/private/tmp/talli-release-20261009/company-guard-inventory-collection.log",
+      "sha256": "3ca3195ecc997247738b23f9c52d9c9cd288b42a678b3e9c3eae9ead029d5442",
+      "bytes": 1381
+    }
+  },
+  "limits": [
+    "This repairs the stale expectation, not a runtime permission or trigger. A later full run must execute the unchanged remaining assertions and subsequent tests.",
+    "RF browser/full-year capture/independent restore were not reached in the failed database job. The application job was still active at repair; no whole-run success or release/acceptance claim is made."
+  ]
+}

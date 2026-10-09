@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+
+import pytest
 from datetime import UTC, date, datetime
 
 from talli_backend.adapters.supabase_corporate_governance import (
@@ -648,6 +650,13 @@ def test_exact_register_and_retained_receipts_use_the_existing_governance_connec
 def test_final_evidence_errors_map_to_governance_precondition():
     from talli_backend.adapters.supabase_corporate_governance import _map_governance_database_error
     from talli_backend.modules.corporate_governance.public import CorporateGovernanceErrorCode
-    for code in ('rf1086_register_predecessor_mismatch', 'documents_evidence_mismatch'):
+    for code in ('rf1086_register_predecessor_mismatch', 'rf1086_register_observation_after_cutoff', 'documents_evidence_mismatch'):
         error = _map_governance_database_error(code)
         assert error.code is CorporateGovernanceErrorCode.CORPORATE_EVENT_EVIDENCE_INCOMPLETE
+
+
+@pytest.mark.parametrize("code", ["rf1086_register_observation_cutoff_invalid", "rf1086_register_withdrawal_storage_invalid"])
+def test_invalid_server_cutoff_or_storage_remains_unavailable(code):
+    from talli_backend.adapters.supabase_corporate_governance import _map_governance_database_error
+    from talli_backend.modules.ledger.public import LedgerErrorCode
+    assert _map_governance_database_error(code).code == LedgerErrorCode.DEPENDENCY_UNAVAILABLE.value

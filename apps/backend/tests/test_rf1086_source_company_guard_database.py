@@ -101,10 +101,10 @@ def guard_state(db):
     return db.execute("select c.relname,t.tgtype,t.tgenabled,p.prosecdef,p.proconfig,p.proacl::text from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_proc p on p.oid=t.tgfoid where c.relnamespace='shareholder_register_filing'::regnamespace and t.tgname='source_company_guard' order by c.relname").fetchall()
 
 
-def test_all_four_backstops_and_narrow_privileges_are_installed():
+def test_all_source_backstops_and_narrow_privileges_are_installed():
     with psycopg.connect(DATABASE_URL) as db:
         state = guard_state(db)
-        assert [r[0] for r in state] == sorted(TABLES)
+        assert [r[0] for r in state] == sorted((*TABLES, 'register_observation_withdrawals'))
         assert all(r[1] == 31 and r[2] == 'O' and r[3] is False and r[4] == ['search_path=""'] for r in state)
         assert db.execute("select has_function_privilege('shareholder_register_filing_store_owner','public.company_archive_lock_company_v1(uuid)','EXECUTE')").fetchone()[0]
         for role in ('anon', 'authenticated', 'service_role', 'shareholder_register_filing_executor'):

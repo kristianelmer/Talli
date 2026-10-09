@@ -1193,9 +1193,15 @@ unchanged; rollback retains the staged contracts.
   key is not returned.
 
 These are same-transaction identity/time assertions, not original-byte verification,
-economic equivalence, MFA recency or business admission. A future owning caller must
-mint its cutoff after the company lock and persist that exact instant; RF cannot
-prove the provenance of a supplied timestamp. Authorized committed replay must
+economic equivalence, MFA recency or business admission. An owning caller must
+persist the exact immutable event cutoff it supplies. A statement-start cutoff
+preserves existing event semantics but conservatively rejects captures newer than
+that start after a company-lock wait; RF cannot prove timestamp provenance. Authorized committed replay must
 precede mutable evidence checks in that caller. Any Governance integration/grant
 requires its own bounded owner turn. Restricted DB tests live in
 `apps/backend/tests/test_rf1086_observation_evidence_assertions_database.py`.
+
+The subsequent bounded Governance migration `20261009223340` grants only RF schema
+USAGE and current-v2 EXECUTE to the Governance store owner. The retained withdrawal
+reader stays ungranted. Prerequisite tests assert closed predecessor privileges,
+then reapply that exact successor and assert the narrow final-chain grant.

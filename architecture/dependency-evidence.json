@@ -455,6 +455,14 @@
       ],
       "kind": "workflow",
       "to": "backend-system:system_boundary"
+    },
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
+        "shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)"
+      ],
+      "kind": "query",
+      "to": "backend:shareholder_register_filing"
     }
   ],
   "generatedBy": "scripts/check-architecture.mjs",

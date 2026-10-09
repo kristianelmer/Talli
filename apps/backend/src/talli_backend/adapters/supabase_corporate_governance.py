@@ -621,7 +621,11 @@ def _shareholder_loan_request(
 
 
 def _map_governance_database_error(message: str):
-    if "rf1086_register_predecessor_mismatch" in message or "documents_evidence_mismatch" in message:
+    if any(code in message for code in (
+        "rf1086_register_predecessor_mismatch",
+        "rf1086_register_observation_after_cutoff",
+        "documents_evidence_mismatch",
+    )):
         return CorporateGovernanceError.precondition(
             CorporateGovernanceErrorCode.CORPORATE_EVENT_EVIDENCE_INCOMPLETE,
             "The current independent register evidence changed before the event was recorded.",
