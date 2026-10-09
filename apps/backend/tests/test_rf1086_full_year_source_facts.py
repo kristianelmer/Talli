@@ -114,7 +114,10 @@ def test_source_snapshot_reads_archive_and_independent_counts_on_one_repeatable_
     import asyncio
     from contextlib import asynccontextmanager
     from test_postgres_shareholder_register_filing import session
-    current=snapshot();store=session({});q=rf.Rf1086SourceQuery(current.workspace.company_id,current.workspace.income_year,store.actor_id)
+    current=snapshot()
+    current=replace(current,full_year_archive=replace(current.full_year_archive,withdrawal_capture_records=()),
+        full_year_family_counts={**current.full_year_family_counts,'register_observation_withdrawals':0})
+    store=session({});q=rf.Rf1086SourceQuery(current.workspace.company_id,current.workspace.income_year,store.actor_id)
     calls=[];transactions=[]
     class Connection:
         async def execute(self,sql,params):
@@ -144,4 +147,4 @@ def test_source_snapshot_reads_archive_and_independent_counts_on_one_repeatable_
     result=asyncio.run(store.source_snapshot(q))
     assert transactions==[connection]
     assert result.full_year_archive==current.full_year_archive and result.full_year_family_counts==current.full_year_family_counts
-    assert sum('count(*)' in sql for sql,_ in calls)==8
+    assert sum('count(*)' in sql for sql,_ in calls)==9

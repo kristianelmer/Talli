@@ -82,5 +82,9 @@
   {
     "migration": "20261009213032_rf1086_observation_withdrawal_foundation.sql",
     "presenceQuery": "select to_regclass('shareholder_register_filing.register_observation_withdrawals') is not null"
+  },
+  {
+    "migration": "20261009215302_rf1086_withdrawal_source_admission_guards.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc where oid=to_regprocedure('shareholder_register_filing.append_year_source_v1(uuid,uuid,integer,integer,text,text,text,uuid,text,text,text,timestamptz)') and position('rf193-withdrawal-source-admission-v1' in prosrc)>0)"
   }
 ]

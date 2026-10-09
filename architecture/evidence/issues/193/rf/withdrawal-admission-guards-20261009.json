@@ -1,0 +1,111 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "RF downstream withdrawal admission backstops",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "f095b0c2898c5e3166dba8c1120f112af82ec457",
+  "status": "IMPLEMENTED_REVIEWED_STATIC_AND_PARSER_CHECKS_PASS_LIVE_DATABASE_PENDING",
+  "behavior": [
+    "Eight old SQL bodies guard every fresh source, preview, review bridge, v1/v2 approval, v1/v2 claim and provider-operation intent after exact replay. Main, every child, confirmation and retries are covered through the unchanged public v2 wrapper.",
+    "Private overloads require the existing READ COMMITTED company/year guard and resolve exact immutable source/observation identity, scope, hash and observation time. The target must have no successor and no withdrawal.",
+    "Frozen-codec structural binding pairs every case event with a unique indexed evidence row and its matching governed receipt. Removing both reference arrays or disguising a capital receipt as a dividend fails. This does not replace economic validation or authoritative Governance enumeration.",
+    "Existing committed replay, historical query and intent-outcome recording remain unchanged. New private functions stay ungranted; original OID, owner, ACL, security configuration and volatility are checked during finite anchored patching.",
+    "Rollback refuses retained withdrawals atomically. Empty rollback keeps the inert guards; no receipt is erased and no old unguarded writer is restored."
+  ],
+  "review": {
+    "reviewer": "override_standards_review",
+    "result": "No remaining material findings after structural omission fix. Root independently inspected admission/replay placement and final added driver-error regression.",
+    "findingFixed": "An earlier parser checked only equality of receipt/evidence references; deleting both arrays could omit a retained capital reference. Final parser also binds case event structure.",
+    "reviewedDatabaseCases": 101,
+    "finalAdditionalCase": "Root reviewed the added actual-SQL stale-error translation case; final collection is102, not executed."
+  },
+  "checks": {
+    "ciRegistrationPassed": 103,
+    "databaseCollectedNotExecuted": 102,
+    "adapterAndCodecRegressionPassed": 49,
+    "isolatedMockedErrorMappingCasesPassed": 2,
+    "architectureExitCode": 0,
+    "openapiExitCode": 0,
+    "diffCheckExitCode": 0
+  },
+  "nativeParser": {
+    "status": "PASS",
+    "migrationSha256": "21d4b2453084021736c0025c1d6ca293029792b8f1d4fe1be2957d08302a0b12",
+    "scope": "Exact source-reference parser overloads and exact current-observation predicate on native PostgreSQL 17.11. The held-lock/admission assertion is a stub. No full migration, Supabase, RLS, ACL, real admission, old entry-point patch or race proof.",
+    "validParserCases": 4,
+    "malformedCases": 20,
+    "staleCases": 4,
+    "tcpListening": false,
+    "ownedClusterStoppedAndRemoved": true
+  },
+  "sourceFileSha256": {
+    "supabase/migrations/20261009215302_rf1086_withdrawal_source_admission_guards.sql": "21d4b2453084021736c0025c1d6ca293029792b8f1d4fe1be2957d08302a0b12",
+    "supabase/rollback/20261009215302_rf1086_withdrawal_source_admission_guards.sql": "99a1c6ef58e1940405b3cef2ee220b6cde8fc7b4aab46706044c1b18a806179a",
+    "apps/backend/tests/test_rf1086_withdrawal_admission_database.py": "cf7dccbf793affd50d248913ffcb0b1fb0bfcdd02816d670eea17fb791fc85af",
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "455cfd8dd6b25efe941aae08c87e89272149bf628c9bb7b569aab059695408ee",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "8ae89e6a041959e0cecfd878acf9596db2f52b38499e23edffa0933204d59ca3",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "ef4934347d3dc93ec3450ba3f56e6e35c47d2c102c0f25f3a1d48dd64ad4b788",
+    "scripts/rf-consequential-successors.json": "0ccffb7bc142e53f7fe442d685f5aab6e15b6b81c843ac4ab8d09cfcf2bddb98",
+    "tests/ci_release_gate.test.mjs": "39e4abb884e91c5ed0b089ffa845a04c21cceaea823895a6f2bcd64f672a949f",
+    "package.json": "2a38580053e3962d4e020c62fb9bf7d143c12ce1ea7ef03623bb7fcaf707342c"
+  },
+  "privateArtifacts": {
+    "ci-registration": {
+      "path": "/private/tmp/talli-rf-withdrawal-admission-ci-registration.log",
+      "sha256": "b2bdc1c1ffb0a295988c875f39c673bd8332c59aa61af025275f45ded77fc2c4",
+      "bytes": 10761
+    },
+    "collection": {
+      "path": "/private/tmp/talli-rf-withdrawal-admission-collection.log",
+      "sha256": "7965f6d37be84bf269d72245f58ba6b059a9176ad4bbd8dc874aa27d3636bce8",
+      "bytes": 13656
+    },
+    "architecture": {
+      "path": "/private/tmp/talli-rf-withdrawal-admission-architecture.log",
+      "sha256": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+      "bytes": 18198
+    },
+    "openapi": {
+      "path": "/private/tmp/talli-rf-withdrawal-admission-openapi.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "regression": {
+      "path": "/private/tmp/talli-rf-withdrawal-admission-regression.log",
+      "sha256": "e144f3808591852a0ed1f2436465aca12781e5654a7eda04c63783ff99d174d8",
+      "bytes": 99
+    },
+    "error-mapping": {
+      "path": "/private/tmp/talli-rf-withdrawal-admission-error-mapping.log",
+      "sha256": "7a3899947b435d3e26a424ef33eac146956633e039a1ad73b8cd720e432a4d5a",
+      "bytes": 97
+    },
+    "error-mapping-script": {
+      "path": "/private/tmp/talli-rf-withdrawal-admission-error-mapping.py",
+      "sha256": "c40b37c13eadb498984d6ac09289f4f08431cd6d4f89189c064f5e0fac6adea5",
+      "bytes": 1354
+    },
+    "withdrawal-admission-parser-native.json": {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-admission-parser-native.json",
+      "sha256": "e3c69fbaba9b3d3688b83b4630fdaee442aca56cb45bd23de229e9f22f10777f",
+      "bytes": 505
+    },
+    "withdrawal-admission-parser-native.log": {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-admission-parser-native.log",
+      "sha256": "fc718cfe9d4ac5e39f10d7915fa7e6789815d690a9536ecf02d03ae11150738b",
+      "bytes": 974
+    },
+    "check-withdrawal-admission-parser.py": {
+      "path": "/private/tmp/talli-release-20261009/check-withdrawal-admission-parser.py",
+      "sha256": "3027d839a1092a2b8dd10fc85efe911a839fa9530248de587c5b85eb782890c3",
+      "bytes": 8520
+    }
+  },
+  "limits": [
+    "102 real database cases were collected only. Complete migration, actual restricted-role ACL/RLS, both lock orders, legacy direct SQL, replay/outcome behavior and rollback still require CI execution.",
+    "Native PostgreSQL ran the exact parser overloads and active predicate against minimal owned tables, with the held-lock/admission assertion stubbed. Four valid,20 malformed and4 stale cases passed; this is not a substitute for full database proof.",
+    "Current-readiness wrappers and the old observation-list representation are separate unresolved work. Shared context internals remain unchanged to preserve existing approval replay.",
+    "Canonical Governance final SQL currentness/evidence repair, retained-generation tracking and Archive-owner completion/Company Access receipt eligibility remain pending technical dependencies.",
+    "Withdrawal execution is still ungranted; no runtime activation or future-facade change. All A1-A7, linked immutable complete gates and external launch clearances remain pending."
+  ]
+}

@@ -183,7 +183,7 @@ class PostgresShareholderRegisterFilingSession:
                 if code in str(error):
                     raise rf.Rf1086RegisterObservationError(code) from None
             for code in ("rf1086_source_predecessor_mismatch", "rf1086_source_idempotency_conflict", "rf1086_source_storage_invalid",
-                         "rf1086_source_preview_stale", "rf1086_source_preview_storage_invalid"):
+                         "rf1086_source_preview_stale", "rf1086_source_preview_storage_invalid", "rf1086_source_register_observation_stale"):
                 if code in str(error):
                     raise rf.Rf1086YearSourceError(code) from None
             if "company_access_forbidden" in str(error):
@@ -505,7 +505,9 @@ class PostgresShareholderRegisterFilingSession:
             "select v.* from shareholder_register_filing.register_observations v "
             "where v.id=%s::uuid and v.company_id=%s::uuid and v.income_year=%s "
             + ("and not exists(select 1 from shareholder_register_filing.register_observations successor "
-               "where successor.predecessor_id=v.id)" if current else ""),
+               "where successor.predecessor_id=v.id) "
+               "and not exists(select 1 from shareholder_register_filing.register_observation_withdrawals withdrawal "
+               "where withdrawal.observation_id=v.id)" if current else ""),
             (observation_id.value, str(query.company_id), int(query.income_year)),
         )).fetchone()
         return self._register_observation(row)
@@ -830,6 +832,21 @@ class PostgresShareholderRegisterFilingSession:
         except (TypeError, ValueError, KeyError):
             raise rf.ShareholderRegisterFilingError.unavailable() from None
         values['source_history'] = await self._archive_source_history(connection, company_id, year)
+        # Captured-empty is established by a complete, scoped database read on
+        # the same snapshot as the retained observations. Old HTTP projections
+        # explicitly omit this field and retain their historical codecs.
+        withdrawal_rows = await (await connection.execute(
+            'select id,idempotency_key,request_sha256,snapshot_text '
+            'from shareholder_register_filing.register_observation_withdrawals '
+            'where company_id=%s::uuid and income_year=%s order by withdrawn_at,id',
+            (company_id, year),
+        )).fetchall()
+        try:
+            values['withdrawal_capture_records'] = tuple(rf.Rf1086ArchiveCaptureRecord(
+                str(row['id']), row['idempotency_key'], row['request_sha256'], row['snapshot_text'])
+                for row in withdrawal_rows)
+        except (TypeError, ValueError, KeyError):
+            raise rf.ShareholderRegisterFilingError.unavailable() from None
         # Historical approval lineage uses retained versions, never current
         # heads, current Documents status or today's review permissions.
         lineage = []
@@ -1141,7 +1158,7 @@ class PostgresShareholderRegisterFilingSession:
             # Independent counts expose truncated/new-family enumeration. The
             # same repeatable snapshot and accepted-owner completeness apply.
             family_counts = {}
-            for table in ('year_source_versions','year_source_heads','register_observations',
+            for table in ('year_source_versions','year_source_heads','register_observations','register_observation_withdrawals',
                           'source_previews','source_review_bridges','source_approval_bindings',
                           'source_submission_bindings','submission_heads'):
                 count = await (await connection.execute(

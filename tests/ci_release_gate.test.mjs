@@ -44,7 +44,7 @@ const cleanWorktreePath = fileURLToPath(
 
 const postgresPrefetchPath = fileURLToPath(new URL("../scripts/prefetch-postgres-fixture-images.sh", import.meta.url));
 
-for (const failure of [null, "pull", "tag"]) test(`PostgreSQL fixture prefetch preserves anonymous scope and stops on ${failure ?? "success"}`, () => {
+function runPostgresPrefetch({ pullFailures = {}, failTag = false } = {}) {
   const directory = mkdtempSync(join(tmpdir(), "talli-postgres-prefetch-test-"));
   try {
     const bin = join(directory, "bin");
@@ -54,6 +54,7 @@ for (const failure of [null, "pull", "tag"]) test(`PostgreSQL fixture prefetch p
     const original = '{"auths":{"private.example":{"auth":"synthetic-caller-auth"}},"credsStore":"synthetic-helper"}\n';
     writeFileSync(join(originalConfig, "config.json"), original);
     const trace = join(directory, "trace.jsonl");
+    const sleepTrace = join(directory, "sleep.jsonl");
     const shim = join(bin, "docker");
     writeFileSync(shim, `#!${process.execPath}
 const assert = require('node:assert/strict');
@@ -70,32 +71,108 @@ assert.deepEqual(JSON.parse(fs.readFileSync(path.join(config, 'config.json'))), 
 assert.equal(fs.statSync(config).mode & 0o077, 0);
 assert.equal(fs.statSync(path.join(config, 'config.json')).mode & 0o077, 0);
 for (const variable of ['DOCKER_AUTH_CONFIG', 'DOCKER_CONTEXT', 'DOCKER_HOST']) assert.equal(process.env[variable], undefined);
+const previousCalls = fs.existsSync(process.env.PREFETCH_TRACE)
+  ? fs.readFileSync(process.env.PREFETCH_TRACE, 'utf8').trim().split('\\n').map(line => JSON.parse(line)) : [];
 fs.appendFileSync(process.env.PREFETCH_TRACE, JSON.stringify({args, config}) + '\\n');
-if (args[0] === process.env.PREFETCH_FAIL && args[1].endsWith(':17-alpine')) process.exit(23);
+if (args[0] === 'pull') {
+  const attempt = previousCalls.filter(call => call.args[0] === 'pull' && call.args[1] === args[1]).length;
+  const failures = JSON.parse(process.env.PREFETCH_PULL_FAILURES)[args[1].split(':').at(-1)] ?? [];
+  if (attempt < failures.length) {
+    process.stderr.write(failures[attempt] + '\\n');
+    process.exit(23);
+  }
+}
+if (args[0] === 'tag' && process.env.PREFETCH_FAIL_TAG === '1' && args[1].endsWith(':17-alpine')) process.exit(24);
 `);
     chmodSync(shim, 0o755);
+    const sleepShim = join(bin, "sleep");
+    writeFileSync(sleepShim, `#!${process.execPath}
+require('node:fs').appendFileSync(process.env.PREFETCH_SLEEP_TRACE, JSON.stringify(process.argv.slice(2)) + '\\n');
+`);
+    chmodSync(sleepShim, 0o755);
     const result = spawnSync("bash", [postgresPrefetchPath], {
       encoding: "utf8", timeout: 10_000,
       env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, RUNNER_TEMP: temporary,
         DOCKER_CONFIG: originalConfig, DOCKER_AUTH_CONFIG: "synthetic-caller-environment",
         DOCKER_CONTEXT: "synthetic-caller-context", DOCKER_HOST: "tcp://synthetic.invalid:2376",
-        PREFETCH_CALLER_CONFIG: originalConfig, PREFETCH_TRACE: trace, PREFETCH_FAIL: failure ?? "" },
+        PREFETCH_CALLER_CONFIG: originalConfig, PREFETCH_TRACE: trace, PREFETCH_SLEEP_TRACE: sleepTrace,
+        PREFETCH_PULL_FAILURES: JSON.stringify(pullFailures), PREFETCH_FAIL_TAG: failTag ? "1" : "0" },
     });
-    assert.equal(result.status, failure ? 23 : 0, result.stderr);
+    assert.ifError(result.error);
     const calls = readFileSync(trace, "utf8").trim().split("\n").map(line => JSON.parse(line));
-    const expected = ["17", "17-alpine", "16-alpine"].flatMap(tag => [
-      ["pull", `public.ecr.aws/docker/library/postgres:${tag}`],
-      ["tag", `public.ecr.aws/docker/library/postgres:${tag}`, `postgres:${tag}`],
-    ]);
-    assert.deepEqual(calls.map(call => call.args), expected.slice(0, failure === "pull" ? 3 : failure === "tag" ? 4 : 6));
+    const sleeps = existsSync(sleepTrace)
+      ? readFileSync(sleepTrace, "utf8").trim().split("\n").map(line => JSON.parse(line)) : [];
     const privateConfigs = new Set(calls.map(call => call.config));
     assert.equal(privateConfigs.size, 1);
     for (const config of privateConfigs) assert.equal(existsSync(config), false, "owned config is removed on every exit");
     assert.deepEqual(readdirSync(temporary), []);
     assert.equal(readFileSync(join(originalConfig, "config.json"), "utf8"), original);
+    return { result, calls: calls.map(call => call.args), sleeps };
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+}
+
+const postgresPrefetchCalls = ["17", "17-alpine", "16-alpine"].flatMap(tag => [
+  ["pull", `public.ecr.aws/docker/library/postgres:${tag}`],
+  ["tag", `public.ecr.aws/docker/library/postgres:${tag}`, `postgres:${tag}`],
+]);
+const ecrThrottle = 'Error response from daemon: toomanyrequests: Rate exceeded';
+
+for (const failure of [null, "pull", "tag"]) test(`PostgreSQL fixture prefetch preserves anonymous scope and stops on ${failure ?? "success"}`, () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({
+    pullFailures: failure === "pull" ? { "17-alpine": [""] } : {}, failTag: failure === "tag",
+  });
+  assert.equal(result.status, failure === "pull" ? 23 : failure === "tag" ? 24 : 0, result.stderr);
+  assert.deepEqual(calls, postgresPrefetchCalls.slice(0, failure === "pull" ? 3 : failure === "tag" ? 4 : 6));
+  assert.deepEqual(sleeps, []);
+});
+
+test("PostgreSQL fixture prefetch retries the throttled image anonymously then continues", () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: { "17-alpine": [ecrThrottle] } });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 3), ...postgresPrefetchCalls.slice(2)]);
+  assert.deepEqual(sleeps, [["5"]]);
+  assert.match(result.stderr, /toomanyrequests: Rate exceeded/u);
+});
+
+test("PostgreSQL fixture prefetch bounds repeated throttle failures and stops before tagging", () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: { "17-alpine": Array(4).fill(ecrThrottle) } });
+  assert.equal(result.status, 23, result.stderr);
+  assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 2), ...Array(3).fill(postgresPrefetchCalls[2])]);
+  assert.deepEqual(sleeps, [["5"], ["10"]]);
+});
+
+test("PostgreSQL fixture prefetch recovers from bounded temporary transport failures", () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: {
+    "17": ['net/http: TLS handshake timeout', 'error pulling image configuration: unexpected EOF'],
+    "17-alpine": ['dial tcp: lookup public.ecr.aws: temporary failure in name resolution'],
+  } });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(calls, [postgresPrefetchCalls[0], postgresPrefetchCalls[0], ...postgresPrefetchCalls.slice(0, 3), ...postgresPrefetchCalls.slice(2)]);
+  assert.deepEqual(sleeps, [["5"], ["10"], ["5"]]);
+});
+
+for (const message of [
+  'Error response from daemon: unauthorized: authentication required',
+  'Error response from daemon: manifest unknown',
+  'invalid reference format',
+  'x509: certificate has expired or is not yet valid',
+  'dial tcp: lookup public.ecr.aws: no such host',
+  'failed to register layer: no space left on device',
+  'toomanyrequests: Rate exceeded\nError response from daemon: denied: access forbidden',
+]) test(`PostgreSQL fixture prefetch does not retry permanent failure: ${message.split("\n").at(-1)}`, () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: { "17": [message] } });
+  assert.equal(result.status, 23, result.stderr);
+  assert.deepEqual(calls, postgresPrefetchCalls.slice(0, 1));
+  assert.deepEqual(sleeps, []);
+});
+
+test("PostgreSQL fixture prefetch stops if a retry encounters a permanent failure", () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: { "17": [ecrThrottle, 'manifest unknown'] } });
+  assert.equal(result.status, 23, result.stderr);
+  assert.deepEqual(calls, Array(2).fill(postgresPrefetchCalls[0]));
+  assert.deepEqual(sleeps, [["5"]]);
 });
 
 test("PostgreSQL prefetch rejects caller-selected image references before any command", () => {
@@ -604,7 +681,7 @@ const DLG='20260923125730_documents_ledger_evidence_guard.sql';
 const TAX='20260913171000_company_tax_settlement_expand.sql';
 const predecessor={rf_owned:false,authority_kind:'r',ledger_kind:'v',ledger_setup:true,opening_kind:'r'};
 const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`migrations/${RFA}`,`migrations/${RFY}`,`migrations/${RFO}`,`migrations/${RFP}`,`migrations/${RFG}`];
-const consequentialGuards=['20260924080208_company_access_rf_admission_guard.sql','20260924080249_documents_rf_consequential_company_guards.sql','20260924080355_governance_ledger_company_write_guards.sql','20260924083154_governance_guarded_reporting_year_read.sql','20260924084752_billing_rf_full_year_pilot_profile.sql','20260924085227_rf1086_source_review_bridge.sql','20260924091015_rf1086_source_approval_foundation.sql','20260924094631_rf1086_journal_company_guard.sql','20260928060732_rf1086_source_submission_claim.sql','20260928110000_rf1086_feedback_original_binding.sql','20260928124000_documents_historical_original_assertion.sql','20260929092425_banking_company_write_guards.sql','20260929144619_rf_annual_interview_read_admission.sql','20260929160247_rf_annual_ledger_read_admission.sql','20260929162030_rf_annual_document_read_admission.sql','20260929173935_rf1086_annual_approval_binding.sql','20260929182856_rf1086_durable_source_operation_intent.sql', '20260929192057_rf1086_dispatch_binding_identity.sql', '20260930083000_rf1086_override_receiver_cutover.sql', '20260930160335_rf1086_retained_archive_generations.sql', '20261009213032_rf1086_observation_withdrawal_foundation.sql'].map(file=>`migrations/${file}`);
+const consequentialGuards=['20260924080208_company_access_rf_admission_guard.sql','20260924080249_documents_rf_consequential_company_guards.sql','20260924080355_governance_ledger_company_write_guards.sql','20260924083154_governance_guarded_reporting_year_read.sql','20260924084752_billing_rf_full_year_pilot_profile.sql','20260924085227_rf1086_source_review_bridge.sql','20260924091015_rf1086_source_approval_foundation.sql','20260924094631_rf1086_journal_company_guard.sql','20260928060732_rf1086_source_submission_claim.sql','20260928110000_rf1086_feedback_original_binding.sql','20260928124000_documents_historical_original_assertion.sql','20260929092425_banking_company_write_guards.sql','20260929144619_rf_annual_interview_read_admission.sql','20260929160247_rf_annual_ledger_read_admission.sql','20260929162030_rf_annual_document_read_admission.sql','20260929173935_rf1086_annual_approval_binding.sql','20260929182856_rf1086_durable_source_operation_intent.sql', '20260929192057_rf1086_dispatch_binding_identity.sql', '20260930083000_rf1086_override_receiver_cutover.sql', '20260930160335_rf1086_retained_archive_generations.sql', '20261009213032_rf1086_observation_withdrawal_foundation.sql', '20261009215302_rf1086_withdrawal_source_admission_guards.sql'].map(file=>`migrations/${file}`);
 const workspaceForward=[...forward.filter(path=>path!==`contract-migrations/${AUC}`),...consequentialGuards];
 function fake(initial,{fail,noEffect=false}={}) {
  const state={signoff_open:true,...initial},executed=[];

@@ -808,11 +808,11 @@ def test_full_year_source_facts_include_claim_and_positive_family_counts(claim_f
         q=rf.Rf1086SourceQuery(f['source'].company_id,f['source'].income_year,store.actor_id)
         source=await store.source_snapshot(q)
         assert source.full_year_family_counts=={'year_source_versions':1,'year_source_heads':1,
-            'register_observations':0,'source_previews':1,'source_review_bridges':1,
+            'register_observations':0,'register_observation_withdrawals':0,'source_previews':1,'source_review_bridges':1,
             'source_approval_bindings':1,'source_submission_bindings':1,'submission_heads':1}
         assert source.full_year_archive.source_submission_claims[0].submission_id.value==claimed['claim']['submission_id']
         facts=build_source_facts(q,source)
-        assert facts.evidence.version.startswith('rf1086-source-v2:')
+        assert facts.evidence.version.startswith('rf1086-source-v3:')
         assert not any(reason.startswith('full_year_') for reason in facts.history_coverage.reasons)
         assert facts.readiness_status=='unavailable' and facts.hard_blocks==('rf1086_full_year_readiness_not_evaluated',)
     asyncio.run(run())

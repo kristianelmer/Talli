@@ -124,6 +124,63 @@ def test_sql_mints_exact_v1_canonical_receipt_and_replays_without_new_identity(s
     assert asyncio.run(staged["store"].read_register_observation(query(staged["command"]), original.observation_id)) == original
 
 
+@pytest.mark.parametrize("empty", [False, True])
+def test_archive_captures_exact_withdrawal_history_and_independent_count(staged, empty):
+    from talli_backend.shared.kernel import IncomeYear
+    original = observed(staged)
+    key = str(uuid4())
+    encoded = None if empty else withdraw(staged, original, key=key)
+    store = staged["store"]
+    q = rf.Rf1086ArchiveQuery(original.command.company_id, original.command.income_year, store.actor_id)
+    archive = asyncio.run(rf.create_rf1086_preparation_service(store).archive_source(q))
+    assert archive.source_history.register_observations == (original,)
+    assert len(archive.withdrawal_capture_records) == (0 if empty else 1)
+    if encoded is not None:
+        receipt = rf.parse_rf1086_register_observation_withdrawal(encoded)
+        assert archive.withdrawal_capture_records == (rf.Rf1086ArchiveCaptureRecord(
+            receipt.withdrawal_id.value, key, receipt.request_sha256, encoded),)
+    canonical = rf.serialize_rf1086_archive(archive, query=q)
+    assert json.loads(canonical)["codec"] == "rf1086-production-archive-v5"
+    assert rf.parse_rf1086_archive(canonical, query=q) == archive
+    facts_source = asyncio.run(store.source_snapshot(query(original.command)))
+    assert facts_source.full_year_archive == archive
+    assert facts_source.full_year_family_counts["register_observation_withdrawals"] == (0 if empty else 1)
+    assert asyncio.run(store.legacy_archive_source(q)).withdrawal_capture_records is None
+    other_year = asyncio.run(store.archive_source(replace(q, income_year=IncomeYear(2025))))
+    assert other_year.withdrawal_capture_records == ()
+    outsider = session(staged["seed"], staged["backend_url"], staged["seed"]["outsider"])
+    with pytest.raises(rf.ShareholderRegisterFilingError):
+        asyncio.run(outsider.archive_source(replace(q, actor_id=outsider.actor_id)))
+
+
+def test_source_snapshot_does_not_mix_pre_withdrawal_observations_with_post_commit_receipts(staged):
+    original = observed(staged)
+    store = staged["store"]
+    source_query = query(original.command)
+    read_history = store._archive_source_history
+    committed = []
+
+    async def commit_between_history_and_withdrawal_read(connection, company_id, year):
+        history = await read_history(connection, company_id, year)
+        assert history.register_observations == (original,)
+        if not committed:
+            committed.append(withdraw(staged, original))
+        return history
+
+    store._archive_source_history = commit_between_history_and_withdrawal_read
+    try:
+        before = asyncio.run(store.source_snapshot(source_query))
+    finally:
+        store._archive_source_history = read_history
+    after = asyncio.run(store.source_snapshot(source_query))
+    assert len(committed) == 1
+    assert before.full_year_archive.withdrawal_capture_records == ()
+    assert before.full_year_family_counts["register_observation_withdrawals"] == 0
+    assert after.full_year_archive.withdrawal_capture_records[0].snapshot_text == committed[0]
+    assert after.full_year_family_counts["register_observation_withdrawals"] == 1
+    assert before.full_year_archive.source_history == after.full_year_archive.source_history
+
+
 def test_new_function_and_helpers_have_no_runtime_execute_or_direct_mutation_grants(staged):
     original = observed(staged)
     with psycopg.connect(DATABASE_URL) as db:
@@ -304,6 +361,10 @@ def test_old_correction_and_withdrawal_serialize_without_ancestor_reactivation(s
 def test_old_public_assertion_rejects_withdrawn_head_but_new_independent_capture_survives(staged):
     original = observed(staged)
     withdraw(staged, original)
+    assert asyncio.run(staged["store"].read_current_register_observation(
+        query(staged["command"]), original.observation_id)) is None
+    assert asyncio.run(staged["store"].read_register_observation(
+        query(staged["command"]), original.observation_id)) == original
     with connection(staged) as db:
         with pytest.raises(psycopg.Error, match="predecessor_mismatch"):
             db.execute("select shareholder_register_filing.assert_current_register_observation_v1(%s,%s,%s,%s,%s,%s)",
@@ -311,6 +372,8 @@ def test_old_public_assertion_rejects_withdrawn_head_but_new_independent_capture
                  original.version, original.fact_sha256, staged["store"].actor_id.subject.value))
     independent = observed(staged)
     assert independent.version == 1 and independent.observation_id != original.observation_id
+    assert asyncio.run(staged["store"].read_current_register_observation(
+        query(staged["command"]), independent.observation_id)) == independent
 
 
 def test_old_correction_rejects_a_snapshot_taken_before_committed_withdrawal(staged):

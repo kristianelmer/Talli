@@ -1123,3 +1123,29 @@ The offline verifier accepts v5 JSON/NDJSON and offers
 successful transfer or codec verification is neither a database restore nor a
 Company Archive completion receipt. Regression coverage:
 `apps/backend/tests/test_rf1086_withdrawal_archive.py`.
+
+### Downstream observation admission guards (staged)
+
+`20261009215302_rf1086_withdrawal_source_admission_guards.sql` adds private,
+ungranted reference guards for the frozen year-source codec. Under held company/
+year locks and READ COMMITTED, they bind each governed case event to its indexed
+evidence and exact receipt, then require each referenced observation to remain
+active and to predate source capture. Missing collections, duplicate JSON keys,
+invalid reference pairs and omitted event bindings fail closed. This validates
+stored reference structure, not complete foreign Governance enumeration or capital
+economics.
+
+The old source/preview/bridge/approval v1-v2/claim v1-v2 functions check before a
+fresh mutation, after their existing replay branches. The guarded private intent
+v1, called by public v2, covers every new main/child/confirmation/retry intent.
+Old revoked ACLs stay revoked; historical recovery and already-admitted outcome
+recording retain their behavior. Rollback cannot remove these guards. Coverage:
+`apps/backend/tests/test_rf1086_withdrawal_admission_database.py`; collected tests
+are not a real database/RLS/race pass.
+
+The canonical database archive now enumerates withdrawal capture records and an
+independent family count in its one REPEATABLE READ snapshot. Existing HTTP
+projections preserve their old codecs; no v5 route or withdrawal activation is
+provided. Shared approval-context reads remain unchanged to preserve existing
+approval replay; separate truthful current-readiness/list behavior, Governance
+final admission/repair and the archive-owner completion fence remain prerequisites.
