@@ -20,7 +20,7 @@ test("corporate-governance manifests declare the implemented public surface", as
 
   assert.equal(
     backend.owns.migrations,
-    "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql",
+    "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql",
   );
   for (const exportedType of [
     "AnnualCloseEventKind",
@@ -99,7 +99,13 @@ test("document evidence ownership is acyclic and declared", async () => {
     text("supabase/contract-migrations/20260902110000_corporate_governance_contract.sql"),
   ]);
 
-  assert.deepEqual(governance.dependencies, []);
+  assert.deepEqual(governance.dependencies, [{
+    module: "shareholder_register_filing",
+    kind: "query",
+    imports: [
+      "shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)",
+    ],
+  }]);
   assert.deepEqual(documents.dependencies, []);
   assert.ok(documents.owns.tables.includes("documents.evidence_references"));
   assert.equal(
