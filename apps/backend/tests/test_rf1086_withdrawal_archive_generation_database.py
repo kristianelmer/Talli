@@ -5,6 +5,7 @@ import re
 from uuid import uuid4
 
 import psycopg
+from psycopg import sql
 import pytest
 
 from test_rf1086_register_observation_withdrawal_database import (
@@ -20,10 +21,42 @@ TRIGGER = 'company_archive_track_rf_withdrawal'
 
 
 @pytest.fixture
-def tracked(staged):
+def tracked(staged, disposable_archive_role_access):
     with psycopg.connect(DATABASE_URL) as db:
         db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
     return staged
+
+
+@pytest.fixture(scope='module')
+def disposable_archive_role_access():
+    """Borrow only the disposable admin's missing SET edge; preserve all others."""
+    role = 'company_archive_projection_executor'
+    assert DATABASE_URL, 'DATABASE_URL must identify the owned disposable database'
+    edges_query = ('select grantor,admin_option,inherit_option,set_option from pg_auth_members '
+                   'where roleid=%s::regrole and member=%s::regrole order by grantor')
+    with psycopg.connect(DATABASE_URL) as db:
+        principal, bypass = db.execute('select current_user,rolbypassrls from pg_roles where rolname=current_user').fetchone()
+        assert bypass, 'Archive fixture requires the designated disposable database admin'
+        before = db.execute(edges_query, (role, principal)).fetchall()
+        borrowed = not db.execute("select pg_has_role(current_user,%s,'SET')", (role,)).fetchone()[0]
+        prior = db.execute('select admin_option,inherit_option,set_option from pg_auth_members '
+                           'where roleid=%s::regrole and member=current_user::regrole and grantor=member',
+                           (role,)).fetchone()
+        if borrowed:
+            db.execute(sql.SQL('grant {} to {} with set true granted by {}').format(
+                sql.Identifier(role), sql.Identifier(principal), sql.Identifier(principal)))
+    try:
+        yield
+    finally:
+        if borrowed:
+            with psycopg.connect(DATABASE_URL) as db:
+                db.execute(sql.SQL('revoke {} from {} granted by {}').format(
+                    sql.Identifier(role), sql.Identifier(principal), sql.Identifier(principal)))
+                if prior is not None:
+                    db.execute(sql.SQL('grant {} to {} with admin {},inherit {},set {} granted by {}').format(
+                        sql.Identifier(role), sql.Identifier(principal),
+                        *(sql.SQL(str(value).lower()) for value in prior), sql.Identifier(principal)))
+                assert db.execute(edges_query, (role, principal)).fetchall() == before
 
 
 def migration_body():

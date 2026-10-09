@@ -219,5 +219,7 @@
   "companyGuardInventoryRepair20261009": "company-guard-inventory-repair-20261009.json",
   "governanceRegisterCompletion20261009": "governance-register-completion-20261009.json",
   "historicalCi37998909844": "ci-37998909844.json",
-  "governanceAmendmentPure20261009": "governance-amendment-pure-20261009.json"
+  "governanceAmendmentPure20261009": "governance-amendment-pure-20261009.json",
+  "governanceAmendmentOwnerPrerequisites20261009": "governance-amendment-owner-prerequisites-20261009.json",
+  "withdrawalGenerationFixtureRole20261009": "withdrawal-generation-fixture-role-20261009.json"
 }
