@@ -349,7 +349,8 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
     const archivePath = await archiveDownload.path();
     assert.ok(archivePath); // Playwright owns and removes it when its context closes.
     const verification = JSON.parse(execFileSync(python, ["apps/backend/scripts/verify_rf1086_archive.py", archivePath,
-      "--stream", "--company-id", primary.id, "--income-year", "2025", "--require-source-history", "--require-feedback-originals"],
+      "--stream", "--company-id", primary.id, "--income-year", "2025", "--require-source-history",
+      "--require-override-history", "--require-feedback-originals"],
       { cwd: process.cwd(), env: runtimeEnvironment(), encoding: "utf8", timeout: 30_000 }));
     assert.equal(verification.status, "verified_rf_canonical_record");
     assert.equal(verification.companyId, primary.id);
@@ -359,6 +360,7 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
     assert.equal(verification.feedbackOriginals, 2);
     assert.equal(verification.feedbackOriginalsComplete, true);
     assert.equal(verification.sourceHistoryIncluded, true);
+    assert.equal(verification.overrideHistoryIncluded, true);
     assert.equal(verification.databaseRestorePerformed, false);
     const successfulCalls = resources.mock.snapshot();
     const archiveReads = successfulCalls.filter(({ operation }) => operation === "list_documents");
@@ -435,7 +437,7 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
     assert.deepEqual(resources.mock.snapshot()
       .filter(({ operation }) => operation === "replayed_mutation" || operation === "request_rejected")
       .map(({ service, operation }) => ({ service, operation })), []);
-    for (const event of ["GET:/api/v1/shareholder-register-filings/archive-source/production-stream:200",
+    for (const event of ["GET:/api/v1/shareholder-register-filings/archive-source/production-stream-v4:200",
       "POST:/api/v1/shareholder-register-filings/previews:200",
       "POST:/api/v1/shareholder-register-filings/review-comments:200",
       "POST:/api/v1/shareholder-register-filings/production-approvals:200",

@@ -1,0 +1,187 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-09T22:20:25.157019+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "id": 37995838406,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/37995838406",
+    "event": "pull_request",
+    "headBranch": "codex/issue-193-completion-14d7",
+    "headSha": "98a443f439558d0523fe2c79df8c9b9c89744c8b",
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-09T21:50:31Z",
+    "updatedAt": "2026-10-09T22:18:30Z",
+    "durationSecondsFromCreatedToUpdated": 1679
+  },
+  "checkout": {
+    "revision": "d0b7c2ea8648d4968520bd4316029ec9411a8491",
+    "kind": "pull_request_merge_commit",
+    "observations": [
+      {
+        "jobId": 114041565369,
+        "revision": "d0b7c2ea8648d4968520bd4316029ec9411a8491",
+        "headParent": "98a443f439558d0523fe2c79df8c9b9c89744c8b",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log, git log -1 --format=%H; parent identities independently checked through GitHub Git commit API."
+      },
+      {
+        "jobId": 114041565549,
+        "revision": "d0b7c2ea8648d4968520bd4316029ec9411a8491",
+        "headParent": "98a443f439558d0523fe2c79df8c9b9c89744c8b",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log, git log -1 --format=%H; parent identities independently checked through GitHub Git commit API."
+      }
+    ],
+    "limit": "Run headSha is the PR head; both jobs tested this synthetic merge. Current local HEAD and uncommitted changes are not covered."
+  },
+  "jobs": [
+    {
+      "id": 114041565369,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T21:50:34Z",
+      "completedAt": "2026-10-09T21:51:54Z",
+      "durationSeconds": 80,
+      "failedSteps": [
+        {
+          "number": 6,
+          "name": "Prefetch official PostgreSQL fixture images anonymously",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "id": 114041565549,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T21:50:34Z",
+      "completedAt": "2026-10-09T22:18:23Z",
+      "durationSeconds": 1669,
+      "failedSteps": [
+        {
+          "number": 7,
+          "name": "Rehearse migrations, RLS, storage, and owner persistence",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "id": 114041566749,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-09T21:50:32Z",
+      "completedAt": "2026-10-09T21:50:32Z",
+      "durationSeconds": 0,
+      "failedSteps": []
+    },
+    {
+      "id": 114050425068,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T22:18:25Z",
+      "completedAt": "2026-10-09T22:18:29Z",
+      "durationSeconds": 4,
+      "failedSteps": [
+        {
+          "number": 2,
+          "name": "Require every readiness job",
+          "conclusion": "failure"
+        }
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "jobId": 114041565369,
+      "step": "Prefetch official PostgreSQL fixture images anonymously",
+      "observedSuccess": "public.ecr.aws/docker/library/postgres:17 downloaded; digest sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3",
+      "message": "Error response from daemon: toomanyrequests: Rate exceeded",
+      "exitCode": 1,
+      "observationLimit": "A later prefetch request was rate-limited. Application typecheck/boundary/build/rehearsal were not reached; no product-code failure follows from this excerpt."
+    },
+    {
+      "jobId": 114041565549,
+      "step": "Rehearse migrations, RLS, storage, and owner persistence",
+      "stage": "test:browser-shareholder-register-filing",
+      "file": "tests/browser_shareholder_register_filing.mjs",
+      "scenarioCountFailed": 10,
+      "testDefinitionLine": 40,
+      "assertionLines": [
+        438,
+        443
+      ],
+      "diagnosticWrapperLine": 540,
+      "expectedRequest": "GET:/api/v1/shareholder-register-filings/archive-source/production-stream:200",
+      "observedRequest": "GET:/api/v1/shareholder-register-filings/archive-source/production-stream-v4:200",
+      "message": "missing actual canonical backend request GET:/api/v1/shareholder-register-filings/archive-source/production-stream:200",
+      "supportedDiagnosis": "The exact request-evidence assertion expects the older unversioned route. The observed canonical archive request used the versioned v4 route successfully.",
+      "observationLimit": "The assertion fails before the full-year source journey and restore branch. This does not prove those later behaviors pass or fail, and is not evidence that the v4 archive endpoint failed."
+    }
+  ],
+  "reachedStages": {
+    "application": "Stopped at image prefetch; prior b5 Application success is separate historical evidence and is not transferred to this head.",
+    "database": {
+      "authorityRfSuite": {
+        "passed": 573,
+        "failed": 0,
+        "durationSeconds": 198.22
+      },
+      "newCaptureLookupCases": "All six source/register committed-receipt, pending-commit and rollback cases explicitly PASSED.",
+      "completedPredecessors": [
+        "RF workspace and owner browser",
+        "Ledger, Banking, Investments, Documents, Marketing, Corporate Governance and Billing lifecycle predecessors",
+        "Authority/RF persisted database suite",
+        "Company Tax database suite",
+        "Annual Accounts database suite",
+        "final Supabase advisor checks",
+        "annual owner browser",
+        "RF feedback schema/runtime",
+        "Authority Connections browser"
+      ],
+      "browserBoundedProgress": [
+        "All10 RF scenarios reached the common archive request assertion.",
+        "Owner archive page download returned200 through production-stream-v4; preceding canonical archive verification assertions completed.",
+        "Initial synthetic approved filing/feedback and unknown-response no-resend checks preceding the assertion completed."
+      ],
+      "notReached": [
+        "exerciseFullYearSourceJourney at tested file line452: full-year capture/correction/response-loss journey",
+        "guarded lost-capture browser recovery in that later journey",
+        "database/object-store and independent Auth restore calls at tested lines491\u2013530",
+        "later Company Tax and Annual Accounts browser stages",
+        "separate public acquisition database-job step"
+      ],
+      "stageEvidence": "Completed job markers and PASSED lines plus serial control flow read from git show98a443f4:tests/browser_shareholder_register_filing.mjs, lines334\u2013530. Local synthetic provider only; no genuine filing inferred."
+    }
+  },
+  "sanitizedFailureExcerpts": [
+    {
+      "jobId": 114041565369,
+      "path": "/private/tmp/talli-release-20261009/ci37995838406-application-failure-sanitized.log",
+      "sha256": "7a7e5ebf8ea93c18c59d3b9333e5913cd358c363c70852ab46f9c3c713d1415f",
+      "bytes": 303,
+      "kind": "Bounded sanitized diagnostic excerpt; not a full raw job log"
+    },
+    {
+      "jobId": 114041565549,
+      "path": "/private/tmp/talli-release-20261009/ci37995838406-database-failure-context-sanitized.log",
+      "sha256": "7e4e38ae020203a3785c452eb53e24dbd80a71cab8a2dded65633f1ed6204206",
+      "bytes": 8300,
+      "kind": "Bounded sanitized diagnostic excerpt; not a full raw job log"
+    }
+  ],
+  "limits": [
+    "Entire workflow failed. Bounded573-test RF/Authority DB success and early browser progress do not complete A2/A4/A6 or full RF acceptance.",
+    "Application failure was registry throttling; database failure was an exact browser-route expectation mismatch. Later fixes/retries require separate evidence on their own immutable head.",
+    "Immutable evidence was skipped; this is not an11/11 canonical complete-gate receipt or either of two linked immutable passes.",
+    "No independent Auth restore, hosted key recovery, genuine-company production acceptance, criterion promotion, provider activation, outreach or launch clearance is claimed.",
+    "Observer performed no rerun, dispatch, cancellation, commit or push. Persistence wrote only this receipt; indexes and product source remain untouched."
+  ]
+}
