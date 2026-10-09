@@ -8,3 +8,4 @@ export {
   presentSystemBoundaryFailure,
   presentSystemBoundarySuccess,
 } from "./view-models/presentation.ts";
+export { dependenciesReady } from "./transport/readiness.ts";

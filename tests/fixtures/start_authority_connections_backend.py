@@ -64,7 +64,7 @@ def guard_socket(event: str, arguments: tuple[object, ...]) -> None:
 
 
 def main() -> None:
-    for key in ("DATABASE_URL", "TALLI_LEDGER_DATABASE_URL", "TALLI_COMPANY_ACCESS_DATABASE_URL"):
+    for key in ("DATABASE_URL", "TALLI_LEDGER_DATABASE_URL", "TALLI_COMPANY_ACCESS_DATABASE_URL", "TALLI_BANKING_DATABASE_URL", "TALLI_MARKETING_MEASUREMENT_DATABASE_URL"):
         loopback_url(os.environ[key], ("postgres", "postgresql"))
     loopback_url(os.environ["SUPABASE_URL"], ("http",))
     mock_origin = loopback_url(os.environ["TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL"], ("http",))

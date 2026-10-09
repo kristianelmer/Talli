@@ -80,7 +80,7 @@ test("owner connects through hydrated Next, generated FastAPI transport, real RL
     await seedCompany(admin, database, other.id, "Synthetic Other Owner", resources.companies);
     await seedCallbackAudit(database, owner.id);
     const databases = {};
-    for (const role of ["talli_company_access_backend", "talli_ledger_backend"]) {
+    for (const role of ["talli_company_access_backend", "talli_ledger_backend", "talli_banking_backend", "talli_marketing_measurement_backend"]) {
       const previous = await database.query("select rolcanlogin,rolinherit,rolbypassrls from pg_roles where rolname=$1", [role]);
       assert.deepEqual(previous.rows, [{ rolcanlogin: false, rolinherit: false, rolbypassrls: false }]);
       const password = randomUUID().replaceAll("-", "");
@@ -108,6 +108,8 @@ test("owner connects through hydrated Next, generated FastAPI transport, real RL
         SUPABASE_URL: supabaseUrl, SUPABASE_ANON_KEY: anonKey, SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
         TALLI_LEDGER_DATABASE_URL: databases.talli_ledger_backend,
         TALLI_COMPANY_ACCESS_DATABASE_URL: databases.talli_company_access_backend,
+        TALLI_MARKETING_MEASUREMENT_DATABASE_URL: databases.talli_marketing_measurement_backend,
+        TALLI_BANKING_DATABASE_URL: databases.talli_banking_backend,
         TALLI_AUTHORITY_CALLBACK_INTERNAL_KEY: callbackKey,
         TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL: resources.mock.baseUrl,
         TALLI_PROD_MASKINPORTEN_CLIENT_ID: randomUUID(), TALLI_PROD_MASKINPORTEN_KEY_ID: randomUUID(),

@@ -47,7 +47,7 @@ export async function startTaxBrowserFixture({incomeYear=2026}={}) {
     const seed=spawnSync(python,['tests/fixtures/seed_tax_browser_company.py'],{cwd:process.cwd(),env:{...baseEnv,DATABASE_URL:databaseUrl},input:JSON.stringify({owner:owner.id,incomeYear}),encoding:'utf8'});
     assert.equal(seed.status,0,seed.stderr);({companyId,orgNumber}=JSON.parse(seed.stdout));
     const urls={};
-    for(const role of ['talli_company_access_backend','talli_ledger_backend','talli_banking_backend']){
+    for(const role of ['talli_company_access_backend','talli_ledger_backend','talli_banking_backend','talli_marketing_measurement_backend']){
       const prior=(await db.query('select rolcanlogin,rolinherit,rolbypassrls from pg_roles where rolname=$1',[role])).rows;
       assert.deepEqual(prior,[{rolcanlogin:false,rolinherit:false,rolbypassrls:false}]);
       const password=randomUUID().replaceAll('-','');await db.query(`alter role ${role} login password '${password}'`);roles.push(role);
@@ -59,7 +59,7 @@ export async function startTaxBrowserFixture({incomeYear=2026}={}) {
     backend=startOwnedProcess({command:python,args:['tests/fixtures/start_rf1086_workspace_backend.py'],cwd:process.cwd(),readinessProof:`TALLI_BACKEND_BOUND:${nonce}`,env:{...baseEnv,
       SUPABASE_URL:supabaseUrl,SUPABASE_ANON_KEY:anonKey,SUPABASE_SERVICE_ROLE_KEY:serviceKey,DATABASE_URL:databaseUrl,
       TALLI_LEDGER_DATABASE_URL:urls.talli_ledger_backend,TALLI_COMPANY_ACCESS_DATABASE_URL:urls.talli_company_access_backend,
-      TALLI_BANKING_DATABASE_URL:urls.talli_banking_backend,TALLI_BACKEND_PORT:String(backendPort),TALLI_READINESS_NONCE:nonce,
+      TALLI_BANKING_DATABASE_URL:urls.talli_banking_backend,TALLI_MARKETING_MEASUREMENT_DATABASE_URL:urls.talli_marketing_measurement_backend,TALLI_BACKEND_PORT:String(backendPort),TALLI_READINESS_NONCE:nonce,
       TALLI_RF1086_PRODUCTION_ENABLED:'false',TALLI_AUTHORITY_OPS_ENABLED:'false'}});
     await waitForOwnedReadiness({process:backend,url:backendOrigin+'/health/ready'});
     proxy=createServer(async(req,res)=>{

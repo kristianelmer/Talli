@@ -108,7 +108,7 @@ def install_prepared_stop(journal_type, raw_path: str, nonce: str) -> None:
 def main() -> None:
     if os.environ.get("TALLI_LOCAL_RF1086_FRESH_SEND_FIXTURE") != "true":
         raise SystemExit("rf1086_fresh_send_fixture_not_selected")
-    for key in ("DATABASE_URL", "TALLI_LEDGER_DATABASE_URL", "TALLI_COMPANY_ACCESS_DATABASE_URL", "TALLI_BANKING_DATABASE_URL"):
+    for key in ("DATABASE_URL", "TALLI_LEDGER_DATABASE_URL", "TALLI_COMPANY_ACCESS_DATABASE_URL", "TALLI_BANKING_DATABASE_URL", "TALLI_MARKETING_MEASUREMENT_DATABASE_URL"):
         loopback_url(os.environ[key], ("postgres", "postgresql"))
     loopback_url(os.environ["SUPABASE_URL"], ("http",))
     mock_origin = loopback_url(os.environ["TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL"], ("http",))

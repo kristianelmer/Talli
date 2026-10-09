@@ -109,6 +109,10 @@ Advance serially under the confirmed technical-first instruction and actual pred
 | #199 → #154 | Real canonical public producers/calculators reconcile a whole company-year by stable ID/revision/hash with zero unexplained material differences; defects routed through one owner at a time. Remove residual legacy/private web business access, duplicate policy and migration debt; exact manifests, dependencies, two complete gates. |
 | #197 → #198 | After technical readiness and lawful entry, approved 2+8 design (8–12 company-years, target 10), all common patterns covered twice across real/golden evidence and six near-boundary rejects; ≥90% unaided core tasks, median support <30 minutes/company-year, zero unexplained material differences and final production proof for each service. Then exact immutable release clearance below. |
 
+## Later 9 October checkpoint
+
+The preserved RF/recovery implementation is committed at `eac508175fa0073e7f2cfe28034792ae17996ede`. Its [ordinary PR run](ci-37985850090.json) tested merge commit `26fab4044a32b70c2957816ebfade60df4ba7fb4`: Application passed; Database isolation failed on the archive test’s use of `id` instead of `record_id`; Immutable evidence was skipped. The assertion is corrected in the successor change. [Dependency-aware readiness](../../196/dependency-readiness-20261009.json) also has local tests, builds and independent review, with actual database/browser and hosted proof still pending. These supplements supersede the earlier “next system-boundary work” item only within that documented scope. They do not promote any RF acceptance criterion or count as immutable passing gates.
+
 ## PR, CI and rollback package
 
 1. Freeze the reviewed implementation with a commit and file/evidence digests. Preserve predecessor ancestry; confirm PR #216 and its remote head before deciding whether to continue that draft or attach a successor. No force push, fabricated stage exit or customer-ready tag.

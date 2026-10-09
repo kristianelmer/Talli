@@ -952,13 +952,13 @@ def test_production_archive_captures_override_values_and_excludes_other_years(fi
     older = record(historical, 'Older year explanation')
     query = rf.Rf1086ArchiveQuery(CompanyId(str(fixture['company'])), IncomeYear(2025), session.actor_id)
     archive = asyncio.run(rf.create_rf1086_preparation_service(session).archive_source(query))
-    assert [row.id for row in archive.overrides] == [str(selected.id)]
+    assert [row.id for row in archive.overrides] == [selected.record_id]
     row = archive.overrides[0]
     assert (row.old_value, row.new_value, row.reason) == ('Old æ', 'New ø', 'Selected year explanation')
     assert row.created_by == row.owner_confirmed_by == str(fixture['owner'])
     assert row.owner_confirmed_at and row.created_at
     other_query = rf.Rf1086ArchiveQuery(query.company_id, IncomeYear(2024), session.actor_id)
-    assert [row.id for row in asyncio.run(session.archive_source(other_query)).overrides] == [str(older.id)]
+    assert [row.id for row in asyncio.run(session.archive_source(other_query)).overrides] == [older.record_id]
     assert asyncio.run(session.legacy_archive_source(query)).overrides is None
     outsider = store(fixture, actor=fixture['outsider'])
     with pytest.raises(rf.ShareholderRegisterFilingError):

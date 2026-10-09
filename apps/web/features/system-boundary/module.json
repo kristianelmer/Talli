@@ -4,7 +4,7 @@
   "name": "system-boundary",
   "path": "apps/web/features/system-boundary",
   "owner": "web:system-boundary",
-  "purpose": "Present the FastAPI system-boundary tracer in Norwegian through the committed generated API client without recreating backend policy.",
+  "purpose": "Present the FastAPI tracer and own minimal web operational health with bounded backend/Auth readiness probes.",
   "documentation": "apps/web/features/system-boundary/MODULE.md",
   "publicEntryPoint": "@/features/system-boundary",
   "publicImportPaths": [
@@ -12,13 +12,24 @@
     "apps/web/features/system-boundary",
     "apps/web/features/system-boundary/index.ts"
   ],
-  "ownedRoutes": ["/system-boundary"],
-  "apiOperations": ["systemBoundaryGetTracerStatus"],
+  "ownedRoutes": [
+    "/system-boundary",
+    "/health/live",
+    "/health/ready"
+  ],
+  "apiOperations": [
+    "systemBoundaryGetTracerStatus"
+  ],
   "dependencies": [],
-  "allowedImports": ["#backend-configuration", "@talli/talli-api-client"],
+  "allowedImports": [
+    "#backend-configuration",
+    "@talli/talli-api-client"
+  ],
   "cachePolicy": {
     "default": "no-store",
-    "allowed": []
+    "allowed": [
+      "Process-local operational readiness boolean for two seconds; no user data or upstream diagnostics."
+    ]
   },
   "directBrowserFlows": [],
   "forbiddenResponsibilities": [

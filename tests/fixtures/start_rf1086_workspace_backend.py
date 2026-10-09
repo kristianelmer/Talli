@@ -10,7 +10,7 @@ from pathlib import Path
 def main() -> None:
     fixture_root = Path(__file__).resolve().parent
     guards = runpy.run_path(str(fixture_root / 'start_shareholder_register_filing_backend.py'))
-    for key in ('DATABASE_URL', 'TALLI_LEDGER_DATABASE_URL', 'TALLI_COMPANY_ACCESS_DATABASE_URL'):
+    for key in ('DATABASE_URL', 'TALLI_LEDGER_DATABASE_URL', 'TALLI_COMPANY_ACCESS_DATABASE_URL', 'TALLI_BANKING_DATABASE_URL', 'TALLI_MARKETING_MEASUREMENT_DATABASE_URL'):
         guards['loopback_url'](os.environ[key], ('postgres', 'postgresql'))
     guards['loopback_url'](os.environ['SUPABASE_URL'], ('http',))
     if any(os.environ.get(key) != 'false' for key in ('TALLI_RF1086_PRODUCTION_ENABLED', 'TALLI_AUTHORITY_OPS_ENABLED')):

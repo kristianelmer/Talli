@@ -26,6 +26,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import ClientDisconnect
 
+from talli_backend.adapters.dependency_readiness import (
+    CachedReadiness, ReadinessProbe, configured_readiness,
+)
+
 from talli_backend.application.shareholder_register_filing_session import (
     ShareholderRegisterFilingAuthenticationError, ShareholderRegisterFilingSessionFactory,
 )
@@ -5262,13 +5266,49 @@ def create_app(
     marketing_measurement_gateway: MarketingMeasurementGateway | None = None,
     marketing_measurement_internal_key: str | None = None,
     validation_observer: PassiveValidationObserver | None = None,
+    readiness_probe: ReadinessProbe | None = None,
 ) -> FastAPI:
+    # Readiness follows the infrastructure selected here. Injected adapters own
+    # their operational contract; unit/custom applications can inject a probe.
+    database_roles: dict[str, tuple[str, ...]] = {}
+
+    def require_database(setting: str, roles: tuple[str, ...]) -> None:
+        database_roles[setting] = database_roles.get(setting, ()) + roles
+
+    ledger_dependencies = (
+        (ledger_session_factory, ("ledger_executor", "ledger_workflow_executor")),
+        (company_tax_session_factory, ("company_tax_filing_workflow_executor",)),
+        (annual_accounts_session_factory, ("annual_accounts_filing_workflow_executor",)),
+        (investments_session_factory, ("investments_executor", "investments_workflow_executor")),
+        (corporate_governance_session_factory, ("corporate_governance_workflow_executor",)),
+        (documents_session_factory, ("documents_executor",)),
+        (billing_session_factory, ("billing_executor", "billing_store_owner")),
+        (annual_billing_session_factory, ("billing_store_owner",)),
+        (shareholder_register_filing_session_factory, ("shareholder_register_filing_executor",)),
+        (launch_signoff_session_factory, ("launch_signoff_executor",)),
+        (authority_connections_session_factory, ("authority_connections_executor",)),
+    )
+    for dependency, roles in ledger_dependencies:
+        if dependency is None:
+            require_database("TALLI_LEDGER_DATABASE_URL", roles)
+    if company_access_gateway is None or documents_session_factory is None:
+        require_database("TALLI_COMPANY_ACCESS_DATABASE_URL", ("company_access_executor", "company_access_recovery_executor"))
+    if banking_session_factory is None:
+        require_database("TALLI_BANKING_DATABASE_URL", ("banking_executor", "banking_provider_executor", "banking_workflow_executor"))
+    auth_required = bool(database_roles)
+    if marketing_measurement_gateway is None:
+        require_database("TALLI_MARKETING_MEASUREMENT_DATABASE_URL", ("marketing_measurement_ingest_executor", "marketing_measurement_report_executor"))
     # Explicit test/application dependencies form their own composition. Avoid
     # mixing an injected provider or intake with an ambient merchant account.
     if annual_billing_provider is None and annual_notification_intake is None:
         annual_runtime = compose_annual_billing_runtime()
         annual_billing_provider = annual_runtime.provider
         annual_notification_intake = annual_runtime.notification_intake
+        if annual_notification_intake is not None:
+            require_database("TALLI_ANNUAL_NOTIFICATION_DATABASE_URL", ("annual_notification_executor",))
+    dependency_readiness = CachedReadiness(readiness_probe if readiness_probe is not None else configured_readiness(
+        os.environ, database_roles, auth_required=auth_required,
+    ))
     application = FastAPI(
         title="Talli API",
         summary="Talli web-to-backend production boundary",
@@ -5278,6 +5318,7 @@ def create_app(
         redoc_url=None,
     )
     application.add_middleware(RequestIdMiddleware)
+    application.add_event_handler("shutdown", dependency_readiness.close)
     gateway = (
         company_access_gateway
         if company_access_gateway is not None
@@ -11971,8 +12012,10 @@ def create_app(
 
     @application.get("/health/ready", include_in_schema=False)
     async def readiness() -> JSONResponse:
+        ready = await dependency_readiness()
         return JSONResponse(
-            {"status": "ready"},
+            {"status": "ready" if ready else "not_ready"},
+            status_code=200 if ready else 503,
             headers={"Cache-Control": "no-store"},
         )
 

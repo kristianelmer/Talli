@@ -873,3 +873,18 @@ The companion GET `/api/v1/shareholder-register-filings/source-production-filing
 `/api/v1/shareholder-register-filings/archive-source/production-stream` downloads the same validated RF record and exact Documents originals as bounded NDJSON. It reads one original at a time, caps combined original bytes at 1 GiB, and ends with counts and a SHA-256 commitment. Missing completion, missing/extra records, changed bytes or historical metadata fail offline verification. Authentication precedes streaming; Documents rechecks access per original. HTTP 200 alone does not prove a completed archive. The existing inline JSON route retains its 128 MiB bound.
 
 RF archive transport overlap: `/archive-source/production-v4` and `/archive-source/production-stream-v4` require captured override history and emit codec v4. The original JSON/streaming routes deliberately omit override history and retain codecs v1–v3 and the exact older response shape, while the domain snapshot remains complete. Web first requests v4 and falls back only for an absent endpoint; old history remains unknown, not empty.
+
+
+## Dependency readiness
+
+The system-boundary HTTP adapter composes
+`talli_backend.adapters.dependency_readiness`. `/health/live` stays process-only;
+`/health/ready` checks the restricted database connections and Supabase Auth
+selected by the HTTP composition, with bounded parallel I/O, shared in-flight
+work and a two-second result cache. No business data or provider operation is
+read or changed. Exact coverage and exclusions are documented in
+`apps/backend/src/talli_backend/modules/system_boundary/MODULE.md`.
+
+<!-- architecture-inventory
+{"transportDependencies":["talli_backend.adapters.dependency_readiness"]}
+-->

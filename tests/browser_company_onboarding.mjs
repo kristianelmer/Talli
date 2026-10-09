@@ -115,6 +115,7 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
     const backendDatabasePassword = randomUUID().replaceAll("-", "");
     const ledgerDatabasePassword = randomUUID().replaceAll("-", "");
     const bankingDatabasePassword = randomUUID().replaceAll("-", "");
+    let marketingRoleBorrowed = false;
     const roleBoundary = await database.query(
       `select rolcanlogin, rolinherit, rolbypassrls,
         pg_catalog.pg_has_role('talli_company_access_backend', 'company_access_executor', 'set') as can_set_executor,
@@ -147,6 +148,10 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
       await database.query(
         "alter role talli_banking_backend nologin password null",
       );
+      if (marketingRoleBorrowed) {
+        await database.query("alter role talli_marketing_measurement_backend nologin password null");
+        marketingRoleBorrowed = false;
+      }
       resources.cleanupBackendDatabaseRole = undefined;
     };
     const backendDatabaseUrl = databaseUrlForBackendRole(
@@ -163,6 +168,14 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
       "talli_banking_backend",
       bankingDatabasePassword,
     );
+    assert.deepEqual((await database.query(
+      "select rolcanlogin,rolinherit,rolbypassrls from pg_roles where rolname='talli_marketing_measurement_backend'",
+    )).rows, [{ rolcanlogin: false, rolinherit: false, rolbypassrls: false }]);
+    const marketingPassword = randomUUID().replaceAll("-", "");
+    await database.query(`alter role talli_marketing_measurement_backend login password '${marketingPassword}'`);
+    marketingRoleBorrowed = true;
+    const marketingDatabaseUrl = databaseUrlForRole(databaseUrl, "talli_marketing_measurement_backend", marketingPassword);
+
     const ownerEmail = `onboarding-${randomUUID()}@example.test`;
     const password = `Pw-${randomUUID()}-talli`;
     const { data: confirmation, error: confirmationError } =
@@ -184,6 +197,7 @@ test("a verified AAL1 owner completes accessible, fail-closed company onboarding
       databaseUrl: backendDatabaseUrl,
       bankingDatabaseUrl,
       ledgerDatabaseUrl,
+      marketingDatabaseUrl,
       port: backendPort,
       supabaseUrl,
     });
@@ -1016,7 +1030,7 @@ function createBrregServer({ control, orgNumbers, requests }) {
   });
 }
 
-function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: localAnonKey, brregBaseUrl, databaseUrl: localDatabaseUrl, bankingDatabaseUrl, ledgerDatabaseUrl }) {
+function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: localAnonKey, brregBaseUrl, databaseUrl: localDatabaseUrl, bankingDatabaseUrl, ledgerDatabaseUrl, marketingDatabaseUrl }) {
   const backendPython =
     process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python";
   if (!existsSync(backendPython)) throw new Error("backend_python_missing");
@@ -1036,6 +1050,7 @@ function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: loca
       TALLI_BANKING_ENCRYPTION_KEY:
         "browser-fixture-only-banking-encryption-key",
       TALLI_LEDGER_DATABASE_URL: ledgerDatabaseUrl,
+      TALLI_MARKETING_MEASUREMENT_DATABASE_URL: marketingDatabaseUrl,
       TALLI_BACKEND_PORT: String(port),
       TALLI_READINESS_NONCE: readinessNonce,
     },

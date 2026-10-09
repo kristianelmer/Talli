@@ -118,7 +118,7 @@ test("built artifacts support both deployment orders and isolate backend failure
   const backendPort = await availablePort();
   const webPort = await availablePort();
   const backend = startProcess(
-    resolve(repositoryRoot, "apps/backend/.venv/bin/python"),
+    process.env.TALLI_BACKEND_PYTHON_BIN || resolve(repositoryRoot, "apps/backend/.venv/bin/python"),
     [
       "-m",
       "uvicorn",
@@ -128,7 +128,10 @@ test("built artifacts support both deployment orders and isolate backend failure
       "--port",
       String(backendPort),
     ],
-    { PYTHONPATH: wheel },
+    { PYTHONPATH: wheel, SUPABASE_URL: "", SUPABASE_ANON_KEY: "",
+      TALLI_LEDGER_DATABASE_URL: "", TALLI_COMPANY_ACCESS_DATABASE_URL: "",
+      TALLI_BANKING_DATABASE_URL: "", TALLI_MARKETING_MEASUREMENT_DATABASE_URL: "",
+      TALLI_ANNUAL_BILLING_MODE: "off" },
   );
   let web;
   let baselineBackend;
@@ -139,6 +142,11 @@ test("built artifacts support both deployment orders and isolate backend failure
       200,
       backend,
     );
+    // This contract fixture has no configured persistence/Auth dependencies.
+    const notReady = await fetch(`http://127.0.0.1:${backendPort}/health/ready`);
+    assert.equal(notReady.status, 503);
+    assert.deepEqual(await notReady.json(), { status: "not_ready" });
+    assert.equal(notReady.headers.get("cache-control"), "no-store");
     const baselineResponse = await fetch(
       `http://127.0.0.1:${backendPort}/api/v1/system-boundary/tracer`,
     );
@@ -173,12 +181,13 @@ test("built artifacts support both deployment orders and isolate backend failure
       {
         NODE_ENV: "production",
         TALLI_BACKEND_URL: `http://127.0.0.1:${backendPort}`,
+        SUPABASE_URL: "", SUPABASE_ANON_KEY: "",
       },
     );
     await waitFor(`http://127.0.0.1:${webPort}/health/live`, 200, web);
     assert.equal(
       (await fetch(`http://127.0.0.1:${webPort}/health/ready`)).status,
-      200,
+      503,
     );
     const successPage = await (
       await fetch(`http://127.0.0.1:${webPort}/system-boundary`)
@@ -201,7 +210,7 @@ test("built artifacts support both deployment orders and isolate backend failure
     );
     assert.equal(
       (await fetch(`http://127.0.0.1:${webPort}/health/ready`)).status,
-      200,
+      503,
     );
     const failurePage = await (
       await fetch(`http://127.0.0.1:${webPort}/system-boundary`)

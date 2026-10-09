@@ -183,5 +183,7 @@
   "retainedOriginalGenerationsRestore": "original-generations-restore-20260930.json",
   "retentionInventory": "retention-inventory-20260930.json",
   "remainingTechnicalGaps20261009": "remaining-technical-gaps-20261009.json",
-  "overrideIdentityIntegration20261009": "integration-verification-20261009.json"
+  "overrideIdentityIntegration20261009": "integration-verification-20261009.json",
+  "dependencyReadiness20261009": "../../196/dependency-readiness-20261009.json",
+  "historicalCi37985850090": "ci-37985850090.json"
 }
