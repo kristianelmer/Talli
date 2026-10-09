@@ -84,3 +84,20 @@ The source screen reads retained dispatch position and its exact approved previe
 The owner route `/filing/aksjonaerregisteroppgaven/source/archive` uses `downloadRf1086Archive` and `rf1086DownloadProductionArchive`. It validates company/year, requires a current accepted owner and the existing archive-export MFA check, and forwards the backend body without buffering or adding completion claims. Browser cancellation and a five-minute deadline propagate to the backend request. The source page provides a normal download link with no prefetch.
 
 `rf1086GetProductionArchiveSourceV4` and `rf1086DownloadProductionArchiveV4` opt into codec v4 and captured override history. The original JSON and streaming operations retain their original shapes and codecs v1–v3 for deployed older clients. New web falls back only on HTTP 404 to the older production operations, preserving absent override history as unknown; malformed responses and other errors block export.
+
+
+### Capture receipt recovery
+
+`rf1086LookupYearSourceCapture` and `rf1086LookupRegisterObservationCapture`
+are generated-client read queries using the exact retained capture body and its
+original idempotency key. The editor's explicit check action does not call capture,
+replace a key, refresh evidence, or retry automatically. A validated `recorded`
+receipt releases the frozen attempt; `not_observed`, conflicts, malformed results,
+and unavailable transport keep the exact attempt and its uncertainty. A missing
+record is not proof the original request failed. Old backends may lack these
+additive routes; that failure leaves the attempt unresolved and never falls back
+to a mutation. Existing manual same-key capture retry remains a separate action.
+
+<!-- architecture-inventory
+{"apiOperations":["rf1086LookupYearSourceCapture","rf1086LookupRegisterObservationCapture"]}
+-->

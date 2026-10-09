@@ -8,6 +8,7 @@ import {
   type Rf1086ProductionArchiveSourceWire, type Rf1086ProductionArchiveSourceV4Wire,
   type RfSourcePreviewWire, type RfSourcePreviewRequestWire, type RfYearSourceReceiptWire,
   type RfYearSourceCaptureWire, type RfRegisterObservationCaptureWire,
+  type RfYearSourceCaptureLookupWire, type RfRegisterObservationCaptureLookupWire,
   type RfCurrentYearSourceWire, type RfRegisterObservationsWire,
   type RfSourceProductionReviewRequestWire, type RfSourceProductionReviewWire,
   type RfSourceProductionApprovalCommandWire,
@@ -288,6 +289,39 @@ export async function captureRf1086RegisterObservationThroughApi(
   sourceScope(value, body.companyId, body.incomeYear);
   if (value.version < 1 || !/^[a-f0-9]{64}$/.test(value.factSha256)
       || value.observationId === body.supersedesObservationId) throw new TalliApiError(502, undefined);
+  return value;
+}
+
+export async function lookupRf1086YearSourceCaptureThroughApi(
+  accessToken: string, body: RfYearSourceCaptureWire, idempotencyKey: string,
+): Promise<RfYearSourceCaptureLookupWire> {
+  const options = sourceMutationRequest(idempotencyKey);
+  if (body.case.company.incomeYear !== body.incomeYear
+      || body.documents.some(document => document.companyId !== body.companyId)) throw new TalliApiError(422, undefined);
+  // This POST only looks up the committed receipt for the retained body and key.
+  // An absent receipt is not proof that the earlier capture did not commit.
+  const value = await client(accessToken).rf1086LookupYearSourceCapture(body, options);
+  if (value.status === "not_observed" && value.receipt === null) return value;
+  if (value.status !== "recorded" || value.receipt === null) throw new TalliApiError(502, undefined);
+  sourceReceipt(value.receipt, body.companyId, body.incomeYear);
+  if (!Number.isSafeInteger(value.receipt.version) || value.receipt.sourceId === body.supersedesSourceId) {
+    throw new TalliApiError(502, undefined);
+  }
+  return value;
+}
+
+export async function lookupRf1086RegisterObservationCaptureThroughApi(
+  accessToken: string, body: RfRegisterObservationCaptureWire, idempotencyKey: string,
+): Promise<RfRegisterObservationCaptureLookupWire> {
+  const options = sourceMutationRequest(idempotencyKey);
+  if (body.documents.some(document => document.companyId !== body.companyId)) throw new TalliApiError(422, undefined);
+  const value = await client(accessToken).rf1086LookupRegisterObservationCapture(body, options);
+  if (value.status === "not_observed" && value.receipt === null) return value;
+  if (value.status !== "recorded" || value.receipt === null) throw new TalliApiError(502, undefined);
+  sourceScope(value.receipt, body.companyId, body.incomeYear);
+  if (!Number.isSafeInteger(value.receipt.version) || value.receipt.version < 1
+      || !/^[a-f0-9]{64}$/.test(value.receipt.factSha256)
+      || value.receipt.observationId === body.supersedesObservationId) throw new TalliApiError(502, undefined);
   return value;
 }
 

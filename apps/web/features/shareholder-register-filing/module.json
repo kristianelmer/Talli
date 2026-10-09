@@ -46,7 +46,9 @@
     "rf1086SendSourceProduction",
     "rf1086ReadSourceProductionPosition",
     "rf1086GetProductionArchiveSourceV4",
-    "rf1086DownloadProductionArchiveV4"
+    "rf1086DownloadProductionArchiveV4",
+    "rf1086LookupYearSourceCapture",
+    "rf1086LookupRegisterObservationCapture"
   ],
   "dependencies": [],
   "allowedImports": [

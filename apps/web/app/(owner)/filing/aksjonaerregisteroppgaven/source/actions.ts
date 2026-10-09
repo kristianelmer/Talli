@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import {
   captureRf1086YearSourceThroughApi,
+  lookupRf1086YearSourceCaptureThroughApi,
   generateRf1086SourcePreviewThroughApi,
   loadRf1086SourceDocument,
   rf1086SourceCaptureRejected,
@@ -11,6 +12,7 @@ import {
   type RfSourcePreviewRequestWire,
   type RfSourcePreviewWire,
   type RfYearSourceCaptureWire,
+  type RfYearSourceCaptureLookupWire,
   type RfYearSourceReceiptWire,
 } from "../../../../../features/shareholder-register-filing";
 import { getCurrentSessionAccessToken } from "../../../../lib/supabase/auth-session";
@@ -49,6 +51,22 @@ export async function captureSourceAction(command: RfYearSourceCaptureWire, key:
     return { ok: true, value };
   } catch (error) {
     return { ok: false, message: rf1086SourceErrorMessage(error), rejected: rf1086SourceCaptureRejected(error) };
+  }
+}
+
+export async function lookupSourceCaptureAction(
+  command: RfYearSourceCaptureWire, key: string,
+): Promise<Result<RfYearSourceCaptureLookupWire>> {
+  if (!command || typeof command !== "object" || !uuid(command.companyId) || !year(command.incomeYear)
+      || typeof key !== "string" || !/^[A-Za-z0-9._:-]{16,255}$/.test(key)) {
+    return { ok: false, message: invalid };
+  }
+  try {
+    const token = await getCurrentSessionAccessToken();
+    if (!token) return { ok: false, message: signIn };
+    return { ok: true, value: await lookupRf1086YearSourceCaptureThroughApi(token, command, key) };
+  } catch (error) {
+    return { ok: false, message: rf1086SourceErrorMessage(error) };
   }
 }
 

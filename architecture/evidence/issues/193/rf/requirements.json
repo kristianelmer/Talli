@@ -185,5 +185,10 @@
   "remainingTechnicalGaps20261009": "remaining-technical-gaps-20261009.json",
   "overrideIdentityIntegration20261009": "integration-verification-20261009.json",
   "dependencyReadiness20261009": "../../196/dependency-readiness-20261009.json",
-  "historicalCi37985850090": "ci-37985850090.json"
+  "historicalCi37985850090": "ci-37985850090.json",
+  "unknownOutcomeRecovery20261009": "unknown-outcome-recovery-20261009.json",
+  "capitalSourcePlan20261009": "capital-source-plan-20261009.md",
+  "historicalCi37988989238": "ci-37988989238.json",
+  "captureReceiptLookup20261009": "capture-receipt-lookup-20261009.json",
+  "predecessorReadinessFixture20261009": "predecessor-readiness-fixture-20261009.json"
 }

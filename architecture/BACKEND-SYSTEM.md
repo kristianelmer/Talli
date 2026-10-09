@@ -888,3 +888,20 @@ read or changed. Exact coverage and exclusions are documented in
 <!-- architecture-inventory
 {"transportDependencies":["talli_backend.adapters.dependency_readiness"]}
 -->
+
+
+## Committed RF capture receipt lookup
+
+The existing RF workflow serves authenticated read-only POST queries at
+`/api/v1/shareholder-register-filings/year-sources/receipt-lookup` and
+`/api/v1/shareholder-register-filings/register-observations/receipt-lookup`.
+They reuse each capture's strict command transport plus its original idempotency
+key, derive the actor from the verified session, and query only RF-owned stored
+receipts under current Company Access owner authorization. Current document,
+Governance and company-identity evidence is not recaptured. No mutation, provider
+operation, new identifier, or lock granting consequential admission occurs.
+`not_observed` is a snapshot observation, never proof the attempt did not execute.
+
+<!-- architecture-inventory
+{"routes":["/api/v1/shareholder-register-filings/year-sources/receipt-lookup","/api/v1/shareholder-register-filings/register-observations/receipt-lookup"]}
+-->

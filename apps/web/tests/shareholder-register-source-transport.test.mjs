@@ -5,6 +5,7 @@ import {
   loadRf1086SourceIntakeBasis, loadRf1086CurrentYearSource, loadRf1086SourceDocument, loadRf1086RegisterObservations,
   rf1086RegisterErrorMessage, rf1086RegisterCaptureRejected,
   captureRf1086YearSourceThroughApi, captureRf1086RegisterObservationThroughApi,
+  lookupRf1086YearSourceCaptureThroughApi, lookupRf1086RegisterObservationCaptureThroughApi,
   generateRf1086SourcePreviewThroughApi, loadRf1086SourcePreview, rf1086SourceErrorMessage, rf1086SourceCaptureRejected,
 } from "../features/shareholder-register-filing/index.ts";
 
@@ -69,6 +70,80 @@ function environment(t, response, status = 200) {
   return calls;
 }
 const invalid = error => error instanceof TalliApiError && error.status === 502;
+
+for (const [name, body, receiptFixture, lookup, suffix, idField, hashField, predecessorField] of [
+  ["year source", () => ({ ...draft(), supersedesSourceId: other }), receipt,
+    lookupRf1086YearSourceCaptureThroughApi, "/year-sources/receipt-lookup", "sourceId", "sourceSha256", "supersedesSourceId"],
+  ["register observation", registerBody, registerReceipt,
+    lookupRf1086RegisterObservationCaptureThroughApi, "/register-observations/receipt-lookup", "observationId", "factSha256", "supersedesObservationId"],
+]) {
+  for (const status of ["recorded", "not_observed"]) {
+    test(`${name} ${status} receipt lookup preserves original command and key without capture or retry`, async t => {
+      const input = body(), before = structuredClone(input);
+      const value = { status, receipt: status === "recorded" ? receiptFixture() : null }, calls = environment(t, value);
+      assert.deepEqual(await lookup("owner", input, key), value);
+      assert.equal(calls.length, 1);
+      const call = calls[0];
+      assert.equal(call.url.pathname, base + suffix);
+      assert.equal(call.request.method, "POST");
+      assert.equal(call.request.cache, "no-store");
+      assert.equal(call.request.headers.Authorization, "Bearer owner");
+      assert.equal(call.request.headers["Idempotency-Key"], key);
+      assert.ok(call.request.signal instanceof AbortSignal);
+      assert.deepEqual(JSON.parse(call.request.body), before);
+      assert.deepEqual(input, before);
+    });
+  }
+  for (const malformed of ["null-body", "missing-status", "unknown-status", "recorded-null", "recorded-missing",
+    "not-observed-receipt", "not-observed-missing", "company", "year", "id", "version", "unsafe-version", "hash", "case-hash", "predecessor", "extra-field"]) {
+    test(`${name} receipt lookup rejects malformed ${malformed} without falling back to capture`, async t => {
+      const input = body(); let value = { status: "recorded", receipt: receiptFixture() };
+      if (malformed === "null-body") value = null;
+      if (malformed === "missing-status") delete value.status;
+      if (malformed === "unknown-status") value.status = "missing";
+      if (malformed === "recorded-null") value.receipt = null;
+      if (malformed === "recorded-missing") delete value.receipt;
+      if (malformed === "not-observed-receipt") value.status = "not_observed";
+      if (malformed === "not-observed-missing") value = { status: "not_observed" };
+      if (malformed === "company") value.receipt.companyId = other;
+      if (malformed === "year") value.receipt.incomeYear = 2024;
+      if (malformed === "id") value.receipt[idField] = "wrong-id";
+      if (malformed === "version") value.receipt.version = 0;
+      if (malformed === "unsafe-version") value.receipt.version = Number.MAX_SAFE_INTEGER + 1;
+      if (malformed === "hash") value.receipt[hashField] = "unbound";
+      if (malformed === "case-hash") value.receipt[name === "year source" ? "caseSha256" : "factSha256"] = "unbound";
+      if (malformed === "predecessor") input[predecessorField] = value.receipt[idField];
+      if (malformed === "extra-field") value.newAttemptKey = "must-not-be-used";
+      const calls = environment(t, value);
+      await assert.rejects(lookup("owner", input, key), invalid);
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].url.pathname, base + suffix);
+    });
+  }
+  for (const status of [401, 403, 409, 503]) {
+    test(`${name} receipt lookup ${status} is unresolved and never triggers another operation`, async t => {
+      const code = name === "year source" ? "rf1086_source_idempotency_conflict" : "rf1086_register_idempotency_conflict";
+      const calls = environment(t, { status, code, type: "about:blank", title: "Sanitized", detail: "Sanitized",
+        instance: "/fixture", requestId: "fixture-error" }, status);
+      await assert.rejects(lookup("owner", body(), key), error => error instanceof TalliApiError && error.status === status);
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0].url.pathname, base + suffix);
+    });
+  }
+  for (const badKey of [undefined, "", "short", "bad key with spaces", "x".repeat(256)]) {
+    test(`${name} receipt lookup rejects an invalid retained key without generating a replacement`, async t => {
+      const calls = environment(t, { status: "recorded", receipt: receiptFixture() });
+      await assert.rejects(lookup("owner", body(), badKey), error => error instanceof TalliApiError && error.status === 422);
+      assert.equal(calls.length, 0);
+    });
+  }
+  test(`${name} receipt lookup refuses cross-company originals before sending`, async t => {
+    const input = body(); input.documents[0].companyId = other;
+    const calls = environment(t, { status: "recorded", receipt: receiptFixture() });
+    await assert.rejects(lookup("owner", input, key), error => error instanceof TalliApiError && error.status === 422);
+    assert.equal(calls.length, 0);
+  });
+}
 
 for (const [name, load, fixture, suffix, query] of [
   ["intake", () => loadRf1086SourceIntakeBasis("owner", company, 2025), intake, "/source-intake-basis", { companyId: company, incomeYear: "2025" }],

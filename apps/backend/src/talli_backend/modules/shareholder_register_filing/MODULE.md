@@ -958,3 +958,29 @@ exact replay, and database binding changes without actual provider credentials.
 ### Override archive transport overlap
 
 `archive_source` captures override history in the domain snapshot. Codec v4 preserves those records; `None` remains uncaptured history, distinct from an empty tuple. The additive `/archive-source/production-v4` and `/archive-source/production-stream-v4` routes require captured history. Existing production routes retain their original response schema and codecs v1–v3 by intentionally omitting overrides in a separate transport projection; they do not alter the authoritative snapshot. This preserves old web and offline consumers during either deployment order (ADR0012).
+
+
+### Recovering committed capture receipts
+
+`Rf1086YearSourcePersistence.read_year_source_capture_receipt` and
+`Rf1086RegisterObservationPersistence.read_register_observation_capture_receipt`
+are read queries over the original capture command and `IdempotencyKey`.
+The adapter uses a bounded READ ONLY / REPEATABLE READ transaction, current
+accepted-owner authorization through the Company Access public predicate, and
+exact company/year/verified actor/key selection. The retained codec/row binding
+and canonical original request must match. Superseded receipts remain observable;
+a mismatched request conflicts. Other actors' keys are never disclosed, including
+to another current owner; unauthorized company scope is concealed as not found.
+
+Lookup does not require current AS identity, Documents originals, Governance
+receipts, or fresh capture eligibility. It cannot create a new record, change a
+head, refresh authorization for a filing, or call a provider. API queries reuse
+strict capture DTOs in POST bodies so sensitive original facts and keys are not
+placed in URLs. Responses are no-store and tagged `recorded` with the original
+receipt or `not_observed` with null. A pending/rolled-back/unobserved transaction
+cannot be distinguished from absence by this query. Errors/unavailability are
+not converted to `not_observed`; neither outcome authorizes a new key or retry.
+
+Regression coverage: `apps/backend/tests/test_rf1086_capture_receipt_lookup.py`,
+plus the existing year-source and observation database suites for current-owner,
+replay/conflict, historical identity, commit/rollback and concurrent visibility.

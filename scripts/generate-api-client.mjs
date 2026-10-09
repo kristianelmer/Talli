@@ -312,6 +312,8 @@ const shareholderRegisterFilingOperations = {
   sourceDocument: ["/api/v1/shareholder-register-filings/source-documents/{documentId}", "get", "rf1086ReadSourceDocument"],
   captureRegisterObservation: ["/api/v1/shareholder-register-filings/register-observations", "post", "rf1086CaptureRegisterObservation"],
   captureYearSource: ["/api/v1/shareholder-register-filings/year-sources", "post", "rf1086CaptureYearSource"],
+  lookupYearSourceCapture: ["/api/v1/shareholder-register-filings/year-sources/receipt-lookup", "post", "rf1086LookupYearSourceCapture"],
+  lookupRegisterObservationCapture: ["/api/v1/shareholder-register-filings/register-observations/receipt-lookup", "post", "rf1086LookupRegisterObservationCapture"],
   generateSourcePreview: ["/api/v1/shareholder-register-filings/source-previews", "post", "rf1086GenerateSourcePreview"],
   sourceProductionReview: ["/api/v1/shareholder-register-filings/source-production-reviews", "post", "rf1086PrepareSourceProductionReview"],
   sourceProductionApproval: ["/api/v1/shareholder-register-filings/source-production-approvals", "post", "rf1086ApproveSourceProduction"],
@@ -959,6 +961,8 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "RfSourceCorrectionPredecessorWire",
   "RfSourcePreviewRequestWire",
   "RfYearSourceReceiptWire",
+  "RfYearSourceCaptureLookupWire",
+  "RfRegisterObservationCaptureLookupWire",
   "RfRegisterObservationReceiptWire",
   "RfRegisterObservationDraftWire",
   "RfRegisterObservationRecordWire",
@@ -3244,6 +3248,20 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         "GET", request, undefined, isRfSourcePreviewWire);
     },
 
+    async rf1086LookupYearSourceCapture(
+      input: RfYearSourceCaptureWire,
+      request: TalliRequestOptions & { readonly idempotencyKey: string },
+    ): Promise<RfYearSourceCaptureLookupWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/year-sources/receipt-lookup",
+        "POST", request, input, isRfYearSourceCaptureLookupWire);
+    },
+    async rf1086LookupRegisterObservationCapture(
+      input: RfRegisterObservationCaptureWire,
+      request: TalliRequestOptions & { readonly idempotencyKey: string },
+    ): Promise<RfRegisterObservationCaptureLookupWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations/receipt-lookup",
+        "POST", request, input, isRfRegisterObservationCaptureLookupWire);
+    },
     async rf1086CaptureYearSource(
       input: RfYearSourceCaptureWire, request: TalliMutationOptions,
     ): Promise<RfYearSourceReceiptWire> {

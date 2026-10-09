@@ -153,7 +153,7 @@ class PostgresShareholderRegisterFilingSession:
             raise Rf1086ProductionError("configuration_unavailable") from None
 
     @asynccontextmanager
-    async def _transaction(self, *, snapshot=False):
+    async def _transaction(self, *, snapshot=False, read_only=False):
         """One verified actor and consistent source snapshot; no provider I/O."""
         if not self._configuration.database_url:
             raise rf.ShareholderRegisterFilingError.unavailable()
@@ -166,6 +166,8 @@ class PostgresShareholderRegisterFilingSession:
                     await connection.execute("set transaction isolation level repeatable read")
                 else:
                     await connection.execute("set transaction isolation level read committed")
+                if read_only:
+                    await connection.execute("set transaction read only")
                 await connection.execute("set local role shareholder_register_filing_executor")
                 await connection.execute(
                     "select pg_catalog.set_config('talli.verified_actor_id',%s,true), "
@@ -397,6 +399,42 @@ class PostgresShareholderRegisterFilingSession:
                 source_income_year=document.source_income_year, status=DocumentStatus(document.integrity_status),
                 content_sha256=document.content_sha256, byte_length=document.byte_length,
                 metadata_sha256=document.metadata_sha256))
+
+    async def _capture_receipt_row(self, command, idempotency_key, *, table):
+        self._command_actor(command)
+        if table not in {"year_source_versions", "register_observations"}:
+            raise ValueError("Unknown RF capture kind")
+        async with self._transaction(snapshot=True, read_only=True) as connection:
+            owner = await (await connection.execute(
+                "select public.company_access_is_accepted_owner_v1(%s::uuid) as allowed",
+                (str(command.company_id),))).fetchone()
+            if owner is None or owner["allowed"] is not True:
+                raise rf.ShareholderRegisterFilingError.not_found()
+            # A concurrent uncommitted capture may be absent from this snapshot.
+            # Absence is observational, never permission to issue a new command.
+            return await (await connection.execute(
+                f"select * from shareholder_register_filing.{table} where company_id=%s::uuid "
+                "and income_year=%s and actor_id=%s::uuid and idempotency_key=%s",
+                (str(command.company_id), int(command.income_year), str(self.actor_id.subject), str(idempotency_key)),
+            )).fetchone()
+
+    async def read_year_source_capture_receipt(self, command, *, idempotency_key):
+        row = await self._capture_receipt_row(command, idempotency_key, table="year_source_versions")
+        if row is None:
+            return None
+        original = self._year_source(row)
+        rf.assert_rf1086_year_source_replay(original, command)
+        return original
+
+    async def read_register_observation_capture_receipt(self, command, *, idempotency_key):
+        request_sha = rf.rf1086_register_observation_request_digest(command)
+        row = await self._capture_receipt_row(command, idempotency_key, table="register_observations")
+        if row is None:
+            return None
+        original = self._register_observation(row)
+        if row["request_sha256"] != request_sha:
+            raise rf.Rf1086RegisterObservationError("rf1086_register_idempotency_conflict")
+        return original
 
     async def record_year_source(self, command, *, context, idempotency_key):
         self._command_actor(command)

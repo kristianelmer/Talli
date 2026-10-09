@@ -561,6 +561,20 @@ class ShareholderRegisterSourceWorkflow:
             successors.add(predecessor_id)
         return tuple(observations)
 
+    async def lookup_year_source_capture(self, access_token: str, command: RecordRf1086YearSource, *,
+            idempotency_key: IdempotencyKey) -> Rf1086YearSourceSnapshot | None:
+        """Observe a committed attempt without refreshing the capture's evidence."""
+        session = await self._rf_sessions.session(access_token)
+        _require(session.actor_id == command.actor_id, 'rf1086_source_owner_required')
+        return await session.read_year_source_capture_receipt(command, idempotency_key=idempotency_key)
+
+    async def lookup_register_observation_capture(self, access_token: str,
+            command: RecordRf1086RegisterObservation, *,
+            idempotency_key: IdempotencyKey) -> Rf1086RegisterObservationSnapshot | None:
+        session = await self._rf_sessions.session(access_token)
+        _require(session.actor_id == command.actor_id, 'rf1086_source_owner_required')
+        return await session.read_register_observation_capture_receipt(command, idempotency_key=idempotency_key)
+
     async def capture_register_observation(self, access_token: str,
             command: RecordRf1086RegisterObservation, *, idempotency_key: IdempotencyKey,
             correlation_id: CorrelationId) -> Rf1086RegisterObservationSnapshot:

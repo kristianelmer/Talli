@@ -4,7 +4,7 @@ import { Banner } from "../../../../components/ui";
 import type { RfRegisterObservationRecordWire, RfRegisterObservationCaptureWire, RfRegisterObservationReceiptWire, RfSourceDocumentWire } from "../../../../../features/shareholder-register-filing";
 import { readSourceDocumentAction } from "../source/actions";
 import { afterCaptureFailure, type SaveAttempt } from "../source/model";
-import { captureRegisterAction } from "./actions";
+import { captureRegisterAction, lookupRegisterCaptureAction } from "./actions";
 import { documentRoles, editRegister, registerCommand, registerKinds, resetRegisterReview,
   type DocumentRole, type RegisterDraft, type RegisterKind, type StateDraft } from "./model";
 type Props = { companyId: string; incomeYear: number; current: RfRegisterObservationRecordWire | null;
@@ -23,6 +23,8 @@ export function RegisterEditor({ companyId, incomeYear, current, documentOptions
   const [pending, startTransition] = useTransition();
   const [attempt, setAttempt] = useState<SaveAttempt<RfRegisterObservationCaptureWire> | null>(null);
   const [saved, setSaved] = useState<RfRegisterObservationReceiptWire | null>(null);
+  const [recovered, setRecovered] = useState(false);
+  const captureWork = useRef(false);
   const savedHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { if (saved) savedHeading.current?.focus(); }, [saved]);
   const historical = current !== null && !current.isCurrent;
@@ -42,6 +44,7 @@ export function RegisterEditor({ companyId, incomeYear, current, documentOptions
     });
   }
   function capture() {
+    if (captureWork.current) return;
     let next = attempt;
     if (!next) {
       try { next = { command: registerCommand(draft), key: crypto.randomUUID(), uncertain: false }; }
@@ -49,6 +52,7 @@ export function RegisterEditor({ companyId, incomeYear, current, documentOptions
       setAttempt(next);
     }
     const submitted = next;
+    captureWork.current = true;
     startTransition(async () => {
       try {
         setMessage(null);
@@ -56,13 +60,34 @@ export function RegisterEditor({ companyId, incomeYear, current, documentOptions
         if (!result.ok) { setMessage(result.message); setAttempt(afterCaptureFailure(submitted, result.rejected)); return; }
         setSaved(result.value); setAttempt(null);
       } catch { setAttempt(afterCaptureFailure(submitted, false)); setMessage("Forbindelsen ble brutt. Kontroller lagret status, eller prøv samme lagring igjen."); }
+      finally { captureWork.current = false; }
+    });
+  }
+  function checkCapture() {
+    if (!attempt || captureWork.current) return;
+    const submitted = attempt;
+    captureWork.current = true;
+    startTransition(async () => {
+      setMessage(null);
+      try {
+        const result = await lookupRegisterCaptureAction(submitted.command, submitted.key);
+        if (!result.ok) { setMessage(result.message); return; }
+        if (result.value.status === "recorded" && result.value.receipt !== null) {
+          setSaved(result.value.receipt); setRecovered(true); setAttempt(null);
+          return;
+        }
+        setMessage("Fant ingen bekreftet lagring for dette forsøket. Det beviser ikke at lagringen mangler. Kontroller igjen eller prøv samme lagring igjen.");
+      } catch { setMessage("Lagringen kunne ikke kontrolleres. Utfallet er fortsatt uavklart. Kontroller igjen eller prøv samme lagring igjen."); }
+      finally { captureWork.current = false; }
     });
   }
   return <div className="wizardForm">
     <Banner variant="info">Dette grunnlaget dokumenterer én kapitalendring. Bruk originale aksjeeierbøker og registreringsdokumenter.
       Lagre grunnlaget før du bokfører kapitalhendelsen. Det erstatter ikke en selskapsbeslutning og sender ingen oppgave.</Banner>
     {historical ? <Banner variant="warning">Dette er en erstattet versjon. Velg gjeldende versjon i listen for å korrigere opplysningene.</Banner> : null}
-    {saved ? <section className="dataPanel"><h2 ref={savedHeading} tabIndex={-1}>Registergrunnlaget er lagret</h2><p>Versjon {saved.version}. Velg dette grunnlaget når du registrerer kapitalhendelsen.</p>
+    {saved ? <section className="dataPanel"><h2 ref={savedHeading} tabIndex={-1}>Registergrunnlaget er lagret</h2><p>Versjon {saved.version}. {recovered
+      ? "Kvitteringen bekrefter dette lagringsforsøket. Versjonen kan senere være erstattet. Åpne grunnlaget for kontroll før videre bruk."
+      : "Velg dette grunnlaget når du registrerer kapitalhendelsen."}</p>
       <a className="btn btn--primary" href="/actions/corporate-event">Åpne selskapshendelser</a>
       <p><a href={`${base}&observationId=${saved.observationId}`}>Åpne lagret grunnlag for kontroll eller korrigering</a></p>
       <details><summary>Referanse til det lagrede grunnlaget</summary><p style={{ overflowWrap: "anywhere" }}>{saved.observationId} · versjon {saved.version}<br />{saved.factSha256}</p></details>
@@ -125,7 +150,8 @@ export function RegisterEditor({ companyId, incomeYear, current, documentOptions
         <Check checked={draft.singleShareClassConfirmed} change={singleShareClassConfirmed => setDraft(value => ({ ...value, singleShareClassConfirmed }))}>Jeg bekrefter at det bare er én aksjeklasse.</Check>
       </fieldset>
       {message ? <Banner variant="danger">{message}</Banner> : null}
-      {attempt && !pending ? <Banner variant="info">Lagringen er ikke bekreftet. Prøv samme lagring igjen, eller <a href={base}>kontroller alle lagrede registergrunnlag</a>.</Banner> : null}
+      {attempt ? <Banner variant="info">Lagringen er ikke bekreftet. Lagringsforsøket og feltene beholdes uendret. Kontroller lagringen uten å sende den på nytt, eller prøv samme lagring igjen.</Banner> : null}
+      {attempt ? <button type="button" className="btn btn--secondary" disabled={pending} onClick={checkCapture}>Kontroller lagring</button> : null}
       <button type="submit" className="btn btn--primary" disabled={pending || historical || saved !== null || !draft.completeRegisterConfirmed || !draft.registrationConfirmed || !draft.singleShareClassConfirmed}>
         {pending ? "Kontrollerer …" : attempt ? "Prøv samme lagring igjen" : current ? "Lagre korrigert registergrunnlag" : "Lagre registergrunnlag"}
       </button>

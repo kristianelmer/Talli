@@ -7,7 +7,7 @@ import type {
 } from "../../../../../features/shareholder-register-filing/index.ts";
 import { SourceApproval } from "./SourceApproval";
 import { Banner } from "../../../../components/ui";
-import { captureSourceAction, previewSourceAction, readSourceDocumentAction } from "./actions";
+import { captureSourceAction, lookupSourceCaptureAction, previewSourceAction, readSourceDocumentAction } from "./actions";
 import {
   afterCaptureFailure, allocationFields, editSource, eventFields, eventLabels, newEvent, resetReview,
   shareFields, sourceCommand, type EventDraft, type EventKind, type SourceDraft, type SourceSaveAttempt,
@@ -65,6 +65,7 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
   const [pending, startTransition] = useTransition();
   const [attempt, setAttempt] = useState<SourceSaveAttempt | null>(null);
   const [saved, setSaved] = useState<RfYearSourceReceiptWire | null>(null);
+  const [recovered, setRecovered] = useState(false);
   const savedHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { if (saved) savedHeading.current?.focus(); }, [saved]);
   const [preview, setPreview] = useState<RfSourcePreviewWire | null>(null);
@@ -114,7 +115,7 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
     });
   }
   function capture() {
-    if (approvalLock.current) return;
+    if (approvalLock.current || sourceWork.current) return;
     let next = attempt;
     if (!next) {
       try { next = { command: sourceCommand(draft), key: crypto.randomUUID(), uncertain: false }; }
@@ -135,6 +136,22 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
       } catch { setAttempt(afterCaptureFailure(submitted, false)); setMessage("Forbindelsen ble brutt. Lagringen kan ha blitt gjennomført. Prøv samme lagring igjen eller kontroller sist lagrede grunnlag."); }
     });
   }
+  function checkCapture() {
+    if (!attempt || approvalLock.current || sourceWork.current) return;
+    const submitted = attempt;
+    work(async () => {
+      setMessage(null);
+      try {
+        const result = await lookupSourceCaptureAction(submitted.command, submitted.key);
+        if (!result.ok) { setMessage(result.message); return; }
+        if (result.value.status === "recorded" && result.value.receipt !== null) {
+          setSaved(result.value.receipt); setRecovered(true); setAttempt(null); setPreview(null);
+          return;
+        }
+        setMessage("Fant ingen bekreftet lagring for dette forsøket. Det beviser ikke at lagringen mangler. Kontroller igjen eller prøv samme lagring igjen.");
+      } catch { setMessage("Lagringen kunne ikke kontrolleres. Utfallet er fortsatt uavklart. Kontroller igjen eller prøv samme lagring igjen."); }
+    });
+  }
   function generatePreview() {
     if (!receipt || approvalLock.current) return;
     work(async () => {
@@ -152,8 +169,9 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
     {receipt ? <section className="dataPanel" aria-label="Lagret årsgrunnlag">
       <h2 ref={savedHeading} tabIndex={-1}>{saved ? "Årsgrunnlaget er lagret" : "Gjeldende årsgrunnlag"}</h2>
       <p>Versjon {receipt.version} · lagret {receipt.confirmedAt}</p>
+      {recovered ? <p>Kvitteringen bekrefter dette lagringsforsøket. Versjonen kan senere være erstattet. Åpne gjeldende grunnlag før videre arbeid.</p> : null}
       <button type="button" className="btn btn--secondary" disabled={pending || approvalLocked} onClick={generatePreview}>Lag forhåndsvisning av lagret grunnlag</button>
-      {saved ? <p><a href={reloadHref}>Åpne lagret grunnlag for en ny korrigering</a></p> : <p>Endringer nedenfor lagres som en ny versjon. Tidligere grunnlag beholdes.</p>}
+      {saved ? <p><a href={reloadHref}>Åpne gjeldende grunnlag for en ny korrigering</a></p> : <p>Endringer nedenfor lagres som en ny versjon. Tidligere grunnlag beholdes.</p>}
     </section> : null}
     {previewError ? <Banner variant="danger">{previewError}</Banner> : null}
     {preview ? <section className="dataPanel" aria-label="Forhåndsvisning av årsgrunnlag">
@@ -296,7 +314,8 @@ export function SourceEditor({ basis, current, documentOptions, caseId }: Props)
         {!draft.events.length ? <Check checked={draft.noActivityConfirmed} onChange={noActivityConfirmed => setDraft(value => ({ ...value, noActivityConfirmed }))}>Jeg bekrefter at det ikke var rapporteringspliktige hendelser i året.</Check> : null}
       </fieldset>
       {message ? <div role="alert"><Banner variant="danger">{message}</Banner></div> : null}
-      {attempt && !pending ? <Banner variant="info">Lagringen er ikke bekreftet. Feltene beholdes uendret. Prøv samme lagring igjen, eller <a href={reloadHref}>åpne sist lagrede grunnlag</a> for å kontrollere resultatet.</Banner> : null}
+      {attempt ? <Banner variant="info">Lagringen er ikke bekreftet. Lagringsforsøket og feltene beholdes uendret. Kontroller lagringen uten å sende den på nytt, eller prøv samme lagring igjen.</Banner> : null}
+      {attempt ? <button type="button" className="btn btn--secondary" disabled={pending || approvalLocked} onClick={checkCapture}>Kontroller lagring</button> : null}
       <button type="submit" className="btn btn--primary" disabled={approvalLocked || pending || saved !== null || !draft.identitiesReviewed || !draft.completeYearConfirmed || !draft.paidInReviewed || (!draft.events.length && !draft.noActivityConfirmed)}>
         {pending ? "Kontrollerer …" : attempt ? "Prøv samme lagring igjen" : draft.supersedesSourceId ? "Lagre korrigert årsgrunnlag" : "Lagre årsgrunnlag"}
       </button>

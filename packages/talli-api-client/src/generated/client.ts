@@ -4011,6 +4011,16 @@ export interface RfYearSourceReceiptWire {
   version: number;
 }
 
+export interface RfYearSourceCaptureLookupWire {
+  receipt: RfYearSourceReceiptWire | null;
+  status: "recorded" | "not_observed";
+}
+
+export interface RfRegisterObservationCaptureLookupWire {
+  receipt: RfRegisterObservationReceiptWire | null;
+  status: "recorded" | "not_observed";
+}
+
 export interface RfRegisterObservationReceiptWire {
   companyId: string;
   confirmedAt: string;
@@ -10104,6 +10114,24 @@ function isRfYearSourceReceiptWire(value: unknown): value is RfYearSourceReceipt
   );
 }
 
+function isRfYearSourceCaptureLookupWire(value: unknown): value is RfYearSourceCaptureLookupWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["receipt","status"]) &&
+    (isRfYearSourceReceiptWire(value.receipt) || value.receipt === null) &&
+    (value.status === "recorded" || value.status === "not_observed")
+  );
+}
+
+function isRfRegisterObservationCaptureLookupWire(value: unknown): value is RfRegisterObservationCaptureLookupWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["receipt","status"]) &&
+    (isRfRegisterObservationReceiptWire(value.receipt) || value.receipt === null) &&
+    (value.status === "recorded" || value.status === "not_observed")
+  );
+}
+
 function isRfRegisterObservationReceiptWire(value: unknown): value is RfRegisterObservationReceiptWire {
   return (
     isRecord(value) &&
@@ -13059,6 +13087,20 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
         "GET", request, undefined, isRfSourcePreviewWire);
     },
 
+    async rf1086LookupYearSourceCapture(
+      input: RfYearSourceCaptureWire,
+      request: TalliRequestOptions & { readonly idempotencyKey: string },
+    ): Promise<RfYearSourceCaptureLookupWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/year-sources/receipt-lookup",
+        "POST", request, input, isRfYearSourceCaptureLookupWire);
+    },
+    async rf1086LookupRegisterObservationCapture(
+      input: RfRegisterObservationCaptureWire,
+      request: TalliRequestOptions & { readonly idempotencyKey: string },
+    ): Promise<RfRegisterObservationCaptureLookupWire> {
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/register-observations/receipt-lookup",
+        "POST", request, input, isRfRegisterObservationCaptureLookupWire);
+    },
     async rf1086CaptureYearSource(
       input: RfYearSourceCaptureWire, request: TalliMutationOptions,
     ): Promise<RfYearSourceReceiptWire> {

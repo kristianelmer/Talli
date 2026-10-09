@@ -1923,6 +1923,11 @@ class Rf1086YearSourcePersistence(Protocol):
             context: Rf1086VerifiedYearSourceContext,
             idempotency_key: IdempotencyKey) -> Rf1086YearSourceSnapshot: ...
 
+    async def read_year_source_capture_receipt(self, command: RecordRf1086YearSource, *,
+            idempotency_key: IdempotencyKey) -> Rf1086YearSourceSnapshot | None:
+        """Original actor-scoped committed receipt; None never proves non-execution."""
+        ...
+
     async def read_current_year_source(self, query: Rf1086SourceQuery) -> Rf1086YearSourceSnapshot | None: ...
 
     async def read_year_source(self, query: Rf1086SourceQuery,
@@ -2122,6 +2127,11 @@ class Rf1086RegisterObservationPersistence(Protocol):
     async def record_register_observation(self, command: RecordRf1086RegisterObservation, *,
             context: Rf1086VerifiedRegisterObservationContext,
             idempotency_key: IdempotencyKey) -> Rf1086RegisterObservationSnapshot: ...
+
+    async def read_register_observation_capture_receipt(self, command: RecordRf1086RegisterObservation, *,
+            idempotency_key: IdempotencyKey) -> Rf1086RegisterObservationSnapshot | None:
+        """Original actor-scoped committed receipt; no current-evidence admission."""
+        ...
 
     async def list_register_observations(self, query: Rf1086SourceQuery) -> tuple[Rf1086RegisterObservationSnapshot, ...]: ...
 

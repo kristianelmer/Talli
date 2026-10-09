@@ -2064,6 +2064,28 @@ class RfRegisterObservationReceiptWire(TransportModel):
     confirmed_at: datetime
 
 
+class RfYearSourceCaptureLookupWire(TransportModel):
+    status: Literal["recorded", "not_observed"]
+    receipt: RfYearSourceReceiptWire | None
+
+    @model_validator(mode="after")
+    def receipt_matches_status(self):
+        if (self.status == "recorded") != (self.receipt is not None):
+            raise ValueError("Receipt lookup status mismatch")
+        return self
+
+
+class RfRegisterObservationCaptureLookupWire(TransportModel):
+    status: Literal["recorded", "not_observed"]
+    receipt: RfRegisterObservationReceiptWire | None
+
+    @model_validator(mode="after")
+    def receipt_matches_status(self):
+        if (self.status == "recorded") != (self.receipt is not None):
+            raise ValueError("Receipt lookup status mismatch")
+        return self
+
+
 class RfRegisterObservationDraftWire(RfRegisterObservationCaptureWire):
     model_config = ConfigDict(json_schema_mode_override="validation")
 
@@ -12504,6 +12526,56 @@ def create_app(
             return RfYearSourceReceiptWire(source_id=UUID(result.source_id.value),
                 company_id=UUID(str(result.company_id)), income_year=int(result.income_year), version=result.version,
                 source_sha256=result.source_sha256, case_sha256=result.case_sha256, confirmed_at=result.confirmed_at)
+        return await shareholder_register_source_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/year-sources/receipt-lookup",
+        operation_id="rf1086LookupYearSourceCapture", response_model=RfYearSourceCaptureLookupWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_lookup_year_source_capture(
+        body: RfYearSourceCaptureWire, response: Response,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255,
+            pattern=r"^[A-Za-z0-9._:-]+$")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfYearSourceCaptureLookupWire:
+        response.headers["Cache-Control"] = "no-store"
+        async def execute():
+            token = bearer_token(credentials)
+            session = await shareholder_register_filing_session_factory.session(token)
+            command = _rf_source_command(body, session.actor_id)
+            result = await shareholder_register_source_workflow.lookup_year_source_capture(token, command,
+                idempotency_key=IdempotencyKey(idempotency_key))
+            receipt = None if result is None else RfYearSourceReceiptWire(source_id=UUID(result.source_id.value),
+                company_id=UUID(str(result.company_id)), income_year=int(result.income_year), version=result.version,
+                source_sha256=result.source_sha256, case_sha256=result.case_sha256, confirmed_at=result.confirmed_at)
+            return RfYearSourceCaptureLookupWire(status="not_observed" if receipt is None else "recorded", receipt=receipt)
+        return await shareholder_register_source_call(execute)
+
+    @application.post(
+        "/api/v1/shareholder-register-filings/register-observations/receipt-lookup",
+        operation_id="rf1086LookupRegisterObservationCapture", response_model=RfRegisterObservationCaptureLookupWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_lookup_register_observation_capture(
+        body: RfRegisterObservationCaptureWire, response: Response,
+        idempotency_key: Annotated[str, Header(alias="Idempotency-Key", min_length=16, max_length=255,
+            pattern=r"^[A-Za-z0-9._:-]+$")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ) -> RfRegisterObservationCaptureLookupWire:
+        response.headers["Cache-Control"] = "no-store"
+        async def execute():
+            token = bearer_token(credentials)
+            session = await shareholder_register_filing_session_factory.session(token)
+            command = _rf_source_command(body, session.actor_id)
+            result = await shareholder_register_source_workflow.lookup_register_observation_capture(token, command,
+                idempotency_key=IdempotencyKey(idempotency_key))
+            receipt = None if result is None else RfRegisterObservationReceiptWire(observation_id=UUID(result.observation_id.value),
+                company_id=UUID(str(result.command.company_id)), income_year=int(result.command.income_year),
+                version=result.version, fact_sha256=result.fact_sha256, confirmed_at=result.confirmed_at)
+            return RfRegisterObservationCaptureLookupWire(status="not_observed" if receipt is None else "recorded", receipt=receipt)
         return await shareholder_register_source_call(execute)
 
     @application.post(

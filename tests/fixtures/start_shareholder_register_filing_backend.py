@@ -10,7 +10,9 @@ all mapped to a loopback mock.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import ipaddress
+import json
 import os
 import re
 import socket
@@ -105,6 +107,65 @@ def install_prepared_stop(journal_type, raw_path: str, nonce: str) -> None:
     journal_type.prepare = prepare
 
 
+def install_source_capture_response_loss(application, environment) -> None:
+    """Lose one committed capture response in an explicitly selected local test."""
+    selected = environment.get("TALLI_TEST_RF1086_LOST_SOURCE_CAPTURE_RESPONSE")
+    if selected in (None, "false"):
+        return
+    if (selected != "true" or environment.get("TALLI_LOCAL_RF1086_FRESH_SEND_FIXTURE") != "true"
+            or any(environment.get(key) != "false" for key in
+                ("TALLI_AUTHORITY_OPS_ENABLED", "TALLI_RF1086_PRODUCTION_ENABLED"))
+            or not re.fullmatch(r"[A-Za-z0-9-]{1,80}", environment.get("TALLI_READINESS_NONCE", ""))):
+        raise ValueError("source_capture_loss_fixture_not_selected")
+    for key in ("DATABASE_URL", "TALLI_LEDGER_DATABASE_URL", "TALLI_COMPANY_ACCESS_DATABASE_URL",
+                "TALLI_BANKING_DATABASE_URL", "TALLI_MARKETING_MEASUREMENT_DATABASE_URL"):
+        loopback_url(environment.get(key, ""), ("postgres", "postgresql"))
+    for key in ("SUPABASE_URL", "TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL"):
+        loopback_url(environment.get(key, ""), ("http",))
+    from starlette.responses import JSONResponse, Response
+    capture_path = "/api/v1/shareholder-register-filings/year-sources"
+    lookup_path = capture_path + "/receipt-lookup"
+    consumed = False
+
+    @application.middleware("http")
+    async def lose_committed_response(request, call_next):
+        nonlocal consumed
+        if request.method != "POST" or request.url.path not in (capture_path, lookup_path):
+            return await call_next(request)
+        original_request = await request.body()
+        response = await call_next(request)
+        receipt_sha = None
+        lose = response.status_code == 200 and request.url.path == capture_path and not consumed
+        if lose:
+            consumed = True
+        if response.status_code == 200:
+            # Consume only the small real receipt, after the handler's database
+            # transaction has completed. No source write or receipt is fabricated.
+            chunks = []
+            size = 0
+            async for chunk in response.body_iterator:
+                size += len(chunk)
+                if size > 16_384:
+                    raise ValueError("source_capture_loss_fixture_response_too_large")
+                chunks.append(chunk)
+            body = b"".join(chunks)
+            result = json.loads(body)
+            receipt = result if request.url.path == capture_path else result.get("receipt")
+            if receipt is not None:
+                receipt_sha = hashlib.sha256(json.dumps(receipt, sort_keys=True,
+                    separators=(",", ":")).encode()).hexdigest()
+            response = Response(body, status_code=response.status_code, headers=dict(response.headers))
+        print("TALLI_RF_SOURCE_CAPTURE_TEST:" + json.dumps({
+            "path": request.url.path, "requestSha256": hashlib.sha256(original_request).hexdigest(),
+            "keySha256": hashlib.sha256(request.headers.get("Idempotency-Key", "").encode()).hexdigest(),
+            "receiptSha256": receipt_sha, "lostResponse": lose,
+        }, separators=(",", ":")), flush=True)
+        if lose:
+            return JSONResponse({"detail": "Temporarily unavailable."}, status_code=503,
+                headers={"Cache-Control": "no-store"})
+        return response
+
+
 def main() -> None:
     if os.environ.get("TALLI_LOCAL_RF1086_FRESH_SEND_FIXTURE") != "true":
         raise SystemExit("rf1086_fresh_send_fixture_not_selected")
@@ -161,6 +222,7 @@ def main() -> None:
         system_user_authority_provider=AltinnSystemUserAdapter(
         maskinporten, environment="production", transport=transport,
     ))
+    install_source_capture_response_loss(application, os.environ)
 
     @application.middleware("http")
     async def observed_transport(request, call_next):

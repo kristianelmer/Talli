@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 
-def main() -> None:
+def main(*, application_factory=None) -> None:
     fixture_root = Path(__file__).resolve().parent
     guards = runpy.run_path(str(fixture_root / 'start_shareholder_register_filing_backend.py'))
     for key in ('DATABASE_URL', 'TALLI_LEDGER_DATABASE_URL', 'TALLI_COMPANY_ACCESS_DATABASE_URL', 'TALLI_BANKING_DATABASE_URL', 'TALLI_MARKETING_MEASUREMENT_DATABASE_URL'):
@@ -18,7 +18,8 @@ def main() -> None:
     if any(key.startswith(('TALLI_PROD_', 'TALLI_TEST_MASKINPORTEN_')) for key in os.environ):
         raise SystemExit('workspace_fixture_provider_credentials_forbidden')
     sys.addaudithook(guards['guard_socket'])
-    runpy.run_path(str(fixture_root / 'start_talli_backend.py'), run_name='__main__')
+    launcher = runpy.run_path(str(fixture_root / 'start_talli_backend.py'))
+    launcher['main'](application_factory=application_factory)
 
 
 if __name__ == '__main__':

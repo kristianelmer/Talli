@@ -35,9 +35,9 @@ const databaseUrl = process.env.DATABASE_URL;
 const scenarios = [
   ...["main", "child", "confirmation"].flatMap(lostResponse =>
     [{ lostResponse, crash: false }, { lostResponse, crash: true }, { lostResponse, crash: true, beforeMutation: true }]),
-  { lostResponse: "main", crash: false, predecessorFeedback: "rejected" },
+  { lostResponse: "main", crash: false, predecessorFeedback: "rejected", recoverSourceCapture: true },
 ];
-for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepted" } of scenarios) test(`owner completes RF capture, ${predecessorFeedback === "rejected" ? "rejected-predecessor correction" : "correction"} and ${beforeMutation ? "process crash before" : crash ? "process crash at" : "lost"} ${lostResponse} ${beforeMutation ? "provider mutation" : "response"} through the canonical backend`, {
+for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepted", recoverSourceCapture = false } of scenarios) test(`owner completes RF capture, ${predecessorFeedback === "rejected" ? "rejected-predecessor correction" : "correction"} and ${beforeMutation ? "process crash before" : crash ? "process crash at" : "lost"} ${lostResponse} ${beforeMutation ? "provider mutation" : "response"} through the canonical backend`, {
   timeout: 360_000,
 }, async (t) => {
   assert.ok(supabaseUrl && anonKey && serviceRoleKey && databaseUrl, "authority browser requires isolated Supabase configuration");
@@ -152,6 +152,7 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
         TALLI_PROD_MASKINPORTEN_CLIENT_ID: randomUUID(), TALLI_PROD_MASKINPORTEN_KEY_ID: randomUUID(),
         TALLI_PROD_MASKINPORTEN_PRIVATE_KEY_PEM: privateKey,
         TALLI_BACKEND_PORT: String(backendPort), TALLI_READINESS_NONCE: nonce,
+        TALLI_TEST_RF1086_LOST_SOURCE_CAPTURE_RESPONSE: String(recoverSourceCapture),
         ...(beforeMutation ? { TALLI_RF_STOP_AFTER_PREPARE_FILE: join(resources.preparedControl, "stop-after-prepare") } : {}),
       } };
     const launchBackend = () => {
@@ -163,7 +164,7 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
         while ((newline = httpOutput.indexOf("\n")) >= 0) {
           const line = httpOutput.slice(0, newline);
           httpOutput = httpOutput.slice(newline + 1);
-          if (line.startsWith("TALLI_AUTHORITY_HTTP:")) apiCalls.push(line);
+          if (line.startsWith("TALLI_AUTHORITY_HTTP:") || line.startsWith("TALLI_RF_SOURCE_CAPTURE_TEST:")) apiCalls.push(line);
           if (line.startsWith(`TALLI_RF_PREPARED_STOP:${nonce}:`)) {
             const operation = line.slice(`TALLI_RF_PREPARED_STOP:${nonce}:`.length);
             preparedSignals.get(operation)?.();
@@ -451,12 +452,18 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
     const sourceArchive = await exerciseFullYearSourceJourney({ page, siteOrigin, company: primary, incomeYear: sourceYear, database, ownerId: owner.id,
       openingHolderId: sourceOpening.holderId, entitlementId: sourceEntitlement, api, authorization,
       storage: createClient(supabaseUrl, anonKey, { auth: { autoRefreshToken: false, persistSession: false } }).storage,
-      mock: resources.mock, python, environment: runtimeEnvironment(), apiCalls, lostResponse, predecessorFeedback,
+      mock: resources.mock, python, environment: runtimeEnvironment(), apiCalls, lostResponse, predecessorFeedback, recoverSourceCapture,
       crashBackend: crash ? crashBackend : undefined,
       armPreparedCrash: beforeMutation ? armPreparedCrash : undefined }).catch(async error => {
       const alerts = await page.getByRole("alert").allTextContents();
       throw new Error(`full_year_source_journey_failed: ${error.message}; alerts=${JSON.stringify(alerts)}`, { cause: error });
     });
+    if (recoverSourceCapture) {
+      assert.equal(apiCalls.filter(call => call.startsWith("TALLI_RF_SOURCE_CAPTURE_TEST:"))
+        .map(call => JSON.parse(call.slice("TALLI_RF_SOURCE_CAPTURE_TEST:".length)))
+        .filter(proof => proof.lostResponse).length, 1, "exactly one committed source response was withheld");
+      assert.equal(apiCalls.filter(call => call.endsWith("POST:/api/v1/shareholder-register-filings/year-sources/receipt-lookup:200")).length, 1);
+    }
     if (lostResponse === "main") {
       const restoreStorage = predecessorFeedback === "rejected";
       if (restoreStorage) await exerciseRfPilotExpiry({ companyId: primary.id, incomeYear: sourceYear,

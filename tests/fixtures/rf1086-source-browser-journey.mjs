@@ -8,7 +8,7 @@ import { isLoopbackSupabaseUrl } from "../support/supabase_fixture_safety.mjs";
 // Only admission, opening facts and a pilot entitlement are prepared. Every
 // source, preview, approval, operation and receipt below is created by the app.
 export async function exerciseFullYearSourceJourney({ page, siteOrigin, company, incomeYear, database, ownerId,
-  openingHolderId, entitlementId, api, authorization, storage, mock, python, environment, apiCalls, lostResponse, crashBackend, armPreparedCrash, predecessorFeedback = "accepted" }) {
+  openingHolderId, entitlementId, api, authorization, storage, mock, python, environment, apiCalls, lostResponse, crashBackend, armPreparedCrash, predecessorFeedback = "accepted", recoverSourceCapture = false }) {
   assert.ok(["accepted", "rejected"].includes(predecessorFeedback));
   const predecessorLabel = predecessorFeedback === "accepted" ? "Godkjent" : "Avvist";
   const scope = { companyId: company.id, incomeYear, headers: authorization };
@@ -69,7 +69,14 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   await event.getByRole("group", { name: "Dokumenter for denne hendelsen", exact: true }).getByRole("checkbox").check();
   for (const checkbox of await page.getByRole("group", { name: "Gjennomgang av hele året", exact: true }).getByRole("checkbox").all())
     await checkbox.check();
+  const captureCallsStart = apiCalls.length;
   await page.getByRole("button", { name: "Lagre årsgrunnlag", exact: true }).click();
+  if (recoverSourceCapture) {
+    const checkCapture = page.getByRole("button", { name: "Kontroller lagring", exact: true });
+    await checkCapture.waitFor();
+    assert.equal(await page.getByRole("heading", { name: "Årsgrunnlaget er lagret", exact: true }).count(), 0);
+    await checkCapture.click();
+  }
   await page.getByRole("heading", { name: "Årsgrunnlaget er lagret", exact: true }).waitFor();
   const source = (await api.rf1086ReadCurrentYearSource(scope)).currentSource;
   assert.equal(source.draft.case.events.length, 1);
@@ -78,6 +85,26 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   assert.equal(source.receipt.version, 1);
   assert.equal(source.draft.documents[0].documentId, documentId);
   assert.equal(source.draft.documents[0].contentSha256, document.contentSha256);
+  if (recoverSourceCapture) {
+    const calls = apiCalls.slice(captureCallsStart);
+    const capturePath = "/api/v1/shareholder-register-filings/year-sources";
+    const lookupPath = `${capturePath}/receipt-lookup`;
+    assert.deepEqual(calls.filter(call => call.startsWith(`TALLI_AUTHORITY_HTTP:POST:${capturePath}:`)),
+      [`TALLI_AUTHORITY_HTTP:POST:${capturePath}:503`], "the committed capture is never resubmitted");
+    assert.deepEqual(calls.filter(call => call.startsWith(`TALLI_AUTHORITY_HTTP:POST:${lookupPath}:`)),
+      [`TALLI_AUTHORITY_HTTP:POST:${lookupPath}:200`]);
+    const proof = calls.filter(call => call.startsWith("TALLI_RF_SOURCE_CAPTURE_TEST:"))
+      .map(call => JSON.parse(call.slice("TALLI_RF_SOURCE_CAPTURE_TEST:".length)));
+    assert.equal(proof.length, 2);
+    assert.deepEqual(proof.map(({ path, lostResponse }) => ({ path, lostResponse })),
+      [{ path: capturePath, lostResponse: true }, { path: lookupPath, lostResponse: false }]);
+    for (const field of ["requestSha256", "keySha256", "receiptSha256"]) {
+      assert.match(proof[0][field], /^[a-f0-9]{64}$/u);
+      assert.equal(proof[1][field], proof[0][field], `lookup preserves the original ${field}`);
+    }
+    assert.equal(proof[0].receiptSha256, createHash("sha256")
+      .update(JSON.stringify(source.receipt, Object.keys(source.receipt).sort())).digest("hex"));
+  }
   await page.getByRole("button", { name: "Lag forhåndsvisning av lagret grunnlag", exact: true }).click();
   const reviewButton = page.getByRole("button", { name: "Kontroller vilkår for godkjenning", exact: true });
   await reviewButton.waitFor();
@@ -168,8 +195,10 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   assert.deepEqual(operations.filter(({ operation }) => operation === "post_underskjema").map(row => row.digest).sort(),
     Object.values(approved.previews[0].underskjemaXml).map(xml => createHash("sha256").update(xml).digest("hex")).sort());
   assert.equal(operations.filter(({ operation }) => ["replayed_mutation", "request_rejected"].includes(operation)).length, 0);
-  for (const endpoint of ["year-sources", "source-previews", "source-production-reviews", "source-production-approvals", "source-production-filings"])
-    assert.ok(apiCalls.some(call => call.endsWith(`POST:/api/v1/shareholder-register-filings/${endpoint}:200`)), `missing full-year backend operation ${endpoint}`);
+  for (const endpoint of ["year-sources", "source-previews", "source-production-reviews", "source-production-approvals", "source-production-filings"]) {
+    const status = recoverSourceCapture && endpoint === "year-sources" ? 503 : 200;
+    assert.ok(apiCalls.some(call => call.endsWith(`POST:/api/v1/shareholder-register-filings/${endpoint}:${status}`)), `missing full-year backend operation ${endpoint}`);
+  }
   let renamedOriginal;
   if (predecessorFeedback === "rejected") {
     // No public metadata-edit command exists. This bounded Documents fixture

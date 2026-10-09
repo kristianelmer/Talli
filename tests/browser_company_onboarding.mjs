@@ -1037,7 +1037,7 @@ function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: loca
   const readinessNonce = randomUUID();
   return startOwnedProcess({
     command: backendPython,
-    args: ["tests/fixtures/start_talli_backend.py"],
+    args: ["tests/fixtures/start_rf1086_predecessor_backend.py"],
     cwd: process.cwd(),
     env: {
       PATH: process.env.PATH,
@@ -1051,6 +1051,9 @@ function startBackendServer({ port, supabaseUrl: localSupabaseUrl, anonKey: loca
         "browser-fixture-only-banking-encryption-key",
       TALLI_LEDGER_DATABASE_URL: ledgerDatabaseUrl,
       TALLI_MARKETING_MEASUREMENT_DATABASE_URL: marketingDatabaseUrl,
+      DATABASE_URL: localDatabaseUrl,
+      TALLI_RF1086_PRODUCTION_ENABLED: "false",
+      TALLI_AUTHORITY_OPS_ENABLED: "false",
       TALLI_BACKEND_PORT: String(port),
       TALLI_READINESS_NONCE: readinessNonce,
     },

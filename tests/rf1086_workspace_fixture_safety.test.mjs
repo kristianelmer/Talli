@@ -8,9 +8,9 @@ import { TalliApiError } from "../packages/talli-api-client/src/index.ts";
 import { createRfDatabaseActor } from "./support/rf1086-database-actor.mjs";
 
 const python = process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python";
-const fixture = "tests/fixtures/start_rf1086_workspace_backend.py";
 const local = {
   DATABASE_URL: "postgresql://localhost/fixture", TALLI_LEDGER_DATABASE_URL: "postgresql://localhost/fixture",
+  TALLI_BANKING_DATABASE_URL: "postgresql://localhost/fixture", TALLI_MARKETING_MEASUREMENT_DATABASE_URL: "postgresql://localhost/fixture",
   TALLI_COMPANY_ACCESS_DATABASE_URL: "postgresql://localhost/fixture", SUPABASE_URL: "http://127.0.0.1:45001",
   TALLI_AUTHORITY_OPS_ENABLED: "false", TALLI_RF1086_PRODUCTION_ENABLED: "false",
 };
@@ -58,14 +58,14 @@ for (const [name, options] of [["partial retirement", { partial: true }], ["miss
   assert.ok(!statements.includes("begin"));
 });
 
-for (const [name, additions, failure] of [
+for (const fixture of ["tests/fixtures/start_rf1086_workspace_backend.py", "tests/fixtures/start_rf1086_predecessor_backend.py"]) for (const [name, additions, failure] of [
   ["hosted database", { DATABASE_URL: "postgresql://hosted.invalid/fixture" }, "authority_browser_fixture_requires_loopback"],
   ["hosted Supabase", { SUPABASE_URL: "https://hosted.invalid" }, "authority_browser_fixture_requires_loopback"],
   ["global RF activation", { TALLI_RF1086_PRODUCTION_ENABLED: "true" }, "workspace_fixture_provider_activation_forbidden"],
   ["global operator activation", { TALLI_AUTHORITY_OPS_ENABLED: "true" }, "workspace_fixture_provider_activation_forbidden"],
   ["ambient credential", { TALLI_PROD_MASKINPORTEN_CLIENT_ID: "synthetic-forbidden" }, "workspace_fixture_provider_credentials_forbidden"],
 ]) {
-  test(`workspace RF backend refuses ${name} before opening a listener`, () => {
+  test(`${fixture} refuses ${name} before opening a listener`, () => {
     const result = spawnSync(python, [fixture], { env: { PATH: process.env.PATH, ...local, ...additions }, encoding: "utf8", timeout: 10_000 });
     assert.notEqual(result.status, 0);
     assert.ok(result.stderr.includes(failure));

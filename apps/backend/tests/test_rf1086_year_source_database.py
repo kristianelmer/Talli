@@ -1,5 +1,6 @@
 """Immutable RF source capture through a real restricted local database role."""
 import asyncio
+from contextlib import asynccontextmanager
 from dataclasses import replace
 import json
 import os
@@ -207,3 +208,57 @@ def test_original_source_blocks_frozen_predecessor_rehearsal(admitted,backend_ur
     original=capture(store,command,context)
     assert_retained_rf_original_refuses_predecessor_rehearsal()
     assert asyncio.run(store.read_current_year_source(query(command)))==original
+
+
+def test_committed_capture_lookup_preserves_superseded_receipt_and_conceals_other_actors(admitted,backend_url):
+    s=session(admitted,backend_url);c,ctx=inputs(admitted,s);key=IdempotencyKey(str(uuid4()))
+    first=capture(s,c,ctx,key)
+    capture(s,replace(c,supersedes_source_id=first.source_id,supersedes_source_sha256=first.source_sha256,correction_reason='Correct source'),ctx)
+    assert asyncio.run(s.read_year_source_capture_receipt(c,idempotency_key=key))==first
+    assert asyncio.run(s.read_year_source_capture_receipt(c,idempotency_key=IdempotencyKey(str(uuid4())))) is None
+    with pytest.raises((rf.Rf1086YearSourceError,rf.Rf1086RegisterObservationError),match='idempotency_conflict'):
+        asyncio.run(s.read_year_source_capture_receipt(replace(c,case=replace(c.case,case_id='different-request')),idempotency_key=key))
+    outsider=session(admitted,backend_url,admitted['outsider'])
+    with pytest.raises(rf.ShareholderRegisterFilingError,match="SHAREHOLDER_REGISTER_FILING_NOT_FOUND"):
+        asyncio.run(outsider.read_year_source_capture_receipt(replace(c,actor_id=outsider.actor_id),idempotency_key=key))
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute("insert into public.company_memberships(company_id,user_id,role,accepted_at) values(%s,%s,'owner',clock_timestamp())",(admitted['company'],admitted['outsider']))
+    assert asyncio.run(outsider.read_year_source_capture_receipt(replace(c,actor_id=outsider.actor_id),idempotency_key=key)) is None
+    with pytest.raises(rf.ShareholderRegisterFilingError,match="SHAREHOLDER_REGISTER_FILING_NOT_FOUND"):
+        asyncio.run(s.read_year_source_capture_receipt(replace(c,company_id=CompanyId(str(uuid4()))),idempotency_key=key))
+    with psycopg.connect(DATABASE_URL) as db:
+        db.execute("update public.company_memberships set role='read_only' where company_id=%s",(admitted['company'],))
+    with pytest.raises(rf.ShareholderRegisterFilingError,match="SHAREHOLDER_REGISTER_FILING_NOT_FOUND"):
+        asyncio.run(s.read_year_source_capture_receipt(c,idempotency_key=key))
+
+
+@pytest.mark.parametrize('commit',[True,False])
+def test_capture_lookup_observes_commit_not_inflight_or_rollback(admitted,backend_url,commit):
+    s=session(admitted,backend_url);c,ctx=inputs(admitted,s);key=IdempotencyKey(str(uuid4()))
+    async def run():
+        entered,release=asyncio.Event(),asyncio.Event()
+        transaction=s._transaction
+        @asynccontextmanager
+        async def delayed_commit(**options):
+            async with transaction(**options) as connection:
+                yield connection
+                # The actual receipt exists inside the original transaction,
+                # but another snapshot must not observe it before commit.
+                entered.set()
+                await release.wait()
+                if not commit:raise RuntimeError('injected capture rollback')
+        s._transaction=delayed_commit
+        pending=asyncio.create_task(s.record_year_source(c,context=ctx,idempotency_key=key))
+        try:
+            await asyncio.wait_for(entered.wait(),5)
+            reader=session(admitted,backend_url)
+            assert await reader.read_year_source_capture_receipt(c,idempotency_key=key) is None
+        finally:
+            release.set()
+        if commit:
+            original=await pending
+            assert await reader.read_year_source_capture_receipt(c,idempotency_key=key)==original
+        else:
+            with pytest.raises(RuntimeError,match='injected capture rollback'):await pending
+            assert await reader.read_year_source_capture_receipt(c,idempotency_key=key) is None
+    asyncio.run(run())

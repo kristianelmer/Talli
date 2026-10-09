@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "relatedIssue": "#196",
+  "observedDate": "2026-10-09",
+  "baseRevision": "5595cc03e6439bc223134d5ffe03225d9f474898",
+  "status": "REVIEWED_LOCAL_CHECKS_PASS_HEALTHY_LIVE_DATABASE_PENDING",
+  "ciObservation": "ci-37988989238.json records the terminal readiness deadline and four fixture expected-error failures; CI logs alone do not identify their root cause.",
+  "localDiagnosis": {
+    "migrationPhase": "scripts/test-supabase-local.sh runs early RF workspace and onboarding before the Tax and Accounts contract migrations grant their executor roles. Production readiness correctly probes those roles for its full default composition.",
+    "grantSources": [
+      "supabase/contract-migrations/20260913172000_company_tax_settlement_cutover.sql",
+      "supabase/contract-migrations/20260914112549_annual_accounts_filing_backend_binding.sql"
+    ],
+    "fixtureSafety": "Local reproduction failed the same four safety assertions because newly required Banking and Marketing loopback DSNs were missing from the baseline fixture environment."
+  },
+  "change": "A dedicated predecessor fixture injects explicitly unavailable Tax/Accounts session factories through the guarded workspace launcher. Only early RF workspace and onboarding use it. All remaining configured DB/Auth probes remain real; later Tax/Accounts/annual journeys retain the full composition. Safety fixtures include the required loopback DSNs. Onboarding explicitly supplies its guarded database binding and disabled provider flags.",
+  "checks": [
+    {
+      "name": "Dependency readiness plus predecessor composition",
+      "result": "PASS",
+      "passed": 32,
+      "seconds": 3.67
+    },
+    {
+      "name": "Workspace fixture safety and owned process lifecycle",
+      "result": "PASS",
+      "passed": 44,
+      "skipped": 1,
+      "seconds": 1.230804459,
+      "limit": "The skipped check needs a live database."
+    },
+    {
+      "name": "Independent phase review",
+      "result": "PASS",
+      "evidence": "0 remaining material findings; independent7composition+22safety passed. Missing onboarding DATABASE_URL found and repaired before final review."
+    },
+    {
+      "name": "Actual owned predecessor process with unavailable loopback dependencies",
+      "result": "PASS",
+      "observed": {
+        "liveness": 200,
+        "readiness": 503,
+        "readinessBody": {
+          "status": "not_ready"
+        }
+      },
+      "evidence": "Root tool observation; nonce-bound fixture PID5139 terminated in finally. Private process log contains binding marker only."
+    },
+    {
+      "name": "Full boundary/typecheck/architecture",
+      "result": "PASS",
+      "evidence": "Same root executions as capture-receipt-lookup-20261009.json."
+    }
+  ],
+  "sourceFileSha256": {
+    "tests/fixtures/start_talli_backend.py": "81f91ae582158e3ec61448dbbb9270cc3de2bb47120c93fb58fe7f21bcc4c433",
+    "tests/fixtures/start_rf1086_workspace_backend.py": "e757ecc839f13151e12fcf7d5fe3f5209c66257d0e2035372ebbeea1942a80b6",
+    "tests/fixtures/start_rf1086_predecessor_backend.py": "88054a896c650ef2fd5ae50c17b64ec0a789082a731cdfbbdfb1b35574cb14d5",
+    "tests/support/rf1086-workspace-api.mjs": "da40e8b7556fcddeac77a5bfcc7f0d880fe638236a96542e2012f6c1ddacb396",
+    "tests/browser_company_onboarding.mjs": "b4ad1cbf7038da1339ade3ca4b9d8c1d82da647ffbbac20fc6d5fd7788f1480b",
+    "tests/rf1086_workspace_fixture_safety.test.mjs": "e13d81c5fb7075f6249e116ef1f37493e183a74eb1ba08261d0ab8e798350d6f",
+    "apps/backend/tests/test_predecessor_readiness_composition.py": "8f341371899f7b539f35b2f04ce6a4221f261bc33f0ac625aa075bc1346049cd"
+  },
+  "privateLogSha256": {
+    "readiness-predecessor-checks.log": "8db5b89b6ced0165300f6e49b367b93d1563ce3cf037c774bac09a10863f80b6",
+    "readiness-fixture-safety-before.log": "2a05c97a28c30cf23ea77d79fe31a9938ccb898125c7059ccb3125316748014b",
+    "readiness-fixture-safety-after.log": "19f2b7299ec33bc6aaefa3a8210eaa51b065463caf4d009ab351849361fd3ba9",
+    "readiness-predecessor-process.log": "6abc45112424e896beaf6ec312661a88010e5db8c1a75f75acfc209b5fd71e2b"
+  },
+  "limits": [
+    "Healthy live database/browser execution remains pending next CI.",
+    "Production readiness and production application composition are unchanged by this fixture repair.",
+    "Unavailable future APIs fail with their owning typed unavailable errors; no health override or blanket probe bypass is added.",
+    "No hosted activation, production configuration, criterion promotion or launch clearance."
+  ]
+}

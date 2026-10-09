@@ -22,6 +22,7 @@ export {
   loadRf1086SourceIntakeBasis, loadRf1086CurrentYearSource, loadRf1086SourceDocument, loadRf1086RegisterObservations,
   rf1086RegisterErrorMessage, rf1086RegisterCaptureRejected,
   captureRf1086YearSourceThroughApi, captureRf1086RegisterObservationThroughApi,
+  lookupRf1086YearSourceCaptureThroughApi, lookupRf1086RegisterObservationCaptureThroughApi,
   generateRf1086SourcePreviewThroughApi, loadRf1086SourcePreview, rf1086SourceErrorMessage, rf1086SourceCaptureRejected,
 } from "./transport.ts";
 export type {
@@ -68,6 +69,8 @@ export type {
   RfSourcePreviewRequestWire,
   RfYearSourceReceiptWire,
   RfRegisterObservationReceiptWire,
+  RfYearSourceCaptureLookupWire,
+  RfRegisterObservationCaptureLookupWire,
   RfSourcePreviewWire,
   RfSourcePreviewReadRequest,
   RfCurrentYearSourceReadRequest,
