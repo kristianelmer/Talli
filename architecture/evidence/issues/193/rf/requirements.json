@@ -225,5 +225,6 @@
   "ledgerGovernanceEntryAssertion20261009": "ledger-governance-entry-assertion-20261009.json",
   "crossOwnerTopologyProbeRepair20261009": "cross-owner-topology-probe-repair-20261009.json",
   "historicalCi38001797771": "ci-38001797771.json",
-  "governanceManifestExpectationRepair20261009": "governance-manifest-expectation-repair-20261009.json"
+  "governanceManifestExpectationRepair20261009": "governance-manifest-expectation-repair-20261009.json",
+  "currentObservationEvidenceReader20261009": "current-observation-evidence-reader-20261009.json"
 }

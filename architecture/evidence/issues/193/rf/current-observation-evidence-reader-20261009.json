@@ -1,0 +1,182 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Closed RF current observation evidence reader",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "2bd58fbc4232b07786d281f12d7bfe85513407b8",
+  "reviewBaseRevision": "24d9c0f33406294359e16293036f10ceaaa68998",
+  "status": "LOCAL_REVIEWED_CODEC_NATIVE_AND_HARNESS_PASS_FULL_DATABASE_EXECUTION_PENDING",
+  "contract": {
+    "publicSql": "shareholder_register_filing.read_current_register_observation_evidence_v1(uuid,uuid,integer,integer,text,timestamptz,text)",
+    "returns": [
+      "snapshot_text",
+      "confirmed_at"
+    ],
+    "authority": "Delegates current-v2 first: verified subject, current owner, READ COMMITTED, shared company lock and exact current reference/cutoff. No RF year lock.",
+    "proof": "Selected retained row only. Strict versioned typed snapshot, domain transitions, document role coverage/repeated binding, chronology/correction fields; reconstruct unchanged fact/request digests from decoded values and bind every indexed identity, actor, capture time, predecessor, reason and digest.",
+    "compatibility": "Requires exact existing canonical-emitter sorted compact UTF-8 text and wrappers. New reader rejects duplicate keys, whitespace/key-order alternatives, scientific/fractional bare integer tokens and integers exceeding4300 digits. Old serializers, parsers, writers, hashes, routes and public Python definitions unchanged.",
+    "activation": "All runtime and consumer EXECUTE grants closed, including after reinstall. Retentive no-op rollback. No storage writes or transport-key disclosure."
+  },
+  "checks": {
+    "focusedPureAndLegacy": {
+      "status": "PASS",
+      "count": 257,
+      "includesNewPure": 40,
+      "log": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-focused.log"
+    },
+    "restrictedDb": {
+      "status": "COLLECTED_ONLY",
+      "count": 90,
+      "log": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-db-collection.log"
+    },
+    "native": {
+      "status": "PASS",
+      "groups": 8,
+      "vectors": 34,
+      "record": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-native.json",
+      "limits": "Public current-v2 explicitly STUBBED; minimal RF table/RLS; no full Supabase, owner/currentness/race/Docs proof",
+      "clusterStoppedAndRemoved": true
+    },
+    "beforeIntegerFix": {
+      "status": "REPRODUCED",
+      "record": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-before-integer-fix.json",
+      "beforeMigrationSha256": "e09427432776af58311babdceb2c2a3daadd970e79441926b2a94ded17ed00a1",
+      "observation": "SQL accepted 4301-digit valid-domain/rehashed snapshot rejected by unchanged Python4300; repaired SQL rejects4301/4400, supports4300 and longer Decimal strings"
+    },
+    "integerDbFixturePayloads": {
+      "status": "PASS",
+      "count": 2,
+      "log": "/private/tmp/talli-release-20261009/rf-reader-integer-db-fixtures.log",
+      "limits": "Payload construction proof only; SQL callback explicitly replaced; isolated subprocess disables integer limit only to independently parse/hash attacker bytes. Parent runtime unchanged."
+    },
+    "architecture": {
+      "status": "PASS",
+      "log": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-architecture.log"
+    },
+    "ciRegistration": {
+      "status": "PASS",
+      "count": 109,
+      "log": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-ci-registration.log"
+    },
+    "diffCheck": {
+      "status": "PASS"
+    }
+  },
+  "reviews": {
+    "standards": {
+      "unresolvedFindings": 0,
+      "scope": "Independent original ten-file review plus final four-file integer-limit delta; verified all final source hashes."
+    },
+    "spec": {
+      "unresolvedFindings": 0,
+      "resolvedFindings": [
+        "Native SQL accepted a self-consistent4301-digit integer that the unchanged Python4300 runtime rejects. The typed limit now accepts4300 and rejects4301/4400; Decimal wrapper strings unchanged."
+      ],
+      "scope": "Independent model/codec/domain/hash/row-binding review, Python counterexample and repaired delta; verified all final source hashes."
+    },
+    "root": {
+      "unresolvedFindings": 0,
+      "scope": "Reviewed full SQL, existing Python integrity/hash model, registrations, typed vectors, DB fixtures and final raw integer attack; verified10 source and15 artifact hashes plus exact native migration binding."
+    }
+  },
+  "sourceFileSha256": {
+    "supabase/migrations/20261009231107_rf1086_current_observation_evidence_reader.sql": "e3e2694685344a1d0bc69c235cd4da9fa231aa4f35ffadf813ba571ed41699c1",
+    "supabase/rollback/20261009231107_rf1086_current_observation_evidence_reader.sql": "4cfc2ff07a66dee93d3b781485f2b984ddc06eced1ae9a2ef048cef8122d6eb0",
+    "apps/backend/tests/test_rf1086_observation_evidence_reader_codec.py": "479bb5b5a47bcc68bd958e0b9f488ec7c283d1034bcaf21f8e7695919b901dab",
+    "apps/backend/tests/fixtures/rf1086_observation_evidence_reader_v1.json": "6f68cad8a3241fc8e95e408d87f0d5998243fc55d42e862ae3cc1a1c375e67c2",
+    "apps/backend/tests/test_rf1086_register_observation_evidence_reader_database.py": "0eba2ca235e736b7816f4d431f1c9c51700429a8d73cb7bb98295c75074c6a5d",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "5570e1dd88f397369bccaee28eb74f4891141816a0aa5844611fec4f9fd6e7f5",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "a7444cd7198ea791507ad232bde8fa29a63df059e5a1640673cea00d5ca90884",
+    "scripts/rf-consequential-successors.json": "a9200705090879b9c614b0145a11ae2395f8a4ce0a7faf7b9c68f68ac80889e6",
+    "tests/ci_release_gate.test.mjs": "56c94865c494b42aabefab3b45106976142a4f251a68220cbeb88bba66da5a5f",
+    "package.json": "425b10becc069e15276baf62f67ce93d7fd5e843bec3ced792c8386f58dab901"
+  },
+  "privateArtifacts": {
+    "check-rf-observation-evidence-reader-native.py": {
+      "path": "/private/tmp/talli-release-20261009/check-rf-observation-evidence-reader-native.py",
+      "sha256": "c066aaf026af3d6fa654c6220c99dab3103a3f7c5ae9103e14abd0c33d7fd8b4",
+      "bytes": 14933
+    },
+    "check-rf-observation-evidence-reader-before-integer-fix.py": {
+      "path": "/private/tmp/talli-release-20261009/check-rf-observation-evidence-reader-before-integer-fix.py",
+      "sha256": "f8c113aa6d401c6f8779e973f2d9fd1676551955eee5d63986e2a36692e343e5",
+      "bytes": 14680
+    },
+    "rf-observation-integer-boundary-payload.py": {
+      "path": "/private/tmp/talli-release-20261009/rf-observation-integer-boundary-payload.py",
+      "sha256": "9d426efdf8b537916b09dbe0dc671160f2cf320e99a51e68d792e33cf7d02116",
+      "bytes": 763
+    },
+    "check-rf-reader-integer-db-fixtures.py": {
+      "path": "/private/tmp/talli-release-20261009/check-rf-reader-integer-db-fixtures.py",
+      "sha256": "386cdbfbe0bdd2203082bf711bc73020e5b6bb1fa59950cc3a646138f8c9ac44",
+      "bytes": 1804
+    },
+    "rf-observation-evidence-reader-native.json": {
+      "path": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-native.json",
+      "sha256": "0234ce86298f4899823f524a64df805f2af4b69b175c0cadb42dc73eb3edfdba",
+      "bytes": 1634
+    },
+    "rf-observation-evidence-reader-native.log": {
+      "path": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-native.log",
+      "sha256": "454d93fc6dbbf228e9ec776bf43eb7be9b089fe6d52e18b1b25ece6729e63429",
+      "bytes": 973
+    },
+    "rf-observation-evidence-reader-native-output.log": {
+      "path": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-native-output.log",
+      "sha256": "dacfc5429fb162e356b680d13a8324bf1562ca60212cb5a0da6e7069c1c41706",
+      "bytes": 1582
+    },
+    "rf-observation-evidence-reader-before-integer-fix.json": {
+      "path": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-before-integer-fix.json",
+      "sha256": "8ad0bd739022bc84e73519138e24fe1376ac12e7c75c50bfb0fd15d9ddab5379",
+      "bytes": 1567
+    },
+    "rf-observation-evidence-reader-before-integer-fix.log": {
+      "path": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-before-integer-fix.log",
+      "sha256": "a40c5a7b7fc1636a2ad3c494a83cfb5c20719dd87a90dbefa61a3c15bdc0dcc8",
+      "bytes": 973
+    },
+    "rf-observation-evidence-reader-before-integer-fix-output.log": {
+      "path": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-before-integer-fix-output.log",
+      "sha256": "7e35eda557511db2bd760290c826a8f74a1faa31f265419a07d5708d7d18ce2d",
+      "bytes": 1515
+    },
+    "rf-observation-evidence-reader-focused.log": {
+      "path": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-focused.log",
+      "sha256": "c1ebc311a1a1f2ac8442b1557ddef228254888357b7f6e26bc8e8b816a774f71",
+      "bytes": 340
+    },
+    "rf-observation-evidence-reader-db-collection.log": {
+      "path": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-db-collection.log",
+      "sha256": "26762a64e50098ce645534d3b666488724778eb28dd90519690d886d56eadae2",
+      "bytes": 13911
+    },
+    "rf-observation-evidence-reader-architecture.log": {
+      "path": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-architecture.log",
+      "sha256": "d12ce8caa45f77561fb098ad315c5b83021dd7fb5303a13d91a843a1f0b28a69",
+      "bytes": 18484
+    },
+    "rf-observation-evidence-reader-ci-registration.log": {
+      "path": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-ci-registration.log",
+      "sha256": "c353e735b865c2e3a0cb98801050f9341d1312e7a1712d3b48a7a805853663f1",
+      "bytes": 11538
+    },
+    "rf-reader-integer-db-fixtures.log": {
+      "path": "/private/tmp/talli-release-20261009/rf-reader-integer-db-fixtures.log",
+      "sha256": "c59dffaf53c86b84d12d4b21e0bda778b3d45cdf6b2eaab29543f829c1e13428",
+      "bytes": 657
+    }
+  },
+  "finalCheckInventory": {
+    "path": "/private/tmp/talli-release-20261009/rf-observation-evidence-reader-freeze.json",
+    "sha256": "2d88420dcf265f3f68ca45e1723e6a2a6d8736ba44c73a428ac5619f0da9c7aa",
+    "bytes": 9374
+  },
+  "limits": [
+    "90 real database cases are collected only; no claim of executed full Supabase/RLS/currentness/owner/withdrawal-race proof. Native8 groups use explicitly stubbed current-v2 and minimal RF table/RLS.",
+    "Selected-row content/hash integrity does not prove ancestor completeness, original actor human provenance, Documents original bytes or independent register truth. Future Governance must verify economic agreement and complete Documents coverage through public owner contracts.",
+    "No consumer grant, amendment persistence/application, withdrawal writer activation, Archive owner exception, capability-stage exit, A1-A7 completion, provider filing, charge or launch is implied.",
+    "The latest whole CI run38001797771 failed at the older1dcc head. New full CI execution is still required for this checkpoint."
+  ]
+}

@@ -1205,3 +1205,52 @@ The subsequent bounded Governance migration `20261009223340` grants only RF sche
 USAGE and current-v2 EXECUTE to the Governance store owner. The retained withdrawal
 reader stays ungranted. Prerequisite tests assert closed predecessor privileges,
 then reapply that exact successor and assert the narrow final-chain grant.
+
+### Closed current-observation evidence reader
+
+`20261009231107_rf1086_current_observation_evidence_reader.sql` adds
+`read_current_register_observation_evidence_v1(id uuid, company uuid, year integer,
+revision integer, fact_sha text, not_after timestamptz, subject text) ->
+(snapshot_text text, confirmed_at timestamptz)`. It delegates to current-v2 first,
+retaining current-owner, verified-subject, READ COMMITTED, company-lock and cutoff
+rules. It takes no RF year lock. All consumer EXECUTE grants remain closed;
+private validation helpers are likewise ungranted, including after reinstallation.
+
+The reader validates the selected row's complete closed typed snapshot, register
+state/holder arithmetic and transitions, three document roles, consistent repeated
+document bindings, chronology and local correction fields. It reconstructs the
+unchanged v1 fact and request digest payloads and checks every retained identity,
+actor, capture time, predecessor, reason and digest field. A matching stored hash
+string alone is insufficient. Success returns the exact retained text and capture
+time; it writes no rows, original evidence, receipts or archive generations.
+
+This additive contract accepts canonical text emitted by the existing Python v1
+serializer: exact sorted compact UTF-8 JSON and expected wrappers/field types.
+It rejects duplicate keys, scientific/fractional bare integer tokens, reordered
+keys, whitespace alternatives and noncanonical scalar encodings before trusting
+JSONB. Bare positive integers have a fixed 4,300-digit compatibility ceiling,
+matching the unchanged Python 3.12 codec's default conversion limit. This ceiling
+does not apply to Decimal wrapper strings. Historical parsers and writers still
+accept their previous input language;
+no stored bytes, old hashes or old route/schema are rewritten. Decimal values use
+the old six-place domain rule and trailing-zero-free digest strings. Capture time
+normalizes to UTC for its hash; document timestamp offsets remain in the hash,
+including second/fractional-second offsets. Effective time remains civil seconds.
+
+Scope is one current selected row, not complete ancestor history, authorization
+of a later action, economic agreement with Governance or original document bytes.
+Document fields commit the actual source year, which may differ from the RF year;
+a null year retains the old pure codec meaning and does not establish a usable
+Documents receipt. A future consumer must enumerate every distinct referenced
+document and verify it through the Documents owner's public contract. This reader
+does not prove independent provenance, original capture-time byte verification,
+signedness or the truth of owner-reviewed register contents. No transport key is
+returned. Future consumer grants and final admission remain separate owner work;
+rollback retains this closed additive contract.
+
+Frozen synthetic v1 bytes and both hashes live in
+`apps/backend/tests/fixtures/rf1086_observation_evidence_reader_v1.json`, with
+additional typed vectors in `test_rf1086_observation_evidence_reader_codec.py`.
+Restricted real-database cases are in
+`test_rf1086_register_observation_evidence_reader_database.py`; collection and
+isolated native codec probes are not full Supabase/RLS/race execution evidence.
