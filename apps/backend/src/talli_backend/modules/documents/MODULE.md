@@ -218,3 +218,59 @@ as `shareholder_register_filing_store_owner`. This narrow public assertion check
 the accepted owner, immutable original identity and exact current metadata under
 the company/document locks. It returns metadata only. RF receives neither table
 access to retained originals nor an original-byte read grant.
+
+### Closed historical-original integrity assertion
+
+`20261009232839_documents_historical_original_integrity.sql` adds the initially
+ungranted owner contract `documents.assert_historical_original_integrity_v1(
+original uuid, document uuid, company uuid, source_year integer, metadata text,
+content_sha text, length integer, retained_at timestamptz, not_after timestamptz,
+subject text) -> (document_text text)`. Four private helpers validate and encode
+its selected retained snapshot. No existing writer, reader, Python public type,
+metadata hash or HTTP contract changes. Reinstallation closes incidental consumer
+grants; rollback retains the closed functions and every historical original.
+
+The assertion checks the independently verified subject and current accepted
+owner, requires READ COMMITTED, takes the company guard and rechecks ownership
+before reading. The entire receipt must match the selected immutable row. Its
+retention time must be at or before the caller's finite, nonfuture cutoff; both
+instants must fit Python's UTC years 1–9999. A caller-supplied cutoff does not prove
+original recording time or authorize a future write. No Auth lookup, fresh-MFA
+claim, current-document join, foreign business table or year lock is introduced.
+
+The retained writer has always captured the 23-column `public.documents` row
+shape introduced before retained originals. The new gate accepts that exact
+shape and real SQL primitive types, without Python's incidental coercions of
+booleans, floats or objects. It reconstructs the unchanged 16-field
+`DocumentRecord` projection and exact `evidence.py` metadata text: C-sorted
+compact UTF-8 JSON, nested identity values, `USER` attribution, UTC timestamps
+with all microseconds, and existing null/empty defaults. Null/empty content type
+projects as `application/pdf`; empty removal reason projects as null. The signed
+32-bit retention-years range remains unchanged, including zero/negative values.
+Snapshot identity, company, source year, content SHA and length must match the
+stored receipt, and the actual recomputed metadata digest must match its label.
+
+`removed_by`, `declared_byte_length`, `staged_at`, `quarantined_at`,
+`quarantine_reason`, `final_status` and `removed_from_status` are strictly typed
+SQL-only fields outside the existing public metadata digest. Their values gain no
+new hash protection. All existing `DocumentStatus` values and nullable removal
+timestamps remain representable; this integrity assertion does not select usable
+Governance/RF evidence. It imposes no new creation-before-retention rule. Future
+consumers must separately check status, removal, document roles, economic
+relationships and their complete required document set.
+
+The result is canonical metadata only. The unchanged retained-row CHECK
+constraints bind the stored byte copy's SHA and length; this call neither returns
+bytes nor performs new byte/object-store verification. It proves consistency of
+the selected retained record, not independent provenance or resistance to a
+privileged rewrite of both metadata and its commitment. Governance documents and
+memos first retained during an amendment are amendment-time observations, never
+retroactively frozen original Governance metadata.
+
+Synthetic byte/hash vectors are retained in
+`apps/backend/tests/fixtures/documents_historical_original_integrity_v1.json` and
+checked by `test_documents_historical_original_integrity_codec.py`. Restricted
+SQL cases live in `test_documents_historical_original_integrity_database.py`.
+Collection and native codec/ACL probes with explicit authorization/lock stubs are
+not full Supabase/RLS/concurrency execution evidence. Consumer grants and final
+Governance admission remain a separate canonical owner turn.

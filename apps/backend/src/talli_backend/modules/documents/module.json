@@ -70,7 +70,7 @@
     "projections": [
       "DocumentBackupObject"
     ],
-    "migrations": "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql; supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql; supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql; supabase/migrations/20260924062717_documents_immutable_retained_originals.sql; supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql; supabase/migrations/20260928083000_documents_historical_original_recovery.sql; supabase/migrations/20260928124000_documents_historical_original_assertion.sql"
+    "migrations": "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql; supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql; supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql; supabase/migrations/20260924062717_documents_immutable_retained_originals.sql; supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql; supabase/migrations/20260928083000_documents_historical_original_recovery.sql; supabase/migrations/20260928124000_documents_historical_original_assertion.sql; supabase/migrations/20261009232839_documents_historical_original_integrity.sql"
   },
   "ports": [
     {
@@ -160,7 +160,9 @@
     "retainedOriginalsDatabase": "apps/backend/tests/test_document_originals_database.py",
     "companyGuardDatabase": "apps/backend/tests/test_documents_rf_company_guard_database.py",
     "companyGuardAdapter": "apps/backend/tests/test_consequential_adapter_guards.py",
-    "originalArchive": "apps/backend/tests/test_document_original_archive.py"
+    "originalArchive": "apps/backend/tests/test_document_original_archive.py",
+    "historicalOriginalIntegrityCodec": "apps/backend/tests/test_documents_historical_original_integrity_codec.py",
+    "historicalOriginalIntegrityDatabase": "apps/backend/tests/test_documents_historical_original_integrity_database.py"
   },
   "compatibilityExceptions": []
 }

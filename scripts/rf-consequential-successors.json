@@ -110,5 +110,9 @@
   {
     "migration": "20261009231107_rf1086_current_observation_evidence_reader.sql",
     "presenceQuery": "select exists(select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.prokind='f' and p.proname='read_current_register_observation_evidence_v1' and pg_catalog.oidvectortypes(p.proargtypes)='uuid, uuid, integer, integer, text, timestamp with time zone, text')"
+  },
+  {
+    "migration": "20261009232839_documents_historical_original_integrity.sql",
+    "presenceQuery": "select exists(select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='documents' and p.prokind='f' and p.proname='assert_historical_original_integrity_v1' and pg_catalog.oidvectortypes(p.proargtypes)='uuid, uuid, uuid, integer, text, text, integer, timestamp with time zone, timestamp with time zone, text')"
   }
 ]
