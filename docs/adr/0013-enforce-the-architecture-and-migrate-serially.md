@@ -430,3 +430,43 @@ row ownership, tenant/RLS, sibling journeys, rollback/recutover, independent rev
 both complete immutable gates and protected integration remain mandatory.
 This approval changes no serialized stage order or production freeze and grants
 no provider tests, real filings, spending or production activation/promotion.
+
+## 2026-10-09 amendment: technical readiness before genuine-company validation
+
+Kristian's direct instruction in LifeManager chat
+`01a11715-54c1-7583-9015-7192838a29e9`, verified by the release-integration
+owner, was:
+
+> When Talli is completely finished and ready for launch, I will, using codex reach out to holding companies asking them to pilot to validate. So finish talli such that it technically could be launched and test to validate its readiness
+
+Complete and verify the entire technical product before later pilot outreach.
+This supersedes an ordering condition that genuine-company production proof must
+precede the next technical filing stage. It preserves one implementation owner
+at a time, RF → Tax → Accounts, the existing subsequent issue order, the complete
+#172 sold scope, and every eventual acceptance requirement. The confirmed
+sequencing instruction needs no repeated approval.
+
+Before an obligation hands technical ownership to its successor, its evidence
+matrix must distinguish current implementation, executed proof, missing technical
+work, and separately pending external proof across A1–A7 and the entire supported
+boundary. All implementable technical requirements must pass, with independent
+reviews, two linked immutable complete gates and the existing protected-main
+integration requirements. Missing contracts, failed tests, unavailable technical
+infrastructure and incomplete supported cases cannot be relabeled external to
+advance. The [technical handoff requirements](../../architecture/evidence/issues/193/rf/release-plan-20261009.md#dependency-order-and-authorized-technical-first-sequencing)
+detail the retained evidence requirements; the
+[RF reconciliation](../../architecture/evidence/issues/193/rf/acceptance-reconciliation-20261009.json)
+records the current open gaps, not a technical exit.
+
+Full #193 acceptance, including A3's current service conformance and representative
+genuine-company final production outcomes, stays pending wherever that proof is
+absent. Later technical stages may follow a verified technical handoff without
+claiming those outcomes. #197 remains the later validation gate and #198 still
+requires all twelve clearance lanes and fourteen current approvals. This amendment
+does not advance the migration pointer, authorize a future capability writer,
+extend a frozen facade, or defer an unresolved technical dependency by itself.
+Existing public contracts and serial owner changes must resolve those dependencies.
+
+No outreach, real-company admission, provider activation or filing, charge,
+purchase, production promotion or launch is authorized by this sequencing change.
+Applicable action-time authority and the cost guardrail remain unchanged.

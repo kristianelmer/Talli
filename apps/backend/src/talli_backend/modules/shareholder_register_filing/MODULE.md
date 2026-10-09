@@ -984,3 +984,51 @@ not converted to `not_observed`; neither outcome authorizes a new key or retry.
 Regression coverage: `apps/backend/tests/test_rf1086_capture_receipt_lookup.py`,
 plus the existing year-source and observation database suites for current-owner,
 replay/conflict, historical identity, commit/rollback and concurrent visibility.
+
+### Register observation withdrawal foundation
+
+`WithdrawRf1086RegisterObservation` names the exact company/year and observation
+ID/version/fact hash, verified user actor and reason. The reason remains exact:
+nonblank, at most 1000 Unicode characters, valid UTF-8 without PostgreSQL's
+unsupported NUL. It is neither trimmed nor Unicode-normalized. The separate
+`Rf1086RegisterObservationWithdrawalId` is a canonical server UUID.
+`Rf1086RegisterObservationWithdrawal` retains the command, server withdrawal
+instant, request digest and receipt digest. All values are immutable.
+
+`prepare_rf1086_register_observation_withdrawal` validates the retained target's
+integrity and exact identity, and refuses withdrawal before its capture instant.
+The withdrawing user may differ from the historical capturing user. Aware times
+normalize to UTC with all six PostgreSQL microsecond digits in canonical bytes.
+`rf1086_register_observation_withdrawal_request_digest` binds every command field;
+`assert_rf1086_register_observation_withdrawal_integrity` also binds the receipt
+ID and time. `assert_rf1086_register_observation_withdrawal_replay` requires the
+exact original command, including actor and reason, without current evidence.
+It does not select or authorize an idempotency key. These functions report closed
+`Rf1086RegisterObservationWithdrawalError` codes without reason/identity values.
+
+`derive_rf1086_register_observation_lifecycle` validates a supplied scoped history
+and returns `Rf1086RegisterObservationLifecycle` values sorted by observation ID.
+It derives supersession before withdrawal: each retained observation is active,
+superseded or withdrawn. A withdrawn head never reactivates its ancestors.
+Duplicate IDs/withdrawals, forks, orphan links, invalid version/hash/scope/time
+chains, and withdrawal of an ancestor are inconsistent history. A new independent
+root remains possible without changing the terminal lineage.
+
+These calculations establish neither completeness nor live authorization.
+An omitted successor or withdrawal cannot be detected from the remaining rows.
+A future repository must use a complete locked snapshot, server-derived current
+accepted-owner authority, original actor/key replay and a current terminal head
+with no prior withdrawal. Exact replay must be selected before fresh head checks.
+No caller currentness/owner flags are accepted. A prepared receipt alone is not
+proof of persistence or permission to withdraw, correct, approve or submit.
+
+`serialize_rf1086_register_observation_withdrawal` and
+`parse_rf1086_register_observation_withdrawal` implement the dedicated closed
+`rf1086-register-observation-withdrawal-v1` codec. Canonical UTF-8 JSON, exact keys
+and primitive types, duplicate rejection, bounded decoding, UTC microsecond
+formatting and both digests are verified. Existing observation and archive
+codecs v1–v4 remain unchanged. This foundation has no persistence port changes,
+migrations, HTTP/web behavior, archive coverage or command activation; those
+require the separately owned admission, Governance and archive work in the plan.
+
+Pure regression coverage: `apps/backend/tests/test_rf1086_register_observation_withdrawal.py`.
