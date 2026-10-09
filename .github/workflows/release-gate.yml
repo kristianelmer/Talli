@@ -55,6 +55,9 @@ jobs:
           uv sync --project apps/backend --locked
           npm ci
 
+      - name: Prefetch official PostgreSQL fixture images anonymously
+        run: bash scripts/prefetch-postgres-fixture-images.sh
+
       - name: Fetch the pinned official tax schemas
         run: |
           git clone --depth 1 --branch v1.62.47 \
@@ -142,6 +145,9 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
+      - name: Prefetch official PostgreSQL fixture images anonymously
+        run: bash scripts/prefetch-postgres-fixture-images.sh
+
       - name: Rehearse migrations, RLS, storage, and owner persistence
         env:
           TALLI_PYTHON_BIN: .venv/bin/python
@@ -181,6 +187,9 @@ jobs:
           uv sync --project apps/backend --locked
           npm ci
           npx playwright install --with-deps chromium
+
+      - name: Prefetch official PostgreSQL fixture images anonymously
+        run: bash scripts/prefetch-postgres-fixture-images.sh
 
       - name: Run the canonical immutable gate producer
         env:

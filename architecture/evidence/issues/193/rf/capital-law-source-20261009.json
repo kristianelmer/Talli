@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "relatedCriteria": [
+    "GH-193-RF-A1",
+    "GH-193-RF-A2"
+  ],
+  "status": "CURRENT_PRIMARY_LAW_TEXT_OBSERVED_IMPLEMENTATION_RULE_REVIEW_PENDING",
+  "baseRevision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+  "observedAtUtc": "2026-10-09T21:09:02.792398+00:00",
+  "supersedesLimit": "capital-source-plan-20261009.md direct-current-law fetch limitation only. Its other implementation gaps and rule-review requirements remain.",
+  "retrieval": {
+    "directWebFetch": "HTTP405 for current section/full-law URLs.",
+    "browser": "Ordinary public browser navigation succeeded without login, payment, challenge bypass or site mutation.",
+    "chapterUrl": "https://lovdata.no/dokument/NL/lov/1997-06-13-44/KAPITTEL_12#%C2%A712-5",
+    "metadata": {
+      "law": "LOV-1997-06-13-44",
+      "lastChanged": "LOV-2025-06-20-106",
+      "effectiveFrom": "2026-01-01"
+    },
+    "metadataObservation": "Current full document header, after following visible Vis hele dokumentet link."
+  },
+  "sources": [
+    {
+      "section": "12-5",
+      "url": "https://lovdata.no/dokument/NL/lov/1997-06-13-44/%C2%A712-5",
+      "observedAtUtc": "2026-10-09T21:09:02.792398+00:00",
+      "method": "Current Lovdata document rendered in ordinary Codex in-app browser; matching section container innerText read through DOM. Whitespace collapsed; amendment notes omitted.",
+      "renderedTextNormalized": "§ 12-5.Ikrafttredelse uten kreditorvarsel (1) Skal hele nedsettingsbeløpet brukes til dekning av tap etter § 12-1 første ledd nr 1, trer kapitalnedsettingen i kraft når meldingen etter § 12-4 er registrert. Utdeling av utbytte kan i så fall ikke besluttes før det har gått tre år fra registreringen i Foretaksregisteret, med mindre aksjekapitalen igjen er blitt forhøyd med et beløp som minst svarer til nedsettingen, eller reglene i § 12-6 er blitt fulgt. (2) Kapitalnedsettingen trer også i kraft når meldingen etter § 12-4 er registrert dersom selskapet samtidig med meldingen om kapitalnedsettingen melder at aksjekapitalen er forhøyd ved nytegning av aksjer mot innskudd slik at selskapets bundne egenkapital blir minst like høy som tidligere.",
+      "renderedTextNormalizedSha256": "8b8afcada78f8545597bbcc90cca92bf5d59fea993666264cb4e7e757a719d0e"
+    },
+    {
+      "section": "12-6",
+      "url": "https://lovdata.no/dokument/NL/lov/1997-06-13-44/%C2%A712-6",
+      "observedAtUtc": "2026-10-09T21:09:02.792398+00:00",
+      "method": "Current Lovdata document rendered in ordinary Codex in-app browser; matching section container innerText read through DOM. Whitespace collapsed; amendment notes omitted.",
+      "renderedTextNormalized": "§ 12-6.Ikrafttredelse etter kreditorvarsel Skal nedsettingsbeløpet helt eller delvis brukes som nevnt i § 12-1 første ledd nr 2 eller 3, gjelder følgende regler: 1. Foretaksregisteret skal, så snart beslutningen om kapitalnedsetting er registrert, kunngjøre beslutningen i Brønnøysundregistrenes elektroniske kunngjøringspublikasjon og varsle selskapets kreditorer om at innsigelse mot at nedsettingen settes i kraft, må meldes til selskapet innen seks uker fra kunngjøringen. Det skal fremgå av kunngjøringen om hvorvidt beslutningen om kapitalnedsetting er basert på sist godkjente årsregnskap eller en mellombalanse. Kunngjøringen skal angi datoen for fastsettelsen av årsregnskapet eller mellombalansen. 2. Gjør en kreditor med uomtvistet og forfalt fordring innsigelse før fristen etter nr 1 er utløpt, kan beslutningen om kapitalnedsetting ikke settes i kraft før fordringen er betalt. En kreditor med omtvistet eller ikke forfalt fordring kan kreve at betryggende sikkerhet blir stilt, dersom fordringen ikke fra før er betryggende sikret. Tingretten avgjør tvist om det foreligger en fordring og om sikkerheten er betryggende. Retten kan forkaste krav om sikkerhet etter annet punktum når det er klart at det ikke foreligger noen fordring eller at kapitalnedsettingen ikke vil forringe kreditors mulighet til å få dekket fordringen. Krav om rettens avgjørelse må være fremsatt innen to uker etter at kreditor fremsatte kravet om betaling eller sikkerhetsstillelse. 3. Når fristen etter nr 1 er utløpt og forholdet til de kreditorer som i tilfelle har fremsatt innsigelse er avklart etter nr 2, trer beslutningen om kapitalnedsettingen i kraft når melding om dette blir registrert i Foretaksregisteret. En bekreftelse signert av styret om at forholdet til selskapets kreditorer ikke er til hinder for at beslutningen trer i kraft, skal følge med meldingen. 4. Utdeling til aksjeeierne kan først finne sted når nedsettingen av aksjekapitalen er trådt i kraft. 5. Kapitalnedsettingen faller bort dersom melding etter nr 3 ikke er sendt senest ett år etter at nedsettingen ble besluttet.",
+      "renderedTextNormalizedSha256": "6cf1becb301bc02d18e291660735aac19e21aaa6681b4897140d66143782b5de"
+    },
+    {
+      "section": "18-4",
+      "url": "https://lovdata.no/dokument/NL/lov/1997-06-13-44/%C2%A718-4",
+      "observedAtUtc": "2026-10-09T21:09:02.792398+00:00",
+      "method": "Current Lovdata document rendered in ordinary Codex in-app browser; matching section container innerText read through DOM. Whitespace collapsed; amendment notes omitted.",
+      "renderedTextNormalized": "§ 18-4.Beregning av frister (1) Ved beregning av frister som er regnet i dager, telles ikke med den dag da fristen begynner å løpe. Derimot medregnes møtedagen eller den dag da den handlingen fristen gjelder, tidligst kan foretas eller senest må være foretatt. (2) Frister som er regnet i uker, måneder eller år, ender på den dag i den siste uke eller den siste måned som etter sitt navn eller tall svarer til den dag da fristen begynner å løpe. Har ikke måneden dette tallet, ender fristen på den siste dag i måneden. (3) Ender en handlingsfrist på en lørdag, helgedag eller dag som etter lovgivningen er likestilt med helgedag, forlenges fristen til den nærmest følgende virkedag.",
+      "renderedTextNormalizedSha256": "7e500885c4feaa0c36c3bbb93c7160cdf0360768429a0072908eee37d9205783"
+    }
+  ],
+  "directFindings": [
+    {
+      "sourceSection": "12-5(1)",
+      "finding": "A whole reduction used for qualifying loss coverage takes effect when the section12-4 notice is registered. The restriction is on deciding dividend distribution before three years from registration, not only payment or same-year events."
+    },
+    {
+      "sourceSection": "12-5(1)",
+      "finding": "The text expressly permits earlier clearance if share capital has again been increased by at least the reduction amount or section12-6 rules have been followed."
+    },
+    {
+      "sourceSection": "12-5(2)",
+      "finding": "Separate simultaneous-reduction/increase provision refers to new shares against contributions restoring at least the prior restricted equity. It is not an unconditional equivalence to every later nominal increase."
+    },
+    {
+      "sourceSection": "12-6",
+      "finding": "Creditor procedure includes publication, six-week notice, resolution of qualifying creditor objections and registration of completion with board confirmation. Merely waiting six weeks is not completion evidence."
+    },
+    {
+      "sourceSection": "18-4(2)",
+      "finding": "Periods in years end on the corresponding calendar date; if that date does not exist in the final month, the month-end date applies."
+    },
+    {
+      "sourceSection": "18-4(3)",
+      "finding": "The extension to the following working day is worded for a handlingsfrist. Applicability to this waiting restriction must be reviewed explicitly, not copied from filing-deadline logic."
+    }
+  ],
+  "implementationInferences": [
+    "Persist registration-based opening/prior-year loss-reduction history and complete evidence; income-year reset cannot establish absence.",
+    "Separate restriction status from its clearance basis. Any exception requires verified facts and originals, not a customer-supplied cleared boolean.",
+    "Bind the decision date and current historical evidence revision into dividend/source approval; retain history after withdrawal/correction.",
+    "Review the exact inclusive/exclusive earliest permissible decision day, leap-day mapping, multiple reductions and capital-restoration allocation before enabling automatic clearance.",
+    "Keep ordinary distributable-equity, solvency, liquidity, decision and filing requirements cumulative."
+  ],
+  "additionalObservedPrimaryRule": {
+    "section": "5-20(1)(1) and (2)",
+    "url": "https://lovdata.no/dokument/NL/lov/1997-06-13-44/%C2%A75-20",
+    "finding": "Increased shareholder obligations for issued shares require all shareholders consent; if only some are affected, all affected plus articles-amendment majority. Mapping this to the supported cash-nominal subtype still requires its explicit contract review."
+  },
+  "limits": [
+    "Rendered-text hashes identify the quoted normalized public law text, not HTTP response bytes or a complete statute package.",
+    "Source retrieval closes a research access gap; it does not itself implement or approve automatic legal clearance.",
+    "No provider action, paid request, legal filing, customer-data admission, criterion promotion or launch authorization."
+  ]
+}

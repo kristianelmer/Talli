@@ -42,6 +42,85 @@ const cleanWorktreePath = fileURLToPath(
   new URL("../scripts/check-clean-worktree.sh", import.meta.url),
 );
 
+const postgresPrefetchPath = fileURLToPath(new URL("../scripts/prefetch-postgres-fixture-images.sh", import.meta.url));
+
+for (const failure of [null, "pull", "tag"]) test(`PostgreSQL fixture prefetch preserves anonymous scope and stops on ${failure ?? "success"}`, () => {
+  const directory = mkdtempSync(join(tmpdir(), "talli-postgres-prefetch-test-"));
+  try {
+    const bin = join(directory, "bin");
+    const temporary = join(directory, "temporary");
+    const originalConfig = join(directory, "caller-config");
+    for (const path of [bin, temporary, originalConfig]) mkdirSync(path);
+    const original = '{"auths":{"private.example":{"auth":"synthetic-caller-auth"}},"credsStore":"synthetic-helper"}\n';
+    writeFileSync(join(originalConfig, "config.json"), original);
+    const trace = join(directory, "trace.jsonl");
+    const shim = join(bin, "docker");
+    writeFileSync(shim, `#!${process.execPath}
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const cliArgs = process.argv.slice(2);
+assert.deepEqual(cliArgs.slice(0, 2), ['--context', 'default']);
+const args = cliArgs.slice(2);
+const config = process.env.DOCKER_CONFIG;
+assert.ok(args[0] === 'pull' || args[0] === 'tag', 'unexpected Docker operation');
+assert.notEqual(config, process.env.PREFETCH_CALLER_CONFIG);
+assert.deepEqual(fs.readdirSync(config), ['config.json']);
+assert.deepEqual(JSON.parse(fs.readFileSync(path.join(config, 'config.json'))), {auths: {'public.ecr.aws': {}}});
+assert.equal(fs.statSync(config).mode & 0o077, 0);
+assert.equal(fs.statSync(path.join(config, 'config.json')).mode & 0o077, 0);
+for (const variable of ['DOCKER_AUTH_CONFIG', 'DOCKER_CONTEXT', 'DOCKER_HOST']) assert.equal(process.env[variable], undefined);
+fs.appendFileSync(process.env.PREFETCH_TRACE, JSON.stringify({args, config}) + '\\n');
+if (args[0] === process.env.PREFETCH_FAIL && args[1].endsWith(':17-alpine')) process.exit(23);
+`);
+    chmodSync(shim, 0o755);
+    const result = spawnSync("bash", [postgresPrefetchPath], {
+      encoding: "utf8", timeout: 10_000,
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, RUNNER_TEMP: temporary,
+        DOCKER_CONFIG: originalConfig, DOCKER_AUTH_CONFIG: "synthetic-caller-environment",
+        DOCKER_CONTEXT: "synthetic-caller-context", DOCKER_HOST: "tcp://synthetic.invalid:2376",
+        PREFETCH_CALLER_CONFIG: originalConfig, PREFETCH_TRACE: trace, PREFETCH_FAIL: failure ?? "" },
+    });
+    assert.equal(result.status, failure ? 23 : 0, result.stderr);
+    const calls = readFileSync(trace, "utf8").trim().split("\n").map(line => JSON.parse(line));
+    const expected = ["17", "17-alpine", "16-alpine"].flatMap(tag => [
+      ["pull", `public.ecr.aws/docker/library/postgres:${tag}`],
+      ["tag", `public.ecr.aws/docker/library/postgres:${tag}`, `postgres:${tag}`],
+    ]);
+    assert.deepEqual(calls.map(call => call.args), expected.slice(0, failure === "pull" ? 3 : failure === "tag" ? 4 : 6));
+    const privateConfigs = new Set(calls.map(call => call.config));
+    assert.equal(privateConfigs.size, 1);
+    for (const config of privateConfigs) assert.equal(existsSync(config), false, "owned config is removed on every exit");
+    assert.deepEqual(readdirSync(temporary), []);
+    assert.equal(readFileSync(join(originalConfig, "config.json"), "utf8"), original);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("PostgreSQL prefetch rejects caller-selected image references before any command", () => {
+  const result = spawnSync("bash", [postgresPrefetchPath, "untrusted.example/postgres:latest"],
+    { encoding: "utf8", timeout: 10_000, env: { ...process.env, RUNNER_TEMP: "/unavailable-prefetch-test-directory" } });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /accepts no image overrides/u);
+  assert.equal(result.stdout, "");
+});
+
+test("every database-using gate job prefetches the same fixed official PostgreSQL images", () => {
+  const workflow = readFileSync(workflowPath, "utf8");
+  const command = "bash scripts/prefetch-postgres-fixture-images.sh";
+  assert.equal(workflow.split(command).length - 1, 3);
+  for (const [job, nextJob, aggregate] of [
+    ["application", "database", "npm run test:launch-rehearsal"],
+    ["database", "evidence", "npm run test:supabase:local"],
+    ["evidence", "release-gate", "npm run gate:customer-ready"],
+  ]) {
+    const section = workflow.slice(workflow.indexOf(`  ${job}:`), workflow.indexOf(`  ${nextJob}:`));
+    assert.ok(section.includes(command));
+    assert.ok(section.indexOf(command) < section.indexOf(aggregate));
+  }
+});
+
 function run(command, args, options = {}) {
   return spawnSync(command, args, {
     encoding: "utf8",

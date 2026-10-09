@@ -1,0 +1,778 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "RF-1086",
+  "plannedDate": "2026-10-09",
+  "status": "PLAN_ONLY_NOT_IMPLEMENTED_NOT_ACCEPTANCE_EVIDENCE",
+  "baseRevision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+  "scope": "Terminal withdrawal of an exact current independent register observation; preserve immutable capture history and block future consequential use. No capital economics expansion, authority mutation, issue closure, index update or launch promotion.",
+  "evidenceMethod": "Read current local public contracts, adapters, SQL migrations, archive codecs, web consumers and repository requirements. No live database/browser/provider operations. Source hashes below identify the inspected files; line numbers are intentionally not treated as stable identities.",
+  "currentFacts": [
+    {
+      "references": [
+        "observationStore",
+        "observationRules"
+      ],
+      "fact": "Observations are immutable independent roots plus exact predecessor corrections. predecessor_id is unique; currentness currently means no successor. No withdrawal row, command or lifecycle status exists."
+    },
+    {
+      "references": [
+        "rfPersistence",
+        "consequentialGuards",
+        "governancePersistence"
+      ],
+      "fact": "Python current-observation reads and Governance assert_current_register_observation_v1 reject successors. Old append_register_observation_v1 accepts an exact predecessor without a withdrawal predicate."
+    },
+    {
+      "references": [
+        "rfPersistence",
+        "sourceStore"
+      ],
+      "fact": "record_year_source checks referenced current observations in Python while holding the RF transaction, but append_year_source_v1 itself does not inspect those lifecycle references. A new database guard is needed for old callers."
+    },
+    {
+      "references": [
+        "claimStore",
+        "annualApproval",
+        "durableIntent",
+        "dispatchIdentity"
+      ],
+      "fact": "Fresh claims and new provider operation intents have existing guarded SQL seams. Exact committed claim replay and finish_source_operation_v1 are distinct recovery seams; no database lock spans provider HTTP."
+    },
+    {
+      "references": [
+        "http",
+        "webTransport"
+      ],
+      "fact": "The old observation-list DTO exposes receipt, correction draft and isCurrent only. The old register UI calls false isCurrent erstattet, so it cannot accurately describe withdrawal."
+    },
+    {
+      "references": [
+        "archiveCodec",
+        "archiveHistory"
+      ],
+      "fact": "Archive v1 lacks source history; v2 captures it; v3 carries feedback-original binding; v4 captures overrides. None versus empty distinguishes uncaptured from captured-empty coverage. Existing closed codecs cannot simply gain a new field."
+    },
+    {
+      "references": [
+        "archiveReceipt",
+        "companyArchiveRoute",
+        "compatibility"
+      ],
+      "fact": "Company archive completion currently binds attempt, generation and archive hash but no RF lifecycle coverage. The web archive is a registered legacy facade ending at #157; ADR0013 forbids extending it into a new business-policy owner."
+    },
+    {
+      "references": [
+        "sourceWorkflow",
+        "governanceWorkflow",
+        "governanceSupportedEvents"
+      ],
+      "fact": "A committed Governance supported event retains its exact shareholderRegisterFact. RF _build_capital_receipts resolves that reference, rejects corrected/non-recorded Governance events and observations captured after the Governance recorded_at. A new independent observation plus RF source correction alone cannot repair withdrawal of evidence already used by that event. No supported public repair path is proven by this plan."
+    },
+    {
+      "references": [
+        "governancePersistence",
+        "governanceSupportedEvents",
+        "governanceWriteGuards"
+      ],
+      "fact": "The baseline Governance Python workflow separately calls assert_current_register_observation_v1 before posting/completion. The callable complete_supported_event_v1 SQL body itself does not perform that RF assertion; its later wrapper adds company authorization/locking only. Updating the RF assertion alone therefore protects the existing Python path, not a direct permitted completion call that omits it."
+    }
+  ],
+  "proposedDomain": {
+    "classification": "Design choices for review, not already accepted product policy.",
+    "newPublicTypes": [
+      "WithdrawRf1086RegisterObservation",
+      "Rf1086RegisterObservationWithdrawalId",
+      "Rf1086RegisterObservationWithdrawal",
+      "Rf1086RegisterObservationLifecycle"
+    ],
+    "commandFields": [
+      "company_id",
+      "income_year",
+      "actor_id (verified backend only)",
+      "observation_id",
+      "observation_version",
+      "observation_fact_sha256",
+      "reason"
+    ],
+    "transportIdentity": "Original Idempotency-Key header remains separate from the command; no caller-supplied withdrawal ID, timestamp, accepted-owner flag or currentness.",
+    "reason": "Propose nonblank UTF-8 reason with explicit 1000-character maximum; retain/hash the exact accepted text. Do not silently equate a changed reason with an exact replay. Final bound is a design choice.",
+    "receiptFields": [
+      "withdrawal_id (server UUID)",
+      "complete original command",
+      "withdrawn_at (server UTC instant, preserved to PostgreSQL microsecond precision)",
+      "request_sha256 (canonical original command)",
+      "withdrawal_sha256 (receipt integrity)"
+    ],
+    "lineageRules": [
+      "A new withdrawal targets an existing observation whose ID/version/hash/company/year match exactly, has no successor and has no prior withdrawal.",
+      "Derive supersession using all immutable observations before applying withdrawal eligibility. Withdrawing a head must never make its predecessor current again.",
+      "A withdrawn head is terminal: neither withdrawal reversal nor correction using that head/any superseded ancestor is offered.",
+      "A new independent initial observation uses a new ID and fresh capture verification; it does not erase, reactivate or silently supersede the withdrawn lineage.",
+      "Existing snapshots, fact hashes, correction reasons, source/preview/approval/journal bytes and Documents references remain unchanged.",
+      "The receipt records withdrawal of evidence from future use, not reversal of a corporate event or cancellation of an authority submission."
+    ],
+    "idempotency": [
+      "Under current accepted-owner authorization, lookup exact company/year/actor/key before current-head validation. Exact canonical command replay returns the original immutable receipt.",
+      "Same key with different target/version/hash/reason conflicts. A second key for an already withdrawn target conflicts and cannot manufacture another withdrawal.",
+      "Other actors cannot probe another actor key through receipt lookup; unauthorized scope is concealed. A current owner may read authorized lifecycle history independently of actor-key recovery.",
+      "Read-only withdrawal receipt lookup uses the retained command/key and returns recorded or not_observed. Missing means unknown, never permission for a new key or automatic mutation."
+    ]
+  },
+  "ownedPortsAndImplementation": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py",
+      "owner": "shareholder_register_filing",
+      "change": "Extend Rf1086RegisterObservationPersistence with withdraw_register_observation(command, idempotency_key), read_register_observation_withdrawal_receipt(command, idempotency_key), and read_register_observation_lifecycle(query). Keep historical observation/capture reads unchanged."
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/register_observation_withdrawal.py",
+      "owner": "shareholder_register_filing",
+      "change": "New private pure normalization, command/receipt digest, integrity and closed versioned withdrawal codec. Public entry points remain public.py; no new shared-kernel or cross-owner policy."
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py",
+      "owner": "RF adapter",
+      "change": "Persist/replay through restricted executor; parse and cross-check row/codec identities; query lifecycle in one repeatable snapshot; exclude withdrawn rows only from current eligibility, never from retained history."
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py",
+      "owner": "Named backend workflow",
+      "change": "Authenticate actor and route withdrawal/recovery to the RF port. Do not refresh current Documents/Governance or require commercial entitlement to withdraw already captured evidence. Verify current ownership in the database transaction."
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/supabase_corporate_governance.py",
+      "owner": "Corporate Governance adapter",
+      "change": "Retain the existing RF public assertion and safe stale/withdrawn mapping. Separately enumerate Governance-owned permitted SQL completion paths: fresh register-backed completion must invoke the RF public assertion in the same company-guarded transaction, while exact committed replay remains recoverable. No RF table reads/grants or reinterpretation of committed economics. This cross-owner SQL backstop and any public repair capability are explicit dependencies, not silently authorized RF changes."
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_facts.py",
+      "owner": "shareholder_register_filing",
+      "change": "Extend canonical family counts/digest and published history/completeness with a new source-facts schema version where required. Withdrawal affects current evidence/readiness and warnings, not historical outcome truth. Preserve existing source-facts proof verification for frozen v1/v2."
+    }
+  ],
+  "databasePlan": {
+    "migrations": "New forward migration and bounded rollback under supabase/migrations and supabase/rollback with suffix rf1086_register_observation_withdrawal.sql; allocate timestamps at implementation. Do not edit already applied migration bodies.",
+    "table": "shareholder_register_filing.register_observation_withdrawals",
+    "constraints": [
+      "Primary server UUID; company/year; target observation ID/version/hash; historical actor UUID without auth.users foreign key; exact reason; idempotency key; request/receipt hashes; server timestamp; closed snapshot text.",
+      "Unique observation_id enforces one terminal withdrawal. Unique(company_id,income_year,actor_id,idempotency_key) scopes replay. Composite FK target ID/company/year/fact hash uses the existing observation key; append function also verifies immutable target version.",
+      "FORCE RLS; verified-context accepted-member history policy and accepted-owner insert policy; immutable update/delete trigger; no direct executor/browser/service-role mutations.",
+      "SECURITY DEFINER append command owned by RF store owner, fixed search_path, finite SQL; executor execute only. Restore borrowed migration grants/options exactly; keep existing function signatures/OIDs/ACLs when adding backstops.",
+      "Register the new table with the existing company archive source inventory and generation trigger; include bounded fixtures, restore inventories and retained-row rollback barriers."
+    ],
+    "locking": "READ COMMITTED: current owner precheck -> public.company_archive_lock_company_v1 -> owner recheck -> existing rf1086:year-source company/year advisory lock -> exact target/replay checks -> insert. Use lock_company_write_v1 plus the same year lock rather than lock_year_source_v1, because withdrawal should not require currently admitted commercial/company-year consequential activity.",
+    "newSqlContracts": [
+      "append_register_observation_withdrawal_v1: exact identity/replay, current terminal head, server time and immutable receipt insertion.",
+      "assert_register_observation_active_internal_v1: RF-internal exact ID/company/year/version-or-row/hash predicate, rejects successor or withdrawal.",
+      "assert_source_register_observations_active_internal_v1: RF-internal guard over closed stored year-source governance_receipts; rejects invalid reference pairs and verifies each exact referenced observation. No recomputation of capital economics or foreign-owner table reads."
+    ],
+    "existingGuardCallsites": [
+      {
+        "function": "append_register_observation_v1",
+        "source": "observationStore",
+        "placement": "After company/year lock, before accepting p_previous or append; withdrawn predecessor cannot be corrected. Initial independent root remains allowed."
+      },
+      {
+        "function": "assert_current_register_observation_v1",
+        "source": "consequentialGuards",
+        "placement": "After existing company lock; include terminal-withdrawal exclusion alongside exact scope/version/hash and successor checks. Existing Governance callers automatically gain protection."
+      },
+      {
+        "function": "append_year_source_v1",
+        "source": "sourceStore",
+        "placement": "Validate p_snapshot and its reference pairs under the held scope before inserting a new source/head. Protect actual old SQL callers, not just updated Python."
+      },
+      {
+        "function": "append_source_preview_v1",
+        "source": "previewStore",
+        "placement": "For fresh preview creation, load exact current source then validate its references before append; preserve separately available historical preview reads."
+      },
+      {
+        "function": "bridge_source_preview_v1",
+        "source": "reviewBridge",
+        "placement": "Under existing scope guard before new projection/bridge creation; validate the exact source underlying p_preview."
+      },
+      {
+        "function": "source_approval_context_internal_v1 and source_approval_context_internal_v2",
+        "source": "annualApproval",
+        "placement": "After source/scope resolution; current readiness/review is blocked if referenced evidence withdrawn. v1 remains revoked; do not restore old grants."
+      },
+      {
+        "function": "append_source_approval_v1 and append_source_approval_v2",
+        "source": "annualApproval",
+        "placement": "Ensure the exact source guard is on the path before any fresh approval or freshness-dependent replay. Keep committed approval recovery read separate; v1 stays revoked."
+      },
+      {
+        "function": "claim_source_submission_v1 and claim_source_submission_v2",
+        "source": "annualApproval",
+        "placement": "Preserve exact existing claim replay branch. Recheck after held company/year lock before fresh claim creation; v1 remains revoked."
+      },
+      {
+        "function": "prepare_source_operation_v1, transitively prepare_source_operation_v2",
+        "source": "durableIntent",
+        "placement": "After scope/claim resolution and before inserting ANY newly prepared main, child or confirmation intent, including retryable new attempt. Do not only check the main operation. v1 remains executor-revoked; v2 retains binding-identity checks."
+      },
+      {
+        "function": "corporate_governance.complete_supported_event_v1 and any other callable register-backed completion equivalent",
+        "source": "governanceSupportedEvents",
+        "owner": "corporate_governance",
+        "placement": "After exact committed replay branch and under existing company guard, before new supported-event completion, invoke the RF-owned exact-current-observation assertion for the existing register-required kinds/phases. Prove using the actual restricted role while deliberately omitting the Python assertion. Preserve economics, replay and existing ACLs; cross-owner implementation requires its declared review/sequence."
+      }
+    ],
+    "doNotBroadenGuards": [
+      "Do not put scope-wide withdrawal rejection in lock_year_source_v1, assert_source_approval_guards_v1, assert_member_v1 or submission_head_internal_v1: they also support repair/history and unrelated/new-root work.",
+      "Do not reject finish_source_operation_v1, feedback reconciliation, read_source_submission_claim_v1, original capture receipt lookup or historical observation/source/archive reads based on current withdrawal.",
+      "Do not silently hide withdrawn rows using RLS; that falsifies retained history and can reactivate an ancestor.",
+      "Rollback may suspend new withdrawal creation, but must retain data and all old-entry-point admission checks once any withdrawal exists. Full destructive schema rollback must refuse retained withdrawal evidence."
+    ]
+  },
+  "httpAndWebPlan": {
+    "classification": "Proposed additive paths/operation names; generate and freeze them through the existing OpenAPI process.",
+    "routes": [
+      {
+        "method": "POST",
+        "path": "/api/v1/shareholder-register-filings/register-observation-withdrawals",
+        "operationId": "rf1086WithdrawRegisterObservation",
+        "body": "Strict company/year/target ID/version/hash/reason; original Idempotency-Key; backend actor",
+        "result": "Original immutable withdrawal receipt"
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/shareholder-register-filings/register-observation-withdrawals/receipt-lookup",
+        "operationId": "rf1086LookupRegisterObservationWithdrawal",
+        "body": "Exact same retained command/key",
+        "result": "Tagged recorded plus original receipt, or not_observed plus null; authenticated read only"
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/shareholder-register-filings/register-observations/lifecycle-v1",
+        "operationId": "rf1086ReadRegisterObservationLifecycle",
+        "body": "Company/year query scope",
+        "result": "All immutable observations and withdrawals, explicit captured lifecycle; current/superseded/withdrawn status derived server-side"
+      }
+    ],
+    "oldListContract": "Keep existing GET register-observations DTO and capture/lookup routes unchanged. Proposed new-backend behavior when a withdrawal exists in the scope: old list returns a documented safe lifecycle-upgrade error rather than a fabricated superseded/current label. Existing historical capture lookup remains available. Review this additive new-state error behavior against ADR0012 overlap tests before implementation. An old backend uses direct SELECTs and successor-only currentness, so the new error cannot protect requests still served by that binary. Before first withdrawal, require a proved fence or drain of every old observation-list producer, including reachable old deployments, in-flight requests and rollback targets. Do not change RLS to hide retained rows. An archive coverage fence does not solve this separate list-truthfulness problem. Distinguish preactivation expand compatibility (old binaries may serve while no withdrawal state exists) from postactivation rollback (affected scopes must never return to a successor-only reader). Verified drain before command activation is a valid expand/contract design choice; it is not proof that a later rollback remains safe.",
+    "consumerPaths": [
+      "scripts/generate-api-client.mjs",
+      "contracts/openapi/talli-v1.json",
+      "packages/talli-api-client/src/generated/client.ts",
+      "apps/web/features/shareholder-register-filing/transport.ts",
+      "apps/web/features/shareholder-register-filing/index.ts",
+      "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/register/actions.ts",
+      "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/register/RegisterEditor.tsx",
+      "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/register/page.tsx"
+    ],
+    "presentation": [
+      "Offer withdraw only for an exact active head with a required attributable reason. Explain originals/history stay retained and already admitted/sent authority work is not undone.",
+      "Terminal withdrawn state shows receipt/time/reason and preserves historical detail. No restore/reactivate button and no correction from a withdrawn or superseded head. New independent capture stays separate.",
+      "Freeze attempted command/key through uncertainty. Explicit check-saved-attempt uses the lookup route; missing/conflict/outage preserves uncertainty. No automatic POST retry/new key.",
+      "New web on old backend treats missing lifecycle route as unknown lifecycle capability and does not expose withdrawal. Do not infer captured-empty lifecycle or permission from old isCurrent.",
+      "Retained source/approval panels distinguish valid historical receipt from permission for future preview/approval/send. Backend remains authoritative for blockers.",
+      "If withdrawn evidence is already fixed in a committed Governance event, state that downstream work remains blocked until its owning public repair path exists and succeeds. Do not offer a new RF root/source correction as a claimed repair of that event."
+    ],
+    "errorAndAuth": "Stable domain conflict/not-found/unavailable codes, generic safe errors, no-store on success/errors, bounded transaction deadlines, tenant/actor concealment, no raw reason/key/receipt in logs. No provider/token acquisition for withdrawal or its lookup."
+  },
+  "archiveAndSourceOwnerPlan": {
+    "newCodec": "rf1086-production-archive-v5",
+    "coverage": "Add a distinct captured withdrawal-history collection to Rf1086ArchiveSnapshot: None means not captured by this producer/codec, tuple() means captured and empty. V5 requires source_history, overrides and withdrawal history all captured. Do not alter immutable observation snapshots or old fact hashes.",
+    "routes": [
+      "GET /api/v1/shareholder-register-filings/archive-source/production-v5",
+      "GET /api/v1/shareholder-register-filings/archive-source/production-stream-v5"
+    ],
+    "compatibility": [
+      "Preserve all v1-v4 parser semantics and exact old wire schemas with deliberate serializer projections. V1-v4 reject extra withdrawal fields; their parsed withdrawal coverage is unknown, not empty.",
+      "New complete endpoint always includes canonical withdrawal receipts plus readable matching lifecycle rows, including withdrawn unapproved observations and every retained original.",
+      "The stream complete trailer proves transfer completion only. It cannot stand in for lifecycle coverage, row integrity or original-byte inclusion.",
+      "New web may open a pre-v5 historical artifact with explicit unknown withdrawal coverage; it must not satisfy requested complete lifecycle export/restore/cancellation evidence. Do not downgrade on domain404/409/422/503, malformed payloads, checksum failure or truncation.",
+      "Current-observation eligibility is separate from historical archive integrity: a withdrawn observation remains valid immutable history. Validate that its withdrawal follows the target and that no successor was appended after withdrawal; do not reject the entire archive merely for containing withdrawn evidence."
+    ],
+    "requiredFiles": [
+      "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py",
+      "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_storage.py",
+      "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_history.py",
+      "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py",
+      "apps/backend/src/talli_backend/application/shareholder_register_archive.py",
+      "apps/backend/src/talli_backend/main.py",
+      "apps/web/features/shareholder-register-filing/transport.ts",
+      "apps/web/app/lib/rf1086-original-integrity.ts",
+      "apps/web/app/lib/rf1086-restore-integrity.ts",
+      "apps/backend/scripts/verify_rf1086_archive.py",
+      "scripts/rehearse-rf1086-owned-restore.py",
+      "architecture/company-archive-sources.json",
+      "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_facts.py"
+    ],
+    "verificationAndRestore": "Add --require-register-withdrawal-history plus explicit included/count results. Real owned restore recreates exact receipts, keys, actors, hashes, times, relationships and originals; preserve lifecycle after deleted actors/cancellation/expired pilot. Extend cleanup/restore finite table inventories; never delete originals as withdrawal side effect.",
+    "criticalExportOverlap": {
+      "fact": "Old backend archive producers use direct SELECTs and lack a lifecycle/export-version handshake. public.company_archive_complete_export(attempt,sha) accepts a generation-current artifact without knowing whether it included withdrawals; an old producer can begin after withdrawal and falsely attest completeness. Generation triggers alone do not solve this.",
+      "recommendedBoundedRollout": "Deploy unconditional RF admission backstops and additive v5/history/recovery producers first. Keep withdrawal unavailable until the archive-owner coverage dependency and the separate old-list truthfulness constraint have passed review and immutable overlap/race/rollback tests. Exporter drain alone is not the default technical completeness proof.",
+      "activationMechanismChoice": "A separately reviewed final grant for the new command may stage availability only after the dependency gates pass; ordinary automatic migration ordering must not apply that grant before the proof. It must never disable stale-admission or retained-coverage checks. Exact operational mechanism remains a proposed choice.",
+      "rollbackLimit": "After first withdrawal retain unconditional admission and archive coverage fences. Old exporters cannot become authoritative complete exporters on rollback. Old list binaries also need an independent route fence/drain; old v1-v4 artifacts remain readable historical formats, not complete lifecycle evidence.",
+      "preferredDesign": "Prefer the separately owned archive completion coverage fence described in requiredOwnerDependencies. It rejects incomplete old-producer artifacts regardless of process inventory and survives rollback. This is a design recommendation; no archive-owner implementation or ADR exception is assumed approved.",
+      "drainAlternative": "A bounded old-producer drain is an operational alternative requiring an explicit reviewed architecture/deployment decision. Inventory every backend, web exporter, worker/CLI, reachable immutable deployment, cached-action target, in-flight request and rollback target; show old completion cannot resume for the entire lifetime of withdrawal evidence. A point-in-time checklist or v5 deployed marker is insufficient. Without that proof or the owner fence, command availability remains blocked; this does not narrow the original completeness acceptance.",
+      "phaseDistinction": {
+        "beforeActivation": "Old readers/exporters can remain during expand while the new withdrawal command is unavailable and there is no withdrawal evidence. Ordinary immutable old/new contract tests cover this phase.",
+        "atActivation": "A chosen verified-drain rollout must show no old reader/export producer can still serve an affected scope or complete an in-flight attempt. Staging only command availability is an engineering choice; all admission guards remain unconditional.",
+        "afterActivationOrRollback": "If older export producers may run again, enforce archive lifecycle coverage at the owning completion seam; do not rely on the earlier drain. Old successor-only list readers must stay drained or fenced separately. An owner coverage fence cannot make their UI truthful."
+      }
+    }
+  },
+  "racesAndRecovery": [
+    {
+      "race": "withdrawal versus correction",
+      "expected": "One scope lock order. Correction first makes old target noncurrent and withdrawal conflicts; withdrawal first prevents correction. Ancestors never regain current status."
+    },
+    {
+      "race": "same-key withdrawal versus same-key replay/different reason",
+      "expected": "One terminal receipt; exact canonical replay returns it; mismatch conflicts before any second write."
+    },
+    {
+      "race": "withdrawal versus new source/preview/bridge/Governance commit/approval/claim",
+      "expected": "Withdrawal first rejects stale reference at existing SQL seam. Admission first commits historical work; withdrawal then blocks all subsequent new admission based on it. Concurrent unrelated initial capture remains possible."
+    },
+    {
+      "race": "withdrawal versus new provider operation intent",
+      "expected": "Linearize at the company/year-guarded intent transaction. Withdrawal first means no new intent/provider call. Intent first has already granted that bounded operation before withdrawal; it may finish or remain unknown. Withdrawal cannot unsend it. Outcome recording and reconciliation remain permitted; no new child/confirmation/retry intent is admitted afterward."
+    },
+    {
+      "race": "lost withdrawal response / in-flight original transaction",
+      "expected": "Receipt lookup sees original only after commit; before commit/after rollback it returns not_observed without suggesting a new attempt. Request/key remain frozen."
+    },
+    {
+      "race": "owner revocation/deletion while waiting",
+      "expected": "Recheck accepted owner after company lock; no stale session capability authorizes a write. Preserve historical actor UUID attribution in archives and authorized recovery."
+    },
+    {
+      "race": "withdrawal versus company export/cancellation",
+      "expected": "Generation changes invalidate prior/in-flight receipts. Also prove the independent old-producer-after-withdrawal coverage case; freshness alone cannot authorize cancellation."
+    },
+    {
+      "race": "withdrawal after committed Governance use",
+      "expected": "Withdrawal is recorded without rewriting historical event/ledger/source facts. The old event keeps its exact reference; subsequent source work stays blocked unless a separately proved Governance-owned repair path supplies an admissible corrected event. A new independent RF root alone does not repair that binding."
+    },
+    {
+      "race": "withdrawal versus old backend list request/rollback",
+      "expected": "An old binary cannot truthfully classify a withdrawn head. Fence or drain those readers before command availability and prevent later resumption; new-backend safe-error behavior alone is insufficient. Retained history and capture receipt lookup remain readable."
+    }
+  ],
+  "implementationSequence": [
+    {
+      "step": 1,
+      "deliverable": "Resolve proposed terminal semantics/provenance, pure domain/ports, old-list compatibility, archive-owner coverage dependency/ADR boundary, Governance SQL/repair dependencies and exact migration inventory. Freeze old SQL signatures, codecs, wire schemas and generated client from base revision. Do not promote agent-proposed choices to human acceptance."
+    },
+    {
+      "step": 2,
+      "deliverable": "Add RF withdrawal table/receipt codec and unconditional old-entry-point guards, RLS/grants/generation/rollback tests. Keep new command unavailable until complete producers can handle lifecycle."
+    },
+    {
+      "step": 3,
+      "deliverable": "Implement RF repository/workflow, additive commands/lookup/lifecycle read, source readiness/currentness and source-owner coverage; regenerate contracts/manifests."
+    },
+    {
+      "step": 4,
+      "deliverable": "Implement RF-owned v5/readable-integrity/CLI/real restore and consumer overlap after the design is approved. Resolve the separately owned archive completion fence and old-list producer fence/drain before first withdrawal; no new policy in the frozen archive facade. Preserve exact old codecs."
+    },
+    {
+      "step": 5,
+      "deliverable": "Implement accessible Norwegian UI and explicit uncertain-attempt recovery through generated client; run genuine database/browser races, source-owner/downstream integration and restore."
+    },
+    {
+      "step": 6,
+      "deliverable": "Independent Spec/Standards review, immutable complete CI gates and documented rollback/recutover before considering bounded gap closure. Keep A1-A7 and launch statuses unchanged absent their own evidence."
+    }
+  ],
+  "meaningfulTests": {
+    "domain": [
+      "Exact ID/version/hash/scope binding, required reason, unsupported/naive timestamps, Unicode and UTC microsecond canonicalization.",
+      "Replay exact versus changed reason/target/hash; duplicate withdrawals; superseded target; no ancestor reactivation; independent new root."
+    ],
+    "database": [
+      "Use actual restricted roles and every existing SQL entry point directly, plus immutable old backend/client overlap; no reliance on updated Python guards alone.",
+      "Both lock orders for withdrawal/correction/source/preview/Governance/approval/claim and every intent kind; revoked/pending/removed owner, foreign actor/key/company/year, no direct DML/browser privileges.",
+      "Real commit/lost response, duplicate concurrent attempts, rollback/no observation, preserved historical source/capture/claim/outcome recovery, deleted original actor.",
+      "Migration apply/replay/rollback/recutover/catalog ACL equivalence, retained-row full rollback refusal, generation invalidation and old exporter beginning after withdrawal.",
+      "Direct Governance complete_supported_event_v1 under its actual restricted role with a withdrawn exact register reference and no prior Python assertion must reject fresh completion; exact committed replay survives. No extra cross-owner table access."
+    ],
+    "httpAndWeb": [
+      "Old routes and all existing schemas semantically frozen; generated-only new transport, strict actor-free DTOs, no-store and safe status mapping.",
+      "New web/old backend capability unknown, no withdrawal attempt; old web/new backend lifecycle error without fabricated supersession; receipt scope/malformed/crossover rejection.",
+      "Real UI withdrawal of head, reload terminal state, attempt preservation on lost response, explicit lookup recovers same receipt with one mutation; independent new capture.",
+      "Actual immutable old backend list after withdrawal cannot return a withdrawn head as active through a still-reachable deployment or rollback; prove the selected route fence/drain. Test this separately from new-backend old-route errors."
+    ],
+    "archive": [
+      "Frozen v1-v4 roundtrips/old-reader-new-server projections; v5 captured-empty versus uncaptured, full history/originals after withdrawal.",
+      "Readable/canonical disagreement, resealed-checksum tampering, duplicate/orphan/foreign target, wrong version/hash, impossible chronology, correction-after-withdrawal, timestamp normalization, truncated streams.",
+      "Owned real database/object/identity restore equals original canonicalv5 and lifecycle; existing capture receipts still recover original success after withdrawal.",
+      "Old company exporter beginning after withdrawal and using the old completion RPC must not mint an authoritative complete receipt. Also test zero-withdrawal captured coverage, concurrent generation change, stale/fabricated coverage/digest, unchanged old artifact readers and retained fence after rollback."
+    ],
+    "browserAcceptance": [
+      "Start from real admitted company, independent originals and a capital-event observation; capture real source/preview/review as applicable. Withdraw exact current observation through UI, proving attributable receipt and one real mutation.",
+      "Verify historical observation/source/originals remain readable, selector excludes withdrawn state, stale captured source cannot obtain a new preview/approval/claim/provider intent, old SQL entrypoint probes reject.",
+      "Create a fresh independent observation after fresh evidence verification. Separately exercise the already-Governance-bound withdrawn case: it remains blocked because the old exact reference/timestamp cannot be repaired by RF source correction alone. Only claim successful repair after a separately demonstrated public Governance repair path; do not fabricate accounting or authority acceptance.",
+      "Export completev5 and restore lifecycle; cancellation/expired-pilot recovery cannot accept incomplete lifecycle coverage. Desktop/mobile/accessibility and browser-console/egress assertions remain active."
+    ],
+    "existingSuitesToExtend": [
+      "apps/backend/tests/test_rf1086_register_observation.py",
+      "apps/backend/tests/test_rf1086_register_observation_database.py",
+      "apps/backend/tests/test_rf1086_capture_receipt_lookup.py",
+      "apps/backend/tests/test_rf1086_source_company_guard_database.py",
+      "apps/backend/tests/test_rf1086_source_preview_database.py",
+      "apps/backend/tests/test_rf1086_source_review_bridge_database.py",
+      "apps/backend/tests/test_rf1086_source_approval_database.py",
+      "apps/backend/tests/test_rf1086_durable_source_operation_database.py",
+      "apps/backend/tests/test_rf1086_archive_history.py",
+      "apps/backend/tests/test_rf1086_archive_storage.py",
+      "apps/backend/tests/test_rf1086_retained_archive_generations.py",
+      "apps/backend/tests/test_rf1086_full_year_source_facts.py",
+      "apps/web/tests/shareholder-register-source-transport.test.mjs",
+      "apps/web/tests/shareholder-register-source-editor.test.mjs",
+      "apps/web/tests/archive-rf1086-source.test.mjs",
+      "tests/contract/web_fastapi_boundary.test.mjs",
+      "tests/browser_shareholder_register_filing.mjs"
+    ]
+  },
+  "reviewRisksAndOpenChoices": [
+    {
+      "risk": "Old exporter completeness is not database-enforced today.",
+      "disposition": "Prefer an archive-owner-enforced coverage completion contract, subject to ADR0013 ownership/serial-stage review. Drain is a separately reviewed operational alternative with continuing inventory/rollback guarantees, not an assumed proof."
+    },
+    {
+      "risk": "Old list/UI cannot represent withdrawal.",
+      "disposition": "New-backend safe old-route error does not change an old binary. Resolve old-reader routing/drain and rollback separately; do not falsify supersession or hide history with RLS."
+    },
+    {
+      "risk": "Previously admitted operation may perform provider HTTP after withdrawal.",
+      "disposition": "Explicit durable-intent linearization and truthful copy; no claim of retroactive cancellation or kill of already granted work. If product requires stronger semantics, that is a separate dispatch protocol decision."
+    },
+    {
+      "risk": "Generic lock helper change could strand recovery or unrelated evidence.",
+      "disposition": "Use exact referenced-observation guards only at new admission seams; preserve outcome/recovery paths and old revoked-grant state."
+    },
+    {
+      "risk": "No FK to deleted users may be mistaken for missing attribution.",
+      "disposition": "Immutable historical actor IDs are intentional; verify retained attribution through real deleted-actor restore."
+    },
+    {
+      "risk": "Two-phase release can become an unsafe activation bypass.",
+      "disposition": "Only availability of the new command may be staged. Admission checks are unconditional from the first migration and remain after rollback; no stale-accepting compatibility flag."
+    },
+    {
+      "risk": "Scope creep into capital support or archive-owner migration.",
+      "disposition": "Keep capital economics unchanged. Archive completion policy and Governance repair/final SQL backstop are declared owner dependencies requiring their own sequence/architecture decisions. Do not silently narrow full acceptance, mutate the frozen facade or claim an unavailable repair path."
+    },
+    {
+      "risk": "Agent-specified design constraints presented as human-approved requirements.",
+      "disposition": "Separate repository-recorded scope, normative ADR rules, parent-assigned engineering constraints and proposed policy. No agent prompt or this plan is evidence of human acceptance."
+    },
+    {
+      "risk": "Independent recapture is mistaken for repair of an immutable Governance binding.",
+      "disposition": "Keep affected downstream state blocked until a public owning-Governance repair is demonstrated. Preserve the complete acceptance requirement as an unresolved dependency."
+    },
+    {
+      "risk": "Separate Python RF assertion is mistaken for a SQL-enforced Governance completion invariant.",
+      "disposition": "Exercise and protect fresh callable Governance SQL completion through RF public assertion, while keeping replay valid and cross-owner work explicit."
+    }
+  ],
+  "validationOfThisPlan": {
+    "businessImplementationChanged": false,
+    "indexesChanged": false,
+    "liveDatabaseRun": false,
+    "browserRun": false,
+    "providerCalls": false,
+    "acceptancePromoted": false,
+    "performedChecks": [
+      "JSON parse",
+      "all inspected reference files exist and hashes recorded",
+      "all existing test paths exist",
+      "git diff --check",
+      "Independent review of scope provenance, direct Governance SQL, immutable Governance repair limitation, archive-owner ADR boundary and old-list deployment gap; plan amended only."
+    ],
+    "result": "PASS_STATIC_PLAN_VALIDATION_ONLY",
+    "externalActivationAuthorized": false
+  },
+  "sourceReferences": [
+    {
+      "id": "requirements",
+      "path": "architecture/evidence/issues/193/rf/requirements.json",
+      "sha256": "804f3a51f8fc445dd7f4261d54284894edcb3934aa290597be4df62b30a117a2"
+    },
+    {
+      "id": "observationDesign",
+      "path": "architecture/evidence/issues/193/rf/register-observation-design.md",
+      "sha256": "e947a086711de5e0f58758aecb8b93633693da3dd3d3030c000c1c3774f4d529"
+    },
+    {
+      "id": "ownership",
+      "path": "docs/adr/0011-enforce-capability-owned-contracts-data-and-workflows.md",
+      "sha256": "276f8e5d20a18ff1f20c8ec318000a13b009823c813b5f5c2a70f22cebbff874"
+    },
+    {
+      "id": "deploymentOverlap",
+      "path": "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md",
+      "sha256": "6606f55fe6d355ee1ce7dac4ba419d4040e1015a461958ea8a9bffbacaab9ffa"
+    },
+    {
+      "id": "serialMigration",
+      "path": "docs/adr/0013-enforce-the-architecture-and-migrate-serially.md",
+      "sha256": "8709d4311ba994c48521cd8d4a4ea5575235562a2bdb41c56c53d257d9282482"
+    },
+    {
+      "id": "publicContracts",
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py",
+      "sha256": "5cb730f5286628a0d415be70de9507217e60d6e7601a714b83399e324de6c18f"
+    },
+    {
+      "id": "observationRules",
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/register_observation.py",
+      "sha256": "85d39cb284fe78437376c3efd7bc306342d711bc9e66aa6976db60dc8ea2ecf9"
+    },
+    {
+      "id": "sourceWorkflow",
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py",
+      "sha256": "c9d8b3eb0348e20017109ebadf1a66c51e232114bc796c5520f15a354a4ba907"
+    },
+    {
+      "id": "rfPersistence",
+      "path": "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py",
+      "sha256": "ddb6bcec13bc94665f3763585d4e788698dee4d38ee6b17b5b9b0730c6f3deba"
+    },
+    {
+      "id": "governancePersistence",
+      "path": "apps/backend/src/talli_backend/adapters/supabase_corporate_governance.py",
+      "sha256": "a31cd0380ca52d0ece52d59f5802757f93a1ae4ea00f55c8b886d55b09e66fc7"
+    },
+    {
+      "id": "observationStore",
+      "path": "supabase/migrations/20260923102314_rf1086_register_observation_store.sql",
+      "sha256": "0c3087a8c1d38bbf9c67c7a25071413cd2226856e5da716ef5d543fad139de68"
+    },
+    {
+      "id": "sourceStore",
+      "path": "supabase/migrations/20260923091509_rf1086_immutable_year_source.sql",
+      "sha256": "f0d79e1af3c918810afcae072a9fa653e998938ac00f3439625c6001fd05a52e"
+    },
+    {
+      "id": "sourceLocks",
+      "path": "supabase/migrations/20260924062746_rf1086_source_company_guard.sql",
+      "sha256": "d3a17cfb8170e3b6034cb167be5850b9e1f59e800df04ad79b0cf30ea1316fba"
+    },
+    {
+      "id": "consequentialGuards",
+      "path": "supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql",
+      "sha256": "9c7f8d5f338487fca0c32171812805cc706986de4784c9d65cbee48f98c6c7e7"
+    },
+    {
+      "id": "previewStore",
+      "path": "supabase/migrations/20260923105912_rf1086_source_backed_preview.sql",
+      "sha256": "b601980eeb634cf469d924187c890c4909e8bcde694f93718aa6770bb7d5bea7"
+    },
+    {
+      "id": "reviewBridge",
+      "path": "supabase/migrations/20260924085227_rf1086_source_review_bridge.sql",
+      "sha256": "a449d369ee16adada7c4e58a73cd942b0bb2ca937d324a1554695f1e274d0740"
+    },
+    {
+      "id": "approvalFoundation",
+      "path": "supabase/migrations/20260924091015_rf1086_source_approval_foundation.sql",
+      "sha256": "311f01ac05cb90222eaa452be87f0f603ec8100c73406ca3d307ab73186caac5"
+    },
+    {
+      "id": "claimStore",
+      "path": "supabase/migrations/20260928060732_rf1086_source_submission_claim.sql",
+      "sha256": "aa84224e41bd690b0d61860673df55f3d46e22b65ee69c8bdd0b571ac7a5fc15"
+    },
+    {
+      "id": "annualApproval",
+      "path": "supabase/migrations/20260929173935_rf1086_annual_approval_binding.sql",
+      "sha256": "85bf8dd19bc4b9d21d903d66569aded2f107031956d45e72418cb2a5ed8d1495"
+    },
+    {
+      "id": "durableIntent",
+      "path": "supabase/migrations/20260929182856_rf1086_durable_source_operation_intent.sql",
+      "sha256": "4a2dda7ef159c7a4c3139cddd7a78fe51c3659108bfef02053d156cb4f941cc0"
+    },
+    {
+      "id": "dispatchIdentity",
+      "path": "supabase/migrations/20260929192057_rf1086_dispatch_binding_identity.sql",
+      "sha256": "fa3ab2a87cf727e4e26c02c1203c754534752831ac3d6fa3d5f129d417f81fcf"
+    },
+    {
+      "id": "archiveCodec",
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_storage.py",
+      "sha256": "e15d8d65fe3d7fa6d1b34bbc663309e80cae67b34c898de86ca4efac57d55e2e"
+    },
+    {
+      "id": "archiveHistory",
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_history.py",
+      "sha256": "34733bb09d61162a9e41e3c056768484771cd0fcf2d00ab49b7e0a20ba46a7eb"
+    },
+    {
+      "id": "archiveStreaming",
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_archive.py",
+      "sha256": "b13f935e7d30820b11aa17a1222d97e421924872208f9e8922605c411356b925"
+    },
+    {
+      "id": "sourceFacts",
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_facts.py",
+      "sha256": "ea18e67b78c51dfed8ac8cdcf00af5bf54f384382100e4d833a55bb3ab814f21"
+    },
+    {
+      "id": "http",
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "bd433bd2936bcb91d426093db0bbca209d623d9da6e59b45c27e04cfb981df5e"
+    },
+    {
+      "id": "webTransport",
+      "path": "apps/web/features/shareholder-register-filing/transport.ts",
+      "sha256": "776cbaaf3fd2f1842788d4767bf409ffc372645385ed14223c8c3e8a242eb52f"
+    },
+    {
+      "id": "webCanonicalIntegrity",
+      "path": "apps/web/app/lib/rf1086-original-integrity.ts",
+      "sha256": "e6eb7c9eb98b1100b1c46df88356e8dac0772a43423516b98097e08a53f5a245"
+    },
+    {
+      "id": "webRestoreIntegrity",
+      "path": "apps/web/app/lib/rf1086-restore-integrity.ts",
+      "sha256": "e3a4982faa956f3ad0469a75538afe9f16ca3488067e6fd0320f01c36cc8c210"
+    },
+    {
+      "id": "archiveVerifier",
+      "path": "apps/backend/scripts/verify_rf1086_archive.py",
+      "sha256": "a005e7d860550cf108f761bf8de0fdf06d22e1479056d0f0a2ade7658fa6917e"
+    },
+    {
+      "id": "restoreRunner",
+      "path": "scripts/rehearse-rf1086-owned-restore.py",
+      "sha256": "f5a7ff33b9c3ee040746d0d0201c50df8244e4030308c9d2a600694ab3f427e0"
+    },
+    {
+      "id": "archiveGeneration",
+      "path": "supabase/migrations/20260930160335_rf1086_retained_archive_generations.sql",
+      "sha256": "006648b2bc55098e20fbef19c07312de5a424be30e07f5c6b34ce2c042d04288"
+    },
+    {
+      "id": "archiveReceipt",
+      "path": "supabase/migrations/20260808120000_company_access_cancellation_lifecycle.sql",
+      "sha256": "2d9e10172c2e491dc59d25d8a1f79e578e4498f3663e81242ecd8c8e72194e5f"
+    },
+    {
+      "id": "companyArchiveRoute",
+      "path": "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts",
+      "sha256": "e760e1190d836c068e13d1eb59822640cf5a545bfac21e01b9025cca56c48626"
+    },
+    {
+      "id": "compatibility",
+      "path": "architecture/compatibility.json",
+      "sha256": "7d973f22609439486f5dda1be39c55c4e075e5e6d1ea106097eabd536d36d67c"
+    },
+    {
+      "id": "governanceWorkflow",
+      "path": "apps/backend/src/talli_backend/application/corporate_governance_workflow.py",
+      "sha256": "e6992939234e1f6617e7b0942d41bd5f2d0509ba0de4e3538d67f27d65f3b17f"
+    },
+    {
+      "id": "governanceSupportedEvents",
+      "path": "supabase/migrations/20260904220000_corporate_governance_supported_events.sql",
+      "sha256": "5a9fa446c726cd87e7be28da1c3719bac6f67c84530e57a5d9f72b697cc687ba"
+    },
+    {
+      "id": "governanceWriteGuards",
+      "path": "supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql",
+      "sha256": "8efbd5008fba88afc75e6b03be7323805a19bbff4284691207b421562f05aade"
+    }
+  ],
+  "sourceSnapshot": "Local worktree at plan creation on baseRevision; per-file hashes identify inspected content, including any parent-owned pending evidence updates.",
+  "recordedScope": {
+    "provenance": "Repository-recorded remaining gap, not a new direct human acceptance decision.",
+    "references": [
+      "requirements",
+      "observationDesign"
+    ],
+    "requirement": "Explicit observation withdrawal/invalidation, retained history, currentness and downstream freshness remain required. This plan does not establish approval of the specific terminal semantics, reason bound, rollout mechanism or completeness exceptions proposed below.",
+    "acceptanceBoundary": "Close only the bounded withdrawal/invalidation gap. This does not close complete supported-case conformance, A1/A2/A4, external production evidence or later release prerequisites."
+  },
+  "implementationConstraints": [
+    {
+      "id": "R2",
+      "provenance": "Conservative engineering constraint assigned in parent-agent review; consistent with ADR0011 database authorization and ADR0012 unknown-outcome rules, not independently evidenced direct human wording.",
+      "requirement": "Existing older backend binaries cannot bypass invalidation at consequential database seams. No configuration or activation switch may disable these checks.",
+      "proofBoundary": "Cover actual callable SQL seams, not only the baseline Python call chain. Do not claim arbitrary old binaries are protected until their write/read/export seams are enumerated and exercised."
+    },
+    {
+      "id": "R3",
+      "provenance": "Normative repository rule from ADR0012. The proposed new-state error/drain choices are unapproved compatibility designs, not exceptions already granted by this ADR.",
+      "requirement": "Preserve old API routes/schemas and archive codecs; evolve additively; support both web/backend deployment orders without inventing lifecycle completeness."
+    },
+    {
+      "id": "R4",
+      "provenance": "Normative repository ownership/authorization rule from ADR0011; cross-owner changes remain separately owned and reviewed.",
+      "requirement": "RF owns withdrawal policy/data. Other capabilities use declared public contracts; current accepted-owner authorization remains server-derived."
+    },
+    {
+      "id": "R5",
+      "provenance": "Engineering preservation constraint derived from existing capture recovery and durable operation behavior plus ADR0012; no claim of new human-approved product semantics.",
+      "requirement": "Historical capture receipt lookup, retained history, authorized export, already admitted operation outcomes and unknown-outcome reconciliation must survive withdrawal."
+    }
+  ],
+  "proposedPolicy": [
+    {
+      "id": "R1",
+      "provenance": "Proposed product/engineering semantics; withdrawal gap is recorded, these exact terminal rules are not established as direct human acceptance.",
+      "proposal": "Current-head-only terminal withdrawal, attributable and idempotent; preserve history; no ancestor reactivation; an independently verified new capture remains possible."
+    },
+    {
+      "id": "P2",
+      "proposal": "Reason required, exact text retained and hashed, maximum 1000 characters; exact bound remains a design choice."
+    },
+    {
+      "id": "P3",
+      "proposal": "New-intent admission is the withdrawal/provider linearization point. Previously admitted intent can finish; later child/confirmation/retry intent cannot. This may leave a partial submission blocked and does not promise automatic recovery to completion."
+    },
+    {
+      "id": "P4",
+      "proposal": "Old observation-list route may return a safe upgrade-required error for affected scopes. This requires explicit deployment-order/compatibility review and does not retrofit old server binaries."
+    },
+    {
+      "id": "P5",
+      "proposal": "Prefer an archive-owner-enforced lifecycle coverage fence before enabling withdrawal. A final command grant may stage availability, but neither a grant nor producer-drain assertion establishes artifact completeness."
+    }
+  ],
+  "requiredOwnerDependencies": [
+    {
+      "owner": "corporate_governance",
+      "purpose": "Final SQL admission and repair of committed register-backed events",
+      "requiredWork": "Add/review a Governance-owned final SQL assertion using the narrow RF public exact-current-observation contract for the existing register-required kinds/phases, after exact replay detection and before fresh completion. Prove an existing public repair path for an event whose recorded RF reference is withdrawn, or keep that event/source blocked and route a separate Governance repair design; RF must not rewrite canonical Governance facts, move its recorded_at or invent a replacement reference.",
+      "currentLimit": "No currently supported public repair path has been demonstrated. New independent capture remains possible, but does not make the previously bound event repairable. Acceptance includes this blocked case until the owner dependency is resolved."
+    },
+    {
+      "owner": "company_archive",
+      "purpose": "Authoritative export/cancellation coverage across old/new producers and rollback",
+      "currentOwnership": "architecture/compatibility.json registers compat-company-archive-persistence as the frozen web:legacy-runtime:company_archive facade ending at #157. company_archive_complete_export is presently the public SQL receipt handoff owned by company_archive_projection_executor; the web route calls it with service-role authority. The role name or placement in a Company Access migration does not authorize RF or Next.js to own archive completeness policy.",
+      "requiredWork": "Design an archive-owner completion fence using a narrow RF-owned coverage contract. Bind scope, export attempt, exact source generation, canonical RF v5 artifact digest and captured lifecycle digest/count (including captured-empty) to the final archive digest. The trusted owner verifies those commitments; a caller-supplied Boolean/version or generation alone is insufficient. The old completion RPC must fail closed for scopes requiring the new coverage, including attempts begun after withdrawal. Preserve the fence after rollback once withdrawals exist.",
+      "adrBoundary": "This is new completeness/receipt behavior beyond a frozen legacy facade. ADR0013 serial ownership and no-new-facade-behavior rules require the owning stage or an explicit narrowly scoped architecture decision before implementation. Do not infer that prior resource-owner deletion/generation amendments authorize this change or add policy to the legacy web route."
+    }
+  ],
+  "independentReview": {
+    "method": "Read-only comparison against current SQL, Python workflow, archives and ADR0011/12/13; then authorized edits to this plan only.",
+    "conclusions": [
+      "Terminal withdrawal/provenance and rollout are proposals; the gap alone is repository-recorded.",
+      "Required SQL admission locations mostly identified, but direct Governance completion needs its own owned backstop and exact-replay test.",
+      "Existing RF source correction cannot repair a committed Governance event bound to withdrawn evidence.",
+      "Prefer an archive-owner coverage fence; its frozen-facade/serial-stage ADR dependency must be resolved before business implementation.",
+      "Old-list truthfulness is a separate old-binary routing/drain constraint, not solved by the archive fence or a new-backend error."
+    ],
+    "notPerformed": [
+      "business implementation",
+      "live database test",
+      "browser test",
+      "legal conclusions",
+      "issue/index/acceptance updates"
+    ]
+  },
+  "authorizationBoundary": {
+    "inScopeEngineering": "The recorded withdrawal/invalidation gap authorizes routine design and review choices within its established scope. Calling terminal semantics, bounds and rollout proposals does not itself demand a new human confirmation; parent review may select sound engineering choices without mislabeling their provenance.",
+    "architectureBoundary": "A new cross-owner public contract or change to frozen company-archive business behavior must satisfy ADR0011/13 ownership and serialized-migration review. This plan cannot create an exception by assertion or silently change acceptance.",
+    "externalActivation": "No hosted migration, command activation, producer drain, production filing, rollout or launch action is authorized by this plan or its review. All listed deployment actions remain prospective."
+  }
+}

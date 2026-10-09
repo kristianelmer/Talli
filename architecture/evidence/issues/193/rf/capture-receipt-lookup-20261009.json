@@ -2,7 +2,8 @@
   "schemaVersion": "1.0",
   "issue": "#193",
   "relatedCriteria": [
-    "GH-193-RF-A3",
+    "GH-193-RF-A2",
+    "GH-193-RF-A4",
     "GH-193-RF-A5",
     "GH-193-RF-A6"
   ],

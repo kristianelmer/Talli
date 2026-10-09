@@ -190,5 +190,10 @@
   "capitalSourcePlan20261009": "capital-source-plan-20261009.md",
   "historicalCi37988989238": "ci-37988989238.json",
   "captureReceiptLookup20261009": "capture-receipt-lookup-20261009.json",
-  "predecessorReadinessFixture20261009": "predecessor-readiness-fixture-20261009.json"
+  "predecessorReadinessFixture20261009": "predecessor-readiness-fixture-20261009.json",
+  "capitalLawSource20261009": "capital-law-source-20261009.json",
+  "ciPostgresPrefetch20261009": "ci-postgres-prefetch-20261009.json",
+  "observationWithdrawalPlan20261009": "observation-withdrawal-plan-20261009.json",
+  "historicalCi37991232137": "ci-37991232137.json",
+  "capitalRestrictionRuleMapping20261009": "capital-restriction-rule-mapping-20261009.json"
 }
