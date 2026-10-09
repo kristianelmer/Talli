@@ -1,4 +1,4 @@
-import { rf1086SourceOriginalsMatch, rf1086FeedbackOriginalsMatch } from "./rf1086-original-integrity.ts";
+import { rf1086SourceOriginalsMatch, rf1086FeedbackOriginalsMatch, rf1086OverridesMatch } from "./rf1086-original-integrity.ts";
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 
@@ -22,7 +22,7 @@ export function rf1086SourceRestoreFailures(rf: Record<string, any>, objects: an
     try {
       if (typeof rf.canonicalArchive !== "string") throw new Error("missing");
       const envelope = JSON.parse(rf.canonicalArchive);
-      if (!record(envelope) || !["rf1086-production-archive-v1", "rf1086-production-archive-v2", "rf1086-production-archive-v3"].includes(envelope.codec)
+      if (!record(envelope) || !["rf1086-production-archive-v1", "rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4"].includes(envelope.codec)
           || typeof envelope.snapshotText !== "string" || !hash(envelope.sha256)
           || digest(envelope.snapshotText) !== envelope.sha256
           || Object.keys(envelope).sort().join(",") !== "codec,sha256,snapshotText") throw new Error("invalid");
@@ -42,6 +42,7 @@ export function rf1086SourceRestoreFailures(rf: Record<string, any>, objects: an
   if (claims.length !== submissions.length
       || new Set(claims.map(row => row.submissionId)).size !== claims.length
       || new Set(claims.map(row => row.approvalId)).size !== claims.length) fail("claim_mismatch");
+  if (!rf1086OverridesMatch(rf)) fail("override_history_mismatch");
   if (!rf1086SourceOriginalsMatch(rf)) fail("document_object_mismatch");
   if (!rf1086FeedbackOriginalsMatch(rf)) fail("feedback_object_mismatch");
   for (const line of lineage) {

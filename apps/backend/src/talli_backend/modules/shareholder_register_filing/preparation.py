@@ -16,7 +16,7 @@ from .public import (
     Rf1086PreparationPersistence, Rf1086PreparedPreview, Rf1086PreparedSimulation,
     Rf1086PreparedApproval, Rf1086Preview, Rf1086PreviewRecord,
     Rf1086SimulationBasis, Rf1086WorkspaceQuery, Rf1086SourceQuery, Rf1086ArchiveQuery, Rf1086ArchiveSnapshot,
-    Rf1086SimulationRecord, Rf1086ReviewCommentRecord, Rf1086FilingPermissionRecord, Rf1086TestEvidenceRecord,
+    Rf1086SimulationRecord, Rf1086OverrideRecord, Rf1086ReviewCommentRecord, Rf1086FilingPermissionRecord, Rf1086TestEvidenceRecord,
     Rf1086ApprovalRecord, Rf1086ProductionSubmissionRecord, Rf1086ArchiveProductionEventRecord,
     Rf1086ArchiveFeedbackArtifactRecord, Rf1086ProductionError,
     ReadRf1086PreviewQuery, VerifyRf1086SourceEvidenceQuery,
@@ -81,13 +81,36 @@ def _validate_archive_source(query: Rf1086ArchiveQuery, result: Rf1086ArchiveSna
             (result.production_events,Rf1086ArchiveProductionEventRecord),
             (result.feedback_artifacts,Rf1086ArchiveFeedbackArtifactRecord),
         )
+    if result.overrides is not None:
+        if type(result.overrides) is not tuple:
+            raise ShareholderRegisterFilingError.unavailable()
+        collections += ((result.overrides, Rf1086OverrideRecord),)
     for collection,record_type in collections:
         if (any(not isinstance(row,record_type) or row.company_id != str(query.company_id) for row in collection)
                 or len({row.id for row in collection}) != len(collection)):
             raise ShareholderRegisterFilingError.unavailable()
     if any(row.income_year != query.income_year.value or row.filing not in ('aksjonærregisteroppgaven','aksjonaerregisteroppgaven')
-            for collection in (result.previews,result.simulations) for row in collection):
+            for collection in (result.previews,result.simulations,result.overrides or ()) for row in collection):
         raise ShareholderRegisterFilingError.unavailable()
+    if any(row.preview_id is not None and row.preview_id not in {preview.id for preview in result.previews}
+           for row in result.overrides or ()):
+        raise ShareholderRegisterFilingError.unavailable()
+    for row in result.overrides or ():
+        try:
+            for value in (row.id, row.company_id, row.owner_confirmed_by, row.created_by):
+                if type(value) is not str:
+                    raise ValueError()
+                UUID(value)
+            for value in (row.owner_confirmed_at, row.created_at):
+                if (type(value) is not str or not re.fullmatch(
+                        r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,9})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])', value)
+                        or datetime.fromisoformat(value).utcoffset() is None):
+                    raise ValueError()
+            if (type(row.income_year) is not int or row.risk_level not in ('advisory', 'warning', 'block')
+                    or any(type(value) is not str for value in (row.field_target, row.old_value, row.new_value, row.reason))):
+                raise ValueError()
+        except (ValueError, TypeError):
+            raise ShareholderRegisterFilingError.unavailable() from None
     if (any(row.target != 'rf1086_preview' for row in result.review_comments)
             or any(row.obligation != 'aksjonaerregisteroppgaven' for collection in (result.permissions,result.test_evidence) for row in collection)):
         raise ShareholderRegisterFilingError.unavailable()

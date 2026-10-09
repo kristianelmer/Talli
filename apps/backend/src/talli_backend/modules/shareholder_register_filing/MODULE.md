@@ -954,3 +954,7 @@ preserving in-flight completion. Tests cover simulated dispatch/crash behavior,
 exact replay, and database binding changes without actual provider credentials.
 
 `inspect_rf1086_source_dispatch_position` returns `Rf1086SourceDispatchPosition` from validated retained approval/claim/archive evidence. Unclaimed, current-admission, retry, uncertainty, blocked, fresh-approval and confirmed states never grant a provider operation. The read requires original actor identity and does not acquire credentials, claim a filing, or reread current originals.
+
+### Override archive transport overlap
+
+`archive_source` captures override history in the domain snapshot. Codec v4 preserves those records; `None` remains uncaptured history, distinct from an empty tuple. The additive `/archive-source/production-v4` and `/archive-source/production-stream-v4` routes require captured history. Existing production routes retain their original response schema and codecs v1–v3 by intentionally omitting overrides in a separate transport projection; they do not alter the authoritative snapshot. This preserves old web and offline consumers during either deployment order (ADR0012).

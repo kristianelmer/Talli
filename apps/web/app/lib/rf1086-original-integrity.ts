@@ -8,17 +8,24 @@ const exactInstant = (value: any): string | null => {
   if (typeof value !== "string") return null;
   const match = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})$/.exec(value);
   if (!match) return null;
+  // Date.parse normalizes e.g. February 30 and 24:00; neither is a stored Python datetime.
+  const local = Date.parse(match[1] + "Z");
+  if (!Number.isFinite(local) || match[1].startsWith("0000-")
+      || new Date(local).toISOString().slice(0, 19) !== match[1]) return null;
   const seconds = Date.parse(match[1] + match[3]);
   return Number.isFinite(seconds) ? (BigInt(seconds) * BigInt(1_000_000) + BigInt((match[2] ?? "").padEnd(9, "0"))).toString() : null;
 };
 const identity = (row: any) => JSON.stringify([row.documentId, row.companyId, row.sourceIncomeYear,
   row.metadataSha256, row.contentSha256, row.byteLength]);
-const commitment = (row: any) => JSON.stringify([identity(row), row.contentVersionSha256,
-  row.documentType, row.integrityStatus, new Date(row.createdAt).toISOString()]);
+const commitment = (row: any) => {
+  const createdAt = exactInstant(row.createdAt);
+  if (createdAt === null) throw new Error("invalid RF document timestamp");
+  return JSON.stringify([identity(row), row.contentVersionSha256, row.documentType, row.integrityStatus, createdAt]);
+};
 
 function historyCommitmentsMatch(rf: Record<string, any>, documents: any[]): boolean {
   const envelope = JSON.parse(rf.canonicalArchive);
-  if (!record(envelope) || !["rf1086-production-archive-v2", "rf1086-production-archive-v3"].includes(envelope.codec)
+  if (!record(envelope) || !["rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4"].includes(envelope.codec)
       || !keys(envelope, ["codec", "snapshotText", "sha256"])
       || typeof envelope.snapshotText !== "string" || digest(envelope.snapshotText) !== envelope.sha256) return false;
   const snapshot = JSON.parse(envelope.snapshotText);
@@ -61,7 +68,7 @@ export function rf1086SourceOriginalsMatch(rf: Record<string, any>): boolean {
     if (history == null && typeof rf.canonicalArchive === "string") {
       let codec;
       try { codec = JSON.parse(rf.canonicalArchive)?.codec; } catch { /* The separate canonical check diagnoses malformed v1. */ }
-      if (["rf1086-production-archive-v2", "rf1086-production-archive-v3"].includes(codec)) return false;
+      if (["rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4"].includes(codec)) return false;
     }
     const groups = lines.map(line => line?.source?.command?.documents);
     if (history != null) groups.push(history);
@@ -72,7 +79,9 @@ export function rf1086SourceOriginalsMatch(rf: Record<string, any>): boolean {
             || !hash(source.metadataSha256) || !hash(source.contentSha256)
             || !Number.isSafeInteger(source.sourceIncomeYear) || source.sourceIncomeYear < 2000 || source.sourceIncomeYear > 2100
             || !Number.isSafeInteger(source.byteLength) || source.byteLength < 1 || source.byteLength > 10485760) return false;
-        expected.set(identity(source), source);
+        const key = identity(source), previous = expected.get(key);
+        if (previous && commitment(previous) !== commitment(source)) return false;
+        expected.set(key, source);
       }
     }
     const originals = rf.sourceOriginals ?? [];
@@ -99,9 +108,48 @@ export function rf1086SourceOriginalsMatch(rf: Record<string, any>): boolean {
           || document.byte_length !== source.byteLength || document.document_type !== source.documentType
           || document.status !== source.integrityStatus || document.removed_at !== null
           || document.content_sha256 !== source.contentVersionSha256
-          || !Number.isFinite(Date.parse(document.created_at)) || Date.parse(document.created_at) !== Date.parse(source.createdAt)) return false;
+          || exactInstant(document.created_at) === null || exactInstant(document.created_at) !== exactInstant(source.createdAt)) return false;
     }
     return true;
+  } catch { return false; }
+}
+
+/** Keep the readable override history identical to its canonical records. */
+export function rf1086OverridesMatch(rf: Record<string, any>): boolean {
+  try {
+    if (rf.canonicalArchive == null) return rf.overrides == null;
+    const envelope = JSON.parse(rf.canonicalArchive);
+    if (!record(envelope) || !["rf1086-production-archive-v1", "rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4"].includes(envelope.codec)
+        || !keys(envelope, ["codec", "snapshotText", "sha256"])
+        || typeof envelope.snapshotText !== "string" || digest(envelope.snapshotText) !== envelope.sha256) return false;
+    const snapshot = JSON.parse(envelope.snapshotText), rows = rf.overrides;
+    if (snapshot?.record !== "Rf1086ArchiveSnapshot" || !record(snapshot.fields)) return false;
+    if (envelope.codec !== "rf1086-production-archive-v4")
+      return rf.overrides == null && !Object.hasOwn(snapshot.fields, "overrides");
+    const captured = snapshot?.fields?.overrides;
+    if (snapshot?.record !== "Rf1086ArchiveSnapshot" || !Array.isArray(captured) || !Array.isArray(rows)
+        || captured.length !== rows.length || rows.some(row => !record(row))
+        || new Set(rows.map(row => row.id)).size !== rows.length) return false;
+    const fields = { id: "id", previewId: "preview_id", companyId: "company_id", incomeYear: "income_year",
+      filing: "filing", fieldTarget: "field_target", oldValue: "old_value", newValue: "new_value",
+      reason: "reason", riskLevel: "risk_level", ownerConfirmedBy: "owner_confirmed_by", createdBy: "created_by" };
+    const times = { ownerConfirmedAt: "owner_confirmed_at", createdAt: "created_at" };
+    return rows.every(row => {
+      const matches = captured.filter(item => item?.record === "Rf1086OverrideRecord" && item.fields?.id === row.id);
+      if (matches.length !== 1 || row.companyId !== rf.companyId || row.incomeYear !== rf.incomeYear
+          || !["aksjonærregisteroppgaven", "aksjonaerregisteroppgaven"].includes(row.filing)
+          || !["advisory", "warning", "block"].includes(row.riskLevel)) return false;
+      const original = matches[0].fields;
+      if (!keys(row, [...Object.keys(fields), ...Object.keys(times)])
+          || !keys(matches[0], ["record", "fields"])
+          || !record(original) || !keys(original, [...Object.values(fields), ...Object.values(times)])
+          || !Number.isSafeInteger(row.incomeYear)
+          || (row.previewId !== null && typeof row.previewId !== "string")
+          || Object.keys(fields).some(field => !["incomeYear", "previewId"].includes(field) && typeof row[field] !== "string")) return false;
+      if (Object.entries(fields).some(([wire, stored]) => row[wire] !== original[stored])) return false;
+      return Object.entries(times).every(([wire, stored]) =>
+        exactInstant(row[wire]) !== null && exactInstant(row[wire]) === exactInstant(original[stored]));
+    });
   } catch { return false; }
 }
 
@@ -121,8 +169,8 @@ export function rf1086FeedbackOriginalsMatch(rf: Record<string, any>): boolean {
       const envelope = JSON.parse(rf.canonicalArchive);
       if (!record(envelope) || !keys(envelope, ["codec", "snapshotText", "sha256"])
           || typeof envelope.snapshotText !== "string" || digest(envelope.snapshotText) !== envelope.sha256
-          || !["rf1086-production-archive-v1", "rf1086-production-archive-v2", "rf1086-production-archive-v3"].includes(envelope.codec)
-          || (bound.length > 0 && envelope.codec !== "rf1086-production-archive-v3")) return false;
+          || !["rf1086-production-archive-v1", "rf1086-production-archive-v2", "rf1086-production-archive-v3", "rf1086-production-archive-v4"].includes(envelope.codec)
+          || (bound.length > 0 && !["rf1086-production-archive-v3", "rf1086-production-archive-v4"].includes(envelope.codec))) return false;
       const snapshot = JSON.parse(envelope.snapshotText);
       if (snapshot?.record !== "Rf1086ArchiveSnapshot" || !Array.isArray(snapshot.fields?.feedback_artifacts)
           || !Array.isArray(snapshot.fields?.production_submissions)) return false;

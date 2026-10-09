@@ -782,6 +782,15 @@ class PostgresShareholderRegisterFilingSession:
                 raise rf.ShareholderRegisterFilingError.unavailable() from None
         if not include_production:
             return rf.Rf1086ArchiveSnapshot(query.company_id, query.income_year, **values)
+        override_rows = await (await connection.execute(
+            'select * from shareholder_register_filing.filing_overrides '
+            'where company_id=%s::uuid and income_year=%s order by created_at,id',
+            (company_id, year),
+        )).fetchall()
+        try:
+            values['overrides'] = tuple(self._wire_record(rf.Rf1086OverrideRecord, row) for row in override_rows)
+        except (TypeError, ValueError, KeyError):
+            raise rf.ShareholderRegisterFilingError.unavailable() from None
         values['source_history'] = await self._archive_source_history(connection, company_id, year)
         # Historical approval lineage uses retained versions, never current
         # heads, current Documents status or today's review permissions.

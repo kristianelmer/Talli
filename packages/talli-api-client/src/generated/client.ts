@@ -4462,6 +4462,28 @@ export interface Rf1086ProductionArchiveSourceWire {
   testEvidence: Rf1086TestEvidenceWire[];
 }
 
+export interface Rf1086ProductionArchiveSourceV4Wire {
+  approvals: Rf1086ApprovalWire[];
+  canonicalArchive?: string | null;
+  companyId: string;
+  feedbackArtifacts: Rf1086ArchiveFeedbackArtifactWire[];
+  feedbackOriginals?: Rf1086ArchiveSourceOriginalWire[];
+  incomeYear: number;
+  overrides: Rf1086OverrideWire[];
+  permissions: Rf1086PermissionWire[];
+  previews: Rf1086PreviewWire[];
+  productionEvents: Rf1086ArchiveProductionEventWire[];
+  productionSubmissions: Rf1086ProductionSubmissionWire[];
+  reviewComments: Rf1086ReviewCommentWire[];
+  simulations: Rf1086SimulationWire[];
+  sourceApprovalLineage?: Rf1086ArchiveSourceApprovalLineageWire[];
+  sourceHistoryDocuments?: RfSourceDocumentWire[] | null;
+  sourceOriginals?: Rf1086ArchiveSourceOriginalWire[];
+  sourceSubmissionClaims?: Rf1086SourceSubmissionClaimWire[];
+  submissionHead?: Rf1086SubmissionHeadWire | null;
+  testEvidence: Rf1086TestEvidenceWire[];
+}
+
 export interface Rf1086ArchiveProductionEventWire {
   artifactHashes: string[];
   attempt: number;
@@ -10705,6 +10727,32 @@ function isRf1086ProductionArchiveSourceWire(value: unknown): value is Rf1086Pro
   );
 }
 
+function isRf1086ProductionArchiveSourceV4Wire(value: unknown): value is Rf1086ProductionArchiveSourceV4Wire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["approvals","canonicalArchive","companyId","feedbackArtifacts","feedbackOriginals","incomeYear","overrides","permissions","previews","productionEvents","productionSubmissions","reviewComments","simulations","sourceApprovalLineage","sourceHistoryDocuments","sourceOriginals","sourceSubmissionClaims","submissionHead","testEvidence"]) &&
+    Array.isArray(value.approvals) && value.approvals.every((item) => isRf1086ApprovalWire(item)) &&
+    (value.canonicalArchive === undefined || (typeof value.canonicalArchive === "string" || value.canonicalArchive === null)) &&
+    isUuid(value.companyId) &&
+    Array.isArray(value.feedbackArtifacts) && value.feedbackArtifacts.every((item) => isRf1086ArchiveFeedbackArtifactWire(item)) &&
+    (value.feedbackOriginals === undefined || Array.isArray(value.feedbackOriginals) && value.feedbackOriginals.every((item) => isRf1086ArchiveSourceOriginalWire(item))) &&
+    (typeof value.incomeYear === "number" && Number.isInteger(value.incomeYear) && value.incomeYear >= 2000 && value.incomeYear <= 2100) &&
+    Array.isArray(value.overrides) && value.overrides.every((item) => isRf1086OverrideWire(item)) &&
+    Array.isArray(value.permissions) && value.permissions.every((item) => isRf1086PermissionWire(item)) &&
+    Array.isArray(value.previews) && value.previews.every((item) => isRf1086PreviewWire(item)) &&
+    Array.isArray(value.productionEvents) && value.productionEvents.every((item) => isRf1086ArchiveProductionEventWire(item)) &&
+    Array.isArray(value.productionSubmissions) && value.productionSubmissions.every((item) => isRf1086ProductionSubmissionWire(item)) &&
+    Array.isArray(value.reviewComments) && value.reviewComments.every((item) => isRf1086ReviewCommentWire(item)) &&
+    Array.isArray(value.simulations) && value.simulations.every((item) => isRf1086SimulationWire(item)) &&
+    (value.sourceApprovalLineage === undefined || Array.isArray(value.sourceApprovalLineage) && value.sourceApprovalLineage.every((item) => isRf1086ArchiveSourceApprovalLineageWire(item))) &&
+    (value.sourceHistoryDocuments === undefined || (Array.isArray(value.sourceHistoryDocuments) && value.sourceHistoryDocuments.every((item) => isRfSourceDocumentWire(item)) || value.sourceHistoryDocuments === null)) &&
+    (value.sourceOriginals === undefined || Array.isArray(value.sourceOriginals) && value.sourceOriginals.every((item) => isRf1086ArchiveSourceOriginalWire(item))) &&
+    (value.sourceSubmissionClaims === undefined || Array.isArray(value.sourceSubmissionClaims) && value.sourceSubmissionClaims.every((item) => isRf1086SourceSubmissionClaimWire(item))) &&
+    (value.submissionHead === undefined || (isRf1086SubmissionHeadWire(value.submissionHead) || value.submissionHead === null)) &&
+    Array.isArray(value.testEvidence) && value.testEvidence.every((item) => isRf1086TestEvidenceWire(item))
+  );
+}
+
 function isRf1086ArchiveProductionEventWire(value: unknown): value is Rf1086ArchiveProductionEventWire {
   return (
     isRecord(value) &&
@@ -13057,6 +13105,37 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
       const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
       return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production?" + query,
         "GET", request, undefined, isRf1086ProductionArchiveSourceWire);
+    },
+
+    async rf1086DownloadProductionArchiveV4(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Response> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      const response = await fetchImplementation(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production-stream-v4?" + query, {
+        method: "GET", cache: "no-store", signal: request.signal,
+        headers: { Accept: "application/x-ndjson, application/problem+json",
+          ...options.headers, ...request.headers,
+          ...(request.requestId === undefined ? {} : { ["X-Request-ID"]: request.requestId }) },
+      });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!response.ok) {
+        const candidate = contentType.includes("application/problem+json")
+          ? await response.json().catch(() => undefined) : undefined;
+        throw new TalliApiError(response.status, isProblemDetails(candidate) ? candidate : undefined);
+      }
+      if (contentType.split(";")[0].trim().toLowerCase() !== "application/x-ndjson" || response.body === null) {
+        await response.body?.cancel();
+        throw new TalliApiError(502, undefined);
+      }
+      return response;
+    },
+
+    async rf1086GetProductionArchiveSourceV4(
+      companyId: string, incomeYear: number, request: TalliRequestOptions = {},
+    ): Promise<Rf1086ProductionArchiveSourceV4Wire> {
+      const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
+      return executeJson(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production-v4?" + query,
+        "GET", request, undefined, isRf1086ProductionArchiveSourceV4Wire);
     },
 
     async rf1086Workspace(

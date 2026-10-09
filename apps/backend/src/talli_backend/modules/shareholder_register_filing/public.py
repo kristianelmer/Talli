@@ -1202,6 +1202,8 @@ class Rf1086ArchiveSnapshot(_ImmutableRf1086Value):
     submission_head: Rf1086SubmissionHead | None = None
     # None identifies legacy archives which did not capture complete history.
     source_history: Rf1086ArchiveSourceHistory | None = None
+    # None means an older archive did not capture override history, not empty.
+    overrides: tuple[Rf1086OverrideRecord, ...] | None = None
 
 
 class Rf1086ArchiveError(ValueError):

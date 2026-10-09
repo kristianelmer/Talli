@@ -181,5 +181,7 @@
   "nextSecurityPatch": "next-security-patch-20260930.json",
   "expiredPilotRestore": "expiry-restore-20260930.json",
   "retainedOriginalGenerationsRestore": "original-generations-restore-20260930.json",
-  "retentionInventory": "retention-inventory-20260930.json"
+  "retentionInventory": "retention-inventory-20260930.json",
+  "remainingTechnicalGaps20261009": "remaining-technical-gaps-20261009.json",
+  "overrideIdentityIntegration20261009": "integration-verification-20261009.json"
 }

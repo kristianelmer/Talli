@@ -1,0 +1,207 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "RF-1086",
+  "observedDate": "2026-10-09",
+  "status": "REVIEWED_IMPLEMENTATION_LOCAL_DATABASE_AND_BROWSER_RECOVERY_PENDING",
+  "baseRevision": "3f6a82c888ec3b457be12e45639e58fb12d8e9c0",
+  "implementationFileSha256": {
+    "apps/backend/scripts/verify_rf1086_archive.py": "a005e7d860550cf108f761bf8de0fdf06d22e1479056d0f0a2ade7658fa6917e",
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "3ea7cccff5839e19656b5de9f3ab6ea7b4fad0683c7e1928b03412f693a7a96e",
+    "apps/backend/src/talli_backend/main.py": "a629ebba5ecbd9656068b2071066ad9e6c64923804ecc04adfa2653273d6083e",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "4883a8edd6dc85d417eb242de541ee5446a62cc097da21bd40cc1755675d897a",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_storage.py": "e15d8d65fe3d7fa6d1b34bbc663309e80cae67b34c898de86ca4efac57d55e2e",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py": "686e0148f97857c148dd3854a128570f7c15c5fd2617afbeed94dcc1b29d1b12",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "9ff11d2774530bbf3dde26f539b2fbd26dccbfab42bfeb5c59a12be2a13eae66",
+    "apps/backend/tests/test_annual_accounts_filing_lifecycle.py": "6b7569eff7e6db8d3f976cdaca865e6a86c0c9b1bd260c78f518d226d4629762",
+    "apps/backend/tests/test_rf1086_database_runtime.py": "53683f42a9ac8036befb12a309a3fe6f9ef95f68d3b0bc366bb00e4ee87eb867",
+    "apps/backend/tests/test_rf1086_identity_restore_runner.py": "e10681a51def409073bd9d42030e2e9c184d00fc83f24acc4c26a05c77c251a0",
+    "apps/backend/tests/test_rf1086_local_forwarding.py": "8dbb176ba4b702268896ba891d588180fc3c12c83fc5b51750a2382a9bc9152f",
+    "apps/backend/tests/test_rf1086_override_archive.py": "4f1b023e18525727139e70fbfc140db9933bf2ada7fe1a6048d7999a5f41ca28",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": "e760e1190d836c068e13d1eb59822640cf5a545bfac21e01b9025cca56c48626",
+    "apps/web/app/lib/archive.ts": "c9e2ba6225bc63c1141ed135bbe32649f742b54962674ea861670e2cc90efc3b",
+    "apps/web/app/lib/rf1086-original-integrity.ts": "e6eb7c9eb98b1100b1c46df88356e8dac0772a43423516b98097e08a53f5a245",
+    "apps/web/app/lib/rf1086-restore-integrity.ts": "e3a4982faa956f3ad0469a75538afe9f16ca3488067e6fd0320f01c36cc8c210",
+    "apps/web/features/shareholder-register-filing/MODULE.md": "f2d45e3beeea77a0f5cb8a856ad4fb89b2ab87268ee16f7e0db0d50f1637391c",
+    "apps/web/features/shareholder-register-filing/index.ts": "30a8529ff38f656cd7cc64bea82f1b9654ce8d3d6c3b23e3fb9eada847bbccc0",
+    "apps/web/features/shareholder-register-filing/module.json": "696321e462366a89fa5587eb64c3661562c930701f6fd312fbeedaee1a16ce6a",
+    "apps/web/features/shareholder-register-filing/transport.ts": "7a750020a91c4a64684039edd1c58b24d4d0cb5f84c096d468589f59bec443cd",
+    "apps/web/package-lock.json": "e5d30ca25038d965f84b7ee3c94c17f80e83bdb407a2098cf6c8699ae1890bf2",
+    "apps/web/package.json": "705c1c73ee5878771f69bd85badec40104142a192f02c5c7e52421d8d8f4c975",
+    "apps/web/tests/archive-rf1086-source.test.mjs": "7d985d0c69aae71f2a4871b27728686daada6d41e6ab08baf1b4fc976c98591e",
+    "apps/web/tests/fixtures/rf1086-override-archive.json": "18088747964947189cca1105cd8162d6993ad4df52a2a17191f3899861265bd5",
+    "apps/web/tests/rf1086-override-archive.test.mjs": "6e962f9f4477415534b08c08eaf329f5ae16011a3a3caf301545a09ae6bd96d4",
+    "apps/web/tests/shareholder-register-filing-transport.test.mjs": "bfd3f6b7b3f83df62ddabb63b1ef9cce65915ef70299fe4ae5bb5b4d4fb19a4a",
+    "contracts/openapi/talli-v1.json": "407af2a2cf457233a85e0229202edde799d58d5de5e3391e712842d7f459e3d4",
+    "package-lock.json": "e55b10ead823e8b370bf4c69b30b1781d8d054182cc9c39359eb123e69b4c435",
+    "package.json": "f0d5078bc439fe33d3e43fc61f1a1c369a577b0c391016b3f883a6c4add9ff19",
+    "packages/talli-api-client/src/generated/client.ts": "fa0c7a4d4f33d3f2a5ea44e519fec7e3d620033643b609a9fbfd42355b31324d",
+    "scripts/generate-api-client.mjs": "631fbeab37851042f0bf98d514303cae8be86594800bffd3605ead66e5b78c3f",
+    "scripts/rehearse-rf1086-owned-restore.py": "f5a7ff33b9c3ee040746d0d0201c50df8244e4030308c9d2a600694ab3f427e0",
+    "scripts/rf1086_identity_restore.py": "6ab8c859bebcbc17e3b5b57f9c6a82dc2728f782bfecd218761b44bb625460a7",
+    "scripts/rf1086_local_forwarding.py": "d5c5b729ce45294aa2db3b5163c5b232fe1c8f867a000654e863c8a9a5478b8b",
+    "scripts/rf1086_storage_restore.py": "f0e1ea2ba4df83e175fec5532553d8e6ffa6e9fcdef439203501c1009e94468e"
+  },
+  "checks": [
+    {
+      "name": "backend non-database boundary",
+      "command": "python -m pytest -c apps/backend/pyproject.toml apps/backend/tests -m \"not billing_database and not authority_database and not company_tax_database and not accounts_database\" -q",
+      "result": "PASS",
+      "passed": 8033,
+      "skipped": 2,
+      "deselected": 1355,
+      "seconds": 294.63
+    },
+    {
+      "name": "backend production build",
+      "command": "npm run build:backend",
+      "result": "PASS"
+    },
+    {
+      "name": "web production build",
+      "command": "npm run build:web",
+      "result": "PASS"
+    },
+    {
+      "name": "production dependency audits, root and standalone web",
+      "result": "PASS",
+      "vulnerabilities": 0,
+      "patches": [
+        "sharp 0.35.5",
+        "source-map-js 1.2.2"
+      ]
+    },
+    {
+      "name": "archive web regressions",
+      "result": "PASS",
+      "passed": 120,
+      "evidence": "Implementation owner tool observation; includes 5 archive-export and 115 RF archive tests."
+    },
+    {
+      "name": "RF web transport",
+      "result": "PASS",
+      "passed": 46,
+      "evidence": "Implementation owner tool observation."
+    },
+    {
+      "name": "generated contracts",
+      "result": "PASS",
+      "passed": 95,
+      "evidence": "Implementation owner tool observation; OpenAPI/client regenerated."
+    },
+    {
+      "name": "typecheck and declared architecture",
+      "result": "PASS",
+      "evidence": "Implementation owner tool observations before only the later browser-proof, Accounts-fixture and evidence edits."
+    },
+    {
+      "name": "current official source pins",
+      "result": "PASS",
+      "entries": 10,
+      "evidence": "Two independent manual tool observations; no saved log. Byte currency is not full supported-case conformance."
+    },
+    {
+      "name": "Tax prerequisites on owned disposable database",
+      "result": "PASS",
+      "cases": [
+        22,
+        3,
+        7
+      ]
+    },
+    {
+      "name": "Accounts prerequisite",
+      "result": "FIXTURE_CLOCK_REPAIRED",
+      "initialPassed": 39,
+      "initialFailed": 2,
+      "cause": "The support fixture used transaction time after slow migration setup; production validates current statement time.",
+      "currentFocusedPassed": 3,
+      "currentFocusedDeselected": 38,
+      "seconds": 106.42,
+      "productionPolicyChanged": false
+    },
+    {
+      "name": "fresh independent identity infrastructure smoke",
+      "result": "FAIL_TIMEOUT",
+      "errorType": "ReadTimeout",
+      "limit": "No successful independent restore claim. Timeout stage is under diagnosis; local VM showed severe memory pressure."
+    },
+    {
+      "name": "current restricted-role RF database and full rejected-predecessor browser/restore",
+      "result": "PENDING"
+    }
+  ],
+  "independentReviews": {
+    "spec": {
+      "result": "PASS_BOUNDED_SOURCE_SCOPE",
+      "scope": "Archive v4, preserved legacy route overlap, new-web fallback and independent identity boundary fixes. Actual immutable 3f6 client/parser accepts fresh legacy-route outputs; 13 focused overlap/completeness cases passed. Manual temporary-file evidence, not an immutable gate."
+    },
+    "standards": {
+      "result": "PASS_BOUNDED_SOURCE_SCOPE",
+      "resolvedFinding": "Backend-first deployment previously broke existing archive clients; existing routes now preserve prior response semantics and separate v4 routes capture overrides.",
+      "semanticOpenApiOverlap": {
+        "unchangedPaths": 172,
+        "unchangedSchemas": 504,
+        "addedPaths": 2,
+        "addedSchemas": 1
+      },
+      "followupScope": "Storage forwarding context, final-state identity proof fields and Accounts statement-time fixture; no material findings."
+    }
+  },
+  "privateLogDigests": {
+    "backend-boundary-current.log": {
+      "sha256": "93fe332f1958079d9d10bba5a81c995ccb845c017731bd6bdfb547f274b12375",
+      "bytes": 9820,
+      "retainedPrivately": true
+    },
+    "backend-build.log": {
+      "sha256": "8e7729037d302084f8e6333f0202b811eb25c8a6398a034c1799a553c7822e06",
+      "bytes": 288,
+      "retainedPrivately": true
+    },
+    "dependency-build-patched.log": {
+      "sha256": "d34470c74c5838182aa7549025ee5b916f1e030a73af1ca70a895e7902d4c163",
+      "bytes": 2212,
+      "retainedPrivately": true
+    },
+    "npm-audit-root-patched.json": {
+      "sha256": "291ce01efe329dc86fd7ef22f9e0eb1556243298eeb8c2c2d144d09de1ac95b9",
+      "bytes": 363,
+      "retainedPrivately": true
+    },
+    "npm-audit-web-patched.json": {
+      "sha256": "f7c2f644aa49dcecefdf0e3f610460503c5d70c57a50390d8c4d1fc84427d365",
+      "bytes": 361,
+      "retainedPrivately": true
+    },
+    "dependency-smoke-patched.json": {
+      "sha256": "1e4c2fdea2e5a44c53ae386af7756b7415c6aa1c8af7fdc551ec710c32f545c8",
+      "bytes": 187,
+      "retainedPrivately": true
+    },
+    "accounts-prerequisite-failure.log": {
+      "sha256": "9d3206b1de672075708b8fd67e7db3aeff26f076a2b9a612dacf55b74dd55a9a",
+      "bytes": 10531,
+      "retainedPrivately": true
+    },
+    "accounts-1.log": {
+      "sha256": "399c4dc63d14f5b82092892068e9ec599558f07fde0a184fbb421cf0d6074d10",
+      "bytes": 125,
+      "retainedPrivately": true
+    },
+    "identity-smoke.log": {
+      "sha256": "eec85b2a2f058bb272d1cd2adaf764c518ec9f61bdd6b30f055c99a8ec82ddc7",
+      "bytes": 122,
+      "retainedPrivately": true
+    }
+  },
+  "remainingTechnicalGaps": "remaining-technical-gaps-20261009.json",
+  "limits": [
+    "All RF A1-A7 remain PENDING.",
+    "Independent identity and full database/private-object browser restoration are implemented but not yet proven at this checkpoint.",
+    "No immutable complete-gate receipt covers this uncommitted implementation.",
+    "No hosted recovery, hosted key recovery, physical Auth-user erasure, real-company acceptance, filing, charge, pilot outreach or launch is claimed.",
+    "Physical Auth erasure is intentionally probed as blocked by retained historical foreign keys; company lifecycle deletion and Auth soft deletion are separate.",
+    "Pre-existing containers remain untouched while user approval for temporary suspension is pending."
+  ]
+}

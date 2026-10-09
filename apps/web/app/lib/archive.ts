@@ -1,4 +1,4 @@
-import { rf1086SourceOriginalsMatch, rf1086FeedbackOriginalsMatch } from "./rf1086-original-integrity.ts";
+import { rf1086SourceOriginalsMatch, rf1086FeedbackOriginalsMatch, rf1086OverridesMatch } from "./rf1086-original-integrity.ts";
 import type {
   AuthorityPermissionRow,
   AuthorityTestRunRow,
@@ -27,10 +27,10 @@ import type {
 } from "../../features/investments";
 import type { DocumentBackupProjectionWire } from "../../features/documents";
 import type { RecordedSupportedCorporateEventWire } from "../../features/corporate-governance";
-import type { Rf1086ProductionArchiveSourceWire } from "../../features/shareholder-register-filing";
+import type { Rf1086ProductionArchiveSourceWire, Rf1086ProductionArchiveSourceV4Wire } from "../../features/shareholder-register-filing";
 
 export type Rf1086ProductionArchive = Pick<Rf1086ProductionArchiveSourceWire,
-  "companyId" | "incomeYear" | "approvals" | "productionSubmissions" | "productionEvents" | "feedbackArtifacts" | "sourceApprovalLineage" | "sourceSubmissionClaims" | "submissionHead" | "canonicalArchive" | "sourceOriginals" | "sourceHistoryDocuments" | "feedbackOriginals">;
+  "companyId" | "incomeYear" | "approvals" | "productionSubmissions" | "productionEvents" | "feedbackArtifacts" | "sourceApprovalLineage" | "sourceSubmissionClaims" | "submissionHead" | "canonicalArchive" | "sourceOriginals" | "sourceHistoryDocuments" | "feedbackOriginals"> & Partial<Pick<Rf1086ProductionArchiveSourceV4Wire, "overrides">>;
 
 /** Each retained RF receipt must resolve to the exact Documents-owned object. */
 export function rf1086ArchiveReceiptsMatch(
@@ -48,7 +48,7 @@ export function rf1086ArchiveReceiptsMatch(
       && object.contentType === receipt.contentType && Boolean(object.storageKey)
       && object.status === "stored" && object.removedAt === null;
   });
-  return receiptsMatch && rf1086SourceOriginalsMatch(filing) && rf1086FeedbackOriginalsMatch(filing);
+  return receiptsMatch && rf1086OverridesMatch(filing) && rf1086SourceOriginalsMatch(filing) && rf1086FeedbackOriginalsMatch(filing);
 }
 
 export type LedgerEntryRow = {

@@ -265,6 +265,7 @@ test("actual generated RF archive transport isolates a malformed 2024 preview fr
   const queries = [];
   t.mock.method(globalThis, "fetch", async (url, request) => {
     const parsed = new URL(url), year = Number(parsed.searchParams.get("incomeYear"));
+    if (parsed.pathname.endsWith('/production-v4')) return new Response(null, { status: 404 });
     assert.equal(parsed.pathname, "/api/v1/shareholder-register-filings/archive-source/production");
     assert.deepEqual([...parsed.searchParams.entries()].sort(), [["companyId", companyId], ["incomeYear", String(year)]]);
     assert.equal(new Headers(request.headers).get("Authorization"), "Bearer verified-owner");
@@ -458,14 +459,14 @@ for (const status of [404, 500, 403]) {
     const paths = [];
     t.mock.method(globalThis, "fetch", async url => {
       const parsed = new URL(url); paths.push(parsed.pathname);
-      if (parsed.pathname.endsWith("/production")) return Response.json({ detail: "Unavailable" }, { status });
+      if (parsed.pathname.endsWith("/production") || parsed.pathname.endsWith("/production-v4")) return Response.json({ detail: "Unavailable" }, { status });
       return Response.json(legacyArchiveResponse(Number(parsed.searchParams.get("incomeYear"))));
     });
     const fixture = route({ rfLoader: loadRf1086ArchiveSource });
     assert.equal((await fixture.run()).status, status === 404 ? 200 : 500);
     if (status === 404) {
-      assert.equal(paths.length, 2);
-      assert.equal(paths[1], "/api/v1/shareholder-register-filings/archive-source");
+      assert.equal(paths.length, 3);
+      assert.equal(paths[2], "/api/v1/shareholder-register-filings/archive-source");
       assert.equal(fixture.captures[0].rf1086Production, undefined, "unknown production history must not become empty arrays");
     } else {
       assert.equal(paths.length, 1);
@@ -486,7 +487,7 @@ test("successful production archive endpoint cannot omit productionSubmissions",
   });
   const fixture = route({ rfLoader: loadRf1086ArchiveSource });
   assert.equal((await fixture.run()).status, 500);
-  assert.deepEqual(paths, ["/api/v1/shareholder-register-filings/archive-source/production"]);
+  assert.deepEqual(paths, ["/api/v1/shareholder-register-filings/archive-source/production-v4"]);
   assert.equal(fixture.captures.length, 0);
 });
 
@@ -546,7 +547,8 @@ test('unapproved source history requires all retained metadata versions and inde
   const priorUrl = process.env.TALLI_BACKEND_URL;
   process.env.TALLI_BACKEND_URL = 'https://backend.example';
   t.after(() => { if (priorUrl === undefined) delete process.env.TALLI_BACKEND_URL; else process.env.TALLI_BACKEND_URL = priorUrl; });
-  t.mock.method(globalThis, 'fetch', async () => Response.json(filing));
+  t.mock.method(globalThis, 'fetch', async url => new URL(url).pathname.endsWith('/production-v4')
+    ? new Response(null, { status: 404 }) : Response.json(filing));
   const loaded = await loadRf1086ArchiveSource('token', filing.companyId, filing.incomeYear);
   assert.deepEqual(loaded, filing);
 });

@@ -10,6 +10,7 @@ import re
 import secrets
 import time
 from collections.abc import Awaitable, Callable, Mapping
+from dataclasses import replace
 from datetime import UTC, date, datetime, time as local_time
 from decimal import Decimal
 from typing import Annotated, Any, Literal, TypeVar, cast
@@ -2595,6 +2596,10 @@ class Rf1086ProductionArchiveSourceWire(Rf1086ArchiveSourceWire):
     production_submissions: list[Rf1086ProductionSubmissionWire]
     production_events: list[Rf1086ArchiveProductionEventWire]
     feedback_artifacts: list[Rf1086ArchiveFeedbackArtifactWire]
+
+
+class Rf1086ProductionArchiveSourceV4Wire(Rf1086ProductionArchiveSourceWire):
+    overrides: list[Rf1086OverrideWire]
 
 
 class BillingCompanyWire(StrictTransportModel):
@@ -12174,6 +12179,13 @@ def create_app(
         return await shareholder_register_filing_call(execute)
 
     @application.get(
+        "/api/v1/shareholder-register-filings/archive-source/production-stream-v4",
+        operation_id="rf1086DownloadProductionArchiveV4", response_class=StreamingResponse,
+        responses={**authority_errors, 200: {"description": "Bounded NDJSON archive; final commitment required.",
+            "content": {"application/x-ndjson": {"schema": {"type": "string", "format": "binary"}}}}},
+        tags=["shareholder-register-filings"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    @application.get(
         "/api/v1/shareholder-register-filings/archive-source/production-stream",
         operation_id="rf1086DownloadProductionArchive", response_class=StreamingResponse,
         responses={**authority_errors, 200: {"description": "Bounded NDJSON archive; final commitment required.",
@@ -12181,6 +12193,7 @@ def create_app(
         tags=["shareholder-register-filings"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
     async def rf1086_production_archive_stream(
+        request: Request,
         company_id: Annotated[UUID, Query(alias="companyId")],
         income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
@@ -12189,6 +12202,13 @@ def create_app(
             workflow = await shareholder_register_filing_workflow(credentials)
             query = Rf1086ArchiveQuery(CompanyId(str(company_id)), IncomeYear(income_year), workflow.actor_id)
             archive = await workflow.archive_source(query)
+            if request.url.path.endswith('/production-stream-v4'):
+                if archive.overrides is None:
+                    raise ShareholderRegisterFilingError.unavailable()
+            else:
+                # Existing stream consumers support codecs v1–v3. Keep their
+                # transport projection stable while the owner retains all facts.
+                archive = replace(archive, overrides=None)
             from talli_backend.application.shareholder_register_archive import prepare_archive_stream
             content = await prepare_archive_stream(archive, query=query, documents_factory=documents_application,
                 access_token=bearer_token(credentials), actor_id=workflow.actor_id)
@@ -12199,12 +12219,19 @@ def create_app(
         return await shareholder_register_filing_call(execute)
 
     @application.get(
+        "/api/v1/shareholder-register-filings/archive-source/production-v4",
+        operation_id="rf1086GetProductionArchiveSourceV4", response_model=Rf1086ProductionArchiveSourceV4Wire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    @application.get(
         "/api/v1/shareholder-register-filings/archive-source/production",
         operation_id="rf1086GetProductionArchiveSource", response_model=Rf1086ProductionArchiveSourceWire,
         responses=authority_errors, tags=["shareholder-register-filings"],
         openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
     )
     async def rf1086_production_archive_source(
+        request: Request,
         company_id: Annotated[UUID, Query(alias="companyId")],
         income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
@@ -12215,15 +12242,24 @@ def create_app(
                 company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year), actor_id=workflow.actor_id,
             )
             result = await workflow.archive_source(query)
+            include_overrides = request.url.path.endswith('/production-v4')
+            if include_overrides and result.overrides is None:
+                raise ShareholderRegisterFilingError.unavailable()
+            # ADR0012: do not add fields or a new codec to the existing strict
+            # client contract. This projection does not mutate the domain record.
+            projection = result if include_overrides else replace(result, overrides=None)
             try:
-                canonical_archive = serialize_rf1086_archive(result, query=query)
+                canonical_archive = serialize_rf1086_archive(projection, query=query)
             except Rf1086ArchiveError:
                 raise ShareholderRegisterFilingError.unavailable() from None
             from talli_backend.application.shareholder_register_archive import archive_source_originals, archive_feedback_originals, source_document_evidence
             source_originals = await archive_source_originals(result, documents_factory=documents_application,
                 access_token=bearer_token(credentials), actor_id=workflow.actor_id)
             try:
-                return Rf1086ProductionArchiveSourceWire(
+                wire = Rf1086ProductionArchiveSourceV4Wire if include_overrides else Rf1086ProductionArchiveSourceWire
+                return wire(
+                    **({"overrides": [Rf1086OverrideWire.model_validate(row, from_attributes=True)
+                        for row in result.overrides]} if include_overrides else {}),
                     source_history_documents=None if result.source_history is None else [
                         RfSourceDocumentWire.model_validate({name: _rf_source_public_json(getattr(document, name))
                             for name in RfSourceDocumentWire.model_fields})

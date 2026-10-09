@@ -204,6 +204,8 @@ def main():
     parser.add_argument('--income-year', required=True, type=int)
     parser.add_argument('--actor-id', required=True, type=UUID)
     parser.add_argument('--restore-storage', action='store_true')
+    parser.add_argument('--restore-identity', action='store_true',
+                        help='Also restore roles and Auth into a separate disposable cluster')
     parser.add_argument('--expired-pilot-id', type=UUID)
     parser.add_argument('--cancellation-id', type=UUID)
     parser.add_argument('--cancellation-status', choices=('retention_hold', 'deleted'), default='retention_hold')
@@ -229,6 +231,8 @@ def main():
     with args.archive.open('rb') as stream:
         expected, sources, feedback = verify_archive_stream(stream, query=query,
             require_source_history=True, require_feedback_originals=True)
+    if expected.overrides is None:
+        raise ValueError('Current recovery requires captured override history')
     expected_canonical = rf.serialize_rf1086_archive(expected, query=query)
     # Verify ownership before even the first application read against this URL.
     container, _ = boundary.owned_source(workdir, source_url, boundary.inspect_container)
@@ -291,6 +295,13 @@ def main():
                              'storageAttributesRestored': True,
                              'storageSourceUnchanged': True, 'storageAuthenticatedDownloadsVerified': True,
                              'storageDirectReadsDenied': True, 'storageMfaEnforced': True}
+    identity_proof = {}
+    if args.restore_identity:
+        from rf1086_identity_restore import restored_identity, verify_actor_recovery
+        with restored_identity(source_url, workdir, boundary) as identity:
+            identity_proof = {**identity.proof, **asyncio.run(verify_actor_recovery(
+                identity, identity.reader_url(reader_url), query, expected_canonical, originals, queries, read_originals))}
+        identity_proof.update(independentRecoveryResourcesRemoved=True, sourceIdentityAndRolesUnchanged=True)
     after, _ = asyncio.run(canonical(reader_url, query))
     if after != before:
         raise ValueError('Restore rehearsal changed source RF history')
@@ -307,10 +318,11 @@ def main():
     print(json.dumps({'status': 'verified_owned_rf_database_restore', 'databaseRestorePerformed': True,
         'retainedOriginalBytesRestored': True, 'objectStorageRestorePerformed': args.restore_storage,
         'sourceOriginals': sources, 'feedbackOriginals': feedback,
+        'overrideHistoryRestored': recovered.overrides is not None, 'overrides': len(recovered.overrides),
         'sourceVersions': len(recovered.source_history.year_sources),
         'submissions': len(recovered.production_submissions), 'crossOwnerReadsDenied': True,
         'sourceHistoryUnchanged': True, 'cloneRemoved': True, 'clusterMembershipsUnchanged': True,
-        **storage_proof, **cancellation_proof, **deletion_proof, **expiry_proof}))
+        **storage_proof, **cancellation_proof, **deletion_proof, **expiry_proof, **identity_proof}))
     return 0
 
 

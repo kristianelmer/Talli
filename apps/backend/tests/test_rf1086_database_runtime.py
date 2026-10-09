@@ -930,3 +930,36 @@ def test_production_archive_rollback_recutover_preserves_original_rows_and_inven
             assert connection.execute('select generation from public.company_archive_source_generations where company_id=%s and income_year=2025',(fixture['company'],)).fetchone()[0]==old_generation+1
             assert connection.execute('select distinct company_id,income_year from shareholder_register_filing.production_filing_events where submission_id=%s',(submission,)).fetchall()==[(fixture['company'],2025)]
         finally:connection.rollback()
+
+
+def test_production_archive_captures_override_values_and_excludes_other_years(fixture):
+    from talli_backend.modules.shareholder_register_filing import public as rf
+    from talli_backend.shared.kernel import CorrelationId, IncomeYear
+    session = store(fixture)
+    historical = uuid4()
+    with psycopg.connect(DATABASE_URL) as connection:
+        insert(connection, 'shareholder_register_filing.filing_previews', {
+            'id': historical, 'company_id': fixture['company'], 'income_year': 2024,
+            'filing': OBLIGATION, 'status': 'ready', 'preview': 'Historical synthetic preview',
+            'issues': Jsonb([]), 'created_by': fixture['owner'],
+        })
+    def record(preview, reason):
+        return asyncio.run(session.record_override(rf.RecordRf1086OverrideCommand(
+            preview_id=rf.PreviewId(str(preview)), field_target='review.note', old_value='Old æ', new_value='New ø',
+            reason=reason, risk_level='advisory', owner_confirmed=True, actor_id=session.actor_id,
+            correlation_id=CorrelationId('override-archive-database'))))
+    selected = record(fixture['preview'], 'Selected year explanation')
+    older = record(historical, 'Older year explanation')
+    query = rf.Rf1086ArchiveQuery(CompanyId(str(fixture['company'])), IncomeYear(2025), session.actor_id)
+    archive = asyncio.run(rf.create_rf1086_preparation_service(session).archive_source(query))
+    assert [row.id for row in archive.overrides] == [str(selected.id)]
+    row = archive.overrides[0]
+    assert (row.old_value, row.new_value, row.reason) == ('Old æ', 'New ø', 'Selected year explanation')
+    assert row.created_by == row.owner_confirmed_by == str(fixture['owner'])
+    assert row.owner_confirmed_at and row.created_at
+    other_query = rf.Rf1086ArchiveQuery(query.company_id, IncomeYear(2024), session.actor_id)
+    assert [row.id for row in asyncio.run(session.archive_source(other_query)).overrides] == [str(older.id)]
+    assert asyncio.run(session.legacy_archive_source(query)).overrides is None
+    outsider = store(fixture, actor=fixture['outsider'])
+    with pytest.raises(rf.ShareholderRegisterFilingError):
+        asyncio.run(outsider.archive_source(rf.Rf1086ArchiveQuery(query.company_id, query.income_year, outsider.actor_id)))

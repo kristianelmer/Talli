@@ -79,19 +79,57 @@ retention. A `retention_years` value, technical table, cancellation hold or dele
 marker is not itself proof of that duty. Cancellation finalization preserves
 business data; it does not implement physical deletion or backup expiry.
 
-The audit leaves explicit gaps: RF overrides are not portable-exported;
+The 30 September audit recorded these gaps: RF overrides were not portable-exported;
 authority-test export includes only evidence linked to selected-year simulations;
 unreferenced retained copies and migration quarantine need attributed inventory
 and disposition; documented-choice/access-deadline/hold-expiry purge and hosted
 backup rotation remain unimplemented or unverified. Quarantine can contain full
 original customer rows despite being technical. Do not expose unattributed rows
 through another company's export or treat successful restoration as deletion
-compliance. Independent Auth/role recovery and deleted-actor handling also remain.
+compliance. Independent Auth/role recovery and deleted-actor handling were also
+unproved. The current RF integration work below must record actual recovery
+results before changing any finding's disposition.
 
 The lifecycle UI describes a retained deletion marker and states that data remains
 stored. These findings keep retention/deletion and real-customer signoff open.
 
 ## Full-year RF evidence
+
+### October integration: override and independent identity verification
+
+Codec v4 captures RF override history through its owning capability. An empty
+list means captured and empty; older codecs mean uncaptured, never an inferred
+empty history. Require `--require-override-history` together with the existing
+source-history and original-byte flags when accepting a current complete RF
+download. The additive `/archive-source/production-v4` and
+`/archive-source/production-stream-v4` endpoints capture overrides. The original
+`/archive-source/production` and `/archive-source/production-stream` endpoints
+intentionally retain their old response shape and v1–v3 codec for older web
+deployments. A new web falls back only when the newer endpoint is absent; that
+legacy response cannot satisfy the additional override-completeness check.
+
+The owned restore runner's optional `--restore-identity` mode restores a complete
+database and cluster roles into a fresh pinned-image cluster, then starts a
+separate Auth service from captured local configuration. Its checks must prove
+owners/grants/RLS and Auth rows, live authentication, revoked membership/session
+denial, soft-deleted actor denial, unchanged historical actor identifiers, and
+read/export by an independently authenticated synthetic recovery owner. That
+owner is provisioned only in the disposable target; this is not production
+successor-authority approval. Physical Auth-user erasure remains a distinct
+foreign-key/retention question. Copied local signing configuration is not proof
+of hosted key recovery.
+
+For Colima installations without working automatic port forwarding, the local
+rehearsal accepts `TALLI_RF_RESTORE_SSH_CONFIG` and `TALLI_RF_RESTORE_SSH_HOST`.
+These must designate the existing local VM; only this invocation's loopback
+ports and SSH process are used. Omit both on normal local Docker/Linux CI.
+Source ownership checks remain mandatory. Never reuse the old private harness's
+container-restart or Colima-stop inventory against current unrelated resources.
+
+Current status and measurable exits are tracked in the
+[release integration plan](../../architecture/evidence/issues/193/rf/release-plan-20261009.md).
+Implementation or unit tests alone do not close RF-RET-001/RF-RET-005, A1–A7, the
+hosted restore gate, or the all-three launch gate.
 
 Include the RF register observations, source versions and heads, source previews,
 review bridges, approval bindings, submission bindings and managed filing heads,
@@ -130,8 +168,8 @@ pending until that evidence exists.
 
 ### Verify the canonical RF record
 
-New production archives include `rf1086Production.canonicalArchive`. This closed,
-versioned v2 record preserves all captured source versions and observations,
+Production archives include `rf1086Production.canonicalArchive`. This closed,
+versioned record preserves captured source versions and observations from v2 onward,
 original capture records, previews, review bridges and retained freshness/Governance
 evidence; it is the authoritative RF input for recovery.
 The surrounding readable projections are not a substitute for it. Run the local

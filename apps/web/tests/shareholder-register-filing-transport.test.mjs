@@ -28,13 +28,14 @@ const archiveSource = (incomeYear = 2025) => ({
   permissions: [], testEvidence: [],
 });
 const productionArchive = (incomeYear = 2025) => ({
-  ...archiveSource(incomeYear),
+  ...archiveSource(incomeYear), overrides: [],
   approvals: [],
   feedbackArtifacts: [],
   productionEvents: [],
   productionSubmissions: [],
 });
-const productionArchivePath = "/api/v1/shareholder-register-filings/archive-source/production";
+const productionArchivePath = "/api/v1/shareholder-register-filings/archive-source/production-v4";
+const oldProductionArchivePath = "/api/v1/shareholder-register-filings/archive-source/production";
 const legacyArchivePath = "/api/v1/shareholder-register-filings/archive-source";
 
 function environment(t) {
@@ -90,13 +91,13 @@ for (const mode of ["production", "legacy"]) {
     t.mock.method(globalThis, "fetch", async url => {
       const path = new URL(url).pathname;
       calls.push(path);
-      if (mode === "legacy" && path === productionArchivePath)
+      if (mode === "legacy" && [productionArchivePath, oldProductionArchivePath].includes(path))
         return new Response(null, { status: 404 });
       return Response.json(value);
     });
     assert.deepEqual(await loadRf1086ArchiveSource("owner", company, 2025), value);
     assert.deepEqual(calls, mode === "production"
-      ? [productionArchivePath] : [productionArchivePath, legacyArchivePath]);
+      ? [productionArchivePath] : [productionArchivePath, oldProductionArchivePath, legacyArchivePath]);
   });
 }
 
@@ -120,12 +121,12 @@ for (const mode of ["production", "legacy"]) {
       let calls = 0;
       t.mock.method(globalThis, "fetch", async url => {
         calls += 1;
-        if (mode === "legacy" && new URL(url).pathname === productionArchivePath)
+        if (mode === "legacy" && [productionArchivePath, oldProductionArchivePath].includes(new URL(url).pathname))
           return new Response(null, { status: 404 });
         return Response.json(value);
       });
       await assert.rejects(loadRf1086ArchiveSource("owner", company, 2025), invalidResponse);
-      assert.equal(calls, mode === "production" ? 1 : 2);
+      assert.equal(calls, mode === "production" ? 1 : 3);
     });
   }
 }
@@ -254,7 +255,7 @@ const sourceArchiveFixture = JSON.parse((await import('node:fs')).readFileSync(
 
 test('full-year archive response preserves actual backend claim, head and retained lineage DTOs', async t => {
   environment(t);
-  t.mock.method(globalThis, 'fetch', async () => Response.json(sourceArchiveFixture));
+  t.mock.method(globalThis, 'fetch', async url => new URL(url).pathname === productionArchivePath ? new Response(null, { status: 404 }) : Response.json(sourceArchiveFixture));
   assert.deepEqual(await loadRf1086ArchiveSource('owner', sourceArchiveFixture.companyId, sourceArchiveFixture.incomeYear), sourceArchiveFixture);
 });
 
@@ -271,7 +272,7 @@ for (const mutation of ['missing-lineage','missing-claims','missing-head','claim
     if (mutation === 'head-year') value.submissionHead.incomeYear = 2024;
     if (mutation === 'head-submission') value.submissionHead.submissionId = other;
     if (mutation === 'unknown-claim-property') value.sourceSubmissionClaims[0].dispatchAuthorized = true;
-    t.mock.method(globalThis, 'fetch', async () => Response.json(value));
+    t.mock.method(globalThis, 'fetch', async url => new URL(url).pathname === productionArchivePath ? new Response(null, { status: 404 }) : Response.json(value));
     await assert.rejects(loadRf1086ArchiveSource('owner', value.companyId, value.incomeYear), invalidResponse);
   });
 }

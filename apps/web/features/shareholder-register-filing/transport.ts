@@ -5,7 +5,7 @@ import {
   type Rf1086SimulationCommandWire, type Rf1086PermissionCommandWire,
   type Rf1086TestEvidenceCommandWire, type Rf1086ProductionApprovalCommandWire,
   type Rf1086RecordedResultWire, type Rf1086WorkspaceWire, type Rf1086ArchiveSourceWire,
-  type Rf1086ProductionArchiveSourceWire,
+  type Rf1086ProductionArchiveSourceWire, type Rf1086ProductionArchiveSourceV4Wire,
   type RfSourcePreviewWire, type RfSourcePreviewRequestWire, type RfYearSourceReceiptWire,
   type RfYearSourceCaptureWire, type RfRegisterObservationCaptureWire,
   type RfCurrentYearSourceWire, type RfRegisterObservationsWire,
@@ -53,6 +53,11 @@ export async function loadRf1086Workspaces(accessToken: string, companyIds: read
   return results;
 }
 
+function isMissingArchiveEndpoint(error: unknown) {
+  return error instanceof TalliApiError && error.status === 404
+    && (error.problem === undefined || error.problem.code === "RESOURCE_NOT_FOUND");
+}
+
 // Keep the response body streaming through the owner route. The backend owns
 // archive identity/byte validation; receiving headers is not archive completion.
 export async function downloadRf1086Archive(
@@ -62,22 +67,33 @@ export async function downloadRf1086Archive(
       || !Number.isInteger(incomeYear) || incomeYear < 2000 || incomeYear > 2100) {
     throw new TalliApiError(400, undefined);
   }
-  return client(accessToken).rf1086DownloadProductionArchive(companyId, incomeYear,
-    { signal: AbortSignal.any([signal, AbortSignal.timeout(300_000)]), requestId });
+  const api = client(accessToken);
+  const options = { signal: AbortSignal.any([signal, AbortSignal.timeout(300_000)]), requestId };
+  try { return await api.rf1086DownloadProductionArchiveV4(companyId, incomeYear, options); }
+  catch (error) {
+    if (!isMissingArchiveEndpoint(error)) throw error;
+    // The old stream remains readable; its codec records uncaptured overrides.
+    return api.rf1086DownloadProductionArchive(companyId, incomeYear, options);
+  }
 }
 
 export async function loadRf1086ArchiveSource(
   accessToken: string, companyId: string, incomeYear: number, requestId?: string,
-): Promise<Rf1086ArchiveSourceWire | Rf1086ProductionArchiveSourceWire> {
+): Promise<Rf1086ArchiveSourceWire | Rf1086ProductionArchiveSourceWire | Rf1086ProductionArchiveSourceV4Wire> {
   const api = client(accessToken);
-  let value: Rf1086ArchiveSourceWire | Rf1086ProductionArchiveSourceWire;
+  let value: Rf1086ArchiveSourceWire | Rf1086ProductionArchiveSourceWire | Rf1086ProductionArchiveSourceV4Wire;
   let usedLegacyFallback = false;
   try {
-    value = await api.rf1086GetProductionArchiveSource(companyId, incomeYear, { ...request(), requestId });
+    try {
+      value = await api.rf1086GetProductionArchiveSourceV4(companyId, incomeYear, { ...request(), requestId });
+    } catch (error) {
+      if (!isMissingArchiveEndpoint(error)) throw error;
+      value = await api.rf1086GetProductionArchiveSource(companyId, incomeYear, { ...request(), requestId });
+    }
   } catch (error) {
     // Only an absent expanded endpoint permits the original archive contract.
     // Its lack of production evidence is preserved, never interpreted as zero.
-    if (!(error instanceof TalliApiError) || error.status !== 404) throw error;
+    if (!isMissingArchiveEndpoint(error)) throw error;
     value = await api.rf1086GetArchiveSource(companyId, incomeYear, { ...request(), requestId });
     usedLegacyFallback = true;
   }

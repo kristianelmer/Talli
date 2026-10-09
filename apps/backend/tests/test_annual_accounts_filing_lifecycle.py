@@ -483,13 +483,18 @@ def test_support_reads_exact_accounts_fields_only_with_open_current_case(databas
 
     def identify(identity, fresh=True, expired=False):
         claims = json.dumps({'sub': identity, 'email': identity + '@example.invalid', 'role': 'authenticated',
-            'aal': 'aal2' if fresh else 'aal1', 'amr': [{'method': 'totp', 'timestamp': int(db.execute('select extract(epoch from now())').fetchone()[0])-(86400 if expired else 1)}]})
+            'aal': 'aal2' if fresh else 'aal1', 'amr': [{'method': 'totp', 'timestamp': int(db.execute('select extract(epoch from statement_timestamp())').fetchone()[0])-(86400 if expired else 1)}]})
         for key, value in [('talli.verified_actor_id', identity), ('talli.verified_actor_claims', claims)]:
             db.execute('select set_config(%s,%s,true)', (key, value))
         db.execute('set local role company_access_executor')
 
     identify(admin)
-    case = db.execute("select * from public.company_access_grant_support_access(%s,%s,%s,'customer_request',%s,now()-interval '30 seconds',now()+interval '30 minutes')", (uuid4(), COMPANY, operator, scopes)).fetchone()[0]
+    # Migration setup shares this transaction. now() remains at its beginning,
+    # while the grant deliberately validates its one-minute window at statement time.
+    expect_error(db, 'support_access_invalid_request', lambda: db.execute(
+        "select * from public.company_access_grant_support_access(%s,%s,%s,'customer_request',%s,statement_timestamp()-interval '61 seconds',statement_timestamp()+interval '30 minutes')",
+        (uuid4(), COMPANY, operator, scopes)))
+    case = db.execute("select * from public.company_access_grant_support_access(%s,%s,%s,'customer_request',%s,statement_timestamp()-interval '30 seconds',statement_timestamp()+interval '30 minutes')", (uuid4(), COMPANY, operator, scopes)).fetchone()[0]
     identify(operator)
     read = lambda: db.execute('select * from public.company_access_read_support_case(%s)', (case,)).fetchone()[3]
     expect_error(db, 'support_access_not_available', read)

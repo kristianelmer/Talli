@@ -152,7 +152,7 @@ export async function exerciseFullYearSourceJourney({ page, siteOrigin, company,
   const download = await downloading;
   assert.equal(await download.failure(), null);
   const verification = JSON.parse(execFileSync(python, ["apps/backend/scripts/verify_rf1086_archive.py", await download.path(),
-    "--stream", "--company-id", company.id, "--income-year", String(incomeYear), "--require-source-history", "--require-feedback-originals"],
+    "--stream", "--company-id", company.id, "--income-year", String(incomeYear), "--require-source-history", "--require-feedback-originals", "--require-override-history"],
   { cwd: process.cwd(), env: environment, encoding: "utf8", timeout: 30_000 }));
   for (const key of ["sourceVersions", "sourceApprovals", "sourceClaims", "submissions", "sourceOriginals"])
     assert.equal(verification[key], 1, key);
@@ -269,7 +269,7 @@ async function approveSourceCorrection({ page, sourceHref, company, incomeYear, 
 async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
   mock, python, environment, source, approved, processed, documentId, predecessorLabel, renamedOriginal }) {
   const prior = processed.productionSubmissions[0];
-  const historyBefore = await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options);
+  const historyBefore = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
   const callsBefore = mock.snapshot().filter(({ service }) => service === "skatteetaten").length;
   const { current, nextApproval, nextPreview, panel } = await approveSourceCorrection({ page, sourceHref,
     company, incomeYear, api, scope, options, storage, source, prior, documentId,
@@ -291,7 +291,7 @@ async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear,
   assert.equal(replacement.supersedesSubmissionId, prior.id);
   assert.deepEqual(after.productionSubmissions.find(row => row.id === prior.id), prior);
   assert.deepEqual(after.feedbackArtifacts.filter(row => row.submissionId === prior.id), processed.feedbackArtifacts);
-  const historyAfter = await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options);
+  const historyAfter = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
   assert.deepEqual(historyAfter.productionEvents.filter(row => row.submissionId === prior.id),
     historyBefore.productionEvents.filter(row => row.submissionId === prior.id));
   await page.reload();
@@ -311,7 +311,7 @@ async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear,
   const download = await downloading;
   assert.equal(await download.failure(), null);
   const verification = JSON.parse(execFileSync(python, ["apps/backend/scripts/verify_rf1086_archive.py", await download.path(),
-    "--stream", "--company-id", company.id, "--income-year", String(incomeYear), "--require-source-history", "--require-feedback-originals"],
+    "--stream", "--company-id", company.id, "--income-year", String(incomeYear), "--require-source-history", "--require-feedback-originals", "--require-override-history"],
   { cwd: process.cwd(), env: environment, encoding: "utf8", timeout: 30_000 }));
   for (const key of ["sourceVersions", "sourceApprovals", "sourceClaims", "submissions"])
     assert.equal(verification[key], 2, key);
@@ -357,7 +357,7 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
         timer = setTimeout(() => reject(new Error("mock_mutation_hold_deadline_exceeded")), 10_000);
       })]);
     } finally { clearTimeout(timer); }
-    const atCrash = await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options);
+    const atCrash = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
     const active = atCrash.productionSubmissions.find(row => row.approvalId === nextApproval.id);
     const lastMutation = mock.snapshot().filter(row => row.service === "skatteetaten").at(-1);
     const intent = atCrash.productionEvents.filter(row => row.submissionId === active.id && (armPreparedCrash
@@ -382,7 +382,7 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
     await page.setViewportSize({ width, height: 900 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `unknown-outcome overflow at ${width}`);
   }
-  const retained = await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options);
+  const retained = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
   if (crashBackend) {
     assert.deepEqual(mock.snapshot(), callsAtCrash, "restart and initial reads must not acquire tokens or call providers");
     for (const field of ["productionSubmissions", "productionEvents", "sourceSubmissionClaims", "submissionHead", "feedbackArtifacts"])
@@ -472,29 +472,48 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
     assert.equal(current.manifestSha256, position.manifestSha256);
   }
   assert.deepEqual(mock.snapshot(), callsAfterLoss, "retries and status reads must not acquire provider tokens or resend");
-  const after = await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options);
+  const after = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
   for (const field of ["productionSubmissions", "productionEvents", "sourceSubmissionClaims", "submissionHead", "feedbackArtifacts"])
     assert.deepEqual(after[field], retained[field], field);
   assert.equal(after.feedbackArtifacts.some(row => row.submissionId === unknown.id), false);
   if (includeUnapprovedHistory) {
     await exerciseUnapprovedPriorYearSource({ page, sourceHref, company, incomeYear, api, scope, options, storage });
-    const withDraft = await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options);
+    const withDraft = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
     for (const field of ["approvals", "sourceApprovalLineage", "productionSubmissions", "productionEvents", "sourceSubmissionClaims", "submissionHead", "feedbackArtifacts"])
       assert.deepEqual(withDraft[field], after[field], `unapproved source changed ${field}`);
     assert.deepEqual(mock.snapshot(), callsAfterLoss, "saving an unapproved source must not call a provider");
+    const override = { previewId: nextPreview.id, fieldTarget: "review.note", oldValue: "Original note",
+      newValue: "Retained explanation", reason: "Synthetic owner annotation for archive recovery",
+      riskLevel: "advisory", ownerConfirmed: true };
+    const recorded = await api.rf1086RecordOverride(override, options);
+    const archived = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
+    assert.equal(archived.overrides.length, 1);
+    const row = archived.overrides[0];
+    assert.equal(row.id, recorded.id);
+    for (const field of ["previewId", "fieldTarget", "oldValue", "newValue", "reason", "riskLevel"])
+      assert.equal(row[field], override[field], field);
+    assert.equal(row.companyId, company.id);
+    assert.equal(row.incomeYear, incomeYear);
+    assert.equal(row.ownerConfirmedBy, row.createdBy);
+    assert.ok(row.ownerConfirmedAt && row.createdAt);
+    for (const field of ["approvals", "productionSubmissions", "productionEvents", "sourceSubmissionClaims", "submissionHead", "feedbackArtifacts"])
+      assert.deepEqual(archived[field], after[field], `annotation changed ${field}`);
+    assert.deepEqual(mock.snapshot(), callsAfterLoss, "recording an annotation must not call a provider");
   }
   const downloading = page.waitForEvent("download");
   await page.getByRole("link", { name: "Last ned RF-arkiv", exact: true }).click();
   const download = await downloading;
   assert.equal(await download.failure(), null);
   const verification = JSON.parse(execFileSync(python, ["apps/backend/scripts/verify_rf1086_archive.py", await download.path(),
-    "--stream", "--company-id", company.id, "--income-year", String(incomeYear), "--require-source-history", "--require-feedback-originals"],
+    "--stream", "--company-id", company.id, "--income-year", String(incomeYear), "--require-source-history", "--require-feedback-originals", "--require-override-history"],
   { cwd: process.cwd(), env: environment, encoding: "utf8", timeout: 30_000 }));
   for (const key of ["sourceApprovals", "sourceClaims", "submissions"])
     assert.equal(verification[key], 3, key);
   assert.equal(verification.sourceVersions, includeUnapprovedHistory ? 4 : 3);
   assert.equal(verification.sourceOriginals, includeUnapprovedHistory ? 5 : 3);
   assert.equal(verification.feedbackOriginals, 4, "an unknown send must not invent feedback");
+  assert.equal(verification.overrideHistoryIncluded, true);
+  assert.equal(verification.overrides, includeUnapprovedHistory ? 1 : 0);
   assert.equal(verification.databaseRestorePerformed, false);
   return { path: await download.path(), verification };
 }
@@ -502,7 +521,7 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
 async function exerciseUnapprovedPriorYearSource({ page, sourceHref, company, incomeYear, api, scope, options, storage }) {
   const before = await api.rf1086Workspace(company.id, incomeYear, options);
   const history = archive => JSON.parse(JSON.parse(archive.canonicalArchive).snapshotText).fields.source_history.fields;
-  const historyBefore = history(await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options));
+  const historyBefore = history(await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options));
   const originalSource = (await api.rf1086ReadCurrentYearSource(scope)).currentSource;
   const priorYear = incomeYear - 1;
   const original = await uploadOriginal({ api, options, storage, company, incomeYear: priorYear, consideration: "20000" });
@@ -531,7 +550,7 @@ async function exerciseUnapprovedPriorYearSource({ page, sourceHref, company, in
   // Workspace previews are materialized by review preparation. An unreviewed
   // preview belongs only to the complete source history in the canonical archive.
   assert.deepEqual(after.previews, before.previews);
-  const historyAfter = history(await api.rf1086GetProductionArchiveSource(company.id, incomeYear, options));
+  const historyAfter = history(await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options));
   for (const field of ["year_sources", "source_previews"]) {
     assert.equal(historyAfter[field].length, historyBefore[field].length + 1, field);
     for (const record of historyBefore[field])

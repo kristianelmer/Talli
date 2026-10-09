@@ -22,6 +22,7 @@ from uuid import uuid4
 
 import httpx
 from psycopg.conninfo import conninfo_to_dict
+from rf1086_local_forwarding import forwarded_ports
 
 from talli_backend.adapters.supabase_documents import (
     DocumentsSupabaseConfiguration, SupabaseDocumentsAdapter, SupabaseDocumentObjectStorage,
@@ -255,18 +256,19 @@ def restored_storage(source, env, network, restored_url, boundary):
             if len(ports) != 1 or ports[0]['HostIp'] != '127.0.0.1':
                 raise ValueError('Restored Storage must bind only loopback')
             port = int(ports[0]['HostPort'])
-            with httpx.Client(trust_env=False, timeout=1) as client:
-                for _ in range(60):
-                    try:
-                        if client.get(f'http://127.0.0.1:{port}/status').status_code == 200:
-                            break
-                    except httpx.HTTPError:
-                        pass
-                    time.sleep(0.25)
-                else:
-                    raise RuntimeError('Restored Storage did not become ready')
-            with storage_gateway(port) as gateway:
-                yield gateway
+            with forwarded_ports((port,)):
+                with httpx.Client(trust_env=False, timeout=1) as client:
+                    for _ in range(60):
+                        try:
+                            if client.get(f'http://127.0.0.1:{port}/status').status_code == 200:
+                                break
+                        except httpx.HTTPError:
+                            pass
+                        time.sleep(0.25)
+                    else:
+                        raise RuntimeError('Restored Storage did not become ready')
+                with storage_gateway(port) as gateway:
+                    yield gateway
         finally:
             try:
                 if container:

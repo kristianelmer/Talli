@@ -81,6 +81,7 @@ async function loadArchiveRf1086(accessToken: string, companyId: string, incomeY
       production: "productionSubmissions" in workspace ? {
         companyId: workspace.companyId, incomeYear: workspace.incomeYear,
         approvals: workspace.approvals, productionSubmissions: workspace.productionSubmissions,
+        ...("overrides" in workspace ? { overrides: workspace.overrides } : {}),
         productionEvents: workspace.productionEvents, feedbackArtifacts: workspace.feedbackArtifacts,
         ...(workspace.sourceApprovalLineage === undefined ? {} : { sourceApprovalLineage: workspace.sourceApprovalLineage }),
         ...(workspace.sourceSubmissionClaims === undefined ? {} : { sourceSubmissionClaims: workspace.sourceSubmissionClaims }),
