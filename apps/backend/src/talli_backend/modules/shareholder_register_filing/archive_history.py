@@ -27,6 +27,8 @@ def _indexed(values, kind, identity):
 
 def validate(archive):
     history = archive.source_history
+    if archive.withdrawal_capture_records is not None:
+        _require(history is not None and archive.overrides is not None)
     if history is None:
         return
     _require(isinstance(history, rf.Rf1086ArchiveSourceHistory))
@@ -93,6 +95,27 @@ def validate(archive):
                      and observation.version == prior.version + 1
                      and (command.event_kind, command.effective_at) == (prior.command.event_kind, prior.command.effective_at)
                      and observation.confirmed_at > prior.confirmed_at)
+    if archive.withdrawal_capture_records is not None:
+        captures = _indexed(archive.withdrawal_capture_records, rf.Rf1086ArchiveCaptureRecord,
+                            lambda row: row.record_id)
+        withdrawals = []
+        keys = set()
+        for identity, capture in captures.items():
+            _require(type(capture.record_id) is str and type(capture.snapshot_text) is str
+                     and type(capture.idempotency_key) is str
+                     and re.fullmatch(r'[A-Za-z0-9._:-]{16,255}', capture.idempotency_key) is not None)
+            withdrawal = rf.parse_rf1086_register_observation_withdrawal(capture.snapshot_text)
+            _require(identity == withdrawal.withdrawal_id.value
+                     and capture.request_sha256 == withdrawal.request_sha256)
+            key = (withdrawal.command.actor_id, capture.idempotency_key)
+            _require(key not in keys)
+            keys.add(key)
+            withdrawals.append(withdrawal)
+        # Retained withdrawals invalidate future use, not historical evidence.
+        # The complete snapshot producer remains responsible for omitted rows.
+        rf.derive_rf1086_register_observation_lifecycle(
+            company_id=archive.company_id, income_year=archive.income_year,
+            observations=history.register_observations, withdrawals=tuple(withdrawals))
     for source in sources.values():
         for receipt in source.governance_receipts:
             if receipt.register_observation_id is not None:

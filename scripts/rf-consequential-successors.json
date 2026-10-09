@@ -78,5 +78,9 @@
   {
     "migration": "20260930160335_rf1086_retained_archive_generations.sql",
     "presenceQuery": "select exists(select 1 from pg_trigger where tgrelid=to_regclass('shareholder_register_filing.year_source_versions') and tgname='company_archive_track_retained_rf')"
+  },
+  {
+    "migration": "20261009213032_rf1086_observation_withdrawal_foundation.sql",
+    "presenceQuery": "select to_regclass('shareholder_register_filing.register_observation_withdrawals') is not null"
   }
 ]

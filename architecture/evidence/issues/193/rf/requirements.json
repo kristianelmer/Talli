@@ -198,5 +198,8 @@
   "capitalRestrictionRuleMapping20261009": "capital-restriction-rule-mapping-20261009.json",
   "acceptanceReconciliation20261009": "acceptance-reconciliation-20261009.json",
   "observationWithdrawalFoundation20261009": "observation-withdrawal-foundation-20261009.json",
+  "withdrawalArchiveFoundation20261009": "withdrawal-archive-foundation-20261009.json",
+  "observationWithdrawalDatabaseFoundation20261009": "observation-withdrawal-database-foundation-20261009.json",
+  "withdrawalOwnerDependencyProposal20261009": "withdrawal-owner-dependency-proposal-20261009.md",
   "technicalFirstSequencing20261009": "../../../../../docs/adr/0013-enforce-the-architecture-and-migrate-serially.md#2026-10-09-amendment-technical-readiness-before-genuine-company-validation"
 }

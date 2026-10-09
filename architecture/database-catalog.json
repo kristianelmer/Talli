@@ -921,6 +921,12 @@
       "compatibilityResources": []
     },
     {
+      "name": "shareholder_register_filing.register_observation_withdrawals",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
       "name": "shareholder_register_filing.source_previews",
       "kind": "capability-business",
       "owner": "backend:shareholder_register_filing",

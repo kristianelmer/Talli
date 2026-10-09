@@ -12267,6 +12267,9 @@ def create_app(
             workflow = await shareholder_register_filing_workflow(credentials)
             query = Rf1086ArchiveQuery(CompanyId(str(company_id)), IncomeYear(income_year), workflow.actor_id)
             archive = await workflow.archive_source(query)
+            # Frozen stream routes predate withdrawal coverage. An additive
+            # future v5 producer must use its own route and complete contract.
+            archive = replace(archive, withdrawal_capture_records=None)
             if request.url.path.endswith('/production-stream-v4'):
                 if archive.overrides is None:
                     raise ShareholderRegisterFilingError.unavailable()
@@ -12312,7 +12315,8 @@ def create_app(
                 raise ShareholderRegisterFilingError.unavailable()
             # ADR0012: do not add fields or a new codec to the existing strict
             # client contract. This projection does not mutate the domain record.
-            projection = result if include_overrides else replace(result, overrides=None)
+            projection = replace(result, withdrawal_capture_records=None,
+                                 overrides=result.overrides if include_overrides else None)
             try:
                 canonical_archive = serialize_rf1086_archive(projection, query=query)
             except Rf1086ArchiveError:

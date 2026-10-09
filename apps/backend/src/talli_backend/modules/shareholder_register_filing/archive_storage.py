@@ -13,7 +13,8 @@ from . import public as rf
 from .preparation import _validate_archive_source
 from .year_source_storage import _unique, _RECORDS as _SOURCE_RECORDS, _ENUMS
 
-_CODEC = "rf1086-production-archive-v4"
+_CODEC = "rf1086-production-archive-v5"
+_OVERRIDE_CODEC = "rf1086-production-archive-v4"
 _FEEDBACK_CODEC = "rf1086-production-archive-v3"
 _HISTORY_CODEC = "rf1086-production-archive-v2"
 _ORIGINAL_FIELDS = frozenset({"original_id", "original_metadata_sha256", "original_source_income_year", "original_retained_at"})
@@ -58,6 +59,8 @@ def _encode(value):
                     and value.source_history is None)
             and not (type(value) is rf.Rf1086ArchiveSnapshot and field.name == 'overrides'
                      and value.overrides is None)
+            and not (type(value) is rf.Rf1086ArchiveSnapshot and field.name == 'withdrawal_capture_records'
+                     and value.withdrawal_capture_records is None)
             and not (type(value) is rf.Rf1086ArchiveFeedbackArtifactRecord and field.name in _ORIGINAL_FIELDS
                      and value.original_id is None)}}
     raise ValueError()
@@ -115,10 +118,13 @@ def serialize(snapshot, *, query):
     try:
         _validate(query, snapshot)
         text = _text(_encode(snapshot))
-        codec = (_CODEC if snapshot.overrides is not None
+        codec = (_CODEC if snapshot.withdrawal_capture_records is not None
+                 else _OVERRIDE_CODEC if snapshot.overrides is not None
                  else _FEEDBACK_CODEC if any(row.original_id is not None for row in snapshot.feedback_artifacts)
                  else _LEGACY_CODEC if snapshot.source_history is None else _HISTORY_CODEC)
-        if codec in (_CODEC, _FEEDBACK_CODEC) and snapshot.source_history is None:
+        if codec in (_CODEC, _OVERRIDE_CODEC, _FEEDBACK_CODEC) and snapshot.source_history is None:
+            raise ValueError()
+        if codec == _CODEC and snapshot.overrides is None:
             raise ValueError()
         result = _text({"codec": codec, "snapshotText": text, "sha256": sha256(text.encode("utf-8")).hexdigest()})
         if len(result.encode("utf-8")) > _MAX_BYTES:
@@ -135,7 +141,7 @@ def parse(value, *, query):
             raise ValueError()
         envelope = json.loads(value, object_pairs_hook=_unique)
         if (type(envelope) is not dict or set(envelope) != {"codec", "snapshotText", "sha256"}
-                or envelope["codec"] not in (_CODEC, _FEEDBACK_CODEC, _HISTORY_CODEC, _LEGACY_CODEC) or type(envelope["snapshotText"]) is not str
+                or envelope["codec"] not in (_CODEC, _OVERRIDE_CODEC, _FEEDBACK_CODEC, _HISTORY_CODEC, _LEGACY_CODEC) or type(envelope["snapshotText"]) is not str
                 or sha256(envelope["snapshotText"].encode("utf-8")).hexdigest() != envelope["sha256"]):
             raise ValueError()
         encoded = json.loads(envelope["snapshotText"], object_pairs_hook=_unique)
@@ -147,14 +153,21 @@ def parse(value, *, query):
             encoded['fields']['source_history'] = None
         elif encoded['fields'].get('source_history') is None:
             raise ValueError()
-        if envelope['codec'] == _CODEC:
+        if envelope['codec'] in (_CODEC, _OVERRIDE_CODEC):
             if type(encoded['fields'].get('overrides')) is not list:
                 raise ValueError()
         else:
             if 'overrides' in encoded['fields']:
                 raise ValueError()
             encoded['fields']['overrides'] = None
-        snapshot = _decode(encoded, legacy=envelope["codec"] not in (_CODEC, _FEEDBACK_CODEC))
+        if envelope['codec'] == _CODEC:
+            if type(encoded['fields'].get('withdrawal_capture_records')) is not list:
+                raise ValueError()
+        else:
+            if 'withdrawal_capture_records' in encoded['fields']:
+                raise ValueError()
+            encoded['fields']['withdrawal_capture_records'] = None
+        snapshot = _decode(encoded, legacy=envelope["codec"] not in (_CODEC, _OVERRIDE_CODEC, _FEEDBACK_CODEC))
         if envelope["codec"] == _FEEDBACK_CODEC and not any(row.original_id is not None for row in snapshot.feedback_artifacts):
             raise ValueError()
         return _validate(query, snapshot)

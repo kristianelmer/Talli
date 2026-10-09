@@ -24,11 +24,16 @@ _REQUIRED_FAMILIES = frozenset((
 ))
 _SCHEMA = 'rf1086-source-v1'
 _FULL_YEAR_SCHEMA = 'rf1086-source-v2'
+_WITHDRAWAL_SCHEMA = 'rf1086-source-v3'
 _FULL_YEAR_FAMILIES = frozenset(('year_source_versions','year_source_heads','register_observations',
     'source_previews','source_review_bridges','source_approval_bindings','source_submission_bindings','submission_heads'))
 
 
 def _schema(snapshot):
+    if (snapshot.full_year_archive is not None and snapshot.full_year_archive.withdrawal_capture_records is not None
+            or isinstance(snapshot.full_year_family_counts, Mapping)
+            and 'register_observation_withdrawals' in snapshot.full_year_family_counts):
+        return _WITHDRAWAL_SCHEMA
     return _SCHEMA if snapshot.full_year_archive is None and snapshot.full_year_family_counts is None else _FULL_YEAR_SCHEMA
 
 
@@ -51,6 +56,9 @@ def _source_digest(snapshot: Rf1086SourceSnapshot) -> str:
         # Preserve historical V1 evidence byte-for-byte.
         payload.pop('full_year_archive')
         payload.pop('full_year_family_counts')
+    elif _schema(snapshot) == _FULL_YEAR_SCHEMA and isinstance(payload['full_year_archive'], dict):
+        # Adding a dataclass field must not rewrite retained v2 commitments.
+        payload['full_year_archive'].pop('withdrawal_capture_records', None)
     payload['schema'] = _schema(snapshot)
     return hashlib.sha256(json.dumps(payload,sort_keys=True,separators=(',',':'),ensure_ascii=True,allow_nan=False).encode('utf-8')).hexdigest()
 
@@ -248,7 +256,17 @@ def _full_year_coverage(query, snapshot):
             'register_observations':len(h.register_observations),'source_previews':len(h.source_previews),
             'source_review_bridges':len(h.review_bridges),'source_approval_bindings':len(archive.source_approval_lineage),
             'source_submission_bindings':len(archive.source_submission_claims),'submission_heads':int(archive.submission_head is not None)}
-        if (not isinstance(counts, Mapping) or set(counts) != _FULL_YEAR_FAMILIES
+        families = _FULL_YEAR_FAMILIES
+        if _schema(snapshot) == _WITHDRAWAL_SCHEMA:
+            if archive.withdrawal_capture_records is None:
+                return ['register_withdrawal_history_missing']
+            overrides = {row.id: row for row in snapshot.workspace.overrides}
+            if (len(overrides) != len(snapshot.workspace.overrides)
+                    or overrides != {row.id: row for row in archive.overrides}):
+                return ['full_year_history_inconsistent']
+            families = families | {'register_observation_withdrawals'}
+            actual['register_observation_withdrawals'] = len(archive.withdrawal_capture_records)
+        if (not isinstance(counts, Mapping) or set(counts) != families
                 or any(type(value) is not int or value < 0 for value in counts.values()) or counts != actual):
             return ['full_year_enumeration_incomplete']
         return []

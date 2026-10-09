@@ -1204,6 +1204,9 @@ class Rf1086ArchiveSnapshot(_ImmutableRf1086Value):
     source_history: Rf1086ArchiveSourceHistory | None = None
     # None means an older archive did not capture override history, not empty.
     overrides: tuple[Rf1086OverrideRecord, ...] | None = None
+    # V5 retains canonical withdrawal receipts and their original recovery keys.
+    # None is unknown coverage; () is an explicitly captured empty collection.
+    withdrawal_capture_records: tuple[Rf1086ArchiveCaptureRecord, ...] | None = None
 
 
 class Rf1086ArchiveError(ValueError):

@@ -1032,3 +1032,94 @@ migrations, HTTP/web behavior, archive coverage or command activation; those
 require the separately owned admission, Governance and archive work in the plan.
 
 Pure regression coverage: `apps/backend/tests/test_rf1086_register_observation_withdrawal.py`.
+
+### Staged withdrawal storage: no runtime command grant
+
+`supabase/migrations/20261009213032_rf1086_observation_withdrawal_foundation.sql`
+adds RF-owned `shareholder_register_filing.register_observation_withdrawals`.
+FORCE RLS permits accepted-member history and verified-owner insertion through
+the store owner. Runtime roles receive no direct mutation rights. Each immutable
+row binds exact observation ID/company/year/version/hash, original actor/key,
+exact reason, server UUID/time and both canonical commitments. Unique target and
+actor/key constraints prevent duplicate terminal evidence; a composite foreign
+key prevents changing or deleting the retained target.
+
+The private SQL append contract accepts only typed scope/target/reason/key.
+It accepts no receipt, caller hash, actor, ID, time or currentness flag. The
+database constructs fixed-shape canonical v1 JSON and both digests itself using
+UTF-8 SHA-256; table constraints independently rebuild the receipt from its row.
+Text escaping uses PostgreSQL `to_json(text)`, not generic `jsonb::text` output.
+Typed SQL arguments already reflect PostgreSQL input normalization: lexical UUID
+spelling and integer coercion must remain strict in a future HTTP DTO. PostgreSQL
+UTF-8/text excludes invalid UTF-8/NUL. Reason whitespace validation uses the
+Python whitespace set, preserves the original text and caps 1000 characters.
+SQL/Python canonical parity remains a required real-database test, not a claim
+established by static inspection.
+
+Append rechecks current accepted owner around the company lock, then acquires
+the established RF company/year lock. Exact actor/key replay precedes fresh
+head validation and returns original bytes. A fresh withdrawal requires the
+exact unsuperseded, unwithdrawn target and cannot predate capture. Commercial or
+current company-year admission is not required to withdraw historical evidence.
+
+Unconditional backstops protect only the existing correction append and public
+exact-current-observation assertion. They retain old function OIDs/signatures/
+ACLs and use an RF-private active-observation predicate. Historical reads and
+capture-receipt recovery retain their existing behavior. Rollback refuses
+retained withdrawal rows and otherwise leaves inert storage and guards intact;
+it never deletes evidence or removes invalidation checks. The successor registry
+reapplies this layer after historical routines are replayed.
+
+The narrow active-observation predicate requires READ COMMITTED. Old correction
+entry points cannot use a pre-withdrawal REPEATABLE READ snapshot after waiting
+for the company lock; the lock alone would not refresh that snapshot. Historical
+reads retain their existing transaction isolation choices.
+
+This staged append has **no execute grant** for PUBLIC, browser, service, RF or
+Governance runtime executors. There is no adapter, public persistence-port method,
+HTTP route or activation. The database tests grant only a unique disposable
+NOLOGIN/NOBYPASSRLS fixture role and remove that role and its exact fixture rows.
+Source/preview/approval/claim/new-intent SQL guards, Governance final SQL admission
+and repair, archive completion coverage and truthful old/new list behavior remain
+incomplete. Those dependencies must be resolved before runtime withdrawal is
+available. The existing adapter cannot yet claim withdrawal-aware current reads.
+
+Database coverage: `apps/backend/tests/test_rf1086_register_observation_withdrawal_database.py`
+in the mandatory Authority lane. Local collection/static checks do not establish
+a database, RLS, concurrency or rollback pass.
+
+<!-- architecture-inventory
+{"ownedTables":["shareholder_register_filing.register_observation_withdrawals"]}
+-->
+
+### Withdrawal archive format and source evidence
+
+`Rf1086ArchiveSnapshot.withdrawal_capture_records` retains each canonical withdrawal
+receipt with its exact original actor-scoped recovery key. `None` means unknown
+coverage; an empty tuple means captured-empty. Codec
+`rf1086-production-archive-v5` requires source, override and withdrawal histories.
+The owner validates receipt bytes and digests, capture identity/key uniqueness,
+target binding and the complete supplied observation lineage. Withdrawal leaves
+historical source, approval, journal and original-document facts intact; it cannot
+reactivate a superseded ancestor. Integrity validation cannot prove that a producer
+enumerated every stored row or establish current authorization.
+
+Archive codecs v1–v4 omit the new field, reject injected withdrawal coverage and
+parse it as unknown. Their bytes remain frozen. Existing RF JSON and stream HTTP
+routes deliberately project their original versions; no v5 HTTP producer or
+database reader is exposed by this foundation. Those old projections cannot
+satisfy a future complete-withdrawal export requirement. The archive-owner
+completion fence and separate old-list fencing remain activation dependencies.
+
+`rf1086-source-v3` binds captured withdrawal records and an independently supplied
+`register_observation_withdrawals` family count. Missing coverage, count mismatch
+or disagreement between archive/workspace override facts prevents complete
+history. Existing source-evidence v1/v2 digests and validation remain unchanged.
+The current adapter still returns unknown withdrawal coverage; a future complete
+producer must read all records and counts within its authorized database snapshot.
+
+The offline verifier accepts v5 JSON/NDJSON and offers
+`--require-register-withdrawal-history`. It reports included/count separately;
+successful transfer or codec verification is neither a database restore nor a
+Company Archive completion receipt. Regression coverage:
+`apps/backend/tests/test_rf1086_withdrawal_archive.py`.

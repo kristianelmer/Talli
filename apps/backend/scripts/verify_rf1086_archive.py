@@ -30,6 +30,7 @@ def main() -> int:
     parser.add_argument('--require-source-originals', action='store_true', help='Require all captured source document bytes in a downloaded bundle.')
     parser.add_argument('--require-source-history', action='store_true', help='Require the complete versioned source and observation history.')
     parser.add_argument('--require-override-history', action='store_true', help='Reject older archives without captured override history.')
+    parser.add_argument('--require-register-withdrawal-history', action='store_true', help='Reject older archives without captured register withdrawal history.')
     parser.add_argument('--require-feedback-originals', action='store_true', help='Require exact original bytes for every feedback artifact, including older receipts.')
     parser.add_argument('--stream', action='store_true', help='Verify a complete NDJSON download one retained original at a time.')
     args = parser.parse_args()
@@ -56,7 +57,7 @@ def main() -> int:
             document = json.loads(text, object_pairs_hook=unique)
             if type(document) is not dict:
                 raise ValueError()
-            if document.get('codec') in ('rf1086-production-archive-v1', 'rf1086-production-archive-v2', 'rf1086-production-archive-v3', 'rf1086-production-archive-v4'):
+            if document.get('codec') in ('rf1086-production-archive-v1', 'rf1086-production-archive-v2', 'rf1086-production-archive-v3', 'rf1086-production-archive-v4', 'rf1086-production-archive-v5'):
                 canonical = text
                 section = {}
             else:
@@ -77,6 +78,8 @@ def main() -> int:
                 feedback_original_count = len(originals)
         if args.require_override_history and archive.overrides is None:
             raise ValueError()
+        if args.require_register_withdrawal_history and archive.withdrawal_capture_records is None:
+            raise ValueError()
     except (OSError, ValueError, TypeError, KeyError, RecursionError, DocumentsError):
         print(json.dumps({'status': 'invalid', 'code': 'rf1086_archive_verification_failed'}))
         return 1
@@ -87,6 +90,8 @@ def main() -> int:
         'sourceHistoryIncluded': archive.source_history is not None,
         'overrideHistoryIncluded': archive.overrides is not None,
         'overrides': None if archive.overrides is None else len(archive.overrides),
+        'registerWithdrawalHistoryIncluded': archive.withdrawal_capture_records is not None,
+        'registerWithdrawals': None if archive.withdrawal_capture_records is None else len(archive.withdrawal_capture_records),
         'sourceVersions': None if archive.source_history is None else len(archive.source_history.year_sources),
         'registerObservations': None if archive.source_history is None else len(archive.source_history.register_observations),
         'sourceClaims': len(archive.source_submission_claims),
