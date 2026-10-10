@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import pg from "pg";
+import { assertLedgerReceiptSuccessor, ledgerReceiptReplay } from "./support/ledger_receipt_replay.mjs";
 
 const expand = readFileSync(
   new URL(
@@ -18,6 +19,13 @@ const coordinators = readFileSync(
   ),
   "utf8",
 );
+const receiptSuccessor = readFileSync(
+  new URL("../supabase/migrations/20260904223000_ledger_supported_event_reversals.sql", import.meta.url), "utf8",
+);
+const receiptReplays = new Set([
+  "20260827103000_ledger_corrections.sql",
+  "20260827104000_ledger_company_year_close.sql",
+]);
 const recutoverMigrations = [
   "20260827102000_ledger_supported_patterns.sql",
   "20260827103000_ledger_corrections.sql",
@@ -31,9 +39,12 @@ const recutoverMigrations = [
   "20260827109200_ledger_reconstruction_economic_facts.sql",
   "20260827109300_ledger_close_output_economic_facts.sql",
   "20260827109400_ledger_reconstruction_source_evidence.sql",
-].map((name) =>
-  readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), "utf8"),
-);
+].map((name) => {
+  const source = readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), "utf8");
+  const preservesReceipt = receiptReplays.has(name);
+  // Precompute both exact outputs before connecting or mutating the rehearsal.
+  return { sql: preservesReceipt ? ledgerReceiptReplay(name, source, receiptSuccessor) : source, preservesReceipt };
+});
 const contract = readFileSync(
   new URL(
     "../supabase/contract-migrations/20260827101000_ledger_capability_contract.sql",
@@ -282,6 +293,8 @@ test(
       assert.equal(identity.rows[0].current_user, identity.rows[0].session_user);
       assert.equal(identity.rows[0].is_superuser, false, "rehearsal must not use a superuser");
 
+      // This current-topology rehearsal cannot silently select a predecessor.
+      await assertLedgerReceiptSuccessor(database);
       const baseline = await authoritySnapshot(database);
       await assertAuthorityClosed(database, baseline, "initial expand");
 
@@ -338,7 +351,8 @@ test(
       await database.query(coordinators);
       await assertAuthorityClosed(database, baseline, "recutover overlap");
       for (const migration of recutoverMigrations) {
-        await database.query(migration);
+        await database.query(migration.sql);
+        if (migration.preservesReceipt) await assertLedgerReceiptSuccessor(database);
       }
       await assertAuthorityClosed(database, baseline, "recutover additive migrations");
       await database.query(contract);
@@ -351,6 +365,7 @@ test(
         true,
       );
       await assertAuthorityClosed(database, baseline, "recutover");
+      await assertLedgerReceiptSuccessor(database);
       const archiveTrigger = await database.query(`
         select pg_catalog.count(*)::integer as trigger_count,
           pg_catalog.bool_and(trigger.tgenabled in ('O', 'A')) as enabled

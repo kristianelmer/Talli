@@ -272,5 +272,6 @@
   "historicalCi38026082849": "ci-38026082849.json",
   "rfRetainedArchiveQuery20261010": "rf-retained-archive-query-20261010.json",
   "rfRetainedStreamExport20261010": "rf-retained-stream-export-20261010.json",
-  "historicalCi38027757820": "ci-38027757820.json"
+  "historicalCi38027757820": "ci-38027757820.json",
+  "ledgerReversalReceiptFixture20261010": "ledger-reversal-receipt-fixture-20261010.json"
 }
