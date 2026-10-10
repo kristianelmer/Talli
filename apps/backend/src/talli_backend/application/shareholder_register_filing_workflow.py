@@ -15,7 +15,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     VerifyRf1086SourceEvidenceQuery, create_rf1086_preparation_service,
     execute_journaled_rf1086_production, rf1086_current_manifest_hash, rf1086_production_document_order,
     reconcile_journaled_rf1086_production,
-    prepare_rf1086_source_reconciliation,
+    prepare_rf1086_retained_source_reconciliation,
     Rf1086ProductionError, Rf1086ReconciliationInput, Rf1086SendResult, SendApprovedRf1086Command,
 )
 from talli_backend.shared.kernel import ActorId, CompanyId, CorrelationId, IncomeYear
@@ -140,7 +140,7 @@ async def reconcile_rf1086_production(session: AuthenticatedShareholderRegisterF
         dialog_id = await session.read_claimed_dialog_id(submission.id, lease_id)
         if source_filing:
             query = Rf1086ArchiveQuery(CompanyId(submission.company_id), IncomeYear(submission.income_year), session.actor_id)
-            recovery = prepare_rf1086_source_reconciliation(await session.archive_source(query),
+            recovery = prepare_rf1086_retained_source_reconciliation(await session.archive_source(query),
                 query=query, submission=submission, forsendelse_id=reference, dialog_id=dialog_id)
             if recovery.organization_number != company.org_number:
                 raise Rf1086ProductionError("basis_unavailable")

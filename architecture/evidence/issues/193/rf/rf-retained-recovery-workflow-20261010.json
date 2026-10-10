@@ -1,0 +1,377 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "RF_RETAINED_FEEDBACK_RECOVERY_INTEGRATION",
+  "recordedAtUtc": "2026-10-10T05:16:45.992101+00:00",
+  "baseRevision": "00941ba47128ee65d25bdacdcba86b83f594c2b5",
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_filing_workflow.py",
+      "sha256": "12ef9e2024ae040ea649a2f03ae42d88e3fa6a9dbea5d45b7107107e4318c459",
+      "bytes": 15578
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "68270e2f092c0bf02842dbe41e4c7f5814711195352cb5dbb0e0bbe5590d112c",
+      "bytes": 109664
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "a6ad91fe25dee57682687600b817d28ba4b479851b0a974babdbc4ef44ff83e9",
+      "bytes": 28440
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_retained_recovery_workflow.py",
+      "sha256": "d51f89161114499c6d75831e4ef0fba28a80af4fd0eccfdb818fd20d9143193b",
+      "bytes": 10729
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_retained_recovery_workflow_adversarial.py",
+      "sha256": "2f8ae30833c23096d4a2cb6c73008630f1b14802b8646b53c2155fc28c5ef71d",
+      "bytes": 16399
+    }
+  ],
+  "implementation": [
+    "Historical full-year feedback recovery calls the existing retained preparation API through exactly one import and one call-target substitution.",
+    "Existing public APIs, tests/harnesses, adapters, SQL, codecs, HTTP transport and fresh writer/claim/send paths remain byte-identical.",
+    "New author and independent adversarial tests plus owner documentation and test inventory."
+  ],
+  "checks": [
+    {
+      "name": "Final focused regression",
+      "exitCode": 0,
+      "result": {
+        "passed": 503,
+        "seconds": 28.61,
+        "newAuthor": 24,
+        "newIndependent": 34,
+        "selectedExisting": 445
+      }
+    },
+    {
+      "name": "Original recovery/correction oracle",
+      "exitCode": 0,
+      "result": {
+        "vectors": 189,
+        "observedCalls": 306,
+        "comparison": "exact"
+      }
+    },
+    {
+      "name": "Original claim/dispatch oracle",
+      "exitCode": 0,
+      "result": {
+        "vectors": 119,
+        "comparison": "exact"
+      }
+    },
+    {
+      "name": "archive oracle",
+      "exitCode": 0,
+      "result": {
+        "oldExact": 59,
+        "retainedPositive": 38,
+        "retainedRejection": 21
+      }
+    },
+    {
+      "name": "approval oracle",
+      "exitCode": 0,
+      "result": {
+        "vectors": 181,
+        "outputs": 113,
+        "expectedRejections": 68
+      }
+    },
+    {
+      "name": "downstream oracle",
+      "exitCode": 0,
+      "result": {
+        "downstreamVectors": 7,
+        "annualVectors": 217,
+        "exactProofBytes": 147,
+        "expectedRejections": 70
+      }
+    },
+    {
+      "name": "Exact substitution and preservation fences",
+      "exitCode": 0,
+      "result": {
+        "exactNameSubstitutions": 2,
+        "publicDefinitionsBytePreserved": 292,
+        "trackedFilesBytePreserved": 867
+      }
+    },
+    {
+      "name": "Architecture",
+      "exitCode": 0,
+      "result": {
+        "status": "PASS",
+        "writeEvidence": false
+      }
+    },
+    {
+      "name": "Whitespace",
+      "exitCode": 0,
+      "result": "No output, observed directly; no separate log captured."
+    }
+  ],
+  "regression": {
+    "passed": 503,
+    "newAuthor": 24,
+    "newIndependent": 34,
+    "selectedExisting": 445,
+    "seconds": 28.61
+  },
+  "beforeChange": {
+    "genuineOldValidatorFailures": 6,
+    "code": "basis_unavailable",
+    "credentialAcquisition": false,
+    "excludedFixtureAndAssertionFailures": true
+  },
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "532d77fe69ce2d06cfeec002ba640a369a8c52a3f395df62f355678095d6826d"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "df97a350feba539442afbd7c9b504b6bc8613311b8c24378d59d9dd912cda3a3"
+    },
+    "Root": {
+      "unresolved": 0,
+      "reportSha256": "2e4650876d418ea241c7777b6c5641c935fe4c24856b63f7cd3e1a4136d71730"
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "rf-retained-recovery-workflow-final-freeze.json",
+      "sha256": "416bbf2d463ac78751e4e5896681bcbbcb9695b134ec2943b778a5245d659690",
+      "bytes": 3411
+    },
+    {
+      "file": "rf-retained-recovery-workflow-root-decision.json",
+      "sha256": "596a483c98eb5cd42c6ca66cdeb3084bbb916075117bc8428dd9b96990ac6669",
+      "bytes": 4274
+    },
+    {
+      "file": "rf-retained-recovery-export-plan-v1.json",
+      "sha256": "8662e1e3de6504125d1af5564dc7b3e20d9366727ffcd747ccbea21a539df47f",
+      "bytes": 16186
+    },
+    {
+      "file": "rf-retained-recovery-export-plan-baseline-amendment-v1.json",
+      "sha256": "ff0eb16bcc0b711e148888a43b554eb9fb75e6bc7aea4b17ffaac5def6dd0965",
+      "bytes": 1257
+    },
+    {
+      "file": "rf-retained-recovery-export-plan-spec-review-v1.json",
+      "sha256": "8924cc0d8a0d497767ee5a1347d7471df296f45fa180046fd47df718c148e8bf",
+      "bytes": 17628
+    },
+    {
+      "file": "rf-retained-recovery-stage1-fixture-assessment-v1.json",
+      "sha256": "fcf7cfcb23d70f0c69964bfcc2fa8884f8e5ca1df1fe0a47fc690d0887feaf93",
+      "bytes": 7681
+    },
+    {
+      "file": "rf-retained-recovery-workflow-final-checks.json",
+      "sha256": "34c02c6c5ed08cfe0fdaccc7fcde7f615b8b1e5e949e1bea280352b0c5cde1bd",
+      "bytes": 18087
+    },
+    {
+      "file": "rf-retained-recovery-workflow-final-regression.log",
+      "sha256": "db7d0756886728799b75d0df4e7815e9eee2cff8d8d9bf077adcb2fa2445779f",
+      "bytes": 581
+    },
+    {
+      "file": "freeze-rf-legacy-recovery-correction-pre-retained.py",
+      "sha256": "7df223fcdd2a1ac4a535faaa06f101327881930e1f9f977a77335284acf969c2",
+      "bytes": 13824
+    },
+    {
+      "file": "rf-retained-recovery-workflow-legacy189.log",
+      "sha256": "a0909dc2a91e7b0f965f93d55c48b7de4f5b7f599f557456c35d2659a548c713",
+      "bytes": 53
+    },
+    {
+      "file": "freeze-rf-legacy-claim-dispatch-pre-v3.py",
+      "sha256": "f157e0bf54b1d025c3c973b38b02d247d023ba67cbd80bf4d83c0717aa66e104",
+      "bytes": 14120
+    },
+    {
+      "file": "rf-retained-recovery-workflow-legacy119.log",
+      "sha256": "5466280f6bd54e13a8d704e10c2fcd8d72660a1905b5dc62e8b069c75069d91e",
+      "bytes": 39
+    },
+    {
+      "file": "check-rf-retained-recovery-workflow-archive-oracle.py",
+      "sha256": "02957d201b02eb1ca19ffc9f43e39a64f7ad0226a2baaa0c130fb41788c64289",
+      "bytes": 1392
+    },
+    {
+      "file": "rf-retained-recovery-workflow-archive-oracle.log",
+      "sha256": "c94a8a59e337d8c358f1726045b1e495f02922b64338b7f6c86303ac5a005dea",
+      "bytes": 66
+    },
+    {
+      "file": "rf-retained-recovery-workflow-archive-oracle.json",
+      "sha256": "7c1e1dd65228f9ffb4785c0a05d08345654ba818358029a504c2a9199918bf28",
+      "bytes": 74
+    },
+    {
+      "file": "check-rf-retained-recovery-workflow-approval-oracle.py",
+      "sha256": "6a30bdbb100627feab1a8070f8b12333e1d765da06ef1d2f6b6b18ff6e1c990f",
+      "bytes": 12808
+    },
+    {
+      "file": "rf-retained-recovery-workflow-approval-oracle.log",
+      "sha256": "ec603dad5363b2bd09bece4debcb84b8f10ec6a445dc0efad482bbb046fc984f",
+      "bytes": 3039
+    },
+    {
+      "file": "rf-retained-recovery-workflow-approval-oracle.json",
+      "sha256": "ec603dad5363b2bd09bece4debcb84b8f10ec6a445dc0efad482bbb046fc984f",
+      "bytes": 3039
+    },
+    {
+      "file": "check-rf-retained-recovery-workflow-downstream-oracle.py",
+      "sha256": "c9930de79784067d4b3097ccf8d2e39284012b40693d7edcd3032a72191ebc80",
+      "bytes": 4972
+    },
+    {
+      "file": "rf-retained-recovery-workflow-downstream-oracle.log",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "file": "rf-retained-recovery-workflow-downstream-oracle.json",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "file": "check-rf-retained-recovery-workflow-compatibility.py",
+      "sha256": "d35d2248935da3bd240ca2d8a656a2dfab9b90bcb297c70f901426654286ba9d",
+      "bytes": 3237
+    },
+    {
+      "file": "rf-retained-recovery-workflow-compatibility.log",
+      "sha256": "8ae2519cc1bf56bcd145e3fc60de87159912b5a319deedafc5cc3397724d301a",
+      "bytes": 555
+    },
+    {
+      "file": "rf-retained-recovery-workflow-compatibility.json",
+      "sha256": "fa261f241d876e5c7886361685b45e4573b9cff691b650aa29d62744f31a3db0",
+      "bytes": 174659
+    },
+    {
+      "file": "rf-retained-recovery-workflow-architecture.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "file": "rf-retained-recovery-workflow-before.log",
+      "sha256": "8c5fdb76b046e77ec19fa677bfc57b9484a83d837920ed923df24edf1110aee6",
+      "bytes": 10103
+    },
+    {
+      "file": "check-rf-retained-recovery-workflow-before.py",
+      "sha256": "821a222bbdbf5214f2ce113cd8631fc41fc8f2ee8c74569d5d67740bf401ac49",
+      "bytes": 2308
+    },
+    {
+      "file": "rf-retained-recovery-workflow-before-probe.log",
+      "sha256": "90f9457ee254fd2474a969b11b01448d3ea043930a830554f18ce5ff84b4cdb8",
+      "bytes": 102
+    },
+    {
+      "file": "rf-retained-recovery-workflow-before.json",
+      "sha256": "c6f84a8a7f3d4706f6ce476296107c10dfc8a7b77af5330fffcaf4aa23d0421e",
+      "bytes": 2132
+    },
+    {
+      "file": "rf-retained-recovery-workflow-fixture-error.log",
+      "sha256": "174a51d631003d9ce3310e21dd9bd807d6e0b6da49a72470d74c62fd49ed5667",
+      "bytes": 19463
+    },
+    {
+      "file": "rf-retained-recovery-workflow-author-first.log",
+      "sha256": "a8c81e823a22f30659a96597dad9cc618accb45fe6064dec0c6244d68d2a066c",
+      "bytes": 12433
+    },
+    {
+      "file": "rf-retained-recovery-workflow-author.log",
+      "sha256": "0b3cf0e5b01f23df5c5cfdaaf85022bbc7b38846208e7b453d13dc736dbb0e50",
+      "bytes": 99
+    },
+    {
+      "file": "rf-legacy-recovery-correction-pre-retained.json",
+      "sha256": "d7fb2ad0e661fbc6b42b5de0f8725e3de90b6b538fe9dbb39b31aae16c78a268",
+      "bytes": 539917
+    },
+    {
+      "file": "rf-legacy-claim-dispatch-pre-v3.json",
+      "sha256": "57d6883de7adc7aa1accb60997cb8127a0fe1fa480b225fa84655be9c149e111",
+      "bytes": 620589
+    },
+    {
+      "file": "rf-legacy-archive-pre-v6.json",
+      "sha256": "ffd9b4c926fd4e1470ace5d242eb0e0ce44d5d571caa17b903a9256dafee4a31",
+      "bytes": 3985354
+    },
+    {
+      "file": "rf-legacy-approval-pre-v3.json",
+      "sha256": "56807e01f93783fc05a4a5fc42b3c5f0a83a50da60c92e786ccc5aa698fcdd25",
+      "bytes": 5220965
+    },
+    {
+      "file": "rf-v1-downstream-pre-integration.json",
+      "sha256": "5b41be2a029992b27492ff5bb2c51cbde3e5c8fb2f8e4d26130791ea7a8c66ec",
+      "bytes": 156580
+    },
+    {
+      "file": "rf-v1-annual-policy-pre-consumer.json",
+      "sha256": "ab8a025dd1890734c3e33bdbb6cdfe08fa9f120090503c380ecb059f4d9dd3ba",
+      "bytes": 987379
+    },
+    {
+      "file": "rf-retained-recovery-workflow-spec-initial.log",
+      "sha256": "0a473dab67432ee9a580c5617c2f6dfc8c06ac9e9e3f5c0c330b3f9365a96922",
+      "bytes": 99
+    },
+    {
+      "file": "rf-retained-recovery-workflow-spec-static.json",
+      "sha256": "51eb8224f5ae2aea2df258a6d13a20204cb5a97d76fffd4d189a0c0338cdf426",
+      "bytes": 146778
+    },
+    {
+      "file": "rf-retained-recovery-workflow-final-spec-review.json",
+      "sha256": "532d77fe69ce2d06cfeec002ba640a369a8c52a3f395df62f355678095d6826d",
+      "bytes": 12315
+    },
+    {
+      "file": "rf-retained-recovery-workflow-spec-preedit-pins.json",
+      "sha256": "c7cce53779e323b4adb29030af15c8245a3a4f4e6ad3fafcc3f42897f807fed4",
+      "bytes": 756
+    },
+    {
+      "file": "rf-retained-recovery-workflow-final-standards-review.json",
+      "sha256": "df97a350feba539442afbd7c9b504b6bc8613311b8c24378d59d9dd912cda3a3",
+      "bytes": 15781
+    },
+    {
+      "file": "rf-retained-recovery-workflow-root-review.json",
+      "sha256": "2e4650876d418ea241c7777b6c5641c935fe4c24856b63f7cd3e1a4136d71730",
+      "bytes": 1996
+    }
+  ],
+  "limits": [
+    "Unit and existing HTTP doubles only; no real Auth/current-owner, PostgreSQL/RLS, lease/race, provider or end-to-end proof.",
+    "Public pure builders construct retained RF data, but compact Governance labels and claims/journals are synthetic commitments rather than authentic owner writes.",
+    "Ancestor recovery models an earlier nonterminal selected view and later archive; it does not establish a new lease for an already terminal parent.",
+    "Outward archive export and correction runtime integration remain separately staged. No fresh writer or foreign Archive-owner policy activation.",
+    "Counts overlap oracle runs and must not be summed. Real database/current-owner/lease/provider execution remains pending for these exact application bytes.",
+    "CI 38026082849 tests 00941 and excludes this slice. Its database job has failed and Application is still running at this record; terminal receipt and diagnosis are separate evidence.",
+    "A1\u2013A7 and both linked immutable release gates remain pending. No production filing, provider activation, paid action, genuine-company admission, outreach or launch clearance."
+  ]
+}

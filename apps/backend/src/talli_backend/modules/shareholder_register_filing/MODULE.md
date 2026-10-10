@@ -1683,9 +1683,11 @@ owner-codec representations before asserting originals or writing. Off-year
 Governance commitments do not invent local off-year capture coverage.
 
 The old recovery/correction APIs retain their fixed validators and error order
-through private mechanics shared with the new entrypoints. No application,
-adapter, SQL, provider, claim/intent, fresh writer or Archive-owner policy path
-uses these additions. Pure fixtures and immutable legacy comparisons verify
+through private mechanics shared with the new entrypoints. Historical feedback
+recovery now uses the retained recovery entrypoint as described below. The
+retained correction entrypoint and outward archive/export remain separately
+staged; SQL, claim/intent, fresh writer and Archive-owner policy paths are
+unchanged. Pure fixtures and immutable legacy comparisons verify
 internal correspondence; they do not prove authoritative enumeration, current
 access, original bytes, database races or signed provenance.
 `test_rf1086_retained_recovery_correction.py` covers the new pure contracts;
@@ -1729,3 +1731,36 @@ executor reads and lock/race checks against real disposable PostgreSQL. Its v3
 approval/claim/journal fixtures use explicit designated-owner inserts with
 existing constraints and triggers, not an activated v3 runtime writer; database
 execution evidence must be reported separately from collection.
+
+### Retained feedback recovery integration (2026-10-10)
+
+The full-year branch of `reconcile_rf1086_production` now calls
+`prepare_rf1086_retained_source_reconciliation` on the existing raw authenticated
+`session.archive_source` result. This activates historical feedback recovery for
+retained v2 sources and v3 approvals. The only workflow edits are the imported
+function name and its call target; existing no-activity handling, arguments,
+error precedence, lease ownership and cleanup remain unchanged.
+
+The selected submission must still belong to the original actor. Before a lease,
+the workflow matches the current owner, original approval, pilot identity and
+accepted connection; historical recovery does not require a currently active
+pilot or fresh MFA. Accepted/rejected submissions return before acquiring a
+lease. For other states, the owned lease precedes archive retrieval. Complete
+retained validation and organization matching precede read-only credentials.
+Recovery uses the saved XML, exact `source_*` keys and confirmed dialog and
+transmission IDs, without current rendering or new submission authority.
+
+The outward archive/export service and correction application still use their
+previous paths. Fresh source, approval, claim and send-intent gates, adapters,
+SQL, public codecs and transport contracts are unchanged. Retained consistency
+does not prove authoritative enumeration, current access or signed provenance.
+
+`test_rf1086_retained_recovery_workflow.py` covers coherent capital fixtures with
+zero, one and two amendment links, exact payloads/references, terminal fast
+returns and existing HTTP response shapes. The independent
+`test_rf1086_retained_recovery_workflow_adversarial.py` checks proof rejection,
+reference binding, access/error precedence and cleanup. These are unit and HTTP
+doubles, not real Auth, lease/race or provider evidence. The ancestor case models
+an earlier nonterminal selected view and a later archive containing its accepted
+parent and correction; it does not establish that SQL grants a new lease to an
+already terminal parent.

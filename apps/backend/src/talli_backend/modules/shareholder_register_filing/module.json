@@ -557,7 +557,9 @@
     "retainedRecoveryCorrectionAdversarial": "apps/backend/tests/test_rf1086_retained_recovery_correction_adversarial.py",
     "retainedCorrectionReader": "apps/backend/tests/test_postgres_rf_retained_correction.py",
     "retainedCorrectionReaderAdversarial": "apps/backend/tests/test_postgres_rf_retained_correction_adversarial.py",
-    "retainedCorrectionReaderDatabase": "apps/backend/tests/test_rf1086_retained_correction_reader_database.py"
+    "retainedCorrectionReaderDatabase": "apps/backend/tests/test_rf1086_retained_correction_reader_database.py",
+    "retainedRecoveryWorkflow": "apps/backend/tests/test_rf1086_retained_recovery_workflow.py",
+    "retainedRecoveryWorkflowAdversarial": "apps/backend/tests/test_rf1086_retained_recovery_workflow_adversarial.py"
   },
   "compatibilityExceptions": []
 }
