@@ -1,0 +1,8 @@
+{
+  "scope": "Disposable predecessor rehearsal only. Preserve the released migration and all grants/metadata checks; accept the exact installed successor body at its complete-function idempotency branch.",
+  "migration": "20261009223340_governance_register_observation_completion_guard.sql",
+  "sourceSha256": "e7b03dabc7eca63f5842ed0345dd856bb4b382d616468f846707fda57cd003ec",
+  "before": " if before_row.prosrc=new_body then return; end if;\n if pg_catalog.md5(before_row.prosrc)<>'1d053d66724a6f04c51822c125a2b1f9'",
+  "after": " if before_row.prosrc=new_body or pg_catalog.md5(before_row.prosrc)='93c0f6bb1c2eb4b6077ab1163e60c77c' then return; end if;\n if pg_catalog.md5(before_row.prosrc)<>'1d053d66724a6f04c51822c125a2b1f9'",
+  "rehearsalSha256": "19f23b96682f7c78858cd8c1159585f37a8aba08c6cdfae9155cf95ef07a698e"
+}

@@ -13,6 +13,7 @@ from psycopg import sql
 from psycopg.conninfo import make_conninfo
 from psycopg.types.json import Jsonb
 import pytest
+from governance_completion_rehearsal import adapt_governance_completion_rehearsal
 
 from talli_backend.adapters.postgres_authority_connections import PostgresAuthorityConnectionsSession
 from talli_backend.adapters.supabase_ledger import _VerifiedActor
@@ -570,7 +571,9 @@ def rf151_predecessor_topology(fixture):
                     connection.execute((ROOT/"supabase"/"contract-migrations"/RF151_CONTRACT).read_text())
                 for migration_name in successor_layers:
                     if migration_name in RF193_CONSEQUENTIAL_NAMES:
-                        connection.execute((ROOT/'supabase/migrations'/migration_name).read_text())
+                        connection.execute(adapt_governance_completion_rehearsal(
+                            'migrations/' + migration_name,
+                            (ROOT/'supabase/migrations'/migration_name).read_text()))
                 assert rf193_consequential_topology(connection)==[name for name in successor_layers if name in RF193_CONSEQUENTIAL_NAMES]
                 ensure_fixture_admin_access(connection)
 

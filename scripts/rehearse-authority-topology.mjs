@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { isLoopbackPostgresUrl } from "../tests/support/supabase_fixture_safety.mjs";
 import { emptyGovernanceAmendmentTeardown } from "../tests/support/governance_amendment_rehearsal.mjs";
+import { adaptGovernanceCompletionRehearsal } from "../tests/support/governance_completion_rehearsal.mjs";
 
 const AUTHORITY = "20260909120610_authority_connections_capability.sql";
 const OPERATIONS = "20260909123709_authority_operations_capability.sql";
@@ -46,7 +47,8 @@ async function topology(database) {
   return state;
 }
 
-export async function rehearseAuthorityTopology({ direction, database, loadSql = (relative) => readFile(new URL(`../supabase/${relative}`, import.meta.url), "utf8") }) {
+export async function rehearseAuthorityTopology({ direction, database, loadSql = async (relative) =>
+  adaptGovernanceCompletionRehearsal(relative, await readFile(new URL(`../supabase/${relative}`, import.meta.url), "utf8")) }) {
   if (!new Set(["rollback", "workspace", "recutover"]).has(direction)) throw new Error("invalid_authority_rehearsal_direction");
   let state = await topology(database);
   const apply = async (files) => {

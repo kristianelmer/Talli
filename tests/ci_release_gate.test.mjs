@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   existsSync,
@@ -14,6 +15,35 @@ import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { adaptGovernanceCompletionRehearsal } from "./support/governance_completion_rehearsal.mjs";
+
+test("disposable completion replay preserves frozen SQL except the exact successor return", () => {
+  const rule = JSON.parse(readFileSync(new URL("./fixtures/governance_completion_replay.json", import.meta.url), "utf8"));
+  const source = readFileSync(new URL(`../supabase/migrations/${rule.migration}`, import.meta.url), "utf8");
+  const adapted = adaptGovernanceCompletionRehearsal(`migrations/${rule.migration}`, source);
+  assert.equal(createHash("sha256").update(adapted).digest("hex"), rule.rehearsalSha256);
+  const [before, complete] = source.split("do $rewrite_complete$");
+  const [adaptedBefore, adaptedComplete] = adapted.split("do $rewrite_complete$");
+  assert.equal(adaptedBefore, before);
+  assert.equal(adaptedComplete.replace(rule.after, rule.before), complete);
+  assert.match(adaptedComplete, /before_row\.prosrc=new_body or pg_catalog\.md5\(before_row\.prosrc\)='93c0f6bb1c2eb4b6077ab1163e60c77c'/u);
+});
+
+test("disposable completion replay refuses changed and already adapted input", () => {
+  const rule = JSON.parse(readFileSync(new URL("./fixtures/governance_completion_replay.json", import.meta.url), "utf8"));
+  const source = readFileSync(new URL(`../supabase/migrations/${rule.migration}`, import.meta.url), "utf8");
+  const path = `migrations/${rule.migration}`;
+  for (const input of [source + "\n", source.replace(rule.before, ""), adaptGovernanceCompletionRehearsal(path, source), null]) {
+    assert.throws(() => adaptGovernanceCompletionRehearsal(path, input), /governance_completion_rehearsal_source_drift/u);
+  }
+});
+
+test("disposable completion replay does not change rollback or unrelated SQL", () => {
+  const rule = JSON.parse(readFileSync(new URL("./fixtures/governance_completion_replay.json", import.meta.url), "utf8"));
+  for (const path of [`rollback/${rule.migration}`, "migrations/unknown.sql"]) {
+    assert.equal(adaptGovernanceCompletionRehearsal(path, "unchanged SQL"), "unchanged SQL");
+  }
+});
 
 const workflowPath = new URL(
   "../.github/workflows/release-gate.yml",

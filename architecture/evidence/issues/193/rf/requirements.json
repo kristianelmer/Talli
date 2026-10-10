@@ -256,5 +256,6 @@
   "rfPureApprovalV320261010": "rf-pure-approval-v3-20261010.json",
   "rfRetainedApprovalFoundation20261010": "rf-retained-approval-foundation-20261010.json",
   "historicalCi38019259358": "ci-38019259358.json",
-  "governanceReplayRlsRepair20261010": "governance-replay-rls-repair-20261010.json"
+  "governanceReplayRlsRepair20261010": "governance-replay-rls-repair-20261010.json",
+  "governanceRehearsalCompatibility20261010": "governance-rehearsal-compatibility-20261010.json"
 }
