@@ -46,76 +46,23 @@ def assert_valid(snapshot, prior=None):
         income_year=snapshot.income_year,predecessor=prior or predecessor(snapshot))
 
 
-class CorrectionHarness(ApprovalHarness):
-    def __init__(self,status='accepted',*,snapshot=None):
-        super().__init__()
-        self.prior_snapshot=predecessor_snapshot(status) if snapshot is None else snapshot
-        self.history=(self.prior_snapshot.submission,)
-        self.locked_snapshot=self.prior_snapshot
-        self.prior=predecessor(self.prior_snapshot)
-        self.prior_documents={}
-        self.prior_failure=None
-        self.original_failure=False
-        self.document_actor=ACTOR
-        for i,artifact in enumerate(self.prior_snapshot.artifacts):
-            document=DocumentRecord(DocumentId(artifact.document_id),self.prior_snapshot.company_id,
-                self.prior_snapshot.income_year,'authority_feedback','feedback.xml',
-                'production_filing_submission:'+self.prior_snapshot.submission.id,DocumentStatus.STORED,
-                10,'private/'+artifact.document_id,'application/xml',artifact.byte_length,artifact.sha256,
-                ACTOR,NOW,None,None)
-            receipt=RetainedDocumentOriginalReceipt(str(UUID(int=940+i)),document.document_id,document.company_id,
-                document.income_year,document_metadata_sha256(document),artifact.sha256,artifact.byte_length,NOW)
-            self.prior_documents[artifact.document_id]=VerifiedDocumentEvidence(document,artifact.sha256,
-                artifact.byte_length,DocumentStatus.STORED,receipt)
-        old_sessions=self.workflow._sessions;old_documents=self.workflow._documents;owner=self
-        class Sessions:
-            async def session(self,token):
-                session=await old_sessions.session(token)
-                async def read(query,submission_id):
-                    assert not owner.held and query.actor_id==session.actor_id and submission_id==owner.prior.submission_id
-                    owner.calls.append('prior_read');return owner.prior_snapshot
-                session.read_correction_predecessor=read
-                return session
-        class Documents:
-            async def session(self,token):
-                original=await old_documents.session(token)
-                class Session:
-                    @property
-                    def actor_id(self): return owner.document_actor
-                    async def read_retained_evidence(self,query):
-                        assert not owner.held
-                        owner.calls.append('historical_bytes:'+query.document_id.value)
-                        result=owner.historical[query.document_id.value]
-                        assert query.metadata_sha256 == next(row.original_metadata_sha256 for row in owner.prior_snapshot.artifacts if row.document_id == query.document_id.value)
-                        return result
-                    async def verify_document_evidence(self,document_id):
-                        if document_id.value not in owner.prior_documents:
-                            return await original.verify_document_evidence(document_id)
-                        assert not owner.held
-                        owner.calls.append('prior_bytes:'+document_id.value)
-                        if owner.prior_failure: raise owner.prior_failure
-                        return owner.prior_documents[document_id.value]
-                return Session()
-        old_assert=self.transaction.assert_original
-        async def assert_original(receipt):
-            if receipt.document_id.value in owner.prior_documents:
-                assert owner.held
-                owner.calls.append('prior_original')
-                if owner.original_failure: raise DocumentsError.integrity_failed()
-            else: await old_assert(receipt)
-        async def locked(query,submission_id):
-            assert owner.held and query.actor_id==owner.transaction.actor_id and submission_id==owner.prior.submission_id
-            owner.calls.append('prior_lock');return owner.locked_snapshot
-        self.transaction.assert_original=assert_original
-        self.transaction.read_correction_predecessor=locked
-        self.approval=ShareholderRegisterSourceApprovalWorkflow(Sessions(),Documents())
+class CorrectionHarness:
+    """Construct complete application history; pure compact fixtures stay separate.
+
+    Import lazily because retained fixtures reuse the old pure builders in this
+    file. Every application call gets the same archive-first fixture as the
+    independently frozen before/after characterization.
+    """
+    def __new__(cls, status='accepted', *, profile='legacy-no-activity', kind='no_activity'):
+        from rf1086_retained_correction_fixture import RetainedCorrectionHarness, correction_fixture
+        return RetainedCorrectionHarness(correction_fixture(profile, kind, status, bound_feedback=False))
 
 
 @pytest.mark.parametrize('status',['accepted','rejected'])
 def test_exact_predecessor_receipts_and_replay_preserve_approval_identity(status):
     h=CorrectionHarness(status)
     assert h.approve(predecessor=h.prior)==h.result
-    assert h.calls.index('prior_read') < h.calls.index('guard') < h.calls.index('prior_lock') < h.calls.index('review') < h.calls.index('append')
+    assert h.calls.index('retained_prior_read') < h.calls.index('guard') < h.calls.index('retained_prior_lock') < h.calls.index('review') < h.calls.index('append')
     byte_calls=[v for v in h.calls if v.startswith('prior_bytes:')]
     assert byte_calls==['prior_bytes:'+value for value in sorted(h.prior_documents)]
     assert all(h.calls.index(value) < h.calls.index('guard') for value in byte_calls)
@@ -180,8 +127,8 @@ def test_failed_preflight_or_locked_recheck_never_appends(change):
     if change=='bytes':h.prior_failure=DocumentsError.integrity_failed()
     if change=='document_actor':h.document_actor=replace(ACTOR,subject=type(ACTOR.subject)(str(UUID(int=999))))
     if change=='admission_actor':h.on_guard=lambda:setattr(h.transaction,'actor_id',replace(ACTOR,subject=type(ACTOR.subject)(str(UUID(int=999)))))
-    if change=='parent_race':h.on_guard=lambda:setattr(h,'locked_snapshot',replace(h.prior_snapshot,submission=replace(h.prior_snapshot.submission,updated_at='2026-01-02T00:00:00Z')))
-    if change=='artifact_race':h.on_guard=lambda:setattr(h,'locked_snapshot',replace(h.prior_snapshot,artifacts=tuple(reversed(h.prior_snapshot.artifacts))))
+    if change=='parent_race':h.on_guard=lambda:setattr(h,'locked_archive',replace(h.locked_archive,production_submissions=(replace(h.prior_snapshot.submission,updated_at='2026-01-02T00:00:00Z'),)))
+    if change=='artifact_race':h.on_guard=lambda:setattr(h,'locked_archive',replace(h.locked_archive,feedback_artifacts=tuple(replace(row,authority_reference='Changed selected authority receipt') if row.id==h.prior_snapshot.artifacts[0].id else row for row in h.locked_archive.feedback_artifacts)))
     if change=='receipt_race':h.original_failure=True
     with pytest.raises((rf.Rf1086ProductionError,rf.Rf1086YearSourceError,DocumentsError)):h.approve(predecessor=h.prior)
     assert not h.held and not h.committed and not h.writes
@@ -259,24 +206,20 @@ def test_adapter_preserves_exact_predecessor_snapshot_and_uses_guarded_owner_loc
 
 
 def bind_historical(h):
-    h.historical={}
+    """Bind already present actual feedback originals; forbid current evidence."""
     artifacts=[]
-    for i, artifact in enumerate(h.prior_snapshot.artifacts):
-        evidence=h.prior_documents[artifact.document_id];receipt=evidence.retained_original
-        h.historical[artifact.document_id]=RetainedDocumentOriginalSnapshot(evidence.document,
-            RetainedDocumentOriginal(receipt,f'receipt-{i}'.encode()))
+    for artifact in h.prior_snapshot.artifacts:
+        query=next(query for query in h.originals if query.document_id.value==artifact.document_id)
+        receipt=h.originals[query].original.receipt
         artifacts.append(replace(artifact,original_id=receipt.original_id,
             original_metadata_sha256=receipt.metadata_sha256,original_source_income_year=int(receipt.source_income_year),
             original_retained_at=receipt.retained_at.isoformat()))
-    h.prior_snapshot=replace(h.prior_snapshot,artifacts=tuple(artifacts));h.locked_snapshot=h.prior_snapshot
-    async def historical(receipt):
-        assert h.held
-        h.calls.append('historical_original')
-        if h.original_failure: raise DocumentsError.integrity_failed()
-        assert receipt==h.historical[receipt.document_id.value].original.receipt
-    h.transaction.assert_historical_original=historical
-    # Any attempt to verify today's metadata/bytes is a regression.
-    h.prior_failure=AssertionError('Historical correction must not read current document metadata')
+    h.archive=replace(h.archive,feedback_artifacts=tuple(artifacts))
+    h.locked_archive=h.archive
+    class CurrentEvidenceForbidden(dict):
+        def __getitem__(self,key):
+            raise AssertionError('Historical correction must not read current document metadata')
+    h.prior_documents=CurrentEvidenceForbidden(h.prior_documents)
     return h
 
 
@@ -285,19 +228,19 @@ def bind_historical(h):
 def test_correction_uses_bound_historical_original_even_when_current_document_is_unavailable(profile,status):
     if profile=='full-year':
         from test_rf1086_full_year_correction import full_year_predecessor
-        h=CorrectionHarness(snapshot=full_year_predecessor(status=status))
+        h=CorrectionHarness(status,profile='source-v1')
     else: h=CorrectionHarness(status)
     bind_historical(h)
     assert h.approve(predecessor=h.prior)==h.result
     assert h.calls.count('historical_original')==2 and 'prior_original' not in h.calls
     assert all(h.calls.index(call)<h.calls.index('guard') for call in h.calls if call.startswith('historical_bytes:'))
-    assert h.calls.index('prior_lock')<h.calls.index('historical_original')<h.calls.index('append')
+    assert h.calls.index('retained_prior_lock')<h.calls.index('historical_original')<h.calls.index('append')
 
 
 @pytest.mark.parametrize('change',['id','metadata','year','time','bytes','creator','document'])
 def test_correction_rejects_substituted_historical_original_before_guard(change):
     from datetime import timedelta
-    h=bind_historical(CorrectionHarness());key=sorted(h.historical)[0];value=h.historical[key];receipt=value.original.receipt
+    h=bind_historical(CorrectionHarness());key=min(h.originals,key=lambda query:query.document_id.value);value=h.originals[key];receipt=value.original.receipt
     if change=='id': receipt=replace(receipt,original_id=str(UUID(int=999)))
     if change=='metadata': receipt=replace(receipt,metadata_sha256='f'*64)
     if change=='year': receipt=replace(receipt,source_income_year=rf.IncomeYear(2024))
@@ -306,7 +249,7 @@ def test_correction_rejects_substituted_historical_original_before_guard(change)
     if change=='bytes': value=replace(value,original=replace(value.original,content=b'wrong!!!!'))
     if change=='creator': value=replace(value,document=replace(value.document,created_by=replace(ACTOR,subject=type(ACTOR.subject)(str(UUID(int=999))))))
     if change=='document': value=replace(value,document=replace(value.document,name='Newer metadata.xml'))
-    h.historical[key]=value
+    h.originals[key]=value
     with pytest.raises(rf.Rf1086ProductionError): h.approve(predecessor=h.prior)
     assert 'guard' not in h.calls and not h.writes
 
@@ -316,7 +259,7 @@ def test_correction_rejects_substituted_historical_original_before_guard(change)
     ('original_retained_at',None),('original_retained_at','2026-01-01')])
 def test_correction_policy_rejects_incomplete_or_invalid_original_binding(field,value):
     h=bind_historical(CorrectionHarness());rows=h.prior_snapshot.artifacts
-    h.prior_snapshot=replace(h.prior_snapshot,artifacts=(replace(rows[0],**{field:value}),rows[1]))
+    h.archive=replace(h.archive,feedback_artifacts=(replace(rows[0],**{field:value}),rows[1]))
     with pytest.raises(rf.Rf1086ProductionError): h.approve(predecessor=h.prior)
     assert 'guard' not in h.calls and not any(c.startswith('historical_bytes:') for c in h.calls)
 
@@ -325,7 +268,7 @@ def test_correction_policy_rejects_incomplete_or_invalid_original_binding(field,
 def test_historical_correction_rechecks_binding_and_retention_under_guard(race):
     h=bind_historical(CorrectionHarness())
     if race=='binding':
-        h.on_guard=lambda:setattr(h,'locked_snapshot',replace(h.prior_snapshot,artifacts=tuple(
+        h.on_guard=lambda:setattr(h,'locked_archive',replace(h.locked_archive,feedback_artifacts=tuple(
             replace(row,original_id=str(UUID(int=999))) for row in h.prior_snapshot.artifacts)))
     else: h.original_failure=True
     with pytest.raises((rf.Rf1086ProductionError,DocumentsError)):h.approve(predecessor=h.prior)

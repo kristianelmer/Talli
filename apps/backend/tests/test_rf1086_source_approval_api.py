@@ -203,7 +203,7 @@ def test_actual_http_predecessor_fields_are_preserved_in_canonical_manifest():
     assert h.calls.count('prior_original') == len(h.prior_snapshot.artifacts)
     assert all(h.calls.index('prior_bytes:'+document_id) < h.calls.index('guard')
                for document_id in h.prior_documents)
-    assert h.calls.index('prior_lock') < h.calls.index('review') < h.calls.index('append')
+    assert h.calls.index('retained_prior_lock') < h.calls.index('review') < h.calls.index('append')
 
 
 @pytest.mark.parametrize('kind', ['no_activity','formation','dividend','cash_issue','loss_covering_reduction'])

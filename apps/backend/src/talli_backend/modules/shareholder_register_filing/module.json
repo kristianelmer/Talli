@@ -564,7 +564,9 @@
     "retainedArchiveSourceAdversarial": "apps/backend/tests/test_rf1086_retained_archive_source_adversarial.py",
     "retainedArchiveStream": "apps/backend/tests/test_rf1086_retained_archive_stream.py",
     "retainedArchiveStreamApi": "apps/backend/tests/test_rf1086_retained_archive_stream_api.py",
-    "retainedArchiveStreamAdversarial": "apps/backend/tests/test_rf1086_retained_archive_stream_adversarial.py"
+    "retainedArchiveStreamAdversarial": "apps/backend/tests/test_rf1086_retained_archive_stream_adversarial.py",
+    "retainedCorrectionWorkflow": "apps/backend/tests/test_rf1086_retained_correction_workflow.py",
+    "retainedCorrectionWorkflowAdversarial": "apps/backend/tests/test_rf1086_retained_correction_workflow_adversarial.py"
   },
   "compatibilityExceptions": []
 }

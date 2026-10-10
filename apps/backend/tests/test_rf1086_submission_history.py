@@ -87,9 +87,10 @@ def test_correction_approval_rechecks_history_inside_guard_before_parent_lock_or
     if defect=='new_child': h.history+=(replace(row,id=str(UUID(int=1100)),supersedes_submission_id=row.id),)
     if defect=='different_owner_root': h.history+=(replace(row,id=str(UUID(int=1100)),user_id=str(UUID(int=1101))),)
     if defect=='unknown_head': h.history=(replace(row,status='unknown',feedback_state='unknown'),)
+    h.locked_archive=replace(h.locked_archive,production_submissions=h.history)
     with pytest.raises(rf.Rf1086ProductionError): h.approve(predecessor=h.prior)
     assert h.calls.index('guard') < h.calls.index('history') < h.calls.index('release')
-    assert not h.writes and not h.committed and 'prior_lock' not in h.calls
+    assert not h.writes and not h.committed and 'retained_prior_lock' not in h.calls
 
 
 def test_initial_approval_cannot_ignore_an_existing_company_year_filing():
@@ -100,5 +101,5 @@ def test_initial_approval_cannot_ignore_an_existing_company_year_filing():
 
 def test_matching_correction_keeps_original_byte_and_manifest_checks():
     h=CorrectionHarness(); h.approve(predecessor=h.prior)
-    assert h.calls.index('history') < h.calls.index('prior_lock') < h.calls.index('review') < h.calls.index('append')
+    assert h.calls.index('history') < h.calls.index('retained_prior_lock') < h.calls.index('review') < h.calls.index('append')
     assert h.committed

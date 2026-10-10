@@ -75,18 +75,18 @@ def test_profiles_cannot_mix_or_fall_back_to_legacy_validation(change):
 
 @pytest.mark.parametrize('status',['accepted','rejected'])
 def test_application_verifies_full_year_feedback_bytes_and_locked_lineage_before_approval(status):
-    h=CorrectionHarness(snapshot=full_year_predecessor('formation',status))
+    h=CorrectionHarness(status,profile='source-v1',kind='formation')
     assert h.approve(predecessor=h.prior)==h.result and h.committed
     assert h.calls.count('prior_original')==2
-    assert h.calls.index('prior_read') < h.calls.index('guard') < h.calls.index('prior_lock') < h.calls.index('append')
+    assert h.calls.index('retained_prior_read') < h.calls.index('guard') < h.calls.index('retained_prior_lock') < h.calls.index('append')
     assert h.writes[0].manifest['predecessor']['manifestSha256']==h.prior_snapshot.approval.manifest_hash
 
 
 def test_claim_change_during_byte_preflight_aborts_correction_approval():
-    h=CorrectionHarness(snapshot=full_year_predecessor())
+    h=CorrectionHarness(profile='source-v1')
     # Even an otherwise valid timestamp change means the retained snapshot moved.
     claim=replace(h.locked_snapshot.source_claim,claimed_at='2026-01-02T00:00:00+00:00')
-    h.locked_snapshot=replace(h.locked_snapshot,source_claim=claim)
+    h.locked_archive=replace(h.locked_archive,source_submission_claims=(claim,))
     with pytest.raises(rf.Rf1086ProductionError):h.approve(predecessor=h.prior)
     assert not h.committed and not h.writes
 

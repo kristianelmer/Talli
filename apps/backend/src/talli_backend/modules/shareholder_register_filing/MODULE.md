@@ -1676,18 +1676,18 @@ parent; legacy-only unknown capture coverage remains unknown.
 The compact result is a projection, not a completeness certificate or permission
 to correct. The exact USER query actor must be the selected original submitter;
 current accepted-owner access remains a separate adapter obligation. Feedback
-metadata does not verify external original bytes. Later application wiring must
-verify Documents bytes outside locks, reread the full archive on the same held
-company/year connection, revalidate its terminal head and compare exact selected
-owner-codec representations before asserting originals or writing. Off-year
+metadata does not verify external original bytes. The correction application
+verifies selected feedback originals outside locks, rereads the full archive on
+the same held company/year connection, revalidates its terminal head and compares
+exact selected owner-codec representations before asserting originals or writing. Off-year
 Governance commitments do not invent local off-year capture coverage.
 
 The old recovery/correction APIs retain their fixed validators and error order
 through private mechanics shared with the new entrypoints. Historical feedback
 recovery now uses the retained recovery entrypoint as described below. The
-retained correction entrypoint and outward archive/export remain separately
-staged; SQL, claim/intent, fresh writer and Archive-owner policy paths are
-unchanged. Pure fixtures and immutable legacy comparisons verify
+retained correction application and additive v6 export now use these retained
+contracts. SQL, fresh claim/intent, fresh v2 writer and Archive-owner policy paths
+remain separately staged. Pure fixtures and immutable legacy comparisons verify
 internal correspondence; they do not prove authoritative enumeration, current
 access, original bytes, database races or signed provenance.
 `test_rf1086_retained_recovery_correction.py` covers the new pure contracts;
@@ -1715,11 +1715,10 @@ archived selected row equal to the selected/locked parent.
 
 These methods establish access and enumeration, not a valid correction basis.
 The raw result can contain competing or unsupported history that the retained
-pure projector must reject. Later application wiring must invoke that projector,
-verify Documents originals outside guards, and repeat validation inside the
-final admission before writing. Existing correction and recovery callers still
-use their previous methods; no SQL, grants, fresh writers or runtime behavior
-are activated by this addition.
+pure projector must reject. Correction application wiring now invokes that
+projector, verifies selected feedback originals outside guards, and repeats
+validation inside final admission before writing, as described below. This reader
+adds no SQL, grants or fresh v2 writer authority.
 
 `test_postgres_rf_retained_correction.py` covers malformed identity and selected
 scope boundaries with routing doubles. The independent
@@ -1852,5 +1851,59 @@ proofs through public pure interfaces. A strict fake Documents store returns
 only the exact requested version. Governance and annual authority labels and
 saved journals remain synthetic: these tests prove retained composition and
 bytes, not real Auth, SQL/RLS, blob-store, provider or origin authority. Fresh
-source/approval/claim/intent writers and correction application wiring remain
-separately gated.
+v2 source/approval/claim/intent writers remain separately gated. Retained
+correction application wiring is described below.
+
+
+### Retained correction application (2026-10-10)
+
+`ShareholderRegisterSourceCorrection` now reads the complete retained archive on
+both preflight and final admission and calls the public
+`prepare_rf1086_retained_correction_predecessor`. The live read must explicitly
+contain `Rf1086ArchiveSourceHistory`, tuple overrides and tuple withdrawal
+captures, including genuine legacy no-activity histories. Unknown coverage is
+rejected before Documents; it is never converted into an empty enumeration.
+Existing captured-history validation requires the selected full-year source
+capture. Portable legacy unknown-coverage policy remains a separate pure contract.
+
+The private verified result keeps the selected compact predecessor and an exact
+selected-evidence binding: version-directed public source serialization, public
+preview serialization, selected raw source capture and selected saved preview
+capture. Literal manifest/review/bridge/claim fields remain in the compact
+comparison. RF timestamp offsets, Decimal representation, capture keys and raw
+payload text cannot disappear through dataclass equality. Genuine legacy
+no-activity has an explicit not-applicable lineage binding. Missing full-year
+lineage cannot select that branch. Full unfiltered history is revalidated on each
+read; unrelated valid captured history is not part of the selected equality check.
+No complete archive serialization, new transaction or fallback to compact reads
+is used.
+
+Documents verification retains the existing selected feedback scope. Bound
+historical feedback uses exact retained queries and checks original ID, actual
+bytes/hash/length, metadata, owner, creator, link and receipt. Legacy unbound
+feedback retains current verification and retention. Final admission asserts the
+same historical or current originals on the existing guarded connection, after
+full archive validation and exact selected comparison. Documents receipt-time
+and canonical metadata semantics are preserved. This ancestry check does not
+claim to audit every historical source original, Governance memo or replacement
+byte body; that wider effective-original union remains required for fresh v2
+admission. Override text does not contain a Documents byte commitment.
+
+Outer approval, claim, admission and dispatch bodies retain their contracts.
+Durable exact claim recovery runs first and the guarded second recovery stays
+before final correction work. Retained v2/v3 parent ancestry can be checked by
+this helper; fresh v2 child capture/approval/claim remains closed pending its
+current Governance/economics/status proof and complete required original union.
+No fresh renderer, provider credential or object I/O occurs under this check.
+
+`test_rf1086_retained_correction_workflow.py` uses complete archive-first legacy
+outer fixtures and actual Documents-first capital parents with zero, one and two
+amendments. V3 cases prove helper preflight/final checks only; synthetic persistence
+and authority do not establish SQL or durable claim rows.
+`test_rf1086_retained_correction_workflow_adversarial.py` checks both completeness
+boundaries, exact selected wire, unrelated valid evolution, actor order,
+cancellation and byte/guard separation. Pure compact fixture builders and old
+public validators stay unchanged. The coherent pre-change application vectors
+remain frozen; each changed reader/projector trace and intended v3 transition is
+reviewed separately. Actual restricted-role database and full release evidence
+must be reported from execution, including any unexecuted cases.

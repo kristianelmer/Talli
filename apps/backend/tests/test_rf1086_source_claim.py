@@ -18,8 +18,8 @@ NOW = SOURCE_NOW.isoformat()
 
 
 class ClaimHarness:
-    def __init__(self, kind='no_activity', *, correction=False, snapshot=None):
-        self.h = h = CorrectionHarness(snapshot=snapshot) if correction else ApprovalHarness(kind)
+    def __init__(self, kind='no_activity', *, correction=False, parent_profile='legacy-no-activity', parent_kind='no_activity'):
+        self.h = h = CorrectionHarness(profile=parent_profile,kind=parent_kind) if correction else ApprovalHarness(kind)
         h.approve(**({'predecessor': h.prior} if correction else {}))
         manifest = h.writes[0]
         self.approval_id = rf.ApprovalId(h.result.record_id)
@@ -34,9 +34,13 @@ class ClaimHarness:
             manifest_hash=manifest.manifest_sha256, manifest=manifest.manifest,
             approved_by=str(h.actor.subject), approved_at=NOW, invalidated_at=None, invalidation_reason=None),
             rf.serialize_rf1086_source_approval_manifest(manifest))
+        if correction:
+            actual=next(row for row in h.archive.approvals if row.id==self.approval_id.value)
+            lineage=next(row for row in h.archive.source_approval_lineage if row.approval_id==actual.id)
+            self.retained=rf.Rf1086RetainedSourceApproval(actual,lineage.manifest_text)
         self.locked_retained = self.retained
         self.claim = rf.Rf1086SourceSubmissionClaim(rf.SubmissionId(str(uuid4())),self.approval_id,
-            COMPANY,YEAR,self.manifest_sha256,self.retained.approval.payload_hash,self.expected_head,h.actor,NOW)
+            COMPANY,YEAR,self.manifest_sha256,self.retained.approval.payload_hash,self.expected_head,h.actor,h.child_time if correction else NOW)
         self.result = rf.Rf1086SourceSubmissionClaimResult(self.claim,True)
         self.existing = None
         self.on_read_approval = lambda: None
@@ -154,13 +158,13 @@ def test_correction_verifies_originals_before_guard_and_compares_locked_snapshot
     c=ClaimHarness(correction=True);h=c.h
     assert c.run()==c.result and h.committed
     assert next(i for i,call in enumerate(h.calls) if call.startswith('prior_bytes:')) < h.calls.index('guard')
-    assert h.calls.index('prior_lock') < h.calls.index('claim')
+    assert h.calls.index('retained_prior_lock') < h.calls.index('claim')
     assert h.calls.count('prior_original')==2
 
 
 def test_changed_correction_snapshot_prevents_claim():
     c=ClaimHarness(correction=True);h=c.h
-    h.locked_snapshot=replace(h.locked_snapshot,submission=replace(h.locked_snapshot.submission,feedback_state='unknown'))
+    h.locked_archive=replace(h.locked_archive,production_submissions=(replace(h.prior_snapshot.submission,feedback_state='unknown'),))
     with pytest.raises(rf.Rf1086ProductionError):c.run()
     assert not h.committed and 'claim' not in h.calls
 
@@ -188,10 +192,10 @@ def test_retained_approval_decoder_rejects_malformed_authority(field,value):
 
 def test_full_year_predecessor_is_verified_before_claiming_its_correction():
     from test_rf1086_full_year_correction import full_year_predecessor
-    c=ClaimHarness(correction=True,snapshot=full_year_predecessor('formation'))
+    c=ClaimHarness(correction=True,parent_profile='source-v1',parent_kind='formation')
     assert c.run()==c.result and c.h.committed
     assert c.result.claim.predecessor_submission_id==c.expected_head
-    assert c.h.calls.index('prior_lock') < c.h.calls.index('claim')
+    assert c.h.calls.index('retained_prior_lock') < c.h.calls.index('claim')
     assert c.h.calls.count('prior_original')==2
 
 
