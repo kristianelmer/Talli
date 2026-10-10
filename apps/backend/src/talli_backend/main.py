@@ -12284,6 +12284,31 @@ def create_app(
         return await shareholder_register_filing_call(execute)
 
     @application.get(
+        "/api/v1/shareholder-register-filings/archive-source/production-stream-v6",
+        operation_id="rf1086DownloadProductionArchiveV6", response_class=StreamingResponse,
+        responses={**authority_errors, 200: {"description": "Complete retained archive-v6 NDJSON; final commitment required.",
+            "content": {"application/x-ndjson": {"schema": {"type": "string", "format": "binary"}}}}},
+        tags=["shareholder-register-filings"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf1086_retained_production_archive_stream(
+        company_id: Annotated[UUID, Query(alias="companyId")],
+        income_year: Annotated[int, Query(alias="incomeYear", ge=2000, le=2100)],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ):
+        async def execute():
+            workflow = await shareholder_register_filing_workflow(credentials)
+            query = Rf1086ArchiveQuery(CompanyId(str(company_id)), IncomeYear(income_year), workflow.actor_id)
+            archive = await workflow.retained_archive_source(query)
+            from talli_backend.application.shareholder_register_archive import prepare_retained_archive_stream
+            content = await prepare_retained_archive_stream(archive, query=query, documents_factory=documents_application,
+                access_token=bearer_token(credentials), actor_id=workflow.actor_id)
+            return StreamingResponse(content, media_type="application/x-ndjson", headers={
+                "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+                "Content-Disposition": f'attachment; filename="rf1086-{company_id}-{income_year}.ndjson"',
+            })
+        return await shareholder_register_filing_call(execute)
+
+    @application.get(
         "/api/v1/shareholder-register-filings/archive-source/production-stream-v4",
         operation_id="rf1086DownloadProductionArchiveV4", response_class=StreamingResponse,
         responses={**authority_errors, 200: {"description": "Bounded NDJSON archive; final commitment required.",

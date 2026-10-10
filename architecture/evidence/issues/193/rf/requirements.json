@@ -270,5 +270,6 @@
   "rfRetainedRecoveryWorkflow20261010": "rf-retained-recovery-workflow-20261010.json",
   "governanceCutoffLockFixture20261010": "governance-cutoff-lock-fixture-20261010.json",
   "historicalCi38026082849": "ci-38026082849.json",
-  "rfRetainedArchiveQuery20261010": "rf-retained-archive-query-20261010.json"
+  "rfRetainedArchiveQuery20261010": "rf-retained-archive-query-20261010.json",
+  "rfRetainedStreamExport20261010": "rf-retained-stream-export-20261010.json"
 }

@@ -109,3 +109,23 @@ require a validated active head. Missing lifecycle support remains unavailable.
 <!-- architecture-inventory
 {"apiOperations":["rf1086ReadRegisterObservationLifecycle"]}
 -->
+
+The source page selects `/filing/aksjonaerregisteroppgaven/source/archive-v6`
+through a native download link. `downloadRf1086RetainedArchive` calls only
+`rf1086DownloadProductionArchiveV6`: missing support, malformed responses and
+HTTP errors remain unavailable without fallback or retry. Deploy this backend
+operation before selecting the new web path. The shared owner response preserves
+singleton scope validation, the accepted owner and authenticated-user checks,
+archive-export MFA, request cancellation, the five-minute deadline and safe local
+attachment headers. It forwards the original body without buffering. The old
+URL and downloader retain their prior contract and fallback behavior.
+
+The v6 download contains captured source, override and withdrawal history plus
+exact expected retained Documents originals. A complete download requires its
+final stream commitment and the explicit Python retained-stream verifier. HTTP
+200 and browser download completion alone do not verify archive integrity,
+authenticated origin, authoritative enumeration or restore capability.
+
+<!-- architecture-inventory
+{"routes":["/filing/aksjonaerregisteroppgaven/source/archive-v6"],"apiOperations":["rf1086DownloadProductionArchiveV6"]}
+-->

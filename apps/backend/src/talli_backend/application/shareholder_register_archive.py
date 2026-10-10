@@ -10,6 +10,7 @@ from talli_backend.modules.shareholder_register_filing import public as rf
 
 MAX_SOURCE_ORIGINAL_BYTES = 128 * 1024 * 1024
 STREAM_CODEC = 'rf1086-production-stream-v1'
+RETAINED_STREAM_CODEC = 'rf1086-production-stream-v2'
 MAX_STREAM_ORIGINAL_BYTES = 1024 * 1024 * 1024
 MAX_STREAM_HEADER_BYTES = 256 * 1024 * 1024
 MAX_STREAM_RECORD_BYTES = 32 * 1024 * 1024
@@ -28,12 +29,26 @@ async def prepare_archive_stream(archive, *, query, documents_factory, access_to
     revoked access or cancellation leaves a truncated, unverifiable download.
     The commitment detects corruption; it is not a signature or restore receipt.
     """
+    return await _prepare_archive_stream(archive, query=query, documents_factory=documents_factory,
+        access_token=access_token, actor_id=actor_id, serialize_archive=rf.serialize_rf1086_archive,
+        stream_codec=STREAM_CODEC)
+
+
+async def prepare_retained_archive_stream(archive, *, query, documents_factory, access_token, actor_id):
+    """Export complete retained v6 evidence; originals stay lazy and access-checked."""
+    return await _prepare_archive_stream(archive, query=query, documents_factory=documents_factory,
+        access_token=access_token, actor_id=actor_id, serialize_archive=rf.serialize_rf1086_archive_v6,
+        stream_codec=RETAINED_STREAM_CODEC)
+
+
+async def _prepare_archive_stream(archive, *, query, documents_factory, access_token, actor_id,
+                                  serialize_archive, stream_codec):
     if query.actor_id != actor_id: raise rf.ShareholderRegisterFilingError.forbidden()
     try:
-        canonical = rf.serialize_rf1086_archive(archive, query=query)
+        canonical = serialize_archive(archive, query=query)
         sources = source_original_queries(archive, max_total_bytes=MAX_STREAM_ORIGINAL_BYTES)
         feedback = feedback_original_queries(archive, max_total_bytes=MAX_STREAM_ORIGINAL_BYTES)
-        header = _stream_line({'codec': STREAM_CODEC, 'canonicalArchive': canonical}, MAX_STREAM_HEADER_BYTES)
+        header = _stream_line({'codec': stream_codec, 'canonicalArchive': canonical}, MAX_STREAM_HEADER_BYTES)
         documents = await documents_factory.session(access_token) if sources or feedback else None
         if documents is not None and documents.actor_id != actor_id: raise DocumentsError.forbidden()
     except (DocumentsError, rf.Rf1086ArchiveError):
@@ -68,6 +83,33 @@ def verify_archive_stream(stream, *, query, require_source_history=False, requir
     All expected retained originals are mandatory; unbound legacy feedback stays
     explicitly incomplete unless the caller requires completeness and rejects it.
     """
+    return _verify_archive_stream(stream, query=query, require_source_history=require_source_history,
+        require_feedback_originals=require_feedback_originals, parse_archive=rf.parse_rf1086_archive,
+        stream_codec=STREAM_CODEC)
+
+
+def verify_retained_archive_stream(stream, *, query, require_feedback_originals=False):
+    """Verify stream-v2/archive-v6 and exact expected bytes, without source authority.
+
+    Complete capture sections do not imply complete original bindings for legacy
+    feedback. The caller may reject that unknown coverage explicitly.
+    """
+    return _verify_archive_stream(stream, query=query, require_source_history=True,
+        require_feedback_originals=require_feedback_originals, parse_archive=_parse_retained_archive_v6,
+        stream_codec=RETAINED_STREAM_CODEC)
+
+
+def _parse_retained_archive_v6(text, *, query):
+    # The owner checks its size limit before JSON decoding and validates the
+    # untouched envelope, unique keys, typed capture and canonical v6 bytes.
+    archive = rf.parse_rf1086_retained_archive(text, query=query)
+    if json.loads(text)['codec'] != 'rf1086-production-archive-v6':
+        raise ValueError()
+    return archive
+
+
+def _verify_archive_stream(stream, *, query, require_source_history, require_feedback_originals,
+                           parse_archive, stream_codec):
     def unique(pairs):
         result = {}
         for key, value in pairs:
@@ -84,8 +126,8 @@ def verify_archive_stream(stream, *, query, require_source_history=False, requir
 
     try:
         line, header = read(MAX_STREAM_HEADER_BYTES)
-        if set(header) != {'codec', 'canonicalArchive'} or header['codec'] != STREAM_CODEC: raise ValueError()
-        archive = rf.parse_rf1086_archive(header['canonicalArchive'], query=query)
+        if set(header) != {'codec', 'canonicalArchive'} or header['codec'] != stream_codec: raise ValueError()
+        archive = parse_archive(header['canonicalArchive'], query=query)
         if require_source_history and archive.source_history is None: raise ValueError()
         sources = source_original_queries(archive, max_total_bytes=MAX_STREAM_ORIGINAL_BYTES)
         feedback = feedback_original_queries(archive, require_complete=require_feedback_originals,

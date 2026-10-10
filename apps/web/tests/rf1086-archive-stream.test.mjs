@@ -84,11 +84,12 @@ test("RF owner transport binds the request lifetime without buffering", async (t
 
 test("actual owner download route enforces scope, owner and MFA before forwarding a stream", async (t) => {
   const routeUrl = new URL("../app/(owner)/filing/aksjonaerregisteroppgaven/source/archive/route.ts", import.meta.url);
+  const helperUrl = new URL("../app/(owner)/filing/aksjonaerregisteroppgaven/source/archive-download.ts", import.meta.url);
   const key = Symbol.for("talli.rf.archive-route-test");
   const names = ["downloadRf1086Archive", "loadAcceptedMembershipCompany", "requireStepUpForAction",
     "getCurrentSessionAccessToken", "createSupabaseServerClient"];
   const hook = registerHooks({ resolve(specifier, context, nextResolve) {
-    if (context.parentURL === routeUrl.href && specifier !== "node:crypto") {
+    if ([routeUrl.href, helperUrl.href].includes(context.parentURL) && specifier !== "node:crypto" && !specifier.includes("archive-download")) {
       const code = names.map(name => `export const ${name} = (...args) => globalThis[Symbol.for("talli.rf.archive-route-test")].${name}(...args);`).join("\n");
       return { url: "data:text/javascript," + encodeURIComponent(code), shortCircuit: true };
     }

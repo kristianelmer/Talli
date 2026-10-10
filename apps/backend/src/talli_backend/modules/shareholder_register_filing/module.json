@@ -561,7 +561,10 @@
     "retainedRecoveryWorkflow": "apps/backend/tests/test_rf1086_retained_recovery_workflow.py",
     "retainedRecoveryWorkflowAdversarial": "apps/backend/tests/test_rf1086_retained_recovery_workflow_adversarial.py",
     "retainedArchiveSource": "apps/backend/tests/test_rf1086_retained_archive_source.py",
-    "retainedArchiveSourceAdversarial": "apps/backend/tests/test_rf1086_retained_archive_source_adversarial.py"
+    "retainedArchiveSourceAdversarial": "apps/backend/tests/test_rf1086_retained_archive_source_adversarial.py",
+    "retainedArchiveStream": "apps/backend/tests/test_rf1086_retained_archive_stream.py",
+    "retainedArchiveStreamApi": "apps/backend/tests/test_rf1086_retained_archive_stream_api.py",
+    "retainedArchiveStreamAdversarial": "apps/backend/tests/test_rf1086_retained_archive_stream_adversarial.py"
   },
   "compatibilityExceptions": []
 }

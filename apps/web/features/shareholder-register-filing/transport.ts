@@ -79,6 +79,20 @@ export async function downloadRf1086Archive(
   }
 }
 
+// Complete retained history requires the explicit backend operation. An absent
+// endpoint stays unavailable; receiving headers does not establish completion.
+export async function downloadRf1086RetainedArchive(
+  accessToken: string, companyId: string, incomeYear: number, signal: AbortSignal, requestId: string,
+): Promise<Response> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(companyId)
+      || !Number.isInteger(incomeYear) || incomeYear < 2000 || incomeYear > 2100) {
+    throw new TalliApiError(400, undefined);
+  }
+  const api = client(accessToken);
+  const options = { signal: AbortSignal.any([signal, AbortSignal.timeout(300_000)]), requestId };
+  return api.rf1086DownloadProductionArchiveV6(companyId, incomeYear, options);
+}
+
 export async function loadRf1086ArchiveSource(
   accessToken: string, companyId: string, incomeYear: number, requestId?: string,
 ): Promise<Rf1086ArchiveSourceWire | Rf1086ProductionArchiveSourceWire | Rf1086ProductionArchiveSourceV4Wire> {

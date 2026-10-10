@@ -15,7 +15,8 @@
   "ownedRoutes": [
     "/filing/aksjonaerregisteroppgaven/source",
     "/filing/aksjonaerregisteroppgaven/source/archive",
-    "/filing/aksjonaerregisteroppgaven/register"
+    "/filing/aksjonaerregisteroppgaven/register",
+    "/filing/aksjonaerregisteroppgaven/source/archive-v6"
   ],
   "apiOperations": [
     "legacyRf1086ReconcileFeedback",
@@ -49,7 +50,8 @@
     "rf1086DownloadProductionArchiveV4",
     "rf1086LookupYearSourceCapture",
     "rf1086LookupRegisterObservationCapture",
-    "rf1086ReadRegisterObservationLifecycle"
+    "rf1086ReadRegisterObservationLifecycle",
+    "rf1086DownloadProductionArchiveV6"
   ],
   "dependencies": [],
   "allowedImports": [
@@ -70,7 +72,8 @@
     "architecture": "tests/architecture_foundation.test.mjs",
     "sourceTransport": "apps/web/tests/shareholder-register-source-transport.test.mjs",
     "sourceApprovalControl": "apps/web/tests/shareholder-register-source-approval-control.test.mjs",
-    "registerObservationLifecycleTransport": "apps/web/tests/shareholder-register-lifecycle-transport.test.mjs"
+    "registerObservationLifecycleTransport": "apps/web/tests/shareholder-register-lifecycle-transport.test.mjs",
+    "retainedArchiveStream": "apps/web/tests/rf1086-retained-archive-stream.test.mjs"
   },
   "compatibilityExceptions": []
 }

@@ -1772,8 +1772,9 @@ public query protocol and workflow returns the original immutable archive after
 retained validation. The workflow checks its session actor before one call to
 the existing raw persistence `archive_source`. No adapter alias, new database
 contract, workspace query, serialization round-trip or current evidence is
-needed. Existing archive methods, codec APIs and export callers are unchanged;
-no route selects this method yet.
+needed. Existing archive methods and codec APIs are unchanged. The explicit
+production-stream-v6 route selects this query; earlier export routes retain
+their existing methods and transport projections.
 
 Every result must explicitly include `Rf1086ArchiveSourceHistory`, tuple
 overrides and tuple withdrawal captures, including empty and legacy-only years.
@@ -1794,9 +1795,62 @@ The existing adapter supplies a repeatable snapshot; these typed checks do not
 prove SQL enumeration, current owner access, original document bytes or signed
 provenance. They do not add the serializer's size or canonical transport rules,
 or invent RF captures for opaque off-year Governance commitments. Correction
-wiring, outward exports and fresh writers remain separate work.
+wiring and fresh writers remain separate work. The explicit retained stream
+adds the bounded outward export described below.
 
 `test_rf1086_retained_archive_source.py` and the independent
 `test_rf1086_retained_archive_source_adversarial.py` exercise exact returns,
 complete capture requirements, malformed evidence and access/error boundaries
 with synthetic persistence. They establish no database, RLS or provider proof.
+
+
+### Explicit retained archive stream (2026-10-10)
+
+`prepare_retained_archive_stream` and `verify_retained_archive_stream` in the
+application composition module use outer `rf1086-production-stream-v2` with an
+inner canonical `rf1086-production-archive-v6` only. The verifier passes the
+original inner text to the public retained parser; it rejects older envelopes
+under the new stream label. Existing stream-v1 functions, inline JSON exports,
+old CLI and codec entrypoints keep their original behavior. A private mechanical
+extraction gives old and new entrypoints fixed serializer/parser and label
+arguments, preserving old validation and error order.
+
+`GET /archive-source/production-stream-v6` calls the complete retained query
+without removing captured sections. Before the response begins, the producer
+checks its session actor, serializes v6, derives the exact source/feedback query
+union and shared byte budget, and checks the Documents session actor when any
+original is needed. Originals are read and validated lazily through Documents'
+public retained-byte interface. Each original retains its exact metadata,
+content, receipt and source labels. The stream covers every captured RF source
+version and independent observation, including prior-year originals; opaque
+Governance commitments do not invent uncaptured document bytes.
+
+The existing limits remain: 1 GiB aggregate original bytes, 256 MiB header and
+32 MiB record, plus the archive codec's 64 MiB canonical envelope limit. Reading
+one original at a time limits content retention; the bounded archive/header is
+still materialized. The offline verifier uses bounded line reads and validates
+exact expected identities, types, order, bytes and footer. A missing, revoked or
+corrupt original, cancellation or dependency failure after the header leaves a
+truncated transfer. No retry or completion footer is produced after failure.
+
+`verify_rf1086_retained_archive_stream.py` is an explicit local command for the
+new format. All expected source originals and bound feedback originals must be
+present. Legacy feedback without an original binding remains incomplete;
+`--require-feedback-originals` rejects it. Verified transferred bytes are not a
+signature, authenticated origin, authoritative enumeration, database restore or
+new submission authority. No provider, object-store write or extraction occurs.
+
+The backend route keeps existing authenticated member access and safe errors.
+It declares private/no-store, nosniff and attachment headers; the existing RF
+request middleware emits `Cache-Control: no-store`. This route adds no owner or
+MFA policy. The separately protected web download composes existing owner/MFA
+controls without changing the foreign Company Archive workflow.
+
+The stream tests build actual Documents metadata/content/receipts first, then
+reconstruct RF observations, withdrawals, source versions, previews and v3
+proofs through public pure interfaces. A strict fake Documents store returns
+only the exact requested version. Governance and annual authority labels and
+saved journals remain synthetic: these tests prove retained composition and
+bytes, not real Auth, SQL/RLS, blob-store, provider or origin authority. Fresh
+source/approval/claim/intent writers and correction application wiring remain
+separately gated.

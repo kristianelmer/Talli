@@ -58,7 +58,7 @@ export default async function Rf1086SourcePage({ searchParams }: Props) {
     return <div>{header}<Banner variant="danger">Årsgrunnlaget er ikke tilgjengelig. Kontroller eiertilgangen og at selskapsopplysningene er bekreftet.</Banner></div>;
   }
   const archiveDownload = <div className="card">
-    <a className="btn btn--secondary" href={`/filing/aksjonaerregisteroppgaven/source/archive?${new URLSearchParams({ companyId, incomeYear: String(incomeYear) })}`}>Last ned RF-arkiv</a>
+    <a className="btn btn--secondary" href={`/filing/aksjonaerregisteroppgaven/source/archive-v6?${new URLSearchParams({ companyId, incomeYear: String(incomeYear) })}`}>Last ned RF-arkiv</a>
     <p className="cardNote">Lagret årsgrunnlag, innsendingshistorikk og bevarte originaldokumenter for {incomeYear}. Ekstra identitetsbekreftelse kreves.</p>
   </div>;
   const production = SourceProductionPanel({ token, companyId, incomeYear });
