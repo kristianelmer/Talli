@@ -1,0 +1,159 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "WITHDRAWAL_REVIEW_FIXTURE_EXECUTOR_REPAIR",
+  "recordedAtUtc": "2026-10-10T03:03:56.982681+00:00",
+  "baseRevision": "12fd4af98833e68f9157feefc86a2a384a6d953d",
+  "scope": "One database test fixture only; production SQL and ACLs unchanged.",
+  "implementation": [
+    "Normal review lock+query and the intentional no-lock query use the existing admission_executor context. V2 runs as the actual RF executor; closed v1 entrypoints receive only temporary transaction-scoped test grants.",
+    "Successful or usable Python-error exits revoke grants and restore role; SQL-error transactions retain the original error and roll back grants/role in the outer transaction.",
+    "Remove obsolete persisted staged-role v1 grant and its teardown. Preserve all original31 testcases, parameterizations andassertions."
+  ],
+  "sourceFiles": [
+    {
+      "path": "apps/backend/tests/test_rf1086_withdrawal_review_database.py",
+      "sha256": "809a42980917642d4fdc63deefe7e46a08d735c2beea6d8c14bfc4f0b91cb600"
+    }
+  ],
+  "supportingSources": [
+    {
+      "path": "apps/backend/tests/test_rf1086_withdrawal_admission_database.py",
+      "sha256": "053bf56e98485e4b8563b5ba2edf3e6bbabf89e363f38a6d52c75b72891dbc31"
+    }
+  ],
+  "checks": {
+    "nativeBeforeExpectedFailures": 2,
+    "nativeAfterPassingGroups": 14,
+    "fullDatabaseCollected": 31,
+    "fullDatabaseExecuted": 0,
+    "syntax": "PASS",
+    "diffCheck": "PASS",
+    "originalAssertionsAndParameters": "UNCHANGED"
+  },
+  "testCommands": [
+    {
+      "command": "REVIEW_PROBE_PHASE=before PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-withdrawal-review-role-native.py > /private/tmp/talli-release-20261009/withdrawal-review-role-native-before-output.log 2>&1",
+      "result": "RED_CONFIRMED: actual baseline review helper hits v1 permission denial; explicit annual caller-role stub rejects staged role for v2. Exact source/context/wrapper SQL and catalog checked."
+    },
+    {
+      "command": "REVIEW_PROBE_PHASE=after PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-withdrawal-review-role-native.py > /private/tmp/talli-release-20261009/withdrawal-review-role-native-after-output.log 2>&1",
+      "result": "PASS: 14 grouped checks across v1/v2; success, actor, stale MFA, missing guards, repeatable read, serializable, retained withdrawal and Python exception. Exact current helper and missing-guard AST execute. ACL/function body/membership/role catalog equality checked after each call. Owned PostgreSQL17 cluster stopped and removed, TCP disabled."
+    },
+    {
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_rf1086_withdrawal_review_database.py --collect-only -q > /private/tmp/talli-release-20261009/withdrawal-review-role-db-collection.log 2>&1",
+      "result": "31 collected in0.53s; zero full database tests executed."
+    },
+    {
+      "command": "git diff --check -- apps/backend/tests/test_rf1086_withdrawal_review_database.py; Python compile(); AST compare test names/parameterizations/assertions to4844d1ac",
+      "result": "PASS: existing assertions and parameterizations unchanged."
+    }
+  ],
+  "harnessCorrection": "Initial GREEN reached storage_invalid because private fixture had a2025 source behind2026 review. Fixed only private fixture to construct a genuine2026 pure source, preserving failed artifacts; repeated final RED/GREEN with same corrected harness. No product or test assertion relaxed.",
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "3708b15b8a22a40a84b374a5789af4150ce9734e920f709180510dd5df92b2cc"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "ea13e33f085c7416f2355790fb0bd6a691e3d714b410633eac223da6d3a7d4c4"
+    },
+    "root": {
+      "unresolved": 0,
+      "reportSha256": "9ed23d16163be75d88929546c9dcb03017329cd6cf43e8a64c434856db814f41"
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "withdrawal-review-role-freeze.json",
+      "sha256": "bd0ea4ea0b028d660fd81a7189c78e65d155cc6f35681f91f1e5a79223ca4f90",
+      "bytes": 571
+    },
+    {
+      "file": "check-withdrawal-review-role-native.py",
+      "sha256": "8f1246d5d767643a748dc822aecac42c9256bb456c9cf2892da537a18bcd7cd0",
+      "bytes": 16997
+    },
+    {
+      "file": "withdrawal-review-role-native-before.json",
+      "sha256": "8c99cae59b4dbd641c5dff9c800698bee881ed2fb04df50811969844c645b406",
+      "bytes": 2505
+    },
+    {
+      "file": "withdrawal-review-role-native-before.log",
+      "sha256": "1f8e69a08e72e862e04430ea7b04e1964d42977dadbeb6f1943624e1fffaf940",
+      "bytes": 973
+    },
+    {
+      "file": "withdrawal-review-role-native-before-output.log",
+      "sha256": "8c99cae59b4dbd641c5dff9c800698bee881ed2fb04df50811969844c645b406",
+      "bytes": 2505
+    },
+    {
+      "file": "withdrawal-review-role-native-after.json",
+      "sha256": "ecd5f4db68fa92b74a17d3c579e3477c1aa1e346d6ea9a0ecb7f15c9f600ed79",
+      "bytes": 3745
+    },
+    {
+      "file": "withdrawal-review-role-native-after.log",
+      "sha256": "832bf308d17facc40e81284867b3050ffa8e043fca664fc4509189a220cdf330",
+      "bytes": 973
+    },
+    {
+      "file": "withdrawal-review-role-native-after-output.log",
+      "sha256": "ecd5f4db68fa92b74a17d3c579e3477c1aa1e346d6ea9a0ecb7f15c9f600ed79",
+      "bytes": 3745
+    },
+    {
+      "file": "withdrawal-review-role-native-after-before-private-year-fix.json",
+      "sha256": "c2dd9d26d61db359e56fbd57b005d799dd7ef27a9db2c858714743399111ebfd",
+      "bytes": 2136
+    },
+    {
+      "file": "withdrawal-review-role-native-after-before-private-year-fix.log",
+      "sha256": "9d924b01ab362ed12316ad78d2173abd24064e7b3777dbfa83b48d2168277514",
+      "bytes": 973
+    },
+    {
+      "file": "withdrawal-review-role-native-after-before-private-year-fix-output.log",
+      "sha256": "4e30735b7dd5b97a0add6c4843fa4c29bba43b6db9fa6a5e0857e755136fadeb",
+      "bytes": 260
+    },
+    {
+      "file": "withdrawal-review-role-db-collection.log",
+      "sha256": "961d83a948e74237f154839ef1cad6e929408d1e23b054b8d492c6280c893886",
+      "bytes": 4100
+    },
+    {
+      "file": "withdrawal-review-role-spec-review.json",
+      "sha256": "3708b15b8a22a40a84b374a5789af4150ce9734e920f709180510dd5df92b2cc",
+      "bytes": 2739
+    },
+    {
+      "file": "withdrawal-review-role-standards-review.json",
+      "sha256": "ea13e33f085c7416f2355790fb0bd6a691e3d714b410633eac223da6d3a7d4c4",
+      "bytes": 2992
+    },
+    {
+      "file": "withdrawal-review-role-root-review.json",
+      "sha256": "9ed23d16163be75d88929546c9dcb03017329cd6cf43e8a64c434856db814f41",
+      "bytes": 1377
+    },
+    {
+      "file": "withdrawal-review-role-checks.json",
+      "sha256": "9e63104d1f00613f297c993181e9963847f83a5228efbff87eae18315dd4e203",
+      "bytes": 5848
+    }
+  ],
+  "limits": [
+    "Native minimal RF tables have no RLS; CompanyAccess/verified-identity/foreign Billing and Authority/annual-binding/release-policy dependencies are explicitly stubbed.",
+    "Full original v1/v2 review context SQL includes real MFA time check; real advisory-lock and isolation assertions, original raw-source/active-observation predicates and entire review-wrapper migration execute.",
+    "Native probe is not complete owner authorization, economic, object-byte, foreign-policy, Supabase or concurrent race proof.",
+    "Native v2 role mismatch is an explicit annual-binding stub constraint; full database suite must verify released transitive v2 owner role requirements.",
+    "No provider, paid, Docker, existing cluster, CI, production grant or business-code changes.",
+    "CI38017341770 remainsfailed onitsoldhead4844. No exact-head full database pass is claimed for this fixture repair.",
+    "Bounded native14 groups are not31 full databasecases anddonotprove transitivev2owner authorization; the annualcaller requirement is explicitstub behavior.",
+    "A1-A7, laterRFbrowser/recovery, independentAuth/objectrestore,Tax/Accounts successors andbothimmutablecomplete gates remainpending."
+  ]
+}

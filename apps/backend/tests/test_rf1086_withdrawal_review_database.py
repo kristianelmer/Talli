@@ -5,7 +5,6 @@ from queue import Queue
 import json
 
 import psycopg
-from psycopg import sql
 import pytest
 
 from test_rf1086_withdrawal_admission_database import (
@@ -14,7 +13,7 @@ from test_rf1086_withdrawal_admission_database import (
     remove_only_preview_fixture, remove_only_owned_source_fixture,
     remove_only_annual_opening_fixture, fixture_roles, connection, withdraw,
     observed, append_withdrawal, wait_for_lock, prepare_stage, state, locked,
-    DATABASE_URL, ROOT, STAGES,
+    DATABASE_URL, ROOT, STAGES, admission_executor,
 )
 
 pytestmark = pytest.mark.authority_database
@@ -32,28 +31,21 @@ def guarded_review(downstream):
 def reference_free_review(annual_fixture, staged):
     f = dict(annual_fixture)
     f['staged'] = dict(staged, store=f['store'])
-    identity = 'shareholder_register_filing.read_source_approval_context_v1(uuid,uuid,text)'
     with psycopg.connect(DATABASE_URL) as db:
         db.execute((ROOT / 'supabase/migrations/20261009215302_rf1086_withdrawal_source_admission_guards.sql').read_text())
         db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
-        db.execute('set local role shareholder_register_filing_store_owner')
-        db.execute(sql.SQL('grant execute on function ' + identity + ' to {}').format(sql.Identifier(staged['role'])))
-    try:
-        yield f
-    finally:
-        with psycopg.connect(DATABASE_URL) as db:
-            db.execute('set local role shareholder_register_filing_store_owner')
-            db.execute(sql.SQL('revoke execute on function ' + identity + ' from {}').format(sql.Identifier(staged['role'])))
+    return f
 
 
 def review(db, f, *, subject=None):
-    locked(db, f)
-    args = [f['preview'].preview_id.value, f['entitlement']]
-    if f['version'] == 2:
-        args.append(f['annual_text'])
-    args.append(subject or str(f['store'].actor_id.subject))
-    return db.execute('select shareholder_register_filing.read_source_approval_context_v'
-        + str(f['version']) + '(' + ','.join('%s' for _ in args) + ')', args).fetchone()[0]
+    with admission_executor(db, legacy=f['version'] == 1):
+        locked(db, f)
+        args = [f['preview'].preview_id.value, f['entitlement']]
+        if f['version'] == 2:
+            args.append(f['annual_text'])
+        args.append(subject or str(f['store'].actor_id.subject))
+        return db.execute('select shareholder_register_filing.read_source_approval_context_v'
+            + str(f['version']) + '(' + ','.join('%s' for _ in args) + ')', args).fetchone()[0]
 
 
 @pytest.mark.parametrize('version', [1, 2])
@@ -144,12 +136,13 @@ def test_existing_actor_and_transaction_guards_still_precede_current_evidence(gu
     with connection(f['staged'], repeatable_read=violation == 'repeatable_read') as db:
         with pytest.raises(psycopg.Error, match='rf1086_forbidden' if violation == 'actor' else 'rf1086_source_approval_guard_required'):
             if violation == 'missing_guards':
-                args = [f['preview'].preview_id.value, f['entitlement']]
-                if version == 2:
-                    args.append(f['annual_text'])
-                args.append(str(f['store'].actor_id.subject))
-                db.execute('select shareholder_register_filing.read_source_approval_context_v'
-                    + str(version) + '(' + ','.join('%s' for _ in args) + ')', args)
+                with admission_executor(db, legacy=version == 1):
+                    args = [f['preview'].preview_id.value, f['entitlement']]
+                    if version == 2:
+                        args.append(f['annual_text'])
+                    args.append(str(f['store'].actor_id.subject))
+                    db.execute('select shareholder_register_filing.read_source_approval_context_v'
+                        + str(version) + '(' + ','.join('%s' for _ in args) + ')', args)
             else:
                 review(db, f, subject=str(f['seed']['outsider']) if violation == 'actor' else None)
 

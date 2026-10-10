@@ -251,5 +251,6 @@
   "rfRetainedSourceCodecs20261010": "rf-retained-source-codecs-20261010.json",
   "rfPureV2Readiness20261010": "rf-pure-v2-readiness-20261010.json",
   "governanceReviewOracles20261010": "governance-review-oracles-20261010.json",
-  "historicalCi38017341770": "ci-38017341770.json"
+  "historicalCi38017341770": "ci-38017341770.json",
+  "withdrawalReviewRoleRepair20261010": "withdrawal-review-role-repair-20261010.json"
 }
