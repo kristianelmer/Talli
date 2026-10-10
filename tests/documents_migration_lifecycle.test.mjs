@@ -13,6 +13,20 @@ const originalsMigrationName = "20260924062717_documents_immutable_retained_orig
 const retentionMigrationName = "20260923102419_documents_verified_rf_evidence_retention.sql";
 const governanceLifecycleMigrationName =
   "20260902100000_corporate_governance_artifact_lifecycle.sql";
+const integrityMigrationName = "20261009232839_documents_historical_original_integrity.sql";
+
+async function integrityState(client) {
+  return (await client.query(`select p.proname,
+    pg_catalog.pg_get_function_identity_arguments(p.oid) as arguments,
+    pg_catalog.pg_get_userbyid(p.proowner) as owner,
+    pg_catalog.pg_get_functiondef(p.oid) as definition,
+    pg_catalog.has_function_privilege('authenticated',p.oid,'EXECUTE') as browser,
+    pg_catalog.has_function_privilege('service_role',p.oid,'EXECUTE') as service
+    from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='documents' and (p.proname='assert_historical_original_integrity_v1'
+      or p.proname like 'original_integrity_%_internal_v1')
+    order by p.proname,arguments`)).rows;
+}
 
 async function state(client) {
   const result = await client.query(String.raw`
@@ -54,6 +68,7 @@ test(
       historicalRollback,
       historicalAssertionForward,
       historicalAssertionRollback,
+      integrityForward,
     ] = await Promise.all([
       readFile(new URL(`../supabase/migrations/${migrationName}`, import.meta.url), "utf8"),
       readFile(new URL(`../supabase/rollback/${migrationName}`, import.meta.url), "utf8"),
@@ -71,11 +86,15 @@ test(
       readFile(new URL("../supabase/rollback/20260928083000_documents_historical_original_recovery.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/migrations/20260928124000_documents_historical_original_assertion.sql", import.meta.url), "utf8"),
       readFile(new URL("../supabase/rollback/20260928124000_documents_historical_original_assertion.sql", import.meta.url), "utf8"),
+      readFile(new URL(`../supabase/migrations/${integrityMigrationName}`, import.meta.url), "utf8"),
     ]);
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
     try {
       const initial = await state(client);
+      const initialIntegrity = await integrityState(client);
+      assert.ok(initialIntegrity.length === 0 || initialIntegrity.length === 5,
+        "integrity successor must be absent or completely installed");
       const { rows: [guards] } = await client.query(`select
         to_regprocedure('documents.lock_company_write_v1(uuid,text)') is not null as documents,
         to_regprocedure('ledger.acquire_company_write_guard_v1(uuid,text)') is not null as governance,
@@ -129,6 +148,9 @@ test(
         if (guards.documents) await client.query(documentsOnlyCompanyGuards(documentsGuardForward));
         if (guards.governance) await client.query(governanceOnlyCompanyGuards(governanceGuardForward));
         if (guards.historical_assertion) await client.query(historicalAssertionForward);
+        if (initialIntegrity.length) await client.query(integrityForward);
+        assert.deepEqual(await integrityState(client), initialIntegrity,
+          "recutover restores exact integrity definitions, owners and runtime denials");
         const successor = await state(client);
         assert.deepEqual(
           {

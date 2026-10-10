@@ -36,6 +36,21 @@ begin
   raise exception 'documents_retained_evidence_blocks_rehearsal_teardown';
  end if;
 end; $empty_registry$;
+-- The original-bytes rollback must already have proved emptiness and removed
+-- its table. Never disable an integrity contract over retained customer bytes.
+do $no_originals$
+begin
+ if pg_catalog.to_regclass('documents.retained_originals') is not null then
+  raise exception 'documents_retained_originals_blocks_rehearsal_teardown';
+ end if;
+end; $no_originals$;
+-- Closed additive integrity rollback deliberately retains these functions.
+-- Remove this exact inventory only in the empty disposable predecessor test.
+drop function if exists documents.assert_historical_original_integrity_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,timestamptz,text);
+drop function if exists documents.original_integrity_document_internal_v1(jsonb);
+drop function if exists documents.original_integrity_time_internal_v1(text);
+drop function if exists documents.original_integrity_json_internal_v1(jsonb);
+drop function if exists documents.original_integrity_require_internal_v1(boolean);
 drop function if exists documents.retain_verified_rf_evidence_v1(text,uuid,uuid,uuid,integer,text,text,bigint,text,uuid);
 drop function if exists documents.assert_retained_metadata_v1(text,text);
 -- The retained-original rollback ran first; this empty registry is next to go.
