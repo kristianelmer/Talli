@@ -19,6 +19,7 @@ from talli_backend.adapters.supabase_ledger import (
     SupabaseLedgerSession,
     SupabaseLedgerWorkflowTransaction,
     _VerifiedActor,
+    _actor as _ledger_actor,
     _line_payload,
     _map_database_error,
     _posted_entry,
@@ -622,6 +623,54 @@ def _shareholder_loan_request(
     }
 
 
+def _reporting_year_register_evidence(value: object, *, query: amendment.CorporateReportingRegisterEvidenceQuery
+) -> amendment.CorporateGovernanceYearRegisterEvidence:
+    """Shared new-wire decoder; old reporting readers/parsers stay unchanged."""
+    def require(valid):
+        if valid is not True:
+            raise CorporateGovernanceError.unavailable()
+    try:
+        require(type(query) is amendment.CorporateReportingRegisterEvidenceQuery)
+        require(type(value) is dict and set(value) == {'codec','company_id','income_year','reporting_inputs',
+            'register_chains','chain_count','chain_enumeration_sha256'})
+        require(value['codec'] == 'corporate-reporting-register-evidence-v1'
+            and type(value['company_id']) is str and value['company_id'] == str(query.company_id)
+            and type(value['income_year']) is int and value['income_year'] == int(query.income_year))
+        inputs = value['reporting_inputs']
+        require(type(inputs) is dict and set(inputs) == {'companyId','incomeYear','lifecycle','supportedEvents','amendments'})
+        require(type(inputs['companyId']) is str and inputs['companyId'] == str(query.company_id)
+            and type(inputs['incomeYear']) is int and inputs['incomeYear'] == int(query.income_year)
+            and isinstance(inputs['lifecycle'], Mapping) and type(inputs['supportedEvents']) is list and type(inputs['amendments']) is list)
+        events = []
+        fields = set('eventId eventReference companyId incomeYear eventDate eventKind phase policyVersion canonicalFacts factsSha256 accountingEntryId bankTransactionId correctionOfEventId recordedAt replayed'.split())
+        for raw in inputs['supportedEvents']:
+            require(type(raw) is dict and set(raw) == fields and type(raw['incomeYear']) is int
+                and raw['companyId'] == str(query.company_id) and raw['replayed'] is False)
+            row = _recorded_supported_event(raw)
+            require(raw['policyVersion'] == row.event.policy_version and raw['factsSha256'] == row.event.facts_sha256)
+            events.append(row)
+        basis = amendment.CorporateReportingYearBasis(query.company_id, _lifecycle_snapshot(inputs['lifecycle']), tuple(events))
+        ledger_amendments = tuple(amendment.CorporateLedgerAmendment(
+            AccountingEntryReference(str(item['original_entry_id'])), AccountingEntryReference(str(item['reversal_entry_id'])),
+            AccountingEntryReference(str(item['replacement_entry_id'])) if item['replacement_entry_id'] is not None else None,
+            CompanyId(str(item['company_id'])), IncomeYear(item['income_year']), item['reason'],
+            _ledger_actor(item['amended_by']), _timestamp(item['amended_at'])) for item in inputs['amendments'])
+        require(type(value['register_chains']) is list)
+        chains = []
+        for raw in value['register_chains']:
+            require(type(raw) is dict and type(raw.get('income_year')) is int and type(raw.get('event_id')) is str)
+            scope = amendment.CorporateRegisterEvidenceQuery(query.company_id, IncomeYear(raw['income_year']), query.actor_id,
+                SupportedCorporateEventId(raw['event_id']))
+            chains.append(amendment.parse_corporate_register_evidence_chain_snapshot(raw, query=scope))
+        projection = amendment.build_reporting_year_register_evidence(query=query, basis=basis,
+            amendments=ledger_amendments, register_chains=tuple(chains))
+        require(type(value['chain_count']) is int and value['chain_count'] == projection.chain_count
+            and type(value['chain_enumeration_sha256']) is str and value['chain_enumeration_sha256'] == projection.chain_enumeration_sha256)
+        return projection
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError, RecursionError):
+        raise CorporateGovernanceError.unavailable() from None
+
+
 def _map_governance_database_error(message: str):
     if 'corporate_register_evidence_fresh_mfa_required' in message:
         return CorporateGovernanceError.precondition(CorporateGovernanceErrorCode.REGISTER_EVIDENCE_FRESH_MFA_REQUIRED,
@@ -854,6 +903,15 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
             'select corporate_governance.lookup_register_evidence_amendment_v1(%s::uuid,%s,%s::uuid,%s,%s,%s) as result',
             (str(query.company_id), int(query.income_year), str(query.event_id), key, request_sha256, str(self.actor_id.subject)),
             lambda value: amendment.parse_corporate_register_evidence_amendment_lookup(value, query=query, request_sha256=request_sha256))
+
+    async def read_reporting_year_register_evidence(self, query: amendment.CorporateReportingRegisterEvidenceQuery
+    ) -> amendment.CorporateGovernanceYearRegisterEvidence:
+        if query.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        return await self._amendment_result(
+            'select corporate_governance.read_guarded_reporting_register_evidence_v1(%s::uuid,%s::integer,%s::text) as result',
+            (str(query.company_id), int(query.income_year), str(self.actor_id.subject)),
+            lambda value: _reporting_year_register_evidence(value, query=query))
 
     async def assert_register_evidence(self, evidence: VerifiedCorporateRegisterEvidence) -> None:
         observation = evidence.observation

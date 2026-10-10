@@ -126,5 +126,9 @@
   {
     "migration": "20261010004653_governance_register_evidence_company_guard.sql",
     "presenceQuery": "select exists(select 1 from pg_catalog.pg_trigger t join pg_catalog.pg_class c on c.oid=t.tgrelid join pg_catalog.pg_namespace n on n.oid=c.relnamespace join pg_catalog.pg_proc p on p.oid=t.tgfoid join pg_catalog.pg_namespace fn on fn.oid=p.pronamespace where n.nspname='corporate_governance' and c.relname='register_evidence_amendments' and c.relkind='r' and t.tgname='aa_company_write_guard' and t.tgtype=31 and t.tgenabled='O' and t.tgqual is null and not t.tgisinternal and t.tgconstraint=0 and not t.tgdeferrable and not t.tginitdeferred and t.tgnargs=0 and octet_length(t.tgargs)=0 and t.tgattr::text='' and t.tgoldtable is null and t.tgnewtable is null and fn.nspname='corporate_governance' and p.proname='lock_company_write_v1' and pg_catalog.oidvectortypes(p.proargtypes)='' and p.prorettype='trigger'::regtype and p.prokind='f')"
+  },
+  {
+    "migration": "20261010005413_governance_reporting_register_evidence.sql",
+    "presenceQuery": "select exists(select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.prokind='f' and p.proname='read_guarded_reporting_register_evidence_v1' and pg_catalog.oidvectortypes(p.proargtypes)='uuid, integer, text' and pg_catalog.has_function_privilege('corporate_governance_workflow_executor',p.oid,'EXECUTE'))"
   }
 ]

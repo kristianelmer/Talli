@@ -434,6 +434,16 @@ class CorporateGovernanceApplication:
         async with session.transaction() as transaction:
             return await transaction.list_lifecycle(company_ids)
 
+    async def read_reporting_year_register_evidence(self, access_token: str,
+        query: amendment.CorporateReportingRegisterEvidenceQuery
+    ) -> amendment.CorporateGovernanceYearRegisterEvidence:
+        session = await self._session(access_token, query.actor_id)
+        async with session.transaction(guarded_company_id=query.company_id) as transaction:
+            await self._require_owner(transaction, query.company_id)
+            projection = await transaction.read_reporting_year_register_evidence(query)
+            amendment.assert_reporting_year_register_evidence(projection, query=query)
+            return projection
+
     async def read_reporting_year_evidence(self, access_token: str, *, company_id: CompanyId,
             income_year: IncomeYear, correlation_id: CorrelationId) -> CorporateGovernanceYearEvidence:
         session = await self._session_factory.session(access_token)

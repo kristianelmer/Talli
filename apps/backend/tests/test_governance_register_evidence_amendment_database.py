@@ -34,6 +34,7 @@ from governance_register_evidence_amendment_fixture import (
 pytestmark = pytest.mark.authority_database
 MIGRATION = '20261009234529_governance_register_evidence_amendments.sql'
 APPLICATION_MIGRATION = '20261010001936_governance_register_evidence_application.sql'
+REPORTING_PROJECTION = '20261010005413_governance_reporting_register_evidence.sql'
 SCHEMA = 'corporate_governance'
 TABLE = SCHEMA + '.register_evidence_amendments'
 APPEND = SCHEMA + '.append_register_evidence_amendment_v1(text,jsonb,text,text)'
@@ -621,6 +622,7 @@ def test_staged_closed_grants_reapply_and_retentive_rollback_preserve_exact_cata
         # restore the reviewed application suffix before the next fixture.
         with psycopg.connect(DATABASE_URL) as db:
             db.execute((ROOT / 'supabase/migrations' / APPLICATION_MIGRATION).read_text())
+            db.execute((ROOT / 'supabase/migrations' / REPORTING_PROJECTION).read_text())
             db.execute('set local role corporate_governance_store_owner')
             grant_fixture(db, ready['role'])
     assert immutable_inputs(ready) == before_rows

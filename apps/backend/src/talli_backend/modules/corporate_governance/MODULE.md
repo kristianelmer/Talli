@@ -513,3 +513,54 @@ and all amendments, so it cannot reintroduce the direct-row-write bypass.
 
 The final-topology catalog and direct-row regressions live in
 `apps/backend/tests/test_governance_register_evidence_company_guard_database.py`.
+
+### Reporting year with register-evidence history
+
+`CorporateReportingRegisterEvidenceQuery` and
+`CorporateGovernanceYearRegisterEvidence` add a historical reporting projection.
+`build_reporting_year_register_evidence` retains the unchanged
+`corporate-reporting-year-2` view and hash, then binds every eligible original
+from the complete company-wide supported-event input to exactly one validated
+`CorporateRegisterEvidenceChainSnapshot`. `assert_reporting_year_register_evidence`
+revalidates the carried scope, original-view hash and chain commitments at typed
+application boundaries. Originals and effective register references remain
+separate; amendments do not change the original economics, Ledger facts or
+reporting status.
+
+The eligible inventory includes non-correction cash `registered` originals and
+loss-reduction `registered` or `first_recognized_after_registration` originals,
+including other years. Correction rows and reversed/conflicting lifecycles stay
+in the unchanged reporting inputs and year selection; correction rows are not
+new amendment anchors. Registered-only cash remains supported. An eligible
+legacy original missing valid RF evidence makes the new projection unavailable;
+it cannot be omitted or represented as known-zero history. The old reader keeps
+its existing behavior. Only a valid complete scope with no eligible originals
+has zero chains.
+
+`20261010005413_governance_reporting_register_evidence.sql` adds
+`read_guarded_reporting_register_evidence_v1(company, year, subject)`. It delegates
+to the unchanged guarded company-wide input reader and complete chain reader
+under one held company guard at READ COMMITTED. The application and transaction
+method `read_reporting_year_register_evidence` provide the Governance producer;
+`PostgresCorporateReportingEvidence` has a separate same-connection method for a
+future consumer. Both use one additive strict wire decoder and the existing
+original parsers. Existing reader methods and accepted input formats are unchanged.
+
+The versioned chain commitment covers sorted original-event IDs, their own years,
+anchor hashes, amendment counts and chain enumeration hashes. The public
+projection hash also binds the unchanged year-view hash. Arbitrary old lifecycle
+JSON is not re-encoded through the strict amendment codec. These commitments
+detect mismatches against the supplied complete basis; they cannot independently
+prove SQL enumeration completeness or disprove a wholly recommitted omitted
+owner input. Historical observation is not fresh admission or an evidence lease.
+
+Only the Governance workflow executor receives the new public reader grant.
+RF consumer grants, application consumption in RF, HTTP and Archive behavior are
+not activated. Reinstallation closes unexpected grants; retentive rollback closes
+only this producer grant and preserves history and old reader authority. The
+empty disposable rehearsal recognizes exact 22/23/24-routine topologies and
+refuses retained amendment history. Predecessor proof tests restore this suffix
+when restoring the final topology. Coverage lives in
+`test_corporate_governance_reporting_register_evidence.py`,
+`test_postgres_corporate_reporting_register_evidence.py`, and
+`test_governance_reporting_register_evidence_database.py`.

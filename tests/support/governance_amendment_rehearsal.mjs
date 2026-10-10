@@ -74,10 +74,22 @@ begin
   select array_agg(name order by name collate "C") into expected
    from unnest(expected||array['prepare_register_evidence_amendment_v1']) name;
  end if;
+ -- The reporting suffix follows application admission; neither an unexpected
+ -- overload nor a reporting-only partial topology may be swallowed.
+ if exists(select 1 from pg_catalog.pg_proc where pronamespace='corporate_governance'::regnamespace
+  and proname='read_guarded_reporting_register_evidence_v1') then
+  if pg_catalog.array_length(expected,1)<>23 or (select count(*)=1 and bool_and(
+   pg_catalog.oidvectortypes(proargtypes)='uuid, integer, text' and prorettype='jsonb'::regtype and prokind='f')
+   from pg_catalog.pg_proc where pronamespace='corporate_governance'::regnamespace
+    and proname='read_guarded_reporting_register_evidence_v1') is distinct from true
+  then raise exception 'governance_amendment_rehearsal_inventory_changed'; end if;
+  select array_agg(name order by name collate "C") into expected
+   from unnest(expected||array['read_guarded_reporting_register_evidence_v1']) name;
+ end if;
  select array_agg(p.proname::text order by p.proname collate "C") into actual
  from pg_catalog.pg_proc p where p.pronamespace='corporate_governance'::regnamespace
   and (p.proname like 'register_evidence_%_internal_v1'
-   or p.proname in ('append_register_evidence_amendment_v1','lookup_register_evidence_amendment_v1','read_register_evidence_chain_v1','prepare_register_evidence_amendment_v1'));
+   or p.proname in ('append_register_evidence_amendment_v1','lookup_register_evidence_amendment_v1','read_register_evidence_chain_v1','prepare_register_evidence_amendment_v1','read_guarded_reporting_register_evidence_v1'));
  if actual is distinct from expected then raise exception 'governance_amendment_rehearsal_inventory_changed'; end if;
  for item in select p.oid::regprocedure::text as signature from pg_catalog.pg_proc p
   where p.pronamespace='corporate_governance'::regnamespace and p.proname=any(expected)

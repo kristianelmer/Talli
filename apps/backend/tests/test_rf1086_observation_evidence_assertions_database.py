@@ -19,6 +19,7 @@ pytestmark = pytest.mark.authority_database
 MIGRATION = '20261009222053_rf1086_observation_evidence_assertions.sql'
 GOVERNANCE_SUCCESSOR = '20261009234529_governance_register_evidence_amendments.sql'
 GOVERNANCE_APPLICATION = '20261010001936_governance_register_evidence_application.sql'
+REPORTING_PROJECTION = '20261010005413_governance_reporting_register_evidence.sql'
 CURRENT = 'shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)'
 RETAINED = 'shareholder_register_filing.read_retained_register_observation_withdrawal_v1(uuid,uuid,integer,uuid,integer,text,text,timestamptz,text)'
 UNSET = object()
@@ -31,6 +32,7 @@ def evidence(staged):
         # Restore the intentional final-chain consumer grant after staged replay.
         db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
         db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_APPLICATION).read_text())
+        db.execute((ROOT / 'supabase/migrations' / REPORTING_PROJECTION).read_text())
         db.execute('set local role shareholder_register_filing_store_owner')
         db.execute(sql.SQL('grant execute on function ' + CURRENT + ',' + RETAINED + ' to {}').format(sql.Identifier(staged['role'])))
     try:
@@ -247,6 +249,7 @@ def test_new_contracts_keep_only_narrow_governance_assertion_grant_and_preserve_
             # Restore the intentional final-chain consumer grant after staged replay.
             db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
             db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_APPLICATION).read_text())
+            db.execute((ROOT / 'supabase/migrations' / REPORTING_PROJECTION).read_text())
             assert db.execute('select to_jsonb(p) from pg_proc p where oid=%s::regprocedure', (ASSERT_CURRENT,)).fetchone() == old
             assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall() == roles
             for role in ('anon', 'authenticated', 'service_role', 'shareholder_register_filing_executor',
@@ -260,6 +263,7 @@ def test_new_contracts_keep_only_narrow_governance_assertion_grant_and_preserve_
         with psycopg.connect(DATABASE_URL) as restored:
             restored.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
             restored.execute((ROOT / 'supabase/migrations' / GOVERNANCE_APPLICATION).read_text())
+            restored.execute((ROOT / 'supabase/migrations' / REPORTING_PROJECTION).read_text())
     original = observed(evidence)
     with connection(evidence, role='shareholder_register_filing_executor') as db:
         with pytest.raises(psycopg.errors.InsufficientPrivilege):

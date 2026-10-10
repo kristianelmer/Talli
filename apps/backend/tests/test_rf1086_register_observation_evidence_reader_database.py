@@ -34,6 +34,7 @@ pytestmark = pytest.mark.authority_database
 MIGRATION = '20261009231107_rf1086_current_observation_evidence_reader.sql'
 GOVERNANCE_SUCCESSOR = '20261009234529_governance_register_evidence_amendments.sql'
 GOVERNANCE_APPLICATION = '20261010001936_governance_register_evidence_application.sql'
+REPORTING_PROJECTION = '20261010005413_governance_reporting_register_evidence.sql'
 READER = 'shareholder_register_filing.read_current_register_observation_evidence_v1(uuid,uuid,integer,integer,text,timestamptz,text)'
 TABLE = 'shareholder_register_filing.register_observations'
 UNSET = object()
@@ -45,6 +46,7 @@ def reader(staged):
         db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
         db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
         db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_APPLICATION).read_text())
+        db.execute((ROOT / 'supabase/migrations' / REPORTING_PROJECTION).read_text())
         db.execute('set local role shareholder_register_filing_store_owner')
         db.execute(sql.SQL('grant execute on function ' + READER + ' to {}').format(sql.Identifier(staged['role'])))
     try:
@@ -453,6 +455,7 @@ def test_closed_reader_helpers_and_reapplication_rollback_preserve_catalog_and_r
         with psycopg.connect(DATABASE_URL) as restored:
             restored.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
             restored.execute((ROOT / 'supabase/migrations' / GOVERNANCE_APPLICATION).read_text())
+            restored.execute((ROOT / 'supabase/migrations' / REPORTING_PROJECTION).read_text())
     assert retained_rows(reader) == before_rows
     with connection(reader) as db: assert read(db, original)[0] == rf.serialize_rf1086_register_observation(original)
     with connection(reader, role='shareholder_register_filing_executor') as db:

@@ -5,12 +5,13 @@ import psycopg
 from psycopg.pq import TransactionStatus
 
 from talli_backend.adapters.supabase_corporate_governance import (
-    _lifecycle_snapshot, _recorded_supported_event,
+    _lifecycle_snapshot, _recorded_supported_event, _reporting_year_register_evidence,
 )
 from talli_backend.adapters.supabase_ledger import _actor, _timestamp
 from talli_backend.modules.corporate_governance.public import (
     AccountingEntryReference, CorporateGovernanceError, CorporateGovernanceYearEvidence,
     CorporateLedgerAmendment, CorporateReportingYearBasis, build_reporting_year_evidence,
+    CorporateReportingRegisterEvidenceQuery, CorporateGovernanceYearRegisterEvidence,
 )
 from talli_backend.shared.kernel import ActorId, CompanyId, CorrelationId, IncomeYear
 
@@ -58,4 +59,26 @@ class PostgresCorporateReportingEvidence:
                 raise CorporateGovernanceError.forbidden() from None
             raise CorporateGovernanceError.unavailable() from None
         except (KeyError, TypeError, ValueError, AttributeError):
+            raise CorporateGovernanceError.unavailable() from None
+
+
+    async def read_reporting_year_register_evidence(self, query: CorporateReportingRegisterEvidenceQuery
+    ) -> CorporateGovernanceYearRegisterEvidence:
+        if query.actor_id != self._actor_id:
+            raise CorporateGovernanceError.forbidden()
+        if self._connection.info.transaction_status != TransactionStatus.INTRANS:
+            raise CorporateGovernanceError.unavailable()
+        try:
+            row = await (await self._connection.execute(
+                'select corporate_governance.read_guarded_reporting_register_evidence_v1(%s::uuid,%s::integer,%s::text) as result',
+                (str(query.company_id), int(query.income_year), str(self._actor_id.subject)),
+            )).fetchone()
+            if not isinstance(row, Mapping) or set(row) != {'result'}:
+                raise CorporateGovernanceError.unavailable()
+            return _reporting_year_register_evidence(row['result'], query=query)
+        except psycopg.DatabaseError as error:
+            if 'corporate_governance_forbidden' in str(error) or 'ledger_forbidden' in str(error):
+                raise CorporateGovernanceError.forbidden() from None
+            raise CorporateGovernanceError.unavailable() from None
+        except (ValueError, TypeError, KeyError, AttributeError, OverflowError, RecursionError):
             raise CorporateGovernanceError.unavailable() from None

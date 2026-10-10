@@ -1467,6 +1467,44 @@ def build_reporting_year_evidence(*, basis: CorporateReportingYearBasis, income_
     return build(basis=basis, income_year=income_year, amendments=amendments)
 
 
+@dataclass(frozen=True, slots=True)
+class CorporateReportingRegisterEvidenceQuery:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateGovernanceYearRegisterEvidence:
+    """Unchanged reporting year plus all eligible original-event chains.
+
+    Company-wide chain coverage is the trusted owner's query contract. Effective
+    references accompany originals; no filing eligibility or fresh evidence lease
+    is implied by this historical projection.
+    """
+    query: CorporateReportingRegisterEvidenceQuery
+    original: CorporateGovernanceYearEvidence
+    register_chains: tuple[CorporateRegisterEvidenceChainSnapshot, ...]
+    chain_count: int
+    chain_enumeration_sha256: str
+    enumeration_sha256: str
+
+
+def build_reporting_year_register_evidence(*, query: CorporateReportingRegisterEvidenceQuery,
+    basis: CorporateReportingYearBasis, amendments: tuple[CorporateLedgerAmendment, ...],
+    register_chains: tuple[CorporateRegisterEvidenceChainSnapshot, ...]
+) -> CorporateGovernanceYearRegisterEvidence:
+    from .reporting_register_evidence import build
+    return build(query=query, basis=basis, amendments=amendments, register_chains=register_chains)
+
+
+def assert_reporting_year_register_evidence(value: CorporateGovernanceYearRegisterEvidence,
+    *, query: CorporateReportingRegisterEvidenceQuery
+) -> None:
+    from .reporting_register_evidence import assert_projection
+    assert_projection(value, query=query)
+
+
 class CorporateGovernancePersistence(Protocol):
     @property
     def actor_id(self) -> ActorId: ...
@@ -1485,6 +1523,9 @@ class CorporateGovernancePersistence(Protocol):
 
     async def read_register_evidence_chain(self, query: CorporateRegisterEvidenceQuery
     ) -> CorporateRegisterEvidenceChainSnapshot: ...
+
+    async def read_reporting_year_register_evidence(self, query: CorporateReportingRegisterEvidenceQuery
+    ) -> CorporateGovernanceYearRegisterEvidence: ...
 
     async def read_reporting_year_basis(
         self, company_id: CompanyId,
@@ -1885,6 +1926,8 @@ def parse_corporate_register_evidence_amendment(
 
 
 __all__ = [
+    "CorporateReportingRegisterEvidenceQuery", "CorporateGovernanceYearRegisterEvidence",
+    "build_reporting_year_register_evidence", "assert_reporting_year_register_evidence",
     "CorporateRegisterEvidenceQuery", "CorporateRegisterEvidenceChainSnapshot",
     "CorporateRegisterEvidenceAmendmentLookup", "PreparedCorporateRegisterEvidenceAmendment",
     "parse_corporate_register_evidence_chain_snapshot", "assert_corporate_register_evidence_chain_snapshot",
