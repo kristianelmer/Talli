@@ -172,7 +172,8 @@
       "prepare_rf1086_retained_source_reconciliation",
       "prepare_rf1086_retained_correction_predecessor",
       "build_rf1086_retained_source_readiness_v2",
-      "build_rf1086_retained_annual_readiness_v2"
+      "build_rf1086_retained_annual_readiness_v2",
+      "assert_rf1086_prepared_source_preview_matches"
     ],
     "events": [],
     "errors": [
@@ -575,7 +576,9 @@
     "sourceGuardedCaptureV2Database": "apps/backend/tests/test_rf1086_guarded_source_capture_v2_database.py",
     "sourceAdmissionV2": "apps/backend/tests/test_rf1086_source_admission_v2.py",
     "retainedReadinessObservationV2": "apps/backend/tests/test_rf1086_retained_readiness_observation_v2.py",
-    "sourceAdmissionV2Database": "apps/backend/tests/test_rf1086_source_admission_v2_database.py"
+    "sourceAdmissionV2Database": "apps/backend/tests/test_rf1086_source_admission_v2_database.py",
+    "sourcePreviewV2": "apps/backend/tests/test_rf1086_source_preview_v2.py",
+    "sourcePreviewV2Database": "apps/backend/tests/test_rf1086_source_preview_v2_database.py"
   },
   "compatibilityExceptions": []
 }

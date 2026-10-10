@@ -24,6 +24,7 @@ class SourceAdmissionV2Scope(Protocol):
     async def company_identity(self) -> Rf1086AdmissionCompany: ...
     async def current_source(self) -> rf.Rf1086YearSourceSnapshot | rf.Rf1086YearSourceSnapshotV2 | None: ...
     async def retained_source_preview(self, preview_id: rf.PreviewId) -> rf.Rf1086ArchiveSourcePreview: ...
+    async def capture_source_preview_v2(self, prepared: rf.Rf1086PreparedSourcePreview) -> rf.Rf1086ArchiveSourcePreview: ...
     async def assert_original(self, receipt: RetainedDocumentOriginalReceipt) -> None: ...
     async def governance_register_evidence(self, correlation_id: CorrelationId) -> CorporateGovernanceYearRegisterEvidence: ...
     async def read_current_register_observation(self, query: rf.Rf1086SourceQuery,
@@ -47,6 +48,13 @@ class SourceAdmissionV2Session(Protocol):
 
 class SourceAdmissionV2Sessions(Protocol):
     async def session(self, access_token: str) -> SourceAdmissionV2Session: ...
+
+
+@dataclass(frozen=True, slots=True)
+class AdmittedRf1086YearSourceV2:
+    source: rf.Rf1086YearSourceSnapshotV2
+    originals: tuple[RetainedDocumentOriginalReceipt, ...]
+    transaction: SourceAdmissionV2Scope
 
 
 @dataclass(frozen=True, slots=True)
@@ -81,6 +89,27 @@ class ShareholderRegisterSourceAdmissionV2:
         _require(source.company_id == company_id and source.income_year == income_year,
             'rf1086_source_company_year_mismatch')
         rf.build_rf1086_retained_source_readiness_v2(source, retained)
+        originals = await self._verify_originals(access_token, session, source)
+        async with self._admit_source(session, query, source, originals, correlation_id, retained) as admitted:
+            readiness = rf.build_rf1086_retained_source_readiness_v2(source, retained)
+            yield AdmittedRf1086SourceV2(source, retained, readiness, originals, admitted.transaction)
+
+    @asynccontextmanager
+    async def admit_year_source(self, access_token: str, *, company_id: CompanyId,
+            income_year: IncomeYear, source_id: rf.Rf1086YearSourceId, correlation_id: CorrelationId):
+        session = await self._sessions.session(access_token)
+        query = rf.Rf1086SourceQuery(company_id, income_year, session.actor_id)
+        source = await session.read_year_source(query, source_id)
+        _require(type(source) is rf.Rf1086YearSourceSnapshotV2 and source.source_id == source_id,
+            'rf1086_source_not_found')
+        _require(source.company_id == company_id and source.income_year == income_year,
+            'rf1086_source_company_year_mismatch')
+        rf.assert_rf1086_year_source_integrity_v2(source)
+        originals = await self._verify_originals(access_token, session, source)
+        async with self._admit_source(session, query, source, originals, correlation_id) as admitted:
+            yield admitted
+
+    async def _verify_originals(self, access_token, session, source):
         documents = await self._documents.session(access_token)
         _require(documents.actor_id == session.actor_id, 'rf1086_source_owner_required')
         originals = []
@@ -90,6 +119,12 @@ class ShareholderRegisterSourceAdmissionV2:
             originals.append(evidence.retained_original)
         originals = tuple(originals)
         assert_source_capture_originals_v2(source.command, originals)
+        return originals
+
+    @asynccontextmanager
+    async def _admit_source(self, session, query, source, originals, correlation_id,
+            retained: rf.Rf1086ArchiveSourcePreview | None = None):
+        company_id = query.company_id
         async with session.source_admission(query) as transaction:
             _require(transaction.actor_id == session.actor_id, 'rf1086_source_owner_required')
             identity = await transaction.company_identity()
@@ -97,8 +132,9 @@ class ShareholderRegisterSourceAdmissionV2:
             _require(type(current) is rf.Rf1086YearSourceSnapshotV2
                 and rf.serialize_rf1086_year_source_v2(current) == rf.serialize_rf1086_year_source_v2(source),
                 'rf1086_source_changed')
-            locked = await transaction.retained_source_preview(preview_id)
-            _require(locked == retained, 'rf1086_source_preview_stale')
+            if retained is not None:
+                locked = await transaction.retained_source_preview(retained.preview.preview_id)
+                _require(locked == retained, 'rf1086_source_preview_stale')
             for receipt in originals: await transaction.assert_original(receipt)
             view = await transaction.governance_register_evidence(correlation_id)
             company = replace(source.command.case.company, org_number=identity.company.org_number,
@@ -115,8 +151,7 @@ class ShareholderRegisterSourceAdmissionV2:
                 company, identity_sha, source.command.documents, view)
             rf.assert_rf1086_year_source_fresh_v2(source, current_source_id=current.source_id,
                 current_source_sha256=current.source_sha256, context=context)
-            readiness = rf.build_rf1086_retained_source_readiness_v2(source, locked)
-            yield AdmittedRf1086SourceV2(source, locked, readiness, originals, transaction)
+            yield AdmittedRf1086YearSourceV2(source, originals, transaction)
 
     async def read_readiness_v2(self, access_token: str, *, company_id: CompanyId,
             income_year: IncomeYear, preview_id: rf.PreviewId, correlation_id: CorrelationId):

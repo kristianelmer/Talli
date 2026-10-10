@@ -1726,6 +1726,52 @@ class _SourceAdmission:
             raise rf.Rf1086YearSourceError('rf1086_source_preview_not_found')
         return capture
 
+    async def capture_source_preview_v2(self, prepared):
+        """Append only on this held owner scope, using the closed SQL proof."""
+        self._require_active()
+        if type(prepared) is not rf.Rf1086PreparedSourcePreview:
+            raise rf.Rf1086YearSourceError('rf1086_source_preview_invalid')
+        source = prepared.source
+        if (type(source) is not rf.Rf1086YearSourceSnapshotV2
+                or source.company_id != self._query.company_id
+                or source.income_year != self._query.income_year):
+            raise rf.Rf1086YearSourceError('rf1086_source_company_year_mismatch')
+        rf.assert_rf1086_year_source_integrity_v2(source)
+        current = await self.current_source()
+        if (type(current) is not rf.Rf1086YearSourceSnapshotV2
+                or rf.serialize_rf1086_year_source_v2(current) != rf.serialize_rf1086_year_source_v2(source)):
+            raise rf.Rf1086YearSourceError('rf1086_source_changed')
+        if type(prepared.rendered) is not rf.Rf1086RenderedPreview:
+            raise rf.Rf1086YearSourceError('rf1086_source_preview_invalid')
+        # Full prepared correspondence includes filing, which contributes to
+        # the UUID identity but is absent from the saved preview DTO.
+        # Only deterministic in-memory RF rendering runs under this guard.
+        rf.assert_rf1086_prepared_source_preview_matches(prepared, source)
+        rendered = prepared.rendered
+        identity = "rf1086-source-preview:full-year-v1:" + source.source_id.value + ":" + source.source_sha256 + ":" + rf.rf1086_year_source_digest(rendered)
+        preview = rf.Rf1086SourcePreview(
+            preview_id=rf.PreviewId(str(uuid5(NAMESPACE_URL, identity))),
+            company_id=source.company_id, income_year=source.income_year, source_id=source.source_id,
+            source_sha256=source.source_sha256, case_sha256=source.case_sha256,
+            readiness_status=rendered.status, readiness_issues=rendered.issues, preview_text=rendered.preview,
+            hovedskjema_xml=rendered.hovedskjema_xml, underskjema_xml=rendered.underskjema_xml)
+        encoded = rf.serialize_rf1086_source_preview(preview)
+        payload_sha = hashlib.sha256(encoded.encode('utf-8')).hexdigest()
+        await self.prepare_source_governance_proof(source)
+        saved = await (await self._connection.execute(
+            'select shareholder_register_filing.append_source_preview_v1('
+            '%s::uuid,%s::uuid,%s,%s::uuid,%s,%s,%s,%s) as id',
+            (str(preview.preview_id), str(source.company_id), int(source.income_year),
+             source.source_id.value, source.source_sha256, source.case_sha256, payload_sha, encoded),
+        )).fetchone()
+        if saved is None or str(saved['id']) != str(preview.preview_id):
+            raise rf.Rf1086YearSourceError('rf1086_source_preview_storage_invalid')
+        retained = await self.retained_source_preview(preview.preview_id)
+        if (retained.preview != preview or retained.payload_text != encoded
+                or retained.payload_sha256 != payload_sha):
+            raise rf.Rf1086YearSourceError('rf1086_source_preview_storage_invalid')
+        return retained
+
     async def assert_original(self, receipt):
         self._require_active()
         if receipt.company_id != self._query.company_id:

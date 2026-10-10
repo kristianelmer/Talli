@@ -2029,3 +2029,39 @@ schema cases use restricted disposable RF/Documents logins, real owner records,
 guards and retention; claims and membership refresh are fixtures, and storage
 reads locally retained fixture bytes. Collection does not establish execution,
 live Auth, independent object-store recovery or release readiness.
+
+### Closed v2 preview creation
+
+`ShareholderRegisterSourcePreviewV2.generate` authenticates and reads the
+requested committed source, then uses the existing public preparation service
+outside the guard. Its persistence facade enters
+`ShareholderRegisterSourceAdmissionV2.admit_year_source`: original byte checks
+outside the guard; current-owner identity, exact current source, retained
+original assertions and complete Governance/effective RF context inside it.
+The shared source phases preserve saved admission's source → capture → original
+and Governance validation order. A source-only lease reads no saved preview.
+
+The additive held `capture_source_preview_v2` port requires an active scope,
+exact company/year/current source and complete prepared RF correspondence through
+`assert_rf1086_prepared_source_preview_matches`, including the filing label used
+in preview identity. This additive contract compares every prepared field with
+the unchanged pure preparation; legacy correspondence APIs stay unchanged. It uses the unchanged UUID5 identity formula and preview codec, mints the existing
+closed Governance/RF transaction proof, appends through the existing preview RPC
+and rechecks exact raw saved bytes on the same connection. Canonical validation
+repeats bounded in-memory rendering inside the guard; Documents/storage/provider
+I/O remains outside. Failure or cancellation rolls back append and proof.
+
+Every v2 generation, including deterministic replay, requires this fresh full
+source lease and proof before the RPC. The existing SQL replay lookup precedes
+its fresh-insert proof hook; its timing and the legacy v1 adapter are unchanged.
+Replay returns original saved payload, creator and time. A changed renderer can
+create a distinct new preview without rewriting historical captures. Saved
+readiness readers still do not render. No routes, ordinary runtime grants,
+approval, claim, bridge or dispatch consumer are activated.
+
+Local tests use actual public preparation, Documents byte verification and
+held RF/Governance adapters with explicit SQL/auth/storage doubles. Required
+Authority database cases use actual owner records, proof/append, races and
+restricted fixture logins; authentication state/claims and locally retained
+fixture bytes do not prove live Auth or independent object-store recovery.
+Collection alone is not execution or release acceptance.

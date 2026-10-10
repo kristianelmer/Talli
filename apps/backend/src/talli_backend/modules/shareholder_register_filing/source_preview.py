@@ -15,6 +15,19 @@ from .year_source_storage import _decode, _encode, _unique
 PROFILE = "rf1086-full-year-v1"
 
 
+def assert_prepared_matches(prepared: rf.Rf1086PreparedSourcePreview,
+        source: rf.Rf1086YearSourceSnapshot | rf.Rf1086YearSourceSnapshotV2) -> None:
+    """Validate every identity-bearing prepared field, including filing."""
+    try:
+        if type(prepared) is not rf.Rf1086PreparedSourcePreview:
+            raise ValueError()
+        expected = prepare(rf.GenerateRf1086SourcePreview(source.company_id, source.income_year, source))
+        if prepared != expected:
+            raise ValueError()
+    except (ValueError, TypeError, AttributeError, KeyError, ArithmeticError):
+        raise rf.Rf1086YearSourceError('rf1086_source_preview_mismatch') from None
+
+
 def _paid_in_amount(value) -> str:
     # Preserve the verified amount exactly; ambient Decimal rounding is irrelevant.
     whole, _, fraction = format(Decimal(str(value)), "f").partition(".")
