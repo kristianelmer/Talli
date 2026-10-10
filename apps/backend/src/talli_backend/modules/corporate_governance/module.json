@@ -175,7 +175,7 @@
     ],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql; supabase/migrations/20261009234529_governance_register_evidence_amendments.sql; supabase/migrations/20261010001936_governance_register_evidence_application.sql"
+    "migrations": "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql; supabase/migrations/20261009234529_governance_register_evidence_amendments.sql; supabase/migrations/20261010001936_governance_register_evidence_application.sql; supabase/migrations/20261010004653_governance_register_evidence_company_guard.sql"
   },
   "ports": [
     {
@@ -276,7 +276,8 @@
     "registerEvidenceAmendmentDatabase": "apps/backend/tests/test_governance_register_evidence_amendment_database.py",
     "registerEvidenceAmendmentWorkflow": "apps/backend/tests/test_corporate_register_evidence_amendment_workflow.py",
     "registerEvidenceAmendmentAdapter": "apps/backend/tests/test_supabase_corporate_register_evidence_amendment.py",
-    "registerEvidenceApplicationDatabase": "apps/backend/tests/test_governance_register_evidence_application_database.py"
+    "registerEvidenceApplicationDatabase": "apps/backend/tests/test_governance_register_evidence_application_database.py",
+    "registerEvidenceCompanyGuardDatabase": "apps/backend/tests/test_governance_register_evidence_company_guard_database.py"
   },
   "compatibilityExceptions": []
 }

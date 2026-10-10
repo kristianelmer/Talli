@@ -498,3 +498,18 @@ validation use `parse_corporate_register_evidence_chain_snapshot`,
 `parse_prepared_corporate_register_evidence_amendment`.
 `serialize_corporate_register_evidence_originals` emits the strict immutable
 admission commitments; they do not form part of the actor-scoped request digest.
+
+### Amendment row company-lock backstop
+
+`20261010004653_governance_register_evidence_company_guard.sql` extends the
+released all-company-table guard invariant to `register_evidence_amendments`.
+The unconditional `aa_company_write_guard` runs before each INSERT, UPDATE or
+DELETE through the unchanged private `lock_company_write_v1()` function. It
+requires READ COMMITTED and locks the affected row company; table FORCE RLS,
+immutable-update/delete and no-truncate rules still apply. It adds no runtime
+authority. Reapplication preserves existing function bodies/ACLs and restores
+any temporarily borrowed owner-role edge. Retentive rollback keeps the guard
+and all amendments, so it cannot reintroduce the direct-row-write bypass.
+
+The final-topology catalog and direct-row regressions live in
+`apps/backend/tests/test_governance_register_evidence_company_guard_database.py`.
