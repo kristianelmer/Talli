@@ -1494,7 +1494,7 @@ annual proof shape, while delegating source economics and integrity to the sourc
 owner's existing v2 contract. The source-aware assertion rebuilds every manifest
 field and rendered byte; serialization verifies v3 codec/binding and byte/hash
 integrity but cannot establish live evidence or permission. Claim, preparation,
-SQL admission, dispatch, application, HTTP and Archive consumers remain closed to
+SQL admission, dispatch, application, HTTP and runtime Archive consumers remain closed to
 v3. No owner/MFA, entitlement, source/head currentness, complete foreign history,
 original document bytes or correction eligibility is proven by this pure stage.
 `test_rf1086_source_production_v3.py` owns its additive unit coverage.
@@ -1522,9 +1522,92 @@ versions must preserve the v1/v2 assessment for these historical codecs.
 
 These private functions establish internal commitment consistency, not authentic
 origin, currentness, complete foreign enumeration, document bytes or permission.
-No old parser/serializer, public contract, archive registry, claim, admission,
-application or SQL path is changed to call them. Mixed archive history, an
-explicit retained v1–v6 reader and review-v3 correspondence remain later slices.
+No old parser/serializer, archive registry, claim, admission, application or SQL
+path is changed to call them. The explicit retained v1–v6 reader below is an
+additive consumer; it does not change the old APIs' validation semantics.
 `test_rf1086_retained_source_approval.py` checks positive/fresh parity;
 `test_rf1086_retained_source_approval_adversarial.py` independently checks altered
 commitments and unavailable current renderers/builders.
+
+
+### Private mixed retained source history (2026-10-10)
+
+`archive_history_v6.validate` accepts captured year-source v1/v2 history through
+explicit codec dispatch on the original snapshot text. Capture/request identity,
+source ordinals, current retained head and correction links must agree; a v1 to
+v2 correction is explicit, and v2 to v1 downgrade is rejected. The old validator
+shares unchanged capture, observation/withdrawal and preview/bridge checks;
+existing public archive parsers, serializers and v1–v5 registries remain closed.
+The two archive source annotations admit either source record without adding
+fields or changing canonical hashes.
+
+Every v2 source proves its own scope and complete compact Governance projection
+integrity before local dereferencing. For the archive year, original,
+intermediate and effective RF references bind exact retained ID/version/hash;
+the effective body and each withdrawal receipt, target and chronology must also
+agree. Governance replacement observations may be independent version-one roots.
+Historical withdrawn evidence remains readable; this does not establish fresh
+head eligibility. Off-year chains remain typed and hash-bound owner commitments,
+without claiming that this year archive contains their observations or originals.
+The final effective body is checked by the RF source contract. Earlier tuple
+commitments do not independently authenticate their correspondence to original
+Governance economics/date; this layer neither duplicates that foreign policy nor
+requires identical effective instants across independent replacement roots.
+
+Unapproved and blocked previews keep their exact captured bytes, including
+accepted noncanonical JSON; validation never renders. Approved canonical preview
+commitments and full retained manifests belong to the separate retained-lineage
+layer. Unknown history/withdrawal coverage remains `None`; absent referenced
+same-year withdrawal evidence fails closed. These checks establish internal
+consistency, not authentic origin, omitted-row completeness, current authority or
+external original bytes. No public reader, workflow, SQL, writer, Archive facade,
+or provider is activated by this private stage.
+`test_rf1086_archive_history_v6.py` owns its additive unit coverage;
+`test_rf1086_archive_history_v6_adversarial.py` independently exercises lineage,
+capture and referenced-body disagreements. V6 compares the owner codec's canonical
+source/observation bodies as well as semantic equality: equal datetime instants
+or Decimal values cannot conceal different retained representations. Consistent
+original offsets/scales and noncanonical raw envelope formatting remain valid;
+the frozen legacy validator is unchanged.
+
+
+### Explicit retained archive v1–v6 reader and v6 serializer (2026-10-10)
+
+`parse_rf1086_retained_archive` accepts original v1–v5 envelopes without requiring
+rewrapping, plus canonical `rf1086-production-archive-v6`. It validates saved
+preview, source, annual proof, full manifest, review, claim, submission ancestry,
+journal and feedback correspondence without the current renderer or fresh
+preview/readiness/approval builders. Annual v1/v2 assessments use the preserved
+versioned policy on captured inputs. Manifest hashes alone are insufficient.
+Source-v1 pairs only with approval-v1/review-v1 or approval-v2/review-v2 with
+annual binding-v1; source-v2 pairs only with approval-v3/review-v3 and annual
+binding-v2. Review-v3 has the same closed top-level keys as review-v2, with its
+explicit version and matching binding-v2; historical actor, permission, pilot,
+request, scope, warning and bridge checks remain required.
+
+`serialize_rf1086_archive_v6` requires all three captured sections: source
+history, overrides and withdrawal captures. Empty tuples represent captured
+emptiness; `None` remains unknown and is rejected for v6 serialization. Original
+legacy reads preserve unknown sections and their original snapshot-text checksum
+semantics. A v1 artifact without raw preview history proves only its canonical
+saved-preview commitment, not exact uncaptured bytes. Unapproved/blocked history
+still accepts and preserves its valid noncanonical raw preview text; approved
+lineage separately requires the saved canonical commitment.
+
+The v6 allowlist adds exactly eight v2 source/receipt/chain records; old archive,
+source and annual registries stay unchanged. A private common archive codec
+preserves old finite float/int/Decimal distinctions, offsets, tuple order,
+feedback-original omission and unknown-section encoding. Legacy entrypoint
+signatures, validation order, error normalization and v1–v5 bytes remain unchanged.
+No generic fallback or codec downgrade is introduced. The private retained
+entrypoint selects its lineage/history validation internally; no public bypass
+flag is exposed.
+
+These are pure retained-artifact APIs. Internal typed/hash consistency cannot
+establish authentic origin, authoritative omitted-row completeness, signed
+provenance, original object-store bytes, current access/MFA or permission to file.
+Company-wide off-year Governance chains remain commitments, not a claim that this
+archive holds their off-year observations/originals. No adapter, runtime workflow,
+HTTP, SQL, writer, claim, dispatch or Archive-owner completion/eligibility/
+cancellation policy is activated. `test_rf1086_archive_storage_v6.py` covers the
+explicit reader/serializer; its pure fixtures do not establish a live producer.

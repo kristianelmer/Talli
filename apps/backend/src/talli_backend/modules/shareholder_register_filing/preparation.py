@@ -67,6 +67,15 @@ def validate_workspace(query: Rf1086WorkspaceQuery, result: Rf1086WorkspaceSnaps
     return result
 
 def _validate_archive_source(query: Rf1086ArchiveQuery, result: Rf1086ArchiveSnapshot, *, include_production: bool = True):
+    return _validate_archive_source_impl(query, result, include_production=include_production, retained=False)
+
+
+def _validate_retained_archive_source(query: Rf1086ArchiveQuery, result: Rf1086ArchiveSnapshot):
+    """Explicit saved-evidence semantics; existing runtime/archive entrypoints stay fresh."""
+    return _validate_archive_source_impl(query, result, include_production=True, retained=True)
+
+
+def _validate_archive_source_impl(query, result, *, include_production, retained):
     if (not isinstance(result,Rf1086ArchiveSnapshot) or result.company_id != query.company_id
             or result.income_year != query.income_year):
         raise ShareholderRegisterFilingError.unavailable()
@@ -121,8 +130,12 @@ def _validate_archive_source(query: Rf1086ArchiveQuery, result: Rf1086ArchiveSna
     if not include_production:
         return result
     try:
-        _validate_archive_production(query, result)
-        from .archive_history import validate
+        if retained:
+            _validate_archive_production_impl(query, result, retained=True)
+            from .archive_history_v6 import validate
+        else:
+            _validate_archive_production(query, result)
+            from .archive_history import validate
         validate(result)
     except (ValueError, TypeError, KeyError, AttributeError, Rf1086ProductionError):
         raise ShareholderRegisterFilingError.unavailable() from None
@@ -130,6 +143,10 @@ def _validate_archive_source(query: Rf1086ArchiveQuery, result: Rf1086ArchiveSna
 
 
 def _validate_archive_production(query, result):
+    return _validate_archive_production_impl(query, result, retained=False)
+
+
+def _validate_archive_production_impl(query, result, *, retained):
     def require(condition):
         if not condition:
             raise ValueError("RF archive production evidence is inconsistent")
@@ -146,13 +163,17 @@ def _validate_archive_production(query, result):
     require(len({row.approval_id for row in lineage}) == len(lineage))
     source_approvals = {row.id for row in result.approvals if row.case_profile == 'rf1086_full_year_v1'}
     require({row.approval_id for row in lineage} == source_approvals)
-    retained = {row.approval_id: row for row in lineage}
+    lineage_by_approval = {row.approval_id: row for row in lineage}
     for row in (*result.approvals, *result.production_submissions, *result.production_events):
         require(row.income_year == int(query.income_year))
     for row in result.approvals:
         require(row.obligation == "aksjonaerregisteroppgaven" and row.preview_id in previews)
         if row.case_profile == 'rf1086_full_year_v1':
-            _validate_archive_source_approval(query, row, previews[row.preview_id], retained[row.id], require)
+            if retained:
+                from .retained_archive_lineage import validate
+                validate(query, row, previews[row.preview_id], lineage_by_approval[row.id], result, require)
+            else:
+                _validate_archive_source_approval(query, row, previews[row.preview_id], lineage_by_approval[row.id], require)
             prior = row.manifest['predecessor']
             if prior is not None:
                 require(prior['submissionId'] in submissions)
@@ -165,6 +186,8 @@ def _validate_archive_production(query, result):
                 and previews[row.preview_id].source != 'rf1086-full-year-v1'
                 and row.manifest.get('schemaVersion') not in (
                     'production-source-approval-v1', 'production-source-approval-v2'))
+        if retained:
+            require(row.manifest.get('schemaVersion') != 'production-source-approval-v3')
         preview = _production_preview(previews[row.preview_id])
         require(row.payload_hash == rf1086_preview_payload_hash(preview))
         require(row.manifest_hash == rf1086_current_manifest_hash(preview,
@@ -274,15 +297,7 @@ def _validate_archive_source_approval(query, approval, projection, lineage, requ
 
 
 def _validate_retained_source_review(lineage, approval, bridge, manifest_review, require):
-    def unique(pairs):
-        value = {}
-        for key, item in pairs:
-            require(key not in value)
-            value[key] = item
-        return value
-
-    require(type(lineage.review_text) is str and _sha256(lineage.review_text) == lineage.review_sha256)
-    review = json.loads(lineage.review_text, object_pairs_hook=unique)
+    review = _retained_review_text(lineage, require)
     keys = {'version', 'binding', 'scope', 'comments', 'overrides', 'permission', 'pilot',
             'request', 'technicalReleaseReady'}
     if approval.manifest.get('schemaVersion') == 'production-source-approval-v2':
@@ -293,6 +308,23 @@ def _validate_retained_source_review(lineage, approval, bridge, manifest_review,
     else:
         require(isinstance(review, dict) and set(review) == keys | {'storedReleaseReady'})
         require(review['version'] == 'rf1086-source-review-v1' and review['storedReleaseReady'] is True)
+    _validate_review_correspondence(review, lineage, approval, bridge, manifest_review, require)
+
+
+def _retained_review_text(lineage, require):
+    def unique(pairs):
+        value = {}
+        for key, item in pairs:
+            require(key not in value)
+            value[key] = item
+        return value
+
+    require(type(lineage.review_text) is str and _sha256(lineage.review_text) == lineage.review_sha256)
+    review = json.loads(lineage.review_text, object_pairs_hook=unique)
+    return review
+
+
+def _validate_review_correspondence(review, lineage, approval, bridge, manifest_review, require):
     require(review['technicalReleaseReady'] is True)
     require(review['scope'] == {'companyId': lineage.company_id, 'incomeYear': lineage.income_year,
             'previewId': lineage.preview_id, 'sourceId': lineage.source_id,

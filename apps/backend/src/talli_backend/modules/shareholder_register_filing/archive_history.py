@@ -43,18 +43,7 @@ def validate(archive):
         (history.observation_capture_records, observations,
             rf.parse_rf1086_register_observation, rf.rf1086_register_observation_request_digest),
     ):
-        captures = _indexed(records, rf.Rf1086ArchiveCaptureRecord, lambda row: row.record_id)
-        _require(set(captures) == set(snapshots))
-        keys = set()
-        for identity, capture in captures.items():
-            value = snapshots[identity]
-            _require(type(capture.idempotency_key) is str
-                     and re.fullmatch(r'[A-Za-z0-9._:-]{16,255}', capture.idempotency_key) is not None
-                     and capture.request_sha256 == digest(value.command)
-                     and parser(capture.snapshot_text) == value)
-            key = (value.command.actor_id, capture.idempotency_key)
-            _require(key not in keys)
-            keys.add(key)
+        _validate_captures(records, snapshots, parser, digest)
     scope = (archive.company_id, archive.income_year)
     ordered = sorted(sources.values(), key=lambda row: row.version)
     previous = None
@@ -81,6 +70,34 @@ def validate(archive):
                  and type(head.version) is int and (head.company_id, head.income_year) == scope
                  and (head.source_id, head.version, head.source_sha256)
                  == (previous.source_id, previous.version, previous.source_sha256))
+    _validate_observations(archive, observations)
+    for source in sources.values():
+        for receipt in source.governance_receipts:
+            if receipt.register_observation_id is not None:
+                observation = observations.get(receipt.register_observation_id)
+                _require(observation is not None and observation.fact_sha256 == receipt.register_observation_sha256)
+    _validate_previews(archive, sources, previews, bridges, projections)
+
+
+def _validate_captures(records, snapshots, parser, digest):
+    captures = _indexed(records, rf.Rf1086ArchiveCaptureRecord, lambda row: row.record_id)
+    _require(set(captures) == set(snapshots))
+    keys = set()
+    for identity, capture in captures.items():
+        value = snapshots[identity]
+        _require(type(capture.idempotency_key) is str
+                 and re.fullmatch(r'[A-Za-z0-9._:-]{16,255}', capture.idempotency_key) is not None
+                 and capture.request_sha256 == digest(value.command)
+                 and parser(capture.snapshot_text) == value)
+        key = (value.command.actor_id, capture.idempotency_key)
+        _require(key not in keys)
+        keys.add(key)
+
+
+def _validate_observations(archive, observations):
+    history = archive.source_history
+    scope = (archive.company_id, archive.income_year)
+    withdrawals = None
     successors = set()
     for observation in observations.values():
         rf.assert_rf1086_register_observation_integrity(observation)
@@ -116,11 +133,11 @@ def validate(archive):
         rf.derive_rf1086_register_observation_lifecycle(
             company_id=archive.company_id, income_year=archive.income_year,
             observations=history.register_observations, withdrawals=tuple(withdrawals))
-    for source in sources.values():
-        for receipt in source.governance_receipts:
-            if receipt.register_observation_id is not None:
-                observation = observations.get(receipt.register_observation_id)
-                _require(observation is not None and observation.fact_sha256 == receipt.register_observation_sha256)
+    return None if withdrawals is None else {row.withdrawal_id.value: row for row in withdrawals}
+
+
+def _validate_previews(archive, sources, previews, bridges, projections):
+    scope = (archive.company_id, archive.income_year)
     for record in previews.values():
         preview = record.preview
         _require(isinstance(preview, rf.Rf1086SourcePreview) and preview.source_id in sources)

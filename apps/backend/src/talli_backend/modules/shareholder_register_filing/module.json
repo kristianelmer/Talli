@@ -136,6 +136,8 @@
       "Rf1086ArchiveError",
       "serialize_rf1086_archive",
       "parse_rf1086_archive",
+      "serialize_rf1086_archive_v6",
+      "parse_rf1086_retained_archive",
       "Rf1086ArchiveYearSourceHead",
       "Rf1086ArchiveSourcePreview",
       "Rf1086ArchiveSourceHistory",
@@ -540,7 +542,10 @@
     "annualReadinessV2": "apps/backend/tests/test_rf1086_annual_readiness_v2.py",
     "sourceProductionManifestV3": "apps/backend/tests/test_rf1086_source_production_v3.py",
     "retainedSourceApproval": "apps/backend/tests/test_rf1086_retained_source_approval.py",
-    "retainedSourceApprovalAdversarial": "apps/backend/tests/test_rf1086_retained_source_approval_adversarial.py"
+    "retainedSourceApprovalAdversarial": "apps/backend/tests/test_rf1086_retained_source_approval_adversarial.py",
+    "archiveHistoryV6": "apps/backend/tests/test_rf1086_archive_history_v6.py",
+    "archiveStorageV6": "apps/backend/tests/test_rf1086_archive_storage_v6.py",
+    "archiveHistoryV6Adversarial": "apps/backend/tests/test_rf1086_archive_history_v6_adversarial.py"
   },
   "compatibilityExceptions": []
 }
