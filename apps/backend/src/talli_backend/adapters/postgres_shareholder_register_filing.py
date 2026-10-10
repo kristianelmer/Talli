@@ -287,6 +287,29 @@ class PostgresShareholderRegisterFilingSession:
             finally:
                 scoped.close()
 
+    @asynccontextmanager
+    async def source_claim_recovery_v3(self, approval_id, manifest_sha256):
+        """Approval-derived historical locks; no fresh admission or owner proof."""
+        async with self._transaction() as connection:
+            row = await (await connection.execute(
+                'select shareholder_register_filing.lock_source_claim_recovery_v3(%s::uuid,%s,%s) as scope',
+                (approval_id.value, manifest_sha256, str(self.actor_id.subject)),
+            )).fetchone()
+            value = row['scope'] if row else None
+            try:
+                if (type(value) is not dict or set(value) != {'companyId', 'incomeYear'}
+                        or type(value['companyId']) is not str or str(UUID(value['companyId'])) != value['companyId']
+                        or type(value['incomeYear']) is not int or not 2000 <= value['incomeYear'] <= 2100):
+                    raise ValueError()
+                query = rf.Rf1086SourceQuery(CompanyId(value['companyId']), IncomeYear(value['incomeYear']), self.actor_id)
+            except (ValueError, TypeError, KeyError, AttributeError):
+                raise rf.Rf1086ProductionError('basis_unavailable') from None
+            scoped = _SourceClaimRecoveryV3(self, connection, query, approval_id, manifest_sha256)
+            try:
+                yield scoped
+            finally:
+                scoped.close()
+
     def _command_actor(self, command):
         if command.actor_id != self.actor_id:
             raise rf.ShareholderRegisterFilingError.forbidden()
@@ -354,6 +377,29 @@ class PostgresShareholderRegisterFilingSession:
                 manifest_sha256=value.approval.manifest_hash,actor_id=self.actor_id)
             return value
         except (ValueError,TypeError,KeyError):
+            raise rf.Rf1086ProductionError('basis_unavailable') from None
+
+    async def read_source_claim_approval_v3(self, approval_id):
+        async with self._transaction(snapshot=True) as connection:
+            return await self._read_source_claim_approval_v3(connection, approval_id)
+
+    async def _read_source_claim_approval_v3(self, connection, approval_id):
+        row = await (await connection.execute(
+            'select a.*,b.manifest_text from shareholder_register_filing.filing_approval_snapshots a '
+            'join shareholder_register_filing.source_approval_bindings b on b.approval_id=a.id '
+            'and b.company_id=a.company_id and b.income_year=a.income_year and b.preview_id=a.preview_id '
+            'and b.approved_by=a.user_id and b.manifest_sha256=a.manifest_hash and b.payload_sha256=a.payload_hash '
+            'where a.id=%s::uuid and a.user_id=shareholder_register_filing.actor_v1() '
+            'and public.company_access_is_accepted_owner_v1(a.company_id)', (approval_id.value,),
+        )).fetchone()
+        if row is None:
+            return None
+        try:
+            value = rf.Rf1086RetainedSourceApproval(self._wire_record(rf.Rf1086ApprovalRecord, row), row['manifest_text'])
+            rf.inspect_rf1086_retained_source_approval_v3(value, approval_id=approval_id,
+                manifest_sha256=value.approval.manifest_hash, actor_id=self.actor_id)
+            return value
+        except (ValueError, TypeError, KeyError):
             raise rf.Rf1086ProductionError('basis_unavailable') from None
 
     async def read_source_submission_claim(self, approval_id, manifest_sha256, expected_head):
@@ -1610,6 +1656,64 @@ def _source_admission_company(value, query):
         raise rf.ShareholderRegisterFilingError.unavailable() from None
 
 
+class _SourceClaimRecoveryV3:
+    """Historical read scope; only the fixed transition yields fresh write ports."""
+    def __init__(self, store, connection, query, approval_id, manifest_sha256):
+        self._store, self._connection, self._query = store, connection, query
+        self._approval_id, self._manifest_sha256 = approval_id, manifest_sha256
+        self._active = True
+
+    @property
+    def actor_id(self):
+        return self._store.actor_id
+
+    def close(self):
+        self._active = False
+
+    def _require_active(self):
+        from psycopg.pq import TransactionStatus
+        if not self._active or self._connection.info.transaction_status != TransactionStatus.INTRANS:
+            raise rf.ShareholderRegisterFilingError.unavailable()
+
+    async def read_source_submission_claim(self, approval_id, manifest_sha256, expected_head):
+        self._require_active()
+        if approval_id != self._approval_id or manifest_sha256 != self._manifest_sha256:
+            raise rf.Rf1086ProductionError('payload_changed')
+        value = await self._store._read_source_submission_claim(
+            self._connection, approval_id, manifest_sha256, expected_head)
+        if value is not None and (value.company_id != self._query.company_id or value.income_year != self._query.income_year):
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        return value
+
+    async def read_source_claim_approval_v3(self, approval_id):
+        self._require_active()
+        if approval_id != self._approval_id:
+            raise rf.Rf1086ProductionError('payload_changed')
+        value = await self._store._read_source_claim_approval_v3(self._connection, approval_id)
+        if value is not None and (value.approval.company_id != str(self._query.company_id)
+                or value.approval.income_year != int(self._query.income_year)):
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        return value
+
+    @asynccontextmanager
+    async def fresh_admission_v3(self):
+        self._require_active()
+        row = await (await self._connection.execute(
+            'select public.company_access_read_rf_admission_v1(%s::uuid,%s,%s) as admission',
+            (str(self._query.company_id), int(self._query.income_year), str(self.actor_id.subject)),
+        )).fetchone()
+        identity = _source_admission_company(row['admission'] if row else None, self._query)
+        await self._connection.execute("select pg_catalog.set_config('talli.authorized_company_roles',%s,true)",
+            (json.dumps({str(self._query.company_id): 'owner'}, separators=(',', ':')),))
+        await self._connection.execute('select shareholder_register_filing.lock_year_source_v1(%s::uuid,%s)',
+            (str(self._query.company_id), int(self._query.income_year)))
+        scoped = _SourceAdmission(self._store, self._connection, self._query, identity)
+        try:
+            yield scoped
+        finally:
+            scoped.close()
+
+
 class _SourceAdmission:
     def __init__(self, store, connection, query, identity):
         self._store, self._connection, self._query, self._identity = store, connection, query, identity
@@ -1858,6 +1962,45 @@ class _SourceAdmission:
         if claim.company_id!=self._query.company_id or claim.income_year!=self._query.income_year:
             raise rf.Rf1086ProductionError('basis_unavailable')
         return rf.Rf1086SourceSubmissionClaimResult(claim,value['newlyClaimed'])
+
+    async def claim_source_submission_v3(self, approval_id, manifest_sha256, expected_head, correlation_id):
+        """Recover first; rebuild annual/review/manifest from held owned inputs."""
+        self._require_active()
+        existing = await self.read_source_submission_claim(approval_id, manifest_sha256, expected_head)
+        if existing is not None:
+            return rf.Rf1086SourceSubmissionClaimResult(existing, False)
+        retained = await self._store._read_source_claim_approval_v3(self._connection, approval_id)
+        prior = rf.inspect_rf1086_retained_source_approval_v3(retained, approval_id=approval_id,
+            manifest_sha256=manifest_sha256, actor_id=self.actor_id)
+        approval = retained.approval
+        if (approval.company_id != str(self._query.company_id) or approval.income_year != int(self._query.income_year)
+                or approval.invalidated_at is not None or (None if prior is None else prior.submission_id) != expected_head):
+            raise rf.Rf1086ProductionError('payload_changed')
+        rf.assert_rf1086_submission_predecessor(await self.submission_history(),
+            company_id=self._query.company_id, income_year=self._query.income_year, predecessor=prior)
+        source, capture, annual, review = await self._source_approval_state_v3(
+            rf.PreviewId(approval.preview_id), approval.entitlement_id, correlation_id)
+        if not review.can_approve:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        basis = rf.Rf1086SourceApprovalManifestBasisV3(source, capture.preview, annual,
+            self.actor_id, approval.entitlement_id, review.review_sha256, review.warning_codes, prior)
+        rebuilt = rf.build_rf1086_retained_source_approval_manifest_v3(basis, capture)
+        if (rf.serialize_rf1086_source_approval_manifest_v3(rebuilt) != retained.manifest_text
+                or rebuilt.manifest_sha256 != manifest_sha256 or capture.payload_sha256 != approval.payload_hash):
+            raise rf.Rf1086ProductionError('payload_changed')
+        row = await (await self._connection.execute(
+            'select shareholder_register_filing.claim_source_submission_v3(%s::uuid,%s,%s::uuid,%s,%s) as result',
+            (approval_id.value, manifest_sha256, None if expected_head is None else expected_head.value,
+             rf.serialize_rf1086_retained_annual_readiness_v2(annual, source, capture), str(self.actor_id.subject)),
+        )).fetchone()
+        value = row['result'] if row else None
+        if type(value) is not dict or set(value) != {'claim', 'newlyClaimed'} or type(value['newlyClaimed']) is not bool:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        claim = _source_claim_record(value['claim'], approval_id, manifest_sha256, expected_head, self.actor_id)
+        if (claim.company_id != self._query.company_id or claim.income_year != self._query.income_year
+                or claim.payload_sha256 != approval.payload_hash):
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        return rf.Rf1086SourceSubmissionClaimResult(claim, value['newlyClaimed'])
 
     async def _annual_proof_text(self, annual):
         self._require_active()

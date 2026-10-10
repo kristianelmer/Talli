@@ -585,7 +585,9 @@
     "sourcePreviewV2Database": "apps/backend/tests/test_rf1086_source_preview_v2_database.py",
     "retainedApprovalV3Public": "apps/backend/tests/test_rf1086_retained_approval_v3_public.py",
     "sourceApprovalV3": "apps/backend/tests/test_rf1086_source_approval_v3.py",
-    "sourceApprovalV3Database": "apps/backend/tests/test_rf1086_source_approval_v3_database.py"
+    "sourceApprovalV3Database": "apps/backend/tests/test_rf1086_source_approval_v3_database.py",
+    "sourceClaimV3": "apps/backend/tests/test_rf1086_source_claim_v3.py",
+    "sourceClaimV3Database": "apps/backend/tests/test_rf1086_source_claim_v3_database.py"
   },
   "compatibilityExceptions": []
 }

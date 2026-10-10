@@ -1,0 +1,175 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "REVIEWED_CLOSED_V3_SOURCE_CLAIM_LOCAL_PROJECTED_NATIVE_FULL_DATABASE_PENDING",
+  "recordedAtUtc": "2026-10-10T21:41:39.399453+00:00",
+  "base": "fcebc0f1500e923dce28d438e2a216150100356d",
+  "scope": "New closed V3 claim workflow, approval-derived historical company/year scope and same-connection fresh admission after exact miss. Initial/postwait/held durable recovery before mutable owner proofs; live accepted original owner/actor/hash/head remain required. Current held source/Docs/Gov/complete history/correction/annual/review/full manifest rebuilt before one atomic claim. No provider effect, route/caller or runtime grant activation.",
+  "changes": [
+    "Fixed V2 saved-preview preflight and held validator factor preserve old ordering/errors/output; original bytes outside guards.",
+    "Held claim effect exposes approval/hash/head/correlation only, derives current annual-v2 from owner inputs; caller annual proof not accepted.",
+    "New SQL copies actual published withdrawal-patched claimV2 with strict body/owner/config/language/args/ACL/attributes/unique anchors. First and postwait exact replay precede invalidation/version/live checks. Guard drift rejected.",
+    "Both new SQL routines are closed to PUBLIC and every nonowner. Retentive rollback/reapply preserves old/new definitions/OIDs/history; no legacy writer/reader/codec/oracle edits.",
+    "Mandatory successor/module/lifecycle selection registers20 full-schema cases."
+  ],
+  "freeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-v3-claim-implementation-freeze-v2.json",
+    "sha256": "6682d1d58e9b438f876b585b0d7610ec62bb9360f054a0f659cb95391b21afaf",
+    "bytes": 10960
+  },
+  "sourcePins": [
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py",
+      "sha256": "8cc6f5792761d99d41554e4fc41e1f60c979526f61925b415ede6d720753faa3",
+      "bytes": 153210
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/src/talli_backend/application/shareholder_register_source_admission_v2.py",
+      "sha256": "677557ffd5bfef75d96d474d2586a9e612672e801e85c167b4386781c25bce50",
+      "bytes": 15995
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/src/talli_backend/application/shareholder_register_source_claim_v3.py",
+      "sha256": "13c991a7f9cfc46d5139bd5f906328a2e00b53c51a3ba374c71be6f659ec5e1d",
+      "bytes": 6976
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "186db06624ddca65f9bf5653cbd18ee5780459d4b02206058c796a635b112701",
+      "bytes": 30821
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/test_rf1086_source_claim_v3.py",
+      "sha256": "07dd91a9d6aaf7617c1767f7abe6f316e6481a7d49f0108a9e107515e1dd5efe",
+      "bytes": 16322
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/test_rf1086_source_claim_v3_database.py",
+      "sha256": "a6637d4885d3365a6efc7820138d7c6cc3cce2b1bcb7a7352fa658a98133ac2b",
+      "bytes": 15897
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/supabase/migrations/20261010212500_rf1086_closed_source_claim_v3.sql",
+      "sha256": "9a8694ab4401c1ddc88a125b2cdd2970f6f5a5ed70c88f4ca58ff7288c9169c4",
+      "bytes": 11061
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/supabase/rollback/20261010212500_rf1086_closed_source_claim_v3.sql",
+      "sha256": "dbeb632028ecf70f9154e8c2d0afab23c419cd972fb2e2dd11df373f13619b1b",
+      "bytes": 3379
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/package.json",
+      "sha256": "5cbbe817fc4fb3f2b5c893403e663aff3938705ee45abe7a32e183ac19113fd7",
+      "bytes": 34767
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/scripts/rf-consequential-successors.json",
+      "sha256": "f69b668c315f6770f6f22c9d3fca493455dee5f69593f1894d2f4f8b29a85504",
+      "bytes": 19741
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/tests/ci_release_gate.test.mjs",
+      "sha256": "7c7a9b09388d0cce34964107dc5050e5b8954535bbedad2bf71c8a7d8c850869",
+      "bytes": 56139
+    }
+  ],
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v3-claim-implementation-spec-review-v2.json",
+      "sha256": "8d47e80eea6477e8afa07e9dfff3d3c46e8852e165d525adfe22d126d4b05911",
+      "bytes": 29721
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v3-claim-implementation-standards-review-v2.json",
+      "sha256": "9dbd992aaa708c8ac12fafd34a6eb31be7a8c9cc28099fdd0669c0c2a022a43e",
+      "bytes": 20755
+    }
+  ],
+  "reviewFindings": {
+    "Spec": 0,
+    "Standards": 0
+  },
+  "priorReviewRepairs": {
+    "SpecV1P2": 2,
+    "CV1": "Exact SQL/domain negative codes distinguish raw fixture transaction from production error mapping.",
+    "CV2": "Actual SQL afterwrite cancellation/late application failure mandatory cases; exact propagation, both scope closes and no committed rows/events/retained or temp-proof residue. These cases remain unexecuted; not a real transport/commit failure."
+  },
+  "validation": {
+    "localCasesPassed": 439,
+    "newCasesPassed": 39,
+    "failed": 0,
+    "skipped": 0,
+    "durationSeconds": 36.12,
+    "ciSelectorCasesPassed": 129,
+    "ciSelectorDurationMs": 49791.487667,
+    "newDatabaseCollectedOnly": 20,
+    "projectedNativeChecksPassed": 30,
+    "nativeClustersStoppedRemoved": 4,
+    "protectedExistingFunctionSpansExact": 181,
+    "wholeLegacySharedFilesExact": 6,
+    "intentionalAdmissionFunctionRefactors": 2,
+    "architectureExit": 0,
+    "diffCheck": 0
+  },
+  "approvalPrerequisite": {
+    "run": 38082673570,
+    "head": "b7f5aaa352348452e46147614c9377e2e1524823",
+    "merge": "de389f074415aa5f07324166a10337ed2fed68a1",
+    "actualNewApprovalPassOnly": 36,
+    "authorityPassed": 1534,
+    "cleared": true,
+    "publicReceipt": "ci-38082673570.json"
+  },
+  "catalogFingerprints": {
+    "baseClaimV2ProsrcMd5": "5d2bfb6425f0a77b5ac10a102228a625",
+    "publishedWithdrawalPatchedClaimV2ProsrcMd5": "c04c9ed7d713e798ba997aa85fa47117",
+    "newRecoveryGuardProsrcMd5": "d22b5e33fce0955f4295c04d0cff117f",
+    "qualifiedCorrection": "Earlier private static inspectionV1 stored incorrect31-character hashes. Retained unchanged. Corrected32-character derivation matches actual installed projected PG17; both reviewers independently recomputed. Full-schema migration still checks actual installed catalog."
+  },
+  "privateValidationPins": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-claim-v3-final-local-v1.log",
+      "sha256": "50817dd742f575b6372989cc33ab9cbb71f08c302b7639147f1be1651c195bda",
+      "bytes": 581
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-claim-v3-native-v4.json",
+      "sha256": "fa6d9b0525d1b34595610815fd13e6865831eb451cdbee931728863e17ee62c7",
+      "bytes": 2302
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-claim-v3-native-v4.log",
+      "sha256": "99f88126590d6e14e8459e5a5998f8ef61b2e38783d294eb30d2b41fb375a988",
+      "bytes": 970
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-claim-v3-ci-selectors-v2.log",
+      "sha256": "604c81b143c44cda02e50674b02f334b167bbf13f6148033c4e03a5502bd00e0",
+      "bytes": 13793
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-claim-v3-db-collection-v2.log",
+      "sha256": "cf0fd8da724dd3a5ba34f8b97b3eaa917011bd81b5d39a4ac452ca394ca9e4c0",
+      "bytes": 2526
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-claim-v3-protected-spans-v1.json",
+      "sha256": "6fe2bc978c1f2b74219c3058d35fc4d3fbd11cc68f0fd1715d286f089aca199c",
+      "bytes": 49083
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-claim-published-source-body-inspection-v2.json",
+      "sha256": "5f807bdbf62e8c6aa250cf852f88a55094957457f3469b4f9ba8621ba929a972",
+      "bytes": 2523
+    }
+  ],
+  "limits": [
+    "Local439=39new+400protected run real workflow/adapters/RF saved codecs and policy with SQL/Auth/guards/owner inputs as doubles. Correction cases prove delegation with explicit originals/history doubles.",
+    "Native30 exercises actual entire migration/reapply/retentive rollback, installed published body, real binding/submission/head writes, competing company/year advisory wait and complete body drift denials. Minimal tables/actor/accepted-owner/fresh/V3 append/observation producers are projections/stubs; not full Auth/RLS/producer/annual/origin/storage/recovery proof. Four owned clusters stopped/removed; nativeV1 setup fingerprint failure preserved; later correct32-character probes passed.",
+    "All20 new full-schema cases are COLLECTION ONLY. Active CI38086791422 tests preceding fixture-only fcebc0f1, not this claim implementation. No successor push while that whole run active.",
+    "181 old function spans/six whole legacy files exact. Only two new-V2 admission functions deliberately factored; all original claim/dispatch/public/retained readers remain exact.",
+    "Actual36 approved-foundation prerequisite is separate from whole-gate clearance. Compatible intents/dispatch/dual readers/routes/drain, nominal/fund/crossyear/intake/retention/independentAuth/project/object recovery and canonical A/B remain pending.",
+    "AllA1-A7 and RF\u2192Tax\u2192Accounts handoffs remain pending. Original WIP,43 preexisting containers and paused safeguards preserved. No spending/hosted recovery/provider activation/genuine data/filing/outreach/launch."
+  ]
+}

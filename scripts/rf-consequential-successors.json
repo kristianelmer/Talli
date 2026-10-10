@@ -150,5 +150,9 @@
   {
     "migration": "20261010150223_rf1086_closed_retained_approval_v3.sql",
     "presenceQuery": "select count(*)=5 from pg_catalog.pg_proc p where p.oid in (pg_catalog.to_regprocedure('shareholder_register_filing.assert_retained_annual_readiness_v2_shape_internal_v1(text)'),pg_catalog.to_regprocedure('shareholder_register_filing.source_annual_binding_internal_v2(uuid,text)'),pg_catalog.to_regprocedure('shareholder_register_filing.source_approval_context_internal_v3(uuid,uuid,text,text)'),pg_catalog.to_regprocedure('shareholder_register_filing.read_source_approval_context_v3(uuid,uuid,text,text)'),pg_catalog.to_regprocedure('shareholder_register_filing.append_source_approval_v3(uuid,uuid,text,text,text,text)')) and p.proowner='shareholder_register_filing_store_owner'::regrole and ((p.proname='assert_retained_annual_readiness_v2_shape_internal_v1' and not p.prosecdef and p.provolatile='i') or (p.proname<>'assert_retained_annual_readiness_v2_shape_internal_v1' and p.prosecdef and p.provolatile='v')) and p.proconfig=array['search_path=\"\"']::text[]"
+  },
+  {
+    "migration": "20261010212500_rf1086_closed_source_claim_v3.sql",
+    "presenceQuery": "select count(*)=2 from pg_catalog.pg_proc p where p.oid in (pg_catalog.to_regprocedure('shareholder_register_filing.lock_source_claim_recovery_v3(uuid,text,text)'),pg_catalog.to_regprocedure('shareholder_register_filing.claim_source_submission_v3(uuid,text,uuid,text,text)')) and p.proowner='shareholder_register_filing_store_owner'::regrole and p.prosecdef and p.provolatile='v' and p.proparallel='u' and p.proconfig=array['search_path=\"\"']::text[]"
   }
 ]

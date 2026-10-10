@@ -320,5 +320,7 @@
   "historicalCi38078490149": "ci-38078490149.json",
   "closedApprovalCashBankingFixtureRepair20261010": "rf-approval-cash-banking-fixture-repair-20261010.json",
   "historicalCi38082673570": "ci-38082673570.json",
-  "cancellationCurrentV4FixtureRepair20261010": "rf-cancellation-current-v4-fixture-repair-20261010.json"
+  "cancellationCurrentV4FixtureRepair20261010": "rf-cancellation-current-v4-fixture-repair-20261010.json",
+  "closedSourceV3Claim": "rf-source-v3-claim-20261010.json",
+  "closedSourceV3ClaimStatus": "REVIEWED_CLOSED_IMPLEMENTATION: Spec0/Standards0; local439(new39)/projectednative30/selector129 PASS; protected181spans/six legacy files exact; all20 new full-schema cases collectionONLY. Current fixture-only CI38086791422 excludes claim WIP; successor actual claim prerequisite pending before intent implementation. No route/runtime grant/provider activation; canonical/A1-A7/all-three handoffs remain pending."
 }

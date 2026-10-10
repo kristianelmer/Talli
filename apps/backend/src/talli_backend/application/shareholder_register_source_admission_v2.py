@@ -76,6 +76,14 @@ class AdmittedRf1086SourceV2:
         return self.retained_preview.preview
 
 
+@dataclass(frozen=True, slots=True)
+class PreparedRf1086SourceAdmissionV2:
+    query: rf.Rf1086SourceQuery
+    source: rf.Rf1086YearSourceSnapshotV2
+    retained_preview: rf.Rf1086ArchiveSourcePreview
+    originals: tuple[RetainedDocumentOriginalReceipt, ...]
+
+
 class ShareholderRegisterSourceAdmissionV2:
     """Existing routes are unchanged; yielded scopes confer no authority after release."""
     def __init__(self, sessions: SourceAdmissionV2Sessions, documents: DocumentsSessionFactory):
@@ -85,6 +93,15 @@ class ShareholderRegisterSourceAdmissionV2:
     async def admit(self, access_token: str, *, company_id: CompanyId, income_year: IncomeYear,
             preview_id: rf.PreviewId, correlation_id: CorrelationId):
         session = await self._sessions.session(access_token)
+        prepared = await self.prepare_preview(access_token, session, company_id=company_id,
+            income_year=income_year, preview_id=preview_id)
+        source, retained, originals = prepared.source, prepared.retained_preview, prepared.originals
+        async with self._admit_source(session, prepared.query, source, originals, correlation_id, retained) as admitted:
+            readiness = rf.build_rf1086_retained_source_readiness_v2(source, retained)
+            yield AdmittedRf1086SourceV2(source, retained, readiness, originals, admitted.transaction)
+
+    async def prepare_preview(self, access_token, session, *, company_id, income_year, preview_id):
+        """Read original bytes outside guards; the result conveys no live admission."""
         query = rf.Rf1086SourceQuery(company_id, income_year, session.actor_id)
         retained = await session.retained_source_preview(query, preview_id)
         _require(type(retained) is rf.Rf1086ArchiveSourcePreview
@@ -96,9 +113,16 @@ class ShareholderRegisterSourceAdmissionV2:
             'rf1086_source_company_year_mismatch')
         rf.build_rf1086_retained_source_readiness_v2(source, retained)
         originals = await self._verify_originals(access_token, session, source)
-        async with self._admit_source(session, query, source, originals, correlation_id, retained) as admitted:
-            readiness = rf.build_rf1086_retained_source_readiness_v2(source, retained)
-            yield AdmittedRf1086SourceV2(source, retained, readiness, originals, admitted.transaction)
+        return PreparedRf1086SourceAdmissionV2(query, source, retained, originals)
+
+    async def validate_held_preview(self, prepared, transaction, correlation_id):
+        """Fixed validation on an already fresh admitted scope, without object I/O."""
+        _require(type(prepared) is PreparedRf1086SourceAdmissionV2, 'rf1086_source_changed')
+        await self._validate_held_source(prepared.query, prepared.source, prepared.originals,
+            correlation_id, transaction, prepared.retained_preview)
+        readiness = rf.build_rf1086_retained_source_readiness_v2(prepared.source, prepared.retained_preview)
+        return AdmittedRf1086SourceV2(prepared.source, prepared.retained_preview,
+            readiness, prepared.originals, transaction)
 
     @asynccontextmanager
     async def admit_year_source(self, access_token: str, *, company_id: CompanyId,
@@ -130,34 +154,35 @@ class ShareholderRegisterSourceAdmissionV2:
     @asynccontextmanager
     async def _admit_source(self, session, query, source, originals, correlation_id,
             retained: rf.Rf1086ArchiveSourcePreview | None = None):
-        company_id = query.company_id
         async with session.source_admission(query) as transaction:
-            _require(transaction.actor_id == session.actor_id, 'rf1086_source_owner_required')
-            identity = await transaction.company_identity()
-            current = await transaction.current_source()
-            _require(type(current) is rf.Rf1086YearSourceSnapshotV2
-                and rf.serialize_rf1086_year_source_v2(current) == rf.serialize_rf1086_year_source_v2(source),
-                'rf1086_source_changed')
-            if retained is not None:
-                locked = await transaction.retained_source_preview(retained.preview.preview_id)
-                _require(locked == retained, 'rf1086_source_preview_stale')
-            for receipt in originals: await transaction.assert_original(receipt)
-            view = await transaction.governance_register_evidence(correlation_id)
-            company = replace(source.command.case.company, org_number=identity.company.org_number,
-                name=identity.company.name, address=identity.company.address,
-                postal_code=identity.company.postal_code, city=identity.company.city,
-                income_year=identity.company.income_year)
-            identity_sha = rf.rf1086_year_source_digest({'company_id': str(company_id), 'company': company,
-                'entity_type': 'AS', 'identity_confirmed_at': identity.identity_confirmed_at,
-                'identity_locked_at': identity.identity_locked_at})
-            # Current actor authorizes only live reads. This authorization copy
-            # is never serialized or persisted; historical command/actor stay.
-            authorized_command = replace(source.command, actor_id=session.actor_id)
-            context = await build_verified_source_context_v2(transaction, authorized_command,
-                company, identity_sha, source.command.documents, view)
-            rf.assert_rf1086_year_source_fresh_v2(source, current_source_id=current.source_id,
-                current_source_sha256=current.source_sha256, context=context)
+            await self._validate_held_source(query, source, originals, correlation_id, transaction, retained)
             yield AdmittedRf1086YearSourceV2(source, originals, transaction)
+
+    async def _validate_held_source(self, query, source, originals, correlation_id, transaction, retained):
+        _require(transaction.actor_id == query.actor_id, 'rf1086_source_owner_required')
+        identity = await transaction.company_identity()
+        current = await transaction.current_source()
+        _require(type(current) is rf.Rf1086YearSourceSnapshotV2
+            and rf.serialize_rf1086_year_source_v2(current) == rf.serialize_rf1086_year_source_v2(source),
+            'rf1086_source_changed')
+        if retained is not None:
+            locked = await transaction.retained_source_preview(retained.preview.preview_id)
+            _require(locked == retained, 'rf1086_source_preview_stale')
+        for receipt in originals: await transaction.assert_original(receipt)
+        view = await transaction.governance_register_evidence(correlation_id)
+        company = replace(source.command.case.company, org_number=identity.company.org_number,
+            name=identity.company.name, address=identity.company.address,
+            postal_code=identity.company.postal_code, city=identity.company.city,
+            income_year=identity.company.income_year)
+        identity_sha = rf.rf1086_year_source_digest({'company_id': str(query.company_id), 'company': company,
+            'entity_type': 'AS', 'identity_confirmed_at': identity.identity_confirmed_at,
+            'identity_locked_at': identity.identity_locked_at})
+        # Authorize current reads without rewriting the saved command/actor.
+        authorized_command = replace(source.command, actor_id=query.actor_id)
+        context = await build_verified_source_context_v2(transaction, authorized_command,
+            company, identity_sha, source.command.documents, view)
+        rf.assert_rf1086_year_source_fresh_v2(source, current_source_id=current.source_id,
+            current_source_sha256=current.source_sha256, context=context)
 
     async def read_readiness_v2(self, access_token: str, *, company_id: CompanyId,
             income_year: IncomeYear, preview_id: rf.PreviewId, correlation_id: CorrelationId):
