@@ -2670,6 +2670,13 @@ def assert_rf1086_source_readiness_matches_v2(proof: Rf1086SourceReadinessProofV
     assert_matches(proof, source, preview)
 
 
+def build_rf1086_retained_source_readiness_v2(source: Rf1086YearSourceSnapshotV2,
+        retained_preview: Rf1086ArchiveSourcePreview) -> Rf1086SourceReadinessProofV2:
+    """Saved correspondence only; current owner/evidence admission is external."""
+    from .retained_source_readiness_v2 import build_source
+    return build_source(source, retained_preview)
+
+
 @dataclass(frozen=True, slots=True)
 class Rf1086AnnualReadinessProofV2(_ImmutableRf1086Value):
     """V2 evidence with the unchanged annual assessment, not write authority."""
@@ -2696,6 +2703,14 @@ def assert_rf1086_annual_readiness_matches_v2(proof: Rf1086AnnualReadinessProofV
         inputs: Rf1086AnnualReadinessInputs) -> None:
     from .annual_readiness_v2 import assert_matches
     assert_matches(proof, source, preview, inputs)
+
+
+def build_rf1086_retained_annual_readiness_v2(source: Rf1086YearSourceSnapshotV2,
+        retained_preview: Rf1086ArchiveSourcePreview,
+        inputs: Rf1086AnnualReadinessInputs) -> Rf1086AnnualReadinessProofV2:
+    """Unchanged annual policy with saved XML, without release/write authority."""
+    from .retained_source_readiness_v2 import build_annual
+    return build_annual(source, retained_preview, inputs)
 
 
 def serialize_rf1086_annual_readiness_v2(proof: Rf1086AnnualReadinessProofV2,
@@ -2987,8 +3002,10 @@ __all__ = [
     'Rf1086SourceReadinessProofV2',
     'Rf1086AnnualReadinessProofV2',
     'build_rf1086_source_readiness_v2',
+    'build_rf1086_retained_source_readiness_v2',
     'assert_rf1086_source_readiness_matches_v2',
     'build_rf1086_annual_readiness_v2',
+    'build_rf1086_retained_annual_readiness_v2',
     'assert_rf1086_annual_readiness_matches_v2',
     'serialize_rf1086_annual_readiness_v2',
     'parse_rf1086_annual_readiness_v2',

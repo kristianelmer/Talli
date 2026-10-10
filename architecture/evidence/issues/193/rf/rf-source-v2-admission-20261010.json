@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "recordedAtUtc": "2026-10-10T13:29:10.499971+00:00",
+  "stage": "SAVED_SOURCE_V2_ADMISSION_AND_READINESS_OBSERVATION",
+  "status": "LOCAL_REVIEWED_FULL_SCHEMA_EXECUTION_PENDING",
+  "baseRevision": "36b57ba788c378e4ed349c9c83db223a8e5e589b",
+  "behavior": [
+    "Additive session and held-scope reads bind the raw retained preview to current actor/company/year/preview ID, preserving payload text/SHA/creator/time across both reads.",
+    "New RF public retained source/annual builders validate saved correspondence and share existing readiness composition/policy without current rendering. They are observations, not current authority.",
+    "New v2-only admission verifies the complete original union through actual Documents byte service outside guards. Current-owner Company Access/RF year guard then holds one connection for exact source/capture/original rechecks and complete Governance/effective RF freshness.",
+    "A transient current-actor authorization copy serves held owner reads; source command, historical actors, receipts and wire remain unchanged. Failure/cancellation closes the scope.",
+    "Annual owner reads preserve Opening, Ledger, Banking, Interview and Documents order, scope/type checks, hashes, and ready/warning/blocked policy. No proof/approval/claim/intent/route or ordinary runtime grant is activated."
+  ],
+  "localChecks": {
+    "newLocalCases": 72,
+    "protectedCases": 452,
+    "totalPassed": 524,
+    "seconds": 17.54,
+    "ciSelectionNodePassed": 130,
+    "ciSelectionNodeSkipped": 0,
+    "oldFunctionSpansExact": 392,
+    "additiveOldFileFunctionSpans": 5,
+    "oldAnnualGoldenOutcomesExact": 217,
+    "oldAnnualProofBytesExact": 147,
+    "oldAnnualRejectionsExact": 70,
+    "oldDownstreamVectorsExact": 7,
+    "newFullDatabaseCasesCollectedNotExecuted": 12,
+    "authorityLaneRegistration": "Existing 1468 cases plus 12 admission cases; mandatory selection validated by full CI-selection checks.",
+    "architecture": "PASS",
+    "compiled": true,
+    "whitespace": "PASS"
+  },
+  "reviewRepairs": [
+    "AI1: focused registry rejects the historical token and authorizes current actor only. FullDB fixture bans the old owned account indefinitely, revokes old ownership, adds a new accepted owner and checks fixture authentication state. Durable old identity and all saved bytes remain; actual Auth-server login/deletion is unproved.",
+    "AI2: fullDB withdrawal, new amendment, revoked ownership and post-wait revocation assert exact source-derived exception types/codes."
+  ],
+  "freeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-v2-admission-implementation-freeze-v2.json",
+    "sha256": "855baab14f15eca698c208e94e92b097c3bb72f774fcc6292e1d4fa4f2c81417",
+    "bytes": 7565
+  },
+  "plan": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-v2-admission-next-plan-v2.json",
+    "sha256": "19ddee193426b8f8c1ea91569aad8379d5decf7dde18aea18c9820544a4047ff",
+    "bytes": 15152
+  },
+  "finalReviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-admission-implementation-spec-review-v2.json",
+      "sha256": "9beebee8f4862f0a60c4e2da695e0c23acc42ddb95a9b1a0ad53b9b0d3b56c4e",
+      "bytes": 10563
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-admission-implementation-standards-review-v2.json",
+      "sha256": "e37cb39fb2cd531c7a5d538bd4578c8300ddaa25e6f4373c80583c1ea29c9dbc",
+      "bytes": 9720
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-admission-v2-and-protected-v3.log",
+      "sha256": "f75189642e02ef3ad34b0d40a3b3b1e2445bf0f971358c00a7b44db357e63bdb",
+      "bytes": 661
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-admission-v2-database-collection-v2.log",
+      "sha256": "d2918a7fb47737a021667d220dac4c07acb92c6b79aad976aa2f36bdd92805c2",
+      "bytes": 1735
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-admission-v2-ci-selection-v1.log",
+      "sha256": "e1e0576e132e7d4e86832cf1378abba739ef5c18a8296bbe77c662ff2bd73392",
+      "bytes": 13920
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-admission-v2-downstream-v1.json",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-admission-v2-architecture-v1.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-admission-protected-spans-v1.json",
+      "sha256": "e4cbc25147f05f1f192ba564ee06eb81fcb02f92d083f40ab4a503b3a72a1938",
+      "bytes": 122
+    }
+  ],
+  "limits": [
+    "Focused SQL/authority and annual-owner reads are explicit doubles; actual Document byte validation, Governance producers and adapter leases are used.",
+    "New full-schema cases are collected only. Their restricted RF/Documents logins exercise real owner SQL/guards/retention; verified claims, membership refresh and local retained-byte storage are explicit fixtures.",
+    "CI38055007322 at36b57ba7 excludes this stage. Combined execution and all release gates remain pending.",
+    "Compatible preview creation, approval/claim/intent consumers, grant closure/drain, independent identity/object recovery, Tax/Accounts and all A1-A7 remain required."
+  ]
+}

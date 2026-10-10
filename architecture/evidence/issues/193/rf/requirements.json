@@ -292,5 +292,6 @@
   "historicalCi38049772036": "ci-38049772036.json",
   "rfSourceV2OffYearFixtureRepair20261010": "rf-source-v2-off-year-fixture-repair-20261010.json",
   "historicalCi38052904751": "ci-38052904751.json",
-  "sourceProofTransactionFixtureRepair": "rf-proof-transaction-fixture-repair-20261010.json"
+  "sourceProofTransactionFixtureRepair": "rf-proof-transaction-fixture-repair-20261010.json",
+  "savedSourceV2Admission": "rf-source-v2-admission-20261010.json"
 }

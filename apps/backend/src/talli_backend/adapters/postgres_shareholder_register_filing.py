@@ -836,6 +836,26 @@ class PostgresShareholderRegisterFilingSession:
         )).fetchone()
         return self._source_preview(row)
 
+    async def _retained_source_preview_on_connection(self, connection, query, preview_id):
+        row = await (await connection.execute(
+            'select p.*,v.snapshot_text as source_snapshot_text '
+            'from shareholder_register_filing.source_previews p '
+            'join shareholder_register_filing.year_source_versions v on v.id=p.source_id '
+            'where p.id=%s::uuid and p.company_id=%s::uuid and p.income_year=%s',
+            (str(preview_id), str(query.company_id), int(query.income_year)),
+        )).fetchone()
+        preview = self._source_preview(row)
+        capture = rf.Rf1086ArchiveSourcePreview(preview, row['payload_text'], row['payload_sha256'],
+            str(row['created_by']), _record_value(row['created_at']))
+        rf.build_rf1086_retained_source_readiness_v2(
+            _parse_retained_year_source(row['source_snapshot_text']), capture)
+        return capture
+
+    async def retained_source_preview(self, query, preview_id):
+        self._command_actor(query)
+        async with self._transaction(snapshot=True, read_only=True) as connection:
+            return await self._retained_source_preview_on_connection(connection, query, preview_id)
+
     async def source_preview(self, preview_id):
         async with self._transaction(snapshot=True) as connection:
             return await self._read_source_preview(connection, preview_id)
@@ -1696,6 +1716,15 @@ class _SourceAdmission:
                 or preview.income_year != self._query.income_year):
             raise rf.Rf1086YearSourceError('rf1086_source_preview_not_found')
         return preview
+
+    async def retained_source_preview(self, preview_id):
+        self._require_active()
+        capture = await self._store._retained_source_preview_on_connection(
+            self._connection, self._query, preview_id)
+        if (capture.preview.company_id != self._query.company_id
+                or capture.preview.income_year != self._query.income_year):
+            raise rf.Rf1086YearSourceError('rf1086_source_preview_not_found')
+        return capture
 
     async def assert_original(self, receipt):
         self._require_active()

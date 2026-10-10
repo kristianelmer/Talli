@@ -1998,3 +1998,34 @@ verified claims; it does not establish live Auth or object-store recovery.
 Collection alone is not execution. Native guard probes use the actual shared
 lock body with explicit preparation-authority stubs. Complete CI and compatible
 admission/approval/claim/intent consumers remain release prerequisites.
+
+### Saved v2 source admission and readiness observations
+
+`ShareholderRegisterSourceAdmissionV2` reads a preview through additive session
+and held-scope ports bound to actor/company/year/preview ID. Both reads retain
+the exact saved payload text, SHA, creator and creation time. The public
+`build_rf1086_retained_source_readiness_v2` and
+`build_rf1086_retained_annual_readiness_v2` check source/preview correspondence
+and apply the existing readiness policies without invoking today's renderer.
+They produce observations; callers separately establish current authority.
+
+Admission verifies every original through Documents outside the RF guard. It
+then uses the existing current-owner Company Access admission and RF-year guard,
+rechecks the exact source and saved capture, asserts all retained originals, and
+reads complete current Governance and effective RF evidence on one connection.
+A current actor authorizes those reads; the historical source command, actors,
+receipts and wire bytes remain unchanged. Failure or cancellation closes the
+scope. Returned observations confer no authority after that scope is released.
+
+Annual observation reads Opening, Ledger, Banking, Interview and Documents in
+the existing order through the held owner ports, preserving ready/warning/blocked
+policy and explicit conditions not evaluated. The old admission, fresh builders,
+annual function and codecs remain unchanged. No route, runtime grant, proof,
+approval, claim, dispatch intent or submission writer is activated by this stage.
+
+Focused tests exercise real adapters, Governance producers and Documents byte
+verification with explicit SQL/authority/annual-owner doubles. Mandatory full
+schema cases use restricted disposable RF/Documents logins, real owner records,
+guards and retention; claims and membership refresh are fixtures, and storage
+reads locally retained fixture bytes. Collection does not establish execution,
+live Auth, independent object-store recovery or release readiness.
