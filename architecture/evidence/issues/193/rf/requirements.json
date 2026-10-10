@@ -296,8 +296,8 @@
   "savedSourceV2Admission": "rf-source-v2-admission-20261010.json",
   "historicalCi38055007322": "ci-38055007322.json",
   "governanceCallableAccessFixture": "rf-governance-callable-access-fixture-20261010.json",
-  "latestIntegrationCiObservation": "ci-38076297608.json",
-  "latestIntegrationCiStatus": "FAILED: aa1 Application10949PASS/2SKIP/all code-boundary-build-smoke-rehearsal-productionaudit checks pass; Billing700PASS; Authority1467PASS/1freshownerMFAFAIL/66notexecuted. Reviewed seed repair passed prior INSERT boundary; first approval context rejects fractional synthetic MFA timestamp.35new and31protected unexecuted. Reviewed four-line integer MFA fixture repair has7projectednative/128selectorsPASS; successor full36 required. Browser/restore/canonical/all-three acceptance pending.",
+  "latestIntegrationCiObservation": "ci-38078490149.json",
+  "latestIntegrationCiStatus": "FAILED: a264 Application10949PASS/2SKIP/all steps pass; Billing700PASS; Authority1467PASS/1annual-readinessFAIL/66unexecuted. Seed and fresh-MFA context boundaries passed; actual blocker codes unprinted.0newPASS/1FAIL/35new and31protected unexecuted. Reviewed cash Banking fixture completion has14projectednative/128selectorsPASS and36collectionONLY; successor all36 actual required. Browser/restore/canonical/all-three acceptance pending.",
   "historicalCi38057406479": "ci-38057406479.json",
   "retainedReaderLiveRequestFixtureRepair": "rf-correction-reader-live-request-fixture-20261010.json",
   "closedSourceV2Preview": "rf-source-v2-preview-20261010.json",
@@ -316,5 +316,7 @@
   "closedApprovalSeedAccessFixtureRepair20261010": "rf-approval-seed-access-fixture-repair-20261010.json",
   "unknownOutcomeContractResearch20261010": "unknown-outcome-contract-research-20261010.json",
   "closedApprovalIntegerMfaFixtureRepair20261010": "rf-approval-integer-mfa-fixture-repair-20261010.json",
-  "historicalCi38076297608": "ci-38076297608.json"
+  "historicalCi38076297608": "ci-38076297608.json",
+  "historicalCi38078490149": "ci-38078490149.json",
+  "closedApprovalCashBankingFixtureRepair20261010": "rf-approval-cash-banking-fixture-repair-20261010.json"
 }

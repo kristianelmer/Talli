@@ -193,8 +193,36 @@ def approved_release(admitted):
                 db.execute('insert into public.launch_signoffs select * from jsonb_populate_record(null::public.launch_signoffs,%s::jsonb)', (json.dumps(row),))
 
 
+def reconcile_approval_cash_fixture(item):
+    """Complete the real Banking claim omitted by the pointwise Gov fixture."""
+    from governance_register_evidence_amendment_fixture import connection
+    command, seed = item['command'], item['seed']
+    bank = command.bank_fact
+    assert command.event_kind.value == 'cash_capital_increase' and bank is not None
+    with connection(seed, 'corporate_governance_workflow_executor') as db:
+        db.execute('set local role corporate_governance_store_owner')
+        rows = db.execute("select event_id,accounting_entry_id from corporate_governance.supported_events "
+            "where company_id=%s and income_year=%s and event_reference=%s and created_by=%s "
+            "and event_kind='cash_capital_increase' and phase='restricted_payment' and bank_transaction_id=%s",
+            (str(command.company_id), int(command.income_year), str(command.event_reference),
+             str(command.actor_id.subject), str(bank.transaction_id))).fetchall()
+        assert len(rows) == 1, 'Cash approval requires the exact retained restricted-payment event'
+        event_id, entry_id = rows[0]
+        db.execute('set local role corporate_governance_workflow_executor')
+        request = dict(companyId=str(command.company_id), incomeYear=int(command.income_year),
+            transactionId=str(bank.transaction_id), transactionDate=bank.transaction_date.value.isoformat(),
+            signedAmount=str(bank.signed_amount.amount), sourceHash=bank.source_sha256,
+            actionReference=str(event_id))
+        actual = db.execute('select banking.claim_corporate_governance_transaction_v1(%s,%s,%s)',
+            (Jsonb(request), entry_id, str(command.actor_id.subject))).fetchone()[0]
+        assert actual == dict(transactionId=str(bank.transaction_id), accountingEntryId=str(entry_id),
+            actionReference=str(event_id))
+
+
 def prepare_state(admitted, source_role, withdrawal_role, login, documents_url, kind='loss_covering_reduction', depth=0):
     item, command, originals = complete_inputs(admitted, source_role, withdrawal_role, kind, depth)
+    if kind == 'cash_issue':
+        reconcile_approval_cash_fixture(item)
     state = fixture(item, command, originals, login, documents_url)
     use_approval_backend_role(state)
     state.request, state.entitlement = uuid4(), uuid4()
