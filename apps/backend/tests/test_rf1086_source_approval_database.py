@@ -10,6 +10,7 @@ from uuid import uuid4
 import psycopg
 import pytest
 from psycopg.types.json import Jsonb
+from governance_completion_rehearsal import read_rehearsal_migration
 
 from talli_backend.modules.shareholder_register_filing import public as rf
 from test_annual_purchase_basis_runtime import admitted
@@ -35,7 +36,7 @@ def historical_source_command_revision():
     finally:
         with psycopg.connect(DATABASE_URL) as db:
             for migration in successors:
-                db.execute((ROOT/'supabase/migrations'/migration).read_text())
+                db.execute(read_rehearsal_migration(ROOT, migration))
 
 
 @pytest.fixture

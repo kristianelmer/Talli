@@ -9,6 +9,7 @@ from uuid import uuid4
 import psycopg
 from psycopg.types.json import Jsonb
 import pytest
+from governance_completion_rehearsal import read_rehearsal_migration
 
 from talli_backend.application.shareholder_register_annual_readiness import read_annual_readiness
 from talli_backend.application.shareholder_register_source_admission import AdmittedRf1086Source
@@ -50,7 +51,7 @@ def test_historical_source_fixture_restores_current_override_receiver():
         # A failing regression must not contaminate the remaining database lane.
         with psycopg.connect(DATABASE_URL) as db:
             for migration in before[2]:
-                db.execute((ROOT/'supabase/migrations'/migration).read_text())
+                db.execute(read_rehearsal_migration(ROOT, migration))
 
 
 @pytest.fixture

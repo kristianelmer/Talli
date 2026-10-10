@@ -18,3 +18,10 @@ def adapt_governance_completion_rehearsal(relative, source):
     if sha256(adapted.encode()).hexdigest() != _RULE['rehearsalSha256']:
         raise ValueError('governance_completion_rehearsal_source_drift')
     return adapted
+
+
+def read_rehearsal_migration(root, migration):
+    """Read a forward migration through the same pinned disposable adaptation."""
+    return adapt_governance_completion_rehearsal(
+        'migrations/' + migration,
+        (root / 'supabase/migrations' / migration).read_text())

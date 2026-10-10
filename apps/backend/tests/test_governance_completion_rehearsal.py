@@ -43,3 +43,41 @@ def test_adaptation_requires_original_input_and_leaves_other_files_unchanged():
         adapt_governance_completion_rehearsal(RELATIVE, adapted)
     for relative in ('rollback/' + RULE['migration'], 'migrations/unknown.sql'):
         assert adapt_governance_completion_rehearsal(relative, SOURCE) == SOURCE
+
+
+@pytest.mark.parametrize('body_fails', [False, True])
+def test_historical_approval_fixture_restores_all_successors_with_pinned_sql(monkeypatch, body_fails):
+    import test_rf1086_source_approval_database as approval
+    from test_authority_connections_database_runtime import RF193_CONSEQUENTIAL
+
+    successors = [layer['migration'] for layer in RF193_CONSEQUENTIAL
+                  if layer['migration'] > approval.MIGRATION]
+    calls = []
+
+    class Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def execute(self, statement):
+            calls.append(statement)
+
+    monkeypatch.setattr(approval.psycopg, 'connect', lambda *args, **kwargs: Connection())
+    monkeypatch.setattr(approval, 'rf193_consequential_topology', lambda db: successors)
+    fixture = approval.historical_source_command_revision.__wrapped__()
+    next(fixture)
+    if body_fails:
+        with pytest.raises(RuntimeError, match='^historical body failed$'):
+            fixture.throw(RuntimeError('historical body failed'))
+    else:
+        fixture.close()
+
+    assert len(calls) == 2 + len(successors)
+    for name, statement in zip(successors, calls[2:], strict=True):
+        expected = (ROOT / 'supabase/migrations' / name).read_text()
+        if name == RULE['migration']:
+            assert sha256(statement.encode()).hexdigest() == RULE['rehearsalSha256']
+        else:
+            assert statement == expected

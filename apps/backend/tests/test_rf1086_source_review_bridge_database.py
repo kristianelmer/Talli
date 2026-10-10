@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import psycopg
 import pytest
+from governance_completion_rehearsal import read_rehearsal_migration
 
 from talli_backend.modules.shareholder_register_filing import public as rf
 from test_annual_purchase_basis_runtime import admitted
@@ -155,7 +156,7 @@ def test_safe_rollback_retains_review_and_production_barriers_then_exact_recutov
         with psycopg.connect(DATABASE_URL) as db:
             db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
             for migration in successors:
-                db.execute((ROOT/'supabase/migrations'/migration).read_text())
+                db.execute(read_rehearsal_migration(ROOT, migration))
     assert asyncio.run(bridge(store,preview)) and asyncio.run(records(store,preview))==before
     with psycopg.connect(DATABASE_URL) as db:
         for role in ('anon','authenticated','service_role'):

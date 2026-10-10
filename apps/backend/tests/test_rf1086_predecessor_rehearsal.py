@@ -1,9 +1,17 @@
 """Predecessor rehearsals must restore the installed successor topology."""
-from pathlib import PurePosixPath
+from hashlib import sha256
+import json
+from pathlib import Path, PurePosixPath
 
 import pytest
 
 import test_authority_connections_database_runtime as rehearsal
+
+
+ROOT = Path(__file__).resolve().parents[3]
+RULE = json.loads((ROOT / 'tests/fixtures/governance_completion_replay.json').read_text())
+COMPLETION_PATH = 'supabase/migrations/' + RULE['migration']
+COMPLETION_SOURCE = (ROOT / COMPLETION_PATH).read_text()
 
 
 @pytest.mark.parametrize('phase',['legacy_overlap','canonical_overlap','contracted'])
@@ -12,16 +20,21 @@ def test_predecessor_restores_installed_successors_after_contract_even_when_body
     legacy=[name for name,_ in rehearsal.RF193_LAYERS]
     successors=[layer['migration'] for layer in rehearsal.RF193_CONSEQUENTIAL]
     if not latest: successors=successors[:5]
-    layers=legacy+successors;calls=[];present=set(successors)
+    layers=legacy+successors;calls=[];present=set(successors);adapted_calls=[]
     by_query={layer['presenceQuery']:layer['migration'] for layer in rehearsal.RF193_CONSEQUENTIAL}
     class File:
         def __init__(self,path=''):self.path=path
         def __truediv__(self,part):return File(str(PurePosixPath(self.path)/part))
-        def read_text(self):return self.path
+        def read_text(self):
+            return COMPLETION_SOURCE if self.path == COMPLETION_PATH else self.path
     class Connection:
         def __enter__(self):return self
         def __exit__(self,*args):pass
         def execute(self,statement):
+            if statement.startswith('--') and RULE['after'] in statement:
+                assert sha256(statement.encode()).hexdigest() == RULE['rehearsalSha256']
+                adapted_calls.append(statement)
+                statement = COMPLETION_PATH
             calls.append(statement)
             self.result=(statement in by_query and by_query[statement] in present,)
             if statement=='supabase/rollback/'+rehearsal.RF151_EXPAND:
@@ -43,6 +56,7 @@ def test_predecessor_restores_installed_successors_after_contract_even_when_body
     assert restored[-len(successors):]==successors
     assert not any(call.startswith('supabase/rollback/') and PurePosixPath(call).name in successors for call in calls)
     assert present==set(successors)
+    assert len(adapted_calls) == int(RULE['migration'] in successors)
     if phase=='contracted':
         contract=calls.index('supabase/contract-migrations/'+rehearsal.RF151_CONTRACT)
         assert all(calls.index('supabase/migrations/'+name)>contract for name in successors)

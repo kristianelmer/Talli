@@ -6,6 +6,7 @@ from uuid import uuid4
 import psycopg
 from psycopg import sql
 import pytest
+from governance_completion_rehearsal import read_rehearsal_migration
 
 from test_rf1086_database_runtime import (
     DATABASE_URL, backend_url, rf_fixture_admin_access, fixture, store, confirmed,
@@ -148,7 +149,7 @@ def test_mixed_successor_replay_and_rollback_preserve_journal_identity_acl_and_r
             with psycopg.connect(DATABASE_URL) as db: db.execute((ROOT/'supabase/migrations'/migration).read_text())
     finally:
         for migration in ('20260924091015_rf1086_source_approval_foundation.sql', MIGRATION, *successors):
-            with psycopg.connect(DATABASE_URL) as db: db.execute((ROOT/'supabase/migrations'/migration).read_text())
+            with psycopg.connect(DATABASE_URL) as db: db.execute(read_rehearsal_migration(ROOT, migration))
     with psycopg.connect(DATABASE_URL) as db:
         assert identities(db) == original
         assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall() == membership
