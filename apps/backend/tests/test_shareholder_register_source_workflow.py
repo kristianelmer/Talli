@@ -383,3 +383,131 @@ def test_intake_preserves_invalid_capital_economics_row_with_explicit_blocker():
     assert result.capital_events[0].events[0].receipt_id==RECEIPT
     assert result.capital_events[0].events[0].economics is None
     assert 'rf1086_source_governance_economics_invalid' in result.blockers
+
+
+def retained_v2_harness(kind='cash_issue', *, amendments=2):
+    from test_rf1086_year_source_v2 import v2_basis, prepare
+    source = prepare(*v2_basis(kind, amendments=amendments))
+    h = Harness()
+    h.command = source.command
+    h.actor = source.command.actor_id
+    company = source.command.case.company
+    h.company = SimpleNamespace(id=str(source.company_id), role='owner', entity_type='AS',
+        identity_confirmed_at=NOW.isoformat(), identity_locked_at=NOW.isoformat(),
+        org_number=company.org_number, name=company.name, address=company.address,
+        postal_code=company.postal_code, city=company.city)
+    h.sources[source.source_id] = source
+    h.current_source = source
+    h.document_failure = True
+    h.view = None
+    return h, source
+
+
+@pytest.mark.parametrize('kind', ['no_activity', 'cash_issue', 'loss_covering_reduction'])
+@pytest.mark.parametrize('amendments', [0, 1, 2])
+def test_retained_v2_current_read_preserves_source_without_refreshing_evidence(kind, amendments):
+    from talli_backend.modules.shareholder_register_filing import public as rf
+    h, source = retained_v2_harness(kind, amendments=amendments)
+    encoded = rf.serialize_rf1086_year_source_v2(source)
+    result = asyncio.run(h.workflow.read_current_year_source('verified-token',
+        company_id=source.company_id, income_year=source.income_year))
+    assert result is source
+    assert rf.serialize_rf1086_year_source_v2(result) == encoded
+    assert h.calls == ['rf_auth', 'company', 'read_current_source']
+    assert not h.saved and not h.previews
+
+
+def test_retained_v2_current_read_keeps_original_actor_after_owner_and_metadata_change():
+    h, source = retained_v2_harness()
+    h.actor = replace(h.actor, subject=type(h.actor.subject)(str(uuid4())))
+    h.company.name = 'Renamed company'
+    h.company.address = 'Updated current address'
+    result = asyncio.run(h.workflow.read_current_year_source('verified-token',
+        company_id=source.company_id, income_year=source.income_year))
+    assert result is source and result.confirmed_by != h.actor
+    assert h.calls == ['rf_auth', 'company', 'read_current_source']
+
+
+@pytest.mark.parametrize('change', ['reviewer', 'entity', 'unconfirmed', 'unlocked',
+    'company', 'year', 'organization_number', 'source_hash', 'case_hash'])
+def test_retained_v2_current_read_does_not_bypass_owner_scope_or_integrity(change):
+    h, source = retained_v2_harness()
+    year = source.income_year
+    if change == 'reviewer': h.company.role = 'reviewer'
+    if change == 'entity': h.company.entity_type = 'ENK'
+    if change == 'unconfirmed': h.company.identity_confirmed_at = None
+    if change == 'unlocked': h.company.identity_locked_at = None
+    if change == 'company': h.company.id = str(uuid4())
+    if change == 'year': year = IncomeYear(source.income_year.value - 1)
+    if change == 'organization_number': h.company.org_number = '999999999'
+    if change == 'source_hash': h.current_source = replace(source, source_sha256='f' * 64)
+    if change == 'case_hash': h.current_source = replace(source, case_sha256='f' * 64)
+    with pytest.raises(Rf1086YearSourceError):
+        asyncio.run(h.workflow.read_current_year_source('verified-token',
+            company_id=source.company_id, income_year=year))
+    if change in {'reviewer', 'entity', 'unconfirmed', 'unlocked', 'company'}:
+        assert h.calls == ['rf_auth', 'company']
+    else:
+        assert h.calls == ['rf_auth', 'company', 'read_current_source']
+    assert not h.saved and not h.previews
+
+
+@pytest.mark.parametrize('operation', ['lookup', 'capture'])
+@pytest.mark.parametrize('outcome', ['recorded', 'conflict', 'unavailable', 'wrong_actor'])
+def test_retained_v2_committed_recovery_never_refreshes_evidence(operation, outcome):
+    from talli_backend.modules.shareholder_register_filing import public as rf
+    from test_rf1086_year_source_v2 import prepare
+    source = prepare()
+    command = source.command
+    key = IdempotencyKey('retained-v2-original-capture-key')
+    if outcome == 'conflict':
+        command = replace(command, case=replace(command.case, case_id='changed-request'))
+    actor = (replace(command.actor_id, subject=type(command.actor_id.subject)(str(uuid4())))
+        if outcome == 'wrong_actor' else command.actor_id)
+    calls = []
+    class Session:
+        actor_id = actor
+        async def read_year_source_capture_receipt(self, candidate, *, idempotency_key):
+            calls.append('lookup')
+            assert candidate is command and idempotency_key is key
+            if outcome == 'unavailable': raise TimeoutError('receipt unavailable')
+            rf.assert_rf1086_year_source_replay_v2(source, candidate)
+            return source
+        async def record_year_source(self, *args, **kwargs):
+            raise AssertionError('Committed recovery cannot write another source')
+    class Sessions:
+        async def session(self, token):
+            assert token == 'verified-token'
+            calls.append('authenticate')
+            return Session()
+    class UnavailableEvidence:
+        def __getattr__(self, name):
+            raise AssertionError('Committed recovery consulted mutable owner evidence')
+    workflow = ShareholderRegisterSourceWorkflow(Sessions(), UnavailableEvidence(),
+        UnavailableEvidence(), UnavailableEvidence())
+    def recover():
+        if operation == 'lookup':
+            return asyncio.run(workflow.lookup_year_source_capture('verified-token', command,
+                idempotency_key=key))
+        return asyncio.run(workflow.capture_year_source('verified-token', command,
+            idempotency_key=key, correlation_id=CorrelationId('new-recovery-correlation')))
+    if outcome == 'recorded':
+        result = recover()
+        assert result is source
+        assert rf.serialize_rf1086_year_source_v2(result) == rf.serialize_rf1086_year_source_v2(source)
+    elif outcome == 'unavailable':
+        with pytest.raises(TimeoutError, match='receipt unavailable'): recover()
+    else:
+        code = 'owner_required' if outcome == 'wrong_actor' else 'idempotency_conflict'
+        with pytest.raises(Rf1086YearSourceError, match=code): recover()
+    assert calls == (['authenticate'] if outcome == 'wrong_actor' else ['authenticate', 'lookup'])
+
+
+def test_retained_v2_read_does_not_activate_fresh_source_preview():
+    h, source = retained_v2_harness()
+    with pytest.raises(Rf1086YearSourceError):
+        asyncio.run(h.workflow.generate_source_preview('verified-token',
+            company_id=source.company_id, income_year=source.income_year, source_id=source.source_id,
+            correlation_id=CorrelationId('no-v2-preview-admission')))
+    assert h.calls == ['rf_auth', 'read_source']
+    assert not h.saved and not h.previews and not h.preview_commands

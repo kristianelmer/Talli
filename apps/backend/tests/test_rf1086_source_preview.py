@@ -167,3 +167,84 @@ def test_registered_capital_review_is_exact_and_independent_of_rounding():
             previews.append(preview_source(source)[0])
     assert previews[0] == previews[1]
     assert '- Aksjekapital 1. januar: 30000.005 kr' in previews[0].preview_text
+
+
+def retained_v2_preview_row():
+    """Hand-built retained row; this does not invoke or enable a v2 writer."""
+    from hashlib import sha256
+    from test_rf1086_year_source_v2 import prepare
+    source = prepare()
+    rendered = rf.render_rf1086_preview(source.command.case)
+    preview = rf.Rf1086SourcePreview(preview_id=rf.PreviewId(str(UUID(int=990))),
+        source_id=source.source_id, company_id=source.company_id, income_year=source.income_year,
+        source_sha256=source.source_sha256, case_sha256=source.case_sha256,
+        readiness_status=rendered.status, readiness_issues=rendered.issues,
+        preview_text='Retained renderer wording\n' + rendered.preview,
+        hovedskjema_xml=rendered.hovedskjema_xml, underskjema_xml=rendered.underskjema_xml)
+    encoded = rf.serialize_rf1086_source_preview(preview)
+    row = dict(id=preview.preview_id.value, company_id=source.company_id.value,
+        income_year=source.income_year.value, source_id=source.source_id.value,
+        source_sha256=source.source_sha256, case_sha256=source.case_sha256,
+        profile=preview.rendering_profile, payload_text=encoded,
+        payload_sha256=sha256(encoded.encode()).hexdigest(),
+        source_snapshot_text=rf.serialize_rf1086_year_source_v2(source))
+    return source, preview, row
+
+
+def test_retained_v2_preview_returns_exact_original_renderer_bytes_without_rerender(monkeypatch):
+    from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingSession
+    source, preview, row = retained_v2_preview_row()
+    def forbidden(*args, **kwargs):
+        raise AssertionError('A historical preview must not invoke the current renderer')
+    monkeypatch.setattr(rf, 'render_rf1086_preview', forbidden)
+    monkeypatch.setattr(rf, 'assert_rf1086_source_preview_matches', forbidden)
+    result = PostgresShareholderRegisterFilingSession._source_preview(row)
+    assert result == preview
+    assert rf.serialize_rf1086_source_preview(result) == row['payload_text']
+    assert result.source_sha256 == source.source_sha256
+    assert result.preview_text.startswith('Retained renderer wording\n')
+
+
+@pytest.mark.parametrize('change', ['preview_id', 'company', 'year', 'source_id', 'source_hash',
+    'case_hash', 'profile', 'payload_hash', 'payload_bytes', 'malformed_source',
+    'unknown_codec', 'cross_codec', 'duplicate_codec', 'source_integrity', 'source_binding'])
+def test_retained_v2_preview_rejects_malformed_or_cross_bound_rows(change):
+    from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingSession
+    source, preview, row = retained_v2_preview_row()
+    if change == 'preview_id': row['id'] = str(UUID(int=991))
+    if change == 'company': row['company_id'] = str(UUID(int=992))
+    if change == 'year': row['income_year'] -= 1
+    if change == 'source_id': row['source_id'] = str(UUID(int=993))
+    if change == 'source_hash': row['source_sha256'] = 'f' * 64
+    if change == 'case_hash': row['case_sha256'] = 'f' * 64
+    if change == 'profile': row['profile'] = 'unknown'
+    if change == 'payload_hash': row['payload_sha256'] = 'f' * 64
+    if change == 'payload_bytes': row['payload_text'] += ' '
+    if change == 'malformed_source': row['source_snapshot_text'] = '{'
+    if change == 'unknown_codec':
+        raw = json.loads(row['source_snapshot_text'])
+        raw['codec'] = 'rf1086-year-source-v3'
+        row['source_snapshot_text'] = json.dumps(raw)
+    if change == 'cross_codec':
+        row['source_snapshot_text'] = row['source_snapshot_text'].replace(
+            'rf1086-year-source-v2', 'rf1086-year-source-v1', 1)
+    if change == 'duplicate_codec':
+        row['source_snapshot_text'] = row['source_snapshot_text'][:-1] + ',"codec":"rf1086-year-source-v2"}'
+    if change == 'source_integrity':
+        row['source_snapshot_text'] = row['source_snapshot_text'].replace(source.source_sha256, 'f' * 64)
+    if change == 'source_binding':
+        from test_rf1086_year_source_v2 import prepare, v2_basis
+        other = prepare(*v2_basis(), source_id=rf.Rf1086YearSourceId(str(UUID(int=994))))
+        row['source_snapshot_text'] = rf.serialize_rf1086_year_source_v2(other)
+    with pytest.raises(rf.Rf1086YearSourceError, match='storage_invalid'):
+        PostgresShareholderRegisterFilingSession._source_preview(row)
+
+
+def test_retained_v2_support_does_not_enable_new_preview_generation():
+    from test_rf1086_year_source_v2 import prepare
+    source = prepare()
+    store = CapturingStore()
+    with pytest.raises(rf.Rf1086YearSourceError):
+        asyncio.run(rf.create_rf1086_preparation_service(store).generate_source_preview(
+            rf.GenerateRf1086SourcePreview(source.company_id, source.income_year, source)))
+    assert store.prepared is None

@@ -63,6 +63,35 @@ def _source_digest(value):
         default=str, ensure_ascii=False, allow_nan=False).encode("utf-8")).hexdigest()
 
 
+def _parse_retained_year_source(value):
+    """Select a frozen codec without reconstructing or upgrading retained bytes."""
+    try:
+        if type(value) is not str:
+            raise ValueError()
+        envelope = json.loads(value)
+        if type(envelope) is not dict:
+            raise ValueError()
+        codec = envelope.get("codec")
+    except (ValueError, TypeError, RecursionError):
+        raise rf.Rf1086YearSourceError("rf1086_source_storage_invalid") from None
+    # The selected parser receives the original text, including duplicate keys,
+    # and enforces its own exact envelope and closed record registry.
+    if codec == "rf1086-year-source-v1":
+        return rf.parse_rf1086_year_source(value)
+    if codec == "rf1086-year-source-v2":
+        return rf.parse_rf1086_year_source_v2(value)
+    raise rf.Rf1086YearSourceError("rf1086_source_storage_invalid")
+
+
+def _assert_retained_year_source_replay(source, command):
+    if type(source) is rf.Rf1086YearSourceSnapshot:
+        rf.assert_rf1086_year_source_replay(source, command)
+    elif type(source) is rf.Rf1086YearSourceSnapshotV2:
+        rf.assert_rf1086_year_source_replay_v2(source, command)
+    else:
+        raise rf.Rf1086YearSourceError("rf1086_source_storage_invalid")
+
+
 class _PersistenceError(Exception):
     """Only a SQLSTATE is retained for the frozen feedback retry classifier."""
     def __init__(self, code=""):
@@ -246,7 +275,7 @@ class PostgresShareholderRegisterFilingSession:
     def _year_source(row):
         if row is None:
             return None
-        source = rf.parse_rf1086_year_source(row["snapshot_text"])
+        source = _parse_retained_year_source(row["snapshot_text"])
         if (source.source_id.value != str(row["id"]) or str(source.company_id) != str(row["company_id"])
                 or int(source.income_year) != row["income_year"] or source.version != row["version"]
                 or source.source_sha256 != row["source_sha256"]
@@ -423,7 +452,7 @@ class PostgresShareholderRegisterFilingSession:
         if row is None:
             return None
         original = self._year_source(row)
-        rf.assert_rf1086_year_source_replay(original, command)
+        _assert_retained_year_source_replay(original, command)
         return original
 
     async def read_register_observation_capture_receipt(self, command, *, idempotency_key):
@@ -454,9 +483,13 @@ class PostgresShareholderRegisterFilingSession:
             )).fetchone()
             if replay:
                 original = self._year_source(replay)
-                rf.assert_rf1086_year_source_replay(original, command)
+                _assert_retained_year_source_replay(original, command)
                 return original
             previous = await self._current_year_source(connection, command.company_id, command.income_year)
+            if type(previous) is rf.Rf1086YearSourceSnapshotV2:
+                # Fresh writes stay v1 until every v2 consumer is released.
+                # A retained v2 head must never be fed to the legacy preparer.
+                raise rf.Rf1086YearSourceError("rf1086_source_codec_downgrade")
             now = (await (await connection.execute("select pg_catalog.clock_timestamp() as now")).fetchone())["now"]
             source = rf.prepare_rf1086_year_source(command, context=context,
                 source_id=rf.Rf1086YearSourceId(str(uuid4())), confirmed_at=now, previous=previous)
@@ -633,7 +666,7 @@ class PostgresShareholderRegisterFilingSession:
         if row is None:
             raise rf.ShareholderRegisterFilingError.not_found()
         preview = rf.parse_rf1086_source_preview(row["payload_text"])
-        source = rf.parse_rf1086_year_source(row["source_snapshot_text"])
+        source = _parse_retained_year_source(row["source_snapshot_text"])
         if (str(preview.preview_id) != str(row["id"])
                 or str(preview.company_id) != str(row["company_id"])
                 or int(preview.income_year) != row["income_year"]

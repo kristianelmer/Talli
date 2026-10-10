@@ -19,7 +19,7 @@ from talli_backend.modules.documents.public import (
 )
 from talli_backend.modules.shareholder_register_filing.public import (
     RecordRf1086YearSource, Rf1086VerifiedYearSourceContext, Rf1086YearDocumentEvidence,
-    Rf1086YearGovernanceReceipt, Rf1086YearSourceError, Rf1086YearSourceSnapshot,
+    Rf1086YearGovernanceReceipt, Rf1086YearSourceError, Rf1086YearSourceSnapshot, Rf1086YearSourceSnapshotV2,
     rf1086_year_source_digest,
     RecordRf1086RegisterObservation, Rf1086RegisterDocumentEvidence,
     Rf1086RegisterObservationSnapshot, Rf1086VerifiedRegisterObservationContext,
@@ -28,7 +28,7 @@ from talli_backend.modules.shareholder_register_filing.public import (
     verify_rf1086_register_observation, rf1086_event_register_states,
     assert_rf1086_register_observation_integrity, Rf1086RegisterObservationError,
     Rf1086YearSourceId, Rf1086SourcePreview, GenerateRf1086SourcePreview, PreviewId,
-    assert_rf1086_year_source_integrity, assert_rf1086_year_source_fresh,
+    assert_rf1086_year_source_integrity, assert_rf1086_year_source_integrity_v2, assert_rf1086_year_source_fresh,
     assert_rf1086_source_preview_matches, create_rf1086_preparation_service,
 )
 from talli_backend.shared.kernel import CompanyId, CorrelationId, IdempotencyKey, IncomeYear
@@ -506,7 +506,7 @@ class ShareholderRegisterSourceWorkflow:
         return _document_projection(evidence)
 
     async def read_current_year_source(self, access_token: str, *, company_id: CompanyId,
-            income_year: IncomeYear) -> Rf1086YearSourceSnapshot | None:
+            income_year: IncomeYear) -> Rf1086YearSourceSnapshot | Rf1086YearSourceSnapshotV2 | None:
         """Read retained facts for correction, without certifying current evidence.
 
         Original bytes may have changed since capture. They are deliberately not
@@ -520,7 +520,10 @@ class ShareholderRegisterSourceWorkflow:
         source = await session.read_current_year_source(Rf1086SourceQuery(company_id, income_year, session.actor_id))
         if source is None:
             return None
-        assert_rf1086_year_source_integrity(source)
+        if type(source) is Rf1086YearSourceSnapshotV2:
+            assert_rf1086_year_source_integrity_v2(source)
+        else:
+            assert_rf1086_year_source_integrity(source)
         _require(source.company_id == company_id and source.income_year == income_year,
                  'rf1086_source_company_year_mismatch')
         # A rename, address update, or renewed confirmation must not hide the
@@ -566,7 +569,7 @@ class ShareholderRegisterSourceWorkflow:
         return tuple(row.observation for row in snapshot.observations)
 
     async def lookup_year_source_capture(self, access_token: str, command: RecordRf1086YearSource, *,
-            idempotency_key: IdempotencyKey) -> Rf1086YearSourceSnapshot | None:
+            idempotency_key: IdempotencyKey) -> Rf1086YearSourceSnapshot | Rf1086YearSourceSnapshotV2 | None:
         """Observe a committed attempt without refreshing the capture's evidence."""
         session = await self._rf_sessions.session(access_token)
         _require(session.actor_id == command.actor_id, 'rf1086_source_owner_required')
@@ -619,7 +622,7 @@ class ShareholderRegisterSourceWorkflow:
         return await session.record_register_observation(command, context=context, idempotency_key=idempotency_key)
 
     async def capture_year_source(self, access_token: str, command: RecordRf1086YearSource, *,
-            idempotency_key: IdempotencyKey, correlation_id: CorrelationId) -> Rf1086YearSourceSnapshot:
+            idempotency_key: IdempotencyKey, correlation_id: CorrelationId) -> Rf1086YearSourceSnapshot | Rf1086YearSourceSnapshotV2:
         session = await self._rf_sessions.session(access_token)
         _require(session.actor_id == command.actor_id, 'rf1086_source_owner_required')
         # The authenticated, owner-scoped lookup validates the unchanged command
