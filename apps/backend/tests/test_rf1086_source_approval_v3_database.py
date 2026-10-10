@@ -159,6 +159,10 @@ def approval_login(capture_login):
 
 
 def use_approval_backend_role(state):
+    # The production RF validator requires integer MFA seconds; preserve age.
+    claims = json.loads(state.store._verified.claims_json)
+    claims['amr'][0]['timestamp'] = int(claims['amr'][0]['timestamp'])
+    state.store._verified = replace(state.store._verified, claims_json=json.dumps(claims))
     transaction = state.store._transaction
     @asynccontextmanager
     async def backend_role(**options):

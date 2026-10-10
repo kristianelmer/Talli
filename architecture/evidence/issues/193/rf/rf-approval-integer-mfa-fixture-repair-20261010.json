@@ -1,0 +1,88 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "REVIEWED_APPROVAL_FIXTURE_INTEGER_MFA_REPAIR_LOCAL_PROBE_ONLY",
+  "recordedAtUtc": "2026-10-10T19:01:15.874884+00:00",
+  "baseRevision": "aa1d75b8b15d914fa6adb12cd27ba5f053896d26",
+  "status": "REVIEWED_LOCAL_CHECKS_PASS_ACTUAL_FULL36_PENDING",
+  "actualFailure": {
+    "run": 38076297608,
+    "job": 114283824320,
+    "head": "aa1d75b8b15d914fa6adb12cd27ba5f053896d26",
+    "rawLogSha256": "82380f3ca9a9d116465d3317d8731f56bebfc1cee8db87b3198b6f0c6293d0aa",
+    "case": "test_actual_v3_approval_and_replay_bind_current_owners_and_exact_capture[0-cash_issue]",
+    "boundary": "Published assert_fresh_production_owner_v1 line31 reached during read_source_approval_context_v3 after fixture seeding succeeds.",
+    "error": "production_filing_fresh_owner_step_up_required",
+    "newApprovalCases": {
+      "passed": 0,
+      "failed": 1,
+      "unexecuted": 35
+    }
+  },
+  "diagnosis": "Shared synthetic verified fixture emits fractional epoch seconds. Published RF validator requires a1\u201312 digit MFA timestamp and rejects that fresh fractional claim.",
+  "repair": {
+    "path": "apps/backend/tests/test_rf1086_source_approval_v3_database.py",
+    "sourceSha256": "86bc39e4a942e4aee93f0fe88d7ca231f41efdf8189c9c75b332b98423908e4a",
+    "scope": "Four added lines in use_approval_backend_role only. Normalize existing amr[0] timestamp to integer seconds before original/replacement-owner fixture transaction setup. Preserve actor, other claims and timestamp age; round down less than1 second.",
+    "allOtherFunctionsExact": 20,
+    "allRemainingBytesExact": true,
+    "productionAuthSqlGrantsRlsChanged": false
+  },
+  "reviews": [
+    {
+      "axis": "Spec",
+      "path": "/private/tmp/talli-release-20261009/rf-approval-mfa-fixture-spec-review-v1.json",
+      "sha256": "abb93c28277b83c1563e7dc4f875db36223ea1256ab30fa6fbdade1736983ac3",
+      "findings": 0
+    },
+    {
+      "axis": "Standards",
+      "path": "/private/tmp/talli-release-20261009/rf-approval-mfa-fixture-standards-review-v1.json",
+      "sha256": "d8b23ef2cdc381ff93642a07307a8eac6191438f6b36f2cfd3bd5c65e3fee4c4",
+      "findings": 0
+    }
+  ],
+  "localVerification": {
+    "nativeProjected": {
+      "passedChecks": 7,
+      "realSeams": "Published fresh-owner SQL body and exact shared verified plus specialized approval fixture helper.",
+      "projectedSeams": "Identity, claims transport and accepted-owner functions.",
+      "outcomes": [
+        "Fractional fixture RED reproduces exact failure.",
+        "Integer-only one-variable probe GREEN.",
+        "Exact specialized fixture GREEN; stale/future/fractional/password-method remain rejected.",
+        "Fresh/stale only timestamp conversion preserves actor and other claims."
+      ],
+      "ownedClustersStoppedRemoved": true
+    },
+    "ciSelectors": {
+      "passed": 128,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 49466.741167
+    },
+    "databaseCollectionOnly": {
+      "collected": 36,
+      "seconds": 0.75,
+      "executed": 0
+    },
+    "falseStart": {
+      "ciSelectionV1": "nonexistent filename; zero tests; corrected v2 passed"
+    }
+  },
+  "privateFreeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-approval-mfa-fixture-freeze-v1.json",
+    "sha256": "59e57682b29e1b3a835e85fcac5385fadbb6d3f5e9e54ae0c72b17ea94e82887"
+  },
+  "privateLocalChecks": {
+    "path": "/private/tmp/talli-release-20261009/rf-approval-mfa-fixture-local-checks-v1.json",
+    "sha256": "645c1d5947f4abc03039c39030bd3c75f2fa5f29a78145c138c4a229d57ad4e3"
+  },
+  "limits": [
+    "No actual approval case has passed on failedaa1 run;35 unexecuted. All36 actual passes required before claim implementation.",
+    "Projected native validation and collection do not establish fullAuth/Authority/Billing/annual/RLS/source/Gov/original/producer-origin/restore proof.",
+    "Separate native age flag compares separately generated timestamps; exact same-input checks are the two preserved-claims outcomes.",
+    "Current whole run still active at local review; terminal CI evidence is separate. No successor push while active.",
+    "No ordinary activation, spending, genuine data, filings or outreach; allA1\u2013A7 pending, original WIP and paused safeguards preserved."
+  ]
+}
