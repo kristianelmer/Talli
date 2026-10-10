@@ -1,0 +1,313 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "PURE_RF_RETAINED_CLAIM_DISPATCH_COMPATIBILITY",
+  "recordedAtUtc": "2026-10-10T04:28:16.647334+00:00",
+  "baseRevision": "b7021687a61965fcd111d474fa9f098ffcc751e8",
+  "parentRevision": "b7021687a61965fcd111d474fa9f098ffcc751e8",
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_claim.py",
+      "sha256": "3efb02842af83695a4f99b0afdb07a1372ab882203e53d15e678d2fd03ba986b",
+      "bytes": 5035
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/retained_source_claim.py",
+      "sha256": "3b1f6f658dc7c8186a1a809edd333392b1ca604fdc39d4079151b4b4cb4f8b51",
+      "bytes": 1883
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_dispatch.py",
+      "sha256": "4cd04b784984c85d428d654b57dd98f6ebdd496ae3fb709190fbbb10314e5456",
+      "bytes": 8639
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/retained_source_dispatch.py",
+      "sha256": "7c3b3ba44aec3696d4497360433537d5b715e35f992e6d57beec81b276a99cae",
+      "bytes": 3426
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py",
+      "sha256": "6378de228903d69b0b441a75c253881ac7a573625742335e5b695ff6fb5d4564",
+      "bytes": 113731
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "16aa58ea075e797264be3cfbd61b094b9aa698be504674d222dd745c7c82ac36",
+      "bytes": 102317
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "0a510a71fc63cb21f69d6ca36e307c43647b8aa7d60c9a56acbf7d44c3f48bb1",
+      "bytes": 27567
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_retained_source_dispatch.py",
+      "sha256": "cb31dc4b69875daf38007de7dcc3f5c71c2e2abcd6e2fe31f8204f576bb245b0",
+      "bytes": 14223
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_retained_source_dispatch_adversarial.py",
+      "sha256": "cc7fa6211e1750fa0ec5f48060e5ff83e81142af0eed94a0e7e7aa537a8af146",
+      "bytes": 10209
+    }
+  ],
+  "implementation": [
+    "Three additive pure APIs inspect approval-v3 header identity, retained dispatch assessment and retained dispatch position. Existing public entrypoints and result schemas remain unchanged.",
+    "The v3 inspector binds exact actor/header, original canonical manifest text/hash, source codec, annual-binding envelope and predecessor identity. It does not fabricate XML/document values or establish source, review or annual-policy authority.",
+    "Assessment and position validate full retained correspondence, then reuse ordered journal state and original payload/document/key identity. Confirmed, uncertain and blocked outcomes retain precedence; prepared without outcome remains uncertain.",
+    "Any v3 approval or v2 source anywhere in typed input requires captured history, overrides and withdrawals, including a legacy target within mixed history. Both new readers require exact ActorId with USER and exact UserId. Legacy-only unknown coverage remains unknown.",
+    "Small private extractions share header/predecessor and journal mechanics. Existing application, adapter, HTTP, SQL, recovery and correction callsites remain fixed; no fresh claim, intent or provider path is enabled."
+  ],
+  "checks": {
+    "combinedTests": {
+      "status": "PASS",
+      "passed": 498,
+      "seconds": 18.75,
+      "newCases": 139,
+      "authorNewCases": 104,
+      "independentCasesIncluded": 35
+    },
+    "claimDispatchReference": {
+      "status": "PASS",
+      "vectors": 119,
+      "pureOutputsOrErrors": 100,
+      "syntheticWorkflowTraces": 19
+    },
+    "preservedComparisons": {
+      "status": "PASS",
+      "archive": 59,
+      "approval": 181,
+      "downstream": 7,
+      "annual": 217
+    },
+    "compatibility": {
+      "status": "PASS",
+      "oldPublicDefinitions": 287,
+      "newPublicFunctions": 3,
+      "extractedOldFunctions": 3,
+      "unchangedOwnerRuntimeSqlFiles": 52,
+      "method": "Helper inlining and fixed singleton-v2 registry/callback normalization, with manual verification of the exact old call arguments; not unchanged source bodies."
+    },
+    "architecture": "PASS",
+    "whitespace": "PASS"
+  },
+  "resolvedFindings": [
+    {
+      "finding": "Typed v3 input could omit history plus withdrawal captures and inherit legacy unknown semantics.",
+      "red": "rf-retained-claim-dispatch-coverage-red.log",
+      "failed": 6,
+      "resolution": "New shared retained-dispatch input guard requires exact SourceHistory and tuple overrides/withdrawals for any v3 approval or any v2 lineage/history source, including selecting legacy approval inside a mixed archive. Old archive/core APIs unchanged.",
+      "green": "All six plus mixed/legacy cases pass in final498 and independent35."
+    },
+    {
+      "finding": "New assessment accepted ActorId subclass/raw-string subject while v3 position rejected them.",
+      "red": "rf-retained-claim-dispatch-typed-actor-red.log",
+      "failed": 2,
+      "alsoPassed": 2,
+      "resolution": "Both new APIs require exact ActorId with USER and exact UserId in shared input validation. Old APIs unchanged.",
+      "green": "All four actor cases pass in final498 and independent35.",
+      "excluded": "Earlier reviewer exploration failed constructing a plain duck-typed Query; those fixture errors are not product RED evidence."
+    }
+  ],
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "resolved": 2,
+      "reportSha256": "15c927c1ef4489f04740cc166d8b89202f843be2e257fd47939de13bd3ca75d0"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "a3d08b37963cfd09ec59b814fa80347c25742fc7a9ffa469ea7c36c5c16b44a7"
+    },
+    "Root": {
+      "unresolved": 0,
+      "reportSha256": "2ed6dc699d19d5209167f51e9a82ace56673918b282235dd7a966766c9546e56"
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "rf-retained-claim-dispatch-final-freeze.json",
+      "sha256": "bd3c84d263a5f03c5746bc59eb75a441e1af21a042c698047ca568b99ba529b8",
+      "bytes": 3707
+    },
+    {
+      "file": "rf-retained-claim-intent-consumer-plan-v1-20261010.json",
+      "sha256": "a1045eeb93edfcfa208c2b1c62967845ff3abee63ee5f53d038b131a16e982af",
+      "bytes": 18738
+    },
+    {
+      "file": "rf-retained-claim-dispatch-root-decision.json",
+      "sha256": "00ebfdd06c77c79f90591abb2d98924a495f946268b3fc230796061054e12b28",
+      "bytes": 2536
+    },
+    {
+      "file": "rf-retained-dispatch-coverage-decision.json",
+      "sha256": "596a0bac18386df2e1a5e78633217e318e45830746ffb8d1a61bb5b252fc8035",
+      "bytes": 1760
+    },
+    {
+      "file": "rf-retained-claim-dispatch-independent-matrix.json",
+      "sha256": "376102090874739cdf67019865d8c5795e10043fe1241feded2a3392749932e3",
+      "bytes": 11719
+    },
+    {
+      "file": "rf-retained-claim-dispatch-final-checks.json",
+      "sha256": "3482766e6cdf02135dfdc9c4a4f5edda824a6042b99f95d0740d671c4ec4a9a5",
+      "bytes": 12400
+    },
+    {
+      "file": "rf-retained-claim-dispatch-final-regression.log",
+      "sha256": "2a5f3067540e73da3178f9fe472dc98cb18c19a06ece2aa354184df19e92b608",
+      "bytes": 581
+    },
+    {
+      "file": "rf-retained-claim-dispatch-legacy-comparison.log",
+      "sha256": "5466280f6bd54e13a8d704e10c2fcd8d72660a1905b5dc62e8b069c75069d91e",
+      "bytes": 39
+    },
+    {
+      "file": "check-rf-retained-claim-dispatch-compatibility.py",
+      "sha256": "b0f97dea349c536edbd12bf0c5a8386808936f7526dc7ad5cbe7213cd7c866c0",
+      "bytes": 5189
+    },
+    {
+      "file": "rf-retained-claim-dispatch-compatibility.json",
+      "sha256": "eceaa69f659a49791a18d32b21cd403e109e6e663185b391adbcf4a99cabeeb5",
+      "bytes": 10662
+    },
+    {
+      "file": "rf-retained-claim-dispatch-compatibility.log",
+      "sha256": "8e9a63f85e3e992584571528302037977987c1096e1a9bbc6da363ae47955143",
+      "bytes": 94
+    },
+    {
+      "file": "rf-retained-claim-dispatch-architecture.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "file": "rf-retained-claim-dispatch-coverage-red.log",
+      "sha256": "9afb5ce3c241bd3c10b9694c21bb5db686c87b2779ac96687a4d6baa630e9af7",
+      "bytes": 8186
+    },
+    {
+      "file": "rf-retained-claim-dispatch-typed-actor-red.log",
+      "sha256": "0565982cd14e85c75f05d35f9995a3621be1253f24dd62b316abe24e2a5f56c3",
+      "bytes": 2871
+    },
+    {
+      "file": "rf-retained-claim-dispatch-spec-focused.log",
+      "sha256": "92388daaf0bf491ea58a2ae69718e9042264ad7a26cc2f651a90f874de215f88",
+      "bytes": 99
+    },
+    {
+      "file": "rf-retained-claim-dispatch-spec-legacy.log",
+      "sha256": "5466280f6bd54e13a8d704e10c2fcd8d72660a1905b5dc62e8b069c75069d91e",
+      "bytes": 39
+    },
+    {
+      "file": "rf-retained-claim-dispatch-spec-static.log",
+      "sha256": "577d2dc5b15508ce50e1f8a83bc0a7b740469192564c25e1b5afcfeaea556c8f",
+      "bytes": 253
+    },
+    {
+      "file": "check-rf-retained-claim-dispatch-archive-oracle.py",
+      "sha256": "c2cfd49cb740f6b53e2082f8b2d010efc2f0b0ba2af3b30ccea849305477353c",
+      "bytes": 1389
+    },
+    {
+      "file": "rf-retained-claim-dispatch-archive-oracle.json",
+      "sha256": "7c1e1dd65228f9ffb4785c0a05d08345654ba818358029a504c2a9199918bf28",
+      "bytes": 74
+    },
+    {
+      "file": "rf-retained-claim-dispatch-archive-oracle.log",
+      "sha256": "c94a8a59e337d8c358f1726045b1e495f02922b64338b7f6c86303ac5a005dea",
+      "bytes": 66
+    },
+    {
+      "file": "check-rf-retained-claim-dispatch-approval-oracle.py",
+      "sha256": "96d2a1abb159ce0f93cc3f643fd9060ca86e57f28ddb26e408fea9e5f65819d8",
+      "bytes": 12805
+    },
+    {
+      "file": "rf-retained-claim-dispatch-approval-oracle.json",
+      "sha256": "5520d4f0fb35196b274c9062e5dbdf7de4ba2bdaabab40ef2c6ff1cda29ce294",
+      "bytes": 3039
+    },
+    {
+      "file": "rf-retained-claim-dispatch-approval-oracle.log",
+      "sha256": "5520d4f0fb35196b274c9062e5dbdf7de4ba2bdaabab40ef2c6ff1cda29ce294",
+      "bytes": 3039
+    },
+    {
+      "file": "check-rf-retained-claim-dispatch-downstream-oracle.py",
+      "sha256": "48270db142f71995866e9614bebbb7fd53b1e29c8beb242ddb752bee12528a98",
+      "bytes": 4969
+    },
+    {
+      "file": "rf-retained-claim-dispatch-downstream-oracle.json",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "file": "rf-retained-claim-dispatch-downstream-oracle.log",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "file": "rf-legacy-claim-dispatch-pre-v3.json",
+      "sha256": "57d6883de7adc7aa1accb60997cb8127a0fe1fa480b225fa84655be9c149e111",
+      "bytes": 620589
+    },
+    {
+      "file": "freeze-rf-legacy-claim-dispatch-pre-v3.py",
+      "sha256": "f157e0bf54b1d025c3c973b38b02d247d023ba67cbd80bf4d83c0717aa66e104",
+      "bytes": 14120
+    },
+    {
+      "file": "rf-legacy-archive-pre-v6.json",
+      "sha256": "ffd9b4c926fd4e1470ace5d242eb0e0ce44d5d571caa17b903a9256dafee4a31",
+      "bytes": 3985354
+    },
+    {
+      "file": "rf-legacy-approval-pre-v3.json",
+      "sha256": "56807e01f93783fc05a4a5fc42b3c5f0a83a50da60c92e786ccc5aa698fcdd25",
+      "bytes": 5220965
+    },
+    {
+      "file": "rf-v1-downstream-pre-integration.json",
+      "sha256": "5b41be2a029992b27492ff5bb2c51cbde3e5c8fb2f8e4d26130791ea7a8c66ec",
+      "bytes": 156580
+    },
+    {
+      "file": "rf-v1-annual-policy-pre-consumer.json",
+      "sha256": "ab8a025dd1890734c3e33bdbb6cdfe08fa9f120090503c380ecb059f4d9dd3ba",
+      "bytes": 987379
+    },
+    {
+      "file": "rf-retained-claim-dispatch-final-spec-review.json",
+      "sha256": "15c927c1ef4489f04740cc166d8b89202f843be2e257fd47939de13bd3ca75d0",
+      "bytes": 16217
+    },
+    {
+      "file": "rf-retained-claim-dispatch-final-standards-review.json",
+      "sha256": "a3d08b37963cfd09ec59b814fa80347c25742fc7a9ffa469ea7c36c5c16b44a7",
+      "bytes": 24081
+    },
+    {
+      "file": "rf-retained-claim-dispatch-root-review.json",
+      "sha256": "2ed6dc699d19d5209167f51e9a82ace56673918b282235dd7a966766c9546e56",
+      "bytes": 2247
+    }
+  ],
+  "limits": [
+    "Pure unit/static compatibility only. Final 498 includes 35 independent cases; interim and previous affected-suite counts overlap. Reference vectors and tests are distinct measures.",
+    "Synthetic workflow traces use original unit-test doubles, not real provider or database effects. No source/approval/claim/intent writer, adapter/application/HTTP wiring or SQL/grant change.",
+    "Retained consistency does not prove authentic origin, authoritative completeness, external original bytes, current owner/MFA or provider state. Off-year commitments do not imply local off-year capture coverage.",
+    "The ordinary PR CI run on b7021687 covers the preceding archive/topology batch and excludes this slice. This commit requires later CI; no whole gate or acceptance criterion is closed.",
+    "Retained correction/recovery, runtime readers, final held-connection Governance authentication/proof, complete document-byte checks and writer drain/rollback remain dependencies.",
+    "A1\u2013A7 and both linked immutable complete gates remain pending. No Archive-owner completion/eligibility exception, production filing, genuine-company admission, outreach, paid action or launch clearance."
+  ]
+}

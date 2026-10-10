@@ -1611,3 +1611,42 @@ archive holds their off-year observations/originals. No adapter, runtime workflo
 HTTP, SQL, writer, claim, dispatch or Archive-owner completion/eligibility/
 cancellation policy is activated. `test_rf1086_archive_storage_v6.py` covers the
 explicit reader/serializer; its pure fixtures do not establish a live producer.
+
+### Explicit retained claim and dispatch inspection (2026-10-10)
+
+`inspect_rf1086_retained_source_approval_v3` checks the saved approval's actor,
+header, canonical manifest text/hash, source-v2 codec marker and annual-binding-v2
+envelope. It returns predecessor identity without proving ancestry, source/XML
+correspondence, the annual assessment, review authorization or current admission.
+It does not fabricate a document-bearing manifest to inspect a header.
+The existing v1/v2 inspector and its live callers remain unchanged.
+
+`assess_rf1086_retained_source_dispatch` and
+`inspect_rf1086_retained_source_dispatch_position` first validate the complete
+retained archive correspondence, then apply the shared ordered journal projection
+to the original XML, document order, keys and outcomes. They never render or call
+fresh builders. Both require an exact USER `ActorId` with an exact `UserId` subject.
+Any approval-v3 or source-v2 anywhere in the input requires captured
+source history, overrides and withdrawals; omitted sections are unavailable, even
+when the selected approval is legacy. Legacy-only unknown coverage remains unknown.
+The guard belongs to these additive typed-input APIs; old archive APIs are unchanged.
+
+The existing result types and dispositions describe history and unmet admission
+requirements. Confirmed, uncertain and blocked outcomes retain precedence; a
+prepared intent without an outcome remains uncertain. Valid unstarted/retryable
+v3 history requires current/retry admission, and unclaimed v3 remains unclaimed.
+None is a committed intent or permission to send. Header integrity and coherent
+history cannot establish authentic origin, authoritative completeness, external
+original bytes, current owner/MFA or provider effects. Off-year Governance
+commitments do not imply local off-year capture coverage.
+
+The old claim/dispatch entrypoints preserve their validation/error order and
+behavior through narrow private header and journal extractions. Application,
+adapter, SQL, recovery and correction callers stay on their existing interfaces;
+fresh claims/intents still require approval-v2. Separate work must cover retained
+adapter reads, correction snapshots, confirmed recovery, final held-connection
+Governance proof and complete document-byte verification before writer activation.
+No runtime, HTTP, Archive-owner policy or provider path is activated here.
+`test_rf1086_retained_source_dispatch.py` owns pure fixtures and header/parity tests;
+`test_rf1086_retained_source_dispatch_adversarial.py` independently checks missing
+captures, forged correspondence, ordered outcomes and the no-fresh-builder rule.

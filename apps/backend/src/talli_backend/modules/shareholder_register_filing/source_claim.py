@@ -18,26 +18,50 @@ def _time(value):
     _require(type(value) is str and datetime.fromisoformat(value).tzinfo is not None)
 
 
+def _approval_header(value, *, approval_id, manifest_sha256, actor_id):
+    _require(isinstance(value,rf.Rf1086RetainedSourceApproval))
+    a=value.approval
+    _require(isinstance(a,rf.Rf1086ApprovalRecord) and isinstance(approval_id,rf.ApprovalId)
+        and actor_id.kind is ActorKind.USER and a.id==approval_id.value
+        and a.user_id==a.approved_by==str(actor_id.subject)
+        and a.case_profile=='rf1086_full_year_v1' and a.adapter_version=='rf1086-source-production-v1'
+        and a.obligation=='aksjonaerregisteroppgaven' and type(a.income_year) is int
+        and 2000<=a.income_year<=2100 and a.manifest_hash==manifest_sha256)
+    for identity in (a.id,a.company_id,a.user_id,a.preview_id,a.entitlement_id):_uuid(identity)
+    for digest in (a.payload_hash,a.manifest_hash,manifest_sha256):_sha(digest)
+    _time(a.approved_at)
+    if a.invalidated_at is not None:_time(a.invalidated_at)
+    _require(type(value.manifest_text) is str)
+    manifest=json.loads(value.manifest_text)
+    _require(type(manifest) is dict and _canonical(manifest)==value.manifest_text
+        and _canonical(a.manifest)==value.manifest_text
+        and hashlib.sha256(value.manifest_text.encode('utf-8')).hexdigest()==manifest_sha256)
+    return a, manifest
+
+
+def _approval_identity(a, manifest, version):
+    expected={'schemaVersion':version,'companyId':a.company_id,
+        'incomeYear':a.income_year,'userId':a.user_id,'entitlementId':a.entitlement_id,
+        'caseProfile':a.case_profile,'adapterVersion':a.adapter_version,'obligation':a.obligation}
+    _require(all(manifest[key]==item and type(manifest[key]) is type(item) for key,item in expected.items())
+        and manifest['preview']['id']==a.preview_id)
+    _sha(manifest['review']['sha256'])
+
+
+def _approval_predecessor(manifest):
+    prior=manifest['predecessor']
+    if prior is None:return None
+    _require(type(prior) is dict and set(prior)=={'submissionId','manifestSha256','reason'}
+        and type(prior['reason']) is str and bool(prior['reason'].strip()))
+    return rf.Rf1086SourceCorrectionPredecessor(rf.SubmissionId(_uuid(prior['submissionId'])),
+        _sha(prior['manifestSha256']),prior['reason'])
+
+
 def inspect_approval(value, *, approval_id, manifest_sha256, actor_id):
     """Validate identity before preflight; admission rebuilds all source/XML fields."""
     try:
-        _require(isinstance(value,rf.Rf1086RetainedSourceApproval))
-        a=value.approval
-        _require(isinstance(a,rf.Rf1086ApprovalRecord) and isinstance(approval_id,rf.ApprovalId)
-            and actor_id.kind is ActorKind.USER and a.id==approval_id.value
-            and a.user_id==a.approved_by==str(actor_id.subject)
-            and a.case_profile=='rf1086_full_year_v1' and a.adapter_version=='rf1086-source-production-v1'
-            and a.obligation=='aksjonaerregisteroppgaven' and type(a.income_year) is int
-            and 2000<=a.income_year<=2100 and a.manifest_hash==manifest_sha256)
-        for identity in (a.id,a.company_id,a.user_id,a.preview_id,a.entitlement_id):_uuid(identity)
-        for digest in (a.payload_hash,a.manifest_hash,manifest_sha256):_sha(digest)
-        _time(a.approved_at)
-        if a.invalidated_at is not None:_time(a.invalidated_at)
-        _require(type(value.manifest_text) is str)
-        manifest=json.loads(value.manifest_text)
-        _require(type(manifest) is dict and _canonical(manifest)==value.manifest_text
-            and _canonical(a.manifest)==value.manifest_text
-            and hashlib.sha256(value.manifest_text.encode('utf-8')).hexdigest()==manifest_sha256)
+        a, manifest = _approval_header(value, approval_id=approval_id,
+            manifest_sha256=manifest_sha256, actor_id=actor_id)
         version = manifest.get('schemaVersion')
         _require(version in ('production-source-approval-v1', 'production-source-approval-v2'))
         if version == 'production-source-approval-v2':
@@ -45,18 +69,8 @@ def inspect_approval(value, *, approval_id, manifest_sha256, actor_id):
             inspect_binding(manifest['annualReadiness'])
         else:
             _require('annualReadiness' not in manifest)
-        expected={'schemaVersion':version,'companyId':a.company_id,
-            'incomeYear':a.income_year,'userId':a.user_id,'entitlementId':a.entitlement_id,
-            'caseProfile':a.case_profile,'adapterVersion':a.adapter_version,'obligation':a.obligation}
-        _require(all(manifest[key]==item and type(manifest[key]) is type(item) for key,item in expected.items())
-            and manifest['preview']['id']==a.preview_id)
-        _sha(manifest['review']['sha256'])
-        prior=manifest['predecessor']
-        if prior is None:return None
-        _require(type(prior) is dict and set(prior)=={'submissionId','manifestSha256','reason'}
-            and type(prior['reason']) is str and bool(prior['reason'].strip()))
-        return rf.Rf1086SourceCorrectionPredecessor(rf.SubmissionId(_uuid(prior['submissionId'])),
-            _sha(prior['manifestSha256']),prior['reason'])
+        _approval_identity(a, manifest, version)
+        return _approval_predecessor(manifest)
     except rf.Rf1086ProductionError:raise
     except (ValueError,TypeError,KeyError,AttributeError,UnicodeError,rf.Rf1086YearSourceError):
         raise rf.Rf1086ProductionError('basis_unavailable') from None
