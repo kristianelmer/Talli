@@ -7,8 +7,6 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
-import hashlib
-import json
 from queue import Queue
 from types import SimpleNamespace
 from uuid import uuid4
@@ -220,42 +218,44 @@ def test_replay_rejects_missing_or_null_existing_immutable_comparison_fields(com
     assert saved_count(completion) == 1
 
 
-def admit_prior_year(fixture):
-    """Owned second admission so replay's year comparison is actually reached."""
-    seed = fixture['seed']
+@pytest.mark.parametrize('prepare', [False, True])
+def test_replay_cannot_disclose_event_under_other_accepted_company(completion, prepare):
+    request = request_for(completion, observed(completion))
+    with connection(completion, role=ROLE) as db: recorded = call(db, request)
+    altered = deepcopy(request)
+    other = admitted.__wrapped__(SimpleNamespace())
     with psycopg.connect(DATABASE_URL) as db:
-        assessment, admission, acceptance = (str(uuid4()) for _ in range(3))
-        promise = deepcopy(seed['promise'])
-        promise.update(accountingYear=2025, startsOn='2025-01-01', endsOn='2025-12-31', reconstructionRequiredFrom='2025-01-01')
-        digest = hashlib.sha256(json.dumps(promise, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()).hexdigest()
-        for table, original, changes in (
-            ('company_eligibility_assessments', seed['current'], dict(id=assessment, accounting_year=2025, operation_id=str(uuid4()), previous_assessment_id=None)),
-            ('company_year_admissions', seed['admission'], dict(id=admission, accounting_year=2025, eligibility_assessment_id=assessment,
-                company_year_promise=promise, company_year_promise_sha256=digest, reconstruct_from='2025-01-01')),
-            ('company_year_acceptances', seed['acceptance'], dict(id=acceptance, accounting_year=2025, company_year_admission_id=admission)),
-        ):
-            db.execute(sql.SQL('insert into public.{0} select (jsonb_populate_record(null::public.{0},to_jsonb(original)||%s::jsonb)).* from public.{0} original where id=%s').format(sql.Identifier(table)), (Jsonb(changes), original))
-    with connection(fixture, role='corporate_governance_store_owner') as db:
-        assert db.execute('select public.company_access_company_year_allows_consequential_v1(%s,2025)', (seed['company'],)).fetchone()[0]
+        db.execute("insert into public.company_memberships(company_id,user_id,role,accepted_at) values(%s,%s,'owner',clock_timestamp())",
+                   (other['company'], completion['seed']['owner']))
+    altered['companyId'] = str(other['company'])
+    with connection(completion, role=ROLE) as db:
+        with pytest.raises(psycopg.Error, match='corporate_governance_idempotency_conflict'): call(db, altered, prepare=prepare)
+    with connection(completion, role=ROLE) as db:
+        replay = call(db, request, prepare=prepare)
+        assert (replay['replay'] if prepare else replay) == dict(recorded, replayed=True)
+    assert saved_count(completion) == 1
 
 
 @pytest.mark.parametrize('prepare', [False, True])
-@pytest.mark.parametrize('foreign', ['company', 'year'])
-def test_replay_cannot_disclose_event_under_other_accepted_scope(completion, prepare, foreign):
+def test_replay_cannot_disclose_event_under_nonadmitted_year(completion, prepare):
+    # CompanyAccess currently admits 2026 only. A second accepted year cannot be
+    # seeded without weakening its real constraints; this tests the actual
+    # admission rejection, not the unreachable accepted-foreign-year comparison.
     request = request_for(completion, observed(completion))
-    with connection(completion, role=ROLE) as db: call(db, request)
+    with connection(completion, role=ROLE) as db: recorded = call(db, request)
     altered = deepcopy(request)
-    if foreign == 'year':
-        admit_prior_year(completion)
-        altered['incomeYear'] = 2025
-    else:
-        other = admitted.__wrapped__(SimpleNamespace())
-        with psycopg.connect(DATABASE_URL) as db:
-            db.execute("insert into public.company_memberships(company_id,user_id,role,accepted_at) values(%s,%s,'owner',clock_timestamp())",
-                       (other['company'], completion['seed']['owner']))
-        altered['companyId'] = str(other['company'])
+    altered['incomeYear'] = 2025
+    with connection(completion, role='corporate_governance_store_owner') as db:
+        assert not db.execute('select public.company_access_company_year_allows_consequential_v1(%s,2025)',
+            (completion['seed']['company'],)).fetchone()[0]
     with connection(completion, role=ROLE) as db:
-        with pytest.raises(psycopg.Error, match='corporate_governance_idempotency_conflict'): call(db, altered, prepare=prepare)
+        with pytest.raises(psycopg.Error) as caught:
+            call(db, altered, prepare=prepare)
+        assert caught.value.diag.message_primary == 'corporate_governance_forbidden'
+    with connection(completion, role=ROLE) as db:
+        replay = call(db, request, prepare=prepare)
+        assert (replay['replay'] if prepare else replay) == dict(recorded, replayed=True)
+    assert saved_count(completion) == 1
 
 
 @pytest.mark.parametrize('failure', ['outsider', 'revoked', 'subject', 'repeatable_read'])
