@@ -18,6 +18,7 @@ from talli_backend.adapters.supabase_documents import _document
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, UserId
 from talli_backend.modules.documents.public import DocumentId
 from test_rf1086_database_runtime import backend_url, rf_fixture_admin_access
+from documents_rf_guard_replay_fixture import replay_documents_guards_preserving_rf_withdrawal
 
 pytestmark=pytest.mark.authority_database
 DATABASE_URL=os.environ.get('DATABASE_URL','')
@@ -193,7 +194,7 @@ def test_migration_replay_preserves_original_and_nonempty_rollback_refuses(origi
         guarded=db.execute("select to_regprocedure('documents.lock_company_write_v1(uuid,text)') is not null").fetchone()[0]
         db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
         if guarded:
-            db.execute((ROOT/'supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql').read_text())
+            replay_documents_guards_preserving_rf_withdrawal(db)
     assert read(original,receipt).content==PDF
     with psycopg.connect(DATABASE_URL,autocommit=True) as db:
         with pytest.raises(psycopg.Error,match='documents_retained_original_rollback_requires_empty'):

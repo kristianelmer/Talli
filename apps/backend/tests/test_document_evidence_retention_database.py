@@ -15,6 +15,7 @@ from talli_backend.adapters.supabase_documents import _document
 from talli_backend.modules.documents.public import DocumentEvidenceRetentionCommand, document_metadata_sha256
 from talli_backend.shared.kernel import ActorId, ActorKind, UserId
 from test_rf1086_database_runtime import backend_url, rf_fixture_admin_access
+from documents_rf_guard_replay_fixture import replay_documents_guards_preserving_rf_withdrawal
 
 pytestmark=pytest.mark.authority_database
 DATABASE_URL=os.environ.get('DATABASE_URL','')
@@ -173,7 +174,7 @@ def test_rollback_preserves_references_deletion_guard_and_replay_restores_exact_
                 assert db.execute("select has_function_privilege('documents_executor',"
                     "'documents.assert_retained_metadata_v1(text,text)','EXECUTE')").fetchone()[0]
             if guarded:
-                db.execute((ROOT/'supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql').read_text())
+                replay_documents_guards_preserving_rf_withdrawal(db)
             assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()==before
     assert retained_count(originals)==1
 

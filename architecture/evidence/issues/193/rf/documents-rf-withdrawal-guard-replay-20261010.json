@@ -1,0 +1,132 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "DOCUMENTS_HISTORICAL_RF_WITHDRAWAL_GUARD_REPLAY_FIXTURE_AND_APPLICATION_CI_BUDGET",
+  "recordedAtUtc": "2026-10-10T09:17:30.281121+00:00",
+  "baseRevision": "a85bff63324d6a9c22294e15892662bd55e21984",
+  "diagnosis": {
+    "failedCi": "https://github.com/kristianelmer/Talli/actions/runs/38036526105",
+    "withdrawalFailure": "Governance append did not raise after a replacement withdrawal. Earlier Documents replay recreates RF v1 without its later active-observation guard; v2 and current reader delegate to v1. Source-derived diagnosis plus native reproduced pattern; no failed-CI catalog snapshot.",
+    "applicationTimeout": "GitHub annotation explicitly reports configured 30m0s limit after backend passed and launch rehearsal remained incomplete."
+  },
+  "change": [
+    "Exactly two Documents replay test calls use a closed test-only helper. The tests otherwise match the base bytes after inversing one import and call each. All original content, receipt, role-edge, RLS, nonempty rollback and denial assertions remain.",
+    "Raw whole predecessor/withdrawal bytes must match pinned SHA before decode or catalog access. Installed RF v1 must have the exact published body plus withdrawal guard, canonical owner and security/configuration.",
+    "Only the old RF CREATE OR REPLACE statement is omitted; inversion restores the exact full predecessor bytes. All Documents definitions/wrappers/grants/role restoration still execute. Complete RF catalog snapshot must remain equal afterward.",
+    "Only Application timeout changes from 30 to 45 minutes. Other jobs, runners, commands, permissions, concurrency and evidence gates match the base."
+  ],
+  "sources": [
+    {
+      "path": ".github/workflows/release-gate.yml",
+      "sha256": "c36423758d21621f33c4c97774c6bf95f00e76b140ec474a90684f9878d4acce",
+      "bytes": 7723
+    },
+    {
+      "path": "apps/backend/tests/test_document_evidence_retention_database.py",
+      "sha256": "0d2ce9002386920455f465ff766559b3b3b6cf59a1a36dbc7793af9ee3c2f137",
+      "bytes": 19354
+    },
+    {
+      "path": "apps/backend/tests/test_document_originals_database.py",
+      "sha256": "6d0a2297427a55a266e81b2c52ca3a8108a363251168570556f0edeccca6452a",
+      "bytes": 28309
+    },
+    {
+      "path": "apps/backend/tests/documents_rf_guard_replay_fixture.py",
+      "sha256": "9356857259efbcc86103d64dfac9f9ef90ea381ad5d3cc9d02e88791bdbac679",
+      "bytes": 3341
+    },
+    {
+      "path": "apps/backend/tests/test_documents_rf_guard_replay_fixture.py",
+      "sha256": "e1a5f2e111298d6fc4a6ed379043840e72fc9b81a86a2a344a22464d5fa8cf0e",
+      "bytes": 4851
+    }
+  ],
+  "verification": {
+    "focusedHelperTests": {
+      "passed": 27,
+      "seconds": 0.11,
+      "log": {
+        "path": "/private/tmp/talli-release-20261009/documents-rf-guard-replay-fixture-focused-v2.log",
+        "sha256": "6b07b5e878b6a15e9b8af1aaf75d4afa7c28a8c12dbb1f5282b285be5f8cdd59",
+        "bytes": 99
+      }
+    },
+    "priorNativePattern": {
+      "checks": 14,
+      "artifact": {
+        "path": "/private/tmp/talli-release-20261009/rf-current-guard-predecessor-replay-native-v1.json",
+        "sha256": "c7f158c82d7d4877d0eabcb0bdf9ab75c04c1d59972bce12f048cf731d2ab94b",
+        "bytes": 2772
+      }
+    },
+    "finalNativePreservation": {
+      "checks": 18,
+      "replayCycles": 2,
+      "artifact": {
+        "path": "/private/tmp/talli-release-20261009/documents-rf-guard-preservation-native-v2.json",
+        "sha256": "fb6378d021ae2c7a1cfb20d21fff4248c67f86f2f2e47fd4558aed2295ec4942",
+        "bytes": 2946
+      },
+      "script": {
+        "path": "/private/tmp/talli-release-20261009/probe-documents-rf-guard-preservation-native-v2.py",
+        "sha256": "528d48ed1061a3a7f000c8f28af2e30f3d296580eb7fd1ccc094d2aca252e81a",
+        "bytes": 11905
+      },
+      "checksMeaning": "Actual complete adapted predecessor SQL executes on native PG17 with canonical owners/executors and real RF v1/v2/active-helper bodies; catalog/ACL/role edges, withdrawal denial, wrappers and triggers verified.",
+      "dependencies": "Minimal projected tables and inert 18 wrapped functions. Accepted-owner, preparation, lock and archive-trigger dependencies are explicit stubs; no real Company Access/Auth/concurrency or Governance append proof.",
+      "cleanup": "Owned cluster stopped and directory removed."
+    },
+    "crlfReviewRepair": {
+      "artifact": {
+        "path": "/private/tmp/talli-release-20261009/documents-rf-guard-replay-crlf-red-green-v1.json",
+        "sha256": "20bbae641f9c297452124b59ea42d08b371deec764a06277e6b820f2ae9f30d7",
+        "bytes": 965
+      },
+      "meaning": "Exact v1 helper reconstructed by pinned hash accepts CRLF byte drift after read_text normalization; final helper rejects both changed files before catalog/mutation. Filesystem real, DB doubles."
+    },
+    "architecture": "Final declared checker passed; output equals committed dependency-evidence.json",
+    "architectureLog": {
+      "path": "/private/tmp/talli-release-20261009/documents-rf-guard-replay-declared-architecture-v2.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    "whitespace": "PASS"
+  },
+  "privatePlanAndFreeze": [
+    {
+      "path": "/private/tmp/talli-release-20261009/documents-rf-withdrawal-replay-and-ci-budget-repair-plan-v1.json",
+      "sha256": "0b1d311bde775e77b7a945c03e4d0f2b1725a96580c46f348d02f2f8967b5360",
+      "bytes": 5340
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/documents-rf-guard-replay-source-freeze-v2.json",
+      "sha256": "2759963c45e76c183d9eeb90be124273dda41f75820e5fc4033fdb8526f3ab00",
+      "bytes": 2738
+    }
+  ],
+  "reviews": {
+    "status": "PASS_FINAL_V2",
+    "standardsFindings": 0,
+    "specOpenFindings": 0,
+    "resolvedSpecFinding": "Raw-byte source pins precede universal-newline decoding; both CRLF sources reject before DB I/O.",
+    "reports": [
+      {
+        "path": "/private/tmp/talli-release-20261009/documents-rf-guard-replay-final-standards-review-v1.json",
+        "sha256": "1ace777dc63cd33eb6754b0a0fa1182eaa990c552848dd5e2c700b7af368fbfe",
+        "bytes": 7367
+      },
+      {
+        "path": "/private/tmp/talli-release-20261009/documents-rf-guard-replay-final-spec-review-v1.json",
+        "sha256": "bcd62cb2611612df37f407a58b250642f1e29b2a57b09d21336c9325066fd636",
+        "bytes": 9871
+      }
+    ]
+  },
+  "limits": [
+    "No production SQL or authority changes. No full-project DB, real Auth or hosted restore transfer from native dependency stubs. Combined successor CI must validate actual Documents replay and Governance denial.",
+    "The predecessor has an internal COMMIT. A postcatalog mismatch reports committed drift; the helper does not promise atomic rollback or silently heal preexisting drift.",
+    "Application 45-minute budget permits completion but is not a passing gate or benchmark claim.",
+    "All A1\u2013A7 remain pending. No paid provider action, real-data admission, activation, filing or outreach."
+  ]
+}
