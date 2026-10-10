@@ -249,5 +249,7 @@
   "withdrawalParserRoleRepair20261010": "withdrawal-parser-role-repair-20261010.json",
   "historicalCi38015434253": "ci-38015434253.json",
   "rfRetainedSourceCodecs20261010": "rf-retained-source-codecs-20261010.json",
-  "rfPureV2Readiness20261010": "rf-pure-v2-readiness-20261010.json"
+  "rfPureV2Readiness20261010": "rf-pure-v2-readiness-20261010.json",
+  "governanceReviewOracles20261010": "governance-review-oracles-20261010.json",
+  "historicalCi38017341770": "ci-38017341770.json"
 }

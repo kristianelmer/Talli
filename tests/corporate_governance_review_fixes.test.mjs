@@ -20,7 +20,7 @@ test("corporate-governance manifests declare the implemented public surface", as
 
   assert.equal(
     backend.owns.migrations,
-    "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql; supabase/migrations/20261009234529_governance_register_evidence_amendments.sql; supabase/migrations/20261010001936_governance_register_evidence_application.sql; supabase/migrations/20261010004653_governance_register_evidence_company_guard.sql; supabase/migrations/20261010005413_governance_reporting_register_evidence.sql",
+    "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql; supabase/migrations/20261009234529_governance_register_evidence_amendments.sql; supabase/migrations/20261010001936_governance_register_evidence_application.sql; supabase/migrations/20261010004653_governance_register_evidence_company_guard.sql; supabase/migrations/20261010005413_governance_reporting_register_evidence.sql; supabase/migrations/20261010015851_governance_rf_year_source_proof.sql",
   );
   for (const exportedType of [
     "AnnualCloseEventKind",
@@ -119,6 +119,11 @@ test("document evidence ownership is acyclic and declared", async () => {
     ],
   }, {
     module: "company_access", kind: "query", imports: ["public.company_access_has_fresh_mfa_v1()"],
+  }, {
+    module: "shareholder_register_filing", kind: "command", imports: [
+      "shareholder_register_filing.receive_year_source_governance_proof_v1(uuid,integer,text,jsonb,text)",
+      "shareholder_register_filing.invalidate_year_source_governance_proofs_v1(uuid)",
+    ],
   }]);
   assert.deepEqual(documents.dependencies, []);
   assert.ok(documents.owns.tables.includes("documents.evidence_references"));

@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "GOVERNANCE_CLOSED_PROOF_EXACT_TEST_EXPECTATIONS",
+  "recordedAtUtc": "2026-10-10T02:58:53.079142+00:00",
+  "baseRevision": "f169a07a4998ff7ed7f65459625928e95acb5123",
+  "ciFailureRevision": "4844d1ac60877c038f4dacc7a98333340204aaa4",
+  "scope": "Two existing exact test expectations only; no production or manifest changes.",
+  "implementation": [
+    "Append alreadycommitted Governance proof producer migration to the exact migration-list literal.",
+    "Append the alreadydeclared Governance-to-RF command dependency with exact receive/invalidate signatures and order.",
+    "Keep strict equality assertions and every other test byte unchanged."
+  ],
+  "sourceFiles": [
+    {
+      "path": "tests/corporate_governance_review_fixes.test.mjs",
+      "sha256": "58888f898bc6abe3e88958bf16f315de4ee42eaf42305ee6570a13ca5855b95a"
+    }
+  ],
+  "supportingSources": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/module.json",
+      "sha256": "4669e02ae710de86b42c95a5f5a72ba1109225a390893041d3694f14d621cf2b",
+      "unchangedSince": "c1112db5464aeee12e7057db47a005bff46e3906"
+    }
+  ],
+  "checks": {
+    "beforePassed": 9,
+    "beforeFailed": 2,
+    "afterPassed": 11,
+    "afterFailed": 0,
+    "independentSpecPassed": 11,
+    "overlap": "Independent11 repeats the samefile; never add.",
+    "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node --test tests/corporate_governance_review_fixes.test.mjs",
+    "diffCheck": "PASS"
+  },
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "7aba0e6c79ff14046744f4cbbfa4783c7c8ae418b03d38a294773c78c54fbc7a"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "b3688065de77215388808b69a3b64c9b245970a04bec3d9327778807a780a7d4"
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "governance-review-oracles-before.log",
+      "sha256": "156726a9b53e8c17a2f7828df257161bd14614d6b1742d9f998667849c5a14c1",
+      "bytes": 6485
+    },
+    {
+      "file": "governance-review-oracles-after.log",
+      "sha256": "00fc1eabb3420f9edb039f1d8f9ae87f28565c193e9f54db73e0ce9ffbb9046a",
+      "bytes": 1033
+    },
+    {
+      "file": "governance-review-oracles-spec-review.json",
+      "sha256": "7aba0e6c79ff14046744f4cbbfa4783c7c8ae418b03d38a294773c78c54fbc7a",
+      "bytes": 2813
+    },
+    {
+      "file": "governance-review-oracles-standards-review.json",
+      "sha256": "b3688065de77215388808b69a3b64c9b245970a04bec3d9327778807a780a7d4",
+      "bytes": 1529
+    }
+  ],
+  "limits": [
+    "Whole CI38017341770 remainsFAIL onitsoldexacthead. Local11PASS is only the repairedfile.",
+    "No database, build, browser, independentrestore, runtimeactivation or release readiness claim.",
+    "The separate database reviewfixture authority mismatch is not repaired by this change. AllA1-A7 remainpending."
+  ]
+}
