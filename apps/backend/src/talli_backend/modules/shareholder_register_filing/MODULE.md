@@ -1940,3 +1940,25 @@ committed key replay first, then rerun complete public validation and original
 assertions on the held company/year connection before Governance proof production
 and RF append. Fresh source/approval/claim/intent, intake UI and binary drain
 remain separate activation prerequisites.
+
+### Staged v2 held owner ports
+
+The existing RF source-admission transaction exposes an additive complete
+Governance register reader and a v2-source proof preparation port. Both reject
+expired scopes and non-transactional connections. The reader uses the existing
+public Governance decoder on the identical held connection and company/year,
+with the current verified actor. Legacy Governance evidence and admission
+methods remain unchanged.
+
+Proof preparation first validates the exact RF v2 source type, integrity and
+held company/year. It delegates the source hash to the Governance-owned SQL
+producer on the same connection. The retained source actor and bytes remain
+unchanged; the current actor supplies authorization. Python neither manufactures
+a proof nor grants SQL authority. The producer's execute permission remains
+closed, and SQL independently checks current ownership and both guards.
+
+Focused connection-double tests cover complete-chain decoding, malformed
+projections/source values, exact arguments, scope lifetime and sanitized SQL
+errors. They do not establish real RLS, locks, proof acceptance or append. No
+existing workflow calls these ports. Fresh capture/admission wiring, original
+bytes, compatible consumers, runtime grants and binary drain remain required.

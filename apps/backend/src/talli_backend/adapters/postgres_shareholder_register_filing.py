@@ -1591,6 +1591,29 @@ class _SourceAdmission:
         return await PostgresCorporateReportingEvidence(self._connection, self.actor_id).read_reporting_year_evidence(
             company_id=self._query.company_id, income_year=self._query.income_year, correlation_id=correlation_id)
 
+    async def governance_register_evidence(self, correlation_id):
+        self._require_active()
+        from talli_backend.adapters.postgres_corporate_reporting_evidence import PostgresCorporateReportingEvidence
+        from talli_backend.modules.corporate_governance.public import CorporateReportingRegisterEvidenceQuery
+        query = CorporateReportingRegisterEvidenceQuery(
+            self._query.company_id, self._query.income_year, self.actor_id)
+        return await PostgresCorporateReportingEvidence(
+            self._connection, self.actor_id).read_reporting_year_register_evidence(query)
+
+    async def prepare_source_governance_proof(self, source):
+        """Call the closed owner producer; no Python value confers SQL authority."""
+        self._require_active()
+        if (type(source) is not rf.Rf1086YearSourceSnapshotV2
+                or source.company_id != self._query.company_id
+                or source.income_year != self._query.income_year):
+            raise rf.Rf1086YearSourceError('rf1086_source_company_year_mismatch')
+        rf.assert_rf1086_year_source_integrity_v2(source)
+        from talli_backend.adapters.postgres_corporate_reporting_evidence import PostgresCorporateReportingEvidence
+        await PostgresCorporateReportingEvidence(
+            self._connection, self.actor_id).prepare_rf_year_source_governance_proof(
+                company_id=self._query.company_id, income_year=self._query.income_year,
+                source_sha256=source.source_sha256)
+
     async def current_source(self):
         self._require_active()
         return await self._store._current_year_source(self._connection, self._query.company_id, self._query.income_year)

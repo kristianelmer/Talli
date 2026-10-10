@@ -82,3 +82,25 @@ class PostgresCorporateReportingEvidence:
             raise CorporateGovernanceError.unavailable() from None
         except (ValueError, TypeError, KeyError, AttributeError, OverflowError, RecursionError):
             raise CorporateGovernanceError.unavailable() from None
+
+    async def prepare_rf_year_source_governance_proof(self, *, company_id: CompanyId,
+            income_year: IncomeYear, source_sha256: str) -> None:
+        """Existing SQL checks current owner and both guards on this connection.
+
+        Its execute permission remains closed until a separately reviewed runtime
+        release. The SQL owner produces the transaction-bound RF proof.
+        """
+        if (self._connection.info.transaction_status != TransactionStatus.INTRANS
+                or type(source_sha256) is not str or len(source_sha256) != 64
+                or any(char not in '0123456789abcdef' for char in source_sha256)):
+            raise CorporateGovernanceError.unavailable()
+        try:
+            await self._connection.execute(
+                'select corporate_governance.prepare_rf_year_source_governance_proof_v1(%s::uuid,%s::integer,%s::text,%s::text)',
+                (str(company_id), int(income_year), source_sha256, str(self._actor_id.subject)),
+            )
+        except psycopg.DatabaseError as error:
+            if any(code in str(error) for code in (
+                    'corporate_governance_forbidden', 'ledger_forbidden', 'rf1086_forbidden')):
+                raise CorporateGovernanceError.forbidden() from None
+            raise CorporateGovernanceError.unavailable() from None
