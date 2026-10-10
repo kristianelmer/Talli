@@ -611,7 +611,9 @@
     "sourceClaimV3": "apps/backend/tests/test_rf1086_source_claim_v3.py",
     "sourceClaimV3Database": "apps/backend/tests/test_rf1086_source_claim_v3_database.py",
     "companyTestRetention": "apps/backend/tests/test_rf1086_company_test_retention.py",
-    "companyTestRetentionDatabase": "apps/backend/tests/test_rf1086_company_test_retention_database.py"
+    "companyTestRetentionDatabase": "apps/backend/tests/test_rf1086_company_test_retention_database.py",
+    "companyTestRetentionStream": "apps/backend/tests/test_rf1086_company_test_retention_stream.py",
+    "companyTestRetentionCli": "apps/backend/tests/test_verify_rf1086_company_test_retention.py"
   },
   "compatibilityExceptions": []
 }

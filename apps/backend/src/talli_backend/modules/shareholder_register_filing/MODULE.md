@@ -2149,3 +2149,33 @@ Unit and mandatory full-schema evidence belong to
 `test_rf1086_company_test_retention_database.py`. This closed read/codec foundation
 does not complete RET002, the public download/stream/UI/CLI/restore pipeline,
 legal company export, independent Auth recovery or any filing handoff.
+
+
+The separate system application
+`shareholder_register_company_test_retention_stream` frames a fully validated
+complete capture as `rf1086-company-test-retention-stream-v1`. Its canonical
+header, thirteen-field record wrappers and completion footer preserve the
+source observation and originals. Strict EOF, counts, record digest, complete
+artifact SHA256 and header-plus-record frame SHA256 detect malformed or
+truncated transfers. Fixed limits:72MiB total,4KiB header,256KiB+64 record
+frame,1KiB footer. Record framing adds28bytes; the conservative
+64MiB+100000*28+4096+1024 bound is69,913,984bytes. These are serialized byte
+limits, not a total process memory or load guarantee. Unavailable captures
+cannot emit a complete stream. Cancellation emits no completion footer.
+
+`scripts/verify_rf1086_company_test_retention.py` reads regular local files
+only, with a bounded prefix and fixed artifact/stream parser. It reports
+`STRUCTURAL_INTEGRITY_ONLY`, original capture metadata and `sourceOrigin`
+`UNVERIFIED`. Optional `--expected-source-capture` compares the exact source
+capture with the RF public comparator; `EXPECTED_CAPTURE_MATCH` establishes
+consistency with that supplied file, not authentic origin or access authority.
+Unavailable direct artifacts omit observation and count. The verifier performs
+no extraction, network, database, Auth, provider or restore writes.
+
+`test_rf1086_company_test_retention_stream.py` and
+`test_verify_rf1086_company_test_retention.py` are unmarked ordinary backend
+tests selected by `test:boundary-backend`; the latter runs actual CLI
+subprocesses. Existing archive/stream/verifier paths stay unchanged. This closed
+component has no route or UI activation. Public HTTP/member/action MFA, typed
+client, standalone UI/download/bundle and independent Auth target restore
+remain required before RET002 closure or filing handoff.

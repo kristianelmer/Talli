@@ -330,5 +330,7 @@
   "companyTestRetentionFoundation": "rf-company-test-retention-foundation-20261010.json",
   "companyTestRetentionFoundationStatus": "UNWIRED_FOUNDATION_V2_SPEC0_STANDARDS0: opaque original payload_hash preserved; existing restricted session writer with no undeclared admin executor SET. local61new+39protected/27projectednative/129selectors PASS;365oldfunctionspans exact;24fullschema cases and complete1578Authority collectionONLY. RET002 public pipeline/independentAuth/fullscope pending. Completed failed CI38092997011 tested onlypublishedb549, no retention activation.",
   "historicalCi38092997011": "ci-38092997011.json",
-  "closedClaimInvalidationPairFixtureRepair20261010": "rf-claim-invalidation-pair-fixture-repair-20261010.json"
+  "closedClaimInvalidationPairFixtureRepair20261010": "rf-claim-invalidation-pair-fixture-repair-20261010.json",
+  "companyTestRetentionStreamCli": "rf-company-test-retention-stream-cli-20261010.json",
+  "companyTestRetentionStreamCliStatus": "CLOSED_UNWIRED_SPEC0_STANDARDS0_LOCAL_ONLY:78new+100protected/129selectors/architecturePASS;105oldwholePythonfiles exact. Strict standalone framing/offline CLI preserves original source values/time; no route/UI/old dispatch activation. CurrentCI38095454400 onlypublished958; actual24/fullpipeline/independentAuth/RET002 pending."
 }
