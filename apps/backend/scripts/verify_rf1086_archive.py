@@ -7,7 +7,11 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
-from talli_backend.application.shareholder_register_archive import verify_source_originals, verify_feedback_originals, verify_archive_stream
+from talli_backend.application.shareholder_register_archive import (
+    MAX_STREAM_HEADER_BYTES, RETAINED_STREAM_CODEC, STREAM_CODEC,
+    verify_source_originals, verify_feedback_originals,
+    verify_archive_stream, verify_retained_archive_stream,
+)
 from talli_backend.modules.documents.public import DocumentsError
 from talli_backend.modules.shareholder_register_filing import public as rf
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, UserId
@@ -20,6 +24,36 @@ def unique(pairs):
             raise ValueError()
         result[key] = value
     return result
+
+
+def verify_download_stream(stream, *, query, require_source_history, require_feedback_originals):
+    """Select an owned codec from a bounded header, then verify untouched bytes."""
+    header = stream.readline(MAX_STREAM_HEADER_BYTES + 1)
+    if len(header) > MAX_STREAM_HEADER_BYTES or not header.endswith(b'\n'):
+        raise ValueError()
+    value = json.loads(header, object_pairs_hook=unique)
+    if type(value) is not dict or set(value) != {'codec', 'canonicalArchive'}:
+        raise ValueError()
+    codec = value['codec']
+    del header, value
+    stream.seek(0)
+    if codec == RETAINED_STREAM_CODEC:
+        return verify_retained_archive_stream(stream, query=query,
+            require_feedback_originals=require_feedback_originals)
+    if codec == STREAM_CODEC:
+        return verify_archive_stream(stream, query=query,
+            require_source_history=require_source_history,
+            require_feedback_originals=require_feedback_originals)
+    raise ValueError()
+
+
+def parse_download_archive(canonical, *, query):
+    value = json.loads(canonical, object_pairs_hook=unique)
+    if type(value) is not dict:
+        raise ValueError()
+    if value.get('codec') == 'rf1086-production-archive-v6':
+        return rf.parse_rf1086_retained_archive(canonical, query=query)
+    return rf.parse_rf1086_archive(canonical, query=query)
 
 
 def main() -> int:
@@ -44,7 +78,7 @@ def main() -> int:
             ActorId(ActorKind.SYSTEM, UserId('00000000-0000-0000-0000-000000000000')))
         if args.stream:
             with args.archive.open('rb') as stream:
-                archive, original_count, feedback_original_count = verify_archive_stream(stream, query=query,
+                archive, original_count, feedback_original_count = verify_download_stream(stream, query=query,
                     require_source_history=args.require_source_history,
                     require_feedback_originals=args.require_feedback_originals)
             source_originals_verified = feedback_originals_verified = True
@@ -57,7 +91,7 @@ def main() -> int:
             document = json.loads(text, object_pairs_hook=unique)
             if type(document) is not dict:
                 raise ValueError()
-            if document.get('codec') in ('rf1086-production-archive-v1', 'rf1086-production-archive-v2', 'rf1086-production-archive-v3', 'rf1086-production-archive-v4', 'rf1086-production-archive-v5'):
+            if document.get('codec') in ('rf1086-production-archive-v1', 'rf1086-production-archive-v2', 'rf1086-production-archive-v3', 'rf1086-production-archive-v4', 'rf1086-production-archive-v5', 'rf1086-production-archive-v6'):
                 canonical = text
                 section = {}
             else:
@@ -65,7 +99,7 @@ def main() -> int:
                 if type(section) is not dict:
                     raise ValueError()
                 canonical = section.get('canonicalArchive')
-            archive = rf.parse_rf1086_archive(canonical, query=query)
+            archive = parse_download_archive(canonical, query=query)
             if args.require_source_history and archive.source_history is None:
                 raise ValueError()
             if args.require_source_originals or 'sourceOriginals' in section:

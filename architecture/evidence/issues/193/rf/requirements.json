@@ -296,9 +296,11 @@
   "savedSourceV2Admission": "rf-source-v2-admission-20261010.json",
   "historicalCi38055007322": "ci-38055007322.json",
   "governanceCallableAccessFixture": "rf-governance-callable-access-fixture-20261010.json",
-  "latestIntegrationCiObservation": "ci-38057406479.json",
-  "latestIntegrationCiStatus": "FAILED: Application allsteps10800PASS; Billing700PASS; Authority1467PASS1FAIL12unexecuted/1480. All109sourceV2+19capture+12savedadmission pass; correction fixture second live request UNIQUE fails before reader. No launch/canonical-gate acceptance.",
+  "latestIntegrationCiObservation": "ci-38060484198.json",
+  "latestIntegrationCiStatus": "FAILED: Application allsteps10848PASS; Billing700PASS; all1498AuthorityPASS incl109sourceV2/19capture/12savedadmission/18preview/31correction. Later RF browser28PASS10FAIL at common archiveCLI codec mismatch; later correction/recovery assertions unproved. No launch/canonical acceptance.",
   "historicalCi38057406479": "ci-38057406479.json",
   "retainedReaderLiveRequestFixtureRepair": "rf-correction-reader-live-request-fixture-20261010.json",
-  "closedSourceV2Preview": "rf-source-v2-preview-20261010.json"
+  "closedSourceV2Preview": "rf-source-v2-preview-20261010.json",
+  "historicalCi38060484198": "ci-38060484198.json",
+  "offlineArchiveCliCodecRepair": "rf-download-cli-codec-20261010.json"
 }

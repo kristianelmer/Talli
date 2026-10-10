@@ -1,0 +1,114 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "recordedAtUtc": "2026-10-10T15:38:35.434144+00:00",
+  "status": "LOCAL_REGRESSION_AND_TWO_AXIS_REVIEW_PASS_FULL_BROWSER_PENDING",
+  "baseRevision": "1d57470681c8de1fb50389a525e588d22e94015f",
+  "problem": "Ten full-schema RF browser scenarios stop at common CLI when actual v6 endpoint produces stream-v2/archive-v6. Legacy CLI only accepts stream-v1/archive-v1..5.",
+  "change": "Common offline CLI selects bounded exact stream header, rewinds regular file and delegates untouched bytes to existing legacy or retained verifier. Bare/wrapped v6 uses owned retained parser. No fallback, transcoding, authority activation or legacy verifier changes.",
+  "checks": {
+    "red": {
+      "newCasesFailed": 4,
+      "passed": 20,
+      "seconds": 6.37
+    },
+    "green": {
+      "newCases": 41,
+      "protectedCases": 335,
+      "totalPassed": 376,
+      "seconds": 49.64
+    },
+    "savedControlledBrowserReplay": {
+      "bytes": 243997,
+      "sha256": "b4fd9b7b8d0d2bff2d91c42af6eb8a112b1696ca8348f61ae17ccbf04476adbd",
+      "sourceOriginals": 14,
+      "feedbackOriginals": 2,
+      "commonCliExit": 0
+    },
+    "diffCheck": "PASS",
+    "protectedSpans": [
+      {
+        "path": "apps/backend/src/talli_backend/application/shareholder_register_archive.py",
+        "oldTopLevelFunctionsByteExact": 18,
+        "wholeFileByteExact": true
+      },
+      {
+        "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_storage.py",
+        "oldTopLevelFunctionsByteExact": 6,
+        "wholeFileByteExact": true
+      },
+      {
+        "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py",
+        "oldTopLevelFunctionsByteExact": 95,
+        "wholeFileByteExact": false
+      }
+    ]
+  },
+  "reviews": [
+    {
+      "axis": "spec",
+      "path": "/private/tmp/talli-release-20261009/rf-download-cli-codec-spec-review-v1.json",
+      "sha256": "f4ed4ec5a273b8270f3f8678b03210b1f58ff006ab9ef3c41f20aa3e7068f078",
+      "bytes": 20790
+    },
+    {
+      "axis": "standards",
+      "path": "/private/tmp/talli-release-20261009/rf-download-cli-codec-standards-review-v1.json",
+      "sha256": "e4a03ddcdbbf8a51d81a7291b2277c6a05afae03e9593fbd68bd451783073ad2",
+      "bytes": 8594
+    }
+  ],
+  "freeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-download-cli-codec-implementation-freeze-v1.json",
+    "sha256": "2976232c9f3378169fca18634b175d5e94a2f58f2ae83e28476af0a5ce27ed5d",
+    "bytes": 5372
+  },
+  "artifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-download-cli-before-v1.log",
+      "sha256": "e9f5995dde5c7a8c07daff1e59fba846244c1a661149feef9b0cfb4f560fe94e",
+      "bytes": 68
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-download-dedicated-cli-probe-v1.log",
+      "sha256": "f49a8eb8e6eb431914dd18f8d3d93dabfeae362bd2152397a5b6ac1774846ea0",
+      "bytes": 714
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-download-cli-regression-before-v1.log",
+      "sha256": "4916f3eaca1034594fdcbca8334ffc42af3028f7d96e7da2db8098eab2166166",
+      "bytes": 5018
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-download-cli-and-streams-after-v1.log",
+      "sha256": "13e135504912c4e578eb9bf591b06a072120cfb5dbdeb2b4aef23378694198d1",
+      "bytes": 261
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-download-cli-and-protected-after-v2.log",
+      "sha256": "0a6783e7cc44b255d8e4824ab8183dfd9780e1575dc9fbb5b6c94d0e8001fc72",
+      "bytes": 501
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-download-cli-saved-browser-after-v1.log",
+      "sha256": "1acb2cbe68fc2b2341daacdaea9e15713d5f77d571fa01d77202438d99df113f",
+      "bytes": 635
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-download-cli-protected-spans-v1.json",
+      "sha256": "1c27a233266fd8db1136a33e7c8f886b01f86b7c10c6690729d436dbfd95557c",
+      "bytes": 746
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-retained-browser-saved-valid.ndjson",
+      "sha256": "b4fd9b7b8d0d2bff2d91c42af6eb8a112b1696ca8348f61ae17ccbf04476adbd",
+      "bytes": 243997
+    }
+  ],
+  "limits": [
+    "Controlled original Documents bytes and fixture owner snapshots; no live identity, SQL, storage, provider, origin or independent restore proof.",
+    "Saved controlled browser replay uses earlier actual producer/native download fixture, not inaccessible CI browser bytes.",
+    "Whole successor CI and later browser correction/unknown-outcome assertions remain pending.",
+    "Uncommitted approval-v3 WIP preserved but excluded from this review/change."
+  ]
+}
