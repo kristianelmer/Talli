@@ -602,6 +602,8 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
   authorityFiles.push(...cloneFiles);
   assert.ok(files?.length, "the mandatory database lane must name its test files");
   assert.ok(authorityFiles?.length, "the mandatory Authority lane must name its test files");
+  assert.ok(authorityFiles.includes("apps/backend/tests/test_rf1086_company_test_retention_database.py"),
+    "company test retention must run against the complete Authority schema");
   const env = { ...process.env };
   delete env.DATABASE_URL;
   const collect = (command) => {

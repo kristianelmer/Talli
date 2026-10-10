@@ -165,6 +165,7 @@ class PostgresShareholderRegisterFilingAdapter:
 @rf.rf1086_adapter(rf.Rf1086YearSourcePersistence)
 @rf.rf1086_adapter(rf.Rf1086RegisterObservationPersistence)
 @rf.rf1086_adapter(rf.Rf1086SourcePreviewPreparation)
+@rf.rf1086_adapter(rf.Rf1086CompanyTestRetentionPersistence)
 class PostgresShareholderRegisterFilingSession:
     def __init__(self, configuration, verified: _VerifiedActor, *, access_token, billing, documents,
                  company_access, environment=None, maskinporten=None, rf_transport=None, storage_transport=None):
@@ -356,6 +357,36 @@ class PostgresShareholderRegisterFilingSession:
                 (source_id.value, str(query.company_id), int(query.income_year)),
             )).fetchone()
             return self._year_source(row)
+
+    async def read_company_test_retention(self, query):
+        self._command_actor(query)
+        bounds = rf.rf1086_company_test_retention_bounds()
+        params = (str(query.company_id),)
+        try:
+            async with self._transaction(snapshot=True, read_only=True) as connection:
+                await connection.execute('select shareholder_register_filing.assert_member_v1(%s::uuid)', params)
+                row = await (await connection.execute(
+                    "select count(*) as total, transaction_timestamp() as observed_at "
+                    "from shareholder_register_filing.authority_test_runs "
+                    "where company_id=%s::uuid and obligation='aksjonaerregisteroppgaven'", params)).fetchone()
+                if row is None or type(row['total']) is not int or not 0 <= row['total'] <= bounds.max_records:
+                    raise rf.ShareholderRegisterFilingError.unavailable()
+                capture = rf.create_rf1086_company_test_retention_capture(
+                    query.company_id, _record_value(row['observed_at']))
+                consumed = 0
+                async with connection.cursor(name='rf_company_test_retention_' + uuid4().hex) as cursor:
+                    cursor.itersize = bounds.cursor_batch_size
+                    await cursor.execute(_company_test_retention_read_sql(bounds), params)
+                    async for value in cursor:
+                        if value.get('_retention_oversize') is not False:
+                            raise rf.ShareholderRegisterFilingError.unavailable()
+                        capture.add(self._wire_record(rf.Rf1086TestEvidenceRecord, value))
+                        consumed += 1
+                if consumed != row['total']:
+                    raise rf.ShareholderRegisterFilingError.unavailable()
+                return capture.complete()
+        except (rf.Rf1086ArchiveError, ValueError, TypeError, KeyError, AttributeError):
+            raise rf.ShareholderRegisterFilingError.unavailable() from None
 
     async def read_source_claim_approval(self, approval_id):
         async with self._transaction(snapshot=True) as connection:
@@ -2412,3 +2443,20 @@ class _FeedbackJournal:
 
 
 __all__ = ["PostgresShareholderRegisterFilingAdapter", "PostgresShareholderRegisterFilingSession"]
+
+
+def _company_test_retention_read_sql(bounds):
+    """Fixed inventory; CASE prevents oversized historical TEXT transfer."""
+    columns = ('id', 'company_id', 'obligation', 'environment', 'status',
+        'test_reference', 'feedback_summary', 'receipt_reference', 'archive_reference',
+        'evidence_url', 'payload_hash', 'recorded_by', 'recorded_at')
+    text_columns = ('obligation', 'environment', 'status', 'test_reference', 'feedback_summary',
+        'receipt_reference', 'archive_reference', 'evidence_url', 'payload_hash')
+    lengths = [f"octet_length(coalesce(t.{name},''))" for name in text_columns]
+    allowed = ' and '.join(f'{length}<={bounds.max_text_bytes}' for length in lengths)
+    allowed += ' and (' + '+'.join(lengths) + f'+256)<={bounds.max_raw_transfer_bytes}'
+    projection = ','.join(f'case when g.allowed then t.{name} else null end as {name}' for name in columns)
+    return (f'select not g.allowed as _retention_oversize,{projection} '
+        'from shareholder_register_filing.authority_test_runs t '
+        f'cross join lateral (select ({allowed}) as allowed) g '
+        "where t.company_id=%s::uuid and t.obligation='aksjonaerregisteroppgaven' order by t.id asc")

@@ -326,5 +326,7 @@
   "historicalCi38086791422": "ci-38086791422.json",
   "independentIdentityRestoreDiagnostic20261010": "rf-independent-identity-restore-diagnostic-20261010.json",
   "historicalCi38090403930": "ci-38090403930.json",
-  "closedClaimInvalidationContextFixtureRepair20261010": "rf-claim-invalidation-context-fixture-repair-20261010.json"
+  "closedClaimInvalidationContextFixtureRepair20261010": "rf-claim-invalidation-context-fixture-repair-20261010.json",
+  "companyTestRetentionFoundation": "rf-company-test-retention-foundation-20261010.json",
+  "companyTestRetentionFoundationStatus": "UNWIRED_FOUNDATION_V2_SPEC0_STANDARDS0: opaque original payload_hash preserved; existing restricted session writer with no undeclared admin executor SET. local61new+39protected/27projectednative/129selectors PASS;365oldfunctionspans exact;24fullschema cases and complete1578Authority collectionONLY. RET002 public pipeline/independentAuth/fullscope pending. Completed failed CI38092997011 tested onlypublishedb549, no retention activation."
 }

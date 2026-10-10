@@ -1,7 +1,7 @@
 # Shareholder register filing
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions","shareholder_register_filing.year_source_heads","shareholder_register_filing.year_source_versions","shareholder_register_filing.register_observations","shareholder_register_filing.source_previews","shareholder_register_filing.source_review_bridges","shareholder_register_filing.source_approval_bindings","shareholder_register_filing.source_submission_bindings","shareholder_register_filing.submission_heads"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority","Rf1086RegisterObservationPersistence","Rf1086SourceOperationJournal","Rf1086YearSourcePersistence"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
+{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions","shareholder_register_filing.year_source_heads","shareholder_register_filing.year_source_versions","shareholder_register_filing.register_observations","shareholder_register_filing.source_previews","shareholder_register_filing.source_review_bridges","shareholder_register_filing.source_approval_bindings","shareholder_register_filing.source_submission_bindings","shareholder_register_filing.submission_heads"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority","Rf1086RegisterObservationPersistence","Rf1086SourceOperationJournal","Rf1086YearSourcePersistence","Rf1086CompanyTestRetentionPersistence"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
 -->
 
 ## Owned behavior
@@ -2112,3 +2112,40 @@ types come only from the fixed owner grammar, never from a stored record label.
 The annual binding invokes it before accepting proof bytes; same-count renamed
 keys, boolean/string/count confusion and malformed nested data fail closed. This
 checks structure without duplicating annual policy or authenticating origin.
+
+## Company test retention foundation
+
+`Rf1086CompanyTestRetentionQuery` carries company and authenticated actor only.
+`Rf1086CompanyTestRetentionPersistence` reads all thirteen original test-record
+fields for that company and canonical RF obligation, across actors, environments,
+statuses and dates. Records have no intrinsic income year. Current accepted
+owner, reviewer or read-only membership is required; fresh filing evidence is
+not part of this historical query. The application read component is unwired.
+
+`Rf1086CompanyTestRetentionSnapshot` distinguishes complete zero records from
+unavailable history. `Rf1086CompanyTestRetentionBounds` fixes64MiB artifact,
+100,000 records,256KiB canonical record,64KiB per TEXT field and32-row cursor
+batches. The adapter also gates raw SQL transfer before decoding each original
+cell. Overflow produces no partial complete snapshot. Limits bound serialized
+and transferred data; they do not claim64MiB total process memory.
+
+`create_rf1086_company_test_retention_capture` returns the bounded
+`Rf1086CompanyTestRetentionCapture`; `rf1086_company_test_retention_bounds`
+provides its fixed limits. `prepare_rf1086_company_test_retention`,
+`serialize_rf1086_company_test_retention` and
+`parse_rf1086_company_test_retention` implement the separate canonical standalone
+codec. Portable structure/count/hash consistency does not prove source origin
+or completeness; URLs and original references remain opaque.
+Original nullable `payload_hash` is also opaque bounded text, distinct from the
+owned artifact and record-inventory SHA256 commitments; spelling is preserved.
+
+`assert_company_test_retention_source_capture_matches` compares exact trusted
+source observation and bytes. `assert_company_test_retention_target_inventory_matches`
+compares complete record inventories while allowing the target's independently
+captured observation time. Neither comparison grants filing authority.
+
+Unit and mandatory full-schema evidence belong to
+`test_rf1086_company_test_retention.py` and
+`test_rf1086_company_test_retention_database.py`. This closed read/codec foundation
+does not complete RET002, the public download/stream/UI/CLI/restore pipeline,
+legal company export, independent Auth recovery or any filing handoff.
