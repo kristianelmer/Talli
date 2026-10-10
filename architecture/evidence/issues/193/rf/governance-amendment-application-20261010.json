@@ -245,7 +245,7 @@
     "All 445 DB cases collected only. No full Supabase, real multi-owner authority, race or external object-store proof.",
     "Readiness is not a lease; final append rechecks current owner/MFA/head/evidence. Historical recovery requires current accepted owner but no fresh evidence.",
     "Client validation cannot disprove a fully recommitted valid prefix; completeness remains authoritative SQL enumeration.",
-    "No HTTP/RF/Archive activation, deployment, provider, Docker, paid action, commit or push.",
+    "The verification commands performed no HTTP/RF/Archive activation, deployment, provider calls, Docker operations, paid action or push. This record accompanies the subsequent reviewed source commit.",
     "This slice was not present in the then-running ordinary PR workflow 38009121217, whose head is 9c0d800143cf65887e1f04934bcb03278c85d827. No full CI result is transferred to this unpushed slice.",
     "All A1-A7 remain pending. This record does not establish full Supabase authorization/RLS/races, independent Auth/object restore, complete capital-case support, hosted/provider acceptance, linked immutable complete gates, or launch clearance."
   ],
