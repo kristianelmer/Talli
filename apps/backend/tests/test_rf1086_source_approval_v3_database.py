@@ -49,6 +49,76 @@ CONTRACTS = (
 )
 
 
+@pytest.fixture(scope='module', autouse=True)
+def approval_seed_access(rf_fixture_admin_access):
+    """Borrow seed/observer ACLs only for the disposable BYPASSRLS admin.
+
+    The Documents-only login does not supply Authority/Billing fixture access.
+    Runtime roles, FORCE RLS and closed RF contracts remain unchanged.
+    """
+    tables = (('authority_connections', 'system_user_requests', 'authority_connections_store_owner'),
+        ('billing', 'production_pilot_entitlements', 'billing_store_owner'))
+    borrowed = []
+    edges = []
+    with psycopg.connect(DATABASE_URL) as db:
+        principal, bypass = db.execute('select current_user,rolbypassrls from pg_roles where rolname=current_user').fetchone()
+        assert bypass, 'Approval seeding requires the designated disposable database admin'
+        role_edges = db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members '
+            'where roleid=any(%s::regrole[]) and member=current_user::regrole order by roleid,grantor',
+            ([owner for _, _, owner in tables],)).fetchall()
+        for schema, table, owner in tables:
+            if not db.execute("select pg_has_role(current_user,%s,'SET')", (owner,)).fetchone()[0]:
+                prior = db.execute('select admin_option,inherit_option,set_option from pg_auth_members '
+                    'where roleid=%s::regrole and member=current_user::regrole and grantor=member', (owner,)).fetchone()
+                options = prior if prior is not None else (False, False, False)
+                db.execute(sql.SQL('grant {} to {} with admin {},inherit {},set true granted by {}').format(
+                    sql.Identifier(owner), sql.Identifier(principal),
+                    *(sql.SQL(str(value).lower()) for value in options[:2]), sql.Identifier(principal)))
+                edges.append((owner, prior))
+            schema_acl = db.execute('select nspacl::text from pg_namespace where nspname=%s', (schema,)).fetchone()[0]
+            table_oid, *attributes = db.execute('select c.oid,c.relacl::text,c.relrowsecurity,c.relforcerowsecurity '
+                'from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname=%s and c.relname=%s',
+                (schema, table)).fetchone()
+            table_acl = tuple(attributes)
+            assert table_acl[0] is not None, 'Approval seed tables require their published explicit ACLs'
+            usage = not db.execute("select has_schema_privilege(current_user,%s,'USAGE')", (schema,)).fetchone()[0]
+            missing = tuple(privilege for privilege in ('SELECT', 'INSERT', 'UPDATE')
+                if not db.execute('select has_table_privilege(current_user,%s::oid,%s)', (table_oid, privilege)).fetchone()[0])
+            db.execute(sql.SQL('set local role {}').format(sql.Identifier(owner)))
+            if usage:
+                db.execute(sql.SQL('grant usage on schema {} to {}').format(sql.Identifier(schema), sql.Identifier(principal)))
+            if missing:
+                db.execute(sql.SQL('grant {} on {} to {}').format(sql.SQL(',').join(map(sql.SQL, missing)),
+                    sql.Identifier(schema, table), sql.Identifier(principal)))
+            db.execute('reset role')
+            borrowed.append((schema, table, table_oid, owner, schema_acl, table_acl, usage, missing))
+    try:
+        yield
+    finally:
+        with psycopg.connect(DATABASE_URL) as db:
+            for schema, table, table_oid, owner, schema_acl, table_acl, usage, missing in reversed(borrowed):
+                db.execute(sql.SQL('set local role {}').format(sql.Identifier(owner)))
+                if missing:
+                    db.execute(sql.SQL('revoke {} on {} from {}').format(sql.SQL(',').join(map(sql.SQL, missing)),
+                        sql.Identifier(schema, table), sql.Identifier(principal)))
+                if usage:
+                    db.execute(sql.SQL('revoke usage on schema {} from {}').format(sql.Identifier(schema), sql.Identifier(principal)))
+                db.execute('reset role')
+                assert db.execute('select relacl::text,relrowsecurity,relforcerowsecurity from pg_class where oid=%s::oid',
+                    (table_oid,)).fetchone() == table_acl
+                assert db.execute('select nspacl::text from pg_namespace where nspname=%s', (schema,)).fetchone()[0] == schema_acl
+            for owner, prior in reversed(edges):
+                db.execute(sql.SQL('revoke {} from {} granted by {}').format(
+                    sql.Identifier(owner), sql.Identifier(principal), sql.Identifier(principal)))
+                if prior is not None:
+                    db.execute(sql.SQL('grant {} to {} with admin {},inherit {},set {} granted by {}').format(
+                        sql.Identifier(owner), sql.Identifier(principal),
+                        *(sql.SQL(str(value).lower()) for value in prior), sql.Identifier(principal)))
+            assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members '
+                'where roleid=any(%s::regrole[]) and member=current_user::regrole order by roleid,grantor',
+                ([owner for _, _, owner in tables],)).fetchall() == role_edges
+
+
 @pytest.fixture
 def approval_login(capture_login):
     """Borrow the frozen backend role, restoring exact ACLs and SET edge.

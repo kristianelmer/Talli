@@ -296,8 +296,8 @@
   "savedSourceV2Admission": "rf-source-v2-admission-20261010.json",
   "historicalCi38055007322": "ci-38055007322.json",
   "governanceCallableAccessFixture": "rf-governance-callable-access-fixture-20261010.json",
-  "latestIntegrationCiObservation": "ci-38071170412.json",
-  "latestIntegrationCiStatus": "FAILED: f706 Application stopped at anonymous registry token context deadline before code checks; Billing700PASS; Authority341PASS/1FAIL/1192notexecuted including all36new closedapproval cases. Earlier base replay fixtures erased installed successor markers; strict approval fingerprint correctly refused drift. Reviewed replay/prefetch repairs require successor CI; browser/restore and canonical/launch acceptance pending.",
+  "latestIntegrationCiObservation": "ci-38073535360.json",
+  "latestIntegrationCiStatus": "FAILED: ee8b Application10949PASS/2SKIP/all code-boundary-build-smoke-rehearsal-productionaudit checks pass; Billing700PASS; Authority1467PASS/1fixtureseedFAIL/66notexecuted. Repaired legacy year/preview/bridge replay passes and all109sourceV2/19capture/12admission/18preview pass. First new approval fails Authority seed INSERT before logic;35new and31protected unexecuted. Reviewed admin-only seed/observer access repair requires successorCI. Browser/restore/canonical/all-three acceptance pending.",
   "historicalCi38057406479": "ci-38057406479.json",
   "retainedReaderLiveRequestFixtureRepair": "rf-correction-reader-live-request-fixture-20261010.json",
   "closedSourceV2Preview": "rf-source-v2-preview-20261010.json",
@@ -311,5 +311,8 @@
   "ownedRestoreCodecRepair20261010": "owned-restore-codec-repair-20261010.json",
   "historicalCi38071170412": "ci-38071170412.json",
   "postgresPrefetchContextDeadlineRepair20261010": "postgres-prefetch-context-deadline-repair-20261010.json",
-  "installedSuccessorReplayFixtureRepair20261010": "rf-recutover-successor-fixture-repair-20261010.json"
+  "installedSuccessorReplayFixtureRepair20261010": "rf-recutover-successor-fixture-repair-20261010.json",
+  "historicalCi38073535360": "ci-38073535360.json",
+  "closedApprovalSeedAccessFixtureRepair20261010": "rf-approval-seed-access-fixture-repair-20261010.json",
+  "unknownOutcomeContractResearch20261010": "unknown-outcome-contract-research-20261010.json"
 }

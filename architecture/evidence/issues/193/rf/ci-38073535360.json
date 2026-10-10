@@ -1,0 +1,170 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-10T18:23:52.816086+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "databaseId": 38073535360,
+    "runAttempt": 1,
+    "headSha": "ee8b3bd7f83008116c95eb58e4455fb483d9bb0f",
+    "status": "completed",
+    "conclusion": "failure",
+    "runStartedAt": "2026-10-10T17:52:52Z",
+    "updatedAt": "2026-10-10T18:14:36Z",
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38073535360"
+  },
+  "checkout": {
+    "revision": "6032d442cb5d7b40f8d09da40018feee4fa37a58",
+    "kind": "pull_request_merge_commit",
+    "parents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "ee8b3bd7f83008116c95eb58e4455fb483d9bb0f"
+    ],
+    "bothJobCheckoutLogsVerified": true
+  },
+  "jobs": [
+    {
+      "id": 114275669917,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-10T17:52:54Z",
+      "completed_at": "2026-10-10T18:14:31Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38073535360/job/114275669917"
+    },
+    {
+      "id": 114275670037,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T17:52:54Z",
+      "completed_at": "2026-10-10T18:13:21Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38073535360/job/114275670037"
+    },
+    {
+      "id": 114275670812,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-10T17:52:53Z",
+      "completed_at": "2026-10-10T17:52:52Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38073535360/job/114275670812"
+    },
+    {
+      "id": 114279965567,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T18:14:33Z",
+      "completed_at": "2026-10-10T18:14:35Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38073535360/job/114279965567"
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "conclusion": "success",
+      "passed": 10949,
+      "skipped": 2,
+      "deselected": 2322,
+      "seconds": 623.47,
+      "allStepsSucceeded": true,
+      "productionRootWebVulnerabilities": 0,
+      "anonymousPrefetch": "PASS; no observed network deadline retry claimed"
+    },
+    "database": {
+      "initialHarness": {
+        "passed": 17,
+        "skipped": 1,
+        "seconds": 0.17
+      },
+      "billing": {
+        "passed": 700,
+        "seconds": 233.04
+      },
+      "authority": {
+        "collected": 1534,
+        "passed": 1467,
+        "failed": 1,
+        "notExecuted": 66,
+        "seconds": 573.96
+      },
+      "protectedClosedSources": {
+        "test_rf1086_year_source_v2_database.py": 109,
+        "test_rf1086_guarded_source_capture_v2_database.py": 19,
+        "test_rf1086_source_admission_v2_database.py": 12,
+        "test_rf1086_source_preview_v2_database.py": 18
+      },
+      "repairedLegacyReplayCasesPassed": [
+        "test_migration_replay_rollback_recutover_preserve_history_and_roles",
+        "test_api_rollback_recutover_preserves_preview_and_exact_role_options",
+        "test_safe_rollback_retains_review_and_production_barriers_then_exact_recutover"
+      ],
+      "newClosedApprovalV3": {
+        "selected": 36,
+        "passed": 0,
+        "failedAtFixtureSeed": 1,
+        "notExecuted": 35,
+        "approvalLogicReached": false
+      },
+      "rfBrowserExecuted": false
+    }
+  },
+  "failure": {
+    "case": "test_actual_v3_approval_and_replay_bind_current_owners_and_exact_capture[0-cash_issue]",
+    "boundary": "apps/backend/tests/test_rf1086_source_approval_v3_database.py:130 prepare_state Authority request fixture INSERT",
+    "exception": "psycopg.errors.InsufficientPrivilege / SQLSTATE42501 / permission denied for table system_user_requests",
+    "diagnosis": "New approval module uses the Documents-only fixture login and RF-only fixture admin helper; its disposable admin lacks Authority/Billing seed/observer table privileges. BYPASSRLS is not table privilege. No closed approval logic executed.",
+    "repairScope": "Module-local exact missing SELECT/INSERT/UPDATE and schema USAGE only for designated disposable BYPASSRLS admin; preserve explicit table/schema ACLs, RLS and owner membership edges. No runtime grants or production code change."
+  },
+  "notReached": [
+    "Remaining66Authority cases:35newapproval and31protected cases",
+    "LaterSQL/ownerclone/advisors/browserlanes",
+    "Actual ownedrestorecodec/browserfourfailure retries",
+    "Canonical immutableA/B and RF\u2192Tax\u2192Accounts handoff"
+  ],
+  "workflowArtifacts": {
+    "totalCount": 0,
+    "browserDownloadsAvailable": false
+  },
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38073535360-app-raw-v1.log",
+      "sha256": "e1feff662d2496fe0bcfd657eaecbe05ee32aa3cb5b6dadff5e48b06335c1a17",
+      "bytes": 468104
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38073535360-db-raw-v1.log",
+      "sha256": "a70a82b6eb5ff95b1ac47e243d8b71a2e68ba3601b8626f4cf5a673e6d5c7362",
+      "bytes": 616277
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38073535360-terminal-api.json",
+      "sha256": "f28d02ddd07ac56adfe0c2cf524b3543f54dc6831f906e40fac5eeadb8ae31ae",
+      "bytes": 12750
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38073535360-terminal-jobs.json",
+      "sha256": "8e0e12f8f5141383a471dacc2e05fd2e6b2cf6fa4b8b60bf09f7fdde46f78c0e",
+      "bytes": 9999
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38073535360-artifacts-api.json",
+      "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+      "bytes": 32
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38073535360-merge-parents-v1.json",
+      "sha256": "c4d5cae2eec5e3a95db10cb352df43d81677440e95b869befe6530830e11a1e3",
+      "bytes": 149
+    }
+  ],
+  "limits": [
+    "Whole run failed; Application success and repaired replay passes do not clear fullapproval/DB/restore/browser/canonical acceptance.",
+    "New approval1 failed while seeding;35 unexecuted; all36 PASS prerequisite uncleared.",
+    "Projected native seed privilege probe is separate from full actual Auth/Authority/Billing/RLS/annual/source/original producer proof.",
+    "No ordinary activation/fees/filings/genuine data/outreach. AllA1-A7 pending; original WIP and paused safeguards preserved.",
+    "Earlier intermittent Billing migration deadlock remains unexplained despite700case passes."
+  ]
+}

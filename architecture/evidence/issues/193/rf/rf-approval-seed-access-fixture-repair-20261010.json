@@ -1,0 +1,212 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "REVIEWED_RESTRICTED_APPROVAL_FIXTURE_ADMIN_SEED_ACCESS_REPAIR",
+  "recordedAtUtc": "2026-10-10T18:33:33.512949+00:00",
+  "baseRevision": "ee8b3bd7f83008116c95eb58e4455fb483d9bb0f",
+  "status": "LOCAL_REVIEWED_ALL36_FULL_SCHEMA_APPROVAL_EXECUTION_REQUIRED",
+  "changes": [
+    "Add one module-autouse fixture depending on existing RF fixture admin. Borrow only missing SELECT/INSERT/UPDATE and USAGE for designated disposable BYPASSRLS admin on two exact Authority/Billing seed/observer tables, never runtime roles.",
+    "Borrow owner SET only if absent; an existing self-granted edge retains its ADMIN/INHERIT options during borrowing. A new edge has ADMIN/INHERIT false. Exact prior edge restored. Catalog OIDs precede schema usage; require published explicit ACLs; no RLS/security or production change.",
+    "Atomic setup and finally revoke only borrowed privileges/USAGE, restore original membership edge and assert exact table/schema ACL/RLS/role tuple. Existing20functions/assertions exact. Production source/migrations/contracts/grants unchanged."
+  ],
+  "checks": {
+    "nativeProjectedPrivilegeChecks": 14,
+    "nativeStoppedRemoved": true,
+    "newFullSchemaCollectedOnly": 36,
+    "ciSelectionPassed": 128,
+    "ciSelectionSkipped": 0,
+    "ciSelectionSeconds": 49.80714675,
+    "existingFunctionSpansExact": 20,
+    "productionChanges": 0,
+    "diffCheck": "PASS",
+    "specOpenFindings": 0,
+    "standardsOpenFindings": 0
+  },
+  "sourceFreeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-fixture-freeze-v2.json",
+    "sha256": "b7d632810e84fb39e8f0f83905246ec56912f9f985c886272554bac7b9be8e8b",
+    "bytes": 10402
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-fixture-spec-review-v2.json",
+      "sha256": "bdfdda357520becef4b9018dc27210020a0777dee42b36361ba65bb21211385a",
+      "bytes": 17297
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-fixture-standards-review-v2.json",
+      "sha256": "983f667ca20d5dd3fea39d8c2e212d2ec27bff650949b79a7e251fcaa9f88650",
+      "bytes": 17581
+    }
+  ],
+  "previousReviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-fixture-spec-review-v1.json",
+      "sha256": "01813a134d160a7ff5da5d90a8e42f4cc3b1a920cf4b03166c98152a138d3115",
+      "bytes": 17575
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-fixture-standards-review-v1.json",
+      "sha256": "7ee26ad6e59833c813e1a129fe7a8191d97b8b4d73663c9c4496ffed0e288d6e",
+      "bytes": 13392
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-fixture-standards-inherit-addendum-v1.json",
+      "sha256": "6e8f96addfae3a6a05d45ca0a43e388cc5de65e90adba18a69d18624a732b42f",
+      "bytes": 3328
+    }
+  ],
+  "resolvedFinding": "ST-SA1 P2: preserve prior ADMIN/INHERIT when borrowing SET. Added native prior self-edge INHERITtrue/SETfalse assertion: v6 RED, fixed v7 fourteen PASS; all earlier artifacts preserved.",
+  "failureReceipt": {
+    "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/architecture/evidence/issues/193/rf/ci-38073535360.json",
+    "sha256": "913dee59e5729bb0a50a060b3b5e7051d2315024beb66dd8dae43dda9f79deda",
+    "bytes": 6757
+  },
+  "artifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/probe-rf-approval-seed-access-native-v1.py",
+      "sha256": "f41967661734d476440c5e8791dbd1659a0f42bdddf30e4cb43f53a2950954e0",
+      "bytes": 8247
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/probe-rf-approval-seed-access-native-v2.py",
+      "sha256": "366205b4a72abf529d45e15873653421d66554fd4b333708fcf364c1733e417b",
+      "bytes": 8459
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/probe-rf-approval-seed-access-native-v3.py",
+      "sha256": "05fab74c461c0ee0a4e2286f203f006ca8c7ffaf70db9fe3e2784847321f9bf8",
+      "bytes": 8841
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/probe-rf-approval-seed-access-native-v4.py",
+      "sha256": "dbbc643cab590c79d6b6c3a1bab6d0932f4e6d4505c8fccb6552c9b24aff7d91",
+      "bytes": 8841
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v1.json",
+      "sha256": "33be1b8af58d9934eeb066f574add297d060c0c51579ef5e846b4fd1df2adb44",
+      "bytes": 875
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v1-command.log",
+      "sha256": "b032846a720af90c9b95c28af51ee28fa75c6dce9b1c76349517ec4aefddf276",
+      "bytes": 112
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v2.json",
+      "sha256": "7550ee6ecdf3d826d2a4c04d5d0f30d52f239142bfa644c05f8688912cb15672",
+      "bytes": 607
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v2-command.log",
+      "sha256": "53754fd8a6a007d15c39ba4637fa379a1df07f9b58578cd55de1d3f54b93abf0",
+      "bytes": 1429
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v3.json",
+      "sha256": "d048a18320229236d7e5dcb144896e060ed76ca0becd31e29f3fea854449b0ae",
+      "bytes": 1409
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v3-command.log",
+      "sha256": "d620e1e6a38c1f8f5fac4ddaed6a771b4376eac3e18f96be4c7ef9e174442ad1",
+      "bytes": 123
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v4.json",
+      "sha256": "af18aeaf942ef9e458da78a391b25a4a1384903d1647bd6564a9b6c2faaae6e3",
+      "bytes": 607
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v4-command.log",
+      "sha256": "21a7cc984fbf2b83b47ebc81fb16eacb1393d8df472bbe274520801987a9b590",
+      "bytes": 956
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v5.json",
+      "sha256": "951fdcbf16e56cb0d9b9a97669ebcd111c93be815ef00d681fcbab581f403b1a",
+      "bytes": 1638
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v5-command.log",
+      "sha256": "8485d4af5c798a2e6a2fb7b5405847b99ca42a4c7a4aadb877bedc911c4cec40",
+      "bytes": 124
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v5.log",
+      "sha256": "2750eb8255bfa69dfe74bf24bc7e957d4dd16d27a87fae23eef71fabc9abb1f1",
+      "bytes": 975
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-collection-v1.log",
+      "sha256": "20d42bc4b51315a51a759beb494eb59d36bbc2b49e1b3433184aeca281c6b663",
+      "bytes": 4809
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-ci-selection-v1.log",
+      "sha256": "bd70a53c7b108dbfa1a3b7b8b0f3cc1b8d4633ccf3bf5b1d162f27bb25c9b207",
+      "bytes": 13679
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-protected-functions-v1.json",
+      "sha256": "9c760fb11cdbf09228d5ed978ebb73e8ec8be17011d14cb08c88ad3ac85136d6",
+      "bytes": 1398
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/probe-rf-approval-seed-access-native-v5.py",
+      "sha256": "4f49d93396731e0adec3973afc233e0a2aa2e8d91c0edc13665072fc4c01eba0",
+      "bytes": 9743
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v6.json",
+      "sha256": "1f269e895532ac4739f1f13f96c97508315cc76b21d6e3a72caacb5608a3438e",
+      "bytes": 605
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v6-command.log",
+      "sha256": "f1f8ff0e53bf90575d83b71c2796d617de74284ea23c015b385054c44855005f",
+      "bytes": 680
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v7.json",
+      "sha256": "0954ba8245726bb09f282cd483f76096b6600ce0e6de8880b38ba9924aa804fa",
+      "bytes": 1900
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v7-command.log",
+      "sha256": "eaee80339acd9da586b72b787bad76e2a8d61fb3a77ab0ae08f5a9b90ea4e91b",
+      "bytes": 124
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-native-v7.log",
+      "sha256": "42bb303c81dd0228ab4870df517b19ef6a3b520fb34ce64295e8f5f01f0ef4f7",
+      "bytes": 975
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-collection-v2.log",
+      "sha256": "31e0b19fcd56325ce7610c91965a6199deca93cdd02f124c62b8a136ded5bde3",
+      "bytes": 4809
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-ci-selection-v2.log",
+      "sha256": "d180d4daab5202e546592f11ff927a3a99d59ddfabd81e8912161cd65270ce31",
+      "bytes": 13692
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-seed-access-protected-functions-v2.json",
+      "sha256": "eec07fd75e3b939f6a1674b2f00fbe354acfa7e4a7a26dca07a93dacbb1d3ca5",
+      "bytes": 428
+    }
+  ],
+  "limits": [
+    "Native exact real privilege failure/temporary grant/restoration on projected one-column tables and representative roles/closed function only; no full Auth/RLS policies/data constraints/Authority/Billing/annual/Gov/source/current producer origin or restoration proof.",
+    "Nativev1 exact shared INSERT helper RED42501 with schema USAGE and BYPASSRLS present. V2 initial probe used NOLOGIN runtime role and NULL ACL projection unlike published explicit ACLs; historical setup failure preserved. V3 repaired projections9PASS.",
+    "Nativev4 additional missingUSAGE/SET case found fixture bootstrap regclass permission error; fixed source uses fixed catalog OIDs before usage. V5 all11PASS: exact grant/normal-abort/preexistingSELECT/missingUSAGE+SET cleanup and ordinary denial. All clusters stopped/deleted.",
+    "Full currentCI actual1approval attempt failed during seed beforelogic;35new unexecuted and31protected unexecuted. Local36collection/128selectors/native11 do not clear all36PASS prerequisite.",
+    "Original20functions/assertions remain exact. Fullschema unchanged cases required in successorCI. No silent skip/broad exception/product grant/fingerprint weakening.",
+    "AllA1-A7 and RF\u2192Tax\u2192Accounts/independent hosted recovery/canonical acceptance pending; no activation/fees/filings/genuine data/outreach.",
+    "Nativev6 precisely reproduced prior self-edge inheritance loss and cleanup restored state. Nativev7 all14checks pass including options preserved DURING borrowing and exact final restoration; projected only, no fullschema approval clearance."
+  ]
+}
