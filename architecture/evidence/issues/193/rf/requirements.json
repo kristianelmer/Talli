@@ -268,5 +268,6 @@
   "historicalCi38024478298": "ci-38024478298.json",
   "governanceReplayScopeFixture20261010": "governance-replay-scope-fixture-20261010.json",
   "rfRetainedRecoveryWorkflow20261010": "rf-retained-recovery-workflow-20261010.json",
-  "governanceCutoffLockFixture20261010": "governance-cutoff-lock-fixture-20261010.json"
+  "governanceCutoffLockFixture20261010": "governance-cutoff-lock-fixture-20261010.json",
+  "historicalCi38026082849": "ci-38026082849.json"
 }
