@@ -923,7 +923,32 @@ def test_closed_producer_does_not_grant_rf_any_governance_query_or_private_acces
                 'corporate_governance_workflow_executor','anon','authenticated','service_role'):
             assert not db.execute("select has_function_privilege(%s,%s::oid,'EXECUTE')", (role,oid)).fetchone()[0]
         assert db.execute("select has_function_privilege(%s,%s::oid,'EXECUTE')", (original['source_role'],oid)).fetchone()[0]
-        assert db.execute("select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and has_function_privilege('shareholder_register_filing_store_owner',p.oid,'EXECUTE')").fetchone()[0] == 0
+        # Function EXECUTE alone can count unrelated predecessor PUBLIC ACLs.
+        # Direct queries require namespace USAGE as well; this producer must
+        # neither open the namespace nor grant its four private contracts.
+        assert not db.execute("select has_schema_privilege('shareholder_register_filing_store_owner',"
+            "'corporate_governance','USAGE')").fetchone()[0]
+        assert db.execute("select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace "
+            "where n.nspname='corporate_governance' and "
+            "has_schema_privilege('shareholder_register_filing_store_owner',n.oid,'USAGE') and "
+            "has_function_privilege('shareholder_register_filing_store_owner',p.oid,'EXECUTE')").fetchone()[0] == 0
+        assert db.execute("select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace "
+            "where n.nspname='corporate_governance' and p.proname in "
+            "('rf_year_source_fact_internal_v1','rf_year_source_chain_internal_v1',"
+            "'prepare_rf_year_source_governance_proof_v1','invalidate_rf_year_source_proof_internal_v1')").fetchone()[0] == 4
+        assert db.execute("select count(*) from pg_proc p join pg_namespace n on n.oid=p.pronamespace "
+            "where n.nspname='corporate_governance' and p.proname in "
+            "('rf_year_source_fact_internal_v1','rf_year_source_chain_internal_v1',"
+            "'prepare_rf_year_source_governance_proof_v1','invalidate_rf_year_source_proof_internal_v1') and "
+            "has_function_privilege('shareholder_register_filing_store_owner',p.oid,'EXECUTE')").fetchone()[0] == 0
+        assert db.execute("select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace "
+            "where n.nspname='corporate_governance' and c.relkind in ('r','p','v','m','f') and "
+            "has_table_privilege('shareholder_register_filing_store_owner',c.oid,'SELECT')").fetchone()[0] == 0
+        db.execute('set local role shareholder_register_filing_store_owner')
+        with pytest.raises(psycopg.errors.InsufficientPrivilege) as denied:
+            with db.transaction():
+                db.execute("select corporate_governance.rf_year_source_fact_internal_v1('{}'::jsonb)")
+        assert denied.value.diag.message_primary == 'permission denied for schema corporate_governance'
 
 
 def test_actual_restricted_login_mints_and_uses_proof_without_owner_or_temp_authority(original, source_login):

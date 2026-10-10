@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "stage": "GOVERNANCE_CALLABLE_ACCESS_FIXTURE",
+  "status": "LOCAL_REVIEWED_FULL_SCHEMA_EXECUTION_PENDING",
+  "baseRevision": "9ee937f5550955a5a4c338aabd6c1c8eca942020",
+  "failureReceipt": "ci-38055007322.json",
+  "behavior": "Replace the incomplete global EXECUTE-only zero check with independent RF owner namespace-USAGE denial, namespace+function callable counter zero, exact presence and EXECUTE denial of the four new private contracts, all Governance table SELECT denial and an actual direct private-helper invocation denied at namespace. Existing producer role assertions remain. No production SQL/ACL/constraint or other test function change.",
+  "protectedFunctionsExact": 54,
+  "productionSqlAndPrivileges": "unchanged",
+  "nativeChecks": 15,
+  "nativeLimits": "Actual published namespace ACLs and four-contract closure DO block, projected routine/table bodies and one generic legacy PUBLIC helper. Proves semantics and leak detection, not actual CI identities/full owner schema. Owned native cluster stopped/removed.",
+  "actualFourCiRoutineIdentities": "not recorded; no origin/access attribution claimed",
+  "collectedNotExecuted": 109,
+  "freeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-governance-callable-access-fixture-freeze-v1.json",
+    "sha256": "af77c6e479fe3b3214bf27885cd033fba932ed8553aca9de684cc302188119b4",
+    "bytes": 2214
+  },
+  "finalReviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-governance-callable-access-fixture-spec-review-v1.json",
+      "sha256": "43d0ba3d431cb84d8f2ff406b435ed415546b8f378c796bf3c00210d8579e742",
+      "bytes": 6097
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-governance-callable-access-fixture-standards-review-v1.json",
+      "sha256": "a7ce58822d924b7421aae13942d7e10a325246faa6b5ec71e06d8ae41a8569ee",
+      "bytes": 5279
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-governance-callable-access-native-v1.json",
+      "sha256": "5944706cd5a84267a706deba657c9b0ef745356c1eb3d5e5117ab2a465ad9752",
+      "bytes": 2531
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-governance-callable-access-fixture-collection-v1.log",
+      "sha256": "2c98ccec0dc3f95ca59d6ce6a24cb4405850a0015d94980b090c5cdd23199975",
+      "bytes": 15086
+    }
+  ],
+  "remaining": [
+    "Full109 source-v2 cases and combined1480 Authority cases with staged admission",
+    "All guarded capture/admission/correction full-schema execution",
+    "Compatible consumers and all A1-A7/all-three release requirements"
+  ]
+}
