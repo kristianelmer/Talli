@@ -49,40 +49,47 @@ def build_manifest(basis: rf.Rf1086SourceApprovalManifestBasisV3) -> rf.Rf1086So
         _require(all(bool(code) for code in acknowledged)
                  and len(set(acknowledged)) == len(acknowledged)
                  and set(acknowledged) == set(warnings))
-        order, xml, documents = _documents(preview)
-        predecessor = _predecessor(basis.predecessor)
-        freshness = source.freshness
-        manifest = {
-            'schemaVersion': 'production-source-approval-v3',
-            'companyId': str(source.company_id), 'organizationNumber': source.command.case.company.org_number,
-            'incomeYear': int(source.income_year), 'userId': actor_id,
-            'obligation': 'aksjonaerregisteroppgaven', 'caseProfile': 'rf1086_full_year_v1',
-            'adapterVersion': 'rf1086-source-production-v1', 'entitlementId': entitlement_id,
-            'source': {'codec': 'rf1086-year-source-v2', 'id': source.source_id.value,
-                       'version': source.version, 'sha256': source.source_sha256,
-                       'caseSha256': source.case_sha256},
-            'preview': {'id': preview.preview_id.value, 'renderingProfile': preview.rendering_profile,
-                        'reviewTextSha256': _hash(preview.preview_text)},
-            'freshness': {'companyIdentitySha256': freshness.company_identity_sha256,
-                          'documentsSha256': freshness.documents_sha256,
-                          'governanceReceiptsSha256': freshness.governance_receipts_sha256,
-                          'governanceOriginalEnumerationSha256': freshness.governance_original_enumeration_sha256,
-                          'governanceChainEnumerationSha256': freshness.governance_chain_enumeration_sha256,
-                          'governanceProjectionSha256': freshness.governance_projection_sha256},
-            'documentOrderVersion': 'shareholder-id-utf8-sha256-v1', 'documentHashes': documents,
-            'review': {'sha256': basis.review_sha256, 'acknowledgedWarningCodes': warnings},
-            'predecessor': predecessor,
-            'annualReadiness': {'schemaVersion': 'rf1086-annual-readiness-binding-v2',
-                               'proofSha256': annual.proof_sha256,
-                               'proofTextSha256': _hash(annual_text), 'proofText': annual_text},
-        }
-        approved = rf.Rf1086SourceApprovalManifest(manifest, _hash(_canonical(manifest)), order, xml)
-        _require(_approved_shape(approved))
-        return approved
+        annual_binding = {'schemaVersion': 'rf1086-annual-readiness-binding-v2',
+                          'proofSha256': annual.proof_sha256,
+                          'proofTextSha256': _hash(annual_text), 'proofText': annual_text}
+        return _compose(basis, actor_id, entitlement_id, warnings, annual_binding)
     except rf.Rf1086ProductionError:
         raise
     except (ValueError, TypeError, AttributeError, KeyError, ArithmeticError, RecursionError):
         raise rf.Rf1086ProductionError('basis_unavailable') from None
+
+
+def _compose(basis, actor_id, entitlement_id, warnings, annual_binding):
+    """Encode validated identity only; no rendering or live admission."""
+    source, preview = basis.source, basis.preview
+    order, xml, documents = _documents(preview)
+    predecessor = _predecessor(basis.predecessor)
+    freshness = source.freshness
+    manifest = {
+        'schemaVersion': 'production-source-approval-v3',
+        'companyId': str(source.company_id), 'organizationNumber': source.command.case.company.org_number,
+        'incomeYear': int(source.income_year), 'userId': actor_id,
+        'obligation': 'aksjonaerregisteroppgaven', 'caseProfile': 'rf1086_full_year_v1',
+        'adapterVersion': 'rf1086-source-production-v1', 'entitlementId': entitlement_id,
+        'source': {'codec': 'rf1086-year-source-v2', 'id': source.source_id.value,
+                   'version': source.version, 'sha256': source.source_sha256,
+                   'caseSha256': source.case_sha256},
+        'preview': {'id': preview.preview_id.value, 'renderingProfile': preview.rendering_profile,
+                    'reviewTextSha256': _hash(preview.preview_text)},
+        'freshness': {'companyIdentitySha256': freshness.company_identity_sha256,
+                      'documentsSha256': freshness.documents_sha256,
+                      'governanceReceiptsSha256': freshness.governance_receipts_sha256,
+                      'governanceOriginalEnumerationSha256': freshness.governance_original_enumeration_sha256,
+                      'governanceChainEnumerationSha256': freshness.governance_chain_enumeration_sha256,
+                      'governanceProjectionSha256': freshness.governance_projection_sha256},
+        'documentOrderVersion': 'shareholder-id-utf8-sha256-v1', 'documentHashes': documents,
+        'review': {'sha256': basis.review_sha256, 'acknowledgedWarningCodes': warnings},
+        'predecessor': predecessor,
+        'annualReadiness': annual_binding,
+    }
+    approved = rf.Rf1086SourceApprovalManifest(manifest, _hash(_canonical(manifest)), order, xml)
+    _require(_approved_shape(approved))
+    return approved
 
 
 def _plain_shape(value):

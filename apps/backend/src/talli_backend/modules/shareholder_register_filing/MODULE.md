@@ -1498,3 +1498,33 @@ SQL admission, dispatch, application, HTTP and Archive consumers remain closed t
 v3. No owner/MFA, entitlement, source/head currentness, complete foreign history,
 original document bytes or correction eligibility is proven by this pure stage.
 `test_rf1086_source_production_v3.py` owns its additive unit coverage.
+
+### Private retained approval validation foundation (2026-10-10)
+
+`retained_source_approval` reconstructs complete approval-v1/v2/v3 identity from
+the exact saved preview, typed source and matching annual proof without invoking
+the current renderer or fresh preview/readiness/approval builders. A shared
+private composition step preserves the existing fresh builders' validation order,
+errors and bytes. The retained boundary checks exact record/scalar shapes while
+leaving source economic numeric representations to the source owner's integrity
+contract. Invalid retained inputs use `basis_unavailable`; a mismatched approved
+result uses `payload_changed`.
+
+`retained_readiness` binds the saved preview to source/case/scope and its canonical
+preview-envelope commitment. When original payload text is supplied, its exact
+hash and parsed identity must also match. Absent text proves only that canonical
+saved-preview commitment, not uncaptured raw bytes or complete history. Annual
+v1/v2 decoding uses their existing separate closed codecs, reconstructs source
+readiness from the retained preview, and reapplies the existing versioned annual
+assessment to captured inputs. Exact nested proof, warnings, exclusions and
+digests must agree; a rehashed assessment alone is insufficient. Future policy
+versions must preserve the v1/v2 assessment for these historical codecs.
+
+These private functions establish internal commitment consistency, not authentic
+origin, currentness, complete foreign enumeration, document bytes or permission.
+No old parser/serializer, public contract, archive registry, claim, admission,
+application or SQL path is changed to call them. Mixed archive history, an
+explicit retained v1–v6 reader and review-v3 correspondence remain later slices.
+`test_rf1086_retained_source_approval.py` checks positive/fresh parity;
+`test_rf1086_retained_source_approval_adversarial.py` independently checks altered
+commitments and unavailable current renderers/builders.

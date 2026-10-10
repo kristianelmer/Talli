@@ -45,35 +45,41 @@ def build_manifest(basis: rf.Rf1086SourceApprovalManifestBasis) -> rf.Rf1086Sour
                  and len(set(acknowledged)) == len(acknowledged)
                  and set(acknowledged) == set(warnings))
 
-        order, xml, documents = _documents(preview)
-        predecessor = _predecessor(basis.predecessor)
-        freshness = source.freshness
-        manifest = {
-            "schemaVersion": "production-source-approval-v1",
-            "companyId": str(source.company_id), "organizationNumber": source.command.case.company.org_number,
-            "incomeYear": int(source.income_year), "userId": actor_id,
-            "obligation": "aksjonaerregisteroppgaven", "caseProfile": "rf1086_full_year_v1",
-            "adapterVersion": "rf1086-source-production-v1", "entitlementId": entitlement_id,
-            "source": {"id": source.source_id.value, "version": source.version,
-                       "sha256": source.source_sha256, "caseSha256": source.case_sha256},
-            "preview": {"id": preview.preview_id.value, "renderingProfile": preview.rendering_profile,
-                        "reviewTextSha256": _hash(preview.preview_text)},
-            "freshness": {"companyIdentitySha256": freshness.company_identity_sha256,
-                          "documentsSha256": freshness.documents_sha256,
-                          "governanceReceiptsSha256": freshness.governance_receipts_sha256,
-                          "governanceEnumerationSha256": freshness.governance_enumeration_sha256},
-            "documentOrderVersion": "shareholder-id-utf8-sha256-v1", "documentHashes": documents,
-            "review": {"sha256": basis.review_sha256, "acknowledgedWarningCodes": warnings},
-            "predecessor": predecessor,
-        }
-        if annual_binding is not None:
-            manifest['schemaVersion'] = 'production-source-approval-v2'
-            manifest['annualReadiness'] = annual_binding
-        return rf.Rf1086SourceApprovalManifest(manifest, _hash(_canonical(manifest)), order, xml)
+        return _compose(basis, actor_id, entitlement_id, warnings, annual_binding)
     except rf.Rf1086ProductionError:
         raise
     except (ValueError, TypeError, AttributeError, KeyError, ArithmeticError):
         raise rf.Rf1086ProductionError("basis_unavailable") from None
+
+
+def _compose(basis, actor_id, entitlement_id, warnings, annual_binding):
+    """Encode validated identity only; no rendering or live admission."""
+    source, preview = basis.source, basis.preview
+    order, xml, documents = _documents(preview)
+    predecessor = _predecessor(basis.predecessor)
+    freshness = source.freshness
+    manifest = {
+        "schemaVersion": "production-source-approval-v1",
+        "companyId": str(source.company_id), "organizationNumber": source.command.case.company.org_number,
+        "incomeYear": int(source.income_year), "userId": actor_id,
+        "obligation": "aksjonaerregisteroppgaven", "caseProfile": "rf1086_full_year_v1",
+        "adapterVersion": "rf1086-source-production-v1", "entitlementId": entitlement_id,
+        "source": {"id": source.source_id.value, "version": source.version,
+                   "sha256": source.source_sha256, "caseSha256": source.case_sha256},
+        "preview": {"id": preview.preview_id.value, "renderingProfile": preview.rendering_profile,
+                    "reviewTextSha256": _hash(preview.preview_text)},
+        "freshness": {"companyIdentitySha256": freshness.company_identity_sha256,
+                      "documentsSha256": freshness.documents_sha256,
+                      "governanceReceiptsSha256": freshness.governance_receipts_sha256,
+                      "governanceEnumerationSha256": freshness.governance_enumeration_sha256},
+        "documentOrderVersion": "shareholder-id-utf8-sha256-v1", "documentHashes": documents,
+        "review": {"sha256": basis.review_sha256, "acknowledgedWarningCodes": warnings},
+        "predecessor": predecessor,
+    }
+    if annual_binding is not None:
+        manifest['schemaVersion'] = 'production-source-approval-v2'
+        manifest['annualReadiness'] = annual_binding
+    return rf.Rf1086SourceApprovalManifest(manifest, _hash(_canonical(manifest)), order, xml)
 
 
 def assert_matches(approved: rf.Rf1086SourceApprovalManifest,

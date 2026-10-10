@@ -10,6 +10,11 @@ def build(source: rf.Rf1086YearSourceSnapshotV2,
           preview: rf.Rf1086SourcePreview) -> rf.Rf1086SourceReadinessProofV2:
     rf.assert_rf1086_year_source_integrity_v2(source)
     rf.assert_rf1086_source_preview_matches(preview, source)
+    return _compose(source, preview)
+
+
+def _compose(source, preview):
+    """Bind an already validated saved preview; callers choose fresh or retained validation."""
     evidence = rf.Rf1086SourceReadinessEvidenceV2(
         company_id=source.company_id, income_year=source.income_year,
         source_id=source.source_id, source_version=source.version,
