@@ -494,6 +494,7 @@
     "registerObservationDatabase": "apps/backend/tests/test_rf1086_register_observation_database.py",
     "registerProjection": "apps/backend/tests/test_rf1086_register_projection.py",
     "sourceWorkflow": "apps/backend/tests/test_shareholder_register_source_workflow.py",
+    "sourceContextV2": "apps/backend/tests/test_rf1086_source_context_v2.py",
     "sourcePreview": "apps/backend/tests/test_rf1086_source_preview.py",
     "sourcePreviewDatabase": "apps/backend/tests/test_rf1086_source_preview_database.py",
     "sourceProductionManifest": "apps/backend/tests/test_rf1086_source_production.py",

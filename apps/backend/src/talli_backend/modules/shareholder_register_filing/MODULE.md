@@ -1793,8 +1793,8 @@ current renderer, fresh builder, clock, byte store or provider is called.
 The existing adapter supplies a repeatable snapshot; these typed checks do not
 prove SQL enumeration, current owner access, original document bytes or signed
 provenance. They do not add the serializer's size or canonical transport rules,
-or invent RF captures for opaque off-year Governance commitments. Correction
-wiring and fresh writers remain separate work. The explicit retained stream
+or invent RF captures for opaque off-year Governance commitments. Fresh v2
+writers and final current-source admission remain separate work. The explicit retained stream
 adds the bounded outward export described below.
 
 `test_rf1086_retained_archive_source.py` and the independent
@@ -1907,3 +1907,36 @@ public validators stay unchanged. The coherent pre-change application vectors
 remain frozen; each changed reader/projector trace and intended v3 transition is
 reviewed separately. Actual restricted-role database and full release evidence
 must be reported from execution, including any unexecuted cases.
+
+
+### Staged source-v2 context builder (2026-10-10)
+
+`application/shareholder_register_source_context_v2.py` adds
+`build_verified_source_context_v2` from complete public Governance year-register
+projection, verified Documents projections and the supplied current RF read
+scope. Existing capture, admission, HTTP, persistence and SQL grants do not call
+it. It validates the public owner projection, maps every company-wide compact
+chain, and pairs each selected capital receipt with its full effective RF
+observation. Original Governance event, actor, finalization, document commitments
+and amendment/withdrawal references remain unchanged. The current observation
+must match event economics, scope, before/after states and the chain cutoff.
+
+The selected document union includes original Governance documents, all
+amendment memos and intermediate/effective replacements. Retained metadata,
+source year, hash and length commitments must match the supplied projections;
+conflicting shared-document commitments fail. Governance semantic revisions are
+not Documents versions. Prior-year RF originals keep their real source year;
+Governance original/memo source-year policy remains its public owner's rule.
+Off-year chains remain opaque owner commitments without invented local bytes or
+observation reads. Dividend receipts use the existing normalization; unsupported
+nominal-increase producers and unresolved/reversed originals remain blocked.
+
+Focused tests compose actual public Governance service/anchor/amendment/year
+builders and RF observation/source builders with synthetic Documents and current
+reader authority. They establish correspondence and exact owner bytes, not live
+owner completeness, retained byte availability, RLS, Auth or write admission.
+Future capture/admission must perform original-byte I/O outside guards, return
+committed key replay first, then rerun complete public validation and original
+assertions on the held company/year connection before Governance proof production
+and RF append. Fresh source/approval/claim/intent, intake UI and binary drain
+remain separate activation prerequisites.
