@@ -506,8 +506,15 @@ def test_private_dispatcher_requires_actual_company_and_year_transaction_guards(
 def test_committed_source_history_is_immutable_and_runtime_has_no_direct_head_write(original):
     source = store(original)
     with connection(original['seed'], 'shareholder_register_filing_store_owner') as db:
-        with pytest.raises(psycopg.Error, match='rf1086_source_immutable'):
-            db.execute('update ' + TABLE + ' set request_sha256=%s where id=%s', ('f' * 64, source.source_id.value))
+        # FORCE RLS has no UPDATE policy, so ordinary owner UPDATE affects zero
+        # rows. Isolate the immutable-trigger backstop in a rollback-only scope;
+        # even a missing trigger/failed expectation cannot commit the mutation.
+        with db.transaction(force_rollback=True):
+            db.execute('alter table ' + TABLE + ' no force row level security')
+            with pytest.raises(psycopg.Error, match='rf1086_source_immutable'):
+                with db.transaction():
+                    db.execute('update ' + TABLE + ' set request_sha256=%s where id=%s', ('f' * 64, source.source_id.value))
+        assert db.execute('select relforcerowsecurity from pg_class where oid=%s::regclass', (TABLE,)).fetchone()[0] is True
     with connection(original['seed'], 'shareholder_register_filing_executor') as db:
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             db.execute('delete from ' + HEADS + ' where company_id=%s', (original['seed']['company'],))

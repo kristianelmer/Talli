@@ -285,5 +285,7 @@
   "rfFreshSourceV2Context20261010": "rf-fresh-source-v2-context-20261010.json",
   "rfSourceV2HeldOwnerPorts20261010": "rf-source-v2-held-owner-ports-20261010.json",
   "historicalCi38042950875Attempt2": "ci-38042950875-attempt2.json",
-  "rfPredecessorSuiteOrder20261010": "rf-predecessor-suite-order-20261010.json"
+  "rfPredecessorSuiteOrder20261010": "rf-predecessor-suite-order-20261010.json",
+  "historicalCi38047236840": "ci-38047236840.json",
+  "rfSourceV2ImmutableFixtureRepair20261010": "rf-source-v2-immutable-fixture-repair-20261010.json"
 }
