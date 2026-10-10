@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Governance cash fixture Banking table-result repair",
+  "status": "IMPLEMENTED_REVIEWED_STATIC_AND_BOUNDED_DOUBLE_CHECKS_PASS_REAL_DB_RECHECK_PENDING",
+  "recordedAtUtc": "2026-10-10T08:02:34.629672+00:00",
+  "baseRevision": "5cf628868f0999717fa486726abf98dbe2744d59",
+  "trigger": {
+    "runId": 38030386771,
+    "test": "test_actual_owner_proofs_mint_exact_pure_receipt_without_rewriting_originals[cash_capital_increase-registered]",
+    "error": "TypeError: tuple indices must be integers or slices, not str"
+  },
+  "change": {
+    "path": "apps/backend/tests/governance_register_evidence_amendment_fixture.py",
+    "beforeSha256": "cbf16ea513c6ad23a33afabd4a0b8f79558beb3b1005c439193647141c7d4612",
+    "afterSha256": "adc105641db822d05fea038fc2aef680863def2478181573a4a987072db95b42",
+    "behavior": "Select the named items JSONB output from Banking list_records_v1 and iterate its array. The routine returns a table; scalar selection had returned a composite tuple."
+  },
+  "preserved": [
+    "Restricted banking_executor and transaction-local verified owner/company context",
+    "Public import_statement_v1 and importedCount == 1 assertion",
+    "Exact company array, owner, null cursor and 100-row limit",
+    "Exact sourceHash lookup and transaction/date/amount/digest fact binding",
+    "Transaction/context manager and authority cleanup",
+    "All production APIs/SQL/ACL/RLS and downstream assertions"
+  ],
+  "checks": {
+    "exactTwoLineEditAstCompile": "PASS",
+    "protectedSourcesByteEqual": 6,
+    "boundedShapeProbe": "Committed old body reproduces TypeError; exact working body returns matching fact. Missing hash still raises StopIteration; bad import count still raises before list. Uses cursor doubles.",
+    "standardsFindings": 0,
+    "specFindings": 0,
+    "correctionWipPreserved": 4
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-banking-fixture-standards-review-v1.json",
+      "sha256": "2a58b5ea2dc311799532f20447618f088a69ba1e064426ee4491fdc64bbe5e7b",
+      "bytes": 3520
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-banking-fixture-spec-review-v1.json",
+      "sha256": "3e9e6cf6af96614a1df8013c2512c831ba8b828299547f1415d9882d7dcc5f44",
+      "bytes": 5141
+    }
+  ],
+  "privateEvidence": [
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-banking-fixture-repair-plan-v1.json",
+      "sha256": "a2ebb0c254614af879ad3eabd0de898be4ff560dc93e91bed739078914e9f331",
+      "bytes": 8298
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-banking-fixture-root-checks-v1.json",
+      "sha256": "359f88f761425f69d40ff6bcfc6e7c1ade57b086bc116800b3139f5c7df7bb0d",
+      "bytes": 3032
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/check-governance-banking-fixture-working-shape-v2.py",
+      "sha256": "3f794b4de205b012247b6fb34441f98f2554feaf4ee52704fd9861111083aa66",
+      "bytes": 4499
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-banking-fixture-working-shape-probe-v2.json",
+      "sha256": "4d960877a2f369272d643dc58eac92ca1f585044b9233600663edf886d540061",
+      "bytes": 1871
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-banking-fixture-working-shape-v2.log",
+      "sha256": "a0cc5e94e4a4ddbff0a6d267be69e9e45cc01bd3928646b982f819d34b93da0b",
+      "bytes": 1936
+    }
+  ],
+  "requiredNextProof": [
+    "Existing cash Governance database regression and all downstream fixture users in the complete PR release CI"
+  ],
+  "limits": [
+    "No PostgreSQL, RLS, real role or Banking execution is established by static review or cursor doubles.",
+    "The v2 probe script checks the committed old function body and exact actual working-tree function body. Its inherited artifact label says current/candidate; the script and root scope establish which bodies were executed.",
+    "No added or weakened test assertions and no product change.",
+    "Pending source-correction WIP and frozen compatibility vectors remain outside this commit.",
+    "All A1\u2013A7 and eventual pilot/provider acceptance gates remain pending; no activation, real data, filing or outreach."
+  ]
+}

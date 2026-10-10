@@ -274,5 +274,6 @@
   "rfRetainedStreamExport20261010": "rf-retained-stream-export-20261010.json",
   "historicalCi38027757820": "ci-38027757820.json",
   "ledgerReversalReceiptFixture20261010": "ledger-reversal-receipt-fixture-20261010.json",
-  "historicalCi38030386771": "ci-38030386771.json"
+  "historicalCi38030386771": "ci-38030386771.json",
+  "governanceBankingFixtureRepair20261010": "governance-banking-fixture-repair-20261010.json"
 }

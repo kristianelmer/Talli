@@ -205,8 +205,8 @@ def imported_bank_fact(seed):
         result = db.execute('select banking.import_statement_v1(%s,%s)', (Jsonb(dict(companyId=str(seed['company']), incomeYear=2026,
             idempotencyKey=str(uuid4()), transactions=[dict(transactionDate=EVENT_DATE.isoformat(), text='Owned cash contribution', amount='15000.00', sourceHash=digest)])), str(seed['owner']))).fetchone()[0]
         assert result['importedCount'] == 1
-        listed = db.execute("select banking.list_records_v1('transactions',%s::uuid[],null,100,%s)", ([seed['company']], str(seed['owner']))).fetchone()[0]
-        row = next(item for item in listed['items'] if item['sourceHash'] == digest)
+        items = db.execute("select items from banking.list_records_v1('transactions',%s::uuid[],null,100,%s)", ([seed['company']], str(seed['owner']))).fetchone()[0]
+        row = next(item for item in items if item['sourceHash'] == digest)
     return gov.SupportedCorporateBankFact(gov.BankTransactionReference(row['transactionId']), LocalDate(EVENT_DATE), Money.nok('15000.00'), digest)
 
 
