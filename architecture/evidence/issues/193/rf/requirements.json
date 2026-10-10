@@ -289,5 +289,6 @@
   "historicalCi38047236840": "ci-38047236840.json",
   "rfSourceV2ImmutableFixtureRepair20261010": "rf-source-v2-immutable-fixture-repair-20261010.json",
   "rfSourceV2GuardedCapture20261010": "rf-source-v2-guarded-capture-20261010.json",
-  "historicalCi38049772036": "ci-38049772036.json"
+  "historicalCi38049772036": "ci-38049772036.json",
+  "rfSourceV2OffYearFixtureRepair20261010": "rf-source-v2-off-year-fixture-repair-20261010.json"
 }

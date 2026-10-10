@@ -24,10 +24,11 @@ from rf1086_year_source_v2_database_fixture import (
     admitted, amendment_fixture_authority, withdrawal_fixture_role, closed_source_role, source_login,
     original_fixture, amend, next_amendment, inputs, prepare, append_source, store, rows,
     connection, withdrawal, register_capture, append_amendment, DATABASE_URL, ROOT,
-    inactive_inputs, pending_governance_event, admit_source_year, mint_proof, APPEND, LOCK, GOV_READER, TABLE, HEADS,
+    inactive_inputs, pending_governance_event, mint_proof, APPEND, LOCK, GOV_READER, TABLE, HEADS,
     PRODUCER, RECEIVER, INVALIDATOR, PROOFS,
 )
 from test_governance_register_evidence_amendment_database import wait_for_company_lock
+from test_governance_reporting_register_evidence_database import adapter as reporting_projection
 from test_rf1086_year_source_v2 import projection
 from test_rf1086_year_source_storage_v2 import records
 from test_rf1086_year_source_database import session as rf_session
@@ -603,9 +604,25 @@ def guarded_raw(db, source):
         (source.company_id.value, source.income_year.value, rf.serialize_rf1086_year_source_v2(source)))
 
 
+def corrupt_owned_proof_year(db, item, source):
+    """Negative temp-slot fixture; shipped Company Access admits only 2026.
+
+    A real owner producer mints the supported-year proof first. Only the RF
+    owner can alter its private temporary slot; no unsupported admission rows,
+    durable records, permissions or production constraints are changed.
+    """
+    assert source.income_year.value == 2026
+    db.execute('set local role shareholder_register_filing_store_owner')
+    changed = db.execute('update ' + PROOFS + ' set income_year=2025 '
+        'where transaction_id=pg_current_xact_id() and actor_id=%s and company_id=%s '
+        'and income_year=2026 and source_sha256=%s',
+        (str(source.command.actor_id.subject), source.company_id.value, source.source_sha256))
+    assert changed.rowcount == 1
+    db.execute(sql.SQL('set local role {}').format(sql.Identifier(item['source_role'])))
+
+
 @pytest.mark.parametrize('mismatch', ['absent', 'source', 'year', 'transaction'])
 def test_owner_proof_is_required_for_exact_source_scope_and_transaction(original, mismatch):
-    if mismatch == 'year': admit_source_year(original['seed'], 2025)
     if mismatch == 'transaction':
         with connection(original['seed'], original['source_role']) as db:
             source = prepare(db, original)
@@ -618,7 +635,9 @@ def test_owner_proof_is_required_for_exact_source_scope_and_transaction(original
         if mismatch == 'source':
             mint_proof(db, source)
             source = prepare(db, original)
-        elif mismatch == 'year': mint_proof(db, source, changes={'year': 2025})
+        elif mismatch == 'year':
+            mint_proof(db, source)
+            corrupt_owned_proof_year(db, original, source)
         with pytest.raises(psycopg.Error, match=CHANGED): append_source(db, source, proof=False)
     assert rows(original) == []
 
@@ -695,24 +714,26 @@ def test_original_replay_does_not_invalidate_valid_owner_proof(original):
 
 def test_same_company_write_invalidates_off_year_proof_even_without_chain_manifest_change(original):
     pending = pending_governance_event(original)
-    item = original | {'source_inputs': inactive_inputs(original['seed'], year=2025)}
-    with connection(item['seed'], item['source_role']) as db:
-        source = prepare(db, item)
-        assert source.income_year.value == 2025
+    with connection(original['seed'], original['source_role']) as db:
+        source = prepare(db, original)
+        assert source.income_year.value == 2026
         assert source.governance_projection.chains[0].income_year.value == 2026
         mint_proof(db, source)
+        # Invalidation is company-wide, even for an off-year private slot. This
+        # is not a claim that the 2026-only admission policy accepts 2025.
+        corrupt_owned_proof_year(db, original, source)
         mint_proof(db, prepare(db, original))
-        assert proof_count(db, item['source_role']) == 2
+        assert proof_count(db, original['source_role']) == 2
         db.execute('set local role corporate_governance_workflow_executor')
         db.execute('select corporate_governance.complete_supported_event_v1(%s,%s)',
-            (Jsonb(pending), str(item['seed']['owner'])))
-        assert proof_count(db, item['source_role']) == 0
+            (Jsonb(pending), str(original['seed']['owner'])))
+        assert proof_count(db, original['source_role']) == 0
         with pytest.raises(psycopg.Error, match=CHANGED):
             with db.transaction(): append_source(db, source, proof=False)
         # A new owner read may mint fresh lineage evidence. It still does not
-        # authenticate the carried Python old-year/status/business digest.
+        # authenticate the carried Python status/business digest.
         mint_proof(db, source)
-        assert proof_count(db, item['source_role']) == 1
+        assert proof_count(db, original['source_role']) == 1
 
 
 @pytest.mark.parametrize('statement', [
@@ -744,29 +765,30 @@ def test_receiver_and_invalidator_are_closed_to_runtime_and_fixture_callers(orig
 
 @pytest.mark.parametrize('first', ['proof', 'amendment'])
 @pytest.mark.parametrize('commit', [False, True])
-def test_both_company_lock_orders_capture_only_committed_governance_amendments(original, first, commit):
+def test_both_company_lock_orders_reject_stale_source_using_only_committed_governance_amendments(original, first, commit):
     pending = next_amendment(original)
-    item = original | {'source_inputs': inactive_inputs(original['seed'], year=2025)}
+    # next_amendment already withdrew the selected 2026 RF original. At the
+    # supported year, an unchanged chain is therefore stale RF evidence; a
+    # committed amendment changes the proof manifest before that RF check.
     queued = Queue()
     def competing():
         role = original['source_role'] if first == 'amendment' else 'corporate_governance_workflow_executor'
         with connection(original['seed'], role) as db:
             queued.put(db.execute('select pg_backend_pid()').fetchone()[0])
             if first == 'proof': return append_amendment(db, pending)
-            source = prepare(db, item)
-            try: append_source(db, source)
-            except psycopg.Error as error:
-                assert commit and CHANGED in str(error)
-                return None
-            assert not commit
-            return source
+            source = prepare(db, original)
+            with pytest.raises(psycopg.Error, match=CHANGED if commit else STALE):
+                append_source(db, source)
     with ThreadPoolExecutor(max_workers=1) as pool:
         role = original['source_role'] if first == 'proof' else 'corporate_governance_workflow_executor'
         with connection(original['seed'], role) as db:
             if first == 'proof':
-                source = prepare(db, item)
+                source = prepare(db, original)
                 mint_proof(db, source)
-                append_source(db, source, proof=False)
+                # Preserve the outer company/year guards while recovering the
+                # expected SQL failure; otherwise the waiter would not block.
+                with pytest.raises(psycopg.Error, match=STALE):
+                    with db.transaction(): append_source(db, source, proof=False)
             else: append_amendment(db, pending)
             future = pool.submit(competing)
             wait_for_company_lock(queued.get(timeout=3))
@@ -774,8 +796,13 @@ def test_both_company_lock_orders_capture_only_committed_governance_amendments(o
             if commit: db.commit()
             else: db.rollback()
         result = future.result(timeout=8)
-    assert len(rows(original)) == (int(commit) if first == 'proof' else int(not commit))
-    if first == 'amendment': assert (result is None) == commit
+    assert rows(original) == []
+    if first == 'amendment': assert result is None
+    with connection(original['seed'], 'shareholder_register_filing_store_owner') as db:
+        assert db.execute('select count(*) from ' + HEADS + ' where company_id=%s',
+            (original['seed']['company'],)).fetchone()[0] == 0
+    view = reporting_projection(original)
+    assert view.register_chains[0].amendment_count == int(first == 'proof' or commit)
 
 
 def test_proof_actor_binding_survives_switch_to_another_current_accepted_owner(original):
