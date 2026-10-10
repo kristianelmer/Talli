@@ -31,6 +31,8 @@ MIGRATION = '20261009232839_documents_historical_original_integrity.sql'
 GOVERNANCE_SUCCESSOR = '20261009234529_governance_register_evidence_amendments.sql'
 GOVERNANCE_APPLICATION = '20261010001936_governance_register_evidence_application.sql'
 REPORTING_PROJECTION = '20261010005413_governance_reporting_register_evidence.sql'
+RF_SOURCE_V2 = '20261010013307_rf1086_closed_year_source_v2.sql'
+GOV_SOURCE_PROOF = '20261010015851_governance_rf_year_source_proof.sql'
 ASSERTION = 'documents.assert_historical_original_integrity_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,timestamptz,text)'
 TABLE = 'documents.retained_originals'
 UNSET = object()
@@ -80,6 +82,8 @@ def assertion_role(documents_authority):
         db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
         db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_APPLICATION).read_text())
         db.execute((ROOT / 'supabase/migrations' / REPORTING_PROJECTION).read_text())
+        db.execute((ROOT / 'supabase/migrations' / RF_SOURCE_V2).read_text())
+        db.execute((ROOT / 'supabase/migrations' / GOV_SOURCE_PROOF).read_text())
         db.execute(sql.SQL('create role {} nologin noinherit nobypassrls').format(sql.Identifier(name)))
         db.execute(sql.SQL('grant {} to {} with inherit false,set true').format(sql.Identifier(name), sql.Identifier(documents_authority)))
         grant_assertion(db, name)
@@ -425,6 +429,8 @@ def test_closed_assertion_helpers_reapply_and_retained_rollback_preserve_all_aut
             restored.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
             restored.execute((ROOT / 'supabase/migrations' / GOVERNANCE_APPLICATION).read_text())
             restored.execute((ROOT / 'supabase/migrations' / REPORTING_PROJECTION).read_text())
+            restored.execute((ROOT / 'supabase/migrations' / RF_SOURCE_V2).read_text())
+            restored.execute((ROOT / 'supabase/migrations' / GOV_SOURCE_PROOF).read_text())
     assert rows(retained) == before_rows
     with connection(retained) as db: assert assert_integrity(db, retained) == metadata_text(retained['document'])
     with psycopg.connect(retained['url']) as db:

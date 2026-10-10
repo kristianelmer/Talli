@@ -28,6 +28,8 @@ from test_rf1086_source_review_bridge_database import bridge
 
 pytestmark = pytest.mark.authority_database
 MIGRATION = '20261009215302_rf1086_withdrawal_source_admission_guards.sql'
+RF_SOURCE_V2 = '20261010013307_rf1086_closed_year_source_v2.sql'
+GOV_SOURCE_PROOF = '20261010015851_governance_rf_year_source_proof.sql'
 GUARD = 'shareholder_register_filing.assert_source_register_observations_active_internal_v1'
 LEGACY_FUNCTIONS = (
     'shareholder_register_filing.read_source_approval_context_v1(uuid,uuid,text)',
@@ -47,6 +49,8 @@ def downstream(annual_fixture, staged):
     f['staged'] = dict(staged, store=f['store'])
     with psycopg.connect(DATABASE_URL) as db:
         db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
+        db.execute((ROOT / 'supabase/migrations' / RF_SOURCE_V2).read_text())
+        db.execute((ROOT / 'supabase/migrations' / GOV_SOURCE_PROOF).read_text())
         db.execute('set local role shareholder_register_filing_store_owner')
         db.execute(sql.SQL('grant execute on function ' + ','.join(EXTRA_FUNCTIONS) + ' to {}').format(sql.Identifier(staged['role'])))
     try:
@@ -445,6 +449,8 @@ def test_migration_replay_retains_catalog_attributes_closed_grants_and_rollback_
         before = db.execute(catalog).fetchall()
         memberships = db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall()
         db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
+        db.execute((ROOT / 'supabase/migrations' / RF_SOURCE_V2).read_text())
+        db.execute((ROOT / 'supabase/migrations' / GOV_SOURCE_PROOF).read_text())
         assert db.execute(catalog).fetchall() == before
         assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall() == memberships
         for role in ('anon', 'authenticated', 'service_role', 'shareholder_register_filing_executor', 'corporate_governance_workflow_executor'):

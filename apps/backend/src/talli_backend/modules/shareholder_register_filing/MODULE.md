@@ -1259,10 +1259,10 @@ isolated native codec probes are not full Supabase/RLS/race execution evidence.
 
 The additive `Rf1086YearSourceSnapshotV2` and explicit `*_year_source_*_v2`
 functions bind unchanged business commands to effective register evidence after a
-Governance evidence amendment. They have no persistence, workflow, HTTP, preview,
-readiness, production or Archive consumer yet. Existing SQL source writers and
-withdrawal admission guards still accept only v1. No caller may treat this pure
-foundation as activated source capture.
+Governance evidence amendment. They have no activated workflow, HTTP, preview, readiness, production or Archive
+consumer. The closed persistence foundation below stages v2 validation while the
+existing executable SQL writer remains v1-only. Neither foundation activates
+source capture.
 
 `Rf1086YearGovernanceReceiptV2` retains the exact old ten-field original receipt
 and adds the complete effective RF observation. The separate RF-local projection
@@ -1321,3 +1321,103 @@ points are `prepare_rf1086_year_source_v2`, `assert_rf1086_year_source_fresh_v2`
 `serialize_rf1086_year_source_v2` and `parse_rf1086_year_source_v2`. Freshness checks
 compare the entire stored compact projection as well as its named digests, because
 opaque owner digest labels alone cannot authenticate different supplied links.
+
+
+### Closed year-source v2 SQL foundation
+
+`20261010013307_rf1086_closed_year_source_v2.sql` adds
+`append_year_source_v2(id uuid, company uuid, year integer, version integer,
+source_sha text, request_sha text, key text, previous uuid, previous_sha text,
+reason text, snapshot text, confirmed_at timestamptz) RETURNS void`. Only its
+store owner can execute it; no runtime role, workflow, HTTP route or adapter
+selects this writer. The signature and insertion/lock/predecessor/duplicate
+ordering follow v1. Direct append is not a replay API: exact committed recovery
+continues through the existing actor/company/year/key lookup, before fresh work.
+A repeated raw append may fail the predecessor gate before the duplicate-key
+check. Source revision is independent of storage codec version.
+
+The thirteen new routines form a closed RF-owned implementation: `append_year_source_v2`,
+`assert_year_source_v2_internal_v1`, `receive_year_source_governance_proof_v1`,
+`invalidate_year_source_governance_proofs_v1` and
+`year_source_v2_{require,json,sha,shape,decode,validate,row,compact,proof_catalog}_internal_v1`.
+Their decoder derives field types from
+an independent closed registry, rejects noncanonical raw JSON, duplicate/extra
+keys, exponent/fractional bare integers and integers exceeding the released
+Python 4,300-digit ceiling. It preserves embedded observation offsets/decimal
+wrapper values while recomputing source, request, case and freshness hashes with
+unchanged source numeric canonical semantics. Fresh rows bind authenticated USER
+kind/subject, scope, every argument, predecessor and strictly later capture time.
+It checks local chain linkage/times, manifest, receipt/event bijection and
+observation/document bindings. These checks do not duplicate full RF case
+readiness or economic policy; final pure preparation remains required.
+
+Governance produces an explicit RF-owned compact proof through
+`receive_year_source_governance_proof_v1(company uuid, year integer, source_sha text,
+proof jsonb, subject text) RETURNS void`. Its JSON object has exactly `codec`
+(`rf1086-year-governance-proof-v1`), plain UUID `company_id`, integer `income_year`,
+`chain_count`, `chain_enumeration_sha256` and `chains`. Chains use the decoded
+RF v2 chain value shape, including boxed company/year/observation identities,
+complete links, original anchor/finalization, head, effective fact and cutoff.
+Only Governance's store owner receives EXECUTE; no caller-supplied GUC/JSON can
+mint authority. RF never queries/imports Governance. The caller must already hold
+company then RF-year guards under READ COMMITTED; subject and current accepted
+owner are checked. The producer and writer remain closed to runtime roles.
+
+The receiver creates `pg_temp.rf1086_year_source_governance_proofs` as the RF store
+owner, `ON COMMIT DROP`, with only six NOT NULL builtin columns: transaction_id
+(xid8), actor_id/company_id (uuid), income_year (integer), source_sha256 (text)
+and proof (jsonb). Each receive/use/invalidation checks the fixed session-temp
+namespace, ordinary temporary relation, exact RF owner/columns/types/nullability,
+owner-only table/column ACLs and absence of defaults/generated/identity fields,
+constraints, indexes, rules, triggers, inheritance, partitions and RLS. It never
+adopts or alters a caller-created substitute. Missing RF-owner database TEMP
+privilege fails closed; no database privilege is added. Every use binds the full
+transaction ID, verified current actor, company/year, source SHA and entire proof;
+cleanup is not the only barrier to cross-transaction reuse. Multiple source proofs
+may coexist and be reused by nested fresh hooks in the same transaction.
+
+Governance's owned mutation triggers call only
+`invalidate_year_source_governance_proofs_v1(company uuid) RETURNS void`; they
+clear all proofs for the company, including other years/actors/source hashes.
+NULL is reserved for its TRUNCATE invalidation. Successful same-transaction
+mutation therefore requires proof reacquisition; rolling back the mutation also
+rolls back its invalidation. Company guards serialize other transactions.
+RF independently rereads each current effective observation and compares exact
+retained wrapper bytes on every use. No foreign private table/helper is queried.
+
+The proof authenticates the company-wide chain manifest and every compact link;
+Governance's original reporting-year selection/status/hash is not in its SQL
+projection. The old-year label remains syntactically/hash-bound, not independently
+authenticated here. The later same-connection public Python producer must validate
+it and the combined projection before activation. These comparisons do not prove
+original object bytes, historical signedness or current economic policy.
+
+Only the raw-source assertion gains an exact-codec dispatch. Its v1 body and all
+eight hook locations remain unchanged, including replay-before-fresh-admission
+ordering. The existing executable `append_year_source_v1` remains v1-only; its
+sole added rule rejects a fresh v1 insert after the current head is v2 with
+`rf1086_source_codec_downgrade`. No new Governance dependency is applied to an
+unchanged v1 scope. Malformed storage/argument bindings fail with
+`rf1086_source_storage_invalid`; changed current RF reference with
+`rf1086_source_register_observation_stale`; changed owner chain commitment with
+`rf1086_source_governance_evidence_changed`. Unknown dependency failures remain
+errors, not fabricated empty history.
+
+RF reinstallation closes non-owner grants on all thirteen new routines; the
+ordered Governance proof suffix restores only the two owner command grants and
+its four invalidation triggers. Retentive rollbacks keep rows/heads, definitions,
+dispatch, downgrade fence, triggers and installed owner proof grants while closing
+new runtime callers. They are not old-binary rollbacks. Predecessor fixtures
+restore both ordered suffixes. Presence probes use exact catalog OID/name/signature
+joins without foreign schema privileges. Empty-only disposable Governance
+rehearsal recognizes the exact additional four routines/triggers; populated
+amendment history still refuses teardown.
+
+Writer selection remains blocked on dual-read runtime/preview/approval/intake/
+archive support, same-connection business validation, byte preflight and verified
+old-producer drain. The amended-before-first-v2 case remains a separate activation
+gate: it must not silently fall back to a v1 source from withdrawn original
+facts. No Archive-facade, cancellation or external activation policy changes.
+`test_rf1086_year_source_v2_database.py` uses released owner writers and a unique
+fixture-only append and producer grants. Collection is not full database execution. Isolated
+native codec/migration probes label their public-owner stubs explicitly.

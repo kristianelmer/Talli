@@ -30,6 +30,8 @@ pytestmark = pytest.mark.authority_database
 ROLE = 'corporate_governance_workflow_executor'
 SIGNATURE = 'corporate_governance.read_guarded_reporting_register_evidence_v1(uuid,integer,text)'
 MIGRATION = '20261010005413_governance_reporting_register_evidence.sql'
+RF_SOURCE_V2 = '20261010013307_rf1086_closed_year_source_v2.sql'
+GOV_SOURCE_PROOF = '20261010015851_governance_rf_year_source_proof.sql'
 UNSET = object()
 
 
@@ -279,6 +281,9 @@ def test_migration_reapply_and_retentive_rollback_preserve_history_and_other_aut
     try:
         with psycopg.connect(DATABASE_URL, autocommit=True) as db:
             db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text(), prepare=False)
+            assert not db.execute("select has_function_privilege('shareholder_register_filing_store_owner',p.oid,'EXECUTE') from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.proname='read_guarded_reporting_register_evidence_v1'").fetchone()[0]
+            db.execute((ROOT/'supabase/migrations'/RF_SOURCE_V2).read_text(), prepare=False)
+            db.execute((ROOT/'supabase/migrations'/GOV_SOURCE_PROOF).read_text(), prepare=False)
         with connection(ready['seed'], 'corporate_governance_store_owner') as db: assert catalog(db) == prior
         assert read(ready) == before
         with psycopg.connect(DATABASE_URL, autocommit=True) as db:
@@ -291,4 +296,7 @@ def test_migration_reapply_and_retentive_rollback_preserve_history_and_other_aut
     finally:
         with psycopg.connect(DATABASE_URL, autocommit=True) as db:
             db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text(), prepare=False)
+            assert not db.execute("select has_function_privilege('shareholder_register_filing_store_owner',p.oid,'EXECUTE') from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.proname='read_guarded_reporting_register_evidence_v1'").fetchone()[0]
+            db.execute((ROOT/'supabase/migrations'/RF_SOURCE_V2).read_text(), prepare=False)
+            db.execute((ROOT/'supabase/migrations'/GOV_SOURCE_PROOF).read_text(), prepare=False)
     with connection(ready['seed'], 'corporate_governance_store_owner') as db: assert catalog(db) == prior

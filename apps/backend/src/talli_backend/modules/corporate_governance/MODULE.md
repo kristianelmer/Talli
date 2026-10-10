@@ -1,7 +1,7 @@
 # Corporate governance backend capability
 
 <!-- architecture-inventory
-{"dependencies":["query:company_access","query:documents","query:ledger","query:shareholder_register_filing"],"ownedTables":["corporate_governance.annual_close_artifacts","corporate_governance.annual_close_decisions","corporate_governance.annual_close_events","corporate_governance.annual_close_finalizations","corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments","corporate_governance.register_evidence_amendments","corporate_governance.shareholder_loans","corporate_governance.supported_events"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
+{"dependencies":["command:shareholder_register_filing","query:company_access","query:documents","query:ledger","query:shareholder_register_filing"],"ownedTables":["corporate_governance.annual_close_artifacts","corporate_governance.annual_close_decisions","corporate_governance.annual_close_events","corporate_governance.annual_close_finalizations","corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments","corporate_governance.register_evidence_amendments","corporate_governance.shareholder_loans","corporate_governance.supported_events"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
 -->
 
 ## Purpose and ownership
@@ -564,3 +564,41 @@ when restoring the final topology. Coverage lives in
 `test_corporate_governance_reporting_register_evidence.py`,
 `test_postgres_corporate_reporting_register_evidence.py`, and
 `test_governance_reporting_register_evidence_database.py`.
+
+
+### Closed RF year-source proof producer
+
+`20261010015851_governance_rf_year_source_proof.sql` adds the runtime-closed
+`prepare_rf_year_source_governance_proof_v1(company uuid, year integer, source_sha
+text, subject text) RETURNS void`. Under the caller's company guard it reads the
+existing complete public reporting/register projection and translates its own
+public anchor/receipt values to the explicit RF compact chain contract. RF's
+public `receive_year_source_governance_proof_v1(uuid,integer,text,jsonb,text)`
+also verifies the held RF-year guard, current subject/owner and READ COMMITTED.
+Only the Governance store owner may execute the receiver and public
+`invalidate_year_source_governance_proofs_v1(uuid)`; RF obtains no Governance
+query/grant/import. The capability graph stays Governance → RF.
+
+`rf_year_source_fact_internal_v1`, `rf_year_source_chain_internal_v1` and
+`invalidate_rf_year_source_proof_internal_v1` are private helpers. Both owned
+`supported_events` and `register_evidence_amendments` tables have exact AFTER
+INSERT/UPDATE/DELETE row triggers and AFTER TRUNCATE statement triggers. A changed
+company clears all its transaction-local proofs across years/actors/source hashes;
+TRUNCATE clears all. Current/previous company are both invalidated if changed.
+This covers successful same-transaction mutation; savepoint rollback restores
+both owner facts and the preceding proof. Existing company guards serialize other
+transactions. No stored event/economics/history is rewritten by this producer.
+
+The RF-owned temp relation is never an archive/history record or an authorization
+lease. Each use rechecks its catalog, full xid8, actor/scope/source SHA and exact
+compact proof, then current RF evidence. The SQL proof commits complete chains;
+old reporting-year selection/status/hash remains the unchanged public Python
+builder's later same-connection responsibility. No full-byte/Banking proof,
+source-writer, HTTP, RF workflow or Archive activation is introduced.
+Reapplication restores only the two owner-to-owner grants and closes all four
+new Governance routines to runtime callers. Retentive rollback preserves the
+invalidation triggers/owner grants. Disposable empty-only rehearsal separately
+recognizes the exact 28-routine topology (also preserving older 22/23/24 states),
+drops only the four new triggers before their helper, and refuses populated
+amendment history. The new RF database tests use fixture-only producer grants;
+collection/native stubs do not claim full database execution.

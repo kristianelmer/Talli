@@ -13,6 +13,8 @@ insert into pg_temp.governance_amendment_rehearsal_grants
   ('shareholder_register_filing','assert_current_register_observation_v2','uuid, uuid, integer, integer, text, timestamp with time zone, text'),
   ('shareholder_register_filing','read_retained_register_observation_withdrawal_v1','uuid, uuid, integer, uuid, integer, text, text, timestamp with time zone, text'),
   ('shareholder_register_filing','read_current_register_observation_evidence_v1','uuid, uuid, integer, integer, text, timestamp with time zone, text'),
+  ('shareholder_register_filing','receive_year_source_governance_proof_v1','uuid, integer, text, jsonb, text'),
+  ('shareholder_register_filing','invalidate_year_source_governance_proofs_v1','uuid'),
   ('ledger','assert_unamended_governance_entry_v1','uuid, uuid, integer, uuid, uuid, date, text, timestamp with time zone, jsonb, text'),
   ('documents','assert_historical_original_integrity_v1','uuid, uuid, uuid, integer, text, text, integer, timestamp with time zone, timestamp with time zone, text'),
   ('documents','assert_retained_original_v1','uuid, uuid, uuid, integer, text, text, integer, timestamp with time zone, text')
@@ -86,10 +88,44 @@ begin
   select array_agg(name order by name collate "C") into expected
    from unnest(expected||array['read_guarded_reporting_register_evidence_v1']) name;
  end if;
+ -- The closed proof suffix adds exactly four contracts and four triggers.
+ -- Partial/unexpected inventories must not disappear inside a predecessor run.
+ if exists(select 1 from pg_catalog.pg_proc where pronamespace='corporate_governance'::regnamespace
+  and proname in ('rf_year_source_fact_internal_v1','rf_year_source_chain_internal_v1',
+   'prepare_rf_year_source_governance_proof_v1','invalidate_rf_year_source_proof_internal_v1')) then
+  if pg_catalog.array_length(expected,1)<>24 or (select count(*)=4 from
+   (values ('rf_year_source_fact_internal_v1','jsonb','jsonb'),('rf_year_source_chain_internal_v1','jsonb','jsonb'),
+    ('prepare_rf_year_source_governance_proof_v1','uuid, integer, text, text','void'),
+    ('invalidate_rf_year_source_proof_internal_v1','','trigger')) e(name,args,result)
+   join pg_catalog.pg_proc p on p.proname=e.name and pg_catalog.oidvectortypes(p.proargtypes)=e.args
+    and p.prorettype=e.result::regtype and p.prokind='f'
+   where p.pronamespace='corporate_governance'::regnamespace) is distinct from true
+  then raise exception 'governance_amendment_rehearsal_inventory_changed'; end if;
+  if (select count(*)=4 from pg_catalog.pg_trigger t join pg_catalog.pg_class c on c.oid=t.tgrelid
+   join pg_catalog.pg_proc f on f.oid=t.tgfoid where c.relnamespace='corporate_governance'::regnamespace
+    and c.relname in ('supported_events','register_evidence_amendments')
+    and f.pronamespace=c.relnamespace and f.proname='invalidate_rf_year_source_proof_internal_v1'
+    and pg_catalog.oidvectortypes(f.proargtypes)='' and t.tgenabled='O' and not t.tgisinternal
+    and t.tgqual is null and t.tgconstraint=0 and not t.tgdeferrable and not t.tginitdeferred
+    and t.tgnargs=0 and pg_catalog.octet_length(t.tgargs)=0 and t.tgattr::text=''
+    and t.tgoldtable is null and t.tgnewtable is null
+    and ((t.tgname='zz_rf_year_source_proof_invalidation' and t.tgtype=29)
+     or (t.tgname='zz_rf_year_source_proof_truncate_invalidation' and t.tgtype=32))) is distinct from true
+  then raise exception 'governance_amendment_rehearsal_inventory_changed'; end if;
+  select array_agg(name order by name collate "C") into expected from unnest(expected||array[
+   'rf_year_source_fact_internal_v1','rf_year_source_chain_internal_v1',
+   'prepare_rf_year_source_governance_proof_v1','invalidate_rf_year_source_proof_internal_v1']) name;
+  drop trigger zz_rf_year_source_proof_invalidation on corporate_governance.supported_events;
+  drop trigger zz_rf_year_source_proof_invalidation on corporate_governance.register_evidence_amendments;
+  drop trigger zz_rf_year_source_proof_truncate_invalidation on corporate_governance.supported_events;
+  drop trigger zz_rf_year_source_proof_truncate_invalidation on corporate_governance.register_evidence_amendments;
+ end if;
  select array_agg(p.proname::text order by p.proname collate "C") into actual
  from pg_catalog.pg_proc p where p.pronamespace='corporate_governance'::regnamespace
   and (p.proname like 'register_evidence_%_internal_v1'
-   or p.proname in ('append_register_evidence_amendment_v1','lookup_register_evidence_amendment_v1','read_register_evidence_chain_v1','prepare_register_evidence_amendment_v1','read_guarded_reporting_register_evidence_v1'));
+   or p.proname in ('append_register_evidence_amendment_v1','lookup_register_evidence_amendment_v1','read_register_evidence_chain_v1','prepare_register_evidence_amendment_v1','read_guarded_reporting_register_evidence_v1',
+    'rf_year_source_fact_internal_v1','rf_year_source_chain_internal_v1',
+    'prepare_rf_year_source_governance_proof_v1','invalidate_rf_year_source_proof_internal_v1'));
  if actual is distinct from expected then raise exception 'governance_amendment_rehearsal_inventory_changed'; end if;
  for item in select p.oid::regprocedure::text as signature from pg_catalog.pg_proc p
   where p.pronamespace='corporate_governance'::regnamespace and p.proname=any(expected)

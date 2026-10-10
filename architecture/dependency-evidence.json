@@ -485,6 +485,15 @@
     {
       "from": "backend:corporate_governance",
       "imports": [
+        "shareholder_register_filing.invalidate_year_source_governance_proofs_v1(uuid)",
+        "shareholder_register_filing.receive_year_source_governance_proof_v1(uuid,integer,text,jsonb,text)"
+      ],
+      "kind": "command",
+      "to": "backend:shareholder_register_filing"
+    },
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
         "shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)",
         "shareholder_register_filing.read_current_register_observation_evidence_v1(uuid,uuid,integer,integer,text,timestamptz,text)",
         "shareholder_register_filing.read_retained_register_observation_withdrawal_v1(uuid,uuid,integer,uuid,integer,text,text,timestamptz,text)"

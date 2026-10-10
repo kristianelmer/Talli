@@ -31,6 +31,8 @@ MIGRATION = '20261009225857_ledger_governance_entry_assertion.sql'
 GOVERNANCE_SUCCESSOR = '20261009234529_governance_register_evidence_amendments.sql'
 GOVERNANCE_APPLICATION = '20261010001936_governance_register_evidence_application.sql'
 REPORTING_PROJECTION = '20261010005413_governance_reporting_register_evidence.sql'
+RF_SOURCE_V2 = '20261010013307_rf1086_closed_year_source_v2.sql'
+GOV_SOURCE_PROOF = '20261010015851_governance_rf_year_source_proof.sql'
 SIGNATURE = 'ledger.assert_unamended_governance_entry_v1(uuid,uuid,integer,uuid,uuid,date,text,timestamptz,jsonb,text)'
 TABLES = ('entries', 'entry_contexts', 'entry_sources', 'entry_reversals', 'entry_corrections',
           'cash_capital_increase_phases', 'loss_coverage_capital_reduction_phases')
@@ -62,6 +64,8 @@ def assertion_role():
         db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
         db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_APPLICATION).read_text())
         db.execute((ROOT / 'supabase/migrations' / REPORTING_PROJECTION).read_text())
+        db.execute((ROOT / 'supabase/migrations' / RF_SOURCE_V2).read_text())
+        db.execute((ROOT / 'supabase/migrations' / GOV_SOURCE_PROOF).read_text())
         db.execute(sql.SQL('create role {} nologin noinherit').format(sql.Identifier(name)))
         db.execute(sql.SQL('grant {} to {} with set true granted by {}').format(sql.Identifier(name), sql.Identifier(principal), sql.Identifier(principal)))
         grant_fixture(db, name)
@@ -396,6 +400,8 @@ def test_staged_runtime_acl_catalog_reapply_and_retentive_rollback(saved):
             restored.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
             restored.execute((ROOT / 'supabase/migrations' / GOVERNANCE_APPLICATION).read_text())
             restored.execute((ROOT / 'supabase/migrations' / REPORTING_PROJECTION).read_text())
+            restored.execute((ROOT / 'supabase/migrations' / RF_SOURCE_V2).read_text())
+            restored.execute((ROOT / 'supabase/migrations' / GOV_SOURCE_PROOF).read_text())
     with connection(saved['seed'], saved['role']) as db: call(db, saved)
     with connection(saved['seed'], 'ledger_executor') as db:
         with pytest.raises(psycopg.errors.InsufficientPrivilege): call(db, saved)
