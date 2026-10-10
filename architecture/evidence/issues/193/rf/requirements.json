@@ -296,8 +296,8 @@
   "savedSourceV2Admission": "rf-source-v2-admission-20261010.json",
   "historicalCi38055007322": "ci-38055007322.json",
   "governanceCallableAccessFixture": "rf-governance-callable-access-fixture-20261010.json",
-  "latestIntegrationCiObservation": "ci-38090403930.json",
-  "latestIntegrationCiStatus": "FAILED_OVERALL: 17b260ec Application11000PASS/2SKIP; Billing700PASS; Authority1512PASS/1FAIL/41UNEXECUTED including all36 approval PASSED. Closed claim9PASS/1 direct invalidation fixture setupFAIL/10UNEXECUTED. Failure precedes replay; all20 prerequisite uncleared. Browser/identity diagnostic not reached. Canonical/A1-A7/all-three handoffs pending.",
+  "latestIntegrationCiObservation": "ci-38092997011.json",
+  "latestIntegrationCiStatus": "FAILED_OVERALL: b549 Application11000PASS/2SKIP; Billing700PASS; Authority1512PASS/1 timestamp/reason invalidation-pair CHECK setupFAIL/41UNEXECUTED, all36approvalPASS. Claim9PASS/1setupFAIL/10UNEXECUTED; verified-owner context now passes trigger but no replay result. Browser/identitydiagnostic unreached. All20 claim prerequisite/canonical/A1-A7/all-three pending.",
   "historicalCi38057406479": "ci-38057406479.json",
   "retainedReaderLiveRequestFixtureRepair": "rf-correction-reader-live-request-fixture-20261010.json",
   "closedSourceV2Preview": "rf-source-v2-preview-20261010.json",
@@ -328,5 +328,7 @@
   "historicalCi38090403930": "ci-38090403930.json",
   "closedClaimInvalidationContextFixtureRepair20261010": "rf-claim-invalidation-context-fixture-repair-20261010.json",
   "companyTestRetentionFoundation": "rf-company-test-retention-foundation-20261010.json",
-  "companyTestRetentionFoundationStatus": "UNWIRED_FOUNDATION_V2_SPEC0_STANDARDS0: opaque original payload_hash preserved; existing restricted session writer with no undeclared admin executor SET. local61new+39protected/27projectednative/129selectors PASS;365oldfunctionspans exact;24fullschema cases and complete1578Authority collectionONLY. RET002 public pipeline/independentAuth/fullscope pending. Completed failed CI38092997011 tested onlypublishedb549, no retention activation."
+  "companyTestRetentionFoundationStatus": "UNWIRED_FOUNDATION_V2_SPEC0_STANDARDS0: opaque original payload_hash preserved; existing restricted session writer with no undeclared admin executor SET. local61new+39protected/27projectednative/129selectors PASS;365oldfunctionspans exact;24fullschema cases and complete1578Authority collectionONLY. RET002 public pipeline/independentAuth/fullscope pending. Completed failed CI38092997011 tested onlypublishedb549, no retention activation.",
+  "historicalCi38092997011": "ci-38092997011.json",
+  "closedClaimInvalidationPairFixtureRepair20261010": "rf-claim-invalidation-pair-fixture-repair-20261010.json"
 }

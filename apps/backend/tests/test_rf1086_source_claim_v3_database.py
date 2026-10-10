@@ -68,9 +68,9 @@ def invalidate_approval(state, approval_id):
     # The admission trigger reads the immutable binding under FORCE RLS.
     # Use the existing scoped owner fixture, as retained-reader tests do.
     with connection(state.item['seed'], 'shareholder_register_filing_store_owner') as db:
-        row = db.execute('update shareholder_register_filing.filing_approval_snapshots set invalidated_at=clock_timestamp() where id=%s returning id,invalidated_at',
-            (approval_id,)).fetchone()
-        assert row is not None and str(row[0]) == str(approval_id) and row[1] is not None
+        row = db.execute('update shareholder_register_filing.filing_approval_snapshots set invalidated_at=clock_timestamp(),invalidation_reason=%s where id=%s returning id,invalidated_at,invalidation_reason',
+            ('claim-fixture', approval_id)).fetchone()
+        assert row is not None and str(row[0]) == str(approval_id) and row[1] is not None and row[2] == 'claim-fixture'
 
 
 def rows(state):
