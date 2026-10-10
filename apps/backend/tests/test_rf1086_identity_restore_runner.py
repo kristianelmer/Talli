@@ -160,6 +160,57 @@ def test_private_configuration_never_escapes_command_failure(monkeypatch, timeou
     assert private not in str(error.value)
 
 
+@pytest.mark.parametrize(('diagnostic', 'message'), [
+    ('database_in_use', b'database "postgres" is being accessed by other users'),
+    ('extension_unavailable', b'could not open extension control file "/private/extension.control"'),
+    ('permission_denied', b'permission denied for schema private_schema'),
+    ('missing_role', b'role "private_role" does not exist'),
+    ('missing_schema', b'schema "private_schema" does not exist'),
+    ('missing_relation', b'relation "private_schema.private_table" does not exist'),
+    ('object_already_exists', b'relation "private_table" already exists'),
+    ('unclassified', b'private-unknown-error'),
+])
+def test_restore_failure_has_safe_diagnostic_without_rendering_stderr(monkeypatch, diagnostic, message):
+    import hashlib
+    private = b'private-password-hash-or-auth-key'
+    stderr = b'pg_restore: error: could not execute query: ERROR:  ' + message + b'\nCommand was: ' + private
+    monkeypatch.setattr(identity.subprocess, 'run', lambda *_args, **_kwargs:
+        SimpleNamespace(returncode=1, stderr=stderr))
+    with pytest.raises(RuntimeError) as error:
+        identity.checked(['docker', 'exec', '-i', 'owned-target', 'pg_restore', '--create'])
+    rendered = str(error.value)
+    assert 'pg_restore diagnostic=' + diagnostic in rendered
+    assert 'stderr_bytes=' + str(len(stderr)) in rendered
+    assert 'stderr_sha256=' + hashlib.sha256(stderr).hexdigest() in rendered
+    assert private.decode() not in rendered and message.decode() not in rendered
+
+
+@pytest.mark.parametrize('multiline', [False, True])
+def test_restore_diagnostic_ignores_sql_payload_that_looks_like_an_error(monkeypatch, multiline):
+    stderr = (b'pg_restore: error: could not execute query: ERROR:  private-unknown-error\n'
+              b'Command was: INSERT INTO secret VALUES (\'permission denied\', '
+              b'\'database "postgres" is being accessed by other users\');')
+    if multiline:
+        stderr = (b'pg_restore: error: could not execute query: ERROR:  private-unknown-error\n'
+                  b"Command was: INSERT INTO secret VALUES ('\npg_restore: error: permission denied\n');")
+    monkeypatch.setattr(identity.subprocess, 'run', lambda *_args, **_kwargs:
+        SimpleNamespace(returncode=1, stderr=stderr))
+    with pytest.raises(RuntimeError, match='pg_restore diagnostic=unclassified'):
+        identity.checked(['docker', 'exec', '-i', 'owned-target', 'pg_restore', '--create'])
+
+
+@pytest.mark.parametrize('prefix', [
+    b'pg_restore: error: private-unknown-first-error\n',
+    b'Command was: INSERT INTO secret VALUES (\'\n',
+])
+def test_restore_diagnostic_does_not_scan_past_first_error_or_sql_boundary(monkeypatch, prefix):
+    stderr = prefix + b'pg_restore: error: permission denied\n'
+    monkeypatch.setattr(identity.subprocess, 'run', lambda *_args, **_kwargs:
+        SimpleNamespace(returncode=1, stderr=stderr))
+    with pytest.raises(RuntimeError, match='pg_restore diagnostic=unclassified'):
+        identity.checked(['docker', 'exec', '-i', 'owned-target', 'pg_restore', '--create'])
+
+
 @pytest.mark.parametrize('port', ['22', '65536', '123\nsecret', 'abc'])
 def test_explicit_tunnel_ports_fail_closed(monkeypatch, port):
     monkeypatch.setenv('TALLI_RF_IDENTITY_AUTH_PORT', port)

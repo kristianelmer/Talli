@@ -296,8 +296,8 @@
   "savedSourceV2Admission": "rf-source-v2-admission-20261010.json",
   "historicalCi38055007322": "ci-38055007322.json",
   "governanceCallableAccessFixture": "rf-governance-callable-access-fixture-20261010.json",
-  "latestIntegrationCiObservation": "ci-38082673570.json",
-  "latestIntegrationCiStatus": "FAILED_OVERALL: b7 Application10949PASS/2SKIP; Billing700PASS; Authority1534PASS, including all36 actual closed-approval cases (prerequisite cleared). RF browser37PASS/1FAIL; all9 ordinary recovery journeys and first3 main owned DB restores PASS. Rejected-predecessor stops before cancellation due legacy V3 baseline versus current V4 export. Six-call fixture repair reviewed Spec0/Standards0 with78 local cases; full browser retry pending. Retention/object/deleted independentAuth and canonical/all-three acceptance remain pending.",
+  "latestIntegrationCiObservation": "ci-38086791422.json",
+  "latestIntegrationCiStatus": "FAILED_OVERALL: fce Application10949PASS/2SKIP; Billing700PASS; Authority1534PASS including all36 approval cases again. RF browser37PASS/1FAIL; first3 main owned DB restores and retention_hold DB/object receipt asserted. Actual cancellation/deletion and deleted DB/object checks reached independent identity pg_restore; opaque restore error stops independent Auth/actor lifecycle. Diagnostic-only next retry; all20 new claim actual cases pending. Canonical/A1-A7/all-three handoffs pending.",
   "historicalCi38057406479": "ci-38057406479.json",
   "retainedReaderLiveRequestFixtureRepair": "rf-correction-reader-live-request-fixture-20261010.json",
   "closedSourceV2Preview": "rf-source-v2-preview-20261010.json",
@@ -322,5 +322,7 @@
   "historicalCi38082673570": "ci-38082673570.json",
   "cancellationCurrentV4FixtureRepair20261010": "rf-cancellation-current-v4-fixture-repair-20261010.json",
   "closedSourceV3Claim": "rf-source-v3-claim-20261010.json",
-  "closedSourceV3ClaimStatus": "REVIEWED_CLOSED_IMPLEMENTATION: Spec0/Standards0; local439(new39)/projectednative30/selector129 PASS; protected181spans/six legacy files exact; all20 new full-schema cases collectionONLY. Current fixture-only CI38086791422 excludes claim WIP; successor actual claim prerequisite pending before intent implementation. No route/runtime grant/provider activation; canonical/A1-A7/all-three handoffs remain pending."
+  "closedSourceV3ClaimStatus": "REVIEWED_CLOSED_IMPLEMENTATION: Spec0/Standards0; local439(new39)/projectednative30/selector129 PASS; protected181spans/six legacy files exact; all20 new full-schema cases collectionONLY. Current fixture-only CI38086791422 excludes claim WIP; successor actual claim prerequisite pending before intent implementation. No route/runtime grant/provider activation; canonical/A1-A7/all-three handoffs remain pending.",
+  "historicalCi38086791422": "ci-38086791422.json",
+  "independentIdentityRestoreDiagnostic20261010": "rf-independent-identity-restore-diagnostic-20261010.json"
 }

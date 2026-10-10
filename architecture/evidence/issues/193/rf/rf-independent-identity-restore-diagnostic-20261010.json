@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "REVIEWED_BOUNDED_RESTORE_DIAGNOSTIC_NO_ROOT_CAUSE_REPAIR",
+  "recordedAtUtc": "2026-10-10T22:09:59.029730+00:00",
+  "baseRevision": "ed6f81ef1483b8fbfd8fb92ce79ff7dbd175fc53",
+  "failedActualRun": 38086791422,
+  "failedActualHead": "fcebc0f1500e923dce28d438e2a216150100356d",
+  "actualFailure": "Deleted-state independent identity pg_restore nonzero; underlying stderr suppressed, actual cause unknown. Independent Auth/actor lifecycle unreached.",
+  "scope": "Only exact Docker exec -i pg_restore failures receive fixed heuristic category, stderr byte count/SHA. First error header only; unknown first header or SQL boundary is unclassified. No raw stderr, SQL, identifiers, command inputs, Auth config or environment rendered. Timeout/restore flags/ownership/grants/cleanup/other commands unchanged.",
+  "frozenSource": [
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/scripts/rf1086_identity_restore.py",
+      "sha256": "b228765c9d529debf59ea2f6b2862774e481f8fb1a5864744da78f70be7bb22f",
+      "bytes": 34030
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/test_rf1086_identity_restore_runner.py",
+      "sha256": "5ef6cced84d787f86a8960d5a8fa674ca1730abccd1c6f30efda59f2fd09872a",
+      "bytes": 16413
+    }
+  ],
+  "freeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-identity-restore-diagnostic-freeze-v2.json",
+    "sha256": "dff8b29c3ef28e9c261f547681feda11543a4acb6e4f97b99ea9779590729c84",
+    "bytes": 5864
+  },
+  "reviews": {
+    "Spec": 0,
+    "Standards": 0,
+    "reports": [
+      {
+        "path": "/private/tmp/talli-release-20261009/rf-identity-restore-diagnostic-spec-review-v2.json",
+        "sha256": "312dd51dcfe940cbb6c26878afbcc4717fa09684e8db1a674d53424b79b1d4d7",
+        "bytes": 36871
+      },
+      {
+        "path": "/private/tmp/talli-release-20261009/rf-identity-restore-diagnostic-standards-review-v2.json",
+        "sha256": "6a49351dc94376956b2cd61303e44d33794b91cf0baa5c6593c8a8eeddb68460",
+        "bytes": 13631
+      }
+    ],
+    "resolvedFinding": "DI1 multiline SQL continuation classification"
+  },
+  "validation": {
+    "runnerPassed": 90,
+    "seconds": 1.87,
+    "newDiagnosticCases": 12,
+    "initialMissingDiagnosticRed": 9,
+    "boundaryRedAgainstByteExactFrozenV1": 3,
+    "boundaryOldCasePassed": 1,
+    "qualification": "Real helper/runner tests with subprocess/resource/protocol doubles only. Neither underlying failed restore nor actual independent Auth/cluster recovery reproduced locally.",
+    "logs": [
+      {
+        "path": "/private/tmp/talli-release-20261009/rf-identity-restore-diagnostic-red-v1.log",
+        "sha256": "0e54bad3c5cc7c18b1bab408cfd96f368c2aa2bdbd9ab91f7346924a8af886b9",
+        "bytes": 19997
+      },
+      {
+        "path": "/private/tmp/talli-release-20261009/rf-identity-restore-diagnostic-boundary-red-v3.log",
+        "sha256": "f5de0d5c6f86a1e9044df2bccce77d275011798a1794a8337b05730640043795",
+        "bytes": 13138
+      },
+      {
+        "path": "/private/tmp/talli-release-20261009/rf-identity-restore-diagnostic-green-v3.log",
+        "sha256": "6c4f8c0b910699bde7d310aed1521ad18c550c8e3ae1386d1520ced708589483",
+        "bytes": 179
+      }
+    ]
+  },
+  "preservation": {
+    "unchangedHelperSpans": 14,
+    "unchangedOldTestFunctions": 7,
+    "oldAssertionsExact": true,
+    "diagnosticIsNoRecoveryAuthority": true
+  },
+  "limits": [
+    "Actual restore rerun pending; no root-cause or independent identity proof.",
+    "All20 new actual claim cases require successor current-head CI before intent implementation.",
+    "Whole prior gate failed; no immutable canonical A/B, A1-A7, all-three or launch clearance.",
+    "No local containers/hosted mutations/spend/provider effects/genuine data/filing/outreach."
+  ]
+}

@@ -1,0 +1,187 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "TERMINAL_PR_CI_APPROVAL_PASS_CANCELLATION_REACHED_INDEPENDENT_IDENTITY_RESTORE_FAIL",
+  "recordedAtUtc": "2026-10-10T22:03:47.466926+00:00",
+  "run": {
+    "id": 38086791422,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38086791422",
+    "head": "fcebc0f1500e923dce28d438e2a216150100356d",
+    "merge": "ebefc80a1841da61912f03a85e76afec20f5947a",
+    "mergeParents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "fcebc0f1500e923dce28d438e2a216150100356d"
+    ],
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-10T21:13:31Z",
+    "updatedAt": "2026-10-10T21:55:16Z",
+    "exactCheckoutInBothRawLogsVerified": true,
+    "currentPrHeadAndMergeFreshlyVerified": true
+  },
+  "jobs": [
+    {
+      "id": 114314872987,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-10T21:13:33Z",
+      "completedAt": "2026-10-10T21:45:23Z"
+    },
+    {
+      "id": 114314873211,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T21:13:33Z",
+      "completedAt": "2026-10-10T21:55:11Z"
+    },
+    {
+      "id": 114314873907,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-10T21:13:32Z",
+      "completedAt": "2026-10-10T21:13:31Z"
+    },
+    {
+      "id": 114322696473,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T21:55:13Z",
+      "completedAt": "2026-10-10T21:55:15Z"
+    }
+  ],
+  "application": {
+    "passed": 10949,
+    "skipped": 2,
+    "deselected": 2322,
+    "durationSeconds": 967.1,
+    "allStepsSuccess": true,
+    "productionDependencyAuditsZero": true,
+    "rawLog": {
+      "path": "/private/tmp/talli-release-20261009/ci38086791422-app-raw-v1.log",
+      "sha256": "9c1519b61ffbc6459eb58ccf43971423036362893e7a0489846d98fdbf6c8f0f",
+      "bytes": 468392
+    }
+  },
+  "database": {
+    "initialHarness": {
+      "passed": 17,
+      "skipped": 1,
+      "durationSeconds": 0.15
+    },
+    "billing": {
+      "passed": 700,
+      "durationSeconds": 207.48
+    },
+    "authority": {
+      "selected": 1534,
+      "passed": 1534,
+      "failed": 0,
+      "skipped": 0,
+      "durationSeconds": 566.79,
+      "newApprovalCasesPassed": 36,
+      "all36ExpectedNodesPassOnly": true,
+      "approvalPrerequisiteCleared": true,
+      "prerequisiteReceipt": {
+        "path": "/private/tmp/talli-release-20261009/ci38086791422-approval-actual-prerequisite-v1.json",
+        "sha256": "380101ce34d275cb361082898b2c9ec8913e050fcea71011e09ca173a4ddc10a",
+        "bytes": 8288
+      }
+    },
+    "laterPythonPassCounts": [
+      15,
+      22,
+      3,
+      7,
+      41
+    ],
+    "laterNodePassCounts": [
+      1,
+      13,
+      14
+    ],
+    "rfBrowser": {
+      "selected": 38,
+      "passed": 37,
+      "failed": 1,
+      "skipped": 0,
+      "durationMs": 1207486.73711,
+      "allNineOrdinaryUnknownCrashJourneysPassed": true,
+      "firstThreeMainOwnedDatabaseRestoresCompleted": true,
+      "failure": {
+        "case": "owner completes RF capture, rejected-predecessor correction and lost main response through the canonical backend",
+        "script": "scripts/rf1086_identity_restore.py",
+        "line": 353,
+        "boundary": "Deleted-state independent fresh cluster pg_restore --clean --if-exists --create into template1 after exact owned source/target checks and role restoration. Raw stderr intentionally suppressed; cause unknown.",
+        "underlyingRestoreErrorUnobserved": true,
+        "independentAuthStartupAndActorLifecycleUnreached": true
+      },
+      "additionalProgress": {
+        "qualification": "Derived from exact checked source control flow and observed deleted --restore-identity invocation; no failed aggregate receipt or independent identity proof claimed.",
+        "retentionHoldOwnedDatabaseAndObjectRestoreReceiptAsserted": true,
+        "actualCancellationAndIndependentReviewerFinalDeletionAsserted": true,
+        "deletedStateDatabaseObjectAndRetainedOriginalChecksReturnedBeforeIdentityStage": true,
+        "independentFreshClusterCreatedAndRoleRestoreReturned": true,
+        "independentIdentityDatabaseRestoreCompleted": false
+      }
+    },
+    "rawLog": {
+      "path": "/private/tmp/talli-release-20261009/ci38086791422-db-raw-v1.log",
+      "sha256": "ca91b9f8b53253fd34e80b2e0ae0fb2113c753ccddb38c5191e8dd494acd5c90",
+      "bytes": 653786
+    },
+    "publicAcquisitionStep": "SKIPPED_AFTER_RF_BROWSER_FAILURE"
+  },
+  "artifacts": {
+    "totalCount": 0,
+    "canonicalImmutableReceipt": false
+  },
+  "localRepair": {
+    "status": "DIAGNOSTIC_ONLY_LOCAL_VALIDATED_NO_ROOT_CAUSE_REPAIR",
+    "scope": "Finite pg_restore error categories plus stderr byte count/SHA only; no raw stderr, command input, env, SQL, identifiers or new retry/restore behavior. No root-cause fix inferred.",
+    "localPythonCasesPassed": 90,
+    "newDiagnosticCasesRedThenGreen": 12,
+    "fullDeletedIdentityRerunPending": true,
+    "reviewFindingResolvedLocally": "DI1: first real error header only, stop at SQL continuation; unknown first error stays unclassified.",
+    "validationQualification": "Initial9 absent diagnostic RED/87GREEN. Three additional boundary REDs against byte-exact reconstructed frozenV1 classifier; final90 runnerGREEN. All subprocess/resource doubles; actual restore cause unknown."
+  },
+  "privateMetadataPins": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38086791422-terminal-run-v1.json",
+      "sha256": "e38834d44d2a1bef6a013196953fe6a3ce5de6f019cc4e19779b5d948ed54ae2",
+      "bytes": 12736
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38086791422-terminal-jobs-v1.json",
+      "sha256": "edd5d37198467b062a1ca77f1db57611a5c1eaa0100f2f7b58994651add870ba",
+      "bytes": 9999
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38086791422-terminal-pr-ref-v1.json",
+      "sha256": "156c1c830cf91b89bdb9c03db5f0074485229eef5c8136048d689996b89f0a7d",
+      "bytes": 153
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38086791422-artifacts-api-v1.json",
+      "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+      "bytes": 32
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38086791422-merge-parents-v1.json",
+      "sha256": "fb761307631a340b3d4614ffaf2dd5ce4874dee3802792f221f06e23702a35a0",
+      "bytes": 1255811
+    }
+  ],
+  "collectionQualifications": [
+    "Completed DB direct job API returns plain timestamp lines; strict parser checks checkout/main+head parents/fresh current PR ref/full1534/each36PASSED-only. Immutable raw retained."
+  ],
+  "limits": [
+    "All36 actual approval cases passed again; all20 new claim cases excluded from fce and require successor actual execution.",
+    "First three ordinary main owned DB restores passed. Rejected predecessor also returned and asserted the retention_hold DB/object restore receipt; deleted DB/object checks returned before independent fresh-cluster pg_restore failed. Independent identity/Auth/actor lifecycle and whole deleted aggregate remain unproved.",
+    "Six child/confirmation workflows pass journey/archive checks without owned restore branch. Hosted project/keys/objects and physical Auth erasure remain unproved.",
+    "No canonical A/B, protected-main/fullRF technical handoff or all-three readiness. A1-A7 pending; no spending, hosted recovery, provider activation, genuine data, filing or outreach."
+  ]
+}

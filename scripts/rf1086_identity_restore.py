@@ -49,8 +49,35 @@ def checked(args, **kwargs):
     except subprocess.TimeoutExpired:
         raise RuntimeError('Owned identity recovery command timed out: ' + args[1]) from None
     if result.returncode:
-        raise RuntimeError('Owned identity recovery command failed: ' + args[1])
+        diagnostic = ''
+        if args[:3] == ['docker', 'exec', '-i'] and len(args) > 4 and args[4] == 'pg_restore':
+            stderr = result.stderr or b''
+            diagnostic = (f'; pg_restore diagnostic={_restore_failure_diagnostic(stderr)}'
+                          f'; stderr_bytes={len(stderr)}; stderr_sha256={hashlib.sha256(stderr).hexdigest()}')
+        raise RuntimeError('Owned identity recovery command failed: ' + args[1] + diagnostic)
     return result
+
+
+def _restore_failure_diagnostic(stderr):
+    """Finite heuristic labels only; never expose identifiers, SQL or raw stderr."""
+    patterns = (
+        ('database_in_use', rb'database "postgres" is being accessed by other users'),
+        ('extension_unavailable', rb'could not open extension control file'),
+        ('permission_denied', rb'permission denied'),
+        ('missing_role', rb'role "[^"\n]*" does not exist'),
+        ('missing_schema', rb'schema "[^"\n]*" does not exist'),
+        ('missing_relation', rb'relation "[^"\n]*" does not exist'),
+        ('object_already_exists', rb'already exists'),
+    )
+    for line in stderr.splitlines():
+        if line.startswith(b'Command was:'):
+            break
+        if line.startswith(b'pg_restore: error:'):
+            for label, pattern in patterns:
+                if re.search(pattern, line):
+                    return label
+            return 'unclassified'
+    return 'unclassified'
 
 
 def inspect_resource(kind, reference):
