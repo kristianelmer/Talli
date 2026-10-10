@@ -1,0 +1,149 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-10T17:44:40.712868+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "databaseId": 38071170412,
+    "runAttempt": 1,
+    "headSha": "f706edafeb60927f13715bc7a687e0225bddcf35",
+    "status": "completed",
+    "conclusion": "failure",
+    "runStartedAt": "2026-10-10T17:18:08Z",
+    "updatedAt": "2026-10-10T17:31:10Z",
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38071170412"
+  },
+  "checkout": {
+    "revision": "555a3f4d9f213d5765c51cb9df307cf313780c0a",
+    "kind": "pull_request_merge_commit",
+    "parents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "f706edafeb60927f13715bc7a687e0225bddcf35"
+    ]
+  },
+  "jobs": [
+    {
+      "id": 114268706677,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T17:18:10Z",
+      "completed_at": "2026-10-10T17:19:58Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38071170412/job/114268706677"
+    },
+    {
+      "id": 114268706859,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T17:18:10Z",
+      "completed_at": "2026-10-10T17:31:04Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38071170412/job/114268706859"
+    },
+    {
+      "id": 114268707293,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-10T17:18:09Z",
+      "completed_at": "2026-10-10T17:18:08Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38071170412/job/114268707293"
+    },
+    {
+      "id": 114271321737,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T17:31:06Z",
+      "completed_at": "2026-10-10T17:31:09Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38071170412/job/114271321737"
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "conclusion": "failure",
+      "stage": "anonymous official PostgreSQL image prefetch",
+      "candidateCodeChecksExecuted": false,
+      "diagnosis": "17 image succeeded;17-alpine registry token request context deadline exceeded; classifier lacked this exact transient phrase. No credential or paid-service fallback."
+    },
+    "database": {
+      "initialHarness": {
+        "passed": 17,
+        "skipped": 1,
+        "seconds": 0.2
+      },
+      "billing": {
+        "passed": 700,
+        "seconds": 232.58
+      },
+      "authority": {
+        "collected": 1534,
+        "passed": 341,
+        "failed": 1,
+        "notExecuted": 1192,
+        "seconds": 120.3
+      },
+      "newClosedApprovalV3CasesExecuted": 0,
+      "newClosedApprovalV3CasesNotExecuted": 36,
+      "rfBrowserExecuted": false
+    }
+  },
+  "failure": {
+    "case": "test_safe_rollback_retains_review_and_production_barriers_then_exact_recutover",
+    "boundary": "apps/backend/tests/test_rf1086_source_review_bridge_database.py:159 reapplynewapprovalmigration",
+    "exception": "rf1086_approval_v3_definition_drift at versions DOline80 / append_source_approval_v2 publishedbodyfingerprint",
+    "diagnosis": "Earlier source/year preview fixtures replay their base migrations without restoring installed successors. This removes markers used by later topology detection, so withdrawal and sourceV2 layers are omitted. Annual reapply resets appendapprovalv2 without its withdrawal guard; newclosedapproval correctly rejects drift. Projected native7checks reproduced missingmarkers/refusal and strictbody/OID restoration using originally captured order.",
+    "repairScope": "Two old replay/recutover fixture functions record installed successor topology BEFORE anybase reset and restore exactregistered order after eachbase replay. Productionmigrations/fingerprints/guards unchanged; fullschema execution still required."
+  },
+  "notReached": [
+    "1192remainingAuthority cases includingall36newclosedapprovalcases",
+    "LaterSQL/ownerclone/advisors/browserlanes",
+    "Actualownedrestorecodec/browserfourfailureretries",
+    "Applicationcode/build/rehearsal/audit checks",
+    "CanonicalimmutableA/BgatesandRF\u2192Tax\u2192Accountshandoff"
+  ],
+  "workflowArtifacts": {
+    "totalCount": 0,
+    "browserDownloadsAvailable": false
+  },
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38071170412-app-completed-raw-v1.log",
+      "sha256": "b178a636462844c78b33588e6be4e2ae0a842c0ad35e6f088e7fed32e12c6ae5",
+      "bytes": 48633
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38071170412-db-raw.log",
+      "sha256": "7e2c7ba32fa16c815f71c45b3e0de4ca560bbe5e611eea075bc72256644fcf77",
+      "bytes": 384862
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38071170412-terminal-api.json",
+      "sha256": "e0a7468b88b373b430921b2afe96afa392376e619d3b252e0243145162cb696d",
+      "bytes": 12748
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38071170412-terminal-jobs.json",
+      "sha256": "0908edf0af019121d2e29ce67f5d56f87887968eca215d3abfe44230430330f0",
+      "bytes": 9999
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38071170412-artifacts-api.json",
+      "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+      "bytes": 32
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38071170412-merge-parents-v1.json",
+      "sha256": "cab91fbbf7dc0aac01e95f94fd212c5ffa2bdf7ce8704eb034fbaeb1c41f1e63",
+      "bytes": 149
+    }
+  ],
+  "limits": [
+    "Whole run failed; no candidateApplication/fullAuthority/restore/browser/canonicalacceptance result.",
+    "Nativecatalog reproduction uses projectedrowtypes/stubs and publisheddefinitions only; no realAuth/RLS/data/origin/restoration proof.",
+    "No ordinaryactivation/fees/filings/genuinedata oroutreach. AllA1-A7 pending; preserveoriginalWIP andpausedplatform/rotation safeguards.",
+    "EarlierBillingmigrationdeadlock unresolved despite700-case passes."
+  ]
+}

@@ -15,6 +15,8 @@ from talli_backend.shared.kernel import ActorId, ActorKind, UserId, CompanyId, I
 from test_annual_purchase_basis_runtime import admitted
 from test_rf1086_database_runtime import backend_url, rf_fixture_admin_access
 from test_rf1086_year_source import basis
+from test_authority_connections_database_runtime import rf193_consequential_topology
+from governance_completion_rehearsal import read_rehearsal_migration
 
 pytestmark=pytest.mark.authority_database
 DATABASE_URL=os.environ.get('DATABASE_URL','')
@@ -168,14 +170,21 @@ def test_migration_replay_rollback_recutover_preserve_history_and_roles(admitted
     s=session(admitted,backend_url);c,ctx=inputs(admitted,s);source=capture(s,c,ctx)
     with psycopg.connect(DATABASE_URL) as db:
         before=db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()
+        # Record installed layers before a base replay removes their markers.
+        successors=[name for name in rf193_consequential_topology(db) if name > MIGRATION]
         db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
         db.execute((ROOT/'supabase/migrations'/'20260924062746_rf1086_source_company_guard.sql').read_text())
+        for migration in successors:
+            db.execute(read_rehearsal_migration(ROOT, migration))
         assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()==before
     with psycopg.connect(DATABASE_URL) as db:db.execute((ROOT/'supabase/rollback'/MIGRATION).read_text())
     with pytest.raises(rf.ShareholderRegisterFilingError):asyncio.run(s.read_current_year_source(query(c)))
     with psycopg.connect(DATABASE_URL) as db:
         db.execute((ROOT/'supabase/migrations'/MIGRATION).read_text())
         db.execute((ROOT/'supabase/migrations'/'20260924062746_rf1086_source_company_guard.sql').read_text())
+        for migration in successors:
+            db.execute(read_rehearsal_migration(ROOT, migration))
+        assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by roleid,member,grantor').fetchall()==before
     assert asyncio.run(s.read_current_year_source(query(c)))==source
 
 
