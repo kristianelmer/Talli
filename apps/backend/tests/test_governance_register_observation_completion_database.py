@@ -32,7 +32,9 @@ from test_rf1086_register_observation_withdrawal_database import (
 )
 
 pytestmark = pytest.mark.authority_database
-MIGRATION = '20261009223340_governance_register_observation_completion_guard.sql'
+# The frozen completion body is installed by the full predecessor chain. Its
+# exact drift sentinel must not be replayed over the repaired successor.
+MIGRATION = '20261010032531_governance_supported_event_replay_visibility.sql'
 ROLE = 'corporate_governance_workflow_executor'
 V2 = 'shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)'
 
@@ -140,6 +142,25 @@ def test_committed_replay_survives_withdrawal_without_fresh_evidence(completion,
         if prepare: replay = replay['replay']
         assert replay == dict(result, replayed=True)
     assert saved_count(completion) == 1
+
+
+def test_committed_replay_uses_select_visibility_without_update_authority(completion):
+    original = observed(completion)
+    request = request_for(completion, original)
+    with connection(completion, role=ROLE) as db:
+        recorded = call(db, request)
+    with connection(completion, role='corporate_governance_store_owner') as db:
+        assert db.execute("select relrowsecurity,relforcerowsecurity from pg_class where oid='corporate_governance.supported_events'::regclass").fetchone() == (True, True)
+        assert db.execute("select polcmd from pg_policy where polrelid='corporate_governance.supported_events'::regclass order by polcmd").fetchall() == [('a',), ('r',)]
+        # The actor can read the immutable row; a row lock applies the absent
+        # UPDATE policy and hides it. Completion must use SELECT under its
+        # existing company/event advisory guards, without adding UPDATE access.
+        assert db.execute('select event_id from corporate_governance.supported_events where event_id=%s', (request['eventId'],)).fetchone() is not None
+        assert db.execute('select event_id from corporate_governance.supported_events where event_id=%s for update', (request['eventId'],)).fetchone() is None
+    withdraw(completion, original)
+    with connection(completion, role=ROLE) as db:
+        assert call(db, request) == dict(recorded, replayed=True)
+
 
 
 @pytest.mark.parametrize('field', ['companyId','incomeYear','eventId','eventReference','eventDate','eventKind','phase','policyVersion'])
@@ -310,9 +331,13 @@ def test_reinstall_and_retaining_rollback_preserve_all_catalog_attributes_and_ro
     with psycopg.connect(DATABASE_URL) as db:
         before = catalogs(db)
         edges = db.execute('select * from pg_auth_members order by roleid,member,grantor').fetchall()
+        policies = db.execute("select to_jsonb(p) from pg_policy p where polrelid='corporate_governance.supported_events'::regclass order by oid").fetchall()
+        schemas = db.execute("select oid,nspowner,nspacl from pg_namespace where nspname='corporate_governance'").fetchall()
         db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
         db.execute((ROOT / 'supabase/rollback' / MIGRATION).read_text())
         assert catalogs(db) == before
+        assert db.execute("select to_jsonb(p) from pg_policy p where polrelid='corporate_governance.supported_events'::regclass order by oid").fetchall() == policies
+        assert db.execute("select oid,nspowner,nspacl from pg_namespace where nspname='corporate_governance'").fetchall() == schemas
         assert db.execute('select * from pg_auth_members order by roleid,member,grantor').fetchall() == edges
         assert db.execute("select has_schema_privilege('corporate_governance_store_owner','shareholder_register_filing','USAGE'),has_function_privilege('corporate_governance_store_owner',%s,'EXECUTE')", (V2,)).fetchone() == (True, True)
         for role in ('anon','authenticated','service_role','corporate_governance_workflow_executor'):

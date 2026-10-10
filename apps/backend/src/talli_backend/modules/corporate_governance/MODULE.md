@@ -317,6 +317,17 @@ must verify admitted ledger facts and original evidence. Earlier phases/loans ar
 not given a new register requirement. Rollback retains the safety fence and public
 SQL dependency; no withdrawal writer, amendment or Archive policy is activated.
 
+`20261010032531_governance_supported_event_replay_visibility.sql` repairs the
+completion lookup under forced RLS. `supported_events` has SELECT/INSERT policies
+and is immutable; `FOR UPDATE` applies the absent UPDATE policy and hides a
+committed event. The repair removes only that row-lock clause. Existing company
+and event advisory locks serialize writers, and normal SELECT preserves the
+accepted-owner policy. It adds no UPDATE policy or runtime grant. Exact body
+sentinels, function catalog identity, temporary role/schema authority restoration,
+and retaining rollback preserve the rest of the completion contract. Fixture
+reinstallation targets this successor; the frozen predecessor must not be
+reapplied over its changed function body.
+
 ### Pure register-evidence amendment foundation
 
 `anchor_supported_corporate_event_evidence` creates a

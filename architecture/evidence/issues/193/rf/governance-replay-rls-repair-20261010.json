@@ -1,0 +1,271 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "GOVERNANCE_COMMITTED_REPLAY_RLS_REPAIR",
+  "recordedAtUtc": "2026-10-10T03:40:53.691183+00:00",
+  "baseRevision": "d2cc506479f7af4c488b56d00b48a9ce78880ae7",
+  "parentRevision": "3577067f7eb7abef5fd53e90ceb3f41c10a688d7",
+  "scope": "Additive canonical Governance immutable committed replay visibility repair; no policy or runtime grant widening. Separate RF retained validation WIP excluded.",
+  "sourceFiles": [
+    {
+      "path": "supabase/migrations/20261010032531_governance_supported_event_replay_visibility.sql",
+      "sha256": "1256c86d33f855323db8a5bcff4361bca73740919c7e903104cc2c80f7089336",
+      "bytes": 5611
+    },
+    {
+      "path": "supabase/rollback/20261010032531_governance_supported_event_replay_visibility.sql",
+      "sha256": "217966099845128c462d95cb914191512878e168ad6fa2e69da0e3d9067ed6da",
+      "bytes": 243
+    },
+    {
+      "path": "apps/backend/tests/test_governance_register_observation_completion_database.py",
+      "sha256": "226f0bd82d40d16a2fb944c3f547321530c09ab04f2308c70cda72a08da4a3c0",
+      "bytes": 22310
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/module.json",
+      "sha256": "329d2a5e779c634064e00e0f978dca4dfc0bc0195e1747b287e897458513e824",
+      "bytes": 13379
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md",
+      "sha256": "8edd1312abce3668417ecc6de42a89e9c5890379d6ff4c59a5c62279327d888f",
+      "bytes": 40317
+    },
+    {
+      "path": "scripts/rf-consequential-successors.json",
+      "sha256": "aab0f06c8ba56f46e9b1ceae5b9a8fd3e8555aa3fe62e09096b584dcbc050ec8",
+      "bytes": 17520
+    },
+    {
+      "path": "tests/ci_release_gate.test.mjs",
+      "sha256": "21b94105098145f0ea7913835deef4d92ec9e459d5f93bc096b0e58b451d2c07",
+      "bytes": 52644
+    },
+    {
+      "path": "tests/corporate_governance_review_fixes.test.mjs",
+      "sha256": "071b9d7af0de106ae700a0578d228c9f3a3692d6acad88d038e0f4c6a80557f7",
+      "bytes": 10584
+    }
+  ],
+  "originalFailure": {
+    "run": 38019259358,
+    "head": "6193a6f386422638f65307db27a759a5d6d428fd",
+    "receipt": "ci-38019259358.json",
+    "test": "test_committed_replay_survives_withdrawal_without_fresh_evidence[False]",
+    "observed": "Committed completion replay reached fresh RF validation and failed after withdrawal.",
+    "diagnosis": "Separate exact native RLS reproduction shows SELECT sees the committed row while SELECT FOR UPDATE hides it under the absent UPDATE policy."
+  },
+  "implementation": [
+    "One additive owner-bound migration removes only the exact FOR UPDATE clause in complete_supported_event_v1. Existing company-then-event advisory guards provide serialization for immutable events.",
+    "Replay keeps exact company/year/facts/accounting-entry comparisons and returns the stored result. New completion still validates RF identity/currentness and the statement-start evidence cutoff.",
+    "Exact predecessor/repaired body sentinels reject drift. Reapply and retentive rollback preserve all function metadata except the intended body, schema privileges, owner EXECUTE state and role edges.",
+    "No UPDATE policy, bypass-RLS role, runtime grant or foreign internal access is added. Four original migration/rollback files remain byte-identical.",
+    "The completion fixture selects the repaired suffix; a new regression distinguishes ordinary read visibility from locking visibility and verifies replay after withdrawal. Strict migration inventories and successor checks include the new migration."
+  ],
+  "checks": {
+    "nativeDiagnosis": {
+      "groups": 8,
+      "status": "PASS",
+      "purpose": "Red-capable exact forced-RLS root-cause experiment; superseded by whole repair for final migration proof."
+    },
+    "nativeWholeRepair": {
+      "groups": 11,
+      "status": "PASS",
+      "notAdditiveWithDiagnosis": true,
+      "clusterRemoved": true,
+      "detail": "Whole repair/reapply/retentive rollback; exact pg_proc except intended prosrc, missing owner EXECUTE/schema CREATE restoration, roles/policies, all3 capital replay paths, fresh rejection, exact scope/NULL denial, actual same-event commit/rollback company-lock waits, drift-abort cleanup."
+    },
+    "databaseCollection": {
+      "cases": 64,
+      "executed": 0,
+      "status": "PASS"
+    },
+    "initialCentral": {
+      "tests": 131,
+      "pass": 130,
+      "fail": 1,
+      "reason": "Only partition collector failed: default uv attempted a local pyicu build without required ICU tooling. No behavioral assertion failure in the repair."
+    },
+    "targetedFinalPartition": {
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "environment": "Prepared Python runtime with UV_NO_SYNC=1 and UV_PROJECT_ENVIRONMENT; only failed test rerun. Do not claim 131 all rerun."
+    },
+    "architecture": {
+      "status": "PASS",
+      "generatedEvidenceDiff": false
+    },
+    "syntaxAndDiff": {
+      "status": "PASS"
+    },
+    "rootIndependentBodyCheck": {
+      "status": "PASS",
+      "scope": "Static exact predecessor/sole clause deletion, not separate native runtime."
+    }
+  },
+  "commands": [
+    "supabase migration new --help",
+    "supabase migration new governance_supported_event_replay_visibility",
+    "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-governance-replay-rls-native.py > /private/tmp/talli-release-20261009/governance-replay-rls-native-output.log 2>&1",
+    "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-governance-replay-repair-native.py > /private/tmp/talli-release-20261009/governance-replay-repair-native-output.log 2>&1",
+    "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_governance_register_observation_completion_database.py --collect-only -q > /private/tmp/talli-release-20261009/governance-replay-repair-db-collection.log 2>&1",
+    "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node --test tests/corporate_governance_review_fixes.test.mjs tests/ci_release_gate.test.mjs > /private/tmp/talli-release-20261009/governance-replay-repair-central.log 2>&1",
+    "UV_NO_SYNC=1 UV_PROJECT_ENVIRONMENT=/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312 PATH=/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin:$PATH /Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node --test --test-name-pattern='^backend boundary partitions every test across the ordinary, Billing, Authority, Company Tax and Accounts mandatory lanes$' tests/ci_release_gate.test.mjs > /private/tmp/talli-release-20261009/governance-replay-repair-partition-final.log 2>&1",
+    "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node scripts/check-architecture.mjs --write-evidence > /private/tmp/talli-release-20261009/governance-replay-repair-architecture.log 2>&1",
+    "/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m py_compile apps/backend/tests/test_governance_register_observation_completion_database.py > /private/tmp/talli-release-20261009/governance-replay-repair-syntax.log 2>&1",
+    "git diff --check >> /private/tmp/talli-release-20261009/governance-replay-repair-syntax.log 2>&1"
+  ],
+  "frozenPredecessors": [
+    {
+      "path": "supabase/migrations/20260904220000_corporate_governance_supported_events.sql",
+      "sha256": "5a9fa446c726cd87e7be28da1c3719bac6f67c84530e57a5d9f72b697cc687ba"
+    },
+    {
+      "path": "supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql",
+      "sha256": "8efbd5008fba88afc75e6b03be7323805a19bbff4284691207b421562f05aade"
+    },
+    {
+      "path": "supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql",
+      "sha256": "e7b03dabc7eca63f5842ed0345dd856bb4b382d616468f846707fda57cd003ec"
+    },
+    {
+      "path": "supabase/rollback/20261009223340_governance_register_observation_completion_guard.sql",
+      "sha256": "49a781a12df5520ad1e1599fa0f83b234603744edda3601df99b74002affab49"
+    }
+  ],
+  "primarySources": [
+    {
+      "url": "https://www.postgresql.org/docs/17/sql-createpolicy.html",
+      "claim": "UPDATE policies also apply to SELECT FOR UPDATE/SHARE; unmatched policy silently filters rows."
+    },
+    {
+      "url": "https://supabase.com/changelog/postgres-15-19-17-11-breaking-changes",
+      "claim": "Native runtime17.11 checked against relevant release notes; repair uses built-in RLS/DDL/MD5, not affected extension APIs."
+    }
+  ],
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "662e4f59b37905860ed61132907e13f2f2f5095cf66303f3c5f23f7366ce7081"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "0498fef5e29b5c6f59e0b546479facfcaddfb90a46f80752652dbea0c55a8016"
+    },
+    "root": {
+      "unresolved": 0,
+      "reportSha256": "216167bdaa37552a025bbd6389696ef28058288a603723efa99942f615d0104c"
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "governance-replay-repair-freeze.json",
+      "sha256": "9733bef87713e7eda5bb2dea999bf544dc5abff7657d70c4fef182d719951bd4",
+      "bytes": 1931
+    },
+    {
+      "file": "governance-replay-repair-checks.json",
+      "sha256": "640cc932233f39bd35d48fc4eaa813e2327c01e03be7de034ca0111347edce83",
+      "bytes": 9251
+    },
+    {
+      "file": "check-governance-replay-rls-native.py",
+      "sha256": "a172c0afb990ce31373d7e14981f3379c807eed6de62861ad73bad8aac3987fb",
+      "bytes": 17244
+    },
+    {
+      "file": "governance-replay-rls-native.json",
+      "sha256": "523fe39a5cc89fa3e5a572a9145a2c01b8afecc3ca589cbffb7f83b706f911e5",
+      "bytes": 2471
+    },
+    {
+      "file": "governance-replay-rls-native.log",
+      "sha256": "cd44df3cbb3ad8b853c2298e354d3cb5914594df3540c9a437bcc7a935478f1c",
+      "bytes": 972
+    },
+    {
+      "file": "governance-replay-rls-native-output.log",
+      "sha256": "04293254a8bfcb662bafc9af02a629348e8fe0aa1861d0d7b161fe10d1abb24f",
+      "bytes": 2329
+    },
+    {
+      "file": "governance-committed-replay-rls-diagnosis.json",
+      "sha256": "b4680017e3b73c1c1f04d842a7ca2a3437a1833d05970e2970bc3c44ab96a00a",
+      "bytes": 5623
+    },
+    {
+      "file": "check-governance-replay-repair-native.py",
+      "sha256": "4a88be1908b236c30c20fd39be3d641e91c03d4cdf5643447f73a626d2adb2b4",
+      "bytes": 23276
+    },
+    {
+      "file": "governance-replay-repair-native.json",
+      "sha256": "bcd603fe2709d59329b6aa58dafbc72baf35f634952719aa02770b6e0f3d4b50",
+      "bytes": 3124
+    },
+    {
+      "file": "governance-replay-repair-native.log",
+      "sha256": "0823fd5cc3f2ef2b8e1358753f6bd0f1c21f86ac9380e23f869f77b4107457d0",
+      "bytes": 972
+    },
+    {
+      "file": "governance-replay-repair-native-output.log",
+      "sha256": "e11f848a750a53d447e7139fb3321497900915117ace6fe141df5115002ac09c",
+      "bytes": 2968
+    },
+    {
+      "file": "governance-replay-repair-db-collection.log",
+      "sha256": "4ddb3a3b5f4bdcff7ca126bc673d9b5288d629639e13ea8ed31dee6a8dc01add",
+      "bytes": 9821
+    },
+    {
+      "file": "governance-replay-repair-central.log",
+      "sha256": "63f2e922648d2d0e9228e15dc1e3934f404edd1d48f8d5bfc77b4f178551d091",
+      "bytes": 20749
+    },
+    {
+      "file": "governance-replay-repair-partition-final.log",
+      "sha256": "657d6e50fa03b9203f3fe4bc17ce0bb1c7592b1dd934c3d6fc07121b233cccb6",
+      "bytes": 259
+    },
+    {
+      "file": "governance-replay-repair-architecture.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "file": "governance-replay-repair-syntax.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "governance-replay-root-body-check.json",
+      "sha256": "70ae014fd5fec51199b028ac7b40828aa2981f3662503a35ef5abba260dc9d31",
+      "bytes": 772
+    },
+    {
+      "file": "governance-replay-repair-independent-spec.json",
+      "sha256": "662e4f59b37905860ed61132907e13f2f2f5095cf66303f3c5f23f7366ce7081",
+      "bytes": 7243
+    },
+    {
+      "file": "governance-replay-repair-standards-review.json",
+      "sha256": "0498fef5e29b5c6f59e0b546479facfcaddfb90a46f80752652dbea0c55a8016",
+      "bytes": 5576
+    },
+    {
+      "file": "governance-replay-repair-root-review.json",
+      "sha256": "216167bdaa37552a025bbd6389696ef28058288a603723efa99942f615d0104c",
+      "bytes": 1635
+    }
+  ],
+  "limits": [
+    "Eleven native groups use the exact table/FKs, forced RLS policies, company/event guards and completion bodies; CompanyAccess identity/owner and RF assertion remain explicit stubs. The earlier eight diagnostic groups overlap and must not be added.",
+    "64 database cases collected, zero executed locally. Real RF withdrawal, full Supabase authority, complete migration topology, browser and independent Auth restore require a new CI result.",
+    "Initial central run: 130 passed and one uv/pyicu environment setup failure. Only that partition test was rerun with the prepared runtime and passed; this is not a full 131-case rerun.",
+    "CI 38019259358 tested 6193 and failed overall; it excludes this repair and the later pure RF changes. No application-job success transfers to a passing database or immutable gate.",
+    "A1\u2013A7 and two linked immutable complete gates remain pending. No provider activation, genuine-company admission, filing, paid action, outreach or launch clearance."
+  ]
+}
