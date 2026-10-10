@@ -145,7 +145,13 @@
       "Rf1086SourceOperationPreparation",
       "execute_rf1086_source_dispatch",
       "Rf1086SourceDispatchPosition",
-      "inspect_rf1086_source_dispatch_position"
+      "inspect_rf1086_source_dispatch_position",
+      "prepare_rf1086_year_source_v2",
+      "assert_rf1086_year_source_fresh_v2",
+      "assert_rf1086_year_source_integrity_v2",
+      "assert_rf1086_year_source_replay_v2",
+      "serialize_rf1086_year_source_v2",
+      "parse_rf1086_year_source_v2"
     ],
     "events": [],
     "errors": [
@@ -265,7 +271,16 @@
       "Rf1086SourcePreviewPreparation",
       "Rf1086SourceApprovalReview",
       "Rf1086ArchiveSourceReviewBridge",
-      "Rf1086ArchiveSourceApprovalLineage"
+      "Rf1086ArchiveSourceApprovalLineage",
+      "Rf1086YearRegisterFactV2",
+      "Rf1086YearGovernanceHeadV2",
+      "Rf1086YearGovernanceLinkV2",
+      "Rf1086YearGovernanceChainV2",
+      "Rf1086YearGovernanceProjectionV2",
+      "Rf1086YearGovernanceReceiptV2",
+      "Rf1086VerifiedYearSourceContextV2",
+      "Rf1086YearSourceFreshnessV2",
+      "Rf1086YearSourceSnapshotV2"
     ]
   },
   "owns": {
@@ -503,7 +518,9 @@
     "registerObservationLifecycleDatabase": "apps/backend/tests/test_rf1086_register_observation_lifecycle_database.py",
     "observationEvidenceAssertionsDatabase": "apps/backend/tests/test_rf1086_observation_evidence_assertions_database.py",
     "observationEvidenceReaderCodec": "apps/backend/tests/test_rf1086_observation_evidence_reader_codec.py",
-    "observationEvidenceReaderDatabase": "apps/backend/tests/test_rf1086_register_observation_evidence_reader_database.py"
+    "observationEvidenceReaderDatabase": "apps/backend/tests/test_rf1086_register_observation_evidence_reader_database.py",
+    "yearSourceV2": "apps/backend/tests/test_rf1086_year_source_v2.py",
+    "yearSourceStorageV2": "apps/backend/tests/test_rf1086_year_source_storage_v2.py"
   },
   "compatibilityExceptions": []
 }

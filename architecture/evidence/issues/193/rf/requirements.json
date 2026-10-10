@@ -240,5 +240,6 @@
   "governanceReportingRegisterEvidence20261010": "governance-reporting-register-evidence-20261010.json",
   "withdrawalAdmissionFixtureRoleRepair20261010": "withdrawal-admission-fixture-role-repair-20261010.json",
   "architectureQueryExpectationRepair20261010": "architecture-query-expectation-repair-20261010.json",
-  "historicalCi38011213837": "ci-38011213837.json"
+  "historicalCi38011213837": "ci-38011213837.json",
+  "rfYearSourceV220261010": "rf-year-source-v2-20261010.json"
 }

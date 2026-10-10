@@ -1254,3 +1254,70 @@ additional typed vectors in `test_rf1086_observation_evidence_reader_codec.py`.
 Restricted real-database cases are in
 `test_rf1086_register_observation_evidence_reader_database.py`; collection and
 isolated native codec probes are not full Supabase/RLS/race execution evidence.
+
+### Pure full-year source v2 foundation
+
+The additive `Rf1086YearSourceSnapshotV2` and explicit `*_year_source_*_v2`
+functions bind unchanged business commands to effective register evidence after a
+Governance evidence amendment. They have no persistence, workflow, HTTP, preview,
+readiness, production or Archive consumer yet. Existing SQL source writers and
+withdrawal admission guards still accept only v1. No caller may treat this pure
+foundation as activated source capture.
+
+`Rf1086YearGovernanceReceiptV2` retains the exact old ten-field original receipt
+and adds the complete effective RF observation. The separate RF-local projection
+retains all eligible non-correction Governance original chains for the company,
+sorted by event ID, including other years. Each chain binds original finalization,
+anchor, recording time and RF fact, every linear amendment head/previous head,
+withdrawal identity/digest and target/replacement fact, count, chain digest, final
+head and effective fact. The cutoff is the original recording time for zero
+amendments or the last amendment time otherwise. New times are UTC; effective
+observation capture may equal the cutoff, while both must precede source capture.
+Frozen observation and v1 predecessor timestamp encodings remain unchanged and
+are compared by instant. Source revision remains a history ordinal, independent
+of codec version: first v2 may be revision 1, and an explicit v1-to-v2 correction
+requires an exact predecessor, new identity, reason, later time and ordinal + 1.
+
+The source and freshness commit three distinct Governance digests: unchanged old
+year enumeration, complete company-wide chain manifest, and combined projection.
+RF recomputes the public compact manifest and combined digest and checks complete
+supplied target-year chain/capital-receipt and receipt/case-event bijections. It
+validates effective RF observation integrity, identity, states, date and all
+original-document bindings. Cash issue and loss-covering reduction are the
+current capital boundary; v2 does not invent Governance support for nominal
+increases. Dividends retain their unchanged original receipt without an RF chain.
+Off-year chains remain committed without creating off-year reporting events.
+
+These are internal consistency checks, not proof that a foreign owner supplied
+complete history, current status or authentic hashes. Full Governance receipt,
+anchor and chain-enumeration digests remain owner commitments; RF does not
+reimplement their private receipt codec or infer every corrected/reversed/
+conflicting or cross-year reporting rule. The future workflow must reject those
+owner statuses, verify actual original bytes and current accepted ownership, and
+reread the public owner projection under its held company guard. A recomputed
+self-consistent omitted foreign history cannot be detected from compact values
+alone. Integrity also cannot establish the existence of a correction predecessor;
+preparation validates the supplied typed predecessor separately.
+
+The unchanged v1 business validator is reused through a discarded correction-free
+validation projection only. That temporary value is never stored or claimed as a
+historical predecessor. Old public fields, command/request identity and v1 hashes,
+codec registries and behavior are untouched. `year_source_storage_v2.py` owns an
+independent closed record allowlist and explicit `rf1086-year-source-v2` envelope;
+v1 and v2 roots/nested source records cannot substitute for one another. Duplicate
+JSON keys, unknown fields/types and invalid primitive or linkage values fail
+closed. Tests and pre-edit seven-case v1 byte/hash goldens live in
+`test_rf1086_year_source_v2.py`, `test_rf1086_year_source_storage_v2.py` and
+`fixtures/rf1086_year_source_v1_pre_v2.json`. Pure success does not prove database
+admission, currentness, complete historical recovery or external execution.
+
+The additive value exports are `Rf1086YearRegisterFactV2`,
+`Rf1086YearGovernanceHeadV2`, `Rf1086YearGovernanceLinkV2`,
+`Rf1086YearGovernanceChainV2`, `Rf1086YearGovernanceProjectionV2`,
+`Rf1086YearGovernanceReceiptV2`, `Rf1086VerifiedYearSourceContextV2`,
+`Rf1086YearSourceFreshnessV2` and `Rf1086YearSourceSnapshotV2`. The explicit entry
+points are `prepare_rf1086_year_source_v2`, `assert_rf1086_year_source_fresh_v2`,
+`assert_rf1086_year_source_integrity_v2`, `assert_rf1086_year_source_replay_v2`,
+`serialize_rf1086_year_source_v2` and `parse_rf1086_year_source_v2`. Freshness checks
+compare the entire stored compact projection as well as its named digests, because
+opaque owner digest labels alone cannot authenticate different supplied links.
