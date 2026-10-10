@@ -1,0 +1,84 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "GOVERNANCE_OFF_YEAR_MISSING_ANCHOR_FIXTURE_REPAIR",
+  "recordedAtUtc": "2026-10-10T09:52:49.388143+00:00",
+  "baseRevision": "05042db795633ae80d641ea7308c14153b9e6c6a",
+  "diagnosis": "Terminal CI 38040903348 reached 1235 passes, then the off-year corruption helper attempted to move a 2026 Governance row to 2025 while its legitimate Ledger reference remained 2026. The composite FK correctly refused before the reader could reject missing RF anchor.",
+  "change": [
+    "Remove only the helper off_year parameter and year/date UPDATE. Keep the stored event and linked Ledger year intact.",
+    "Read the malformed original at its real year for the same-year case and originalYear+1 for the off-year case. Stored 2026/query 2027 preserves the prior-year relationship of stored 2025/query 2026.",
+    "Keep missing-anchor corruption, canonical owner/workflow roles, RLS/immutable-trigger handling, acquired guard, finally rollback and exact storage_invalid|evidence_mismatch rejection assertion. No schema, constraint, production writer or policy change."
+  ],
+  "sources": [
+    {
+      "path": "apps/backend/tests/test_governance_reporting_register_evidence_database.py",
+      "sha256": "8b67dd2236c818276617d86374b96e60264344879f71d3be27523c2268c1a8be",
+      "bytes": 18052
+    }
+  ],
+  "verification": {
+    "exactBoundedDelta": "PASS; expected full file substitution equals working source; helper has one caller",
+    "workingBodyProbe": {
+      "observations": 4,
+      "artifact": {
+        "path": "/private/tmp/talli-release-20261009/governance-off-year-fixture-working-body-probe-v1.json",
+        "sha256": "9d9f04a6840b69248e6034d7414042b44d040d62e1b7ebbb90d94607b23ca1ed",
+        "bytes": 1452
+      },
+      "limits": "Actual old/current Python helper and test bodies with DB/guard/reader doubles. Old off-year reaches simulated FK before reader; repaired invokes reader at 2027 while stored/Ledger 2026 stay aligned. No DB/RLS proof."
+    },
+    "collection": {
+      "cases": 28,
+      "executed": false,
+      "log": {
+        "path": "/private/tmp/talli-release-20261009/governance-off-year-fixture-collection-v1.log",
+        "sha256": "61ac2a90a7c6495701050a9b8dc35170161e4c97ed8a913af955837f555af8df",
+        "bytes": 3961
+      }
+    },
+    "architecture": {
+      "status": "PASS declared checker; generated evidence equals committed snapshot",
+      "log": {
+        "path": "/private/tmp/talli-release-20261009/governance-off-year-fixture-declared-architecture-v1.log",
+        "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+        "bytes": 20012
+      },
+      "scopeQualification": "Executed with separate untracked context-builder WIP present; no new graph/evidence delta. New context is excluded from the fixture commit and current CI."
+    },
+    "whitespace": "PASS"
+  },
+  "reviews": {
+    "standardsFindings": 0,
+    "specFindings": 0,
+    "reports": [
+      {
+        "path": "/private/tmp/talli-release-20261009/governance-off-year-fixture-final-standards-review-v1.json",
+        "sha256": "ba3c203b71894e076886c3a1db80d035055509f346f7d7a778f43e92032f0b3e",
+        "bytes": 4864
+      },
+      {
+        "path": "/private/tmp/talli-release-20261009/governance-off-year-fixture-final-spec-review-v1.json",
+        "sha256": "51569e59391011ade3cfcacf119694cec8e5e91eab722c23d1b665f40889e6a8",
+        "bytes": 6377
+      }
+    ]
+  },
+  "privatePlanAndFreeze": [
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-off-year-fixture-fk-repair-plan-v1.json",
+      "sha256": "4ccf8e972eabc43516bf66ef57f2dfbdbd389b38d44f5d72b06fabbbd0b909e5",
+      "bytes": 2879
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-off-year-fixture-source-freeze-v1.json",
+      "sha256": "97462dd17b51f971db2b9dab5d83314bcdee3b9f92fc70e9b81545e3747e817f",
+      "bytes": 1111
+    }
+  ],
+  "limits": [
+    "Successor exact full CI must execute the repaired off-year query. 28 collected and 4 double observations are not actual database success.",
+    "All 31 retained correction reader DB cases and later filing/browser/Auth/Tax/Accounts remained unreached in the predecessor run.",
+    "All A1\u2013A7 remain pending; no paid action, activation, real-data admission, filing or outreach."
+  ]
+}

@@ -172,7 +172,7 @@ def test_invalid_requested_year_fails_closed(ready, year):
 
 
 @contextmanager
-def corrupt_supported(item, *, missing_anchor=False, off_year=False):
+def corrupt_supported(item, *, missing_anchor=False):
     """Rollback-only historical-row corruption; never a legitimate source writer."""
     with connection(item['seed'], 'corporate_governance_store_owner') as db:
         try:
@@ -180,8 +180,6 @@ def corrupt_supported(item, *, missing_anchor=False, off_year=False):
             db.execute('alter table corporate_governance.supported_events disable trigger supported_events_immutable')
             if missing_anchor:
                 db.execute("update corporate_governance.supported_events set shareholder_register_source_id=null,canonical_facts=canonical_facts-'shareholderRegisterFact' where event_id=%s", (item['command'].event_id.value,))
-            if off_year:
-                db.execute("update corporate_governance.supported_events set income_year=2025,event_date='2025-09-01' where event_id=%s", (item['command'].event_id.value,))
             db.execute('set local role corporate_governance_workflow_executor')
             guard(db, item)
             yield db
@@ -190,8 +188,10 @@ def corrupt_supported(item, *, missing_anchor=False, off_year=False):
 
 @pytest.mark.parametrize('off_year', [False, True])
 def test_eligible_legacy_original_without_valid_anchor_is_never_skipped(ready, off_year):
-    with corrupt_supported(ready, missing_anchor=True, off_year=off_year) as db:
-        with pytest.raises(psycopg.Error, match='storage_invalid|evidence_mismatch'): projection(db, ready)
+    # Move the query year, preserving the stored event's Ledger composite FK.
+    year = int(ready['original'].event.income_year) + int(off_year)
+    with corrupt_supported(ready, missing_anchor=True) as db:
+        with pytest.raises(psycopg.Error, match='storage_invalid|evidence_mismatch'): projection(db, ready, year=year)
 
 
 @pytest.mark.parametrize('corruption', ['snapshot_text','anchor_sha256','missing_ancestor'])

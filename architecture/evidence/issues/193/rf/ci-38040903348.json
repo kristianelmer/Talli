@@ -76,7 +76,7 @@
       ],
       "status": "SUCCESS",
       "durationSeconds": 1176,
-      "qualification": "Actual run finished within30 minutes; the configured45-minute bound accommodates variance observed in prior timed-out run."
+      "qualification": "Actual run finished within 30 minutes; the configured 45-minute bound accommodates variance observed in prior timed-out run."
     },
     "database": {
       "earlierSuite": {
