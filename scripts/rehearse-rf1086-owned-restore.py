@@ -34,7 +34,8 @@ from talli_backend.adapters.supabase_billing import SupabaseBillingAdapter
 from talli_backend.adapters.simulation_billing import SimulationBillingProvider
 from talli_backend.application.billing_workflow import BillingWorkflow
 from talli_backend.application.shareholder_register_archive import (
-    source_original_queries, feedback_original_queries, verify_archive_stream,
+    STREAM_CODEC, download_archive_codec, serialize_download_archive,
+    source_original_queries, feedback_original_queries, verify_download_archive_stream,
 )
 from talli_backend.modules.shareholder_register_filing import public as rf
 from talli_backend.modules.billing import public as billing
@@ -87,11 +88,11 @@ def owner_read_url(source_url, reader_url, role='talli_ledger_backend'):
     return reader_url
 
 
-async def canonical(url, query):
+async def canonical(url, query, *, stream_codec=STREAM_CODEC):
     store = owner_session(url, query.actor_id)
     archive = await store.archive_source(query)
     # Serialization rebuilds the complete RF source/approval/claim/journal policy.
-    return rf.serialize_rf1086_archive(archive, query=query), archive
+    return serialize_download_archive(archive, query=query, stream_codec=stream_codec), archive
 
 
 async def read_originals(url, actor, queries):
@@ -108,8 +109,8 @@ async def read_originals(url, actor, queries):
     return contents
 
 
-async def verify_restored(url, query, expected_canonical, expected_originals, queries):
-    restored_canonical, archive = await canonical(url, query)
+async def verify_restored(url, query, expected_canonical, expected_originals, queries, *, stream_codec=STREAM_CODEC):
+    restored_canonical, archive = await canonical(url, query, stream_codec=stream_codec)
     if restored_canonical != expected_canonical:
         raise ValueError('Restored RF history differs from the downloaded archive')
     if await read_originals(url, query.actor_id, queries) != expected_originals:
@@ -117,7 +118,7 @@ async def verify_restored(url, query, expected_canonical, expected_originals, qu
     outsider = ActorId(ActorKind.USER, UserId(str(uuid4())))
     other_query = rf.Rf1086ArchiveQuery(query.company_id, query.income_year, outsider)
     try:
-        await canonical(url, other_query)
+        await canonical(url, other_query, stream_codec=stream_codec)
     except rf.ShareholderRegisterFilingError as error:
         # The RF owner deliberately conceals companies outside membership.
         if error.code != rf.ShareholderRegisterFilingErrorCode.NOT_FOUND:
@@ -229,15 +230,16 @@ def main():
     actor = ActorId(ActorKind.USER, UserId(str(args.actor_id)))
     query = rf.Rf1086ArchiveQuery(CompanyId(str(args.company_id)), IncomeYear(args.income_year), actor)
     with args.archive.open('rb') as stream:
-        expected, sources, feedback = verify_archive_stream(stream, query=query,
+        stream_codec = download_archive_codec(stream)
+        expected, sources, feedback = verify_download_archive_stream(stream, query=query,
             require_source_history=True, require_feedback_originals=True)
     if expected.overrides is None:
         raise ValueError('Current recovery requires captured override history')
-    expected_canonical = rf.serialize_rf1086_archive(expected, query=query)
+    expected_canonical = serialize_download_archive(expected, query=query, stream_codec=stream_codec)
     # Verify ownership before even the first application read against this URL.
     container, _ = boundary.owned_source(workdir, source_url, boundary.inspect_container)
     boundary.verify_source_session(source_url, container)
-    before, _ = asyncio.run(canonical(reader_url, query))
+    before, _ = asyncio.run(canonical(reader_url, query, stream_codec=stream_codec))
     if before != expected_canonical:
         raise ValueError('Source database differs from downloaded RF archive')
     queries = source_original_queries(expected) + feedback_original_queries(expected, require_complete=True)
@@ -265,7 +267,7 @@ def main():
         source_documents = asyncio.run(verify_objects(reader_url, access_url, os.environ['SUPABASE_URL'], ordinary))
     with restored_database(source_url, workdir) as restored_url:
         restored_reader = make_conninfo(reader_url, dbname=conninfo_to_dict(restored_url)['dbname'])
-        recovered = asyncio.run(verify_restored(restored_reader, query, expected_canonical, originals, queries))
+        recovered = asyncio.run(verify_restored(restored_reader, query, expected_canonical, originals, queries, stream_codec=stream_codec))
         if args.expired_pilot_id:
             if asyncio.run(expired_pilot_evidence(restored_reader, query, args.expired_pilot_id)) != expiry_before:
                 raise ValueError('Restored expired pilot or entitlement decision differs from source')
@@ -300,9 +302,10 @@ def main():
         from rf1086_identity_restore import restored_identity, verify_actor_recovery
         with restored_identity(source_url, workdir, boundary) as identity:
             identity_proof = {**identity.proof, **asyncio.run(verify_actor_recovery(
-                identity, identity.reader_url(reader_url), query, expected_canonical, originals, queries, read_originals))}
+                identity, identity.reader_url(reader_url), query, expected_canonical, originals, queries, read_originals,
+                stream_codec=stream_codec))}
         identity_proof.update(independentRecoveryResourcesRemoved=True, sourceIdentityAndRolesUnchanged=True)
-    after, _ = asyncio.run(canonical(reader_url, query))
+    after, _ = asyncio.run(canonical(reader_url, query, stream_codec=stream_codec))
     if after != before:
         raise ValueError('Restore rehearsal changed source RF history')
     if args.expired_pilot_id:

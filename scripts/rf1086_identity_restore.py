@@ -409,11 +409,13 @@ def restored_identity(source_url, workdir, boundary):
                         raise RuntimeError('Identity rehearsal changed source roles, ownership, ACLs, Auth rows or memberships')
 
 
-async def verify_actor_recovery(recovery, reader_url, query, expected_canonical, originals, original_queries, read_originals):
+async def verify_actor_recovery(recovery, reader_url, query, expected_canonical, originals, original_queries, read_originals, *,
+                                stream_codec="rf1086-production-stream-v1"):
     """Target-only lifecycle fixture; it never rewrites captured historical actors."""
     from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingSession
     from talli_backend.adapters.supabase_ledger import LedgerSupabaseConfiguration, SupabaseLedgerAdapter
     from talli_backend.application.ledger_workflow import LedgerAuthenticationError
+    from talli_backend.application.shareholder_register_archive import serialize_download_archive
     from talli_backend.modules.shareholder_register_filing import public as rf
     configuration = LedgerSupabaseConfiguration(recovery.auth_url, os.environ['SUPABASE_ANON_KEY'], reader_url)
     authentication = SupabaseLedgerAdapter(configuration)
@@ -430,7 +432,7 @@ async def verify_actor_recovery(recovery, reader_url, query, expected_canonical,
         session = PostgresShareholderRegisterFilingSession(configuration, verified, access_token=token,
             billing=None, documents=None, company_access=None)
         value = await session.archive_source(current)
-        return rf.serialize_rf1086_archive(value, query=current)
+        return serialize_download_archive(value, query=current, stream_codec=stream_codec)
 
     async def denied(token):
         try: await archive(token)

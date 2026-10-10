@@ -518,7 +518,7 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
     const archived = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
     assert.equal(archived.overrides.length, 1);
     const row = archived.overrides[0];
-    assert.equal(row.id, recorded.id);
+    assert.equal(row.id, recorded.recordId);
     for (const field of ["previewId", "fieldTarget", "oldValue", "newValue", "reason", "riskLevel"])
       assert.equal(row[field], override[field], field);
     assert.equal(row.companyId, company.id);

@@ -16,6 +16,47 @@ MAX_STREAM_HEADER_BYTES = 256 * 1024 * 1024
 MAX_STREAM_RECORD_BYTES = 32 * 1024 * 1024
 
 
+def download_archive_codec(stream):
+    """Read only a bounded codec header; leave the original stream untouched."""
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result: raise ValueError()
+            result[key] = value
+        return result
+    header = stream.readline(MAX_STREAM_HEADER_BYTES + 1)
+    if len(header) > MAX_STREAM_HEADER_BYTES or not header.endswith(b'\n'):
+        raise ValueError()
+    value = json.loads(header, object_pairs_hook=unique)
+    if type(value) is not dict or set(value) != {'codec', 'canonicalArchive'}:
+        raise ValueError()
+    codec = value['codec']
+    del header, value
+    stream.seek(0)
+    if codec not in (STREAM_CODEC, RETAINED_STREAM_CODEC): raise ValueError()
+    return codec
+
+
+def verify_download_archive_stream(stream, *, query, require_source_history, require_feedback_originals):
+    """Select the owned verifier; never fall back after invalid retained bytes."""
+    codec = download_archive_codec(stream)
+    if codec == RETAINED_STREAM_CODEC:
+        return verify_retained_archive_stream(stream, query=query,
+            require_feedback_originals=require_feedback_originals)
+    return verify_archive_stream(stream, query=query,
+        require_source_history=require_source_history,
+        require_feedback_originals=require_feedback_originals)
+
+
+def serialize_download_archive(archive, *, query, stream_codec):
+    """Compare recovered history using the verified download's fixed owner codec."""
+    if stream_codec == RETAINED_STREAM_CODEC:
+        return rf.serialize_rf1086_archive_v6(archive, query=query)
+    if stream_codec == STREAM_CODEC:
+        return rf.serialize_rf1086_archive(archive, query=query)
+    raise ValueError()
+
+
 def _stream_line(value, limit):
     line = (json.dumps(value, ensure_ascii=False, separators=(',', ':'), allow_nan=False) + '\n').encode('utf-8')
     if len(line) > limit: raise DocumentsError.integrity_failed()

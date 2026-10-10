@@ -296,13 +296,17 @@
   "savedSourceV2Admission": "rf-source-v2-admission-20261010.json",
   "historicalCi38055007322": "ci-38055007322.json",
   "governanceCallableAccessFixture": "rf-governance-callable-access-fixture-20261010.json",
-  "latestIntegrationCiObservation": "ci-38064459586.json",
-  "latestIntegrationCiStatus": "FAILED: Application allsteps10889PASS/2SKIP; Billing700PASS; all1498AuthorityPASS. Native browser archive CLI now passes; browser28PASS10FAIL at stale required v4 endpoint assertion despite actual v6 GET200. Later full-year/correction/crash branch unexecuted. No launch/canonical acceptance.",
+  "latestIntegrationCiObservation": "ci-38067124662.json",
+  "latestIntegrationCiStatus": "FAILED: Application10889PASS/2SKIP; Billing700PASS; all1498AuthorityPASS. RFbrowser34PASS4FAIL: six complete full-year child/confirmation unknown/crash journeys pass; three main cases stop at ownedrestore legacycodec, rejected-predecessor case at override result.recordId fixture mismatch. No successful full restore/canonical/launch acceptance.",
   "historicalCi38057406479": "ci-38057406479.json",
   "retainedReaderLiveRequestFixtureRepair": "rf-correction-reader-live-request-fixture-20261010.json",
   "closedSourceV2Preview": "rf-source-v2-preview-20261010.json",
   "historicalCi38060484198": "ci-38060484198.json",
   "offlineArchiveCliCodecRepair": "rf-download-cli-codec-20261010.json",
   "historicalCi38064459586": "ci-38064459586.json",
-  "browserArchiveRouteExpectationRepair": "rf-browser-archive-route-expectation-20261010.json"
+  "browserArchiveRouteExpectationRepair": "rf-browser-archive-route-expectation-20261010.json",
+  "historicalCi38067124662": "ci-38067124662.json",
+  "closedSourceV3Approval": "rf-source-v3-approval-20261010.json",
+  "officialSourceResearch20261010": "official-source-research-20261010.json",
+  "ownedRestoreCodecRepair20261010": "owned-restore-codec-repair-20261010.json"
 }

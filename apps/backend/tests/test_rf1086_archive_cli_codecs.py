@@ -149,7 +149,7 @@ def test_codec_probe_is_bounded_and_exact_header_limit_passes(monkeypatch, retai
     length = len(content.splitlines(keepends=True)[0])
     class Bounded(BytesIO):
         def readline(self, size=-1):
-            assert 0 < size <= stream.MAX_STREAM_HEADER_BYTES + 1
+            assert size in (stream.MAX_STREAM_HEADER_BYTES + 1, stream.MAX_STREAM_RECORD_BYTES + 1)
             return super().readline(size)
         def read(self, size=-1):
             assert size == 1

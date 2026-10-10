@@ -8,9 +8,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from talli_backend.application.shareholder_register_archive import (
-    MAX_STREAM_HEADER_BYTES, RETAINED_STREAM_CODEC, STREAM_CODEC,
     verify_source_originals, verify_feedback_originals,
-    verify_archive_stream, verify_retained_archive_stream,
+    verify_download_archive_stream as verify_download_stream,
 )
 from talli_backend.modules.documents.public import DocumentsError
 from talli_backend.modules.shareholder_register_filing import public as rf
@@ -24,27 +23,6 @@ def unique(pairs):
             raise ValueError()
         result[key] = value
     return result
-
-
-def verify_download_stream(stream, *, query, require_source_history, require_feedback_originals):
-    """Select an owned codec from a bounded header, then verify untouched bytes."""
-    header = stream.readline(MAX_STREAM_HEADER_BYTES + 1)
-    if len(header) > MAX_STREAM_HEADER_BYTES or not header.endswith(b'\n'):
-        raise ValueError()
-    value = json.loads(header, object_pairs_hook=unique)
-    if type(value) is not dict or set(value) != {'codec', 'canonicalArchive'}:
-        raise ValueError()
-    codec = value['codec']
-    del header, value
-    stream.seek(0)
-    if codec == RETAINED_STREAM_CODEC:
-        return verify_retained_archive_stream(stream, query=query,
-            require_feedback_originals=require_feedback_originals)
-    if codec == STREAM_CODEC:
-        return verify_archive_stream(stream, query=query,
-            require_source_history=require_source_history,
-            require_feedback_originals=require_feedback_originals)
-    raise ValueError()
 
 
 def parse_download_archive(canonical, *, query):
