@@ -1,0 +1,175 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "TERMINAL_PR_CI_APPROVAL_DATABASE_PASS_LATER_CANCELLATION_FIXTURE_FAIL",
+  "recordedAtUtc": "2026-10-10T21:08:04.830154+00:00",
+  "run": {
+    "id": 38082673570,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38082673570",
+    "head": "b7f5aaa352348452e46147614c9377e2e1524823",
+    "merge": "de389f074415aa5f07324166a10337ed2fed68a1",
+    "mergeParents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "b7f5aaa352348452e46147614c9377e2e1524823"
+    ],
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-10T20:10:07Z",
+    "updatedAt": "2026-10-10T20:59:28Z",
+    "exactCheckoutInBothRawLogsVerified": true,
+    "currentPrHeadAndMergeFreshlyVerified": true
+  },
+  "jobs": [
+    {
+      "id": 114302640946,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T20:10:10Z",
+      "completedAt": "2026-10-10T20:59:21Z"
+    },
+    {
+      "id": 114302641133,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-10T20:10:10Z",
+      "completedAt": "2026-10-10T20:39:23Z"
+    },
+    {
+      "id": 114302642195,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-10T20:10:08Z",
+      "completedAt": "2026-10-10T20:10:08Z"
+    },
+    {
+      "id": 114312150523,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T20:59:24Z",
+      "completedAt": "2026-10-10T20:59:28Z"
+    }
+  ],
+  "application": {
+    "passed": 10949,
+    "skipped": 2,
+    "deselected": 2322,
+    "durationSeconds": 869.1,
+    "allStepsSuccess": true,
+    "productionDependencyAuditsZero": true,
+    "rawLog": {
+      "path": "/private/tmp/talli-release-20261009/ci38082673570-app-raw-v2.log",
+      "sha256": "ceaba017c808ac756485eb48b218fe49ac81908f11b20e27233ab9ee2c88445e",
+      "bytes": 468145
+    }
+  },
+  "database": {
+    "initialHarness": {
+      "passed": 17,
+      "skipped": 1,
+      "durationSeconds": 0.18
+    },
+    "billing": {
+      "passed": 700,
+      "durationSeconds": 259.37
+    },
+    "authority": {
+      "selected": 1534,
+      "passed": 1534,
+      "failed": 0,
+      "skipped": 0,
+      "durationSeconds": 770.74,
+      "newApprovalCasesPassed": 36,
+      "all36ExpectedNodesPassOnly": true,
+      "approvalPrerequisiteCleared": true,
+      "prerequisiteReceipt": {
+        "path": "/private/tmp/talli-release-20261009/ci38082673570-approval-actual-prerequisite-v1.json",
+        "sha256": "97d40f7e7eee99aea155af8373e6eacdf1cb389d23406d8ae0a4ebe783b48104",
+        "bytes": 10520
+      }
+    },
+    "laterPythonPassCounts": [
+      15,
+      22,
+      3,
+      7,
+      41
+    ],
+    "laterNodePassCounts": [
+      1,
+      13,
+      14
+    ],
+    "rfBrowser": {
+      "selected": 38,
+      "passed": 37,
+      "failed": 1,
+      "skipped": 0,
+      "durationMs": 1306844.920393,
+      "allNineOrdinaryUnknownCrashJourneysPassed": true,
+      "firstThreeMainOwnedDatabaseRestoresCompleted": true,
+      "failure": {
+        "case": "owner completes RF capture, rejected-predecessor correction and lost main response through the canonical backend",
+        "fixture": "tests/fixtures/rf1086-cancellation-browser-journey.mjs",
+        "line": 48,
+        "actualCodec": "rf1086-production-archive-v4",
+        "expectedCodec": "rf1086-production-archive-v3",
+        "boundary": "After source journey, override and expired-pilot checks, before cancellation command. Company export already prefersV4; old baseline intentionally omits override history.",
+        "retentionHoldObjectAndDeletedIdentityRestoreUnexecuted": true
+      }
+    },
+    "rawLog": {
+      "path": "/private/tmp/talli-release-20261009/ci38082673570-db-raw-v1.log",
+      "sha256": "18372f5eec6c222477265a5b9167e4033d6d1d8027dcb69d220b2bfe832c2835",
+      "bytes": 1062109
+    },
+    "publicAcquisitionStep": "SKIPPED_AFTER_RF_BROWSER_FAILURE"
+  },
+  "artifacts": {
+    "totalCount": 0,
+    "canonicalImmutableReceipt": false
+  },
+  "localRepair": {
+    "status": "SIX_SELECTOR_FIXTURE_REPAIR_FROZEN_PAIRED_REVIEW_PENDING_AT_CREATION",
+    "scope": "Existing current V4 archive reader for both baseline and retained-state comparisons in expiry/cancellation/final-deletion fixtures. Every other source byte, assertion, input and effect order exact; no production/legacy-wire/override/retention policy changes.",
+    "actualHelperProtocolDoubleRedGreen": true,
+    "localNodeCasesPassed": 78,
+    "actualFullBrowserRerunPending": true
+  },
+  "privateMetadataPins": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38082673570-terminal-api.json",
+      "sha256": "05b6189024c91e87d1593df91d137971840f4ff84c1ca364fffc39fb24982f72",
+      "bytes": 12742
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38082673570-terminal-jobs-v2.json",
+      "sha256": "ebc6dd158469d7ac5b293d152c25140d9707597fb46f48866e9a4987f53c9085",
+      "bytes": 9999
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38082673570-artifacts-api.json",
+      "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+      "bytes": 32
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38082673570-merge-parents-v1.json",
+      "sha256": "e7a5476aaa1b7199cfcdfe2ee1e95a9f8b5f65fb9273c2dc7ecfb366485fe4ee",
+      "bytes": 2843
+    }
+  ],
+  "collectionQualifications": [
+    "ApplicationCLI refused completed-job logs while whole run active; emptyv1 retained, direct job APIv2 succeeded with exact revision.",
+    "Initial approval parser rejected CLI job/step labels. V4 removes only exact observed Database isolation prefix before strict checkout/parents/head/1534collection/all36PASSED-only verification; immutable raw retained.",
+    "Unquoted firstterminaljobs query rejected byzsh before request; quotedV2 captured and verified. Initial publicreceipt script assumed an empty file, but none existed; no output created before correction. These are collection setup failures, not product regressions."
+  ],
+  "limits": [
+    "All36 actual closed-approval prerequisite now cleared on installed full schemas with explicitly synthetic verified claims and local original bytes. Separate from whole-gate clearance.",
+    "Firstthree main workflows complete owned database restoration. Retention/object/deleted independentAuth branch stopped before cancellation and remainsunexecuted; hosted project/keys/object recovery and physical Auth erasure remainunproved.",
+    "Six child/confirmation workflows pass fulljourney/CLI archive checks but do not execute owned restore branch.",
+    "No canonical immutable A/B, protected-main/fullRF technical handoff or all-three readiness; allA1-A7 pending. No spending/hosted recovery/provider activation/genuine data/filing/outreach/launch."
+  ]
+}

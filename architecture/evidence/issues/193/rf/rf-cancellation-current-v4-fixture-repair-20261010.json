@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "REVIEWED_CANCELLATION_CURRENT_ARCHIVE_SELECTOR_REPAIR",
+  "recordedAtUtc": "2026-10-10T21:13:19.629246+00:00",
+  "base": "b7f5aaa352348452e46147614c9377e2e1524823",
+  "trigger": "ci-38082673570.json: company download uses retained archive V4 but legacy JSON baseline V3 omits retained overrides; rejected-predecessor browser stops before cancellation command.",
+  "change": "Exactly six fixture reads use the existing generated rf1086GetProductionArchiveSourceV4 method: before/after pilot expiry, cancellation and final deletion. All remaining bytes, assertions, inputs and effect order preserved. No production or legacy-wire change.",
+  "source": {
+    "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/tests/fixtures/rf1086-cancellation-browser-journey.mjs",
+    "sha256": "0d74bac6468dd7be7bae7b18245f223a190559229052ec21e349bf639bef60af",
+    "bytes": 8089
+  },
+  "freeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-cancellation-v4-fixture-freeze-v1.json",
+    "sha256": "461a4b06493a901af019d47be75136a60b6dcc3f2380bec3b73a7b7cdaa5ad67",
+    "bytes": 5589
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-cancellation-v4-fixture-spec-review-v1.json",
+      "sha256": "b600b12f5909251c3f946d9fe953a4234da1ede458d5cde844fc3272cdf74257",
+      "bytes": 15583
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-cancellation-v4-fixture-standards-review-v1.json",
+      "sha256": "9cf0b98c1808e6b53708981c7bc6d160e2b91b00c2b3207d35443855a8f58b37",
+      "bytes": 11931
+    }
+  ],
+  "reviewFindings": {
+    "Spec": 0,
+    "Standards": 0
+  },
+  "rootVerifiedReviewPins": {
+    "Spec": 26,
+    "Standards": 15
+  },
+  "localValidation": {
+    "protocolDoubleActualCancellationHelperRedGreen": true,
+    "otherTwoHelpersExecuted": false,
+    "nodeCasesPassed": 78,
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 14206.665708,
+    "log": {
+      "path": "/private/tmp/talli-release-20261009/rf-cancellation-codec-alignment-local-checks-v1.log",
+      "sha256": "d275232a6939d4df244979a3947e79781aec5de7f1cd82ae7a98d210c39c9414",
+      "bytes": 8026
+    }
+  },
+  "approvalPrerequisite": {
+    "run": 38082673570,
+    "head": "b7f5aaa352348452e46147614c9377e2e1524823",
+    "actualCasesPassed": 36,
+    "authorityCasesPassed": 1534,
+    "cleared": true,
+    "receipt": {
+      "path": "/private/tmp/talli-release-20261009/ci38082673570-approval-actual-prerequisite-v1.json",
+      "sha256": "97d40f7e7eee99aea155af8373e6eacdf1cb389d23406d8ae0a4ebe783b48104",
+      "bytes": 10520
+    }
+  },
+  "limits": [
+    "Protocol doubles exercise only the actual cancellation helper, not archive producers, Company Access, Auth, DB, objects or restoration. Full browser retry pending.",
+    "The preceding CI passed 37/38 RF browser cases, all nine ordinary recovery journeys and the first three main owned database restores. Retention hold, deleted-identity, object and independent Auth branch was not reached.",
+    "All A1-A7, canonical immutable A/B and all-three readiness remain pending. No spending, provider activation, genuine data, filing, outreach or launch."
+  ]
+}
