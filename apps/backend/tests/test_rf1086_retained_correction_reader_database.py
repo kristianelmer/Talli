@@ -288,17 +288,18 @@ def test_historical_read_survives_expired_pilot_and_mfa_and_invalidated_approval
 
 def test_reader_enumerates_other_actors_and_competing_legacy_roots(no_activity):
     f = no_activity; seed = f['seed']
-    request, entitlement, preview_id, approval, submission = (uuid4() for _ in range(5))
-    external = base64.urlsafe_b64encode(sha256(str(request).encode()).digest()).decode().rstrip('=')
+    entitlement, preview_id, approval, submission = (uuid4() for _ in range(4))
+    request, external = seed['request'], seed['external']
     # Independent actor/entitlement/preview. Reusing the first preview would
     # violate its unique current-approval index; reusing its pilot would obscure
     # the original-actor binding this enumeration test is intended to preserve.
+    # Both synthetic historical roots reference the one live company request.
+    # The second actor gets no fresh filing authority from that reference.
     with psycopg.connect(DATABASE_URL) as db:
+        original_request = db.execute('select to_jsonb(r) from authority_connections.system_user_requests r where id=%s',
+            (request,)).fetchone()[0]
         insert(db, 'public.company_memberships', dict(company_id=seed['company'], user_id=seed['outsider'],
             role='owner', accepted_at=seed['now']))
-        insert(db, 'authority_connections.system_user_requests', dict(id=request, company_id=seed['company'],
-            initiating_owner_user_id=seed['outsider'], external_ref=external, status='accepted',
-            preflight_verified_at=seed['now']))
         insert(db, 'billing.production_pilot_entitlements', dict(id=entitlement, company_id=seed['company'],
             user_id=seed['outsider'], income_year=2025, obligation='aksjonaerregisteroppgaven',
             case_profile='rf1086_no_activity_v1', status='active', billing_exempt=True,
@@ -337,6 +338,15 @@ def test_reader_enumerates_other_actors_and_competing_legacy_roots(no_activity):
         other = next(row for row in archive.approvals if row.id == str(approval))
         assert other.entitlement_id == str(entitlement) and other.preview_id == str(preview_id)
         assert other.manifest_hash == manifest_hash and other.payload_hash == payload_hash
+
+    with psycopg.connect(DATABASE_URL) as db:
+        assert db.execute('select to_jsonb(r) from authority_connections.system_user_requests r where id=%s',
+            (request,)).fetchone()[0] == original_request
+        assert db.execute("select count(*) from authority_connections.system_user_requests where company_id=%s "
+            "and obligation='aksjonaerregisteroppgaven' and status in ('creating','new','accepted','verification_failed')",
+            (seed['company'],)).fetchone()[0] == 1
+        assert db.execute('select user_id,system_user_request_id from billing.production_pilot_entitlements where id=%s',
+            (entitlement,)).fetchone() == (seed['outsider'],request)
 
 
 @pytest.mark.parametrize('isolation', ['repeatable read', 'serializable'])
