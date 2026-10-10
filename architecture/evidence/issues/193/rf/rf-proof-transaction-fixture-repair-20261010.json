@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "stage": "TRANSACTION_PROOF_FIXTURE_ISOLATION",
+  "status": "LOCAL_REVIEWED_FULL_SCHEMA_EXECUTION_PENDING",
+  "baseRevision": "2d7773267312add82702cf22180508d7c004f5cb",
+  "failureReceipt": "ci-38052904751.json",
+  "change": "Only the transaction parameter acquires the existing restricted company/year lock, then switches to the existing RF owner fixture role to call the private guarded assertion on the exact original source/SHA. Other parameters still call append unchanged.",
+  "why": "Old confirmation timestamps are invalid for a new append transaction, so the previous fixture reached the timestamp fence before testing proof expiration. The private guard also requires its existing owner ACL; no grant is added.",
+  "protectedFunctionsExact": 54,
+  "productionSqlAndPrivileges": "unchanged",
+  "nativeChecks": 5,
+  "nativeLimits": "Exact timestamp and proof binding predicates on projected native PG17. Actor/source/projection fixtures; no full schema or private-guard ACL execution proof. Owned cluster stopped and removed.",
+  "collectedNotExecuted": 109,
+  "freeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-proof-transaction-fixture-freeze-v2.json",
+    "sha256": "744fe180771f5404e465cb8b0a908ffb96d443ea635f664fc67fe8423bfed04e",
+    "bytes": 2508
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-proof-transaction-fixture-spec-review-v2.json",
+      "sha256": "25e0929b1d0ab36e466929a0dd451d639efad9e6ecb35d9fa2a3f027919b6da2",
+      "bytes": 6060
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-proof-transaction-fixture-standards-review-v2.json",
+      "sha256": "3966d3286d37182c16523170aa03242a3934618542ece524f6707a5a10093404",
+      "bytes": 5723
+    }
+  ],
+  "localArtifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-proof-transaction-fixture-native-v1.json",
+      "sha256": "b4d8164897ac78f4573a720b453264b63bc18266b2a7200212a4a433ec601314",
+      "bytes": 1448
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-proof-transaction-fixture-collection-v2.log",
+      "sha256": "7009e477e47cf76210d379155e65ac1fb5bc217868f5b2c01154d0580afcf0ea",
+      "bytes": 15086
+    }
+  ],
+  "remaining": [
+    "Full 109-case source-v2 and combined 1468-case Authority execution",
+    "Guarded capture, retained correction, compatible consumers and full all-three readiness",
+    "All A1-A7 and canonical two-gate release evidence"
+  ]
+}

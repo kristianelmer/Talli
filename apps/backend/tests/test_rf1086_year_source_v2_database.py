@@ -638,7 +638,15 @@ def test_owner_proof_is_required_for_exact_source_scope_and_transaction(original
         elif mismatch == 'year':
             mint_proof(db, source)
             corrupt_owned_proof_year(db, original, source)
-        with pytest.raises(psycopg.Error, match=CHANGED): append_source(db, source, proof=False)
+        if mismatch == 'transaction':
+            # Appending a prior-transaction source correctly fails its timestamp
+            # fence before proof admission. Use the actual guarded source check
+            # to test this exact source/SHA after its proof transaction ended.
+            locked(db, original)
+            db.execute('set local role shareholder_register_filing_store_owner')
+            with pytest.raises(psycopg.Error, match=CHANGED): guarded_raw(db, source)
+        else:
+            with pytest.raises(psycopg.Error, match=CHANGED): append_source(db, source, proof=False)
     assert rows(original) == []
 
 
