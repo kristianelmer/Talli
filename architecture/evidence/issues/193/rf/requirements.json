@@ -245,5 +245,6 @@
   "captureCommittedReplayOrder20261010": "capture-committed-replay-order-20261010.json",
   "withdrawalIsolationDenialRepair20261010": "withdrawal-isolation-denial-repair-20261010.json",
   "historicalCi38013368830": "ci-38013368830.json",
-  "rfClosedYearSourceV220261010": "rf-closed-year-source-v2-20261010.json"
+  "rfClosedYearSourceV220261010": "rf-closed-year-source-v2-20261010.json",
+  "withdrawalParserRoleRepair20261010": "withdrawal-parser-role-repair-20261010.json"
 }

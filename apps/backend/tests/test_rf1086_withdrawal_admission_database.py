@@ -51,40 +51,33 @@ def downstream(annual_fixture, staged):
         db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
         db.execute((ROOT / 'supabase/migrations' / RF_SOURCE_V2).read_text())
         db.execute((ROOT / 'supabase/migrations' / GOV_SOURCE_PROOF).read_text())
-        db.execute('set local role shareholder_register_filing_store_owner')
-        db.execute(sql.SQL('grant execute on function ' + ','.join(EXTRA_FUNCTIONS) + ' to {}').format(sql.Identifier(staged['role'])))
-    try:
-        observation = observed(f['staged'])
-        command, context = basis('cash_issue')
-        original = f['source']
-        documents = f['command'].documents
-        case = replace(command.case, company=f['command'].case.company,
-                       events=tuple(replace(event, timestamp=event.timestamp.replace(year=2026)) for event in command.case.events))
-        receipt = replace(context.governance_receipts[0], receipt_id=str(uuid4()),
-            company_id=original.company_id, income_year=original.income_year,
-            economic_sha256=rf.rf1086_year_source_digest(rf.rf1086_governance_economic_facts(case.events[0])),
-            signed_document_hashes=(documents[0].content_sha256,),
-            register_observation_id=observation.observation_id.value, register_observation_sha256=observation.fact_sha256)
-        command = replace(command, company_id=original.company_id, income_year=original.income_year,
-            actor_id=f['store'].actor_id, case=case, documents=documents,
-            opening_document_ids=(documents[0].document_id,), closing_document_ids=(documents[0].document_id,),
-            paid_in_document_ids=(documents[0].document_id,), event_evidence=(replace(command.event_evidence[0],
-                event_sha256=rf.rf1086_year_source_digest(case.events[0]), document_ids=(documents[0].document_id,),
-                governance_receipt_id=receipt.receipt_id),), supersedes_source_id=original.source_id,
-            supersedes_source_sha256=original.source_sha256, correction_reason='Owned reference-bearing fixture')
-        context = replace(context, actor_id=f['store'].actor_id, company_id=original.company_id,
-            income_year=original.income_year, company=case.company, documents=documents,
-            governance_receipts=(receipt,), governance_enumeration_sha256=rf.rf1086_year_source_digest((receipt,)))
-        key = IdempotencyKey(str(uuid4()))
-        source = asyncio.run(f['store'].record_year_source(command, context=context, idempotency_key=key))
-        f.update(command=command, context=context, source=source, source_key=key, observation=observation)
-        f['preview'] = generate(f['store'], source)
-        f['connection'] = asyncio.run(f['store'].read_connection(str(f['request']), str(f['seed']['company'])))
-        yield f
-    finally:
-        with psycopg.connect(DATABASE_URL) as db:
-            db.execute('set local role shareholder_register_filing_store_owner')
-            db.execute(sql.SQL('revoke execute on function ' + ','.join(EXTRA_FUNCTIONS) + ' from {}').format(sql.Identifier(staged['role'])))
+    observation = observed(f['staged'])
+    command, context = basis('cash_issue')
+    original = f['source']
+    documents = f['command'].documents
+    case = replace(command.case, company=f['command'].case.company,
+                   events=tuple(replace(event, timestamp=event.timestamp.replace(year=2026)) for event in command.case.events))
+    receipt = replace(context.governance_receipts[0], receipt_id=str(uuid4()),
+        company_id=original.company_id, income_year=original.income_year,
+        economic_sha256=rf.rf1086_year_source_digest(rf.rf1086_governance_economic_facts(case.events[0])),
+        signed_document_hashes=(documents[0].content_sha256,),
+        register_observation_id=observation.observation_id.value, register_observation_sha256=observation.fact_sha256)
+    command = replace(command, company_id=original.company_id, income_year=original.income_year,
+        actor_id=f['store'].actor_id, case=case, documents=documents,
+        opening_document_ids=(documents[0].document_id,), closing_document_ids=(documents[0].document_id,),
+        paid_in_document_ids=(documents[0].document_id,), event_evidence=(replace(command.event_evidence[0],
+            event_sha256=rf.rf1086_year_source_digest(case.events[0]), document_ids=(documents[0].document_id,),
+            governance_receipt_id=receipt.receipt_id),), supersedes_source_id=original.source_id,
+        supersedes_source_sha256=original.source_sha256, correction_reason='Owned reference-bearing fixture')
+    context = replace(context, actor_id=f['store'].actor_id, company_id=original.company_id,
+        income_year=original.income_year, company=case.company, documents=documents,
+        governance_receipts=(receipt,), governance_enumeration_sha256=rf.rf1086_year_source_digest((receipt,)))
+    key = IdempotencyKey(str(uuid4()))
+    source = asyncio.run(f['store'].record_year_source(command, context=context, idempotency_key=key))
+    f.update(command=command, context=context, source=source, source_key=key, observation=observation)
+    f['preview'] = generate(f['store'], source)
+    f['connection'] = asyncio.run(f['store'].read_connection(str(f['request']), str(f['seed']['company'])))
+    yield f
 
 
 def locked(db, f):
@@ -422,7 +415,9 @@ def test_reference_parser_fails_closed_before_any_new_effect(downstream, change)
     text = json.dumps(raw, separators=(',', ':'))
     if change == 'duplicate_keys': text = text.replace('"register_observation_id":', '"register_observation_id":null,"register_observation_id":', 1)
     before = state(f)
-    with connection(f['staged']) as db:
+    # These owner-private SECURITY INVOKER helpers normally run inside an
+    # owner entrypoint; preserve its role, verified actor and actual scope locks.
+    with connection(f['staged'], role='shareholder_register_filing_store_owner') as db:
         locked(db, f)
         with pytest.raises(psycopg.Error, match=expected):
             db.execute('select ' + GUARD + '(%s,%s,%s)', (f['seed']['company'], 2026, text))
@@ -433,7 +428,9 @@ def test_unrelated_withdrawal_does_not_block_reference_free_or_other_exact_sourc
     f = downstream
     unrelated = observed(f['staged'])
     withdraw(f['staged'], unrelated)
-    with connection(f['staged']) as db:
+    # These owner-private SECURITY INVOKER helpers normally run inside an
+    # owner entrypoint; preserve its role, verified actor and actual scope locks.
+    with connection(f['staged'], role='shareholder_register_filing_store_owner') as db:
         locked(db, f)
         db.execute('select ' + GUARD + '(%s,%s,%s,%s)',
             (f['seed']['company'], 2026, f['source'].source_id.value, f['source'].source_sha256))
