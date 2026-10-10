@@ -168,7 +168,9 @@
       "serialize_rf1086_source_approval_manifest_v3",
       "inspect_rf1086_retained_source_approval_v3",
       "assess_rf1086_retained_source_dispatch",
-      "inspect_rf1086_retained_source_dispatch_position"
+      "inspect_rf1086_retained_source_dispatch_position",
+      "prepare_rf1086_retained_source_reconciliation",
+      "prepare_rf1086_retained_correction_predecessor"
     ],
     "events": [],
     "errors": [
@@ -550,7 +552,9 @@
     "archiveStorageV6": "apps/backend/tests/test_rf1086_archive_storage_v6.py",
     "archiveHistoryV6Adversarial": "apps/backend/tests/test_rf1086_archive_history_v6_adversarial.py",
     "retainedSourceDispatch": "apps/backend/tests/test_rf1086_retained_source_dispatch.py",
-    "retainedSourceDispatchAdversarial": "apps/backend/tests/test_rf1086_retained_source_dispatch_adversarial.py"
+    "retainedSourceDispatchAdversarial": "apps/backend/tests/test_rf1086_retained_source_dispatch_adversarial.py",
+    "retainedRecoveryCorrection": "apps/backend/tests/test_rf1086_retained_recovery_correction.py",
+    "retainedRecoveryCorrectionAdversarial": "apps/backend/tests/test_rf1086_retained_recovery_correction_adversarial.py"
   },
   "compatibilityExceptions": []
 }

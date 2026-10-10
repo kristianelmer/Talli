@@ -13,6 +13,13 @@ def prepare(archive, *, query, submission, forsendelse_id, dialog_id):
     POST hash and confirmation against its journal. It does not demand today's
     source head, current approval eligibility or an unexpired pilot.
     """
+    return _prepare(archive, query=query, submission=submission,
+        forsendelse_id=forsendelse_id, dialog_id=dialog_id,
+        assess_dispatch=rf.assess_rf1086_source_dispatch)
+
+
+def _prepare(archive, *, query, submission, forsendelse_id, dialog_id, assess_dispatch):
+    """Shared confirmation binding; callers fix the evidence validation policy."""
     try:
         if not isinstance(query, rf.Rf1086ArchiveQuery):
             raise ValueError()
@@ -21,7 +28,7 @@ def prepare(archive, *, query, submission, forsendelse_id, dialog_id):
                 or query.actor_id.kind is not ActorKind.USER
                 or submission.user_id != str(query.actor_id.subject)):
             raise ValueError()
-        assessment = rf.assess_rf1086_source_dispatch(archive, query=query,
+        assessment = assess_dispatch(archive, query=query,
             submission_id=rf.SubmissionId(submission.id))
         if assessment.disposition != 'confirmed':
             raise ValueError()

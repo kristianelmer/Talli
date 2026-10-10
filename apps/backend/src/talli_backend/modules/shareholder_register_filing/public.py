@@ -2961,7 +2961,23 @@ def prepare_rf1086_source_reconciliation(archive: Rf1086ArchiveSnapshot, *, quer
     return prepare(archive, query=query, submission=submission, forsendelse_id=forsendelse_id, dialog_id=dialog_id)
 
 
+def prepare_rf1086_retained_source_reconciliation(archive: Rf1086ArchiveSnapshot, *, query: Rf1086ArchiveQuery,
+        submission: Rf1086Submission, forsendelse_id: str, dialog_id: str) -> Rf1086ReconciliationInput:
+    """Original confirmed identity/XML only; no current access or provider authority."""
+    from .retained_source_recovery import prepare
+    return prepare(archive, query=query, submission=submission, forsendelse_id=forsendelse_id, dialog_id=dialog_id)
+
+
+def prepare_rf1086_retained_correction_predecessor(archive: Rf1086ArchiveSnapshot, *, query: Rf1086ArchiveQuery,
+        predecessor: Rf1086SourceCorrectionPredecessor) -> Rf1086CorrectionPredecessorSnapshot:
+    """Validate supplied full history and project its terminal parent; no byte/access proof."""
+    from .retained_source_correction import prepare
+    return prepare(archive, query=query, predecessor=predecessor)
+
+
 __all__ = [
+    'prepare_rf1086_retained_source_reconciliation',
+    'prepare_rf1086_retained_correction_predecessor',
     'Rf1086SourceApprovalManifestBasisV3',
     'build_rf1086_source_approval_manifest_v3',
     'assert_rf1086_source_approval_manifest_matches_v3',

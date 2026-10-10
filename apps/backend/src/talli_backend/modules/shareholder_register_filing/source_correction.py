@@ -21,6 +21,12 @@ def _hash(value):
 
 
 def assert_predecessor(snapshot, *, company_id, income_year, predecessor):
+    return _assert_predecessor(snapshot, company_id=company_id, income_year=income_year,
+        predecessor=predecessor, assert_source_predecessor=_assert_source_predecessor)
+
+
+def _assert_predecessor(snapshot, *, company_id, income_year, predecessor, assert_source_predecessor):
+    """Fixed entrypoints share receipt mechanics, not source-validation authority."""
     try:
         _require(isinstance(predecessor, rf.Rf1086SourceCorrectionPredecessor)
             and isinstance(predecessor.submission_id, rf.SubmissionId)
@@ -45,7 +51,7 @@ def assert_predecessor(snapshot, *, company_id, income_year, predecessor):
             and preview.filing in ('aksjonaerregisteroppgaven','aksjonærregisteroppgaven')
             and bool(preview.hovedskjema_xml))
         if approval.case_profile == 'rf1086_full_year_v1':
-            _assert_source_predecessor(snapshot, company_id, income_year)
+            assert_source_predecessor(snapshot, company_id, income_year)
         else:
             _require(approval.case_profile == 'rf1086_no_activity_v1'
                 and approval.adapter_version == 'rf1086-production-v1'
@@ -90,12 +96,19 @@ def assert_predecessor(snapshot, *, company_id, income_year, predecessor):
 
 def _assert_source_predecessor(snapshot, company_id, income_year):
     """Rebuild the historical source approval and its immutable claim together."""
+    return _assert_source_predecessor_impl(snapshot, company_id, income_year,
+        inspect_approval=rf.inspect_rf1086_retained_source_approval,
+        validate_approval=_validate_archive_source_approval)
+
+
+def _assert_source_predecessor_impl(snapshot, company_id, income_year, *, inspect_approval, validate_approval):
+    """Bind immutable parent identity before the caller's fixed source policy."""
     approval, submission = snapshot.approval, snapshot.submission
     lineage, claim = snapshot.source_approval_lineage, snapshot.source_claim
     _require(isinstance(lineage, rf.Rf1086ArchiveSourceApprovalLineage)
         and isinstance(claim, rf.Rf1086SourceSubmissionClaim))
     approval_id = rf.ApprovalId(approval.id)
-    prior = rf.inspect_rf1086_retained_source_approval(
+    prior = inspect_approval(
         rf.Rf1086RetainedSourceApproval(approval, lineage.manifest_text),
         approval_id=approval_id, manifest_sha256=approval.manifest_hash, actor_id=claim.claimed_by)
     expected_head = None if prior is None else prior.submission_id
@@ -105,6 +118,6 @@ def _assert_source_predecessor(snapshot, company_id, income_year):
         and claim.income_year == income_year and claim.payload_sha256 == submission.payload_hash
         and str(claim.claimed_by.subject) == submission.submitted_by
         and submission.supersedes_submission_id == (None if expected_head is None else expected_head.value))
-    _validate_archive_source_approval(
+    validate_approval(
         rf.Rf1086ArchiveQuery(company_id, income_year, claim.claimed_by),
         approval, snapshot.preview, lineage, _require)

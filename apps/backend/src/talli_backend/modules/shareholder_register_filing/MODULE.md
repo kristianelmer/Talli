@@ -1650,3 +1650,44 @@ No runtime, HTTP, Archive-owner policy or provider path is activated here.
 `test_rf1086_retained_source_dispatch.py` owns pure fixtures and header/parity tests;
 `test_rf1086_retained_source_dispatch_adversarial.py` independently checks missing
 captures, forged correspondence, ordered outcomes and the no-fresh-builder rule.
+
+### Explicit retained recovery and correction projection (2026-10-10)
+
+`prepare_rf1086_retained_source_reconciliation` produces the existing read-only
+reconciliation input from the complete retained assessment and exact original
+confirmation references. It preserves saved XML and document keys without a
+renderer, current-source query or fresh builder. A confirmed ancestor remains
+recoverable after a later correction; it need not be the current leaf. Canonical
+UUID arguments and duplicate-free confirmation JSON remain required, while the
+saved JSON's whitespace/key order and the original mutable-feedback comparison
+semantics are preserved.
+
+`prepare_rf1086_retained_correction_predecessor` validates the supplied full
+archive and its unfiltered company/year production chain, selects the unique
+accepted/rejected terminal leaf, and derives the existing compact predecessor
+snapshot. Exact selected actor/approval/manifest/claim identity, confirmed
+full-year journal, feedback artifact set and successful reconciliation evidence
+must agree. Genuine no-activity predecessors keep their existing saved-payload
+policy. A no-activity leaf after a managed full-year submission cannot become
+valid by filtering history. Both new entrypoints preserve the retained capture
+guard for any v2 source or v3 approval, including material outside the selected
+parent; legacy-only unknown capture coverage remains unknown.
+
+The compact result is a projection, not a completeness certificate or permission
+to correct. The exact USER query actor must be the selected original submitter;
+current accepted-owner access remains a separate adapter obligation. Feedback
+metadata does not verify external original bytes. Later application wiring must
+verify Documents bytes outside locks, reread the full archive on the same held
+company/year connection, revalidate its terminal head and compare exact selected
+owner-codec representations before asserting originals or writing. Off-year
+Governance commitments do not invent local off-year capture coverage.
+
+The old recovery/correction APIs retain their fixed validators and error order
+through private mechanics shared with the new entrypoints. No application,
+adapter, SQL, provider, claim/intent, fresh writer or Archive-owner policy path
+uses these additions. Pure fixtures and immutable legacy comparisons verify
+internal correspondence; they do not prove authoritative enumeration, current
+access, original bytes, database races or signed provenance.
+`test_rf1086_retained_recovery_correction.py` covers the new pure contracts;
+`test_rf1086_retained_recovery_correction_adversarial.py` independently checks
+complete ancestry, actor/capture boundaries and original reference bindings.
