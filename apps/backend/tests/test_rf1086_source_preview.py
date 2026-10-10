@@ -240,11 +240,25 @@ def test_retained_v2_preview_rejects_malformed_or_cross_bound_rows(change):
         PostgresShareholderRegisterFilingSession._source_preview(row)
 
 
-def test_retained_v2_support_does_not_enable_new_preview_generation():
+def test_pure_v2_preview_preparation_uses_the_existing_profile_and_codec():
+    from test_rf1086_year_source_v2 import prepare
+    source = prepare()
+    preview, store = preview_source(source)
+    assert store.prepared.source is source
+    assert preview.rendering_profile == 'rf1086-full-year-v1'
+    text = rf.serialize_rf1086_source_preview(preview)
+    assert json.loads(text)['codec'] == 'rf1086-source-preview-v1'
+    assert rf.parse_rf1086_source_preview(text) == preview
+
+
+@pytest.mark.parametrize('field,value', [('company_id', rf.CompanyId(str(UUID(int=995)))),
+    ('income_year', rf.IncomeYear(2024))])
+def test_pure_v2_preview_command_scope_must_match_its_source(field, value):
     from test_rf1086_year_source_v2 import prepare
     source = prepare()
     store = CapturingStore()
-    with pytest.raises(rf.Rf1086YearSourceError):
+    command = rf.GenerateRf1086SourcePreview(source.company_id, source.income_year, source)
+    with pytest.raises(rf.Rf1086YearSourceError, match='source_preview_invalid'):
         asyncio.run(rf.create_rf1086_preparation_service(store).generate_source_preview(
-            rf.GenerateRf1086SourcePreview(source.company_id, source.income_year, source)))
+            replace(command, **{field: value})))
     assert store.prepared is None

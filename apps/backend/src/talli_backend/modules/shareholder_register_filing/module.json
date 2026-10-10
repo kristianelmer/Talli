@@ -151,7 +151,16 @@
       "assert_rf1086_year_source_integrity_v2",
       "assert_rf1086_year_source_replay_v2",
       "serialize_rf1086_year_source_v2",
-      "parse_rf1086_year_source_v2"
+      "parse_rf1086_year_source_v2",
+      "Rf1086SourceReadinessEvidenceV2",
+      "Rf1086SourceReadinessProofV2",
+      "Rf1086AnnualReadinessProofV2",
+      "build_rf1086_source_readiness_v2",
+      "assert_rf1086_source_readiness_matches_v2",
+      "build_rf1086_annual_readiness_v2",
+      "assert_rf1086_annual_readiness_matches_v2",
+      "serialize_rf1086_annual_readiness_v2",
+      "parse_rf1086_annual_readiness_v2"
     ],
     "events": [],
     "errors": [
@@ -429,6 +438,7 @@
     "datetime",
     "decimal",
     "enum",
+    "functools",
     "hashlib",
     "importlib.resources",
     "json",
@@ -521,7 +531,9 @@
     "observationEvidenceReaderDatabase": "apps/backend/tests/test_rf1086_register_observation_evidence_reader_database.py",
     "yearSourceV2": "apps/backend/tests/test_rf1086_year_source_v2.py",
     "yearSourceStorageV2": "apps/backend/tests/test_rf1086_year_source_storage_v2.py",
-    "yearSourceV2Database": "apps/backend/tests/test_rf1086_year_source_v2_database.py"
+    "yearSourceV2Database": "apps/backend/tests/test_rf1086_year_source_v2_database.py",
+    "sourceReadinessV2": "apps/backend/tests/test_rf1086_source_readiness_v2.py",
+    "annualReadinessV2": "apps/backend/tests/test_rf1086_annual_readiness_v2.py"
   },
   "compatibilityExceptions": []
 }

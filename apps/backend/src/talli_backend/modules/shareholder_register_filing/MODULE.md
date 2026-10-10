@@ -1421,3 +1421,47 @@ facts. No Archive-facade, cancellation or external activation policy changes.
 `test_rf1086_year_source_v2_database.py` uses released owner writers and a unique
 fixture-only append and producer grants. Collection is not full database execution. Isolated
 native codec/migration probes label their public-owner stubs explicitly.
+
+
+### Pure v2 preview and readiness consumers (2026-10-10)
+
+The existing preview command/result accept an exact v2 source alongside v1.
+V2 checks command company/year against the source, then uses the unchanged
+renderer, rendering profile, preview storage codec and original case. No temporary
+v1 source or invented predecessor is produced. Existing v1 input behavior and
+preview bytes remain unchanged; source revision remains independent of codec.
+
+`Rf1086SourceReadinessEvidenceV2` and `Rf1086SourceReadinessProofV2` bind v2
+freshness, exact source/case and preview identities, serialized preview SHA,
+assessment and explicit omitted release families. Their public builder/assertion
+are `build_rf1086_source_readiness_v2` and
+`assert_rf1086_source_readiness_matches_v2`. `Rf1086AnnualReadinessProofV2` adds
+the unchanged `Rf1086AnnualReadinessInputs`, assessed by one private policy shared
+with v1. Validation/error precedence, issue order, warnings and accepted-warning
+rules remain unchanged. Its public builder/assertion use the corresponding
+`build_rf1086_annual_readiness_v2` and
+`assert_rf1086_annual_readiness_matches_v2` names. New proof assertions validate
+exact nested public record/scalar/tuple shapes and declared mappings before
+comparing unchanged value-only canonical hashes; equal hashes alone do not prove
+record types or distinguish integers from equivalent floats.
+
+`serialize_rf1086_annual_readiness_v2` and
+`parse_rf1086_annual_readiness_v2` use the independent, eleven-record
+`rf1086-annual-readiness-v2` codec. It accepts only the required proof, evidence,
+input, issue, freshness and identity records; no source/observation/actor records,
+datetime/decimal wrappers or old readiness tags. Exact canonical UTF-8 JSON,
+closed fields, duplicate-key rejection and source-aware assessment validation
+prevent cross-codec substitution. Its private versioned binding uses
+`rf1086-annual-readiness-binding-v2`, exact proof text/SHA and proof SHA; a blocked
+proof is retained by the codec but cannot pass that readiness binding.
+
+This is pure support only. Runtime source admission, fresh preview persistence,
+source approval, SQL writer selection, HTTP and Archive consumers remain on their
+existing paths; old approval rejects a v2 source even with a valid v2 annual
+proof. No current owner, live source/head, complete foreign enumeration, document
+bytes, statutory business eligibility or filing permission is proven here.
+Nominal-capital-increase Governance producer support is not added. All old source,
+annual and archive registries and hashes remain unchanged. New tests are
+`test_rf1086_source_readiness_v2.py` and `test_rf1086_annual_readiness_v2.py`,
+automatically included in the existing backend non-database lane; existing pure
+preview tests cover the additive format while the runtime workflow fence remains.

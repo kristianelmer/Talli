@@ -46,45 +46,49 @@ def _validate(inputs, source):
     _ids(tuple(item.document_id for item in inputs.documents))
 
 
+def _assess(source_proof, inputs, source):
+    _validate(inputs, source)
+    issues = list(source_proof.issues)
+    accepted = []
+    def issue(level, code, message):
+        issues.append(rf.Rf1086ReadinessIssue(level, code, message))
+    if not inputs.opening_snapshot_ids:
+        issue('error', 'opening_balance_missing', 'Åpningsbalanse må være låst for inntektsåret.')
+    if inputs.opening_snapshot_ids != inputs.opening_bank_snapshot_ids or not inputs.opening_bank_snapshot_ids:
+        issue('error', 'opening_bank_input_missing_or_mismatched', 'Bankgrunnlaget må tilhøre årets låste åpningsbalanse.')
+    if not inputs.period_lock_ids:
+        issue('warning', 'period_not_locked', 'Inntektsåret er ikke periode-låst.')
+    if inputs.interview_source_id is None:
+        issue('warning', 'annual_data_missing', 'Årsavslutningsintervjuet er ikke fullført.')
+    else:
+        if not inputs.bank_balance_confirmed:
+            issue('warning', 'bank_balance_not_confirmed', 'Bankbalanse er ikke bekreftet i årsavslutningsintervjuet.')
+        if inputs.has_unpaid_items:
+            issue('error', 'unpaid_items_not_supported', 'Ubetalte poster er ikke støttet i enkel annual loop.')
+        if not inputs.authority_to_submit_confirmed:
+            issue('error', 'annual_authority_not_confirmed', 'Innsendingsrett er ikke bekreftet i årsavslutningsintervjuet.')
+    if inputs.unmatched_bank_count:
+        issue('error', 'unmatched_bank_transactions', 'Alle banktransaksjoner må matches eller aksepteres.')
+    relevant = [item for item in inputs.documents if any(label in item.linked_to.lower()
+                for label in ('aksjonaerregisteroppgaven', 'aksjonærregisteroppgaven', 'rf-1086'))]
+    if any(item.status.startswith('missing_accepted') for item in relevant):
+        issue('warning', 'missing_documents_accepted', 'Dokumentmangel er akseptert som advarsel.')
+        accepted.append('missing_documents_accepted')
+    ordered = tuple(sorted(issues, key=lambda item: (item.code, item.level, item.message)))
+    _require(len({item.code for item in ordered}) == len(ordered))
+    accepted = tuple(sorted(accepted))
+    warnings = tuple(sorted(item.code for item in ordered if item.level == 'warning' and item.code not in accepted))
+    status = ('blocked' if source_proof.readiness_status == 'blocked' or any(item.level == 'error' for item in ordered)
+              else 'warning' if warnings else 'ready')
+    return dict(annual_inputs=inputs, readiness_status=status, issues=ordered,
+                accepted_warning_codes=accepted, required_warning_codes=warnings, not_evaluated=NOT_EVALUATED)
+
+
 def build(source, preview, inputs):
     try:
         source_proof = rf.build_rf1086_source_readiness(source, preview)
-        _validate(inputs, source)
-        issues = list(source_proof.issues)
-        accepted = []
-        def issue(level, code, message):
-            issues.append(rf.Rf1086ReadinessIssue(level, code, message))
-        if not inputs.opening_snapshot_ids:
-            issue('error', 'opening_balance_missing', 'Åpningsbalanse må være låst for inntektsåret.')
-        if inputs.opening_snapshot_ids != inputs.opening_bank_snapshot_ids or not inputs.opening_bank_snapshot_ids:
-            issue('error', 'opening_bank_input_missing_or_mismatched', 'Bankgrunnlaget må tilhøre årets låste åpningsbalanse.')
-        if not inputs.period_lock_ids:
-            issue('warning', 'period_not_locked', 'Inntektsåret er ikke periode-låst.')
-        if inputs.interview_source_id is None:
-            issue('warning', 'annual_data_missing', 'Årsavslutningsintervjuet er ikke fullført.')
-        else:
-            if not inputs.bank_balance_confirmed:
-                issue('warning', 'bank_balance_not_confirmed', 'Bankbalanse er ikke bekreftet i årsavslutningsintervjuet.')
-            if inputs.has_unpaid_items:
-                issue('error', 'unpaid_items_not_supported', 'Ubetalte poster er ikke støttet i enkel annual loop.')
-            if not inputs.authority_to_submit_confirmed:
-                issue('error', 'annual_authority_not_confirmed', 'Innsendingsrett er ikke bekreftet i årsavslutningsintervjuet.')
-        if inputs.unmatched_bank_count:
-            issue('error', 'unmatched_bank_transactions', 'Alle banktransaksjoner må matches eller aksepteres.')
-        relevant = [item for item in inputs.documents if any(label in item.linked_to.lower()
-                    for label in ('aksjonaerregisteroppgaven', 'aksjonærregisteroppgaven', 'rf-1086'))]
-        if any(item.status.startswith('missing_accepted') for item in relevant):
-            issue('warning', 'missing_documents_accepted', 'Dokumentmangel er akseptert som advarsel.')
-            accepted.append('missing_documents_accepted')
-        ordered = tuple(sorted(issues, key=lambda item: (item.code, item.level, item.message)))
-        _require(len({item.code for item in ordered}) == len(ordered))
-        accepted = tuple(sorted(accepted))
-        warnings = tuple(sorted(item.code for item in ordered if item.level == 'warning' and item.code not in accepted))
-        status = ('blocked' if source_proof.readiness_status == 'blocked' or any(item.level == 'error' for item in ordered)
-                  else 'warning' if warnings else 'ready')
         content = dict(schema_version='rf1086-annual-readiness-v1', source=source_proof,
-                       annual_inputs=inputs, readiness_status=status, issues=ordered,
-                       accepted_warning_codes=accepted, required_warning_codes=warnings, not_evaluated=NOT_EVALUATED)
+                       **_assess(source_proof, inputs, source))
         return rf.Rf1086AnnualReadinessProof(**content, proof_sha256=rf.rf1086_year_source_digest(content))
     except (KeyError, TypeError, ValueError, AttributeError, ArithmeticError):
         raise rf.Rf1086YearSourceError('rf1086_annual_inputs_unavailable') from None

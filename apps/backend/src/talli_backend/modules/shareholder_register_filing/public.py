@@ -2455,12 +2455,12 @@ class GenerateRf1086SourcePreview:
 
     company_id: CompanyId
     income_year: IncomeYear
-    source: Rf1086YearSourceSnapshot
+    source: Rf1086YearSourceSnapshot | Rf1086YearSourceSnapshotV2
 
 
 @dataclass(frozen=True, slots=True)
 class Rf1086PreparedSourcePreview:
-    source: Rf1086YearSourceSnapshot
+    source: Rf1086YearSourceSnapshot | Rf1086YearSourceSnapshotV2
     rendered: Rf1086RenderedPreview
 
 
@@ -2490,7 +2490,7 @@ class Rf1086SourcePreviewPreparation(Protocol):
 
 
 def assert_rf1086_source_preview_matches(preview: Rf1086SourcePreview,
-        source: Rf1086YearSourceSnapshot) -> None:
+        source: Rf1086YearSourceSnapshot | Rf1086YearSourceSnapshotV2) -> None:
     from .source_preview import assert_matches
     assert_matches(preview, source)
 
@@ -2613,6 +2613,87 @@ def serialize_rf1086_annual_readiness(proof: Rf1086AnnualReadinessProof,
 def parse_rf1086_annual_readiness(value: str, source: Rf1086YearSourceSnapshot,
         preview: Rf1086SourcePreview) -> Rf1086AnnualReadinessProof:
     from .annual_readiness_storage import parse
+    return parse(value, source, preview)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SourceReadinessEvidenceV2(_ImmutableRf1086Value):
+    """Exact v2 retained commitment; current owner evidence remains external."""
+
+    company_id: CompanyId
+    income_year: IncomeYear
+    source_id: Rf1086YearSourceId
+    source_version: int
+    source_sha256: str
+    case_sha256: str
+    freshness: Rf1086YearSourceFreshnessV2
+    preview_id: PreviewId
+    preview_payload_sha256: str
+    rendering_profile: str
+    schema_version: Literal["rf1086-source-readiness-evidence-v2"] = "rf1086-source-readiness-evidence-v2"
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086SourceReadinessProofV2(_ImmutableRf1086Value):
+    """Pure v2 source assessment, never live freshness or release admission."""
+
+    evidence: Rf1086SourceReadinessEvidenceV2
+    readiness_status: Literal["ready", "blocked"]
+    issues: tuple[Rf1086ReadinessIssue, ...]
+    not_evaluated: tuple[str, ...]
+    proof_sha256: str
+    schema_version: Literal["rf1086-source-readiness-v2"] = "rf1086-source-readiness-v2"
+
+
+def build_rf1086_source_readiness_v2(source: Rf1086YearSourceSnapshotV2,
+        preview: Rf1086SourcePreview) -> Rf1086SourceReadinessProofV2:
+    from .source_readiness_v2 import build
+    return build(source, preview)
+
+
+def assert_rf1086_source_readiness_matches_v2(proof: Rf1086SourceReadinessProofV2,
+        source: Rf1086YearSourceSnapshotV2, preview: Rf1086SourcePreview) -> None:
+    from .source_readiness_v2 import assert_matches
+    assert_matches(proof, source, preview)
+
+
+@dataclass(frozen=True, slots=True)
+class Rf1086AnnualReadinessProofV2(_ImmutableRf1086Value):
+    """V2 evidence with the unchanged annual assessment, not write authority."""
+
+    source: Rf1086SourceReadinessProofV2
+    annual_inputs: Rf1086AnnualReadinessInputs
+    readiness_status: Literal["ready", "warning", "blocked"]
+    issues: tuple[Rf1086ReadinessIssue, ...]
+    accepted_warning_codes: tuple[str, ...]
+    required_warning_codes: tuple[str, ...]
+    not_evaluated: tuple[str, ...]
+    proof_sha256: str
+    schema_version: Literal["rf1086-annual-readiness-v2"] = "rf1086-annual-readiness-v2"
+
+
+def build_rf1086_annual_readiness_v2(source: Rf1086YearSourceSnapshotV2,
+        preview: Rf1086SourcePreview, inputs: Rf1086AnnualReadinessInputs) -> Rf1086AnnualReadinessProofV2:
+    from .annual_readiness_v2 import build
+    return build(source, preview, inputs)
+
+
+def assert_rf1086_annual_readiness_matches_v2(proof: Rf1086AnnualReadinessProofV2,
+        source: Rf1086YearSourceSnapshotV2, preview: Rf1086SourcePreview,
+        inputs: Rf1086AnnualReadinessInputs) -> None:
+    from .annual_readiness_v2 import assert_matches
+    assert_matches(proof, source, preview, inputs)
+
+
+def serialize_rf1086_annual_readiness_v2(proof: Rf1086AnnualReadinessProofV2,
+        source: Rf1086YearSourceSnapshotV2, preview: Rf1086SourcePreview) -> str:
+    from .annual_readiness_storage_v2 import serialize
+    return serialize(proof, source, preview)
+
+
+def parse_rf1086_annual_readiness_v2(value: str, source: Rf1086YearSourceSnapshotV2,
+        preview: Rf1086SourcePreview) -> Rf1086AnnualReadinessProofV2:
+    from .annual_readiness_storage_v2 import parse
     return parse(value, source, preview)
 
 
@@ -2809,6 +2890,16 @@ def prepare_rf1086_source_reconciliation(archive: Rf1086ArchiveSnapshot, *, quer
 
 
 __all__ = [
+    'Rf1086SourceReadinessEvidenceV2',
+    'Rf1086SourceReadinessProofV2',
+    'Rf1086AnnualReadinessProofV2',
+    'build_rf1086_source_readiness_v2',
+    'assert_rf1086_source_readiness_matches_v2',
+    'build_rf1086_annual_readiness_v2',
+    'assert_rf1086_annual_readiness_matches_v2',
+    'serialize_rf1086_annual_readiness_v2',
+    'parse_rf1086_annual_readiness_v2',
+
     "Rf1086YearRegisterFactV2",
     "Rf1086YearGovernanceHeadV2",
     "Rf1086YearGovernanceLinkV2",

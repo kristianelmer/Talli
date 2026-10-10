@@ -26,7 +26,12 @@ def prepare(command: rf.GenerateRf1086SourcePreview) -> rf.Rf1086PreparedSourceP
         if not isinstance(command, rf.GenerateRf1086SourcePreview):
             raise ValueError()
         source = command.source
-        rf.assert_rf1086_year_source_integrity(source)
+        if type(source) is rf.Rf1086YearSourceSnapshotV2:
+            rf.assert_rf1086_year_source_integrity_v2(source)
+            if command.company_id != source.company_id or command.income_year != source.income_year:
+                raise ValueError()
+        else:
+            rf.assert_rf1086_year_source_integrity(source)
         rendered = render_rf1086_preview(source.command.case)
         paid_in = source.command.paid_in
         # Nominal capital and tax paid-in amounts are distinct review inputs.
@@ -63,7 +68,8 @@ def _assert_integrity(preview: rf.Rf1086SourcePreview) -> None:
         raise ValueError()
 
 
-def assert_matches(preview: rf.Rf1086SourcePreview, source: rf.Rf1086YearSourceSnapshot) -> None:
+def assert_matches(preview: rf.Rf1086SourcePreview,
+                   source: rf.Rf1086YearSourceSnapshot | rf.Rf1086YearSourceSnapshotV2) -> None:
     """Check new writes against the canonical renderer, not historical reads."""
     try:
         _assert_integrity(preview)
