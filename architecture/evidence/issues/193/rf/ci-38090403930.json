@@ -1,0 +1,198 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "TERMINAL_PR_CI_CLOSED_CLAIM_9PASS_1INVALIDATION_SETUPFAIL_10UNEXECUTED",
+  "recordedAtUtc": "2026-10-10T22:48:30.346954+00:00",
+  "run": {
+    "id": 38090403930,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38090403930",
+    "head": "17b260ec0533e2a1834014d7909d048721a7becd",
+    "merge": "c5e29cc2b7092693759e42d90dc8b41e13508378",
+    "mergeParents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "17b260ec0533e2a1834014d7909d048721a7becd"
+    ],
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-10T22:10:15Z",
+    "updatedAt": "2026-10-10T22:35:53Z",
+    "exactCheckoutInBothRawLogsVerified": true,
+    "currentPrHeadAndMergeFreshlyVerified": true
+  },
+  "jobs": [
+    {
+      "id": 114325486710,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-10T22:10:17Z",
+      "completedAt": "2026-10-10T22:35:47Z"
+    },
+    {
+      "id": 114325486970,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T22:10:17Z",
+      "completedAt": "2026-10-10T22:33:19Z"
+    },
+    {
+      "id": 114325487606,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-10T22:10:16Z",
+      "completedAt": "2026-10-10T22:10:15Z"
+    },
+    {
+      "id": 114330202386,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T22:35:49Z",
+      "completedAt": "2026-10-10T22:35:52Z"
+    }
+  ],
+  "application": {
+    "passed": 11000,
+    "skipped": 2,
+    "deselected": 2342,
+    "durationSeconds": 762.54,
+    "allStepsSuccess": true,
+    "rawLog": {
+      "path": "/private/tmp/talli-release-20261009/ci38090403930-app-raw-v1.log",
+      "sha256": "f71ca4d8bc8ef14e511744fc9813e9047d4e93acebafbafc0784cdcd56eb8661",
+      "bytes": 468502
+    }
+  },
+  "database": {
+    "initialHarness": {
+      "passed": 17,
+      "skipped": 1,
+      "durationSeconds": 0.19
+    },
+    "billing": {
+      "passed": 700,
+      "durationSeconds": 237.2
+    },
+    "authority": {
+      "selected": 1554,
+      "passed": 1512,
+      "failed": 1,
+      "unexecuted": 41,
+      "durationSeconds": 724.62,
+      "approvalPassOnly": 36,
+      "closedClaim": {
+        "requiredPassOnly": 20,
+        "passed": 9,
+        "failed": 1,
+        "unexecuted": 10,
+        "cleared": false,
+        "nodes": [
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_v3_claim_commits_once_with_current_complete_owner_proof[0-cash_issue]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_v3_claim_commits_once_with_current_complete_owner_proof[0-loss_covering_reduction]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_v3_claim_commits_once_with_current_complete_owner_proof[1-cash_issue]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_v3_claim_commits_once_with_current_complete_owner_proof[1-loss_covering_reduction]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_v3_claim_commits_once_with_current_complete_owner_proof[2-cash_issue]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_v3_claim_commits_once_with_current_complete_owner_proof[2-loss_covering_reduction]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_committed_recovery_precedes_current_evidence[annual]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_committed_recovery_precedes_current_evidence[mfa]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_committed_recovery_precedes_current_evidence[pilot]",
+            "outcome": "PASSED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_committed_recovery_precedes_current_evidence[invalidated]",
+            "outcome": "FAILED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_missing_claim_still_requires_live_first_effect[annual]",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_missing_claim_still_requires_live_first_effect[mfa]",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_missing_claim_still_requires_live_first_effect[invalidated]",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_revoked_or_unavailable_original_actor_cannot_recover[read_only]",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_revoked_or_unavailable_original_actor_cannot_recover[banned]",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_commit_during_documents_denial_recovers_exact_claim",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_company_wait_recovers_uncommitted_competing_claim_after_mfa_expires",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_closed_acl_and_retentive_populated_rollback_preserve_legacy_and_history",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_claim_write_rolls_back_when_application_fails_before_scope_exit[cancellation]",
+            "outcome": "UNEXECUTED"
+          },
+          {
+            "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_claim_write_rolls_back_when_application_fails_before_scope_exit[late_application_failure]",
+            "outcome": "UNEXECUTED"
+          }
+        ]
+      }
+    },
+    "failure": {
+      "node": "tests/test_rf1086_source_claim_v3_database.py::test_actual_committed_recovery_precedes_current_evidence[invalidated]",
+      "sqlstate": "P0001",
+      "diagnostic": "rf1086_source_production_admission_required",
+      "location": "test_rf1086_source_claim_v3_database.py:109, direct invalidated_at fixture UPDATE",
+      "beforeClaimReplay": true,
+      "trigger": "shareholder_register_filing.reject_legacy_source_production_v1",
+      "interpretation": "Setup failure; replay result remains unproved. Native differential probe isolates missing verified-owner fixture context under FORCE RLS, with minimal authorization/schema projections."
+    },
+    "rawLog": {
+      "path": "/private/tmp/talli-release-20261009/ci38090403930-db-raw-v1.log",
+      "sha256": "c97e2aaf888f8e0484d48242558ab538eb229300269705444bb603ebc438f827",
+      "bytes": 624859
+    },
+    "rfBrowserAndIdentityDiagnostic": "UNREACHED"
+  },
+  "artifactCount": 0,
+  "limits": [
+    "Whole release gate failed; no all20 claim prerequisite clearance.",
+    "Native fixture diagnosis does not replace full-schema CI replay/first-effect denial.",
+    "Earlier cancellation/deletion receipts belong to CI38086791422, not this run. Independent identity restore root cause remains unknown; new diagnostic was not reached.",
+    "Canonical evidence, hosted readiness, genuine-company validation, A1-A7 and all-three handoffs remain pending. No runtime grant, route, provider, deployment or paid action activated."
+  ]
+}

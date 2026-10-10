@@ -14,6 +14,7 @@ import pytest
 from talli_backend.application.shareholder_register_source_claim_v3 import ShareholderRegisterSourceClaimV3
 from talli_backend.modules.documents.public import DocumentsError
 from talli_backend.modules.shareholder_register_filing import public as rf
+from governance_register_evidence_amendment_fixture import connection
 from test_rf1086_source_approval_v3_database import (
     state, admitted, closed_source_role, withdrawal_fixture_role, approval_login, backend_url,
     fixture_roles, approved_release, approval_seed_access, rf_fixture_admin_access, documents_authority,
@@ -63,6 +64,15 @@ def claim(state, **changes):
     return asyncio.run(state.claim_workflow.claim('synthetic-token', **dict(state.claim_arguments, **changes)))
 
 
+def invalidate_approval(state, approval_id):
+    # The admission trigger reads the immutable binding under FORCE RLS.
+    # Use the existing scoped owner fixture, as retained-reader tests do.
+    with connection(state.item['seed'], 'shareholder_register_filing_store_owner') as db:
+        row = db.execute('update shareholder_register_filing.filing_approval_snapshots set invalidated_at=clock_timestamp() where id=%s returning id,invalidated_at',
+            (approval_id,)).fetchone()
+        assert row is not None and str(row[0]) == str(approval_id) and row[1] is not None
+
+
 def rows(state):
     with psycopg.connect(DATABASE_URL) as db:
         # The owner role is a privileged fixture observer, never runtime authority.
@@ -103,10 +113,10 @@ def test_actual_committed_recovery_precedes_current_evidence(state, claim_access
     elif change == 'mfa':
         claims=json.loads(state.store._verified.claims_json);claims['amr'][0]['timestamp']=1
         state.store._verified=replace(state.store._verified,claims_json=json.dumps(claims))
-    else:
+    elif change == 'pilot':
         with psycopg.connect(DATABASE_URL) as db:
-            if change=='pilot':db.execute("update billing.production_pilot_entitlements set expires_at=clock_timestamp()-interval '1 second' where id=%s",(state.entitlement,))
-            else:db.execute('update shareholder_register_filing.filing_approval_snapshots set invalidated_at=clock_timestamp() where id=%s',(first.claim.approval_id.value,))
+            db.execute("update billing.production_pilot_entitlements set expires_at=clock_timestamp()-interval '1 second' where id=%s",(state.entitlement,))
+    else: invalidate_approval(state, first.claim.approval_id.value)
     state.byte_reads.clear()
     assert claim(state)==rf.Rf1086SourceSubmissionClaimResult(first.claim,False)
     assert rows(state)==saved and not state.byte_reads
@@ -119,9 +129,7 @@ def test_actual_missing_claim_still_requires_live_first_effect(state,claim_acces
     elif change=='mfa':
         claims=json.loads(state.store._verified.claims_json);claims['amr'][0]['timestamp']=1
         state.store._verified=replace(state.store._verified,claims_json=json.dumps(claims))
-    else:
-        with psycopg.connect(DATABASE_URL) as db:
-            db.execute('update shareholder_register_filing.filing_approval_snapshots set invalidated_at=clock_timestamp() where id=%s',(state.claim_arguments['approval_id'].value,))
+    else: invalidate_approval(state, state.claim_arguments['approval_id'].value)
     # This fixture replaces production _transaction error mapping with a raw
     # psycopg transport. Pin the published SQL diagnostic, not a broad denial.
     if change=='mfa':
