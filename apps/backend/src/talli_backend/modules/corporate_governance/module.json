@@ -59,7 +59,10 @@
       "CorporateLifecycleSnapshot",
       "CorporateReadinessSource",
       "CorporateRegisterEvidenceAmendmentHead",
+      "CorporateRegisterEvidenceAmendmentLookup",
       "CorporateRegisterEvidenceChain",
+      "CorporateRegisterEvidenceChainSnapshot",
+      "CorporateRegisterEvidenceQuery",
       "CorporateRegisterWithdrawalReference",
       "CorporateReportingYearBasis",
       "CorporateYearDividendEvidence",
@@ -79,6 +82,7 @@
       "OwnerLoanEventFacts",
       "PersistedCompanyFacts",
       "PersistedShareholderFacts",
+      "PreparedCorporateRegisterEvidenceAmendment",
       "PreparedOwnerDividendFinalization",
       "PreparedOwnerDividendPayment",
       "PreparedShareholderLoan",
@@ -100,14 +104,19 @@
       "anchor_supported_corporate_event_evidence",
       "assert_corporate_register_evidence_amendment_integrity",
       "assert_corporate_register_evidence_amendment_replay",
+      "assert_corporate_register_evidence_chain_snapshot",
       "build_reporting_year_evidence",
       "corporate_register_evidence_amendment_request_digest",
       "derive_corporate_register_evidence_chain",
       "parse_corporate_register_evidence_amendment",
       "parse_corporate_register_evidence_amendment_command",
+      "parse_corporate_register_evidence_amendment_lookup",
+      "parse_corporate_register_evidence_chain_snapshot",
+      "parse_prepared_corporate_register_evidence_amendment",
       "prepare_supported_corporate_register_evidence_amendment",
       "serialize_corporate_register_evidence_amendment",
-      "serialize_corporate_register_evidence_amendment_command"
+      "serialize_corporate_register_evidence_amendment_command",
+      "serialize_corporate_register_evidence_originals"
     ],
     "events": [],
     "errors": [
@@ -166,7 +175,7 @@
     ],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql; supabase/migrations/20261009234529_governance_register_evidence_amendments.sql"
+    "migrations": "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql; supabase/migrations/20261009234529_governance_register_evidence_amendments.sql; supabase/migrations/20261010001936_governance_register_evidence_application.sql"
   },
   "ports": [
     {
@@ -264,7 +273,10 @@
     "registerObservationCompletionDatabase": "apps/backend/tests/test_governance_register_observation_completion_database.py",
     "registerEvidenceAmendmentPure": "apps/backend/tests/test_corporate_register_evidence_amendment.py",
     "registerEvidenceAmendmentCommand": "apps/backend/tests/test_corporate_register_evidence_amendment_command.py",
-    "registerEvidenceAmendmentDatabase": "apps/backend/tests/test_governance_register_evidence_amendment_database.py"
+    "registerEvidenceAmendmentDatabase": "apps/backend/tests/test_governance_register_evidence_amendment_database.py",
+    "registerEvidenceAmendmentWorkflow": "apps/backend/tests/test_corporate_register_evidence_amendment_workflow.py",
+    "registerEvidenceAmendmentAdapter": "apps/backend/tests/test_supabase_corporate_register_evidence_amendment.py",
+    "registerEvidenceApplicationDatabase": "apps/backend/tests/test_governance_register_evidence_application_database.py"
   },
   "compatibilityExceptions": []
 }

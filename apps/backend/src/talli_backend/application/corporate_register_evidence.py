@@ -5,7 +5,7 @@ receipts are reasserted on the final guarded Governance transaction connection.
 """
 from __future__ import annotations
 
-from decimal import Decimal, localcontext
+from decimal import Decimal, InvalidOperation, localcontext
 from dataclasses import dataclass
 
 from talli_backend.application.shareholder_register_filing_session import (
@@ -21,6 +21,7 @@ from talli_backend.modules.corporate_governance.public import (
     SupportedCorporateEventKind,
     SupportedCorporateEventPhase,
 )
+from talli_backend.modules.corporate_governance import public as amendment
 from talli_backend.modules.documents.public import (
     DocumentId, DocumentStatus, DocumentsSessionFactory, RetainedDocumentOriginalReceipt, document_metadata_sha256,
 )
@@ -72,6 +73,115 @@ class CorporateRegisterEvidenceVerifier:
                  documents: DocumentsSessionFactory) -> None:
         self._rf_sessions = rf_sessions
         self._documents = documents
+
+    async def verify_amendment(self, access_token: str, command: amendment.AmendSupportedCorporateRegisterEvidence,
+        *, anchor: amendment.SupportedCorporateEventEvidenceAnchor
+    ) -> tuple[amendment.CorporateDocumentOriginalCommitment, ...]:
+        """Verify the distinct complete union outside Governance transactions.
+
+        Metadata is established now, not retroactively at original event time.
+        Retained receipts are values for the final SQL owner proofs, not leases.
+        """
+        try:
+            return await self._verify_amendment(access_token, command, anchor=anchor)
+        except CorporateGovernanceError:
+            raise
+        except ShareholderRegisterFilingAuthenticationError:
+            raise CorporateGovernanceError.forbidden() from None
+        except DomainError as error:
+            if error.category is ErrorCategory.FORBIDDEN:
+                raise CorporateGovernanceError.forbidden() from None
+            if error.category is ErrorCategory.DEPENDENCY_UNAVAILABLE:
+                raise CorporateGovernanceError.unavailable() from None
+            raise CorporateGovernanceError.precondition(CorporateGovernanceErrorCode.CORPORATE_EVENT_EVIDENCE_INCOMPLETE,
+                'Original document and register evidence could not be verified.') from None
+        except (ValueError, TypeError, KeyError, AttributeError, InvalidOperation, Rf1086ProductionError):
+            raise CorporateGovernanceError.unavailable() from None
+
+    async def _verify_amendment(self, access_token: str, command: amendment.AmendSupportedCorporateRegisterEvidence,
+        *, anchor: amendment.SupportedCorporateEventEvidenceAnchor
+    ) -> tuple[amendment.CorporateDocumentOriginalCommitment, ...]:
+        rf = await self._rf_sessions.session(access_token)
+        documents = await self._documents.session(access_token)
+        if rf.actor_id != command.actor_id or documents.actor_id != command.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        reference = command.replacement
+        snapshot = await rf.read_current_register_observation(
+            Rf1086SourceQuery(command.company_id, command.income_year, command.actor_id),
+            Rf1086RegisterObservationId(str(reference.record_id)))
+        _require(snapshot is not None)
+        assert_rf1086_register_observation_integrity(snapshot)
+        _require(type(reference.revision) is int and (snapshot.observation_id.value, snapshot.version, snapshot.fact_sha256)
+            == (str(reference.record_id), reference.revision, reference.fact_sha256))
+        observation = snapshot.command; event = anchor.original.event
+        _require((event.company_id, event.income_year, event.event_id, anchor.anchor_sha256) ==
+            (command.company_id, command.income_year, command.event_id, command.expected_anchor_sha256))
+        _require(observation.company_id == command.company_id and observation.income_year == command.income_year
+            and observation.effective_at.date() == event.event_date.value)
+        before, after = observation.before, observation.after
+        facts = event.canonical_facts['businessFacts']
+        if event.event_kind is SupportedCorporateEventKind.CASH_CAPITAL_INCREASE:
+            _require(event.phase is SupportedCorporateEventPhase.REGISTERED and observation.event_kind == 'cash_issue'
+                and after.share_count - before.share_count == facts['issued_share_count']
+                and before.nominal_value == after.nominal_value
+                and _difference_equals(after.share_capital, before.share_capital, Decimal(facts['nominal_increase']['amount'])))
+        elif event.event_kind is SupportedCorporateEventKind.LOSS_COVERAGE_CAPITAL_REDUCTION:
+            _require(event.phase in {SupportedCorporateEventPhase.REGISTERED, SupportedCorporateEventPhase.FIRST_RECOGNIZED_AFTER_REGISTRATION}
+                and observation.event_kind == 'loss_covering_reduction'
+                and before.share_capital == Decimal(facts['old_share_capital']['amount'])
+                and after.share_capital == Decimal(facts['new_share_capital']['amount'])
+                and _difference_equals(before.share_capital, after.share_capital, Decimal(facts['nominal_reduction']['amount'])))
+        else:
+            _require(False)
+        # (semantic revision, expected content, source year). RF-only originals
+        # use the v1 revision=1 convention; overlapping Governance references
+        # retain their exact semantic revision and must agree with all RF facts.
+        required = {}
+        for fact in event.canonical_facts['documentFacts']:
+            identity = fact['document_id']['value']
+            claim = (fact['revision'], fact['content_sha256'], command.income_year)
+            _require(identity not in required or required[identity] == claim)
+            required[identity] = claim
+        memo = command.correction_memo
+        identity = str(memo.document_id); claim = (memo.revision, memo.content_sha256, command.income_year)
+        _require(identity not in required or required[identity] == claim)
+        required[identity] = claim
+        for fact in observation.documents:
+            _require(fact.source_income_year is not None)
+            if fact.document_id in required:
+                _require(required[fact.document_id][1:] == (fact.content_sha256, fact.source_income_year))
+            else:
+                required[fact.document_id] = (1, fact.content_sha256, fact.source_income_year)
+        commitments = []
+        for identity, (revision, content_sha, source_year) in sorted(required.items()):
+            evidence = await documents.verify_document_evidence(DocumentId(identity))
+            record, retained = evidence.document, evidence.retained_original
+            metadata = document_metadata_sha256(record)
+            _require(record.document_id.value == identity and record.company_id == command.company_id
+                and record.income_year == source_year and record.removed_at is None
+                and record.status in {DocumentStatus.ATTACHED, DocumentStatus.STORED, DocumentStatus.GENERATED_UNSIGNED, DocumentStatus.SIGNED_OWNER_ATTESTED}
+                and record.status == evidence.integrity_status
+                and record.content_sha256 == evidence.content_sha256 == content_sha
+                and record.byte_length == evidence.byte_length)
+            _require(retained is not None and retained.document_id == record.document_id
+                and retained.company_id == record.company_id and retained.source_income_year == source_year
+                and retained.metadata_sha256 == metadata and retained.content_sha256 == content_sha
+                and retained.byte_length == record.byte_length)
+            for expected in observation.documents:
+                if expected.document_id != identity:
+                    continue
+                _require(record.status is DocumentStatus.ATTACHED and record.linked_to == 'workspace'
+                    and record.document_type in {'corporate_document', 'accounting_document'}
+                    and record.document_type == expected.document_type and record.status.value == expected.integrity_status
+                    and content_sha == expected.content_version_sha256
+                    and record.byte_length == expected.byte_length and metadata == expected.metadata_sha256
+                    and record.created_at == expected.created_at)
+            commitments.append(amendment.CorporateDocumentOriginalCommitment(
+                amendment.CorporateSourceReference(retained.original_id), amendment.DocumentReference(identity),
+                record.company_id, source_year, revision, metadata, content_sha, record.byte_length, retained.retained_at))
+        result = tuple(commitments)
+        amendment.serialize_corporate_register_evidence_originals(result)
+        return result
 
     async def verify(self, access_token: str,
                      command: RecordSupportedCorporateEventCommand) -> VerifiedCorporateRegisterEvidence:

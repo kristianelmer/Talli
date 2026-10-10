@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[3]
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 MIGRATION = '20261009225857_ledger_governance_entry_assertion.sql'
 GOVERNANCE_SUCCESSOR = '20261009234529_governance_register_evidence_amendments.sql'
+GOVERNANCE_APPLICATION = '20261010001936_governance_register_evidence_application.sql'
 SIGNATURE = 'ledger.assert_unamended_governance_entry_v1(uuid,uuid,integer,uuid,uuid,date,text,timestamptz,jsonb,text)'
 TABLES = ('entries', 'entry_contexts', 'entry_sources', 'entry_reversals', 'entry_corrections',
           'cash_capital_increase_phases', 'loss_coverage_capital_reduction_phases')
@@ -58,6 +59,7 @@ def assertion_role():
             borrowed.append((role, prior))
         db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
         db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
+        db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_APPLICATION).read_text())
         db.execute(sql.SQL('create role {} nologin noinherit').format(sql.Identifier(name)))
         db.execute(sql.SQL('grant {} to {} with set true granted by {}').format(sql.Identifier(name), sql.Identifier(principal), sql.Identifier(principal)))
         grant_fixture(db, name)
@@ -390,6 +392,7 @@ def test_staged_runtime_acl_catalog_reapply_and_retentive_rollback(saved):
         # Even a failed closed-stage assertion must restore final owner grants.
         with psycopg.connect(DATABASE_URL) as restored:
             restored.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
+            restored.execute((ROOT / 'supabase/migrations' / GOVERNANCE_APPLICATION).read_text())
     with connection(saved['seed'], saved['role']) as db: call(db, saved)
     with connection(saved['seed'], 'ledger_executor') as db:
         with pytest.raises(psycopg.errors.InsufficientPrivilege): call(db, saved)

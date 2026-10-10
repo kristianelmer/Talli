@@ -458,3 +458,103 @@ def parse(encoded):
         raise
     except (ValueError, TypeError, KeyError, AttributeError, OverflowError, RecursionError):
         raise gov.CorporateRegisterEvidenceAmendmentError('corporate_register_evidence_encoding_invalid') from None
+
+
+def _query_scope(query):
+    _require(type(query) is gov.CorporateRegisterEvidenceQuery, 'scope_invalid')
+    _require(type(query.actor_id) is ActorId and query.actor_id.kind is ActorKind.USER, 'actor_invalid')
+    _identity(query.actor_id.subject, UserId)
+    return {'company_id': _identity(query.company_id, CompanyId), 'income_year': _year(query.income_year),
+            'event_id': _identity(query.event_id, gov.SupportedCorporateEventId)}
+
+
+def _response(value):
+    if type(value) is str:
+        value = json.loads(_text(value), object_pairs_hook=_unique_object,
+            parse_constant=lambda _: _require(False, 'json_invalid'))
+    _require(type(value) is dict, 'shape_invalid')
+    return value
+
+
+def _snapshot_body(snapshot, query):
+    _require(type(snapshot) is gov.CorporateRegisterEvidenceChainSnapshot and snapshot.query == query, 'scope_invalid')
+    scope = _query_scope(query)
+    _require(type(snapshot.chain) is gov.CorporateRegisterEvidenceChain, 'history_invalid')
+    chain = derive_chain(snapshot.chain.anchor, amendments=snapshot.chain.amendments)
+    _require(chain == snapshot.chain, 'history_invalid')
+    original = chain.anchor.original.event
+    _require((original.company_id, original.income_year, original.event_id) ==
+             (query.company_id, query.income_year, query.event_id), 'scope_invalid')
+    _require(_integer(snapshot.amendment_count, 0) == len(chain.amendments), 'history_incomplete')
+    return dict(codec='corporate-register-evidence-chain-v1', **scope,
+        anchor=_anchor_payload(chain.anchor), amendments=[serialize(item) for item in chain.amendments],
+        amendment_count=snapshot.amendment_count, head=_head(chain.head), effective_register_fact=_source(chain.effective_register_fact))
+
+
+def assert_chain_snapshot(snapshot, *, query):
+    try:
+        body = _snapshot_body(snapshot, query)
+        _require(_sha(snapshot.enumeration_sha256) == _digest(['corporate-register-evidence-chain-v1', body]), 'enumeration_mismatch')
+    except gov.CorporateRegisterEvidenceAmendmentError:
+        raise
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError, RecursionError):
+        raise gov.CorporateRegisterEvidenceAmendmentError('corporate_register_evidence_encoding_invalid') from None
+
+
+def parse_chain_snapshot(value, *, query):
+    try:
+        row = _fields(_response(value), 'codec company_id income_year event_id anchor amendments amendment_count head effective_register_fact enumeration_sha256')
+        _require(row['codec'] == 'corporate-register-evidence-chain-v1', 'codec_invalid')
+        scope = _query_scope(query)
+        _require(all(type(row[key]) is type(expected) and row[key] == expected for key, expected in scope.items()), 'scope_invalid')
+        _require(type(row['amendments']) is list, 'history_invalid')
+        chain = derive_chain(_parse_anchor(row['anchor']), amendments=tuple(parse(item) for item in row['amendments']))
+        _require(_parse_head(row['head']) == chain.head and _parse_source(row['effective_register_fact']) == chain.effective_register_fact, 'history_incomplete')
+        result = gov.CorporateRegisterEvidenceChainSnapshot(query, chain, row['amendment_count'], row['enumeration_sha256'])
+        assert_chain_snapshot(result, query=query)
+        return result
+    except gov.CorporateRegisterEvidenceAmendmentError:
+        raise
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError, RecursionError):
+        raise gov.CorporateRegisterEvidenceAmendmentError('corporate_register_evidence_encoding_invalid') from None
+
+
+def parse_lookup(value, *, query, request_sha256):
+    try:
+        _query_scope(query); _sha(request_sha256)
+        row = _response(value)
+        if row.get('status') == 'recorded':
+            _fields(row, 'status receipt_text')
+            receipt = parse(row['receipt_text']); command = receipt.command
+            _require((command.company_id, command.income_year, command.actor_id, command.event_id, receipt.request_sha256) ==
+                (query.company_id, query.income_year, query.actor_id, query.event_id, request_sha256), 'scope_invalid')
+            return gov.CorporateRegisterEvidenceAmendmentLookup('recorded', receipt)
+        _fields(row, 'status'); _require(row['status'] in ('not_observed', 'conflict'), 'lookup_invalid')
+        return gov.CorporateRegisterEvidenceAmendmentLookup(row['status'])
+    except gov.CorporateRegisterEvidenceAmendmentError:
+        raise
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError, RecursionError):
+        raise gov.CorporateRegisterEvidenceAmendmentError('corporate_register_evidence_encoding_invalid') from None
+
+
+def parse_prepared(value, *, command):
+    try:
+        _command_payload(command); row = _response(value)
+        if row.get('status') == 'recorded':
+            _fields(row, 'status receipt_text'); receipt = parse(row['receipt_text']); assert_replay(receipt, command)
+            return gov.PreparedCorporateRegisterEvidenceAmendment('recorded', receipt=receipt)
+        _fields(row, 'status chain'); _require(row['status'] == 'ready', 'prepare_invalid')
+        query = gov.CorporateRegisterEvidenceQuery(command.company_id, command.income_year, command.actor_id, command.event_id)
+        snapshot = parse_chain_snapshot(row['chain'], query=query)
+        _require((snapshot.chain.anchor.anchor_sha256, snapshot.chain.head, snapshot.chain.effective_register_fact) ==
+            (command.expected_anchor_sha256, command.expected_head, command.withdrawal.target), 'lineage_mismatch')
+        return gov.PreparedCorporateRegisterEvidenceAmendment('ready', snapshot=snapshot)
+    except gov.CorporateRegisterEvidenceAmendmentError:
+        raise
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError, RecursionError):
+        raise gov.CorporateRegisterEvidenceAmendmentError('corporate_register_evidence_encoding_invalid') from None
+
+
+def serialize_originals(originals):
+    _require(type(originals) is tuple, 'original_documents_invalid')
+    return _json([_original_commitment(item) for item in originals])

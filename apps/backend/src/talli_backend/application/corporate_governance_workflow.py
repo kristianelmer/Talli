@@ -79,6 +79,7 @@ from talli_backend.modules.corporate_governance.public import (
     SupportedCorporatePerspective,
     SupportedCorporateRelationship,
 )
+from talli_backend.modules.corporate_governance import public as amendment
 from talli_backend.modules.corporate_governance.service import (
     CorporateGovernanceService,
 )
@@ -122,6 +123,7 @@ from talli_backend.shared.kernel import (
     ActorId,
     CompanyId,
     CorrelationId,
+    IdempotencyKey,
     IncomeYear,
     Money,
 )
@@ -339,6 +341,89 @@ class CorporateGovernanceApplication:
         """Resolve the verified actor without accepting an actor from transport input."""
 
         return (await self._session_factory.session(access_token)).actor_id
+
+    async def amend_supported_register_evidence(self, access_token: str,
+        command: amendment.AmendSupportedCorporateRegisterEvidence, *, idempotency_key: IdempotencyKey
+    ) -> amendment.SupportedCorporateRegisterEvidenceAmendment:
+        session = await self._session(access_token, command.actor_id)
+        try:
+            amendment.serialize_corporate_register_evidence_amendment_command(command)
+            if type(idempotency_key) is not IdempotencyKey:
+                raise ValueError()
+        except ValueError:
+            raise CorporateGovernanceError.invalid(CorporateGovernanceErrorCode.INVALID_INPUT,
+                'Invalid register-evidence amendment request.') from None
+        query = amendment.CorporateRegisterEvidenceQuery(command.company_id, command.income_year, command.actor_id, command.event_id)
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
+            await self._require_owner(transaction, command.company_id)
+            prepared = await transaction.prepare_register_evidence_amendment(command, idempotency_key=idempotency_key)
+            try:
+                if type(prepared) is not amendment.PreparedCorporateRegisterEvidenceAmendment:
+                    raise ValueError()
+                if prepared.status == 'recorded':
+                    if prepared.snapshot is not None:
+                        raise ValueError()
+                    amendment.assert_corporate_register_evidence_amendment_replay(prepared.receipt, command)
+                    return prepared.receipt
+                if prepared.status != 'ready' or prepared.receipt is not None:
+                    raise ValueError()
+                amendment.assert_corporate_register_evidence_chain_snapshot(prepared.snapshot, query=query)
+                chain = prepared.snapshot.chain
+                if (chain.anchor.anchor_sha256, chain.head, chain.effective_register_fact) != (
+                    command.expected_anchor_sha256, command.expected_head, command.withdrawal.target):
+                    raise ValueError()
+            except (ValueError, TypeError, AttributeError):
+                raise CorporateGovernanceError.unavailable() from None
+        # No RF/Documents session or object I/O until authorized replay and
+        # fresh admission have resolved and all Governance locks are released.
+        if self._register_evidence is None:
+            raise CorporateGovernanceError.unavailable()
+        originals = await self._register_evidence.verify_amendment(access_token, command, anchor=chain.anchor)
+        try:
+            amendment.serialize_corporate_register_evidence_originals(originals)
+        except (ValueError, TypeError, AttributeError):
+            raise CorporateGovernanceError.unavailable() from None
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
+            await self._require_owner(transaction, command.company_id)
+            receipt = await transaction.append_register_evidence_amendment(command,
+                originals=originals, idempotency_key=idempotency_key)
+            try:
+                amendment.assert_corporate_register_evidence_amendment_replay(receipt, command)
+            except (ValueError, TypeError, AttributeError):
+                raise CorporateGovernanceError.unavailable() from None
+            return receipt
+
+    async def read_register_evidence_chain(self, access_token: str, query: amendment.CorporateRegisterEvidenceQuery
+    ) -> amendment.CorporateRegisterEvidenceChainSnapshot:
+        session = await self._session(access_token, query.actor_id)
+        async with session.transaction(guarded_company_id=query.company_id) as transaction:
+            await self._require_owner(transaction, query.company_id)
+            snapshot = await transaction.read_register_evidence_chain(query)
+            try:
+                amendment.assert_corporate_register_evidence_chain_snapshot(snapshot, query=query)
+            except (ValueError, TypeError, AttributeError):
+                raise CorporateGovernanceError.unavailable() from None
+            return snapshot
+
+    async def lookup_register_evidence_amendment(self, access_token: str, query: amendment.CorporateRegisterEvidenceQuery,
+        *, idempotency_key: IdempotencyKey, request_sha256: str
+    ) -> amendment.CorporateRegisterEvidenceAmendmentLookup:
+        session = await self._session(access_token, query.actor_id)
+        async with session.transaction(guarded_company_id=query.company_id) as transaction:
+            await self._require_owner(transaction, query.company_id)
+            result = await transaction.lookup_register_evidence_amendment(query,
+                idempotency_key=idempotency_key, request_sha256=request_sha256)
+            try:
+                if type(result) is not amendment.CorporateRegisterEvidenceAmendmentLookup:
+                    raise ValueError()
+                raw = {'status': result.status}
+                if result.status == 'recorded':
+                    raw['receipt_text'] = amendment.serialize_corporate_register_evidence_amendment(result.receipt)
+                elif result.receipt is not None:
+                    raise ValueError()
+                return amendment.parse_corporate_register_evidence_amendment_lookup(raw, query=query, request_sha256=request_sha256)
+            except (ValueError, TypeError, AttributeError):
+                raise CorporateGovernanceError.unavailable() from None
 
     async def list_lifecycle(
         self,

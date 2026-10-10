@@ -33,6 +33,7 @@ from governance_register_evidence_amendment_fixture import (
 
 pytestmark = pytest.mark.authority_database
 MIGRATION = '20261009234529_governance_register_evidence_amendments.sql'
+APPLICATION_MIGRATION = '20261010001936_governance_register_evidence_application.sql'
 SCHEMA = 'corporate_governance'
 TABLE = SCHEMA + '.register_evidence_amendments'
 APPEND = SCHEMA + '.append_register_evidence_amendment_v1(text,jsonb,text,text)'
@@ -583,37 +584,45 @@ def catalog(db):
 
 def test_staged_closed_grants_reapply_and_retentive_rollback_preserve_exact_catalog_history(ready):
     text = save(ready); before_rows = immutable_inputs(ready)
-    with psycopg.connect(DATABASE_URL) as db:
-        db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
-        db.execute('set local role corporate_governance_store_owner'); before = catalog(db)
-        functions = db.execute("select oid,proacl from pg_proc where pronamespace='corporate_governance'::regnamespace and (proname like 'register_evidence_%_internal_v1' or proname in ('append_register_evidence_amendment_v1','read_register_evidence_chain_v1','lookup_register_evidence_amendment_v1'))").fetchall()
-        assert len(functions) > 3
-        roles = db.execute("select rolname from pg_roles where rolname in ('anon','authenticated','service_role') or rolname like '%executor' or rolname like '%store_owner' or rolname like '%bridge_owner'").fetchall()
-        for identity, _ in functions:
-            assert not db.execute('select exists(select 1 from pg_proc p cross join lateral aclexplode(p.proacl) a where p.oid=%s and a.grantee=0)', (identity,)).fetchone()[0]
+    try:
+        with psycopg.connect(DATABASE_URL) as db:
+            db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
+            db.execute('set local role corporate_governance_store_owner'); before = catalog(db)
+            functions = db.execute("select oid,proacl from pg_proc where pronamespace='corporate_governance'::regnamespace and (proname like 'register_evidence_%_internal_v1' or proname in ('append_register_evidence_amendment_v1','read_register_evidence_chain_v1','lookup_register_evidence_amendment_v1'))").fetchall()
+            assert len(functions) > 3
+            roles = db.execute("select rolname from pg_roles where rolname in ('anon','authenticated','service_role') or rolname like '%executor' or rolname like '%store_owner' or rolname like '%bridge_owner'").fetchall()
+            for identity, _ in functions:
+                assert not db.execute('select exists(select 1 from pg_proc p cross join lateral aclexplode(p.proacl) a where p.oid=%s and a.grantee=0)', (identity,)).fetchone()[0]
+                for (role,) in roles:
+                    if role != 'corporate_governance_store_owner':
+                        assert not db.execute("select has_function_privilege(%s,%s::oid,'EXECUTE')", (role, identity)).fetchone()[0]
             for (role,) in roles:
                 if role != 'corporate_governance_store_owner':
-                    assert not db.execute("select has_function_privilege(%s,%s::oid,'EXECUTE')", (role, identity)).fetchone()[0]
-        for (role,) in roles:
-            if role != 'corporate_governance_store_owner':
-                assert not db.execute("select has_table_privilege(%s,%s,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE')", (role, TABLE)).fetchone()[0]
-        assert db.execute('select relrowsecurity,relforcerowsecurity from pg_class where oid=%s::regclass', (TABLE,)).fetchone() == (True, True)
-        assert db.execute("""select c.contype,c.convalidated,c.confdeltype,
-            array(select a.attname from unnest(c.conkey) with ordinality k(number,position)
-              join pg_attribute a on a.attrelid=c.conrelid and a.attnum=k.number order by k.position),
-            array(select a.attname from unnest(c.confkey) with ordinality k(number,position)
-              join pg_attribute a on a.attrelid=c.confrelid and a.attnum=k.number order by k.position)
-            from pg_constraint c where c.conrelid=%s::regclass and c.confrelid=c.conrelid
-              and c.conname='register_evidence_amendments_predecessor_fk'""", (TABLE,)).fetchone() == (
-            'f', True, 'r',
-            ['company_id', 'income_year', 'event_id', 'predecessor_id', 'predecessor_revision', 'predecessor_sha256'],
-            ['company_id', 'income_year', 'event_id', 'id', 'revision', 'amendment_sha256'])
-        assert not db.execute("select has_function_privilege(%s,%s,'EXECUTE')", (ready['role'], APPEND)).fetchone()[0]
-        db.execute('reset role'); db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
-        db.execute('set local role corporate_governance_store_owner'); assert catalog(db) == before
-        db.execute('reset role'); db.execute((ROOT / 'supabase/rollback' / MIGRATION).read_text())
-        db.execute('set local role corporate_governance_store_owner'); assert catalog(db) == before
-        db.execute('reset role'); grant_fixture(db, ready['role'])
+                    assert not db.execute("select has_table_privilege(%s,%s,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE')", (role, TABLE)).fetchone()[0]
+            assert db.execute('select relrowsecurity,relforcerowsecurity from pg_class where oid=%s::regclass', (TABLE,)).fetchone() == (True, True)
+            assert db.execute("""select c.contype,c.convalidated,c.confdeltype,
+                array(select a.attname from unnest(c.conkey) with ordinality k(number,position)
+                  join pg_attribute a on a.attrelid=c.conrelid and a.attnum=k.number order by k.position),
+                array(select a.attname from unnest(c.confkey) with ordinality k(number,position)
+                  join pg_attribute a on a.attrelid=c.confrelid and a.attnum=k.number order by k.position)
+                from pg_constraint c where c.conrelid=%s::regclass and c.confrelid=c.conrelid
+                  and c.conname='register_evidence_amendments_predecessor_fk'""", (TABLE,)).fetchone() == (
+                'f', True, 'r',
+                ['company_id', 'income_year', 'event_id', 'predecessor_id', 'predecessor_revision', 'predecessor_sha256'],
+                ['company_id', 'income_year', 'event_id', 'id', 'revision', 'amendment_sha256'])
+            assert not db.execute("select has_function_privilege(%s,%s,'EXECUTE')", (ready['role'], APPEND)).fetchone()[0]
+            db.execute('reset role'); db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
+            db.execute('set local role corporate_governance_store_owner'); assert catalog(db) == before
+            db.execute('reset role'); db.execute((ROOT / 'supabase/rollback' / MIGRATION).read_text())
+            db.execute('set local role corporate_governance_store_owner'); assert catalog(db) == before
+            db.execute('reset role'); grant_fixture(db, ready['role'])
+    finally:
+        # The predecessor intentionally closes its three contracts. Always
+        # restore the reviewed application suffix before the next fixture.
+        with psycopg.connect(DATABASE_URL) as db:
+            db.execute((ROOT / 'supabase/migrations' / APPLICATION_MIGRATION).read_text())
+            db.execute('set local role corporate_governance_store_owner')
+            grant_fixture(db, ready['role'])
     assert immutable_inputs(ready) == before_rows
     with connection(ready['seed'], ready['role']) as db: assert read_chain(db, ready)['amendments'] == [text]
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from datetime import date, datetime
@@ -100,6 +101,7 @@ from talli_backend.modules.corporate_governance.public import (
     SupportedCorporateEventReference,
     corporate_governance_persistence_adapter,
 )
+from talli_backend.modules.corporate_governance import public as amendment
 from talli_backend.modules.ledger.public import (
     LedgerCommand,
     LedgerEntryKind,
@@ -115,7 +117,7 @@ from talli_backend.modules.ledger.public import (
 )
 from talli_backend.modules.documents.public import DocumentsSessionFactory
 from talli_backend.modules.ledger.service import LedgerService
-from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, LocalDate, Money
+from talli_backend.shared.kernel import ActorId, CompanyId, IdempotencyKey, IncomeYear, LocalDate, Money
 
 
 def _proposal_request(
@@ -621,6 +623,25 @@ def _shareholder_loan_request(
 
 
 def _map_governance_database_error(message: str):
+    if 'corporate_register_evidence_fresh_mfa_required' in message:
+        return CorporateGovernanceError.precondition(CorporateGovernanceErrorCode.REGISTER_EVIDENCE_FRESH_MFA_REQUIRED,
+            'Fresh multi-factor authentication is required before amending register evidence.')
+    if 'corporate_register_evidence_replay_conflict' in message:
+        return CorporateGovernanceError.conflict()
+    if any(code in message for code in ('corporate_register_evidence_lineage_mismatch',
+        'corporate_register_evidence_evidence_mismatch', 'corporate_register_evidence_lifecycle_amended',
+        'corporate_register_evidence_lifecycle_conflicting', 'ledger_governance_entry_amended',
+        'ledger_governance_entry_mismatch', 'ledger_governance_entry_after_cutoff',
+        'rf1086_register_withdrawal_evidence_mismatch')):
+        return CorporateGovernanceError.precondition(CorporateGovernanceErrorCode.REGISTER_EVIDENCE_CHANGED,
+            'The original event or its register evidence changed; review the current evidence before retrying.')
+    if 'corporate_register_evidence_not_found' in message:
+        return CorporateGovernanceError.not_found()
+    if 'corporate_register_evidence_invalid_input' in message:
+        return CorporateGovernanceError.invalid(CorporateGovernanceErrorCode.INVALID_INPUT, 'Invalid register-evidence amendment request.')
+    if any(code in message for code in ('corporate_register_evidence_storage_invalid',
+        'rf1086_register_storage_invalid', 'documents_storage_invalid')):
+        return CorporateGovernanceError.unavailable()
     if any(code in message for code in (
         "rf1086_register_predecessor_mismatch",
         "rf1086_register_observation_after_cutoff",
@@ -760,6 +781,80 @@ class SupabaseCorporateGovernanceSession:
 
 @bank_transaction_claim_persistence_adapter(BankTransactionClaimPersistence)
 class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
+    def _amendment_key(self, actor_id: ActorId, key: IdempotencyKey) -> str:
+        if actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        if type(key) is not IdempotencyKey or type(key.value) is not str or re.fullmatch(r'[A-Za-z0-9._:-]{16,255}', key.value) is None:
+            raise CorporateGovernanceError.invalid(CorporateGovernanceErrorCode.INVALID_INPUT, 'Invalid amendment request key.')
+        return key.value
+
+    async def _amendment_result(self, query, parameters, decode):
+        try:
+            rows = await self._database_rows(query, parameters)
+            if len(rows) != 1 or set(rows[0]) != {'result'}:
+                raise CorporateGovernanceError.unavailable()
+            return decode(rows[0]['result'])
+        except LedgerError as error:
+            # Preserve only the public proof contract's known denials. Derived
+            # input/storage/transport failures remain unavailable at this seam.
+            if error.code == 'LEDGER_FORBIDDEN':
+                raise CorporateGovernanceError.forbidden() from None
+            if error.code == 'LEDGER_COMPANY_YEAR_NOT_ADMITTED':
+                raise CorporateGovernanceError.precondition(CorporateGovernanceErrorCode.REGISTER_EVIDENCE_CHANGED,
+                    'The company year is no longer admitted; review current eligibility before retrying.') from None
+            raise CorporateGovernanceError.unavailable() from None
+        except (amendment.CorporateRegisterEvidenceAmendmentError, ValueError, TypeError, KeyError, AttributeError, OverflowError, RecursionError):
+            raise CorporateGovernanceError.unavailable() from None
+
+    async def prepare_register_evidence_amendment(self,
+        command: amendment.AmendSupportedCorporateRegisterEvidence, *, idempotency_key: IdempotencyKey
+    ) -> amendment.PreparedCorporateRegisterEvidenceAmendment:
+        key = self._amendment_key(command.actor_id, idempotency_key)
+        try:
+            encoded = amendment.serialize_corporate_register_evidence_amendment_command(command)
+        except amendment.CorporateRegisterEvidenceAmendmentError:
+            raise CorporateGovernanceError.invalid(CorporateGovernanceErrorCode.INVALID_INPUT, 'Invalid register-evidence amendment request.') from None
+        return await self._amendment_result(
+            'select corporate_governance.prepare_register_evidence_amendment_v1(%s,%s,%s) as result',
+            (encoded, key, str(self.actor_id.subject)),
+            lambda value: amendment.parse_prepared_corporate_register_evidence_amendment(value, command=command))
+
+    async def append_register_evidence_amendment(self,
+        command: amendment.AmendSupportedCorporateRegisterEvidence, *,
+        originals: tuple[amendment.CorporateDocumentOriginalCommitment, ...], idempotency_key: IdempotencyKey
+    ) -> amendment.SupportedCorporateRegisterEvidenceAmendment:
+        key = self._amendment_key(command.actor_id, idempotency_key)
+        try:
+            encoded = amendment.serialize_corporate_register_evidence_amendment_command(command)
+            original_text = amendment.serialize_corporate_register_evidence_originals(originals)
+        except amendment.CorporateRegisterEvidenceAmendmentError:
+            raise CorporateGovernanceError.invalid(CorporateGovernanceErrorCode.INVALID_INPUT, 'Invalid register-evidence amendment request.') from None
+        def decode(value):
+            receipt = amendment.parse_corporate_register_evidence_amendment(value)
+            amendment.assert_corporate_register_evidence_amendment_replay(receipt, command)
+            return receipt
+        return await self._amendment_result(
+            'select corporate_governance.append_register_evidence_amendment_v1(%s,%s::jsonb,%s,%s) as result',
+            (encoded, original_text, key, str(self.actor_id.subject)), decode)
+
+    async def read_register_evidence_chain(self, query: amendment.CorporateRegisterEvidenceQuery
+    ) -> amendment.CorporateRegisterEvidenceChainSnapshot:
+        if query.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        return await self._amendment_result(
+            'select corporate_governance.read_register_evidence_chain_v1(%s::uuid,%s,%s::uuid,%s) as result',
+            (str(query.company_id), int(query.income_year), str(query.event_id), str(self.actor_id.subject)),
+            lambda value: amendment.parse_corporate_register_evidence_chain_snapshot(value, query=query))
+
+    async def lookup_register_evidence_amendment(self, query: amendment.CorporateRegisterEvidenceQuery,
+        *, idempotency_key: IdempotencyKey, request_sha256: str
+    ) -> amendment.CorporateRegisterEvidenceAmendmentLookup:
+        key = self._amendment_key(query.actor_id, idempotency_key)
+        return await self._amendment_result(
+            'select corporate_governance.lookup_register_evidence_amendment_v1(%s::uuid,%s,%s::uuid,%s,%s,%s) as result',
+            (str(query.company_id), int(query.income_year), str(query.event_id), key, request_sha256, str(self.actor_id.subject)),
+            lambda value: amendment.parse_corporate_register_evidence_amendment_lookup(value, query=query, request_sha256=request_sha256))
+
     async def assert_register_evidence(self, evidence: VerifiedCorporateRegisterEvidence) -> None:
         observation = evidence.observation
         await self._database_rows(

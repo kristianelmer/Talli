@@ -54,7 +54,7 @@ end; $empty$;
 -- contract. RESTRICT on every drop keeps unexpected dependencies visible.
 do $drop_empty$
 declare item record; actual text[];
- expected constant text[]:=array[
+ expected text[]:=array[
   'append_register_evidence_amendment_v1','lookup_register_evidence_amendment_v1','read_register_evidence_chain_v1',
   'register_evidence_access_internal_v1','register_evidence_anchor_internal_v1','register_evidence_business_internal_v1',
   'register_evidence_cash_lifecycle_internal_v1','register_evidence_chain_internal_v1','register_evidence_command_internal_v1',
@@ -63,10 +63,21 @@ declare item record; actual text[];
   'register_evidence_originals_internal_v1','register_evidence_receipt_internal_v1','register_evidence_replacement_internal_v1',
   'register_evidence_require_internal_v1','register_evidence_sha_internal_v1','register_evidence_time_internal_v1','register_evidence_value_internal_v1'];
 begin
+ -- The application suffix adds exactly one versioned contract. Validate its
+ -- identity before extending the original closed 22-routine inventory.
+ if exists(select 1 from pg_catalog.pg_proc where pronamespace='corporate_governance'::regnamespace
+  and proname='prepare_register_evidence_amendment_v1') then
+  if (select count(*)=1 and bool_and(pg_catalog.oidvectortypes(proargtypes)='text, text, text'
+    and prorettype='jsonb'::regtype and prokind='f') from pg_catalog.pg_proc
+    where pronamespace='corporate_governance'::regnamespace and proname='prepare_register_evidence_amendment_v1') is distinct from true
+  then raise exception 'governance_amendment_rehearsal_inventory_changed'; end if;
+  select array_agg(name order by name collate "C") into expected
+   from unnest(expected||array['prepare_register_evidence_amendment_v1']) name;
+ end if;
  select array_agg(p.proname::text order by p.proname collate "C") into actual
  from pg_catalog.pg_proc p where p.pronamespace='corporate_governance'::regnamespace
   and (p.proname like 'register_evidence_%_internal_v1'
-   or p.proname in ('append_register_evidence_amendment_v1','lookup_register_evidence_amendment_v1','read_register_evidence_chain_v1'));
+   or p.proname in ('append_register_evidence_amendment_v1','lookup_register_evidence_amendment_v1','read_register_evidence_chain_v1','prepare_register_evidence_amendment_v1'));
  if actual is distinct from expected then raise exception 'governance_amendment_rehearsal_inventory_changed'; end if;
  for item in select p.oid::regprocedure::text as signature from pg_catalog.pg_proc p
   where p.pronamespace='corporate_governance'::regnamespace and p.proname=any(expected)

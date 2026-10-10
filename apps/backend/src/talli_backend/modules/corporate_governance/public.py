@@ -267,6 +267,8 @@ class CorporateGovernanceErrorCode(StrEnum):
     CORPORATE_EVENT_JUDGMENT_REQUIRED = "corporate_event_judgment_required"
     CORPORATE_EVENT_PHASE_INVALID = "corporate_event_phase_invalid"
     DEPENDENCY_UNAVAILABLE = "corporate_governance_dependency_unavailable"
+    REGISTER_EVIDENCE_FRESH_MFA_REQUIRED = "corporate_register_evidence_fresh_mfa_required"
+    REGISTER_EVIDENCE_CHANGED = "corporate_register_evidence_changed"
 
 
 class CorporateGovernanceError(DomainError):
@@ -1471,6 +1473,19 @@ class CorporateGovernancePersistence(Protocol):
 
     async def actor_role(self, company_id: CompanyId) -> str | None: ...
 
+    async def prepare_register_evidence_amendment(self, command: AmendSupportedCorporateRegisterEvidence,
+        *, idempotency_key: IdempotencyKey) -> PreparedCorporateRegisterEvidenceAmendment: ...
+
+    async def append_register_evidence_amendment(self, command: AmendSupportedCorporateRegisterEvidence,
+        *, originals: tuple[CorporateDocumentOriginalCommitment, ...], idempotency_key: IdempotencyKey
+    ) -> SupportedCorporateRegisterEvidenceAmendment: ...
+
+    async def lookup_register_evidence_amendment(self, query: CorporateRegisterEvidenceQuery,
+        *, idempotency_key: IdempotencyKey, request_sha256: str) -> CorporateRegisterEvidenceAmendmentLookup: ...
+
+    async def read_register_evidence_chain(self, query: CorporateRegisterEvidenceQuery
+    ) -> CorporateRegisterEvidenceChainSnapshot: ...
+
     async def read_reporting_year_basis(
         self, company_id: CompanyId,
     ) -> CorporateReportingYearBasis: ...
@@ -1737,6 +1752,66 @@ class CorporateRegisterEvidenceChain:
     head: CorporateRegisterEvidenceAmendmentHead | None
 
 
+@dataclass(frozen=True, slots=True)
+class CorporateRegisterEvidenceQuery:
+    company_id: CompanyId
+    income_year: IncomeYear
+    actor_id: ActorId
+    event_id: SupportedCorporateEventId
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateRegisterEvidenceChainSnapshot:
+    """Owner enumeration bound to request context; not a current-evidence lease."""
+    query: CorporateRegisterEvidenceQuery
+    chain: CorporateRegisterEvidenceChain
+    amendment_count: int
+    enumeration_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class CorporateRegisterEvidenceAmendmentLookup:
+    status: Literal['recorded', 'not_observed', 'conflict']
+    receipt: SupportedCorporateRegisterEvidenceAmendment | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedCorporateRegisterEvidenceAmendment:
+    """Historical replay or admitted preflight; ready is never a completion lease."""
+    status: Literal['ready', 'recorded']
+    snapshot: CorporateRegisterEvidenceChainSnapshot | None = None
+    receipt: SupportedCorporateRegisterEvidenceAmendment | None = None
+
+
+def parse_corporate_register_evidence_chain_snapshot(value: object, *, query: CorporateRegisterEvidenceQuery
+) -> CorporateRegisterEvidenceChainSnapshot:
+    from .register_evidence_amendment import parse_chain_snapshot
+    return parse_chain_snapshot(value, query=query)
+
+
+def assert_corporate_register_evidence_chain_snapshot(snapshot: CorporateRegisterEvidenceChainSnapshot,
+    *, query: CorporateRegisterEvidenceQuery) -> None:
+    from .register_evidence_amendment import assert_chain_snapshot
+    assert_chain_snapshot(snapshot, query=query)
+
+
+def parse_corporate_register_evidence_amendment_lookup(value: object, *, query: CorporateRegisterEvidenceQuery,
+    request_sha256: str) -> CorporateRegisterEvidenceAmendmentLookup:
+    from .register_evidence_amendment import parse_lookup
+    return parse_lookup(value, query=query, request_sha256=request_sha256)
+
+
+def parse_prepared_corporate_register_evidence_amendment(value: object, *, command: AmendSupportedCorporateRegisterEvidence
+) -> PreparedCorporateRegisterEvidenceAmendment:
+    from .register_evidence_amendment import parse_prepared
+    return parse_prepared(value, command=command)
+
+
+def serialize_corporate_register_evidence_originals(originals: tuple[CorporateDocumentOriginalCommitment, ...]) -> str:
+    from .register_evidence_amendment import serialize_originals
+    return serialize_originals(originals)
+
+
 def anchor_supported_corporate_event_evidence(
     original: RecordedSupportedCorporateEvent, *, original_actor_id: UserId
 ) -> SupportedCorporateEventEvidenceAnchor:
@@ -1810,6 +1885,11 @@ def parse_corporate_register_evidence_amendment(
 
 
 __all__ = [
+    "CorporateRegisterEvidenceQuery", "CorporateRegisterEvidenceChainSnapshot",
+    "CorporateRegisterEvidenceAmendmentLookup", "PreparedCorporateRegisterEvidenceAmendment",
+    "parse_corporate_register_evidence_chain_snapshot", "assert_corporate_register_evidence_chain_snapshot",
+    "parse_corporate_register_evidence_amendment_lookup", "parse_prepared_corporate_register_evidence_amendment",
+    "serialize_corporate_register_evidence_originals",
     "CorporateRegisterEvidenceAmendmentError", "CorporateRegisterEvidenceAmendmentId",
     "SupportedCorporateEventEvidenceAnchor", "CorporateRegisterEvidenceAmendmentHead",
     "CorporateRegisterWithdrawalReference", "CorporateDocumentOriginalCommitment",

@@ -1,0 +1,256 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_GOVERNANCE_AMENDMENT_APPLICATION_VERIFICATION",
+  "recordedAtUtc": "2026-10-10T00:38:50.525057+00:00",
+  "baseRevision": "20c69eb4596ded55f471c38104de976ab752f8e3",
+  "preCommitHead": "9c0d800143cf65887e1f04934bcb03278c85d827",
+  "scope": "Governance application/adapter/strict public decoding and additive prepare/four-contract runtime grants; fixture suffix restoration, registration and tests. No HTTP, RF consumer, Archive behavior, or frozen persistence edits.",
+  "implementation": [
+    "Additive prepare RPC resolves exact actor/company/key replay before fresh MFA, admission or mutable evidence. New requests require current-clock Company Access MFA and owner/company-year admission after company/event locks, plus exact anchor/head/withdrawal target.",
+    "Governance workflow validates ready/replay values, releases its guarded transaction, verifies every distinct original Governance document, correction memo and replacement RF document through public Documents byte verification, then calls final append under a new company guard with the unchanged command/key.",
+    "Shared document identities must agree in content/year and RF metadata; original semantic revisions remain exact and RF-only revision 1 remains the fixed convention. Metadata is established at amendment time, not retroactively at the original event time.",
+    "Final immutable append still owns current owner/MFA/head/RF/Documents/Ledger fences. Recovery lookup never prepares or appends; no automatic retry follows a failed or uncertain append.",
+    "Strict public decoders bind SQL envelopes, receipts, scope, supplied full lineage, count/head/effective reference and enumeration digest. Operational failure or malformed data never becomes successful absence.",
+    "Only the existing Governance workflow executor receives prepare/append/chain/lookup grants. No private helper/table/foreign proof authority is delegated. Retentive rollback closes these four grants and preserves history/recovery definitions.",
+    "Predecessor tests restore the ordered persistence/application suffix after closed-stage checks. Empty-only disposable teardown accepts the exact 22-function prefix or its one verified prepare successor and refuses retained history."
+  ],
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/adapters/supabase_corporate_governance.py",
+      "sha256": "5ab31471fde49b055b1c49364ec14dfaf1fd4a0146017b38989a8cdb59598029"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/corporate_governance_workflow.py",
+      "sha256": "ff30eb5f09abda91bdab5ac72b577185dda3b3072c4b7e082d39b238dc05110e"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/corporate_register_evidence.py",
+      "sha256": "31632938f9bfe24dcb635d6ab35cda0cee0fd7718bf08d2749fbf96639d00e77"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md",
+      "sha256": "1f5cfecf29e4985c6f05dcb9cbcf28c5c3c7f74522256b3d3c9634928be6023d"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/module.json",
+      "sha256": "d18b853ed959fa16e163aab4dee107d14d4fcfd2870ea41fcaa87df9516c3057"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/public.py",
+      "sha256": "1e37a593388b28d485453fa7542bda0c87778fd979434d8c23c05a597df7aa4c"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/corporate_governance/register_evidence_amendment.py",
+      "sha256": "e933a626c7439101ccbbc2837055b5c88a0a7139b94b456f3d10eb80ae85a0e4"
+    },
+    {
+      "path": "apps/backend/tests/test_corporate_register_evidence_amendment_workflow.py",
+      "sha256": "fea78f6d52af0272125e24497c40863b3903c44e6ec2688793bc33ef3ff3ada7"
+    },
+    {
+      "path": "apps/backend/tests/test_documents_historical_original_integrity_database.py",
+      "sha256": "0e22cd6eca5d6fa61580bac1baf88a100a55b522b6ceeb15f4802f43838efb2e"
+    },
+    {
+      "path": "apps/backend/tests/test_governance_register_evidence_amendment_database.py",
+      "sha256": "2e1929952cd24994b01e7b237f0e654c626094cd31b8fb873792c95b458b7960"
+    },
+    {
+      "path": "apps/backend/tests/test_governance_register_evidence_application_database.py",
+      "sha256": "b660828a4672f09028db3944c212a9027082cc3a042c109bf4ba02b73ecc3841"
+    },
+    {
+      "path": "apps/backend/tests/test_ledger_governance_entry_assertion_database.py",
+      "sha256": "984c71399eb06f5697e80ac7981f8618d7aaad8b0868347abcc79c5a7a404350"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_observation_evidence_assertions_database.py",
+      "sha256": "8d6408a3569ea52c25de0f702ab0d7dcb831a8e87afeeeaaadbfa34045cc7166"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_register_observation_evidence_reader_database.py",
+      "sha256": "70b88958b21a3bb1347d4d13d84d8e29bb0d89e6e6f8aa4f1df99dba35502785"
+    },
+    {
+      "path": "apps/backend/tests/test_supabase_corporate_register_evidence_amendment.py",
+      "sha256": "ad61222f7ae3c7d7ba40521679839a75ab8789c9105e855d2df703c266a40735"
+    },
+    {
+      "path": "package.json",
+      "sha256": "220eda2eb1989b07a6cbd881456593c99cfeb15f9439b50412ac965934c85d1d"
+    },
+    {
+      "path": "scripts/rf-consequential-successors.json",
+      "sha256": "d552f3f5731a9c8260d73939360846ff28531f80dc2221550aea51a5cc8546d8"
+    },
+    {
+      "path": "supabase/migrations/20261010001936_governance_register_evidence_application.sql",
+      "sha256": "9abe61bd3a04af484eea44421166bcfe7a63af98707d5938e4fc0324271b8090"
+    },
+    {
+      "path": "supabase/rollback/20261010001936_governance_register_evidence_application.sql",
+      "sha256": "d856a68fcca82792f280177823ca54ea412dc26a310808fe79e844749471ed7d"
+    },
+    {
+      "path": "tests/ci_release_gate.test.mjs",
+      "sha256": "c41f6b8681fac9ba595e9b175b320aeaec608318fa634594409da83db312c925"
+    },
+    {
+      "path": "tests/corporate_governance_review_fixes.test.mjs",
+      "sha256": "88002108d2fb11aeea91b19c472fd9ebc0afc86c2e8a52cc0070446d9372ca4e"
+    },
+    {
+      "path": "tests/support/governance_amendment_rehearsal.mjs",
+      "sha256": "02d5254bceadcf33ab5f1a48c755a27d4447cdd45037ea40d667350169c7fda6"
+    }
+  ],
+  "checks": {
+    "centralAndManifestPassed": 126,
+    "databaseCollected": 445,
+    "newDatabaseCollected": 24,
+    "databaseExecuted": 0,
+    "nativeGroupedChecks": 14,
+    "nativeClusterRemoved": true,
+    "architecture": "PASS",
+    "openapi": "PASS; generated schema matches tracked unchanged bytes",
+    "oldContractCompatibility": "PASS; all existing pure/public definitions preserved; existing protocol/enum members preserved and extended; frozen SQL/rollback/OpenAPI/golden bytes exact",
+    "regressionBeforeErrorMappingRepairPassed": 373,
+    "affectedFinalRegressionPassed": 159,
+    "focusedNewUnitTestsIncludedInFinalSelection": 142
+  },
+  "reviewRepair": {
+    "finding": "The adapter flattened a known retained RF withdrawal evidence mismatch to dependency unavailable; exact Ledger proof authorization/admission errors were also flattened at the new amendment boundary.",
+    "resolution": "Map the known RF mismatch to an evidence precondition and translate only exact Ledger forbidden/company-year denial at the amendment boundary. Unknown, storage, malformed derived input and transport errors remain unavailable.",
+    "regression": "Actual connection.execute-to-adapter error tests failed 3 cases before repair (9 passed), then the affected workflow/new-adapter/existing-adapter selection passed 159 cases, including 142 new unit cases.",
+    "sourceDelta": [
+      {
+        "path": "apps/backend/src/talli_backend/adapters/supabase_corporate_governance.py",
+        "previousSha256": "5b2c4756e06a2fa8203eed34f52383690985cf3840c9f28e68f2a34e0ff2bdc2",
+        "sha256": "5ab31471fde49b055b1c49364ec14dfaf1fd4a0146017b38989a8cdb59598029"
+      },
+      {
+        "path": "apps/backend/tests/test_supabase_corporate_register_evidence_amendment.py",
+        "previousSha256": "bb3f4e2c608043968bcd49cc77eef959df2aa6b7685f6327345c0450fd243b7c",
+        "sha256": "ad61222f7ae3c7d7ba40521679839a75ab8789c9105e855d2df703c266a40735"
+      }
+    ],
+    "proofScope": "The earlier 373-case regression used the prior adapter pin. Final 159-case evidence binds the repair; these overlapping selections are not summed. SQL, interfaces and other 20 frozen sources stayed unchanged."
+  },
+  "independentReviews": {
+    "standards": {
+      "status": "PASS_BOUNDED_SCOPE",
+      "remainingHardViolations": 0,
+      "actionableSmellFindings": 0,
+      "reviewer": "/root/override_integration",
+      "freezeSha256": "80afc2983bdd3d534c856f1ecd273027f37699fe7183f0566d76db344368cb69"
+    },
+    "spec": {
+      "status": "PASS_BOUNDED_SCOPE",
+      "unresolvedFindings": 0,
+      "reviewer": "/root/rf_reader_spec_review",
+      "freezeSha256": "80afc2983bdd3d534c856f1ecd273027f37699fe7183f0566d76db344368cb69"
+    },
+    "root": {
+      "resolvedFindings": 1,
+      "unresolvedFindings": 0,
+      "sourceAndArtifactHashesVerified": true
+    }
+  },
+  "compatibility": {
+    "existingPublicDefinitionsPreserved": 131,
+    "existingPrivateCodecDefinitionsPreserved": 43,
+    "originalProtocolAndEnumMembers": "Preserved; additions only.",
+    "closedPersistenceSqlSha256": "a592388697cb64aeee183fdb849d39d6eac63b385f7615c5143c6abb8306132c",
+    "closedPersistenceRollbackSha256": "bedf373770156b7c8448915e42d8e168b0249eff909ae5693e34cd8d03e56399",
+    "oldOpenapiAndGoldenBytes": "Unchanged; exact hashes in compatibility artifact."
+  },
+  "privateEvidence": [
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-application-freeze.json",
+      "sha256": "80afc2983bdd3d534c856f1ecd273027f37699fe7183f0566d76db344368cb69"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-application-checks.json",
+      "sha256": "613d952f097c0ecdaf95223e486c43ffa8eae23881958b10b7c559dde373af6c"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-application-regression.log",
+      "sha256": "af85320a1d1b4ba6fb55d15d20f5afd86b2a5e85554eed888e1589a141112f95"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-application-ci-harness.log",
+      "sha256": "a0fde4aa565bf34a29cda54709ddae0f283d93fd05d1d86dfd0e6d1951f271b2"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-application-db-collection-final.log",
+      "sha256": "e86b769791e99238ca8b0de62b9a95202e7840bde0735e8e741c42a71a6152f2"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-application-architecture.log",
+      "sha256": "84e9d89c40d1acbbcf1f6b352488d2066e6a9c3750083035e10ec0941ecdcce7"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-application-openapi.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-application-compatibility.json",
+      "sha256": "da0ff9573e2594cf760b656a4ab9d05f004569f917603f577625fd3b67599617"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/check-governance-application-compatibility.py",
+      "sha256": "1e1b9de6b701393befd79a81166b2994eb201151afab30c6493e4fabd80586a9"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/check-governance-amendment-application-native.py",
+      "sha256": "cf061d4dd04e50be5a7d4981aa62e729552d37cccb3726d9bbee09b8ceb6d92b"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-application-native.json",
+      "sha256": "d9ead32d291e781c4fd1616fcedc2c42a518ba0d694812f4508169f48d6545f5"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-application-native.log",
+      "sha256": "c07b3b516e4e6ecdad9b92099c2fc6397727989d5abd3ea48ddbcf011ab0634d"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-application-native-run.log",
+      "sha256": "eb93eec51b2c41d543aa224a03a9a521e0af4ae8f3338e9f449356bb24d8d36a"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-application-test-checks.json",
+      "sha256": "4f6a520bdf7daafed4147b4261534fbd808a2d1853789adb0447cbba3225ef65"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-owner-error-before.log",
+      "sha256": "f20b63aad42667f284c7d1de9914621bf2b76e4ab812eb3e6d4ed9959c5cdea4"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-owner-error-after.log",
+      "sha256": "0351c3608687e5281c5172854075e5fcb78ff8fbadb1c45c26eb5d7eeb04cd5d"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-application-freeze-cbbad96a.json",
+      "sha256": "cbbad96a5825dd56f39c2a36ac9b73777c05592f565a7f1d2276b3c7d8a821ed"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/governance-amendment-application-checks-25dfbeef.json",
+      "sha256": "25dfbeef276aa0113614a98782640d362f0af29e35bd3ccacf94e63e1ce7c533"
+    }
+  ],
+  "limits": [
+    "Native PostgreSQL17 exercises actual whole Governance migrations/prepare/append/chain/catalog/RLS with CompanyAccess, company guard, RF, Documents and Ledger public proofs explicitly stubbed. Fourteen groups overlap earlier persistence checks; they are not independent full integration tests.",
+    "Unit application transactions and RF projections are fakes; real DocumentsService verifies local bytes with in-memory persistence and object storage.",
+    "All 445 DB cases collected only. No full Supabase, real multi-owner authority, race or external object-store proof.",
+    "Readiness is not a lease; final append rechecks current owner/MFA/head/evidence. Historical recovery requires current accepted owner but no fresh evidence.",
+    "Client validation cannot disprove a fully recommitted valid prefix; completeness remains authoritative SQL enumeration.",
+    "No HTTP/RF/Archive activation, deployment, provider, Docker, paid action, commit or push.",
+    "This slice was not present in the then-running ordinary PR workflow 38009121217, whose head is 9c0d800143cf65887e1f04934bcb03278c85d827. No full CI result is transferred to this unpushed slice.",
+    "All A1-A7 remain pending. This record does not establish full Supabase authorization/RLS/races, independent Auth/object restore, complete capital-case support, hosted/provider acceptance, linked immutable complete gates, or launch clearance."
+  ],
+  "remaining": [
+    "Publish an additive complete Governance reporting projection while preserving original reporting-year-2 data and hashes; then explicitly update RF consumption, cutoffs and versioned source commitments in the next serial owner slice.",
+    "HTTP activation, Archive-owner completion/eligibility and full runtime/browser/restore/rollback proof remain separate work."
+  ]
+}

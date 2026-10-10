@@ -388,7 +388,8 @@ Archive behavior; old reporting and API/codec projections remain frozen.
 `20261009234529_governance_register_evidence_amendments.sql` adds the immutable,
 forced-RLS `corporate_governance.register_evidence_amendments` table and three versioned SQL contracts.
 All runtime executors, PUBLIC, anonymous and service roles remain denied; this is
-a staged owner foundation with no application, HTTP or Archive activation.
+a closed persistence prefix. The application suffix below grants only its reviewed
+workflow caller; HTTP, RF consumption and Archive activation remain absent.
 
 `append_register_evidence_amendment_v1(command_text, originals, idempotency_key,
 subject)` accepts only the canonical business command and a distinct document
@@ -429,8 +430,7 @@ strings, count, exact head, effective reference and enumeration SHA-256. Zero
 requires a valid actual original event; missing data/schema is never an empty
 history. `lookup_register_evidence_amendment_v1(company, year, event, key,
 request_sha256, subject)` returns `recorded` with exact `receipt_text`,
-`not_observed`, or `conflict`; operational failures remain errors for the future
-application boundary to map to unavailable. An absence describes this guarded
+`not_observed`, or `conflict`; operational failures map to unavailable at the application boundary. An absence describes this guarded
 observation, not a permanent promise that no later write can commit.
 
 These proofs bind retained claims and current owner state. They do not establish
@@ -438,7 +438,63 @@ legal signedness, original metadata at the old Governance recording time, curren
 Banking eligibility, an RF premium field, independent truth of original economics,
 or fresh object-store bytes. Documents commits retained SQL bytes and metadata;
 the seven raw SQL-only metadata fields remain outside its unchanged public hash.
-Future application byte verification and activation/Archive coverage are separate.
+The application suffix adds byte verification; HTTP activation and Archive
+coverage remain separate.
 Retentive rollback preserves rows, guards, recovery and narrow proof grants.
 Prerequisite tests still check their closed stages, then restore this final suffix,
 including after failed catalog assertions. No old public schemas/codecs change.
+
+
+### Register-evidence amendment application admission
+
+`20261010001936_governance_register_evidence_application.sql` adds
+`prepare_register_evidence_amendment_v1(command_text, idempotency_key, subject)`.
+It recovers an exact actor/company/key receipt before current MFA, admission or
+owner evidence, returning `recorded` with canonical receipt text. New commands
+require the existing CompanyAccess current-clock MFA predicate, admitted current
+ownership, and a complete chain matching the expected anchor/head/withdrawal
+target before returning `ready` with the chain. Company/event locks and READ
+COMMITTED apply to prepare, chain, lookup and append. Ready is not a lease.
+
+Only `corporate_governance_workflow_executor` receives the four public contracts;
+private helpers, tables and foreign proof functions remain unavailable to it.
+The frozen append still derives every receipt and rechecks all final owner,
+MFA, head, RF, Documents and Ledger assertions. The suffix never rewrites the
+original persistence functions. Retentive rollback closes its four grants while
+preserving history and owner recovery; old-prefix fixtures restore both ordered
+suffixes. Disposable teardown accepts the original exact 22-function inventory
+or the additional exact prepare signature, and refuses retained amendment rows.
+
+`CorporateGovernanceApplication.amend_supported_register_evidence` resolves
+prepare inside a guarded transaction before even checking whether its evidence
+verifier is configured. A recorded request returns without RF/Documents sessions
+or bytes. A fresh ready result releases the transaction, then verifies every
+distinct original Governance document, correction memo and actual current RF
+original through public Documents byte verification. Shared identities must agree
+in content/year and all RF metadata; original semantic revisions remain exact,
+while RF-only revision 1 is the fixed receipt convention. Metadata is established
+at amendment time, never retroactively at original recording. Bytes are read
+without Governance/company locks. A separate guarded transaction calls final
+append; concurrent revocation, stale evidence, expiry or head change can reject it.
+There is no automatic append retry. Same-key prepare/lookup recovers uncertainty.
+
+Typed chain, lookup and prepare values have strict public decoders. They validate
+closed shapes, scope, canonical receipts, exact count/head/effective reference,
+full supplied lineage and enumeration digest. Missing schemas or malformed
+responses are unavailable, never empty histories or successful absence. A fully
+recommitted truncated prefix cannot be disproved by a client alone: complete
+storage enumeration remains the SQL owner's contract. Historical chain/lookup
+requires current accepted ownership, but no fresh MFA or mutable evidence.
+No HTTP route, RF consumer, Ledger posting, Banking freshness or Archive behavior
+is activated by this slice; old public wire schemas and receipt/hash codecs stay
+unchanged.
+
+The additive public query/result types are `CorporateRegisterEvidenceQuery`,
+`CorporateRegisterEvidenceChainSnapshot`, `CorporateRegisterEvidenceAmendmentLookup`
+and `PreparedCorporateRegisterEvidenceAmendment`. Adapter and alternate-port
+validation use `parse_corporate_register_evidence_chain_snapshot`,
+`assert_corporate_register_evidence_chain_snapshot`,
+`parse_corporate_register_evidence_amendment_lookup` and
+`parse_prepared_corporate_register_evidence_amendment`.
+`serialize_corporate_register_evidence_originals` emits the strict immutable
+admission commitments; they do not form part of the actor-scoped request digest.
