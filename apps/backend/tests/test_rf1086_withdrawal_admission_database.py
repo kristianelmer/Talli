@@ -1,6 +1,7 @@
 """Direct old SQL admissions versus withdrawal; no provider or runtime activation."""
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import replace
 from hashlib import sha256
 import json
@@ -28,12 +29,12 @@ from test_rf1086_source_review_bridge_database import bridge
 pytestmark = pytest.mark.authority_database
 MIGRATION = '20261009215302_rf1086_withdrawal_source_admission_guards.sql'
 GUARD = 'shareholder_register_filing.assert_source_register_observations_active_internal_v1'
-EXTRA_FUNCTIONS = (
-    GUARD + '(uuid,integer,text)', GUARD + '(uuid,integer,uuid,text)',
+LEGACY_FUNCTIONS = (
     'shareholder_register_filing.read_source_approval_context_v1(uuid,uuid,text)',
     'shareholder_register_filing.append_source_approval_v1(uuid,uuid,text,text,text,text)',
     'shareholder_register_filing.claim_source_submission_v1(uuid,text,uuid,text)',
 )
+EXTRA_FUNCTIONS = (GUARD + '(uuid,integer,text)', GUARD + '(uuid,integer,uuid,text)')
 STAGES = ('source', 'preview', 'bridge', 'approval_v1', 'approval_v2', 'claim_v1', 'claim_v2',
           'intent_main', 'intent_child', 'intent_confirm', 'retry_main', 'retry_child', 'retry_confirm')
 
@@ -86,6 +87,29 @@ def locked(db, f):
     db.execute('select shareholder_register_filing.lock_year_source_v1(%s,%s)', (f['seed']['company'], 2026))
 
 
+@contextmanager
+def admission_executor(db, *, legacy=False):
+    """Use the real actor role; expose closed v1 APIs only inside this transaction."""
+    previous = db.execute("select current_setting('role')").fetchone()[0]
+    if legacy:
+        for function in LEGACY_FUNCTIONS:
+            assert not db.execute("select has_function_privilege('shareholder_register_filing_executor',%s,'EXECUTE')",
+                                  (function,)).fetchone()[0]
+        db.execute('set local role shareholder_register_filing_store_owner')
+        db.execute('grant execute on function ' + ','.join(LEGACY_FUNCTIONS) + ' to shareholder_register_filing_executor')
+    db.execute('set local role shareholder_register_filing_executor')
+    try:
+        yield
+    finally:
+        # Failed SQL aborts the transaction and rolls its grants back. Do not
+        # replace the expected admission error with InFailedSqlTransaction.
+        if db.info.transaction_status != psycopg.pq.TransactionStatus.INERROR:
+            if legacy:
+                db.execute('set local role shareholder_register_filing_store_owner')
+                db.execute('revoke execute on function ' + ','.join(LEGACY_FUNCTIONS) + ' from shareholder_register_filing_executor')
+            db.execute(sql.SQL('set local role {}').format(sql.Identifier(previous)))
+
+
 def preview_call(db, preview):
     text = rf.serialize_rf1086_source_preview(preview)
     return db.execute('select shareholder_register_filing.append_source_preview_v1(%s,%s,%s,%s,%s,%s,%s,%s)',
@@ -118,30 +142,33 @@ def source_call(db, f, *, mutate=None):
 
 
 def approval_call(db, f):
-    locked(db, f)
-    return db.execute('select to_jsonb(r) from shareholder_register_filing.append_source_approval_v'
-        + str(f['version']) + '(%s,%s,%s,%s,%s,%s) r',
-        (f['preview'].preview_id.value, f['entitlement'], f['manifest_text'], f['manifest'].manifest_sha256,
-         f['review_sha'], str(f['store'].actor_id.subject))).fetchone()[0]
+    with admission_executor(db, legacy=f['version'] == 1):
+        locked(db, f)
+        return db.execute('select to_jsonb(r) from shareholder_register_filing.append_source_approval_v'
+            + str(f['version']) + '(%s,%s,%s,%s,%s,%s) r',
+            (f['preview'].preview_id.value, f['entitlement'], f['manifest_text'], f['manifest'].manifest_sha256,
+             f['review_sha'], str(f['store'].actor_id.subject))).fetchone()[0]
 
 
 def claim_call(db, f):
-    locked(db, f)
     args = [f['approval']['id'], f['manifest'].manifest_sha256, None]
     if f['version'] == 2:
         args.append(f['annual_text'])
     args.append(str(f['store'].actor_id.subject))
-    return db.execute('select shareholder_register_filing.claim_source_submission_v' + str(f['version'])
-        + '(' + ','.join('%s' for _ in args) + ')', args).fetchone()[0]
+    with admission_executor(db, legacy=f['version'] == 1):
+        locked(db, f)
+        return db.execute('select shareholder_register_filing.claim_source_submission_v' + str(f['version'])
+            + '(' + ','.join('%s' for _ in args) + ')', args).fetchone()[0]
 
 
 def intent_call(db, f, *, name=None, digest=None, expected=None):
-    locked(db, f)
-    return db.execute('select shareholder_register_filing.prepare_source_operation_v2(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
-        (f['claim']['claim']['submission_id'], f['manifest'].manifest_sha256,
-         name or f['operation'], digest or f['body_sha'], str(uuid4()), expected or f.get('expected_event'),
-         f['annual_text'] if (name or f['operation']) == 'post_hovedskjema' else None,
-         str(f['request']), f['connection'].external_ref, str(f['store'].actor_id.subject))).fetchone()[0]
+    with admission_executor(db):
+        locked(db, f)
+        return db.execute('select shareholder_register_filing.prepare_source_operation_v2(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+            (f['claim']['claim']['submission_id'], f['manifest'].manifest_sha256,
+             name or f['operation'], digest or f['body_sha'], str(uuid4()), expected or f.get('expected_event'),
+             f['annual_text'] if (name or f['operation']) == 'post_hovedskjema' else None,
+             str(f['request']), f['connection'].external_ref, str(f['store'].actor_id.subject))).fetchone()[0]
 
 
 def finish_call(db, f, intent, *, state='succeeded', failure=None):
@@ -149,8 +176,9 @@ def finish_call(db, f, intent, *, state='succeeded', failure=None):
     reference = ('main-reference' if event['operation_name'] == 'post_hovedskjema' else 'child-reference') if state == 'succeeded' else None
     if state == 'succeeded' and event['operation_name'] == 'confirm':
         reference = json.dumps({'dialogId': str(uuid4()), 'forsendelseId': str(uuid4())}, separators=(',', ':'))
-    return db.execute('select to_jsonb(r) from shareholder_register_filing.finish_source_operation_v1(%s,%s,%s,%s,%s,%s) r',
-        (f['claim']['claim']['submission_id'], event['id'], state, reference, failure, str(f['store'].actor_id.subject))).fetchone()[0]
+    with admission_executor(db):
+        return db.execute('select to_jsonb(r) from shareholder_register_filing.finish_source_operation_v1(%s,%s,%s,%s,%s,%s) r',
+            (f['claim']['claim']['submission_id'], event['id'], state, reference, failure, str(f['store'].actor_id.subject))).fetchone()[0]
 
 
 def prepare_stage(f, stage):
@@ -173,7 +201,7 @@ def prepare_stage(f, stage):
                 return await proof(f, scope)
         f['annual'] = asyncio.run(annual())
         f['annual_text'] = rf.serialize_rf1086_annual_readiness(f['annual'], f['source'], f['preview'])
-    with connection(f['staged']) as db:
+    with connection(f['staged']) as db, admission_executor(db, legacy=f['version'] == 1):
         locked(db, f)
         args = [f['preview'].preview_id.value, f['entitlement']]
         if f['version'] == 2:
@@ -216,7 +244,7 @@ def state(f):
     tables = ('year_source_versions', 'year_source_heads', 'source_previews', 'source_review_bridges',
               'filing_approval_snapshots', 'source_approval_bindings', 'source_submission_bindings',
               'submission_heads', 'production_filing_submissions')
-    with connection(f['staged']) as db:
+    with connection(f['staged'], role='shareholder_register_filing_executor') as db:
         result = [db.execute('select count(*) from shareholder_register_filing.' + table + ' where company_id=%s',
                             (f['seed']['company'],)).fetchone()[0] for table in tables]
         result.append(db.execute('select count(*) from shareholder_register_filing.production_filing_events e '
@@ -225,6 +253,25 @@ def state(f):
         result.append(db.execute('select id,invalidated_at from shareholder_register_filing.filing_approval_snapshots '
             'where company_id=%s order by id', (f['seed']['company'],)).fetchall())
         return result
+
+
+def test_legacy_fixture_grants_are_private_to_transaction_and_restore_exact_catalog(downstream):
+    f = downstream
+    catalog = "select oid,proacl::text from pg_proc where oid=any(%s::regprocedure[]) order by oid"
+    with psycopg.connect(DATABASE_URL) as observer:
+        before = observer.execute(catalog, (list(LEGACY_FUNCTIONS),)).fetchall()
+        for function in LEGACY_FUNCTIONS:
+            assert not observer.execute("select has_function_privilege('shareholder_register_filing_executor',%s,'EXECUTE')",
+                                        (function,)).fetchone()[0]
+    with connection(f['staged']) as db:
+        with admission_executor(db, legacy=True):
+            assert str(db.execute('select shareholder_register_filing.actor_v1()').fetchone()[0]) == str(f['store'].actor_id.subject)
+            with psycopg.connect(DATABASE_URL) as observer:
+                assert observer.execute(catalog, (list(LEGACY_FUNCTIONS),)).fetchall() == before
+        assert db.execute("select current_setting('role')").fetchone()[0] == f['staged']['role']
+        assert db.execute(catalog, (list(LEGACY_FUNCTIONS),)).fetchall() == before
+    with psycopg.connect(DATABASE_URL) as observer:
+        assert observer.execute(catalog, (list(LEGACY_FUNCTIONS),)).fetchall() == before
 
 
 @pytest.mark.parametrize('stage', STAGES)
@@ -396,7 +443,7 @@ def test_migration_replay_retains_catalog_attributes_closed_grants_and_rollback_
         assert db.execute(catalog).fetchall() == before
         assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall() == memberships
         for role in ('anon', 'authenticated', 'service_role', 'shareholder_register_filing_executor', 'corporate_governance_workflow_executor'):
-            for function in EXTRA_FUNCTIONS:
+            for function in EXTRA_FUNCTIONS + LEGACY_FUNCTIONS:
                 assert not db.execute("select has_function_privilege(%s,%s,'EXECUTE')", (role, function)).fetchone()[0]
         db.execute((ROOT / 'supabase/rollback' / MIGRATION).read_text())
         assert db.execute(catalog).fetchall() == before

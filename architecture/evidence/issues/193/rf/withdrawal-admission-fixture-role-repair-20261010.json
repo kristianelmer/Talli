@@ -1,0 +1,154 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_WITHDRAWAL_ADMISSION_FIXTURE_ROLE_REPAIR",
+  "recordedAtUtc": "2026-10-10T01:19:34.171102+00:00",
+  "baseRevision": "a6a45247804073693eb7aefb0904a82a3640670b",
+  "scope": "Repair only the disposable withdrawal admission fixture. Production SQL, roles, authorization and source-admission assertions remain unchanged.",
+  "ciFailure": {
+    "runId": 38011213837,
+    "runUrl": "https://github.com/kristianelmer/Talli/actions/runs/38011213837",
+    "headRevision": "db1ea71ce7d7ad2771d4685237a6b73b580a1a02",
+    "actualDatabaseCheckout": "f246c9ffbbd68fa5c7536abd83928d2672a8a104",
+    "databaseResult": "FAILURE",
+    "authoritySelection": {
+      "collected": 1279,
+      "passed": 472,
+      "failed": 1,
+      "notExecuted": 806
+    },
+    "failure": "approval_v1 setup calls the closed legacy read context under a generated fixture role. actor_v1 requires the exact shareholder_register_filing_executor role; inherited privileges do not satisfy it. The test stopped before withdrawal or its intended stale-source assertion.",
+    "wholeRunReceipt": "Separate terminal workflow receipt; no whole-run conclusion inferred here."
+  },
+  "implementation": [
+    "Keep private withdrawal and parser grants on the unique fixture role. Remove its ineffective grants for the three closed legacy admission APIs.",
+    "Select the actual RF executor for approval context, approval/claim, operation intent/outcome and populated state reads, matching the unchanged production actor contract.",
+    "For v1 fixture calls only, assert the three APIs are revoked, grant in the same uncommitted transaction, select the executor, and restore exact grants and prior role before successful commit. An aborted SQL transaction rolls the temporary grant back without masking the original error.",
+    "Add a database check that temporary grants are invisible to an independent connection and the exact function ACL catalog is restored before and after commit. Existing stale-observation, race, replay, repeatable-read and no-mutation assertions are retained."
+  ],
+  "sourceFiles": [
+    {
+      "path": "apps/backend/tests/test_rf1086_withdrawal_admission_database.py",
+      "sha256": "8327e2844339f962364eb9d117f9f4a1de8a631938494f99be08169e86164f39"
+    }
+  ],
+  "unchangedProductionAndFixture": [
+    {
+      "path": "supabase/migrations/20260909190548_shareholder_register_filing_capability.sql",
+      "sha256": "fa29bbe4b4c7a498554e18bf3f71ede4146d616e414e48b9290815d52fc99e15"
+    },
+    {
+      "path": "supabase/migrations/20260929173935_rf1086_annual_approval_binding.sql",
+      "sha256": "85bf8dd19bc4b9d21d903d66569aded2f107031956d45e72418cb2a5ed8d1495"
+    },
+    {
+      "path": "supabase/migrations/20261009215302_rf1086_withdrawal_source_admission_guards.sql",
+      "sha256": "21d4b2453084021736c0025c1d6ca293029792b8f1d4fe1be2957d08302a0b12"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_register_observation_withdrawal_database.py",
+      "sha256": "cc6b4e50ce615c2bef3b51e3b815c4d39f960f2b2d4c6bfdf536540940e14878"
+    }
+  ],
+  "checks": {
+    "nativeBefore": {
+      "mode": "before",
+      "scope": "Native PostgreSQL 17 executes the unchanged production actor_v1 and Company Access verified identity functions. A test-only SECURITY DEFINER function stands in for the closed legacy admission entry point; no company, MFA, source admission, or full Supabase proof.",
+      "checks": [],
+      "status": "FAIL",
+      "errorType": "RaiseException",
+      "error": "legacy_rf1086_verified_owner_required\nCONTEXT:  PL/pgSQL function shareholder_register_filing.actor_v1() line 12 at RAISE\nSQL function \"read_source_approval_context_v1\" statement 1",
+      "clusterRemoved": true,
+      "actorSqlSha256": "f096f395655dacbbf30dd5f2c1498326e50ccb061020fe000bfe63bee0d027a4",
+      "identitySqlSha256": [
+        "1aeb367e3d78f5d963e764e60361eeab5b43511718220d32f1329658fd6b8c77",
+        "fef1f850957646f67560a9d8a8011a302eafce4fe9541c4f24d5eed3072e3ae6",
+        "5568e7c133dbac3432647544c653fa1853860e1b9bfa033016f8400b48a62863"
+      ]
+    },
+    "nativeAfter": {
+      "mode": "after",
+      "scope": "Native PostgreSQL 17 executes the unchanged production actor_v1 and Company Access verified identity functions. A test-only SECURITY DEFINER function stands in for the closed legacy admission entry point; no company, MFA, source admission, or full Supabase proof.",
+      "checks": [
+        "Actual production actor passes with unchanged matching claims and exact executor role; temporary legacy grant is invisible to concurrent sessions and exact original ACL/role restored before and after commit.",
+        "Wrong subject and non-authenticated claims retain exact production rejection; aborted transactions leak no grants and preserve original error.",
+        "Nonlegacy executor selection grants nothing and restores prior fixture role.",
+        "Caught Python exception restores exact ACL and prior role even when caller subsequently commits the transaction."
+      ],
+      "status": "PASS",
+      "clusterRemoved": true,
+      "actorSqlSha256": "f096f395655dacbbf30dd5f2c1498326e50ccb061020fe000bfe63bee0d027a4",
+      "identitySqlSha256": [
+        "1aeb367e3d78f5d963e764e60361eeab5b43511718220d32f1329658fd6b8c77",
+        "fef1f850957646f67560a9d8a8011a302eafce4fe9541c4f24d5eed3072e3ae6",
+        "5568e7c133dbac3432647544c653fa1853860e1b9bfa033016f8400b48a62863"
+      ]
+    },
+    "databaseTestsCollected": 103,
+    "fullDatabaseTestBodiesExecuted": 0,
+    "localFullDatabaseAttempt": "One selected database test stopped in module fixture setup because no default local PostgreSQL/Supabase socket exists. No test body or production admission executed; output retained, not counted as a pass.",
+    "diffCheck": "PASS"
+  },
+  "commands": [
+    "/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-withdrawal-admission-role.py before",
+    "/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-withdrawal-admission-role.py after",
+    "PYTHONPATH=apps/backend/src /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest --collect-only -q apps/backend/tests/test_rf1086_withdrawal_admission_database.py > /private/tmp/talli-release-20261009/withdrawal-admission-role-collection.log",
+    "PYTHONPATH=apps/backend/src /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -q apps/backend/tests/test_rf1086_withdrawal_admission_database.py -k real_old_sql_stale > /private/tmp/talli-release-20261009/withdrawal-admission-role-local-runtime-test.log",
+    "git diff --check"
+  ],
+  "privateEvidence": [
+    {
+      "path": "/private/tmp/talli-release-20261009/check-withdrawal-admission-role.py",
+      "sha256": "ccca141103ee143605326ff7d0e7e3f2f81d910922c85b49462a5ce8a3e760d3"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-admission-role-before.json",
+      "sha256": "938070c3353fd960b84cfebb6c678db0bcb20817d224d21b35a40d8faa36e7cd"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-admission-role-after.json",
+      "sha256": "34aef8c5390c77498265d2c936fd490e517db4fae2240840d4500fc40f67aeae"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-admission-role-before.log",
+      "sha256": "e948ba2513d3f68c3797ac4d8128f4aa4f5d2bbcfe2af421516ea8d6f56ed127"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-admission-role-after.log",
+      "sha256": "cdc7c273ef6a64d3b509b73104609d5d1e94b7e29bda5952faf0fbabd57ffe83"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-admission-role-collection.log",
+      "sha256": "f7253f78684cc83fdec6c57df934102f695c9ff59fd7154e9773740d1a977de3"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/withdrawal-admission-role-local-runtime-test.log",
+      "sha256": "e5a3d4830e476aba8c9751b5dae38ac30985065afba5bd7da0b62a538b53c196"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38011213837-database-failure-context-sanitized.log",
+      "sha256": "835ea98c8ab1ac3173b5715847e99380b50018453845a9d73e34d089d5bc5341"
+    }
+  ],
+  "independentReviews": {
+    "standards": {
+      "reviewer": "/root/release_plan",
+      "status": "PASS",
+      "actionableFindings": 0,
+      "sourceSha256": "8327e2844339f962364eb9d117f9f4a1de8a631938494f99be08169e86164f39"
+    },
+    "spec": {
+      "reviewer": "/root/rf_reader_spec_review",
+      "status": "PASS",
+      "resolvedFindings": 1,
+      "unresolvedFindings": 0,
+      "sourceSha256": "8327e2844339f962364eb9d117f9f4a1de8a631938494f99be08169e86164f39",
+      "repair": "The migration replay ACL loop explicitly retains both private guard overloads and all three legacy APIs across the original five roles."
+    }
+  },
+  "limits": [
+    "Native proof executes the real production actor and verified-identity function bodies with a test-only legacy entry-point wrapper and unused Auth fallback stubs. It does not execute full admission, source freshness, Company Access, MFA, RLS or Supabase integration.",
+    "The existing database assertions must still execute successfully on a later exact-head CI run. This fixture repair is not evidence that those unseen assertions pass.",
+    "No production role grant, frozen migration, lifecycle policy, provider call, real-company admission, filing, paid action or container operation changed. All A1-A7 and immutable complete gates remain pending."
+  ]
+}
