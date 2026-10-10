@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "GOVERNANCE_CUTOFF_LOCK_FIXTURE_REPAIR",
+  "recordedAtUtc": "2026-10-10T05:22:18.307508+00:00",
+  "baseRevision": "b9a1b9f4da047411c3832db829f812120c9dfab8",
+  "sourceFiles": [
+    {
+      "path": "apps/backend/tests/test_governance_register_observation_completion_database.py",
+      "sha256": "b7e58f9ebe0a6957fae6ddda42c8e517fabd906c185429fbbd2bda0fa2ea00cb",
+      "bytes": 22216
+    }
+  ],
+  "observedFailure": {
+    "run": 38026082849,
+    "databaseJob": 114137096482,
+    "sourceHead": "00941ba47128ee65d25bdacdcba86b83f594c2b5",
+    "checkout": "dac4a6a8abb445227a8d04366283df976a7d722a",
+    "selected": 1449,
+    "passed": 815,
+    "failed": 1,
+    "wholeRunTerminalClaim": false,
+    "stage1RecoveryExcluded": true
+  },
+  "cause": {
+    "priority": "P2",
+    "location": "apps/backend/tests/test_governance_register_observation_completion_database.py:310 at CI head",
+    "cause": "Fixture called a deliberately private lock RPC under its restricted RF executor-derived role. PostgreSQL rejected setup before the competing statement or cutoff proof ran.",
+    "repair": "Use existing public RF lock_year_source_v1 with exact fixture company and command income year; unchanged role, schedule, append and assertion."
+  },
+  "repair": [
+    "Root read the failing test, inherited restricted role setup, exact public RF year guard, private company guard and Governance cutoff function. CI fails before the contender starts because the fixture lacks the deliberately private helper privilege.",
+    "Exactly one fixture lock call and its comment changed. The existing permitted RF year guard acquires the same company transaction lock before the year guard under its security-definer owner, with preparation and admission checks. Subsequent append reacquires the same locks; actor, transaction, target time, wait, append and expected rejection remain unchanged.",
+    "Both independent reviews have zero findings. All supporting SQL/harness bytes match the tested CI head. Root static check preserves the other 19 top-level functions and all other module AST; 64 database cases collect. No repaired database or race execution is claimed.",
+    "No production SQL, runtime ACL, role membership, migration sentinel or trigger changes. Current CI result belongs to 00941 and excludes this repair and the separately committed recovery application change."
+  ],
+  "verification": {
+    "databaseCollected": 64,
+    "databaseExecutedLocally": 0,
+    "otherTopLevelFunctionsUnchanged": 19,
+    "exactReplacementCount": 1,
+    "sqlAndRuntimeGrantsChanged": false
+  },
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "390f78b49370e1802e5bf7f1d733a3f851a3c813fb24bfdc1544b6d2e36da2ba"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "2e59255a6c234baec3593f7332686c755268a2e0acc1c6aa2b412d4f63440802"
+    },
+    "Root": {
+      "unresolved": 0,
+      "reportSha256": "0f30740743cda82a23d846544cb6796c96ed243b0ba25e2ca6285b9ad149b2fc"
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "governance-cutoff-lock-fixture-static.json",
+      "sha256": "e55eeea414e140e3960a1f37184d3fa00b47434b45235f4b11aff2e19ca25ac2",
+      "bytes": 1886
+    },
+    {
+      "file": "governance-cutoff-fixture-privilege-spec-diagnosis.json",
+      "sha256": "390f78b49370e1802e5bf7f1d733a3f851a3c813fb24bfdc1544b6d2e36da2ba",
+      "bytes": 9739
+    },
+    {
+      "file": "ci38026082849-database-full-private.log",
+      "sha256": "b29041fd94d90f2d762693fb3a0519894a815ea48ae7c424031c83ff8114f9d9",
+      "bytes": 444491
+    },
+    {
+      "file": "ci38026082849-database-failure-context-sanitized.log",
+      "sha256": "e654d2ee150e8e45eabdd79d4b1abb6bf8793ce1c58f9274af60d0191a329285",
+      "bytes": 1839
+    },
+    {
+      "file": "governance-cutoff-lock-fixture-standards-review.json",
+      "sha256": "2e59255a6c234baec3593f7332686c755268a2e0acc1c6aa2b412d4f63440802",
+      "bytes": 4412
+    },
+    {
+      "file": "governance-cutoff-lock-fixture-collection.log",
+      "sha256": "045298f29b7fff8b1387cfdcb2b0cab659775ebac79265ce02bce32960c69e4e",
+      "bytes": 9791
+    },
+    {
+      "file": "governance-cutoff-lock-fixture-root-review.json",
+      "sha256": "0f30740743cda82a23d846544cb6796c96ed243b0ba25e2ca6285b9ad149b2fc",
+      "bytes": 1357
+    }
+  ],
+  "limits": [
+    "The failed CI test did not reach the contender, capture or expected cutoff rejection. Repaired execution requires the next complete owned database lane; collection is not execution.",
+    "Existing one-second scheduling sensitivity remains unchanged. A passing test must observe the expected after-cutoff rejection and zero Governance writes; no stronger timing guarantee is inferred.",
+    "The current workflow is still active at this record. Its whole-terminal receipt is separate; earlier run counts are not transferred to these bytes.",
+    "A1\u2013A7 and both immutable release gates remain pending. No production filing, provider activation, paid action, genuine-company admission, outreach or launch clearance."
+  ]
+}

@@ -307,7 +307,10 @@ def test_statement_start_cutoff_conservatively_rejects_capture_after_company_wai
     request = request_for(completion, observed(completion))
     with ThreadPoolExecutor(max_workers=1) as pool:
         with connection(completion) as db:
-            db.execute('select public.company_archive_lock_company_v1(%s)', (completion['seed']['company'],))
+            # The fixture inherits RF executor access. Its public year guard
+            # takes the company lock first; the raw company lock stays private.
+            db.execute('select shareholder_register_filing.lock_year_source_v1(%s,%s)',
+                (completion['seed']['company'], completion['command'].income_year.value))
             at = db.execute("select clock_timestamp()+interval '1 second'").fetchone()[0]
             original = rf.prepare_rf1086_register_observation(completion['command'], context=completion['context'],
                 observation_id=rf.Rf1086RegisterObservationId(str(uuid4())), confirmed_at=at)
