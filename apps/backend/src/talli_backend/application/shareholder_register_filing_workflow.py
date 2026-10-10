@@ -228,6 +228,10 @@ class ShareholderRegisterFilingWorkflow:
         self._actor(query.actor_id)
         return await create_rf1086_preparation_service(self._persistence).archive_source(query)
 
+    async def retained_archive_source(self, query: Rf1086ArchiveQuery) -> Rf1086ArchiveSnapshot:
+        self._actor(query.actor_id)
+        return await create_rf1086_preparation_service(self._persistence).retained_archive_source(query)
+
     async def source_facts(self, query: Rf1086SourceQuery) -> Rf1086SourceFacts:
         self._actor(query.actor_id)
         return await create_rf1086_preparation_service(self._persistence).source_facts(query)

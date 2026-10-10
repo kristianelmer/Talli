@@ -1750,7 +1750,7 @@ retained validation and organization matching precede read-only credentials.
 Recovery uses the saved XML, exact `source_*` keys and confirmed dialog and
 transmission IDs, without current rendering or new submission authority.
 
-The outward archive/export service and correction application still use their
+Existing archive/export callers and the correction application still use their
 previous paths. Fresh source, approval, claim and send-intent gates, adapters,
 SQL, public codecs and transport contracts are unchanged. Retained consistency
 does not prove authoritative enumeration, current access or signed provenance.
@@ -1764,3 +1764,39 @@ doubles, not real Auth, lease/race or provider evidence. The ancestor case model
 an earlier nonterminal selected view and a later archive containing its accepted
 parent and correction; it does not establish that SQL grants a new lease to an
 already terminal parent.
+
+### Complete retained archive query (2026-10-10)
+
+The additive `retained_archive_source(query)` method on preparation service,
+public query protocol and workflow returns the original immutable archive after
+retained validation. The workflow checks its session actor before one call to
+the existing raw persistence `archive_source`. No adapter alias, new database
+contract, workspace query, serialization round-trip or current evidence is
+needed. Existing archive methods, codec APIs and export callers are unchanged;
+no route selects this method yet.
+
+Every result must explicitly include `Rf1086ArchiveSourceHistory`, tuple
+overrides and tuple withdrawal captures, including empty and legacy-only years.
+Missing sections mean unknown coverage and fail unavailable. The new private
+validation boundary applies this requirement before the existing retained
+scope, production and mixed-history checks. Stored legacy envelope parsing
+continues to preserve its original unknown coverage. Unapproved saved previews
+keep their permitted noncanonical raw text; approved lineage uses its existing
+stronger retained commitments.
+
+This is a member-authorized company archive query, not selected-submitter
+recovery or new filing admission. It preserves all original actors and the
+company-wide review records. Persistence access errors and cancellation escape
+unchanged; malformed returned evidence maps to dependency unavailable. No
+current renderer, fresh builder, clock, byte store or provider is called.
+
+The existing adapter supplies a repeatable snapshot; these typed checks do not
+prove SQL enumeration, current owner access, original document bytes or signed
+provenance. They do not add the serializer's size or canonical transport rules,
+or invent RF captures for opaque off-year Governance commitments. Correction
+wiring, outward exports and fresh writers remain separate work.
+
+`test_rf1086_retained_archive_source.py` and the independent
+`test_rf1086_retained_archive_source_adversarial.py` exercise exact returns,
+complete capture requirements, malformed evidence and access/error boundaries
+with synthetic persistence. They establish no database, RLS or provider proof.

@@ -75,6 +75,24 @@ def _validate_retained_archive_source(query: Rf1086ArchiveQuery, result: Rf1086A
     return _validate_archive_source_impl(query, result, include_production=True, retained=True)
 
 
+def _validate_complete_retained_archive_source(query: Rf1086ArchiveQuery, result: Rf1086ArchiveSnapshot):
+    """The live query requires captured sections even for an empty or legacy year."""
+    from talli_backend.shared.kernel import IncomeYear
+    from .public import Rf1086ArchiveSourceHistory
+
+    try:
+        if (not isinstance(query, Rf1086ArchiveQuery) or not isinstance(result, Rf1086ArchiveSnapshot)
+                or not isinstance(result.income_year, IncomeYear) or type(result.income_year.value) is not int
+                or type(result.source_history) is not Rf1086ArchiveSourceHistory
+                or type(result.overrides) is not tuple
+                or type(result.withdrawal_capture_records) is not tuple):
+            raise ValueError()
+        return _validate_retained_archive_source(query, result)
+    except (ValueError, TypeError, KeyError, AttributeError, ArithmeticError, RecursionError,
+            Rf1086ProductionError, ShareholderRegisterFilingError):
+        raise ShareholderRegisterFilingError.unavailable() from None
+
+
 def _validate_archive_source_impl(query, result, *, include_production, retained):
     if (not isinstance(result,Rf1086ArchiveSnapshot) or result.company_id != query.company_id
             or result.income_year != query.income_year):
@@ -494,6 +512,10 @@ class Rf1086PreparationService:
 
     async def archive_source(self, query: Rf1086ArchiveQuery):
         return _validate_archive_source(query,await self._persistence.archive_source(query))
+
+    async def retained_archive_source(self, query: Rf1086ArchiveQuery) -> Rf1086ArchiveSnapshot:
+        result = await self._persistence.archive_source(query)
+        return _validate_complete_retained_archive_source(query, result)
 
     async def workspace(self, query: Rf1086WorkspaceQuery):
         return validate_workspace(query,await self._persistence.workspace(query))
