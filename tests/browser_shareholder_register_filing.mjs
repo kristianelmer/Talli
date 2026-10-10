@@ -437,7 +437,7 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
     assert.deepEqual(resources.mock.snapshot()
       .filter(({ operation }) => operation === "replayed_mutation" || operation === "request_rejected")
       .map(({ service, operation }) => ({ service, operation })), []);
-    for (const event of ["GET:/api/v1/shareholder-register-filings/archive-source/production-stream-v4:200",
+    for (const event of ["GET:/api/v1/shareholder-register-filings/archive-source/production-stream-v6:200",
       "POST:/api/v1/shareholder-register-filings/previews:200",
       "POST:/api/v1/shareholder-register-filings/review-comments:200",
       "POST:/api/v1/shareholder-register-filings/production-approvals:200",
