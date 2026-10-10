@@ -1,6 +1,7 @@
 """Committed RF captures are observable without repeating source admission."""
 import asyncio
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from uuid import uuid4
 
 import pytest
@@ -8,11 +9,61 @@ from fastapi.testclient import TestClient
 
 from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingSession
 from talli_backend.application.shareholder_register_filing_session import ShareholderRegisterFilingAuthenticationError
+from talli_backend.application.shareholder_register_source_workflow import ShareholderRegisterSourceWorkflow
 from talli_backend.main import create_app
 from talli_backend.modules.shareholder_register_filing import public as rf
-from talli_backend.shared.kernel import IdempotencyKey
+from talli_backend.shared.kernel import CorrelationId, IdempotencyKey
 from test_shareholder_register_source_api import ApiHarness, BASE, HEADERS, draft
+from test_shareholder_register_source_workflow import Harness
 from test_rf1086_year_source import ACTOR
+
+
+@pytest.mark.parametrize('outcome', ['recorded', 'conflict', 'lookup_failure', 'wrong_actor'])
+def test_capture_resolves_committed_key_before_mutable_evidence(outcome):
+    h = Harness()
+    snapshot = h.capture()
+    command = h.command
+    calls = []
+    key = IdempotencyKey('committed-source-capture-001')
+    if outcome == 'conflict':
+        command = replace(command, case=replace(command.case, case_id='changed-command'))
+    actor = replace(ACTOR, subject=type(ACTOR.subject)(str(uuid4()))) if outcome == 'wrong_actor' else ACTOR
+    class Session:
+        actor_id = actor
+        async def read_year_source_capture_receipt(self, candidate, *, idempotency_key):
+            calls.append('lookup')
+            assert candidate == command and idempotency_key == key
+            if outcome == 'lookup_failure':
+                raise TimeoutError('receipt lookup unavailable')
+            rf.assert_rf1086_year_source_replay(snapshot, candidate)
+            return snapshot
+        async def record_year_source(self, *args, **kwargs):
+            raise AssertionError('A committed replay must not write another source')
+    class Factory:
+        async def session(self, token):
+            calls.append('authenticate')
+            assert token == 'verified-token'
+            return Session()
+    class ForbiddenDependency:
+        def __getattr__(self, name):
+            raise AssertionError('Capture replay must not refresh current evidence')
+    workflow = ShareholderRegisterSourceWorkflow(Factory(), ForbiddenDependency(),
+        ForbiddenDependency(), ForbiddenDependency())
+    def capture():
+        return asyncio.run(workflow.capture_year_source('verified-token', command,
+            idempotency_key=key, correlation_id=CorrelationId('capture-replay')))
+    if outcome == 'recorded':
+        result = capture()
+        assert result is snapshot
+        assert rf.serialize_rf1086_year_source(result) == rf.serialize_rf1086_year_source(snapshot)
+    elif outcome == 'lookup_failure':
+        with pytest.raises(TimeoutError, match='receipt lookup unavailable'):
+            capture()
+    else:
+        error = 'rf1086_source_owner_required' if outcome == 'wrong_actor' else 'rf1086_source_idempotency_conflict'
+        with pytest.raises(rf.Rf1086YearSourceError, match=error):
+            capture()
+    assert calls == (['authenticate'] if outcome == 'wrong_actor' else ['authenticate', 'lookup'])
 
 
 @pytest.mark.parametrize('kind', ['year-sources', 'register-observations'])
@@ -60,6 +111,10 @@ def test_lookup_recovers_original_after_changed_current_evidence_without_capture
     assert response.json() == {'status': 'recorded', 'receipt': expected}
     assert response.headers['cache-control'] == 'no-store'
     assert calls == [(kind, HEADERS['Idempotency-Key'])]
+    if kind == 'year-sources':
+        replay = client.post(BASE + '/' + kind, json=body, headers=HEADERS)
+        assert replay.status_code == 200 and replay.json() == expected
+        assert calls == [(kind, HEADERS['Idempotency-Key'])] * 2
     missing = client.post(BASE + '/' + kind + '/receipt-lookup', json=body,
         headers={**HEADERS, 'Idempotency-Key': str(uuid4())})
     assert missing.json() == {'status': 'not_observed', 'receipt': None}

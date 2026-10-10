@@ -622,6 +622,11 @@ class ShareholderRegisterSourceWorkflow:
             idempotency_key: IdempotencyKey, correlation_id: CorrelationId) -> Rf1086YearSourceSnapshot:
         session = await self._rf_sessions.session(access_token)
         _require(session.actor_id == command.actor_id, 'rf1086_source_owner_required')
+        # The authenticated, owner-scoped lookup validates the unchanged command
+        # and returns committed evidence even when today's inputs have changed.
+        replay = await session.read_year_source_capture_receipt(command, idempotency_key=idempotency_key)
+        if replay is not None:
+            return replay
         context = await self._verify_year_source_context(access_token, session, command, correlation_id=correlation_id)
         return await session.record_year_source(command, context=context, idempotency_key=idempotency_key)
 

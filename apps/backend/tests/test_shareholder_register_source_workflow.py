@@ -78,6 +78,9 @@ class Harness:
         class RFSession:
             @property
             def actor_id(self):return owner.actor
+            async def read_year_source_capture_receipt(self,command,*,idempotency_key):
+                owner.calls.append('lookup_capture')
+                return None
             async def record_year_source(self,command,*,context,idempotency_key):
                 owner.context=context
                 result=prepare_rf1086_year_source(command,context=context,source_id=Rf1086YearSourceId(str(uuid4())),confirmed_at=NOW)
@@ -136,7 +139,7 @@ class Harness:
 @pytest.mark.parametrize('kind',['no_activity','formation','transfer','dividend'])
 def test_supported_capture_uses_only_fresh_owner_projections_and_explicit_complete_source(kind):
     h=Harness(kind);snapshot=h.capture()
-    assert snapshot.command==h.command and h.calls==['rf_auth','company','verify_document','governance','persist']
+    assert snapshot.command==h.command and h.calls==['rf_auth','lookup_capture','company','verify_document','governance','persist']
     assert h.context.accepted_owner and h.context.company==h.command.case.company
     assert h.context.documents[0].metadata_sha256==rf1086_year_source_digest(h.record)
     assert h.context.documents[0].content_version_sha256==h.record.content_sha256

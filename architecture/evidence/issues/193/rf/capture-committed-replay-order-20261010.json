@@ -1,0 +1,111 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_RF_SOURCE_CAPTURE_COMMITTED_REPLAY_ORDER",
+  "recordedAtUtc": "2026-10-10T01:46:20.784844+00:00",
+  "baseRevision": "90a488fa41cb5c06c5dcf63a9e6b1bbcecf2c9c2",
+  "scope": "Resolve an existing authenticated, accepted-owner, actor/company/year/key-scoped source receipt before reading mutable capture evidence. No source codec or writer selection change.",
+  "problem": "A capture retry previously refreshed current Company Access, Documents and Governance evidence before the adapter could find a committed matching receipt. Changed or unavailable inputs could hide an already committed success.",
+  "implementation": [
+    "Keep authenticated actor equality before lookup. Call the existing receipt lookup and return its original snapshot when recorded.",
+    "The unchanged adapter checks current accepted ownership, exact actor/company/year/key scope, retained row integrity and exact command identity. Conflicts and lookup failures propagate without refreshing evidence or writing.",
+    "A lookup miss continues the existing fresh evidence workflow. The unchanged persistence transaction still locks and checks the key again before append, covering a concurrent commit after the read-only lookup.",
+    "The HTTP receipt remains unchanged. No runtime v2 source writer, SQL grant, new endpoint, generated transport or provider action is enabled."
+  ],
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py",
+      "sha256": "2ecfba1c8f07d469d548e9bd815eaff1081b4a4295bb122758679138c6520302"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_capture_receipt_lookup.py",
+      "sha256": "b20b6e0f38e7fd6722afaf4536650fbacbe3b354216e2ad03055254541a1459e"
+    },
+    {
+      "path": "apps/backend/tests/test_shareholder_register_source_workflow.py",
+      "sha256": "9ccdd34e29e7c01db0928e5a0ff8c78128c325c488cd04f732753686d39a27d1"
+    }
+  ],
+  "checks": {
+    "initialRegression": {
+      "passed": 1,
+      "failed": 3,
+      "deselected": 4,
+      "failure": "Three cases reached Company Access before committed lookup; wrong-actor rejection already passed.",
+      "evidence": "Pytest log result; the shell wrapper tailed output and its zero exit is not a pytest pass."
+    },
+    "affectedSuite": {
+      "passed": 256,
+      "seconds": 27.51,
+      "files": [
+        "test_rf1086_capture_receipt_lookup.py",
+        "test_shareholder_register_source_workflow.py",
+        "test_shareholder_register_capital_source_workflow.py",
+        "test_shareholder_register_source_preview_workflow.py",
+        "test_shareholder_register_source_api.py"
+      ],
+      "scope": "Five affected files before the existing HTTP lookup test gained its final direct capture replay assertion."
+    },
+    "finalLookupAndHttp": {
+      "passed": 8,
+      "seconds": 2.24,
+      "scope": "Exact frozen lookup test file including direct HTTP capture replay; overlaps the 256-test suite."
+    },
+    "independentSpecRerun": {
+      "passed": 8,
+      "seconds": 2.28,
+      "scope": "Independent rerun of the exact frozen lookup test file; overlaps both author checks."
+    },
+    "whitespace": "PASS"
+  },
+  "commands": {
+    "workingDirectory": "apps/backend",
+    "red": "python -m pytest tests/test_rf1086_capture_receipt_lookup.py -k test_capture_resolves_committed_key_before_mutable_evidence -q",
+    "affected": "python -m pytest tests/test_rf1086_capture_receipt_lookup.py tests/test_shareholder_register_source_workflow.py tests/test_shareholder_register_capital_source_workflow.py tests/test_shareholder_register_source_preview_workflow.py tests/test_shareholder_register_source_api.py -q",
+    "final": "python -m pytest tests/test_rf1086_capture_receipt_lookup.py -q",
+    "python": "/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python"
+  },
+  "privateEvidence": [
+    {
+      "path": "/private/tmp/talli-release-20261009/capture-replay-first-freeze.json",
+      "sha256": "b773cccc71554a19b787201994cad992eaf90c6e6933970a4178a50c7b665b72"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/capture-replay-first.diff",
+      "sha256": "0ca27a66b36ccd0d81dc499042cfa421b96143087cc691671c65ab9422e0e5e3"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/capture-replay-first-red.log",
+      "sha256": "9d4f5b746a2fde037250aa127f116d187914ea1767a7915229d9f88392e02d33"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/capture-replay-first-green.log",
+      "sha256": "a945c37043fb9383c6160579a84f2384f5c2d0e0b6c7fca7f447964dc46615f1"
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/capture-replay-first-http-final.log",
+      "sha256": "6af8d210930f69e079bad543691e807ba2248c486e2dffa33d190c8224121845"
+    }
+  ],
+  "independentReviews": {
+    "standards": {
+      "status": "PASS",
+      "actionableFindings": 0,
+      "reviewer": "/root/release_plan",
+      "privateReceipt": "/private/tmp/talli-release-20261009/capture-replay-first-standards-review.json",
+      "sha256": "f4dc73c017fe12ab23e1a4f525813f64d56fd7a1896a57db4e6eddad9f046883"
+    },
+    "spec": {
+      "status": "PASS",
+      "actionableFindings": 0,
+      "reviewer": "/root/rf_v2_spec_review",
+      "privateReceipt": "/private/tmp/talli-release-20261009/capture-replay-first-spec-review.json",
+      "sha256": "2bc22db413538a87b6b356414fe517796b7aa0165301350b1c5d7f50af4ec1de"
+    }
+  },
+  "limits": [
+    "Unit/HTTP checks use synthetic sessions; they do not prove real database authorization, RLS, concurrent capture, recovery under another identity or deleted-actor restore.",
+    "CI run 38013368830 tests the prior committed 90a488fa revision and excludes this local change. Later exact-revision execution remains required.",
+    "All A1-A7 and two immutable complete gates remain pending. No production promotion, genuine-company admission, provider activation, filing or paid action."
+  ]
+}
