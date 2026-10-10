@@ -1,0 +1,204 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-10T12:32:21.276560+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "databaseId": 38049772036,
+    "runAttempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "headSha": "121d8ffc24495efc2b08c32f0bb3fab7be39399e",
+    "runStartedAt": "2026-10-10T11:49:35Z",
+    "updatedAt": "2026-10-10T12:12:50Z",
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38049772036"
+  },
+  "checkout": {
+    "revision": "b60f4f3158911201a45099d88a4045d798518a37",
+    "kind": "pull_request_merge_commit",
+    "parents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "121d8ffc24495efc2b08c32f0bb3fab7be39399e"
+    ]
+  },
+  "jobs": [
+    {
+      "id": 114206383832,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T11:49:39Z",
+      "completed_at": "2026-10-10T12:12:44Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38049772036/job/114206383832"
+    },
+    {
+      "id": 114206383896,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-10T11:49:38Z",
+      "completed_at": "2026-10-10T12:08:20Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38049772036/job/114206383896"
+    },
+    {
+      "id": 114206384645,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-10T11:49:36Z",
+      "completed_at": "2026-10-10T11:49:36Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38049772036/job/114206384645"
+    },
+    {
+      "id": 114210317653,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T12:12:46Z",
+      "completed_at": "2026-10-10T12:12:49Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38049772036/job/114210317653"
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "status": "SUCCESS_FRESH_EXECUTION",
+      "backendPassed": 10673,
+      "backendSkipped": 2,
+      "backendDeselected": 2237,
+      "durationSeconds": 525.42,
+      "checks": "All Application job steps passed: typecheck/architecture/legacyinterface/contract, productionbuilds/smoke, complete launchrehearsal, both production audits0vulnerabilities, whitespace. Fresh10673backendpasses; captureWIPexcluded."
+    },
+    "database": {
+      "earlierBillingSuite": {
+        "passed": 700,
+        "durationSeconds": 292.11
+      },
+      "authorityRfSuite": {
+        "collected": 1449,
+        "passed": 1382,
+        "failed": 1,
+        "notExecuted": 66,
+        "durationSeconds": 620.15,
+        "passedByTestFile": {
+          "test_annual_interview_company_guard_database": 7,
+          "test_authority_connections_database_runtime": 22,
+          "test_authority_operations_database_runtime": 13,
+          "test_banking_company_guard_database": 32,
+          "test_banking_year_reconciliation_database": 3,
+          "test_banking_year_reconciliation_evidence_database": 23,
+          "test_company_access_rf_admission_database": 24,
+          "test_document_evidence_retention_database": 23,
+          "test_document_originals_database": 53,
+          "test_documents_historical_original_integrity_database": 107,
+          "test_documents_rf_company_guard_database": 21,
+          "test_governance_ledger_company_guard_database": 20,
+          "test_governance_register_evidence_amendment_database": 121,
+          "test_governance_register_evidence_application_database": 24,
+          "test_governance_register_evidence_company_guard_database": 6,
+          "test_governance_register_observation_completion_database": 64,
+          "test_governance_reporting_register_evidence_database": 28,
+          "test_launch_signoffs_database_runtime": 8,
+          "test_ledger_governance_entry_assertion_database": 66,
+          "test_rf1086_annual_approval_database": 23,
+          "test_rf1086_annual_readiness_database": 1,
+          "test_rf1086_database_runtime": 41,
+          "test_rf1086_durable_source_operation_database": 47,
+          "test_rf1086_journal_company_guard_database": 17,
+          "test_rf1086_observation_evidence_assertions_database": 37,
+          "test_rf1086_register_observation_database": 13,
+          "test_rf1086_register_observation_evidence_reader_database": 90,
+          "test_rf1086_register_observation_lifecycle_database": 3,
+          "test_rf1086_register_observation_withdrawal_database": 36,
+          "test_rf1086_retained_archive_generations": 2,
+          "test_rf1086_source_approval_database": 49,
+          "test_rf1086_source_company_guard_database": 11,
+          "test_rf1086_source_preview_database": 11,
+          "test_rf1086_source_review_bridge_database": 12,
+          "test_rf1086_withdrawal_admission_database": 103,
+          "test_rf1086_withdrawal_archive_generation_database": 20,
+          "test_rf1086_withdrawal_review_database": 31,
+          "test_rf1086_year_source_database": 14,
+          "test_rf1086_year_source_v2_database": 73,
+          "test_rf_annual_document_admission_database": 5,
+          "test_rf_annual_interview_admission_database": 5,
+          "test_rf_annual_ledger_admission_database": 5,
+          "test_rf_annual_opening_admission_database": 4,
+          "test_shareholder_register_filing_lifecycle": 64
+        }
+      },
+      "realRegressionsPassed": [
+        "All64 unchanged legacy RF lifecycle cases, including rollback, catalog/ACL and quarantine safeguards",
+        "Banking cash-capital owner proof; real Documents replay and withdrawal denial",
+        "All28 Governance reporting cases; all66 Ledger assertions/reversal lock races",
+        "73 closed source-v2 DB cases, including repaired rollback-only immutable-trigger test, runtime head denial/final storedwire, and absent/source proof-scope rejection"
+      ],
+      "notReached": [
+        "Remaining35source-v2 cases after failed off-year fixture setup",
+        "All31 retained correction reader DB cases",
+        "Later RF filing/browser/independent Auth/object restore/Tax/Accounts successors",
+        "Separate rendered public acquisition step"
+      ]
+    }
+  },
+  "failure": {
+    "test": "test_owner_proof_is_required_for_exact_source_scope_and_transaction[year]",
+    "path": "apps/backend/tests/test_rf1086_year_source_v2_database.py",
+    "phase": "Setup calls admit_source_year(seed,2025) before proof binding rejection",
+    "error": "CheckViolation company_eligibility_assessments_accounting_year_check",
+    "observation": "Shipped Company Access assessments/admissions/acceptances all CHECK accounting_year=2026. Fixture tries to create2025eligibility rows. No intended ownerproof year-binding assertion reached; productionpolicy correctly denies unsupportedyear. The same helper appears in five later unexecuted invalidation/race cases.",
+    "repairDirection": "Preserve2026-only productionpolicy; genuine2026proof plus privileged private temp-slot year corruption for negativebinding/invalidation. Actual2026 companylock races failclosed on currentwithdrawnRF or committedGovmanifest. No successfulnon2026 producer/sourceappend acceptance claimed."
+  },
+  "billingDeadlock": {
+    "status": "UNRESOLVED_INTERMITTENT",
+    "observation": "All700passed for third subsequentobservation withoutBilling source change; earlierdeadlock unresolved."
+  },
+  "sanitizedExcerpts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38049772036-summary-sanitized.log",
+      "sha256": "fdf5e689f2ea18cb769236775439984349a1ab024fa4d3ec3f7e7155f1ea3f9d",
+      "bytes": 424
+    }
+  ],
+  "privateRawLogDigests": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38049772036-application-job-full-private.log",
+      "sha256": "38190270f976488787071f2f2c4c4d97367186b052fc3794530dae762f4b4139",
+      "bytes": 466453
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38049772036-database-job-full-private.log",
+      "sha256": "c86c81af59120f77916c5fdc991615ddc15cc41c83e61f0a52fc6a47268473fd",
+      "bytes": 601779
+    }
+  ],
+  "metadataPins": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38049772036-terminal-api.json",
+      "sha256": "8be91c3f684aeec4b22a1db946fbed170302895bd9573c061ef8a1d0998c7197",
+      "bytes": 12738
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38049772036-terminal-jobs.json",
+      "sha256": "d40350212e354615d6584ad3afae77b7d54026cb9dee05046423c60fde703c67",
+      "bytes": 9999
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38049772036-merge-parents.json",
+      "sha256": "920a53d91ed69ba604cb999e693ae4a4a9d561256246cc767c8ecfcc04be5b89",
+      "bytes": 171
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38049772036-passed-files.json",
+      "sha256": "90c1160ed10562bf7558df1b49e26c4e2dabac2bb85ba62093a6cf6b285276dc",
+      "bytes": 2334
+    }
+  ],
+  "limits": [
+    "Wholefailed; allA1-A7pending; no canonicalpassinggatereceipt.",
+    "Closedcapture12paths +currentoffyearrepair excludedfrom121dCI. Capture655/124/26localchecks and19collectedDBcases do notestablishcombinedexecution.",
+    "Actual2026-onlypolicy remainsunchanged; non2026producer/sourcepositive/racecoverage unsupported/pending.",
+    "No genuinecompany/provider/recovery/activation/filing/spending/outreachacceptance."
+  ]
+}

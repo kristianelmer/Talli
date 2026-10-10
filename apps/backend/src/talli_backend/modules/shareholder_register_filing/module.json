@@ -568,7 +568,9 @@
     "retainedArchiveStreamAdversarial": "apps/backend/tests/test_rf1086_retained_archive_stream_adversarial.py",
     "retainedCorrectionWorkflow": "apps/backend/tests/test_rf1086_retained_correction_workflow.py",
     "retainedCorrectionWorkflowAdversarial": "apps/backend/tests/test_rf1086_retained_correction_workflow_adversarial.py",
-    "sourceV2HeldOwnerPorts": "apps/backend/tests/test_rf1086_source_v2_held_owner_ports.py"
+    "sourceV2HeldOwnerPorts": "apps/backend/tests/test_rf1086_source_v2_held_owner_ports.py",
+    "sourceGuardedCaptureV2": "apps/backend/tests/test_rf1086_guarded_source_capture_v2.py",
+    "sourceGuardedCaptureV2Database": "apps/backend/tests/test_rf1086_guarded_source_capture_v2_database.py"
   },
   "compatibilityExceptions": []
 }

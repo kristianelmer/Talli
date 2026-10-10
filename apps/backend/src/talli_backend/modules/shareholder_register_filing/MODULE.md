@@ -1959,6 +1959,42 @@ closed, and SQL independently checks current ownership and both guards.
 
 Focused connection-double tests cover complete-chain decoding, malformed
 projections/source values, exact arguments, scope lifetime and sanitized SQL
-errors. They do not establish real RLS, locks, proof acceptance or append. No
-existing workflow calls these ports. Fresh capture/admission wiring, original
-bytes, compatible consumers, runtime grants and binary drain remain required.
+errors. They do not establish real RLS, locks, proof acceptance or append. The
+staged capture below uses these ports; existing routes remain unchanged. Fresh
+admission wiring, compatible consumers, runtime grants and binary drain remain
+required.
+
+### Closed guarded v2 capture
+
+`ShareholderRegisterSourceCaptureV2.capture_year_source` returns an actor/company/
+year/key committed v1 or v2 receipt before company and document refresh. A fresh
+request checks the current accepted AS owner and company identity, then verifies
+every supplied original's bytes through Documents outside the RF transaction.
+Foreign, duplicate or mismatched documents and retained receipts fail before
+the atomic writer. Original source years remain part of each commitment.
+
+`record_year_source_v2` hides the transaction phases: current owner capture guard,
+racing receipt lookup, fresh Company Access admission, original assertions,
+complete Governance read, effective RF observation checks, source/head/version
+preparation, stable document retention, Governance proof and closed append. All
+held reads/proof/writes use one connection. A saved row must decode to the exact
+emitted v2 bytes; failure or cancellation rolls back retention and append, and
+the admission scope closes. Historical v1/v2 receipts keep their original bytes.
+
+`lock_year_source_capture_v2(uuid,integer)` rejects non-READ-COMMITTED isolation,
+checks the current owner before and after the shared Company Archive Lock, then
+takes the RF-year guard. It deliberately leaves fresh MFA/year admission after
+the racing receipt lookup. Its execute permissions and the append/proof ports
+remain closed to ordinary runtime roles. Retentive rollback closes new grants
+while preserving the guard definition/OID and retained source rows; reapply
+closes grants again. No existing route or caller is activated.
+
+Focused capture tests use actual public producers, Documents byte validation and
+adapters with SQL/authority doubles. Mandatory Authority DB cases separately
+exercise the full owner schema using real Ledger/Governance/RF/Documents records
+and a restricted disposable login granted only the staged contracts. The DB
+transaction fixture replaces runtime-role selection and supplies explicit
+verified claims; it does not establish live Auth or object-store recovery.
+Collection alone is not execution. Native guard probes use the actual shared
+lock body with explicit preparation-authority stubs. Complete CI and compatible
+admission/approval/claim/intent consumers remain release prerequisites.

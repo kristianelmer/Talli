@@ -142,5 +142,9 @@
   {
     "migration": "20261010032531_governance_supported_event_replay_visibility.sql",
     "presenceQuery": "select exists(select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.proname='complete_supported_event_v1' and p.prokind='f' and pg_catalog.oidvectortypes(p.proargtypes)='jsonb, text' and pg_catalog.md5(p.prosrc)='93c0f6bb1c2eb4b6077ab1163e60c77c')"
+  },
+  {
+    "migration": "20261010111100_rf1086_closed_year_source_capture.sql",
+    "presenceQuery": "select exists(select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='lock_year_source_capture_v2' and p.prokind='f' and pg_catalog.oidvectortypes(p.proargtypes)='uuid, integer' and p.proowner='shareholder_register_filing_store_owner'::regrole and p.prosecdef and p.provolatile='v' and p.proconfig=array['search_path=\"\"']::text[] and pg_catalog.md5(p.prosrc)='9f7ddfc5022f1241a2725aa6364b72c5')"
   }
 ]

@@ -584,6 +584,77 @@ class PostgresShareholderRegisterFilingSession:
                 raise rf.Rf1086YearSourceError("rf1086_source_storage_invalid")
             return saved
 
+    async def record_year_source_v2(self, command, *, originals, idempotency_key, correlation_id):
+        """Atomic staged writer; all owner proof and append use this connection."""
+        if type(command) is not rf.RecordRf1086YearSource:
+            raise rf.Rf1086YearSourceError('rf1086_source_owner_required')
+        self._command_actor(command)
+        from dataclasses import replace
+        from talli_backend.application.shareholder_register_source_capture_v2 import assert_source_capture_originals_v2
+        from talli_backend.application.shareholder_register_source_context_v2 import build_verified_source_context_v2
+        query = rf.Rf1086SourceQuery(command.company_id, command.income_year, self.actor_id)
+        async with self._transaction() as connection:
+            # This closed guard checks current owner and lock order, without
+            # refreshing year eligibility before the original receipt lookup.
+            await connection.execute(
+                'select shareholder_register_filing.lock_year_source_capture_v2(%s::uuid,%s::integer)',
+                (str(command.company_id), int(command.income_year)))
+            replay = await (await connection.execute(
+                'select * from shareholder_register_filing.year_source_versions where company_id=%s::uuid '
+                'and income_year=%s and actor_id=%s::uuid and idempotency_key=%s',
+                (str(command.company_id), int(command.income_year), str(self.actor_id.subject), str(idempotency_key)),
+            )).fetchone()
+            if replay is not None:
+                source = self._year_source(replay)
+                _assert_retained_year_source_replay(source, command)
+                return source
+            row = await (await connection.execute(
+                'select public.company_access_read_rf_admission_v1(%s::uuid,%s,%s) as admission',
+                (str(command.company_id), int(command.income_year), str(self.actor_id.subject)),
+            )).fetchone()
+            identity = _source_admission_company(row['admission'] if row else None, query)
+            await connection.execute(
+                "select pg_catalog.set_config('talli.authorized_company_roles',%s,true)",
+                (json.dumps({str(command.company_id): 'owner'}, separators=(',', ':')),))
+            scope = _SourceAdmission(self, connection, query, identity)
+            try:
+                assert_source_capture_originals_v2(command, originals)
+                for original in sorted(originals, key=lambda item: item.document_id.value):
+                    await scope.assert_original(original)
+                company = replace(command.case.company, org_number=identity.company.org_number,
+                    name=identity.company.name, address=identity.company.address,
+                    postal_code=identity.company.postal_code, city=identity.company.city,
+                    income_year=identity.company.income_year)
+                identity_sha = rf.rf1086_year_source_digest({'company_id': str(command.company_id),
+                    'company': company, 'entity_type': 'AS',
+                    'identity_confirmed_at': identity.identity_confirmed_at,
+                    'identity_locked_at': identity.identity_locked_at})
+                view = await scope.governance_register_evidence(correlation_id)
+                context = await build_verified_source_context_v2(scope, command,
+                    company, identity_sha, command.documents, view)
+                previous = await scope.current_source()
+                now = (await (await connection.execute(
+                    'select pg_catalog.clock_timestamp() as now')).fetchone())['now']
+                source = rf.prepare_rf1086_year_source_v2(command, context=context,
+                    source_id=rf.Rf1086YearSourceId(str(uuid4())), confirmed_at=now, previous=previous)
+                await self._retain_source_documents(connection, 'rf1086_year_source',
+                    source.source_id.value, source.command.documents)
+                await scope.prepare_source_governance_proof(source)
+                encoded = rf.serialize_rf1086_year_source_v2(source)
+                await connection.execute(
+                    'select shareholder_register_filing.append_year_source_v2(%s::uuid,%s::uuid,%s,%s,%s,%s,%s,%s::uuid,%s,%s,%s,%s)',
+                    (source.source_id.value, str(source.company_id), int(source.income_year), source.version,
+                     source.source_sha256, rf.rf1086_year_source_digest(command), str(idempotency_key),
+                     previous.source_id.value if previous else None, previous.source_sha256 if previous else None,
+                     command.correction_reason, encoded, now))
+                saved = await scope.current_source()
+                if (type(saved) is not rf.Rf1086YearSourceSnapshotV2
+                        or rf.serialize_rf1086_year_source_v2(saved) != encoded):
+                    raise rf.Rf1086YearSourceError('rf1086_source_storage_invalid')
+                return saved
+            finally:
+                scope.close()
+
     @staticmethod
     def _register_observation(row):
         if row is None:

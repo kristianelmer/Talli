@@ -1,0 +1,148 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_CLOSED_GUARDED_V2_CAPTURE_STAGE",
+  "recordedAtUtc": "2026-10-10T12:16:43.162741+00:00",
+  "baseRevision": "121d8ffc24495efc2b08c32f0bb3fab7be39399e",
+  "scope": "Additive staged workflow and atomic persistence method; current owner receipt replay before fresh refresh, original bytes before guard, complete held owner validation/proof/append. Existing route/runtime writer execute remains closed.",
+  "implementation": [
+    "capture_year_source returns exact committed v1/v2 actor/company/year/key receipt before mutable company/Documents/Governance reads; fresh AS owner/company/doc union/real byte preflight outsideguard",
+    "record_year_source_v2 uses closedcurrentowner guard, racedexactreceipt before eligibility/original assertions, then current CompanyAccess identity/MFA/year, exact retained original union, complete Governance public projection and effective RF observations/cutoffs",
+    "Same held connection readshead/dbclock, preparesv2, retainsdocs in stableIDorder, invokes Governance ownerproof, closedappend and exact savedwire validation; error/cancellation closes scope and rollsback retention+append",
+    "ClosedSQL rejects nonRCbeforelocks; currentowner before/after actualsharedCompanyArchiveLock, thenRFyear. Retentiverollback/reapply keepsdefinition/OID/data and closesnonownergrants",
+    "Mandatoryauthorityselection adds19fullschemaDBcases; successor registry appends exactbody/owner/security/config presencequery plus forward/retentiverollback replay order. No new databasecatalog table or HTTProute."
+  ],
+  "sourcePins": [
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py",
+      "sha256": "1502cd74c4c6f8834498d7ec36940ce95f52b40cef92d25677b6055bdb02820a",
+      "bytes": 135311
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/src/talli_backend/application/shareholder_register_source_capture_v2.py",
+      "sha256": "f9784cf735743592ab27787645c02149bb3638afc77cbf6db7e961aea1cd5a11",
+      "bytes": 5534
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "8f8369c0f51265eef4ceb9c160e1bf62f02362c24eaa26b7302d1f25ca9367b2",
+      "bytes": 124573
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "7485007b26f9bf3b40ea568eab39ec23a2e1e11bcafdff73a6bf5ec1278c3fc6",
+      "bytes": 29541
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/rf1086_guarded_capture_v2_fixture.py",
+      "sha256": "e4b1c69e960953efdaea43fc3d51e4d07750840f9d3b3932b4e8818caae24ade",
+      "bytes": 14853
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/test_rf1086_guarded_source_capture_v2.py",
+      "sha256": "c86e38faa69139fc56582355c57fc031177a6b3a0aa7001f37f28692da5c7ed3",
+      "bytes": 11208
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/test_rf1086_guarded_source_capture_v2_database.py",
+      "sha256": "a9c6d504eac845d97dacc0e6d7d5ef0a8f2c8c38ce4a1260bbbbc4570dcddcac",
+      "bytes": 15561
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/supabase/migrations/20261010111100_rf1086_closed_year_source_capture.sql",
+      "sha256": "2fdecd2b96135ada2b161445c0c87485b8c3e3b7e07c2dae0ab03c35782fed9f",
+      "bytes": 4393
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/supabase/rollback/20261010111100_rf1086_closed_year_source_capture.sql",
+      "sha256": "7068cc888e42dcd81304e05e71ea233f3f5ea947884cb6e3a3b614aa1c5b7ee1",
+      "bytes": 3283
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/package.json",
+      "sha256": "f685bf6d7f9ba01f129edf2792f3d5a2841b28224f857ca506114f7df97a58c8",
+      "bytes": 34522
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/scripts/rf-consequential-successors.json",
+      "sha256": "a2e31d289a748e2140478820e696b27c7f0e0198c68451303fc408923aa6a942",
+      "bytes": 18117
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/tests/ci_release_gate.test.mjs",
+      "sha256": "c395ff890111d5a655f35bc4fc74ab93aca86ee5fc2add7de79314914e46dab9",
+      "bytes": 54878
+    }
+  ],
+  "checks": {
+    "focusedAndProtectedPassed": 655,
+    "newCaptureCases": 55,
+    "protectedCases": 600,
+    "newDatabaseCollectedNotExecuted": 19,
+    "authorityLaneCollected": 1468,
+    "targetedRegistryNodePassed": 57,
+    "boundedNativeGuardChecks": 26,
+    "oldAdapterFunctionSpansByteExact": 144,
+    "architecture": "PASS exact committed dependency evidence",
+    "compiled": true,
+    "whitespace": "PASS",
+    "fullCiSelectionNodePassed": 124,
+    "fullCiSelectionNodeSkipped": 0,
+    "localIcuBlocker": "Fixed samePyICU2.16.2 offline in privatePython3.12 using installedICU78.3+SDK26.5; no product dependency change"
+  },
+  "testQualification": [
+    "655focused/protected passes include55new capture cases and600existingcases; actual public producers/DocsService byte validation/adapters with SQL/authority doubles. Counts overlap earlierstagechecks.",
+    "19newDBcases collectedonly;1468authoritycasescollected. NewDBfixture usesactualowner commands/records/retainedbytes and restrictedlogin with explicit stagedRPCgrants; fixturetransaction-role selection and verifiedclaims. FullDBexecutionpending; liveAuth/objectservice notproved.",
+    "26nativeguardchecks executewholeforward/retentiverollback/actualsharedlockbody and actualregisteredpresencequery, with explicitstable preparationauthoritystub; fullAuth/MFA/eligibility/Govproof/append notclaimed. Ownednativeclusterstopped/deleted; preexistingcontainersuntouched.",
+    "124fullCIselection Nodechecks pass withzeroskips. PrivatePython312 runtime repaired offline withsamePyICU2.16.2/installedICU78.3 andSDK26.5; no productdependency change. DefaultSDK27 minimallinkfailure/SDK26success retained."
+  ],
+  "finalReviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-guarded-capture-final-spec-review-v2.json",
+      "sha256": "c6996c67ba4be252934a680fc76caae532f3d9d0e600abae34d519ade5e0dfe5",
+      "bytes": 12782
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-guarded-capture-final-standards-review-v2.json",
+      "sha256": "92a42f65578547f118f586ffbc67d854490a2b500f17befc7db3ccb1855cfb83",
+      "bytes": 12438
+    }
+  ],
+  "specOpenFindings": 0,
+  "standardsOpenFindings": 0,
+  "resolvedReviewFindings": [
+    "Nonmember error assertion nowexactrf1086_not_found; revokedowner remainsrf1086_forbidden",
+    "Different-keyrace requiresexactrf1086_source_predecessor_mismatch",
+    "Unusedbefore_yieldfixturecallback removed"
+  ],
+  "rootChecks": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-v2-guarded-capture-root-checks-v1.json",
+    "sha256": "fecdf6451211a889615695361d4dccee6b682fd3eb8f111d5ff1fc122b5a4a9f",
+    "bytes": 1916
+  },
+  "freeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-v2-guarded-capture-source-freeze-v3.json",
+    "sha256": "60a90482094ca47310f53b5b9931583ecb06bacf0996c156476558ec0c3f5b9e",
+    "bytes": 9024
+  },
+  "native": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-v2-capture-guard-native-v3.json",
+    "sha256": "479024044e7cb6d0ab845b0777b5c5329f43d37b4bc95c87264a8018f9a4e7fe",
+    "bytes": 3147
+  },
+  "protectedSources": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-v2-guarded-capture-protected-source-v1.json",
+    "sha256": "c868db275fea80323007e48e34df8eda532974085c232c961750e45e9c7893e6",
+    "bytes": 400
+  },
+  "localRuntimeRepair": {
+    "path": "/private/tmp/talli-release-20261009/native-pyicu-icu78-post-build-v1.json",
+    "sha256": "32430b1b4e7ac75732a5566da9cfb4b3bd38448b5ee7812f8a3aba8f673860b9",
+    "bytes": 1027
+  },
+  "limits": [
+    "CI38049772036 tested121d and excludedthese12paths; wholeterminalfailure after1382authoritypasses/offyearfixture setup. FullnewcombinedCIrequired.",
+    "Freshv2admission/approval/claim/intent/intakeUI and binarydrain remain unimplemented; ordinaryruntimewriter/proof/appendgrantsclosed.",
+    "AllA1-A7pending; no canonicalpassinggate/independentrestore/provider/genuinecompany/activation/filing/spending/outreach acceptance."
+  ]
+}
