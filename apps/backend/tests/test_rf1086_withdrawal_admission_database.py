@@ -376,8 +376,13 @@ def test_old_sql_rejects_snapshot_fixed_before_withdrawal(downstream, stage, iso
             db.execute("set local lock_timeout='5s'")
         db.execute('select count(*) from shareholder_register_filing.register_observations').fetchone()
         withdraw(f['staged'], f['observation'])
-        with pytest.raises(psycopg.Error, match='rf1086_source_approval_guard_required'):
+        # Bridge's existing Company Access admission rejects the isolation
+        # before the later RF fresh-effect guard. Other stages reach RF first.
+        expected_error = ('company_access_rf_read_committed_required' if stage == 'bridge'
+                          else 'rf1086_source_approval_guard_required')
+        with pytest.raises(psycopg.Error) as rejected:
             operation(db)
+        assert rejected.value.diag.message_primary == expected_error
 
 
 @pytest.mark.parametrize('change', ['missing', 'null', 'scalar', 'wrong_record', 'half_null', 'boolean_id', 'invalid_id',
