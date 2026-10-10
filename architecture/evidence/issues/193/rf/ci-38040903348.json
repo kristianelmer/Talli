@@ -1,0 +1,269 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-10T09:49:43.319367+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "databaseId": 38040903348,
+    "status": "completed",
+    "conclusion": "failure",
+    "headSha": "05042db795633ae80d641ea7308c14153b9e6c6a",
+    "createdAt": "2026-10-10T09:18:06Z",
+    "updatedAt": "2026-10-10T09:39:09Z",
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38040903348"
+  },
+  "checkout": {
+    "revision": "b2cdc6bb9ae7a38942f83d278bfcb3237a17cec8",
+    "kind": "pull_request_merge_commit",
+    "parents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "05042db795633ae80d641ea7308c14153b9e6c6a"
+    ]
+  },
+  "jobs": [
+    {
+      "databaseId": 114180775945,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T09:18:08Z",
+      "completedAt": "2026-10-10T09:39:02Z",
+      "url": "https://github.com/kristianelmer/Talli/actions/runs/38040903348/job/114180775945"
+    },
+    {
+      "databaseId": 114180776174,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-10T09:18:08Z",
+      "completedAt": "2026-10-10T09:37:44Z",
+      "url": "https://github.com/kristianelmer/Talli/actions/runs/38040903348/job/114180776174"
+    },
+    {
+      "databaseId": 114180776792,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-10T09:18:07Z",
+      "completedAt": "2026-10-10T09:18:06Z",
+      "url": "https://github.com/kristianelmer/Talli/actions/runs/38040903348/job/114180776792"
+    },
+    {
+      "databaseId": 114184313784,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-10T09:39:04Z",
+      "completedAt": "2026-10-10T09:39:08Z",
+      "url": "https://github.com/kristianelmer/Talli/actions/runs/38040903348/job/114184313784"
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "backendSuite": {
+        "passed": 10570,
+        "skipped": 2,
+        "deselected": 2237,
+        "durationSeconds": 553.35
+      },
+      "completed": [
+        "Typecheck, architecture, legacy interface and full web/backend contract boundary",
+        "Production web/backend builds and smoke",
+        "Complete launch rehearsal",
+        "Both production dependency audits (0 vulnerabilities) and whitespace"
+      ],
+      "status": "SUCCESS",
+      "durationSeconds": 1176,
+      "qualification": "Actual run finished within30 minutes; the configured45-minute bound accommodates variance observed in prior timed-out run."
+    },
+    "database": {
+      "earlierSuite": {
+        "passed": 700,
+        "durationSeconds": 286.57
+      },
+      "authorityRfSuite": {
+        "collected": 1449,
+        "passed": 1235,
+        "failed": 1,
+        "notExecuted": 213,
+        "durationSeconds": 500.15,
+        "passedByTestFile": {
+          "test_authority_connections_database_runtime.py": 22,
+          "test_authority_operations_database_runtime.py": 13,
+          "test_launch_signoffs_database_runtime.py": 8,
+          "test_rf1086_database_runtime.py": 41,
+          "test_banking_year_reconciliation_database.py": 3,
+          "test_banking_year_reconciliation_evidence_database.py": 23,
+          "test_banking_company_guard_database.py": 32,
+          "test_annual_interview_company_guard_database.py": 7,
+          "test_rf_annual_interview_admission_database.py": 5,
+          "test_rf_annual_ledger_admission_database.py": 5,
+          "test_rf_annual_document_admission_database.py": 5,
+          "test_rf_annual_opening_admission_database.py": 4,
+          "test_rf1086_annual_readiness_database.py": 1,
+          "test_rf1086_annual_approval_database.py": 23,
+          "test_rf1086_durable_source_operation_database.py": 47,
+          "test_rf1086_year_source_database.py": 14,
+          "test_rf1086_retained_archive_generations.py": 2,
+          "test_rf1086_source_preview_database.py": 11,
+          "test_rf1086_source_review_bridge_database.py": 12,
+          "test_rf1086_source_approval_database.py": 49,
+          "test_rf1086_journal_company_guard_database.py": 17,
+          "test_rf1086_source_company_guard_database.py": 11,
+          "test_governance_ledger_company_guard_database.py": 20,
+          "test_company_access_rf_admission_database.py": 24,
+          "test_documents_rf_company_guard_database.py": 21,
+          "test_rf1086_register_observation_database.py": 13,
+          "test_rf1086_register_observation_withdrawal_database.py": 36,
+          "test_rf1086_withdrawal_admission_database.py": 103,
+          "test_rf1086_withdrawal_archive_generation_database.py": 20,
+          "test_rf1086_withdrawal_review_database.py": 31,
+          "test_rf1086_register_observation_lifecycle_database.py": 3,
+          "test_rf1086_observation_evidence_assertions_database.py": 37,
+          "test_rf1086_register_observation_evidence_reader_database.py": 90,
+          "test_governance_register_observation_completion_database.py": 64,
+          "test_ledger_governance_entry_assertion_database.py": 66,
+          "test_document_evidence_retention_database.py": 23,
+          "test_document_originals_database.py": 53,
+          "test_documents_historical_original_integrity_database.py": 107,
+          "test_governance_register_evidence_amendment_database.py": 121,
+          "test_governance_register_evidence_application_database.py": 24,
+          "test_governance_register_evidence_company_guard_database.py": 6,
+          "test_governance_reporting_register_evidence_database.py": 18
+        }
+      },
+      "realRegressionsPassed": [
+        "Banking cash capital import/current owner proof",
+        "Documents retention/original rollback and replay; withdrawal rejection after both historical guard replays",
+        "All 121 Governance amendment persistence, 24 application, 6 company-guard cases and 18 reporting cases",
+        "All 66 Ledger assertion cases, including both public reversal lock orders and rollback"
+      ],
+      "notReached": [
+        "Remaining 213 authority/RF cases including all 31 retained correction reader DB cases",
+        "Later fresh filing/full-year browser, independent Auth/object restore, Tax and Accounts successors",
+        "Separate rendered public acquisition step"
+      ]
+    }
+  },
+  "failure": {
+    "job": "Database isolation",
+    "test": "test_eligible_legacy_original_without_valid_anchor_is_never_skipped[True]",
+    "path": "apps/backend/tests/test_governance_reporting_register_evidence_database.py",
+    "phase": "corrupt_supported helper UPDATE, before intended projection/read rejection",
+    "error": "psycopg.errors.ForeignKeyViolation",
+    "constraint": "supported_events_accounting_entry_id_company_id_income_yea_fkey",
+    "sourceDerivedDiagnosis": "The helper changes Governance income_year from 2026 to 2025 while its legitimate linked Ledger entry retains 2026. The composite FK correctly rejects the mutation before the reader runs. Same-year missing-anchor and prior positive off-year projection cases passed.",
+    "pendingRepair": "Keep the stored original and Ledger relation intact; use requested year 2027 for the off-year malformed-anchor reader case. Existing rejection/rollback/roles remain."
+  },
+  "testedSourceEvidence": [
+    {
+      "revision": "05042db795633ae80d641ea7308c14153b9e6c6a",
+      "path": ".github/workflows/release-gate.yml",
+      "sha256": "c36423758d21621f33c4c97774c6bf95f00e76b140ec474a90684f9878d4acce",
+      "bytes": 7723
+    },
+    {
+      "revision": "05042db795633ae80d641ea7308c14153b9e6c6a",
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_source_correction.py",
+      "sha256": "c374e6f1a5e2929d338b3c8100c602fe8b075921d3338347b30322b79e95e717",
+      "bytes": 9632
+    },
+    {
+      "revision": "05042db795633ae80d641ea7308c14153b9e6c6a",
+      "path": "apps/backend/tests/documents_rf_guard_replay_fixture.py",
+      "sha256": "9356857259efbcc86103d64dfac9f9ef90ea381ad5d3cc9d02e88791bdbac679",
+      "bytes": 3341
+    },
+    {
+      "revision": "05042db795633ae80d641ea7308c14153b9e6c6a",
+      "path": "apps/backend/tests/test_documents_rf_guard_replay_fixture.py",
+      "sha256": "e1a5f2e111298d6fc4a6ed379043840e72fc9b81a86a2a344a22464d5fa8cf0e",
+      "bytes": 4851
+    },
+    {
+      "revision": "05042db795633ae80d641ea7308c14153b9e6c6a",
+      "path": "apps/backend/tests/test_document_evidence_retention_database.py",
+      "sha256": "0d2ce9002386920455f465ff766559b3b3b6cf59a1a36dbc7793af9ee3c2f137",
+      "bytes": 19354
+    },
+    {
+      "revision": "05042db795633ae80d641ea7308c14153b9e6c6a",
+      "path": "apps/backend/tests/test_document_originals_database.py",
+      "sha256": "6d0a2297427a55a266e81b2c52ca3a8108a363251168570556f0edeccca6452a",
+      "bytes": 28309
+    },
+    {
+      "revision": "05042db795633ae80d641ea7308c14153b9e6c6a",
+      "path": "apps/backend/tests/test_governance_register_evidence_amendment_database.py",
+      "sha256": "09375fc967b6f87c02fb0b8c9d5b1e13815fdb89b8c4435e924766783295fd1d",
+      "bytes": 49180
+    },
+    {
+      "revision": "05042db795633ae80d641ea7308c14153b9e6c6a",
+      "path": "apps/backend/tests/test_governance_reporting_register_evidence_database.py",
+      "sha256": "ee5c431c4952cbdcc22d14edcab98954247090e3e40c334556848f0242fa7ac5",
+      "bytes": 18128
+    },
+    {
+      "revision": "05042db795633ae80d641ea7308c14153b9e6c6a",
+      "path": "apps/backend/tests/governance_register_evidence_amendment_fixture.py",
+      "sha256": "adc105641db822d05fea038fc2aef680863def2478181573a4a987072db95b42",
+      "bytes": 17195
+    },
+    {
+      "revision": "05042db795633ae80d641ea7308c14153b9e6c6a",
+      "path": "apps/backend/tests/test_rf1086_retained_correction_reader_database.py",
+      "sha256": "b7f2f0a1e41b0535b59a2d979917c4032c37f7e4f4d5cc95203539d3809be72c",
+      "bytes": 30419
+    }
+  ],
+  "sanitizedExcerpts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38040903348-application-summary-sanitized.log",
+      "sha256": "136243dee13d5708f778d9cfe5060a6bebef923df531dd2d9046b4f6998fbaf2",
+      "bytes": 230
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38040903348-database-failure-context-sanitized.log",
+      "sha256": "31811fe5bcad6bf54cd215a1fbdc7ab8deff51dd21bd004b308c69c54e0550a2",
+      "bytes": 540
+    }
+  ],
+  "privateRawLogDigests": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38040903348-application-job-full-private.log",
+      "sha256": "60ba639ae5ec652cfe33188761f82761f5feb7c5ff7723d302fad5c8f6149afd",
+      "bytes": 464984
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38040903348-database-job-full-private.log",
+      "sha256": "2454472d856610750880df3115ed5bcd6e3eb464425cda0153d964de0a2177de",
+      "bytes": 526643
+    }
+  ],
+  "metadataPins": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38040903348-terminal-status.json",
+      "sha256": "f86b15443c6e4bc34dd5e191b93276ecb3b4707a3ebd69145c708e66d4165fb4",
+      "bytes": 7472
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38040903348-merge-parents.json",
+      "sha256": "6839ac45f7a0f58a4b6c11ef322fc5a855b7ff78a9fd2fac1cce0a8d408ee524",
+      "bytes": 149
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38040903348-passed-files.json",
+      "sha256": "cdcb3c322fc4c89efcef76ade1dcd4438b6130c636df363797a0e6e6c545a651",
+      "bytes": 2363
+    }
+  ],
+  "limits": [
+    "Whole workflow failed; A1\u2013A7 remain pending.",
+    "Immutable evidence skipped on ordinary PR: no complete canonical-gate receipt or linked immutable passing revisions.",
+    "Uncommitted additive source-v2 context and off-year fixture repair are excluded from this head.",
+    "No provider/service/genuine-company acceptance, independent/hosted recovery, activation, filing, spending or outreach claimed."
+  ]
+}
