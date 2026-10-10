@@ -1465,3 +1465,36 @@ annual and archive registries and hashes remain unchanged. New tests are
 `test_rf1086_source_readiness_v2.py` and `test_rf1086_annual_readiness_v2.py`,
 automatically included in the existing backend non-database lane; existing pure
 preview tests cover the additive format while the runtime workflow fence remains.
+
+
+### Pure approval v3 for v2 evidence (2026-10-10)
+
+`Rf1086SourceApprovalManifestBasisV3` requires a v2 source and v2 annual proof.
+The additive builder/assertion/serializer use the
+`build_rf1086_source_approval_manifest_v3`,
+`assert_rf1086_source_approval_manifest_matches_v3` and
+`serialize_rf1086_source_approval_manifest_v3` public functions. The manifest
+schema is `production-source-approval-v3`; `source.codec` is explicitly
+`rf1086-year-source-v2`, independent of the source correction ordinal. Separate
+Governance original-year, chain-enumeration and combined-projection hashes are
+bound alongside source/case, company identity, Documents and receipt hashes.
+The mandatory annual binding is `rf1086-annual-readiness-binding-v2` with exact
+canonical proof text and both hashes. Required warnings must be acknowledged
+exactly; accepted warnings need no extra acknowledgement.
+
+Document ordering, UTF-8 shareholder identity, derived operation keys, renderer,
+profile and adapter version remain unchanged. The submitted-approval predecessor
+is explicit and preserves its exact reason; a source correction does not invent
+one. A small private helper shares only canonical encoding, document projection
+and predecessor formatting with the frozen v1/v2 builder. Legacy validation order,
+errors and canonical bytes remain the compatibility contract.
+
+The new boundary checks exact basis/actor/preview/predecessor records and strict
+annual proof shape, while delegating source economics and integrity to the source
+owner's existing v2 contract. The source-aware assertion rebuilds every manifest
+field and rendered byte; serialization verifies v3 codec/binding and byte/hash
+integrity but cannot establish live evidence or permission. Claim, preparation,
+SQL admission, dispatch, application, HTTP and Archive consumers remain closed to
+v3. No owner/MFA, entitlement, source/head currentness, complete foreign history,
+original document bytes or correction eligibility is proven by this pure stage.
+`test_rf1086_source_production_v3.py` owns its additive unit coverage.

@@ -160,7 +160,10 @@
       "build_rf1086_annual_readiness_v2",
       "assert_rf1086_annual_readiness_matches_v2",
       "serialize_rf1086_annual_readiness_v2",
-      "parse_rf1086_annual_readiness_v2"
+      "parse_rf1086_annual_readiness_v2",
+      "build_rf1086_source_approval_manifest_v3",
+      "assert_rf1086_source_approval_manifest_matches_v3",
+      "serialize_rf1086_source_approval_manifest_v3"
     ],
     "events": [],
     "errors": [
@@ -289,7 +292,8 @@
       "Rf1086YearGovernanceReceiptV2",
       "Rf1086VerifiedYearSourceContextV2",
       "Rf1086YearSourceFreshnessV2",
-      "Rf1086YearSourceSnapshotV2"
+      "Rf1086YearSourceSnapshotV2",
+      "Rf1086SourceApprovalManifestBasisV3"
     ]
   },
   "owns": {
@@ -533,7 +537,8 @@
     "yearSourceStorageV2": "apps/backend/tests/test_rf1086_year_source_storage_v2.py",
     "yearSourceV2Database": "apps/backend/tests/test_rf1086_year_source_v2_database.py",
     "sourceReadinessV2": "apps/backend/tests/test_rf1086_source_readiness_v2.py",
-    "annualReadinessV2": "apps/backend/tests/test_rf1086_annual_readiness_v2.py"
+    "annualReadinessV2": "apps/backend/tests/test_rf1086_annual_readiness_v2.py",
+    "sourceProductionManifestV3": "apps/backend/tests/test_rf1086_source_production_v3.py"
   },
   "compatibilityExceptions": []
 }

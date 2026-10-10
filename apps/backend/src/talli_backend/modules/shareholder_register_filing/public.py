@@ -2742,6 +2742,25 @@ class Rf1086SourceApprovalManifestBasis(_ImmutableRf1086Value):
 
 
 @dataclass(frozen=True, slots=True)
+class Rf1086SourceApprovalManifestBasisV3(_ImmutableRf1086Value):
+    """Pure approval identity for v2 evidence; no live admission authority.
+
+    Annual v2 evidence is required. Owner/MFA, current source and Governance
+    history, original bytes, entitlement and correction eligibility still need
+    independent consequential admission before any runtime consumer activates.
+    """
+
+    source: Rf1086YearSourceSnapshotV2
+    preview: Rf1086SourcePreview
+    annual_readiness: Rf1086AnnualReadinessProofV2
+    actor_id: ActorId
+    entitlement_id: str
+    review_sha256: str
+    acknowledged_warning_codes: tuple[str, ...]
+    predecessor: Rf1086SourceCorrectionPredecessor | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class Rf1086SourceApprovalManifest(_ImmutableRf1086Value):
     manifest: Mapping[str, object]
     manifest_sha256: str
@@ -2882,6 +2901,24 @@ def serialize_rf1086_source_approval_manifest(approved: Rf1086SourceApprovalMani
     return serialize_manifest(approved)
 
 
+def build_rf1086_source_approval_manifest_v3(
+        basis: Rf1086SourceApprovalManifestBasisV3) -> Rf1086SourceApprovalManifest:
+    from .source_production_v3 import build_manifest
+    return build_manifest(basis)
+
+
+def assert_rf1086_source_approval_manifest_matches_v3(
+        approved: Rf1086SourceApprovalManifest, basis: Rf1086SourceApprovalManifestBasisV3) -> None:
+    from .source_production_v3 import assert_matches
+    assert_matches(approved, basis)
+
+
+def serialize_rf1086_source_approval_manifest_v3(approved: Rf1086SourceApprovalManifest) -> str:
+    """V3 canonical bytes and hash only; source-aware validation is separate."""
+    from .source_production_v3 import serialize_manifest
+    return serialize_manifest(approved)
+
+
 
 def prepare_rf1086_source_reconciliation(archive: Rf1086ArchiveSnapshot, *, query: Rf1086ArchiveQuery,
         submission: Rf1086Submission, forsendelse_id: str, dialog_id: str) -> Rf1086ReconciliationInput:
@@ -2890,6 +2927,10 @@ def prepare_rf1086_source_reconciliation(archive: Rf1086ArchiveSnapshot, *, quer
 
 
 __all__ = [
+    'Rf1086SourceApprovalManifestBasisV3',
+    'build_rf1086_source_approval_manifest_v3',
+    'assert_rf1086_source_approval_manifest_matches_v3',
+    'serialize_rf1086_source_approval_manifest_v3',
     'Rf1086SourceReadinessEvidenceV2',
     'Rf1086SourceReadinessProofV2',
     'Rf1086AnnualReadinessProofV2',

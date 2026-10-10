@@ -4,41 +4,13 @@ Historical production-approval-v1 hashing remains in production.py unchanged.
 This version orders stable shareholder IDs by UTF-8 bytes and hashes canonical
 JSON with sorted keys. Neither locale nor the legacy UUID ordering applies.
 """
-from collections.abc import Mapping
-import hashlib
-import json
-
 from talli_backend.shared.kernel import ActorKind
 
 from . import public as rf
 from .year_source import _sha, _uuid
-
-
-def _require(condition: bool) -> None:
-    if not condition:
-        raise rf.Rf1086ProductionError("basis_unavailable")
-
-
-def _bytes(value: str) -> bytes:
-    # Reject invalid Unicode instead of replacing bytes in an approval identity.
-    return value.encode("utf-8", errors="strict")
-
-
-def _hash(value: str) -> str:
-    return hashlib.sha256(_bytes(value)).hexdigest()
-
-
-def _plain(value):
-    if isinstance(value, Mapping):
-        return {key: _plain(child) for key, child in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_plain(child) for child in value]
-    return value
-
-
-def _canonical(value) -> str:
-    return json.dumps(_plain(value), sort_keys=True, separators=(",", ":"),
-                      ensure_ascii=False, allow_nan=False)
+from .source_approval_encoding import (
+    _bytes, _canonical, _documents, _hash, _plain, _predecessor, _require,
+)
 
 
 def build_manifest(basis: rf.Rf1086SourceApprovalManifestBasis) -> rf.Rf1086SourceApprovalManifest:
@@ -73,28 +45,8 @@ def build_manifest(basis: rf.Rf1086SourceApprovalManifestBasis) -> rf.Rf1086Sour
                  and len(set(acknowledged)) == len(acknowledged)
                  and set(acknowledged) == set(warnings))
 
-        # Names remain byte-exact stable IDs. Never trim, normalize, parse as
-        # UUIDs, or use insertion order, which could reassign journal operations.
-        names = tuple(preview.underskjema_xml)
-        _require(all(isinstance(name, str) and bool(name.strip()) and "\x00" not in name for name in names))
-        names = tuple(sorted(names, key=_bytes))
-        # The existing journal limits operation names to 120 characters. Stable
-        # derived keys fit that contract without narrowing shareholder IDs.
-        keys = {name: "source_" + _hash("rf1086-source-shareholder-v1:" + name) for name in names}
-        _require(len(set(keys.values())) == len(names))
-        order = tuple(keys[name] for name in names)
-        xml = {keys[name]: preview.underskjema_xml[name] for name in names}
-        documents = [{"name": "hovedskjema", "sha256": _hash(preview.hovedskjema_xml)}]
-        documents.extend({"name": "underskjema_" + keys[name], "shareholderId": name,
-                          "sha256": _hash(preview.underskjema_xml[name])} for name in names)
-        predecessor = None
-        if basis.predecessor is not None:
-            prior = basis.predecessor
-            _require(isinstance(prior, rf.Rf1086SourceCorrectionPredecessor)
-                     and isinstance(prior.submission_id, rf.SubmissionId)
-                     and isinstance(prior.reason, str) and bool(prior.reason.strip()))
-            predecessor = {"submissionId": _uuid(prior.submission_id.value),
-                           "manifestSha256": _sha(prior.manifest_sha256), "reason": prior.reason}
+        order, xml, documents = _documents(preview)
+        predecessor = _predecessor(basis.predecessor)
         freshness = source.freshness
         manifest = {
             "schemaVersion": "production-source-approval-v1",
