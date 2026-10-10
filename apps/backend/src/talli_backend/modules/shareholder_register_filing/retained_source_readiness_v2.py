@@ -1,5 +1,6 @@
 """Retained v2 observations; callers separately establish current admission."""
 from datetime import datetime
+import json
 
 from . import public as rf
 from .annual_readiness import _assess
@@ -7,6 +8,7 @@ from .readiness_shape_v2 import matches_shape
 from .retained_readiness import assert_preview
 from .source_readiness_v2 import _compose
 from .year_source import _uuid
+from .annual_readiness_storage_v2 import _encode
 
 
 def build_source(source, retained_preview):
@@ -48,3 +50,17 @@ def build_annual(source, retained_preview, inputs):
         raise
     except (ValueError, TypeError, AttributeError, KeyError, ArithmeticError, RecursionError):
         raise rf.Rf1086YearSourceError('rf1086_annual_inputs_unavailable') from None
+
+
+def serialize_annual(proof, source, retained_preview):
+    """Exact v2 codec for retained blocked/warning/ready policy, without rendering."""
+    try:
+        if type(proof) is not rf.Rf1086AnnualReadinessProofV2:
+            raise ValueError()
+        if proof != build_annual(source, retained_preview, proof.annual_inputs):
+            raise ValueError()
+        return json.dumps({'codec': 'rf1086-annual-readiness-v2', 'proof': _encode(proof)},
+            sort_keys=True, separators=(',', ':'), ensure_ascii=False, allow_nan=False)
+    except (ValueError, TypeError, AttributeError, KeyError, ArithmeticError, RecursionError,
+            rf.Rf1086YearSourceError):
+        raise rf.Rf1086ProductionError('basis_unavailable') from None

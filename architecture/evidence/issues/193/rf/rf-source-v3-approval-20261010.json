@@ -1,0 +1,117 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "REVIEWED_CLOSED_RETAINED_SOURCE_APPROVAL_V3",
+  "recordedAtUtc": "2026-10-10T16:52:05.053688+00:00",
+  "baseRevision": "b350c29c50af62dd7d86b0d7d4b2764f92ec2b7e",
+  "status": "LOCAL_REVIEWED_FULL_DATABASE_EXECUTION_REQUIRED",
+  "changes": [
+    "Closed retained v3 review/approval only; no existing route/caller/grant/claim/intent/provider activation.",
+    "Held review takes no annual argument; reconstructs from real held owner readers in frozen order. Held append repeats all owner reads, retained annual/source/capture correspondence and review, then rebuilds entire supplied manifest.",
+    "Five closed RF-owner contracts. Added immutable invoker structural helper uses a fixed owner grammar for exact V2 root/record/field keys, wrappers, primitives, literals, arrays and mappings; preserves JSON numeric lexemes to reject decimal/exponent float counts. No RF policy/economic decision duplicated. Existing three version-copy contracts retain full published-body drift fingerprints, exact authority/owner/source/capture/Gov/review commitments, global Authority-before-Billing locks and postwait clocks.",
+    "Retentive revoke-only for all five contracts: definitions/OIDs/history remain, every nonowner grant closes; ordinary activation absent. Projected native whole migration/reapply/rollback validated; actual populated full-schema case collected only.",
+    "Unchanged full retained correction preflight/held proof plus actual complete submission history. New application delegation cases cover order and failures using explicit correction-owner doubles; whole live v3 correction/independent recovery remains separate pending coverage. Current-actor restriction unchanged.",
+    "Four public exports, module mappings/docs, mandatory Authority36 new cases (expected1534 total), presence query identifies four definer volatile contracts and one invoker immutable helper. Existing API/route wiring unchanged.",
+    "Disposable fixture temporarily enables SET on existing RF executor edge and borrows four exact RF/Gov function grants to canonical executor, executes SET LOCAL RF executor because frozen Billing/Authority contracts require active backend role, then restores exact prior ACLs and membership tuple. No production grant/policy widened."
+  ],
+  "repairedFindings": {
+    "AV1": "Actual projected SQL reproduced both same-count key substitutions before repair. Fixed grammar checks reject substitutions and malformed primitives/containers/wrappers; exponent lexeme test prevents jsonb numeric normalization bypass. Nine full-schema structural negatives collected.",
+    "AV2": "Replaced broad exception expectations with exact owner error types/codes, specific current SQL review blocker and exact basis_unavailable, exact pilot/MFA post-wait RaiseException codes; history unchanged assertions retained. Verified published Authority helper returns row without status filtering so unverified request is rejected by exact downstream pilot guard."
+  },
+  "checks": {
+    "newLocalCases": 56,
+    "protectedLocalCases": 535,
+    "totalPassed": 591,
+    "seconds": 31.57,
+    "publicCases": 29,
+    "heldApplicationCases": 27,
+    "newDatabaseCollectedNotExecuted": 36,
+    "ciSelectionPassed": 125,
+    "ciSelectionSkipped": 0,
+    "nativeProjectedChecks": 41,
+    "nativeStoppedRemoved": true,
+    "architecture": "PASS_V4",
+    "diffCheck": "PASS",
+    "protectedFunctionsByteExact": 402,
+    "newV2ProjectionRefactor": 1,
+    "annualGoldenOutcomesExact": 217,
+    "downstreamGoldenVectorsExact": 7,
+    "oldPublicDefinitionsExact": 13,
+    "ciSelectionSeconds": 51.614002125,
+    "specOpenFindings": 0,
+    "standardsOpenFindings": 0,
+    "mandatoryAuthorityExpectedCases": 1534
+  },
+  "sourceFreeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-v3-approval-implementation-freeze-v2.json",
+    "sha256": "0dcfd7bc86c82bac935eef0c7c2c0526f1df40afed1ca8e6e9c60b7a89f616e3",
+    "bytes": 16906
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v3-approval-implementation-spec-review-v2.json",
+      "sha256": "587608dc5b2a48bb19797578b35c864974654a10f6beddd6b5ad53f5c2d273d2",
+      "bytes": 34070
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v3-approval-implementation-standards-review-v2.json",
+      "sha256": "4c191fb8115aa66c9cb9a5cf2ea717253c2e5b8bf69155510d9f2f58e4c87b67",
+      "bytes": 27158
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-v3-and-protected-v2.log",
+      "sha256": "6ba1dbff7d2f06b298c957e87a2c9d98004c82b2e40c1e8fba85c1da260abd66",
+      "bytes": 741
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-v3-database-collection-v6.log",
+      "sha256": "bdc49089515cdbef549bd4333c3772e5f9e55767f18ad7261511e0656cbc0bf2",
+      "bytes": 4809
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-v3-ci-selection-v4.log",
+      "sha256": "68218a23f1bfb7894622904507bc493b68c73cbf60d67bd70c4a78ffdd010ea3",
+      "bytes": 13350
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-v3-architecture-v4.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-closed-approval-v3-native-v5.json",
+      "sha256": "9b53689159fd63cbbfd39fc3e1e1ef51fcaf7825bf06140fa6907e07f1a7e352",
+      "bytes": 4828
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-closed-approval-v3-native-v5.log",
+      "sha256": "cb0bc54279a81c6e3badc24e246b00574bc949f0111dd8adcd4be43e46cd845e",
+      "bytes": 973
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-closed-approval-v3-structural-red-v1.json",
+      "sha256": "e20624f907047ae935357d2b587281033fb2c145054be9d86e1b2e5302002753",
+      "bytes": 3970
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-v3-downstream-v1.json",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-v3-protected-spans-v1.json",
+      "sha256": "7e370d903ad284525b52dce54b413a65a77b62f21e604a001862b5dc403e85ea",
+      "bytes": 662
+    }
+  ],
+  "limits": [
+    "Held/application 591-pass run uses actual RF/Docs/Gov/held adapter but SQL/Auth/storage and annual owner projections are explicit doubles; 56 new plus535 protected, production Python unchanged since run.",
+    "Native41 checks use actual published bodies, full new migration, annual binding and exact withdrawal insertion on minimal projected row types/stub ownership/Gov guard. Actual published Billing role gate was reached with stub verified-actor/accepted-owner projections. This is not full schema/RLS/Auth/MFA/Authority wait/append/origin/independent recovery proof.",
+    "New36 mandatory full owner-schema cases collected only, never executed locally. Exact negative codes and temporary fixture grants still require actual Linux CI execution.",
+    "Current published b350 CI38067124662 active; approval WIP is excluded. No successor push until whole run terminal.",
+    "Historical v1 Spec2 findings resolved by successor Spec/Standards reports with all17pins stable; historical freeze/reports unchanged.",
+    "All A1-A7, provider/supported-capital/independent Auth-project-object recovery/canonical gates/Tax/Accounts remain pending."
+  ]
+}

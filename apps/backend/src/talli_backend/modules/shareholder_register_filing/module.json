@@ -173,7 +173,10 @@
       "prepare_rf1086_retained_correction_predecessor",
       "build_rf1086_retained_source_readiness_v2",
       "build_rf1086_retained_annual_readiness_v2",
-      "assert_rf1086_prepared_source_preview_matches"
+      "assert_rf1086_prepared_source_preview_matches",
+      "build_rf1086_retained_source_approval_manifest_v3",
+      "assert_rf1086_retained_source_approval_manifest_matches_v3",
+      "serialize_rf1086_retained_annual_readiness_v2"
     ],
     "events": [],
     "errors": [
@@ -303,7 +306,8 @@
       "Rf1086VerifiedYearSourceContextV2",
       "Rf1086YearSourceFreshnessV2",
       "Rf1086YearSourceSnapshotV2",
-      "Rf1086SourceApprovalManifestBasisV3"
+      "Rf1086SourceApprovalManifestBasisV3",
+      "Rf1086SourceApprovalContextV3"
     ]
   },
   "owns": {
@@ -578,7 +582,10 @@
     "retainedReadinessObservationV2": "apps/backend/tests/test_rf1086_retained_readiness_observation_v2.py",
     "sourceAdmissionV2Database": "apps/backend/tests/test_rf1086_source_admission_v2_database.py",
     "sourcePreviewV2": "apps/backend/tests/test_rf1086_source_preview_v2.py",
-    "sourcePreviewV2Database": "apps/backend/tests/test_rf1086_source_preview_v2_database.py"
+    "sourcePreviewV2Database": "apps/backend/tests/test_rf1086_source_preview_v2_database.py",
+    "retainedApprovalV3Public": "apps/backend/tests/test_rf1086_retained_approval_v3_public.py",
+    "sourceApprovalV3": "apps/backend/tests/test_rf1086_source_approval_v3.py",
+    "sourceApprovalV3Database": "apps/backend/tests/test_rf1086_source_approval_v3_database.py"
   },
   "compatibilityExceptions": []
 }

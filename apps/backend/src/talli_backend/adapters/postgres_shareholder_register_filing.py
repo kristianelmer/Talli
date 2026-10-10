@@ -1901,6 +1901,69 @@ class _SourceAdmission:
             raise rf.Rf1086ProductionError('basis_unavailable')
         return rf.Rf1086SourceOperationPreparation(event, value['newlyPrepared'])
 
+    async def _source_approval_state_v3(self, preview_id, entitlement_id, correlation_id):
+        self._require_active()
+        source = await self.current_source()
+        if type(source) is not rf.Rf1086YearSourceSnapshotV2:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        capture = await self.retained_source_preview(preview_id)
+        from talli_backend.application.shareholder_register_source_admission_v2 import read_rf1086_current_annual_inputs_v2
+        inputs = await read_rf1086_current_annual_inputs_v2(self, source, correlation_id)
+        annual = rf.build_rf1086_retained_annual_readiness_v2(source, capture, inputs)
+        annual_text = rf.serialize_rf1086_retained_annual_readiness_v2(annual, source, capture)
+        await self.prepare_source_governance_proof(source)
+        await self.bridge_source_preview(capture.preview)
+        row = await (await self._connection.execute(
+            'select shareholder_register_filing.read_source_approval_context_v3(%s::uuid,%s::uuid,%s,%s) as context',
+            (preview_id.value, entitlement_id, annual_text, str(self.actor_id.subject)),
+        )).fetchone()
+        review = _source_approval_review(row['context'] if row else None,
+            self._query, capture.preview, entitlement_id)
+        if review.warning_codes != annual.required_warning_codes:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        return source, capture, annual, review
+
+    async def read_source_approval_context_v3(self, preview_id, entitlement_id, correlation_id):
+        _, _, annual, review = await self._source_approval_state_v3(preview_id, entitlement_id, correlation_id)
+        return rf.Rf1086SourceApprovalContextV3(annual, review)
+
+    async def append_source_approval_v3(self, preview_id, entitlement_id, manifest, expected_review_sha256, correlation_id):
+        source, capture, annual, review = await self._source_approval_state_v3(preview_id, entitlement_id, correlation_id)
+        if not review.can_approve:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        if expected_review_sha256 != review.review_sha256:
+            raise rf.Rf1086ProductionError('payload_changed')
+        try:
+            declared = manifest.manifest.get('predecessor')
+            predecessor = None
+            if declared is not None:
+                if (not isinstance(declared, Mapping) or set(declared) != {'submissionId','manifestSha256','reason'}):
+                    raise ValueError()
+                predecessor = rf.Rf1086SourceCorrectionPredecessor(rf.SubmissionId(declared['submissionId']),
+                    declared['manifestSha256'], declared['reason'])
+            basis = rf.Rf1086SourceApprovalManifestBasisV3(source, capture.preview, annual,
+                self.actor_id, entitlement_id, review.review_sha256, review.warning_codes, predecessor)
+            rf.assert_rf1086_retained_source_approval_manifest_matches_v3(manifest, basis, capture)
+            manifest_text = rf.serialize_rf1086_source_approval_manifest_v3(manifest)
+        except (ValueError, TypeError, AttributeError, KeyError):
+            raise rf.Rf1086ProductionError('payload_changed') from None
+        try:
+            row = await (await self._connection.execute(
+                'select * from shareholder_register_filing.append_source_approval_v3(%s::uuid,%s::uuid,%s,%s,%s,%s)',
+                (preview_id.value, entitlement_id, manifest_text, manifest.manifest_sha256,
+                 expected_review_sha256, str(self.actor_id.subject)),
+            )).fetchone()
+        except psycopg.Error as error:
+            if 'rf1086_source_predecessor_mismatch' in str(error):
+                raise rf.Rf1086ProductionError('payload_changed') from None
+            raise
+        if not row:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        result = self._store._recorded(row)
+        if result.company_id != self._query.company_id or result.income_year != self._query.income_year:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        return result
+
     async def read_source_approval_context(self, preview_id, entitlement_id, annual):
         self._require_active()
         preview = await self.source_preview(preview_id)

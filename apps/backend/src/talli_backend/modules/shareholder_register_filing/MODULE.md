@@ -2065,3 +2065,50 @@ Authority database cases use actual owner records, proof/append, races and
 restricted fixture logins; authentication state/claims and locally retained
 fixture bytes do not prove live Auth or independent object-store recovery.
 Collection alone is not execution or release acceptance.
+
+
+## Closed retained v3 review and approval (#193)
+
+`ShareholderRegisterSourceApprovalV3` uses saved v2 admission. The held review
+port takes preview/entitlement/correlation only; it reads Opening, Ledger, Bank,
+Annual Interview and Documents on the same connection in the established order.
+RF derives retained annual policy from those inputs and the exact saved capture.
+`Rf1086SourceApprovalContextV3` is immutable observation data, with no authority
+after the lease closes. The held append repeats every owner read and current
+review, builds the complete retained v3 manifest and rejects supplied mismatches.
+Fresh rendering and caller-supplied ready flags cannot authorize these writes.
+
+`build_rf1086_retained_source_approval_manifest_v3` and
+`assert_rf1086_retained_source_approval_manifest_matches_v3` validate raw capture
+bytes/hash/metadata and delegate existing retained composition.
+`serialize_rf1086_retained_annual_readiness_v2` accepts blocked/warning/ready policy
+outcomes, checks correspondence and uses the existing codec without rendering. All old
+public builders, codecs and functions remain unchanged.
+
+Migration `20261010150223_rf1086_closed_retained_approval_v3.sql` derives new owned
+versions of annual binding, current review and approval append from published
+legacy bodies. Complete legacy-body fingerprints, finite anchors and owner/security/search-path checks reject drift.
+SQL consumes current source/Governance proof even on replay, checks exact capture
+and annual structure, locks Authority before Billing, rechecks MFA/expiry after
+waits, and retains permission, review, override, release and predecessor guards.
+Python RF owns annual policy; these closed SQL contracts trust the backend's
+policy output and do not authenticate producer origin or recompute economics.
+All five new contracts revoke PUBLIC and every nonowner grant. Existing routes,
+ordinary callers/grants, claims, intent and provider dispatch remain unchanged.
+Rollback retains definitions/OIDs and history while revoking new nonowner grants;
+reapply stays closed. Disposable fixtures borrow the frozen RF executor role for
+existing cross-owner contracts and restore exact ACLs and login SET edges. The
+separate ordinary-role denial cases run after those fixture grants close.
+
+Mandatory v3 database cases use actual owner schemas, guards, proof and writes.
+Authentication/claims are explicit fixtures and object reads use locally retained
+fixture bytes; they do not establish live Auth or independent object recovery.
+
+
+The closed `assert_retained_annual_readiness_v2_shape_internal_v1(text)` checks the
+fixed RF wire grammar: eleven registered records, exact wrapper/field keys,
+primitive types, literals, arrays, optional values and string mappings. Expected
+types come only from the fixed owner grammar, never from a stored record label.
+The annual binding invokes it before accepting proof bytes; same-count renamed
+keys, boolean/string/count confusion and malformed nested data fail closed. This
+checks structure without duplicating annual policy or authenticating origin.
