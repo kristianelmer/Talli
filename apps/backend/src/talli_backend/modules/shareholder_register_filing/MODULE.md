@@ -1691,3 +1691,41 @@ access, original bytes, database races or signed provenance.
 `test_rf1086_retained_recovery_correction.py` covers the new pure contracts;
 `test_rf1086_retained_recovery_correction_adversarial.py` independently checks
 complete ancestry, actor/capture boundaries and original reference bindings.
+
+### Closed retained correction archive reader (2026-10-10)
+
+The additive `read_retained_correction_archive(query, submission_id)` adapter
+method returns the complete raw company/year archive for later retained pure
+projection. It requires exact typed scope and canonical IDs, the verified USER
+actor and the selected original submitter. Preflight uses one read-only,
+repeatable-read transaction: `assert_submission_v1` establishes original-actor
+and current accepted-owner access before selecting the exact parent or
+enumerating the archive. It needs no current pilot, fresh MFA, provider binding
+or current-source eligibility.
+
+The source-admission method first requires a live matching scope, then calls
+`lock_correction_predecessor_v1` on the existing connection. That owner RPC
+requires the already-held company then RF-year guards and read-committed
+isolation. The same connection enumerates the full archive after locking the
+parent; no second transaction or external I/O occurs. Both paths preserve all
+actors and profiles in the company/year history and require exactly one
+archived selected row equal to the selected/locked parent.
+
+These methods establish access and enumeration, not a valid correction basis.
+The raw result can contain competing or unsupported history that the retained
+pure projector must reject. Later application wiring must invoke that projector,
+verify Documents originals outside guards, and repeat validation inside the
+final admission before writing. Existing correction and recovery callers still
+use their previous methods; no SQL, grants, fresh writers or runtime behavior
+are activated by this addition.
+
+`test_postgres_rf_retained_correction.py` covers malformed identity and selected
+scope boundaries with routing doubles. The independent
+`test_postgres_rf_retained_correction_adversarial.py` runs the actual transaction
+and archive methods against synthetic SQL results to check ordering, cleanup,
+unfiltered enumeration and active-scope rules. Those doubles do not prove RLS or
+locking. `test_rf1086_retained_correction_reader_database.py` defines restricted
+executor reads and lock/race checks against real disposable PostgreSQL. Its v3
+approval/claim/journal fixtures use explicit designated-owner inserts with
+existing constraints and triggers, not an activated v3 runtime writer; database
+execution evidence must be reported separately from collection.

@@ -263,5 +263,6 @@
   "rfRetainedClaimDispatch20261010": "rf-retained-claim-dispatch-20261010.json",
   "historicalCi38022965879": "ci-38022965879.json",
   "governanceReplayConsumers20261010": "governance-replay-consumers-20261010.json",
-  "rfRetainedRecoveryCorrection20261010": "rf-retained-recovery-correction-20261010.json"
+  "rfRetainedRecoveryCorrection20261010": "rf-retained-recovery-correction-20261010.json",
+  "rfRetainedCorrectionReader20261010": "rf-retained-correction-reader-20261010.json"
 }

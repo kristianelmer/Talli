@@ -13,7 +13,7 @@ import json
 import os
 import re
 from urllib.parse import quote, urlencode
-from uuid import NAMESPACE_URL, uuid4, uuid5
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 import httpx
 import psycopg
@@ -55,6 +55,26 @@ def _record_value(value):
     if isinstance(value, (UUID, datetime)):
         return str(value) if isinstance(value, UUID) else value.isoformat()
     return value
+
+
+def _validate_retained_correction_query(query, submission_id):
+    """Reject malformed scope before opening a connection or taking a guard."""
+    try:
+        if (type(query) is not rf.Rf1086SourceQuery
+                or type(query.actor_id) is not ActorId
+                or query.actor_id.kind is not ActorKind.USER
+                or type(query.actor_id.subject) is not UserId
+                or type(query.company_id) is not CompanyId
+                or type(query.income_year) is not IncomeYear
+                or type(query.income_year.value) is not int
+                or not 2000 <= query.income_year.value <= 2100
+                or type(submission_id) is not rf.SubmissionId):
+            raise ValueError()
+        for value in (query.company_id.value, query.actor_id.subject.value, submission_id.value):
+            if type(value) is not str or str(UUID(value)) != value:
+                raise ValueError()
+    except (ValueError, TypeError, AttributeError):
+        raise rf.Rf1086ProductionError('basis_unavailable') from None
 
 
 def _source_digest(value):
@@ -355,6 +375,57 @@ class PostgresShareholderRegisterFilingSession:
             await connection.execute('select shareholder_register_filing.assert_member_v1(%s::uuid)',
                 (str(query.company_id),))
             return await self._correction_predecessor(connection,query,submission_id,lock=False)
+
+    async def read_retained_correction_archive(self, query, submission_id):
+        """Read a complete raw archive after selected-parent access is established.
+
+        The result still requires the retained correction projector. This read
+        confers neither correction authority nor proof of Documents bytes.
+        """
+        _validate_retained_correction_query(query, submission_id)
+        self._command_actor(query)
+        async with self._transaction(snapshot=True, read_only=True) as connection:
+            return await self._retained_correction_archive_on_connection(
+                connection, query, submission_id, lock=False)
+
+    async def _retained_correction_archive_on_connection(self, connection, query, submission_id, *, lock):
+        if lock:
+            # The enclosing admission already holds company then RF-year guards.
+            # The owner RPC asserts original-actor/current-owner access and locks
+            # the exact parent before any archive enumeration on this connection.
+            row = await (await connection.execute(
+                'select * from shareholder_register_filing.lock_correction_predecessor_v1(%s::uuid,%s::uuid,%s,%s)',
+                (submission_id.value, str(query.company_id), int(query.income_year), str(self.actor_id.subject)),
+            )).fetchone()
+        else:
+            await connection.execute('select shareholder_register_filing.assert_submission_v1(%s::uuid)',
+                (submission_id.value,))
+            row = await (await connection.execute(
+                'select * from shareholder_register_filing.production_filing_submissions '
+                'where id=%s::uuid and company_id=%s::uuid and income_year=%s',
+                (submission_id.value, str(query.company_id), int(query.income_year)),
+            )).fetchone()
+        try:
+            if row is None:
+                raise ValueError()
+            selected = self._wire_record(rf.Rf1086ProductionSubmissionRecord, row)
+            if (selected.id != submission_id.value or selected.company_id != str(query.company_id)
+                    or type(selected.income_year) is not int or selected.income_year != int(query.income_year)
+                    or selected.user_id != str(self.actor_id.subject)
+                    or selected.submitted_by != str(self.actor_id.subject)):
+                raise ValueError()
+            archive = await self._archive_source_on_connection(connection,
+                rf.Rf1086ArchiveQuery(query.company_id, query.income_year, query.actor_id), include_production=True)
+            # Preserve every actor/profile in the company/year history. Only the
+            # selected parent's identity is checked here; the pure projector must
+            # validate the complete archive before returning a correction basis.
+            parents = tuple(item for item in archive.production_submissions if item.id == submission_id.value)
+            if (archive.company_id != query.company_id or archive.income_year != query.income_year
+                    or parents != (selected,)):
+                raise ValueError()
+            return archive
+        except (ValueError, TypeError, KeyError, AttributeError):
+            raise rf.Rf1086ProductionError('basis_unavailable') from None
 
     async def _correction_predecessor(self, connection, query, submission_id, *, lock):
         if lock:
@@ -1551,6 +1622,16 @@ class _SourceAdmission:
         if query != self._query:
             raise rf.ShareholderRegisterFilingError.forbidden()
         return await self._store._correction_predecessor(self._connection,query,submission_id,lock=True)
+
+    async def read_retained_correction_archive(self, query, submission_id):
+        """Read under the existing guards; never open a second transaction."""
+        self._require_active()
+        _validate_retained_correction_query(query, submission_id)
+        self._store._command_actor(query)
+        if query != self._query:
+            raise rf.ShareholderRegisterFilingError.forbidden()
+        return await self._store._retained_correction_archive_on_connection(
+            self._connection, query, submission_id, lock=True)
 
     async def submission_history(self):
         self._require_active()

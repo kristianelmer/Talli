@@ -554,7 +554,10 @@
     "retainedSourceDispatch": "apps/backend/tests/test_rf1086_retained_source_dispatch.py",
     "retainedSourceDispatchAdversarial": "apps/backend/tests/test_rf1086_retained_source_dispatch_adversarial.py",
     "retainedRecoveryCorrection": "apps/backend/tests/test_rf1086_retained_recovery_correction.py",
-    "retainedRecoveryCorrectionAdversarial": "apps/backend/tests/test_rf1086_retained_recovery_correction_adversarial.py"
+    "retainedRecoveryCorrectionAdversarial": "apps/backend/tests/test_rf1086_retained_recovery_correction_adversarial.py",
+    "retainedCorrectionReader": "apps/backend/tests/test_postgres_rf_retained_correction.py",
+    "retainedCorrectionReaderAdversarial": "apps/backend/tests/test_postgres_rf_retained_correction_adversarial.py",
+    "retainedCorrectionReaderDatabase": "apps/backend/tests/test_rf1086_retained_correction_reader_database.py"
   },
   "compatibilityExceptions": []
 }
