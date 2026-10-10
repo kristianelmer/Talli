@@ -148,6 +148,7 @@ const postgresPrefetchCalls = ["17", "17-alpine", "16-alpine"].flatMap(tag => [
   ["tag", `public.ecr.aws/docker/library/postgres:${tag}`, `postgres:${tag}`],
 ]);
 const ecrThrottle = 'Error response from daemon: toomanyrequests: Rate exceeded';
+const ecrDeadline = 'Error response from daemon: Head "https://public.ecr.aws/v2/docker/library/postgres/manifests/17-alpine": Get "https://public.ecr.aws/token/?scope=repository%3Adocker%2Flibrary%2Fpostgres%3Apull&service=public.ecr.aws": context deadline exceeded';
 
 for (const failure of [null, "pull", "tag"]) test(`PostgreSQL fixture prefetch preserves anonymous scope and stops on ${failure ?? "success"}`, () => {
   const { result, calls, sleeps } = runPostgresPrefetch({
@@ -164,6 +165,20 @@ test("PostgreSQL fixture prefetch retries the throttled image anonymously then c
   assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 3), ...postgresPrefetchCalls.slice(2)]);
   assert.deepEqual(sleeps, [["5"]]);
   assert.match(result.stderr, /toomanyrequests: Rate exceeded/u);
+});
+
+test("PostgreSQL fixture prefetch retries the observed registry token deadline anonymously", () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: { "17-alpine": [ecrDeadline] } });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 3), ...postgresPrefetchCalls.slice(2)]);
+  assert.deepEqual(sleeps, [["5"]]);
+});
+
+test("PostgreSQL fixture prefetch bounds repeated registry token deadlines", () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: { "17-alpine": Array(4).fill(ecrDeadline) } });
+  assert.equal(result.status, 23, result.stderr);
+  assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 2), ...Array(3).fill(postgresPrefetchCalls[2])]);
+  assert.deepEqual(sleeps, [["5"], ["10"]]);
 });
 
 test("PostgreSQL fixture prefetch bounds repeated throttle failures and stops before tagging", () => {
@@ -190,6 +205,7 @@ for (const message of [
   'x509: certificate has expired or is not yet valid',
   'dial tcp: lookup public.ecr.aws: no such host',
   'failed to register layer: no space left on device',
+  ecrDeadline + '\nError response from daemon: manifest unknown',
   'toomanyrequests: Rate exceeded\nError response from daemon: denied: access forbidden',
 ]) test(`PostgreSQL fixture prefetch does not retry permanent failure: ${message.split("\n").at(-1)}`, () => {
   const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: { "17": [message] } });

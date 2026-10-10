@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "REVIEWED_BOUNDED_ANONYMOUS_POSTGRES_PREFETCH_DEADLINE_REPAIR",
+  "recordedAtUtc": "2026-10-10T17:37:49.434536+00:00",
+  "baseRevision": "f706edafeb60927f13715bc7a687e0225bddcf35",
+  "status": "LOCAL_REVIEWED_ACTUAL_NETWORK_RETRY_PENDING",
+  "change": "One fixed transient phrase added to classifier. Entire remaining script byte-exact: isolated auth-freeconfig/defaultdaemon/fixedsame3officialtags/max3attempts/5+10delays/permanenterrorprecedence/unknownfatal/tagfatal/cleanup/no alternate registry or paid/auth fallback.",
+  "checks": {
+    "focusedRedFailed": 2,
+    "focusedRedPassed": 16,
+    "fullGreenPassed": 128,
+    "newCases": 3,
+    "protectedCases": 125,
+    "seconds": 64.673943334,
+    "shellSyntax": "PASS",
+    "diffCheck": "PASS",
+    "allOtherShellBytesExact": true,
+    "specOpenFindings": 0,
+    "standardsOpenFindings": 0
+  },
+  "sourceFreeze": {
+    "path": "/private/tmp/talli-release-20261009/postgres-prefetch-context-deadline-freeze-v2.json",
+    "sha256": "99e2e3e33c366431abebb65b0eb9771fbaec5d9f60068000d29cba497dd08a53",
+    "bytes": 3833
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/postgres-prefetch-context-deadline-spec-review-v2.json",
+      "sha256": "ca763ebbd3c8cfe03ba88f97a7ab178ea32a6a3da2b49c5d872ddbb0d67f3c15",
+      "bytes": 6552
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/postgres-prefetch-context-deadline-standards-review-v2.json",
+      "sha256": "f51835700da2ba2f612c5968628e836cfad6601923b84e2ec69fb2afecea593d",
+      "bytes": 8204
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/postgres-prefetch-context-deadline-red-v1.log",
+      "sha256": "49f9de2e29b5fd6310f8ca33e0ce54621b3c559aeda5ee237f850eb4d24d52b9",
+      "bytes": 5060
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/postgres-prefetch-context-deadline-green-v1.log",
+      "sha256": "2891ff2aad86b61be8d5721f988340e46883876ace4d27802b233a4482a33a98",
+      "bytes": 13687
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38071170412-app-completed-raw-v1.log",
+      "sha256": "b178a636462844c78b33588e6be4e2ae0a842c0ad35e6f088e7fed32e12c6ae5",
+      "bytes": 48633
+    }
+  ],
+  "limits": [
+    "f706 Application failed before code checks on anonymous registry token deadline. Fullf706run subsequently also failed in existing bridge recutover fixture, before all36newapproval cases; no successorApp/fullscopePASS.",
+    "LocalrealBash/DockerCLI+sleepstubs only; no Docker/images/resources/registry/provider/paidservice used.",
+    "Same isolated credential-freeconfig,defaultdaemon,3fixed officialtags,max3attempts/5+10delays; permanenterrorprecedence and fatalunknown/tag failures preserved. Actualanonymousnetwork recovery needs successorLinuxCI.",
+    "Metadataonly P3 repair preservedhistoricalv1 with incorrectRED14pass; pinnedactualRED18tests/16pass/2fail; finalbothreviews0.",
+    "AllA1-A7, actualapproval/restore, claims/intents andRF\u2192Tax\u2192Accountshandoffs remainpending."
+  ]
+}

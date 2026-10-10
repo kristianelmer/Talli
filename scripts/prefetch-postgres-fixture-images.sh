@@ -22,7 +22,7 @@ fixture_pull_is_transient() {
   if LC_ALL=C grep -Eiq 'unauthorized|authentication required|no basic auth credentials|denied|forbidden|manifest unknown|no matching manifest|invalid reference format|x509:|no such host|no space left on device|read-only file system|cannot connect to the Docker daemon' <<< "$1"; then
     return 1
   fi
-  LC_ALL=C grep -Eiq 'toomanyrequests.*rate exceeded|too many requests|TLS handshake timeout|i/o timeout|connection reset by peer|temporary failure in name resolution|unexpected EOF' <<< "$1"
+  LC_ALL=C grep -Eiq 'toomanyrequests.*rate exceeded|too many requests|TLS handshake timeout|context deadline exceeded|i/o timeout|connection reset by peer|temporary failure in name resolution|unexpected EOF' <<< "$1"
 }
 
 for fixture_tag in 17 17-alpine 16-alpine; do
