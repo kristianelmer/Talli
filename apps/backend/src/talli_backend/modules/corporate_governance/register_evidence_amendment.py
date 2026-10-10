@@ -247,6 +247,25 @@ def request_digest(command):
     return _digest([_REQUEST, _command_payload(command)])
 
 
+def serialize_command(command):
+    """Canonical business request; transport key and correlation remain external."""
+    return _json(_command_payload(command))
+
+
+def parse_command(encoded):
+    try:
+        _text(encoded)
+        value = json.loads(encoded, object_pairs_hook=_unique_object,
+            parse_constant=lambda _: _require(False, 'json_invalid'))
+        result = _parse_command(value)
+        _require(serialize_command(result) == encoded, 'encoding_noncanonical')
+        return result
+    except gov.CorporateRegisterEvidenceAmendmentError:
+        raise
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError, RecursionError):
+        raise gov.CorporateRegisterEvidenceAmendmentError('corporate_register_evidence_encoding_invalid') from None
+
+
 def _original_commitment(value):
     _require(type(value) is gov.CorporateDocumentOriginalCommitment, 'original_document_invalid')
     return {'original_id': _identity(value.original_id, gov.CorporateSourceReference),

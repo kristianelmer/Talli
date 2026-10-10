@@ -1,0 +1,228 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Closed Governance register-evidence amendment persistence",
+  "observedDateUtc": "2026-10-10",
+  "baseRevision": "5b59cd3285a1d7fdfda7f0dabe3cdf107104684a",
+  "reviewBase": "649fd94408b2a36046fff233b0a0058c48d6b3c4",
+  "status": "FROZEN_LOCAL_CHECKS_PASS_REAL_DATABASE_EXECUTION_PENDING",
+  "contracts": [
+    "append_register_evidence_amendment_v1(text,jsonb,text,text) returns canonical receipt text; server derives actual original anchor and mints amendment identity/time/hash.",
+    "read_register_evidence_chain_v1(uuid,integer,uuid,text) returns complete versioned enumeration, actual anchor, ordered canonical receipts, count/head/effective binding and digest.",
+    "lookup_register_evidence_amendment_v1(uuid,integer,uuid,text,text,text) returns exact actor/company/key recorded receipt, not_observed or conflict; operational errors remain errors."
+  ],
+  "invariants": [
+    "Append-only FORCE-RLS table with immutable update/delete/truncate guards, unique actor/company/key and event revision/withdrawal/replacement, original scoped FK, scoped predecessor ID/revision/digest self-FK. Strict retained UUID actor uses verified current ownership; no new private Auth FK/grant.",
+    "Verified subject/current accepted owner, READ COMMITTED and company then event locks precede lookup. Exact committed replay precedes fresh MFA/admission/evidence and ignores later missing/malformed fresh original material. Original event/actor/time/facts/finalization and all Ledger/Banking state unchanged.",
+    "Fresh admission checks existing current-clock MFA after waits and before insertion, complete current chain/head/effective target, exact retained withdrawal, RF owner-validated current replacement content and equivalent economics/date, actual Documents current-row equality plus retained metadata-integrity assertion, and original Ledger entry/context/ordered-source identity and unamended lifecycle.",
+    "Cash eligibility additionally checks all same-company/reference Governance phases across years against existing public Ledger amendments, and mirrors current phase/terms/date/time/bank coherence. A reversed earlier cash phase blocks a fresh amendment; historical replay stays available.",
+    "Fresh originals exactly cover the distinct original Governance/memo/actual RF document union. Enforce four usable document states and absent removal time, exact shared metadata/content/length/year/revision. RF-only revision1 is a receipt encoding convention.",
+    "Canonical command/receipt/hash validation keeps the original pure bytes unchanged; two additive command codec wrappers only. Existing public/private definitions preserve170 executable ASTs excluding docstrings; old OpenAPI unchanged.",
+    "All new SQL routines/table remain closed to runtime consumers. Narrow owner proof grants only; MFA grant uses unchanged actual function owner. No app/HTTP/RF-consumer activation or Archive policy change."
+  ],
+  "review": {
+    "spec": "Zero unresolved findings on frozen selected closed-persistence scope. Fresh Documents state/removal, Auth privilege assumption, prior cash lifecycle and reversal fixture findings repaired.",
+    "standards": "Zero actionable findings: zero documented-rule violations and zero material smell judgements. Independent reviewer verified22 source hashes and18 private artifacts against exact frozen manifest.",
+    "root": "Verified22 source and18 private artifact hashes; reviewed final schema, owner grants, replay ordering, predecessor chain, retained-original union and lifecycle parity."
+  },
+  "checks": [
+    {
+      "kind": "focused-pytest",
+      "passed": 224,
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest apps/backend/tests/test_corporate_register_evidence_amendment.py apps/backend/tests/test_corporate_register_evidence_amendment_command.py apps/backend/tests/test_corporate_governance_supported_events.py apps/backend/tests/test_corporate_register_evidence.py -q",
+      "log": "governance-amendment-pure-focused.log"
+    },
+    {
+      "kind": "manifest-node-tests",
+      "passed": 11,
+      "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node --test tests/corporate_governance_review_fixes.test.mjs",
+      "log": "governance-amendment-manifest-tests.log"
+    },
+    {
+      "kind": "architecture",
+      "status": "PASS",
+      "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node scripts/check-architecture.mjs --write-evidence",
+      "log": "governance-amendment-architecture.log"
+    },
+    {
+      "kind": "openapi",
+      "status": "PASS",
+      "command": "PYTHONPATH=apps/backend/src /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python apps/backend/scripts/generate_openapi.py --check",
+      "log": "governance-amendment-persistence-openapi.log"
+    },
+    {
+      "kind": "existing-definition-ast-comparison",
+      "status": "PASS",
+      "publicDefinitionsCompared": 129,
+      "privateDefinitionsCompared": 41,
+      "changedOrRemoved": 0,
+      "qualification": "Docstrings excluded; two additive public wrappers and two private command helpers only. Frozen old receipt hash separately asserted by executed tests.",
+      "log": "governance-amendment-persistence-definition-check.json"
+    },
+    {
+      "kind": "new-real-database-collection",
+      "collected": 121,
+      "executed": 0,
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest apps/backend/tests/test_governance_register_evidence_amendment_database.py --collect-only -q",
+      "log": "governance-amendment-db-collection.log"
+    },
+    {
+      "kind": "new-and-successor-database-collection",
+      "collected": 421,
+      "executed": 0,
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest apps/backend/tests/test_governance_register_evidence_amendment_database.py apps/backend/tests/test_documents_historical_original_integrity_database.py apps/backend/tests/test_ledger_governance_entry_assertion_database.py apps/backend/tests/test_rf1086_observation_evidence_assertions_database.py apps/backend/tests/test_rf1086_register_observation_evidence_reader_database.py --collect-only -q",
+      "log": "governance-amendment-successor-db-collection.log"
+    },
+    {
+      "kind": "native-whole-migration",
+      "status": "PASS",
+      "groups": 10,
+      "server": "PostgreSQL17.11",
+      "clusterRemoved": true,
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-governance-amendment-native.py",
+      "log": "governance-amendment-native.json",
+      "qualification": "Actual migration/Governance tables/RLS/functions/codecs; CompanyAccess, company guard, RF, Documents and Ledger public proof dependencies explicitly stubbed. No full Supabase/current-owner proof or real cross-owner races."
+    },
+    {
+      "kind": "root-native-teardown-extension",
+      "status": "PASS",
+      "groups": 12,
+      "clusterRemoved": true,
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-governance-amendment-teardown-native.py",
+      "log": "governance-amendment-teardown-native.json",
+      "qualification": "Root-owned extension of same stubbed native harness: ten base groups plus empty teardown/reapply and populated refusal; not independent full database execution."
+    },
+    {
+      "kind": "root-central-ci-harness",
+      "passed": 114,
+      "failed": 0,
+      "skipped": 0,
+      "command": "UV_PROJECT_ENVIRONMENT=/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312 UV_NO_SYNC=1 /Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node --test tests/ci_release_gate.test.mjs",
+      "log": "governance-amendment-teardown-ci-harness.log"
+    },
+    {
+      "kind": "integration-offline-fixture-construction",
+      "passed": 12,
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-governance-amendment-fixtures.py",
+      "log": "governance-amendment-fixtures.json",
+      "qualification": "Integration observed fixture construction using real pure services with explicitly stubbed SQL/persistence. Unchanged helper cbf16ea5; no actual SQL or bytes provenance proof."
+    }
+  ],
+  "testFixtureCompatibility": "Only disposable empty predecessor rehearsal removes this new layer: shared company-independent teardown checks all amendment rows while owner FORCE RLS is temporarily removed transactionally; populated history refuses. Exact22-function inventory/RESTRICT drops, no CASCADE, preserve original events and other owner contracts/consumers; remove only retiring Governance dependency grants and restore every borrowed role edge. Ordered consequential recutover reinstalls whole migration before final database tests. Native reproduction observes old supported_events drop fail2BP01, then proves two empty recutovers and populated refusal. Production rollback retains all new history/contracts.",
+  "sourceFileSha256": {
+    "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md": "372cecd49914b14a2ffd9b1be16223771c95d838df56fa3d0e80c785478d6170",
+    "apps/backend/src/talli_backend/modules/corporate_governance/module.json": "6c6599f92e897e16931d69cea3ceec67773e6a2ae19aacdb735e5d8db2ffb5b8",
+    "apps/backend/src/talli_backend/modules/corporate_governance/public.py": "b5e0f5b7cbc6bf1a460d4c6b999a9ce8049a6d310f20001bb98e3e2ccaa200bf",
+    "apps/backend/src/talli_backend/modules/corporate_governance/register_evidence_amendment.py": "129a10de22981fc2e972f5aefdbe27edecc1705f33fab18b332a4477f5419488",
+    "apps/backend/tests/test_documents_historical_original_integrity_database.py": "5742096abd0b5e6a4cbbf562bccbbe009e6677cf9385c2087b0c580a9792d53f",
+    "apps/backend/tests/test_ledger_governance_entry_assertion_database.py": "bc298b1cad8b1fe37203e3999c07c5d949ebd276d320f93741c917c1bf998eeb",
+    "apps/backend/tests/test_rf1086_observation_evidence_assertions_database.py": "26397f687842c2d448289ee7d29a31ecdca575ba7538627b9dc856d1c62fee89",
+    "apps/backend/tests/test_rf1086_register_observation_evidence_reader_database.py": "4017683d4dc7041650679b3f4ba39bd318e948fbb512cbfdeb5f24241aba87a3",
+    "architecture/database-catalog.json": "ece8a005a0d5be679c297e13df0b101823f559c1212be3d1c15670f10500176d",
+    "architecture/dependency-evidence.json": "84e9d89c40d1acbbcf1f6b352488d2066e6a9c3750083035e10ec0941ecdcce7",
+    "package.json": "f3e75f4f53c874b9b18652f174fa8606155beb6bd1c31dad28c97a2a414f72db",
+    "scripts/rf-consequential-successors.json": "accb2927dd8fad3a55bcf650610964c9fa63b4bd5a890fb202129d461a7a0054",
+    "tests/ci_release_gate.test.mjs": "fdad255908bcae276e7155dc22add1a69b773522e7724905d4f878aa1c5c6b59",
+    "tests/corporate_governance_review_fixes.test.mjs": "40f031edb782c6333ecffc8247a51384323e95124ae4255b4bc613ddfa745915",
+    "apps/backend/tests/fixtures/governance-register-evidence-amendment-goldens.json": "ee2e9082d30ea19287c5ff73067c056f1e03534f2a4b8fc9861c03dcac636cb6",
+    "apps/backend/tests/governance_register_evidence_amendment_fixture.py": "cbf16ea513c6ad23a33afabd4a0b8f79558beb3b1005c439193647141c7d4612",
+    "apps/backend/tests/test_corporate_register_evidence_amendment_command.py": "1bf9294ba221ed1bfd0fd6a78ea27f384d09eab46484912f2e2bd177e6bb71e3",
+    "apps/backend/tests/test_governance_register_evidence_amendment_database.py": "384a65bb057859ebe642395b9e61d4f7c25a1fd98d925c9804b08cc9baa7dff3",
+    "supabase/migrations/20261009234529_governance_register_evidence_amendments.sql": "a592388697cb64aeee183fdb849d39d6eac63b385f7615c5143c6abb8306132c",
+    "supabase/rollback/20261009234529_governance_register_evidence_amendments.sql": "bedf373770156b7c8448915e42d8e168b0249eff909ae5693e34cd8d03e56399",
+    "scripts/rehearse-authority-topology.mjs": "afcda52703b398ebba92fcf0d66192530b12665a928e2fbee355b0a7bef88c46",
+    "tests/support/governance_amendment_rehearsal.mjs": "ff0d77b3ece7c9cecf9cece6f5c3c09cdc537e80e0c84c5476e893717c1bbd57"
+  },
+  "privateArtifacts": {
+    "/private/tmp/talli-release-20261009/governance-amendment-persistence-freeze.json": {
+      "sha256": "b7800bd9505ab9564bb6f1632c3653cfb56a380da51c80efb45d14750f939f72",
+      "bytes": 3658
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-persistence-checks.json": {
+      "sha256": "3029daef0d59f1f170b0b9a4e025955d53b69cda815401a209b5aaa035e2ee32",
+      "bytes": 9094
+    },
+    "/private/tmp/talli-release-20261009/check-governance-amendment-fixtures.py": {
+      "sha256": "3e9a60664ded0f2442400b25a095f9f898e8ad2c5f331f897803464fc9bc7ce7",
+      "bytes": 4743
+    },
+    "/private/tmp/talli-release-20261009/check-governance-amendment-native.py": {
+      "sha256": "4da02428290f085f61021b17f71aecff97eeaaa6c646cd68f393ae395f52b416",
+      "bytes": 29479
+    },
+    "/private/tmp/talli-release-20261009/check-governance-amendment-teardown-native.py": {
+      "sha256": "628b907fafbb32d0a5e964562427fefaa8cf1b39b3b505d958ca984efae54174",
+      "bytes": 33384
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-architecture.log": {
+      "sha256": "84e9d89c40d1acbbcf1f6b352488d2066e6a9c3750083035e10ec0941ecdcce7",
+      "bytes": 19653
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-db-collection.log": {
+      "sha256": "af7147d31178f6a2b07dedb8c53b6b4dabd135e43aa2df4a7f339e889958d0cb",
+      "bytes": 18114
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-fixtures.json": {
+      "sha256": "1be3b2781771f1b9e2d5bdd9cf968b37180af064998ecaad2ce11c2c982f134c",
+      "bytes": 1284
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-fixtures.log": {
+      "sha256": "523edbf21c934b0b7fbeba44ebaa52e3adbc307c423fb0914708db2f8afb1247",
+      "bytes": 1222
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-manifest-tests.log": {
+      "sha256": "18bd55ac5e86b268c9be001f311a566bc2c8b7ada3b9a9b03352a538924e1d53",
+      "bytes": 1038
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-native.json": {
+      "sha256": "f5f0baf8fa5c0242227af9cb1d4737d7a435aeca9008dd2fba3af83268134fa3",
+      "bytes": 2093
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-native.log": {
+      "sha256": "745bc76a2466f0ccc686ab5f510140cf34cc5d437f7efb87481a711468cd63d8",
+      "bytes": 982
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-persistence-definition-check.json": {
+      "sha256": "7e2f12a7d570c1814e24bd36b2d0149fd74e3c51760fe12beaf039eba5aa6ada",
+      "bytes": 640
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-persistence-openapi.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-pure-focused.log": {
+      "sha256": "390b4d3cdb3576fb26beda321cac4e69cfd3ef0e22e429b5bf996e3dfde2438d",
+      "bytes": 340
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-successor-db-collection.log": {
+      "sha256": "cbd32d63619e0ba6142d94f05879105a2f3bffbae7d05d45dc4c4615ccd36e8b",
+      "bytes": 60372
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-teardown-ci-harness.log": {
+      "sha256": "b572ec2355f3591ec90f24983519682cf2092c1719d5215c62dc6da29656a065",
+      "bytes": 12077
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-teardown-native-output.log": {
+      "sha256": "579066242df662033b778b20a9005d1895332db18ff491c4c1a5bca96f83aa54",
+      "bytes": 2646
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-teardown-native.json": {
+      "sha256": "282edeb9e10139a9abc0b36a20db6c67f1300fd05586cbbfa8d4e3b11556d90a",
+      "bytes": 2718
+    },
+    "/private/tmp/talli-release-20261009/governance-amendment-teardown-native.log": {
+      "sha256": "0baedd6a94332f433840842b89409ef6c3bf6d287ad5eaefdc7ef5e6cdf9686d",
+      "bytes": 981
+    }
+  },
+  "limits": [
+    "121 new and421 combined real-database cases collected only; no full real-database execution here.",
+    "Native whole migration uses documented owner-dependency stubs; ten base groups and twelve root extension groups overlap, not22 independent groups.",
+    "No object-store/provider/network proof, no original legal/economic truth or Banking freshness claim.",
+    "Prior integration db-checks.json records an earlier103-case source; this definitive record supersedes it for current source/counts.",
+    "No commits, push, Docker, hosted database, paid or CI mutations by author. Root owns live CI and commit decisions.",
+    "All real database121 and combined421 cases collected only. Native12 includes the author10 and two root additions; not22 distinct groups.",
+    "The currently running ordinary PR workflow38006694049 checks649fd944 and excludes this checkpoint and the Documents lifecycle repair. No earlier CI pass transfers to this source.",
+    "Application/adapter, browser lost-response recovery, additive RF consumption and Archive completeness remain subsequent technical work. Pending Archive decision is not approved. All A1-A7, immutable gate pair, hosted/load/independent restore and launch remain pending."
+  ]
+}

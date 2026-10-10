@@ -430,6 +430,11 @@
       "owner": "backend:corporate_governance"
     },
     {
+      "name": "corporate_governance.register_evidence_amendments",
+      "kind": "capability-business",
+      "owner": "backend:corporate_governance"
+    },
+    {
       "name": "corporate_governance.shareholder_loans",
       "kind": "capability-business",
       "owner": "backend:corporate_governance"
@@ -903,13 +908,7 @@
       ]
     },
     {
-      "name": "shareholder_register_filing.year_source_heads",
-      "kind": "capability-business",
-      "owner": "backend:shareholder_register_filing",
-      "compatibilityResources": []
-    },
-    {
-      "name": "shareholder_register_filing.year_source_versions",
+      "name": "shareholder_register_filing.register_observation_withdrawals",
       "kind": "capability-business",
       "owner": "backend:shareholder_register_filing",
       "compatibilityResources": []
@@ -921,7 +920,7 @@
       "compatibilityResources": []
     },
     {
-      "name": "shareholder_register_filing.register_observation_withdrawals",
+      "name": "shareholder_register_filing.source_approval_bindings",
       "kind": "capability-business",
       "owner": "backend:shareholder_register_filing",
       "compatibilityResources": []
@@ -939,12 +938,6 @@
       "compatibilityResources": []
     },
     {
-      "name": "shareholder_register_filing.source_approval_bindings",
-      "kind": "capability-business",
-      "owner": "backend:shareholder_register_filing",
-      "compatibilityResources": []
-    },
-    {
       "name": "shareholder_register_filing.source_submission_bindings",
       "kind": "capability-business",
       "owner": "backend:shareholder_register_filing",
@@ -952,6 +945,18 @@
     },
     {
       "name": "shareholder_register_filing.submission_heads",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.year_source_heads",
+      "kind": "capability-business",
+      "owner": "backend:shareholder_register_filing",
+      "compatibilityResources": []
+    },
+    {
+      "name": "shareholder_register_filing.year_source_versions",
       "kind": "capability-business",
       "owner": "backend:shareholder_register_filing",
       "compatibilityResources": []

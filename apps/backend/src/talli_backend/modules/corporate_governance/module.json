@@ -104,8 +104,10 @@
       "corporate_register_evidence_amendment_request_digest",
       "derive_corporate_register_evidence_chain",
       "parse_corporate_register_evidence_amendment",
+      "parse_corporate_register_evidence_amendment_command",
       "prepare_supported_corporate_register_evidence_amendment",
-      "serialize_corporate_register_evidence_amendment"
+      "serialize_corporate_register_evidence_amendment",
+      "serialize_corporate_register_evidence_amendment_command"
     ],
     "events": [],
     "errors": [
@@ -158,12 +160,13 @@
       "corporate_governance.owner_dividend_events",
       "corporate_governance.owner_dividend_finalizations",
       "corporate_governance.owner_dividend_payments",
+      "corporate_governance.register_evidence_amendments",
       "corporate_governance.shareholder_loans",
       "corporate_governance.supported_events"
     ],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql"
+    "migrations": "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql; supabase/migrations/20261009234529_governance_register_evidence_amendments.sql"
   },
   "ports": [
     {
@@ -181,7 +184,32 @@
       "module": "shareholder_register_filing",
       "kind": "query",
       "imports": [
-        "shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)"
+        "shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)",
+        "shareholder_register_filing.read_retained_register_observation_withdrawal_v1(uuid,uuid,integer,uuid,integer,text,text,timestamptz,text)",
+        "shareholder_register_filing.read_current_register_observation_evidence_v1(uuid,uuid,integer,integer,text,timestamptz,text)"
+      ]
+    },
+    {
+      "module": "documents",
+      "kind": "query",
+      "imports": [
+        "documents.assert_historical_original_integrity_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,timestamptz,text)",
+        "documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)"
+      ]
+    },
+    {
+      "module": "ledger",
+      "kind": "query",
+      "imports": [
+        "ledger.assert_unamended_governance_entry_v1(uuid,uuid,integer,uuid,uuid,date,text,timestamptz,jsonb,text)",
+        "ledger.list_entry_amendments_v1(uuid,text)"
+      ]
+    },
+    {
+      "module": "company_access",
+      "kind": "query",
+      "imports": [
+        "public.company_access_has_fresh_mfa_v1()"
       ]
     }
   ],
@@ -234,7 +262,9 @@
     "database": "tests/corporate_governance_database_runtime.test.mjs",
     "architecture": "tests/architecture_foundation.test.mjs",
     "registerObservationCompletionDatabase": "apps/backend/tests/test_governance_register_observation_completion_database.py",
-    "registerEvidenceAmendmentPure": "apps/backend/tests/test_corporate_register_evidence_amendment.py"
+    "registerEvidenceAmendmentPure": "apps/backend/tests/test_corporate_register_evidence_amendment.py",
+    "registerEvidenceAmendmentCommand": "apps/backend/tests/test_corporate_register_evidence_amendment_command.py",
+    "registerEvidenceAmendmentDatabase": "apps/backend/tests/test_governance_register_evidence_amendment_database.py"
   },
   "compatibilityExceptions": []
 }

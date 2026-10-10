@@ -28,6 +28,7 @@ pytestmark = pytest.mark.authority_database
 ROOT = Path(__file__).resolve().parents[3]
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 MIGRATION = '20261009225857_ledger_governance_entry_assertion.sql'
+GOVERNANCE_SUCCESSOR = '20261009234529_governance_register_evidence_amendments.sql'
 SIGNATURE = 'ledger.assert_unamended_governance_entry_v1(uuid,uuid,integer,uuid,uuid,date,text,timestamptz,jsonb,text)'
 TABLES = ('entries', 'entry_contexts', 'entry_sources', 'entry_reversals', 'entry_corrections',
           'cash_capital_increase_phases', 'loss_coverage_capital_reduction_phases')
@@ -56,6 +57,7 @@ def assertion_role():
             db.execute(sql.SQL('grant {} to {} with set true granted by {}').format(sql.Identifier(role), sql.Identifier(principal), sql.Identifier(principal)))
             borrowed.append((role, prior))
         db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
+        db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
         db.execute(sql.SQL('create role {} nologin noinherit').format(sql.Identifier(name)))
         db.execute(sql.SQL('grant {} to {} with set true granted by {}').format(sql.Identifier(name), sql.Identifier(principal), sql.Identifier(principal)))
         grant_fixture(db, name)
@@ -370,19 +372,24 @@ def catalog(db):
 
 
 def test_staged_runtime_acl_catalog_reapply_and_retentive_rollback(saved):
-    with psycopg.connect(DATABASE_URL) as db:
-        db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
-        before = catalog(db)
-        denied = db.execute("select rolname from pg_roles where rolname in ('anon','authenticated','service_role') or rolname like '%executor' or rolname like '%store_owner' or rolname like '%bridge_owner'").fetchall()
-        for (role,) in denied:
-            if role == 'ledger_store_owner': continue  # Inherent function owner authority.
-            assert not db.execute("select has_function_privilege(%s,%s,'EXECUTE')", (role, SIGNATURE)).fetchone()[0], role
-        assert not db.execute("select exists(select 1 from aclexplode((select proacl from pg_proc where oid=%s::regprocedure)) where grantee=0)", (SIGNATURE,)).fetchone()[0]
-        db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
-        assert catalog(db) == before
-        db.execute((ROOT / 'supabase/rollback' / MIGRATION).read_text())
-        assert catalog(db) == before
-        grant_fixture(db, saved['role'])
+    try:
+        with psycopg.connect(DATABASE_URL) as db:
+            db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
+            before = catalog(db)
+            denied = db.execute("select rolname from pg_roles where rolname in ('anon','authenticated','service_role') or rolname like '%executor' or rolname like '%store_owner' or rolname like '%bridge_owner'").fetchall()
+            for (role,) in denied:
+                if role == 'ledger_store_owner': continue  # Inherent function owner authority.
+                assert not db.execute("select has_function_privilege(%s,%s,'EXECUTE')", (role, SIGNATURE)).fetchone()[0], role
+            assert not db.execute("select exists(select 1 from aclexplode((select proacl from pg_proc where oid=%s::regprocedure)) where grantee=0)", (SIGNATURE,)).fetchone()[0]
+            db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
+            assert catalog(db) == before
+            db.execute((ROOT / 'supabase/rollback' / MIGRATION).read_text())
+            assert catalog(db) == before
+            grant_fixture(db, saved['role'])
+    finally:
+        # Even a failed closed-stage assertion must restore final owner grants.
+        with psycopg.connect(DATABASE_URL) as restored:
+            restored.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
     with connection(saved['seed'], saved['role']) as db: call(db, saved)
     with connection(saved['seed'], 'ledger_executor') as db:
         with pytest.raises(psycopg.errors.InsufficientPrivilege): call(db, saved)

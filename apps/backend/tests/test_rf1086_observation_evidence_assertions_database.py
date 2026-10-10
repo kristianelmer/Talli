@@ -17,7 +17,7 @@ from test_rf1086_register_observation_withdrawal_database import (
 
 pytestmark = pytest.mark.authority_database
 MIGRATION = '20261009222053_rf1086_observation_evidence_assertions.sql'
-GOVERNANCE_SUCCESSOR = '20261009223340_governance_register_observation_completion_guard.sql'
+GOVERNANCE_SUCCESSOR = '20261009234529_governance_register_evidence_amendments.sql'
 CURRENT = 'shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)'
 RETAINED = 'shareholder_register_filing.read_retained_register_observation_withdrawal_v1(uuid,uuid,integer,uuid,integer,text,text,timestamptz,text)'
 UNSET = object()
@@ -232,26 +232,30 @@ def test_current_owner_is_rechecked_after_company_lock_wait(evidence, contract):
 
 
 def test_new_contracts_keep_only_narrow_governance_assertion_grant_and_preserve_v1_and_role_state(evidence):
-    with psycopg.connect(DATABASE_URL) as db:
-        old = db.execute('select to_jsonb(p) from pg_proc p where oid=%s::regprocedure', (ASSERT_CURRENT,)).fetchone()
-        roles = db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall()
-        db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
-        # Verify the predecessor's closed stage before restoring the final chain.
-        for role in ('anon','authenticated','service_role','shareholder_register_filing_executor',
-                     'corporate_governance_workflow_executor','corporate_governance_store_owner'):
-            for identity in (CURRENT, RETAINED):
-                assert not db.execute("select has_function_privilege(%s,%s,'EXECUTE')", (role,identity)).fetchone()[0]
-        # Restore the intentional final-chain consumer grant after staged replay.
-        db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
-        assert db.execute('select to_jsonb(p) from pg_proc p where oid=%s::regprocedure', (ASSERT_CURRENT,)).fetchone() == old
-        assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall() == roles
-        for role in ('anon', 'authenticated', 'service_role', 'shareholder_register_filing_executor',
-                     'corporate_governance_workflow_executor', 'corporate_governance_store_owner'):
-            for identity in (CURRENT, RETAINED):
-                assert db.execute("select has_function_privilege(%s,%s,'EXECUTE')", (role, identity)).fetchone()[0] == (role == 'corporate_governance_store_owner' and identity == CURRENT)
-        assert db.execute("select has_schema_privilege('corporate_governance_store_owner','shareholder_register_filing','USAGE')").fetchone()[0]
-        db.execute((ROOT / 'supabase/rollback' / MIGRATION).read_text())
-        assert db.execute('select to_jsonb(p) from pg_proc p where oid=%s::regprocedure', (ASSERT_CURRENT,)).fetchone() == old
+    try:
+        with psycopg.connect(DATABASE_URL) as db:
+            old = db.execute('select to_jsonb(p) from pg_proc p where oid=%s::regprocedure', (ASSERT_CURRENT,)).fetchone()
+            roles = db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall()
+            db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
+            # Verify the predecessor's closed stage before restoring the final chain.
+            for role in ('anon','authenticated','service_role','shareholder_register_filing_executor',
+                         'corporate_governance_workflow_executor','corporate_governance_store_owner'):
+                for identity in (CURRENT, RETAINED):
+                    assert not db.execute("select has_function_privilege(%s,%s,'EXECUTE')", (role,identity)).fetchone()[0]
+            # Restore the intentional final-chain consumer grant after staged replay.
+            db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
+            assert db.execute('select to_jsonb(p) from pg_proc p where oid=%s::regprocedure', (ASSERT_CURRENT,)).fetchone() == old
+            assert db.execute('select roleid,member,grantor,admin_option,inherit_option,set_option from pg_auth_members order by 1,2,3').fetchall() == roles
+            for role in ('anon', 'authenticated', 'service_role', 'shareholder_register_filing_executor',
+                         'corporate_governance_workflow_executor', 'corporate_governance_store_owner'):
+                for identity in (CURRENT, RETAINED):
+                    assert db.execute("select has_function_privilege(%s,%s,'EXECUTE')", (role, identity)).fetchone()[0] == (role == 'corporate_governance_store_owner')
+            assert db.execute("select has_schema_privilege('corporate_governance_store_owner','shareholder_register_filing','USAGE')").fetchone()[0]
+            db.execute((ROOT / 'supabase/rollback' / MIGRATION).read_text())
+            assert db.execute('select to_jsonb(p) from pg_proc p where oid=%s::regprocedure', (ASSERT_CURRENT,)).fetchone() == old
+    finally:
+        with psycopg.connect(DATABASE_URL) as restored:
+            restored.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
     original = observed(evidence)
     with connection(evidence, role='shareholder_register_filing_executor') as db:
         with pytest.raises(psycopg.errors.InsufficientPrivilege):

@@ -28,6 +28,7 @@ from test_document_originals_database import original, retain, DATABASE_URL, ROO
 
 pytestmark = pytest.mark.authority_database
 MIGRATION = '20261009232839_documents_historical_original_integrity.sql'
+GOVERNANCE_SUCCESSOR = '20261009234529_governance_register_evidence_amendments.sql'
 ASSERTION = 'documents.assert_historical_original_integrity_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,timestamptz,text)'
 TABLE = 'documents.retained_originals'
 UNSET = object()
@@ -74,6 +75,7 @@ def assertion_role(documents_authority):
     name = 'document_assertion_fixture_' + uuid4().hex
     with psycopg.connect(DATABASE_URL) as db:
         db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
+        db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
         db.execute(sql.SQL('create role {} nologin noinherit nobypassrls').format(sql.Identifier(name)))
         db.execute(sql.SQL('grant {} to {} with inherit false,set true').format(sql.Identifier(name), sql.Identifier(documents_authority)))
         grant_assertion(db, name)
@@ -395,23 +397,28 @@ def catalog(db):
 
 def test_closed_assertion_helpers_reapply_and_retained_rollback_preserve_all_authority(retained):
     before_rows = rows(retained)
-    with psycopg.connect(DATABASE_URL) as db:
-        db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
-        db.execute('set local role documents_store_owner'); before = catalog(db)
-        identities = db.execute("select oid from pg_proc where pronamespace='documents'::regnamespace and (proname like 'original_integrity_%' or proname='assert_historical_original_integrity_v1')").fetchall()
-        assert len(identities) == 5
-        roles = db.execute("select rolname from pg_roles where rolname in ('anon','authenticated','service_role') or rolname like '%executor' or rolname like '%store_owner' or rolname like '%bridge_owner'").fetchall()
-        for (identity,) in identities:
-            assert not db.execute('select exists(select 1 from pg_proc p cross join lateral aclexplode(p.proacl) a where p.oid=%s and a.grantee=0)', (identity,)).fetchone()[0]
-            for (role,) in roles:
-                if role != 'documents_store_owner':
-                    assert not db.execute("select has_function_privilege(%s,%s::oid,'EXECUTE')", (role, identity)).fetchone()[0]
-        assert not db.execute("select has_function_privilege(%s,%s,'EXECUTE')", (retained['role'], ASSERTION)).fetchone()[0]
-        db.execute('reset role'); db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
-        db.execute('set local role documents_store_owner'); assert catalog(db) == before
-        db.execute('reset role'); db.execute((ROOT / 'supabase/rollback' / MIGRATION).read_text())
-        db.execute('set local role documents_store_owner'); assert catalog(db) == before
-        db.execute('reset role'); grant_assertion(db, retained['role'])
+    try:
+        with psycopg.connect(DATABASE_URL) as db:
+            db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
+            db.execute('set local role documents_store_owner'); before = catalog(db)
+            identities = db.execute("select oid from pg_proc where pronamespace='documents'::regnamespace and (proname like 'original_integrity_%' or proname='assert_historical_original_integrity_v1')").fetchall()
+            assert len(identities) == 5
+            roles = db.execute("select rolname from pg_roles where rolname in ('anon','authenticated','service_role') or rolname like '%executor' or rolname like '%store_owner' or rolname like '%bridge_owner'").fetchall()
+            for (identity,) in identities:
+                assert not db.execute('select exists(select 1 from pg_proc p cross join lateral aclexplode(p.proacl) a where p.oid=%s and a.grantee=0)', (identity,)).fetchone()[0]
+                for (role,) in roles:
+                    if role != 'documents_store_owner':
+                        assert not db.execute("select has_function_privilege(%s,%s::oid,'EXECUTE')", (role, identity)).fetchone()[0]
+            assert not db.execute("select has_function_privilege(%s,%s,'EXECUTE')", (retained['role'], ASSERTION)).fetchone()[0]
+            db.execute('reset role'); db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
+            db.execute('set local role documents_store_owner'); assert catalog(db) == before
+            db.execute('reset role'); db.execute((ROOT / 'supabase/rollback' / MIGRATION).read_text())
+            db.execute('set local role documents_store_owner'); assert catalog(db) == before
+            db.execute('reset role'); grant_assertion(db, retained['role'])
+    finally:
+        # Even a failed closed-stage assertion must restore final owner grants.
+        with psycopg.connect(DATABASE_URL) as restored:
+            restored.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
     assert rows(retained) == before_rows
     with connection(retained) as db: assert assert_integrity(db, retained) == metadata_text(retained['document'])
     with psycopg.connect(retained['url']) as db:

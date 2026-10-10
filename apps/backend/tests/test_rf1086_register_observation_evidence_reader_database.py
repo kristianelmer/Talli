@@ -32,6 +32,7 @@ from test_rf1086_register_observation_database import capture, query
 
 pytestmark = pytest.mark.authority_database
 MIGRATION = '20261009231107_rf1086_current_observation_evidence_reader.sql'
+GOVERNANCE_SUCCESSOR = '20261009234529_governance_register_evidence_amendments.sql'
 READER = 'shareholder_register_filing.read_current_register_observation_evidence_v1(uuid,uuid,integer,integer,text,timestamptz,text)'
 TABLE = 'shareholder_register_filing.register_observations'
 UNSET = object()
@@ -41,6 +42,7 @@ UNSET = object()
 def reader(staged):
     with psycopg.connect(DATABASE_URL) as db:
         db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
+        db.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
         db.execute('set local role shareholder_register_filing_store_owner')
         db.execute(sql.SQL('grant execute on function ' + READER + ' to {}').format(sql.Identifier(staged['role'])))
     try:
@@ -425,24 +427,29 @@ def catalog(db):
 
 def test_closed_reader_helpers_and_reapplication_rollback_preserve_catalog_and_rows(reader):
     original = observed(reader); before_rows = retained_rows(reader)
-    with psycopg.connect(DATABASE_URL) as db:
-        db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
-        before = catalog(db)
-        signatures = db.execute("select p.oid from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and (p.proname like 'observation_evidence_%' or p.proname='read_current_register_observation_evidence_v1')").fetchall()
-        assert len(signatures) >= 2
-        roles = db.execute("select rolname from pg_roles where rolname in ('anon','authenticated','service_role') or rolname like '%executor' or rolname like '%store_owner' or rolname like '%bridge_owner'").fetchall()
-        for (identity,) in signatures:
-            assert not db.execute('select exists(select 1 from pg_proc p cross join lateral aclexplode(p.proacl) a where p.oid=%s and a.grantee=0)', (identity,)).fetchone()[0]
-            for (role,) in roles:
-                if role != 'shareholder_register_filing_store_owner':
-                    assert not db.execute("select has_function_privilege(%s,%s::oid,'EXECUTE')", (role, identity)).fetchone()[0], role
-        assert not db.execute("select has_function_privilege(%s,%s,'EXECUTE')", (reader['role'], READER)).fetchone()[0]
-        db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
-        assert catalog(db) == before
-        db.execute((ROOT / 'supabase/rollback' / MIGRATION).read_text())
-        assert catalog(db) == before
-        db.execute('set local role shareholder_register_filing_store_owner')
-        db.execute(sql.SQL('grant execute on function ' + READER + ' to {}').format(sql.Identifier(reader['role'])))
+    try:
+        with psycopg.connect(DATABASE_URL) as db:
+            db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
+            before = catalog(db)
+            signatures = db.execute("select p.oid from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and (p.proname like 'observation_evidence_%' or p.proname='read_current_register_observation_evidence_v1')").fetchall()
+            assert len(signatures) >= 2
+            roles = db.execute("select rolname from pg_roles where rolname in ('anon','authenticated','service_role') or rolname like '%executor' or rolname like '%store_owner' or rolname like '%bridge_owner'").fetchall()
+            for (identity,) in signatures:
+                assert not db.execute('select exists(select 1 from pg_proc p cross join lateral aclexplode(p.proacl) a where p.oid=%s and a.grantee=0)', (identity,)).fetchone()[0]
+                for (role,) in roles:
+                    if role != 'shareholder_register_filing_store_owner':
+                        assert not db.execute("select has_function_privilege(%s,%s::oid,'EXECUTE')", (role, identity)).fetchone()[0], role
+            assert not db.execute("select has_function_privilege(%s,%s,'EXECUTE')", (reader['role'], READER)).fetchone()[0]
+            db.execute((ROOT / 'supabase/migrations' / MIGRATION).read_text())
+            assert catalog(db) == before
+            db.execute((ROOT / 'supabase/rollback' / MIGRATION).read_text())
+            assert catalog(db) == before
+            db.execute('set local role shareholder_register_filing_store_owner')
+            db.execute(sql.SQL('grant execute on function ' + READER + ' to {}').format(sql.Identifier(reader['role'])))
+    finally:
+        # Even a failed closed-stage assertion must restore final owner grants.
+        with psycopg.connect(DATABASE_URL) as restored:
+            restored.execute((ROOT / 'supabase/migrations' / GOVERNANCE_SUCCESSOR).read_text())
     assert retained_rows(reader) == before_rows
     with connection(reader) as db: assert read(db, original)[0] == rf.serialize_rf1086_register_observation(original)
     with connection(reader, role='shareholder_register_filing_executor') as db:

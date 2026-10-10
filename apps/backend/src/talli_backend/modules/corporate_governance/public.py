@@ -1667,6 +1667,9 @@ class CorporateDocumentOriginalCommitment:
 
     Revision binds the event's semantic document reference; Documents has no
     revision counter. Metadata is not a claim about the original recording time.
+    An RF-only extra reference uses revision 1 as the fixed v1 receipt encoding
+    convention, never as a Documents or RF document revision. Shared identities
+    retain the exact Governance/memo semantic revision.
     """
 
     original_id: CorporateSourceReference
@@ -1692,6 +1695,18 @@ class AmendSupportedCorporateRegisterEvidence:
     replacement: SupportedCorporateSourceFact
     correction_memo: SupportedCorporateDocumentFact
     reason: str
+
+
+def serialize_corporate_register_evidence_amendment_command(command: AmendSupportedCorporateRegisterEvidence) -> str:
+    from .register_evidence_amendment import serialize_command
+
+    return serialize_command(command)
+
+
+def parse_corporate_register_evidence_amendment_command(encoded: str) -> AmendSupportedCorporateRegisterEvidence:
+    from .register_evidence_amendment import parse_command
+
+    return parse_command(encoded)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1807,6 +1822,8 @@ __all__ = [
     "derive_corporate_register_evidence_chain",
     "serialize_corporate_register_evidence_amendment",
     "parse_corporate_register_evidence_amendment",
+    "serialize_corporate_register_evidence_amendment_command",
+    "parse_corporate_register_evidence_amendment_command",
     "CorporateReportingYearBasis", "CorporateLedgerAmendment", "CorporateYearDividendEvidence",
     "CorporateGovernanceYearEvidence", "CorporateYearSupportedEvidence", "build_reporting_year_evidence",
     "SHA256_PATTERN",

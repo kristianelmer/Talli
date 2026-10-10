@@ -20,7 +20,7 @@ test("corporate-governance manifests declare the implemented public surface", as
 
   assert.equal(
     backend.owns.migrations,
-    "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql",
+    "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql; supabase/migrations/20261009234529_governance_register_evidence_amendments.sql",
   );
   for (const exportedType of [
     "AnnualCloseEventKind",
@@ -104,7 +104,21 @@ test("document evidence ownership is acyclic and declared", async () => {
     kind: "query",
     imports: [
       "shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)",
+      "shareholder_register_filing.read_retained_register_observation_withdrawal_v1(uuid,uuid,integer,uuid,integer,text,text,timestamptz,text)",
+      "shareholder_register_filing.read_current_register_observation_evidence_v1(uuid,uuid,integer,integer,text,timestamptz,text)",
     ],
+  }, {
+    module: "documents", kind: "query", imports: [
+      "documents.assert_historical_original_integrity_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,timestamptz,text)",
+      "documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)",
+    ],
+  }, {
+    module: "ledger", kind: "query", imports: [
+      "ledger.assert_unamended_governance_entry_v1(uuid,uuid,integer,uuid,uuid,date,text,timestamptz,jsonb,text)",
+      "ledger.list_entry_amendments_v1(uuid,text)",
+    ],
+  }, {
+    module: "company_access", kind: "query", imports: ["public.company_access_has_fresh_mfa_v1()"],
   }]);
   assert.deepEqual(documents.dependencies, []);
   assert.ok(documents.owns.tables.includes("documents.evidence_references"));

@@ -1,7 +1,7 @@
 # Corporate governance backend capability
 
 <!-- architecture-inventory
-{"dependencies":["query:shareholder_register_filing"],"ownedTables":["corporate_governance.annual_close_artifacts","corporate_governance.annual_close_decisions","corporate_governance.annual_close_events","corporate_governance.annual_close_finalizations","corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments","corporate_governance.shareholder_loans","corporate_governance.supported_events"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
+{"dependencies":["query:company_access","query:documents","query:ledger","query:shareholder_register_filing"],"ownedTables":["corporate_governance.annual_close_artifacts","corporate_governance.annual_close_decisions","corporate_governance.annual_close_events","corporate_governance.annual_close_finalizations","corporate_governance.owner_dividend_accounting_policies","corporate_governance.owner_dividend_artifacts","corporate_governance.owner_dividend_decisions","corporate_governance.owner_dividend_events","corporate_governance.owner_dividend_finalizations","corporate_governance.owner_dividend_payments","corporate_governance.register_evidence_amendments","corporate_governance.shareholder_loans","corporate_governance.supported_events"],"ports":["CorporateGovernancePersistence"],"publicEntryPoints":["talli_backend.modules.corporate_governance.public"]}
 -->
 
 ## Purpose and ownership
@@ -301,8 +301,9 @@ Fresh completion first requires strict outer/canonical identity and type agreeme
 then exact frozen RF reference shape for registered cash capital increases and
 registered/first-recognized-after-registration loss reductions. The store owner
 receives only RF schema USAGE and EXECUTE on public
-`assert_current_register_observation_v2`; no RF table access or retained-reader
-permission. This directed public SQL query dependency is declared in the manifest.
+`assert_current_register_observation_v2`; it grants no RF table access. The closed
+amendment successor below separately adds narrow public proof-reader permissions.
+These directed public SQL query dependencies are declared in the manifest.
 The assertion runs under the same transaction/company lock as insertion. A single
 `statement_timestamp()` supplies both RF cutoff and explicit event `created_at`.
 A capture newer than statement start is conservatively rejected after a lock wait;
@@ -328,7 +329,10 @@ and `CorporateDocumentOriginalCommitment` values. The result is
 `CorporateRegisterEvidenceAmendmentError` with a fixed safe code.
 
 `corporate_register_evidence_amendment_request_digest` commits the business
-request. `prepare_supported_corporate_register_evidence_amendment` validates the
+request. `serialize_corporate_register_evidence_amendment_command` and
+`parse_corporate_register_evidence_amendment_command` expose its strict canonical
+business-only JSON without changing the existing receipt codec.
+`prepare_supported_corporate_register_evidence_amendment` validates the
 supplied predecessor history and builds its receipt;
 `assert_corporate_register_evidence_amendment_integrity` and
 `assert_corporate_register_evidence_amendment_replay` check retained receipts and
@@ -347,8 +351,8 @@ can establish where the original actor and timestamp came from.
 
 The pure command identifies actor, company/year/event, expected anchor/head,
 exact withdrawn RF reference, replacement reference, correction memo and exact
-reason. It contains no idempotency key or correlation ID. Later persistence must
-bind the private actor-scoped key to the business request digest and recover that
+reason. It contains no idempotency key or correlation ID. Closed persistence below
+binds the private actor-scoped key to the business request digest and recovers that
 receipt before fresh-write checks or external I/O. Public historical receipts
 must not disclose those transport values.
 
@@ -361,7 +365,9 @@ does not establish exact replacement coverage; the later RF public snapshot and
 final owner assertions must do that. Their metadata is captured when verifying
 the amendment; it does not claim historical metadata was frozen at original
 recording. Revision is the event's semantic document reference, not a Documents
-revision counter. The codec requires canonical UTC microseconds, exact UTF-8
+revision counter. An RF-only extra original uses revision 1 solely as the fixed
+v1 receipt encoding convention; a shared Governance/memo identity retains its
+existing semantic revision. The codec requires canonical UTC microseconds, exact UTF-8
 reason text, strict primitive types and unique/known JSON fields. No verified
 Boolean substitutes for public owner evidence.
 
@@ -376,3 +382,63 @@ original-byte, economic or Ledger checks, and certifies no full enumeration.
 These remain application and final SQL obligations through declared public owner
 contracts. It adds no persistence port, grant, HTTP operation, activation or
 Archive behavior; old reporting and API/codec projections remain frozen.
+
+### Closed register-evidence amendment persistence
+
+`20261009234529_governance_register_evidence_amendments.sql` adds the immutable,
+forced-RLS `corporate_governance.register_evidence_amendments` table and three versioned SQL contracts.
+All runtime executors, PUBLIC, anonymous and service roles remain denied; this is
+a staged owner foundation with no application, HTTP or Archive activation.
+
+`append_register_evidence_amendment_v1(command_text, originals, idempotency_key,
+subject)` accepts only the canonical business command and a distinct document
+commitment array. It derives the anchor from the actual unchanged original row,
+including actor/time, recomputes original facts/finalization hashes, and mints the
+amendment UUID, UTC instant, request digest and canonical receipt. The original
+event and Ledger entry remain untouched. A scoped predecessor self-FK binds the
+prior ID/revision/digest; unique revisions, immutable triggers, and full-prefix
+validation reject forks, omissions, skipped heads and reused observations.
+
+Company then supported-event locks serialize writes, recovery and enumeration at
+READ COMMITTED. Actor/company/key lookup precedes fresh admission and evidence:
+an exact committed command returns stored receipt bytes even with missing fresh
+originals, expired MFA or subsequently withdrawn/reversed evidence. Wrong event,
+year or request digest conflicts with an existing key. Current accepted ownership
+and verified subject still apply. Public receipts never expose transport keys.
+
+Fresh writes use the existing CompanyAccess current-clock MFA predicate after
+locks and immediately before insertion, plus company-year admission. Narrow
+owner grants consume RF's exact retained withdrawal and validated current snapshot,
+Documents' current-row equality and historical metadata-integrity assertions,
+and Ledger's unamended original-entry/context/ordered-source assertion and public
+amendment list. Fresh cash admission checks all owned same-reference phases
+across years for reversal/correction and phase, terms, date, recording-time and
+payment-bank coherence, matching the reporting-year lifecycle. Registered-only
+originals remain supported; absent Governance phases do not prove Ledger anchors. The MFA
+grant runs as its actual unchanged function owner, not an assumed command role.
+The full distinct document union is original Governance evidence, memo, and actual
+replacement RF originals. Fresh originals require the existing four usable
+Document statuses and no removal timestamp; historical recovery is independent.
+Shared references must agree in every commitment;
+RF-only revision 1 is an encoding convention. RF economics/date must match the
+unchanged original capital facts. No foreign private helper or table is read.
+
+`read_register_evidence_chain_v1(company, year, event, subject)` returns codec
+`corporate-register-evidence-chain-v1`, actual anchor, ordered canonical receipt
+strings, count, exact head, effective reference and enumeration SHA-256. Zero
+requires a valid actual original event; missing data/schema is never an empty
+history. `lookup_register_evidence_amendment_v1(company, year, event, key,
+request_sha256, subject)` returns `recorded` with exact `receipt_text`,
+`not_observed`, or `conflict`; operational failures remain errors for the future
+application boundary to map to unavailable. An absence describes this guarded
+observation, not a permanent promise that no later write can commit.
+
+These proofs bind retained claims and current owner state. They do not establish
+legal signedness, original metadata at the old Governance recording time, current
+Banking eligibility, an RF premium field, independent truth of original economics,
+or fresh object-store bytes. Documents commits retained SQL bytes and metadata;
+the seven raw SQL-only metadata fields remain outside its unchanged public hash.
+Future application byte verification and activation/Archive coverage are separate.
+Retentive rollback preserves rows, guards, recovery and narrow proof grants.
+Prerequisite tests still check their closed stages, then restore this final suffix,
+including after failed catalog assertions. No old public schemas/codecs change.

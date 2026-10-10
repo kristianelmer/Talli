@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
 import { isLoopbackPostgresUrl } from "../tests/support/supabase_fixture_safety.mjs";
+import { emptyGovernanceAmendmentTeardown } from "../tests/support/governance_amendment_rehearsal.mjs";
 
 const AUTHORITY = "20260909120610_authority_connections_capability.sql";
 const OPERATIONS = "20260909123709_authority_operations_capability.sql";
@@ -27,6 +28,7 @@ const RF193_SOURCE_PREVIEW = "20260923105912_rf1086_source_backed_preview.sql";
 
 async function topology(database) {
   const { rows: [state] } = await database.query(`select
+    to_regclass('corporate_governance.register_evidence_amendments') is not null as governance_amendments,
     to_regclass('shareholder_register_filing.migration_state') is not null as rf_owned,
     to_regclass('shareholder_register_filing.source_previews') is not null as rf_source_previews,
     to_regprocedure('shareholder_register_filing.lock_source_company_write_v1()') is not null as rf_source_company_guard,
@@ -75,6 +77,10 @@ export async function rehearseAuthorityTopology({ direction, database, loadSql =
         const { rows: [source] } = await database.query("select exists(select 1 from shareholder_register_filing.year_source_versions) as retained_sources");
         if (source.retained_sources) throw new Error("rf1086_retained_year_sources_block_full_schema_rollback");
       }
+      // The new closed Governance layer references the original event table.
+      // Empty-only test teardown lets historical owner rehearsals run; the
+      // ordered consequential successors restore it after RF recutover.
+      if (state.governance_amendments) await database.query(emptyGovernanceAmendmentTeardown);
       await apply([...(state.rf_source_company_guard ? [`rollback/${RF193_SOURCE_COMPANY_GUARD}`] : []), ...(state.rf_source_previews ? [`rollback/${RF193_SOURCE_PREVIEW}`] : []), ...(state.rf_register_observations ? [`rollback/${RF193_OBSERVATION}`] : []), ...(state.rf_year_sources ? [`rollback/${RF193_YEAR_SOURCE}`] : []), `rollback/${RF193_ARCHIVE}`, `rollback/${RF151}`]);
       state = await topology(database);
     }

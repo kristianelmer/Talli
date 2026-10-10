@@ -663,6 +663,7 @@ test("mandatory local lane preserves every predecessor before Billing and final 
 // Exact #150/#151 fixture dependency and source-file partition regressions.
 {
 const {rehearseAuthorityTopology}=await import("../scripts/rehearse-authority-topology.mjs");
+const {emptyGovernanceAmendmentTeardown}=await import("./support/governance_amendment_rehearsal.mjs");
 const AU='20260909120610_authority_connections_capability.sql';
 const OP='20260909123709_authority_operations_capability.sql';
 const RF='20260909125113_legacy_rf1086_authority_relocation.sql';
@@ -681,7 +682,7 @@ const DLG='20260923125730_documents_ledger_evidence_guard.sql';
 const TAX='20260913171000_company_tax_settlement_expand.sql';
 const predecessor={rf_owned:false,authority_kind:'r',ledger_kind:'v',ledger_setup:true,opening_kind:'r'};
 const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`migrations/${RFA}`,`migrations/${RFY}`,`migrations/${RFO}`,`migrations/${RFP}`,`migrations/${RFG}`];
-const consequentialGuards=['20260924080208_company_access_rf_admission_guard.sql','20260924080249_documents_rf_consequential_company_guards.sql','20260924080355_governance_ledger_company_write_guards.sql','20260924083154_governance_guarded_reporting_year_read.sql','20260924084752_billing_rf_full_year_pilot_profile.sql','20260924085227_rf1086_source_review_bridge.sql','20260924091015_rf1086_source_approval_foundation.sql','20260924094631_rf1086_journal_company_guard.sql','20260928060732_rf1086_source_submission_claim.sql','20260928110000_rf1086_feedback_original_binding.sql','20260928124000_documents_historical_original_assertion.sql','20260929092425_banking_company_write_guards.sql','20260929144619_rf_annual_interview_read_admission.sql','20260929160247_rf_annual_ledger_read_admission.sql','20260929162030_rf_annual_document_read_admission.sql','20260929173935_rf1086_annual_approval_binding.sql','20260929182856_rf1086_durable_source_operation_intent.sql', '20260929192057_rf1086_dispatch_binding_identity.sql', '20260930083000_rf1086_override_receiver_cutover.sql', '20260930160335_rf1086_retained_archive_generations.sql', '20261009213032_rf1086_observation_withdrawal_foundation.sql', '20261009215302_rf1086_withdrawal_source_admission_guards.sql', '20261009220727_rf1086_withdrawal_archive_generation.sql', '20261009221151_rf1086_withdrawal_review_read_guards.sql', '20261009222053_rf1086_observation_evidence_assertions.sql', '20261009223340_governance_register_observation_completion_guard.sql', '20261009225857_ledger_governance_entry_assertion.sql', '20261009231107_rf1086_current_observation_evidence_reader.sql', '20261009232839_documents_historical_original_integrity.sql'].map(file=>`migrations/${file}`);
+const consequentialGuards=['20260924080208_company_access_rf_admission_guard.sql','20260924080249_documents_rf_consequential_company_guards.sql','20260924080355_governance_ledger_company_write_guards.sql','20260924083154_governance_guarded_reporting_year_read.sql','20260924084752_billing_rf_full_year_pilot_profile.sql','20260924085227_rf1086_source_review_bridge.sql','20260924091015_rf1086_source_approval_foundation.sql','20260924094631_rf1086_journal_company_guard.sql','20260928060732_rf1086_source_submission_claim.sql','20260928110000_rf1086_feedback_original_binding.sql','20260928124000_documents_historical_original_assertion.sql','20260929092425_banking_company_write_guards.sql','20260929144619_rf_annual_interview_read_admission.sql','20260929160247_rf_annual_ledger_read_admission.sql','20260929162030_rf_annual_document_read_admission.sql','20260929173935_rf1086_annual_approval_binding.sql','20260929182856_rf1086_durable_source_operation_intent.sql', '20260929192057_rf1086_dispatch_binding_identity.sql', '20260930083000_rf1086_override_receiver_cutover.sql', '20260930160335_rf1086_retained_archive_generations.sql', '20261009213032_rf1086_observation_withdrawal_foundation.sql', '20261009215302_rf1086_withdrawal_source_admission_guards.sql', '20261009220727_rf1086_withdrawal_archive_generation.sql', '20261009221151_rf1086_withdrawal_review_read_guards.sql', '20261009222053_rf1086_observation_evidence_assertions.sql', '20261009223340_governance_register_observation_completion_guard.sql', '20261009225857_ledger_governance_entry_assertion.sql', '20261009231107_rf1086_current_observation_evidence_reader.sql', '20261009232839_documents_historical_original_integrity.sql', '20261009234529_governance_register_evidence_amendments.sql'].map(file=>`migrations/${file}`);
 const workspaceForward=[...forward.filter(path=>path!==`contract-migrations/${AUC}`),...consequentialGuards];
 function fake(initial,{fail,noEffect=false}={}) {
  const state={signoff_open:true,...initial},executed=[];
@@ -716,6 +717,21 @@ test('empty source-preview API rolls back before source APIs and full RF schema'
  const f=fake({...predecessor,rf_owned:true,rf_source_company_guard:true,rf_source_previews:true,rf_register_observations:true,rf_year_sources:true,authority_kind:null});
  await run('rollback',f);
  assert.deepEqual(f.executed.slice(0,6),[`rollback/${RFG}`,`rollback/${RFP}`,`rollback/${RFO}`,`rollback/${RFY}`,`rollback/${RFA}`,`rollback/${RFX}`]);
+});
+test('empty Governance amendment layer is unwound before historical RF and sibling owners',async()=>{
+ const f=fake({...predecessor,rf_owned:true,governance_amendments:true,authority_kind:null});
+ await run('rollback',f);
+ assert.deepEqual(f.executed.slice(0,3),[emptyGovernanceAmendmentTeardown,`rollback/${RFA}`,`rollback/${RFX}`]);
+});
+test('retained Governance amendment refusal prevents all predecessor mutations',async()=>{
+ const f=fake({...predecessor,rf_owned:true,governance_amendments:true,authority_kind:null},{fail:emptyGovernanceAmendmentTeardown});
+ await assert.rejects(run('rollback',f),/synthetic_dependency_failure/);
+ assert.deepEqual(f.executed,[emptyGovernanceAmendmentTeardown]);
+});
+test('retained RF observations prevent even empty Governance teardown',async()=>{
+ const f=fake({...predecessor,rf_owned:true,governance_amendments:true,rf_register_observations:true,retained_observations:true,authority_kind:null});
+ await assert.rejects(run('rollback',f),/rf1086_retained_register_observations_block_full_schema_rollback/);
+ assert.deepEqual(f.executed,[]);
 });
 test('retained independent register observations block full-schema rollback before any mutation',async()=>{
  const f=fake({...predecessor,rf_owned:true,rf_register_observations:true,retained_observations:true,authority_kind:null});

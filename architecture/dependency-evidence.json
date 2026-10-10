@@ -459,7 +459,35 @@
     {
       "from": "backend:corporate_governance",
       "imports": [
-        "shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)"
+        "public.company_access_has_fresh_mfa_v1()"
+      ],
+      "kind": "query",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
+        "documents.assert_historical_original_integrity_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,timestamptz,text)",
+        "documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)"
+      ],
+      "kind": "query",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
+        "ledger.assert_unamended_governance_entry_v1(uuid,uuid,integer,uuid,uuid,date,text,timestamptz,jsonb,text)",
+        "ledger.list_entry_amendments_v1(uuid,text)"
+      ],
+      "kind": "query",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
+        "shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)",
+        "shareholder_register_filing.read_current_register_observation_evidence_v1(uuid,uuid,integer,integer,text,timestamptz,text)",
+        "shareholder_register_filing.read_retained_register_observation_withdrawal_v1(uuid,uuid,integer,uuid,integer,text,text,timestamptz,text)"
       ],
       "kind": "query",
       "to": "backend:shareholder_register_filing"
