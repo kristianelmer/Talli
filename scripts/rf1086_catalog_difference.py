@@ -3,6 +3,9 @@ import hashlib
 import json
 import sys
 
+from psycopg.adapt import PyFormat, Transformer
+from psycopg.pq import Format
+
 MAX_CAPTURE_BYTES = 8 * 1024 * 1024
 MAX_RECORDS = 20_000
 MAX_DETAILS = 32
@@ -169,11 +172,36 @@ def _change(before, after):
     return 'value'
 
 
+def _acl_entry_order_only(before, after):
+    """Recognize exact member permutation, never effective permission equality."""
+    if not all(type(value) is str and value.startswith('{') and value.endswith('}')
+               for value in (before, after)):
+        return False
+    try:
+        # PostgreSQL text[] uses the same array quoting as aclitem[]. No SQL runs.
+        transformer = Transformer()
+        loader = transformer.get_loader(1009, Format.TEXT)
+        left, right = (loader.load(value.encode('utf-8')) for value in (before, after))
+        for original, members in ((before, left), (after, right)):
+            if (type(members) is not list or len(members) > MAX_RECORDS
+                    or any(type(member) is not str or not member for member in members)
+                    or len(set(members)) != len(members)):
+                return False
+            # The loader tolerates stray delimiters. Catalog array::text is
+            # canonical, so require exact round-trip bytes before classifying.
+            if transformer.get_dumper(members, PyFormat.TEXT).dump(members) != original.encode('utf-8'):
+                return False
+        return left != right and sorted(left) == sorted(right)
+    except Exception:
+        return False
+
+
 def catalog_difference(source, target):
     """Only closed labels/counts/identity hashes escape; all values stay private."""
     before, after = _records(source), _records(target)
     counts = {'changed': 0, 'source-only': 0, 'target-only': 0}
     details = []
+    summary = {}
     for key in sorted(before.keys() | after.keys()):
         left, right = before.get(key), after.get(key)
         kind, schema, _ = left or right
@@ -190,11 +218,18 @@ def catalog_difference(source, target):
                 label = name if kind != 'database' or name in _DATABASE_FIELDS else 'unclassified'
                 state = ('source-field-missing' if name not in left[2] else
                          'target-field-missing' if name not in right[2] else _change(old, new))
+                if kind in _LAYOUTS and name == 'acl' and state == 'value' and _acl_entry_order_only(old, new):
+                    state = 'acl-entry-order-only'
                 changes.append({'field': label, 'change': state})
             if not changes:
                 continue
             status = 'changed'
         counts[status] += 1
+        group = summary.setdefault((kind, status), {'records': 0, 'fields': {}})
+        group['records'] += 1
+        for change in changes:
+            field = (change['field'], change['change'])
+            group['fields'][field] = group['fields'].get(field, 0) + 1
         if len(details) < MAX_DETAILS:
             details.append({'kind': kind, 'schema': schema,
                 'identitySha256': hashlib.sha256(key).hexdigest(),
@@ -202,6 +237,10 @@ def catalog_difference(source, target):
     changed = sum(counts.values())
     result = {'status': 'different' if changed else 'representation-only' if source._raw != target._raw else 'equal',
         'sourceRecords': len(before), 'targetRecords': len(after), 'counts': counts,
+        'summary': [{'kind': kind, 'status': status, 'records': group['records'],
+            'fields': [{'field': field, 'change': change, 'count': count}
+                       for (field, change), count in sorted(group['fields'].items())]}
+            for (kind, status), group in sorted(summary.items())],
         'details': details, 'truncated': changed > len(details),
         'qualification': 'diagnostic-only-strict-fingerprint-unchanged'}
     while len(_encoded(result)) + len(_TAG) + 1 > MAX_OUTPUT_BYTES and details:

@@ -215,3 +215,103 @@ def test_diagnostic_failures_release_captures_without_escaping(monkeypatch, caps
     diagnostic.emit_catalog_difference(source, target)
     assert source._raw is target._raw is None
     if failure == 'classifier': assert 'secret' not in capsys.readouterr().err
+
+
+def test_complete_summary_counts_hidden_fields_after_detail_truncation():
+    rows = [['default_acl', 'private-owner', f'private-schema-{i}', 'r', '{a=r/owner,b=r/owner}']
+            for i in range(23)]
+    rows += [['function', 'net', f'private-function-{i}', '', 'private-owner', '{a=X/owner,b=X/owner}', True, '{search_path=net}']
+             for i in range(3)]
+    rows += [['relation', 'private-schema', f'private-table-{i:03}', 'r', 'private-owner', '{owner=arwdDxtm/owner}', True, True]
+             for i in range(126)]
+    rows += [['policy', 'private-schema', 'private-table', 'private-policy', '*', True, ['private-role'], 'private-using', None]]
+    changed = deepcopy(rows)
+    for row in changed[:23]: row[4] = '{b=r/owner,a=r/owner}'
+    changed[23][5] = '{b=X/owner,a=X/owner}'
+    for row in changed[24:26]: row[6], row[7] = False, None
+    for row in changed[26:151]: row[5] = None
+    changed[151][6] = False
+    changed[152][8] = 'secret-predicate'
+    result = diagnostic.catalog_difference(captured(raw(rows)), captured(raw(changed)))
+    assert result == diagnostic.catalog_difference(captured(raw(list(reversed(rows)))), captured(raw(list(reversed(changed)))))
+    assert result['counts'] == {'changed': 153, 'source-only': 0, 'target-only': 0}
+    assert len(result['details']) == 32 and result['truncated']
+    assert not any(field['field'] == 'rls' for item in result['details'] for field in item['fields'])
+    assert result['summary'] == [
+        {'kind': 'default_acl', 'status': 'changed', 'records': 23, 'fields': [
+            {'field': 'acl', 'change': 'acl-entry-order-only', 'count': 23}]},
+        {'kind': 'function', 'status': 'changed', 'records': 3, 'fields': [
+            {'field': 'acl', 'change': 'acl-entry-order-only', 'count': 1},
+            {'field': 'configuration', 'change': 'target-null', 'count': 2},
+            {'field': 'security_definer', 'change': 'value', 'count': 2}]},
+        {'kind': 'policy', 'status': 'changed', 'records': 1, 'fields': [
+            {'field': 'with_check', 'change': 'source-null', 'count': 1}]},
+        {'kind': 'relation', 'status': 'changed', 'records': 126, 'fields': [
+            {'field': 'acl', 'change': 'target-null', 'count': 125},
+            {'field': 'rls', 'change': 'value', 'count': 1}]},
+    ]
+    assert 'private-' not in json.dumps(result) and 'secret-' not in json.dumps(result)
+
+
+@pytest.mark.parametrize(('old', 'new', 'label'), [
+    # Captured from the native PG17 V3 fixture; no permission-equivalence claim.
+    ('{fixture_owner=arwdDxtm/fixture_owner,alpha_reader=arwdDxtm/fixture_owner,zeta_reader=arwdDxtm/fixture_owner}',
+     '{alpha_reader=arwdDxtm/fixture_owner,fixture_owner=arwdDxtm/fixture_owner,zeta_reader=arwdDxtm/fixture_owner}', 'acl-entry-order-only'),
+    ('{"a,b=r/owner",c=r/owner}', '{c=r/owner,"a,b=r/owner"}', 'acl-entry-order-only'),
+    ('{"a\\\"b=r/owner",c=r/owner}', '{c=r/owner,"a\\\"b=r/owner"}', 'acl-entry-order-only'),
+    ('{"a\\\\b=r/owner",c=r/owner}', '{c=r/owner,"a\\\\b=r/owner"}', 'acl-entry-order-only'),
+    ('{Æ=r/owner,b=r/owner}', '{b=r/owner,Æ=r/owner}', 'acl-entry-order-only'),
+    ('{a=r/owner,b=r/owner}', '{b=r/owner,a=w/owner}', 'value'),
+    ('{a=r/owner,b=r/owner}', '{b=r/owner,a=r/another}', 'value'),
+    ('{a=r/owner,b=r/owner}', '{b=r/owner,a=r*/owner}', 'value'),
+    ('{a=r/owner,a=r/owner,b=r/owner}', '{b=r/owner,a=r/owner,a=r/owner}', 'value'),
+    ('{NULL,a=r/owner}', '{a=r/owner,NULL}', 'value'),
+    ('{{a=r/owner},{b=r/owner}}', '{{b=r/owner},{a=r/owner}}', 'value'),
+    ('{a=r/owner,b=r/owner', '{b=r/owner,a=r/owner}', 'value'),
+    ('{a=r/owner,,b=r/owner}', '{b=r/owner,a=r/owner}', 'value'),
+    ('{a=r/owner,b=r/owner,}', '{b=r/owner,a=r/owner}', 'value'),
+    ('{,a=r/owner,b=r/owner}', '{b=r/owner,a=r/owner}', 'value'),
+    ('{"a=r/owner",b=r/owner}', '{b=r/owner,a=r/owner}', 'value'),
+    ('{"",a=r/owner}', '{a=r/owner,""}', 'value'),
+    ('{owner=arwdDxtm/owner}', None, 'target-null'),
+])
+def test_acl_entry_permutation_is_narrow_and_does_not_change_raw_hashes(old, new, label):
+    rows = [['relation', 'auth', 'private-table', 'r', 'private-owner', old, True, True]]
+    changed = deepcopy(rows)
+    changed[0][5] = new
+    before, after = raw(rows), raw(changed)
+    result = diagnostic.catalog_difference(captured(before), captured(after))
+    assert result['details'][0]['fields'] == [{'field': 'acl', 'change': label}]
+    assert result['summary'][0]['fields'] == [{'field': 'acl', 'change': label, 'count': 1}]
+    assert hashlib.sha256(before).digest() != hashlib.sha256(after).digest()
+    assert result['status'] == 'different'
+    assert result['qualification'] == 'diagnostic-only-strict-fingerprint-unchanged'
+
+
+def test_complete_summary_preserves_missing_records_and_collapses_unknown_field_names():
+    result = diagnostic.catalog_difference(captured(raw(rows=[ROWS[0]], database={'private-a': 1, 'private-b': 2}, settings=[])),
+        captured(raw(rows=[ROWS[1]], database={'private-a': 2, 'private-b': 3}, settings=[])))
+    assert result['summary'] == [
+        {'kind': 'database', 'status': 'changed', 'records': 1, 'fields': [{'field': 'unclassified', 'change': 'value', 'count': 2}]},
+        {'kind': 'relation', 'status': 'target-only', 'records': 1, 'fields': []},
+        {'kind': 'schema', 'status': 'source-only', 'records': 1, 'fields': []},
+    ]
+
+
+def test_complete_summary_never_silently_truncates_to_fit_output(monkeypatch, capsys):
+    source, target = raw(), raw(rows=[])
+    complete = diagnostic.catalog_difference(captured(source), captured(target))
+    complete['details'] = []
+    complete['truncated'] = True
+    minimum = len(diagnostic._encoded(complete)) + len(diagnostic._TAG) + 1
+    monkeypatch.setattr(diagnostic, 'MAX_OUTPUT_BYTES', minimum)
+    diagnostic.emit_catalog_difference(captured(source), captured(target))
+    output = capsys.readouterr().err
+    assert len(output.encode()) == minimum
+    assert json.loads(output.removeprefix(diagnostic._TAG)) == complete
+    monkeypatch.setattr(diagnostic, 'MAX_OUTPUT_BYTES', minimum - 1)
+    diagnostic.emit_catalog_difference(captured(source), captured(target))
+    unavailable = capsys.readouterr().err
+    assert len(unavailable.encode()) <= minimum - 1
+    assert json.loads(unavailable.removeprefix(diagnostic._TAG)) == {
+        'status': 'unavailable', 'qualification': 'diagnostic-only-strict-fingerprint-unchanged'}
