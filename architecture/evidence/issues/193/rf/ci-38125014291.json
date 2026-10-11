@@ -1,0 +1,104 @@
+{
+  "schema": "rf-integration-ci-observation-v6",
+  "recordedAtUtc": "2026-10-11T09:43:28.709646+00:00",
+  "runId": 38125014291,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/38125014291",
+  "headSha": "7d5120830a9116bb16b394c2ed03ef7b00679942",
+  "mergeSha": "aa183569d4fcc84ccee0d94f9ad0392b29c82eb6",
+  "mainParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+  "status": "completed",
+  "conclusion": "cancelled",
+  "attempt": 1,
+  "application": {
+    "passed": 11522,
+    "skipped": 2,
+    "deselected": 2418,
+    "seconds": 970.29
+  },
+  "billing": {
+    "passed": 700,
+    "seconds": 293.05
+  },
+  "authority": {
+    "collected": 1630,
+    "observedPassed": 1630,
+    "seconds": 1334.35,
+    "completed": true,
+    "approvalExactObservedPassed": 36,
+    "claimExactObservedPassed": 20,
+    "retentionExactObservedPassed": 24,
+    "newBundleExactObservedPassed": 6
+  },
+  "intent": {
+    "required": 46,
+    "observedPassed": 46,
+    "priorFortyCasesPassed": true,
+    "ownerRevocationRacePassed": true,
+    "requiredParentPassed": 6,
+    "requiredParentFailed": 0,
+    "requiredParentUnobserved": 0,
+    "completed": true
+  },
+  "failure": "GitHub canceled database job at existing one-hour limit after nine sequential RF browser scenarios passed. Last completion was confirmation pre-mutation crash at09:30:06; cancellation09:30:21. No test failure/hungcase/performance root cause diagnosed. Tenth/rejected-predecessor inventorycase has no observed result; wholeRF/independentrestore and laterTax/Accounts/publicacquisition remain unproved.",
+  "rfBrowser": {
+    "reached": true,
+    "scenarioPassed": 9,
+    "scenarioRequired": 10,
+    "scenarioDurationsMs": [
+      149447.122196,
+      149972.189332,
+      150657.729226,
+      138044.511772,
+      144492.171796,
+      144730.521374,
+      135981.241831,
+      145760.485489,
+      145208.97021
+    ],
+    "suiteCompleted": false,
+    "owningInventoryAccepted": false,
+    "fingerprintComponentDiagnosticObserved": false
+  },
+  "verification": {
+    "freshPrAndMergeParentsVerified": true,
+    "actualDatabaseCheckoutVerified": true,
+    "observedExactNodesAndSourceGitPinsVerified": true,
+    "explicitOneHourAnnotationVerified": true,
+    "artifacts": 0
+  },
+  "postAuthority": {
+    "databaseCommandsCompleted": [
+      "company-tax-database",
+      "annual-accounts-database"
+    ],
+    "pythonPassSummaries": [
+      15,
+      22,
+      3,
+      7,
+      41
+    ],
+    "ownerAnnualBrowserPassed": 1,
+    "rfFeedbackPassed": 13,
+    "authorityBrowserPassed": 14,
+    "laterTaxAccountsBrowserAccepted": false
+  },
+  "limits": [
+    "Full1630Authority and exact20claim/36approval/24retention/6bundle/46intent nodes passed on current source-bound checkout; narrower than complete owning browser/independent pipeline acceptance.",
+    "Continuous nineRFbrowser scenario passes preceded job timeout; missing tenth result does not establish that its setup never started. No failed/hungcase or performance cause inferred.",
+    "No fingerprint component diagnostic observed in this run; earlier strict independentrestore fingerprint failure remains unresolved. Longer job budget alone cannot fix or clear it.",
+    "LaterTax/Accounts/publicacquisition browsers, immutableA/B receipts, compatibility/drain/cutover/nominal/crossyear/intake/hostedorigin/human/allthree readiness remain separate.",
+    "Raw logs remain private; public evidence contains finite counts, timing and SHA metadata only."
+  ],
+  "rawEvidenceSha256": {
+    "ci38125014291-db-direct-raw-v1.log": "b9325fb2b9d5307bee16a76cc3c56fc431a0bd8b3996c51900c9f926f8e782df",
+    "ci38125014291-app-direct-raw-v1.log": "6f1c6857bd0a21fcb4b6ecd1946867f794efbecba0964fa16cfe77fe9e9778a3",
+    "ci38125014291-terminal-run-v1.json": "9290789eb766e28bfd23d0777147d5599c844df21d747dcf227b75ac29a7c8e7",
+    "ci38125014291-terminal-jobs-v1.json": "8c306b2808f9391894b8e9dedcbc9948e9a989dc262bc1f077f156caa6056e2a",
+    "ci38125014291-terminal-pr-v1.json": "a47c9b193b0791ced758a445a6b45075fbf5dee0eb4f76062b0b0732c853345e",
+    "ci38125014291-terminal-parents-v1.json": "9775b83f60a9fcbfe48f5274d69c3c439cd4c2928b172ed92b3520f40287ae45",
+    "ci38125014291-terminal-artifacts-v1.json": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+    "ci38125014291-terminal-receipt-v1.json": "f47a62a0261eec54fb00df3c37d2d0bb539e6bea555cbdd3a5ad794c4567fede",
+    "ci38125014291-db-check-annotations-v1.json": "2488ecf540218ad30452aebae3f1451bad8f7e9ea363ad04a02177dd89fd0a61"
+  }
+}
