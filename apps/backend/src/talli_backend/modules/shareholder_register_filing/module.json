@@ -613,7 +613,8 @@
     "companyTestRetention": "apps/backend/tests/test_rf1086_company_test_retention.py",
     "companyTestRetentionDatabase": "apps/backend/tests/test_rf1086_company_test_retention_database.py",
     "companyTestRetentionStream": "apps/backend/tests/test_rf1086_company_test_retention_stream.py",
-    "companyTestRetentionCli": "apps/backend/tests/test_verify_rf1086_company_test_retention.py"
+    "companyTestRetentionCli": "apps/backend/tests/test_verify_rf1086_company_test_retention.py",
+    "companyTestRetentionHttp": "apps/backend/tests/test_rf1086_company_test_retention_http.py"
   },
   "compatibilityExceptions": []
 }

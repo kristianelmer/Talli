@@ -1,0 +1,209 @@
+{
+  "schema": "rf-company-test-retention-http-auth-local-v1",
+  "recordedAtUtc": "2026-10-11T00:53:36.910327+00:00",
+  "publishedBaseline": "a40b34d5351c9a929313544cc1d517f99c6d59c1",
+  "status": "DEFAULT_CLOSED_REVIEWED_SPEC0_STANDARDS0_LOCAL_ONLY",
+  "composition": {
+    "defaultFactory": null,
+    "ambientFactoryOrEnvironmentCanEnable": false,
+    "beforeIoDisabledStatus": 503,
+    "historicalQuery": "Current authenticated accepted member, company-only, all13 original fields; no fresh MFA or mutable producer proof.",
+    "download": "Current authenticated accepted member plus CompanyAccess-owned fifteen-minute MFA before and after acquisition/priming; fixed standalone stream.",
+    "signedSession": "Canonical nonzero session_id/sub correspondence only after existing canonical Auth server verification. Local parsing is not signature authority.",
+    "activation": "Explicit owned technical injection only. Actual Auth/component/fullschema acceptance and separately reviewed designated-backend wiring remain required.",
+    "legalExportReceiptCreated": false,
+    "finalCacheControl": "Existing global middleware enforces no-store; new route private/no-store input does not alter old middleware."
+  },
+  "checks": {
+    "backend": {
+      "passed": 293,
+      "seconds": 29.38,
+      "newHttpPolicy": 81,
+      "protectedRetentionClaimCompanyAccess": 212
+    },
+    "contract": {
+      "passed": 115,
+      "newRetentionClient": 20,
+      "seconds": 3.181117167
+    },
+    "selectors": {
+      "passed": 129,
+      "seconds": 50.599073375
+    },
+    "typecheck": {
+      "status": "PASS"
+    },
+    "architecture": {
+      "status": "PASS",
+      "derivedEvidenceUpdated": true
+    },
+    "openapiBaseline": {
+      "status": "PASS"
+    },
+    "compatibility": {
+      "oldFunctions": 775,
+      "oldPaths": 178,
+      "oldSchemas": 510,
+      "oldSdkLines": 13630,
+      "wholeRfPythonFiles": 101
+    },
+    "whitespace": "PASS"
+  },
+  "rawEvidenceSha256": {
+    "backend": "9efbc085e9e1308803a3eb57317438533a4868ac7afdff09e9a2953bf657f689",
+    "contract": "c7290f007d1fc2209a36efa172c004a916a59661e8ada7ac811b1fd8c1c24cee",
+    "selectors": "43634a9211db2bbbcf86accafa2c543a3ffed3a50a073ce380c7e8358758f4a2",
+    "typecheck": "b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+    "architecture": "3c1851838ecb3298fd81a354a7f43a0f64ff9cf3cbc92983715f597065699d98",
+    "openapiBaseline": "10386f99727d3ade33ba1ef2c98e96a46aecffb117306a27b937f47c04105fc5",
+    "compatibility": "9a6331f19ad117e51002978c9377a3ca8d47eba73a126ad64f2a19d1253b9c60"
+  },
+  "sourcePins": [
+    {
+      "path": "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py",
+      "sha256": "cf68ec0c89dff3d32ef675bc8bc1c056508f81bf36ed921a75b0af5b607b8ea5",
+      "bytes": 158974
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_company_test_retention_http.py",
+      "sha256": "8ebb8e791206f1a600f72a5e5c1084994fca18a735ea32c28a96d82de7538e6d",
+      "bytes": 2773
+    },
+    {
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "d09d865aede34d203e40ec1c4c7fdc88706b5a32feb9965360fe8db55df8603b",
+      "bytes": 611377
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_access/MODULE.md",
+      "sha256": "fa059552815645fc87186a1f7ab969c4362ed0489ea06432364833b784f631dc",
+      "bytes": 25083
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_access/module.json",
+      "sha256": "78f5a0d1949490b4c93ac5b3f69ded19b0ae727f2e3013e6ba92075085b018e5",
+      "bytes": 5182
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/company_access/public.py",
+      "sha256": "6fe984ae18e039e1787703aec7b7dbbf96f435ab37b161e412fc1a441e434868",
+      "bytes": 118923
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "5a31d3a7ea4a28d05611a43e0d98930e2dcd254ba6b4e11f4e00cd28fadc1cf1",
+      "bytes": 137993
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "1e50a22dd434112ab9fb32d6146aec9617e9ff7f2116ebe31a3118457e5d0b33",
+      "bytes": 32398
+    },
+    {
+      "path": "apps/backend/tests/test_company_test_retention_download_policy.py",
+      "sha256": "2b0affd9c939fa6952d25d94aed55757308db4833f4547f8633023e6cf2eaa13",
+      "bytes": 6711
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_company_test_retention_http.py",
+      "sha256": "b117c4a09e049ec53b958a399fc8af73a1772bdf554720193618977330485e38",
+      "bytes": 17529
+    },
+    {
+      "path": "architecture/BACKEND-SYSTEM.md",
+      "sha256": "cffe92694850d8d67a77be24f356e845b1c4b2f279b2d945b5cd38ffe43c932d",
+      "bytes": 135103
+    },
+    {
+      "path": "architecture/backend-system.json",
+      "sha256": "54f22f21b7ccc268d5852879a830e603e8f6da4e750d92c75ada1a5bf9fdf797",
+      "bytes": 66987
+    },
+    {
+      "path": "architecture/dependency-evidence.json",
+      "sha256": "3c1851838ecb3298fd81a354a7f43a0f64ff9cf3cbc92983715f597065699d98",
+      "bytes": 20747
+    },
+    {
+      "path": "contracts/openapi/talli-v1.json",
+      "sha256": "a44d063681f2d8100dd1d65d248be6b9c4dcd1a1d425b466e1f79e5d76e50ea8",
+      "bytes": 3265878
+    },
+    {
+      "path": "package.json",
+      "sha256": "52936d7576606fa3bf32941ca005a2f7f634447ff683bbb7a6762a1dbba828b3",
+      "bytes": 34894
+    },
+    {
+      "path": "packages/talli-api-client/src/generated/client.ts",
+      "sha256": "bc66a3d385ae09c78835115333c82632ffe2ccabc91a91f9c2558f5178afd7fd",
+      "bytes": 600467
+    },
+    {
+      "path": "scripts/generate-api-client.mjs",
+      "sha256": "f641390b274f37a33d98152c292093adebf6db11ca0223c4883c22788c618e37",
+      "bytes": 152970
+    },
+    {
+      "path": "tests/ci_release_gate.test.mjs",
+      "sha256": "f19de03a644955963d11a1fde03da2e3a63aed808f5701e085673a1c5c8e16ce",
+      "bytes": 57036
+    },
+    {
+      "path": "tests/contract/rf1086_company_test_retention_client.test.mjs",
+      "sha256": "748a7a93b6cfd19febd19f12a7d69bd09180c6381eb04e306a075750eb66752b",
+      "bytes": 6263
+    }
+  ],
+  "plan": {
+    "version": 3,
+    "sha256": "9c90be28b2498f6f01387d81338e5266d27b37db4bdddd9fa572b79f06f1c2d0",
+    "SpecFindings": 0,
+    "StandardsFindings": 0
+  },
+  "earlierObservations": [
+    "UnitV1:7FAIL40PASS from cache assertion and missing frozen clock test setup; UnitV2:47PASS. ExpandedV3:4FAIL61PASS from forbidden enum assertion casing, corrected to domain enum equality.",
+    "ContractV1 failed environment setup because native UV runtime variables omitted; V2 caught undefined new requestJson helper; generator fixed to existing executeJson; finalV3 all115 PASS.",
+    "ArchitectureV1 rejected missing public __all__ and supplemental documentation dependency entries; finalV2 PASS.",
+    "Focused protectedUnitV1 selected one nonexistent file and executed no tests; finalV2 exact discovered files all277 PASS.",
+    "V1 private red: both overflow acceptance cases failed intended denial; malformedAuth expectedtypedAuth oracle was too specific. Green copy corrects that oracle to priorValueError, and actual new HTTP tests assert finite503. Original red file/log and V1 reports/freeze/public bytes preserved."
+  ],
+  "limits": [
+    "Default-closed endpoints are registered but no ambient/production wiring or authority/grants activated.",
+    "All local Auth/current-role/session tests use explicit doubles; no actual live/revoked/banned owned Auth lifecycle or designated-project identity clearance.",
+    "Completed failed CI38097910748 covers published a40 only; this HTTP WIP is not attributed to it. Claims16PASS/1FAIL/3unexecuted; all24retention unexecuted; Authority1519PASS/1FAIL/58unexecuted. No20/24/full gate clearance.",
+    "Stream response headers do not prove footer completion. SDK preserves response and signal; public fixed stream verifier owns completion/integrity. Portable structure does not prove source origin.",
+    "Standalone UI/web download/source bundle/independent Auth target/RET002 full pipeline/RET003/004/005 remain mandatory.",
+    "No legal full company-year export receipt, canonical A1-A7/all-three/release readiness or filing/send authority clearance."
+  ],
+  "implementationV1Review": {
+    "Spec": {
+      "findings": 1,
+      "priority": "P2",
+      "id": "RET-I1",
+      "sha256": "812485e606cff319335973f2f305278f194a0cac28dbd0043b1062c66760746c",
+      "rootVerifiedCurrentReferencePins": 141,
+      "rootVerifiedBaselineGitPins": 25
+    },
+    "Standards": {
+      "findings": 0,
+      "sha256": "c7c96d948f022f4845df5f19fb934dedb93b76b550eb7a83fadff24948d110e5",
+      "rootVerifiedPins": 41
+    },
+    "disposition": "Both new helpers now use finite parse_float; positive ordinary floats plus\u00b1overflow top/nested/unsupported-method claims tested after serverAuth and before records/member lookup. Old functions unchanged. V2 re-review pending.",
+    "withdrawnRET_I2": "Kernel already canonicalizes actor UUID. Noncanonical correspondence401 and malformedAuth response503 proved at actual HTTP seam over doubles; no factory/policy change or malformed actual Supabase behavior claimed."
+  },
+  "implementationReviews": {
+    "Spec": {
+      "findings": 0,
+      "sha256": "87b48c00210483c3b5bc262d8650b79d972898d7e103b4be298ddb62cc395a59",
+      "rootVerifiedPins": 148
+    },
+    "Standards": {
+      "findings": 0,
+      "sha256": "e183d8a2cd3497fae5212c9606666a61eb0411f0664a68fb7f914e805be62bbb",
+      "rootVerifiedPins": 51
+    },
+    "codeAndTestBytesUnchangedAfterReview": true
+  }
+}

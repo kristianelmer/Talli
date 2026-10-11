@@ -363,3 +363,17 @@ coverage is in `test_company_access_rf_admission_database.py`; collection is not
 runtime acceptance. This owner contract alone does not complete RF's cross-owner
 approval/send transaction, which must compose every owner projection before its
 durable claim.
+
+
+`CompanyAccessService.authorize_archive_download_step_up` returns the frozen
+`CompanyArchiveDownloadAuthorization` scope for the current authenticated subject
+and accepted owner/reviewer/read_only company membership. It requires a
+canonical nonzero signed session_id, exact verified subject correspondence,
+standard finite nonboolean MFA timestamps and the existing fifteen-minute
+MFA policy. Callers repeat this action check after acquisition and before
+headers. Scope correspondence grants neither filing nor legal-export receipt
+authority. Raw-token parsing follows current server Auth verification and cannot
+replace it. No direct Auth-table access or new SQL/grants are added; actual owned
+Auth version/session/revocation/banned/deleted-user acceptance remains separate.
+`test_company_test_retention_download_policy.py` belongs to the ordinary backend
+lane and uses explicitly qualified Auth/gateway doubles.

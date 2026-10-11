@@ -325,6 +325,8 @@ const shareholderRegisterFilingOperations = {
   productionArchiveSourceV4: ["/api/v1/shareholder-register-filings/archive-source/production-v4", "get", "rf1086GetProductionArchiveSourceV4"],
   productionArchiveStreamV4: ["/api/v1/shareholder-register-filings/archive-source/production-stream-v4", "get", "rf1086DownloadProductionArchiveV4"],
   productionArchiveStreamV6: ["/api/v1/shareholder-register-filings/archive-source/production-stream-v6", "get", "rf1086DownloadProductionArchiveV6"],
+  companyTestRetention: ["/api/v1/shareholder-register-filings/company-test-retention", "get", "rf1086ReadCompanyTestRetention"],
+  companyTestRetentionStream: ["/api/v1/shareholder-register-filings/company-test-retention/stream-v1", "get", "rf1086DownloadCompanyTestRetention"],
   productionArchiveSource: ["/api/v1/shareholder-register-filings/archive-source/production", "get", "rf1086GetProductionArchiveSource"],
   productionArchiveStream: ["/api/v1/shareholder-register-filings/archive-source/production-stream", "get", "rf1086DownloadProductionArchive"],
   workspace: ["/api/v1/shareholder-register-filings/workspace", "get", "rf1086Workspace"],
@@ -989,6 +991,9 @@ const shareholderRegisterFilingSchemas = Object.fromEntries([
   "Rf1086ReviewCommentWire",
   "Rf1086PermissionWire",
   "Rf1086TestEvidenceWire",
+  "RfCompanyTestRetentionRecordWire",
+  "RfCompanyTestRetentionCompleteWire",
+  "RfCompanyTestRetentionUnavailableWire",
   "Rf1086SimulationCallWire",
   "Rf1086SimulationFeedbackWire",
   "Rf1086ReceiptMetadataWire",
@@ -1108,6 +1113,8 @@ ${Object.entries(annualAccountsSchemas).map(([name, schema]) => renderSchema(nam
 ${Object.entries(companyTaxSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
 ${Object.entries(shareholderRegisterFilingSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
+
+export type RfCompanyTestRetentionWire = ${schemaType(contract.paths["/api/v1/shareholder-register-filings/company-test-retention"].get.responses["200"].content["application/json"].schema)};
 
 ${Object.entries(authorityConnectionsSchemas).map(([name, schema]) => renderSchema(name, schema)).join("\n\n")}
 
@@ -3328,6 +3335,44 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     ): Promise<Response> {
       const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
       const response = await fetchImplementation(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production-stream-v4?" + query, {
+        method: "GET", cache: "no-store", signal: request.signal,
+        headers: { Accept: "application/x-ndjson, application/problem+json",
+          ...options.headers, ...request.headers,
+          ...(request.requestId === undefined ? {} : { [${JSON.stringify(correlationParameter.name)}]: request.requestId }) },
+      });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!response.ok) {
+        const candidate = contentType.includes("application/problem+json")
+          ? await response.json().catch(() => undefined) : undefined;
+        throw new TalliApiError(response.status, isProblemDetails(candidate) ? candidate : undefined);
+      }
+      if (contentType.split(";")[0].trim().toLowerCase() !== "application/x-ndjson" || response.body === null) {
+        await response.body?.cancel();
+        throw new TalliApiError(502, undefined);
+      }
+      return response;
+    },
+
+    async rf1086ReadCompanyTestRetention(
+      companyId: string, request: TalliRequestOptions = {},
+    ): Promise<RfCompanyTestRetentionWire> {
+      const query = new URLSearchParams({ companyId });
+      const value = await executeJson<RfCompanyTestRetentionWire>(
+        baseUrl + "/api/v1/shareholder-register-filings/company-test-retention?" + query,
+        "GET", request, undefined, (candidate): candidate is RfCompanyTestRetentionWire =>
+          isRfCompanyTestRetentionCompleteWire(candidate) || isRfCompanyTestRetentionUnavailableWire(candidate));
+      if (value.companyId !== companyId || (value.coverage === "complete" &&
+          (value.records.length !== value.recordCount || value.records.some((record) => record.company_id !== companyId)))) {
+        throw new TalliApiError(502, undefined);
+      }
+      return value;
+    },
+
+    async rf1086DownloadCompanyTestRetention(
+      companyId: string, request: TalliRequestOptions = {},
+    ): Promise<Response> {
+      const query = new URLSearchParams({ companyId });
+      const response = await fetchImplementation(baseUrl + "/api/v1/shareholder-register-filings/company-test-retention/stream-v1?" + query, {
         method: "GET", cache: "no-store", signal: request.signal,
         headers: { Accept: "application/x-ndjson, application/problem+json",
           ...options.headers, ...request.headers,

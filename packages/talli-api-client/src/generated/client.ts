@@ -4251,6 +4251,40 @@ export interface Rf1086TestEvidenceWire {
   testReference: string;
 }
 
+export interface RfCompanyTestRetentionRecordWire {
+  archive_reference: string | null;
+  company_id: string;
+  environment: string;
+  evidence_url: string | null;
+  feedback_summary: string;
+  id: string;
+  obligation: "aksjonaerregisteroppgaven";
+  payload_hash: string | null;
+  receipt_reference: string | null;
+  recorded_at: string;
+  recorded_by: string;
+  status: string;
+  test_reference: string;
+}
+
+export interface RfCompanyTestRetentionCompleteWire {
+  codec: "rf1086-company-test-retention-v1";
+  companyId: string;
+  coverage: "complete";
+  observedAt: string;
+  recordCount: number;
+  records: RfCompanyTestRetentionRecordWire[];
+  recordsSha256: string;
+  scope: "company_no_intrinsic_income_year";
+}
+
+export interface RfCompanyTestRetentionUnavailableWire {
+  codec: "rf1086-company-test-retention-v1";
+  companyId: string;
+  coverage: "unavailable";
+  scope: "company_no_intrinsic_income_year";
+}
+
 export interface Rf1086SimulationCallWire {
   bodyHash: string;
   createdAt: string;
@@ -4551,6 +4585,8 @@ export interface Rf1086ArchiveFeedbackArtifactWire {
   sha256: string;
   submissionId: string;
 }
+
+export type RfCompanyTestRetentionWire = RfCompanyTestRetentionCompleteWire | RfCompanyTestRetentionUnavailableWire;
 
 export type LaunchSignoffKey = "launch_legal_name_public_copy" | "legal_policy_pack" | "security_restore" | "billing_refund" | "rf1086_authority" | "annual_accounts_authority" | "tax_return_authority" | "support_rollback" | "founder_production_go_live";
 
@@ -10492,6 +10528,52 @@ function isRf1086TestEvidenceWire(value: unknown): value is Rf1086TestEvidenceWi
   );
 }
 
+function isRfCompanyTestRetentionRecordWire(value: unknown): value is RfCompanyTestRetentionRecordWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["archive_reference","company_id","environment","evidence_url","feedback_summary","id","obligation","payload_hash","receipt_reference","recorded_at","recorded_by","status","test_reference"]) &&
+    (typeof value.archive_reference === "string" || value.archive_reference === null) &&
+    typeof value.company_id === "string" &&
+    typeof value.environment === "string" &&
+    (typeof value.evidence_url === "string" || value.evidence_url === null) &&
+    typeof value.feedback_summary === "string" &&
+    typeof value.id === "string" &&
+    value.obligation === "aksjonaerregisteroppgaven" &&
+    (typeof value.payload_hash === "string" || value.payload_hash === null) &&
+    (typeof value.receipt_reference === "string" || value.receipt_reference === null) &&
+    typeof value.recorded_at === "string" &&
+    typeof value.recorded_by === "string" &&
+    typeof value.status === "string" &&
+    typeof value.test_reference === "string"
+  );
+}
+
+function isRfCompanyTestRetentionCompleteWire(value: unknown): value is RfCompanyTestRetentionCompleteWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["codec","companyId","coverage","observedAt","recordCount","records","recordsSha256","scope"]) &&
+    value.codec === "rf1086-company-test-retention-v1" &&
+    typeof value.companyId === "string" &&
+    value.coverage === "complete" &&
+    typeof value.observedAt === "string" &&
+    (typeof value.recordCount === "number" && Number.isInteger(value.recordCount) && value.recordCount >= 0 && value.recordCount <= 100000) &&
+    Array.isArray(value.records) && value.records.every((item) => isRfCompanyTestRetentionRecordWire(item)) &&
+    (typeof value.recordsSha256 === "string" && new RegExp("^[a-f0-9]{64}$", "u").test(value.recordsSha256)) &&
+    value.scope === "company_no_intrinsic_income_year"
+  );
+}
+
+function isRfCompanyTestRetentionUnavailableWire(value: unknown): value is RfCompanyTestRetentionUnavailableWire {
+  return (
+    isRecord(value) &&
+    hasOnlyProperties(value, ["codec","companyId","coverage","scope"]) &&
+    value.codec === "rf1086-company-test-retention-v1" &&
+    typeof value.companyId === "string" &&
+    value.coverage === "unavailable" &&
+    value.scope === "company_no_intrinsic_income_year"
+  );
+}
+
 function isRf1086SimulationCallWire(value: unknown): value is Rf1086SimulationCallWire {
   return (
     isRecord(value) &&
@@ -13218,6 +13300,44 @@ export function createTalliApiClient(options: TalliApiClientOptions) {
     ): Promise<Response> {
       const query = new URLSearchParams({ companyId, incomeYear: String(incomeYear) });
       const response = await fetchImplementation(baseUrl + "/api/v1/shareholder-register-filings/archive-source/production-stream-v4?" + query, {
+        method: "GET", cache: "no-store", signal: request.signal,
+        headers: { Accept: "application/x-ndjson, application/problem+json",
+          ...options.headers, ...request.headers,
+          ...(request.requestId === undefined ? {} : { ["X-Request-ID"]: request.requestId }) },
+      });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!response.ok) {
+        const candidate = contentType.includes("application/problem+json")
+          ? await response.json().catch(() => undefined) : undefined;
+        throw new TalliApiError(response.status, isProblemDetails(candidate) ? candidate : undefined);
+      }
+      if (contentType.split(";")[0].trim().toLowerCase() !== "application/x-ndjson" || response.body === null) {
+        await response.body?.cancel();
+        throw new TalliApiError(502, undefined);
+      }
+      return response;
+    },
+
+    async rf1086ReadCompanyTestRetention(
+      companyId: string, request: TalliRequestOptions = {},
+    ): Promise<RfCompanyTestRetentionWire> {
+      const query = new URLSearchParams({ companyId });
+      const value = await executeJson<RfCompanyTestRetentionWire>(
+        baseUrl + "/api/v1/shareholder-register-filings/company-test-retention?" + query,
+        "GET", request, undefined, (candidate): candidate is RfCompanyTestRetentionWire =>
+          isRfCompanyTestRetentionCompleteWire(candidate) || isRfCompanyTestRetentionUnavailableWire(candidate));
+      if (value.companyId !== companyId || (value.coverage === "complete" &&
+          (value.records.length !== value.recordCount || value.records.some((record) => record.company_id !== companyId)))) {
+        throw new TalliApiError(502, undefined);
+      }
+      return value;
+    },
+
+    async rf1086DownloadCompanyTestRetention(
+      companyId: string, request: TalliRequestOptions = {},
+    ): Promise<Response> {
+      const query = new URLSearchParams({ companyId });
+      const response = await fetchImplementation(baseUrl + "/api/v1/shareholder-register-filings/company-test-retention/stream-v1?" + query, {
         method: "GET", cache: "no-store", signal: request.signal,
         headers: { Accept: "application/x-ndjson, application/problem+json",
           ...options.headers, ...request.headers,

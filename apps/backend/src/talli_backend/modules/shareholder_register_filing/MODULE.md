@@ -2179,3 +2179,31 @@ subprocesses. Existing archive/stream/verifier paths stay unchanged. This closed
 component has no route or UI activation. Public HTTP/member/action MFA, typed
 client, standalone UI/download/bundle and independent Auth target restore
 remain required before RET002 closure or filing handoff.
+
+
+The separate system application
+`shareholder_register_company_test_retention_http` binds the company query to a
+current authenticated actor through the narrow `CompanyTestRetentionSessionFactory`.
+`PostgresCompanyTestRetentionSessionFactory` authenticates via the canonical
+server Auth adapter, then requires a canonical nonzero signed session_id and
+verified subject correspondence. It constructs the existing RF reader without
+Billing, Documents, CompanyAccess producer or provider bindings. Existing RF
+authentication/transaction/reader bodies stay unchanged.
+
+The typed historical query preserves the RF canonical artifact and all original
+thirteen keys/scalars, including status/environment/hash/timestamp strings. It
+requires current accepted membership without fresh MFA. The separate standalone
+download repeats the CompanyAccess-owned archive action before capture and
+after full RF validation/stream priming. Current subject/company correspondence
+is required both times; no partial response or headers count as completion.
+Database/cursor acquisition closes before network transfer, and cancellation
+produces no completion footer or legal company-year export receipt.
+
+Both new HTTP operations are default-closed503: only an explicitly injected
+`company_test_retention_session_factory` enables controlled technical composition.
+No environment/general-RF fallback exists. Old liveness/readiness remains exact
+and does not establish readiness of this component or all three filings.
+`test_rf1086_company_test_retention_http.py` is an ordinary backend test; its
+Auth/DB doubles do not prove live session, independent target or full pipeline.
+Actual20claim/fullAuthority/24retention/currentcomponent/ownedAuth acceptance
+and later explicit designated-backend wiring remain required before activation.

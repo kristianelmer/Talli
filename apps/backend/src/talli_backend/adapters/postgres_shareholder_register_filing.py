@@ -10,6 +10,7 @@ from dataclasses import fields
 from datetime import datetime
 import hashlib
 import json
+import math
 import os
 import re
 from urllib.parse import quote, urlencode
@@ -123,6 +124,57 @@ def _error(error):
     if "production_filing_fresh_owner_step_up_required" in str(error):
         return Rf1086ProductionError("step_up_required")
     return _PersistenceError(getattr(error, "sqlstate", "") or "")
+
+
+def _require_company_test_retention_live_session(access_token, verified):
+    """Only signed-claim correspondence after canonical server authentication."""
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError()
+            result[key] = value
+        return result
+    def reject_constant(value):
+        raise ValueError()
+    def finite_float(value):
+        parsed = float(value)
+        if not math.isfinite(parsed):
+            raise ValueError()
+        return parsed
+    try:
+        if type(access_token) is not str or len(access_token) > 65536 or len(access_token.split('.')) != 3:
+            raise ValueError()
+        import base64
+        payload = access_token.split('.')[1]
+        claims = json.loads(base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4)),
+            object_pairs_hook=unique, parse_constant=reject_constant, parse_float=finite_float)
+        if type(claims) is not dict or claims.get('sub') != str(verified.actor_id.subject):
+            raise ValueError()
+        session_id = claims.get('session_id')
+        if type(session_id) is not str or str(UUID(session_id)) != session_id or UUID(session_id).int == 0:
+            raise ValueError()
+    except (ValueError, TypeError, KeyError, AttributeError, UnicodeError, RecursionError):
+        raise ShareholderRegisterFilingAuthenticationError() from None
+
+
+class PostgresCompanyTestRetentionSessionFactory:
+    """Explicit composition only; current Auth with no mutable producer bindings."""
+    def __init__(self, configuration: LedgerSupabaseConfiguration):
+        self._configuration = configuration
+        self._authentication = SupabaseLedgerAdapter(configuration)
+
+    async def session(self, access_token: str) -> PostgresShareholderRegisterFilingSession:
+        try:
+            authenticated = await self._authentication.session(access_token)
+        except LedgerAuthenticationError:
+            raise ShareholderRegisterFilingAuthenticationError() from None
+        except LedgerError:
+            raise rf.ShareholderRegisterFilingError.unavailable() from None
+        _require_company_test_retention_live_session(access_token, authenticated._verified)
+        return PostgresShareholderRegisterFilingSession(self._configuration, authenticated._verified,
+            access_token=access_token, billing=None, documents=None, company_access=None,
+            environment={})
 
 
 class PostgresShareholderRegisterFilingAdapter:

@@ -37,6 +37,10 @@ from talli_backend.application.shareholder_register_filing_workflow import Share
 from talli_backend.application.shareholder_register_source_workflow import ShareholderRegisterSourceWorkflow
 from talli_backend.application.shareholder_register_source_approval import ShareholderRegisterSourceApprovalWorkflow
 from talli_backend.application.shareholder_register_source_dispatch import ShareholderRegisterSourceDispatchWorkflow
+from talli_backend.application.shareholder_register_company_test_retention_http import (
+    CompanyTestRetentionSessionFactory, ShareholderRegisterCompanyTestRetentionHttp,
+)
+from talli_backend.modules.shareholder_register_filing.public import serialize_rf1086_company_test_retention, Rf1086ArchiveError
 from talli_backend.application.corporate_register_evidence import CorporateRegisterEvidenceVerifier
 from talli_backend.application.launch_signoffs import (
     LaunchSignoffAuthenticationError, LaunchSignoffError, LaunchSignoffKey,
@@ -2359,6 +2363,49 @@ def _validate_rf1086_historical_timestamp(value: str) -> str:
 Rf1086HistoricalTimestampWire = Annotated[
     str, AfterValidator(_validate_rf1086_historical_timestamp),
     Field(json_schema_extra={"format": "date-time"}),
+]
+
+
+class RfCompanyTestRetentionRecordWire(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    id: str
+    company_id: str
+    obligation: Literal["aksjonaerregisteroppgaven"]
+    environment: str
+    status: str
+    test_reference: str
+    feedback_summary: str
+    receipt_reference: str | None
+    archive_reference: str | None
+    evidence_url: str | None
+    payload_hash: str | None
+    recorded_by: str
+    recorded_at: str
+
+
+class RfCompanyTestRetentionCompleteWire(TransportModel):
+    model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True, extra="forbid", strict=True)
+    codec: Literal["rf1086-company-test-retention-v1"]
+    scope: Literal["company_no_intrinsic_income_year"]
+    company_id: str
+    coverage: Literal["complete"]
+    observed_at: str
+    record_count: Annotated[int, Field(strict=True, ge=0, le=100000)]
+    records_sha256: Annotated[str, Field(pattern="^[a-f0-9]{64}$")]
+    records: list[RfCompanyTestRetentionRecordWire]
+
+
+class RfCompanyTestRetentionUnavailableWire(TransportModel):
+    model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True, extra="forbid", strict=True)
+    codec: Literal["rf1086-company-test-retention-v1"]
+    scope: Literal["company_no_intrinsic_income_year"]
+    company_id: str
+    coverage: Literal["unavailable"]
+
+
+RfCompanyTestRetentionWire = Annotated[
+    RfCompanyTestRetentionCompleteWire | RfCompanyTestRetentionUnavailableWire,
+    Field(discriminator="coverage"),
 ]
 
 
@@ -5329,6 +5376,7 @@ def create_app(
     marketing_measurement_internal_key: str | None = None,
     validation_observer: PassiveValidationObserver | None = None,
     readiness_probe: ReadinessProbe | None = None,
+    company_test_retention_session_factory: CompanyTestRetentionSessionFactory | None = None,
 ) -> FastAPI:
     # Readiness follows the infrastructure selected here. Injected adapters own
     # their operational contract; unit/custom applications can inject a probe.
@@ -12282,6 +12330,75 @@ def create_app(
             except ValidationError:
                 raise ShareholderRegisterFilingError.unavailable() from None
         return await shareholder_register_filing_call(execute)
+
+    async def rf_company_test_retention_call(call: Callable[[], Awaitable[ResponseT]]) -> ResponseT:
+        try:
+            return await call()
+        except ShareholderRegisterFilingAuthenticationError:
+            raise ApiProblem(status=401, code="authentication_required", title="Innlogging kreves",
+                detail="En gyldig innlogging kreves.") from None
+        except CompanyAccessError as error:
+            raise ApiProblem(status=error.status, code=error.code, title="Testhistorikken kunne ikke lastes ned",
+                detail="Tilgang og fersk identitetsbekreftelse må kontrolleres på nytt.") from None
+        except ShareholderRegisterFilingError as error:
+            statuses = {ErrorCategory.INVALID_INPUT: 422, ErrorCategory.NOT_FOUND: 404,
+                ErrorCategory.CONFLICT: 409, ErrorCategory.FORBIDDEN: 403,
+                ErrorCategory.PRECONDITION_FAILED: 409, ErrorCategory.DEPENDENCY_UNAVAILABLE: 503}
+            raise ApiProblem(status=statuses[error.category], code=str(error.code), title="Testhistorikken er utilgjengelig",
+                detail="Historikken kunne ikke bekreftes. Prøv igjen senere.") from None
+        except (Rf1086ArchiveError, ValidationError, ValueError, TypeError):
+            raise ApiProblem(status=503, code="rf1086_company_test_retention_unavailable", title="Testhistorikken er utilgjengelig",
+                detail="Historikken kunne ikke bekreftes. Prøv igjen senere.") from None
+
+    def rf_company_test_retention_component(request: Request, company_id: UUID):
+        if (set(request.query_params) != {"companyId"} or len(request.query_params.getlist("companyId")) != 1
+                or request.query_params["companyId"] != str(company_id)):
+            raise ApiProblem(status=422, code="rf1086_company_test_retention_invalid_request", title="Ugyldig selskap",
+                detail="Velg ett gyldig selskap.")
+        if company_test_retention_session_factory is None:
+            raise ApiProblem(status=503, code="rf1086_company_test_retention_not_configured", title="Testhistorikken er utilgjengelig",
+                detail="Historikken kan ikke hentes ennå.")
+        return ShareholderRegisterCompanyTestRetentionHttp(company_test_retention_session_factory, company_access_service)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/company-test-retention",
+        operation_id="rf1086ReadCompanyTestRetention", response_model=RfCompanyTestRetentionWire,
+        responses=authority_errors, tags=["shareholder-register-filings"],
+        openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf_company_test_retention_read(
+        request: Request, company_id: Annotated[UUID, Query(alias="companyId")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ):
+        async def execute():
+            component = rf_company_test_retention_component(request, company_id)
+            snapshot = await component.read(bearer_token(credentials), company_id=CompanyId(str(company_id)))
+            text = serialize_rf1086_company_test_retention(snapshot)
+            model = RfCompanyTestRetentionCompleteWire if snapshot.coverage == "complete" else RfCompanyTestRetentionUnavailableWire
+            model.model_validate(json.loads(text))
+            # Return RF-owned canonical bytes; DTO conversion cannot rewrite originals.
+            return Response(content=text, media_type="application/json", headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+        return await rf_company_test_retention_call(execute)
+
+    @application.get(
+        "/api/v1/shareholder-register-filings/company-test-retention/stream-v1",
+        operation_id="rf1086DownloadCompanyTestRetention", response_class=StreamingResponse,
+        responses={**authority_errors, 200: {"description": "Standalone company test history; final commitment required.",
+            "content": {"application/x-ndjson": {"schema": {"type": "string", "format": "binary"}}}}},
+        tags=["shareholder-register-filings"], openapi_extra={"parameters": [REQUEST_ID_PARAMETER]},
+    )
+    async def rf_company_test_retention_download(
+        request: Request, company_id: Annotated[UUID, Query(alias="companyId")],
+        credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
+    ):
+        async def execute():
+            component = rf_company_test_retention_component(request, company_id)
+            content = await component.download(bearer_token(credentials), company_id=CompanyId(str(company_id)))
+            return StreamingResponse(content, media_type="application/x-ndjson", headers={
+                "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+                "Content-Disposition": f'attachment; filename="rf1086-company-tests-{company_id}.ndjson"',
+            })
+        return await rf_company_test_retention_call(execute)
 
     @application.get(
         "/api/v1/shareholder-register-filings/archive-source/production-stream-v6",

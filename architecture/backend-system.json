@@ -546,6 +546,27 @@
         "/api/v1/shareholder-register-filings/source-production-reviews",
         "/api/v1/shareholder-register-filings/source-production-approvals"
       ]
+    },
+    {
+      "name": "rf1086-company-test-retention-read",
+      "purpose": "Default-closed current authenticated accepted-member company-wide history query with exact original13 fields and no income-year/MFA/Billing producer gate. Explicit owned technical composition only; no ambient runtime wiring.",
+      "publicPackages": [
+        "talli_backend.modules.shareholder_register_filing.public"
+      ],
+      "routes": [
+        "/api/v1/shareholder-register-filings/company-test-retention"
+      ]
+    },
+    {
+      "name": "rf1086-company-test-retention-download",
+      "purpose": "Default-closed standalone company test download under current CompanyAccess Auth/member/fifteen-minute archive step-up before and after capture/stream priming. Exact RF originals; no full legal company-year export receipt, provider or filing authority.",
+      "publicPackages": [
+        "talli_backend.modules.shareholder_register_filing.public",
+        "talli_backend.modules.company_access.public"
+      ],
+      "routes": [
+        "/api/v1/shareholder-register-filings/company-test-retention/stream-v1"
+      ]
     }
   ],
   "operationalControlState": {
@@ -1164,7 +1185,8 @@
       "talli_backend.application.shareholder_register_source_approval",
       "talli_backend.application.shareholder_register_archive",
       "talli_backend.application.shareholder_register_source_dispatch",
-      "talli_backend.adapters.dependency_readiness"
+      "talli_backend.adapters.dependency_readiness",
+      "talli_backend.application.shareholder_register_company_test_retention_http"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",
@@ -1189,7 +1211,8 @@
       "talli_backend.modules.system_boundary.public",
       "talli_backend.modules.validation_observation.public",
       "talli_backend.modules.audit.public",
-      "talli_backend.application.corporate_register_evidence"
+      "talli_backend.application.corporate_register_evidence",
+      "talli_backend.application.shareholder_register_company_test_retention_http"
     ],
     "adapters": [
       "__future__",

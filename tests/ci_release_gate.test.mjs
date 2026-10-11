@@ -639,11 +639,14 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
   const accounts = collect(`${pytest} ${accountsFiles.join(" ")}`);
   assert.deepEqual(collect(`${pytest} apps/backend/tests -m accounts_database`), accounts);
   assert.ok(accounts.size >= 23);
+  assert.ok(packageJson.scripts["test:boundary-contract"].split(/\s+/u).includes("tests/contract/rf1086_company_test_retention_client.test.mjs"), "retention client must run in the mandatory contract lane");
   const boundary = collect(packageJson.scripts["test:boundary-backend"]);
   const all = collect(`${pytest} apps/backend/tests`);
   for (const path of [
     "apps/backend/tests/test_rf1086_company_test_retention_stream.py",
     "apps/backend/tests/test_verify_rf1086_company_test_retention.py",
+    "apps/backend/tests/test_rf1086_company_test_retention_http.py",
+    "apps/backend/tests/test_company_test_retention_download_policy.py",
   ]) {
     const nodePrefix = `${path.replace(/^apps\/backend\//u, "")}::`;
     assert.ok([...boundary].some((id) => id.startsWith(nodePrefix)), `${path} must run in the ordinary backend lane`);

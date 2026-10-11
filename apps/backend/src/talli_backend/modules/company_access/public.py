@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import math
 import re
 import secrets
 from collections.abc import Callable, Mapping
@@ -36,6 +37,13 @@ class CompanyAccessCommandModel(CompanyAccessModel):
 
 class CompanyAccessResponseModel(CompanyAccessModel):
     model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True, extra="forbid")
+
+
+class CompanyArchiveDownloadAuthorization(CompanyAccessResponseModel):
+    """Current action scope only; neither filing nor legal-export receipt authority."""
+    model_config = ConfigDict(alias_generator=_to_camel, populate_by_name=True, frozen=True, extra="forbid")
+    company_id: UUID
+    subject_id: UUID
 
 
 class CompanyContext(CompanyAccessModel):
@@ -1772,6 +1780,17 @@ class CompanyAccessService:
             company=_company_access_record(company, role=str(membership["role"]))
         )
 
+    async def authorize_archive_download_step_up(
+        self, access_token: str, *, company_id: str
+    ) -> CompanyArchiveDownloadAuthorization:
+        subject = await self._gateway.session_subject(access_token)
+        _require_archive_download_session_claims(access_token, subject)
+        company = await self.company_record(access_token, company_id=company_id)
+        if str(company.company.id) != company_id:
+            raise _company_access_not_found()
+        _require_fresh_mfa(access_token)
+        return CompanyArchiveDownloadAuthorization(company_id=company_id, subject_id=subject)
+
     async def operator_context(self, access_token: str) -> OperatorContextResponse:
         subject = await self._gateway.session_subject(access_token)
         operator = await self._gateway.support_operator(access_token, subject)
@@ -2907,6 +2926,48 @@ def _is_expired(value: str) -> bool:
     return expires_at <= datetime.now(UTC)
 
 
+def _require_archive_download_session_claims(access_token: str, subject: str) -> None:
+    """Reject malformed signed action claims after server Auth verification."""
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError()
+            result[key] = value
+        return result
+    def reject_constant(value):
+        raise ValueError()
+    def finite_float(value):
+        parsed = float(value)
+        if not math.isfinite(parsed):
+            raise ValueError()
+        return parsed
+    try:
+        if type(access_token) is not str or len(access_token) > 65536 or len(access_token.split('.')) != 3:
+            raise ValueError()
+        payload = access_token.split('.')[1]
+        claims = json.loads(base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4)),
+            object_pairs_hook=unique, parse_constant=reject_constant, parse_float=finite_float)
+        if type(claims) is not dict or claims.get('sub') != subject or str(UUID(subject)) != subject:
+            raise ValueError()
+        session_id = claims.get('session_id')
+        if type(session_id) is not str or str(UUID(session_id)) != session_id or UUID(session_id).int == 0:
+            raise ValueError()
+        entries = claims.get('amr')
+        if type(entries) is not list:
+            raise ValueError()
+        for entry in entries:
+            if type(entry) is not dict:
+                raise ValueError()
+            if entry.get('method') in {'totp', 'mfa/totp', 'mfa/phone', 'mfa/webauthn'}:
+                timestamp = entry.get('timestamp')
+                if type(timestamp) not in (int, float) or not math.isfinite(timestamp):
+                    raise ValueError()
+    except (ValueError, TypeError, KeyError, AttributeError, UnicodeError, OverflowError, RecursionError):
+        raise CompanyAccessError(status=403, code="FRESH_MFA_REQUIRED", title="Fresh verification required",
+            detail="Fresh multi-factor verification is required for this archive download.") from None
+
+
 def _require_fresh_mfa(access_token: str) -> None:
     try:
         payload = access_token.split(".")[1]
@@ -2998,6 +3059,7 @@ def _invitation_not_found() -> CompanyAccessError:
 
 
 __all__ = [
+    "CompanyArchiveDownloadAuthorization",
     "CompanyYearLegalEvidence",
     "CompanyYearPurchaseBasis",
     "AcceptCompanyInvitationRequest",
