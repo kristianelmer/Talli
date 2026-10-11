@@ -154,5 +154,9 @@
   {
     "migration": "20261010212500_rf1086_closed_source_claim_v3.sql",
     "presenceQuery": "select count(*)=2 from pg_catalog.pg_proc p where p.oid in (pg_catalog.to_regprocedure('shareholder_register_filing.lock_source_claim_recovery_v3(uuid,text,text)'),pg_catalog.to_regprocedure('shareholder_register_filing.claim_source_submission_v3(uuid,text,uuid,text,text)')) and p.proowner='shareholder_register_filing_store_owner'::regrole and p.prosecdef and p.provolatile='v' and p.proparallel='u' and p.proconfig=array['search_path=\"\"']::text[]"
+  },
+  {
+    "migration": "20261011045100_rf1086_closed_source_operation_v3.sql",
+    "presenceQuery": "select exists(select 1 from pg_catalog.pg_proc p where p.oid=pg_catalog.to_regprocedure('shareholder_register_filing.prepare_source_operation_v3(uuid,text,text,text,uuid,uuid,text,uuid,text,text)') and p.proowner='shareholder_register_filing_store_owner'::regrole and p.prosecdef and p.provolatile='v' and p.proparallel='u' and p.proconfig=array['search_path=\"\"']::text[] and pg_catalog.md5(p.prosrc)='0c77a2e69d474bf15e6a4f15e7e183c8')"
   }
 ]

@@ -251,7 +251,8 @@ raise SystemExit(code)
             process.communicate()
     assert process.returncode == (1 if phase == 'cleanup-failure' else 143)
     assert stdout == ''
-    assert stderr.strip() == ('owned_company_test_inventory_restore_failed' if phase == 'cleanup-failure'
+    assert stderr.strip() == ('owned_company_test_inventory_restore_failed\n'
+        'owned_company_test_inventory_restore_diagnostic stage=independent-recovery fingerprint=unclassified' if phase == 'cleanup-failure'
         else 'owned_company_test_inventory_restore_cancelled')
     events = (tmp_path/'events').read_text().splitlines()
     assert events.count('registered') == 1
@@ -259,3 +260,35 @@ raise SystemExit(code)
     assert events.count('capture') == 1  # no postcheck or accepted report after cancellation
     assert ('helper' in events) is (phase != 'acquisition')
     assert (tmp_path/'handler-restored').exists()
+
+
+@pytest.mark.parametrize('components', ['roles', 'catalog', 'auth', 'companyMemberships',
+    'roles,catalog,auth,companyMemberships'])
+def test_failure_diagnostic_exposes_only_fixed_fingerprint_component_labels(components):
+    error=ValueError('Independent recovery roles, ownership, ACLs or Auth rows differ; components='+components)
+    assert runner._failure_diagnostic(error, {'stage':'independent-recovery'}) == (
+        'stage=independent-recovery fingerprint='+components)
+
+
+@pytest.mark.parametrize('error', [RuntimeError('secret-token raw-auth-row'),
+    ValueError('Independent recovery roles, ownership, ACLs or Auth rows differ; components=secret-token'),
+    ValueError('Independent recovery roles, ownership, ACLs or Auth rows differ; components=auth,roles'),
+    ValueError('Independent recovery roles, ownership, ACLs or Auth rows differ; components=roles\nsecret-token'),
+    ValueError('secret-token', 'raw-auth-row')])
+def test_failure_diagnostic_never_echoes_unknown_exception_or_caller_stage(error):
+    assert runner._failure_diagnostic(error, {'stage':'secret-token'}) == (
+        'stage=unclassified fingerprint=unclassified')
+
+
+def test_main_failure_reports_bounded_progress_and_no_exception_text(monkeypatch,capsys):
+    def failed(args, *, progress):
+        progress['stage']='source-artifacts'
+        raise ValueError('secret-token raw-company-row')
+    monkeypatch.setattr(runner,'rehearse',failed)
+    monkeypatch.setattr(sys,'argv',['runner','--company-id',str(COMPANY),'--stream','owned-stream',
+        '--writer-expectation','owned-writer'])
+    assert runner.main()==1
+    result=capsys.readouterr()
+    assert result.out == ''
+    assert result.err == ('owned_company_test_inventory_restore_failed\n'
+        'owned_company_test_inventory_restore_diagnostic stage=source-artifacts fingerprint=unclassified\n')

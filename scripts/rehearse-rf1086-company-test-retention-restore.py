@@ -97,12 +97,16 @@ def _termination_scope():
         signal.signal(signal.SIGTERM, previous)
 
 
-def rehearse(args):
+def rehearse(args, *, progress=None):
     with _termination_scope() as termination:
-        return _rehearse(args, termination)
+        return _rehearse(args, termination, progress)
 
 
-def _rehearse(args, termination):
+def _rehearse(args, termination, progress=None):
+    def stage(name):
+        if progress is not None:
+            progress['stage'] = name
+    stage('source-boundary')
     if str(UUID(args.company_id)) != args.company_id or UUID(args.company_id).int == 0:
         raise ValueError('Canonical nonzero company required')
     company_id = CompanyId(args.company_id)
@@ -120,7 +124,9 @@ def _rehearse(args, termination):
     anon_key = os.environ['SUPABASE_ANON_KEY']
     factory = PostgresCompanyTestRetentionSessionFactory(LedgerSupabaseConfiguration(
         os.environ['SUPABASE_URL'], anon_key, reader))
+    stage('source-capture')
     before = asyncio.run(capture_owned_company_test_retention(factory, owner_token, company_id))
+    stage('source-artifacts')
     with local_file(args.stream) as source:
         captured = verify_company_test_retention_stream(source, company_id=company_id)
     with local_file(args.writer_expectation) as source:
@@ -133,12 +139,14 @@ def _rehearse(args, termination):
     package = pack_company_test_retention(captured)
     verified = verify_company_test_retention_bundle(BytesIO(package), company_id=company_id)
     rf.assert_company_test_retention_source_capture_matches(verified, captured)
+    stage('stateless-token')
     stateless_token = _stateless_owned_owner_token(owner_token, auth_environment)
     # Sole lifecycle owner. No target credentials, factory or live handle escapes.
     # Defer termination through acquisition: the old owner must register resources
     # before interruption. Defer through cleanup too, including repeated SIGTERM.
     termination.check()
     termination.interruptible = False
+    stage('independent-recovery')
     with restored_identity(source_url, workdir, owned.boundary) as recovery:
         try:
             termination.interruptible = True
@@ -153,6 +161,7 @@ def _rehearse(args, termination):
     termination.interruptible = True
     termination.check()
     # Any context cleanup/fingerprint failure raises before a report can be accepted.
+    stage('source-postcheck')
     after = asyncio.run(capture_owned_company_test_retention(factory, owner_token, company_id))
     rf.assert_company_test_retention_target_inventory_matches(captured, after)
     if (sha256(rf.serialize_rf1086_company_test_retention(captured).encode()).hexdigest() != source_sha
@@ -168,19 +177,40 @@ def _rehearse(args, termination):
         'identity': identity_proof, 'inventory': asdict(target_report)}
 
 
+def _failure_diagnostic(error, progress):
+    """Finite labels only. Never print exception text, credentials or captured rows."""
+    stages = ('source-boundary', 'source-capture', 'source-artifacts', 'stateless-token',
+        'independent-recovery', 'source-postcheck')
+    stage = progress.get('stage') if type(progress) is dict else None
+    if stage not in stages:
+        stage = 'unclassified'
+    components = 'unclassified'
+    prefix = 'Independent recovery roles, ownership, ACLs or Auth rows differ; components='
+    if type(error) is ValueError and len(error.args) == 1 and type(error.args[0]) is str:
+        message = error.args[0]
+        names = ('roles', 'catalog', 'auth', 'companyMemberships')
+        allowed = {','.join(name for index, name in enumerate(names) if mask & (1 << index))
+            for mask in range(1, 16)}
+        if message.startswith(prefix) and message[len(prefix):] in allowed:
+            components = message[len(prefix):]
+    return 'stage=' + stage + ' fingerprint=' + components
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--company-id', required=True)
     parser.add_argument('--stream', required=True)
     parser.add_argument('--writer-expectation', required=True)
     args = parser.parse_args()
+    progress = {}
     try:
-        result = rehearse(args)
+        result = rehearse(args, progress=progress)
     except _TerminationRequested:
         print('owned_company_test_inventory_restore_cancelled', file=sys.stderr)
         return 143
-    except Exception:
+    except Exception as error:
         print('owned_company_test_inventory_restore_failed', file=sys.stderr)
+        print('owned_company_test_inventory_restore_diagnostic ' + _failure_diagnostic(error, progress), file=sys.stderr)
         return 1
     print(json.dumps(result, sort_keys=True, separators=(',', ':'), allow_nan=False))
     return 0

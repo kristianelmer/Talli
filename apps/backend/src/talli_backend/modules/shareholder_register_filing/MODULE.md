@@ -2270,3 +2270,98 @@ execution. Actual owning browser/GoTrue/independent restoration must pass on the
 exact published source before pipeline acceptance. Production composition still
 defaults closed. Legacy provenance, quarantine, lawful purge, hosted objects and
 keys, whole-app recovery targets and the annual compliance loop remain separate.
+
+
+Closed V3 operation preflight
+-----------------------------
+
+`inspect_rf1086_source_operation_identity_v3` binds the current original actor,
+owned claim, retained V3 header, payload and predecessor. It grants no effect.
+`assert_rf1086_source_main_preflight_v3` reuses the existing retained annual
+parser and saved-manifest builder to prove every source/preview/manifest field
+without invoking the current renderer or acquiring fresh admission.
+
+The staged dispatch application's `prepare_main_intent_v3` repeats owned claim
+and header reads before Documents/correction original-byte I/O. Its frozen
+`PreparedRf1086MainOperationV3` carries only claim, retained header, verified
+preview and required correction; no annual proof, connection, live scope or
+provider authority. A declared predecessor cannot disappear or change actor,
+company, year or identity. The configured held validator reuses the unchanged correction and Source V2
+validators on the already fresh scope. No object I/O, new connection or nested
+admission runs inside that scope. No route or runtime grant activates it.
+
+
+`Rf1086SourceOperationRecoveryV3` carries only an owned committed claim, complete
+retained archive and strictly derived historical assessment. The staged adapter
+reuses the unchanged company/year historical guard and reads all three on its
+same active READ COMMITTED connection. Its new compatible approval reader picks
+only the strict inspector matching the stored V1/V2/V3 version; callers cannot
+choose a codec or upgrade historical evidence into fresh permission. Scope reads
+fail after close or loss of transaction/actor binding. The explicit fresh transition repeats
+historical classification before current company/year admission on that same
+connection. Its required held reads check both lifetimes and the original
+connection/query/actor binding. Fixed main/child/confirm methods derive their proof inputs from that same
+connection. Main derives full current annual/review/manifest and verifies
+preflight originals; child/confirm use the exact saved Source V2 and the real
+current Governance producer, without main byte preflight or annual rebuilding.
+The new closed `prepare_source_operation_v3` copies the guarded legacy body
+with bounded changes; existing intent disposition precedes current admission.
+Every new effect retains the original register/withdrawal backstop. Retentive
+rollback closes execution and preserves routine OIDs, definitions and journal.
+
+The staged application reads exact history before configuration, Billing,
+credentials or main preflight. Confirmed history returns its saved submission;
+prepared/unknown stops. Main preflight occurs outside guards before mutable
+provider dependencies. The journal rechecks history after waits, validates on
+the same scope, then returns preparation only after commit. Typed current
+denials recover on a separate historical scope after the failed scope closes;
+that recovery returns historical success or stops, never a fresh send grant.
+Cancellation propagates. Existing routes, legacy first-effect behavior and
+production composition are unchanged; absent legacy first claims remain
+closed in this staged application pending the separate compatibility slice.
+
+Local tests and the small native PostgreSQL probe qualify explicit Auth/SQL
+projections only. Full-schema mandatory tests, actual source/actor/permission
+provenance, concurrent commit failure/recovery, complete orchestration tests
+and paired review remain required before publishing or activation.
+
+
+Fixed V3 main receiver repair (staged)
+------------------------------------
+
+The additive `PostgresShareholderRegisterSourceDispatchV3Adapter` delegates
+unchanged parent current Auth/session construction and privately composes a
+genuine configured SourceCorrection receiver. Historical lookup requires no
+Documents configuration. A required fresh correction needs exact typed
+company/year/actor/predecessor data and the configured unchanged held receiver
+inside the fixed main write boundary itself, followed by a scope-lifetime check.
+No service or callback travels in the four-field prepared DTO; no new production
+composition, route, runtime grant, dummy factory or copied correction policy.
+
+`assert_rf1086_source_operation_history_v3` binds the already committed current
+claim's exact submission row and metadata. It then applies unchanged terminal
+predecessor policy to every other row, excluding only that exact owned leaf.
+The first-claim policy cannot be applied unchanged to a history containing its
+own new sending row. No actor/year/profile/status filter hides competing rows,
+forks or successors. A missing or rebound current leaf denies preparation.
+
+The earlier unit SQL double omitted the claimed row; the new regression includes
+it and demonstrates first-claim refusal versus correct claimed-leaf validation.
+Current factory/receiver/history tests remain qualified SQL/Auth/owner doubles.
+Required full-schema child/confirm refusal and atomicity/race coverage, actual
+execution and paired repair review remain pending. This staged slice is unpublished.
+
+The repair now registers forty mandatory full-schema intent cases: complete
+main/child/confirm flows, historical refusals, definition drift and retentive
+rollback, real producer/receiver missing/rebound proof negatives, stale
+amendment/withdrawal evidence, scope/physical connection loss, late failure,
+cancellation, deferred commit failure and actual advisory-wait recovery/revocation.
+Collection is not execution; these Auth request claims remain explicit fixture
+inputs and prove no GoTrue/hosted identity on their own. The eight-check native
+fixture-control probe proves role key/options/catalog identity restoration and
+real deferred commit rollback only, not the forty domain cases.
+
+Initial header-generation or missing Documents refusal also recovers a raced
+exact claim using the unchanged historical claim guard. This recovers data only;
+a legacy absent first claim remains staged closed. No dummy Documents factory,
+caller-provided receiver or configuration check can grant an effect.

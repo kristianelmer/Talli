@@ -363,6 +363,31 @@ class PostgresShareholderRegisterFilingSession:
             finally:
                 scoped.close()
 
+    @asynccontextmanager
+    async def source_operation_recovery_v3(self, claim):
+        """Owned committed-claim historical scope; no fresh admission or I/O."""
+        if type(claim) is not rf.Rf1086SourceSubmissionClaim:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        rf.assert_rf1086_source_submission_claim(claim, approval_id=claim.approval_id,
+            manifest_sha256=claim.manifest_sha256, expected_head=claim.predecessor_submission_id,
+            actor_id=self.actor_id)
+        async with self._transaction() as connection:
+            row = await (await connection.execute(
+                'select shareholder_register_filing.lock_source_claim_recovery_v3(%s::uuid,%s,%s) as scope',
+                (claim.approval_id.value, claim.manifest_sha256, str(self.actor_id.subject)),
+            )).fetchone()
+            value = row['scope'] if row else None
+            if (type(value) is not dict or set(value) != {'companyId', 'incomeYear'}
+                    or type(value['companyId']) is not str or value['companyId'] != str(claim.company_id)
+                    or type(value['incomeYear']) is not int or value['incomeYear'] != int(claim.income_year)):
+                raise rf.Rf1086ProductionError('basis_unavailable')
+            query = rf.Rf1086SourceQuery(claim.company_id, claim.income_year, self.actor_id)
+            scoped = _SourceOperationRecoveryV3(self, connection, query, claim)
+            try:
+                yield scoped
+            finally:
+                scoped.close()
+
     def _command_actor(self, command):
         if command.actor_id != self.actor_id:
             raise rf.ShareholderRegisterFilingError.forbidden()
@@ -484,6 +509,31 @@ class PostgresShareholderRegisterFilingSession:
             return value
         except (ValueError, TypeError, KeyError):
             raise rf.Rf1086ProductionError('basis_unavailable') from None
+
+    async def read_source_operation_approval_v3(self, approval_id):
+        """Fixed stored-version selection for owned historical V1/V2/V3 reads."""
+        async with self._transaction(snapshot=True) as connection:
+            row = await (await connection.execute(
+                'select a.*,b.manifest_text from shareholder_register_filing.filing_approval_snapshots a '
+                'join shareholder_register_filing.source_approval_bindings b on b.approval_id=a.id '
+                'and b.company_id=a.company_id and b.income_year=a.income_year and b.preview_id=a.preview_id '
+                'and b.approved_by=a.user_id and b.manifest_sha256=a.manifest_hash and b.payload_sha256=a.payload_hash '
+                'where a.id=%s::uuid and a.user_id=shareholder_register_filing.actor_v1() '
+                'and public.company_access_is_accepted_owner_v1(a.company_id)', (approval_id.value,),
+            )).fetchone()
+            if row is None:
+                return None
+            try:
+                retained = rf.Rf1086RetainedSourceApproval(
+                    self._wire_record(rf.Rf1086ApprovalRecord, row), row['manifest_text'])
+                inspect = (rf.inspect_rf1086_retained_source_approval_v3
+                    if retained.approval.manifest.get('schemaVersion') == 'production-source-approval-v3'
+                    else rf.inspect_rf1086_retained_source_approval)
+                inspect(retained, approval_id=approval_id,
+                    manifest_sha256=retained.approval.manifest_hash, actor_id=self.actor_id)
+                return retained
+            except (ValueError, TypeError, KeyError, AttributeError):
+                raise rf.Rf1086ProductionError('basis_unavailable') from None
 
     async def read_source_submission_claim(self, approval_id, manifest_sha256, expected_head):
         async with self._transaction(snapshot=True) as connection:
@@ -1795,6 +1845,302 @@ class _SourceClaimRecoveryV3:
             yield scoped
         finally:
             scoped.close()
+
+
+class PostgresShareholderRegisterSourceDispatchV3Adapter(PostgresShareholderRegisterFilingAdapter):
+    """Staged composition; reuse current Auth and own the fixed correction receiver."""
+    async def session(self, access_token: str) -> PostgresShareholderRegisterFilingSession:
+        session = await super().session(access_token)
+        if self._documents is not None:
+            from talli_backend.application.shareholder_register_source_correction import ShareholderRegisterSourceCorrection
+            session._source_correction_v3 = ShareholderRegisterSourceCorrection(self, self._documents)
+        return session
+
+
+class _SourceOperationRecoveryV3:
+    """Historical read-only scope, physically bound to one guarded connection."""
+    def __init__(self, store, connection, query, claim):
+        self._store, self._connection, self._query, self._claim = store, connection, query, claim
+        self._binding = connection, query, claim, store.actor_id
+        self._active = True
+
+    @property
+    def actor_id(self):
+        return self._store.actor_id
+
+    def close(self):
+        self._active = False
+
+    def _require_active(self):
+        from psycopg.pq import TransactionStatus
+        if (not self._active or self._connection.info.transaction_status != TransactionStatus.INTRANS
+                or self._connection is not self._binding[0] or self._query != self._binding[1]
+                or self._claim != self._binding[2] or self.actor_id != self._binding[3]
+                or self._claim.claimed_by != self.actor_id
+                or self._query.actor_id != self.actor_id):
+            raise rf.ShareholderRegisterFilingError.unavailable()
+
+    async def read_operation_recovery(self):
+        self._require_active()
+        claim = await self._store._read_source_submission_claim(self._connection,
+            self._claim.approval_id, self._claim.manifest_sha256, self._claim.predecessor_submission_id)
+        self._require_active()
+        if claim != self._claim:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        archive_query = rf.Rf1086ArchiveQuery(claim.company_id, claim.income_year, self.actor_id)
+        archive = await self._store._archive_source_on_connection(self._connection,
+            archive_query, include_production=True)
+        self._require_active()
+        assessment = rf.assess_rf1086_retained_source_dispatch(archive,
+            query=archive_query, submission_id=claim.submission_id)
+        if assessment.claim != claim:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        return rf.Rf1086SourceOperationRecoveryV3(claim, archive, assessment)
+
+
+    @asynccontextmanager
+    async def fresh_operation_admission_v3(self):
+        """History first, then fixed current admission on the same connection."""
+        observed = await self.read_operation_recovery()
+        assessment = observed.assessment
+        if assessment.disposition == 'recovery_required':
+            raise rf.Rf1086UnknownProductionOutcomeError(assessment.pending_operation)
+        if assessment.disposition == 'blocked':
+            raise rf.Rf1086BlockedProductionOperationError(assessment.pending_operation)
+        if assessment.disposition == 'current_approval_required':
+            raise rf.Rf1086ProductionError('payload_changed')
+        if assessment.disposition not in ('current_admission_required', 'retry_admission_required'):
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        try:
+            approval = next(row for row in observed.retained_archive.approvals
+                if row.id == self._claim.approval_id.value)
+            lineage = next(row for row in observed.retained_archive.source_approval_lineage
+                if row.approval_id == approval.id)
+        except StopIteration:
+            raise rf.Rf1086ProductionError('basis_unavailable') from None
+        # Read compatibility never authorizes a fresh legacy first effect.
+        rf.inspect_rf1086_source_operation_identity_v3(self._claim,
+            rf.Rf1086RetainedSourceApproval(approval, lineage.manifest_text), actor_id=self.actor_id)
+        self._require_active()
+        row = await (await self._connection.execute(
+            'select public.company_access_read_rf_admission_v1(%s::uuid,%s,%s) as admission',
+            (str(self._query.company_id), int(self._query.income_year), str(self.actor_id.subject)),
+        )).fetchone()
+        self._require_active()
+        identity = _source_admission_company(row['admission'] if row else None, self._query)
+        await self._connection.execute("select pg_catalog.set_config('talli.authorized_company_roles',%s,true)",
+            (json.dumps({str(self._query.company_id): 'owner'}, separators=(',', ':')),))
+        self._require_active()
+        await self._connection.execute('select shareholder_register_filing.lock_year_source_v1(%s::uuid,%s)',
+            (str(self._query.company_id), int(self._query.income_year)))
+        self._require_active()
+        scoped = _SourceOperationAdmissionV3(self,
+            _SourceAdmission(self._store, self._connection, self._query, identity))
+        try:
+            yield scoped
+        finally:
+            scoped.close()
+
+
+class _SourceOperationAdmissionV3:
+    """Only required held reads; each checks both lifetimes and physical identity."""
+    def __init__(self, recovery, held):
+        self._recovery, self._held = recovery, held
+        self._active = True
+
+    @property
+    def actor_id(self):
+        return self._recovery.actor_id
+
+    def close(self):
+        self._active = False
+        self._held.close()
+
+    def _require_active(self):
+        self._recovery._require_active()
+        if (not self._active or self._held._connection is not self._recovery._binding[0]
+                or self._held._query != self._recovery._binding[1]
+                or self._held.actor_id != self.actor_id):
+            raise rf.ShareholderRegisterFilingError.unavailable()
+        self._held._require_active()
+
+    async def _held_read(self, name, *args):
+        self._require_active()
+        result = await getattr(self._held, name)(*args)
+        self._require_active()
+        return result
+
+    async def company_identity(self):
+        return await self._held_read('company_identity')
+
+    async def current_source(self):
+        return await self._held_read('current_source')
+
+    async def retained_source_preview(self, preview_id):
+        return await self._held_read('retained_source_preview', preview_id)
+
+    async def assert_original(self, receipt):
+        return await self._held_read('assert_original', receipt)
+
+    async def assert_historical_original(self, receipt):
+        return await self._held_read('assert_historical_original', receipt)
+
+    async def governance_register_evidence(self, correlation_id):
+        return await self._held_read('governance_register_evidence', correlation_id)
+
+    async def read_current_register_observation(self, query, observation_id):
+        return await self._held_read('read_current_register_observation', query, observation_id)
+
+    async def read_retained_correction_archive(self, query, submission_id):
+        return await self._held_read('read_retained_correction_archive', query, submission_id)
+
+    async def submission_history(self):
+        return await self._held_read('submission_history')
+
+    async def read_source_approval_context_v3(self, preview_id, entitlement_id, correlation_id):
+        return await self._held_read('read_source_approval_context_v3', preview_id, entitlement_id, correlation_id)
+
+    async def annual_opening_inputs(self):
+        return await self._held_read('annual_opening_inputs')
+
+    async def annual_ledger_inputs(self, correlation_id):
+        return await self._held_read('annual_ledger_inputs', correlation_id)
+
+    async def bank_year_evidence(self, correlation_id):
+        return await self._held_read('bank_year_evidence', correlation_id)
+
+    async def annual_interview(self):
+        return await self._held_read('annual_interview')
+
+    async def annual_document_inputs(self):
+        return await self._held_read('annual_document_inputs')
+
+    async def _owned_operation_binding_v3(self, claim):
+        self._require_active()
+        if type(claim) is not rf.Rf1086SourceSubmissionClaim or claim != self._recovery._claim:
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        observed = await self._recovery.read_operation_recovery()
+        self._require_active()
+        try:
+            approval = next(row for row in observed.retained_archive.approvals
+                if row.id == claim.approval_id.value)
+            lineage = next(row for row in observed.retained_archive.source_approval_lineage
+                if row.approval_id == approval.id)
+        except StopIteration:
+            raise rf.Rf1086ProductionError('basis_unavailable') from None
+        retained = rf.Rf1086RetainedSourceApproval(approval, lineage.manifest_text)
+        prior = rf.inspect_rf1086_source_operation_identity_v3(claim, retained, actor_id=self.actor_id)
+        return retained, lineage, prior
+
+    async def prepare_main_operation_v3(self, prepared, *, idempotency_key,
+            expected_event_id, connection, correlation_id):
+        """Derive the complete current proof from owned inputs on this scope."""
+        from talli_backend.application.shareholder_register_source_dispatch_v3 import PreparedRf1086MainOperationV3
+        from talli_backend.application.shareholder_register_source_admission_v2 import PreparedRf1086SourceAdmissionV2
+        from talli_backend.application.shareholder_register_source_capture_v2 import assert_source_capture_originals_v2
+        from talli_backend.application.shareholder_register_source_correction import (
+            ShareholderRegisterSourceCorrection, VerifiedRf1086Correction)
+        self._require_active()
+        if (type(prepared) is not PreparedRf1086MainOperationV3
+                or type(prepared.preview) is not PreparedRf1086SourceAdmissionV2):
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        claim = prepared.claim
+        retained, lineage, prior = await self._owned_operation_binding_v3(claim)
+        if prior is None:
+            if prepared.correction is not None:
+                raise rf.Rf1086ProductionError('basis_unavailable')
+        else:
+            correction = prepared.correction
+            receiver = getattr(self._held._store, '_source_correction_v3', None)
+            if (type(correction) is not VerifiedRf1086Correction
+                    or correction.company_id != claim.company_id or correction.income_year != claim.income_year
+                    or correction.actor_id != self.actor_id or correction.predecessor != prior
+                    or type(receiver) is not ShareholderRegisterSourceCorrection):
+                raise rf.Rf1086ProductionError('basis_unavailable')
+            await receiver.assert_admitted(correction, self)
+            self._require_active()
+        if retained != prepared.retained or lineage.source != prepared.preview.source:
+            raise rf.Rf1086ProductionError('payload_changed')
+        rf.assert_rf1086_source_main_preflight_v3(claim, retained, prepared.preview.source,
+            prepared.preview.retained_preview, actor_id=self.actor_id)
+        assert_source_capture_originals_v2(prepared.preview.source.command, prepared.preview.originals)
+        for receipt in prepared.preview.originals:
+            await self.assert_original(receipt)
+        rf.assert_rf1086_source_operation_history_v3(claim, retained,
+            await self.submission_history(), actor_id=self.actor_id)
+        source, capture, annual, review = await self._held._source_approval_state_v3(
+            rf.PreviewId(retained.approval.preview_id), retained.approval.entitlement_id, correlation_id)
+        self._require_active()
+        if (source != prepared.preview.source or capture != prepared.preview.retained_preview
+                or not review.can_approve):
+            raise rf.Rf1086ProductionError('payload_changed')
+        basis = rf.Rf1086SourceApprovalManifestBasisV3(source, capture.preview, annual, self.actor_id,
+            retained.approval.entitlement_id, review.review_sha256, review.warning_codes, prior)
+        rebuilt = rf.build_rf1086_retained_source_approval_manifest_v3(basis, capture)
+        if (rf.serialize_rf1086_source_approval_manifest_v3(rebuilt) != retained.manifest_text
+                or rebuilt.manifest_sha256 != claim.manifest_sha256):
+            raise rf.Rf1086ProductionError('payload_changed')
+        # The payload digest is the saved main-body digest, not the package hash.
+        body_sha = next(item['sha256'] for item in retained.approval.manifest['documentHashes']
+            if item['name'] == 'hovedskjema')
+        return await self._prepare_operation_v3(claim, 'post_hovedskjema', body_sha,
+            idempotency_key, expected_event_id, connection,
+            rf.serialize_rf1086_retained_annual_readiness_v2(annual, source, capture))
+
+    async def _prepare_saved_operation_v3(self, claim, operation_name, body_sha256,
+            idempotency_key, expected_event_id, connection):
+        _, lineage, _ = await self._owned_operation_binding_v3(claim)
+        # Saved source only: no current source head, annual reads or original I/O.
+        await self._held.prepare_source_governance_proof(lineage.source)
+        self._require_active()
+        return await self._prepare_operation_v3(claim, operation_name, body_sha256,
+            idempotency_key, expected_event_id, connection, None)
+
+    async def prepare_child_operation_v3(self, claim, *, document_name, body_sha256,
+            idempotency_key, expected_event_id, connection, correlation_id):
+        if type(document_name) is not str or not document_name.startswith('underskjema_'):
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        return await self._prepare_saved_operation_v3(claim,
+            'post_underskjema:' + document_name[len('underskjema_'):], body_sha256,
+            idempotency_key, expected_event_id, connection)
+
+    async def prepare_confirm_operation_v3(self, claim, *, body_sha256,
+            idempotency_key, expected_event_id, connection, correlation_id):
+        return await self._prepare_saved_operation_v3(claim, 'confirm', body_sha256,
+            idempotency_key, expected_event_id, connection)
+
+    async def _prepare_operation_v3(self, claim, name, body_sha, key, expected_event, connection, annual_text):
+        self._require_active()
+        if (type(connection) is not rf.Rf1086Connection
+                or connection.company_id != str(claim.company_id)
+                or connection.initiating_owner_user_id != str(self.actor_id.subject)
+                or connection.obligation != 'aksjonaerregisteroppgaven'
+                or connection.status != 'accepted' or not connection.preflight_verified):
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        row = await (await self._held._connection.execute(
+            'select shareholder_register_filing.prepare_source_operation_v3(%s::uuid,%s,%s,%s,%s::uuid,%s::uuid,%s,%s::uuid,%s,%s) as result',
+            (claim.submission_id.value, claim.manifest_sha256, name, body_sha, key,
+             expected_event, annual_text, connection.id, connection.external_ref, str(self.actor_id.subject)),
+        )).fetchone()
+        self._require_active()
+        value = row['result'] if row else None
+        if (type(value) is not dict or set(value) != {'operation', 'newlyPrepared'}
+                or type(value['newlyPrepared']) is not bool or type(value['operation']) is not dict):
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        operation = dict(value['operation'])
+        try:
+            operation['created_at'] = Timestamp(datetime.fromisoformat(operation['created_at'])).value
+            event = self._held._store._wire_record(rf.Rf1086ArchiveProductionEventRecord, operation)
+        except (KeyError, TypeError, ValueError):
+            raise rf.Rf1086ProductionError('basis_unavailable') from None
+        if (event.submission_id != claim.submission_id.value or event.operation_name != name
+                or event.company_id != str(claim.company_id) or event.income_year != int(claim.income_year)
+                or event.body_hash != body_sha or event.idempotency_key is None
+                or type(event.attempt) is not int or not 1 <= event.attempt <= 20
+                or (value['newlyPrepared'] and (event.operation_state != 'prepared'
+                    or event.idempotency_key != key and expected_event is None))):
+            raise rf.Rf1086ProductionError('basis_unavailable')
+        return rf.Rf1086SourceOperationPreparation(event, value['newlyPrepared'])
 
 
 class _SourceAdmission:
