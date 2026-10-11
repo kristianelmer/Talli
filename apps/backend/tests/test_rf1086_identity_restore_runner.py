@@ -92,6 +92,9 @@ def test_fresh_cluster_cleanup_is_pinned_and_source_stays_untouched(tmp_path, mo
             if failure == 'volume': raise RuntimeError('fixture volume')
             resources['volume'] = {'Name': args[-1], 'Labels': {identity.LABEL: args[-2].split('=')[1]}}
         if args[1:3] == ['volume', 'inspect']: return SimpleNamespace(stdout=json.dumps([resources['volume']]).encode())
+        if args[1:3] == ['container', 'inspect']:
+            assert args[-1] == target
+            return SimpleNamespace(stdout=json.dumps([resources['database']]).encode())
         if 'pg_dumpall' in args: kwargs['stdout'].write(b'CREATE ROLE supabase_admin;\nALTER ROLE supabase_admin WITH SUPERUSER;\n')
         if args[1] == 'create':
             service = 'auth' if '--env-file' in args else 'database'
@@ -100,6 +103,10 @@ def test_fresh_cluster_cleanup_is_pinned_and_source_stays_untouched(tmp_path, mo
                 path = Path(args[args.index('--env-file') + 1])
                 assert path.stat().st_mode & 0o777 == 0o600
                 assert 'rf193_identity_db_' in path.read_text()
+            else:
+                resources['database'] = {'Id': target, 'Name': '/' + args[args.index('--name') + 1],
+                    'Image': DB['Image'], 'Config': {'Labels': {identity.LABEL: args[args.index('--label') + 1].split('=')[1]}},
+                    'State': {'Running': True}}
             return SimpleNamespace(stdout=(target_auth if service == 'auth' else target).encode())
         if args[1] == 'start' and failure == ('auth_start' if args[-1] == target_auth else 'database_start'):
             raise RuntimeError('fixture ' + failure)
@@ -272,3 +279,60 @@ def test_auth_http_endpoint_must_return_nonce_from_exact_new_database_and_probe_
             identity.verify_target_auth('exact-new-target', 'http://127.0.0.1:55103')
     assert current == original and len(writes) == 2
     assert writes[0]['rf193_identity_recovery_probe'] and writes[1] == original
+
+
+@pytest.mark.parametrize('fault', [None, 'source_id', 'target_id', 'same_container', 'nonce', 'name',
+    'image', 'bootstrap', 'observed_id', 'observed_name', 'observed_image', 'observed_nonce',
+    'stopped', 'same_cluster', 'invalid_source_system', 'invalid_target_system'])
+def test_default_database_preparation_requires_exact_new_owned_cluster(monkeypatch, fault):
+    source, target, nonce = 'a'*64, 'e'*64, '1'*32
+    name, image, bootstrap = 'rf193_identity_db_'+nonce, DB['Image'], 'supabase_admin'
+    observed = dict(Id=target, Name='/'+name, Image=image,
+        Config=dict(Labels={identity.LABEL:nonce}), State=dict(Running=True))
+    if fault == 'source_id': source = 'invalid'
+    if fault == 'target_id': target = 'invalid'
+    if fault == 'same_container': target = source
+    if fault == 'nonce': nonce = 'invalid'
+    if fault == 'name': name = 'supabase_db_tallig9931'
+    if fault == 'image': image = 'postgres:latest'
+    if fault == 'bootstrap': bootstrap = 'another-role'
+    if fault == 'observed_id': observed['Id'] = source
+    if fault == 'observed_name': observed['Name'] = '/supabase_db_tallig9931'
+    if fault == 'observed_image': observed['Image'] = 'sha256:'+'c'*64
+    if fault == 'observed_nonce': observed['Config']['Labels'][identity.LABEL] = '2'*32
+    if fault == 'stopped': observed['State']['Running'] = False
+    mutations, reads = [], []
+    monkeypatch.setattr(identity, 'inspect_resource', lambda kind, reference: observed)
+    def source_query(container, statement):
+        reads.append(('source',container,statement))
+        return b'invalid' if fault == 'invalid_source_system' else b'1\n'
+    def target_query(container, statement, *, user, database):
+        assert container == 'e'*64 and user == 'supabase_admin' and database == 'template1'
+        if statement == 'select system_identifier from pg_control_system();':
+            reads.append(('target',container,statement))
+            return b'invalid' if fault == 'invalid_target_system' else b'1\n' if fault == 'same_cluster' else b'2\n'
+        mutations.append((container,statement,user,database));return b''
+    monkeypatch.setattr(identity, 'source_query', source_query)
+    monkeypatch.setattr(identity, 'query', target_query)
+    if fault:
+        with pytest.raises(ValueError): identity.prepare_new_target_database(source,target,name,nonce,image,bootstrap)
+        assert mutations == []
+    else:
+        identity.prepare_new_target_database(source,target,name,nonce,image,bootstrap)
+        assert mutations == [('e'*64,'drop database postgres with (force);','supabase_admin','template1')]
+        assert [kind for kind,*_ in reads] == ['source','target']
+
+
+def test_default_database_preparation_failure_propagates_without_restore_or_retry(monkeypatch):
+    nonce, target = '1'*32, 'e'*64
+    monkeypatch.setattr(identity, 'inspect_resource', lambda *_: dict(Id=target,Name='/rf193_identity_db_'+nonce,
+        Image=DB['Image'],Config=dict(Labels={identity.LABEL:nonce}),State=dict(Running=True)))
+    monkeypatch.setattr(identity, 'source_query', lambda *_: b'1')
+    calls=[]
+    def query(container,statement,**kwargs):
+        calls.append(statement)
+        if statement.startswith('select '): return b'2'
+        raise RuntimeError('Owned identity recovery command failed: exec')
+    monkeypatch.setattr(identity,'query',query)
+    with pytest.raises(RuntimeError): identity.prepare_new_target_database('a'*64,target,'rf193_identity_db_'+nonce,nonce,DB['Image'],'supabase_admin')
+    assert calls == ['select system_identifier from pg_control_system();','drop database postgres with (force);']

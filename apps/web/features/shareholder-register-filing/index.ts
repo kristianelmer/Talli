@@ -84,3 +84,8 @@ export type { RfSourceProductionReviewWire, RfSourceProductionReviewRequestWire,
   RfSourceProductionSendCommandWire, RfSourceProductionSendResultWire, RfSourceProductionPositionWire } from "@talli/talli-api-client";
 
 export { downloadRf1086Archive, downloadRf1086RetainedArchive } from "./transport.ts";
+export {
+  companyTestHistoryHref, companyTestHistoryPage, companyTestHistoryPageNumber,
+  companyTestHistoryRecordFields, downloadCompanyTestHistory,
+  isCompanyTestHistoryCompany, loadCompanyTestHistory,
+} from "./company-test-history.ts";

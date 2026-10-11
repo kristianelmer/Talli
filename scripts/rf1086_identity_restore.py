@@ -101,6 +101,32 @@ def source_query(container, statement):
                    input=statement.encode(), stdout=subprocess.PIPE).stdout
 
 
+def prepare_new_target_database(source, target, name, nonce, image, bootstrap):
+    """Remove only this invocation's new default database before exact restore."""
+    if (not ID.fullmatch(source) or not ID.fullmatch(target) or source == target
+            or not re.fullmatch(r'[a-f0-9]{32}', nonce)
+            or name != 'rf193_identity_db_' + nonce or not IMAGE.fullmatch(image)
+            or bootstrap != 'supabase_admin'):
+        raise ValueError('Recovery database preparation ownership mismatch')
+    observed = inspect_resource('container', target)
+    if (observed.get('Id') != target or observed.get('Name') != '/' + name
+            or observed.get('Image') != image
+            or observed.get('Config', {}).get('Labels', {}).get(LABEL) != nonce
+            or not observed.get('State', {}).get('Running')):
+        raise ValueError('Recovery database preparation ownership mismatch')
+    statement = 'select system_identifier from pg_control_system();'
+    source_system = source_query(source, statement).strip()
+    target_system = query(target, statement, user=bootstrap, database='template1').strip()
+    if (not re.fullmatch(rb'[0-9]{1,20}', source_system)
+            or not re.fullmatch(rb'[0-9]{1,20}', target_system)
+            or source_system == target_system):
+        raise ValueError('Recovery database preparation requires a new cluster')
+    # A preload worker can connect to the new postgres database even while jobs
+    # are disabled. FORCE closes those target-only connections under the drop
+    # lock; pg_restore then recreates source ownership, ACLs and database GUCs.
+    query(target, 'drop database postgres with (force);', user=bootstrap, database='template1')
+
+
 # Compare names, attributes and grants, never database-local catalog OIDs.
 ROLE_SQL = """
 select coalesce(jsonb_agg(to_jsonb(r)-'oid' order by r.rolname),'[]'::jsonb)
@@ -374,6 +400,7 @@ def restored_identity(source_url, workdir, boundary):
                 raise ValueError('Source role dump lacks the exact initialized administrator')
             role_sql = role_sql.replace(initialized_role, b'', 1)
             checked(['docker', 'exec', '-i', target, 'psql', '-U', bootstrap, '-h', '/tmp', '-d', 'postgres', '-Xq', '-v', 'ON_ERROR_STOP=1'], input=role_sql, stdout=subprocess.PIPE)
+            prepare_new_target_database(db['Id'], target, db_name, nonce, db['Image'], bootstrap)
             # Connect to the new cluster's template1 while pg_restore recreates
             # only its empty postgres database, including owner/ACL/database GUCs.
             dump.seek(0)

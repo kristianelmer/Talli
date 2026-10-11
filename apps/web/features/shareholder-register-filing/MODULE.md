@@ -129,3 +129,29 @@ authenticated origin, authoritative enumeration or restore capability.
 <!-- architecture-inventory
 {"routes":["/filing/aksjonaerregisteroppgaven/source/archive-v6"],"apiOperations":["rf1086DownloadProductionArchiveV6"]}
 -->
+
+Company test history is a separate yearless member read and standalone download.
+The page sits outside the owner layout so current annual agreements, AAL2 and
+consequential-readiness gates cannot filter authorized historical reads. Cookie
+bearers are transport only until the same bearer is server-verified; public
+CompanyAccessRecord supplies current accepted owner/reviewer/read_only metadata.
+RF independently verifies the current session/member and returns all thirteen
+original values. The UI renders fifty records per presentation page from the
+complete bounded capture; each request keeps its own observation/count/digest.
+Unavailable is never complete-zero, and URLs remain text.
+
+Download uses only the explicit new stream method with incoming cancellation and
+a five-minute deadline. CompanyAccess owns fifteen-minute MFA before and after
+capture; the web adds no business/audit writes or policy clone. Only exact fresh
+MFA denial resumes through the existing fresh challenge with a newly extracted
+and reverified bearer. The proxy forwards the same body with local safe headers
+and filename, without upstream cookies, error details or yearful fallback.
+Headers/save do not prove footer/EOF completion or authenticated source origin;
+the fixed public offline verifier remains necessary. No legal company-year export
+receipt is created. The backend factory remains None by default; actual owned
+browser/Auth/component, source bundle/independent target and RET002 full pipeline
+acceptance remain separate mandatory proofs before activation.
+
+<!-- architecture-inventory
+{"routes":["/companies/[companyId]/rf1086-test-history","/companies/[companyId]/rf1086-test-history/download"],"apiOperations":["rf1086ReadCompanyTestRetention","rf1086DownloadCompanyTestRetention"]}
+-->

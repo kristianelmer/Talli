@@ -52,6 +52,7 @@ export default async function Rf1086SourcePage({ searchParams }: Props) {
     <p className="pageLede">Kontroller aksjonærer, aksjer og årets hendelser før du lager en forhåndsvisning.</p>
     <p className="cardNote">Inntektsåret {incomeYear}</p>
     {company?.name ? <p className="cardNote">{company.name}</p> : null}
+    {company?.id === companyId ? <Link href={`/companies/${companyId}/rf1086-test-history`}>Se selskapets testhistorikk på tvers av år</Link> : null}
   </div>;
   if (!company || company.id !== companyId || company.role !== "owner" || company.entity_type !== "AS"
       || !company.identity_confirmed_at || !company.identity_locked_at) {

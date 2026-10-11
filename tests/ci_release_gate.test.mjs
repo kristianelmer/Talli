@@ -949,3 +949,10 @@ for(const fail of ['', 'topology:workspace','npm:test:supabase-rf-workspace','np
 }
 
 }
+
+test("company test history and download run in the mandatory ordinary web boundary", () => {
+  const scripts = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).scripts;
+  for (const path of ["apps/web/tests/rf1086-company-test-history.test.mjs", "apps/web/tests/rf1086-company-test-download.test.mjs"]) {
+    assert.ok(scripts["test:boundary-web"].split(/\s+/u).includes(path), `${path} must run in the required web lane`);
+  }
+});
