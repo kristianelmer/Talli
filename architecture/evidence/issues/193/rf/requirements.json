@@ -333,10 +333,12 @@
   "closedClaimInvalidationPairFixtureRepair20261010": "rf-claim-invalidation-pair-fixture-repair-20261010.json",
   "companyTestRetentionStreamCli": "rf-company-test-retention-stream-cli-20261010.json",
   "companyTestRetentionStreamCliStatus": "CLOSED_UNWIRED_SPEC0_STANDARDS0_LOCAL_ONLY:78new+100protected/129selectors/architecturePASS;105oldwholePythonfiles exact. Strict standalone framing/offline CLI preserves original source values/time; no route/UI/old dispatch activation. CurrentCI38095454400 onlypublished958; actual24/fullpipeline/independentAuth/RET002 pending.",
-  "latestCiRun": 38095454400,
-  "latestCiEvidence": "ci-38095454400.json",
+  "latestCiRun": 38097910748,
+  "latestCiEvidence": "ci-38097910748.json",
   "claimReadOnlyDenialOracleRepair": "rf-claim-read-only-denial-oracle-repair-20261011.json",
   "claimReadOnlyDenialOracleRepairStatus": "FIXTURE_ONLY_SPEC0_STANDARDS0:13claimPASS/1denial-oracleFAIL/6unexecuted on completed380954;24retentionunexecuted. Exacttypedread_onlydenial/retained3tablesunchanged after restoredobserver;12otherfunctions andproductbytes unchanged. Native9/179local/20collectionONLY; successor20/fullAuthority/current24 gate pending.",
   "companyTestRetentionHttpAuth": "rf-company-test-retention-http-auth-20261011.json",
-  "companyTestRetentionHttpAuthStatus": "DEFAULT_CLOSED_REVIEWED_SPEC0_STANDARDS0: finite-float correction for SpecRET-I1;81new+212protected backend/20new+95protected contract/129selectors/typecheck/OpenAPI/architecture PASS; old775functions/178paths/510schemas/13630SDKlines/101RFfiles exact. V1SpecRET-I1 finite overflow resolved; V2Spec0/Standards0. CompletedCI380979 coversa40 only:16claimPASS/1FAIL/3unexecuted;24retentionunexecuted. OwnedAuth/component/UI/bundle/independenttarget/fullRET002 pending."
+  "companyTestRetentionHttpAuthStatus": "DEFAULT_CLOSED_REVIEWED_SPEC0_STANDARDS0: finite-float correction for SpecRET-I1;81new+212protected backend/20new+95protected contract/129selectors/typecheck/OpenAPI/architecture PASS; old775functions/178paths/510schemas/13630SDKlines/101RFfiles exact. V1SpecRET-I1 finite overflow resolved; V2Spec0/Standards0. CompletedCI380979 coversa40 only:16claimPASS/1FAIL/3unexecuted;24retentionunexecuted. OwnedAuth/component/UI/bundle/independenttarget/fullRET002 pending.",
+  "claimCompanyWaitFixtureRepair": "rf-claim-company-wait-fixture-repair-20261011.json",
+  "claimCompanyWaitFixtureRepairStatus": "FIXTURE_ONLY_REVIEWED_SPEC0_STANDARDS0: V1SpecCF-W1 resolved, V2Spec0/Standards0; observed-wait freshness explicit; sameactualPIDwait/DBclock/taskpending MFAage<900 then>900 beforecommit/exactFalse/noextrabytes. NativeV2eightprojected/20collectionONLY;12others+outsidebytesexact; productlocks/policies unchanged. CurrentCI16/1/3 and24unexecuted;actualnext20/full1578/all24 mandatory."
 }

@@ -181,35 +181,64 @@ def test_actual_commit_during_documents_denial_recovers_exact_claim(state,claim_
     assert all(len(value)==1 for value in rows(state))
 
 
-def test_actual_company_wait_recovers_uncommitted_competing_claim_after_mfa_expires(state,claim_access):
+def test_actual_company_wait_recovers_uncommitted_competing_claim_after_mfa_expires(state,claim_access,monkeypatch):
     prepare_claim(state)
     async def run():
         task=None
         original=state.store._verified
-        claims=json.loads(original.claims_json)
-        with psycopg.connect(DATABASE_URL) as db:
-            claims['amr'][0]['timestamp']=int(db.execute('select extract(epoch from clock_timestamp())').fetchone()[0])-897
-        state.store._verified=replace(original,claims_json=json.dumps(claims))
+        ready, start_wait=asyncio.Event(), asyncio.Event()
+        recovery=state.store.source_claim_recovery_v3
+        @asynccontextmanager
+        async def staged_recovery(*args,**kwargs):
+            # Complete real Documents preflight before the first writer holds
+            # the shared company guard; never replace its validation or locks.
+            ready.set()
+            await start_wait.wait()
+            async with recovery(*args,**kwargs) as scope:yield scope
+        monkeypatch.setattr(state.store,'source_claim_recovery_v3',staged_recovery)
         try:
+            task=asyncio.create_task(state.claim_workflow.claim('synthetic-token',**state.claim_arguments))
+            try:await asyncio.wait_for(ready.wait(),8)
+            except TimeoutError:
+                if task.done():await task  # Surface the actual preflight failure.
+                raise
             async with state.workflow.admit('synthetic-token',**state.arguments) as admitted:
                 first=await admitted.transaction.claim_source_submission_v3(state.claim_arguments['approval_id'],
                     state.claim_arguments['manifest_sha256'],None,state.arguments['correlation_id'])
                 assert first.newly_claimed
+                claims=json.loads(original.claims_json)
+                with psycopg.connect(DATABASE_URL) as db:
+                    claims['amr'][0]['timestamp']=int(db.execute('select extract(epoch from clock_timestamp())').fetchone()[0])-897
+                state.store._verified=replace(original,claims_json=json.dumps(claims))
                 baseline=len(state.traces)
-                task=asyncio.create_task(state.claim_workflow.claim('synthetic-token',**state.claim_arguments))
+                original_reads=tuple(state.byte_reads)
+                start_wait.set()
                 for _ in range(150):
+                    if task.done():
+                        await task
+                        raise AssertionError('Actual competing V3 claim ended before company guard wait')
                     if len(state.traces)>baseline:
                         pid=state.traces[-1]['pid']
                         with psycopg.connect(DATABASE_URL) as db:
-                            if db.execute("select exists(select 1 from pg_stat_activity where pid=%s and wait_event='advisory')",(pid,)).fetchone()[0]:break
+                            waiting,observed_at=db.execute("select exists(select 1 from pg_stat_activity where pid=%s and wait_event='advisory'),extract(epoch from clock_timestamp())",(pid,)).fetchone()
+                            if waiting:
+                                assert not task.done()
+                                assert 0 <= float(observed_at)-claims['amr'][0]['timestamp'] < 900
+                                break
                     await asyncio.sleep(.02)
                 else:raise AssertionError('Actual competing V3 claim did not wait on company guard')
                 await asyncio.sleep(3.2)
+                with psycopg.connect(DATABASE_URL) as db:
+                    assert float(db.execute('select extract(epoch from clock_timestamp())').fetchone()[0])-claims['amr'][0]['timestamp']>900
             result=await asyncio.wait_for(task,8)
             assert result==rf.Rf1086SourceSubmissionClaimResult(first.claim,False)
+            assert tuple(state.byte_reads)==original_reads
         finally:
             state.store._verified=original
-            if task is not None and not task.done():task.cancel();await asyncio.gather(task,return_exceptions=True)
+            start_wait.set()
+            if task is not None:
+                if not task.done():task.cancel()
+                await asyncio.gather(task,return_exceptions=True)
     asyncio.run(run())
     assert all(len(value)==1 for value in rows(state))
 
