@@ -107,6 +107,29 @@ def test_fresh_cluster_cleanup_is_pinned_and_source_stays_untouched(tmp_path, mo
     counts = {'source': 0}
     captures = []
     semantic_calls = []
+    causal_events = []
+    class CausalCapture:
+        def __init__(self, source, init):
+            assert source is DB and init == identity.INIT
+        def __enter__(self):
+            causal_events.append('entered')
+            return self
+        def __exit__(self, *_): causal_events.append('cleared')
+        def source_pre_dump(self, catalog):
+            assert catalog._raw is not None
+            assert not any('pg_dumpall' in call or 'pg_dump' in call for call in calls)
+            causal_events.append('source')
+        def target_initialized(self, container, name, nonce, network):
+            assert container == target and name == 'rf193_identity_db_' + nonce
+            assert network == 'rf193_identity_net_' + nonce
+            assert any('psql' in call for call in calls)
+            assert not any('pg_restore' in call for call in calls)
+            causal_events.append('initialized')
+        def mismatch(self, source_catalog, target_catalog, container, dump):
+            assert source_catalog._raw is not None and target_catalog._raw is not None
+            assert not semantic_calls and container == target and not dump.closed
+            causal_events.append('mismatch')
+    monkeypatch.setattr(identity, 'CausalCapture', CausalCapture, raising=False)
     def semantic_capture(source_catalog, target_catalog, **kwargs):
         assert source_catalog._raw is not None and target_catalog._raw is not None
         semantic_calls.append(kwargs)
@@ -216,6 +239,12 @@ def test_fresh_cluster_cleanup_is_pinned_and_source_stays_untouched(tmp_path, mo
     else:
         assert output == ''
     assert all(capture._raw is None for capture in captures)
+    expected_causal = ['entered']
+    if failure != 'fingerprint': expected_causal.append('source')
+    if not early_failure and failure not in ('network', 'volume', 'database_create', 'database_start', 'roles'):
+        expected_causal.append('initialized')
+    if catalog_failure: expected_causal.append('mismatch')
+    assert causal_events == expected_causal + ['cleared']
     assert len(semantic_calls) == int(catalog_failure)
     if semantic_calls:
         assert semantic_calls[0]['source'] == DB['Id']

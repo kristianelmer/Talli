@@ -31,6 +31,7 @@ from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from rf1086_local_forwarding import forwarded_ports
 from rf1086_catalog_difference import CatalogCapture, emit_catalog_difference
 from rf1086_catalog_semantics import emit_catalog_semantics
+from rf1086_catalog_causal_capture import CausalCapture
 
 LABEL = 'talli.rf.identity.restore'
 ID = re.compile(r'[a-f0-9]{64}')
@@ -371,8 +372,9 @@ def restored_identity(source_url, workdir, boundary):
     db_name, auth_name = 'rf193_identity_db_' + nonce, 'rf193_identity_auth_' + nonce
     bootstrap = 'supabase_admin'
     created_network, created_volume, containers = False, False, []
-    with CatalogCapture() as source_catalog, CatalogCapture() as target_catalog:
+    with CatalogCapture() as source_catalog, CatalogCapture() as target_catalog, CausalCapture(db, INIT) as causal:
         before = fingerprint(db['Id'], catalog_capture=source_catalog)
+        causal.source_pre_dump(source_catalog)
         preload = source_query(db['Id'], 'show shared_preload_libraries;').decode().strip()
         if not re.fullmatch(r'[A-Za-z0-9_, .-]*', preload): raise ValueError('Invalid local preload configuration')
         with tempfile.TemporaryFile() as roles, tempfile.TemporaryFile() as dump, tempfile.TemporaryDirectory(prefix='talli-rf-identity-') as directory:
@@ -414,6 +416,7 @@ def restored_identity(source_url, workdir, boundary):
                     raise ValueError('Source role dump lacks the exact initialized administrator')
                 role_sql = role_sql.replace(initialized_role, b'', 1)
                 checked(['docker', 'exec', '-i', target, 'psql', '-U', bootstrap, '-h', '/tmp', '-d', 'postgres', '-Xq', '-v', 'ON_ERROR_STOP=1'], input=role_sql, stdout=subprocess.PIPE)
+                causal.target_initialized(target, db_name, nonce, network)
                 prepare_new_target_database(db['Id'], target, db_name, nonce, db['Image'], bootstrap)
                 # Connect to the new cluster's template1 while pg_restore recreates
                 # only its empty postgres database, including owner/ACL/database GUCs.
@@ -423,6 +426,7 @@ def restored_identity(source_url, workdir, boundary):
                 recovered_fingerprint = fingerprint(target, restored=True, bootstrap=bootstrap, catalog_capture=target_catalog)
                 if recovered_fingerprint != before:
                     if recovered_fingerprint.get('catalog') != before.get('catalog'):
+                        causal.mismatch(source_catalog, target_catalog, target, dump)
                         emit_catalog_semantics(source_catalog, target_catalog, source=db['Id'],
                                                target=target, image=db['Image'], dump=dump)
                         emit_catalog_difference(source_catalog, target_catalog)

@@ -557,7 +557,8 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
 
 function runtimeEnvironment() {
   const result = {};
-  for (const key of ["PATH", "HOME", "TMPDIR", "LANG", "LC_ALL", "CI", "VIRTUAL_ENV"])
+  for (const key of ["PATH", "HOME", "TMPDIR", "LANG", "LC_ALL", "CI", "VIRTUAL_ENV",
+    "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT", "GITHUB_SHA"])
     if (process.env[key]) result[key] = process.env[key];
   return { ...result, TALLI_AUTHORITY_OPS_ENABLED: "false", TALLI_RF1086_PRODUCTION_ENABLED: "false", NEXT_TELEMETRY_DISABLED: "1" };
 }
