@@ -68,6 +68,53 @@ def _stateless_owned_owner_token(token, source_auth_environment):
     return body + '.' + encode(hmac.digest(key.encode(), body.encode(), 'sha256'))
 
 
+def _stateless_diagnostic_metadata(token, source_auth_environment):
+    """Bounded header and field-presence labels; never signing authority."""
+    algorithm = 'unclassified'
+    if type(token) is str:
+        # Inspect only a bounded header prefix, never the payload or signature.
+        header = token[:4097].partition('.')[0]
+        if len(header) <= 4096 and '.' in token[:4097]:
+            try:
+                def unique_fields(pairs):
+                    fields = {}
+                    for key, value in pairs:
+                        if key in fields:
+                            raise ValueError('Duplicate header field')
+                        fields[key] = value
+                    return fields
+                decoded = base64.b64decode(header + '=' * (-len(header) % 4), altchars=b'-_', validate=True)
+                fields = json.loads(decoded, object_pairs_hook=unique_fields)
+                value = fields.get('alg') if type(fields) is dict else None
+                if type(value) is str and value in ('HS256', 'ES256', 'RS256'):
+                    algorithm = value.lower()
+            except (ValueError, TypeError, UnicodeError, RecursionError):
+                pass
+    signing_fields = 'unclassified'
+    if type(source_auth_environment) is dict:
+        present = ('GOTRUE_JWT_SECRET' in source_auth_environment, 'GOTRUE_JWT_KEYS' in source_auth_environment)
+        signing_fields = {(True, False): 'secret-only', (False, True): 'keys-only',
+            (True, True): 'both', (False, False): 'missing'}[present]
+    return {'statelessAlgorithm': algorithm, 'statelessSigningFields': signing_fields}
+
+
+def _stateless_failure_diagnostic(error, progress):
+    """Closed error labels only; unknown types, shapes and metadata stay private."""
+    cause = 'unclassified'
+    if type(error) is ValueError and len(error.args) == 1 and type(error.args[0]) is str:
+        cause = {
+            'Owned stateless fixture requires captured HS256 signing configuration': 'unsupported-signing-configuration',
+            'Owned stateless fixture signing key differs from the authenticated owner token': 'signature-mismatch',
+            'Original owned owner token has no live session': 'live-session-missing',
+        }.get(error.args[0], 'unclassified')
+    def label(key, allowed):
+        value = progress.get(key) if type(progress) is dict else None
+        return value if type(value) is str and value in allowed else 'unclassified'
+    algorithm = label('statelessAlgorithm', ('hs256', 'es256', 'rs256'))
+    signing_fields = label('statelessSigningFields', ('secret-only', 'keys-only', 'both', 'missing'))
+    return 'cause=' + cause + ' algorithm=' + algorithm + ' signing-fields=' + signing_fields
+
+
 class _TerminationRequested(BaseException):
     """SIGTERM cancels acceptance while allowing the sole owner to clean up."""
 
@@ -140,6 +187,8 @@ def _rehearse(args, termination, progress=None):
     verified = verify_company_test_retention_bundle(BytesIO(package), company_id=company_id)
     rf.assert_company_test_retention_source_capture_matches(verified, captured)
     stage('stateless-token')
+    if progress is not None:
+        progress.update(_stateless_diagnostic_metadata(owner_token, auth_environment))
     stateless_token = _stateless_owned_owner_token(owner_token, auth_environment)
     # Sole lifecycle owner. No target credentials, factory or live handle escapes.
     # Defer termination through acquisition: the old owner must register resources
@@ -211,6 +260,8 @@ def main():
     except Exception as error:
         print('owned_company_test_inventory_restore_failed', file=sys.stderr)
         print('owned_company_test_inventory_restore_diagnostic ' + _failure_diagnostic(error, progress), file=sys.stderr)
+        if progress.get('stage') == 'stateless-token':
+            print('owned_company_test_inventory_restore_stateless_diagnostic ' + _stateless_failure_diagnostic(error, progress), file=sys.stderr)
         return 1
     print(json.dumps(result, sort_keys=True, separators=(',', ':'), allow_nan=False))
     return 0

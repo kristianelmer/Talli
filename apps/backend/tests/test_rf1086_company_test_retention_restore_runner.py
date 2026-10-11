@@ -292,3 +292,70 @@ def test_main_failure_reports_bounded_progress_and_no_exception_text(monkeypatch
     assert result.out == ''
     assert result.err == ('owned_company_test_inventory_restore_failed\n'
         'owned_company_test_inventory_restore_diagnostic stage=source-artifacts fingerprint=unclassified\n')
+
+@pytest.mark.parametrize('message,cause', [
+    ('Owned stateless fixture requires captured HS256 signing configuration', 'unsupported-signing-configuration'),
+    ('Owned stateless fixture signing key differs from the authenticated owner token', 'signature-mismatch'),
+    ('Original owned owner token has no live session', 'live-session-missing'),
+])
+def test_stateless_diagnostic_classifies_only_exact_owned_failure(message, cause):
+    progress = {'statelessAlgorithm': 'es256', 'statelessSigningFields': 'both'}
+    expected = 'cause=' + cause + ' algorithm=es256 signing-fields=both'
+    assert runner._stateless_failure_diagnostic(ValueError(message), progress) == expected
+    class OtherValueError(ValueError):
+        pass
+    for error in (OtherValueError(message), RuntimeError(message), ValueError(message, 'secret-token'),
+            ValueError(message + '\nprivate-key'), ValueError()):
+        assert runner._stateless_failure_diagnostic(error, progress) == (
+            'cause=unclassified algorithm=es256 signing-fields=both')
+
+
+@pytest.mark.parametrize('algorithm', ['HS256', 'ES256', 'RS256'])
+@pytest.mark.parametrize('env,fields', [({}, 'missing'), ({'GOTRUE_JWT_SECRET': 'private-secret'}, 'secret-only'),
+    ({'GOTRUE_JWT_KEYS': 'private-JWK'}, 'keys-only'),
+    ({'GOTRUE_JWT_SECRET': '', 'GOTRUE_JWT_KEYS': 'private-JWK'}, 'both')])
+def test_stateless_metadata_reports_header_algorithm_and_field_presence_without_claims_or_keys(algorithm, env, fields):
+    header = base64.urlsafe_b64encode(json.dumps({'alg': algorithm, 'kid': 'private-kid'}).encode()).rstrip(b'=').decode()
+    token = header + '.THIS-IS-NOT-JSON-CLAIMS.private-signature'
+    original_env = dict(env)
+    assert runner._stateless_diagnostic_metadata(token, env) == {
+        'statelessAlgorithm': algorithm.lower(), 'statelessSigningFields': fields}
+    assert env == original_env
+    assert token == header + '.THIS-IS-NOT-JSON-CLAIMS.private-signature'
+
+
+@pytest.mark.parametrize('header', [b'[]', b'null', b'1', b'{"alg":7}', b'{"alg":"PRIVATE-ALG"}',
+    b'{"alg":"HS256","alg":"ES256"}', b'{"alg":"HS256"}private', b'\xff', b'[' * 2000])
+def test_stateless_metadata_malformed_unknown_or_duplicate_header_is_unclassified(header):
+    encoded = base64.urlsafe_b64encode(header).rstrip(b'=').decode()
+    assert runner._stateless_diagnostic_metadata(encoded + '.private-claims.private-signature', {}) == {
+        'statelessAlgorithm': 'unclassified', 'statelessSigningFields': 'missing'}
+
+
+@pytest.mark.parametrize('token', [None, {}, 'private-token', '!' + '.private.private',
+    'A' * 4097 + '.private.private', 'A' * 100000 + '.private.private'])
+def test_stateless_metadata_bounds_header_and_rejects_invalid_input_without_echo(token):
+    assert runner._stateless_diagnostic_metadata(token, None) == {
+        'statelessAlgorithm': 'unclassified', 'statelessSigningFields': 'unclassified'}
+
+
+def test_stateless_formatter_never_echoes_unknown_metadata_or_exception():
+    for progress in (None, {'statelessAlgorithm': 'private-token', 'statelessSigningFields': 'private-key'},
+            {'statelessAlgorithm': [], 'statelessSigningFields': {}}):
+        assert runner._stateless_failure_diagnostic(ValueError('private-subject private-session'), progress) == (
+            'cause=unclassified algorithm=unclassified signing-fields=unclassified')
+
+
+def test_stateless_failure_diagnostic_reaches_entry_point_without_recovery_or_secret_output(monkeypatch, tmp_path, capsys):
+    args, events, _, _, _ = _configure_owned_runner_double(monkeypatch, tmp_path, None)
+    monkeypatch.setenv('TALLI_RF_RESTORE_OWNER_TOKEN', signed(CLAIMS, header={'alg': 'ES256', 'kid': 'private-kid'}))
+    monkeypatch.setattr(sys, 'argv', ['runner', '--company-id', args.company_id, '--stream', args.stream,
+        '--writer-expectation', args.writer_expectation])
+    assert runner.main() == 1
+    result = capsys.readouterr()
+    assert result.out == ''
+    assert result.err == ('owned_company_test_inventory_restore_failed\n'
+        'owned_company_test_inventory_restore_diagnostic stage=stateless-token fingerprint=unclassified\n'
+        'owned_company_test_inventory_restore_stateless_diagnostic cause=unsupported-signing-configuration '
+        'algorithm=es256 signing-fields=secret-only\n')
+    assert 'enter-target' not in events and 'source-post' not in events
