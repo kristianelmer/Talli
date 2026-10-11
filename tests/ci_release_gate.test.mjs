@@ -644,6 +644,9 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
   const all = collect(`${pytest} apps/backend/tests`);
   for (const path of [
     "apps/backend/tests/test_rf1086_company_test_retention_stream.py",
+    "apps/backend/tests/test_rf1086_company_test_retention_bundle.py",
+    "apps/backend/tests/test_rf1086_company_test_retention_restore_runner.py",
+    "apps/backend/tests/test_rf1086_company_test_inventory_identity_boundary.py",
     "apps/backend/tests/test_verify_rf1086_company_test_retention.py",
     "apps/backend/tests/test_rf1086_company_test_retention_http.py",
     "apps/backend/tests/test_company_test_retention_download_policy.py",

@@ -23,6 +23,7 @@ import { fixtureTableTransaction, deleteRfFixtureCompanies, rfPublicProjectionRe
 import { startRf1086FilingAuthorityMock } from "./fixtures/rf1086-filing-authority-mock.mjs";
 import { exerciseFullYearSourceJourney, seedFullYearAdmission } from "./fixtures/rf1086-source-browser-journey.mjs";
 import { exerciseRfPilotExpiry, exerciseRfCancellation, exerciseRfFinalDeletion } from "./fixtures/rf1086-cancellation-browser-journey.mjs";
+import { exerciseCompanyTestRetention } from "./fixtures/rf1086-company-test-retention-browser-journey.mjs";
 
 const nextCli = createRequire(new URL("../apps/web/package.json", import.meta.url)).resolve("next/dist/bin/next");
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -444,6 +445,17 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
       "POST:/api/v1/legacy-rf1086/production-filings:200", "POST:/api/v1/legacy-rf1086/production-filings:503"])
       assert.ok(apiCalls.some((call) => call.endsWith(event)), `missing actual canonical backend request ${event}`);
     assert.ok(!(await page.locator("body").innerText()).includes(original.external_ref));
+    if (lostResponse === "main" && predecessorFeedback === "rejected") {
+      const inventoryCompany = await seedCompany(admin, database, owner.id, "Synthetic Company Test Inventory", resources.companies);
+      const openings = [];
+      for (const incomeYear of [2024, 2025]) openings.push({ ...await seedFreshBasis(database, inventoryCompany.id, owner.id, incomeYear), incomeYear });
+      await exerciseCompanyTestRetention({ page, siteOrigin, company: inventoryCompany, openings,
+        database, api, ownerId: owner.id, outsiderId: other.id, ownerToken: session.access_token,
+        outsiderToken: otherSession.access_token, lowAalToken: lowAalSession.access_token,
+        python, environment: { ...runtimeEnvironment(), TALLI_SUPABASE_WORKDIR: process.env.TALLI_SUPABASE_WORKDIR,
+          ...(process.env.DOCKER_CONTEXT ? { DOCKER_CONTEXT: process.env.DOCKER_CONTEXT } : {}) },
+        sourceDatabaseUrl: databaseUrl, readerDatabaseUrl: databases.talli_ledger_backend, supabaseUrl, anonKey });
+    }
     await otherContext.close();
     // A distinct year keeps the first full-year submission independent of the
     // accepted legacy filing and its correction head. No source/approval is seeded.

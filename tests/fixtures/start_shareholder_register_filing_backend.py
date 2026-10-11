@@ -199,7 +199,8 @@ def main() -> None:
     transport = httpx.MockTransport(mock_transport)
     maskinporten = MaskinportenClient(MaskinportenConfiguration.production(os.environ), transport=transport)
     from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
-    from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingAdapter
+    from talli_backend.adapters.postgres_shareholder_register_filing import (
+        PostgresShareholderRegisterFilingAdapter, PostgresCompanyTestRetentionSessionFactory)
     from talli_backend.adapters.supabase_billing import SupabaseBillingAdapter
     from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
     from talli_backend.adapters.supabase_documents import SupabaseDocumentsAdapter
@@ -219,6 +220,9 @@ def main() -> None:
         maskinporten=maskinporten, rf_transport=transport,
     )
     application = create_app(shareholder_register_filing_session_factory=rf, documents_session_factory=documents,
+        company_test_retention_session_factory=PostgresCompanyTestRetentionSessionFactory(
+            LedgerSupabaseConfiguration(os.environ["SUPABASE_URL"], os.environ["SUPABASE_ANON_KEY"],
+                os.environ["TALLI_LEDGER_DATABASE_URL"])),
         system_user_authority_provider=AltinnSystemUserAdapter(
         maskinporten, environment="production", transport=transport,
     ))

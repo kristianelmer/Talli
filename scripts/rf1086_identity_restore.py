@@ -189,6 +189,15 @@ def fingerprint(container, *, restored=False, bootstrap=None):
             'auth': auth.hexdigest(), 'companyMemberships': hashlib.sha256(memberships).hexdigest()}
 
 
+def _fingerprint_mismatch_components(expected, recovered):
+    """Fixed labels only; never render caller keys, SQL rows or digest values."""
+    names = ('roles', 'catalog', 'auth', 'companyMemberships')
+    if (type(expected) is not dict or type(recovered) is not dict
+            or set(expected) != set(names) or set(recovered) != set(names)):
+        return 'unclassified'
+    return ','.join(name for name in names if expected.get(name) != recovered.get(name)) or 'unclassified'
+
+
 def owned_identity_source(workdir, source_url, boundary):
     db_id, database = boundary.owned_source(workdir, source_url, boundary.inspect_container)
     boundary.verify_source_session(source_url, db_id)
@@ -406,8 +415,10 @@ def restored_identity(source_url, workdir, boundary):
             dump.seek(0)
             checked(['docker', 'exec', '-i', target, 'pg_restore', '-U', bootstrap, '-h', '/tmp',
                      '--exit-on-error', '--clean', '--if-exists', '--create', '--dbname', 'template1'], stdin=dump, stdout=subprocess.PIPE)
-            if fingerprint(target, restored=True, bootstrap=bootstrap) != before:
-                raise ValueError('Independent recovery roles, ownership, ACLs or Auth rows differ')
+            recovered_fingerprint = fingerprint(target, restored=True, bootstrap=bootstrap)
+            if recovered_fingerprint != before:
+                raise ValueError('Independent recovery roles, ownership, ACLs or Auth rows differ; components='
+                    + _fingerprint_mismatch_components(before, recovered_fingerprint))
             env = auth_environment(source_env, db_name)
             configuration = Path(directory) / 'auth.env'
             configuration.touch(mode=0o600)

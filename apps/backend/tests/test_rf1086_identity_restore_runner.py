@@ -23,6 +23,38 @@ ENV = dict(item.split('=', 1) for item in AUTH['Config']['Env'])
 SOURCE_URL = 'postgresql://postgres:local@127.0.0.1:55001/postgres'
 
 
+@pytest.mark.parametrize('components', [
+    ('roles',), ('catalog',), ('auth',), ('companyMemberships',),
+    ('roles', 'catalog', 'auth', 'companyMemberships'),
+])
+def test_fingerprint_failure_names_only_fixed_components_without_values_or_foreign_keys(components):
+    names = ('roles', 'catalog', 'auth', 'companyMemberships')
+    expected = {name: 'source-private-password-hash-or-auth-row' for name in names}
+    recovered = {name: 'target-private-password-hash-or-auth-row' if name in components
+        else expected[name] for name in names}
+    before, after = deepcopy(expected), deepcopy(recovered)
+    diagnostic = identity._fingerprint_mismatch_components(expected, recovered)
+    assert diagnostic == (','.join(components) or 'unclassified')
+    assert 'private' not in diagnostic and 'SQL' not in diagnostic
+    assert expected == before and recovered == after
+
+
+@pytest.mark.parametrize('shape', ['extra-expected', 'extra-recovered', 'missing-expected',
+    'missing-recovered', 'not-dict'])
+def test_fingerprint_failure_with_unknown_shape_remains_finite_and_unclassified(shape):
+    names = ('roles', 'catalog', 'auth', 'companyMemberships')
+    expected = {name: 'source-private-password-hash-or-auth-row' for name in names}
+    recovered = {name: 'target-private-password-hash-or-auth-row' for name in names}
+    if shape == 'extra-expected': expected['private-key-name-or-SQL'] = 'private-key-value'
+    if shape == 'extra-recovered': recovered['private-key-name-or-SQL'] = 'private-key-value'
+    if shape == 'missing-expected': del expected['roles']
+    if shape == 'missing-recovered': del recovered['roles']
+    if shape == 'not-dict': recovered = ['private-key-name-or-SQL', 'private-key-value']
+    before, after = deepcopy(expected), deepcopy(recovered)
+    assert identity._fingerprint_mismatch_components(expected, recovered) == 'unclassified'
+    assert expected == before and recovered == after
+
+
 @pytest.mark.parametrize('fault', [None, 'foreign_database', 'foreign_auth', 'foreign_auth_database',
                                   'foreign_gateway', 'mutable_image', 'network', 'query_override'])
 def test_only_exact_local_owned_identity_sources(tmp_path, monkeypatch, fault):

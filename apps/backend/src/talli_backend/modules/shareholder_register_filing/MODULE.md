@@ -2207,3 +2207,66 @@ and does not establish readiness of this component or all three filings.
 Auth/DB doubles do not prove live session, independent target or full pipeline.
 Actual20claim/fullAuthority/24retention/currentcomponent/ownedAuth acceptance
 and later explicit designated-backend wiring remain required before activation.
+
+
+## Standalone company test bundle
+
+The application layer packages the existing RF company capture as
+`rf1086-company-test-retention-bundle-v1`: two fixed ZIP_STORED entries,
+`manifest.json` and `company-test-retention.json`. It reuses the RF public
+serializer, parser, bounds and source/target comparison contracts. The manifest
+commits the original capture bytes, observation time, count and record digest.
+The verifier bounds the whole package and each entry, checks local and central
+metadata before reading, verifies CRC and rejects any noncanonical package bytes.
+It performs no extraction, decompression, network access or database mutation.
+
+Complete zero is a captured result; unavailable cannot be packaged. Portable
+integrity proves neither origin nor live access. An independently obtained
+SOURCE capture still supplies the completeness expectation; a fresh TARGET
+observation preserves original records/count/digest without rewriting source time.
+This standalone test bundle carries no annual company archive or legal export
+receipt. Owned independent Auth/restore and the full retention pipeline remain
+separate mandatory checks.
+
+The owned technical browser fixture supplies the dedicated current-Auth factory
+explicitly. Its separate synthetic company records four original test events
+through the unchanged API/SQL writer, across actors, statuses and environments.
+Existing simulation commands create two separate year scopes; reference links
+are explicit synthetic fixture setup and carry no authority receipt claim. An
+independent fixed SQL projection checks all thirteen stored values and record IDs
+before the real company query, history page and complete browser download.
+
+`scripts/rehearse-rf1086-company-test-retention-restore.py` first validates the
+unchanged exact workdir/container/live source/Auth binding and restricted reader.
+It compares the saved stream with the independent writer expectation and a fresh
+owning current-Auth capture, packages those original SOURCE bytes, then owns
+exactly one unchanged `restored_identity` context. Inside that lifetime,
+`scripts/rf1086_company_test_inventory_identity_restore.py` constructs the fixed
+target factory, checks the live target session before every synthetic mutation,
+and tests current accepted roles, outsider/unaccepted/ban/membership revocation,
+session logout, soft deletion and an authorized successor. Original recorded
+actors remain data; physical erasure is a separate historical-FK restriction.
+The helper creates/removes no resource and returns only an immutable finite
+report. Cleanup failure or changed source fingerprint/inventory prevents a
+successful runner report. Fresh SOURCE/TARGET observations keep their own times;
+the original saved capture bytes/time/hash are never rewritten.
+
+The browser timeout sends SIGTERM to the new runner. Its scoped handler interrupts
+active verification but defers termination through the unchanged owner's resource
+acquisition and cleanup, including repeated signals. Pending cancellation prevents
+acceptance; cleanup failure still fails the run. The prior handler is restored.
+This cooperative timeout can wait for existing acquisition/cleanup operations;
+it is not a hard 180-second process deadline or protection against SIGKILL.
+Resource-free subprocess tests signal acquisition, active verification and cleanup.
+
+The signed stateless negative fixture supports the captured local HS256 setup
+only after verifying its signing key against the already authenticated owner
+token. It removes the session ID without extending time or changing role; other
+signing configurations fail closed rather than skip this required assertion.
+This is a local fixture, not hosted signing-key recovery or session issuance.
+
+Local lifecycle tests use explicit doubles; installed-schema collection is not
+execution. Actual owning browser/GoTrue/independent restoration must pass on the
+exact published source before pipeline acceptance. Production composition still
+defaults closed. Legacy provenance, quarantine, lawful purge, hosted objects and
+keys, whole-app recovery targets and the annual compliance loop remain separate.

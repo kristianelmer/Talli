@@ -614,7 +614,11 @@
     "companyTestRetentionDatabase": "apps/backend/tests/test_rf1086_company_test_retention_database.py",
     "companyTestRetentionStream": "apps/backend/tests/test_rf1086_company_test_retention_stream.py",
     "companyTestRetentionCli": "apps/backend/tests/test_verify_rf1086_company_test_retention.py",
-    "companyTestRetentionHttp": "apps/backend/tests/test_rf1086_company_test_retention_http.py"
+    "companyTestRetentionHttp": "apps/backend/tests/test_rf1086_company_test_retention_http.py",
+    "companyTestRetentionBundle": "apps/backend/tests/test_rf1086_company_test_retention_bundle.py",
+    "companyTestRetentionBundleDatabase": "apps/backend/tests/test_rf1086_company_test_retention_bundle_database.py",
+    "companyTestRetentionRestoreRunner": "apps/backend/tests/test_rf1086_company_test_retention_restore_runner.py",
+    "companyTestInventoryIdentityBoundary": "apps/backend/tests/test_rf1086_company_test_inventory_identity_boundary.py"
   },
   "compatibilityExceptions": []
 }
