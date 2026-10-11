@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import pg from "pg";
+import { runBillingObservationReapply } from "../scripts/billing_checkout_deadlock_diagnostic.mjs";
 
 const { Client } = pg;
 const databaseUrl = process.env.DATABASE_URL;
@@ -405,7 +406,7 @@ test(
         await client.query(refundRequests);
         await client.query(refundCleanup);
         await client.query(withdrawals);
-        await client.query(observation);
+        await runBillingObservationReapply(client, databaseUrl, observation);
         const successor = await topology(client);
         assert.equal(successor.billing_schema, true);
         assert.equal(successor.canonical_accounts, true);
