@@ -144,12 +144,22 @@ def test_actual_missing_claim_still_requires_live_first_effect(state,claim_acces
 @pytest.mark.parametrize('change', ['read_only','banned'])
 def test_actual_revoked_or_unavailable_original_actor_cannot_recover(state,claim_access,change):
     prepare_claim(state);claim(state)
+    retained = rows(state)
+    assert all(len(items) == 1 for items in retained)
     with psycopg.connect(DATABASE_URL) as db:
         if change=='read_only':db.execute("update public.company_memberships set role='read_only' where company_id=%s and user_id=%s",(state.item['seed']['company'],state.item['seed']['owner']))
         else:db.execute("update auth.users set banned_until='infinity' where id=%s",(state.item['seed']['owner'],))
     if change=='read_only':
-        with pytest.raises(psycopg.errors.RaiseException) as denied:claim(state)
-        assert denied.value.sqlstate=='P0001' and denied.value.diag.message_primary=='rf1086_source_claim_mismatch'
+        try:
+            # FORCE RLS hides the binding from its security-definer owner;
+            # preflight denies before the later SQL recovery guard is reached.
+            with pytest.raises(rf.Rf1086ProductionError) as denied:claim(state)
+            assert denied.value.code=='basis_unavailable'
+        finally:
+            # Restore only fixture observer visibility before checking history.
+            with psycopg.connect(DATABASE_URL) as db:
+                db.execute("update public.company_memberships set role='owner' where company_id=%s and user_id=%s",(state.item['seed']['company'],state.item['seed']['owner']))
+        assert rows(state)==retained
     else:
         with pytest.raises(rf.ShareholderRegisterFilingError) as denied:claim(state)
         assert denied.value.code==rf.ShareholderRegisterFilingErrorCode.FORBIDDEN

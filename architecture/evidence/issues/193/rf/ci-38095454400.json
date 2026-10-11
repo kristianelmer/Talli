@@ -1,0 +1,87 @@
+{
+  "schema": "ci-38095454400",
+  "recordedAtUtc": "2026-10-11T00:13:48.202706+00:00",
+  "run": 38095454400,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/38095454400",
+  "conclusion": "failure",
+  "completedAt": "2026-10-11T00:02:04Z",
+  "head": "95838c3c2e5d4afc5dc67635149e18980a674834",
+  "merge": "be6d5c0878b22d6627471ef3d1de814c899708b0",
+  "mainParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+  "freshPrHeadMergeAndParentsVerified": true,
+  "checkoutMergeVerifiedBothRawLogs": true,
+  "jobs": {
+    "Application": {
+      "id": 114340298815,
+      "conclusion": "success",
+      "completedAt": "2026-10-10T23:53:54Z",
+      "ordinary": {
+        "passed": 11061,
+        "skipped": 2,
+        "deselected": 2366,
+        "seconds": 592.71
+      },
+      "rawSha256": "d8f0e0a2141630fc8c26efcb8219bc307c646fecce89a855bdfb0cc01b3e1d25",
+      "rawBytes": 468467
+    },
+    "Database isolation": {
+      "id": 114340298711,
+      "conclusion": "failure",
+      "completedAt": "2026-10-11T00:01:58Z",
+      "initial": {
+        "passed": 17,
+        "skipped": 1,
+        "seconds": 0.27
+      },
+      "Billing": {
+        "passed": 700,
+        "seconds": 288.41
+      },
+      "Authority": {
+        "selected": 1578,
+        "passed": 1516,
+        "failed": 1,
+        "unexecuted": 61,
+        "seconds": 932.69
+      },
+      "rawSha256": "604d769e1d0d000f041665647b3c6eea031975fa550c9c7d22a87e5fed3afb95",
+      "rawBytes": 606294
+    },
+    "Immutable evidence": {
+      "id": 114340299516,
+      "conclusion": "skipped",
+      "expectedForPullRequest": true
+    },
+    "Release gate": {
+      "id": 114344953011,
+      "conclusion": "failure"
+    }
+  },
+  "approval36PassOnly": true,
+  "claim20": {
+    "passed": 13,
+    "failed": 1,
+    "unexecuted": 6,
+    "passOnly": false,
+    "positiveGroups": "Six first-effect cash/loss/depth cases; allfour committed recoveries annual/MFA/pilot/invalidation; three missing-claim fresh proof denials. Earlier nine passing nodes remain PASSED.",
+    "failedNode": "tests/test_rf1086_source_claim_v3_database.py::test_actual_revoked_or_unavailable_original_actor_cannot_recover[read_only]",
+    "failure": "Test expected psycopg RaiseException rf1086_source_claim_mismatch; actual preflight typed Rf1086ProductionError basis_unavailable. Current accepted-owner FORCE RLS security-definer reader conceals binding/header after membership demotion, so later guard is not reached.",
+    "resultSha256": "aaf9c28df6c5fb4c48dea845cefacfa19daf13e7b76b705572c4c0115cdbf102",
+    "publishedClaimSourcePinsVerified": 11
+  },
+  "retention24": {
+    "passed": 0,
+    "failed": 0,
+    "unexecuted": 24,
+    "passOnly": false,
+    "resultSha256": "05bdebd63d08a82ec3745f7b2a2d1755335dc3f40024445c1ec32eb242c407a7",
+    "publishedRetentionSourcePinsVerified": 8
+  },
+  "artifactCount": 0,
+  "limits": [
+    "Claim20/fullAuthority1578/retention24 prerequisites uncleared. No intent implementation authority.",
+    "RF browser/owned restore and independent identity diagnostic stages unreached. No prior fce browser/restore observations transferred to this run.",
+    "Published958 tested only. Unpushed localdc9 standalone stream/CLI not covered.",
+    "No full gate/canonical A1-A7/RET002/independent Auth/all-three/readiness clearance."
+  ]
+}
