@@ -1,0 +1,88 @@
+{
+  "schema": "rf-integration-ci-observation-v10",
+  "recordedAtUtc": "2026-10-11T15:10:26.557351+00:00",
+  "runId": 38144823808,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/38144823808",
+  "headSha": "6a3dd5b34d2e50b42d7138f0e393b271b032eeef",
+  "mergeSha": "d796a851907bb5c87fb67b605c53a7fce752c416",
+  "mainParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+  "status": "completed",
+  "conclusion": "failure",
+  "attempt": 1,
+  "application": {
+    "passed": 11623,
+    "skipped": 2,
+    "deselected": 2418,
+    "seconds": 845.55
+  },
+  "billing": {
+    "pythonPassed": 700,
+    "pythonSeconds": 296.96,
+    "migrationLifecyclePassed": true,
+    "causalDeadlockFixEstablished": false,
+    "lockDiagnosticEmitted": false
+  },
+  "authority": {
+    "required": 1630,
+    "observedPassed": 1630,
+    "exactSourceNodeSetVerified": true,
+    "seconds": 1366.25
+  },
+  "intent": {
+    "required": 46,
+    "observedPassed": 46,
+    "requiredParent": 6,
+    "requiredParentPassed": 6
+  },
+  "narrowPrerequisites": {
+    "claim": 20,
+    "approval": 36,
+    "retention": 24,
+    "inventoryAuthority": 6,
+    "intent": 46,
+    "inventoryPipelineCleared": false
+  },
+  "rfBrowser": {
+    "selected": 38,
+    "passed": 37,
+    "failed": 1,
+    "durationMs": 1454409.134299,
+    "owningInventoryAccepted": false,
+    "independentRecoveryAccepted": false
+  },
+  "failure": {
+    "stage": "independent-recovery",
+    "fingerprintComponents": [
+      "catalog"
+    ],
+    "exactCatalogDifferenceAndCauseKnown": false,
+    "targetAuthCreationUnreached": true
+  },
+  "signedStatelessFixtureCompleted": true,
+  "currentSigningAlgorithmObserved": false,
+  "es256ActualAcceptance": false,
+  "limits": [
+    "Current Billing lifecycle success does not establish an intermittent deadlock causefix. Local29 diagnostic tests were not added to the CI selector.",
+    "Current1,630-node set and mandatory46/six-parent cases are exact; narrow passes do not clear the failed owning inventory pipeline.",
+    "The signed stateless fixture completed before the recovered catalog mismatch. Current token algorithm is not emitted; ES256-specific and current target Auth acceptance remain unproved.",
+    "Catalog comparison fails before target Auth creation. Exact difference and cause remain unknown; strict roles/catalog/Auth/company-membership criteria unchanged.",
+    "Later Tax/Accounts/public acquisition browsers unreached; immutable evidence skipped, zero artifacts; linked complete gates/hosted/human/all-three readiness remain pending.",
+    "No raw queries, tokens, keys, Auth/customer rows, actor IDs, PID/transaction detail or raw exception text published."
+  ],
+  "artifactCount": 0,
+  "jobTimedOut": false,
+  "wholePipelineCleared": false,
+  "allThreeReady": false,
+  "rawEvidenceSha256": {
+    "ci38144823808-terminal-run-v1.json": "37fc25a620f1126500fa51849d9a9ca5810147d7aa5a59ba37e3a6390092a69f",
+    "ci38144823808-terminal-jobs-v1.json": "52708b322177bf564724c85467be6b86990604681571f80db03f55021ece1fb8",
+    "ci38144823808-terminal-pr-v1.json": "307bd2d97a2c01d3a773f898e4a7ff2eef82f25af3785d35f56e8dffed045f03",
+    "ci38144823808-terminal-parents-v1.json": "694740b70f354ff986266911803dd0b503b4e27381cd739c6670e9f01eb328e7",
+    "ci38144823808-terminal-artifacts-v1.json": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+    "ci38144823808-app-direct-raw-v1.log": "0111c476a9184b41d98dfcdbb0d6592f72f06389b5963a9d9451c7ac146374f7",
+    "ci38144823808-db-direct-raw-v1.log": "62d0360b2072b83f323c5c72596e528b87f199d2809cdbd1405e67fa90a79eed",
+    "ci38144823808-terminal-inspection-candidate-v1.json": "a4d0e2707e893f89bffbbc6751e0da7e534107a5de4a76356ca0260d871e339d",
+    "ci38144823808-terminal-verifier-root-preparation-verification-v1.json": "8a3d46fc1231a3e34ed7d049fb6294d1e54b82c192c99b7d4ddff62a5fedef00",
+    "ci38144823808-terminal-receipt-v1.json": "ee1724a676f2b6b88058641bdce3f8f1b9d236809028e3adebfe9177fadc1eff"
+  }
+}

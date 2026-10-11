@@ -95,8 +95,8 @@ def test_auth_target_copies_signing_configuration_but_cannot_reach_provider_hook
     with pytest.raises(ValueError): identity.auth_environment(source | {'GOTRUE_JWT_SECRET': 'secret\nextra=value'}, host)
 
 
-@pytest.mark.parametrize('failure', [None, 'network', 'volume', 'database_create', 'database_start', 'roles', 'restore', 'catalog', 'auth_create', 'auth_start', 'body', 'source_changed'])
-def test_fresh_cluster_cleanup_is_pinned_and_source_stays_untouched(tmp_path, monkeypatch, failure):
+@pytest.mark.parametrize('failure', [None, 'fingerprint', 'preload', 'tempfile', 'roles_dump', 'database_dump', 'network', 'volume', 'database_create', 'database_start', 'roles', 'restore', 'catalog', 'catalog_unavailable', 'auth_create', 'auth_start', 'body', 'source_changed'])
+def test_fresh_cluster_cleanup_is_pinned_and_source_stays_untouched(tmp_path, monkeypatch, capsys, failure):
     (tmp_path / 'supabase').mkdir()
     (tmp_path / 'supabase/config.toml').write_text('project_id="tallig9931"\n')
     calls, resources = [], {}
@@ -105,16 +105,33 @@ def test_fresh_cluster_cleanup_is_pinned_and_source_stays_untouched(tmp_path, mo
     monkeypatch.setattr(identity, 'verify_target_session', lambda *_: None)
     monkeypatch.setattr(identity, 'verify_target_auth', lambda *_: None)
     counts = {'source': 0}
+    captures = []
+    catalog_failure = failure in ('catalog', 'catalog_unavailable')
+    early_failure = failure in ('fingerprint', 'preload', 'tempfile', 'roles_dump', 'database_dump')
     def fingerprint(container, **kwargs):
+        catalog = b'[]\n{"datacl":null}\n[]\n'
+        if container != DB['Id'] and catalog_failure:
+            catalog = b'[]\n{"datacl":["private-acl"]}\n[]\n'
+        if capture := kwargs.get('catalog_capture'):
+            captures.append(capture)
+            capture.capture(b'private-malformed-catalog' if failure == 'catalog_unavailable' else catalog)
+            if failure == 'fingerprint': raise RuntimeError('fixture fingerprint')
+        result = dict.fromkeys(('roles', 'catalog', 'auth', 'companyMemberships'), 'same')
         if container == DB['Id']:
             counts['source'] += 1
-            return {'same': counts['source']} if failure == 'source_changed' else {'same': 1}
-        return {'same': 2 if failure == 'catalog' else 1}
+            if failure == 'source_changed' and counts['source'] > 1: result['catalog'] = 'source-changed'
+        elif catalog_failure: result['catalog'] = 'different'
+        return result
     monkeypatch.setattr(identity, 'fingerprint', fingerprint)
-    monkeypatch.setattr(identity, 'source_query', lambda _, statement: b'pg_stat_statements' if statement.startswith('show ') else b'1')
+    monkeypatch.setattr(identity, 'source_query', lambda _, statement: b'invalid;preload' if failure == 'preload' else b'pg_stat_statements' if statement.startswith('show ') else b'1')
+    if failure == 'tempfile':
+        def broken_tempfile(): raise RuntimeError('fixture tempfile')
+        monkeypatch.setattr(identity.tempfile, 'TemporaryFile', broken_tempfile)
     monkeypatch.setattr(identity, 'query', lambda *_, **__: b'2')
     def checked(args, **kwargs):
         calls.append(args)
+        if ('pg_dumpall' in args and failure == 'roles_dump') or ('pg_dump' in args and failure == 'database_dump'):
+            raise RuntimeError('fixture ' + failure)
         if args[1:3] == ['network', 'create']:
             if failure == 'network': raise RuntimeError('fixture network')
             resources['network'] = {'Id': '1' * 64, 'Name': args[-1], 'Internal': True, 'Labels': {identity.LABEL: args[-2].split('=')[1]}}
@@ -176,11 +193,31 @@ def test_fresh_cluster_cleanup_is_pinned_and_source_stays_untouched(tmp_path, mo
             assert result.proof['independentClusterRestored']
             if failure == 'body': raise RuntimeError('fixture body')
     if failure:
-        with pytest.raises((RuntimeError, ValueError)): run()
+        with pytest.raises((RuntimeError, ValueError)) as error: run()
+        if catalog_failure:
+            assert str(error.value) == 'Independent recovery roles, ownership, ACLs or Auth rows differ; components=catalog'
+        if early_failure:
+            assert str(error.value) == ('Invalid local preload configuration' if failure == 'preload' else 'fixture ' + failure)
     else: run()
+    output = capsys.readouterr().err
+    if catalog_failure:
+        line, = output.splitlines()
+        assert line.startswith('owned_identity_catalog_difference ')
+        diagnostic = json.loads(line.removeprefix('owned_identity_catalog_difference '))
+        assert diagnostic['status'] == ('unavailable' if failure == 'catalog_unavailable' else 'different')
+        if failure == 'catalog':
+            assert diagnostic['details'][0]['fields'] == [{'field': 'datacl', 'change': 'source-null'}]
+        assert 'private-' not in output
+    else:
+        assert output == ''
+    assert all(capture._raw is None for capture in captures)
+    if early_failure:
+        assert resources == {}
+        assert all(command[1] == 'exec' and any(tool in command for tool in ('pg_dumpall', 'pg_dump')) for command in calls)
+        return
     removed = [args[-1] for args in calls if args[1:3] == ['rm', '-f']]
     expected = [] if failure in ('network', 'volume', 'database_create') else [target]
-    if failure not in ('network', 'volume', 'database_create', 'database_start', 'roles', 'restore', 'catalog', 'auth_create'):
+    if failure not in ('network', 'volume', 'database_create', 'database_start', 'roles', 'restore', 'catalog', 'catalog_unavailable', 'auth_create'):
         expected.insert(0, target_auth)
     assert removed == expected
     assert all(DB['Id'] not in command for command in calls if command[1] in ('rm', 'start', 'create'))

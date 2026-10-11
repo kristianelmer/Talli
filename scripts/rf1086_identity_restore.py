@@ -29,6 +29,7 @@ from psycopg import sql
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
 
 from rf1086_local_forwarding import forwarded_ports
+from rf1086_catalog_difference import CatalogCapture, emit_catalog_difference
 
 LABEL = 'talli.rf.identity.restore'
 ID = re.compile(r'[a-f0-9]{64}')
@@ -172,10 +173,12 @@ select coalesce(jsonb_agg(jsonb_build_array(case when s.setdatabase=0 then '*' e
 """
 
 
-def fingerprint(container, *, restored=False, bootstrap=None):
+def fingerprint(container, *, restored=False, bootstrap=None, catalog_capture=None):
     run = (lambda statement: query(container, statement, user=bootstrap)) if restored else lambda statement: source_query(container, statement)
     roles = run(ROLE_SQL)
     catalog = run(CATALOG_SQL)
+    if catalog_capture is not None:
+        catalog_capture.capture(catalog)
     # Auth rows are copied exactly (including users, sessions, factors, identities
     # and token state). Hash in memory; neither rows nor password hashes escape.
     tables = json.loads(run("select coalesce(json_agg(tablename order by tablename),'[]'::json) from pg_tables where schemaname='auth';"))
@@ -367,111 +370,116 @@ def restored_identity(source_url, workdir, boundary):
     db_name, auth_name = 'rf193_identity_db_' + nonce, 'rf193_identity_auth_' + nonce
     bootstrap = 'supabase_admin'
     created_network, created_volume, containers = False, False, []
-    before = fingerprint(db['Id'])
-    preload = source_query(db['Id'], 'show shared_preload_libraries;').decode().strip()
-    if not re.fullmatch(r'[A-Za-z0-9_, .-]*', preload): raise ValueError('Invalid local preload configuration')
-    with tempfile.TemporaryFile() as roles, tempfile.TemporaryFile() as dump, tempfile.TemporaryDirectory(prefix='talli-rf-identity-') as directory:
-        checked(['docker', 'exec', db['Id'], 'pg_dumpall', '-U', 'supabase_admin', '--roles-only'], stdout=roles)
-        checked(['docker', 'exec', db['Id'], 'pg_dump', '-U', 'supabase_admin', '--format=custom', '--dbname', 'postgres'], stdout=dump)
-        try:
-            result = checked(['docker', 'network', 'create', '--internal', '--label', LABEL + '=' + nonce, network], stdout=subprocess.PIPE)
-            network_id = result.stdout.decode().strip()
-            inspect = inspect_resource('network', network_id)
-            if not ID.fullmatch(network_id) or inspect.get('Name') != network or inspect.get('Labels', {}).get(LABEL) != nonce or not inspect.get('Internal'):
-                raise ValueError('Recovery network ownership mismatch')
-            created_network = True
-            checked(['docker', 'volume', 'create', '--label', LABEL + '=' + nonce, volume], stdout=subprocess.PIPE)
-            inspect = inspect_resource('volume', volume)
-            if inspect.get('Name') != volume or inspect.get('Labels', {}).get(LABEL) != nonce:
-                raise ValueError('Recovery volume ownership mismatch')
-            created_volume = True
-            # Initialize only the new volume's directory ownership; never mount a source volume.
-            checked(['docker', 'run', '--rm', '--pull=never', '--network', 'none', '--user', '0',
-                     '--entrypoint', 'sh', '-v', volume + ':/tmp/rf-recovery', db['Image'], '-c',
-                     'chown postgres:postgres /tmp/rf-recovery'], stdout=subprocess.PIPE)
-            result = checked(['docker', 'create', '--pull=never', '--name', db_name, '--label', LABEL + '=' + nonce,
-                '--network', network, '--user', 'postgres', '--entrypoint', 'sh',
-                '-e', 'RECOVERY_BOOTSTRAP=' + bootstrap, '-e', 'RECOVERY_PRELOAD=' + preload,
-                '-v', volume + ':/tmp/rf-recovery', '-p', published_port('DB', 5432), db['Image'], '-c', INIT], stdout=subprocess.PIPE)
-            target = result.stdout.decode().strip()
-            if not ID.fullmatch(target): raise ValueError('Recovery database identity missing')
-            containers.append(target)
-            checked(['docker', 'start', target], stdout=subprocess.PIPE)
-            for _ in range(90):
-                result = subprocess.run(['docker', 'exec', target, 'pg_isready', '-h', '/tmp', '-U', bootstrap], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                if result.returncode == 0: break
-                time.sleep(0.25)
-            else: raise RuntimeError('Independent recovery database did not become ready')
-            roles.seek(0)
-            role_sql = roles.read()
-            initialized_role = b'CREATE ROLE supabase_admin;\n'
-            if role_sql.count(initialized_role) != 1:
-                raise ValueError('Source role dump lacks the exact initialized administrator')
-            role_sql = role_sql.replace(initialized_role, b'', 1)
-            checked(['docker', 'exec', '-i', target, 'psql', '-U', bootstrap, '-h', '/tmp', '-d', 'postgres', '-Xq', '-v', 'ON_ERROR_STOP=1'], input=role_sql, stdout=subprocess.PIPE)
-            prepare_new_target_database(db['Id'], target, db_name, nonce, db['Image'], bootstrap)
-            # Connect to the new cluster's template1 while pg_restore recreates
-            # only its empty postgres database, including owner/ACL/database GUCs.
-            dump.seek(0)
-            checked(['docker', 'exec', '-i', target, 'pg_restore', '-U', bootstrap, '-h', '/tmp',
-                     '--exit-on-error', '--clean', '--if-exists', '--create', '--dbname', 'template1'], stdin=dump, stdout=subprocess.PIPE)
-            recovered_fingerprint = fingerprint(target, restored=True, bootstrap=bootstrap)
-            if recovered_fingerprint != before:
-                raise ValueError('Independent recovery roles, ownership, ACLs or Auth rows differ; components='
-                    + _fingerprint_mismatch_components(before, recovered_fingerprint))
-            env = auth_environment(source_env, db_name)
-            configuration = Path(directory) / 'auth.env'
-            configuration.touch(mode=0o600)
-            configuration.write_text(''.join(key + '=' + value + '\n' for key, value in env.items()))
-            result = checked(['docker', 'create', '--pull=never', '--name', auth_name, '--label', LABEL + '=' + nonce,
-                '--network', network, '--env-file', str(configuration), '-p', published_port('AUTH', 9999), auth['Image']], stdout=subprocess.PIPE)
-            target_auth = result.stdout.decode().strip()
-            if not ID.fullmatch(target_auth): raise ValueError('Recovery Auth identity missing')
-            containers.append(target_auth)
-            checked(['docker', 'start', target_auth], stdout=subprocess.PIPE)
-            port = loopback_port(target_auth, 9999, boundary)
-            db_port = loopback_port(target, 5432, boundary)
-            with forwarded_ports((db_port, port)):
-                with httpx.Client(trust_env=False, timeout=1) as client:
-                    for _ in range(90):
-                        try:
-                            if client.get(f'http://127.0.0.1:{port}/health').status_code == 200: break
-                        except httpx.HTTPError: pass
-                        time.sleep(0.25)
-                    else: raise RuntimeError('Independent recovery Auth did not become ready')
-                database_url = make_conninfo(source_url, host='127.0.0.1', port=db_port)
-                verify_target_session(database_url, target, bootstrap)
-                # Prove a new system identifier, not merely a renamed database in the source cluster.
-                source_system = source_query(db['Id'], 'select system_identifier from pg_control_system();')
-                recovered_system = query(target, 'select system_identifier from pg_control_system();', user=bootstrap)
-                if source_system == recovered_system: raise ValueError('Recovery reused source Postgres cluster')
-                # The admin JWT is the local Storage/Auth service credential, not the
-                # opaque gateway key. Read from the captured source Storage config.
-                storage = boundary.inspect_container('supabase_storage_' + tomllib.loads((Path(workdir) / 'supabase/config.toml').read_text())['project_id'])
-                storage_env = dict(item.split('=', 1) for item in storage['Config']['Env'])
-                admin_key = storage_env.get('SERVICE_KEY', '')
-                if not admin_key: raise ValueError('Owned local Auth admin JWT is missing')
-                with auth_gateway(port) as gateway:
-                    verify_target_auth(database_url, gateway)
-                    yield RecoveredIdentity(database_url, gateway, admin_key, target, bootstrap,
-                        {'independentClusterRestored': True, 'independentAuthRestored': True,
-                         'roleAttributesAndMembershipsRestored': True, 'ownershipGrantsAndRlsRestored': True,
-                         'authRowsRestoredExactly': True, 'authHttpTargetBindingVerified': True, 'authSigningConfigSource': 'captured-local-service-config',
-                         'hostedKeyRecoveryVerified': False})
-        finally:
+    with CatalogCapture() as source_catalog, CatalogCapture() as target_catalog:
+        before = fingerprint(db['Id'], catalog_capture=source_catalog)
+        preload = source_query(db['Id'], 'show shared_preload_libraries;').decode().strip()
+        if not re.fullmatch(r'[A-Za-z0-9_, .-]*', preload): raise ValueError('Invalid local preload configuration')
+        with tempfile.TemporaryFile() as roles, tempfile.TemporaryFile() as dump, tempfile.TemporaryDirectory(prefix='talli-rf-identity-') as directory:
+            checked(['docker', 'exec', db['Id'], 'pg_dumpall', '-U', 'supabase_admin', '--roles-only'], stdout=roles)
+            checked(['docker', 'exec', db['Id'], 'pg_dump', '-U', 'supabase_admin', '--format=custom', '--dbname', 'postgres'], stdout=dump)
             try:
-                cleanup_failure = None
-                for container in reversed(containers):
-                    try: checked(['docker', 'rm', '-f', container], stdout=subprocess.PIPE)
-                    except RuntimeError as error: cleanup_failure = error
-                if cleanup_failure: raise cleanup_failure
+                result = checked(['docker', 'network', 'create', '--internal', '--label', LABEL + '=' + nonce, network], stdout=subprocess.PIPE)
+                network_id = result.stdout.decode().strip()
+                inspect = inspect_resource('network', network_id)
+                if not ID.fullmatch(network_id) or inspect.get('Name') != network or inspect.get('Labels', {}).get(LABEL) != nonce or not inspect.get('Internal'):
+                    raise ValueError('Recovery network ownership mismatch')
+                created_network = True
+                checked(['docker', 'volume', 'create', '--label', LABEL + '=' + nonce, volume], stdout=subprocess.PIPE)
+                inspect = inspect_resource('volume', volume)
+                if inspect.get('Name') != volume or inspect.get('Labels', {}).get(LABEL) != nonce:
+                    raise ValueError('Recovery volume ownership mismatch')
+                created_volume = True
+                # Initialize only the new volume's directory ownership; never mount a source volume.
+                checked(['docker', 'run', '--rm', '--pull=never', '--network', 'none', '--user', '0',
+                         '--entrypoint', 'sh', '-v', volume + ':/tmp/rf-recovery', db['Image'], '-c',
+                         'chown postgres:postgres /tmp/rf-recovery'], stdout=subprocess.PIPE)
+                result = checked(['docker', 'create', '--pull=never', '--name', db_name, '--label', LABEL + '=' + nonce,
+                    '--network', network, '--user', 'postgres', '--entrypoint', 'sh',
+                    '-e', 'RECOVERY_BOOTSTRAP=' + bootstrap, '-e', 'RECOVERY_PRELOAD=' + preload,
+                    '-v', volume + ':/tmp/rf-recovery', '-p', published_port('DB', 5432), db['Image'], '-c', INIT], stdout=subprocess.PIPE)
+                target = result.stdout.decode().strip()
+                if not ID.fullmatch(target): raise ValueError('Recovery database identity missing')
+                containers.append(target)
+                checked(['docker', 'start', target], stdout=subprocess.PIPE)
+                for _ in range(90):
+                    result = subprocess.run(['docker', 'exec', target, 'pg_isready', '-h', '/tmp', '-U', bootstrap], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    if result.returncode == 0: break
+                    time.sleep(0.25)
+                else: raise RuntimeError('Independent recovery database did not become ready')
+                roles.seek(0)
+                role_sql = roles.read()
+                initialized_role = b'CREATE ROLE supabase_admin;\n'
+                if role_sql.count(initialized_role) != 1:
+                    raise ValueError('Source role dump lacks the exact initialized administrator')
+                role_sql = role_sql.replace(initialized_role, b'', 1)
+                checked(['docker', 'exec', '-i', target, 'psql', '-U', bootstrap, '-h', '/tmp', '-d', 'postgres', '-Xq', '-v', 'ON_ERROR_STOP=1'], input=role_sql, stdout=subprocess.PIPE)
+                prepare_new_target_database(db['Id'], target, db_name, nonce, db['Image'], bootstrap)
+                # Connect to the new cluster's template1 while pg_restore recreates
+                # only its empty postgres database, including owner/ACL/database GUCs.
+                dump.seek(0)
+                checked(['docker', 'exec', '-i', target, 'pg_restore', '-U', bootstrap, '-h', '/tmp',
+                         '--exit-on-error', '--clean', '--if-exists', '--create', '--dbname', 'template1'], stdin=dump, stdout=subprocess.PIPE)
+                recovered_fingerprint = fingerprint(target, restored=True, bootstrap=bootstrap, catalog_capture=target_catalog)
+                if recovered_fingerprint != before:
+                    if recovered_fingerprint.get('catalog') != before.get('catalog'):
+                        emit_catalog_difference(source_catalog, target_catalog)
+                    raise ValueError('Independent recovery roles, ownership, ACLs or Auth rows differ; components='
+                        + _fingerprint_mismatch_components(before, recovered_fingerprint))
+                source_catalog.clear()
+                target_catalog.clear()
+                env = auth_environment(source_env, db_name)
+                configuration = Path(directory) / 'auth.env'
+                configuration.touch(mode=0o600)
+                configuration.write_text(''.join(key + '=' + value + '\n' for key, value in env.items()))
+                result = checked(['docker', 'create', '--pull=never', '--name', auth_name, '--label', LABEL + '=' + nonce,
+                    '--network', network, '--env-file', str(configuration), '-p', published_port('AUTH', 9999), auth['Image']], stdout=subprocess.PIPE)
+                target_auth = result.stdout.decode().strip()
+                if not ID.fullmatch(target_auth): raise ValueError('Recovery Auth identity missing')
+                containers.append(target_auth)
+                checked(['docker', 'start', target_auth], stdout=subprocess.PIPE)
+                port = loopback_port(target_auth, 9999, boundary)
+                db_port = loopback_port(target, 5432, boundary)
+                with forwarded_ports((db_port, port)):
+                    with httpx.Client(trust_env=False, timeout=1) as client:
+                        for _ in range(90):
+                            try:
+                                if client.get(f'http://127.0.0.1:{port}/health').status_code == 200: break
+                            except httpx.HTTPError: pass
+                            time.sleep(0.25)
+                        else: raise RuntimeError('Independent recovery Auth did not become ready')
+                    database_url = make_conninfo(source_url, host='127.0.0.1', port=db_port)
+                    verify_target_session(database_url, target, bootstrap)
+                    # Prove a new system identifier, not merely a renamed database in the source cluster.
+                    source_system = source_query(db['Id'], 'select system_identifier from pg_control_system();')
+                    recovered_system = query(target, 'select system_identifier from pg_control_system();', user=bootstrap)
+                    if source_system == recovered_system: raise ValueError('Recovery reused source Postgres cluster')
+                    # The admin JWT is the local Storage/Auth service credential, not the
+                    # opaque gateway key. Read from the captured source Storage config.
+                    storage = boundary.inspect_container('supabase_storage_' + tomllib.loads((Path(workdir) / 'supabase/config.toml').read_text())['project_id'])
+                    storage_env = dict(item.split('=', 1) for item in storage['Config']['Env'])
+                    admin_key = storage_env.get('SERVICE_KEY', '')
+                    if not admin_key: raise ValueError('Owned local Auth admin JWT is missing')
+                    with auth_gateway(port) as gateway:
+                        verify_target_auth(database_url, gateway)
+                        yield RecoveredIdentity(database_url, gateway, admin_key, target, bootstrap,
+                            {'independentClusterRestored': True, 'independentAuthRestored': True,
+                             'roleAttributesAndMembershipsRestored': True, 'ownershipGrantsAndRlsRestored': True,
+                             'authRowsRestoredExactly': True, 'authHttpTargetBindingVerified': True, 'authSigningConfigSource': 'captured-local-service-config',
+                             'hostedKeyRecoveryVerified': False})
             finally:
                 try:
-                    if created_volume: checked(['docker', 'volume', 'rm', volume], stdout=subprocess.PIPE)
+                    cleanup_failure = None
+                    for container in reversed(containers):
+                        try: checked(['docker', 'rm', '-f', container], stdout=subprocess.PIPE)
+                        except RuntimeError as error: cleanup_failure = error
+                    if cleanup_failure: raise cleanup_failure
                 finally:
-                    if created_network: checked(['docker', 'network', 'rm', network_id], stdout=subprocess.PIPE)
-                    if fingerprint(db['Id']) != before:
-                        raise RuntimeError('Identity rehearsal changed source roles, ownership, ACLs, Auth rows or memberships')
+                    try:
+                        if created_volume: checked(['docker', 'volume', 'rm', volume], stdout=subprocess.PIPE)
+                    finally:
+                        if created_network: checked(['docker', 'network', 'rm', network_id], stdout=subprocess.PIPE)
+                        if fingerprint(db['Id']) != before:
+                            raise RuntimeError('Identity rehearsal changed source roles, ownership, ACLs, Auth rows or memberships')
 
 
 async def verify_actor_recovery(recovery, reader_url, query, expected_canonical, originals, original_queries, read_originals, *,
