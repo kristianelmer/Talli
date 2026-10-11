@@ -106,6 +106,11 @@ def test_fresh_cluster_cleanup_is_pinned_and_source_stays_untouched(tmp_path, mo
     monkeypatch.setattr(identity, 'verify_target_auth', lambda *_: None)
     counts = {'source': 0}
     captures = []
+    semantic_calls = []
+    def semantic_capture(source_catalog, target_catalog, **kwargs):
+        assert source_catalog._raw is not None and target_catalog._raw is not None
+        semantic_calls.append(kwargs)
+    monkeypatch.setattr(identity, 'emit_catalog_semantics', semantic_capture, raising=False)
     catalog_failure = failure in ('catalog', 'catalog_unavailable')
     early_failure = failure in ('fingerprint', 'preload', 'tempfile', 'roles_dump', 'database_dump')
     def fingerprint(container, **kwargs):
@@ -211,6 +216,11 @@ def test_fresh_cluster_cleanup_is_pinned_and_source_stays_untouched(tmp_path, mo
     else:
         assert output == ''
     assert all(capture._raw is None for capture in captures)
+    assert len(semantic_calls) == int(catalog_failure)
+    if semantic_calls:
+        assert semantic_calls[0]['source'] == DB['Id']
+        assert semantic_calls[0]['target'] == target
+        assert semantic_calls[0]['image'] == DB['Image']
     if early_failure:
         assert resources == {}
         assert all(command[1] == 'exec' and any(tool in command for tool in ('pg_dumpall', 'pg_dump')) for command in calls)

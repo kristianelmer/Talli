@@ -30,6 +30,7 @@ from psycopg.conninfo import conninfo_to_dict, make_conninfo
 
 from rf1086_local_forwarding import forwarded_ports
 from rf1086_catalog_difference import CatalogCapture, emit_catalog_difference
+from rf1086_catalog_semantics import emit_catalog_semantics
 
 LABEL = 'talli.rf.identity.restore'
 ID = re.compile(r'[a-f0-9]{64}')
@@ -422,6 +423,8 @@ def restored_identity(source_url, workdir, boundary):
                 recovered_fingerprint = fingerprint(target, restored=True, bootstrap=bootstrap, catalog_capture=target_catalog)
                 if recovered_fingerprint != before:
                     if recovered_fingerprint.get('catalog') != before.get('catalog'):
+                        emit_catalog_semantics(source_catalog, target_catalog, source=db['Id'],
+                                               target=target, image=db['Image'], dump=dump)
                         emit_catalog_difference(source_catalog, target_catalog)
                     raise ValueError('Independent recovery roles, ownership, ACLs or Auth rows differ; components='
                         + _fingerprint_mismatch_components(before, recovered_fingerprint))
