@@ -1,0 +1,68 @@
+{
+  "schema": "rf-integration-ci-observation-v5",
+  "recordedAtUtc": "2026-10-11T08:19:17.359299+00:00",
+  "runId": 38122130695,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/38122130695",
+  "headSha": "4807ba2944c55e6581ce2bcd6753cd635e6ada5a",
+  "mergeSha": "135eb9392a48a3eecb9415d1e8df5eb0fa17ba1f",
+  "mainParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+  "status": "completed",
+  "conclusion": "failure",
+  "attempt": 1,
+  "application": {
+    "passed": 11522,
+    "skipped": 2,
+    "deselected": 2418,
+    "seconds": 885.23
+  },
+  "billing": {
+    "passed": 700,
+    "seconds": 272.98
+  },
+  "authority": {
+    "collected": 1630,
+    "observedPassed": 1563,
+    "completed": false,
+    "approvalExactObservedPassed": 36,
+    "claimExactObservedPassed": 20,
+    "retentionExactObservedPassed": 0,
+    "newBundleExactObservedPassed": 0
+  },
+  "intent": {
+    "required": 46,
+    "observedPassed": 40,
+    "priorFortyCasesPassed": true,
+    "ownerRevocationRacePassed": true,
+    "requiredParentPassed": 0,
+    "requiredParentFailed": 1,
+    "requiredParentUnreached": 5,
+    "completed": false
+  },
+  "failure": "All40 earlier intent cases passed including repaired owner-revocation race. First new accepted-parent case failed in successor fixture: read_review returns Rf1086SourceApprovalContextV3 with nested review; helper wrongly accesses can_approve directly at597. Remainingfive new cases, later retention and wholebrowser/independent pipeline unreached.",
+  "rfBrowser": {
+    "reached": false
+  },
+  "verification": {
+    "freshPrAndMergeParentsVerified": true,
+    "actualDatabaseCheckoutVerified": true,
+    "observedExactNodesAndSourceGitPinsVerified": true,
+    "artifacts": 0
+  },
+  "rawEvidenceSha256": {
+    "ci38122130695-db-direct-raw-v1.log": "6a864e617b4a3f6ce1cc344c3b524b1d06c4e376804f887efe9594e15b009051",
+    "ci38122130695-app-direct-raw-v1.log": "8bc4518b9a230461a2199a7b5b5bc3202d400608c9fa8bd6f48b4fca521876ec",
+    "ci38122130695-terminal-run-v1.json": "583473913d579a72b9e2023323cee5d01474c4c7f2c9bcbb22c8d02d007f174c",
+    "ci38122130695-terminal-jobs-v1.json": "af03182eefe03b97e32e6deca14e3bdfe079d8f965d815eec2508701d60edd45",
+    "ci38122130695-terminal-pr-v1.json": "561281677d4a3d1db8486e5571270bae6983dc5ea69804d69735dc55eb85f260",
+    "ci38122130695-terminal-parents-v1.json": "f0be077418c0da9b1747e448825a1c906da5a73e3a9380f60c278bc6866ade5f",
+    "ci38122130695-terminal-artifacts-v1.json": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+    "ci38122130695-terminal-receipt-v1.json": "96b8fc9a47cfd6b7bcba41a13003693522139fa14820b2d3054ebf0b3bc9b8f1"
+  },
+  "limits": [
+    "All40 earlier intent cases passed, including fixed owner-revocation race; six new required-parent cases did not pass.",
+    "Accepted-parent fixture completed parent intents and Documents feedback/reconciliation, then hit flat approval-context projection before successor approval/claim or claimed-parent preparation.",
+    "FullAuthority and later retention/Tax/Accounts/browser/independent pipeline were unreached. Earlier strictfingerprint recovery failure remains unresolved.",
+    "Immutable evidence skipped, zero artifacts; wholeintent/compatibility/RET002/allthree/release remain uncleared.",
+    "Canonical raw logs remain private; public evidence includes finite counts and SHA metadata only."
+  ]
+}

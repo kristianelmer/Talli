@@ -593,7 +593,7 @@ async def record_actual_parent_feedback_and_claim_successor(state,status):
     state.claim_workflow=ShareholderRegisterSourceClaimV3(sessions,documents)
     state.dispatch=ShareholderRegisterSourceDispatchV3(sessions,documents)
     state.store._source_correction_v3=ShareholderRegisterSourceCorrection(sessions,documents)
-    review=await state.approval_workflow.read_review('synthetic-token',**state.approval_arguments)
+    review=(await state.approval_workflow.read_review('synthetic-token',**state.approval_arguments)).review
     assert review.can_approve,review.blockers
     approved=await state.approval_workflow.approve('synthetic-token',**state.approval_arguments,
         review_sha256=review.review_sha256,acknowledged_warning_codes=review.warning_codes,
