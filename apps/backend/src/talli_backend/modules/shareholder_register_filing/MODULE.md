@@ -2365,3 +2365,27 @@ Initial header-generation or missing Documents refusal also recovers a raced
 exact claim using the unchanged historical claim guard. This recovers data only;
 a legacy absent first claim remains staged closed. No dummy Documents factory,
 caller-provided receiver or configuration check can grant an effect.
+
+### Claimed correction parent, closed operation slice
+
+`prepare_rf1086_claimed_correction_predecessor_v3` validates the complete retained
+archive and the exactly bound current V3 claim before projecting its required
+parent. The original correction projector keeps its preclaim terminal-parent
+policy. No archive rows or managed head are removed or rewritten to reuse that
+policy after claim.
+
+The configured `ShareholderRegisterSourceCorrection` gains fixed
+`prepare_claimed_operation_v3` and `assert_claimed_operation_admitted_v3` methods.
+They preserve current authenticated ownership, reverify selected feedback bytes
+outside guards, and independently reproject the complete archive and exact
+selected evidence/receipts on the existing held connection. Existing service
+methods remain byte-preserved. The V3 fixed main writer independently invokes
+this receiver; no constructor, factory default, route, SQL grant or legacy
+policy changes. Bounded duplicate receipt mechanics preserve the old version's
+method bytes; no caller-selected projector or generation callback is introduced.
+
+Pure/unit checks use complete synthetic archives and explicit Auth/SQL/storage
+doubles. Mandatory schema cases create parent intents, record synthetic provider
+results, retain actual Docs feedback, reconcile, approve and claim the successor
+through existing owner commands. Collection does not establish execution, live
+Auth, independent recovery, origin, provider or all-three readiness.

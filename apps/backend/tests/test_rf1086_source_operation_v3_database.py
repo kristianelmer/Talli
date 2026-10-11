@@ -408,7 +408,7 @@ def test_actual_postwait_history_wins_before_current_policy_and_revoked_original
     production_before=asyncio.run(state.store._rows('select * from shareholder_register_filing.production_filing_submissions where id=%s',
         (owned.submission_id.value,)))
     transaction=state.store._transaction
-    waiting={'enabled':False,'pids':[]}
+    waiting={'enabled':False,'pids':[],'holder_pid':None}
     @asynccontextmanager
     async def observable(**options):
         async with transaction(**options) as db:
@@ -418,18 +418,34 @@ def test_actual_postwait_history_wins_before_current_policy_and_revoked_original
     state.store._transaction=observable
     def any_waiting():
         if not waiting['pids']:return False
-        with psycopg.connect(DATABASE_URL) as db:
-            return db.execute("select exists(select 1 from pg_stat_activity where pid=any(%s) and wait_event='advisory')",
-                (waiting['pids'],)).fetchone()[0]
+        with psycopg.connect(DATABASE_URL,connect_timeout=5,options='-c statement_timeout=10000') as db:
+            return db.execute("select exists(select 1 from pg_stat_activity where pid=any(%s) and wait_event='advisory' and %s=any(pg_blocking_pids(pid)))",
+                (waiting['pids'],waiting['holder_pid'])).fetchone()[0]
     def membership(role):
         # Explicit disposable admin revocation oracle, as existing post-wait
         # claim fixtures use. No ordinary role or provider capability is given.
-        with psycopg.connect(DATABASE_URL) as db:
+        with psycopg.connect(DATABASE_URL,connect_timeout=5,options='-c lock_timeout=5000 -c statement_timeout=10000') as db:
             changed=db.execute('update public.company_memberships set role=%s where company_id=%s and user_id=%s returning user_id',
                 (role,state.item['seed']['company'],state.item['seed']['owner'])).fetchall()
             assert len(changed)==1
             assert db.execute('select role from public.company_memberships where company_id=%s and user_id=%s',
                 (state.item['seed']['company'],state.item['seed']['owner'])).fetchone() == (role,)
+    @asynccontextmanager
+    async def race_holder():
+        if race=='prepared-before-current-denial':
+            async with state.store.source_operation_recovery_v3(owned) as holder:
+                waiting['holder_pid']=holder._connection.info.backend_pid
+                yield holder
+        else:
+            # The real membership trigger uses the same company guard. Revoke
+            # on this disposable admin holder so it reenters its own lock;
+            # an independent UPDATE awaited here cannot commit before release.
+            async with await psycopg.AsyncConnection.connect(DATABASE_URL,connect_timeout=5,
+                    options='-c lock_timeout=5000 -c statement_timeout=10000') as holder:
+                await holder.execute('select public.company_archive_lock_company_v1(%s::uuid)',
+                    (str(owned.company_id),))
+                waiting['holder_pid']=holder.info.backend_pid
+                yield holder
     async def run():
         retained=await state.store.read_source_claim_approval_v3(owned.approval_id)
         prepared=await state.dispatch.prepare_main_intent_v3('synthetic-token',state.store,
@@ -438,7 +454,7 @@ def test_actual_postwait_history_wins_before_current_policy_and_revoked_original
         waiter=None
         consumed=False
         try:
-            async with state.store.source_operation_recovery_v3(owned) as holder:
+            async with race_holder() as holder:
                 if race=='prepared-before-current-denial':
                     async with holder.fresh_operation_admission_v3() as fresh:
                         await state.dispatch.validate_held_main_intent_v3(prepared,fresh,state.arguments['correlation_id'])
@@ -457,7 +473,16 @@ def test_actual_postwait_history_wins_before_current_policy_and_revoked_original
                     if await asyncio.to_thread(any_waiting):break
                     await asyncio.sleep(.02)
                 else:raise AssertionError('no actual operation company/year advisory waiter')
-                if race=='original-owner-revoked':await asyncio.to_thread(membership,'reviewer')
+                if race=='original-owner-revoked':
+                    assert not waiter.done()
+                    changed=await (await holder.execute(
+                        'update public.company_memberships set role=%s where company_id=%s and user_id=%s returning user_id',
+                        ('reviewer',state.item['seed']['company'],state.item['seed']['owner']))).fetchall()
+                    assert len(changed)==1
+                    assert await (await holder.execute(
+                        'select role from public.company_memberships where company_id=%s and user_id=%s',
+                        (state.item['seed']['company'],state.item['seed']['owner']))).fetchone() == ('reviewer',)
+                    assert not waiter.done()
             with pytest.raises(rf.Rf1086UnknownProductionOutcomeError if race=='prepared-before-current-denial'
                     else psycopg.errors.RaiseException) as refusal:
                 await asyncio.wait_for(waiter,10)
@@ -487,3 +512,163 @@ def test_actual_postwait_history_wins_before_current_policy_and_revoked_original
         assert [{k:v for k,v in row.items() if k!='updated_at'} for row in production_after]==[
             {k:v for k,v in row.items() if k!='updated_at'} for row in production_before]
     else:assert actual==saved
+
+
+async def complete_claim_with_synthetic_provider_results(state):
+    """Actual committed intent/finish APIs; provider responses are explicit doubles."""
+    first=await prepare_main(state)
+    main=str(uuid4())
+    await state.store.finish_source_operation(state.operation_claim.submission_id,first.event.id,
+        state='succeeded',reference=main,failure=None)
+    retained=await state.store.read_source_claim_approval_v3(state.operation_claim.approval_id)
+    connection=await state.store.read_connection(str(state.request),str(state.source.company_id))
+    for document in retained.approval.manifest['documentHashes'][1:]:
+        async with state.store.source_operation_recovery_v3(state.operation_claim) as recovery:
+            async with recovery.fresh_operation_admission_v3() as fresh:
+                result=await fresh.prepare_child_operation_v3(state.operation_claim,
+                    document_name=document['name'],body_sha256=document['sha256'],idempotency_key=str(uuid4()),
+                    expected_event_id=None,connection=connection,correlation_id=state.arguments['correlation_id'])
+        assert result.newly_prepared
+        await state.store.finish_source_operation(state.operation_claim.submission_id,result.event.id,
+            state='succeeded',reference=str(uuid4()),failure=None)
+    count=len(retained.approval.manifest['documentHashes'])-1
+    async with state.store.source_operation_recovery_v3(state.operation_claim) as recovery:
+        async with recovery.fresh_operation_admission_v3() as fresh:
+            result=await fresh.prepare_confirm_operation_v3(state.operation_claim,
+                body_sha256=sha256(f'{main}:{count}'.encode()).hexdigest(),idempotency_key=str(uuid4()),
+                expected_event_id=None,connection=connection,correlation_id=state.arguments['correlation_id'])
+    references={'dialogId':str(uuid4()),'forsendelseId':str(uuid4())}
+    await state.store.finish_source_operation(state.operation_claim.submission_id,result.event.id,
+        state='succeeded',reference=json.dumps(references,separators=(',', ':')),failure=None)
+    return references
+
+
+async def record_actual_parent_feedback_and_claim_successor(state,status):
+    """Real Docs/reconciliation/approval/claim commands; no seeded confirmed row."""
+    import httpx
+    from talli_backend.modules.documents.service import DocumentsService
+    from talli_backend.application.shareholder_register_source_correction import ShareholderRegisterSourceCorrection
+    from talli_backend.application.shareholder_register_source_claim_v3 import ShareholderRegisterSourceClaimV3
+    from talli_backend.application.shareholder_register_source_approval_v3 import ShareholderRegisterSourceApprovalV3
+    from test_rf1086_database_runtime import LocalStorage
+    references=await complete_claim_with_synthetic_provider_results(state)
+    parent=state.operation_claim
+    source_documents=state.workflow._documents
+    feedback_storage=LocalStorage()
+    class Documents:
+        async def session(self,token):
+            existing=await source_documents.session(token)
+            class Storage:
+                async def create_upload_transfer(self,**args):return await feedback_storage.create_upload_transfer(**args)
+                async def read_object(self,**args):
+                    if args['storage_key'] in feedback_storage.objects:
+                        assert not state.held
+                        state.byte_reads.append(args['storage_key'])
+                        return await feedback_storage.read_object(**args)
+                    return await existing._storage.read_object(**args)
+                async def remove_object(self,**args):return await feedback_storage.remove_object(**args)
+            return DocumentsService(existing._persistence,Storage())
+    documents=Documents()
+    state.store._documents=documents
+    state.store._storage_transport=httpx.MockTransport(feedback_storage.upload)
+    lease=str(uuid4())
+    assert await state.store.claim_feedback_lease(parent.submission_id.value,lease)
+    try:
+        journal=state.store.feedback_journal(submission_id=parent.submission_id.value,
+            company_id=str(parent.company_id),income_year=int(parent.income_year),
+            forsendelse_id=references['forsendelseId'],lease_id=lease)
+        content=('<tilbakemelding>Synthetic controlled '+status+' parent</tilbakemelding>').encode()
+        digest=sha256(content).hexdigest()
+        artifact=rf.Rf1086ReconciliationArtifact(parent.submission_id.value,str(parent.company_id),
+            str(uuid4()),'application/xml',content,len(content),digest,status)
+        assert await journal.record_artifact(artifact)==digest
+        assert await journal.append_reconciliation(rf.Rf1086ReconciliationSnapshot(status,(digest,),
+            'RF1086_FEEDBACK_'+status.upper()))
+    finally:await state.store.release_feedback_lease(parent.submission_id.value,lease)
+    retained=await state.store.read_source_claim_approval_v3(parent.approval_id)
+    prior=rf.Rf1086SourceCorrectionPredecessor(parent.submission_id,retained.approval.manifest_hash,
+        'Controlled actual retained parent correction')
+    sessions=state.workflow._sessions
+    state.approval_workflow=ShareholderRegisterSourceApprovalV3(sessions,documents)
+    state.claim_workflow=ShareholderRegisterSourceClaimV3(sessions,documents)
+    state.dispatch=ShareholderRegisterSourceDispatchV3(sessions,documents)
+    state.store._source_correction_v3=ShareholderRegisterSourceCorrection(sessions,documents)
+    review=await state.approval_workflow.read_review('synthetic-token',**state.approval_arguments)
+    assert review.can_approve,review.blockers
+    approved=await state.approval_workflow.approve('synthetic-token',**state.approval_arguments,
+        review_sha256=review.review_sha256,acknowledged_warning_codes=review.warning_codes,
+        real_filing_confirmed=True,predecessor=prior)
+    retained=await state.store.read_source_claim_approval_v3(rf.ApprovalId(approved.record_id))
+    state.claim_arguments=dict(approval_id=rf.ApprovalId(approved.record_id),
+        manifest_sha256=retained.approval.manifest_hash,expected_head=parent.submission_id,
+        correlation_id=state.arguments['correlation_id'])
+    claimed=await state.claim_workflow.claim('synthetic-token',**state.claim_arguments)
+    assert claimed.newly_claimed
+    state.operation_claim=claimed.claim
+    return parent,prior
+
+
+@pytest.mark.parametrize('status',['accepted','rejected'])
+def test_actual_required_rf_correction_reprojects_full_parent_and_claim_before_committed_main(state,
+        operation_access,status):
+    operation_state(state)
+    source=rf.serialize_rf1086_year_source_v2(state.source)
+    async def run():
+        parent,prior=await record_actual_parent_feedback_and_claim_successor(state,status)
+        retained=await state.store.read_source_claim_approval_v3(state.operation_claim.approval_id)
+        full=await state.store.read_retained_correction_archive(
+            rf.Rf1086SourceQuery(state.operation_claim.company_id,state.operation_claim.income_year,state.store.actor_id),
+            parent.submission_id)
+        assert {row.id for row in full.production_submissions}=={parent.submission_id.value,state.operation_claim.submission_id.value}
+        rf.serialize_rf1086_archive_v6(full,query=rf.Rf1086ArchiveQuery(full.company_id,full.income_year,state.store.actor_id))
+        with pytest.raises(rf.Rf1086ProductionError):
+            rf.prepare_rf1086_retained_correction_predecessor(full,
+                query=rf.Rf1086ArchiveQuery(full.company_id,full.income_year,state.store.actor_id),predecessor=prior)
+        assert rf.prepare_rf1086_claimed_correction_predecessor_v3(full,
+            query=rf.Rf1086ArchiveQuery(full.company_id,full.income_year,state.store.actor_id),
+            claim=state.operation_claim,retained=retained).submission.id==parent.submission_id.value
+        before=await operation_rows(state)
+        prepared=await prepare_main(state)
+        after=await operation_rows(state)
+        assert prepared.newly_prepared and len(after)==len(before)+1
+        # Required receipt IO occurred before the guarded write; no second main intent.
+        assert state.byte_reads
+        async with state.store.source_operation_recovery_v3(state.operation_claim) as recovery:
+            assert (await recovery.read_operation_recovery()).assessment.disposition=='recovery_required'
+        return prepared
+    result=asyncio.run(run())
+    assert result.newly_prepared and rf.serialize_rf1086_year_source_v2(state.source)==source
+
+
+@pytest.mark.parametrize('fault',['missing','selected-evidence','parent-state','original-receipt'])
+def test_actual_fixed_main_correction_receiver_refuses_stale_or_rebound_required_proof_before_intent(state,
+        operation_access,fault):
+    operation_state(state)
+    async def run():
+        await record_actual_parent_feedback_and_claim_successor(state,'rejected')
+        owned=state.operation_claim
+        retained=await state.store.read_source_claim_approval_v3(owned.approval_id)
+        prepared=await state.dispatch.prepare_main_intent_v3('synthetic-token',state.store,
+            claim=owned,retained=retained,correlation_id=state.arguments['correlation_id'])
+        correction=prepared.correction
+        assert correction is not None and correction.originals
+        if fault=='missing':correction=None
+        elif fault=='selected-evidence':correction=replace(correction,selected_evidence=None)
+        elif fault=='parent-state':correction=replace(correction,snapshot=replace(correction.snapshot,
+            submission=replace(correction.snapshot.submission,feedback_safe_error_code='rebound-fixture-error')))
+        else:correction=replace(correction,originals=(replace(correction.originals[0],metadata_sha256='f'*64),
+            *correction.originals[1:]))
+        prepared=replace(prepared,correction=correction)
+        connection=await state.store.read_connection(str(state.request),str(owned.company_id))
+        before=await operation_rows(state)
+        async def attempt():
+            async with state.store.source_operation_recovery_v3(owned) as recovery:
+                async with recovery.fresh_operation_admission_v3() as fresh:
+                    # Exercise the fixed writer independently of the app's validator.
+                    await fresh.prepare_main_operation_v3(prepared,idempotency_key=str(uuid4()),
+                        expected_event_id=None,connection=connection,correlation_id=state.arguments['correlation_id'])
+        with pytest.raises(rf.Rf1086ProductionError):await attempt()
+        assert await operation_rows(state)==before
+        return owned
+    owned=asyncio.run(run())
+    assert owned==state.operation_claim

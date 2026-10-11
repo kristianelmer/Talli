@@ -3053,6 +3053,14 @@ def prepare_rf1086_retained_correction_predecessor(archive: Rf1086ArchiveSnapsho
     return prepare(archive, query=query, predecessor=predecessor)
 
 
+def prepare_rf1086_claimed_correction_predecessor_v3(archive: Rf1086ArchiveSnapshot, *,
+        query: Rf1086ArchiveQuery, claim: Rf1086SourceSubmissionClaim,
+        retained: Rf1086RetainedSourceApproval) -> Rf1086CorrectionPredecessorSnapshot:
+    """Bind complete history and the owned current leaf; no live or byte authority."""
+    from .source_operation_correction_v3 import prepare
+    return prepare(archive, query=query, claim=claim, retained=retained)
+
+
 @dataclass(frozen=True, slots=True)
 class Rf1086CompanyTestRetentionQuery:
     company_id: CompanyId
@@ -3126,6 +3134,7 @@ def assert_company_test_retention_target_inventory_matches(source: Rf1086Company
 __all__ = [
     'prepare_rf1086_retained_source_reconciliation',
     'prepare_rf1086_retained_correction_predecessor',
+    'prepare_rf1086_claimed_correction_predecessor_v3',
     'Rf1086SourceApprovalManifestBasisV3',
     'build_rf1086_source_approval_manifest_v3',
     'assert_rf1086_source_approval_manifest_matches_v3',

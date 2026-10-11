@@ -128,9 +128,10 @@ def test_required_correction_cannot_disappear_or_change_scope_before_source_orig
     if failure == 'actor': correction = replace(correction, actor_id=ActorId(ActorKind.USER, UserId(identity(9323))))
     if failure == 'predecessor': correction = replace(correction, predecessor=replace(parent, reason='changed fixture'))
     async def prepare_correction(*args, **kwargs):
-        assert kwargs['predecessor'] == parent
+        assert kwargs['claim'] == claim and kwargs['retained'] == retained
+        assert rf.inspect_rf1086_source_operation_identity_v3(claim,retained,actor_id=claim.claimed_by) == parent
         return correction
-    monkeypatch.setattr(workflow._correction, 'prepare', prepare_correction)
+    monkeypatch.setattr(workflow._correction, 'prepare_claimed_operation_v3', prepare_correction)
     with pytest.raises(rf.Rf1086ProductionError):
         prepare(owner, claim, retained, workflow)
     assert not any(name == 'bytes' for name, _ in owner.h.base.calls)
@@ -802,21 +803,22 @@ def test_staged_factory_delegates_existing_auth_before_composing_genuine_correct
 @pytest.mark.parametrize('fault',['none','missing','type','company','year','actor','predecessor',
     'receiver','stale-parent','stale-selection','original-receipt'])
 def test_fixed_main_writer_itself_reuses_genuine_required_correction_receiver_before_sql(monkeypatch,fault):
-    from test_rf1086_source_correction import CorrectionHarness
-    parent=CorrectionHarness()
-    verified=asyncio.run(parent.correction.prepare('token',company_id=parent.archive.company_id,
-        income_year=parent.archive.income_year,predecessor=parent.prior))
-    template=retained_submission('formation',0,'accepted',correction=False).production_events[0]
-    owner,claim,retained,workflow=setup_preflight(monkeypatch)
-    prepared=prepare(owner,claim,retained,workflow)
-    assert (verified.company_id,verified.income_year,verified.actor_id)==(
-        claim.company_id,claim.income_year,claim.claimed_by)
-    manifest=json.loads(owner.text);manifest['predecessor']={'submissionId':parent.prior.submission_id.value,
-        'manifestSha256':parent.prior.manifest_sha256,'reason':parent.prior.reason}
-    text=json.dumps(manifest,sort_keys=True,separators=(',', ':'),ensure_ascii=False);digest=sha256(text.encode()).hexdigest()
-    owner.approval=replace(owner.approval,manifest=manifest,manifest_hash=digest);owner.text=text
-    claim=replace(claim,manifest_sha256=digest,predecessor_submission_id=parent.prior.submission_id)
-    retained=rf.Rf1086RetainedSourceApproval(owner.approval,text)
+    from test_rf1086_claimed_correction_v3 import claimed_correction_fixture, configured_correction
+    from talli_backend.application.shareholder_register_source_admission_v2 import PreparedRf1086SourceAdmissionV2
+    from talli_backend.application.shareholder_register_source_dispatch_v3 import PreparedRf1086MainOperationV3
+    from talli_backend.modules.shareholder_register_filing.retained_readiness import parse_annual_binding
+    item=claimed_correction_fixture()
+    parent=configured_correction(item)
+    claim,retained=item.claim,item.retained
+    verified=asyncio.run(parent.correction.prepare_claimed_operation_v3('token',claim=claim,retained=retained))
+    source=item.lineage.source
+    capture=next(row for row in item.archive.source_history.source_previews
+        if row.preview.preview_id.value==item.lineage.preview_id)
+    originals={value.original.receipt.document_id.value:value.original.receipt
+        for value in item.parent_fixture.originals.values()}
+    source_receipts=tuple(originals[row.document_id] for row in source.command.documents)
+    preview=PreparedRf1086SourceAdmissionV2(rf.Rf1086SourceQuery(claim.company_id,claim.income_year,claim.claimed_by),
+        source,capture,source_receipts)
     correction=verified
     if fault=='missing': correction=None
     elif fault=='type': correction=object()
@@ -828,29 +830,36 @@ def test_fixed_main_writer_itself_reuses_genuine_required_correction_receiver_be
         submission=replace(verified.snapshot.submission,updated_at='2026-10-12T00:00:00+00:00')))
     elif fault=='stale-selection': correction=replace(verified,selected_evidence=None)
     elif fault=='original-receipt': parent.original_failure=True
-    prepared=replace(prepared,claim=claim,retained=retained,correction=correction)
-    owner.writer_template=template
+    prepared=PreparedRf1086MainOperationV3(claim,retained,preview,correction)
+    owner,_,_,_=setup_preflight(monkeypatch)
+    owner.writer_template=item.archive.production_events[0]
     key,scope=install_writer_result(monkeypatch,owner,claim)
     owner.h.base.store._source_correction_v3=parent.correction if fault!='receiver' else None
     connection=rf.Rf1086Connection(identity(9403),str(claim.company_id),str(claim.claimed_by.subject),
         'aksjonaerregisteroppgaven','owned-external','accepted',True)
+    annual=parse_annual_binding(retained.approval.manifest['annualReadiness'],source,capture.preview,
+        preview_payload_sha256=capture.payload_sha256,preview_payload_text=capture.payload_text)
     async def run():
         async with scope() as fresh:
+            # Explicit SQL/current-state doubles, with the complete canonical
+            # parent+current claim archive retained for the actual correction policy.
             async def owned(supplied):
                 fresh._require_active();assert supplied==claim
-                return retained,SimpleNamespace(source=owner.h.source),rf.inspect_rf1086_source_operation_identity_v3(
-                    claim,retained,actor_id=fresh.actor_id)
-            async def history():
-                return (*parent.archive.production_submissions,claimed_history_row(claim,retained))
+                return retained,item.lineage,item.parent_fixture.predecessor
+            async def history():return item.archive.production_submissions
+            async def state(*args):
+                fresh._require_active()
+                return source,capture,annual,SimpleNamespace(can_approve=True,
+                    review_sha256=retained.approval.manifest['review']['sha256'],
+                    warning_codes=tuple(retained.approval.manifest['review']['acknowledgedWarningCodes']))
+            async def original(receipt):
+                fresh._require_active()
+                assert receipt in source_receipts
             monkeypatch.setattr(fresh,'_owned_operation_binding_v3',owned)
             monkeypatch.setattr(fresh._held,'submission_history',history)
+            monkeypatch.setattr(fresh._held,'_source_approval_state_v3',state)
             monkeypatch.setattr(fresh._held,'read_retained_correction_archive',parent.transaction.read_retained_correction_archive)
             monkeypatch.setattr(fresh._held,'assert_historical_original',parent.transaction.assert_historical_original)
-            current_original=fresh._held.assert_original
-            async def original(receipt):
-                if receipt.document_id.value in parent.feedback_ids:
-                    return await parent.transaction.assert_original(receipt)
-                return await current_original(receipt)
             monkeypatch.setattr(fresh._held,'assert_original',original)
             parent.held=True
             try:
@@ -859,7 +868,7 @@ def test_fixed_main_writer_itself_reuses_genuine_required_correction_receiver_be
             finally: parent.held=False
     if fault=='none':
         result=asyncio.run(run());assert result.newly_prepared and len(owner.writes)==1
-        assert parent.calls.count('prior_original')==len(verified.originals)
+        assert parent.calls.count('historical_original')==len(verified.originals)
     else:
         from talli_backend.modules.documents.public import DocumentsError
         with pytest.raises((rf.Rf1086ProductionError,DocumentsError)):asyncio.run(run())

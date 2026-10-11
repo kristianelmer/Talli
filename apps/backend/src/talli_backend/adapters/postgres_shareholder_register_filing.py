@@ -2057,7 +2057,8 @@ class _SourceOperationAdmissionV3:
                     or correction.actor_id != self.actor_id or correction.predecessor != prior
                     or type(receiver) is not ShareholderRegisterSourceCorrection):
                 raise rf.Rf1086ProductionError('basis_unavailable')
-            await receiver.assert_admitted(correction, self)
+            await receiver.assert_claimed_operation_admitted_v3(correction, self,
+                claim=claim, retained=retained)
             self._require_active()
         if retained != prepared.retained or lineage.source != prepared.preview.source:
             raise rf.Rf1086ProductionError('payload_changed')

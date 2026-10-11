@@ -157,3 +157,89 @@ class ShareholderRegisterSourceCorrection:
                     and int(receipt.source_income_year) == artifact.original_source_income_year
                     and receipt.retained_at == datetime.fromisoformat(artifact.original_retained_at))
                 await transaction.assert_historical_original(receipt)
+
+
+    async def prepare_claimed_operation_v3(self, access_token, *, claim, retained):
+        """Reverify selected feedback bytes after the exact current claim exists."""
+        session = await self._sessions.session(access_token)
+        prior = rf.inspect_rf1086_source_operation_identity_v3(claim, retained, actor_id=session.actor_id)
+        _require(prior is not None)
+        _require(await session.read_source_submission_claim(claim.approval_id,
+            claim.manifest_sha256, claim.predecessor_submission_id) == claim)
+        _require(await session.read_source_operation_approval_v3(claim.approval_id) == retained)
+        company_id, income_year, predecessor = claim.company_id, claim.income_year, prior
+        query = rf.Rf1086SourceQuery(company_id, income_year, session.actor_id)
+        archive = await session.read_retained_correction_archive(query, predecessor.submission_id)
+        snapshot = rf.prepare_rf1086_claimed_correction_predecessor_v3(archive,
+            query=rf.Rf1086ArchiveQuery(company_id, income_year, session.actor_id), claim=claim, retained=retained)
+        selected_evidence = _selected_evidence(archive, snapshot)
+        documents = await self._documents.session(access_token)
+        _require(documents.actor_id == session.actor_id)
+        originals = []
+        for artifact in sorted(snapshot.artifacts,key=lambda row: (row.document_id,row.id)):
+            if artifact.original_id is None:
+                evidence = await documents.verify_document_evidence(DocumentId(artifact.document_id))
+            else:
+                retained = await documents.read_retained_evidence(RetainedDocumentOriginalQuery(
+                    DocumentId(artifact.document_id), company_id, IncomeYear(artifact.original_source_income_year),
+                    artifact.original_metadata_sha256, artifact.sha256, artifact.byte_length))
+                _require(isinstance(retained, RetainedDocumentOriginalSnapshot))
+                receipt, content = retained.original.receipt, retained.original.content
+                _require(receipt.original_id == artifact.original_id
+                    and receipt.metadata_sha256 == artifact.original_metadata_sha256
+                    and int(receipt.source_income_year) == artifact.original_source_income_year
+                    and receipt.retained_at == datetime.fromisoformat(artifact.original_retained_at)
+                    and len(content) == artifact.byte_length and sha256(content).hexdigest() == artifact.sha256)
+                evidence = VerifiedDocumentEvidence(retained.document, artifact.sha256,
+                    artifact.byte_length, DocumentStatus.STORED, receipt)
+            _require(isinstance(evidence,VerifiedDocumentEvidence))
+            document, receipt = evidence.document, evidence.retained_original
+            _require(isinstance(document,DocumentRecord)
+                and document.document_id.value == artifact.document_id and document.company_id == company_id
+                and document.income_year == income_year and document.document_type == 'authority_feedback'
+                and document.created_by.kind is ActorKind.USER
+                and str(document.created_by.subject) == snapshot.submission.user_id
+                and document.linked_to == 'production_filing_submission:'+snapshot.submission.id
+                and document.content_type == artifact.content_type
+                and document.status is DocumentStatus.STORED and evidence.integrity_status is DocumentStatus.STORED
+                and document.removed_at is None
+                and document.content_sha256 == evidence.content_sha256 == artifact.sha256
+                and type(document.byte_length) is int and type(evidence.byte_length) is int
+                and document.byte_length == evidence.byte_length == artifact.byte_length)
+            _require(isinstance(receipt,RetainedDocumentOriginalReceipt)
+                and receipt.document_id == document.document_id and receipt.company_id == company_id
+                and receipt.source_income_year == income_year and receipt.content_sha256 == artifact.sha256
+                and type(receipt.byte_length) is int and receipt.byte_length == artifact.byte_length
+                and receipt.metadata_sha256 == document_metadata_sha256(document)
+                and isinstance(receipt.retained_at,datetime) and receipt.retained_at.tzinfo is not None)
+            try:
+                _require(str(UUID(receipt.original_id)) == receipt.original_id)
+            except (ValueError,TypeError,AttributeError):
+                raise rf.Rf1086ProductionError('basis_unavailable') from None
+            originals.append(receipt)
+        return VerifiedRf1086Correction(company_id,income_year,session.actor_id,predecessor,snapshot,tuple(originals),selected_evidence)
+
+
+    async def assert_claimed_operation_admitted_v3(self, verified, transaction, *, claim, retained):
+        _require(isinstance(verified,VerifiedRf1086Correction) and transaction.actor_id == verified.actor_id)
+        query = rf.Rf1086SourceQuery(verified.company_id,verified.income_year,verified.actor_id)
+        archive = await transaction.read_retained_correction_archive(query,verified.predecessor.submission_id)
+        current = rf.prepare_rf1086_claimed_correction_predecessor_v3(archive,
+            query=rf.Rf1086ArchiveQuery(verified.company_id, verified.income_year, verified.actor_id),
+            claim=claim, retained=retained)
+        _require(rf.inspect_rf1086_source_operation_identity_v3(claim, retained,
+            actor_id=transaction.actor_id) == verified.predecessor)
+        _require(current == verified.snapshot
+            and _selected_evidence(archive, current) == verified.selected_evidence)
+        artifacts = sorted(current.artifacts, key=lambda row: (row.document_id, row.id))
+        _require(len(verified.originals) == len(artifacts))
+        for artifact, receipt in zip(artifacts, verified.originals, strict=True):
+            _require(receipt.document_id.value == artifact.document_id)
+            if artifact.original_id is None:
+                await transaction.assert_original(receipt)
+            else:
+                _require(receipt.original_id == artifact.original_id
+                    and receipt.metadata_sha256 == artifact.original_metadata_sha256
+                    and int(receipt.source_income_year) == artifact.original_source_income_year
+                    and receipt.retained_at == datetime.fromisoformat(artifact.original_retained_at))
+                await transaction.assert_historical_original(receipt)

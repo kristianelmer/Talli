@@ -143,8 +143,8 @@ class ShareholderRegisterSourceDispatchV3:
             raise rf.Rf1086ProductionError('basis_unavailable')
         if self._documents is None:
             raise rf.Rf1086ProductionError('basis_unavailable')
-        correction = None if predecessor is None else await self._correction.prepare(access_token,
-            company_id=claim.company_id, income_year=claim.income_year, predecessor=predecessor)
+        correction = None if predecessor is None else await self._correction.prepare_claimed_operation_v3(access_token,
+            claim=claim, retained=retained)
         if predecessor is not None and (type(correction) is not VerifiedRf1086Correction
                 or correction.company_id != claim.company_id or correction.income_year != claim.income_year
                 or correction.actor_id != session.actor_id or correction.predecessor != predecessor):
@@ -170,7 +170,8 @@ class ShareholderRegisterSourceDispatchV3:
                     or correction.income_year != prepared.claim.income_year
                     or correction.actor_id != transaction.actor_id or correction.predecessor != predecessor):
                 raise rf.Rf1086ProductionError('basis_unavailable')
-            await self._correction.assert_admitted(correction, transaction)
+            await self._correction.assert_claimed_operation_admitted_v3(correction, transaction,
+                claim=prepared.claim, retained=prepared.retained)
         elif prepared.correction is not None:
             raise rf.Rf1086ProductionError('basis_unavailable')
         return await self._admission.validate_held_preview(

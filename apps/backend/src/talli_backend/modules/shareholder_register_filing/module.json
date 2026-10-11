@@ -191,7 +191,8 @@
       "assert_company_test_retention_target_inventory_matches",
       "inspect_rf1086_source_operation_identity_v3",
       "assert_rf1086_source_main_preflight_v3",
-      "assert_rf1086_source_operation_history_v3"
+      "assert_rf1086_source_operation_history_v3",
+      "prepare_rf1086_claimed_correction_predecessor_v3"
     ],
     "events": [],
     "errors": [
@@ -624,7 +625,8 @@
     "companyTestRetentionRestoreRunner": "apps/backend/tests/test_rf1086_company_test_retention_restore_runner.py",
     "companyTestInventoryIdentityBoundary": "apps/backend/tests/test_rf1086_company_test_inventory_identity_boundary.py",
     "sourceDispatchV3": "apps/backend/tests/test_rf1086_source_dispatch_v3.py",
-    "sourceOperationV3Database": "apps/backend/tests/test_rf1086_source_operation_v3_database.py"
+    "sourceOperationV3Database": "apps/backend/tests/test_rf1086_source_operation_v3_database.py",
+    "claimedCorrectionV3": "apps/backend/tests/test_rf1086_claimed_correction_v3.py"
   },
   "compatibilityExceptions": []
 }
