@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT / 'apps/backend/src'))
 sys.path.insert(0, str(ROOT / 'scripts'))
 
 from rf1086_identity_restore import fingerprint, owned_identity_source, restored_identity
+from rf1086_stateless_owner_fixture import stateless_es256_owner_token
 from rf1086_company_test_inventory_identity_restore import verify_company_test_inventory_actor_recovery
 from verify_rf1086_company_test_retention import artifact_capture, local_file
 from talli_backend.adapters.postgres_shareholder_register_filing import PostgresCompanyTestRetentionSessionFactory
@@ -68,6 +69,20 @@ def _stateless_owned_owner_token(token, source_auth_environment):
     return body + '.' + encode(hmac.digest(key.encode(), body.encode(), 'sha256'))
 
 
+def _signed_stateless_owned_owner_token(token, source_auth_environment):
+    """Route a bounded ES256 header to independent captured-key verification."""
+    header = token[:4097].partition('.')[0] if type(token) is str else ''
+    if len(header) <= 4096:
+        try:
+            value = json.loads(base64.b64decode(header + '=' * (-len(header) % 4),
+                altchars=b'-_', validate=True))
+        except (ValueError, UnicodeError, RecursionError):
+            value = None
+        if type(value) is dict and value.get('alg') == 'ES256':
+            return stateless_es256_owner_token(token, source_auth_environment)
+    return _stateless_owned_owner_token(token, source_auth_environment)
+
+
 def _stateless_diagnostic_metadata(token, source_auth_environment):
     """Bounded header and field-presence labels; never signing authority."""
     algorithm = 'unclassified'
@@ -104,6 +119,7 @@ def _stateless_failure_diagnostic(error, progress):
     if type(error) is ValueError and len(error.args) == 1 and type(error.args[0]) is str:
         cause = {
             'Owned stateless fixture requires captured HS256 signing configuration': 'unsupported-signing-configuration',
+            'Owned stateless fixture requires captured ES256 signing configuration': 'unsupported-signing-configuration',
             'Owned stateless fixture signing key differs from the authenticated owner token': 'signature-mismatch',
             'Original owned owner token has no live session': 'live-session-missing',
         }.get(error.args[0], 'unclassified')
@@ -189,7 +205,7 @@ def _rehearse(args, termination, progress=None):
     stage('stateless-token')
     if progress is not None:
         progress.update(_stateless_diagnostic_metadata(owner_token, auth_environment))
-    stateless_token = _stateless_owned_owner_token(owner_token, auth_environment)
+    stateless_token = _signed_stateless_owned_owner_token(owner_token, auth_environment)
     # Sole lifecycle owner. No target credentials, factory or live handle escapes.
     # Defer termination through acquisition: the old owner must register resources
     # before interruption. Defer through cleanup too, including repeated SIGTERM.

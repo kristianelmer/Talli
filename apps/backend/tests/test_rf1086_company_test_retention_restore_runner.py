@@ -359,3 +359,246 @@ def test_stateless_failure_diagnostic_reaches_entry_point_without_recovery_or_se
         'owned_company_test_inventory_restore_stateless_diagnostic cause=unsupported-signing-configuration '
         'algorithm=es256 signing-fields=secret-only\n')
     assert 'enter-target' not in events and 'source-post' not in events
+
+
+# Fresh synthetic ES256 inputs exercise crypto only; no Auth/session proof.
+def _es_fixture(*, header=None, claims=None, key=None):
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec, utils
+    private = key or ec.generate_private_key(ec.SECP256R1())
+    numbers = private.private_numbers()
+    encode = lambda raw: base64.urlsafe_b64encode(raw).rstrip(b'=').decode('ascii')
+    jwk = {'kty': 'EC', 'crv': 'P-256', 'alg': 'ES256', 'kid': 'synthetic-owned-key',
+        'use': 'sig', 'key_ops': ['sign', 'verify'],
+        'x': encode(numbers.public_numbers.x.to_bytes(32, 'big')),
+        'y': encode(numbers.public_numbers.y.to_bytes(32, 'big')),
+        'd': encode(numbers.private_value.to_bytes(32, 'big'))}
+    selected_header = {'alg': 'ES256', 'typ': 'JWT', 'kid': jwk['kid']} if header is None else header
+    selected_claims = dict(CLAIMS, iss='synthetic-owned-issuer', aud=['authenticated'],
+        app_metadata={'nested': [True, None, 1.25]}) if claims is None else claims
+    body = encode(json.dumps(selected_header, separators=(',', ':')).encode()) + '.' + encode(
+        json.dumps(selected_claims, separators=(',', ':')).encode())
+    first, second = utils.decode_dss_signature(private.sign(body.encode(), ec.ECDSA(hashes.SHA256())))
+    return private, jwk, body + '.' + encode(first.to_bytes(32, 'big') + second.to_bytes(32, 'big'))
+
+
+def _es_sign_body(private, body):
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec, utils
+    first, second = utils.decode_dss_signature(private.sign(body.encode(), ec.ECDSA(hashes.SHA256())))
+    return body + '.' + base64.urlsafe_b64encode(first.to_bytes(32, 'big') + second.to_bytes(32, 'big')).rstrip(b'=').decode()
+
+
+def _es_verify(private, token):
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec, utils
+    header, payload, signature = token.split('.')
+    decode = lambda value: base64.urlsafe_b64decode(value + '=' * (-len(value) % 4))
+    raw = decode(signature)
+    assert len(raw) == 64
+    private.public_key().verify(utils.encode_dss_signature(int.from_bytes(raw[:32], 'big'),
+        int.from_bytes(raw[32:], 'big')), (header + '.' + payload).encode(), ec.ECDSA(hashes.SHA256()))
+    return json.loads(decode(payload))
+
+
+@pytest.mark.parametrize('optional_metadata', [True, False])
+def test_es256_fixture_proves_original_key_preserves_header_and_all_other_claims(optional_metadata):
+    private, jwk, token = _es_fixture()
+    if not optional_metadata:
+        for field in ('alg', 'use', 'key_ops'):
+            del jwk[field]
+    _, other, _ = _es_fixture()
+    other['kid'] = 'unrelated-owned-key'
+    environment = {'GOTRUE_JWT_KEYS': json.dumps([other, jwk]), 'GOTRUE_JWT_SECRET': 'unused-synthetic-secret'}
+    before = dict(environment)
+    original = _es_verify(private, token)
+    result = runner._signed_stateless_owned_owner_token(token, environment)
+    assert result.split('.')[0] == token.split('.')[0]
+    assert _es_verify(private, result) == {key: value for key, value in original.items() if key != 'session_id'}
+    assert _es_verify(private, token) == original and environment == before
+
+
+def test_es256_dispatch_retains_exact_hs256_result_and_unsupported_algorithm_refusal():
+    token = signed(CLAIMS)
+    environment = {'GOTRUE_JWT_SECRET': 'owned-synthetic-HS256-key', 'GOTRUE_JWT_KEYS': 'private-unused-keyset'}
+    assert runner._signed_stateless_owned_owner_token(token, environment) == runner._stateless_owned_owner_token(token, environment)
+    with pytest.raises(ValueError, match='requires captured HS256'):
+        runner._signed_stateless_owned_owner_token(signed(CLAIMS, header={'alg': 'RS256'}), environment)
+
+
+@pytest.mark.parametrize('mutation', [
+    'wrong-public', 'wrong-scalar', 'off-curve', 'zero-scalar', 'short-coordinate', 'missing-private',
+    'wrong-type', 'wrong-curve', 'wrong-algorithm', 'wrong-use', 'verify-only', 'wrong-operations',
+    'duplicate-operations', 'nonstring-operations', 'missing-kid', 'duplicate-kid', 'unknown-kid',
+    'empty-keyset', 'object-keyset', 'nondict-key', 'malformed-keyset', 'duplicate-key-field',
+    'oversized-keyset', 'too-many-keys', 'padded-coordinate', 'noncanonical-coordinate',
+    'tampered-payload', 'tampered-header', 'tampered-signature', 'short-signature', 'long-signature',
+    'padded-signature', 'noncanonical-signature', 'missing-sid', 'empty-sid', 'numeric-sid',
+    'array-claims', 'duplicate-claims', 'nan-claims', 'infinite-claims', 'overflow-claims',
+    'malformed-claims', 'noncanonical-payload', 'noncanonical-header', 'oversized-token',
+    'oversized-header', 'oversized-kid', 'duplicate-header', 'missing-header-kid', 'empty-header-kid',
+    'jwk', 'jku', 'x5u', 'x5c', 'crit', 'b64', 'helper-wrong-algorithm', 'utf16-header', 'utf16-claims',
+])
+def test_es256_fixture_refuses_unproven_keys_tokens_claims_and_bounds_privately(mutation):
+    from rf1086_stateless_owner_fixture import stateless_es256_owner_token
+    private, jwk, token = _es_fixture()
+    keys = [jwk]
+    header, payload, signature = token.split('.')
+    encode = lambda raw: base64.urlsafe_b64encode(raw).rstrip(b'=').decode()
+    claims = _es_verify(private, token)
+    changes = {'wrong-type': ('kty', 'RSA'), 'wrong-curve': ('crv', 'P-384'),
+        'wrong-algorithm': ('alg', 'HS256'), 'wrong-use': ('use', 'enc'),
+        'verify-only': ('key_ops', ['verify']), 'wrong-operations': ('key_ops', ['sign', 'deriveKey']),
+        'duplicate-operations': ('key_ops', ['sign', 'sign']), 'nonstring-operations': ('key_ops', ['sign', 1])}
+    if mutation in changes:
+        field, value = changes[mutation];jwk[field] = value
+    elif mutation in ('wrong-public', 'wrong-scalar'):
+        _, other, _ = _es_fixture()
+        for field in (('x', 'y') if mutation == 'wrong-public' else ('d',)):
+            jwk[field] = other[field]
+    elif mutation in ('off-curve', 'zero-scalar', 'short-coordinate'):
+        jwk['x' if mutation == 'off-curve' else 'd'] = encode(b'\0' * (31 if mutation == 'short-coordinate' else 32))
+    elif mutation == 'missing-private':del jwk['d']
+    elif mutation == 'missing-kid':del jwk['kid']
+    elif mutation == 'duplicate-kid':keys = [jwk, dict(jwk)]
+    elif mutation == 'unknown-kid':jwk['kid'] = 'different-synthetic-key'
+    elif mutation == 'empty-keyset':keys = []
+    elif mutation == 'object-keyset':keys = {'keys': [jwk]}
+    elif mutation == 'nondict-key':keys = [jwk, None]
+    elif mutation == 'too-many-keys':keys = [dict(jwk, kid='unrelated-' + str(i)) for i in range(32)] + [jwk]
+    elif mutation == 'padded-coordinate':jwk['d'] += '='
+    elif mutation == 'noncanonical-coordinate':jwk['d'] = encode(b'\0'*32)[:-1] + 'B'
+    elif mutation == 'tampered-payload':payload = encode(json.dumps(dict(claims, role='synthetic-escalation')).encode())
+    elif mutation == 'tampered-header':header = encode(b'{"alg":"ES256","kid":"synthetic-owned-key","typ":"tampered"}')
+    elif mutation == 'tampered-signature':signature = encode(b'\0'*64)
+    elif mutation == 'short-signature':signature = encode(b'\0'*63)
+    elif mutation == 'long-signature':signature = encode(b'\0'*65)
+    elif mutation == 'padded-signature':signature += '=='
+    elif mutation == 'noncanonical-signature':signature = encode(b'\0'*64)[:-1] + 'B'
+    elif mutation in ('missing-sid', 'empty-sid', 'numeric-sid'):
+        claims.pop('session_id')
+        if mutation != 'missing-sid':claims['session_id'] = '' if mutation == 'empty-sid' else 1
+        token = _es_sign_body(private, header + '.' + encode(json.dumps(claims).encode()))
+    elif mutation in ('array-claims', 'duplicate-claims', 'nan-claims', 'infinite-claims', 'overflow-claims', 'malformed-claims'):
+        raw = {'array-claims': b'[]', 'duplicate-claims': b'{"session_id":"synthetic-session","role":"a","role":"b"}',
+            'nan-claims': b'{"session_id":"synthetic-session","value":NaN}',
+            'infinite-claims': b'{"session_id":"synthetic-session","value":Infinity}',
+            'overflow-claims': b'{"session_id":"synthetic-session","value":1e9999}',
+            'malformed-claims': b'{private-captured-value'}[mutation]
+        token = _es_sign_body(private, header + '.' + encode(raw))
+    elif mutation == 'utf16-header':token = _es_sign_body(private, encode(json.dumps({'alg':'ES256','kid':jwk['kid']}).encode('utf-16')) + '.' + payload)
+    elif mutation == 'utf16-claims':token = _es_sign_body(private, header + '.' + encode(json.dumps(claims).encode('utf-16')))
+    elif mutation == 'noncanonical-payload':token = _es_sign_body(private, header + '.' + payload + '=')
+    elif mutation == 'noncanonical-header':token = _es_sign_body(private, header + '=.' + payload)
+    elif mutation == 'oversized-token':token = header + '.' + 'A' * (128 * 1024) + '.' + signature
+    elif mutation == 'oversized-header':token = _es_sign_body(private, encode(json.dumps({'alg':'ES256','kid':jwk['kid'],'padding':'x'*4096}).encode()) + '.' + payload)
+    elif mutation in ('oversized-kid', 'duplicate-header', 'missing-header-kid', 'empty-header-kid', 'helper-wrong-algorithm', 'jwk', 'jku', 'x5u', 'x5c', 'crit', 'b64'):
+        fields = {'alg': 'ES256', 'kid': jwk['kid']}
+        if mutation == 'oversized-kid':fields['kid'] = jwk['kid'] = 'x'*513
+        elif mutation == 'missing-header-kid':del fields['kid']
+        elif mutation == 'empty-header-kid':fields['kid'] = ''
+        elif mutation == 'helper-wrong-algorithm':fields['alg'] = 'HS256'
+        elif mutation in ('jwk', 'jku', 'x5u', 'x5c', 'crit', 'b64'):fields[mutation] = 'synthetic-external-authority'
+        raw = b'{"alg":"ES256","alg":"ES256","kid":"synthetic-owned-key"}' if mutation == 'duplicate-header' else json.dumps(fields).encode()
+        token = _es_sign_body(private, encode(raw) + '.' + payload)
+    if mutation in ('tampered-payload','tampered-header','tampered-signature','short-signature','long-signature','padded-signature','noncanonical-signature'):
+        token = header + '.' + payload + '.' + signature
+    keyset = json.dumps(keys)
+    if mutation == 'malformed-keyset':keyset = '[private-captured-key'
+    elif mutation == 'duplicate-key-field':keyset = '[' + json.dumps(jwk)[:-1] + ',"kid":"synthetic-owned-key"}]'
+    elif mutation == 'oversized-keyset':keyset += ' ' * (256 * 1024)
+    environment = {'GOTRUE_JWT_KEYS': keyset, 'GOTRUE_JWT_SECRET': 'private-unused-secret'}
+    with pytest.raises(ValueError) as rejected:
+        stateless_es256_owner_token(token, environment)
+    assert str(rejected.value) == 'Owned ES256 stateless fixture verification failed'
+    assert rejected.value.__suppress_context__
+    assert all(value not in str(rejected.value) for value in (jwk.get('d', 'synthetic-private'), token, 'private-unused-secret'))
+
+
+@pytest.mark.parametrize('keyset', [None, '', 3])
+def test_es256_missing_captured_keyset_has_fixed_configuration_label_without_hs_fallback(keyset):
+    _, _, token = _es_fixture()
+    environment = {'GOTRUE_JWT_SECRET': 'synthetic-hs-secret'}
+    if keyset is not None:environment['GOTRUE_JWT_KEYS'] = keyset
+    with pytest.raises(ValueError) as rejected:
+        runner._signed_stateless_owned_owner_token(token, environment)
+    assert str(rejected.value) == 'Owned stateless fixture requires captured ES256 signing configuration'
+    assert runner._stateless_failure_diagnostic(rejected.value,
+        {'statelessAlgorithm':'es256','statelessSigningFields':'secret-only'}) == (
+            'cause=unsupported-signing-configuration algorithm=es256 signing-fields=secret-only')
+
+
+def test_es256_fixture_accepts_exact_input_limits_without_alternate_authority():
+    from rf1086_stateless_owner_fixture import stateless_es256_owner_token
+    private, jwk, _ = _es_fixture()
+    jwk['kid'] = 'k' * 512
+    header = {'alg': 'ES256', 'kid': jwk['kid'], 'padding': ''}
+    header['padding'] = 'h' * (3072 - len(json.dumps(header, separators=(',', ':')).encode()))
+    encode = lambda raw: base64.urlsafe_b64encode(raw).rstrip(b'=').decode()
+    encoded_header = encode(json.dumps(header, separators=(',', ':')).encode())
+    assert len(encoded_header) == 4096
+    claims = dict(CLAIMS, padding='')
+    payload_bytes = (128 * 1024 - len(encoded_header) - 2 - 86) * 3 // 4
+    claims['padding'] = 'p' * (payload_bytes - len(json.dumps(claims, separators=(',', ':')).encode()))
+    body = encoded_header + '.' + encode(json.dumps(claims, separators=(',', ':')).encode())
+    token = _es_sign_body(private, body)
+    assert len(token) == 128 * 1024
+    keys = [dict(jwk, kid='other-' + str(i)) for i in range(31)] + [jwk]
+    keyset = json.dumps(keys)
+    keyset += ' ' * (256 * 1024 - len(keyset))
+    result = stateless_es256_owner_token(token, {'GOTRUE_JWT_KEYS': keyset})
+    assert result.split('.')[0] == encoded_header
+    assert _es_verify(private, result) == {key: value for key, value in claims.items() if key != 'session_id'}
+
+
+def test_es256_output_interoperates_with_node_webcrypto_without_private_key_transfer():
+    private, jwk, token = _es_fixture()
+    result = runner._signed_stateless_owned_owner_token(token, {'GOTRUE_JWT_KEYS': json.dumps([jwk])})
+    public = {key: value for key, value in jwk.items() if key not in ('d', 'key_ops')}
+    script = '''
+        import { webcrypto } from 'node:crypto';
+        const chunks = [];
+        for await (const chunk of process.stdin) chunks.push(chunk);
+        const { key, tokens } = JSON.parse(Buffer.concat(chunks).toString());
+        const publicKey = await webcrypto.subtle.importKey('jwk', key,
+            { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+        const valid = [];
+        for (const token of tokens) {
+            const [header, payload, signature] = token.split('.');
+            valid.push(await webcrypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' },
+                publicKey, Buffer.from(signature, 'base64url'), Buffer.from(header + '.' + payload)));
+        }
+        process.stdout.write(JSON.stringify(valid));
+    '''
+    tampered = result.split('.')
+    tampered[1] = base64.urlsafe_b64encode(b'{"role":"synthetic-tamper"}').rstrip(b'=').decode()
+    checked = subprocess.run(['node', '--input-type=module', '-e', script],
+        input=json.dumps({'key': public, 'tokens': [token, result, '.'.join(tampered)]}),
+        text=True, capture_output=True, timeout=10, check=True)
+    assert json.loads(checked.stdout) == [True, True, False]
+
+
+@pytest.mark.parametrize('overflow', [False, True])
+def test_es256_captured_keyset_budget_counts_utf8_bytes_before_parsing(overflow, monkeypatch):
+    import rf1086_stateless_owner_fixture as fixture
+    private, jwk, token = _es_fixture()
+    jwk['synthetic_metadata'] = 'é' * 100000
+    keyset = json.dumps([jwk], ensure_ascii=False)
+    keyset += ' ' * (256 * 1024 - len(keyset.encode('utf-8')) + int(overflow))
+    assert len(keyset) < 256 * 1024
+    assert len(keyset.encode('utf-8')) == 256 * 1024 + int(overflow)
+    environment = {'GOTRUE_JWT_KEYS': keyset}
+    before = dict(environment)
+    if overflow:
+        def must_not_parse(value):
+            pytest.fail('Byte budget refusal must precede JSON parsing and crypto')
+        monkeypatch.setattr(fixture, '_object', must_not_parse)
+        with pytest.raises(ValueError) as rejected:
+            fixture.stateless_es256_owner_token(token, environment)
+        assert str(rejected.value) == 'Owned ES256 stateless fixture verification failed'
+        assert rejected.value.__suppress_context__
+    else:
+        result = fixture.stateless_es256_owner_token(token, environment)
+        assert _es_verify(private, result) == {k:v for k,v in CLAIMS.items() if k != 'session_id'} | {
+            'iss':'synthetic-owned-issuer','aud':['authenticated'],'app_metadata':{'nested':[True,None,1.25]}}
+    assert environment == before
