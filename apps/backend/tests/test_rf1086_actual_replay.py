@@ -248,7 +248,8 @@ def test_full_control_requires_fresh_failed_bindings_before_inventory(setup, mon
         result = replay.replay(path, metadata, time.monotonic() + 5)
         assert result['F2EqualsF'] and result['causalSnapshotEqualsF']
         assert result['S0'] == result['Is'] == 'unavailable'
-        assert result['In'] == 'source_predicate_incomplete'
+        assert result['In'] == 'archive_function_equivalence_unproved'
+        assert result['netSourceAttributesObserved'] is True
         assert result['recoveryAccepted'] is result['causalAttributionAccepted'] is False
         assert commands[0] == b'ALTER ROLE supabase_admin WITH SUPERUSER;\n'
         full = [c for c in commands if isinstance(c, list) and '--dbname' in c]
@@ -322,3 +323,30 @@ def test_availability_status_uses_only_finite_labels(error, expected, capsys):
     assert json.loads(output.err.removeprefix(package.STATUS_TAG)) == {
         'status': 'unavailable', 'action': 'operation', 'reason': expected,
     }
+
+
+def test_replay_uses_shared_framed_file_observations_with_per_file_budget(monkeypatch):
+    calls = []
+    monkeypatch.setattr(replay.time, 'monotonic', lambda: 10)
+    def command(args, deadline, *, cap):
+        calls.append((deadline, cap))
+        return b'UNAVAILABLE:pg_config_unavailable\n' if args[-1] == '.control' else b'OK\nprivate-canary'
+    monkeypatch.setattr(replay, 'command', command)
+    result = replay.installed_files('a' * 64, {'extensions': [['pg_net', '0.20.3', 'net', 'owner']]}, 30)
+    assert calls == [(15, replay.FILE_OUTPUT_CAP)] * 2
+    assert result['pg_net.control'] == {'status': 'unavailable', 'reason': 'pg_config_unavailable'}
+    assert result['pg_net--0.20.3.sql']['sha256'] == package.digest(b'private-canary')
+    assert 'private-canary' not in json.dumps(result)
+
+
+@pytest.mark.parametrize('fault', ['cancel', 'deadline'])
+def test_replay_file_observations_cannot_swallow_global_deadline_or_cancel(monkeypatch, fault):
+    ticks = [10]
+    monkeypatch.setattr(replay.time, 'monotonic', lambda: ticks[0])
+    def command(*a, **k):
+        if fault == 'cancel': raise KeyboardInterrupt()
+        ticks[0] = 31
+        raise ValueError('private-canary')
+    monkeypatch.setattr(replay, 'command', command)
+    with pytest.raises(KeyboardInterrupt if fault == 'cancel' else ValueError):
+        replay.installed_files('a' * 64, {'extensions': [['pg_net', '0.20.3', 'net', 'owner']]}, 30)

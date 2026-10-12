@@ -1,5 +1,6 @@
 """Private evidence for four rejected catalog objects; never recovery acceptance."""
 import base64
+from decimal import Decimal
 import hashlib
 import json
 import os
@@ -79,6 +80,31 @@ def _snapshot(container, deadline, *, target=False, retained=None):
     return _validate_snapshot(result, retained)
 
 
+def _definition_attributes(value, argument_count):
+    if (type(value) is not dict or set(value) != {'default_count', 'defaults', 'cost', 'rows',
+            'support', 'binary', 'fixed_shape'} or value['fixed_shape'] is not True
+            or type(value['default_count']) is not int or not 0 <= value['default_count'] <= argument_count):
+        _unavailable()
+    for name in ('defaults', 'binary'):
+        item = value[name]
+        if item is not None:
+            if (type(item) is not dict or set(item) != {'bytes', 'sha256'}
+                    or type(item['bytes']) is not int or not 0 <= item['bytes'] <= 4096
+                    or not HASH.fullmatch(_text(item['sha256']))): _unavailable()
+        if name == 'defaults' and ((item is None) != (value['default_count'] == 0)
+                or (item is not None and item['bytes'] == 0)): _unavailable()
+    for name in ('cost', 'rows'):
+        text = _text(value[name], 32)
+        if not re.fullmatch(r'[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]{1,3})?', text): _unavailable()
+        number = Decimal(text)
+        if not number.is_finite() or number < 0 or (name == 'cost' and number == 0): _unavailable()
+    support = value['support']
+    if support is not None:
+        if type(support) is not list or len(support) != 3: _unavailable()
+        for item in support: _text(item)
+        if not support[0] or not support[1]: _unavailable()
+
+
 def _validate_snapshot(result, retained):
     if (type(result) is not dict or set(result) != {'serverVersion', 'schemas', 'functions', 'hooks', 'events', 'extensions'}
             or type(result['serverVersion']) is not int or not 170000 <= result['serverVersion'] < 180000):
@@ -93,7 +119,7 @@ def _validate_snapshot(result, retained):
             if type(item) is not dict or _encoded(item.get('identity')) not in allowed: _unavailable()
             found.append(_encoded(item['identity']))
             fields = {'identity', 'row'} | ({'defaults', 'grants', 'default_grants', 'initial', 'extensions'} if group == 'schemas'
-                else {'definition_sha256', 'body_sha256'} | ({'attributes', 'types', 'extensions'} if group == 'functions' else set()))
+                else {'definition_sha256', 'body_sha256'} | ({'attributes', 'types', 'extensions', 'definition_attributes'} if group == 'functions' else set()))
             if set(item) != fields: _unavailable()
             # Reuse the strict catalog row parser even for the initially empty target.
             with CatalogCapture() as shape:
@@ -121,7 +147,8 @@ def _validate_snapshot(result, retained):
                 if (type(attrs) is not list or len(attrs) != 8 or any(type(attrs[i]) is not bool for i in (4, 6, 7))
                         or attrs[2] != 'f' or attrs[3] not in ('i', 's', 'v') or attrs[5] not in ('s', 'r', 'u')):
                     _unavailable()
-                _text(attrs[0]); _text(attrs[1])
+                if attrs[0] != 'plpgsql' or attrs[1] != 'bigint' or attrs[7]: _unavailable()
+                _definition_attributes(item['definition_attributes'], len(NET_TYPES[index]))
             if group == 'hooks':
                 # Hook configuration values are not needed; preserve only their hash.
                 item['row'][-1] = hashlib.sha256(_encoded(item['row'][-1])).hexdigest()
@@ -152,31 +179,62 @@ def _validate_snapshot(result, retained):
 
 # Only these constant paths and validated numeric extension versions are read.
 # A single bounded read supplies the hashed bytes; no file contents enter logs.
+FILE_OUTPUT_CAP = 256 * 1024 + 4  # OK newline, content cap, one overflow sentinel.
+FILE_REASONS = frozenset(('realpath_unavailable', 'head_unavailable', 'pg_config_unavailable',
+    'sharedir_unavailable', 'root_unresolved', 'path_unavailable', 'path_unresolved',
+    'outside_root', 'not_regular', 'not_readable'))
 FILE_READER = """set -eu
+unavailable() { printf 'UNAVAILABLE:%s\\n' "$1"; exit 0; }
+command -v realpath >/dev/null 2>&1 || unavailable realpath_unavailable
+command -v head >/dev/null 2>&1 || unavailable head_unavailable
 if [ "$1" = bootstrap ]; then
   root=/etc; file=/etc/postgresql.schema.sql
 else
-  root=$(realpath "$(pg_config --sharedir)/extension")
+  command -v pg_config >/dev/null 2>&1 || unavailable pg_config_unavailable
+  shared=$(pg_config --sharedir 2>/dev/null) || unavailable sharedir_unavailable
+  case "$shared" in /*) ;; *) unavailable sharedir_unavailable;; esac
+  root=$(realpath "$shared/extension" 2>/dev/null) || unavailable root_unresolved
   file="$root/$2$3"
 fi
-resolved=$(realpath "$file")
-case "$resolved" in "$root"/*) ;; *) exit 1;; esac
-[ -f "$resolved" ]
+[ -e "$file" ] || [ -L "$file" ] || unavailable path_unavailable
+resolved=$(realpath "$file" 2>/dev/null) || unavailable path_unresolved
+case "$resolved" in "$root"/*) ;; *) unavailable outside_root;; esac
+[ -f "$resolved" ] || unavailable not_regular
+[ -r "$resolved" ] || unavailable not_readable
+printf 'OK\\n'
 exec head -c 262145 "$resolved"
 """
 
 
-def _files(container, extensions, deadline, *, source=False):
+def _files(container, extensions, deadline, *, source=False, run=None):
     result = {}
+    if type(container) is not str or not HASH.fullmatch(container): _unavailable()
+    _extensions(extensions, 4)
     requests = [('bootstrap', '', '')] if source else []
     for name, version, *_ in extensions:
         if name not in ('pg_net', 'pg_graphql') or not VERSION.fullmatch(version): _unavailable()
         requests += [('extension', name, '.control'), ('extension', name, '--' + version + '.sql')]
     for mode, name, suffix in requests:
-        raw = _command(['docker', 'exec', container, 'sh', '-c', FILE_READER, 'causal-file', mode, name, suffix], deadline)
-        if len(raw) > 256 * 1024: _unavailable()
+        key = mode if mode == 'bootstrap' else name + suffix
+        _remaining(deadline)
+        try:
+            raw = (run or _command)(['docker', 'exec', container, 'sh', '-c', FILE_READER,
+                                    'causal-file', mode, name, suffix], deadline)
+        except Exception:
+            _remaining(deadline)
+            result[key] = {'status': 'unavailable', 'reason': 'command_failed'}
+            continue
+        _remaining(deadline)
+        if not raw.startswith(b'OK\n'):
+            reasons = {('UNAVAILABLE:' + reason + '\n').encode(): reason for reason in FILE_REASONS}
+            result[key] = {'status': 'unavailable', 'reason': reasons.get(raw, 'invalid_response')}
+            continue
+        raw = raw[3:]
+        if len(raw) > 256 * 1024:
+            result[key] = {'status': 'unavailable', 'reason': 'size_limit'}
+            continue
         digest = hashlib.sha256(raw).hexdigest()
-        result[mode if mode == 'bootstrap' else name + suffix] = {'bytes': len(raw), 'sha256': digest}
+        result[key] = {'status': 'observed', 'bytes': len(raw), 'sha256': digest}
         if mode == 'bootstrap':
             result['bootstrap']['knownCliTemplate'] = 'normal' if digest == NORMAL_BOOTSTRAP else 'fromBackup' if digest == BACKUP_BOOTSTRAP else 'unknown'
         if name == 'pg_net' and suffix == '--0.20.3.sql':
@@ -391,6 +449,8 @@ class CausalCapture:
                 'archive': self._group(lambda: _archive(dump, target, left, deadline), deadline)}
             complete = all(self.snapshots[phase][group]['status'] == 'observed'
                 for phase, group in zip(PHASES, ('files', 'files', 'archive')))
+            complete = complete and all(value.get('status') == 'observed'
+                for phase in PHASES[:2] for value in self.snapshots[phase]['files']['value'].values())
             for phase in PHASES:
                 self.snapshots[phase]['captureGroupsComplete'] = complete
                 lines.append(_seal(self.snapshots[phase], self.binding | {'phase': phase}, self.public_key))

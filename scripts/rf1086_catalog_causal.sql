@@ -47,6 +47,24 @@ WITH schemas AS (
     encode(sha256(convert_to(p.prosrc,'UTF8')),'hex') AS body_sha256,
     jsonb_build_array(p.lanname,pg_get_function_result(p.oid),p.prokind,p.provolatile,p.proisstrict,
       p.proparallel,p.proleakproof,p.proretset) AS attributes,
+    jsonb_build_object(
+      'default_count',p.pronargdefaults,
+      'defaults',CASE WHEN p.proargdefaults IS NULL THEN NULL ELSE jsonb_build_object(
+        'bytes',octet_length(convert_to(pg_get_expr(p.proargdefaults,0),'UTF8')),
+        'sha256',encode(sha256(convert_to(pg_get_expr(p.proargdefaults,0),'UTF8')),'hex')) END,
+      'cost',p.procost::text,'rows',p.prorows::text,
+      'support',CASE WHEN p.prosupport=0 THEN NULL ELSE
+        (SELECT jsonb_build_array(n.nspname,s.proname,pg_get_function_identity_arguments(s.oid))
+         FROM pg_proc s JOIN pg_namespace n ON n.oid=s.pronamespace WHERE s.oid=p.prosupport) END,
+      'binary',CASE WHEN p.probin IS NULL THEN NULL ELSE jsonb_build_object(
+        'bytes',octet_length(convert_to(p.probin,'UTF8')),
+        'sha256',encode(sha256(convert_to(p.probin,'UTF8')),'hex')) END,
+      'fixed_shape',p.provariadic=0 AND p.proallargtypes IS NULL AND p.proargmodes IS NULL
+        AND p.protrftypes IS NULL AND p.prosqlbody IS NULL
+        AND p.proargnames=CASE p.proname WHEN 'http_get' THEN
+          ARRAY['url','params','headers','timeout_milliseconds']::text[] ELSE
+          ARRAY['url','body','params','headers','timeout_milliseconds']::text[] END
+    ) AS definition_attributes,
     (SELECT jsonb_agg(jsonb_build_array(n.nspname,t.typname) ORDER BY a.ordinality)
       FROM unnest(p.proargtypes) WITH ORDINALITY a(oid,ordinality)
       JOIN pg_type t ON t.oid=a.oid JOIN pg_namespace n ON n.oid=t.typnamespace) AS types,

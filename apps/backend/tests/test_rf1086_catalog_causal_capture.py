@@ -6,6 +6,7 @@ import io
 import json
 from pathlib import Path
 import sys
+import subprocess
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives import serialization
@@ -33,6 +34,9 @@ def snapshot():
     functions = [{'identity': identity, 'row': identity + ['private-owner', None, True, '{search_path=net}'],
         'definition_sha256': 'c' * 64, 'body_sha256': 'd' * 64,
         'attributes': ['plpgsql', 'bigint', 'f', 'v', False, 'u', False, False],
+        'definition_attributes': {'default_count': len(causal.NET_TYPES[i]) - 1,
+            'defaults': {'bytes': 41, 'sha256': 'e' * 64}, 'cost': '100', 'rows': '0',
+            'support': None, 'binary': None, 'fixed_shape': True},
         'types': [['pg_catalog', name] for name in causal.NET_TYPES[i]],
         'extensions': [['pg_net', '0.20.3', 'private-owner']]} for i, identity in enumerate(causal.NET_IDENTITIES)]
     return {'serverVersion': 170006, 'schemas': schemas, 'functions': functions, 'hooks': [], 'events': [],
@@ -44,6 +48,46 @@ def test_exact_predump_binding_preserves_public_and_grant_options(snapshot):
     assert value['schemas'][0]['grants'] == snapshot['schemas'][0]['grants']
     assert value['schemas'][0]['initial'][0][2][0][-1] is True
     assert value['functions'][0]['body_sha256'] == 'd' * 64
+
+
+def test_fixed_definition_attributes_preserve_null_and_empty_binary_distinctions(snapshot):
+    attrs = snapshot['functions'][0]['definition_attributes']
+    attrs.update(default_count=0, defaults=None, binary={'bytes': 0, 'sha256': hashlib.sha256(b'').hexdigest()},
+                 support=['pg_catalog', 'synthetic_support', 'internal'], cost='1e+02')
+    value = causal._validate_snapshot(deepcopy(snapshot), retained(snapshot))
+    assert value['functions'][0]['definition_attributes'] == attrs
+
+
+@pytest.mark.parametrize('field,value', [
+    ('default_count', True), ('default_count', -1), ('default_count', 5),
+    ('default_count', 0), ('defaults', None), ('defaults', {'bytes': 0, 'sha256': 'e' * 64}),
+    ('defaults', {'bytes': 4097, 'sha256': 'e' * 64}),
+    ('defaults', {'bytes': True, 'sha256': 'e' * 64}),
+    ('defaults', {'bytes': 1, 'sha256': 'not-a-hash'}),
+    ('defaults', {'bytes': 1, 'sha256': 'e' * 64, 'raw': 'private-canary'}),
+    ('cost', 'NaN'), ('cost', 'Infinity'), ('cost', '-1'), ('cost', '0'), ('cost', 1),
+    ('cost', '1e9999'), ('rows', '-1'), ('rows', 'NaN'),
+    ('support', []), ('support', [None, 'f', '']), ('support', ['', 'f', '']),
+    ('support', ['pg_catalog', 'f', 'x' * 257]),
+    ('binary', {'bytes': 4097, 'sha256': 'e' * 64}),
+    ('binary', {'bytes': 1, 'sha256': 'private-canary'}), ('fixed_shape', False), ('fixed_shape', 1),
+])
+def test_fixed_definition_attributes_reject_unsupported_or_unbounded_values(snapshot, field, value):
+    original = retained(snapshot)
+    snapshot['functions'][0]['definition_attributes'][field] = value
+    with pytest.raises(ValueError): causal._validate_snapshot(snapshot, original)
+
+
+@pytest.mark.parametrize('change', ['missing', 'extra', 'language', 'result', 'set_returning'])
+def test_fixed_function_shape_is_mandatory(snapshot, change):
+    original = retained(snapshot)
+    function = snapshot['functions'][0]
+    if change == 'missing': del function['definition_attributes']
+    elif change == 'extra': function['definition_attributes']['raw'] = 'private-canary'
+    elif change == 'language': function['attributes'][0] = 'sql'
+    elif change == 'result': function['attributes'][1] = 'text'
+    else: function['attributes'][7] = True
+    with pytest.raises(ValueError): causal._validate_snapshot(snapshot, original)
 
 
 @pytest.mark.parametrize('fault', ['drift', 'extra', 'missing', 'duplicate', 'dangling', 'public_role', 'long_principal',
@@ -218,7 +262,7 @@ def test_archive_selection_keeps_order_and_sql_without_body_data_and_restores_po
     assert archive.tell() == 7 and not archive.closed
 
 
-@pytest.mark.parametrize('fault', [None, 'source_drift', 'overflow', 'encryption', 'cancel'])
+@pytest.mark.parametrize('fault', [None, 'source_drift', 'definition_drift', 'overflow', 'encryption', 'cancel'])
 def test_all_phases_are_prepared_before_printing_or_fixed_failure(capture, snapshot, monkeypatch, capsys, fault):
     capture.snapshots = {'source_pre_dump': {'catalog': deepcopy(snapshot), 'files': {'status': 'observed', 'value': {}}},
         'target_initialized': {'target': 'e' * 64, 'files': {'status': 'observed', 'value': {}}}}
@@ -226,6 +270,7 @@ def test_all_phases_are_prepared_before_printing_or_fixed_failure(capture, snaps
         if fault == 'cancel': raise KeyboardInterrupt()
         result = deepcopy(snapshot)
         if fault == 'source_drift': result['functions'][0]['body_sha256'] = 'f' * 64
+        if fault == 'definition_drift': result['functions'][0]['definition_attributes']['cost'] = '7'
         return result
     monkeypatch.setattr(causal, '_snapshot', read)
     monkeypatch.setattr(causal, '_archive', lambda *args: {'sql': 'x' * (causal.MAX_PLAINTEXT if fault == 'overflow' else 10)})
@@ -278,16 +323,90 @@ def test_installed_files_use_closed_paths_and_only_return_byte_hashes(monkeypatc
     def command(args, *_):
         calls.append(args)
         assert args[5] == causal.FILE_READER and 'head -c 262145' in args[5]
-        return b'x' * (256 * 1024 + 1) if fault == 'oversize' else b'private-file-canary'
+        return b'OK\n' + (b'x' * (256 * 1024 + 1) if fault == 'oversize' else b'private-file-canary')
     monkeypatch.setattr(causal, '_command', command)
-    if fault:
-        with pytest.raises(ValueError): causal._files('a' * 64, extensions, 10)
-        if 'traversal' in fault: assert calls == []
+    deadline = causal.time.monotonic() + 30
+    if fault and 'traversal' in fault:
+        with pytest.raises(ValueError): causal._files('a' * 64, extensions, deadline)
+        assert calls == []
     else:
-        result = causal._files('a' * 64, extensions, 10)
+        result = causal._files('a' * 64, extensions, deadline)
         assert set(result) == {'pg_net.control', 'pg_net--0.20.3.sql'}
-        assert all(value['sha256'] == hashlib.sha256(b'private-file-canary').hexdigest() for value in result.values())
+        if fault == 'oversize':
+            assert all(value == {'status': 'unavailable', 'reason': 'size_limit'} for value in result.values())
+        else:
+            assert all(value['sha256'] == hashlib.sha256(b'private-file-canary').hexdigest() for value in result.values())
         assert 'private-file-canary' not in json.dumps(result)
+
+
+def test_each_fixed_file_remains_observable_after_bootstrap_failure(monkeypatch):
+    calls = []
+    def command(args, deadline):
+        calls.append(args)
+        if args[-3] == 'bootstrap': raise FileNotFoundError('private-error-canary')
+        return b'OK\nprivate-file-canary'
+    monkeypatch.setattr(causal, '_command', command)
+    result = causal._files('a' * 64, [['pg_net', '0.20.3', 'net', 'owner']],
+                           causal.time.monotonic() + 30, source=True)
+    assert len(calls) == 3
+    assert result['bootstrap'] == {'status': 'unavailable', 'reason': 'command_failed'}
+    assert result['pg_net.control']['status'] == result['pg_net--0.20.3.sql']['status'] == 'observed'
+    assert 'private-' not in json.dumps(result)
+
+
+@pytest.mark.parametrize('wire,reason', [(b'UNAVAILABLE:pg_config_unavailable\n', 'pg_config_unavailable'),
+    (b'UNAVAILABLE:outside_root\n', 'outside_root'), (b'UNAVAILABLE:private-canary\n', 'invalid_response'),
+    (b'OK', 'invalid_response'), (b'OK\n' + b'x' * (256 * 1024 + 1), 'size_limit')],
+    ids=['tool', 'confinement', 'unknown', 'malformed', 'oversize'])
+def test_fixed_file_frames_only_expose_finite_classifications(monkeypatch, wire, reason):
+    monkeypatch.setattr(causal, '_command', lambda *a: wire)
+    result = causal._files('a' * 64, [['pg_net', '0.20.3', 'net', 'owner']], causal.time.monotonic() + 30)
+    assert all(value == {'status': 'unavailable', 'reason': reason} for value in result.values())
+
+
+@pytest.mark.parametrize('fault', ['cancel', 'deadline'])
+def test_fixed_file_collection_propagates_cancellation_and_shared_deadline(monkeypatch, fault):
+    ticks = [10]
+    monkeypatch.setattr(causal.time, 'monotonic', lambda: ticks[0])
+    def command(*args):
+        if fault == 'cancel': raise KeyboardInterrupt('private-canary')
+        ticks[0] = 12
+        raise ValueError('private-canary')
+    monkeypatch.setattr(causal, '_command', command)
+    with pytest.raises(KeyboardInterrupt if fault == 'cancel' else ValueError):
+        causal._files('a' * 64, [['pg_net', '0.20.3', 'net', 'owner']], 11)
+
+
+@pytest.mark.parametrize('fault', [None, 'symlink', 'directory', 'missing', 'oversize'])
+def test_shell_file_reader_exercises_framing_and_confinement(tmp_path, monkeypatch, fault):
+    shared = tmp_path / 'shared'
+    extension = shared / 'extension'
+    extension.mkdir(parents=True)
+    binary = tmp_path / 'bin'
+    binary.mkdir()
+    pg_config = binary / 'pg_config'
+    pg_config.write_text('#!/bin/sh\nprintf "%s\\n" "$FIXTURE_SHARED"\n')
+    pg_config.chmod(0o700)
+    path = extension / 'pg_net.control'
+    data = b'private-file-canary' if fault != 'oversize' else b'x' * (256 * 1024 + 1)
+    if fault == 'symlink':
+        outside = tmp_path / 'outside'
+        outside.write_bytes(data)
+        path.symlink_to(outside)
+    elif fault == 'directory': path.mkdir()
+    elif fault != 'missing': path.write_bytes(data)
+    def command(args, deadline):
+        result = subprocess.run(['/bin/sh', '-c', args[5], *args[6:]], capture_output=True,
+            env={'PATH': str(binary) + ':/usr/bin:/bin', 'FIXTURE_SHARED': str(shared)}, timeout=5, check=True)
+        return result.stdout
+    monkeypatch.setattr(causal, '_command', command)
+    result = causal._files('a' * 64, [['pg_net', '0.20.3', 'net', 'owner']], causal.time.monotonic() + 30)
+    expected = {'symlink': 'outside_root', 'directory': 'not_regular', 'missing': 'path_unavailable', 'oversize': 'size_limit'}
+    if fault:
+        assert result['pg_net.control'] == {'status': 'unavailable', 'reason': expected[fault]}
+    else:
+        assert result['pg_net.control'] == {'status': 'observed', 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
+    assert result['pg_net--0.20.3.sql'] == {'status': 'unavailable', 'reason': 'path_unavailable'}
 
 
 def test_three_capture_calls_share_one_active_budget_without_charging_intervening_restore(capture, monkeypatch):
@@ -306,7 +425,7 @@ def test_exhausted_budget_does_not_run_action_or_extend_deadline(capture, monkey
     assert capture.failed and capture.snapshots == {}
 
 
-@pytest.mark.parametrize('fault', [None, 'source_files', 'target_files', 'archive'])
+@pytest.mark.parametrize('fault', [None, 'source_files', 'target_files', 'partial_files', 'archive'])
 def test_auxiliary_group_failure_preserves_bound_catalogs(capture, snapshot, key, binding, monkeypatch, capsys, fault):
     capture.public_key = key.public_key(); capture.binding = binding
     target, nonce = 'e' * 64, 'f' * 32
@@ -317,7 +436,8 @@ def test_auxiliary_group_failure_preserves_bound_catalogs(capture, snapshot, key
     def files(*args, **kwargs):
         group = 'source_files' if kwargs.get('source') else 'target_files'
         if fault == group: raise FileNotFoundError('private-file-canary')
-        return {'file': {'sha256': 'd' * 64}}
+        return {'file': {'status': 'unavailable', 'reason': 'path_unavailable'} if fault == 'partial_files'
+                else {'status': 'observed', 'sha256': 'd' * 64}}
     def archive(*args):
         if fault == 'archive': raise ValueError('private-archive-canary')
         return {'sql': 'private-sql-canary', 'writerInventoryComplete': False}

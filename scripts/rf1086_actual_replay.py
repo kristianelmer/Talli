@@ -22,7 +22,7 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 import rf1086_catalog_semantics as commands
-from rf1086_catalog_causal_capture import _snapshot, FILE_READER, PHASES
+from rf1086_catalog_causal_capture import _snapshot, _files, FILE_OUTPUT_CAP, PHASES
 from rf1086_catalog_difference import CatalogCapture, _encoded, _records
 from rf1086_actual_replay_package import (
     IMAGE, LIMITS, Unavailable, binding, code_hashes, digest, load_json, owner,
@@ -282,23 +282,8 @@ def toc_inventory(raw):
 
 
 def installed_files(target, snapshots, deadline):
-    # Independent availability: an absent bootstrap must not erase extension data.
-    result = {}
-    for row in snapshots['extensions']:
-        name, version = row[:2]
-        if name not in ('pg_net', 'pg_graphql'):
-            raise Unavailable('installed_extension_unexpected')
-        if not re.fullmatch(r'[0-9]{1,3}(?:\.[0-9]{1,3}){1,2}', version):
-            raise Unavailable('installed_version_invalid')
-        for suffix in ('.control', '--' + version + '.sql'):
-            key = name + suffix
-            try:
-                raw = command(['docker', 'exec', target, 'sh', '-c', FILE_READER,
-                    'replay-file', 'extension', name, suffix], min(deadline, time.monotonic() + 5), cap=256 * 1024)
-                result[key] = {'status': 'observed', 'bytes': len(raw), 'sha256': digest(raw)}
-            except Exception:
-                result[key] = {'status': 'unavailable'}
-    return result
+    return _files(target, snapshots['extensions'], deadline, run=lambda args, shared_deadline:
+        command(args, min(shared_deadline, time.monotonic() + 5), cap=FILE_OUTPUT_CAP))
 
 
 def replay(path, metadata, deadline):
@@ -359,7 +344,8 @@ def replay(path, metadata, deadline):
     return {'status': 'full_control_verified', 'fingerprint': result, 'F2EqualsF': True,
             'causalSnapshotEqualsF': True, 'catalog': snapshot, 'inventory': inventory,
             'schemaWriterSql': {'bytes': len(writers), 'sha256': digest(writers), 'coverage': 'schema-only-not-complete-writer-proof'},
-            'installedFiles': files, 'S0': 'unavailable', 'Is': 'unavailable', 'In': 'source_predicate_incomplete',
+            'installedFiles': files, 'netSourceAttributesObserved': True,
+            'S0': 'unavailable', 'Is': 'unavailable', 'In': 'archive_function_equivalence_unproved',
             'reason': inventory['orderGate'], 'causalAttributionAccepted': False, 'recoveryAccepted': False,
             'input': {key: metadata[key] for key in ('binding', 'image', 'source', 'sourceAuth', 'sourceNetwork',
                 'initSha256', 'code', 'files', 'before', 'failed', 'cleanupComplete', 'identitySourcePostcheck',
