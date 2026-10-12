@@ -57,7 +57,7 @@ def test_full_script_is_unfiltered_unchanged_and_uses_fresh_initialized_target(c
         if args[-1] == replay.TOOL_COMMAND: return b'pg_restore (PostgreSQL) 17.6\n' + b'f' * 64 + b'\n'
         assert kw['archive'].read() == b'private-archive'
         assert args[-1] == 'exec pg_restore --verbose --clean --if-exists --create --file=- 2>/dev/null'
-        assert kw['cap'] == 32 * 1024**2
+        assert kw['cap'] == 128 * 1024**2
         return script
     monkeypatch.setattr(replay, 'command', command)
     monkeypatch.setattr(replay, 'cleanup_resources', lambda *a: calls.append(('cleanup', a)) or True)

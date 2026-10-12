@@ -38,7 +38,7 @@ MAX_ENVELOPE = 96 * 1024
 ACTIVE_SECONDS = 416
 CLEANUP_SECONDS = 58
 COMMAND_SECONDS = 43  # Two seconds remain inside the reviewed 45s command cap.
-MAX_SQL_BYTES = 32 * 1024**2
+MAX_SQL_BYTES = 128 * 1024**2
 FSQL_RESERVE_SECONDS = 12
 FSQL_HEADROOM_SECONDS = 200
 PUBLIC_KEY_PATH = Path(__file__).with_name('rf1086_catalog_causal_public.pub')
@@ -46,7 +46,7 @@ FSQL_REASONS = frozenset(('insufficient_headroom', 'control_unavailable', 'summa
     'worker_deadline', 'worker_failed', 'worker_result_invalid', 'full_sql_empty',
     'full_sql_tool_invalid', 'full_sql_cleanup_unproved', 'full_sql_target_reused',
     'full_control_mismatch', 'full_causal_control_mismatch', 'initialized_control_mismatch',
-    'command_unavailable', 'measurement_cleanup_unproved'))
+    'command_unavailable', 'measurement_cleanup_unproved', 'full_sql_final_cleanup_unproved'))
 FSQL_STAGE_CAPS = {
     'unobserved': (), 'tool_probe': (4096,), 'full_script_generation': (MAX_SQL_BYTES,),
     'f2_cleanup': (), 'fresh_target_start': (4096, 65536, 8 * 1024**2),
@@ -580,7 +580,7 @@ def replay(path, metadata, deadline):
             'input': {key: metadata[key] for key in INPUT_KEYS},
             'sourceCommandSha256': phases['source_pre_dump']['sourceCommandSha256'],
             'sourceInstalledFiles': phases['source_pre_dump']['files']}
-    return add_full_sql_measurement(path, metadata, target, f2, deadline)
+    return add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline)
 
 
 def seal(payload, aad, public_key):
@@ -863,6 +863,8 @@ def consume():
                 result['ownedCleanupComplete'] = cleanup_resources(path, time.monotonic() + CLEANUP_SECONDS)
                 if not result['ownedCleanupComplete'] and result.get('Fsql', {}).get('reason') == 'measurement_only':
                     result['Fsql'] = unavailable_fsql('measurement_cleanup_unproved')
+                if not result['ownedCleanupComplete'] and result.get('Fsql', {}).get('status') == 'full_sql_verified':
+                    result['Fsql'] = unavailable_fsql('full_sql_final_cleanup_unproved')
             finally:
                 if active_failure is not None:
                     raise active_failure

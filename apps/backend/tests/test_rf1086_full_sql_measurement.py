@@ -31,7 +31,7 @@ def optional(value=None):
         'measurement': measurement() if value is None else value}
 
 
-def test_real_stream_beyond_capture_limit_is_hashed_without_aggregate_retention(capsys):
+def test_large_real_stream_is_hashed_without_aggregate_retention(capsys):
     chunk = bytes(range(256))*256
     expected = hashlib.sha256()
     for _ in range(640): expected.update(chunk)
@@ -194,7 +194,9 @@ def test_one_generator_after_checkpoint_with_no_sql_application(control, monkeyp
 
 
 @pytest.mark.parametrize('size', [1, 33554432, 33554433, 134217728])
-def test_measurement_does_not_widen_materialized_stream_validator(size):
+def test_measurement_and_materialized_stream_validators_have_independent_budgets(monkeypatch, size):
+    # Deliberately distinct fixture budgets even when production caps coincide.
+    monkeypatch.setattr(replay, 'MAX_SQL_BYTES', 32 * 1024**2)
     replay.validate_fsql(optional(measurement(size)), {})
     if size > replay.MAX_SQL_BYTES:
         with pytest.raises(package.Unavailable): replay.validate_stream(measurement(size)['stream'])
@@ -247,7 +249,7 @@ def test_measurement_forgeries_are_rejected(fault):
         elif fault == 'outcome_kind': outcome['kind'] = []
         elif fault == 'out_bool': outcome['stdoutBytes'] = True
         elif fault == 'cap_bool': outcome['stdoutCap'] = True
-        elif fault == 'cap_wrong': outcome['stdoutCap'] = replay.MAX_SQL_BYTES
+        elif fault == 'cap_wrong': outcome['stdoutCap'] = commands.MAX_MEASUREMENT_BYTES - 1
         elif fault == 'out_over': outcome['stdoutBytes'] += 1
         elif fault == 'out_under': outcome['stdoutBytes'] -= 1
         elif fault == 'err_over': outcome['stderrBytes'] = 131073
@@ -303,38 +305,6 @@ def test_measurement_command_outcome_exact_bounds(stage, kind):
                  'stdoutCap': cap, 'exitCode': -127 if kind == 'nonzero_exit' else None})
     if stage == 'tool_probe': value['tool'] = None
     assert replay.validate_measurement(value) == value
-
-
-def test_actual_replay_selects_only_one_measurement_after_verified_f2(control, monkeypatch):
-    import rf1086_identity_restore as identity
-    path, metadata, _, _, _, failed = control
-    calls = []
-    monkeypatch.setattr(replay, 'assert_source_absent', lambda *a: None)
-    monkeypatch.setattr(replay, 'start_target', lambda *a: calls.append('start') or 'owned')
-    monkeypatch.setattr(replay, 'installed_files', lambda *a: {})
-    monkeypatch.setattr(replay, 'psql', lambda *a, **kw: calls.append('psql'))
-    monkeypatch.setattr(replay, '_snapshot', lambda *a, **kw: metadata['phases']['mismatch']['catalog'])
-    monkeypatch.setattr(replay, 'full_sql_control', lambda *a: pytest.fail('materializing control is not selected'))
-    def fingerprint(*a, catalog_capture, **kw):
-        catalog_capture.capture(failed)
-        return metadata['failed']
-    monkeypatch.setattr(identity, 'fingerprint', fingerprint)
-    def command(args, *a, **kw):
-        if args[-1] == replay.TOOL_COMMAND:
-            calls.append('probe')
-            return b'pg_restore (PostgreSQL) 17.6\n'+b'f'*64+b'\n'
-        if '--list' in args: return toc()
-        return b'schema-only-writer-output'
-    monkeypatch.setattr(replay, 'command', command)
-    def measure(args, *a, **kw):
-        assert replay.read_f2(path, metadata)['F2EqualsF'] is True
-        calls.append('measure')
-        return measurement()['stream']
-    monkeypatch.setattr(commands, '_measure_command', measure)
-    result = replay.replay(path, metadata, time.monotonic()+416)
-    assert calls == ['start', 'psql', 'psql', 'probe', 'measure']
-    assert result['F2EqualsF'] and result['Fsql'] == optional()
-    assert result['S0'] == result['Is'] == 'unavailable'
 
 
 def test_measurement_encryption_limits_and_fallback(control, monkeypatch, key):
