@@ -32,6 +32,7 @@ from rf1086_local_forwarding import forwarded_ports
 from rf1086_catalog_difference import CatalogCapture, emit_catalog_difference
 from rf1086_catalog_semantics import emit_catalog_semantics
 from rf1086_catalog_causal_capture import CausalCapture
+from rf1086_actual_replay_package import publish as publish_actual_replay
 
 LABEL = 'talli.rf.identity.restore'
 ID = re.compile(r'[a-f0-9]{64}')
@@ -372,6 +373,7 @@ def restored_identity(source_url, workdir, boundary):
     db_name, auth_name = 'rf193_identity_db_' + nonce, 'rf193_identity_auth_' + nonce
     bootstrap = 'supabase_admin'
     created_network, created_volume, containers = False, False, []
+    replay_pending = None
     with CatalogCapture() as source_catalog, CatalogCapture() as target_catalog, CausalCapture(db, INIT) as causal:
         before = fingerprint(db['Id'], catalog_capture=source_catalog)
         causal.source_pre_dump(source_catalog)
@@ -426,6 +428,9 @@ def restored_identity(source_url, workdir, boundary):
                 recovered_fingerprint = fingerprint(target, restored=True, bootstrap=bootstrap, catalog_capture=target_catalog)
                 if recovered_fingerprint != before:
                     if recovered_fingerprint.get('catalog') != before.get('catalog'):
+                        if os.environ.get('TALLI_RF_REPLAY_DIR'):
+                            # The legacy difference emitter clears both captures.
+                            replay_pending = (recovered_fingerprint, source_catalog._raw, target_catalog._raw)
                         causal.mismatch(source_catalog, target_catalog, target, dump)
                         emit_catalog_semantics(source_catalog, target_catalog, source=db['Id'],
                                                target=target, image=db['Image'], dump=dump)
@@ -487,6 +492,13 @@ def restored_identity(source_url, workdir, boundary):
                         if created_network: checked(['docker', 'network', 'rm', network_id], stdout=subprocess.PIPE)
                         if fingerprint(db['Id']) != before:
                             raise RuntimeError('Identity rehearsal changed source roles, ownership, ACLs, Auth rows or memberships')
+                # This is reached only after every cleanup and source postcheck
+                # above succeeds. The original strict exception still propagates.
+                if replay_pending is not None:
+                    publish_actual_replay(roles=roles, dump=dump, source=db, auth=auth, preload=preload,
+                        before=before, failed=replay_pending[0], source_raw=replay_pending[1],
+                        failed_raw=replay_pending[2], causal=causal, init=INIT)
+                    replay_pending = None
 
 
 async def verify_actor_recovery(recovery, reader_url, query, expected_canonical, originals, original_queries, read_originals, *,

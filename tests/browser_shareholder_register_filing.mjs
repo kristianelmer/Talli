@@ -41,6 +41,7 @@ const scenarios = [
 for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepted", recoverSourceCapture = false } of scenarios) test(`owner completes RF capture, ${predecessorFeedback === "rejected" ? "rejected-predecessor correction" : "correction"} and ${beforeMutation ? "process crash before" : crash ? "process crash at" : "lost"} ${lostResponse} ${beforeMutation ? "provider mutation" : "response"} through the canonical backend`, {
   timeout: 360_000,
 }, async (t) => {
+  const replayTestStarted = performance.now();
   assert.ok(supabaseUrl && anonKey && serviceRoleKey && databaseUrl, "authority browser requires isolated Supabase configuration");
   assert.ok(isLoopbackSupabaseUrl(supabaseUrl) && isLoopbackPostgresUrl(databaseUrl), "authority browser fixtures require loopback");
   assert.notEqual(process.env.TALLI_AUTHORITY_OPS_ENABLED, "true");
@@ -516,6 +517,11 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
             TALLI_RF_RESTORE_LOW_AAL_TOKEN: lowAalSession.access_token,
             ...(reviewerSession ? { TALLI_RF_RESTORE_REVIEWER_TOKEN: reviewerSession.access_token } : {}) } : {}),
           TALLI_SUPABASE_WORKDIR: process.env.TALLI_SUPABASE_WORKDIR,
+          ...(process.env.TALLI_RF_REPLAY_DIR ? {
+            TALLI_RF_REPLAY_DIR: process.env.TALLI_RF_REPLAY_DIR,
+            RUNNER_TEMP: process.env.RUNNER_TEMP,
+            TALLI_RF_REPLAY_EXPORT_MS: String(Math.max(0, Math.floor(Math.min(150_000,
+              360_000 - (performance.now() - replayTestStarted) - 60_000)))) } : {}),
           ...(process.env.TALLI_RF_RESTORE_SSH_CONFIG ? {
             TALLI_RF_RESTORE_SSH_CONFIG: process.env.TALLI_RF_RESTORE_SSH_CONFIG,
             TALLI_RF_RESTORE_SSH_HOST: process.env.TALLI_RF_RESTORE_SSH_HOST } : {}),

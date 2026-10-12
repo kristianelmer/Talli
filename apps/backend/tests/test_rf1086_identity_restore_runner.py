@@ -96,7 +96,7 @@ def test_auth_target_copies_signing_configuration_but_cannot_reach_provider_hook
 
 
 @pytest.mark.parametrize('failure', [None, 'fingerprint', 'preload', 'tempfile', 'roles_dump', 'database_dump', 'network', 'volume', 'database_create', 'database_start', 'roles', 'restore', 'catalog', 'catalog_unavailable', 'auth_create', 'auth_start', 'body', 'source_changed'])
-def test_fresh_cluster_cleanup_is_pinned_and_source_stays_untouched(tmp_path, monkeypatch, capsys, failure):
+def test_fresh_cluster_cleanup_is_pinned_and_source_stays_untouched(tmp_path, monkeypatch, capsys, failure, publication_probe=None):
     (tmp_path / 'supabase').mkdir()
     (tmp_path / 'supabase/config.toml').write_text('project_id="tallig9931"\n')
     calls, resources = [], {}
@@ -111,6 +111,7 @@ def test_fresh_cluster_cleanup_is_pinned_and_source_stays_untouched(tmp_path, mo
     class CausalCapture:
         def __init__(self, source, init):
             assert source is DB and init == identity.INIT
+            self.replay_snapshots = {'fixture': True}
         def __enter__(self):
             causal_events.append('entered')
             return self
@@ -130,6 +131,13 @@ def test_fresh_cluster_cleanup_is_pinned_and_source_stays_untouched(tmp_path, mo
             assert not semantic_calls and container == target and not dump.closed
             causal_events.append('mismatch')
     monkeypatch.setattr(identity, 'CausalCapture', CausalCapture, raising=False)
+    if publication_probe is not None:
+        def publish(**kwargs):
+            assert counts['source'] == 2
+            assert all(capture._raw is None for capture in captures)
+            assert [call[1:3] for call in calls[-3:]] == [['rm', '-f'], ['volume', 'rm'], ['network', 'rm']]
+            return publication_probe(kwargs)
+        monkeypatch.setattr(identity, 'publish_actual_replay', publish)
     def semantic_capture(source_catalog, target_catalog, **kwargs):
         assert source_catalog._raw is not None and target_catalog._raw is not None
         semantic_calls.append(kwargs)

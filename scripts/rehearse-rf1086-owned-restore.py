@@ -6,6 +6,10 @@ recovery uses a fresh volume and service; cluster-wide role recovery is separate
 """
 from __future__ import annotations
 
+from rf1086_actual_replay_package import start_export_clock
+
+start_export_clock()
+
 import argparse
 import asyncio
 from contextlib import contextmanager

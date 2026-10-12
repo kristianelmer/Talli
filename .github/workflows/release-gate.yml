@@ -119,6 +119,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
+      - name: Record the diagnostic job budget
+        run: |
+          echo "TALLI_RF_REPLAY_JOB_STARTED=$(python3 -c 'import time; print(time.monotonic())')" >> "$GITHUB_ENV"
+          echo "TALLI_RF_REPLAY_DIR=$RUNNER_TEMP/talli-rf-replay-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+
       - name: Check out the immutable revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -149,9 +154,25 @@ jobs:
         run: bash scripts/prefetch-postgres-fixture-images.sh
 
       - name: Rehearse migrations, RLS, storage, and owner persistence
+        id: rehearsal
         env:
           TALLI_PYTHON_BIN: .venv/bin/python
-        run: npm run test:supabase:local
+        run: |
+          .venv/bin/python scripts/rf1086_actual_replay.py prepare || true
+          npm run test:supabase:local
+
+      - name: Diagnose the rejected identity archive in the same image
+        if: ${{ failure() && steps.rehearsal.outcome == 'failure' }}
+        timeout-minutes: 10
+        run: .venv/bin/python scripts/rf1086_actual_replay.py consume
+
+      - name: Remove private identity replay evidence and owned resources
+        if: ${{ always() }}
+        timeout-minutes: 2
+        run: |
+          if [ -x .venv/bin/python ]; then
+            .venv/bin/python scripts/rf1086_actual_replay.py cleanup
+          fi
 
       - name: Prove the rendered public acquisition journey
         run: npm run test:browser-public-acquisition

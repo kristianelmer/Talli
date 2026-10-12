@@ -306,6 +306,7 @@ class CausalCapture:
         command = (config.get('Entrypoint') or []) + (config.get('Cmd') or [])
         self.source_bootstrap_configured = any(type(part) is str and "cat <<'EOF' > /etc/postgresql.schema.sql" in part for part in command)
         self.remaining = 15.0; self.failed = False; self.snapshots = {}; self.binding = None; self.public_key = None
+        self.replay_snapshots = None
 
     def __enter__(self):
         def initialize(_):
@@ -326,6 +327,7 @@ class CausalCapture:
 
     def __exit__(self, *_):
         self.snapshots.clear(); self.binding = None; self.public_key = None
+        self.replay_snapshots = None
 
     def _attempt(self, action):
         start = time.monotonic()
@@ -398,6 +400,8 @@ class CausalCapture:
                 print(TAG + '{"status":"unavailable"}', file=sys.stderr)
             else:
                 for line in lines: print(line, file=sys.stderr)
+                if os.environ.get('TALLI_RF_REPLAY_DIR'):
+                    self.replay_snapshots = json.loads(_encoded(self.snapshots))
         except Exception:
             pass
         finally:
