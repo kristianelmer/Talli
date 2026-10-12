@@ -6,6 +6,12 @@ recovery uses a fresh volume and service; cluster-wide role recovery is separate
 """
 from __future__ import annotations
 
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'scripts'))
+
 from rf1086_actual_replay_package import start_export_clock
 
 start_export_clock()
@@ -17,9 +23,7 @@ from datetime import datetime, timezone
 import importlib.util
 import json
 import os
-from pathlib import Path
 import subprocess
-import sys
 import tempfile
 from uuid import UUID, uuid4
 
@@ -27,9 +31,7 @@ import psycopg
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from psycopg.rows import dict_row
 
-ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'apps/backend/src'))
-sys.path.insert(0, str(ROOT / 'scripts'))
 from talli_backend.adapters.postgres_document_originals import PostgresDocumentOriginals
 from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingSession
 from talli_backend.adapters.supabase_ledger import LedgerSupabaseConfiguration, _VerifiedActor

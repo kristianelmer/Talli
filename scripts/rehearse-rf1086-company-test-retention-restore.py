@@ -3,6 +3,12 @@
 No hosted target, reusable clone, public runtime activation or filing authority.
 Portable hashes remain integrity claims, separate from current source Auth.
 """
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'scripts'))
+
 from rf1086_actual_replay_package import start_export_clock
 
 start_export_clock()
@@ -19,13 +25,9 @@ from io import BytesIO
 import json
 import os
 import signal
-from pathlib import Path
-import sys
 from uuid import UUID
 
-ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'apps/backend/src'))
-sys.path.insert(0, str(ROOT / 'scripts'))
 
 from rf1086_identity_restore import fingerprint, owned_identity_source, restored_identity
 from rf1086_stateless_owner_fixture import stateless_es256_owner_token
