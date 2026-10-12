@@ -22,7 +22,7 @@ LIMITS = {'roles.sql': 2 * 1024**2, 'archive.dump': 64 * 1024**2,
           'metadata.json': 128 * 1024}
 CODE_FILES = ('rf1086_identity_restore.py', 'rf1086_catalog_causal.sql',
               'rf1086_catalog_causal_capture.py', 'rf1086_actual_replay_package.py',
-              'rf1086_actual_replay.py')
+              'rf1086_actual_replay.py', 'rf1086_catalog_semantics.py')
 _EXPORT_STARTED = None
 STATUS_TAG = 'owned_identity_actual_replay_status_v1 '
 STATUS_REASONS = frozenset({

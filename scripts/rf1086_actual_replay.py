@@ -47,6 +47,19 @@ FSQL_REASONS = frozenset(('insufficient_headroom', 'control_unavailable', 'summa
     'full_sql_tool_invalid', 'full_sql_cleanup_unproved', 'full_sql_target_reused',
     'full_control_mismatch', 'full_causal_control_mismatch', 'initialized_control_mismatch',
     'command_unavailable'))
+FSQL_STAGE_CAPS = {
+    'unobserved': (), 'tool_probe': (4096,), 'full_script_generation': (MAX_SQL_BYTES,),
+    'f2_cleanup': (), 'fresh_target_start': (4096, 65536, 8 * 1024**2),
+    'roles_apply': (8 * 1024**2,), 'initialized_snapshot': (2 * 1024**2,),
+    'default_database_drop': (8 * 1024**2,), 'full_script_apply': (8 * 1024**2,),
+    'final_observation': (2 * 1024**2, 8 * 1024**2),
+}
+FSQL_REASON_STAGES = {
+    'full_sql_tool_invalid': 'tool_probe', 'full_sql_empty': 'full_script_generation',
+    'full_sql_cleanup_unproved': 'f2_cleanup', 'full_sql_target_reused': 'fresh_target_start',
+    'initialized_control_mismatch': 'initialized_snapshot', 'full_control_mismatch': 'final_observation',
+    'full_causal_control_mismatch': 'final_observation',
+}
 F2_KEYS = frozenset(('status', 'fingerprint', 'F2EqualsF', 'causalSnapshotEqualsF', 'catalog',
     'inventory', 'schemaWriterSql', 'installedFiles', 'netSourceAttributesObserved', 'S0', 'Is', 'In',
     'reason', 'causalAttributionAccepted', 'recoveryAccepted', 'input', 'sourceCommandSha256',
@@ -82,12 +95,26 @@ DESCRIPTIONS = tuple(sorted((
 SPECIAL = {'ENCODING', 'STDSTRINGS', 'SEARCHPATH'}
 
 
+class CommandUnavailable(Unavailable):
+    def __init__(self, observation):
+        self.observation = observation
+        super().__init__('command_unavailable')
+
+
+class FullSqlUnavailable(Unavailable):
+    def __init__(self, reason, failure):
+        self.failure = failure
+        super().__init__(reason)
+
+
 def command(args, deadline, *, data=None, archive=None, cap=8 * 1024**2):
     # Reuse the existing concurrent bounded pipe drain and cancellation/reap.
     old = commands.MAX_BYTES
     commands.MAX_BYTES = cap
     try:
         return commands._command(args, min(deadline, time.monotonic() + COMMAND_SECONDS), data=data, archive=archive)
+    except commands.CommandFailure as error:
+        raise CommandUnavailable(error.observation) from None
     except Exception:
         raise Unavailable('command_unavailable') from None
     finally:
@@ -330,9 +357,13 @@ def failed_state(target, metadata, failed_raw, deadline):
         identity.checked = original_checked
 
 
-def unavailable_fsql(reason):
+def unavailable_fsql(reason, failure=None):
+    if failure is None and reason in FSQL_REASON_STAGES:
+        reason = 'control_unavailable'
     return {'status': 'unavailable', 'reason': reason if reason in FSQL_REASONS else 'control_unavailable',
-            'FsqlEqualsF2': False, 'recoveryAccepted': False, 'causalAttributionAccepted': False}
+            'FsqlEqualsF2': False, 'recoveryAccepted': False, 'causalAttributionAccepted': False,
+            'failure': failure if failure is not None else {
+                'stage': 'unobserved', 'command': None, 'tool': None, 'stream': None}}
 
 
 def validate_f2(result, metadata):
@@ -393,32 +424,49 @@ def read_f2(path, metadata):
 
 
 def full_sql_control(path, metadata, previous_target, roles, failed_raw, deadline):
-    tool_raw = command(['docker', 'exec', previous_target, 'sh', '-c', TOOL_COMMAND], deadline, cap=4096)
-    tool = re.fullmatch(rb'pg_restore \(PostgreSQL\) (17\.6)\n([a-f0-9]{64})\n', tool_raw)
-    if tool is None:
-        raise Unavailable('full_sql_tool_invalid')
-    with (path / 'archive.dump').open('rb') as archive:
-        script = command(['docker', 'exec', '-i', previous_target, 'sh', '-c', FULL_SQL_COMMAND],
-                         deadline, archive=archive, cap=MAX_SQL_BYTES)
-    if not script:
-        raise Unavailable('full_sql_empty')
-    stream = {'bytes': len(script), 'sha256': digest(script)}
-    if not cleanup_resources(path, deadline):
-        raise Unavailable('full_sql_cleanup_unproved')
-    target = start_target(metadata, deadline)
-    if target == previous_target:
-        raise Unavailable('full_sql_target_reused')
-    psql(target, roles, deadline)
-    if _snapshot(target, min(deadline, time.monotonic() + COMMAND_SECONDS), target=True) != metadata['phases']['target_initialized']['catalog']:
-        raise Unavailable('initialized_control_mismatch')
-    psql(target, b'drop database postgres with (force);', deadline, database='template1')
-    psql(target, script, deadline, database='template1')
-    fingerprint, catalog = failed_state(target, metadata, failed_raw, deadline)
-    return {'status': 'full_sql_verified', 'stream': stream,
-            'tool': {'version': tool[1].decode(), 'sha256': tool[2].decode()},
-            'initializedEqualsOriginal': True, 'freshTarget': True,
-            'fingerprint': fingerprint, 'catalog': catalog, 'FsqlEqualsF2': True,
-            'causalSnapshotEqualsF2': True, 'recoveryAccepted': False, 'causalAttributionAccepted': False}
+    failure = {'stage': 'tool_probe', 'command': None, 'tool': None, 'stream': None}
+    try:
+        tool_raw = command(['docker', 'exec', previous_target, 'sh', '-c', TOOL_COMMAND], deadline, cap=4096)
+        tool = re.fullmatch(rb'pg_restore \(PostgreSQL\) (17\.6)\n([a-f0-9]{64})\n', tool_raw)
+        if tool is None:
+            raise Unavailable('full_sql_tool_invalid')
+        failure['tool'] = {'version': tool[1].decode(), 'sha256': tool[2].decode()}
+        failure['stage'] = 'full_script_generation'
+        with (path / 'archive.dump').open('rb') as archive:
+            script = command(['docker', 'exec', '-i', previous_target, 'sh', '-c', FULL_SQL_COMMAND],
+                             deadline, archive=archive, cap=MAX_SQL_BYTES)
+        if not script:
+            raise Unavailable('full_sql_empty')
+        stream = {'bytes': len(script), 'sha256': digest(script)}
+        failure['stream'] = stream
+        failure['stage'] = 'f2_cleanup'
+        if not cleanup_resources(path, deadline):
+            raise Unavailable('full_sql_cleanup_unproved')
+        failure['stage'] = 'fresh_target_start'
+        target = start_target(metadata, deadline)
+        if target == previous_target:
+            raise Unavailable('full_sql_target_reused')
+        failure['stage'] = 'roles_apply'
+        psql(target, roles, deadline)
+        failure['stage'] = 'initialized_snapshot'
+        if _snapshot(target, min(deadline, time.monotonic() + COMMAND_SECONDS), target=True) != metadata['phases']['target_initialized']['catalog']:
+            raise Unavailable('initialized_control_mismatch')
+        failure['stage'] = 'default_database_drop'
+        psql(target, b'drop database postgres with (force);', deadline, database='template1')
+        failure['stage'] = 'full_script_apply'
+        psql(target, script, deadline, database='template1')
+        failure['stage'] = 'final_observation'
+        fingerprint, catalog = failed_state(target, metadata, failed_raw, deadline)
+        return {'status': 'full_sql_verified', 'stream': stream,
+                'tool': {'version': tool[1].decode(), 'sha256': tool[2].decode()},
+                'initializedEqualsOriginal': True, 'freshTarget': True,
+                'fingerprint': fingerprint, 'catalog': catalog, 'FsqlEqualsF2': True,
+                'causalSnapshotEqualsF2': True, 'recoveryAccepted': False, 'causalAttributionAccepted': False}
+    except Exception as error:
+        if isinstance(error, (CommandUnavailable, commands.CommandFailure)):
+            failure['command'] = error.observation
+        reason = error.reason if isinstance(error, Unavailable) else 'control_unavailable'
+        raise FullSqlUnavailable(reason, failure) from None
 
 
 def add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline):
@@ -428,6 +476,8 @@ def add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline):
         return fit_optional(f2, unavailable_fsql('insufficient_headroom'), metadata)
     try:
         optional = full_sql_control(path, metadata, target, roles, failed_raw, optional_deadline)
+    except FullSqlUnavailable as error:
+        optional = unavailable_fsql(error.reason, error.failure)
     except Unavailable as error:
         optional = unavailable_fsql(error.reason)
     except Exception:
@@ -535,13 +585,66 @@ def cancelled(*_):
     raise KeyboardInterrupt
 
 
+def validate_tool(tool):
+    if (type(tool) is not dict or set(tool) != {'version', 'sha256'} or tool['version'] != '17.6'
+            or type(tool['sha256']) is not str or not re.fullmatch('[a-f0-9]{64}', tool['sha256'])):
+        raise Unavailable('optional_result_invalid')
+
+
+def validate_stream(stream):
+    if (type(stream) is not dict or set(stream) != {'bytes', 'sha256'}
+            or type(stream['bytes']) is not int or not 0 < stream['bytes'] <= MAX_SQL_BYTES
+            or type(stream['sha256']) is not str or not re.fullmatch('[a-f0-9]{64}', stream['sha256'])):
+        raise Unavailable('optional_result_invalid')
+
+
+def validate_failure(failure, reason):
+    if (type(failure) is not dict or set(failure) != {'stage', 'command', 'tool', 'stream'}
+            or type(failure['stage']) is not str or failure['stage'] not in FSQL_STAGE_CAPS):
+        raise Unavailable('optional_result_invalid')
+    stage, outcome = failure['stage'], failure['command']
+    if reason in FSQL_REASON_STAGES and (stage != FSQL_REASON_STAGES[reason] or outcome is not None):
+        raise Unavailable('optional_result_invalid')
+    if stage == 'unobserved':
+        if any(failure[k] is not None for k in ('command', 'tool', 'stream')):
+            raise Unavailable('optional_result_invalid')
+        return
+    if reason not in FSQL_REASON_STAGES and reason not in ('command_unavailable', 'control_unavailable'):
+        raise Unavailable('optional_result_invalid')
+    if stage == 'tool_probe':
+        if failure['tool'] is not None or failure['stream'] is not None:
+            raise Unavailable('optional_result_invalid')
+    else:
+        validate_tool(failure['tool'])
+        if stage == 'full_script_generation':
+            if failure['stream'] is not None:
+                raise Unavailable('optional_result_invalid')
+        else:
+            validate_stream(failure['stream'])
+    if outcome is None:
+        return
+    if (type(outcome) is not dict
+            or set(outcome) != {'kind', 'stdoutBytes', 'stderrBytes', 'stdoutCap', 'exitCode'}
+            or type(outcome['kind']) is not str
+            or outcome['kind'] not in ('deadline', 'stdout_limit', 'stderr_limit', 'nonzero_exit')
+            or any(type(outcome[k]) is not int for k in ('stdoutBytes', 'stderrBytes', 'stdoutCap'))):
+        raise Unavailable('optional_result_invalid')
+    kind, out, err, cap, code = (outcome[k] for k in ('kind', 'stdoutBytes', 'stderrBytes', 'stdoutCap', 'exitCode'))
+    if (cap not in FSQL_STAGE_CAPS[stage] or not 0 <= out <= cap + 65536 or not 0 <= err <= 131072
+            or (out > cap) != (kind == 'stdout_limit') or (err > 65536) != (kind == 'stderr_limit')
+            or (kind == 'nonzero_exit' and (type(code) is not int or not -127 <= code <= 255 or code == 0))
+            or (kind != 'nonzero_exit' and code is not None)):
+        raise Unavailable('optional_result_invalid')
+
+
 def validate_fsql(value, metadata):
     if type(value) is not dict or value.get('recoveryAccepted') is not False or value.get('causalAttributionAccepted') is not False:
         raise Unavailable('optional_result_invalid')
     if value.get('status') == 'unavailable':
-        if (set(value) != {'status', 'reason', 'FsqlEqualsF2', 'recoveryAccepted', 'causalAttributionAccepted'}
-                or value['reason'] not in FSQL_REASONS or value['FsqlEqualsF2'] is not False):
+        if (set(value) != {'status', 'reason', 'FsqlEqualsF2', 'recoveryAccepted', 'causalAttributionAccepted', 'failure'}
+                or type(value['reason']) is not str or value['reason'] not in FSQL_REASONS or value['FsqlEqualsF2'] is not False):
             raise Unavailable('optional_result_invalid')
+        validate_failure(value['failure'], value['reason'])
         return value
     fields = {'status', 'stream', 'tool', 'initializedEqualsOriginal', 'freshTarget', 'fingerprint',
               'catalog', 'FsqlEqualsF2', 'causalSnapshotEqualsF2', 'recoveryAccepted', 'causalAttributionAccepted'}
@@ -549,13 +652,8 @@ def validate_fsql(value, metadata):
             or any(value[k] is not True for k in ('initializedEqualsOriginal', 'freshTarget', 'FsqlEqualsF2', 'causalSnapshotEqualsF2'))
             or value['fingerprint'] != metadata['failed'] or value['catalog'] != metadata['phases']['mismatch']['catalog']):
         raise Unavailable('optional_result_invalid')
-    stream, tool = value['stream'], value['tool']
-    if (type(stream) is not dict or set(stream) != {'bytes', 'sha256'}
-            or type(stream['bytes']) is not int or not 0 < stream['bytes'] <= MAX_SQL_BYTES
-            or type(stream['sha256']) is not str or not re.fullmatch('[a-f0-9]{64}', stream['sha256'])
-            or type(tool) is not dict or set(tool) != {'version', 'sha256'} or tool['version'] != '17.6'
-            or type(tool['sha256']) is not str or not re.fullmatch('[a-f0-9]{64}', tool['sha256'])):
-        raise Unavailable('optional_result_invalid')
+    validate_stream(value['stream'])
+    validate_tool(value['tool'])
     return value
 
 

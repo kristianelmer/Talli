@@ -38,13 +38,29 @@ def _remaining(deadline):
     return remaining
 
 
+class CommandFailure(ValueError):
+    """Finite command observations; never retain private output or arguments."""
+    def __init__(self, kind, stdout_bytes, stderr_bytes, stdout_cap, exit_code=None):
+        self.observation = {'kind': kind, 'stdoutBytes': stdout_bytes,
+                            'stderrBytes': stderr_bytes, 'stdoutCap': stdout_cap,
+                            'exitCode': exit_code}
+        super().__init__('catalog_semantics_unavailable')
+
+
 def _command(args, deadline, *, data=None, archive=None):
     """Drain both pipes concurrently; no threads, raw errors or unbounded wait."""
-    _remaining(deadline)
-    process = None
-    selector = None
     output = bytearray()
     error_bytes = 0
+
+    def remaining():
+        try:
+            return _remaining(deadline)
+        except ValueError:
+            raise CommandFailure('deadline', len(output), error_bytes, MAX_BYTES) from None
+
+    remaining()
+    process = None
+    selector = None
     pending = memoryview(data or b'')
     try:
         selector = selectors.DefaultSelector()
@@ -60,7 +76,7 @@ def _command(args, deadline, *, data=None, archive=None):
             else:
                 process.stdin.close()
         while selector.get_map():
-            for key, _ in selector.select(min(_remaining(deadline), 0.1)):
+            for key, _ in selector.select(min(remaining(), 0.1)):
                 stream = key.fileobj
                 if stream is process.stdin:
                     written = os.write(stream.fileno(), pending[:65536])
@@ -75,14 +91,17 @@ def _command(args, deadline, *, data=None, archive=None):
                     stream.close()
                 elif stream is process.stdout:
                     if len(output) + len(chunk) > MAX_BYTES:
-                        _unavailable()
+                        raise CommandFailure('stdout_limit', len(output) + len(chunk), error_bytes, MAX_BYTES)
                     output.extend(chunk)
                 else:
                     error_bytes += len(chunk)
                     if error_bytes > 65536:
-                        _unavailable()
-        if process.wait(timeout=_remaining(deadline)):
-            _unavailable()
+                        raise CommandFailure('stderr_limit', len(output), error_bytes, MAX_BYTES)
+        exit_code = process.wait(timeout=remaining())
+        if exit_code:
+            if type(exit_code) is not int or not -127 <= exit_code <= 255:
+                _unavailable()
+            raise CommandFailure('nonzero_exit', len(output), error_bytes, MAX_BYTES, exit_code)
         return bytes(output)
     finally:
         primary = sys.exception()
