@@ -13,6 +13,7 @@ from psycopg import sql
 from rf1086_catalog_difference import _encoded, _object, _records, _reject_constant
 
 MAX_BYTES = 2 * 1024 * 1024
+MAX_MEASUREMENT_BYTES = 128 * 1024**2
 MAX_ARCHIVE_BYTES = 256 * 1024 * 1024
 MAX_OUTPUT_BYTES = 16 * 1024
 MAX_SELECTED = 512
@@ -49,14 +50,26 @@ class CommandFailure(ValueError):
 
 def _command(args, deadline, *, data=None, archive=None):
     """Drain both pipes concurrently; no threads, raw errors or unbounded wait."""
-    output = bytearray()
+    return _run_command(args, deadline, data=data, archive=archive, measured=False)
+
+
+def _measure_command(args, deadline, *, archive=None):
+    """Count/hash one discarded stream; never return partial stream metadata."""
+    return _run_command(args, deadline, archive=archive, measured=True)
+
+
+def _run_command(args, deadline, *, data=None, archive=None, measured):
+    cap = MAX_MEASUREMENT_BYTES if measured else MAX_BYTES
+    output = None if measured else bytearray()
+    hashed = hashlib.sha256() if measured else None
+    output_bytes = 0
     error_bytes = 0
 
     def remaining():
         try:
             return _remaining(deadline)
         except ValueError:
-            raise CommandFailure('deadline', len(output), error_bytes, MAX_BYTES) from None
+            raise CommandFailure('deadline', output_bytes, error_bytes, cap) from None
 
     remaining()
     process = None
@@ -85,24 +98,29 @@ def _command(args, deadline, *, data=None, archive=None):
                         selector.unregister(stream)
                         stream.close()
                     continue
-                chunk = os.read(stream.fileno(), 65536)
+                size = min(65536, cap + 1 - output_bytes) if measured and stream is process.stdout else 65536
+                chunk = os.read(stream.fileno(), size)
                 if not chunk:
                     selector.unregister(stream)
                     stream.close()
                 elif stream is process.stdout:
-                    if len(output) + len(chunk) > MAX_BYTES:
-                        raise CommandFailure('stdout_limit', len(output) + len(chunk), error_bytes, MAX_BYTES)
-                    output.extend(chunk)
+                    output_bytes += len(chunk)
+                    if output_bytes > cap:
+                        raise CommandFailure('stdout_limit', output_bytes, error_bytes, cap)
+                    if measured:
+                        hashed.update(chunk)
+                    else:
+                        output.extend(chunk)
                 else:
                     error_bytes += len(chunk)
                     if error_bytes > 65536:
-                        raise CommandFailure('stderr_limit', len(output), error_bytes, MAX_BYTES)
+                        raise CommandFailure('stderr_limit', output_bytes, error_bytes, cap)
         exit_code = process.wait(timeout=remaining())
         if exit_code:
             if type(exit_code) is not int or not -127 <= exit_code <= 255:
                 _unavailable()
-            raise CommandFailure('nonzero_exit', len(output), error_bytes, MAX_BYTES, exit_code)
-        return bytes(output)
+            raise CommandFailure('nonzero_exit', output_bytes, error_bytes, cap, exit_code)
+        return {'bytes': output_bytes, 'sha256': hashed.hexdigest()} if measured else bytes(output)
     finally:
         primary = sys.exception()
         cleanup_errors = []

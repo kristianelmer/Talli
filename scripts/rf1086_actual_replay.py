@@ -46,7 +46,7 @@ FSQL_REASONS = frozenset(('insufficient_headroom', 'control_unavailable', 'summa
     'worker_deadline', 'worker_failed', 'worker_result_invalid', 'full_sql_empty',
     'full_sql_tool_invalid', 'full_sql_cleanup_unproved', 'full_sql_target_reused',
     'full_control_mismatch', 'full_causal_control_mismatch', 'initialized_control_mismatch',
-    'command_unavailable'))
+    'command_unavailable', 'measurement_cleanup_unproved'))
 FSQL_STAGE_CAPS = {
     'unobserved': (), 'tool_probe': (4096,), 'full_script_generation': (MAX_SQL_BYTES,),
     'f2_cleanup': (), 'fresh_target_start': (4096, 65536, 8 * 1024**2),
@@ -470,12 +470,54 @@ def full_sql_control(path, metadata, previous_target, roles, failed_raw, deadlin
 
 
 def add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline):
+    return optional_observation(path, metadata, f2, deadline,
+        lambda until: full_sql_control(path, metadata, target, roles, failed_raw, until))
+
+
+def measure_full_sql(path, target, deadline):
+    """Discard generated SQL; a complete measurement is never Fsql equality."""
+    observation = {'schema': 'full-sql-generation-measurement-v1', 'status': 'unavailable',
+        'reason': 'control_unavailable', 'stage': 'tool_probe', 'tool': None,
+        'stream': None, 'command': None, 'sqlApplied': False}
+    try:
+        raw = command(['docker', 'exec', target, 'sh', '-c', TOOL_COMMAND], deadline, cap=4096)
+        tool = re.fullmatch(rb'pg_restore \(PostgreSQL\) (17\.6)\n([a-f0-9]{64})\n', raw)
+        if tool is None:
+            raise Unavailable('tool_invalid')
+        observation['tool'] = {'version': tool[1].decode(), 'sha256': tool[2].decode()}
+        observation['stage'] = 'full_script_measurement'
+        with (path / 'archive.dump').open('rb') as archive:
+            stream = commands._measure_command(
+                ['docker', 'exec', '-i', target, 'sh', '-c', FULL_SQL_COMMAND],
+                min(deadline, time.monotonic() + COMMAND_SECONDS), archive=archive)
+        if stream['bytes'] == 0:
+            raise Unavailable('empty')
+        observation.update(status='complete', reason=None, stream=stream)
+        validate_measurement(observation)
+    except Exception as error:
+        observation.update(status='unavailable', stream=None)
+        if isinstance(error, (CommandUnavailable, commands.CommandFailure)):
+            observation.update(reason='command_unavailable', command=error.observation)
+        else:
+            reason = error.reason if isinstance(error, Unavailable) else 'control_unavailable'
+            observation['reason'] = reason if reason in ('tool_invalid', 'empty', 'command_unavailable') else 'control_unavailable'
+    validate_measurement(observation)
+    return {'status': 'unavailable', 'reason': 'measurement_only', 'FsqlEqualsF2': False,
+            'causalAttributionAccepted': False, 'recoveryAccepted': False, 'measurement': observation}
+
+
+def add_full_sql_measurement(path, metadata, target, f2, deadline):
+    return optional_observation(path, metadata, f2, deadline,
+        lambda until: measure_full_sql(path, target, until))
+
+
+def optional_observation(path, metadata, f2, deadline, operation):
     checkpoint_f2(path, metadata, f2)
     optional_deadline = deadline - FSQL_RESERVE_SECONDS
     if optional_deadline - time.monotonic() < FSQL_HEADROOM_SECONDS:
         return fit_optional(f2, unavailable_fsql('insufficient_headroom'), metadata)
     try:
-        optional = full_sql_control(path, metadata, target, roles, failed_raw, optional_deadline)
+        optional = operation(optional_deadline)
     except FullSqlUnavailable as error:
         optional = unavailable_fsql(error.reason, error.failure)
     except Unavailable as error:
@@ -538,7 +580,7 @@ def replay(path, metadata, deadline):
             'input': {key: metadata[key] for key in INPUT_KEYS},
             'sourceCommandSha256': phases['source_pre_dump']['sourceCommandSha256'],
             'sourceInstalledFiles': phases['source_pre_dump']['files']}
-    return add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline)
+    return add_full_sql_measurement(path, metadata, target, f2, deadline)
 
 
 def seal(payload, aad, public_key):
@@ -623,6 +665,10 @@ def validate_failure(failure, reason):
             validate_stream(failure['stream'])
     if outcome is None:
         return
+    validate_command_outcome(outcome, FSQL_STAGE_CAPS[stage])
+
+
+def validate_command_outcome(outcome, caps, stdout_slack=65536):
     if (type(outcome) is not dict
             or set(outcome) != {'kind', 'stdoutBytes', 'stderrBytes', 'stdoutCap', 'exitCode'}
             or type(outcome['kind']) is not str
@@ -630,17 +676,61 @@ def validate_failure(failure, reason):
             or any(type(outcome[k]) is not int for k in ('stdoutBytes', 'stderrBytes', 'stdoutCap'))):
         raise Unavailable('optional_result_invalid')
     kind, out, err, cap, code = (outcome[k] for k in ('kind', 'stdoutBytes', 'stderrBytes', 'stdoutCap', 'exitCode'))
-    if (cap not in FSQL_STAGE_CAPS[stage] or not 0 <= out <= cap + 65536 or not 0 <= err <= 131072
+    if (cap not in caps or not 0 <= out <= cap + stdout_slack or not 0 <= err <= 131072
             or (out > cap) != (kind == 'stdout_limit') or (err > 65536) != (kind == 'stderr_limit')
             or (kind == 'nonzero_exit' and (type(code) is not int or not -127 <= code <= 255 or code == 0))
             or (kind != 'nonzero_exit' and code is not None)):
         raise Unavailable('optional_result_invalid')
 
 
+def validate_measurement(value):
+    fields = {'schema', 'status', 'reason', 'stage', 'tool', 'stream', 'command', 'sqlApplied'}
+    if (type(value) is not dict or set(value) != fields
+            or value['schema'] != 'full-sql-generation-measurement-v1'
+            or value['sqlApplied'] is not False
+            or value['stage'] not in ('tool_probe', 'full_script_measurement')):
+        raise Unavailable('optional_result_invalid')
+    stage = value['stage']
+    if stage == 'tool_probe':
+        if value['tool'] is not None:
+            raise Unavailable('optional_result_invalid')
+    else:
+        validate_tool(value['tool'])
+    if value['status'] == 'complete':
+        stream = value['stream']
+        if (stage != 'full_script_measurement' or value['reason'] is not None or value['command'] is not None
+                or type(stream) is not dict or set(stream) != {'bytes', 'sha256'}
+                or type(stream['bytes']) is not int or not 0 < stream['bytes'] <= commands.MAX_MEASUREMENT_BYTES
+                or type(stream['sha256']) is not str or not re.fullmatch('[a-f0-9]{64}', stream['sha256'])):
+            raise Unavailable('optional_result_invalid')
+    elif value['status'] == 'unavailable':
+        reason = value['reason']
+        if (value['stream'] is not None or reason not in ('tool_invalid', 'empty', 'command_unavailable', 'control_unavailable')
+                or (reason == 'tool_invalid' and stage != 'tool_probe')
+                or (reason == 'empty' and stage != 'full_script_measurement')
+                or (reason != 'command_unavailable' and value['command'] is not None)):
+            raise Unavailable('optional_result_invalid')
+        if value['command'] is not None:
+            validate_command_outcome(value['command'],
+                (4096,) if stage == 'tool_probe' else (commands.MAX_MEASUREMENT_BYTES,),
+                65536 if stage == 'tool_probe' else 1)
+    else:
+        raise Unavailable('optional_result_invalid')
+    if len(_encoded(value)) > 1024:
+        raise Unavailable('optional_result_invalid')
+    return value
+
+
 def validate_fsql(value, metadata):
     if type(value) is not dict or value.get('recoveryAccepted') is not False or value.get('causalAttributionAccepted') is not False:
         raise Unavailable('optional_result_invalid')
     if value.get('status') == 'unavailable':
+        if value.get('reason') == 'measurement_only':
+            if (set(value) != {'status', 'reason', 'FsqlEqualsF2', 'recoveryAccepted', 'causalAttributionAccepted', 'measurement'}
+                    or value['FsqlEqualsF2'] is not False):
+                raise Unavailable('optional_result_invalid')
+            validate_measurement(value['measurement'])
+            return value
         if (set(value) != {'status', 'reason', 'FsqlEqualsF2', 'recoveryAccepted', 'causalAttributionAccepted', 'failure'}
                 or type(value['reason']) is not str or value['reason'] not in FSQL_REASONS or value['FsqlEqualsF2'] is not False):
             raise Unavailable('optional_result_invalid')
@@ -771,6 +861,8 @@ def consume():
             signal.signal(signal.SIGINT, signal.SIG_IGN)
             try:
                 result['ownedCleanupComplete'] = cleanup_resources(path, time.monotonic() + CLEANUP_SECONDS)
+                if not result['ownedCleanupComplete'] and result.get('Fsql', {}).get('reason') == 'measurement_only':
+                    result['Fsql'] = unavailable_fsql('measurement_cleanup_unproved')
             finally:
                 if active_failure is not None:
                     raise active_failure
