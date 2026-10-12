@@ -27,10 +27,10 @@ from rf1086_catalog_difference import CatalogCapture, _encoded, _records
 from rf1086_actual_replay_package import (
     IMAGE, LIMITS, Unavailable, binding, code_hashes, digest, load_json, owner,
     package_path, prepare, private_directory, read_package, read_private, write_private,
+    STATUS_TAG, report_unavailable,
 )
 
 TAG = 'owned_identity_actual_replay_v1 '
-STATUS_TAG = 'owned_identity_actual_replay_status_v1 '
 LABEL = 'talli.rf.actual.replay'
 MAX_PLAINTEXT = 64 * 1024
 MAX_ENVELOPE = 96 * 1024
@@ -482,10 +482,10 @@ def main():
             if path.exists():
                 cleanup_package(path)
         return 0
-    except BaseException:
+    except BaseException as error:
         # No traceback, path, subprocess stderr or private metadata reaches CI.
         if args.action != 'worker':
-            print(STATUS_TAG + '{"status":"unavailable"}', file=sys.stderr)
+            report_unavailable(args.action, error)
         return 1
 
 

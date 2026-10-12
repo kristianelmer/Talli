@@ -3,6 +3,10 @@
 No hosted target, reusable clone, public runtime activation or filing authority.
 Portable hashes remain integrity claims, separate from current source Auth.
 """
+from rf1086_actual_replay_package import start_export_clock
+
+start_export_clock()
+
 import argparse
 import asyncio
 import base64

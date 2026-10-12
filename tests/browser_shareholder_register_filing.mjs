@@ -24,6 +24,7 @@ import { startRf1086FilingAuthorityMock } from "./fixtures/rf1086-filing-authori
 import { exerciseFullYearSourceJourney, seedFullYearAdmission } from "./fixtures/rf1086-source-browser-journey.mjs";
 import { exerciseRfPilotExpiry, exerciseRfCancellation, exerciseRfFinalDeletion } from "./fixtures/rf1086-cancellation-browser-journey.mjs";
 import { exerciseCompanyTestRetention } from "./fixtures/rf1086-company-test-retention-browser-journey.mjs";
+import { actualReplayEnvironment } from "./support/rf1086-actual-replay-environment.mjs";
 
 const nextCli = createRequire(new URL("../apps/web/package.json", import.meta.url)).resolve("next/dist/bin/next");
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -453,7 +454,7 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
       await exerciseCompanyTestRetention({ page, siteOrigin, company: inventoryCompany, openings,
         database, api, ownerId: owner.id, outsiderId: other.id, ownerToken: session.access_token,
         outsiderToken: otherSession.access_token, lowAalToken: lowAalSession.access_token,
-        python, environment: { ...runtimeEnvironment(), TALLI_SUPABASE_WORKDIR: process.env.TALLI_SUPABASE_WORKDIR,
+        python, replayTestStarted, environment: { ...runtimeEnvironment(), TALLI_SUPABASE_WORKDIR: process.env.TALLI_SUPABASE_WORKDIR,
           ...(process.env.DOCKER_CONTEXT ? { DOCKER_CONTEXT: process.env.DOCKER_CONTEXT } : {}) },
         sourceDatabaseUrl: databaseUrl, readerDatabaseUrl: databases.talli_ledger_backend, supabaseUrl, anonKey });
     }
@@ -517,11 +518,7 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
             TALLI_RF_RESTORE_LOW_AAL_TOKEN: lowAalSession.access_token,
             ...(reviewerSession ? { TALLI_RF_RESTORE_REVIEWER_TOKEN: reviewerSession.access_token } : {}) } : {}),
           TALLI_SUPABASE_WORKDIR: process.env.TALLI_SUPABASE_WORKDIR,
-          ...(process.env.TALLI_RF_REPLAY_DIR ? {
-            TALLI_RF_REPLAY_DIR: process.env.TALLI_RF_REPLAY_DIR,
-            RUNNER_TEMP: process.env.RUNNER_TEMP,
-            TALLI_RF_REPLAY_EXPORT_MS: String(Math.max(0, Math.floor(Math.min(150_000,
-              360_000 - (performance.now() - replayTestStarted) - 60_000)))) } : {}),
+          ...actualReplayEnvironment(replayTestStarted),
           ...(process.env.TALLI_RF_RESTORE_SSH_CONFIG ? {
             TALLI_RF_RESTORE_SSH_CONFIG: process.env.TALLI_RF_RESTORE_SSH_CONFIG,
             TALLI_RF_RESTORE_SSH_HOST: process.env.TALLI_RF_RESTORE_SSH_HOST } : {}),

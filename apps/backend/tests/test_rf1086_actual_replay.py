@@ -30,6 +30,7 @@ def setup(tmp_path, monkeypatch):
     monkeypatch.setenv('GITHUB_SHA', 'a' * 40)
     monkeypatch.setenv('TALLI_RF_REPLAY_DIR', str(root / 'talli-rf-replay-123-1'))
     monkeypatch.setenv('TALLI_RF_REPLAY_EXPORT_MS', '150000')
+    monkeypatch.setattr(package, '_EXPORT_STARTED', None)
     package.start_export_clock()
     package.prepare()
     source = CatalogCapture(); source.capture(b'[]\n{}\n[]\n')
@@ -293,3 +294,31 @@ def test_cleanup_status_cannot_conflict_with_the_single_encrypted_summary(key):
     expected = {k: v for k, v in bound.items() if k != 'version'}
     assert replay.decrypt(line + '\n' + status + '\n' + status, key, expected) == {'ownedCleanupComplete': False}
     with pytest.raises(package.Unavailable): replay.decrypt(line + '\n' + line, key, expected)
+
+
+def test_dynamic_owned_wrapper_import_cannot_reset_the_company_export_clock(monkeypatch):
+    monkeypatch.setattr(package, '_EXPORT_STARTED', None)
+    moments = iter((100.0, 160.0))
+    monkeypatch.setattr(package.time, 'monotonic', lambda: next(moments))
+    package.start_export_clock()
+    package.start_export_clock()
+    assert package._EXPORT_STARTED == 100.0
+    root = Path(__file__).resolve().parents[3]
+    for name in ('rehearse-rf1086-company-test-retention-restore.py', 'rehearse-rf1086-owned-restore.py'):
+        source = (root / 'scripts' / name).read_text()
+        assert source.index('start_export_clock()') < source.index('import argparse')
+
+
+@pytest.mark.parametrize('error,expected', [
+    (package.Unavailable('export_budget_exhausted'), 'export_budget_exhausted'),
+    (package.Unavailable('private-canary'), 'operation_failed'),
+    (ValueError('private-canary'), 'operation_failed'),
+    (FileNotFoundError('private-canary'), 'private_file_missing'),
+])
+def test_availability_status_uses_only_finite_labels(error, expected, capsys):
+    package.report_unavailable('private-canary', error)
+    output = capsys.readouterr()
+    assert output.out == '' and 'private-canary' not in output.err
+    assert json.loads(output.err.removeprefix(package.STATUS_TAG)) == {
+        'status': 'unavailable', 'action': 'operation', 'reason': expected,
+    }

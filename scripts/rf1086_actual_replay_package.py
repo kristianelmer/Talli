@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import signal
 import stat
+import sys
 import time
 from uuid import uuid4
 
@@ -23,6 +24,15 @@ CODE_FILES = ('rf1086_identity_restore.py', 'rf1086_catalog_causal.sql',
               'rf1086_catalog_causal_capture.py', 'rf1086_actual_replay_package.py',
               'rf1086_actual_replay.py')
 _EXPORT_STARTED = None
+STATUS_TAG = 'owned_identity_actual_replay_status_v1 '
+STATUS_REASONS = frozenset({
+    'binding_invalid', 'path_invalid', 'directory_invalid', 'file_invalid', 'owner_invalid',
+    'export_budget_exhausted', 'export_oversized', 'export_deadline', 'export_budget_unknown',
+    'package_not_empty', 'capture_unavailable', 'source_network_unbound', 'catalog_unavailable',
+    'metadata_oversized', 'package_incomplete', 'package_hash_mismatch', 'package_binding_mismatch',
+    'job_headroom_unproved', 'worker_failed', 'cleanup_incomplete', 'cleanup_package_unexpected',
+    'public_key_invalid', 'summary_oversized', 'envelope_oversized',
+})
 
 
 class Unavailable(ValueError):
@@ -33,7 +43,22 @@ class Unavailable(ValueError):
 
 def start_export_clock():
     global _EXPORT_STARTED
-    _EXPORT_STARTED = time.monotonic()
+    if _EXPORT_STARTED is None:
+        _EXPORT_STARTED = time.monotonic()
+
+
+def report_unavailable(action, error):
+    """Only finite labels; never stringify an exception or private payload."""
+    action = action if action in ('publication', 'prepare', 'consume', 'cleanup') else 'operation'
+    reason = 'operation_failed'
+    if type(error) is Unavailable and error.reason in STATUS_REASONS:
+        reason = error.reason
+    elif isinstance(error, FileNotFoundError):
+        reason = 'private_file_missing'
+    try:
+        print(STATUS_TAG + _encoded({'status': 'unavailable', 'action': action, 'reason': reason}).decode(), file=sys.stderr)
+    except Exception:
+        pass  # A diagnostic must not replace the original strict rejection.
 
 
 def digest(data):
@@ -151,7 +176,8 @@ def publish(**inputs):
         signal.signal(signal.SIGALRM, expired)
         signal.setitimer(signal.ITIMER_REAL, 3)
         return _publish(**inputs)
-    except Exception:
+    except Exception as error:
+        report_unavailable('publication', error)
         return False
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
@@ -210,9 +236,10 @@ def _publish(*, roles, dump, source, auth, preload, before, failed, source_raw, 
         _check_time(deadline)
         os.rename(path / 'ready.pending', path / 'ready.json')
         return True
-    except Exception:
+    except Exception as error:
         # A partial private package is handled by the workflow's always cleanup.
         # Never mask the original strict mismatch or emit sensitive exceptions.
+        report_unavailable('publication', error)
         return False
 
 

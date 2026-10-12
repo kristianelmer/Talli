@@ -5,6 +5,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fixtureTableTransaction } from "../support/rf1086-fixture-access.mjs";
+import { actualReplayEnvironment } from "../support/rf1086-actual-replay-environment.mjs";
 
 function canonical(value) {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
@@ -16,7 +17,7 @@ function canonical(value) {
 
 export async function exerciseCompanyTestRetention({ page, siteOrigin, company, openings,
   database, api, ownerId, outsiderId, ownerToken, outsiderToken, lowAalToken,
-  python, environment, sourceDatabaseUrl, readerDatabaseUrl, supabaseUrl, anonKey }) {
+  python, environment, replayTestStarted, sourceDatabaseUrl, readerDatabaseUrl, supabaseUrl, anonKey }) {
   const authorization = { Authorization: `Bearer ${ownerToken}` };
   const originalIds = new Set();
   const authorityTestIds = [];
@@ -127,7 +128,7 @@ returning id,income_year,mode,preview_id,authority_test_run_id`,
       recordCount: oracle.length, recordsSha256: read.recordsSha256, records: oracle }), { mode: 0o600 });
     const result = JSON.parse(execFileSync(python, ["scripts/rehearse-rf1086-company-test-retention-restore.py",
       "--company-id", company.id, "--stream", streamPath, "--writer-expectation", expectation], {
-      cwd: process.cwd(), env: { ...environment, DATABASE_URL: sourceDatabaseUrl,
+      cwd: process.cwd(), env: { ...environment, ...actualReplayEnvironment(replayTestStarted), DATABASE_URL: sourceDatabaseUrl,
         TALLI_LEDGER_DATABASE_URL: readerDatabaseUrl, SUPABASE_URL: supabaseUrl,
         SUPABASE_ANON_KEY: anonKey, TALLI_RF_RESTORE_OWNER_TOKEN: ownerToken,
         TALLI_RF_RESTORE_OUTSIDER_TOKEN: outsiderToken }, encoding: "utf8", timeout: 180_000,
