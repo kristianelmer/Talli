@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "kind": "SOURCE_BACKED_SERIAL_OWNER_PREREQUISITE_PLAN",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "c7d86cc1bd12400bb4194855be714981eb4515d5",
+  "status": "RF_READER_LOCAL_CHECKPOINT_CLOSED_DOCUMENTS_PREREQUISITE_IN_PROGRESS_FULL_CI_PENDING",
+  "completedLocalPrerequisites": [
+    "ledger-governance-entry-assertion-20261009.json",
+    "current-observation-evidence-reader-20261009.json"
+  ],
+  "sourceFinding": {
+    "problem": "Existing historical-original SQL compares stored receipt labels and returns document_snapshot. Metadata-hash recomputation occurs only in the Python adapter. A direct Governance SQL call cannot treat matching caller/stored hash labels as verified snapshot correspondence.",
+    "paths": {
+      "retention": "20260924062717 retain_original_v1 stores caller metadata SHA beside to_jsonb(document row).",
+      "historicalAssertion": "20260928124000 assert_historical_original_v1 matches exact receipt fields, then returns document_snapshot.",
+      "comparison": "20260923102419 assert_retained_metadata_v1 compares two caller-supplied strings.",
+      "actualDigest": "PostgresDocumentOriginals._metadata -> _snapshot_document -> _document -> Documents evidence.metadata_sha256 computes the actual public metadata digest outside SQL."
+    },
+    "existingByteProof": "retained_originals constraints enforce byte_length=octet_length(content) and SHA256(content)=content_sha256. This is stored-byte integrity, not a fresh independent object-store read."
+  },
+  "selectedOwner": "Documents",
+  "proposedContract": {
+    "sql": "documents.assert_historical_original_integrity_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,timestamptz,text)",
+    "arguments": [
+      "original",
+      "document",
+      "company",
+      "source_year",
+      "metadata_sha256",
+      "content_sha256",
+      "byte_length",
+      "retained_at",
+      "not_after",
+      "verified_subject"
+    ],
+    "returns": [
+      "document_text"
+    ],
+    "authority": "Verified subject, current accepted owner, READ COMMITTED, company lock and owner recheck. Exact immutable receipt lookup. Finite nonfuture cutoff; retained_at finite and no later than cutoff. Current owner may differ from retained actor; no Auth lookup.",
+    "proof": "Validate the known raw stored-row schema and types, bind snapshot id/company/year/content hash/byte length to retained identity, and reproduce unchanged public DocumentRecord metadata bytes/digest. Return canonical metadata text; no current mutable-document join or retained bytes returned.",
+    "compatibility": "16 public dataclass fields, fixed wrappers/enums/scalars and UTC datetime.isoformat; sorted compact UTF-8. Preserve valid null/empty content_type -> application/pdf and removal_reason -> null projections. Strict actual SQL snapshot shape; missing-column compatibility requires source-backed fixture. Seven SQL-only fields remain outside the old digest. No old writer/codec/hash changes.",
+    "activation": "Closed runtime/consumer grants and retentive rollback. Future Governance final consumer grant is a separate reviewed owner slice."
+  },
+  "verificationRequired": [
+    "Frozen Python-vs-SQL metadata bytes and hashes over all fields, Unicode, offsets, microseconds and valid null/empty defaults.",
+    "Self-consistent forged labels, snapshot/receipt scope/hash/length disagreement, missing/extra/wrong field types, malformed/nonfinite times.",
+    "Restricted real owner retention plus independent-current-owner historical reads, owner revocation during company-lock wait, isolation/subject denial and historical success after current metadata changes.",
+    "Exact closed ACL, role/schema preservation, repeated install and retained rollback. Native parity cannot substitute for full Supabase/RLS/race execution."
+  ],
+  "futureGovernanceObligations": [
+    "Derive the complete distinct-document union from original Governance documents, correction memo and validated replacement RF snapshot; no caller-selected subset.",
+    "Compare RF document id/company/source year/metadata SHA/content version/content SHA/length/type/status/created time to returned metadata. Govern required signed-document kinds, allowed states and not-removed admission through owned semantics.",
+    "Governance semantic document revisions are not a Documents counter. Original documents and memo use event-year bindings; RF documents may use their real different source years.",
+    "Keep existing independent byte verification outside locks. Retained metadata verified at amendment time does not retroactively establish original event-recording metadata or human signedness."
+  ],
+  "sourceFileSha256": {
+    "supabase/migrations/20260924062717_documents_immutable_retained_originals.sql": "ae0274b451314359b1f8b1cf6067f6abd14f8a65d89b41fd974cd9581d62d45b",
+    "supabase/migrations/20260928124000_documents_historical_original_assertion.sql": "01e5d94852fd2b277d11e375f19230e5685ad790573d2daed29ba2ff487ffedc",
+    "supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql": "fff296d5af5c24932c415465399ec632e0a81152fcaf509eceda871bce1f984d",
+    "apps/backend/src/talli_backend/modules/documents/evidence.py": "6ba6658dca3764677a6e6cc5004c9810d84652cd108407bc579292a0e7d5bab1",
+    "apps/backend/src/talli_backend/modules/documents/public.py": "c72487547f0db15bd9599136c64986ff684daaf710173ff187f65e3862e3fe6f",
+    "apps/backend/src/talli_backend/adapters/postgres_document_originals.py": "591ce8f68c2c2bc064a746e4da588c2032826252c86d37d254b8b7712b768657",
+    "apps/backend/src/talli_backend/adapters/supabase_documents.py": "feee886df5179f22c1fca644f877d5673eecf759d547dab00fdccde42e2d5039"
+  },
+  "limits": [
+    "This is a source finding and selected plan, not implementation, runtime proof or acceptance advancement.",
+    "Only Documents now edits business state; Governance storage/application and later RF consumer remain pending. No Archive/frozen-facade exception or migration-pointer change.",
+    "CI38004460437 tests c7d86cc1; newly authored Documents work is outside that immutable revision. All A1-A7, immutable gates and launch remain pending."
+  ]
+}

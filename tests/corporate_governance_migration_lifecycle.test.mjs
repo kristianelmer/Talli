@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import pg from "pg";
+import { governanceGuardReplay } from "./support/governance_guard_replay.mjs";
 
 const { Client } = pg;
 const databaseUrl = process.env.DATABASE_URL;
@@ -23,6 +24,128 @@ const contractMigrationName =
   "20260902110000_corporate_governance_contract.sql";
 const supportedEventsMigrationName =
   "20260904220000_corporate_governance_supported_events.sql";
+const ledgerAmendmentReadMigrationName =
+  "20260923090824_ledger_reporting_amendment_read.sql";
+const companyWriteGuardsMigrationName =
+  "20260924080355_governance_ledger_company_write_guards.sql";
+const guardedReportingReadMigrationName =
+  "20260924083154_governance_guarded_reporting_year_read.sql";
+
+async function restoreGovernanceEvidenceAuthority(client) {
+  // The evidence capabilities remain installed throughout Governance rollback.
+  // Restore only the recreated caller's published assertion grants. Replaying
+  // their complete writer migrations here would change this rehearsal's topology.
+  await client.query("begin");
+  try {
+    for (const [owner, schema, signatures] of [
+      ["documents_store_owner", "documents", [
+        "documents.assert_retained_metadata_v1(text,text)",
+        "documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)",
+      ]],
+      ["shareholder_register_filing_store_owner", "shareholder_register_filing", [
+        "shareholder_register_filing.assert_current_register_observation_v1(uuid,uuid,integer,integer,text,text)",
+      ]],
+    ]) {
+      const { rows: [state] } = await client.query(`
+        select current_user as principal, pg_has_role(current_user, $1, 'SET') as can_set,
+          (select jsonb_build_object('admin', m.admin_option, 'inherit', m.inherit_option, 'set', m.set_option)
+           from pg_auth_members m where m.roleid = to_regrole($1)
+             and m.member = current_user::regrole and m.grantor = m.member) as prior
+      `, [owner]);
+      const identifier = value => '"' + value.replaceAll('"', '""') + '"';
+      const principal = identifier(state.principal);
+      if (!state.can_set) await client.query(`grant ${identifier(owner)} to ${principal} with set true granted by ${principal}`);
+      await client.query(`set local role ${identifier(owner)}`);
+      for (const signature of signatures) {
+        const { rows: [routine] } = await client.query("select to_regprocedure($1) is not null as present", [signature]);
+        if (routine.present) {
+          await client.query(`grant usage on schema ${identifier(schema)} to corporate_governance_workflow_executor`);
+          // Signatures are fixed in the inventory above, never user-supplied.
+          await client.query(`grant execute on function ${signature} to corporate_governance_workflow_executor`);
+        }
+      }
+      await client.query("reset role");
+      if (!state.can_set) {
+        await client.query(`revoke ${identifier(owner)} from ${principal} granted by ${principal}`);
+        if (state.prior) await client.query(`grant ${identifier(owner)} to ${principal} with admin ${state.prior.admin}, inherit ${state.prior.inherit}, set ${state.prior.set} granted by ${principal}`);
+      }
+    }
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  }
+}
+
+async function assertGovernanceSuccessorGuards(client) {
+  const { rows: [state] } = await client.query(String.raw`
+    select
+      (select count(*)::integer from pg_catalog.pg_trigger t
+        join pg_catalog.pg_class c on c.oid = t.tgrelid
+        join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+        where n.nspname = 'corporate_governance'
+          and t.tgname = 'aa_company_write_guard' and t.tgenabled = 'O'
+          and t.tgfoid = 'corporate_governance.lock_company_write_v1()'::regprocedure
+      ) as guarded_tables,
+      position('rf193-company-write-guard-v1' in pg_catalog.pg_get_functiondef(
+        'corporate_governance.prepare_shareholder_loan_v1(jsonb,text)'::regprocedure
+      )) > 0 as guarded_loan,
+      pg_catalog.has_function_privilege('shareholder_register_filing_executor',
+        'corporate_governance.read_guarded_reporting_year_inputs_v1(uuid,integer,text)',
+        'EXECUTE') as rf_reads,
+      pg_catalog.has_function_privilege('authenticated',
+        'corporate_governance.read_guarded_reporting_year_inputs_v1(uuid,integer,text)',
+        'EXECUTE') as browser_reads,
+      pg_catalog.has_function_privilege('corporate_governance_store_owner',
+        'ledger.acquire_company_write_guard_v1(uuid,text)', 'EXECUTE') as ledger_guard,
+      pg_catalog.has_function_privilege('corporate_governance_store_owner',
+        'ledger.list_entry_amendments_v1(uuid,text)', 'EXECUTE') as ledger_reads,
+      pg_catalog.has_function_privilege('corporate_governance_workflow_executor',
+        'documents.assert_retained_metadata_v1(text,text)', 'EXECUTE') as document_metadata_reads,
+      pg_catalog.has_function_privilege('corporate_governance_workflow_executor',
+        'documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)',
+        'EXECUTE') as document_original_reads
+  `);
+  assert.deepEqual(state, {
+    guarded_tables: 11, guarded_loan: true, rf_reads: true,
+    browser_reads: false, ledger_guard: true, ledger_reads: true,
+    document_metadata_reads: true, document_original_reads: true,
+  });
+}
+
+async function assertLedgerAmendmentReadAuthority(client) {
+  const { rows: [authority] } = await client.query(String.raw`
+    select owner.rolname as owner,
+      procedure.prosecdef as security_definer,
+      pg_catalog.has_function_privilege(
+        'ledger_executor', procedure.oid, 'EXECUTE'
+      ) as ledger_reads,
+      pg_catalog.has_function_privilege(
+        'corporate_governance_workflow_executor', procedure.oid, 'EXECUTE'
+      ) as governance_reads,
+      pg_catalog.has_function_privilege(
+        'anon', procedure.oid, 'EXECUTE'
+      ) as anonymous_reads,
+      pg_catalog.has_function_privilege(
+        'authenticated', procedure.oid, 'EXECUTE'
+      ) as browser_reads,
+      exists(select 1 from pg_catalog.aclexplode(procedure.proacl) acl
+        where acl.grantee = 0 and acl.privilege_type = 'EXECUTE') as public_reads
+    from pg_catalog.pg_proc procedure
+    join pg_catalog.pg_roles owner on owner.oid = procedure.proowner
+    where procedure.oid =
+      'ledger.list_entry_amendments_v1(uuid,text)'::regprocedure
+  `);
+  assert.deepEqual(authority, {
+    owner: "ledger_store_owner",
+    security_definer: true,
+    ledger_reads: true,
+    governance_reads: true,
+    anonymous_reads: false,
+    browser_reads: false,
+    public_reads: false,
+  });
+}
 
 function withoutTransactionWrapper(sql) {
   return sql
@@ -1123,6 +1246,10 @@ test(
       lifecycleRollback,
       supportedEventsForward,
       supportedEventsRollback,
+      ledgerAmendmentReadForward,
+      ledgerAmendmentReadRollback,
+      companyWriteGuardsForward,
+      guardedReportingReadForward,
     ] =
       await Promise.all([
       readFile(
@@ -1195,6 +1322,22 @@ test(
           `../supabase/rollback/${supportedEventsMigrationName}`,
           import.meta.url,
         ),
+        "utf8",
+      ),
+      readFile(
+        new URL(`../supabase/migrations/${ledgerAmendmentReadMigrationName}`, import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL(`../supabase/rollback/${ledgerAmendmentReadMigrationName}`, import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL(`../supabase/migrations/${companyWriteGuardsMigrationName}`, import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL(`../supabase/migrations/${guardedReportingReadMigrationName}`, import.meta.url),
         "utf8",
       ),
     ]);
@@ -1570,6 +1713,13 @@ test(
       await assertSupersededEvidence(client, true);
       await assertFinalizationEvidence(client, true);
       for (let rehearsal = 0; rehearsal < 2; rehearsal += 1) {
+        await assertLedgerAmendmentReadAuthority(client);
+        // The newer Ledger-owned reader grants the workflow role EXECUTE.
+        // Unwind that additive dependency before the older rollback drops it.
+        await client.query(ledgerAmendmentReadRollback);
+        assert.equal((await client.query(`select pg_catalog.to_regprocedure(
+          'ledger.list_entry_amendments_v1(uuid,text)'
+        ) is null as absent`)).rows[0].absent, true);
         await client.query(supportedEventsRollback);
         await client.query(lifecycleRollback);
         await client.query(annualRollback);
@@ -1594,6 +1744,14 @@ test(
         await assertGovernanceRolesCannotInheritCompanyAccessExecutor(client);
         await client.query(lifecycleForward);
         await client.query(supportedEventsForward);
+        await client.query(ledgerAmendmentReadForward);
+        // Historical migrations recreate unwrapped routines and fresh tables.
+        // Restore both successor boundaries before declaring recutover complete.
+        await client.query(governanceGuardReplay(companyWriteGuardsForward));
+        await client.query(guardedReportingReadForward);
+        await restoreGovernanceEvidenceAuthority(client);
+        await assertGovernanceSuccessorGuards(client);
+        await assertLedgerAmendmentReadAuthority(client);
         assert.deepEqual(await state(client), {
           capability_schema: true,
           decision_table: true,

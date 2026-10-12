@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "REVIEWED_APPROVAL_CASH_BANKING_FIXTURE_REPAIR_PROJECTED_LOCAL_ONLY",
+  "recordedAtUtc": "2026-10-10T20:09:43.626546+00:00",
+  "baseRevision": "a264805783c5a5705e4ef1c1054852f049a60b4c",
+  "status": "REVIEWED_LOCAL_CHECKS_PASS_ACTUAL_FULL36_PENDING",
+  "actualFailure": {
+    "run": 38078490149,
+    "job": 114290341791,
+    "head": "a264805783c5a5705e4ef1c1054852f049a60b4c",
+    "rawLogSha256": "4058aeaa464e44d03dd198a1b7c16a3250b35d48b2e91cde1369b0bb0f61a581",
+    "case": "test_actual_v3_approval_and_replay_bind_current_owners_and_exact_capture[0-cash_issue]",
+    "boundary": "Approval context now returns after seed and fresh-MFA validation; annual readiness is blocked. Actual CI did not print blocker codes.",
+    "newApprovalCases": {
+      "passed": 0,
+      "failed": 1,
+      "unexecuted": 35
+    }
+  },
+  "diagnosis": "The shared pointwise cash fixture imports a bank transaction and retains Ledger/Governance events but omits the Banking claim made by normal restricted-payment orchestration. Independently reproduced unmatched_bank_transactions with real Banking evidence and unchanged annual policy on projected inputs. Additional full-context blockers are unproved.",
+  "repair": {
+    "path": "apps/backend/tests/test_rf1086_source_approval_v3_database.py",
+    "sourceSha256": "ef083fa4cfedcfb26f1e307c1a607789d05c4a0bf34c0c181c2a611bf4256426",
+    "scope": "New local helper and two-line cash-only call after pointwise completion, before source capture. Select the unique retained restricted-payment event by exact company/year/reference/original actor/bank ID; its composite-FK Ledger entry and event ID supply the existing Banking claim. Assert exact returned transaction/entry/action binding.",
+    "allOtherFunctionsExact": 20,
+    "allRemainingBytesExact": true,
+    "productionAuthSqlGrantsRlsChanged": false,
+    "warningAcceptanceOrRawMatchFlagsChanged": false
+  },
+  "reviews": [
+    {
+      "axis": "Spec",
+      "path": "/private/tmp/talli-release-20261009/rf-approval-bank-fixture-spec-review-v1.json",
+      "sha256": "776b80168f27de5700a3b427cb4b24aad6c20c446235577b87f91ae4a70f21ea",
+      "bytes": 16350,
+      "findings": 0
+    },
+    {
+      "axis": "Standards",
+      "path": "/private/tmp/talli-release-20261009/rf-approval-bank-fixture-standards-review-v1.json",
+      "sha256": "9fcb4b5f30d5af689da1d5bf958672d3acb7428bade43532d5c20e9285340ce0",
+      "bytes": 14129,
+      "findings": 0
+    }
+  ],
+  "freeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-approval-bank-fixture-freeze-v1.json",
+    "sha256": "f6bf758c89dbdc3bf820699cbdff32d3557ea46ad43ff06bea69a23d9547af28",
+    "bytes": 3044
+  },
+  "localVerification": {
+    "nativeProjected": {
+      "passedChecks": 14,
+      "receipt": {
+        "path": "/private/tmp/talli-release-20261009/rf-approval-bank-claim-native-green-v3.json",
+        "sha256": "7ff5e1fae1716a41d5fb0f112f2a07c933ce6b54fc083e23f961b2c6d8e41d98",
+        "bytes": 1575
+      },
+      "realSeams": "Actual fixture helper, published Banking claim/wrapper, two-routine guard rewrapper, year evidence query/DTO/annual policy and composite Ledger FK.",
+      "projections": "Owner/identity/year/lock functions, minimal tables, prepared source/annual inputs; guard inventory narrowed to two routines. Full import/Governance/Ledger producer origin/Auth/RLS/approval/Storage/restore absent.",
+      "ownedClusterStoppedAndRemoved": true
+    },
+    "ciSelectors": {
+      "passed": 128,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 55720.81025,
+      "log": {
+        "path": "/private/tmp/talli-release-20261009/rf-approval-bank-fixture-ci-selection-v1.log",
+        "sha256": "57c5ada031d9b2db37cac20f62b29f0c1ae36b5a3d93dc52535ba723aeed218e",
+        "bytes": 13676
+      }
+    },
+    "databaseCases": {
+      "collectedOnly": 36,
+      "actualPassed": 0,
+      "prerequisiteCleared": false,
+      "log": {
+        "path": "/private/tmp/talli-release-20261009/rf-approval-bank-fixture-collection-v1.log",
+        "sha256": "6427534f4fec0c710f47b32f81dd63a92734ff92dd64c78a0bbc13b0616c634c",
+        "bytes": 4809
+      }
+    },
+    "protectedSpans": {
+      "path": "/private/tmp/talli-release-20261009/rf-approval-bank-fixture-protected-spans-v1.json",
+      "sha256": "6344dc0e0c22451ea312e78f2e2de6684cf1b7565e2cd6b2973bf7a7763641a0",
+      "bytes": 1486
+    }
+  },
+  "limits": [
+    "Native year/org candidate probes were GREEN; neither was a demonstrated blocker. Missing-documents native setup failure is preserved separately from corrected projected passes.",
+    "Fixture completion occurs after pointwise retained rows exist; normal workflow claims before completing Governance. This repairs disposable fixture end state, not proof of full atomic orchestration.",
+    "All36 actual approval passes remain required before claim implementation. Browser, independent restore, immutable complete gates, canonical A1-A7 and all-three technical handoff remain pending.",
+    "No new grants, production policy changes, provider operations, hosted recovery, spending, genuine data, filing or activation."
+  ]
+}

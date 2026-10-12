@@ -33,6 +33,10 @@ try {
     }
     const state = (await database.query("select phase from backend_system.tax_settlement_migration_state where singleton")).rows[0]?.phase;
     if (["expanded", "rolled_back"].includes(state)) await apply("migrations/20260913171000_company_tax_settlement_expand.sql");
+    // Settlement expansion recreates two Banking RPCs. Preserve the installed
+    // Banking successor before exercising them in this predecessor lane.
+    const bankingGuard = (await database.query("select to_regprocedure('banking.acquire_company_write_guard_v1(uuid,text)') is not null present")).rows[0].present;
+    if (bankingGuard) await apply("migrations/20260929092425_banking_company_write_guards.sql");
   } else if (direction === "contract") {
     await apply("contract-migrations/20260913172000_company_tax_settlement_cutover.sql");
     await apply("contract-migrations/20260913173000_company_tax_settlement_contract.sql");

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from datetime import date, datetime
@@ -18,11 +19,14 @@ from talli_backend.adapters.supabase_ledger import (
     SupabaseLedgerSession,
     SupabaseLedgerWorkflowTransaction,
     _VerifiedActor,
+    _actor as _ledger_actor,
     _line_payload,
     _map_database_error,
     _posted_entry,
 )
 from talli_backend.application.annual_data_compatibility import LegacyAnnualDataView
+from talli_backend.application.corporate_register_evidence import CorporateRegisterEvidenceVerifier, VerifiedCorporateRegisterEvidence
+from talli_backend.adapters.postgres_document_originals import PostgresDocumentOriginals
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceAuthenticationError,
     CorporateGovernanceSessionFactory,
@@ -66,6 +70,7 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateGovernanceErrorCode,
     CorporateGovernancePersistence,
     CorporateLifecycleSnapshot,
+    CorporateReportingYearBasis,
     CorporateSourceReference,
     DocumentReference,
     FinalizeOwnerDividendCommand,
@@ -97,6 +102,7 @@ from talli_backend.modules.corporate_governance.public import (
     SupportedCorporateEventReference,
     corporate_governance_persistence_adapter,
 )
+from talli_backend.modules.corporate_governance import public as amendment
 from talli_backend.modules.ledger.public import (
     LedgerCommand,
     LedgerEntryKind,
@@ -112,7 +118,7 @@ from talli_backend.modules.ledger.public import (
 )
 from talli_backend.modules.documents.public import DocumentsSessionFactory
 from talli_backend.modules.ledger.service import LedgerService
-from talli_backend.shared.kernel import ActorId, CompanyId, IncomeYear, LocalDate, Money
+from talli_backend.shared.kernel import ActorId, CompanyId, IdempotencyKey, IncomeYear, LocalDate, Money
 
 
 def _proposal_request(
@@ -617,7 +623,85 @@ def _shareholder_loan_request(
     }
 
 
+def _reporting_year_register_evidence(value: object, *, query: amendment.CorporateReportingRegisterEvidenceQuery
+) -> amendment.CorporateGovernanceYearRegisterEvidence:
+    """Shared new-wire decoder; old reporting readers/parsers stay unchanged."""
+    def require(valid):
+        if valid is not True:
+            raise CorporateGovernanceError.unavailable()
+    try:
+        require(type(query) is amendment.CorporateReportingRegisterEvidenceQuery)
+        require(type(value) is dict and set(value) == {'codec','company_id','income_year','reporting_inputs',
+            'register_chains','chain_count','chain_enumeration_sha256'})
+        require(value['codec'] == 'corporate-reporting-register-evidence-v1'
+            and type(value['company_id']) is str and value['company_id'] == str(query.company_id)
+            and type(value['income_year']) is int and value['income_year'] == int(query.income_year))
+        inputs = value['reporting_inputs']
+        require(type(inputs) is dict and set(inputs) == {'companyId','incomeYear','lifecycle','supportedEvents','amendments'})
+        require(type(inputs['companyId']) is str and inputs['companyId'] == str(query.company_id)
+            and type(inputs['incomeYear']) is int and inputs['incomeYear'] == int(query.income_year)
+            and isinstance(inputs['lifecycle'], Mapping) and type(inputs['supportedEvents']) is list and type(inputs['amendments']) is list)
+        events = []
+        fields = set('eventId eventReference companyId incomeYear eventDate eventKind phase policyVersion canonicalFacts factsSha256 accountingEntryId bankTransactionId correctionOfEventId recordedAt replayed'.split())
+        for raw in inputs['supportedEvents']:
+            require(type(raw) is dict and set(raw) == fields and type(raw['incomeYear']) is int
+                and raw['companyId'] == str(query.company_id) and raw['replayed'] is False)
+            row = _recorded_supported_event(raw)
+            require(raw['policyVersion'] == row.event.policy_version and raw['factsSha256'] == row.event.facts_sha256)
+            events.append(row)
+        basis = amendment.CorporateReportingYearBasis(query.company_id, _lifecycle_snapshot(inputs['lifecycle']), tuple(events))
+        ledger_amendments = tuple(amendment.CorporateLedgerAmendment(
+            AccountingEntryReference(str(item['original_entry_id'])), AccountingEntryReference(str(item['reversal_entry_id'])),
+            AccountingEntryReference(str(item['replacement_entry_id'])) if item['replacement_entry_id'] is not None else None,
+            CompanyId(str(item['company_id'])), IncomeYear(item['income_year']), item['reason'],
+            _ledger_actor(item['amended_by']), _timestamp(item['amended_at'])) for item in inputs['amendments'])
+        require(type(value['register_chains']) is list)
+        chains = []
+        for raw in value['register_chains']:
+            require(type(raw) is dict and type(raw.get('income_year')) is int and type(raw.get('event_id')) is str)
+            scope = amendment.CorporateRegisterEvidenceQuery(query.company_id, IncomeYear(raw['income_year']), query.actor_id,
+                SupportedCorporateEventId(raw['event_id']))
+            chains.append(amendment.parse_corporate_register_evidence_chain_snapshot(raw, query=scope))
+        projection = amendment.build_reporting_year_register_evidence(query=query, basis=basis,
+            amendments=ledger_amendments, register_chains=tuple(chains))
+        require(type(value['chain_count']) is int and value['chain_count'] == projection.chain_count
+            and type(value['chain_enumeration_sha256']) is str and value['chain_enumeration_sha256'] == projection.chain_enumeration_sha256)
+        return projection
+    except (ValueError, TypeError, KeyError, AttributeError, OverflowError, RecursionError):
+        raise CorporateGovernanceError.unavailable() from None
+
+
 def _map_governance_database_error(message: str):
+    if 'corporate_register_evidence_fresh_mfa_required' in message:
+        return CorporateGovernanceError.precondition(CorporateGovernanceErrorCode.REGISTER_EVIDENCE_FRESH_MFA_REQUIRED,
+            'Fresh multi-factor authentication is required before amending register evidence.')
+    if 'corporate_register_evidence_replay_conflict' in message:
+        return CorporateGovernanceError.conflict()
+    if any(code in message for code in ('corporate_register_evidence_lineage_mismatch',
+        'corporate_register_evidence_evidence_mismatch', 'corporate_register_evidence_lifecycle_amended',
+        'corporate_register_evidence_lifecycle_conflicting', 'ledger_governance_entry_amended',
+        'ledger_governance_entry_mismatch', 'ledger_governance_entry_after_cutoff',
+        'rf1086_register_withdrawal_evidence_mismatch')):
+        return CorporateGovernanceError.precondition(CorporateGovernanceErrorCode.REGISTER_EVIDENCE_CHANGED,
+            'The original event or its register evidence changed; review the current evidence before retrying.')
+    if 'corporate_register_evidence_not_found' in message:
+        return CorporateGovernanceError.not_found()
+    if 'corporate_register_evidence_invalid_input' in message:
+        return CorporateGovernanceError.invalid(CorporateGovernanceErrorCode.INVALID_INPUT, 'Invalid register-evidence amendment request.')
+    if any(code in message for code in ('corporate_register_evidence_storage_invalid',
+        'rf1086_register_storage_invalid', 'documents_storage_invalid')):
+        return CorporateGovernanceError.unavailable()
+    if any(code in message for code in (
+        "rf1086_register_predecessor_mismatch",
+        "rf1086_register_observation_after_cutoff",
+        "documents_evidence_mismatch",
+    )):
+        return CorporateGovernanceError.precondition(
+            CorporateGovernanceErrorCode.CORPORATE_EVENT_EVIDENCE_INCOMPLETE,
+            "The current independent register evidence changed before the event was recorded.",
+        )
+    if "rf1086_forbidden" in message or "documents_forbidden" in message:
+        return CorporateGovernanceError.forbidden()
     if "corporate_governance_forbidden" in message:
         return CorporateGovernanceError.forbidden()
     if "corporate_governance_not_found" in message:
@@ -700,6 +784,7 @@ class SupabaseCorporateGovernanceSession:
     @asynccontextmanager
     async def transaction(
         self,
+        *, guarded_company_id: CompanyId | None = None,
     ) -> AsyncIterator[SupabaseCorporateGovernanceTransaction]:
         if not self._database_url:
             raise CorporateGovernanceError.unavailable()
@@ -709,7 +794,10 @@ class SupabaseCorporateGovernanceSession:
                 connect_timeout=5,
                 row_factory=dict_row,
             ) as connection:
-                await connection.set_isolation_level(psycopg.IsolationLevel.SERIALIZABLE)
+                if guarded_company_id is None:
+                    await connection.set_isolation_level(psycopg.IsolationLevel.SERIALIZABLE)
+                else:
+                    await connection.set_isolation_level(psycopg.IsolationLevel.READ_COMMITTED)
                 async with connection.transaction():
                     await connection.execute(
                         "set local role corporate_governance_workflow_executor"
@@ -722,6 +810,11 @@ class SupabaseCorporateGovernanceSession:
                         "select pg_catalog.set_config('talli.verified_actor_claims', %s, true)",
                         (self._verified.claims_json,),
                     )
+                    if guarded_company_id is not None:
+                        await connection.execute(
+                            "select corporate_governance.acquire_company_write_guard_v1(%s::uuid,%s)",
+                            (str(guarded_company_id), str(self.actor_id.subject)),
+                        )
                     yield SupabaseCorporateGovernanceTransaction(
                         self._database_url,
                         self._verified,
@@ -737,6 +830,100 @@ class SupabaseCorporateGovernanceSession:
 
 @bank_transaction_claim_persistence_adapter(BankTransactionClaimPersistence)
 class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
+    def _amendment_key(self, actor_id: ActorId, key: IdempotencyKey) -> str:
+        if actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        if type(key) is not IdempotencyKey or type(key.value) is not str or re.fullmatch(r'[A-Za-z0-9._:-]{16,255}', key.value) is None:
+            raise CorporateGovernanceError.invalid(CorporateGovernanceErrorCode.INVALID_INPUT, 'Invalid amendment request key.')
+        return key.value
+
+    async def _amendment_result(self, query, parameters, decode):
+        try:
+            rows = await self._database_rows(query, parameters)
+            if len(rows) != 1 or set(rows[0]) != {'result'}:
+                raise CorporateGovernanceError.unavailable()
+            return decode(rows[0]['result'])
+        except LedgerError as error:
+            # Preserve only the public proof contract's known denials. Derived
+            # input/storage/transport failures remain unavailable at this seam.
+            if error.code == 'LEDGER_FORBIDDEN':
+                raise CorporateGovernanceError.forbidden() from None
+            if error.code == 'LEDGER_COMPANY_YEAR_NOT_ADMITTED':
+                raise CorporateGovernanceError.precondition(CorporateGovernanceErrorCode.REGISTER_EVIDENCE_CHANGED,
+                    'The company year is no longer admitted; review current eligibility before retrying.') from None
+            raise CorporateGovernanceError.unavailable() from None
+        except (amendment.CorporateRegisterEvidenceAmendmentError, ValueError, TypeError, KeyError, AttributeError, OverflowError, RecursionError):
+            raise CorporateGovernanceError.unavailable() from None
+
+    async def prepare_register_evidence_amendment(self,
+        command: amendment.AmendSupportedCorporateRegisterEvidence, *, idempotency_key: IdempotencyKey
+    ) -> amendment.PreparedCorporateRegisterEvidenceAmendment:
+        key = self._amendment_key(command.actor_id, idempotency_key)
+        try:
+            encoded = amendment.serialize_corporate_register_evidence_amendment_command(command)
+        except amendment.CorporateRegisterEvidenceAmendmentError:
+            raise CorporateGovernanceError.invalid(CorporateGovernanceErrorCode.INVALID_INPUT, 'Invalid register-evidence amendment request.') from None
+        return await self._amendment_result(
+            'select corporate_governance.prepare_register_evidence_amendment_v1(%s,%s,%s) as result',
+            (encoded, key, str(self.actor_id.subject)),
+            lambda value: amendment.parse_prepared_corporate_register_evidence_amendment(value, command=command))
+
+    async def append_register_evidence_amendment(self,
+        command: amendment.AmendSupportedCorporateRegisterEvidence, *,
+        originals: tuple[amendment.CorporateDocumentOriginalCommitment, ...], idempotency_key: IdempotencyKey
+    ) -> amendment.SupportedCorporateRegisterEvidenceAmendment:
+        key = self._amendment_key(command.actor_id, idempotency_key)
+        try:
+            encoded = amendment.serialize_corporate_register_evidence_amendment_command(command)
+            original_text = amendment.serialize_corporate_register_evidence_originals(originals)
+        except amendment.CorporateRegisterEvidenceAmendmentError:
+            raise CorporateGovernanceError.invalid(CorporateGovernanceErrorCode.INVALID_INPUT, 'Invalid register-evidence amendment request.') from None
+        def decode(value):
+            receipt = amendment.parse_corporate_register_evidence_amendment(value)
+            amendment.assert_corporate_register_evidence_amendment_replay(receipt, command)
+            return receipt
+        return await self._amendment_result(
+            'select corporate_governance.append_register_evidence_amendment_v1(%s,%s::jsonb,%s,%s) as result',
+            (encoded, original_text, key, str(self.actor_id.subject)), decode)
+
+    async def read_register_evidence_chain(self, query: amendment.CorporateRegisterEvidenceQuery
+    ) -> amendment.CorporateRegisterEvidenceChainSnapshot:
+        if query.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        return await self._amendment_result(
+            'select corporate_governance.read_register_evidence_chain_v1(%s::uuid,%s,%s::uuid,%s) as result',
+            (str(query.company_id), int(query.income_year), str(query.event_id), str(self.actor_id.subject)),
+            lambda value: amendment.parse_corporate_register_evidence_chain_snapshot(value, query=query))
+
+    async def lookup_register_evidence_amendment(self, query: amendment.CorporateRegisterEvidenceQuery,
+        *, idempotency_key: IdempotencyKey, request_sha256: str
+    ) -> amendment.CorporateRegisterEvidenceAmendmentLookup:
+        key = self._amendment_key(query.actor_id, idempotency_key)
+        return await self._amendment_result(
+            'select corporate_governance.lookup_register_evidence_amendment_v1(%s::uuid,%s,%s::uuid,%s,%s,%s) as result',
+            (str(query.company_id), int(query.income_year), str(query.event_id), key, request_sha256, str(self.actor_id.subject)),
+            lambda value: amendment.parse_corporate_register_evidence_amendment_lookup(value, query=query, request_sha256=request_sha256))
+
+    async def read_reporting_year_register_evidence(self, query: amendment.CorporateReportingRegisterEvidenceQuery
+    ) -> amendment.CorporateGovernanceYearRegisterEvidence:
+        if query.actor_id != self.actor_id:
+            raise CorporateGovernanceError.forbidden()
+        return await self._amendment_result(
+            'select corporate_governance.read_guarded_reporting_register_evidence_v1(%s::uuid,%s::integer,%s::text) as result',
+            (str(query.company_id), int(query.income_year), str(self.actor_id.subject)),
+            lambda value: _reporting_year_register_evidence(value, query=query))
+
+    async def assert_register_evidence(self, evidence: VerifiedCorporateRegisterEvidence) -> None:
+        observation = evidence.observation
+        await self._database_rows(
+            "select shareholder_register_filing.assert_current_register_observation_v1(%s::uuid,%s::uuid,%s,%s,%s,%s)",
+            (observation.observation_id.value, str(observation.command.company_id), int(observation.command.income_year),
+             observation.version, observation.fact_sha256, str(self.actor_id.subject)),
+        )
+        originals = PostgresDocumentOriginals(self._connection, self.actor_id)
+        for receipt in sorted(evidence.originals, key=lambda item: item.document_id.value):
+            await originals.assert_retained_original(receipt)
+
     async def _database_rows(
         self,
         query: str,
@@ -848,6 +1035,12 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
             )
         except (KeyError, TypeError, ValueError):
             raise CorporateGovernanceError.unavailable() from None
+
+    async def read_reporting_year_basis(self, company_id: CompanyId) -> CorporateReportingYearBasis:
+        # The authenticated session owns one SERIALIZABLE transaction. Both
+        # existing owner RPCs therefore read the same coherent MVCC snapshot.
+        return CorporateReportingYearBasis(company_id,
+            await self.list_lifecycle((company_id,)), await self.list_supported_events((company_id,)))
 
     async def list_lifecycle(
         self,
@@ -1474,11 +1667,13 @@ class SupabaseCorporateGovernanceTransaction(SupabaseLedgerWorkflowTransaction):
 def compose_corporate_governance_application(
     sessions: CorporateGovernanceSessionFactory | None,
     documents: DocumentsSessionFactory,
+    register_evidence: CorporateRegisterEvidenceVerifier | None = None,
 ) -> CorporateGovernanceApplication:
     return CorporateGovernanceApplication(
         sessions or SupabaseCorporateGovernanceAdapter.from_environment(),
         documents,
         LedgerService,
+        register_evidence,
     )
 
 

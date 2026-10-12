@@ -50,9 +50,9 @@ export function cancellationStatusLabel(status: CancellationStatus) {
     case "retention_hold":
       return "Oppbevaringsstans";
     case "deletion_approved":
-      return "Sletting godkjent";
+      return "Slettemarkering godkjent";
     case "deleted":
-      return "Slettet";
+      return "Markert som slettet";
     case "superseded":
       return "Erstattet av nyere forespørsel";
   }
@@ -119,7 +119,7 @@ export function buildCancellationLifecycle(cancellation: Pick<CompanyCancellatio
       label: "Logisk sletting",
       state: archiveDone ? (deleted ? "done" : "current") : "blocked",
       message: archiveDone
-        ? "Arbeidsflaten kan markeres kansellert uten å slette pliktig dokumentasjon."
+        ? "Arbeidsflaten kan markeres kansellert. Data blir fortsatt lagret."
         : "Blokkert til arkiv finnes.",
     },
     {
@@ -132,12 +132,12 @@ export function buildCancellationLifecycle(cancellation: Pick<CompanyCancellatio
     },
     {
       key: "final_deletion",
-      label: "Endelig sletting",
+      label: "Fullfør slettemarkering",
       state: deleted ? "done" : deletionApproved ? "current" : "blocked",
       message: deleted
-        ? "Endelig sletting er registrert."
+        ? "Selskapet er markert som slettet. Data blir fortsatt lagret; fysisk sletting er ikke utført."
         : deletionApproved
-          ? "Klar for separat destruktiv sletting etter godkjenning."
+          ? "Slettemarkeringen kan fullføres etter ny arkiveksport. Handlingen sletter ikke data fysisk."
           : "Blokkert til juridisk vurdering, sikkerhetsvurdering og oppbevaring er godkjent.",
     },
   ];

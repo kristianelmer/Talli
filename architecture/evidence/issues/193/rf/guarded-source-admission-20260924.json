@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "147a76b9e55ad95c4c4968e041af488dcfe2f4ca",
+  "status": "PASS_BOUNDED_APPLICATION_SCOPE_DATABASE_RUNTIME_PENDING",
+  "scope": "Internal same-connection full-year RF source evidence admission; approval/send persistence not wired.",
+  "verification": {
+    "focusedPython": {
+      "passed": 379,
+      "failed": 0
+    },
+    "boundaryContracts": {
+      "passed": 93,
+      "failed": 0
+    },
+    "sourceAdmissionPolicyAndAdapter": {
+      "passed": 28
+    },
+    "databaseCases": {
+      "collected": 36,
+      "executed": 0
+    },
+    "independentReview": "No concrete blocker found; scoped lease, timestamp normalization, complete owner projections and narrow ACLs inspected.",
+    "architecture": "PASS"
+  },
+  "ciPredecessor": {
+    "run": 35975456937,
+    "status": "FAILURE",
+    "databaseFailure": "rtrim stripped spaces but retained LF, causing an extra standalone semicolon in nested PL/pgSQL wrappers",
+    "applicationFailure": "Migration inventory overwrote original Governance contract path and Documents exact inventory expectation omitted new guard",
+    "repairs": [
+      "Both wrapper normalizers now trim spaces, tabs, CR and LF.",
+      "Governance/Ledger migration inventory preserves predecessor and additive paths; corresponding contract expectations updated."
+    ]
+  },
+  "actualPostgresProbe": {
+    "engine": "existing postgres:17-alpine image",
+    "scope": "isolated network-disabled, read-only container with memory-backed data; removed after probe",
+    "red": "Actual shipped normalization algorithm failed with syntax error at or near semicolon on newline-terminated original body.",
+    "green": "Both actual migration normalizers compiled and executed nested original declaration/return behavior.",
+    "limits": "Minimal parser/execution proof, not full schema migration or admission concurrency proof."
+  },
+  "logsSha256": {
+    "focused.log": "965da48a41906f52b8cf71641d89f2cd40245fb1550115982824d6215dbfb338",
+    "contracts.log": "9a850d2e0362cdd483fc90d2e4fb598c9f1ad19623e6d153fb9c8c1979fc5932",
+    "db-collection.log": "cb21a3a576a5f9aa70aff4479b9c6a6c9f4fc01756b05de39de163d81a55da36",
+    "ci-database.log": "3c142c60b46bf2f1fda995fa9b6d3a44e9c920fa1c58f50bad7af784e24ddbfa",
+    "ci-application.log": "dad95358dc0c77f5ccde3bb409f91c5ead1ccfc6f07fb21af37dbabc235d4be7",
+    "architecture.json": "2005537c71837b3275c3e7a1d400ed717c3c2239bcad6bc622ad57b4f614841a"
+  },
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_corporate_reporting_evidence.py": "a1599aa119545c5bc2b60d69c06e341f5622320ec16431adcd8dd23e52dc978f",
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "c533c1074ee50af26e21fb84ffb9015a8feddcf8f1446739d278ea288dc2860d",
+    "apps/backend/src/talli_backend/application/shareholder_register_filing_session.py": "8b91f375f33d1ff6059a7d6878ba16efcc0b40f726ed5226474fc5b753ad1262",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_admission.py": "aa7d876ba3100a6ed249296d25edeb0e03ca44adbdbd32ddbcb1bc54ea3f7181",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py": "e5fb229c874120e5692d9ca3384b939192d0ef69f9b130b0fe269967ceb2e499",
+    "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md": "3d9badb310e5e0ec2ec0924e34b6e63fa842f9da0ec601459d98df0072f3ee59",
+    "apps/backend/src/talli_backend/modules/corporate_governance/module.json": "237344107fd290e6ba962f3f2bfbfd46837fdc8256a5a374136cdfe4661d0bbf",
+    "apps/backend/src/talli_backend/modules/ledger/module.json": "031720a0eed5379c906b51c14727d5ed29928115ea6fc2b9928121ddb61697a3",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "2cf70f50a4e6d1842b6af3f64a0f04ebd697cd57cccb1fc8eabc8f5dd7783be0",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "4c874b828400878bc25dbddb6b91e08b5b05bb9f547b37365386dce36081905f",
+    "apps/backend/tests/test_corporate_reporting_year_database_runtime.py": "1ada2910832861cd1a60a6d082b87079bdc5f1722929828d9e570bfaaddaea15",
+    "apps/backend/tests/test_documents_rf_company_guard_database.py": "64e9094488aec1103a280131d5ee51e94e6b60a76b4fedc6489e0efe9aa4c6ce",
+    "apps/backend/tests/test_postgres_corporate_reporting_evidence.py": "6fa74003868a36dc2767c6a2450be616e17f6c06ae7ca9a52ac5c56575ff77c3",
+    "apps/backend/tests/test_postgres_rf_source_admission.py": "72718b2c6f26a88338fde6d00d6165c031fa94c3a75e17cd7eabcce0bb195eaa",
+    "apps/backend/tests/test_rf1086_source_admission.py": "40825388188fd6bc24c1e4e48cd2882605b6d2b46a23b777e02e0ef1571b595b",
+    "scripts/rehearse-authority-topology.mjs": "7d465f9396afe52b573ffdb4be4ed1e2cd61346cc16d7941e6ae70e1a07fbdee",
+    "scripts/test-supabase-local.sh": "88a5464365f4697563790403ca7f80d3a532acc390e2c4b49b3f4a5f89c010ea",
+    "supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql": "9c7f8d5f338487fca0c32171812805cc706986de4784c9d65cbee48f98c6c7e7",
+    "supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql": "2ae648581e0612ec3b729b6f45c0efcc468c1f8f997b6f541caff7cf1d363cca",
+    "supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql": "e24eff2f0f26eb0f60931de6b9d53ce0e26da1d328b7d79b3e9879a7c76f0c66",
+    "supabase/rollback/20260924083154_governance_guarded_reporting_year_read.sql": "c0df2bb62e50d82a4c33436fac9de26fc89228382c58e3f6bbce2623684ab151",
+    "tests/ci_release_gate.test.mjs": "c66853cdca1dea23a7479d5da164af564637bde6384b26a9433a834fe977cc3e",
+    "tests/corporate_governance_review_fixes.test.mjs": "f903dfdd44ad52517fb653049757c76f9c88bd90f3ac72991991f137076baad9"
+  },
+  "limits": [
+    "New application scope is internal and not wired to production approval or send.",
+    "Full-year case-profile, immutable preview bridge, exact review/entitlement checks, persisted approval, submission head/correction and journal integration remain required.",
+    "No production AS records, hosted migration, provider call or real pilot. All seven full RF criteria remain pending."
+  ],
+  "privateProofSha256": "fe8f99fe4255c03805481b7e349d3d24711334002893b7b6bbb7baa7c11e05f2"
+}

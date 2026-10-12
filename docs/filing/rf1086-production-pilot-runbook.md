@@ -75,6 +75,14 @@ feedback. A statutory filing is never used as a connectivity probe.
   identifiers, or organization numbers in logs), and reconcile read-only with
   Skatteetaten/support before any retry decision.
 
+A process crash can leave the submission projection at `sending` with a committed
+`prepared` operation and no outcome. That is uncertain delivery, even if no
+`unknown` result was written. The full-year source status read returns
+`recovery_required`; restarting the backend does not grant permission to resend.
+Use the original approval's saved-status action, preserve its claim, key, payload
+hash and journal, and follow the same read-only reconciliation path. Do not turn
+the prepared intent into a fresh operation or create another filing to bypass it.
+
 Escalate authentication/delegation failures immediately. Alert when `sending`
 lasts 10 minutes, receipt retrieval fails after its bounded polling window, or an
 `unknown` event exists. Escalate rejection/schema-error clusters to the filing
@@ -139,3 +147,19 @@ create a new production submission with `supersedes_submission_id` pointing to t
 prior submission, repeat owner review, and preserve both evidence packages. The
 initial beta does not send corrections until a separate TT02 and production-scope
 decision explicitly activates that case profile.
+
+
+## 2026-09-17: recheck after an action-required read failure
+
+After the underlying access or retrieval problem is repaired, the verified owner
+can use the existing status-check action for the original submission. This is a
+manual, read-only request, retaining the confirmed transmission and dialog,
+original approval/entitlement relationship, receipt archive, and journal. It does
+not repeat a POST or require a new filing approval. Accepted/rejected decisions
+remain terminal, and unresolved/unknown outcomes never authorize another send.
+
+This path recovers retrieval failures; it does not approve accounting corrections
+or overwrite old receipt classifications. Historical ambiguous/conflicting
+artifacts still block a final decision, including after a parser change. Preserve
+the evidence and resolve the missing adjudication/correction procedure before
+claiming full #193 feedback/correction completion.

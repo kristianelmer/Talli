@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "PUBLIC_PRIMARY_SOURCE_RESEARCH_WITH_OFFLINE_CHARACTERIZATION",
+  "recordedAtUtc": "2026-10-10T17:14:25.184702+00:00",
+  "status": "RESEARCH_ONLY_PROVIDER_AND_SCOPE_ACCEPTANCE_PENDING",
+  "research": [
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/docs/launch/evidence/rf1086-authority-contract-2026-10-10.md",
+      "sha256": "5b247828c765df5f2dc0862b95f0b6b4bf3bbfb5b95e3707e3b82f93c0e7fa9a",
+      "bytes": 15225
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/docs/launch/evidence/rf1086-capital-scope-2026-10-10.md",
+      "sha256": "e4eed20f547f01ef52cf548eb5e9a801e817b54179ed450af81f8d242899864d",
+      "bytes": 15771
+    }
+  ],
+  "sourceDownloads": {
+    "path": "/private/tmp/talli-release-20261009/rf-authority-public-source-download-v1.json",
+    "sha256": "a05df1bbde6033cf0810578def14f9252ccdd666c6d13b37f32564f5b1eb4c3f",
+    "bytes": 1294
+  },
+  "capitalPrimarySources": {
+    "path": "/private/tmp/talli-release-20261009/rf-capital-research/primary-source-index-v1.json",
+    "sha256": "e171aba9f5df346b5cb70df56c179b213cbc3e35765c2aa0b5554959e2ef2d7b",
+    "bytes": 8197
+  },
+  "offlineProviderCharacterization": {
+    "path": "/private/tmp/talli-release-20261009/rf-authority-published-contract-offline-probe-v1.json",
+    "sha256": "69c4c47b2227b81fadf6981e7a299e29cc3a9cd03bd291dd3edb3454010e303c",
+    "bytes": 2899
+  },
+  "facts": [
+    "RF OpenAPI1.2 published/default;1.3 unpublished draft. Exact raw source downloads match research hashes; no deployed-provider version claim.",
+    "Nominalcash Code6/N code decisions verified, but authoritative nominalcash Governance/source path remains unavailable. Current zero-fund/no-payout loss branch keeps tax paid-in distinct from registered capital.",
+    "Current linked2025 guidance SHA f6607bccb036fbb1e79e0b279abcdf7fbf6800cdc4940f1f9e4ee59ab36667be; no2026 guidance claim."
+  ],
+  "checks": {
+    "newOfflinePublishedShapeCases": 2,
+    "protectedExistingCases": 202,
+    "totalPassed": 204,
+    "seconds": 2.37,
+    "liveProviderOperations": 0,
+    "productionChanges": 0
+  },
+  "limits": [
+    "Read-only public primary research plus explicit httpx.MockTransport fixtures; no legal/tax correctness determination, live contract/confirmation deduplication proof, filing or launch authorization.",
+    "Confirmation prose/OpenAPI header difference, retention/concurrency/deployedversion remain unresolved; unknown mutation stop unchanged.",
+    "Missing nominal Governance integration, historical paid-in/fund provenance and prior-year distribution clearance remain required technical/domain work; accepted#172 scope is unchanged.",
+    "Private probe is not registered/committed regression coverage; allA1-A7 and technical RF\u2192Tax\u2192Accounts handoffs remain pending."
+  ]
+}

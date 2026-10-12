@@ -418,7 +418,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
               <section className="band">
                 <div className="sectionHeader">
                   <p className="eyebrow">Kansellering</p>
-                  <h2>Arkiv først, deretter oppbevaringsstans før sletting.</h2>
+                  <h2>Eksporter arkiv og få slettemarkeringen vurdert.</h2>
                 </div>
                 <div className="readinessGrid">
                   <div className="readinessItem">
@@ -439,7 +439,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                     </strong>
                     <p>
                       {primaryCancellation
-                        ? "Endelig sletting krever en oppbevaringsvurdering og juridisk og sikkerhetsmessig godkjenning."
+                        ? "Oppbevaring og sletting krever en dokumentert juridisk og sikkerhetsmessig vurdering. En slettemarkering sletter ikke data fysisk."
                         : "Selskapet er aktivt. Kansellering oppretter en oppbevaringsstans, ikke umiddelbar sletting."}
                     </p>
                   </div>
@@ -530,7 +530,7 @@ export default async function WorkspacePage({ searchParams }: WorkspaceProps) {
                         && pendingCancellationOperation.cancellationId === primaryCancellation.id
                         ? pendingCancellationOperation.expectedUpdatedAt : primaryCancellation.updated_at
                     } />
-                    <p>Den uavhengige vurderingen er godkjent. Eksporter et nytt arkiv etter godkjenningen før du fullfører. Selskapet markeres som slettet uten fysisk sletting av oppbevaringspliktige data.</p>
+                    <p>Den uavhengige vurderingen er godkjent. Eksporter et nytt arkiv etter godkjenningen før du fullfører. Selskapet markeres som slettet. Data blir fortsatt lagret; handlingen utfører ikke fysisk sletting.</p>
                     <button className="secondaryButton" type="submit">
                       Fullfør slettestatus
                     </button>

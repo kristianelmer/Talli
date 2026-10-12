@@ -2,19 +2,48 @@ import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 
-import { startSystemUserAuthorityMock } from "./system-user-authority-mock.mjs";
+import { feedbackBytes, startSystemUserAuthorityMock } from "./system-user-authority-mock.mjs";
 
 const UUID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/u;
-const NAMESPACE = "urn:ske:fastsetting:innsamling:grunnlagsdata:tilbakemelding:innsendingstilbakemelding:v2";
 
 // This mock is exclusive to the fresh RF journey. The separate historical
 // System User fixture keeps its original GET-only RF behavior.
-export async function startRf1086FilingAuthorityMock({ callbackOrigin }) {
+export async function startRf1086FilingAuthorityMock({ callbackOrigin, organizationNumber }) {
+  assert.match(organizationNumber, /^[0-9]{9}$/u);
   const owner = await startSystemUserAuthorityMock({ callbackOrigin });
-  const state = { calls: [], main: new Map(), keys: new Map(), transmissions: new Map(), failNextMain: false };
+  const state = { calls: [], main: new Map(), keys: new Map(), transmissions: new Map(), dialogs: new Map(), failNextResponse: null,
+    nextFeedbackState: "accepted" };
+  const heldResponses = new Set();
+  let pendingHold;
+  function disruptResponse(operation, response) {
+    if (state.failNextResponse === operation) {
+      state.failNextResponse = null;
+      response.destroy();
+      return true;
+    }
+    if (pendingHold?.operation === operation) {
+      const held = pendingHold;
+      pendingHold = undefined;
+      heldResponses.add(response);
+      response.once("close", () => heldResponses.delete(response));
+      held.resolve();
+      return true;
+    }
+    return false;
+  }
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? "/", "http://127.0.0.1");
+      const dialogRead = url.pathname.match(/^\/dialogporten\/dialogs\/([0-9a-f-]+)$/u);
+      if (dialogRead) {
+        assert.equal(request.method, "GET");
+        assert.equal(url.search, "");
+        assert.match(request.headers.authorization ?? "", /^Bearer opaque-/u);
+        const dialog = state.dialogs.get(dialogRead[1]);
+        assert.ok(dialog);
+        state.calls.push({ operation: "read_dialog" });
+        return json(response, 200, dialog);
+      }
       if (!url.pathname.startsWith("/skatte/")) {
         const body = await readBody(request);
         const result = await fetch(new URL(url.pathname + url.search, owner.baseUrl), {
@@ -47,10 +76,7 @@ export async function startRf1086FilingAuthorityMock({ callbackOrigin }) {
           const result = { hovedskjemaId: id };
           state.keys.set(key, { identity, result, status: 201 });
           state.calls.push({ operation: "post_hovedskjema", key, digest, id });
-          if (state.failNextMain) {
-            state.failNextMain = false;
-            return response.destroy();
-          }
+          if (disruptResponse("post_hovedskjema", response)) return;
           return json(response, 201, result);
         }
         assert.match(reference, UUID);
@@ -61,6 +87,7 @@ export async function startRf1086FilingAuthorityMock({ callbackOrigin }) {
           main.children.push({ key, body, digest });
           state.calls.push({ operation: "post_underskjema", key, digest, id: reference });
           state.keys.set(key, { identity, result: null, status: 204 });
+          if (disruptResponse("post_underskjema", response)) return;
           return json(response, 204, null);
         }
         if (operation === "bekreft" && segments.length === 3) {
@@ -72,11 +99,29 @@ export async function startRf1086FilingAuthorityMock({ callbackOrigin }) {
           const result = { oppgavegiversLeveranseReferanse: `synthetic-${randomUUID()}`,
             dialogId: randomUUID(), forsendelseId: transmission };
           const artifactId = randomUUID();
-          const bytes = Buffer.from(`<tilbakemelding xmlns="${NAMESPACE}"><innsending><forsendelseid>${transmission}</forsendelseid></innsending><leveranse><leveransestatus>godkjent</leveransestatus><inntektsaar>${year}</inntektsaar></leveranse></tilbakemelding>`);
+          const feedbackState = state.nextFeedbackState;
+          state.nextFeedbackState = "accepted";
+          const bytes = Buffer.from(feedbackBytes({ incomeYear: Number(year), organizationNumber, feedbackState }));
+          const feedbackTransmission = randomUUID();
           main.confirmation = result;
-          state.transmissions.set(transmission, { year, artifactId, bytes });
+          // The send journal reads the confirmed submission archive before
+          // Dialogporten discovers the separate, related feedback transmission.
+          state.transmissions.set(transmission, { year,
+            documents: [main.body, ...main.children.map(({ body }) => body)].map((body) => body.toString("utf8")) });
+          state.transmissions.set(feedbackTransmission, { year, artifactId, bytes });
+          state.dialogs.set(result.dialogId, {
+            id: result.dialogId,
+            party: "urn:altinn:organization:identifier-no:" + organizationNumber,
+            serviceResource: "urn:altinn:resource:ske-innrapportering-aksjonaerregisteroppgave",
+            transmissions: [
+              { id: transmission, type: "Submission", isAuthorized: true },
+              { id: feedbackTransmission, relatedTransmissionId: transmission, type: feedbackState === "accepted" ? "Acceptance" : "Rejection",
+                isAuthorized: true, createdAt: "2026-09-24T00:00:00Z", attachments: [{ id: artifactId }] },
+            ],
+          });
           state.calls.push({ operation: "confirm", key, digest, id: reference, transmission });
           state.keys.set(key, { identity, result, status: 200 });
+          if (disruptResponse("confirm", response)) return;
           return json(response, 200, result);
         }
         throw new Error("unrecognized RF mutation");
@@ -90,8 +135,9 @@ export async function startRf1086FilingAuthorityMock({ callbackOrigin }) {
       if (segments.length === 4) {
         assert.equal(url.search, "?page=0&size=50");
         state.calls.push({ operation: "list_documents", transmission: operation });
-        return json(response, 200, { totalItems: 1, totalPages: 1, currentPage: 0,
-          dokumenter: [{ dokumentId: transmission.artifactId }] });
+        const documents = transmission.documents ?? [{ dokumentId: transmission.artifactId }];
+        return json(response, 200, { totalItems: documents.length, totalPages: 1, currentPage: 0,
+          dokumenter: documents });
       }
       assert.equal(segments.length, 5);
       assert.equal(segments[4], transmission.artifactId);
@@ -117,11 +163,20 @@ export async function startRf1086FilingAuthorityMock({ callbackOrigin }) {
   assert.equal(address.address, "127.0.0.1");
   return {
     baseUrl: `http://127.0.0.1:${address.port}`,
-    failNextMainResponse() { state.failNextMain = true; },
+    rejectNextFeedback() { state.nextFeedbackState = "rejected"; },
+    failNextMainResponse() { state.failNextResponse = "post_hovedskjema"; },
+    failNextChildResponse() { state.failNextResponse = "post_underskjema"; },
+    failNextConfirmationResponse() { state.failNextResponse = "confirm"; },
+    holdNextResponse(operation) {
+      assert.ok(["post_hovedskjema", "post_underskjema", "confirm"].includes(operation));
+      assert.equal(pendingHold, undefined);
+      return new Promise(resolve => { pendingHold = { operation, resolve }; });
+    },
     setTamperedCallbackRequestId(value) { owner.setTamperedCallbackRequestId(value); },
     snapshot() { return [...owner.snapshot(), ...state.calls.map((call) => ({ service: "skatteetaten", ...call }))]; },
     async close() {
       try {
+        for (const response of heldResponses) response.destroy();
         await new Promise((resolve, reject) => {
           server.close((error) => error ? reject(error) : resolve());
           server.closeIdleConnections?.();

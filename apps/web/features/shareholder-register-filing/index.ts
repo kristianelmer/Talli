@@ -14,5 +14,78 @@ export {
 } from "./presentation.ts";
 export type {
   Rf1086WorkspaceWire, Rf1086ArchiveSourceWire, Rf1086PreviewWire, Rf1086RecordedResultWire,
+  Rf1086ProductionArchiveSourceWire, Rf1086ProductionArchiveSourceV4Wire,
   Rf1086ReceiptMetadataWire, Rf1086SubmittedPayloadReferenceWire, Rf1086SubmittedPayloadWire,
 } from "@talli/talli-api-client";
+
+export {
+  loadRf1086SourceIntakeBasis, loadRf1086CurrentYearSource, loadRf1086SourceDocument, loadRf1086RegisterObservations, loadRf1086RegisterObservationLifecycle,
+  rf1086RegisterErrorMessage, rf1086RegisterCaptureRejected,
+  captureRf1086YearSourceThroughApi, captureRf1086RegisterObservationThroughApi,
+  lookupRf1086YearSourceCaptureThroughApi, lookupRf1086RegisterObservationCaptureThroughApi,
+  generateRf1086SourcePreviewThroughApi, loadRf1086SourcePreview, rf1086SourceErrorMessage, rf1086SourceCaptureRejected,
+} from "./transport.ts";
+export type {
+  RfSourceCompanyWire,
+  RfSourceSharesWire,
+  RfSourceShareholderWire,
+  RfSourceShareholderSharesWire,
+  RfSourceFormationAllocationWire,
+  RfSourceFormationWire,
+  RfSourceCashIssueWire,
+  RfSourceNominalAllocationWire,
+  RfSourceNominalIncreaseWire,
+  RfSourceLossReductionWire,
+  RfSourceShareSaleWire,
+  RfSourceDividendAllocationWire,
+  RfSourceDividendWire,
+  RfSourceCaseWire,
+  RfSourcePaidInWire,
+  RfSourceDocumentWire,
+  RfSourceEventEvidenceWire,
+  RfYearSourceCaptureWire,
+  RfYearSourceDraftWire,
+  RfCurrentYearSourceRecordWire,
+  RfCurrentYearSourceWire,
+  RfSourceIntakeDocumentWire,
+  RfSourceIntakeRegisterWire,
+  RfSourceIntakeAllocationWire,
+  RfSourceIntakeDividendEconomicsWire,
+  RfSourceIntakeFinalizationWire,
+  RfSourceIntakeDividendWire,
+  RfSourceIntakeCapitalEconomicsWire,
+  RfSourceIntakeCapitalEventWire,
+  RfSourceIntakeCapitalWire,
+  RfSourceIntakeAmendmentWire,
+  RfSourceIntakeCompanyWire,
+  RfSourceIntakeBasisWire,
+  RfRegisterHoldingWire,
+  RfRegisteredSharesWire,
+  RfRegisterDocumentWire,
+  RfRegisterObservationCaptureWire,
+  RfRegisterObservationDraftWire,
+  RfRegisterObservationRecordWire,
+  RfRegisterObservationsWire,
+  RfRegisterObservationLifecycleWire, RfRegisterObservationLifecycleRecordWire, RfRegisterObservationWithdrawalWire,
+  RfSourcePreviewRequestWire,
+  RfYearSourceReceiptWire,
+  RfRegisterObservationReceiptWire,
+  RfYearSourceCaptureLookupWire,
+  RfRegisterObservationCaptureLookupWire,
+  RfSourcePreviewWire,
+  RfSourcePreviewReadRequest,
+  RfCurrentYearSourceReadRequest,
+} from "@talli/talli-api-client";
+
+export { prepareRf1086SourceProductionReview, approveRf1086SourceProduction, sendRf1086SourceProduction,
+  loadRf1086SourceProductionPosition } from "./transport.ts";
+export type { RfSourceProductionReviewWire, RfSourceProductionReviewRequestWire,
+  RfSourceProductionApprovalCommandWire, RfSourceCorrectionPredecessorWire,
+  RfSourceProductionSendCommandWire, RfSourceProductionSendResultWire, RfSourceProductionPositionWire } from "@talli/talli-api-client";
+
+export { downloadRf1086Archive, downloadRf1086RetainedArchive } from "./transport.ts";
+export {
+  companyTestHistoryHref, companyTestHistoryPage, companyTestHistoryPageNumber,
+  companyTestHistoryRecordFields, downloadCompanyTestHistory,
+  isCompanyTestHistoryCompany, loadCompanyTestHistory,
+} from "./company-test-history.ts";

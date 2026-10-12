@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Versioned archive browser request evidence",
+  "baseRevision": "13559e96c0156e2abd53e7b4f2e2ba62837a0607",
+  "status": "FIXTURE_REPAIRED_FOCUSED_CHECKS_PASS_LIVE_BROWSER_PENDING",
+  "failureReceipt": "ci-37995838406.json",
+  "diagnosis": "The real owner browser downloaded and verified the canonical v4 archive, but its exact request-evidence assertion still expected the older unversioned endpoint. Every scenario stopped there before the full-year journey and independent restore.",
+  "change": [
+    "Expect exact production-stream-v4:200, matching the current generated-client transport. Preserve all other actual-request/provider-count/no-resend assertions.",
+    "Require override history in the downloaded artifact verifier and assert overrideHistoryIncluded is true; do not accept a legacy/unknown-history artifact as equivalent."
+  ],
+  "checks": {
+    "fixtureSafetyPassed": 28,
+    "archiveCompatibilityPassed": 72,
+    "initialFixtureInvocation": "Failed11of28 due to default local Python missing fastapi/httpx. Retried with existing TALLI_BACKEND_PYTHON_BIN native3.12 environment; all28passed. No code was changed to hide those failures.",
+    "scope": "Focused checks ran in the shared working tree with unrelated uncommitted lifecycle work present. Full exact-revision browser and restore execution remains pending CI."
+  },
+  "sourceFileSha256": {
+    "tests/browser_shareholder_register_filing.mjs": "55761b5bd96f0ae58fa3badd812bdd899d52b7e8eb91d5483d7cd1d963454e73"
+  },
+  "privateArtifacts": {
+    "browser-v4-expectation-safety.log": {
+      "path": "/private/tmp/talli-release-20261009/browser-v4-expectation-safety.log",
+      "sha256": "a294e4fc92f4c5ff9f5b02caa285cbcc7b9536d6bf7a0b52b12b3acea0ffa48d",
+      "bytes": 18026
+    },
+    "browser-v4-expectation-safety-native.log": {
+      "path": "/private/tmp/talli-release-20261009/browser-v4-expectation-safety-native.log",
+      "sha256": "2b4467e9143e979a0ef356381014e66393643a6ee3aaee196e8f98e743c45811",
+      "bytes": 2872
+    },
+    "browser-v4-archive-compatibility.log": {
+      "path": "/private/tmp/talli-release-20261009/browser-v4-archive-compatibility.log",
+      "sha256": "36754eec18843d61cd85235c496d8b3eb5cd598e0ad4da696e3be63cac788a59",
+      "bytes": 6236
+    }
+  },
+  "limits": [
+    "The terminal98 run is a failed whole workflow, despite573Authority/RF DBpasses and successful earlyv4download. It does not cover local13559 withdrawal code.",
+    "This repair does not prove full-year browser loss/correction or independent Auth/object restore. No complete gate, acceptance criterion or launch authority is claimed."
+  ]
+}

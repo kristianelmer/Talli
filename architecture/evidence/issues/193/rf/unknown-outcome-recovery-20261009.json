@@ -1,0 +1,187 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "observedDate": "2026-10-09",
+  "status": "DOCUMENTATION_AND_LOCAL_INVARIANTS_REVIEWED_EXTERNAL_UNKNOWN_OUTCOME_UNRESOLVED",
+  "baseRevision": "eac508175fa0073e7f2cfe28034792ae17996ede",
+  "scope": "Read-only source audit and public documentation retrieval. This file is evidence only; no implementation, business endpoint calls, authority outcomes or acceptance promotion.",
+  "sources": [
+    {
+      "id": "rf_documentation",
+      "url": "https://raw.githubusercontent.com/Skatteetaten/api-dokumentasjon/master/docs/api/innrapportering-aksjonaerregisteroppgave.md",
+      "retrievedAt": "2026-10-09T20:42:57.342551+00:00",
+      "sha256": "2326c7d0cfb581da29ec6a114fda00508fa9d7325504968c7c89b492d2e1f3ce",
+      "byteLength": 27153
+    },
+    {
+      "id": "rf_registry",
+      "url": "https://api.swaggerhub.com/apis/skatteetaten/innrapportering-aksjonaerregister-api",
+      "retrievedAt": "2026-10-09T20:42:57.549380+00:00",
+      "sha256": "c0aa464e7c1c20574f915d35241141e37d0b6887849783c3561a03aaa8778dfd",
+      "byteLength": 4874
+    },
+    {
+      "id": "rf_published_1_2_0",
+      "url": "https://api.swaggerhub.com/apis/skatteetaten/innrapportering-aksjonaerregister-api/1.2.0",
+      "retrievedAt": "2026-10-09T20:42:57.484085+00:00",
+      "sha256": "1dc44e55fd993872e1cfd30fdbe59bd2f612e8e34de6d3e4c5dfdf34ab022947",
+      "byteLength": 10547
+    },
+    {
+      "id": "rf_unpublished_1_3_0",
+      "url": "https://api.swaggerhub.com/apis/skatteetaten/innrapportering-aksjonaerregister-api/1.3.0",
+      "retrievedAt": "2026-10-09T20:42:57.499999+00:00",
+      "sha256": "72130ca86eea830e58ca383c97156ee479c70fca99af065bbe964910f9c9ba50",
+      "byteLength": 10566
+    },
+    {
+      "id": "dialog_search",
+      "url": "https://docs.altinn.studio/en/dialogporten/user-guides/searching-for-dialogs/",
+      "retrievedAt": "2026-10-09T20:42:57.818983+00:00",
+      "sha256": "2ac2a9e7d6b7f3cab648adc77e269022f74883503fcc1ed8933ee0305be8b7f1",
+      "byteLength": 49151
+    },
+    {
+      "id": "dialog_lookup",
+      "url": "https://docs.altinn.studio/en/dialogporten/user-guides/looking-up-dialogs/",
+      "retrievedAt": "2026-10-09T20:42:57.815652+00:00",
+      "sha256": "fdde5019adfb985d82139a351465991a8f12659460d865ccc978f5c85bd65bd7",
+      "byteLength": 32123
+    },
+    {
+      "id": "dialog_transmission",
+      "url": "https://docs.altinn.studio/en/dialogporten/reference/entities/transmission/",
+      "retrievedAt": "2026-10-09T20:42:57.795211+00:00",
+      "sha256": "bc3515584535f30afa5e3c7e8b9a32e8503888dfc1bdb9b99dcf02c02bf01c2a",
+      "byteLength": 30254
+    }
+  ],
+  "retrievalMethod": "Unauthenticated HTTPS GET of public documentation with Python urllib; SHA-256 covers raw response bytes. No provider business API was called. Remote bytes were inspected in memory and are not retained in this evidence file.",
+  "authorityContract": {
+    "defaultPublishedVersion": "1.2.0",
+    "publishedVersionModifiedAt": "2026-08-25T14:46:24Z",
+    "newerListedVersion": {
+      "version": "1.3.0",
+      "published": false,
+      "createdAt": "2026-10-05T11:05:13Z",
+      "modifiedAt": "2026-10-05T11:05:13Z"
+    },
+    "pathsIdenticalAcrossInspectedVersions": true,
+    "pathsCanonicalSha256": "24c2e5a9043843c1978727db8e8933ee3aac1bb1ec50b720c7b0418858af5359",
+    "pathsHashMethod": "SHA-256 of UTF-8 json.dumps(spec['paths'], sort_keys=True, separators=(',', ':')) with default ensure_ascii=True.",
+    "getOperations": [
+      "/{inntektsaar}/forsendelser/{forsendelseid}/dokumenter",
+      "/{inntektsaar}/forsendelser/{forsendelseId}/dokumenter/{dokumentId}",
+      "/prefill/{inntektsaar}/{organisasjonsnummer}"
+    ],
+    "postIdempotencyHeaders": [
+      {
+        "path": "/{inntektsaar}/1086H",
+        "required": true
+      },
+      {
+        "path": "/{inntektsaar}/{hovedskjemareferanse}/1086U",
+        "required": true
+      },
+      {
+        "path": "/{inntektsaar}/{hovedskjemareferanse}/bekreft",
+        "declared": false
+      }
+    ],
+    "findings": [
+      "No operation-status or discovery GET by RF idempotency key or main-form reference appears in either inspected OpenAPI paths object.",
+      "RF prose documents identical-body, same-key POST replay returning the same response; it does not specify replay lifetime, expiry, deduplication namespace or concurrency semantics.",
+      "The confirmation header discrepancy remains: general replay prose versus no idempotencyKey parameter on bekreft. Omission does not prove the server ignores the header.",
+      "GLD_019 reports a previously used key but does not establish success or nonexecution. Missing documents and prefill are not exact operation-status evidence."
+    ],
+    "priorResearchCorrection": "unknown-outcome-recovery-research-20260930.md correctly recorded the earlier inspection, but its statement that no later version is listed is no longer current: unpublished 1.3.0 is now listed. Published/default 1.2.0 and its bytes remain unchanged."
+  },
+  "dialogportenLimits": {
+    "sources": [
+      "dialog_search",
+      "dialog_lookup",
+      "dialog_transmission"
+    ],
+    "facts": [
+      "End-user GET /api/v1/enduser/dialogs supports party/serviceResource filtering and continuation-token pagination; results depend on current authorization.",
+      "Dialog lookup accepts Altinn instance, correspondence and dialog identifiers. The inspected documentation does not accept an RF idempotency key or main-form reference.",
+      "Transmissions provide immutable IDs and optional relatedTransmissionId. Unauthorized transmissions may be excluded."
+    ],
+    "inference": "A bounded search can yield investigation candidates, but no inspected RF contract binds its exact operation key/main reference to searchable Dialogporten fields. Matching company/year/XML, one visible candidate or an empty result cannot prove one logical submission executed or did not execute.",
+    "supportedResolutionForUnknownRfMutation": false
+  },
+  "existingLocalRecovery": [
+    {
+      "case": "Committed source or register capture; client lost receipt",
+      "evidence": [
+        "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py:401",
+        "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py:505"
+      ],
+      "invariant": "Unique company/year/actor/key identity; canonical request digest and immutable original snapshot. Existing same-key capture replay returns the original matching receipt, including a superseded version.",
+      "gap": "Current workflow refreshes Documents/Governance before reaching the replay lookup (application/shareholder_register_source_workflow.py:564 and :603). A dedicated read-only lookup can retrieve committed evidence despite later source changes without repeating capture."
+    },
+    {
+      "case": "Committed source submission claim; client lost response",
+      "evidence": [
+        "apps/backend/src/talli_backend/application/shareholder_register_source_claim.py:30"
+      ],
+      "invariant": "Exact approval/manifest/predecessor/actor identity recovers the existing claim before new admission; recovery grants no provider POST."
+    },
+    {
+      "case": "Committed authority success; client lost response",
+      "evidence": [
+        "apps/backend/src/talli_backend/application/shareholder_register_source_dispatch.py:56",
+        "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_dispatch.py:59"
+      ],
+      "invariant": "Read-only retained position reconstructs committed successes. Send execution skips succeeded operations; all mutations succeeded yields confirmed. Continuing a later, never-started operation requires its own current admission."
+    },
+    {
+      "case": "Committed confirmation; authority feedback not yet retained",
+      "evidence": [
+        "apps/backend/src/talli_backend/application/shareholder_register_filing_workflow.py:98",
+        "apps/backend/src/talli_backend/adapters/rf1086_dialogporten.py:126"
+      ],
+      "invariant": "Existing read-only reconciliation requires retained confirmation dialog/transmission references and exact approved source lineage. It does not discover an unknown mutation."
+    },
+    {
+      "case": "Prepared intent or unknown authority outcome",
+      "evidence": [
+        "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_dispatch.py:98",
+        "supabase/migrations/20260929182856_rf1086_durable_source_operation_intent.sql:122",
+        "supabase/migrations/20260929182856_rf1086_durable_source_operation_intent.sql:191"
+      ],
+      "invariant": "No new send grant for prepared/unknown; immutable outcomes cannot be overwritten with invented success. A retryable known failure may receive one newly admitted serialized intent, original key, maximum 20 attempts. An abandoned prepared intent cannot prove whether I/O ran."
+    }
+  ],
+  "safeLocalFollowUp": {
+    "status": "PROPOSED_NOT_IMPLEMENTED_BY_THIS_REVIEW",
+    "owner": "shareholder_register_filing owns typed query, canonical request identity, persistence and receipt validation; application authenticates actor/current owner; generated API transport and web only present results.",
+    "contract": "Separate bounded read-only capture-attempt lookup using original strict capture request plus original Idempotency-Key, server-derived actor, company/year and capture kind. Return recorded with exact original receipt or not_observed. Conflict/unavailable remain distinct. No source refresh, write, new key, capture call or authority call.",
+    "absenceSemantics": "not_observed is not proof that an original request has completed or cannot later commit. It does not authorize a fresh key, changed body, automatic capture retry or any authority mutation.",
+    "testsRequired": [
+      "Database: committed receipt after response loss and after supersession/current evidence change; exact key/body; conflicting request; foreign actor/company concealment; revoked owner; concurrent pending commit/rollback; zero writes.",
+      "API: strict existing request DTO and original key; server-derived actor; bounded deadline; no-cache response; recorded/not_observed/conflict/unavailable distinction; no provider or Documents/Governance calls.",
+      "UI: uncertain attempt retains original body/key; explicit lookup; only valid recorded receipt resolves it; not_observed/conflict/outage preserve uncertainty; no automatic duplicate capture POST/new key; source/register separation."
+    ]
+  },
+  "externalUnknownOutcome": {
+    "resolved": false,
+    "prohibitedInferences": [
+      "Prepared implies unsent",
+      "No search results implies nonexecution",
+      "Matching XML/company/year identifies exact operation",
+      "Main reference can manufacture confirmation references",
+      "A timeout or malformed successful response permits a fresh key"
+    ],
+    "neededBeforeAutomaticResolution": "Authoritative positive correlation to the exact original operation, or an explicitly established safe replay contract covering environment, credential identity, method/path/query, exact bytes/key, retention and confirmation. No numeric retry window is established by inspected documents.",
+    "futureStorageRule": "Any future externally justified resolution needs an append-only owned resolution contract, concurrency/admission control and archive compatibility; the existing single-outcome invariant cannot safely be bypassed or overwritten."
+  },
+  "validation": {
+    "codeEdited": false,
+    "indexesEdited": false,
+    "testsRun": false,
+    "databaseRuntimeRun": false,
+    "authorityBusinessCalls": false,
+    "acceptancePromoted": false
+  }
+}

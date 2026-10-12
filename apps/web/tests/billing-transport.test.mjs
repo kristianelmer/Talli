@@ -692,3 +692,36 @@ test("operator STOP recovery authenticates without a new attempt key and validat
     await assert.rejects(run("verified-operator", body), error => error instanceof TalliApiError && error.status === status);
   }
 });
+
+for (const profile of [undefined, "rf1086_no_activity_v1", "rf1086_full_year_v1", "future_profile", ""]) {
+  test(`operator pilot action forwards only exact profiles: ${profile ?? "omitted"}`, async () => {
+    const start = actions.indexOf("export async function upsertProductionPilotEntitlement(");
+    const end = actions.indexOf("\nexport async function ", start + 1);
+    const source = actions.slice(start, end);
+    const exports = {};
+    const calls = [];
+    const redirects = [];
+    vm.runInNewContext(ts.transpileModule(source, {
+      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+    }).outputText, {
+      exports, hasSupabaseEnv: () => true, getCurrentSessionAccessToken: async () => "fresh-operator-session",
+      requiredFormUuid: (form, key) => form.get(key), formString: (form, key) => String(form.get(key) ?? ""),
+      redirect: (path) => { redirects.push(path); throw new Error("redirect"); },
+      manageProductionPilotEntitlement: async (...args) => { calls.push(args); },
+      billingActionErrorMessage: () => "error", revalidatePath: () => {},
+    });
+    const form = new FormData();
+    for (const [key, value] of Object.entries({companyId, ownerUserId: companyId, operationId: companyId,
+      systemUserRequestId: companyId, incomeYear: "2025", status: "active", billingExempt: "on",
+      startsAt: "2026-01-01T00:00:00Z", expiresAt: "2027-01-01T00:00:00Z", evidenceReference: "synthetic"})) form.set(key, value);
+    if (profile !== undefined) form.set("caseProfile", profile);
+    await assert.rejects(exports.upsertProductionPilotEntitlement(form), /redirect/u);
+    const valid = profile === undefined || profile === "rf1086_no_activity_v1" || profile === "rf1086_full_year_v1";
+    assert.equal(calls.length, valid ? 1 : 0);
+    if (valid) {
+      assert.equal(calls[0][0], "fresh-operator-session");
+      assert.equal(calls[0][1].caseProfile, profile ?? "rf1086_no_activity_v1");
+      assert.equal(calls[0][2], companyId);
+    } else assert.match(redirects[0], /Ugyldig%20pilotprofil/u);
+  });
+}

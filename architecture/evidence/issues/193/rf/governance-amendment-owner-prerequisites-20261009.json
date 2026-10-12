@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "kind": "SOURCE_REVIEW_AND_SERIAL_IMPLEMENTATION_PLAN",
+  "baseRevision": "1dccdcdd93e300405473265e8cbb9bf503138b5e",
+  "observedDateUtc": "2026-10-09",
+  "status": "GOVERNANCE_PURE_CHECKPOINT_CLOSED_LEDGER_PREREQUISITE_IN_PROGRESS",
+  "sequence": [
+    {
+      "owner": "Ledger",
+      "status": "SELECTED_IN_PROGRESS_NOT_YET_VERIFIED",
+      "contract": "assert_unamended_governance_entry_v1",
+      "requirements": [
+        "Verified subject, current accepted owner, READ COMMITTED and shared company lock. Exact stored entry company/year, original actor, event date, capital kind and fixed supported-patterns rule; entry/context time no later than original Governance recording cutoff.",
+        "Rebuild ordered five-key source array from stored entry_sources; contiguous ordinals, exact expected primary Governance event/facts hash and original corroborating sources. Recompute context.sources_digest from the existing PostgreSQL jsonb text contract; Python canonical JSON is not its digest contract.",
+        "Reject Ledger reversal/correction, including concurrent changes in both company-lock orders. Capital has a real reversal RPC; correction-row cases need explicitly privileged fixture setup because correction API only supports administrative costs.",
+        "Stage closed EXECUTE privileges; future consumer grant separately. No posting/reversal or business-policy expansion. This assertion proves source/context identity and lifecycle, not independent economic provenance."
+      ]
+    },
+    {
+      "owner": "RF",
+      "status": "READ_ONLY_DESIGN_PENDING_LEDGER_CHECKPOINT",
+      "contract": "read_current_register_observation_evidence_v1 (proposed)",
+      "requirements": [
+        "Delegate current-owner/READ COMMITTED/company-lock/cutoff to public v2, then return exact retained snapshot and capture time; no RF year lock after Governance event lock.",
+        "Exact stored id/company/year/version/actor/capture time/fact hash must agree with the closed versioned snapshot. Do not expose transport key.",
+        "The old SQL writer verifies selected envelope fields but does not recompute the complete canonical fact digest. A public reader must not silently upgrade that to full cryptographic proof. Final direct amendment SQL needs owner-backed validated content/hash correspondence; Python preflight alone does not protect a direct SQL call.",
+        "Resolve strict owner-local codec/digest validation or another proven owner contract before activating amendment persistence. Preserve old bytes, old fact hashes and historical readers; no foreign private-table access."
+      ]
+    },
+    {
+      "owner": "Governance",
+      "status": "PENDING_OWNER_PREREQUISITES",
+      "requirements": [
+        "Append-only FORCE-RLS immutable amendment table and exact server-derived anchor from unchanged original row including actor/time; private actor/company/key lookup binds business request, excludes key/correlation from public receipt.",
+        "Authorized committed replay precedes fresh admission/MFA, current evidence and external I/O. Fresh path checks stored complete head, retained RF withdrawal, independently captured current replacement with equivalent event/date/economics, exact retained Documents and Ledger assertion on same connection/company lock.",
+        "Verify signed original documents, memo and replacement RF originals outside company locks. Their metadata is established at amendment time, not retroactively frozen. Final SQL checks exact complete coverage via public Documents assertion; no caller verified Boolean or subset-only trust.",
+        "Mint amendment identity/time server-side after locks; capture must predate cutoff. Use strict SQL/Python canonical byte/hash parity, not jsonb::text as a substitute. Preserve original event/facts/finalization/Ledger/Banking/timestamps.",
+        "Publish additive complete-chain enumeration and actor-bound exact-key recovery with unavailable-versus-not-observed distinction. No Ledger posting, reversal or Banking claim. Actual RLS, owner/MFA races, competing heads/keys, direct SQL bypass and retained replay require runtime proof."
+      ]
+    },
+    {
+      "owner": "RF",
+      "status": "PENDING_GOVERNANCE_STORAGE_AND_APPLICATION",
+      "requirements": [
+        "Consume additive Governance original+complete-chain projection, keeping old unamended capture-time rule and old codecs. Amended replacement uses amendment timestamp and binds head id/digest with original economic/finalization commitments.",
+        "Version source/receipt/archive commitments additively and recheck effective binding at consequential admission. Later withdrawal/amendment invalidates fresh use without erasing historical receipts."
+      ]
+    }
+  ],
+  "sourceFileSha256": {
+    "apps/backend/src/talli_backend/application/corporate_governance_workflow.py": "df94c1bf183b8642b6df5eb0051bd2f1fc715a9b8c25a73f7e509d7c6e90b0c7",
+    "apps/backend/src/talli_backend/application/corporate_register_evidence.py": "0964e5c425147023a609afd5d1bc36f8ded972d469d25d2a5fa19845b1a9b6f9",
+    "apps/backend/src/talli_backend/modules/corporate_governance/register_evidence_amendment.py": "a64408652fbd905161863510446b6bf43a45013bfd61e7bb1a0eacc013a8c4bb",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/register_observation.py": "85d39cb284fe78437376c3efd7bc306342d711bc9e66aa6976db60dc8ea2ecf9",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source_storage.py": "b2eea3a72d9c8b400e71847d81ab6038a5f343ae3649281be81dc31dd389c055",
+    "supabase/migrations/20260827102000_ledger_supported_patterns.sql": "2155188c2f74210e955b5a332488f4bfe9e3b157b43a210c4ac021c48ed0e0bd",
+    "supabase/migrations/20260923102314_rf1086_register_observation_store.sql": "0c3087a8c1d38bbf9c67c7a25071413cd2226856e5da716ef5d543fad139de68",
+    "supabase/migrations/20261009222053_rf1086_observation_evidence_assertions.sql": "2245e19954956669f653aac7ff7c9257056e9e4efc4c82fd2481f93f8a4ec74a",
+    "supabase/migrations/20260924062717_documents_immutable_retained_originals.sql": "ae0274b451314359b1f8b1cf6067f6abd14f8a65d89b41fd974cd9581d62d45b"
+  },
+  "limits": [
+    "Source review and engineering sequence only; no SQL/authorization/runtime proof is supplied by this plan.",
+    "Only one business owner implements at a time. This plan does not advance the migration pointer or grant a future Archive capability/facade exception. The separate Archive decision remains unanswered.",
+    "All A1-A7, two immutable complete gates and launch remain pending."
+  ],
+  "canonicalByteDesignExperiment": {
+    "status": "PASS_DESIGN_ONLY",
+    "nativeVersion": "PostgreSQL17.11",
+    "actualReceiptAndFourDigestBodies": 5,
+    "restrictedNestedUnicodeCases": 500,
+    "result": "A private recursive JSONB serializer with C-collated object keys, ordered arrays and restricted primitives reproduced the unchanged original facts hash plus new anchor/request/receipt hashes exactly. No existing compatibility helper was edited or imported.",
+    "limit": "Prototype only, not repository SQL or proof of complete shape validation, authorized storage provenance, exact history enumeration, original bytes, RF content validation or final-write safety.",
+    "privateArtifacts": {
+      "check-governance-canonical-experiment.py": {
+        "path": "/private/tmp/talli-release-20261009/check-governance-canonical-experiment.py",
+        "sha256": "a9f2e490145e404102ceae218f6940169ff24a7a19b40395cbed4daa6e9ad5b1",
+        "bytes": 4734
+      },
+      "governance-canonical-experiment.json": {
+        "path": "/private/tmp/talli-release-20261009/governance-canonical-experiment.json",
+        "sha256": "e65b19ee834ebeff106b35d2a4fda183520b32595f6f7b8476031874ab4f6c37",
+        "bytes": 834
+      },
+      "governance-canonical-experiment.log": {
+        "path": "/private/tmp/talli-release-20261009/governance-canonical-experiment.log",
+        "sha256": "a3c71b88bb1cc9a94238eb157ef864f1593b1f23aeb67afa41063a9c133ce725",
+        "bytes": 971
+      }
+    },
+    "ownedClusterRemoved": true
+  }
+}

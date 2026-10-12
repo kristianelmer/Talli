@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_BOUNDED_SOURCE_PREVIEW_PERSISTENCE",
+  "baseCommit": "efbea434d07b5530618dabbeb8645d0208b554dd",
+  "testedAt": "2026-09-23",
+  "databaseTests": 11,
+  "topologyAndMandatoryLaneTests": 18,
+  "runtime": {
+    "status": "PASS",
+    "exitCode": 0,
+    "target": "rf193_source_preview_14d7_8337fe8c",
+    "host": "127.0.0.1",
+    "port": 52966,
+    "source": "owned disposable accounts153_setup_fix_d060",
+    "createdCloneDropped": true,
+    "hostedChanges": false,
+    "providerCalls": 0,
+    "objectTransfers": "httpx.MockTransport",
+    "databasePersistence": "actual restricted-role PostgreSQL RF/Document operations"
+  },
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_document_evidence.py": "028e005fac122501b1f77542c2c11c8e6bd536ddd1be46caa8d6ea42562448e9",
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "2bb2f6fa177a49f540a5f2df3452b16a9f9820076d70d6e24fa19583e09bc730",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "84176c00cb6b25b21e5c0a2c74dc438d03e9da8ab2dc5c3952a2f9a8451af0d8",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "0e6ae67c56706ba443b6915b8ae6427d4be9023c419248ae5f40a3f26b940b00",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py": "30a5aab22eb59d0a45f611eed9f92e2748cb50b63665e771bf0f27bc09810b0e",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "aed2e9a969e1e7a8f94b270e3b14363efc8f199ac61faa489ee8a1d5cafa9ac7",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/readiness.py": "7a06955183241b99b0b0afea9f2e4e420db4e663c2964f8be20d15f3ade25985",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/rendering.py": "f93d5988df1b024cecddec12e67ef3d04eed35e1e2667d8efd4ac1ed208c4ca0",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_preview.py": "1a5ef0edbabb92abf2a0e78f705776e805c6c430c4086386e7c893c164348168",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source.py": "e071b1310816be189664ca4f8abae4b86833527ffdc3fdcce1e418e4557c2078",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source_storage.py": "531dd01dd9870ce2fbbf963834dbfd30dffd5db9e2dbf8c89b4b233d90adefcb",
+    "apps/backend/tests/test_annual_purchase_basis_runtime.py": "019584d0680b3f19a2f4f3bf7b708da2841328a00471a36eb81b27411349e977",
+    "apps/backend/tests/test_rf1086_database_runtime.py": "d2f7e1d9443fc9ea13aae0a400f75bc1e117272c652430517c66c8f4c6e360f2",
+    "apps/backend/tests/test_rf1086_source_preview_database.py": "cf6273d4e9ee8f21f95cf33afb26aeb450ee9739d069c8057f9832abcd177bc7",
+    "apps/backend/tests/test_rf1086_year_source_database.py": "67e4ec183cb7de8694c00aef7ecc18ee5fa0681e762cc68c50f7c47674a7e939",
+    "architecture/BACKEND-SYSTEM.md": "6301b898b1e0d757c8cfc238165b3403511068952350d2670cc5ec69f250c097",
+    "architecture/backend-system.json": "51e65024196f4d4387a1caa15330cc6698ad1c3403635de191330204db966ad8",
+    "architecture/database-catalog.json": "1dc1f187baf03a5fec0cd44325f9010c411eabf6251a99165b1e3e183b9d55ef",
+    "package.json": "a3df78b4c6437f9a45cee6e15c812cdc2fdccc9ddb1f7e75961a8c88aa839061",
+    "scripts/rehearse-authority-topology.mjs": "642dd41d1e1b8e1b882fdc3012ffafdff6e3058adf0e82cb1ce9321795870b23",
+    "supabase/migrations/20260923091509_rf1086_immutable_year_source.sql": "f0d79e1af3c918810afcae072a9fa653e998938ac00f3439625c6001fd05a52e",
+    "supabase/migrations/20260923102314_rf1086_register_observation_store.sql": "0c3087a8c1d38bbf9c67c7a25071413cd2226856e5da716ef5d543fad139de68",
+    "supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql": "fff296d5af5c24932c415465399ec632e0a81152fcaf509eceda871bce1f984d",
+    "supabase/migrations/20260923105912_rf1086_source_backed_preview.sql": "b601980eeb634cf469d924187c890c4909e8bcde694f93718aa6770bb7d5bea7",
+    "supabase/rollback/20260923105912_rf1086_source_backed_preview.sql": "2c277f06b3fca4adcd8bd6a24c7fa04e088b1637ee1f12f2f2e0b88541306f45",
+    "tests/ci_release_gate.test.mjs": "e77f9b2953050d34252728270a593128114f2af8e7a1a98a811e849f2e4d923f"
+  },
+  "testedSourceUnchangedBeforeAfter": true,
+  "beforeAfterComparedFiles": 29,
+  "privateEvidenceSha256": {
+    "/Users/kristianelmer/.codex/issue-192-private/issue193-source-preview-14d7/final-run05/local-runtime.log": "8dc94fec98011fed40be296a7ce3b75c92ad1771743824e013d0e8dcc6166c02",
+    "/Users/kristianelmer/.codex/issue-192-private/issue193-source-preview-14d7/final-run05/source-before.json": "691af393bb418aa245b922d42cae12fa72eb9dc860a87b69199571be4e3ab64a",
+    "/Users/kristianelmer/.codex/issue-192-private/issue193-source-preview-14d7/final-run05/local-runtime-result.json": "1b238a1bb3a30a23f31ed6c9a69ef465968e7e058c01b0d6dce9a0a3c8ac6ed4",
+    "/Users/kristianelmer/.codex/issue-192-private/issue193-source-preview-14d7/final-run05/run-local-runtime.py": "7ac895cb1e807c7308d2c2017bedba956db3e69bb185d422663791e1b58b8596"
+  },
+  "verified": [
+    "exact source and rendered output binding with deterministic source-aware preview identity",
+    "same source concurrent replay returns one immutable original",
+    "corrected source with same XML receives a distinct preview; old preview remains readable",
+    "legacy preview and production path not mutated",
+    "tenant concealment; member history read; currently accepted owner generation",
+    "owner revocation after source-lock wait fails closed",
+    "queued preview observes correction committed under the same company/year lock",
+    "direct SQL replay refuses superseded source",
+    "separate current owner may preview without overwriting original source actor",
+    "restricted executor cannot delete preview; browser/service roles cannot read; FORCE RLS",
+    "migration replay restores exact role options and API rollback/recutover retains exact preview"
+  ],
+  "limits": [
+    "Internal persistence slice only; no customer HTTP preview flow or production admission supplied by this proof",
+    "Synthetic admitted company and local disposable clone only; no active AS required",
+    "Canonical render/codec owned and separately reviewed by root; final application/readiness verification belongs to parent integration",
+    "No hosted changes, provider requests, authority mutations, or git commits"
+  ],
+  "priorRunsPreserved": [
+    "../run01 (initial codec failure)",
+    "../run02 (10 database tests passed)",
+    "../run03 (11 database tests passed)",
+    "../final-run04 (11 database and18topology tests passed; prior public proof preserved separately)"
+  ],
+  "reviewFix": "Canonical registered-capital review text now preserves exact decimal digits independently of ambient rounding; renderer SHA256 f93d5988df1b024cecddec12e67ef3d04eed35e1e2667d8efd4ac1ed208c4ca0.",
+  "priorProof": {
+    "path": "architecture/evidence/issues/193/rf/source-preview-persistence-runtime-20260923-run04.json",
+    "sha256": "a1da56459b2bbdc86a409db285f66c15626150dd50cf234baf3b650cc1b429fc",
+    "status": "Preserved original run04 metadata and private files; new run05 repeats 11 database tests after meaningful renderer fix."
+  },
+  "topologyVerification": {
+    "status": "PASS_CARRIED_FORWARD_UNCHANGED_TOPOLOGY",
+    "tests": 18,
+    "logPath": "/Users/kristianelmer/.codex/issue-192-private/issue193-source-preview-14d7/final-run04/topology.log",
+    "logSha256": "18acaf48dafc9760e85f12b99fb96c8037f22626be212aa96c822a6478b81e50",
+    "reason": "Renderer-only review fix; topology script, topology tests and mandatory database lane configuration hashes unchanged from run04."
+  }
+}

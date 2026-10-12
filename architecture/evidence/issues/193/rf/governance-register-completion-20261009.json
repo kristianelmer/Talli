@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Governance final register-observation guard and immutable replay binding",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "80e7fb23bcbe9ced54f99304fa0ad4388cc91040",
+  "status": "IMPLEMENTED_INDEPENDENTLY_REVIEWED_LOCAL_CHECKS_PASS_FULL_DATABASE_PENDING",
+  "behavior": [
+    "Fresh complete_supported_event_v1 validates outer/canonical scope, identity, event date/kind/phase and policy types before selecting the same existing three register-required cases. It requires the exact frozen RF reference, calls public v2, and stores the identical statement-start cutoff as created_at.",
+    "Completion replay now binds stored company/year and compares stored facts hash and Ledger entry with NULL-safe equality. Preparation preserves its existing compared fields with NULL-safe checks. Valid authorized historical replay remains before RF currentness.",
+    "Narrow RF schema USAGE and current-observation v2 EXECUTE reach only the Governance store owner; no RF table grant, retained-withdrawal grant or withdrawal writer activation. Both original wrapped function identities and catalog metadata except body are preserved.",
+    "Observation-after-cutoff maps to the existing safe evidence precondition. Invalid server cutoff or corrupt storage remains unavailable. Rollback retains the final guard.",
+    "RF prerequisite tests deliberately verify the closed prefix state, then reinstall the Governance successor and verify its narrow final grant; they no longer leave later tests without the required consumer grant."
+  ],
+  "checks": {
+    "adapter_passed": 17,
+    "ci_gate_passed": 107,
+    "new_database_cases_collected_only": 63,
+    "prerequisite_cases_collected_only": 37,
+    "architecture": "PASS with regenerated dependency evidence",
+    "openapi": "PASS",
+    "diff_check": "PASS",
+    "native_grouped_checks": 12,
+    "native_limits": "Company Access, assert_owner and RF v2 stubbed; exact original wrapped functions/table, no Supabase/RLS/current owner/MFA/race/full chain proof",
+    "independent_source_review": "standards reviewer zero remaining material findings after JSONB precedence and two fixture repairs"
+  },
+  "commands": [
+    "python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_supabase_corporate_governance.py -q",
+    "python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_governance_register_observation_completion_database.py apps/backend/tests/test_rf1086_observation_evidence_assertions_database.py --collect-only -q",
+    "node scripts/check-architecture.mjs --write-evidence",
+    "node --test tests/ci_release_gate.test.mjs",
+    "python apps/backend/scripts/generate_openapi.py --check",
+    "git diff --check"
+  ],
+  "sourceFileSha256": {
+    "supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql": "e7b03dabc7eca63f5842ed0345dd856bb4b382d616468f846707fda57cd003ec",
+    "supabase/rollback/20261009223340_governance_register_observation_completion_guard.sql": "49a781a12df5520ad1e1599fa0f83b234603744edda3601df99b74002affab49",
+    "apps/backend/tests/test_governance_register_observation_completion_database.py": "509a0c4e5bf783699ae106610cbbf4714673f3b52e103223e4adce6201a4836c",
+    "apps/backend/tests/test_rf1086_observation_evidence_assertions_database.py": "1698b4f37d3ef3a67df11a68d8d94de59cf7920868a9ed21c503d81e5f72eee3",
+    "apps/backend/src/talli_backend/adapters/supabase_corporate_governance.py": "4cf4cb0ac19f878940ca5810de55a1138783e7879ba5c6d7ac99d3b4b44be7a7",
+    "apps/backend/tests/test_supabase_corporate_governance.py": "f48153d944d586cb561d5f23f876e0d838956d9c1a22bcbe59fc296f3b5670fe",
+    "apps/backend/src/talli_backend/modules/corporate_governance/module.json": "cad8bcf73803a639777cc027de100c30ab65e8dc2849057fc8099713fa1bba94",
+    "apps/backend/src/talli_backend/modules/corporate_governance/MODULE.md": "3aa1786bb108bb28d4cbc9957a2d9c7351b726adf54427ac1ac1b69740b539da",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "d41c5da932b67ab48e346e34f291e7fd75ef4a2a3da7911c11d6a8ed14d39cc0",
+    "package.json": "0ff2a484995b7d3998cda694af64d394f80e72e4d33857786c0ee698c93cee08",
+    "scripts/rf-consequential-successors.json": "7aafc089c2b5fa7366a7d2e39b5599020208ee93c1049eaff1e15055ca7c4bbb",
+    "tests/ci_release_gate.test.mjs": "1bd5b8efdc1a6447bba089847863c4f4c4ed98ddc35770613d6b4002c27650a7",
+    "architecture/dependency-evidence.json": "d12ce8caa45f77561fb098ad315c5b83021dd7fb5303a13d91a843a1f0b28a69"
+  },
+  "privateArtifacts": {
+    "governance-completion-adapter.log": {
+      "path": "/private/tmp/talli-release-20261009/governance-completion-adapter.log",
+      "sha256": "ab97ecfeeebacd256e8105c195d3e87e3add7bafbe2457eb92cd57be5f3d188f",
+      "bytes": 99
+    },
+    "governance-completion-collection.log": {
+      "path": "/private/tmp/talli-release-20261009/governance-completion-collection.log",
+      "sha256": "eef1f19dc1e039415d4bb4199b8154bf29f74030fb261c98e81cee7a04767783",
+      "bytes": 15043
+    },
+    "governance-completion-architecture.log": {
+      "path": "/private/tmp/talli-release-20261009/governance-completion-architecture.log",
+      "sha256": "d12ce8caa45f77561fb098ad315c5b83021dd7fb5303a13d91a843a1f0b28a69",
+      "bytes": 18484
+    },
+    "governance-completion-ci-gate.log": {
+      "path": "/private/tmp/talli-release-20261009/governance-completion-ci-gate.log",
+      "sha256": "fd8121510e2e1505772f49dc33c1a2136c0a5eedfcaeec16b51d86040ad3f1ec",
+      "bytes": 11283
+    },
+    "governance-completion-openapi.log": {
+      "path": "/private/tmp/talli-release-20261009/governance-completion-openapi.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "governance-completion-native.json": {
+      "path": "/private/tmp/talli-release-20261009/governance-completion-native.json",
+      "sha256": "3088dac12d9feb21fba936841e95a647ae3c0008c06d05b5a4fd51b698479fec",
+      "bytes": 1566
+    },
+    "governance-completion-native.log": {
+      "path": "/private/tmp/talli-release-20261009/governance-completion-native.log",
+      "sha256": "106ba8082b41397bb9822ab49eceb4330b7be9fd2ad0fb560138c67ce68cc90b",
+      "bytes": 972
+    },
+    "check-governance-completion-native.py": {
+      "path": "/private/tmp/talli-release-20261009/check-governance-completion-native.py",
+      "sha256": "5098a7df0a2f741b4f728805449c6a4cd63631842d8fd091a081ed9e3ddfe2e1",
+      "bytes": 16938
+    }
+  },
+  "review": {
+    "independent": "No remaining material SQL, adapter or DB-test source findings. Native review caught and implementation fixed an ambiguous JSONB subtraction expression before commit; alternate-year fixture now proves its real admission before testing replay.",
+    "root": "Inspected exact body/catalog rewrite, grants, replay binding, adapter mapping and test scope; verified all13 source and8 artifact hashes. Later pure amendment edits are separate and absent from this source-hash set."
+  },
+  "limits": [
+    "63 new restricted database cases and37 prerequisite cases were collected only; actual full-chain Supabase/RLS/races still require CI.",
+    "Native PostgreSQL17.11 executed12 grouped checks against exact baseline wrapped functions/table; Company Access, assert_owner and RFv2 were explicitly stubbed. These checks establish structural delegation/catalog behavior, not runtime owner/currentness/MFA/economic proof.",
+    "The cutoff is statement start, not a post-lock timestamp. A capture later than statement start is conservatively rejected even if current after waiting for the company lock.",
+    "Duplicated identities cannot disagree to skip the declared kind guard. A caller fabricating BOTH canonical and outer declarations is not independently authenticated by this patch: full economic/original-byte/canonical-hash provenance remains separate owner-workflow work.",
+    "Immutable evidence-amendment persistence/workflow and RF consumption are still pending. Archive completion/Company Access eligibility and old-binary deployment fences remain unresolved dependencies; all A1-A7 and immutable release gates remain pending."
+  ],
+  "notClaimed": [
+    "restricted Supabase execution",
+    "live RLS/ACL or lock races",
+    "original-byte or economics/facts-hash provenance verification",
+    "arbitrary fabricated-event parity",
+    "withdrawal runtime activation",
+    "amendment workflow",
+    "Archive completion fence",
+    "acceptance or launch promotion"
+  ]
+}

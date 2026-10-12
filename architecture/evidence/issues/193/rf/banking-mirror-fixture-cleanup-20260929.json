@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_FIXTURE_REPAIR",
+  "baseCommit": "f2bf28e91e29de2210ca5d103f7690396ff5a14e",
+  "problem": "The Banking evidence deletion fixture used the BYPASSRLS janitor without verified owner context. The canonical DELETE succeeded, but the enabled SECURITY DEFINER overlap mirror enforced its owner RLS and silently retained the legacy row. Later Banking contract reconciliation correctly failed.",
+  "change": "Bind the same synthetic owner before resetting to the janitor for exact canonical deletion. Assert the exact deleted ID is absent from the overlap table when that table exists. No production SQL, policy or privilege changes.",
+  "verification": {
+    "ciBaseline": "CI36574109940 atf2bf28e9: Application PASS;700 Billing tests,471 authority/RF database tests and15 reporting-clone tests passed. Database failed at Banking contract reconciliation during subsequent Tax topology preparation.",
+    "reproduction": "One deletion test passed but left legacy/canonical counts1/0; running the actual Banking contract then raised banking_contract_transaction_reconciliation_failed.",
+    "regression": "New exact-ID mirror assertion failed before the fix and passed after verified owner context was retained. Actual contract reconciliation then passed.",
+    "broader": "58 Banking projection/evidence/company-guard cases passed in7.78s; subsequent actual Banking contract reconciled1031/1031 rows and passed. Disposable PostgreSQL17 with minimal Auth/Storage shims.",
+    "remaining": "New immutable full CI gate is required."
+  },
+  "limits": [
+    "All seven RF acceptance criteria remain pending.",
+    "No real AS, hosted change or production provider operation."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-bank-mirror-fixture-20260929-14d7",
+  "sha256": {
+    "talli-f2bf28e9-database.log": "9b78940e9de389a7e40a74f699e552153174228b1b8467512711218ac0719814",
+    "talli-bank-reconcile-loop.log": "ee1be150a9baea298c357e7875720b2129b861b640cba49e3635d49376cc3152",
+    "talli-bank-reconcile-regression-red.log": "16ce524f3eef232529ea3f421c4691fff844fb1124ca4adad325a323c286002e",
+    "talli-bank-reconcile-regression-green.log": "70751023e1c3f3f6a1aaaed556b0b7f255dc046a7bb0662fe085b1d9bc258597",
+    "talli-bank-reconcile-broader.log": "55c40440cf0a5f482341060bba437a16dddb2e69d2ee1000e0e65bc1fc266ba4"
+  }
+}

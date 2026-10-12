@@ -1,0 +1,90 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "8159b9a3e0af88d7ee976f5e09c6359b50cf45c1",
+  "scope": "Actual owned backend SIGKILL after a committed intent but before selected main, child or confirmation provider mutation; loopback fixtures only",
+  "validation": {
+    "browser": {
+      "passed": 29,
+      "journeys": [
+        {
+          "scenario": "lost main response",
+          "durationMs": 124738.726666
+        },
+        {
+          "scenario": "process crash at main response",
+          "durationMs": 120814.305875
+        },
+        {
+          "scenario": "process crash before main provider mutation",
+          "durationMs": 110265.058625
+        },
+        {
+          "scenario": "lost child response",
+          "durationMs": 102974.623583
+        },
+        {
+          "scenario": "process crash at child response",
+          "durationMs": 109097.876667
+        },
+        {
+          "scenario": "process crash before child provider mutation",
+          "durationMs": 108693.543167
+        },
+        {
+          "scenario": "lost confirmation response",
+          "durationMs": 106913.24475
+        },
+        {
+          "scenario": "process crash at confirmation response",
+          "durationMs": 109776.433667
+        },
+        {
+          "scenario": "process crash before confirmation provider mutation",
+          "durationMs": 110192.500083
+        }
+      ],
+      "durationMs": 1014105.076625
+    },
+    "barrierTestsPassed": 8,
+    "fixtureSafetyPassed": 20,
+    "credentialScan": "passed",
+    "whitespace": "passed",
+    "cleanup": "Passed: owned stack removed, 42 pre-existing containers restored, Colima stopped and generated Next files restored",
+    "baseCi": {
+      "runId": 36712181852,
+      "revision": "8159b9a3e0af88d7ee976f5e09c6359b50cf45c1",
+      "result": "success",
+      "application": "success",
+      "databaseIsolation": "success",
+      "databaseDurationSeconds": 1984,
+      "releaseGate": "success",
+      "immutableEvidence": "skipped"
+    },
+    "currentRevisionCi": "pending"
+  },
+  "assertions": [
+    "Test-only launcher wraps the real journal prepare after its admission context commits; a nonce-bound consumed private arm pauses before delivering the grant",
+    "No selected provider POST occurs: before main has no RF mutations, before child has only main, before confirmation has main and both children",
+    "Actual SIGKILL exit verified; a different owned backend process starts against the same database",
+    "Exactly one pending prepared intent retains its UUID key, approved body hash or confirmation commitment and attempt 1 with no invented outcome",
+    "Raw submission remains sending while owner status requires recovery; successful preceding references survive",
+    "Pre-crash and post-restart claims, head, journal, submissions and feedback match exactly",
+    "Two exact retries return 409; initial status reads, reloads and repeated reads add no provider calls or tokens",
+    "Owner has no send, continue or feedback action; 320/1440 layouts, browser health and egress checks pass",
+    "Strict archives retain three source versions, approvals, claims, submissions and source originals plus four previous feedback originals",
+    "All three main-stage histories survive actual same-cluster database restore with retained-original byte verification and unrelated-actor denial"
+  ],
+  "limitations": [
+    "Synthetic loopback provider only; does not establish real provider idempotency or authorize replay",
+    "Rejected-predecessor browser, remaining security/conformance, unknown-operation reconciliation and legacy feedback backfill remain",
+    "Ordinary Storage objects, independent-cluster roles, prior-year/unapproved restore, cancellation/expiry/deletion and retention generations remain",
+    "Real HTTP/concurrency sizing and both immutable acceptance gates remain",
+    "All seven RF acceptance criteria pending; draft PR only; no real AS data, production enablement, hosted database change or genuine provider effect"
+  ],
+  "sha256": {
+    "apps/backend/tests/test_rf1086_prepared_crash_fixture.py": "71e5b5175e2b531d31b678f9007ee3ffe92ed16052d03cacd8394c016649d8df",
+    "tests/browser_shareholder_register_filing.mjs": "209bbb24443a431a77380a788b3aab1378d157b758205f86bb4fc975e6d9f5a2",
+    "tests/fixtures/rf1086-source-browser-journey.mjs": "464cf5c47c2488f9cecce1e6e9b1cb309ae36305a68d117c757b5f0679803b0e",
+    "tests/fixtures/start_shareholder_register_filing_backend.py": "eeadbb1486d4ee36bb6b68fb92c6bf38f44c7f471bfae97a4eef76fc90b9b283"
+  }
+}

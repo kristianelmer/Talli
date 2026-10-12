@@ -144,10 +144,13 @@ DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle
 DATABASE_URL="$DB_URL" npm run test:billing-database-lifecycle
 
 # Require the already established Ledger contract before the RF final contract.
-# Every final database, feedback and hydrated owner lane uses private RF storage;
+# Recutover also replays consequential company guards and the guarded reporting
+# reader after historical
+# Ledger/Governance/Documents replacements. Every final database, feedback and
+# hydrated owner lane uses private RF storage;
 # no authority provider is called.
 DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs recutover
-DATABASE_URL="$DB_URL" npm run test:authority-connections-database
+TALLI_SUPABASE_WORKDIR="$isolated_workdir" DATABASE_URL="$DB_URL" npm run test:authority-connections-database
 DATABASE_URL="$DB_URL" npm run test:company-tax-database
 DATABASE_URL="$DB_URL" npm run test:annual-accounts-database
 TALLI_SUPABASE_WORKDIR="$isolated_workdir" npm run test:supabase-advisors
@@ -180,6 +183,7 @@ SUPABASE_URL="$API_URL" \
 SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
+TALLI_SUPABASE_WORKDIR="$isolated_workdir" \
 npm run test:browser-shareholder-register-filing
 
 # Tax uses the final private storage and the normal owner login/MFA flow.

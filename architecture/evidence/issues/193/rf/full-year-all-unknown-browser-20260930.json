@@ -1,0 +1,69 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "dacb9bd3df3ca51ecb4a73dbfabe1103bba22cb3",
+  "scope": "Lost main-form, child-form and confirmation responses in authenticated full-year filing browser journeys",
+  "validation": {
+    "browser": {
+      "passed": 20,
+      "journeys": [
+        {
+          "lostResponse": "main",
+          "durationMs": 118529.676416
+        },
+        {
+          "lostResponse": "child",
+          "durationMs": 119625.483042
+        },
+        {
+          "lostResponse": "confirmation",
+          "durationMs": 117511.866209
+        }
+      ],
+      "totalDurationMs": 359781.998041,
+      "topology": "Fresh company history per case; actual Next/FastAPI and isolated Supabase Auth/Storage/Postgres after final contracts; loopback authority mock"
+    },
+    "ciControlsPassed": 90,
+    "fixtureSafetyPassed": 17,
+    "credentialScan": "passed",
+    "whitespace": "passed",
+    "baseCi": {
+      "runId": 36702169746,
+      "revision": "dacb9bd3df3ca51ecb4a73dbfabe1103bba22cb3",
+      "result": "success",
+      "application": "success",
+      "databaseIsolation": "success",
+      "releaseGate": "success",
+      "immutableEvidence": "skipped",
+      "databaseDurationSeconds": 1625
+    },
+    "currentRevisionCi": "pending",
+    "cleanup": "Passed: owned stack removed, 42 dormant containers restored, Colima stopped and generated Next files restored"
+  },
+  "assertions": [
+    "Each mock records its mutation and stable key before disconnecting; dedicated mock tests prove child and confirmation effects survive the lost response",
+    "Each browser creates original source, accepted filing, accepted correction and third replacement approval through the application",
+    "Lost response leaves one unknown journal operation with its prepared intent and attempt 1",
+    "Received successful main/child references survive; no confirmation receipt is invented",
+    "Every journal intent/result is bound to its exact sent key, approved XML hash or confirmation commitment",
+    "Two exact retries return 409 without another provider call or token acquisition",
+    "Reload and status reads leave claims, head, journal, submissions and feedback unchanged",
+    "No send, continue or feedback control is available in the unknown state",
+    "Strict downloaded archive verifies three versions, approvals, claims, submissions and source originals, plus four feedback originals from the accepted filings",
+    "Unknown outcome remains visible at 320px and 1440px widths; browser health and loopback egress checks pass"
+  ],
+  "ciTimeBudget": "Database job limit increased from 30 to 45 minutes: baseline passed in 27m05s and two extra browser scenarios add about four minutes locally. Per-scenario 360-second limit is unchanged.",
+  "limitations": [
+    "Mock behavior does not prove provider idempotency or authorize replay of unknown operations",
+    "Process-crash/prepared-intent and rejected-predecessor browser cases remain, as do remaining adversarial and external-conformance checks",
+    "Actual database/object restore, legacy feedback backfill, retention generations, real HTTP/concurrency sizing and both immutable acceptance gates remain",
+    "All seven RF acceptance criteria remain pending; PR remains draft",
+    "No application behavior, genuine provider operation, hosted database, production enablement or merge changed"
+  ],
+  "sha256": {
+    ".github/workflows/release-gate.yml": "c639a11921dc5abdd2a37b3b1ac0e3c1931906a957220e922cc45be87bb4ac81",
+    "tests/browser_shareholder_register_filing.mjs": "ee819d351e92d8e8368adc83aa393ac266465f82ee5e775d4ca6201a448da951",
+    "tests/fixtures/rf1086-source-browser-journey.mjs": "cd1d24519d2afba903ba8bb5d46d9ea4e3ec36ddfd68ee9b6f8c161e5d94b0b2",
+    "tests/fixtures/rf1086-filing-authority-mock.mjs": "55c1d9b4855631c92fdd5f303a7f95c22e7d203e441a4a5ca689f5502b93c180",
+    "tests/shareholder_register_browser_fixture_safety.test.mjs": "71e7c7f5afb96ea805e2a456257494b9856bb7d608e5dbeb2c748ff6ea63e529"
+  }
+}

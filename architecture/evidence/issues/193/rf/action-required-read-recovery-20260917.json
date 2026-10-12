@@ -1,0 +1,74 @@
+{
+  "issue": 193,
+  "capability": "shareholder_register_filing",
+  "scope": "Manual read-only recovery of existing action_required RF submissions",
+  "recordedAt": "2026-09-17T11:23:08.562988+00:00",
+  "implementation": [
+    "Rechecks the original confirmed transmission through the read-only authority binding and existing owner, approval, entitlement identity, connection and lease protections.",
+    "Preserves accepted/rejected final decisions, original mutation events, and immutable historical artifact bytes and classifications.",
+    "Keeps action_required recovery manual in the owner presentation.",
+    "Migration temporarily borrows only missing owner SET membership and restores its original options; existing function ACLs, owner, security definer flag and search path are preserved.",
+    "Recovery migration is registered with the RF module and replayed by both workspace and final RF topology rehearsals."
+  ],
+  "verification": [
+    {
+      "command": "pytest -c apps/backend/pyproject.toml apps/backend/tests/test_rf1086_database_runtime.py -q",
+      "result": "PASS",
+      "passed": 29,
+      "database": "Unique disposable clone of existing local canonical template; removed after run",
+      "proof": [
+        "restricted executor persistence",
+        "outsider rejected",
+        "reference mismatch rejected",
+        "one live lease",
+        "original mutation journal unchanged",
+        "accepted/rejected terminal",
+        "historical ambiguous artifact cannot be reclassified",
+        "migration memberships and ACLs restored"
+      ]
+    },
+    {
+      "command": "pytest -c apps/backend/pyproject.toml apps/backend/tests/test_shareholder_register_filing_production.py -q",
+      "result": "PASS",
+      "passed": 155
+    },
+    {
+      "command": "node --test tests/ci_release_gate.test.mjs tests/rf1086_owner_presentation.test.mjs",
+      "result": "PASS",
+      "passed": 59
+    },
+    {
+      "command": "node scripts/check-architecture.mjs",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "providerCalls": 0,
+  "hostedChanges": false,
+  "productionActivation": false,
+  "limitations": [
+    "This is local verification with fake authority/object transfers and actual restricted-role SQL persistence.",
+    "The retained ambiguous/conflicting-artifact adjudication and accounting-correction procedures remain separate unfinished work.",
+    "This does not establish real-company production acceptance or complete any full #193 filing stage."
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/application/shareholder_register_filing_workflow.py": "95d7b9ffd5ba64e84084a6a8d051918609ee418b1a11f6e2e158de9756b2ba3d",
+    "apps/backend/tests/test_rf1086_database_runtime.py": "74f4a3f304f2d8ba83112344f007f261da02bf7cad9d31b4913bfe6a189b3904",
+    "apps/backend/tests/test_shareholder_register_filing_production.py": "23838f36ffbe2fec5fedf69ae067c57023df7874936919080f8eb97e348b6947",
+    "apps/web/app/lib/rf1086-production-presentation.ts": "d9fc377db69e70c7c9d30b7ab458890f384109619d8fa0a83472b2655d7d2f27",
+    "apps/web/app/lib/copy.ts": "621d68e8080a5c3af95a92e78e4f64546556a294a7b6920fae7270e3046b1013",
+    "supabase/migrations/20260917110951_rf1086_action_required_read_recovery.sql": "b3d1ad90d94e8c78c3d09592fdfa78e1148b209e0b04bb87f5c16caddb8425b1",
+    "scripts/rehearse-authority-topology.mjs": "131e779deaad4176448484b48e2168c6d3593ed72005963f5bc9b2fa37cbe4cc",
+    "tests/ci_release_gate.test.mjs": "fa3e64818c99457896476a03b4326bdc503e47e523c70d659d737619cb2e5dbd",
+    "tests/rf1086_owner_presentation.test.mjs": "092c46fce8c2e05c62e385324d3ecc7f0e28fbc907c855ed69181a87acff31cc"
+  },
+  "privateLogSha256": {
+    "local-runtime.log": "d60a1635d005be4d96b6c0245b0bf3c215c6e7b0213d5feb5a4300b5f9d98ebf",
+    "production-tests.log": "84178b55c7fa19e9cd5ed2a283214e1831feee8055d169595aa7520b66a061c4",
+    "node-tests.log": "ac720b96cda3984c80075251beca2ec700cd89d028c0306c6571aae17a546844",
+    "architecture-check.json": "5096ab8df3bc349b6886466baae30461c5504bf924bb82a09b40006cf94d4109"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "schema": "rf-company-inventory-fixture-shape-repair-v1",
+  "recordedAtUtc": "2026-10-11T05:13:17.214308+00:00",
+  "baselineHead": "3d2465f458c4b984a39b08c35ed767a875972e8e",
+  "failedRunId": 38109965694,
+  "diagnosis": "Fixture added a test-run link to a simulation row, contrary to existing mode/preview/link CHECK. Unique test-run links also require two distinct IDs. Product constraints remain exact.",
+  "implementation": {
+    "normalApiSimulations": "Complete original JSON asserted unchanged before/after each added row.",
+    "fourSdkTestRecords": "Original13 fields/status/environment/actor stay unchanged; two manual records remain unlinked.",
+    "referenceRows": "Two added ready test_authority rows, one per year, with distinct existing blocked/accepted environment=test IDs. Fixed11-column INSERT selects exact owned simulation metadata. Defaults keep provider calls/payload/receipt fields empty.",
+    "authorityAndCleanup": "Existing fixed loopback-admin fixtureTableTransaction and dedicated-company cleanup remain unchanged."
+  },
+  "localEvidence": {
+    "appliedFixtureSha256": "19a505f458b2367f63ba1ee67069180875b975c38e500ef1bc39f114cbdb7091",
+    "nativeChecks": 10,
+    "actualOldShapeRedSqlstate": "23514",
+    "actualDuplicateLinkRedSqlstate": "23505",
+    "unknownTestFkRedSqlstate": "23503",
+    "ownedClusterStoppedDeleted": true,
+    "qualification": "Actual predecessor DDL/defaults/CHECK/index and exact applied INSERT on minimal native schema; parent identities/FK are projections. No complete Auth/RLS/helper/SDK/browser/independent-project execution claimed."
+  },
+  "publishedFailurePrerequisites": {
+    "ordinaryPassed": 11352,
+    "billingPassed": 700,
+    "authorityPassed": 1584,
+    "claimExactPassed": 20,
+    "retentionExactPassed": 24,
+    "approvalExactPassed": 36,
+    "bundleExactPassed": 6,
+    "owningBrowserPassed": false
+  },
+  "rawEvidenceSha256": {
+    "rf-company-inventory-fixture-shape-repair-plan-v1.json": "cd0ffeaa39d4335a3d9a6fd6d25489d16edf50dbe3a6b78de48e9e3686b32a57",
+    "rf-company-inventory-fixture-shape-repair-plan-spec-review-v1.json": "50bf814bb73108276692688f7dab45b35c455dadcba98f8d75365d2f15b14ff8",
+    "rf-company-inventory-fixture-shape-repair-plan-standards-review-v1.json": "63a5b255ff198c24cc7725489624d1150a27caf3e937bd730bd8d3b5a8f4d863",
+    "rf-company-inventory-fixture-shape-repair-plan-root-verification-v1.json": "1b8c9a9fe305723a4adac8c22e864ff9ccff4eaef0f836fee9d0e97f34dbb6f0",
+    "rf-company-inventory-fixture-shape-native-v2.json": "90095df8086549d3e2d2e8974cd98e98e6357abc3fd9834142142e2a76b07333",
+    "rf-company-inventory-fixture-shape-native-v2.log": "71cf97f55b7e9d3a392430bc3a18551ab3345e11098a0789f63fbc43b2418028",
+    "probe-rf-company-inventory-fixture-shape-native-v2.py": "5df40ed588b2badc5671f3a7b0ea26a766821ae42aef0c475fed008bb75ebd27",
+    "rf-company-inventory-browser-journey-shape-repair-draft-proof-v1.json": "0e750fc0af674022b575e50ae057ef70142542828f161de1c449f069a2b0b080"
+  },
+  "publicationCondition": "Paired implementation reviews must have zero findings and root-verified exact pins before publication.",
+  "limits": [
+    "New actual owning browser/UI/download/GoTrue/stateless/independent restore/successor/cleanup run still required; no partial pipeline acceptance.",
+    "Prior strict restored fingerprint failure remains unreached/unresolved, not diagnosed or repaired by this fixture change.",
+    "Reference-only synthetic rows prove no Authority transmission, feedback or legal-company receipt.",
+    "Closed V3 intent WIP remains excluded and unpublished with open correction/matrix findings.",
+    "No product schema/constraint/query/Auth/grant/provider/runtime changes; no whole-gate, RET002 or all-three clearance."
+  ]
+}

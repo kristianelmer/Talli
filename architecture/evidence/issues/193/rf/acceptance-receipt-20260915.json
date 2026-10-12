@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "issue": "#193",
+  "slice": "RF-1086",
+  "status": "SYNTHETIC_FINAL_BUSINESS_ACCEPTANCE_VERIFIED",
+  "executionCheckout": "981fd95f4391295fafdf0b16f06d52d00117c2bd",
+  "ownerAuthorization": {
+    "message": "approved",
+    "planSha256": "24a7caeb7a8f554d8d5712eb721cc1aa219b6aec3133ca5a997b1ec15dff3dfa"
+  },
+  "providerResult": {
+    "status": "BOUND_DOCUMENTS_RETRIEVED",
+    "documents": [
+      {
+        "file": "receipt-01.pdf",
+        "url": "https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/01a0a378-9500-73e4-acaa-5c06d5eb3293/dokumenter/01a0a378-9500-73e4-acaa-5c06d5eb3293",
+        "sha256": "d07682421433886d339aac73dd70369678738b8cab25b40560ee989c3e6cab37",
+        "contentType": "application/pdf",
+        "byteLength": 63599,
+        "finalBusinessAcceptanceVerified": false
+      },
+      {
+        "file": "receipt-02.xml",
+        "url": "https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/01a0a378-9500-73e4-acaa-5c06d5eb3293/dokumenter/01a0a378-95af-711f-a4d4-ec368b0a1992",
+        "sha256": "973eba661ce1509fa245d6e1dc36c2aff234d25ecf30e865df3948bddc356a1a",
+        "contentType": "application/xml",
+        "byteLength": 1998,
+        "finalBusinessAcceptanceVerified": false
+      }
+    ],
+    "finalBusinessAcceptanceVerified": false,
+    "finishedAt": "2026-09-15T07:35:40.966441+00:00",
+    "trace": [
+      {
+        "kind": "token",
+        "method": "POST",
+        "url": "https://test.maskinporten.no/token",
+        "at": "2026-09-15T07:35:39.098488+00:00",
+        "status": 200
+      },
+      {
+        "kind": "transmission",
+        "method": "GET",
+        "url": "https://platform.tt02.altinn.no/dialogporten/api/v1/enduser/dialogs/019f5fce-2119-7570-a78b-db0a9b0a5c1f/transmissions/01a0a378-9500-73e4-acaa-5c06d5eb3293",
+        "at": "2026-09-15T07:35:39.228446+00:00",
+        "status": 200
+      },
+      {
+        "kind": "token",
+        "method": "POST",
+        "url": "https://test.maskinporten.no/token",
+        "at": "2026-09-15T07:35:39.818017+00:00",
+        "status": 200
+      },
+      {
+        "kind": "document",
+        "method": "GET",
+        "url": "https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/01a0a378-9500-73e4-acaa-5c06d5eb3293/dokumenter/01a0a378-9500-73e4-acaa-5c06d5eb3293",
+        "at": "2026-09-15T07:35:39.902708+00:00",
+        "status": 200
+      },
+      {
+        "kind": "document",
+        "method": "GET",
+        "url": "https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/01a0a378-9500-73e4-acaa-5c06d5eb3293/dokumenter/01a0a378-95af-711f-a4d4-ec368b0a1992",
+        "at": "2026-09-15T07:35:40.605295+00:00",
+        "status": 200
+      }
+    ],
+    "filingPosts": 0,
+    "originalJournalUnchanged": true
+  },
+  "identityChain": {
+    "baselineMain": "01a0a376-4223-7554-a709-d7af2984f193",
+    "baselineDialog": "019f5fce-2119-7570-a78b-db0a9b0a5c1f",
+    "baselineSubmissionTransmission": "01a0a376-44d7-7535-845a-322691b770c2",
+    "acceptanceTransmission": "01a0a378-9500-73e4-acaa-5c06d5eb3293",
+    "attachmentIds": [
+      "01a0a378-9500-73e4-acaa-5c06d5eb3293",
+      "01a0a378-95af-711f-a4d4-ec368b0a1992"
+    ],
+    "directXmlForsendelseBinding": false,
+    "bindingBasis": "Approved baseline confirmation and previously company/service-bound dialog, fresh known Acceptance.relatedTransmissionId, official Transmission/Attachment-ID document paths, fetched file hashes, matching XML organization/year"
+  },
+  "verifiedDecision": {
+    "finalBusinessAcceptanceVerified": true,
+    "environment": "test",
+    "case": "synthetic-no-activity",
+    "organizationNumber": "310279617",
+    "incomeYear": 2025,
+    "status": "godkjent",
+    "providerReference": "AKRE22100",
+    "providerInternalSubmissionId": "01a0a377-088d-767f-a638-83d7132fb20b",
+    "basis": "Independent XML and relationship-chain checks plus root visual review of the complete one-page PDF",
+    "pdfHeading": "Tilbakemelding på aksjonærregisteroppgaven 2025",
+    "pdfDecision": "Oppgaven ble godkjent",
+    "pdfXmlCompanyYearReferencesAgree": true,
+    "receiptXsdValidation": false,
+    "timestampTimezoneInferred": false
+  },
+  "review": {
+    "checksPassed": 52,
+    "report": "reviews/acceptance-receipt-20260915-spec.md",
+    "sha256": "81ffb07adf3c918499300615f01f54eec2a6ed110b7f71e67c5d1c3aa3f4bff5"
+  },
+  "canonicalClassifierAtExecution": {
+    "classification": "action_required",
+    "schema": "unknown",
+    "transmission_id": null
+  },
+  "privateArtifactHashes": {
+    "action-plan.json": "24a7caeb7a8f554d8d5712eb721cc1aa219b6aec3133ca5a997b1ec15dff3dfa",
+    "authorization.json": "a4a75d7597625a819272e1e1cb1f224fa11558870933f60bb94034908aa31ed8",
+    "result.json": "d270bfd0a2aed3722e2f9baac5781a53be3c903ce8c99506cf080d888bcc4d65",
+    "acceptance-projection.json": "4e7b4c9d3e59cdaa1caf2b0fb50321a866181b235a89e015dd806d9f87ea8b0f",
+    "receipt-01.pdf": "d07682421433886d339aac73dd70369678738b8cab25b40560ee989c3e6cab37",
+    "receipt-02.xml": "973eba661ce1509fa245d6e1dc36c2aff234d25ecf30e865df3948bddc356a1a",
+    "execution-spec-review.md": "81ffb07adf3c918499300615f01f54eec2a6ed110b7f71e67c5d1c3aa3f4bff5",
+    "execution-spec-review.json": "fcb4c12f9d8bf2b4ec450b1ac6ef42d2897ca435cf826cea948f0e71ee8fbba6"
+  },
+  "limits": [
+    "The result and projection retain their original retrieval-only false flags; verifiedDecision records the subsequent content review",
+    "XML internal submission ID is distinct from the HTTP forsendelse ID; identity is established through the official Dialogporten transmission/attachment relationship",
+    "No new filing POST or original journal mutation",
+    "No broader RF cases, genuine-company production evidence, canonical parser completion or full RF gate credit",
+    "No further provider calls authorized by this completed action"
+  ]
+}

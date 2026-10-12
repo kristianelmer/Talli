@@ -1,0 +1,131 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "REVIEWED_CLOSED_V2_PREVIEW_IMPLEMENTATION",
+  "recordedAtUtc": "2026-10-10T14:38:41.440495+00:00",
+  "baseRevision": "6abe2e6670a2c59dbf5a9ac884cf590b023a6c0f",
+  "status": "LOCAL_REVIEWED_FULL_DATABASE_EXECUTION_REQUIRED",
+  "changes": [
+    "Source-only v2 lease verifies Documents bytes before guard, then exact current source/current owner identity/all retained originals/complete Governance and effective RF context on one held connection. Shared new-v2 phases preserve saved source\u2192capture\u2192original/Governance validation order.",
+    "Existing public preparation executes before source-only lease; additive held writer validates exact scope/source/full prepared correspondence, derives unchanged UUID5 preview identity and codec, mints closed owner Governance/RF proof, calls existing preview append RPC and rechecks exact raw saved capture.",
+    "Deterministic generation replay still requires fresh full lease and proof; original stored bytes/creator/time are returned. SQL replay lookup/fresh-insert proof-hook timing and legacy adapter remain unchanged.",
+    "Review PI1/S2 reproduced forged filing label acceptance because old preview DTO drops filing while identity hashes full rendered value. Additive RF full prepared correspondence rejects every changed identity-bearing field before proof/append; old RF prepare/validator/codec functions remain exact. One bounded canonical CPU render inside guard, mutable Docs/storage/provider I/O outside.",
+    "Review PI2/S1 corrected fullDB RF connection count4; actual held operations share one connection. Cancellation/late failure rolls back proof/append; closed scopes reject further operations.",
+    "No migration, ordinary runtime grant, route/caller, bridge/approval/claim/intent or provider activation."
+  ],
+  "checks": {
+    "newLocalPassed": 48,
+    "protectedLocalPassed": 509,
+    "totalPassed": 557,
+    "seconds": 23.79,
+    "ciSelectionNodePassed": 130,
+    "ciSelectionNodeSkipped": 0,
+    "newDatabaseCasesCollectedNotExecuted": 18,
+    "mandatoryAuthorityExpectedCases": 1498,
+    "legacyFunctionSpansExact": 392,
+    "oldSourcePreviewFunctionsExact": 6,
+    "previewBaselineFunctionSpansExact": 369,
+    "newV2AdmitFunctionIntentionallyRefactored": 1,
+    "annualGoldenOutcomesExact": 217,
+    "annualProofBytesExact": 147,
+    "annualRejectionsExact": 70,
+    "downstreamGoldenVectorsExact": 7,
+    "oldPublicDefinitionsExact": 13,
+    "architecture": "PASS",
+    "compiled": true,
+    "whitespace": "PASS",
+    "specOpenFindings": 0,
+    "standardsOpenFindings": 0
+  },
+  "canonicalCpu": {
+    "calls": 180,
+    "syntheticSourceKindsAndDepths": 9,
+    "maximumObservedMs": 3.749,
+    "scope": "Native local characterization, not load/RTO acceptance."
+  },
+  "reproducedAndRepairedFilingGap": {
+    "before": {
+      "path": "/private/tmp/talli-release-20261009/rf-preview-v2-forged-filing-before-v1.json",
+      "sha256": "2a76522e5ca1131353cad99d9dc31d48b2252567187463bd6bdb2280d8e6f70e",
+      "bytes": 310
+    },
+    "after": {
+      "path": "/private/tmp/talli-release-20261009/rf-preview-v2-forged-filing-after-v2.json",
+      "sha256": "c0e5ad1e23bf531e99edcc1d50a79ab846e92eb4061180774a52d93dedaaf34e",
+      "bytes": 350
+    },
+    "afterOutcome": "rf1086_source_preview_mismatch; zero proof/append/commit."
+  },
+  "sourceFreeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-v2-preview-implementation-freeze-v2.json",
+    "sha256": "1576fc3653255e78044dfec4dadae8d769f2341cddcb0957caedd69e838be0b3",
+    "bytes": 9169
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-preview-implementation-spec-review-v2.json",
+      "sha256": "6d35e4da6e840e522f41e96fe64d86e9f92f687dc33974528f4ca5b585b2310f",
+      "bytes": 10619
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-preview-implementation-standards-review-v2.json",
+      "sha256": "cbb06030991d9a091f2a74b315647e52b62d1e6ce91231c27e50cf2840ea37ef",
+      "bytes": 11366
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-preview-v2-and-protected-v3.log",
+      "sha256": "38b71e43794d3224a87d96b4115654feea512205d31989f5bb9e5696a0b9e368",
+      "bytes": 661
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-preview-v2-database-collection-v5.log",
+      "sha256": "5ccfcad65df2521be4afc5cac969a431791d222b21978cd398ee9d5e880a8824",
+      "bytes": 2489
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-preview-v2-ci-selection-v3.log",
+      "sha256": "6f911e2b0db03d2c4c1a26fbe258f8bac83c61b1335934d2a22937d577343526",
+      "bytes": 13925
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-preview-v2-architecture-v2.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-preview-v2-cpu-and-spans-v2.json",
+      "sha256": "13d83992d9d80e357178925dfebc8bb2e050c28ca4e331fabc97b97ddcb8c172",
+      "bytes": 2167
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-preview-v2-downstream-v2.json",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-preview-v2-legacy-spans-v2.json",
+      "sha256": "897e908d1112b219889a354274e44992887a7846c1a8a1c559346b817f7658b7",
+      "bytes": 331
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-preview-v2-forged-filing-before-v1.json",
+      "sha256": "2a76522e5ca1131353cad99d9dc31d48b2252567187463bd6bdb2280d8e6f70e",
+      "bytes": 310
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-preview-v2-forged-filing-after-v2.json",
+      "sha256": "c0e5ad1e23bf531e99edcc1d50a79ab846e92eb4061180774a52d93dedaaf34e",
+      "bytes": 350
+    }
+  ],
+  "limits": [
+    "Local SQL/auth/storage are explicit doubles; RF/Governance producers, Documents bytes/service and held adapters are real.",
+    "New fullDB cases are collected only. Restricted logins/real owner schema guards/proof/append/races are required; fixture Auth claims/banned state/membership refresh and locally retained fixture bytes are not live Auth/independent object-store recovery.",
+    "Prior6abe CI excluded preview stage; its Application10800 and all109source-v2/19closedcapture/12savedadmission cases pass, whole run failed later correction fixture.",
+    "Preserved CI-selectionv2 log failed because root added2new DB cases between full/partition collection snapshots (13134/13136). Stable successor passed130 checks; no suppression or partition omission.",
+    "Legacy API/grants and historical bytes preserved; compatible approval/claim/intent consumers, current provider/supported-capital scope and canonical release/rollback/recovery remain pending.",
+    "All A1-A7 remain pending."
+  ]
+}

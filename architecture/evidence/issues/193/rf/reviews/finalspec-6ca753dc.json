@@ -1,0 +1,53 @@
+{
+  "axis": "spec",
+  "base": "56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd",
+  "head": "6ca753dc0d64788430430ed8c50f268f06de9c80",
+  "reviewedAt": "2026-09-23",
+  "scope": "Immutable partial RF source-foundation and production-archive delta only",
+  "status": "PASS_WITH_SCOPE_LIMITS",
+  "findings": [],
+  "resolved": [
+    {
+      "id": "RF-RESTORE-01",
+      "status": "resolved",
+      "proof": "Restore walks predecessor chains and rejects self and two-node cycles; corresponding regression tests retained."
+    },
+    {
+      "id": "ARCHIVE-API-OVERLAP",
+      "status": "resolved",
+      "proof": "Original OpenAPI path and schema exactly equal base; separate legacy persistence path excludes production decoding; additive full source endpoint and404-only fallback retain unavailable production asnull."
+    },
+    {
+      "id": "MALFORMED-PRODUCTION-200",
+      "status": "resolved",
+      "proof": "Successful additive response missing productionSubmissions fails closed without legacy fallback; route cannot complete export."
+    }
+  ],
+  "evidenceReuse": {
+    "sourceProof": "architecture/evidence/issues/193/rf/source-archive-verification-20260923.json",
+    "sourceProofSha256": "611a2eec14cc9ba43c0cebed5c99ff02a766631f851921e936066b2ac9165898",
+    "sourceHashesVerifiedAgainstCommit": 34,
+    "reportedTests": {
+      "focusedBackend": 253,
+      "archiveWebExportRestore": 61,
+      "restrictedRoleDatabase": 35,
+      "typecheck": "PASS",
+      "architecture": "PASS",
+      "diffWhitespace": "PASS"
+    },
+    "databaseProof": "architecture/evidence/issues/193/rf/archive-overlap-runtime-20260923.json",
+    "databaseSourceHashesVerifiedAgainstCommit": 8,
+    "reviewTestsRerun": false,
+    "reason": "Recent focused regressions andDBruntime proof bind exact immutable source bytes; no relevant changes since those tests."
+  },
+  "reviewerIndependence": {
+    "backendApiOverlap": "Reviewer implemented this boundedfix; final inspection is self-verification for that portion, not independent review.",
+    "otherDelta": "Initial independent source/archive review, cycle finding and final fixed-cycle/source inspection."
+  },
+  "limits": [
+    "Full-year source capture, persistence, application integration and production-admission changes remain pending.",
+    "No full RF acceptance, complete pattern matrix, genuine-company production or hosted migration proof.",
+    "Separate recovery03 service acceptance evidence is subsequent to this commit and limited to the original synthetic mixed sequence.",
+    "Companytax and annualaccounts stages remain pending."
+  ]
+}

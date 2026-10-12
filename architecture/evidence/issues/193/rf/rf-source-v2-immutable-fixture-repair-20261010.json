@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_IMMUTABLE_TRIGGER_FIXTURE_REPAIR",
+  "recordedAtUtc": "2026-10-10T11:49:16.009382+00:00",
+  "baseRevision": "c0035bb24ee1883a911bd0e8a2c79ed1e05f2afe",
+  "scope": "One existing DB test. Temporary owner NO FORCE only inside force_rollback=True; nested UPDATE-error savepoint; restored FORCE RLS assertion. Original UPDATE/error, runtime head DELETE denial and final stored-wire assertion preserved. Production SQL/ACL/trigger unchanged.",
+  "sourcePin": {
+    "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/test_rf1086_year_source_v2_database.py",
+    "sha256": "d3d8f07b45859c5b8a94391de33995137bdd6debe34168d96be08035d52af0b4",
+    "bytes": 59341
+  },
+  "failureReceipt": "ci-38047236840.json",
+  "native": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-immutability-fixture-native-v2.json",
+    "sha256": "3d36ebddb2fc18119b6e376225074b007c2745c4dbdeb70a760d7c76c13a8027",
+    "bytes": 1158
+  },
+  "nativeQualification": "Exact shipped policy/ACL/immutable body on projected native PG17 tables; explicit constant actor/member/owner helpers. Original owner UPDATE changes zero rows under FORCE RLS; rollback-only seam reaches rf1086_source_immutable and restores catalog/data. Runtime head DELETE denied. No full Auth/v2 SQL storage proof.",
+  "collection": {
+    "collected": 109,
+    "executed": false,
+    "pin": {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-immutable-fixture-collection-v1.log",
+      "sha256": "5414b6acc4aac88310ab829c1ead5831b702546122e1329c445ea179da855bfb",
+      "bytes": 15014
+    }
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-immutable-fixture-repair-spec-review-v1.json",
+      "sha256": "cb9549618e09a18fc0aa4cb0f3a08a77391249c83114972e4e8b959660cda221",
+      "bytes": 5757
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-immutable-fixture-repair-standards-review-v1.json",
+      "sha256": "ef893b3b4583e86943214c5a42cd81a1d032be4a19bc3a71a7f060fe6df63546",
+      "bytes": 4891
+    }
+  ],
+  "specFindings": 0,
+  "standardsFindings": 0,
+  "rootChecks": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-v2-immutable-fixture-root-checks-v1.json",
+    "sha256": "61447019e56faa30844195614455bc5e550b2c0d8e6e28ffbdba753572bcc0ea",
+    "bytes": 1090
+  },
+  "freeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-v2-immutable-fixture-repair-freeze-v1.json",
+    "sha256": "291a1bd82219e0b407947547287c7b1654fb63e343f3b890fcd7eadf214c5b45",
+    "bytes": 1977
+  },
+  "limits": [
+    "Full successor CI remains required; previous whole run failed with71unexecuted authority/RF cases.",
+    "Six guarded capture WIP paths remain separate and excluded.",
+    "AllA1-A7pending; no launch/provider/real-company/recovery/filing/spending/outreach acceptance."
+  ]
+}

@@ -1,0 +1,220 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-10T16:13:01.905078+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "databaseId": 38064459586,
+    "runAttempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "headSha": "48b428507975ec65a602a847d709d149d0eb5001",
+    "runStartedAt": "2026-10-10T15:38:59Z",
+    "updatedAt": "2026-10-10T16:10:32Z",
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38064459586"
+  },
+  "checkout": {
+    "revision": "58315844d75db869ac0f6e334af55c61a4f446f5",
+    "kind": "pull_request_merge_commit",
+    "parents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "48b428507975ec65a602a847d709d149d0eb5001"
+    ]
+  },
+  "jobs": [
+    {
+      "id": 114249172853,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-10T15:39:01Z",
+      "completed_at": "2026-10-10T16:10:26Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38064459586/job/114249172853"
+    },
+    {
+      "id": 114249173032,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T15:39:01Z",
+      "completed_at": "2026-10-10T16:05:51Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38064459586/job/114249173032"
+    },
+    {
+      "id": 114249173972,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-10T15:38:59Z",
+      "completed_at": "2026-10-10T15:38:59Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38064459586/job/114249173972"
+    },
+    {
+      "id": 114255325222,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T16:10:28Z",
+      "completed_at": "2026-10-10T16:10:31Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38064459586/job/114255325222"
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "conclusion": "success",
+      "boundaryBackend": {
+        "passed": 10889,
+        "skipped": 2,
+        "deselected": 2286,
+        "seconds": 918.12
+      },
+      "allJobSteps": "success",
+      "productionDependencyAudits": {
+        "rootVulnerabilities": 0,
+        "webVulnerabilities": 0
+      }
+    },
+    "database": {
+      "initialHarness": {
+        "passed": 17,
+        "skipped": 1,
+        "seconds": 0.17
+      },
+      "billing": {
+        "passed": 700,
+        "seconds": 229.39
+      },
+      "authority": {
+        "passed": 1498,
+        "failed": 0,
+        "collected": 1498,
+        "notExecuted": 0,
+        "seconds": 479.24
+      },
+      "sourceV2DatabasePassed": 109,
+      "closedCaptureV2DatabasePassed": 19,
+      "savedAdmissionV2DatabasePassed": 12,
+      "sourcePreviewV2DatabasePassed": 18,
+      "retainedCorrectionReaderDatabasePassed": 31,
+      "laterPythonSummaries": [
+        {
+          "passed": 15,
+          "seconds": 1.25
+        },
+        {
+          "passed": 22,
+          "seconds": 10.16
+        },
+        {
+          "passed": 3,
+          "seconds": 4.62
+        },
+        {
+          "passed": 7,
+          "seconds": 1.4
+        },
+        {
+          "passed": 41,
+          "seconds": 18.19
+        }
+      ],
+      "laterNodeSummaries": [
+        {
+          "passed": 1,
+          "failed": 0,
+          "milliseconds": 51442.491914
+        },
+        {
+          "passed": 13,
+          "failed": 0,
+          "milliseconds": 3699.13633
+        },
+        {
+          "passed": 14,
+          "failed": 0,
+          "milliseconds": 27486.586969
+        }
+      ],
+      "rfBrowser": {
+        "tests": 38,
+        "passed": 28,
+        "failed": 10,
+        "milliseconds": 371580.286446
+      }
+    }
+  },
+  "failure": {
+    "cases": [
+      "owner completes RF capture, correction and lost main response through the canonical backend",
+      "owner completes RF capture, correction and process crash at main response through the canonical backend",
+      "owner completes RF capture, correction and process crash before main provider mutation through the canonical backend",
+      "owner completes RF capture, correction and lost child response through the canonical backend",
+      "owner completes RF capture, correction and process crash at child response through the canonical backend",
+      "owner completes RF capture, correction and process crash before child provider mutation through the canonical backend",
+      "owner completes RF capture, correction and lost confirmation response through the canonical backend",
+      "owner completes RF capture, correction and process crash at confirmation response through the canonical backend",
+      "owner completes RF capture, correction and process crash before confirmation provider mutation through the canonical backend",
+      "owner completes RF capture, rejected-predecessor correction and lost main response through the canonical backend"
+    ],
+    "boundary": "tests/browser_shareholder_register_filing.mjs:440-445 required observed HTTP trace assertion",
+    "exception": "AssertionError missing actual canonical backend request GET archive-source/production-stream-v4:200",
+    "diagnosis": "Native v6 download and common CLI byte verification passed in all10 cases. Stale fixture required old v4 GET despite actual v6 GET200. Earlier separate legacy unknown/no-resend/concealment assertions reached; later distinct full-year source/correction/crash/recovery branch was not reached.",
+    "repair": "One expected endpoint changes v4\u2192v6, all other source bytes and six required request assertions exact. Exact assertion replay RED before, PASS after; removing any required request still fails. Both isolated reviews/successor full browser CI pending."
+  },
+  "notReached": [
+    "Later distinct full-year source/correction/crash and recovery browser branch after stale endpoint assertion",
+    "Rendered public acquisition journey job step",
+    "Independent identity/project/object recovery",
+    "Tax and Accounts readiness lanes"
+  ],
+  "workflowArtifacts": {
+    "totalCount": 0,
+    "browserDownloadsAvailable": false
+  },
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38064459586-app-raw.log",
+      "sha256": "de745963540f63adf1159d54ddc7ed7bbb09338632f46ab4ce36ecef0dc077b8",
+      "bytes": 467476
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38064459586-artifacts-api.json",
+      "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+      "bytes": 32
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38064459586-db-raw.log",
+      "sha256": "3f00797f608762d21ee18bc5e348a301885504cccbf9527afb72076fae74f107",
+      "bytes": 762679
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38064459586-jobs-after-db-v1.json",
+      "sha256": "50a9dd4fbec454c558f774b39f05eec7e7cae8237a23de5415ad8459d805a610",
+      "bytes": 8184
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38064459586-merge-parents.json",
+      "sha256": "9ea38e45bfd24fceacd8b8eb21ffae8d3b825f75035f87e800065550d9a62f74",
+      "bytes": 149
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38064459586-terminal-api.json",
+      "sha256": "8636b59e71e7ed07922456cf6a1de32d4f99353a79f49dbcde21b2d2ccd2d832",
+      "bytes": 12729
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38064459586-terminal-jobs.json",
+      "sha256": "38742110c45c4b50f05e4734da475e6a408d488e0dc3bafdbd45012c778e7e13",
+      "bytes": 9999
+    }
+  ],
+  "limits": [
+    "Whole run failed; no passing release/canonical immutable gate receipt.",
+    "All1498full-schema Authority cases passed; Auth/provider/storage fixture limits persist; no independent restore proof.",
+    "Archive CLI repair passed41 new app cases and actual native browser downloads, but stale assertion prevented later full-year browser flow.",
+    "Earlier Billing migration deadlock remains unresolved despite subsequent700-case passes.",
+    "Closed approval-v3 WIP excluded from pinned head; all A1-A7 and Tax/Accounts handoff pending."
+  ]
+}

@@ -75,7 +75,7 @@ def client(db, actor, *, legacy_ledger=False):
         actor_id = verified.actor_id
         async def session(self, token): return self
         @asynccontextmanager
-        async def transaction(self):
+        async def transaction(self, *, guarded_company_id=None):
             # Reinstall the restricted login's SET-only grant after migration
             # cleanup; this harness shares the fixture owner's connection.
             db.execute(sql.SQL('grant {} to postgres with inherit false,set true').format(sql.Identifier(role)))
@@ -83,6 +83,10 @@ def client(db, actor, *, legacy_ledger=False):
                 with db.transaction():
                     db.execute(sql.SQL('set local role {}').format(sql.Identifier(role)))
                     db.execute("select set_config('talli.verified_actor_id',%s,true),set_config('talli.verified_actor_claims',%s,true)", (str(actor),verified.claims_json))
+                    if guarded_company_id is not None:
+                        assert legacy_ledger
+                        db.execute('select ledger.acquire_company_write_guard_v1(%s::uuid,%s)',
+                                   (str(guarded_company_id),str(actor)))
                     yield (SupabaseLedgerWorkflowTransaction("postgresql://unused", verified, AsyncConnection(db)) if legacy_ledger
                            else PostgresCompanyTaxTransaction(verified, AsyncConnection(db)))
             except psycopg.Error as error:
@@ -151,7 +155,13 @@ def test_cross_company_action_identity_and_membership_remain_concealed(fixture):
     _admit_opening_year(db,foreign,outsider)
     outsider_api=client(db,outsider)
     denied=post(outsider_api,body)
-    assert denied.status_code==404 and denied.json()['code']=='LEDGER_NOT_FOUND'
+    assert denied.status_code==404 and denied.json()['code']=='LEDGER_NOT_FOUND',denied.text
+    absent=post(outsider_api,{**body,'companyId':str(uuid4())})
+    assert absent.status_code==404 and absent.json()['code']=='LEDGER_NOT_FOUND',absent.text
+    insert(db,'public.company_memberships',company_id=cid,user_id=outsider,role='read_only',
+           accepted_at=db.execute('select now()').fetchone()[0])
+    not_owner=post(outsider_api,body)
+    assert not_owner.status_code==403 and not_owner.json()['code']=='LEDGER_FORBIDDEN',not_owner.text
     collision=post(outsider_api,{**body,'companyId':str(foreign),'amount':{'amount':'0','currency':'NOK'}},str(uuid4()))
     assert collision.status_code==409 and collision.json()['code']=='LEDGER_IDEMPOTENCY_KEY_REUSED'
 

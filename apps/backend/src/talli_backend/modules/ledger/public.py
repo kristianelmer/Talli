@@ -1499,6 +1499,19 @@ class ReversedLedgerEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class LedgerEntryAmendment:
+    """An original immutable reversal/correction receipt, including history."""
+    original_entry_id: LedgerEntryId
+    reversal_entry_id: LedgerEntryId
+    replacement_entry_id: LedgerEntryId | None
+    company_id: CompanyId
+    income_year: IncomeYear
+    reason: str
+    amended_by: ActorId
+    amended_at: Timestamp
+
+
+@dataclass(frozen=True, slots=True)
 class PeriodLock:
     period_lock_id: PeriodLockId
     company_id: CompanyId
@@ -1842,6 +1855,10 @@ class LedgerPersistence(Protocol):
         correlation_id: CorrelationId,
     ) -> ReconstructionAssessment: ...
 
+    async def list_entry_amendments(
+        self, *, actor_id: ActorId, company_id: CompanyId, correlation_id: CorrelationId,
+    ) -> tuple[LedgerEntryAmendment, ...]: ...
+
     async def list_entries(
         self,
         *,
@@ -2000,6 +2017,10 @@ class LedgerQueries(Protocol):
         correlation_id: CorrelationId,
     ) -> ReconstructionAssessment: ...
 
+    async def list_entry_amendments(
+        self, *, actor_id: ActorId, company_id: CompanyId, correlation_id: CorrelationId,
+    ) -> tuple[LedgerEntryAmendment, ...]: ...
+
     async def list_entries(
         self,
         *,
@@ -2085,6 +2106,7 @@ __all__ = [
     "LedgerCommands",
     "LedgerCursor",
     "LedgerEntryId",
+    "LedgerEntryAmendment",
     "LedgerEntryKind",
     "LedgerEntryPage",
     "LedgerEntryView",

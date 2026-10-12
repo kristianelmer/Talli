@@ -33,7 +33,33 @@ atomically, and no provider or file function writes ledger data.
 Import only `talli_backend.modules.banking.public`. `BankingCommands` exposes
 supported statement import and the prepare/complete halves of explicit
 suggestion acceptance. `BankingQueries` exposes deterministic cursor pages for
-transactions and accepted suggestions. `ImportBankStatementCommand` accepts
+transactions and accepted suggestions. `read_year_reconciliation` returns a
+`BankYearReconciliation` with complete counts for one company and year from one
+database snapshot, including unmatched facts and accepted warnings. It requires
+an accepted owner and fails closed for a forbidden company instead of returning
+an empty year. Counts cover canonical imported facts, not proof that all bank
+statements were imported. This observation does not authorize filing: writer
+guard coverage and final annual-readiness composition are described below. The
+owned SQL API is `banking.read_year_reconciliation_v1`, introduced by
+`20260929073756_banking_year_reconciliation_projection.sql`; rollback removes
+only this read function.
+
+`read_year_reconciliation_evidence` adds `BankYearReconciliationEvidence`: the
+same complete counts plus a versioned SHA-256 commitment to every canonical
+transaction's fixed v1 identity, scope, economic, provenance and reconciliation
+fields. Each JSON row is hashed, then the ordered fixed-width row hashes and
+company/year/counts are hashed. Observation time is separate; timezone is fixed
+to UTC. Identical counts with different facts produce different evidence.
+`banking.read_year_reconciliation_evidence_v1` acquires the shared company guard,
+requires READ COMMITTED and rechecks accepted ownership after a wait. RF can
+call this public read on its held admission connection without private-table
+access. No returned digest authorizes a later write. Complete statement coverage,
+opening currentness and composed RF annual readiness remain separate obligations.
+Migration `20260929125448_banking_year_reconciliation_evidence.sql` adds the
+read; rollback removes it while preserving facts, the old count API and schema
+visibility. It grants no table access or provider operation.
+
+`ImportBankStatementCommand` accepts
 the immutable uploaded source; parsing, validation, and duplicate hashing remain
 private. `AcceptBankSuggestionCommand` binds the owner's visible preview to the
 expected `BankSuggestionKind` and rule version, while the capability revalidates
@@ -125,3 +151,27 @@ The settlement workflow uses `TaxSettlementBankCommand`, `TaxSettlementBankingPe
 <!-- architecture-inventory
 {"ports":["TaxSettlementBankingPersistence"]}
 -->
+
+## Company write admission
+
+`20260929092425_banking_company_write_guards.sql` acquires the shared company
+archive guard before the original body of each of the 22 canonical mutation or
+row-locking RPCs. The guard requires READ COMMITTED and a verified accepted owner,
+then checks ownership again after waiting. The original routine OID, owner,
+configuration and execution ACL stay intact. Ordinary lists and the
+member-readable suggestion replay retain their existing read authorization.
+Provider calls remain outside these short persistence transactions.
+
+Sync completion/failure asserts that the retained attempt belongs to the
+requested company before its original row update. Owning two companies cannot
+turn a guard for one company into permission to mutate the other. All eight
+Banking tables also take the same guard in row triggers, including mirrored
+writes. This backstop does not by itself establish early lock ordering for raw
+legacy/browser writes; their retirement remains part of final annual admission.
+Older backend Ledger coordinators already acquire the company guard first.
+
+Rollback suspends guarded writer APIs and retains facts, wrappers and row
+backstops. Reapplying the migration restores the helper without nesting wrappers.
+Historical Banking workflow replay must also replay this successor before
+resuming writers. The year-count observation still provides no filing authority;
+owned annual readiness must compose current inputs under its admission guard.

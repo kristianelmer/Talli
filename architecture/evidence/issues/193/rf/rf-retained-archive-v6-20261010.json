@@ -1,0 +1,313 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "PURE_RF_RETAINED_ARCHIVE_V6_COMPATIBILITY",
+  "recordedAtUtc": "2026-10-10T04:07:18.270196+00:00",
+  "baseRevision": "e8d7366509a11cddd86f00840100f89cbf2c0a07",
+  "parentRevision": "78d79112a439eb6bbe64b8c7ff1733e688db8cdf",
+  "observedHeadAtFreeze": "7d5f095aa4c471102c74f8f7af578a27e79c91a6",
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py",
+      "sha256": "e1d8143b2dd1f87eef1885807775859bc07f53aab227bfdf437710bb8b11ab34",
+      "bytes": 112342
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "960c58471550341d5b4aafe772969b16dc9205f0ee76f79f1d44b4d072a44354",
+      "bytes": 99675
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "06d06671f79d6421aebe086bcb4c219f596141230eff7d5f2ee5c65e10632601",
+      "bytes": 27202
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_history.py",
+      "sha256": "41a7b5d331621c4a56af3b0d981026df9d90a425d89175039113a8d982a5f7da",
+      "bytes": 9935
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_history_v6.py",
+      "sha256": "e270293fdf59f1eb1c1736136b6dac26ff758951de1cb5458705812050678f66",
+      "bytes": 9860
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_storage.py",
+      "sha256": "8d87f5280a99a8b73ba097b69019edf4ee92fba2a052eeccf56169760569e9f2",
+      "bytes": 5746
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_storage_v6.py",
+      "sha256": "075a00c264d42965c61b91109575e162cc1513dca381394a5948a985d6922c8a",
+      "bytes": 5263
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_codec.py",
+      "sha256": "2ba09a9518f4c3e6c61356e2f77a081c1fcba4aa72e81e9f59f785b474cbe02b",
+      "bytes": 4322
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py",
+      "sha256": "9ffa3e09b52ba32a3e6f366e07b4a151dd17229a3be20748585a09b1c52f11bb",
+      "bytes": 34986
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/retained_archive_lineage.py",
+      "sha256": "a267de24029c1d29b2dc1abb4f0247776d7db84ff15922e0b57e95715f3ba002",
+      "bytes": 6610
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_archive_history_v6.py",
+      "sha256": "aa87ae8f6b40b7a4d8c739e20cf5a37fe24faadad5a6fbdaa415928c1d0159ff",
+      "bytes": 26852
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_archive_history_v6_adversarial.py",
+      "sha256": "2993ada1f08f0ce3a40cbcf885b4935e04215f69fa497cd42698bd1944b9d889",
+      "bytes": 12275
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_archive_storage_v6.py",
+      "sha256": "8f72cdf0da82d8e152e32a9276f01fec6aa690a3a377c6c7012421f4ddeff77e",
+      "bytes": 29886
+    }
+  ],
+  "implementation": [
+    "Two additive APIs explicitly read retained v1\u2013v6 archives and serialize canonical v6. Source-history and approval-lineage annotations accept v1 or v2 without new record fields.",
+    "A separate closed v6 registry adds exactly eight source-v2 records. Shared codec primitives preserve legacy numbers, Decimal scales, datetime offsets, capture strings and omitted unknown coverage.",
+    "Mixed source history validates contiguous corrections, exact heads, request and actor/key identity, same-year original/intermediate/effective observations and actual withdrawal references. Company-wide off-year Governance commitments do not imply local RF coverage.",
+    "Retained lineage binds saved previews, versioned annual policy, complete approval manifests, review evidence, claims, predecessors, journals and feedback. V3 requires source-v2 and review-v3; legacy approvals retain their original versioned behavior.",
+    "V6 owner-wire comparisons repair equality accepting different UTC-offset representations. Two independently reproduced pre-fix failures are preserved; later scale/lineage probes first ran after repair.",
+    "Existing archive APIs, registries and validation order remain unchanged through exact private extraction. New serialization requires captured history, overrides and withdrawals, including explicit empty collections."
+  ],
+  "checks": {
+    "combinedTests": {
+      "status": "PASS",
+      "passed": 949,
+      "seconds": 30.18,
+      "newCases": 262,
+      "independentCasesIncluded": 36
+    },
+    "immutableComparisons": {
+      "status": "PASS",
+      "archive": 59,
+      "approval": 181,
+      "downstream": 7,
+      "annual": 217
+    },
+    "oldEnvelopesViaNewReader": {
+      "valid": 38,
+      "rejected": 21
+    },
+    "compatibility": {
+      "status": "PASS",
+      "oldPublicDefinitions": 285,
+      "annotationUnions": 2,
+      "newPublicFunctions": 2,
+      "unchangedOwnerFiles": 16
+    },
+    "architecture": "PASS",
+    "openapiUnchanged": "PASS",
+    "whitespace": "PASS"
+  },
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "resolved": 1,
+      "reportSha256": "0aee37c683effa458ac9459ffcd8354b85176648fa6ffd57798d2339ac0e690c"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "bfa7edaf13a67854e2ad47dfcce197298adcd0d82c0b085bb2bc17910c7c3865"
+    },
+    "Root": {
+      "unresolved": 0,
+      "reportSha256": "f2027c3fd07e35637cb9ffcf5413b7d2d7a0a4fa973fb4d9163fa27b4a94125c"
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "rf-retained-archive-final-freeze.json",
+      "sha256": "e1e3349ded6daef9dbca489b4f167f724a90b5f0e1c09c674222b8c038d11124",
+      "bytes": 4343
+    },
+    {
+      "file": "rf-v6-retained-archive-design-v2.json",
+      "sha256": "8b22bf25f2ae9edb2a1c33decbf4d6d31bc1da3112ec4523e9ac4f2cb4ba0d4c",
+      "bytes": 15101
+    },
+    {
+      "file": "rf-retained-archive-step3-implementation-notes.json",
+      "sha256": "40328aaed9a1405a58403d113413cf1fbb7b534bd5ed7d50b6f41a8b82066c53",
+      "bytes": 6063
+    },
+    {
+      "file": "rf-retained-history-step2-freeze.json",
+      "sha256": "3d3f2075971f4797a9d9a33040aba6a6cdd44e4f7cf2a4a9d658f63a5033c7a6",
+      "bytes": 4053
+    },
+    {
+      "file": "rf-retained-archive-final-checks.json",
+      "sha256": "7ea0bbf25b6f1768b128ba5f51943d0acb1110c34b82e04430c4e639de974de4",
+      "bytes": 12128
+    },
+    {
+      "file": "check-retained-archive-step3-legacy.py",
+      "sha256": "503736e6e1e9777f22ddf13228ecfd7c91a9dfcc82349c583971259a27b603bd",
+      "bytes": 1387
+    },
+    {
+      "file": "check-rf-retained-archive-step3-compatibility.py",
+      "sha256": "86ad9a32c438e2bf18e194568199ec19b74a92479d9d60b22deedb88e2a8eedf",
+      "bytes": 5156
+    },
+    {
+      "file": "check-rf-retained-step3-legacy-approval.py",
+      "sha256": "19b6893173c9ad2860b8e3420f8602d4623b7ab6afda823528d8ada0e0502df3",
+      "bytes": 12796
+    },
+    {
+      "file": "check-rf-retained-step3-legacy-downstream.py",
+      "sha256": "75dc7ab47b7891105233f0fcb361d2b79c1317bd8e51982bf86d47b8bbcdc5d4",
+      "bytes": 4960
+    },
+    {
+      "file": "freeze-rf-retained-archive-final.py",
+      "sha256": "c37cd5dcde7f319f5700de22fb83a0ddedcbad68f17d4479cfb87cadb99f31c5",
+      "bytes": 2048
+    },
+    {
+      "file": "rf-retained-archive-final-architecture.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "file": "rf-retained-archive-final-compatibility.log",
+      "sha256": "3c918b3800f552a2306db286b6456eeab41ffa380d68f3dc2c199925e8791cc6",
+      "bytes": 3978
+    },
+    {
+      "file": "rf-retained-archive-final-regression.log",
+      "sha256": "b78bd7c10bafc7d0579a66e2aa3c9b22669f35961a035893148bbee704ed34f6",
+      "bytes": 1141
+    },
+    {
+      "file": "rf-retained-archive-step3-compatibility.json",
+      "sha256": "3c918b3800f552a2306db286b6456eeab41ffa380d68f3dc2c199925e8791cc6",
+      "bytes": 3978
+    },
+    {
+      "file": "rf-retained-archive-step3-legacy-approval.log",
+      "sha256": "7a8a0f4363385c9672821dea3cef58c463485fdbcd57bf36b794d1fbe62607ec",
+      "bytes": 3039
+    },
+    {
+      "file": "rf-retained-archive-step3-legacy-downstream.log",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "file": "rf-retained-archive-step3-legacy-final.log",
+      "sha256": "c94a8a59e337d8c358f1726045b1e495f02922b64338b7f6c86303ac5a005dea",
+      "bytes": 66
+    },
+    {
+      "file": "rf-retained-archive-step3-legacy-result.json",
+      "sha256": "7c1e1dd65228f9ffb4785c0a05d08345654ba818358029a504c2a9199918bf28",
+      "bytes": 74
+    },
+    {
+      "file": "rf-retained-archive-step3-openapi.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "rf-retained-archive-v6-exact-body-red.log",
+      "sha256": "03bdddaa8753312e18598df2d44e2f0f29e712f4cd75bf571e4826c0afcd370c",
+      "bytes": 2705
+    },
+    {
+      "file": "rf-retained-history-step2-checks.json",
+      "sha256": "45c6925820944d481d73caff356fa7efcba6a46cd15eba4b388eebcf3377874f",
+      "bytes": 10536
+    },
+    {
+      "file": "rf-retained-step3-legacy-approval.json",
+      "sha256": "7a8a0f4363385c9672821dea3cef58c463485fdbcd57bf36b794d1fbe62607ec",
+      "bytes": 3039
+    },
+    {
+      "file": "rf-retained-step3-legacy-downstream.json",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "file": "rf-legacy-archive-pre-v6.json",
+      "sha256": "ffd9b4c926fd4e1470ace5d242eb0e0ce44d5d571caa17b903a9256dafee4a31",
+      "bytes": 3985354
+    },
+    {
+      "file": "rf-legacy-approval-pre-v3.json",
+      "sha256": "56807e01f93783fc05a4a5fc42b3c5f0a83a50da60c92e786ccc5aa698fcdd25",
+      "bytes": 5220965
+    },
+    {
+      "file": "rf-v1-downstream-pre-integration.json",
+      "sha256": "5b41be2a029992b27492ff5bb2c51cbde3e5c8fb2f8e4d26130791ea7a8c66ec",
+      "bytes": 156580
+    },
+    {
+      "file": "rf-v1-annual-policy-pre-consumer.json",
+      "sha256": "ab8a025dd1890734c3e33bdbb6cdfe08fa9f120090503c380ecb059f4d9dd3ba",
+      "bytes": 987379
+    },
+    {
+      "file": "rf-retained-archive-final-spec-review.json",
+      "sha256": "0aee37c683effa458ac9459ffcd8354b85176648fa6ffd57798d2339ac0e690c",
+      "bytes": 15335
+    },
+    {
+      "file": "rf-retained-archive-design-root-decision.json",
+      "sha256": "ba570c63add683f9e542fcce09024b666900af86ea87be3e2bb7e4a249c1835a",
+      "bytes": 2505
+    },
+    {
+      "file": "rf-retained-history-step2-spec-review.json",
+      "sha256": "052a9df0b78b78e5b907c36c4dba9dcc02bd4c1db2f5f0ad46d84274cddc1349",
+      "bytes": 7878
+    },
+    {
+      "file": "rf-history-step2-spec-red.log",
+      "sha256": "4394b3757a8775561acffd0a597ecd919dd5a54f86c4c51008a395a0e261d8f9",
+      "bytes": 2701
+    },
+    {
+      "file": "rf-history-step2-spec-green.log",
+      "sha256": "b1392b1cd305777e66541374962b886be3ed60187b81d0d63c0e5c5ff95cfa4e",
+      "bytes": 99
+    },
+    {
+      "file": "rf-retained-approval-step1-spec-review.json",
+      "sha256": "1a3f6c6c5833b400f75a17ca57c8d610cd877f2059a3de4d4b14da177f502b2a",
+      "bytes": 9998
+    },
+    {
+      "file": "rf-retained-archive-final-standards-review.json",
+      "sha256": "bfa7edaf13a67854e2ad47dfcce197298adcd0d82c0b085bb2bc17910c7c3865",
+      "bytes": 15220
+    },
+    {
+      "file": "rf-retained-archive-root-review.json",
+      "sha256": "f2027c3fd07e35637cb9ffcf5413b7d2d7a0a4fa973fb4d9163fa27b4a94125c",
+      "bytes": 2150
+    }
+  ],
+  "limits": [
+    "Pure unit/static evidence only. The 949 cases and 464 immutable comparisons are different measures; earlier affected-suite counts overlap. Combined work was verified together, not as an isolated step2-only revision.",
+    "No runtime, adapter, HTTP, SQL, claim, dispatch, fresh writer, Archive-owner completion/eligibility or cancellation activation.",
+    "Consistency cannot prove authentic origin, signatures, omitted-history completeness, foreign-original economic correspondence, original document bytes or current admission.",
+    "Terminal e8d CI tested an earlier exact merge. This combined slice and disposable replay repair need new CI; no database/browser/provider/independent Auth restore proof is claimed.",
+    "A1\u2013A7, all-three-filing technical dependencies and both linked immutable complete gates remain pending. No production filing, genuine-company admission, outreach, paid service or launch clearance."
+  ]
+}

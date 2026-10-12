@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "issue": "#193",
+  "slice": "RF-1086",
+  "status": "TEST_SUBMISSION_AND_ARCHIVE_VERIFIED",
+  "sourceRevision": "abb48eda31f75583629eb1ec9ecd71f676061317",
+  "executionRevision": "02f8ef85d6a481311aec06bc29f3d13499824642",
+  "companyOrgNumber": "310279617",
+  "incomeYear": 2025,
+  "recovery": {
+    "status": "ARCHIVE_VERIFIED",
+    "documentCount": 2,
+    "documentHashes": [
+      "dee9f16ab1bd114db54b15e5a5e3825919e4b15e15a1c76cb201860fdad08d5d",
+      "4d1e0d131ab24969e212ea6628662ad40d1b59df56351df61d4614a6b5d7238b"
+    ],
+    "expectedSubmittedHashes": [
+      "4d1e0d131ab24969e212ea6628662ad40d1b59df56351df61d4614a6b5d7238b",
+      "dee9f16ab1bd114db54b15e5a5e3825919e4b15e15a1c76cb201860fdad08d5d"
+    ],
+    "archiveReference": "01a0a376-44d7-7535-845a-322691b770c2",
+    "finalBusinessAcceptanceVerified": false,
+    "startedAt": "2026-09-15T05:25:12.055540+00:00",
+    "finishedAt": "2026-09-15T05:25:13.538172+00:00",
+    "filingPosts": 0,
+    "originalJournalUnchanged": true,
+    "archiveGets": 1,
+    "tokenGrants": 1,
+    "sourceRevision": "abb48eda31f75583629eb1ec9ecd71f676061317"
+  },
+  "ownerAuthorization": {
+    "message": "Yes",
+    "scope": "Up to20 archive GETs over10minutes,existing test credentials,no resubmission or paid steps",
+    "manifestSha256": "84d30020756f3af8bddca939a33da3ec4a7947aa7e292b2a3a5223ecf2feeb78"
+  },
+  "verification": {
+    "originalSubmissionPostCount": 3,
+    "recoveryFilingPosts": 0,
+    "recoveryArchiveGets": 1,
+    "bothSubmittedXmlHashesMatch": true,
+    "originalJournalPreserved": true,
+    "finalBusinessAcceptanceVerified": false
+  },
+  "artifacts": {
+    "read-only-recovery-authorization.json": "81d4f46d4dba9aee59920f2e7da528b00746e215fdf429a8fec49bda648d9b48",
+    "read-only-recovery-plan.json": "84d30020756f3af8bddca939a33da3ec4a7947aa7e292b2a3a5223ecf2feeb78",
+    "read-only-recovery-trace.json": "0f0239d2b59aeee73b71008cdbe327714661743507c3c5e012da7a894779cb2e",
+    "read-only-recovery-result.json": "0d5bbe691dc213c71e14b7f789e36d3280b98e53578b07ba33318c67e7684966",
+    "live-evidence.json": "60cb7694d116b1515133ecbe74e738b91c461bb59197ad57b7bbc47d9e8fe6fe",
+    "verified-provider-outcome.json": "b7fa44e92cc9668b7d471ff46642b9505ea786308a1d50c08e6ddc812a130602",
+    "../recover-approved-archive.py": "2b18c89c09f01cb62c6786a7300a41eac795ec6c0d5f51364b0335a6c6e65c3d"
+  },
+  "limits": [
+    "This verifies the synthetic no-activity transport and submitted-document archive only",
+    "No broader transaction-code or final-business-acceptance proof",
+    "No genuine production filing, complete RF gate or later obligation credit"
+  ],
+  "review": {
+    "status": "PASS_SYNTHETIC_BASELINE_ONLY",
+    "checks": 36,
+    "report": "reviews/archive-recovery-20260915-spec.md",
+    "sha256": "ff9ac10d5b8b66ddba9dcb87ce27bb5c1ca692370e76e5e0af500a14d55fe29d"
+  }
+}

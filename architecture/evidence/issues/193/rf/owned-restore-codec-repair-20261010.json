@@ -1,0 +1,116 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "REVIEWED_OWNED_RESTORE_CODEC_AND_BROWSER_WIRE_REPAIR",
+  "recordedAtUtc": "2026-10-10T17:17:43.244704+00:00",
+  "baseRevision": "9212dde76b3048c877b4dd4b0d8246c415ccc9bb",
+  "status": "LOCAL_REVIEWED_ACTUAL_RESTORE_AND_SUCCESSOR_BROWSER_REQUIRED",
+  "changes": [
+    "Move bounded codec dispatcher to existing application archive composition, used by both CLI and owned restore. Two fixed stream\u2192RF serializer/verifier profiles, unique exact header/known codec; no invalid-v6 fallback, no source byte transcoding. Old verifiers and producers unchanged.",
+    "Restore compares downloaded/source/clone/post-rehearsal canonical text through same verified codec. Identity actor recovery uses same profile; defaults preserve legacy callers/codec. Original ownership/read role/URL/Storage/Auth/cleanup/revocation/pilot/deletion policies remain unchanged.",
+    "One browser assertion compares archive override.id with generated HTTP result.recordId, matching public wire; all other journey bytes unchanged.",
+    "CLI bounded test now admits exact header-size or exact record-size calls. Moving helper namespace means patching header ceiling now changes actual shared owner constant; prior wider record read is independently bounded and preserved. No cutoff/uniqueness/corruption checks removed."
+  ],
+  "checks": {
+    "localPythonPassed": 295,
+    "newRestoreCases": 4,
+    "protectedCases": 291,
+    "seconds": 37.43,
+    "nodeFixturePassed": 28,
+    "nodeFixtureSeconds": 14.063462958,
+    "ciSelectionPassed": 125,
+    "ciSelectionSkipped": 0,
+    "ciSelectionSeconds": 47.132907084,
+    "architecture": "PASS",
+    "diffCheck": "PASS",
+    "controlledSavedOriginals": 14,
+    "controlledSavedFeedback": 2,
+    "controlledCanonicalBytesExact": true,
+    "specOpenFindings": 0,
+    "standardsOpenFindings": 0
+  },
+  "sourceFreeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-owned-restore-codec-implementation-freeze-v1.json",
+    "sha256": "93873b96c7d6f61105339b3951bc022a762e28e028495b663b26cf40d8da7aea",
+    "bytes": 7732
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-owned-restore-codec-spec-review-v1.json",
+      "sha256": "afca6fe663daef8527406a2d481d43b3dc4e2acc49e477f699f8edec8bcaccb2",
+      "bytes": 26121
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-owned-restore-codec-standards-review-v1.json",
+      "sha256": "6d988b81507dfab49fb1d995d1fc7fd43fec4bb93cf5c7049c3abeac1f4c9d5f",
+      "bytes": 19753
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-restore-codec-focused-red-v1.log",
+      "sha256": "08e692a2484a03adee330a4a6bd6a4033c6bae0383f434007f5b85590bfd2985",
+      "bytes": 10772
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-restore-codec-focused-green-v1.log",
+      "sha256": "bc741b1261735d742886710cb9accd11d6dcd2412f99634d5f61afec8a98a665",
+      "bytes": 6013
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-restore-codec-and-protected-v2.log",
+      "sha256": "3e4d082f4fd27a7b0edb4768cce9a62a888987302ce06595749fe34f82e3676c",
+      "bytes": 113
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-restore-codec-and-protected-v3.log",
+      "sha256": "7f99f89a8c11b6a156bc316d2944b2d7fa301d92b14f5aac9cc37d8097e3849f",
+      "bytes": 421
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-restore-codec-browser-fixture-v1.log",
+      "sha256": "f4f63f04c0509f4b14bc106838388196227c4c7297c4ca610ea29c732ff544a1",
+      "bytes": 17868
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-restore-codec-browser-fixture-v2.log",
+      "sha256": "c83ff77829e239ad515e8ab6f42cdd97fe8a3b55a4869018046beca649546f85",
+      "bytes": 2874
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-restore-codec-ci-selection-v1.log",
+      "sha256": "507211988af26c11e339084a9574be94188f7e9d13d853a6f16b464f786e570e",
+      "bytes": 13359
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-restore-codec-architecture-v1.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-restore-codec-protected-functions-v1.json",
+      "sha256": "d5f456c1aa205eac165088c57ac27ebc71d1bc9c925a5d117924ac97bf635f76",
+      "bytes": 1023
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-restore-override-wire-assertion-v1.json",
+      "sha256": "6fcbc341e09bc81cbc10bffeeb58208a3ea85373ecd9d71a75bfad559d4fbbec",
+      "bytes": 1160
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-restore-codec-controlled-replay-v1.json",
+      "sha256": "7b2cb23231377441ea112d57e86203055906a54b1f6e7f6a97b9386b7fddc313",
+      "bytes": 553
+    }
+  ],
+  "limits": [
+    "RED focused run3fail15pass: actual retained stream failed legacy verifier; two missing codec-keyword API tests also failed. No three-product-defect claim.",
+    "First green run117pass2fail due fixture-wide header constant patch now sharing namespace with record verifier; test asserts exact allowed header/record sizes. Protected successor295pass.",
+    "Intermediate v2 test invocation guessed nonexistent feedback-original filename: zero tests. Correct discovered feedback_archive_originals file in passing v3.",
+    "First Node run used depleted checkout .venv, missing httpx; corrected native312 env28pass. No production-node failure claim.",
+    "All resource, SQL/Auth/Storage/owner-session behavior in new runner tests are explicit doubles; actual portable originals/RF codec/streams/serializers real, retained cases trap fresh rendering. No actual local resource creation or restoration.",
+    "Controlled243997-byte archive from prior native browser, exactb4fd9b7...adbd14/2 checks, not actual currentCI download.",
+    "b350 wholeCI terminal failure: Application10889pass,700Billing/1498Authoritypass; RFbrowser34pass4fail. Six full-year child/confirmunknown-crash journeys completed; three main cases fail before restore, rejected-predecessor case before later archive.",
+    "Closedapproval9212 local/unpushed;36fullschema cases unexecuted. AllA1-A7/canonicalrelease/independentfullrecovery/Tax/Accounts pending."
+  ]
+}

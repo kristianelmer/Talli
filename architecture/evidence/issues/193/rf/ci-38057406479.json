@@ -1,0 +1,158 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-10T14:25:45.525196+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "databaseId": 38057406479,
+    "runAttempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "headSha": "6abe2e6670a2c59dbf5a9ac884cf590b023a6c0f",
+    "runStartedAt": "2026-10-10T13:52:31Z",
+    "updatedAt": "2026-10-10T14:22:29Z",
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38057406479"
+  },
+  "checkout": {
+    "revision": "9fbe09ff1629334e64a966bda208411334ac6c9c",
+    "kind": "pull_request_merge_commit",
+    "parents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "6abe2e6670a2c59dbf5a9ac884cf590b023a6c0f"
+    ]
+  },
+  "jobs": [
+    {
+      "id": 114228596720,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-10T13:52:33Z",
+      "completed_at": "2026-10-10T14:22:22Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38057406479/job/114228596720"
+    },
+    {
+      "id": 114228596841,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T13:52:33Z",
+      "completed_at": "2026-10-10T14:16:25Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38057406479/job/114228596841"
+    },
+    {
+      "id": 114228597582,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-10T13:52:32Z",
+      "completed_at": "2026-10-10T13:52:31Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38057406479/job/114228597582"
+    },
+    {
+      "id": 114234223739,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T14:22:25Z",
+      "completed_at": "2026-10-10T14:22:29Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38057406479/job/114234223739"
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "conclusion": "success",
+      "boundaryBackend": {
+        "passed": 10800,
+        "skipped": 2,
+        "deselected": 2268,
+        "seconds": 860.61
+      },
+      "allJobSteps": "success",
+      "productionDependencyAudits": {
+        "rootVulnerabilities": 0,
+        "webVulnerabilities": 0
+      }
+    },
+    "database": {
+      "initialHarness": {
+        "passed": 17,
+        "skipped": 1,
+        "seconds": 0.27
+      },
+      "billing": {
+        "passed": 700,
+        "seconds": 289.02
+      },
+      "authority": {
+        "passed": 1467,
+        "failed": 1,
+        "collected": 1480,
+        "notExecuted": 12,
+        "seconds": 691.84
+      },
+      "sourceV2DatabasePassed": 109,
+      "closedCaptureV2DatabasePassed": 19,
+      "savedAdmissionV2DatabasePassed": 12,
+      "retainedCorrectionReaderDatabasePassed": 18,
+      "callableAccessFixtureRepair": "PASS_FULL_SCHEMA"
+    }
+  },
+  "failure": {
+    "case": "test_rf1086_retained_correction_reader_database.py::test_reader_enumerates_other_actors_and_competing_legacy_roots",
+    "exception": "psycopg.errors.UniqueViolation",
+    "constraint": "system_user_requests_one_live_company_obligation",
+    "qualification": "Fixture inserts a second accepted request for the same company/obligation before constructing second retained legacy root; intended reader assertions were not reached. Existing one-live-company-request constraint remains correct.",
+    "repair": "Separate fixture keeps independent original actor/entitlement/preview/approval/submission, references existing company request/external reference, asserts exact original request retained and one live request. No fresh filing authority from shared request is claimed; unchanged constraints/catalogs/production logic. Full repaired fixture execution pending."
+  },
+  "notReached": [
+    "Remaining12 retained-correction database cases",
+    "New local v2 preview stage excluded from this pinned head",
+    "Later owned clone, browser, independent Auth/object recovery, Tax and Accounts lanes"
+  ],
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38057406479-app-raw.log",
+      "sha256": "1ba85cf181bc4c6fe1c5278bfb2914d06e9c6781cf55c89a15bf7e09f7c4a89e",
+      "bytes": 467262
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38057406479-db-raw.log",
+      "sha256": "89ccfbca6312c607545803386e2578be894bdfcd5d1beb2df03104912e5f5d70",
+      "bytes": 621746
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38057406479-terminal-api.json",
+      "sha256": "4afdf3f511ddcd6f0fd737355d1e48439db45bf2c8fc6cb84dc005d5f0695294",
+      "bytes": 12746
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38057406479-terminal-jobs.json",
+      "sha256": "51885974371c6c3ba8759ca21f1cb9811dd1b27c2a381b3f834dc524144917be",
+      "bytes": 9999
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38057406479-merge-parents.json",
+      "sha256": "8a359ba9c972a6859d0b45b35ff2a1da3500e5fa5e0265bc5f0f690ca38b0661",
+      "bytes": 149
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38057406479-summary-sanitized.log",
+      "sha256": "b95f24a289a879ba387d4dfb86d55a0ba2e96da2de719baae19e4df5b849eeb5",
+      "bytes": 884
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38057406479-checkout-sha.txt",
+      "sha256": "a3a276f0dcff0b65af0cd0b3170d920ed6cde5c3be290db6f799c00108cfaab5",
+      "bytes": 41
+    }
+  ],
+  "limits": [
+    "Whole run failed; no passing release or canonical immutable gate receipt.",
+    "Earlier Billing checkout migration deadlock remains unresolved despite subsequent700-case passes.",
+    "All A1-A7 and independent identity/object recovery remain pending.",
+    "Preview-v2 changes are not included; review repairs/full-schema proof pending."
+  ]
+}

@@ -107,6 +107,7 @@ def expected_payment_status(kind: BillingPaymentKind) -> BillingPaymentStatus:
 
 class BillingPilotCaseProfile(StrEnum):
     RF1086_NO_ACTIVITY_V1 = "rf1086_no_activity_v1"
+    RF1086_FULL_YEAR_V1 = "rf1086_full_year_v1"
 
 
 class ProductionPilotStatus(StrEnum):
@@ -340,7 +341,7 @@ class ManageProductionPilotEntitlementCommand(_BillingCommand):
             or not evidence
             or len(evidence) > 1000
             or self.obligation is not BillingObligation.SHAREHOLDER_REGISTER
-            or self.case_profile is not BillingPilotCaseProfile.RF1086_NO_ACTIVITY_V1
+            or not isinstance(self.case_profile, BillingPilotCaseProfile)
         ):
             raise BillingError.invalid()
         object.__setattr__(self, "evidence_reference", evidence)

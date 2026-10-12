@@ -1,0 +1,104 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "REVIEWED_INSTALLED_SUCCESSOR_REPLAY_FIXTURE_REPAIR",
+  "recordedAtUtc": "2026-10-10T17:52:37.094314+00:00",
+  "baseRevision": "5923c5fcc5924dc16af27bc8df9b5e61bc1f540e",
+  "status": "LOCAL_REVIEWED_FULL_SCHEMA_SUCCESSOR_EXECUTION_REQUIRED",
+  "changes": [
+    "Two old source/preview lifecycle fixture functions snapshot actual installed successor topology before first base replay erases detection markers. Restore same registered order through frozen rehearsal reader after EACH initial replay and recutover.",
+    "Keep all existing rollback-denial/history/replay/role-option assertions; add exact role tuple assertion after finalrecutover. Other31function spans byteexact. No production migration/function/body/owner/grant/signature/application/API change.",
+    "Native projected catalog executes published eight withdrawal-guard version patches and sourceV2 fence/version-copy block plus entire new approval migration. Base function resets hide withdrawal/V2 registry markers; annual replay then resets appendapproval guard, and actual newmigration rejects exact missing-body drift. Original captured order restores strict fingerprints and old/new OIDs/definitions/ACLs."
+  ],
+  "checks": {
+    "nativeProjectedCatalogChecks": 7,
+    "nativeStoppedRemoved": true,
+    "collectedNotExecuted": 73,
+    "newApprovalCollectedNotExecuted": 36,
+    "ciSelectionPassed": 128,
+    "ciSelectionSkipped": 0,
+    "ciSelectionSeconds": 49.514399375,
+    "otherFixtureFunctionsExact": 31,
+    "productionChanges": 0,
+    "diffCheck": "PASS",
+    "specOpenFindings": 0,
+    "standardsOpenFindings": 0
+  },
+  "sourceFreeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-recutover-successor-fixture-freeze-v1.json",
+    "sha256": "4b7a7e5f7a1f8de6c92be8f8398f8b7a90d3d4e949f10caf6cd7530b368c0b81",
+    "bytes": 5158
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-recutover-successor-fixture-spec-review-v1.json",
+      "sha256": "d9b1b41e3c39a14d7a6633d153978e92308376ccba11af74d458a1946aa8a6f1",
+      "bytes": 17519
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-recutover-successor-fixture-standards-review-v1.json",
+      "sha256": "da758c494c3b5222828eeac1efaa06cb85b2ba697ed2a34b57b0254e1a54622d",
+      "bytes": 16743
+    }
+  ],
+  "failureReceipt": {
+    "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/architecture/evidence/issues/193/rf/ci-38071170412.json",
+    "sha256": "a936c8d560d57c8fc0bef78d9d6ea0899e96b17bb2f0edef8c5032b8672a0e5e",
+    "bytes": 6222
+  },
+  "artifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-recutover-catalog-native-v1.json",
+      "sha256": "9d11eff22d75a21837d0debf9338ae0ea3153c41621cc5712e2c3bdce7ea5565",
+      "bytes": 4044
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-recutover-catalog-native-v1-command.log",
+      "sha256": "a058af180fcf286e732948bad68ebc45a95ae1b229c027d72d8e566fd65c36b6",
+      "bytes": 3650
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-recutover-catalog-native-v2.json",
+      "sha256": "18221c2209f097bb8bd46b8d27b2f865724a2835a918d9b0bd728c6ad1f845cf",
+      "bytes": 5440
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-recutover-catalog-native-v2.log",
+      "sha256": "5d68fa72add667da16c7d44d51469e8c489896012dc60e27f8eed0b023ad15e2",
+      "bytes": 973
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-recutover-catalog-native-v2-command.log",
+      "sha256": "48ffeb522e605da6e203d5038448f153c68eef943a23d78c2d98673e83bf5436",
+      "bytes": 114
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/probe-rf-recutover-catalog-native-v2.py",
+      "sha256": "856bfced210bc9bb85d4fb2a18b3cfbe0e98c9a2b6043b28197c8df23a35f58b",
+      "bytes": 13165
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-recutover-fixture-protected-functions-v1.json",
+      "sha256": "18dada17537ac31bb6be910e8c6b3aff88e81c5fb3f23d8e8d4cc3a7c14b59e6",
+      "bytes": 1094
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-recutover-fixture-collection-v1.log",
+      "sha256": "246069ee1512165f463ec47ae1f3348f65918454b3267fcd06528f3725b14d86",
+      "bytes": 9155
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-recutover-fixture-ci-selection-v1.log",
+      "sha256": "77bde11bc34d01b42d6d2601cda338ec2d772d555ed124594fa5196cb3f4ff24",
+      "bytes": 13679
+    }
+  ],
+  "limits": [
+    "Native7 is projectedcatalog only, minimalrowtypes and labeled owner/access/dispatch stubs; only4relevant registry predicates. No actualfullschema/producerorigin/data/roleAuth/MFA/RLS/Gov/currentannual/Authority/Billing/Storage/restore proof.",
+    "Nativev1 initial setup failed because separate schemaowner lacked temporary CREATE for real withdrawal DO; probe corrected borrowing/restoration only in v2. Bothclusters stoppedremoved.",
+    "73actualfullschema cases collected only; no localexecution. Full mandatory1534-case lane and both repairedlegacy lifecyclecases need successorCI.",
+    "f706AppdeadlineandDB341pass1fail,1192notexecuted inclnew36. Existingnewapprovalfingerprint correctlyrefuses omittedwithdrawal; no weakening.",
+    "Closedclaimplanreviewed0/0 but implementation stillgated onall36actualnewapprovalpasses. AllA1-A7/RF\u2192Tax\u2192Accounts/canonicalacceptancepending.",
+    "Spec and Standards are separate read-only reviews; source/artifact pins match. Both full-schema lifecycle functions require actual successor execution. No claim prerequisite or release acceptance clearance."
+  ]
+}

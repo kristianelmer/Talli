@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "Governance manifest expectation repair",
+  "observedDateUtc": "2026-10-09",
+  "baseRevision": "24d9c0f33406294359e16293036f10ceaaa68998",
+  "status": "LOCAL_REPAIR_FOCUSED_CHECKS_PASS_FULL_CI_PENDING",
+  "observedFailure": {
+    "receipt": "ci-38001797771.json",
+    "run": 38001797771,
+    "headSha": "1dccdcdd93e300405473265e8cbb9bf503138b5e",
+    "applicationConclusion": "failure",
+    "backendPassed": 8351,
+    "assertionsFailed": 2
+  },
+  "change": "Update the exact Governance migration list and exact one-item public RF query dependency in the existing manifest tests. Preserve every other assertion, including Documents dependencies, contract ownership and frozen future scopes. No production code or grant change.",
+  "checks": {
+    "existingFocusedTestsPassed": 11,
+    "failed": 0,
+    "rootReview": "Exact declarations match the already committed Governance manifest; no generic acceptance or exemption added."
+  },
+  "sourceFileSha256": {
+    "tests/corporate_governance_review_fixes.test.mjs": "338e456c25a8fef62e4171c3ec570142d77c3ba9f6b6d9bcf0f26c272b0444fc"
+  },
+  "privateArtifacts": {
+    "governance-manifest-expectation-repair.log": {
+      "path": "/private/tmp/talli-release-20261009/governance-manifest-expectation-repair.log",
+      "sha256": "2d16bb9b04196dab39ee94ce7da3ef0f0f6bd860b988e479ca696d1bb120c6a8",
+      "bytes": 1038
+    }
+  },
+  "limits": [
+    "Focused manifest checks do not establish runtime or full-CI success. The recorded CI head predates this repair and the cross-owner topology repair.",
+    "Fresh RF browser, independent Auth/object restore, all A1–A7 and release gates remain pending."
+  ]
+}

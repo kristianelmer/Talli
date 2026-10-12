@@ -32,10 +32,12 @@
     "queries": [
       "CompanyYearCloseAssessment",
       "CorrectedLedgerEntries",
+      "LedgerEntryAmendment",
       "LedgerEntryPage",
       "LedgerEntryView",
       "LedgerPage",
       "LedgerQueries",
+      "OpeningBankInput",
       "PeriodLock",
       "PeriodLockPage",
       "PostedLedgerEntry",
@@ -43,7 +45,6 @@
       "ReconstructionEconomicFactCandidates",
       "ReconstructionEconomicFactSnapshot",
       "ReversedLedgerEntry",
-      "OpeningBankInput",
       "preview_tax_settlement_lines"
     ],
     "events": [],
@@ -168,7 +169,7 @@
     ],
     "storageBuckets": [],
     "projections": [],
-    "migrations": "supabase/migrations/20260827100000_ledger_capability.sql"
+    "migrations": "supabase/migrations/20260827100000_ledger_capability.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20261009225857_ledger_governance_entry_assertion.sql"
   },
   "ports": [
     {
@@ -202,10 +203,12 @@
     "Service-role access, RLS bypass, direct browser persistence, or a second posting implementation"
   ],
   "tests": {
+    "companyWriterGuard": "apps/backend/tests/test_governance_ledger_company_guard_database.py",
     "contract": "apps/backend/tests/test_ledger_public_contract.py",
     "policy": "apps/backend/tests/test_ledger.py",
     "database": "tests/ledger_database_runtime.test.mjs",
-    "architecture": "tests/architecture_foundation.test.mjs"
+    "architecture": "tests/architecture_foundation.test.mjs",
+    "governanceEntryAssertion": "apps/backend/tests/test_ledger_governance_entry_assertion_database.py"
   },
   "compatibilityExceptions": [
     "compat-ledger-persistence"

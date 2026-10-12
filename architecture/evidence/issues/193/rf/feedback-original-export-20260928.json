@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-28",
+  "status": "PASS_BOUNDED_PORTABLE_FEEDBACK_ORIGINALS",
+  "baseCommit": "ae0b2a0c62996ab34b58258a0daee4f66d1edd19",
+  "scope": "Preserve exact retained feedback identity and bytes through canonical RF export, HTTP download and offline verification.",
+  "behavior": [
+    "Canonical v3 binds feedback to original ID, metadata hash, source year and retention time; v1 and v2 remain byte-exact round-trippable.",
+    "feedbackOriginals carries Documents-owned metadata and exact bytes. Attribution, submission linkage and all commitments must match. Current bucket metadata does not replace a bound historical original.",
+    "Download and restore consistency checks reject missing, extra, duplicate or altered originals and deleted bindings; timestamps retain submillisecond precision.",
+    "The offline --require-feedback-originals flag rejects incomplete legacy coverage. Byte verification does not claim database/object restoration or independent authenticity.",
+    "Source and feedback bytes share a 128 MiB inline limit.",
+    "Fixed missing Documents schema USAGE for the RF store owner. The narrowed probe reproduced SQLSTATE 42501 before the grant and passed after it; no RF retained-byte read grants added."
+  ],
+  "verification": {
+    "focusedBackend": "201 passed before four additional attribution/budget cases; final feedback file 21 passed.",
+    "rfBackendSelection": "1738 passed, 6844 deselected, 3 warnings; no database cases executed.",
+    "webArchiveAndRestore": "120 passed",
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "isolatedPostgres": "PASS: corrected fixture does not supply missing schema grant; actual migrations reject bad receipts and preserve atomicity, idempotency, immutability, rollback/replay and role isolation. RF predecessor routines remain minimal fixture shims.",
+    "previousRevisionCi": "Run 36413115758 failed: Database at retained-feedback writer; Application at stale old-writer-name assertion. Both addressed locally; previous archive-read failure not reached. Final revision CI pending.",
+    "ciHarness": "71 passed"
+  },
+  "limits": [
+    "No legacy feedback backfill, full database/object hydration, streaming export, provider operations or hosted changes.",
+    "Schema-wide final-revision checks and all seven RF acceptance criteria remain pending.",
+    "No production AS recruited or data used."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-feedback-export-20260928-14d7",
+  "sha256": {
+    "talli-feedback-export-web.log": "eb9534f486d566dd8bade1036115e3425f0877d4385e8c96c69260f10fd3dc5f",
+    "talli-feedback-export-backend.log": "9cdc0a937ea8a8a45c113dbc771836e336020cf74e4e2e283b58020ef9e9bd92",
+    "talli-feedback-export-rf.log": "27e79594a72303184cb9eb0691fa049901517663a0755055e08b5d60d7abeae0",
+    "talli-feedback-export-attribution.log": "2168479eb3c4bf978a078c0777ec2364850ab1e2f555ab9510fc0fc1ee6bbabd",
+    "talli-feedback-export-typecheck.log": "b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+    "talli-feedback-export-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-feedback-schema-red.log": "53ca1cb5d2b5bbb9cba8fcf133de475027038ef54d4b5e97c370d60b3de02847",
+    "talli-feedback-schema-green.log": "fc9856a63ee0cb77d19dd3e59c594e631296553d4a1a45218654140da2c2df71",
+    "talli-feedback-binding-schema-probe.py": "c3bdc71132f46bcbcdc4735fe4d63091120576a799e732a7f174bbb636ad3d36",
+    "talli-ae0b-database.log": "6fe3e2bc790f676aa6588bf88febdfb1b326f4b29184a7c22f0a2b744e0f69e4",
+    "talli-ae0b-application.log": "b09eae16a4db2f33f94442c3a2408468ec98894cb4cfa01e3785be5b2ae79883",
+    "talli-feedback-export-harness.log": "c181e603c02e16902159d15c9134dd14c2aba9761fa26fa3a3a3347055ae86ca"
+  }
+}

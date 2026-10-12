@@ -1,0 +1,61 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "8c01b07fc83457624ef801100f6b873cd599f2f2",
+  "scope": "Rejected full-year RF predecessor, explicit correction approval, accepted replacement, preserved rejection history and actual database restoration; loopback provider only",
+  "validation": {
+    "targetedBrowser": {
+      "passed": 2,
+      "journeys": [
+        {
+          "scenario": "correction and lost main response",
+          "durationMs": 130631.690083
+        },
+        {
+          "scenario": "rejected-predecessor correction and lost main response",
+          "durationMs": 120174.945417
+        }
+      ],
+      "durationMs": 251189.8095,
+      "selection": "Accepted and rejected predecessor corrections with lost main response; other eight fault scenarios left to full CI"
+    },
+    "rfFixtureSafetyPassed": 21,
+    "authorityFixtureSafetyPassed": 7,
+    "fullCiBrowserMatrixCount": 10,
+    "credentialScan": "passed",
+    "whitespace": "passed",
+    "cleanup": "Passed: owned stack removed, 42 recorded containers restored, Colima stopped and generated Next files restored",
+    "baseCi": {
+      "runId": 36733220164,
+      "revision": "8c01b07fc83457624ef801100f6b873cd599f2f2",
+      "result": "in_progress"
+    },
+    "currentRevisionCi": "pending"
+  },
+  "assertions": [
+    "Next-feedback rejection is consumed by one mock confirmation; XML avvist and related Dialogporten Rejection agree; the next filing returns to accepted",
+    "Shipped token, authority, Dialogporten and reconciliation adapters classify both rejection artifacts as rejected",
+    "Browser creates source, preview, approval and initial filing without seeded filing results; first full-year status and artifacts are rejected",
+    "Owner selects the rejected predecessor, captures corrected source and original bytes, explicitly approves its replacement and receives acceptance",
+    "Original approval, preview, submission, journal events and feedback artifacts remain unchanged after correction",
+    "Reloading old approval shows Avvist and original feedback links without send/continue; new approval selects the accepted replacement",
+    "Later unknown main response preserves both earlier outcomes; exact retries remain blocked and no feedback is invented",
+    "Strict archives verify three source versions, approvals, claims, submissions and source originals plus four feedback originals",
+    "Both selected histories pass actual same-cluster database restore, retained original byte verification and unrelated-actor denial",
+    "Responsive 320/1440 layouts, browser health, loopback egress and exact provider mutation/hash checks pass"
+  ],
+  "limitations": [
+    "Local targeted browser result is not the full ten-case CI matrix; exact-revision CI remains required",
+    "No genuine provider conformance, idempotency guarantee or real AS production evidence",
+    "Ordinary Storage objects, independent-cluster roles, prior-year/unapproved restore, cancellation/expiry/deletion and retention generations remain",
+    "Remaining security/conformance, unknown-operation reconciliation, legacy feedback backfill, HTTP/concurrency sizing and both immutable acceptance gates remain",
+    "All seven RF acceptance criteria pending; draft PR only, no production enablement, hosted change or genuine provider effect"
+  ],
+  "sha256": {
+    "tests/browser_shareholder_register_filing.mjs": "ca33485784f31326f67518ee0411fa8431046baff3c64276ba4476ac0af30527",
+    "tests/fixtures/reconcile_authority_browser_feedback.py": "f40e92364f099f4c935e2a1962e9b0777a5b7a8b4eaf0332cbeb3a2db7e50958",
+    "tests/fixtures/rf1086-filing-authority-mock.mjs": "c1fe2efcc18b45ce00a584edf1ef2758232a0fc06b0997148fc39bc684f8d4fe",
+    "tests/fixtures/rf1086-source-browser-journey.mjs": "b733aadc83bba04093c611f2825fb2f2c58ebeb8f78e2101e3eb0e6ba6a56015",
+    "tests/fixtures/system-user-authority-mock.mjs": "72bcd477ba560fe5c14023ae232b769a78f728429f619fae5bbdb3d219397256",
+    "tests/shareholder_register_browser_fixture_safety.test.mjs": "697c04007c6dd18fa8ddc9daaf30204631785988d0f07d35c0164d253a8a73e3"
+  }
+}

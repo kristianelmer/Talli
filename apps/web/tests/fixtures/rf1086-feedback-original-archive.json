@@ -1,0 +1,286 @@
+{
+  "companyId": "10000000-0000-4000-8000-000000000001",
+  "incomeYear": 2025,
+  "previews": [
+    {
+      "id": "30000000-0000-4000-8000-000000000003",
+      "companyId": "10000000-0000-4000-8000-000000000001",
+      "setupId": "40000000-0000-4000-8000-000000000004",
+      "incomeYear": 2025,
+      "filing": "aksjonærregisteroppgaven",
+      "status": "ready",
+      "issues": [],
+      "preview": "Aksjonærregisteroppgaven 2025\nSelskap: TALLI TEST HOLDING AS (314259521)\nAksjeklasse: ordinære (01)\n\nSelskapsnivå:\n- Aksjekapital 1. januar: 30000 kr\n- Aksjekapital 31. desember: 30000 kr\n- Antall aksjer 1. januar: 100\n- Antall aksjer 31. desember: 100\n\nAksjonærer:\n- Ola Nordmann: 100 aksjer 1. januar, 100 aksjer 31. desember\n",
+      "hovedskjemaXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjonærregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">TALLI TEST HOLDING AS</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Testveien 1</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\" />\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">30000</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">300</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">300</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">100</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">100</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n</Skjema>\n",
+      "underskjemaXml": {
+        "0000000b-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">100</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">100</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n"
+      },
+      "source": "deterministic_rf1086_engine",
+      "createdAt": "2026-09-09T12:00:00.123000Z"
+    }
+  ],
+  "simulations": [
+    {
+      "id": "50000000-0000-4000-8000-000000000005",
+      "previewId": "30000000-0000-4000-8000-000000000003",
+      "authorityTestRunId": "60000000-0000-4000-8000-000000000006",
+      "companyId": "10000000-0000-4000-8000-000000000001",
+      "incomeYear": 2025,
+      "filing": "aksjonærregisteroppgaven",
+      "mode": "test_authority",
+      "adapterMode": "test_authority",
+      "payloadHash": "b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864",
+      "idempotencyKey": "rf1086:10000000-0000-4000-8000-000000000001:2025:b74d17699fe26f8a",
+      "status": "receipt_stored",
+      "calls": [
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/1086H",
+          "bodyHash": "0d4513aca21889a9e87f924a587cca3d6ad429256d67b728f246bb3109e6515d",
+          "idempotencyKey": "02265a8b-5c58-5266-901f-7fc9a32d3448",
+          "status": "prepared",
+          "createdAt": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/1086U",
+          "bodyHash": "b079959bc6ba805758332df899d5d0a5ed883d6bf94eb8e5a3ba740df5c78cc5",
+          "idempotencyKey": "09e36a13-8b86-5e05-b53f-43b30c3b647a",
+          "status": "prepared",
+          "createdAt": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/bekreft?antall_underskjema=1",
+          "bodyHash": "ffdb44a81d960c04195d1756312e7e4a18273c3ab052f3ea3643145ff4ead268",
+          "idempotencyKey": "fd750cbd-57c0-55d6-87c4-9c24b6a5e65b",
+          "status": "prepared",
+          "createdAt": "2026-09-09T12:00:00.123Z"
+        },
+        {
+          "endpoint": "/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-30000000-0000-4000-8000-000000000003/dokumenter?page=0&size=50",
+          "bodyHash": "0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030",
+          "idempotencyKey": "83310bf7-4c8b-5eba-acd6-926b099bb301",
+          "status": "prepared",
+          "createdAt": "2026-09-09T12:00:00.123Z"
+        }
+      ],
+      "receiptId": "sim-rf1086-10000000-0000-4000-8000-000000000001-2025-30000000",
+      "feedbackDocumentIds": [
+        "sim-feedback-30000000"
+      ],
+      "feedbackItems": [
+        {
+          "severity": "accepted",
+          "code": "RF1086_ACCEPTED",
+          "message": "RF-1086 er akseptert i simuleringsadapter og kvittering er lagret.",
+          "documentId": "sim-feedback-30000000"
+        }
+      ],
+      "receiptMetadata": {
+        "authority": "simulation",
+        "receiptId": "sim-rf1086-10000000-0000-4000-8000-000000000001-2025-30000000",
+        "status": "receipt_stored",
+        "receivedAt": "2026-09-09T12:00:00.123Z",
+        "feedbackDocumentIds": [
+          "sim-feedback-30000000"
+        ]
+      },
+      "submittedPayloadRef": {
+        "previewId": "30000000-0000-4000-8000-000000000003",
+        "payloadHash": "b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864",
+        "hovedskjemaHash": "fef057b814c9e8f740e00ecaeaae0ce4ff8507b8f0312d3c12d96e250029cccc",
+        "underskjemaHashes": {
+          "0000000b-0000-4000-8000-000000000001": "2ab75706abfff6cb63e96d278a7f6d969cab218cbb0f8474aef47efa0c192012"
+        },
+        "callCount": 4,
+        "storedAt": "2026-09-09T12:00:00.123Z"
+      },
+      "submittedPayload": {
+        "filing": "aksjonærregisteroppgaven",
+        "companyId": "10000000-0000-4000-8000-000000000001",
+        "incomeYear": 2025,
+        "payloadHash": "b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864",
+        "hovedskjemaXml": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"890\" spesifikasjonsnummer=\"12144\" blankettnummer=\"RF-1086\" tittel=\"Aksjonærregisteroppgaven\" gruppeid=\"2586\" etatid=\"974761076\">\n  <GenerellInformasjon-grp-2587 gruppeid=\"2587\">\n    <Selskap-grp-2588 gruppeid=\"2588\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <EnhetNavn-datadef-1 orid=\"1\">TALLI TEST HOLDING AS</EnhetNavn-datadef-1>\n      <EnhetAdresse-datadef-15 orid=\"15\">Testveien 1</EnhetAdresse-datadef-15>\n      <EnhetPostnummer-datadef-6673 orid=\"6673\">0123</EnhetPostnummer-datadef-6673>\n      <EnhetPoststed-datadef-6674 orid=\"6674\">OSLO</EnhetPoststed-datadef-6674>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskap-grp-2588>\n    <Kontaktperson-grp-3442 gruppeid=\"3442\" />\n    <AnnenKontaktperson-grp-5384 gruppeid=\"5384\" />\n  </GenerellInformasjon-grp-2587>\n  <Selskapsopplysninger-grp-2589 gruppeid=\"2589\">\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\"3443\">\n      <AksjekapitalFjoraret-datadef-7129 orid=\"7129\">30000</AksjekapitalFjoraret-datadef-7129>\n      <Aksjekapital-datadef-87 orid=\"87\">30000</Aksjekapital-datadef-87>\n    </AksjekapitalForHeleSelskapet-grp-3443>\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\"3444\">\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\"17663\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\"17664\">30000</AksjekapitalISINAksjetype-datadef-17664>\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\n    <PalydendePerAksje-grp-3447 gruppeid=\"3447\">\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\"23944\">300</AksjeMvPalydendeFjoraret-datadef-23944>\n      <AksjeMvPalydende-datadef-23945 orid=\"23945\">300</AksjeMvPalydende-datadef-23945>\n    </PalydendePerAksje-grp-3447>\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\"3445\">\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\"29166\">100</AksjerMvAntallFjoraret-datadef-29166>\n      <AksjerMvAntall-datadef-29167 orid=\"29167\">100</AksjerMvAntall-datadef-29167>\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\"3446\">\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\"8020\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\n      <AksjekapitalInnbetalt-datadef-5867 orid=\"5867\">30000</AksjekapitalInnbetalt-datadef-5867>\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\"3448\">\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\"17662\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\"17661\">0</AksjeOverkursISINAksjetype-datadef-17661>\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\n  </Selskapsopplysninger-grp-2589>\n</Skjema>\n",
+        "underskjemaXml": {
+          "0000000b-0000-4000-8000-000000000001": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Skjema skjemanummer=\"923\" spesifikasjonsnummer=\"12232\" blankettnummer=\"RF-1086-U\" tittel=\"Aksjonærregisteroppgaven - underskjema\" gruppeid=\"3983\" etatid=\"974761076\">\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\"3987\">\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\"3986\">\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\"18\">314259521</EnhetOrganisasjonsnummer-datadef-18>\n      <AksjeType-datadef-17659 orid=\"17659\">01</AksjeType-datadef-17659>\n      <Inntektsar-datadef-692 orid=\"692\">2025</Inntektsar-datadef-692>\n    </Selskapsidentifikasjon-grp-3986>\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\"3988\">\n      <AksjonarFodselsnummer-datadef-1156 orid=\"1156\">26829398612</AksjonarFodselsnummer-datadef-1156>\n      <AksjonarNavn-datadef-1153 orid=\"1153\">Ola Nordmann</AksjonarNavn-datadef-1153>\n      <Adresse-grp-7722 gruppeid=\"7722\" />\n    </NorskUtenlandskAksjonar-grp-3988>\n  </SelskapsOgAksjonaropplysninger-grp-3987>\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\"3990\">\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\"3989\">\n      <AksjerAntallFjoraret-datadef-29168 orid=\"29168\">100</AksjerAntallFjoraret-datadef-29168>\n      <AksjonarAksjerAntall-datadef-17741 orid=\"17741\">100</AksjonarAksjerAntall-datadef-17741>\n    </AntallAksjerPerAksjonar-grp-3989>\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\n</Skjema>\n"
+        }
+      },
+      "authorityConfirmedAt": "2026-09-09T12:00:00.123000Z",
+      "previewConfirmedAt": "2026-09-09T12:00:00.123000Z",
+      "createdAt": "2026-09-09T12:00:00.123000Z",
+      "updatedAt": "2026-09-09T12:00:00.123000Z",
+      "submittedBy": "20000000-0000-4000-8000-000000000002"
+    }
+  ],
+  "reviewComments": [
+    {
+      "id": "00000000-0000-0000-0000-000000000396",
+      "previewId": "00000000-0000-0000-0000-000000000397",
+      "companyId": "10000000-0000-4000-8000-000000000001",
+      "target": "rf1086_preview",
+      "severity": "advisory",
+      "body": "Retained company-wide note",
+      "createdBy": "20000000-0000-4000-8000-000000000002",
+      "acknowledgedBy": null,
+      "acknowledgedAt": null,
+      "createdAt": "2026-09-09T12:00:00.123000Z"
+    }
+  ],
+  "permissions": [
+    {
+      "id": "00000000-0000-0000-0000-000000000398",
+      "companyId": "10000000-0000-4000-8000-000000000001",
+      "obligation": "aksjonaerregisteroppgaven",
+      "submitterUserId": "20000000-0000-4000-8000-000000000002",
+      "confirmedBy": "20000000-0000-4000-8000-000000000002",
+      "confirmedAt": "2026-09-09T12:00:00.123000Z",
+      "productionEnabled": false,
+      "updatedAt": "2026-09-09T12:00:00.123000Z"
+    }
+  ],
+  "testEvidence": [
+    {
+      "id": "60000000-0000-4000-8000-000000000006",
+      "companyId": "10000000-0000-4000-8000-000000000001",
+      "obligation": "aksjonaerregisteroppgaven",
+      "environment": "manual_evidence",
+      "status": "accepted",
+      "testReference": "original-reference",
+      "feedbackSummary": "original-summary",
+      "receiptReference": null,
+      "archiveReference": null,
+      "evidenceUrl": null,
+      "payloadHash": null,
+      "recordedBy": "20000000-0000-4000-8000-000000000002",
+      "recordedAt": "2026-09-09T12:00:00.123000Z"
+    }
+  ],
+  "sourceHistoryDocuments": [],
+  "sourceOriginals": [],
+  "feedbackOriginals": [
+    {
+      "documentId": "00000000-0000-0000-0000-000000000393",
+      "companyId": "10000000-0000-4000-8000-000000000001",
+      "sourceIncomeYear": 2025,
+      "metadataSha256": "7626a46861037d6024eae7ec5cd2f33d572359e86cc67f08350f6636358fe2cb",
+      "contentSha256": "ebd46e8ca327b29c45bdd15b0c6e85626dcc0eb56cd106dec0729328500d372d",
+      "byteLength": 43,
+      "canonicalOriginal": "{\"codec\":\"documents-retained-original-v1\",\"contentBase64\":\"PHJlY2VpcHQ+ZXhhY3Qgb3JpZ2luYWwgZmVlZGJhY2sAPC9yZWNlaXB0Pg==\",\"documentText\":\"{\\\"byte_length\\\":43,\\\"company_id\\\":{\\\"value\\\":\\\"10000000-0000-4000-8000-000000000001\\\"},\\\"content_sha256\\\":\\\"ebd46e8ca327b29c45bdd15b0c6e85626dcc0eb56cd106dec0729328500d372d\\\",\\\"content_type\\\":\\\"application/xml\\\",\\\"created_at\\\":\\\"2026-09-09T12:00:00.123000+00:00\\\",\\\"created_by\\\":{\\\"kind\\\":\\\"USER\\\",\\\"subject\\\":{\\\"value\\\":\\\"20000000-0000-4000-8000-000000000002\\\"}},\\\"document_id\\\":{\\\"value\\\":\\\"00000000-0000-0000-0000-000000000393\\\"},\\\"document_type\\\":\\\"authority_feedback\\\",\\\"income_year\\\":{\\\"value\\\":2025},\\\"linked_to\\\":\\\"production_filing_submission:00000000-0000-0000-0000-000000000391\\\",\\\"name\\\":\\\"authority-feedback-ebd46e8ca327.xml\\\",\\\"removal_reason\\\":null,\\\"removed_at\\\":null,\\\"retention_years\\\":10,\\\"status\\\":\\\"stored\\\",\\\"storage_key\\\":\\\"10000000-0000-4000-8000-000000000001/2025/00000000-0000-0000-0000-000000000393/receipt.xml\\\"}\",\"receipt\":{\"byteLength\":43,\"companyId\":\"10000000-0000-4000-8000-000000000001\",\"contentSha256\":\"ebd46e8ca327b29c45bdd15b0c6e85626dcc0eb56cd106dec0729328500d372d\",\"documentId\":\"00000000-0000-0000-0000-000000000393\",\"metadataSha256\":\"7626a46861037d6024eae7ec5cd2f33d572359e86cc67f08350f6636358fe2cb\",\"originalId\":\"00000000-0000-0000-0000-000000000394\",\"retainedAt\":\"2026-09-09T12:00:00.123000+00:00\",\"sourceIncomeYear\":2025}}"
+    }
+  ],
+  "canonicalArchive": "{\"codec\":\"rf1086-production-archive-v3\",\"sha256\":\"cb1c3bb0afa31576de811a47c765bb649c8c0a90acb19b67d8c40af7a0239e21\",\"snapshotText\":\"{\\\"fields\\\":{\\\"approvals\\\":[{\\\"fields\\\":{\\\"adapter_version\\\":\\\"rf1086-production-v1\\\",\\\"approved_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"approved_by\\\":\\\"20000000-0000-4000-8000-000000000002\\\",\\\"case_profile\\\":\\\"rf1086_no_activity_v1\\\",\\\"company_id\\\":\\\"10000000-0000-4000-8000-000000000001\\\",\\\"entitlement_id\\\":\\\"00000000-0000-0000-0000-000000000390\\\",\\\"id\\\":\\\"00000000-0000-0000-0000-00000000038f\\\",\\\"income_year\\\":2025,\\\"invalidated_at\\\":null,\\\"invalidation_reason\\\":null,\\\"manifest\\\":{\\\"mapping\\\":{\\\"adapterVersion\\\":\\\"rf1086-production-v1\\\",\\\"blockers\\\":[],\\\"caseProfile\\\":\\\"rf1086_no_activity_v1\\\",\\\"companyId\\\":\\\"10000000-0000-4000-8000-000000000001\\\",\\\"documentHashes\\\":[{\\\"mapping\\\":{\\\"name\\\":\\\"hovedskjema\\\",\\\"sha256\\\":\\\"fef057b814c9e8f740e00ecaeaae0ce4ff8507b8f0312d3c12d96e250029cccc\\\"}},{\\\"mapping\\\":{\\\"name\\\":\\\"underskjema_0000000b-0000-4000-8000-000000000001\\\",\\\"sha256\\\":\\\"2ab75706abfff6cb63e96d278a7f6d969cab218cbb0f8474aef47efa0c192012\\\"}}],\\\"incomeYear\\\":2025,\\\"obligation\\\":\\\"aksjonaerregisteroppgaven\\\",\\\"organizationNumber\\\":\\\"123456789\\\",\\\"payloadHash\\\":\\\"b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864\\\",\\\"previewId\\\":\\\"30000000-0000-4000-8000-000000000003\\\",\\\"schemaVersion\\\":\\\"production-approval-v1\\\",\\\"userId\\\":\\\"20000000-0000-4000-8000-000000000002\\\",\\\"warnings\\\":[]}},\\\"manifest_hash\\\":\\\"3f0ca80eed5a63f8e457f99774495e29cfda110cedd5053706b6cccca92815fd\\\",\\\"obligation\\\":\\\"aksjonaerregisteroppgaven\\\",\\\"payload_hash\\\":\\\"b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864\\\",\\\"preview_id\\\":\\\"30000000-0000-4000-8000-000000000003\\\",\\\"user_id\\\":\\\"20000000-0000-4000-8000-000000000002\\\"},\\\"record\\\":\\\"Rf1086ApprovalRecord\\\"}],\\\"company_id\\\":{\\\"fields\\\":{\\\"value\\\":\\\"10000000-0000-4000-8000-000000000001\\\"},\\\"record\\\":\\\"CompanyId\\\"},\\\"feedback_artifacts\\\":[{\\\"fields\\\":{\\\"authority_reference\\\":\\\"original-provider-reference\\\",\\\"byte_length\\\":43,\\\"classification\\\":\\\"accepted\\\",\\\"company_id\\\":\\\"10000000-0000-4000-8000-000000000001\\\",\\\"content_type\\\":\\\"application/xml\\\",\\\"document_id\\\":\\\"00000000-0000-0000-0000-000000000393\\\",\\\"id\\\":\\\"00000000-0000-0000-0000-000000000392\\\",\\\"original_id\\\":\\\"00000000-0000-0000-0000-000000000394\\\",\\\"original_metadata_sha256\\\":\\\"7626a46861037d6024eae7ec5cd2f33d572359e86cc67f08350f6636358fe2cb\\\",\\\"original_retained_at\\\":\\\"2026-09-09T12:00:00.123000+00:00\\\",\\\"original_source_income_year\\\":2025,\\\"retrieved_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"sha256\\\":\\\"ebd46e8ca327b29c45bdd15b0c6e85626dcc0eb56cd106dec0729328500d372d\\\",\\\"submission_id\\\":\\\"00000000-0000-0000-0000-000000000391\\\"},\\\"record\\\":\\\"Rf1086ArchiveFeedbackArtifactRecord\\\"}],\\\"income_year\\\":{\\\"fields\\\":{\\\"value\\\":2025},\\\"record\\\":\\\"IncomeYear\\\"},\\\"permissions\\\":[{\\\"fields\\\":{\\\"company_id\\\":\\\"10000000-0000-4000-8000-000000000001\\\",\\\"confirmed_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"confirmed_by\\\":\\\"20000000-0000-4000-8000-000000000002\\\",\\\"id\\\":\\\"00000000-0000-0000-0000-000000000398\\\",\\\"obligation\\\":\\\"aksjonaerregisteroppgaven\\\",\\\"production_enabled\\\":false,\\\"submitter_user_id\\\":\\\"20000000-0000-4000-8000-000000000002\\\",\\\"updated_at\\\":\\\"2026-09-09T12:00:00.123Z\\\"},\\\"record\\\":\\\"Rf1086FilingPermissionRecord\\\"}],\\\"previews\\\":[{\\\"fields\\\":{\\\"company_id\\\":\\\"10000000-0000-4000-8000-000000000001\\\",\\\"created_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"filing\\\":\\\"aksjonærregisteroppgaven\\\",\\\"hovedskjema_xml\\\":\\\"<?xml version=\\\\\\\"1.0\\\\\\\" encoding=\\\\\\\"UTF-8\\\\\\\"?>\\\\n<Skjema skjemanummer=\\\\\\\"890\\\\\\\" spesifikasjonsnummer=\\\\\\\"12144\\\\\\\" blankettnummer=\\\\\\\"RF-1086\\\\\\\" tittel=\\\\\\\"Aksjonærregisteroppgaven\\\\\\\" gruppeid=\\\\\\\"2586\\\\\\\" etatid=\\\\\\\"974761076\\\\\\\">\\\\n  <GenerellInformasjon-grp-2587 gruppeid=\\\\\\\"2587\\\\\\\">\\\\n    <Selskap-grp-2588 gruppeid=\\\\\\\"2588\\\\\\\">\\\\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\\\\\\\"18\\\\\\\">314259521</EnhetOrganisasjonsnummer-datadef-18>\\\\n      <EnhetNavn-datadef-1 orid=\\\\\\\"1\\\\\\\">TALLI TEST HOLDING AS</EnhetNavn-datadef-1>\\\\n      <EnhetAdresse-datadef-15 orid=\\\\\\\"15\\\\\\\">Testveien 1</EnhetAdresse-datadef-15>\\\\n      <EnhetPostnummer-datadef-6673 orid=\\\\\\\"6673\\\\\\\">0123</EnhetPostnummer-datadef-6673>\\\\n      <EnhetPoststed-datadef-6674 orid=\\\\\\\"6674\\\\\\\">OSLO</EnhetPoststed-datadef-6674>\\\\n      <AksjeType-datadef-17659 orid=\\\\\\\"17659\\\\\\\">01</AksjeType-datadef-17659>\\\\n      <Inntektsar-datadef-692 orid=\\\\\\\"692\\\\\\\">2025</Inntektsar-datadef-692>\\\\n    </Selskap-grp-2588>\\\\n    <Kontaktperson-grp-3442 gruppeid=\\\\\\\"3442\\\\\\\" />\\\\n    <AnnenKontaktperson-grp-5384 gruppeid=\\\\\\\"5384\\\\\\\" />\\\\n  </GenerellInformasjon-grp-2587>\\\\n  <Selskapsopplysninger-grp-2589 gruppeid=\\\\\\\"2589\\\\\\\">\\\\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\\\\\\\"3443\\\\\\\">\\\\n      <AksjekapitalFjoraret-datadef-7129 orid=\\\\\\\"7129\\\\\\\">30000</AksjekapitalFjoraret-datadef-7129>\\\\n      <Aksjekapital-datadef-87 orid=\\\\\\\"87\\\\\\\">30000</Aksjekapital-datadef-87>\\\\n    </AksjekapitalForHeleSelskapet-grp-3443>\\\\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\\\\\\\"3444\\\\\\\">\\\\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\\\\\\\"17663\\\\\\\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\\\\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\\\\\\\"17664\\\\\\\">30000</AksjekapitalISINAksjetype-datadef-17664>\\\\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\\\\n    <PalydendePerAksje-grp-3447 gruppeid=\\\\\\\"3447\\\\\\\">\\\\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\\\\\\\"23944\\\\\\\">300</AksjeMvPalydendeFjoraret-datadef-23944>\\\\n      <AksjeMvPalydende-datadef-23945 orid=\\\\\\\"23945\\\\\\\">300</AksjeMvPalydende-datadef-23945>\\\\n    </PalydendePerAksje-grp-3447>\\\\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\\\\\\\"3445\\\\\\\">\\\\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\\\\\\\"29166\\\\\\\">100</AksjerMvAntallFjoraret-datadef-29166>\\\\n      <AksjerMvAntall-datadef-29167 orid=\\\\\\\"29167\\\\\\\">100</AksjerMvAntall-datadef-29167>\\\\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\\\\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\\\\\\\"3446\\\\\\\">\\\\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\\\\\\\"8020\\\\\\\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\\\\n      <AksjekapitalInnbetalt-datadef-5867 orid=\\\\\\\"5867\\\\\\\">30000</AksjekapitalInnbetalt-datadef-5867>\\\\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\\\\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\\\\\\\"3448\\\\\\\">\\\\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\\\\\\\"17662\\\\\\\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\\\\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\\\\\\\"17661\\\\\\\">0</AksjeOverkursISINAksjetype-datadef-17661>\\\\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\\\\n  </Selskapsopplysninger-grp-2589>\\\\n</Skjema>\\\\n\\\",\\\"id\\\":\\\"30000000-0000-4000-8000-000000000003\\\",\\\"income_year\\\":2025,\\\"issues\\\":[],\\\"preview\\\":\\\"Aksjonærregisteroppgaven 2025\\\\nSelskap: TALLI TEST HOLDING AS (314259521)\\\\nAksjeklasse: ordinære (01)\\\\n\\\\nSelskapsnivå:\\\\n- Aksjekapital 1. januar: 30000 kr\\\\n- Aksjekapital 31. desember: 30000 kr\\\\n- Antall aksjer 1. januar: 100\\\\n- Antall aksjer 31. desember: 100\\\\n\\\\nAksjonærer:\\\\n- Ola Nordmann: 100 aksjer 1. januar, 100 aksjer 31. desember\\\\n\\\",\\\"setup_id\\\":\\\"40000000-0000-4000-8000-000000000004\\\",\\\"source\\\":\\\"deterministic_rf1086_engine\\\",\\\"status\\\":\\\"ready\\\",\\\"underskjema_xml\\\":{\\\"mapping\\\":{\\\"0000000b-0000-4000-8000-000000000001\\\":\\\"<?xml version=\\\\\\\"1.0\\\\\\\" encoding=\\\\\\\"UTF-8\\\\\\\"?>\\\\n<Skjema skjemanummer=\\\\\\\"923\\\\\\\" spesifikasjonsnummer=\\\\\\\"12232\\\\\\\" blankettnummer=\\\\\\\"RF-1086-U\\\\\\\" tittel=\\\\\\\"Aksjonærregisteroppgaven - underskjema\\\\\\\" gruppeid=\\\\\\\"3983\\\\\\\" etatid=\\\\\\\"974761076\\\\\\\">\\\\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\\\\\\\"3987\\\\\\\">\\\\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\\\\\\\"3986\\\\\\\">\\\\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\\\\\\\"18\\\\\\\">314259521</EnhetOrganisasjonsnummer-datadef-18>\\\\n      <AksjeType-datadef-17659 orid=\\\\\\\"17659\\\\\\\">01</AksjeType-datadef-17659>\\\\n      <Inntektsar-datadef-692 orid=\\\\\\\"692\\\\\\\">2025</Inntektsar-datadef-692>\\\\n    </Selskapsidentifikasjon-grp-3986>\\\\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\\\\\\\"3988\\\\\\\">\\\\n      <AksjonarFodselsnummer-datadef-1156 orid=\\\\\\\"1156\\\\\\\">26829398612</AksjonarFodselsnummer-datadef-1156>\\\\n      <AksjonarNavn-datadef-1153 orid=\\\\\\\"1153\\\\\\\">Ola Nordmann</AksjonarNavn-datadef-1153>\\\\n      <Adresse-grp-7722 gruppeid=\\\\\\\"7722\\\\\\\" />\\\\n    </NorskUtenlandskAksjonar-grp-3988>\\\\n  </SelskapsOgAksjonaropplysninger-grp-3987>\\\\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\\\\\\\"3990\\\\\\\">\\\\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\\\\\\\"3989\\\\\\\">\\\\n      <AksjerAntallFjoraret-datadef-29168 orid=\\\\\\\"29168\\\\\\\">100</AksjerAntallFjoraret-datadef-29168>\\\\n      <AksjonarAksjerAntall-datadef-17741 orid=\\\\\\\"17741\\\\\\\">100</AksjonarAksjerAntall-datadef-17741>\\\\n    </AntallAksjerPerAksjonar-grp-3989>\\\\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\\\\n</Skjema>\\\\n\\\"}}},\\\"record\\\":\\\"Rf1086PreviewRecord\\\"}],\\\"production_events\\\":[{\\\"fields\\\":{\\\"artifact_hashes\\\":[\\\"ebd46e8ca327b29c45bdd15b0c6e85626dcc0eb56cd106dec0729328500d372d\\\"],\\\"attempt\\\":1,\\\"authority_reference\\\":null,\\\"body_hash\\\":null,\\\"company_id\\\":\\\"10000000-0000-4000-8000-000000000001\\\",\\\"correlation_id\\\":null,\\\"created_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"failure_class\\\":null,\\\"id\\\":\\\"00000000-0000-0000-0000-000000000395\\\",\\\"idempotency_key\\\":null,\\\"income_year\\\":2025,\\\"operation_name\\\":\\\"reconciliation:original\\\",\\\"operation_state\\\":\\\"succeeded\\\",\\\"resulting_status\\\":\\\"accepted\\\",\\\"safe_error_code\\\":null,\\\"submission_id\\\":\\\"00000000-0000-0000-0000-000000000391\\\"},\\\"record\\\":\\\"Rf1086ArchiveProductionEventRecord\\\"}],\\\"production_submissions\\\":[{\\\"fields\\\":{\\\"adapter_version\\\":\\\"rf1086-production-v1\\\",\\\"approval_id\\\":\\\"00000000-0000-0000-0000-00000000038f\\\",\\\"authority_references\\\":{\\\"mapping\\\":{\\\"confirmation\\\":\\\"original-reference\\\"}},\\\"case_profile\\\":\\\"rf1086_no_activity_v1\\\",\\\"company_id\\\":\\\"10000000-0000-4000-8000-000000000001\\\",\\\"created_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"entitlement_id\\\":\\\"00000000-0000-0000-0000-000000000390\\\",\\\"environment\\\":\\\"production\\\",\\\"failure_class\\\":null,\\\"feedback_artifact_count\\\":1,\\\"feedback_correlation_id\\\":null,\\\"feedback_last_changed_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"feedback_last_checked_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"feedback_safe_error_code\\\":null,\\\"feedback_state\\\":\\\"accepted\\\",\\\"id\\\":\\\"00000000-0000-0000-0000-000000000391\\\",\\\"income_year\\\":2025,\\\"obligation\\\":\\\"aksjonaerregisteroppgaven\\\",\\\"payload_hash\\\":\\\"b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864\\\",\\\"status\\\":\\\"accepted\\\",\\\"submitted_by\\\":\\\"20000000-0000-4000-8000-000000000002\\\",\\\"supersedes_submission_id\\\":null,\\\"updated_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"user_id\\\":\\\"20000000-0000-4000-8000-000000000002\\\"},\\\"record\\\":\\\"Rf1086ProductionSubmissionRecord\\\"}],\\\"review_comments\\\":[{\\\"fields\\\":{\\\"acknowledged_at\\\":null,\\\"acknowledged_by\\\":null,\\\"body\\\":\\\"Retained company-wide note\\\",\\\"company_id\\\":\\\"10000000-0000-4000-8000-000000000001\\\",\\\"created_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"created_by\\\":\\\"20000000-0000-4000-8000-000000000002\\\",\\\"id\\\":\\\"00000000-0000-0000-0000-000000000396\\\",\\\"preview_id\\\":\\\"00000000-0000-0000-0000-000000000397\\\",\\\"severity\\\":\\\"advisory\\\",\\\"target\\\":\\\"rf1086_preview\\\"},\\\"record\\\":\\\"Rf1086ReviewCommentRecord\\\"}],\\\"simulations\\\":[{\\\"fields\\\":{\\\"adapter_mode\\\":\\\"test_authority\\\",\\\"authority_confirmed_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"authority_test_run_id\\\":\\\"60000000-0000-4000-8000-000000000006\\\",\\\"calls\\\":[{\\\"mapping\\\":{\\\"body_hash\\\":\\\"0d4513aca21889a9e87f924a587cca3d6ad429256d67b728f246bb3109e6515d\\\",\\\"created_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"endpoint\\\":\\\"/api/aksjonaerregister/v1/2025/1086H\\\",\\\"idempotency_key\\\":\\\"02265a8b-5c58-5266-901f-7fc9a32d3448\\\",\\\"status\\\":\\\"prepared\\\"}},{\\\"mapping\\\":{\\\"body_hash\\\":\\\"b079959bc6ba805758332df899d5d0a5ed883d6bf94eb8e5a3ba740df5c78cc5\\\",\\\"created_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"endpoint\\\":\\\"/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/1086U\\\",\\\"idempotency_key\\\":\\\"09e36a13-8b86-5e05-b53f-43b30c3b647a\\\",\\\"status\\\":\\\"prepared\\\"}},{\\\"mapping\\\":{\\\"body_hash\\\":\\\"ffdb44a81d960c04195d1756312e7e4a18273c3ab052f3ea3643145ff4ead268\\\",\\\"created_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"endpoint\\\":\\\"/api/aksjonaerregister/v1/2025/simulated-30000000-0000-4000-8000-000000000003/bekreft?antall_underskjema=1\\\",\\\"idempotency_key\\\":\\\"fd750cbd-57c0-55d6-87c4-9c24b6a5e65b\\\",\\\"status\\\":\\\"prepared\\\"}},{\\\"mapping\\\":{\\\"body_hash\\\":\\\"0f44414c4cdc6ead4f2f2229fc3c5e25efa2fb24072b2b2fc0c7038b14c11030\\\",\\\"created_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"endpoint\\\":\\\"/api/aksjonaerregister/v1/2025/forsendelser/simulated-forsendelse-30000000-0000-4000-8000-000000000003/dokumenter?page=0&size=50\\\",\\\"idempotency_key\\\":\\\"83310bf7-4c8b-5eba-acd6-926b099bb301\\\",\\\"status\\\":\\\"prepared\\\"}}],\\\"company_id\\\":\\\"10000000-0000-4000-8000-000000000001\\\",\\\"created_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"feedback_document_ids\\\":[\\\"sim-feedback-30000000\\\"],\\\"feedback_items\\\":[{\\\"mapping\\\":{\\\"code\\\":\\\"RF1086_ACCEPTED\\\",\\\"documentId\\\":\\\"sim-feedback-30000000\\\",\\\"message\\\":\\\"RF-1086 er akseptert i simuleringsadapter og kvittering er lagret.\\\",\\\"severity\\\":\\\"accepted\\\"}}],\\\"filing\\\":\\\"aksjonærregisteroppgaven\\\",\\\"id\\\":\\\"50000000-0000-4000-8000-000000000005\\\",\\\"idempotency_key\\\":\\\"rf1086:10000000-0000-4000-8000-000000000001:2025:b74d17699fe26f8a\\\",\\\"income_year\\\":2025,\\\"mode\\\":\\\"test_authority\\\",\\\"payload_hash\\\":\\\"b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864\\\",\\\"preview_confirmed_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"preview_id\\\":\\\"30000000-0000-4000-8000-000000000003\\\",\\\"receipt_id\\\":\\\"sim-rf1086-10000000-0000-4000-8000-000000000001-2025-30000000\\\",\\\"receipt_metadata\\\":{\\\"mapping\\\":{\\\"authority\\\":\\\"simulation\\\",\\\"feedbackDocumentIds\\\":[\\\"sim-feedback-30000000\\\"],\\\"receiptId\\\":\\\"sim-rf1086-10000000-0000-4000-8000-000000000001-2025-30000000\\\",\\\"receivedAt\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"status\\\":\\\"receipt_stored\\\"}},\\\"status\\\":\\\"receipt_stored\\\",\\\"submitted_by\\\":\\\"20000000-0000-4000-8000-000000000002\\\",\\\"submitted_payload\\\":{\\\"mapping\\\":{\\\"companyId\\\":\\\"10000000-0000-4000-8000-000000000001\\\",\\\"filing\\\":\\\"aksjonærregisteroppgaven\\\",\\\"hovedskjemaXml\\\":\\\"<?xml version=\\\\\\\"1.0\\\\\\\" encoding=\\\\\\\"UTF-8\\\\\\\"?>\\\\n<Skjema skjemanummer=\\\\\\\"890\\\\\\\" spesifikasjonsnummer=\\\\\\\"12144\\\\\\\" blankettnummer=\\\\\\\"RF-1086\\\\\\\" tittel=\\\\\\\"Aksjonærregisteroppgaven\\\\\\\" gruppeid=\\\\\\\"2586\\\\\\\" etatid=\\\\\\\"974761076\\\\\\\">\\\\n  <GenerellInformasjon-grp-2587 gruppeid=\\\\\\\"2587\\\\\\\">\\\\n    <Selskap-grp-2588 gruppeid=\\\\\\\"2588\\\\\\\">\\\\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\\\\\\\"18\\\\\\\">314259521</EnhetOrganisasjonsnummer-datadef-18>\\\\n      <EnhetNavn-datadef-1 orid=\\\\\\\"1\\\\\\\">TALLI TEST HOLDING AS</EnhetNavn-datadef-1>\\\\n      <EnhetAdresse-datadef-15 orid=\\\\\\\"15\\\\\\\">Testveien 1</EnhetAdresse-datadef-15>\\\\n      <EnhetPostnummer-datadef-6673 orid=\\\\\\\"6673\\\\\\\">0123</EnhetPostnummer-datadef-6673>\\\\n      <EnhetPoststed-datadef-6674 orid=\\\\\\\"6674\\\\\\\">OSLO</EnhetPoststed-datadef-6674>\\\\n      <AksjeType-datadef-17659 orid=\\\\\\\"17659\\\\\\\">01</AksjeType-datadef-17659>\\\\n      <Inntektsar-datadef-692 orid=\\\\\\\"692\\\\\\\">2025</Inntektsar-datadef-692>\\\\n    </Selskap-grp-2588>\\\\n    <Kontaktperson-grp-3442 gruppeid=\\\\\\\"3442\\\\\\\" />\\\\n    <AnnenKontaktperson-grp-5384 gruppeid=\\\\\\\"5384\\\\\\\" />\\\\n  </GenerellInformasjon-grp-2587>\\\\n  <Selskapsopplysninger-grp-2589 gruppeid=\\\\\\\"2589\\\\\\\">\\\\n    <AksjekapitalForHeleSelskapet-grp-3443 gruppeid=\\\\\\\"3443\\\\\\\">\\\\n      <AksjekapitalFjoraret-datadef-7129 orid=\\\\\\\"7129\\\\\\\">30000</AksjekapitalFjoraret-datadef-7129>\\\\n      <Aksjekapital-datadef-87 orid=\\\\\\\"87\\\\\\\">30000</Aksjekapital-datadef-87>\\\\n    </AksjekapitalForHeleSelskapet-grp-3443>\\\\n    <AksjekapitalIDenneAksjeklassen-grp-3444 gruppeid=\\\\\\\"3444\\\\\\\">\\\\n      <AksjekapitalISINAksjetypeFjoraret-datadef-17663 orid=\\\\\\\"17663\\\\\\\">30000</AksjekapitalISINAksjetypeFjoraret-datadef-17663>\\\\n      <AksjekapitalISINAksjetype-datadef-17664 orid=\\\\\\\"17664\\\\\\\">30000</AksjekapitalISINAksjetype-datadef-17664>\\\\n    </AksjekapitalIDenneAksjeklassen-grp-3444>\\\\n    <PalydendePerAksje-grp-3447 gruppeid=\\\\\\\"3447\\\\\\\">\\\\n      <AksjeMvPalydendeFjoraret-datadef-23944 orid=\\\\\\\"23944\\\\\\\">300</AksjeMvPalydendeFjoraret-datadef-23944>\\\\n      <AksjeMvPalydende-datadef-23945 orid=\\\\\\\"23945\\\\\\\">300</AksjeMvPalydende-datadef-23945>\\\\n    </PalydendePerAksje-grp-3447>\\\\n    <AntallAksjerIDenneAksjeklassen-grp-3445 gruppeid=\\\\\\\"3445\\\\\\\">\\\\n      <AksjerMvAntallFjoraret-datadef-29166 orid=\\\\\\\"29166\\\\\\\">100</AksjerMvAntallFjoraret-datadef-29166>\\\\n      <AksjerMvAntall-datadef-29167 orid=\\\\\\\"29167\\\\\\\">100</AksjerMvAntall-datadef-29167>\\\\n    </AntallAksjerIDenneAksjeklassen-grp-3445>\\\\n    <InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446 gruppeid=\\\\\\\"3446\\\\\\\">\\\\n      <AksjekapitalInnbetaltFjoraret-datadef-8020 orid=\\\\\\\"8020\\\\\\\">30000</AksjekapitalInnbetaltFjoraret-datadef-8020>\\\\n      <AksjekapitalInnbetalt-datadef-5867 orid=\\\\\\\"5867\\\\\\\">30000</AksjekapitalInnbetalt-datadef-5867>\\\\n    </InnbetaltAksjekapitalIDenneAksjeklassen-grp-3446>\\\\n    <InnbetaltOverkursIDenneAksjeklassen-grp-3448 gruppeid=\\\\\\\"3448\\\\\\\">\\\\n      <AksjeOverkursISINAksjetypeFjoraret-datadef-17662 orid=\\\\\\\"17662\\\\\\\">0</AksjeOverkursISINAksjetypeFjoraret-datadef-17662>\\\\n      <AksjeOverkursISINAksjetype-datadef-17661 orid=\\\\\\\"17661\\\\\\\">0</AksjeOverkursISINAksjetype-datadef-17661>\\\\n    </InnbetaltOverkursIDenneAksjeklassen-grp-3448>\\\\n  </Selskapsopplysninger-grp-2589>\\\\n</Skjema>\\\\n\\\",\\\"incomeYear\\\":2025,\\\"payloadHash\\\":\\\"b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864\\\",\\\"underskjemaXml\\\":{\\\"mapping\\\":{\\\"0000000b-0000-4000-8000-000000000001\\\":\\\"<?xml version=\\\\\\\"1.0\\\\\\\" encoding=\\\\\\\"UTF-8\\\\\\\"?>\\\\n<Skjema skjemanummer=\\\\\\\"923\\\\\\\" spesifikasjonsnummer=\\\\\\\"12232\\\\\\\" blankettnummer=\\\\\\\"RF-1086-U\\\\\\\" tittel=\\\\\\\"Aksjonærregisteroppgaven - underskjema\\\\\\\" gruppeid=\\\\\\\"3983\\\\\\\" etatid=\\\\\\\"974761076\\\\\\\">\\\\n  <SelskapsOgAksjonaropplysninger-grp-3987 gruppeid=\\\\\\\"3987\\\\\\\">\\\\n    <Selskapsidentifikasjon-grp-3986 gruppeid=\\\\\\\"3986\\\\\\\">\\\\n      <EnhetOrganisasjonsnummer-datadef-18 orid=\\\\\\\"18\\\\\\\">314259521</EnhetOrganisasjonsnummer-datadef-18>\\\\n      <AksjeType-datadef-17659 orid=\\\\\\\"17659\\\\\\\">01</AksjeType-datadef-17659>\\\\n      <Inntektsar-datadef-692 orid=\\\\\\\"692\\\\\\\">2025</Inntektsar-datadef-692>\\\\n    </Selskapsidentifikasjon-grp-3986>\\\\n    <NorskUtenlandskAksjonar-grp-3988 gruppeid=\\\\\\\"3988\\\\\\\">\\\\n      <AksjonarFodselsnummer-datadef-1156 orid=\\\\\\\"1156\\\\\\\">26829398612</AksjonarFodselsnummer-datadef-1156>\\\\n      <AksjonarNavn-datadef-1153 orid=\\\\\\\"1153\\\\\\\">Ola Nordmann</AksjonarNavn-datadef-1153>\\\\n      <Adresse-grp-7722 gruppeid=\\\\\\\"7722\\\\\\\" />\\\\n    </NorskUtenlandskAksjonar-grp-3988>\\\\n  </SelskapsOgAksjonaropplysninger-grp-3987>\\\\n  <AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990 gruppeid=\\\\\\\"3990\\\\\\\">\\\\n    <AntallAksjerPerAksjonar-grp-3989 gruppeid=\\\\\\\"3989\\\\\\\">\\\\n      <AksjerAntallFjoraret-datadef-29168 orid=\\\\\\\"29168\\\\\\\">100</AksjerAntallFjoraret-datadef-29168>\\\\n      <AksjonarAksjerAntall-datadef-17741 orid=\\\\\\\"17741\\\\\\\">100</AksjonarAksjerAntall-datadef-17741>\\\\n    </AntallAksjerPerAksjonar-grp-3989>\\\\n  </AntallAksjerUtbytteOgTilbakebetalingAvTidligereInnbetaltKapit-grp-3990>\\\\n</Skjema>\\\\n\\\"}}}},\\\"submitted_payload_ref\\\":{\\\"mapping\\\":{\\\"callCount\\\":4,\\\"hovedskjemaHash\\\":\\\"fef057b814c9e8f740e00ecaeaae0ce4ff8507b8f0312d3c12d96e250029cccc\\\",\\\"payloadHash\\\":\\\"b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864\\\",\\\"previewId\\\":\\\"30000000-0000-4000-8000-000000000003\\\",\\\"storedAt\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"underskjemaHashes\\\":{\\\"mapping\\\":{\\\"0000000b-0000-4000-8000-000000000001\\\":\\\"2ab75706abfff6cb63e96d278a7f6d969cab218cbb0f8474aef47efa0c192012\\\"}}}},\\\"updated_at\\\":\\\"2026-09-09T12:00:00.123Z\\\"},\\\"record\\\":\\\"Rf1086SimulationRecord\\\"}],\\\"source_approval_lineage\\\":[],\\\"source_history\\\":{\\\"fields\\\":{\\\"observation_capture_records\\\":[],\\\"register_observations\\\":[],\\\"review_bridges\\\":[],\\\"source_capture_records\\\":[],\\\"source_previews\\\":[],\\\"year_source_head\\\":null,\\\"year_sources\\\":[]},\\\"record\\\":\\\"Rf1086ArchiveSourceHistory\\\"},\\\"source_submission_claims\\\":[],\\\"submission_head\\\":null,\\\"test_evidence\\\":[{\\\"fields\\\":{\\\"archive_reference\\\":null,\\\"company_id\\\":\\\"10000000-0000-4000-8000-000000000001\\\",\\\"environment\\\":\\\"manual_evidence\\\",\\\"evidence_url\\\":null,\\\"feedback_summary\\\":\\\"original-summary\\\",\\\"id\\\":\\\"60000000-0000-4000-8000-000000000006\\\",\\\"obligation\\\":\\\"aksjonaerregisteroppgaven\\\",\\\"payload_hash\\\":null,\\\"receipt_reference\\\":null,\\\"recorded_at\\\":\\\"2026-09-09T12:00:00.123Z\\\",\\\"recorded_by\\\":\\\"20000000-0000-4000-8000-000000000002\\\",\\\"status\\\":\\\"accepted\\\",\\\"test_reference\\\":\\\"original-reference\\\"},\\\"record\\\":\\\"Rf1086TestEvidenceRecord\\\"}]},\\\"record\\\":\\\"Rf1086ArchiveSnapshot\\\"}\"}",
+  "sourceSubmissionClaims": [],
+  "submissionHead": null,
+  "sourceApprovalLineage": [],
+  "approvals": [
+    {
+      "id": "00000000-0000-0000-0000-00000000038f",
+      "entitlementId": "00000000-0000-0000-0000-000000000390",
+      "previewId": "30000000-0000-4000-8000-000000000003",
+      "companyId": "10000000-0000-4000-8000-000000000001",
+      "userId": "20000000-0000-4000-8000-000000000002",
+      "incomeYear": 2025,
+      "obligation": "aksjonaerregisteroppgaven",
+      "caseProfile": "rf1086_no_activity_v1",
+      "adapterVersion": "rf1086-production-v1",
+      "payloadHash": "b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864",
+      "manifestHash": "3f0ca80eed5a63f8e457f99774495e29cfda110cedd5053706b6cccca92815fd",
+      "manifest": {
+        "schemaVersion": "production-approval-v1",
+        "companyId": "10000000-0000-4000-8000-000000000001",
+        "userId": "20000000-0000-4000-8000-000000000002",
+        "organizationNumber": "123456789",
+        "incomeYear": 2025,
+        "obligation": "aksjonaerregisteroppgaven",
+        "caseProfile": "rf1086_no_activity_v1",
+        "adapterVersion": "rf1086-production-v1",
+        "previewId": "30000000-0000-4000-8000-000000000003",
+        "payloadHash": "b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864",
+        "documentHashes": [
+          {
+            "name": "hovedskjema",
+            "sha256": "fef057b814c9e8f740e00ecaeaae0ce4ff8507b8f0312d3c12d96e250029cccc"
+          },
+          {
+            "name": "underskjema_0000000b-0000-4000-8000-000000000001",
+            "sha256": "2ab75706abfff6cb63e96d278a7f6d969cab218cbb0f8474aef47efa0c192012"
+          }
+        ],
+        "blockers": [],
+        "warnings": []
+      },
+      "approvedBy": "20000000-0000-4000-8000-000000000002",
+      "approvedAt": "2026-09-09T12:00:00.123000Z",
+      "invalidatedAt": null,
+      "invalidationReason": null
+    }
+  ],
+  "productionSubmissions": [
+    {
+      "id": "00000000-0000-0000-0000-000000000391",
+      "approvalId": "00000000-0000-0000-0000-00000000038f",
+      "entitlementId": "00000000-0000-0000-0000-000000000390",
+      "companyId": "10000000-0000-4000-8000-000000000001",
+      "userId": "20000000-0000-4000-8000-000000000002",
+      "incomeYear": 2025,
+      "obligation": "aksjonaerregisteroppgaven",
+      "caseProfile": "rf1086_no_activity_v1",
+      "payloadHash": "b74d17699fe26f8ac231bfc1b3a762bf4bf183b68cf7cca20a48aed1613f7864",
+      "adapterVersion": "rf1086-production-v1",
+      "environment": "production",
+      "status": "accepted",
+      "authorityReferences": {
+        "confirmation": "original-reference"
+      },
+      "failureClass": null,
+      "supersedesSubmissionId": null,
+      "submittedBy": "20000000-0000-4000-8000-000000000002",
+      "feedbackState": "accepted",
+      "feedbackArtifactCount": 1,
+      "feedbackLastCheckedAt": "2026-09-09T12:00:00.123000Z",
+      "feedbackLastChangedAt": "2026-09-09T12:00:00.123000Z",
+      "feedbackSafeErrorCode": null,
+      "feedbackCorrelationId": null,
+      "createdAt": "2026-09-09T12:00:00.123000Z",
+      "updatedAt": "2026-09-09T12:00:00.123000Z"
+    }
+  ],
+  "productionEvents": [
+    {
+      "id": "00000000-0000-0000-0000-000000000395",
+      "companyId": "10000000-0000-4000-8000-000000000001",
+      "incomeYear": 2025,
+      "submissionId": "00000000-0000-0000-0000-000000000391",
+      "operationName": "reconciliation:original",
+      "operationState": "succeeded",
+      "attempt": 1,
+      "bodyHash": null,
+      "idempotencyKey": null,
+      "authorityReference": null,
+      "failureClass": null,
+      "resultingStatus": "accepted",
+      "artifactHashes": [
+        "ebd46e8ca327b29c45bdd15b0c6e85626dcc0eb56cd106dec0729328500d372d"
+      ],
+      "safeErrorCode": null,
+      "correlationId": null,
+      "createdAt": "2026-09-09T12:00:00.123000Z"
+    }
+  ],
+  "feedbackArtifacts": [
+    {
+      "id": "00000000-0000-0000-0000-000000000392",
+      "companyId": "10000000-0000-4000-8000-000000000001",
+      "submissionId": "00000000-0000-0000-0000-000000000391",
+      "documentId": "00000000-0000-0000-0000-000000000393",
+      "contentType": "application/xml",
+      "byteLength": 43,
+      "sha256": "ebd46e8ca327b29c45bdd15b0c6e85626dcc0eb56cd106dec0729328500d372d",
+      "retrievedAt": "2026-09-09T12:00:00.123000Z",
+      "classification": "accepted",
+      "authorityReference": "original-provider-reference",
+      "originalId": "00000000-0000-0000-0000-000000000394",
+      "originalMetadataSha256": "7626a46861037d6024eae7ec5cd2f33d572359e86cc67f08350f6636358fe2cb",
+      "originalSourceIncomeYear": 2025,
+      "originalRetainedAt": "2026-09-09T12:00:00.123000Z"
+    }
+  ]
+}

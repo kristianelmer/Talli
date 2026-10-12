@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_DOCUMENT_FIXTURE_ROLE_REPAIR",
+  "failedRun": "https://github.com/kristianelmer/Talli/actions/runs/36605296740",
+  "failedRevision": "c81ad1bae00ac3d81517720d4b385b26903e66fc",
+  "failure": "Application passed. Database isolation passed all annual Ledger cases, then the Documents wait/write test tried to SET documents_executor from the disposable admin, which only borrowed documents_store_owner.",
+  "change": "The admin-side concurrent writer uses its existing Documents owner role to call the unchanged stage/finalize commands under the held company guard. Runtime fixture calls still use documents_executor. No grants or production behavior change.",
+  "verification": "A non-superuser probe with owner SET but no executor SET reproduces the old denial and passes the fixed command, with exact memberships unchanged. The combined annual-approval/Documents database run passes 14 cases.",
+  "limits": [
+    "Full Supabase CI rerun required.",
+    "All seven RF acceptance criteria remain pending."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-annual-enforcement-20260929-14d7",
+  "sha256": {
+    "document-fixture-probe.log": "f69820233507d78b5bce8d5167055ba7afecc5fe69354e3c5319d3055a2aa39a"
+  }
+}

@@ -1,0 +1,396 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "EXPLICIT_RF_RETAINED_STREAM_V2_ARCHIVE_V6_EXPORT",
+  "recordedAtUtc": "2026-10-10T06:00:11.160856+00:00",
+  "baseRevision": "02a762de844f6bda3366927078b6e0ea51d48c14",
+  "parentRevision": "02a762de844f6bda3366927078b6e0ea51d48c14",
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_archive.py",
+      "sha256": "357d0d12a0b33ebf5b61b2c3807007ba02a0d9dc14632c51ebf6dcbd7f7b8090",
+      "bytes": 16600
+    },
+    {
+      "path": "apps/backend/src/talli_backend/main.py",
+      "sha256": "7b1d6f709300ea47f1962f4242d8af69aeb0ef583f7dcd6530ae25c3715ee048",
+      "bytes": 604538
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "c63872a70076e0772a26a7a3691f517860703390417cd8d76302d9f26a4a2117",
+      "bytes": 115296
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "216d9b7e544f0a9ca80446e084565928b46dc8a24cf870a9607e2e08cb6dfd14",
+      "bytes": 28943
+    },
+    {
+      "path": "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/archive/route.ts",
+      "sha256": "e38c7a32963cb8059d9f52aefc02f0bf07da4fa0c6354f0611d165b2174a033b",
+      "bytes": 362
+    },
+    {
+      "path": "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/page.tsx",
+      "sha256": "bea4c0a81c9e5b35cf2f0d19114fc79384039a440580404eebc3d58c7f0f5e92",
+      "bytes": 4877
+    },
+    {
+      "path": "apps/web/features/shareholder-register-filing/MODULE.md",
+      "sha256": "3362497a3ca1a9c017e7f2a41e2e6315bea7444403134beeebf5f754a4e3f8fb",
+      "bytes": 10439
+    },
+    {
+      "path": "apps/web/features/shareholder-register-filing/index.ts",
+      "sha256": "78a42dea8275283e41f65414e9d1522a7cab26e7f386d857cbc55c6f3fb1a106",
+      "bytes": 3826
+    },
+    {
+      "path": "apps/web/features/shareholder-register-filing/module.json",
+      "sha256": "4a38255f42a122130a8a1ab7f5d8410bea98b1d4548d1747ca7edda28d851445",
+      "bytes": 3014
+    },
+    {
+      "path": "apps/web/features/shareholder-register-filing/transport.ts",
+      "sha256": "b3d50989b0b55ccf64f661f524bae5cec66042f22abb6db98c2464a647105eb6",
+      "bytes": 37490
+    },
+    {
+      "path": "apps/web/tests/rf1086-archive-stream.test.mjs",
+      "sha256": "4cabe06e39a6ff2524ec38c67526f5e46d06c4326e13bc6ec487259a2f8fa7df",
+      "bytes": 10609
+    },
+    {
+      "path": "architecture/BACKEND-SYSTEM.md",
+      "sha256": "c1fe611f77673e9176cfe4417c9b52ef1f9677a4147baf0c64597e492ed52cdd",
+      "bytes": 133157
+    },
+    {
+      "path": "architecture/backend-system.json",
+      "sha256": "ca125a81f73d312f3f83664816f87f2e690ae6b4d3f2d02d648f5ce061e983b4",
+      "bytes": 65706
+    },
+    {
+      "path": "contracts/openapi/talli-v1.json",
+      "sha256": "7b0c6dd8529e55fc64eb78585d90fdb1a288dc8f069c2f0781c5f10435a388bd",
+      "bytes": 3235556
+    },
+    {
+      "path": "package.json",
+      "sha256": "c3ea5eff177b0056dbaa7562f500bf18892c06a895a46ac360f5a3226f0c01e2",
+      "bytes": 34367
+    },
+    {
+      "path": "packages/talli-api-client/src/generated/client.ts",
+      "sha256": "c1e170f716f70fa0e7b4a858767e6834b2d490e45e857efd2b44bde242f4b38f",
+      "bytes": 594936
+    },
+    {
+      "path": "scripts/generate-api-client.mjs",
+      "sha256": "50d0ff395efab3a5de95ef325b599b86cd5ff7d447e0a2f38f31e77d567a2c75",
+      "bytes": 150270
+    },
+    {
+      "path": "apps/backend/scripts/verify_rf1086_retained_archive_stream.py",
+      "sha256": "53e936c8b4059b7ba2e5e0443fe029f36f6037d6b26231c4f081f5504e598942",
+      "bytes": 2900
+    },
+    {
+      "path": "apps/backend/tests/rf1086_retained_stream_fixture.py",
+      "sha256": "ac1f6a7599b2a1275dd0685aa8304e1945f6e8721d41b597e6114ed730a57cde",
+      "bytes": 16550
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_retained_archive_stream.py",
+      "sha256": "71be24150a7ebe05135a86781ba9ca4813e12ad713a74de2d1003248eb59efb1",
+      "bytes": 11040
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_retained_archive_stream_adversarial.py",
+      "sha256": "2b9f17c2507c36f0c17c212c79811ec933af7d31c42cef78b8c1f00a353d150c",
+      "bytes": 24183
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_retained_archive_stream_api.py",
+      "sha256": "1a3e6930983122214b32487ed4f14631194e9cdb9bffc92dca2bd991d3825a1b",
+      "bytes": 5520
+    },
+    {
+      "path": "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/archive-download.ts",
+      "sha256": "5c6f5ea8be4d38f0b4c314b2f404f3e3ad467ec7ff8e77394e03b1eb42cb33dc",
+      "bytes": 2635
+    },
+    {
+      "path": "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/archive-v6/route.ts",
+      "sha256": "79bae25d42600528fb9622a5b8f15a381f5bcad46bcfc679f99021d4458c2d5b",
+      "bytes": 378
+    },
+    {
+      "path": "apps/web/tests/rf1086-retained-archive-stream.test.mjs",
+      "sha256": "57f5bbf5643ee0aff91b4836caa5aedb8b2ee61549608411181b4bdae2be6fb4",
+      "bytes": 14427
+    }
+  ],
+  "implementation": {
+    "backend": "New production-stream-v6 operation selects complete retained_archive_source and a bounded lazy v6 producer. All three captured sections remain intact. Old four JSON/stream routes remain exactly frozen.",
+    "stream": "Outer rf1086-production-stream-v2 requires inner rf1086-production-archive-v6; separate producer/verifier share exact fixed-callback mechanics with old wrappers. Public retained parser receives untouched text before exact v6 discrimination, preserving owner size and uniqueness checks without copied limits.",
+    "originals": "Expected Documents identity union covers source versions, independent observations, shared references and prior-year metadata/content versions. Bound feedback originals must match receipts, metadata, exact bytes and submission actor. Reads stay lazy, capped and access-checked. Unknown legacy feedback stays incomplete.",
+    "clientAndWeb": "Additive generated rf1086DownloadProductionArchiveV6 returns unconsumed Response. New downloadRf1086RetainedArchive never falls back/retries. New owner archive-v6 URL shares unchanged scoped owner/authenticated user/MFA/safe header mechanics; source page changes only native download href. Old helper and URL retain prior fallback.",
+    "cli": "Separate verify_rf1086_retained_archive_stream.py checks exact bounded stream/counts/capture extent. --require-feedback-originals rejects unbound legacy feedback. Transfer integrity never implies authenticated origin, authoritative enumeration or restore."
+  },
+  "checks": [
+    {
+      "name": "Backend combined regression",
+      "exitCode": 0,
+      "passed": 445,
+      "newAuthor": 56,
+      "newIndependent": 65,
+      "selectedExisting": 324,
+      "seconds": 44.18
+    },
+    {
+      "name": "Archive web suite",
+      "exitCode": 0,
+      "passed": 158,
+      "invocations": [
+        5,
+        153
+      ]
+    },
+    {
+      "name": "Boundary contract and generated artifact checks",
+      "exitCode": 0,
+      "passed": 64
+    },
+    {
+      "name": "Web typecheck",
+      "exitCode": 0
+    },
+    {
+      "name": "Architecture plus exact tracked dependency evidence",
+      "exitCode": 0
+    },
+    {
+      "name": "Old stream/HTTP oracle",
+      "exactVectors": 60,
+      "streamPositives": 8,
+      "verifierRejections": 48,
+      "httpRoutes": 4
+    },
+    {
+      "name": "Old CLI oracle",
+      "exactCases": 80,
+      "success": 37,
+      "reject": 43
+    },
+    {
+      "name": "Old client/transport/owner-route oracle",
+      "exactVectors": 67,
+      "client": 28,
+      "transport": 16,
+      "ownerRoute": 23,
+      "allOldOpenApiMembersExact": true
+    },
+    {
+      "name": "Six prior pure oracles",
+      "exactGroups": {
+        "recoveryCorrection": {
+          "vectors": 189,
+          "calls": 306
+        },
+        "claimDispatch": 119,
+        "archive": 59,
+        "approval": 181,
+        "downstream": 7,
+        "annual": 217
+      }
+    },
+    {
+      "name": "Root and independent static extraction/additivity",
+      "rootWebChecks": 13,
+      "independentWebChecks": 17,
+      "independentCoreChecks": 77
+    },
+    {
+      "name": "Controlled local browser",
+      "result": "PASS_WITH_EXPLICIT_DOUBLES",
+      "savedFilename": "rf1086-00000000-0000-0000-0000-000000000001-2025.ndjson",
+      "savedBytes": 243997,
+      "savedSha256": "b4fd9b7b8d0d2bff2d91c42af6eb8a112b1696ca8348f61ae17ccbf04476adbd",
+      "sourceOriginals": 14,
+      "feedbackOriginals": 2,
+      "sourceVersions": 2,
+      "observations": 4,
+      "withdrawals": 2,
+      "mfaDenial403BeforeBackend": true,
+      "truncatedDownloadRejectedByCli": true,
+      "browserCancellationReachedBackend": true,
+      "ownedProcessesStopped": true
+    }
+  ],
+  "independentReviews": {
+    "spec": {
+      "result": "PASS",
+      "openFindings": 0,
+      "receipt": {
+        "file": "rf-retained-stream-final-spec-review.json",
+        "sha256": "83a05b6b85b939b85dffd523b4021ae5a80a7740cec7a43a0d1ce814417c0bde",
+        "bytes": 18268
+      }
+    },
+    "standards": {
+      "result": "PASS",
+      "openFindings": 0,
+      "receipt": {
+        "file": "rf-retained-stream-whole-standards-review.json",
+        "sha256": "b2c12c7b85df50f58c80fca27443e16e3ac2510623d9c56cfa77ce3272c823a2",
+        "bytes": 11819
+      }
+    }
+  },
+  "rolloutAndRollback": [
+    "Deploy additive backend support before selecting the new web URL; missing support intentionally fails without downgrading capture coverage.",
+    "Old URLs/codecs/helpers remain available. Revert this isolated application/web change to restore the previous source-page target. No migration or data rollback is introduced."
+  ],
+  "evidenceQualifications": [
+    "The resource-order improvement has a scaled pre-repair observation and post-repair regression, not a fabricated failing-test RED or oversized acceptance claim.",
+    "Interim registration omissions were fixed in central manifest/docs. Initial contract run omitted native UV runtime variables and failed a PyICU build before generation; corrected environment passed 64 without product repair.",
+    "Author/Spec initial fixture expectation/setup errors are preserved privately and do not count as product REDs. Focused counts overlap final runs."
+  ],
+  "privateArtifacts": [
+    {
+      "file": "rf-retained-stream-whole-source-freeze.json",
+      "sha256": "e90fc55966f790fcae631214c34edc485847de2c56d6cc7a121140eeb36eb302",
+      "bytes": 6114
+    },
+    {
+      "file": "rf-retained-stream-whole-final-checks.json",
+      "sha256": "28f48f3ec278eada34e35f8bdf07bfde44cef39b1dec9a399310e0ead0178f0e",
+      "bytes": 6730
+    },
+    {
+      "file": "rf-retained-stream-final-spec-review.json",
+      "sha256": "83a05b6b85b939b85dffd523b4021ae5a80a7740cec7a43a0d1ce814417c0bde",
+      "bytes": 18268
+    },
+    {
+      "file": "rf-retained-stream-whole-standards-review.json",
+      "sha256": "b2c12c7b85df50f58c80fca27443e16e3ac2510623d9c56cfa77ce3272c823a2",
+      "bytes": 11819
+    },
+    {
+      "file": "rf-retained-stream-root-review.json",
+      "sha256": "0477a7f122cf45c459759660ed7aa6e3b8fb8969b9a06da6c7566283375759fd",
+      "bytes": 2410
+    },
+    {
+      "file": "rf-retained-stream-backend-final-checks.json",
+      "sha256": "47c9c94b167feee0bc7da81626d85820a1db206f54ffcf0d32b92ada41b1341b",
+      "bytes": 16998
+    },
+    {
+      "file": "rf-retained-stream-backend-final-freeze.json",
+      "sha256": "775da10847550b8632bdb54336b600658660cebba77ca5e228f9746290b8a543",
+      "bytes": 3532
+    },
+    {
+      "file": "rf-retained-stream-stage3-root-decision.json",
+      "sha256": "5d50ac2b45ad3ed7e639fc2d2287fbdcd398d20df2e40e5fae754b3bf8ab1870",
+      "bytes": 9144
+    },
+    {
+      "file": "rf-retained-stream-parser-order-amendment.json",
+      "sha256": "01705396854f1e7b154a740f9605e308640a36b154f77dfc57f4029cf395ea93",
+      "bytes": 1422
+    },
+    {
+      "file": "rf-retained-stream-inner-size-pre-repair-probe.json",
+      "sha256": "50e6b90ee66a0580e99fc03fa221c41aea7161ddc7b1c761f66a60d5dac262f4",
+      "bytes": 1440
+    },
+    {
+      "file": "rf-retained-stream-root-web-static.json",
+      "sha256": "44235063e8849b0202470804afbdd51ce596919937e5a74673715385865bd6c1",
+      "bytes": 1175
+    },
+    {
+      "file": "rf-retained-stream-spec-web-static-v1.json",
+      "sha256": "aed992d03f12416b3a360c49ee4a86a72dc05e08696683d656136d3eafc73f18",
+      "bytes": 5701
+    },
+    {
+      "file": "rf-retained-stream-independent-core-checkpoint-v1.json",
+      "sha256": "2b1b8f9f4a250d6423c4456c81806e2279fcea925a4c927dac7f9adf5f256c1e",
+      "bytes": 7088
+    },
+    {
+      "file": "rf-retained-stream-browser-proof.json",
+      "sha256": "a4a68164a7d515554f1ec1ef4e9f315c63706088e6890888ecf3120178fcaf94",
+      "bytes": 10125
+    },
+    {
+      "file": "rf-retained-stream-archive-suite.log",
+      "sha256": "117e563180f84ce1f0451d58009e0721e055ccfd4c5a50014607a1f68e26a10d",
+      "bytes": 14685
+    },
+    {
+      "file": "rf-retained-stream-boundary-contract-final.log",
+      "sha256": "db6f061f41af2743463f34fed2630335f4ef2becaff3180787cfe0c6f5837741",
+      "bytes": 6156
+    },
+    {
+      "file": "rf-retained-stream-web-typecheck.log",
+      "sha256": "b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+      "bytes": 120
+    },
+    {
+      "file": "rf-retained-stream-root-architecture-final.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "file": "rf-retained-stream-legacy-web-final-compare.log",
+      "sha256": "847aa76f3dd019a7c52433c972df81316175cc07c850d75473ca5b9d149711a3",
+      "bytes": 69
+    },
+    {
+      "file": "rf-legacy-web-pre-v6.json",
+      "sha256": "bde4ece6395ebeaec6ff0062b8515050c0edab2c339155a1a7794b9418b3bbda",
+      "bytes": 3492880
+    },
+    {
+      "file": "freeze-rf-legacy-web-pre-v6.mjs",
+      "sha256": "19b07334996f8c7ca2a0f55874c58db3b9d57701fc1d7e21ee90d904a141a483",
+      "bytes": 10495
+    },
+    {
+      "file": "rf-legacy-stream-cli-pre-v2.json",
+      "sha256": "b2be5ec2fcba4cd81fba1a942ae5179c75d286225b34d9770af931059c87764a",
+      "bytes": 76781
+    },
+    {
+      "file": "freeze-rf-legacy-stream-cli-pre-v2.py",
+      "sha256": "09b587a56c0f8d35069d39cbbf056332a3ea8271eb4ae4ddfe0d3ec5961321fc",
+      "bytes": 5925
+    },
+    {
+      "file": "rf-legacy-stream-pre-v2.json",
+      "sha256": "9009097a2731b61548cdf461bda89a40c4da408998c94b8d6d31672d965f059e",
+      "bytes": 3525221
+    },
+    {
+      "file": "freeze-rf-legacy-stream-pre-v2.py",
+      "sha256": "e20d2056a08635a24f5ae533925c83261e89ba549af933f602016fb22aa8134b",
+      "bytes": 6088
+    }
+  ],
+  "limits": [
+    "Deterministic actual Documents codecs/bytes and public RF pure owners with synthetic persistence/authority commitments; no live Auth/RLS/storage/provider proof.",
+    "Browser loads actual source page/native anchor/owner route/helper/client through loopback Node adapter; child panels, Auth/MFA and backend replay are controlled doubles. Cancellation prefix is backend-written bytes, not a completed saved browser file.",
+    "Complete captured sections and self-consistency cannot prove authoritative storage enumeration, origin or restore. Actual independent identity/deleted actor restore remains pending.",
+    "No fresh source/approval/claim/intent writer or correction wiring activation. Foreign Company Archive owner unchanged; no SQL/grants/provider/paid action.",
+    "Current CI38027757820 belongs to02a762de and is not evidence for this new slice. Its known database fixture failure and live application run remain separate.",
+    "A1–A7 and linked immutable gates remain PENDING. No genuine company admission/outreach, launch clearance or production promotion."
+  ]
+}

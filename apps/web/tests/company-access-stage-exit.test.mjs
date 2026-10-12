@@ -12,7 +12,7 @@ import {
   revokeOperatorSupportAccess,
 } from "../features/company-access/transport/load-company-access-context.ts";
 import { listCompanyAccessContexts } from "../app/lib/company-access-context.ts";
-import { createSystemUserCallbackHandler } from "../app/auth/systembruker/confirm/route.ts";
+import { createSystemUserCallbackHandler } from "../app/auth/systembruker/confirm/handler.ts";
 
 test("company records and case-bound operator access use authenticated generated-client operations", async () => {
   const originalFetch = globalThis.fetch;

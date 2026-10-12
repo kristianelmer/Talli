@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_FIXTURE_REPAIR",
+  "problem": "The Billing public-API profile test retained its full-year entitlement. The shared admitted/setup/pilot fixtures return data without cleanup. Later RF lifecycle rollback correctly rejects retained full-year rows. Literal-string insert searches missed this API-created enum profile.",
+  "reproduction": "CI36570654506 failed after384 authority tests. A fresh full local Supabase rehearsal observed exactly one full-year entitlement with evidence_reference synthetic-local-separation-proof before RF tests, then reproduced the rollback rejection after407 authority passes. Every source-approval exact-delete assertion passed.",
+  "change": "Register an exact ID and company-scoped finalizer immediately after the Billing API creates the full-year fixture. Assert exactly that row is deleted even on test failure. Add the same exact-row assertion to the existing RF source-approval fixture cleanup. Production migration and rollback barriers are unchanged.",
+  "verification": {
+    "focused": "The full-year Billing API test passed; a subsequent query found no retained full-year rows and the actual production profile rollback/replay passed. Disposable PostgreSQL17 with minimal Auth/Storage shims.",
+    "supabaseBaseline": "700 Billing tests and407 authority cases passed before the expected retained-row rejection. New full-rehearsal run still required."
+  },
+  "limits": [
+    "Fixture-only repair, no Billing business expansion or production data deletion.",
+    "All seven RF criteria remain pending."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-bank-evidence-20260929-14d7",
+  "sha256": {
+    "talli-bank-evidence-full-supabase.log": "49311fd6189fe3488908c3db44c7cde7269dc14b8b9354353dac343b30711a52",
+    "talli-pilot-fixture-cleanup-check.log": "9b1c139e3673a78f941811e63b91939481fd177c00255f47698ddfeff8cac5f2"
+  }
+}

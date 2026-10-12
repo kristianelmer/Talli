@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "issue": "#193",
+  "scope": "Observed AR feedback parser only",
+  "status": "PASS_BOUNDED_LOCAL_PARSER",
+  "base": "56362f0fbc02c28fd1efd9233246907745a6cd93",
+  "sourceBindings": {
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/feedback.py": "e9acf4b4a218b77546f88bc9296003f303c63eebe83b5d6c7dcf5a370a58b116",
+    "apps/backend/tests/test_rf1086_ar_feedback.py": "510d641bbf274a03be3fd0b591f5aec95d38578fab9faedb590b82485a197f56",
+    "architecture/evidence/issues/193/rf/ar-feedback-parser.md": "73dbc6ee915a9fa524e4753c232fea62f2d3e85dc6e0557268738061d0d4f4f7"
+  },
+  "checks": {
+    "root": 196,
+    "spec": 206,
+    "standards": 196,
+    "standardsLegacyComparisons": 54
+  },
+  "reviews": {
+    "ar-parser-spec-final.md": "2485ebc4934a4f1eca662b12923e6112b2d8167308556da7590270192b9e4141",
+    "ar-parser-standards-final.md": "145dd8e1079043622e51f59d36864f8296635e829a60dd3f691ad155fcf92306"
+  },
+  "closedFinding": "SPEC-193-RF-AR-1: require UUID strings before exact related-transmission equality",
+  "actualReceiptLocalReplay": {
+    "receiptSha256": "973eba661ce1509fa245d6e1dc36c2aff234d25ecf30e865df3948bddc356a1a",
+    "result": {
+      "classification": "accepted",
+      "schema": "aksjonaeroppgave-ar-til-mag-v0_1",
+      "transmission_id": null
+    },
+    "providerCalls": 0,
+    "identityBasis": "acceptance-receipt-20260915.json verified relationship chain"
+  },
+  "limits": [
+    "Observed service format; receipt XSD publication/drift coverage pending",
+    "Canonical discovery integration still pending at this snapshot",
+    "No provider calls, production activation, broader case or full RF acceptance credit"
+  ]
+}

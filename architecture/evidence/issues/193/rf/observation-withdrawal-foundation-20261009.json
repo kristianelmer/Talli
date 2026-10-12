@@ -1,0 +1,132 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "RF-1086 register observation withdrawal foundation",
+  "observedDate": "2026-10-09",
+  "baseRevision": "b5de6563d260a4e4deeb3ec4efaaaecfc0f4ff33",
+  "status": "REVIEWED_PURE_FOUNDATION_LOCAL_CHECKS_PASS_NO_RUNTIME_WITHDRAWAL",
+  "plan": "architecture/evidence/issues/193/rf/observation-withdrawal-plan-20261009.json",
+  "scopeProvenance": "Bounded engineering implementation authorized in parent-agent assignment; not a new human acceptance or launch decision.",
+  "behavior": {
+    "values": "Immutable exact-target command, canonical withdrawal ID, attributable receipt and derived lifecycle values exported only through RF public.py.",
+    "identity": "Strict company/year/observation ID/version/fact hash and verified-user actor primitives. Nonblank reason is retained exactly, at most 1000 Unicode characters, valid UTF-8 without NUL. Request/receipt SHA-256 commitments use separate versioned domains.",
+    "time": "Aware server time is normalized to UTC, preserving all six microsecond digits; withdrawal before original capture fails.",
+    "replay": "Pure original-command comparison binds actor, scope, target and exact reason; it neither selects an idempotency key nor consults current evidence.",
+    "lifecycle": "Supersession is derived before withdrawal. Withdrawn heads never reactivate ancestors. Duplicate/orphan/fork/invalid scope, hash, version or chronology and withdrawn ancestors fail. Independent new roots remain possible.",
+    "codec": "Dedicated closed rf1086-register-observation-withdrawal-v1 JSON codec; bounded strict canonical UTF-8 parsing rejects duplicate/unknown fields, malformed primitives and altered commitments.",
+    "authority": "Preparation validates a supplied exact target; lifecycle validates supplied history. Neither proves persistence, complete current history, accepted ownership or consequential permission. Future repositories must establish those facts under a held guard.",
+    "compatibility": "No existing observation or archive codec v1-v4, persistence protocol, adapter, HTTP route/schema, generated client or web behavior changed."
+  },
+  "manifest": {
+    "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+    "newPublicExports": 12,
+    "newTestEntry": "registerObservationWithdrawal",
+    "generatorInspection": "scripts/check-architecture.mjs reads module.json as source inventory. Its optional writer produces architecture/dependency-evidence.json only; no module manifest generator was found in repository scripts. Manifest entries were added explicitly and reconciled to public.__all__ and MODULE.md.",
+    "dependencyEvidence": "Generated in memory by the checker and compared with the committed dependency-evidence.json; identical, no file rewrite."
+  },
+  "checks": [
+    {
+      "name": "New pure withdrawal public contract tests",
+      "result": "PASS",
+      "passed": 94,
+      "command": "python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_rf1086_register_observation_withdrawal.py -q",
+      "log": "tests"
+    },
+    {
+      "name": "Observation, storage and archive v1-v4 regression selection",
+      "result": "PASS",
+      "passed": 315,
+      "includesNewPureTests": true,
+      "command": "python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_rf1086_register_observation_withdrawal.py apps/backend/tests/test_rf1086_register_observation.py apps/backend/tests/test_rf1086_register_observation_storage.py apps/backend/tests/test_rf1086_year_source_storage.py apps/backend/tests/test_rf1086_archive_storage.py apps/backend/tests/test_rf1086_archive_history.py apps/backend/tests/test_rf1086_archive_originals.py apps/backend/tests/test_rf1086_override_archive.py -q",
+      "log": "regression"
+    },
+    {
+      "name": "Architecture after manifest reconciliation",
+      "result": "PASS",
+      "command": "node scripts/check-architecture.mjs",
+      "log": "architecture"
+    },
+    {
+      "name": "OpenAPI drift",
+      "result": "PASS",
+      "command": "python apps/backend/scripts/generate_openapi.py --check",
+      "exitCode": 0,
+      "log": "openapi"
+    },
+    {
+      "name": "New export inventory",
+      "result": "PASS",
+      "method": "Python AST extraction of public.__all__: all 12 new names occur exactly once across manifest exports and occur in MODULE.md; declared new test path exists."
+    },
+    {
+      "name": "Whitespace",
+      "result": "PASS",
+      "command": "git diff --check"
+    }
+  ],
+  "independentReview": {
+    "reviewer": "override_standards_review",
+    "result": "No material pure model/codec/lifecycle defect found; missing manifest inventory identified and addressed in this follow-up.",
+    "additionalMalformedInputs": {
+      "passed": 108,
+      "method": "Reviewer inline Python harness using prepared backend-native-312 runtime and public RF API; 12 codec fields each replaced by nine malformed primitive/shape values. Every case returned exactly rf1086_register_withdrawal_storage_invalid.",
+      "evidenceKind": "Reviewer tool observation; no retained script or log artifact."
+    },
+    "equivalentTimezone": "Reviewer replaced retained receipt time with the same instant at UTC-04:00, observed identical canonical serialized bytes and UTC tzinfo after parsing.",
+    "limits": "Read-only local code/domain checks only; no database, browser or immutable CI proof."
+  },
+  "sourceFileSha256": {
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "f0d740d3efe397913ddafc4163370da60ec3fbc952c9e19a9d634b4d5009fc1f",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/register_observation_withdrawal.py": "3582ae0742745ea7d41ae0e05a9fb56d6546966848f60e1db8d9972c9e8e4d0b",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "01ef953c21acfe18b67f55a69b69c30fc8c6514bbb43e8936cc8f63783648559",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "ab10297d85ae73b5a4be47aa790d9fe172b639b1c4e3ee3e897370921fa930ae",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/register_observation.py": "85d39cb284fe78437376c3efd7bc306342d711bc9e66aa6976db60dc8ea2ecf9",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source_storage.py": "b2eea3a72d9c8b400e71847d81ab6038a5f343ae3649281be81dc31dd389c055",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_storage.py": "e15d8d65fe3d7fa6d1b34bbc663309e80cae67b34c898de86ca4efac57d55e2e",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_history.py": "34733bb09d61162a9e41e3c056768484771cd0fcf2d00ab49b7e0a20ba46a7eb",
+    "apps/backend/tests/test_rf1086_register_observation_withdrawal.py": "a3164b903771be553070a092eaf2e8c55db5da0c1aa993d467032f75a3eab28f",
+    "contracts/openapi/talli-v1.json": "e4c2ef2596df2eaa7c6792d727d991206f2f2e46f4d39b1f6232fe2247609ec8",
+    "architecture/dependency-evidence.json": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607"
+  },
+  "privateLogs": {
+    "tests": {
+      "localPath": "/private/tmp/talli-rf-withdrawal-foundation-tests.log",
+      "sha256": "adf97c360596807e81f94bcdce5de2eaebb8c0ebde3543aa5ff5b2873adafcc9",
+      "bytes": 179
+    },
+    "regression": {
+      "localPath": "/private/tmp/talli-rf-withdrawal-foundation-regression.log",
+      "sha256": "20b9ad4f071bd7c280b6fa4b4e740c313b529162680a9b878bfee7c6954ada43",
+      "bytes": 420
+    },
+    "architecture": {
+      "localPath": "/private/tmp/talli-rf-withdrawal-foundation-architecture.log",
+      "sha256": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+      "bytes": 18198
+    },
+    "openapi": {
+      "localPath": "/private/tmp/talli-rf-withdrawal-foundation-openapi.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  },
+  "notPerformed": [
+    "database migration or adapter implementation",
+    "live database or concurrency tests",
+    "HTTP/web withdrawal exposure",
+    "archive v5 or completion-coverage fence",
+    "Governance SQL backstop or repair",
+    "command activation",
+    "commit or push by implementation owner",
+    "index or acceptance promotion"
+  ],
+  "limits": [
+    "Evidence applies to these local source hashes, not a passing immutable CI revision.",
+    "94 pure tests are included within 315 regression tests; the counts are not additive.",
+    "Historical input validation cannot detect omitted successors or withdrawals, authorize the actor, prove server origin of supplied ID/time, select a durable idempotency key or establish a current-head lease.",
+    "Runtime withdrawal must remain unavailable until unconditional old-entry-point database enforcement, authenticated recovery/lifecycle transport, truthful overlap and archive coverage are complete.",
+    "Governance owns its final callable SQL completion assertion and any repair of an immutable event bound to withdrawn evidence; independent recapture does not supply that repair.",
+    "Company Archive owns the authoritative completion coverage fence. Its frozen-facade/serial-stage ADR dependency remains unresolved; RF and Next.js cannot silently own this policy.",
+    "This does not close the complete withdrawal gap or A1/A2/A4, promote acceptance, enable production filing, establish current-law conformance or authorize launch."
+  ]
+}

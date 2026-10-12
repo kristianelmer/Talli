@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_LOCAL_GUARDED_ANNUAL_APPROVAL_AND_CLAIM",
+  "baseRevision": "c81ad1bae00ac3d81517720d4b385b26903e66fc",
+  "change": "Full-year review, approval and first claim read five annual owner inputs under held admission, retain exact RF-owned V2 proof, and reject changed evidence. Historical claims and V1 archive identities remain recoverable. SQL preserves independent review, overrides, Authority, Billing and technical gates; old V1 new-effect grants are closed.",
+  "verification": {
+    "focusedUnitApiManifestArchiveClaimAdmission": 603,
+    "rfDatabaseLane": 471,
+    "ciRehearsalHarness": 80,
+    "architecture": "pass",
+    "restrictedMigrationAuthority": "Two rollback/replays restore exact schema ACLs and membership grantors/options with separate non-superuser receiver/schema owners and no initial owner SET.",
+    "documentFixtureRole": "Restricted owner-only admin reproduces the old executor SET denial and passes unchanged document commands through its already borrowed owner role."
+  },
+  "fixtureRepairs": [
+    "Concurrent Documents admin writer uses existing owner role; runtime calls retain executor role.",
+    "Annual opening fixtures remove only their company opening and synthetic quarantine records so global rollback tests cannot inherit incomplete fixtures.",
+    "Combined rollback uses a unique temporary role-restoration table."
+  ],
+  "limits": [
+    "Local PostgreSQL uses minimal Auth/Storage shims. The full Authority lane expects overlap grants from a genuine Supabase bootstrap; full Supabase CI is required.",
+    "Full-year provider dispatch and uncertain-outcome recovery remain unfinished.",
+    "No hosted change, production provider operation or real AS data used.",
+    "All seven RF acceptance criteria remain pending; ordinary PR CI is not the two separately dispatched immutable acceptance gates."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-annual-enforcement-20260929-14d7",
+  "sha256": {
+    "unit-final.log": "66d79eb3596eba82ba920dc6afdcb488268fc25d811a8d681de1cbe7959ddcf4",
+    "database-final.log": "b37297a9f6d74663051326d85101bc886ff75936216c2d192c0869ace6b4cb9c",
+    "ci-harness.log": "05df04acda01ac7c633d9f08f2d24d27dacc3450dbd35c25d41faac521e2dad7",
+    "architecture-final.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "migration-authority-probe.log": "5a8c0dd85da706bd03b74b069d52d74f6f0167115905dfb141778ba27c4a808a",
+    "document-fixture-probe.log": "f69820233507d78b5bce8d5167055ba7afecc5fe69354e3c5319d3055a2aa39a",
+    "talli-rf-document-fixture-role-probe.py": "7b3b32e6efa499c69e750599ec67f00aa80297a48bbd6cdab0d10ed16f181d58",
+    "talli-rf-annual-migration-authority-probe.py": "48efbd354b7452edbd3d296c7b30b29a27c479e65a7925a0672d1399e11880ff"
+  }
+}

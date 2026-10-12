@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "INVALIDATION_FIXTURE_SCOPED_OWNER_CONTEXT_REPAIR",
+  "baseline": "17b260ec0533e2a1834014d7909d048721a7becd",
+  "failureRun": 38090403930,
+  "change": "Both claim replay/first-effect invalidation setup branches reuse the existing scoped RF owner connection. RETURNING proves the exact approval was invalidated. Production implementation, SQL, policies, triggers, grants and claim assertions unchanged.",
+  "cause": "Raw admin fixture UPDATE entered SECURITY DEFINER admission trigger without verified actor; FORCE RLS hid immutable source approval binding.",
+  "validation": {
+    "projectedNative": {
+      "passed": 5,
+      "result": {
+        "path": "/private/tmp/talli-release-20261009/rf-claim-invalidation-context-native-v2.json",
+        "sha256": "0b2e5216969d6843d2b3beb283f5dbfbe787ce177752ee2d42910714e376c978",
+        "bytes": 1277
+      },
+      "script": {
+        "path": "/private/tmp/talli-release-20261009/probe-rf-claim-invalidation-context-v2.py",
+        "sha256": "26d2ed33d86db157a228e6640a4859984eace97a70d9ea23750bddbc1275f1f4",
+        "bytes": 8830
+      },
+      "limits": [
+        "Exact published trigger body and binding SELECT RLS policy; minimal tables and verified-actor/accepted-member functions are projections.",
+        "Does not prove full-schema claim replay, Auth, owner membership, producer origin, annual/Governance/Docs/Billing/Authority or hosted recovery."
+      ],
+      "ownedProbeRemoved": true
+    },
+    "protectedClaimUnits": {
+      "passed": 39,
+      "rawLog": {
+        "path": "/private/tmp/talli-release-20261009/rf-claim-invalidation-protected-local-v1.log",
+        "sha256": "c7d0341bc999166061b3571d3ef476da4cb7814b36f99b292bd663b5c88e40b3",
+        "bytes": 99
+      }
+    },
+    "fullSchemaCollectionOnly": {
+      "collected": 20,
+      "rawLog": {
+        "path": "/private/tmp/talli-release-20261009/rf-claim-invalidation-db-collection-v1.log",
+        "sha256": "890c1b15cdfb80950742fa69ab987f59667625bcc7b62fd45ac0060156c314cd",
+        "bytes": 2526
+      }
+    },
+    "protectedTestFunctionsUnchanged": 10,
+    "unchangedProductionDiff": true
+  },
+  "sourcePins": [
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/test_rf1086_source_claim_v3_database.py",
+      "sha256": "9e3bee63f679eed78296240478f34ab24ffd02f4bea7226510e7dd21ab4f9780",
+      "bytes": 16278
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/governance_register_evidence_amendment_fixture.py",
+      "sha256": "adc105641db822d05fea038fc2aef680863def2478181573a4a987072db95b42",
+      "bytes": 17195
+    },
+    {
+      "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/test_rf1086_retained_correction_reader_database.py",
+      "sha256": "e1672bfe0f16b75216641cd52c32dd55213fbf611f4eaa4532a4ffdafde3bfac",
+      "bytes": 31119
+    }
+  ],
+  "limits": [
+    "Actual all20 claim cases still need successor full-schema CI; earlier9PASS/1setupFAIL/10UNEXECUTED is not clearance.",
+    "No intent implementation, route/runtime grant, provider call, genuine data, deployment or paid action.",
+    "Independent identity restore diagnostic remains unreached in failed run38090403930."
+  ]
+}

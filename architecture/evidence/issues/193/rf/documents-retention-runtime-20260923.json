@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "status": "passed",
+  "recorded_on": "2026-09-23",
+  "scope": "Documents-owned atomic retention for RF year-source and register-observation originals",
+  "private_source_binding_proof_sha256": "6f1641e5ffa9dce4e4d6e1141d1ac6fe414083efd58767847dcd73526a5d7d4f",
+  "database": {
+    "tests_passed": 20,
+    "runtime_seconds": 3.39,
+    "actual_restricted_role": true,
+    "fresh_disposable_local_clone": true,
+    "clone_dropped": true,
+    "hosted_changes": false,
+    "provider_calls": 0,
+    "object_transfers": 0,
+    "log_sha256": "12b5171f3f04e88ec6cf2ab230bc4866587538980491d42a27067fe59ec91f5b"
+  },
+  "unit": {
+    "tests_passed": 115,
+    "scope": "RF independent register plus Documents retention/primitive/adapter"
+  },
+  "verified_behaviors": [
+    "Multiple original documents retained per source with deterministic identities; identical replay adds no duplicate references.",
+    "Corrections preserve prior retained references.",
+    "Complete metadata differences abort capture under document row lock.",
+    "Exact company, original document year, actual status, content SHA and length checked.",
+    "Captured original deletion is blocked; concurrent removal waits for the capture lock.",
+    "Metadata mismatch causes a SQL transaction error even if the caller catches the exception.",
+    "Later transaction failure rolls back earlier retention references.",
+    "Capture requires an already active transaction and live accepted owner.",
+    "Browser roles and RF direct table reads are denied.",
+    "Attached and stored statuses remain unchanged and are admitted only for narrow RF retention references.",
+    "Legacy registry API status restriction remains intact.",
+    "Rollback preserves original references and deletion protection; migration replay restores exact role memberships."
+  ],
+  "source_sha256": {
+    "apps/backend/src/talli_backend/modules/documents/public.py": "6876be3b927a784d6a25c4e80c26d19edd4aec4a6db10939637d0cbdb184e95f",
+    "apps/backend/src/talli_backend/modules/documents/evidence.py": "9db3a343eaaf6357ecf6055bfaecff9b9ccc0b489babe57a4ae6123586b654dc",
+    "apps/backend/src/talli_backend/modules/documents/module.json": "417bc51ffdf22e65b4d3f638361e83e47f24057be0a034496f783bf3f9e86db0",
+    "apps/backend/src/talli_backend/modules/documents/MODULE.md": "46685b73f4dfe5d61cde52cb5bf169674fe1dfc25237689452e41dc6e8b2f936",
+    "apps/backend/src/talli_backend/adapters/postgres_document_evidence.py": "028e005fac122501b1f77542c2c11c8e6bd536ddd1be46caa8d6ea42562448e9",
+    "apps/backend/src/talli_backend/adapters/supabase_documents.py": "b6ec90256ee14b5ab0785e0eee20e5f1a52b70002ed69cbfa7a98c3df8482823",
+    "supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql": "fff296d5af5c24932c415465399ec632e0a81152fcaf509eceda871bce1f984d",
+    "supabase/rollback/20260923102419_documents_verified_rf_evidence_retention.sql": "c76b9410bea58b76fd74f2c4f0f22f5a8fbbece7af304ac6901bbddd62364181",
+    "apps/backend/tests/test_document_evidence_retention.py": "09c8f820096303624e184d23e6c23039f9f7790d93e575cc6108d787697013b2",
+    "apps/backend/tests/test_document_evidence_retention_database.py": "163dba007c5737345670d942f56ff8553344989e702a78e405840aeddf3eaaaf"
+  },
+  "limitations": [
+    "Complete RF source/observation append integration tests owned by RF persistence agent and separately bound.",
+    "No object-provider lease or external cross-capability freshness claim.",
+    "Documents-owned metadata hash retains complete public DocumentRecord with UTC normalization; original bytes verified before transaction and metadata binding rechecked under row lock.",
+    "This isolated proof does not establish full RF acceptance, production filing readiness, or archive completeness.",
+    "Combined RF append/head retention atomicity is verified separately by the RF persistence test owner."
+  ]
+}

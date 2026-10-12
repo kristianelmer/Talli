@@ -1,0 +1,120 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "relatedCriteria": [
+    "GH-193-RF-A2",
+    "GH-193-RF-A4",
+    "GH-193-RF-A5",
+    "GH-193-RF-A6"
+  ],
+  "observedDate": "2026-10-09",
+  "baseRevision": "5595cc03e6439bc223134d5ffe03225d9f474898",
+  "status": "REVIEWED_LOCAL_CHECKS_PASS_LIVE_DATABASE_AND_BROWSER_PENDING",
+  "problem": "A lost source or register capture response left the owner unable to recover its committed receipt through a separate read operation.",
+  "behavior": {
+    "query": "Two additive authenticated receipt-lookup POST queries reuse the exact original capture body and Idempotency-Key. Server-derived actor, accepted current owner and company/year scope are required.",
+    "persistence": "Read-only repeatable-read transaction observes the committed actor/key row and validates stored identity, digest and original request. Superseded original receipts remain recoverable without refreshing current Documents or Governance evidence. No writes or authority calls.",
+    "uncertainty": "recorded requires the original receipt; not_observed requires null and is not proof of non-execution. Conflicts, absence and unavailable responses preserve the frozen attempt. UI lookup is explicit and separate from existing same-key capture retry.",
+    "browserRegression": "One existing rejected-predecessor scenario enables an explicitly guarded local test fault. A real successful capture handler commits before middleware replaces its receipt with generic503/no-store. UI lookup must use identical body/key and recover the exact receipt, with one capture and source version1. Digest-only logs bind the observations.",
+    "compatibility": "All174 existing OpenAPI paths and505 existing schemas remain semantically identical to base. Exactly2 query paths and2 response schemas added; legacy clients and archive versions unchanged."
+  },
+  "checks": [
+    {
+      "name": "Focused backend lookup/source API/observation checks",
+      "result": "PASS",
+      "passed": 159,
+      "evidence": "Implementation owner tool observation; final new lookup test file separately rerun4passed."
+    },
+    {
+      "name": "Focused web transport and editor checks",
+      "result": "PASS",
+      "passed": 283,
+      "evidence": "Implementation owner tool observation;186transport and97editor/observation/control."
+    },
+    {
+      "name": "Complete web boundary",
+      "result": "PASS",
+      "passed": 688,
+      "evidence": "Root execution:565 web tests plus123 fixture/composition/client tests."
+    },
+    {
+      "name": "Complete contract boundary",
+      "result": "PASS",
+      "passed": 95,
+      "evidence": "Root execution."
+    },
+    {
+      "name": "Typecheck and architecture",
+      "result": "PASS",
+      "evidence": "Root execution, including unchanged dependency evidence."
+    },
+    {
+      "name": "New guarded response-loss fixture safety",
+      "result": "PASS",
+      "passed": 28,
+      "evidence": "Implementation owner and independent reviewer executions; included in complete web boundary."
+    },
+    {
+      "name": "Existing prepared crash fixture",
+      "result": "PASS",
+      "passed": 8,
+      "evidence": "Implementation owner execution."
+    },
+    {
+      "name": "OpenAPI additive compatibility",
+      "result": "PASS",
+      "evidence": "Root JSON comparison against5595cc03."
+    },
+    {
+      "name": "Live database lookup cases",
+      "result": "PENDING",
+      "newCases": 6,
+      "evidence": "27 tests collected across two database files; no live pass claimed."
+    },
+    {
+      "name": "Authenticated browser lost-capture recovery",
+      "result": "PENDING",
+      "evidence": "Regression implemented; real browser/DB execution awaits CI."
+    }
+  ],
+  "reviews": {
+    "spec": "0 actionable findings in capture lookup.",
+    "standards": "0 material findings in capture lookup and phase fix.",
+    "browserFault": "0 material findings; independent28/28safety pass. Postcommit503 models lost success, not a literal TCP disconnect."
+  },
+  "sourceFileSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "ddb6bcec13bc94665f3763585d4e788698dee4d38ee6b17b5b9b0730c6f3deba",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py": "c9d8b3eb0348e20017109ebadf1a66c51e232114bc796c5520f15a354a4ba907",
+    "apps/backend/src/talli_backend/main.py": "bd433bd2936bcb91d426093db0bbca209d623d9da6e59b45c27e04cfb981df5e",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "5cb730f5286628a0d415be70de9507217e60d6e7601a714b83399e324de6c18f",
+    "apps/backend/tests/test_rf1086_capture_receipt_lookup.py": "ecc461d7dbf9fb6136558b5e0b580c348e1121b649f157e061b98c48cc7fe908",
+    "apps/backend/tests/test_rf1086_year_source_database.py": "c98b06162cff3654b5e2a27f2d673e9a8e0ce1bfb5d40a9e11d8f0c98680fae2",
+    "apps/backend/tests/test_rf1086_register_observation_database.py": "3713ffb1b688197adb58447a1555135654637a377155a1f4ab0393e88bb31a82",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/SourceEditor.tsx": "163cc2f63bcfd441d4ddc3810d137db6ceda414e3ff0ff7f9c3df1748bdeb9c0",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/actions.ts": "a6c4e7fb716aad7f8995c2bcbe081e5125f9a52d893870ae742e585499930a57",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/register/RegisterEditor.tsx": "11a7c6061dd8d20ea30d25fea940a2594a6295c8113c7eb60f3c894c3ea592fe",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/register/actions.ts": "1e1a3728d383836e0494976c79add62c50749f66357c90e93e68fbbab0e28d22",
+    "apps/web/features/shareholder-register-filing/transport.ts": "776cbaaf3fd2f1842788d4767bf409ffc372645385ed14223c8c3e8a242eb52f",
+    "apps/web/tests/shareholder-register-source-editor.test.mjs": "84c121eeb91638026728cdea968dc13a16a36d757d4ab32911251c4a8e66c273",
+    "apps/web/tests/shareholder-register-source-transport.test.mjs": "e343f23960bf1381ea77168d417b47da59fdb2bb52165ce986111a4683f28350",
+    "contracts/openapi/talli-v1.json": "e4c2ef2596df2eaa7c6792d727d991206f2f2e46f4d39b1f6232fe2247609ec8",
+    "packages/talli-api-client/src/generated/client.ts": "2c16e447620e6a507fd562a259e04869b7c2d4aa928771f985c12b114f0adf98",
+    "scripts/generate-api-client.mjs": "9c8e3bc6a474c05b3590bae164d7fda57a8152dc7f5d2206e207685beb4cfd2c",
+    "tests/browser_shareholder_register_filing.mjs": "ce768479d932bc5613a2fe6d17a8af23cd7644a64267dd071fed74123d6079b9",
+    "tests/fixtures/rf1086-source-browser-journey.mjs": "735e2b3238bf847c6f1715c9f0664d9d29088f55270f56afc65675b12bbdf228",
+    "tests/fixtures/start_shareholder_register_filing_backend.py": "eb7f029df762faed54043bc8cb460e30b8f64b868c5cde01e48347fc48eaa78c",
+    "tests/shareholder_register_browser_fixture_safety.test.mjs": "dffcb324ac0dbba9e2db5daddb7959f693315fc4d1dee91231ba38a0df645532"
+  },
+  "privateLogSha256": {
+    "capture-boundary-web.log": "6a2edc235ab3beb94cb8f628d12507945a9a3ad9ed6a3d9ac04c23b1a65ab584",
+    "capture-boundary-contract.log": "f2b79262d03044f33cc42e838948e87d12ea77fb292e10194213616c03be57f3",
+    "capture-typecheck.log": "b8cb78faea0b497cb9b22c2ebd0a967fbb2e5fd2ff8ef3536a54805a67868c7e",
+    "capture-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e"
+  },
+  "limits": [
+    "This receipt applies to the recorded source hashes, not a passing committed CI revision.",
+    "Lookup does not resolve uncertain external authority mutations; documented provider API limits remain in unknown-outcome-recovery-20261009.json.",
+    "Local UI harness and fixture middleware checks do not replace authenticated browser, live isolation/concurrency or independent Auth restore proof.",
+    "All A1\u2013A7 remain PENDING. No launch, provider filing, paid activation, genuine-company acceptance or human signoff is implied."
+  ]
+}

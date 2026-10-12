@@ -396,3 +396,244 @@ test("corporate release and restore runbooks keep external gates explicitly pend
   assert.match(runbook, /SHA-256/);
   assert.match(runbook, /must never embed raw signed PDF bytes/i);
 });
+
+function rfProductionEvidence() {
+  return { companyId: "source-company", incomeYear: 2025,
+    approvals: [{ id: "a", companyId: "source-company", incomeYear: 2025, entitlementId: "e", payloadHash: "p" }],
+    productionSubmissions: [{ id: "s", companyId: "source-company", incomeYear: 2025,
+      approvalId: "a", entitlementId: "e", payloadHash: "p", supersedesSubmissionId: null, feedbackArtifactCount: 1, status: "accepted", feedbackState: "accepted" }],
+    productionEvents: [{ id: "j", companyId: "source-company", incomeYear: 2025, submissionId: "s", artifactHashes: ["a".repeat(64)], resultingStatus: "accepted", operationName: "reconciliation:original", operationState: "succeeded" }],
+    feedbackArtifacts: [{ id: "r", companyId: "source-company", submissionId: "s", documentId: "document-id",
+      sha256: "a".repeat(64), byteLength: 900, contentType: "application/pdf", authorityReference: "original", classification: "accepted" }] };
+}
+
+test("restore preserves canonical RF production lineage without fabricating simulation rows", () => {
+  const archive = archiveFixture({ rf1086Production: rfProductionEvidence(), rf1086Submissions: [] });
+  const restored = restoreCompanyYearArchive(archive, { targetCompanyId: "restore-target" });
+  assert.deepEqual(restored.restored.rf1086Production, archive.rf1086Production);
+  assert.equal(restored.manifest.counts.rf1086ProductionSubmissions, 1);
+  assert.equal(restored.manifest.counts.rf1086ProductionReceipts, 1);
+  assert.equal(assertRestoreIntegrity(restored).failures.some(code => code.startsWith("rf1086_")), false);
+});
+
+for (const [field, changes, expected] of [
+  ["productionSubmissions", { approvalId: "missing" }, "rf1086_production_relationship_missing"],
+  ["productionSubmissions", { supersedesSubmissionId: "missing" }, "rf1086_production_relationship_missing"],
+  ["productionSubmissions", { feedbackArtifactCount: 2 }, "rf1086_production_receipt_count_mismatch"],
+  ["productionEvents", { incomeYear: 2024 }, "rf1086_production_archive_scope_invalid"],
+  ["feedbackArtifacts", { sha256: "c".repeat(64) }, "rf1086_production_receipt_object_mismatch"],
+]) {
+  test(`restore rejects broken RF evidence ${JSON.stringify(changes)}`, () => {
+    const rf = rfProductionEvidence(); Object.assign(rf[field][0], changes);
+    const restored = restoreCompanyYearArchive(archiveFixture({ rf1086Production: rf }), { targetCompanyId: "restore-target" });
+    assert.ok(assertRestoreIntegrity(restored).failures.includes(expected));
+  });
+}
+
+for (const change of ["empty_receipts", "missing_terminal_event", "mismatched_classification", "foreign_artifact_hash", "hidden_terminal_status", "not_reconciliation"]) {
+  test(`restore cannot mark truncated or inconsistent RF terminal evidence intact: ${change}`, () => {
+    const rf = rfProductionEvidence();
+    if (change === "empty_receipts") { rf.feedbackArtifacts = []; rf.productionEvents = []; rf.productionSubmissions[0].feedbackArtifactCount = 0; }
+    if (change === "missing_terminal_event") rf.productionEvents = [];
+    if (change === "mismatched_classification") rf.feedbackArtifacts[0].classification = "rejected";
+    if (change === "foreign_artifact_hash") rf.productionEvents[0].artifactHashes = ["f".repeat(64)];
+    if (change === "hidden_terminal_status") rf.productionSubmissions[0].feedbackState = "processing";
+    if (change === "not_reconciliation") rf.productionEvents[0].operationName = "confirm";
+    const restored = restoreCompanyYearArchive(archiveFixture({ rf1086Production: rf }), { targetCompanyId: "restore-target" });
+    assert.ok(assertRestoreIntegrity(restored).failures.includes("rf1086_production_terminal_evidence_missing"));
+  });
+}
+
+for (const cycle of ["self", "two-submissions"]) {
+  test(`restore rejects cyclic RF correction history: ${cycle}`, () => {
+    const rf = rfProductionEvidence();
+    if (cycle === "self") rf.productionSubmissions[0].supersedesSubmissionId = "s";
+    else {
+      rf.productionSubmissions.push({ ...rf.productionSubmissions[0], id: "s2", supersedesSubmissionId: "s",
+        status: "processing", feedbackState: "processing", feedbackArtifactCount: 0 });
+      rf.productionSubmissions[0].supersedesSubmissionId = "s2";
+    }
+    const restored = restoreCompanyYearArchive(archiveFixture({ rf1086Production: rf }), { targetCompanyId: "restore-target" });
+    assert.ok(assertRestoreIntegrity(restored).failures.includes("rf1086_production_correction_cycle"));
+  });
+}
+
+function fullYearArchiveFixture() {
+  const rf = JSON.parse(readFileSync(new URL(
+    "../apps/web/tests/fixtures/rf1086-source-submission-archive.json", import.meta.url,
+  ), "utf8"));
+  const archive = archiveFixture({
+    company: { id: rf.companyId, org_number: "314259521", name: "Talli synthetic restore AS" },
+    incomeYear: rf.incomeYear, rf1086Production: rf,
+  });
+  archive.documentBackupProjection.companyId = rf.companyId;
+  for (const source of rf.sourceApprovalLineage[0].source.command.documents) {
+    archive.documentBackupProjection.objects.push({
+      documentId: source.documentId, documentType: source.documentType,
+      contentSha256: source.contentSha256, byteLength: source.byteLength,
+      status: source.integrityStatus, storageKey: `synthetic/${source.documentId}.pdf`, removedAt: null,
+    });
+  }
+  return archive;
+}
+
+const restoreFullYear = archive => restoreCompanyYearArchive(archive, { targetCompanyId: "isolated-restore-target" });
+
+test("full-year restore preserves captured company identity, source lineage, claims and head", () => {
+  const archive = fullYearArchiveFixture();
+  const restored = restoreFullYear(archive);
+  assert.equal(assertRestoreIntegrity(restored).ok, true);
+  assert.equal(restored.restored.company.id, "isolated-restore-target");
+  assert.deepEqual(restored.restored.rf1086Production, archive.rf1086Production);
+  assert.equal(restored.restored.rf1086Production.sourceSubmissionClaims[0].companyId, archive.company.id);
+  assert.equal(restored.manifest.counts.rf1086SourceApprovalLineage, 1);
+  assert.equal(restored.manifest.counts.rf1086SourceSubmissionClaims, 1);
+  assert.equal(restored.manifest.counts.rf1086SubmissionHeads, 1);
+  for (const family of ["register_observations", "year_source_versions", "year_source_heads", "source_previews",
+    "source_review_bridges", "source_approval_bindings", "source_submission_bindings", "submission_heads"]) {
+    assert.ok(restored.manifest.launchCriticalTables.includes(`shareholder_register_filing.${family}`));
+  }
+});
+
+for (const [name, change, failure] of [
+  ["missing lineage", rf => { delete rf.sourceApprovalLineage; }, "approval_lineage_mismatch"],
+  ["duplicate lineage", rf => rf.sourceApprovalLineage.push(structuredClone(rf.sourceApprovalLineage[0])), "approval_lineage_mismatch"],
+  ["null lineage row", rf => { rf.sourceApprovalLineage[0] = null; }, "evidence_shape_invalid"],
+  ["object claims", rf => { rf.sourceSubmissionClaims = {}; }, "evidence_shape_invalid"],
+  ["missing source", rf => { delete rf.sourceApprovalLineage[0].source; }, "approval_lineage_mismatch"],
+  ["null command", rf => { rf.sourceApprovalLineage[0].source.command = null; }, "approval_lineage_mismatch"],
+  ["foreign source", rf => { rf.sourceApprovalLineage[0].source.receipt.companyId = "another-company"; }, "approval_lineage_mismatch"],
+  ["changed source hash", rf => { rf.sourceApprovalLineage[0].source.receipt.sourceSha256 = "f".repeat(64); }, "approval_lineage_mismatch"],
+  ["missing bridge", rf => { delete rf.sourceApprovalLineage[0].bridge; }, "approval_lineage_mismatch"],
+  ["changed bridge payload", rf => { rf.sourceApprovalLineage[0].bridge.payloadSha256 = "f".repeat(64); }, "approval_lineage_mismatch"],
+  ["changed manifest bytes", rf => { rf.sourceApprovalLineage[0].manifestText += " "; }, "approval_commitment_mismatch"],
+  ["changed review bytes", rf => { rf.sourceApprovalLineage[0].reviewText += " "; }, "approval_commitment_mismatch"],
+  ["changed manifest projection", rf => { rf.approvals[0].manifest.organizationNumber = "000000000"; }, "approval_commitment_mismatch"],
+  ["changed main XML", rf => { rf.sourceApprovalLineage[0].sourcePreview.hovedskjemaXml += " "; }, "xml_commitment_mismatch"],
+  ["changed shareholder XML", rf => { rf.sourceApprovalLineage[0].sourcePreview.underskjemaXml.owner += " "; }, "xml_commitment_mismatch"],
+  ["missing shareholder XML", rf => { rf.sourceApprovalLineage[0].sourcePreview.underskjemaXml = {}; }, "xml_commitment_mismatch"],
+  ["missing source documents", rf => { delete rf.sourceApprovalLineage[0].source.command.documents; }, "document_object_mismatch"],
+  ["null source document", rf => { rf.sourceApprovalLineage[0].source.command.documents[0] = null; }, "document_object_mismatch"],
+  ["missing claim", rf => { delete rf.sourceSubmissionClaims; }, "claim_mismatch"],
+  ["duplicate claim", rf => rf.sourceSubmissionClaims.push(structuredClone(rf.sourceSubmissionClaims[0])), "claim_mismatch"],
+  ["claim wrong company", rf => { rf.sourceSubmissionClaims[0].companyId = "another-company"; }, "claim_mismatch"],
+  ["claim wrong year", rf => { rf.sourceSubmissionClaims[0].incomeYear = 2024; }, "claim_mismatch"],
+  ["claim wrong manifest", rf => { rf.sourceSubmissionClaims[0].manifestSha256 = "f".repeat(64); }, "claim_mismatch"],
+  ["claim wrong payload", rf => { rf.sourceSubmissionClaims[0].payloadSha256 = "f".repeat(64); }, "claim_mismatch"],
+  ["claim wrong actor", rf => { rf.sourceSubmissionClaims[0].claimedBy = "another-owner"; }, "claim_mismatch"],
+  ["claim wrong parent", rf => { rf.sourceSubmissionClaims[0].predecessorSubmissionId = "another-submission"; }, "claim_mismatch"],
+  ["claim wrong submission", rf => { rf.sourceSubmissionClaims[0].submissionId = "another-submission"; }, "claim_mismatch"],
+  ["claim invalid time", rf => { rf.sourceSubmissionClaims[0].claimedAt = "2026-01-01"; }, "claim_mismatch"],
+  ["missing head", rf => { delete rf.submissionHead; }, "head_mismatch"],
+  ["head wrong company", rf => { rf.submissionHead.companyId = "another-company"; }, "head_mismatch"],
+  ["head wrong year", rf => { rf.submissionHead.incomeYear = 2024; }, "head_mismatch"],
+  ["head wrong obligation", rf => { rf.submissionHead.obligation = "skattemelding"; }, "head_mismatch"],
+  ["head wrong environment", rf => { rf.submissionHead.environment = "test"; }, "head_mismatch"],
+  ["head wrong submission", rf => { rf.submissionHead.submissionId = "another-submission"; }, "head_mismatch"],
+  ["head invalid time", rf => { rf.submissionHead.updatedAt = "2026-01-01"; }, "head_mismatch"],
+]) {
+  test(`full-year restore rejects ${name}`, () => {
+    const archive = fullYearArchiveFixture();
+    change(archive.rf1086Production);
+    const result = assertRestoreIntegrity(restoreFullYear(archive));
+    assert.equal(result.ok, false);
+    assert.ok(result.failures.includes(`rf1086_source_${failure}`), JSON.stringify(result.failures));
+  });
+}
+
+for (const field of ["contentSha256", "byteLength", "metadataSha256", "sourceIncomeYear", "documentId"]) {
+  test(`full-year restore rejects retained source-original ${field} changes`, () => {
+    const archive = fullYearArchiveFixture();
+    archive.rf1086Production.sourceOriginals[0][field] = field === "byteLength" || field === "sourceIncomeYear" ? 1 : "changed";
+    assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_document_object_mismatch"));
+  });
+}
+
+test("full-year restore rejects missing, duplicate and damaged retained originals", () => {
+  for (const change of ["missing", "duplicate", "bytes", "metadata"]) {
+    const archive = fullYearArchiveFixture();
+    const originals = archive.rf1086Production.sourceOriginals;
+    if (change === "missing") originals.pop();
+    else if (change === "duplicate") originals.push(structuredClone(originals[0]));
+    else {
+      const record = JSON.parse(originals[0].canonicalOriginal);
+      record[change === "bytes" ? "contentBase64" : "documentText"] += "changed";
+      originals[0].canonicalOriginal = JSON.stringify(record);
+    }
+    assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_document_object_mismatch"));
+  }
+});
+
+test("full-year restore uses captured prior-year originals independently of current document metadata", () => {
+  const archive = fullYearArchiveFixture();
+  archive.documentBackupProjection.objects.pop();
+  assert.equal(archive.rf1086Production.sourceOriginals[0].sourceIncomeYear, 2024);
+  assert.equal(archive.incomeYear, 2025);
+  const restored = restoreFullYear(archive);
+  assert.equal(assertRestoreIntegrity(restored).ok, true);
+  assert.equal(restored.manifest.counts.rf1086SourceOriginals, 1);
+});
+
+test("approval-only source archives require lineage and originals but no claim or managed head", () => {
+  const archive = fullYearArchiveFixture();
+  archive.rf1086Production.productionSubmissions = [];
+  archive.rf1086Production.sourceSubmissionClaims = [];
+  archive.rf1086Production.submissionHead = null;
+  assert.equal(assertRestoreIntegrity(restoreFullYear(archive)).ok, true);
+  archive.rf1086Production.submissionHead = { companyId: archive.company.id };
+  assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_head_mismatch"));
+});
+
+test("full-year restore rejects incomplete managed ancestry even if all rows retain approvals", () => {
+  const archive = fullYearArchiveFixture();
+  const rf = archive.rf1086Production;
+  const orphan = { ...rf.productionSubmissions[0], id: "orphan", caseProfile: "legacy" };
+  rf.productionSubmissions.push(orphan);
+  assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_head_mismatch"));
+});
+
+test("full-year restore rejects a changed captured preview text", () => {
+  const archive = fullYearArchiveFixture();
+  archive.rf1086Production.sourceApprovalLineage[0].sourcePreview.previewText += "changed";
+  assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_approval_commitment_mismatch"));
+});
+
+test("full-year restore requires an intact canonical record for Python-owned reconstruction", () => {
+  for (const value of [undefined, null, "{}", "malformed"]) {
+    const archive = fullYearArchiveFixture();
+    archive.rf1086Production.canonicalArchive = value;
+    assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_canonical_record_invalid"));
+  }
+  const archive = fullYearArchiveFixture();
+  const envelope = JSON.parse(archive.rf1086Production.canonicalArchive);
+  envelope.snapshotText += " ";
+  archive.rf1086Production.canonicalArchive = JSON.stringify(envelope);
+  assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes("rf1086_source_canonical_record_invalid"));
+});
+
+test('restore preserves unapproved v2 history and rejects missing historical originals', () => {
+  const rf = JSON.parse(readFileSync(new URL('../apps/web/tests/fixtures/rf1086-source-history-archive.json', import.meta.url), 'utf8'));
+  const archive = archiveFixture({ company: { id: rf.companyId, org_number: '314259521', name: 'Synthetic history AS' },
+    incomeYear: rf.incomeYear, rf1086Production: rf });
+  archive.documentBackupProjection.companyId = rf.companyId;
+  const restored = restoreFullYear(archive);
+  assert.equal(assertRestoreIntegrity(restored).ok, true);
+  assert.deepEqual(restored.restored.rf1086Production, rf);
+  assert.equal(restored.manifest.counts.rf1086SourceOriginals, 5);
+  archive.rf1086Production.sourceOriginals.pop();
+  assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes('rf1086_source_document_object_mismatch'));
+});
+
+
+test('portable v3 feedback verifies without current bucket metadata and detects missing bytes', () => {
+  const rf = JSON.parse(readFileSync(new URL('../apps/web/tests/fixtures/rf1086-feedback-original-archive.json', import.meta.url), 'utf8'));
+  const archive = archiveFixture({ company: { id: rf.companyId, org_number: '314259521', name: 'Synthetic feedback AS' },
+    incomeYear: rf.incomeYear, rf1086Production: rf });
+  archive.documentBackupProjection.companyId = rf.companyId;
+  const restored = restoreFullYear(archive);
+  assert.deepEqual(assertRestoreIntegrity(restored).failures, []);
+  assert.deepEqual(restored.restored.rf1086Production, rf);
+  assert.equal(restored.manifest.counts.rf1086FeedbackOriginals, 1);
+  archive.rf1086Production.feedbackOriginals = [];
+  assert.ok(assertRestoreIntegrity(restoreFullYear(archive)).failures.includes('rf1086_source_feedback_object_mismatch'));
+});

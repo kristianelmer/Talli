@@ -1,0 +1,187 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "DISPOSABLE_GOVERNANCE_COMPLETION_REHEARSAL_COMPATIBILITY",
+  "recordedAtUtc": "2026-10-10T03:56:44.261470+00:00",
+  "baseRevision": "e8d7366509a11cddd86f00840100f89cbf2c0a07",
+  "parentRevision": "e8d7366509a11cddd86f00840100f89cbf2c0a07",
+  "sourceFiles": [
+    {
+      "path": "scripts/rehearse-authority-topology.mjs",
+      "sha256": "37e046286edb4c2be20efa2f15847be6c6b823fa63b355ee515d4abfa833fdb5",
+      "bytes": 10024
+    },
+    {
+      "path": "tests/support/governance_completion_rehearsal.mjs",
+      "sha256": "1a655d83e2360e6af95638f1e859f7e77efa6cbba14409ffdf0448b9b3a3fd81",
+      "bytes": 911
+    },
+    {
+      "path": "tests/fixtures/governance_completion_replay.json",
+      "sha256": "982590222bb58d53e8b58c79ba46bfc870a242d272ea9eab12c7242fbff95617",
+      "bytes": 823
+    },
+    {
+      "path": "apps/backend/tests/governance_completion_rehearsal.py",
+      "sha256": "7697d1dfbdbc74607d9901baceca120b9bb2ee9479d97b2a7356ada39defbee1",
+      "bytes": 869
+    },
+    {
+      "path": "apps/backend/tests/test_authority_connections_database_runtime.py",
+      "sha256": "1391f20bc6013142f20b7f4efa0bd667c74a1cdc211662835a926548bb38124a",
+      "bytes": 47135
+    },
+    {
+      "path": "apps/backend/tests/test_governance_completion_rehearsal.py",
+      "sha256": "5f26851febd080b4b9584c36667bbf676c5f8b3ac4a1c88dcfec6f2890e91dda",
+      "bytes": 2133
+    },
+    {
+      "path": "tests/ci_release_gate.test.mjs",
+      "sha256": "67f0ca888f528318648fc3d901759a65c18a61b1c885cd133c2e5dd2cb42589b",
+      "bytes": 54736
+    }
+  ],
+  "problem": {
+    "run": 38021432755,
+    "head": "e8d7366509a11cddd86f00840100f89cbf2c0a07",
+    "databaseJob": 114123076023,
+    "merge": "26e1ff2aa6c810023dc8e3e1a4fc7341fee02b08",
+    "stage": "first workspace recutover",
+    "error": "corporate_governance_completion_definition_drift",
+    "wholeRun": "STILL_IN_PROGRESS"
+  },
+  "implementation": [
+    "RF-only historical teardown preserves the repaired Governance completion body but retires required RF grants. Replaying the frozen original completion migration then rejects that exact successor before the final repair migration can run.",
+    "Both disposable replay consumers use one shared fixed filename, full input SHA256, single anchored replacement and output SHA256. Only the complete-function idempotency branch additionally recognizes the exact installed repaired body.",
+    "The complete transaction, prepare rewrite, metadata/owner checks, dependency grant restoration, unknown-drift rejection and role restoration remain intact. Final canonical repair still runs. No production migration, rollback, registry, grant or runtime contract is edited.",
+    "Node topology and Python Authority predecessor restoration emit identical adapted SQL bytes. Changed or already adapted input fails closed; unrelated migrations and rollbacks pass through unchanged."
+  ],
+  "checks": {
+    "native": {
+      "status": "PASS",
+      "groups": 15,
+      "includesPriorRepairGroups": 11,
+      "additionalCompatibilityGroups": 4,
+      "clusterRemoved": true
+    },
+    "pythonUnit": {
+      "status": "PASS",
+      "tests": 5,
+      "includesActualNodePythonByteParity": true
+    },
+    "centralNode": {
+      "status": "PASS",
+      "tests": 123
+    },
+    "fullDatabase": {
+      "executed": 0,
+      "status": "PENDING_NEW_CI"
+    }
+  },
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "9aca25b2fd785359170bc48f540f1d14a97463f3df0a8a679e280a8fdcd92285"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "8c912936f0ee291b786838f514725d303cdf8af9cc99b8a662bf2e692d84a012"
+    }
+  },
+  "unchangedProductionFiles": [
+    {
+      "path": "supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql",
+      "sha256": "e7b03dabc7eca63f5842ed0345dd856bb4b382d616468f846707fda57cd003ec",
+      "bytes": 15235
+    },
+    {
+      "path": "supabase/rollback/20261009223340_governance_register_observation_completion_guard.sql",
+      "sha256": "49a781a12df5520ad1e1599fa0f83b234603744edda3601df99b74002affab49",
+      "bytes": 237
+    },
+    {
+      "path": "supabase/migrations/20261010032531_governance_supported_event_replay_visibility.sql",
+      "sha256": "1256c86d33f855323db8a5bcff4361bca73740919c7e903104cc2c80f7089336",
+      "bytes": 5611
+    },
+    {
+      "path": "supabase/rollback/20261010032531_governance_supported_event_replay_visibility.sql",
+      "sha256": "217966099845128c462d95cb914191512878e168ad6fa2e69da0e3d9067ed6da",
+      "bytes": 243
+    }
+  ],
+  "privateArtifactPins": [
+    {
+      "file": "governance-rehearsal-compat-freeze.json",
+      "sha256": "62681ed5fa4766a1d0b02782f3d23ec581363d5ae8281e911fcfc27eb4f8731a",
+      "bytes": 1542
+    },
+    {
+      "file": "governance-rehearsal-compat-checks.json",
+      "sha256": "88b7487dc6d720cc87ea0ffde262493f881d97a1bb8288120b34dea19afeeebb",
+      "bytes": 4100
+    },
+    {
+      "file": "check-governance-rehearsal-compat-native.py",
+      "sha256": "51e32a5f44800c336f4f60e1a5086b90714b1f664438d31850b4a341c1ec8344",
+      "bytes": 28002
+    },
+    {
+      "file": "governance-rehearsal-compat-native.json",
+      "sha256": "cec57a57998b6c077e28fe3a30464f2535a6611eb05cf463876342c4ad314f1b",
+      "bytes": 3603
+    },
+    {
+      "file": "governance-rehearsal-compat-native.log",
+      "sha256": "3d32020eec2b20a02b1fd7c64cec22a629bf1e53592cbb0508b42e881f449b9c",
+      "bytes": 972
+    },
+    {
+      "file": "governance-rehearsal-compat-native-output.log",
+      "sha256": "31f8d863a1b3be3e840fe22b1dd125cdd5c083494368b5a6105fa1645f3f7055",
+      "bytes": 3429
+    },
+    {
+      "file": "governance-rehearsal-compat-unit.log",
+      "sha256": "3f2ea59ea3ff3b1f8ed8689f38597c7b6868acf5bbab9f1e2bf4e322510ff5ce",
+      "bytes": 98
+    },
+    {
+      "file": "governance-rehearsal-compat-central.log",
+      "sha256": "7bad1411d5f6a43a9c3ed7addbc2dbdb3fa88357f47540f1b42bba197bec9814",
+      "bytes": 13112
+    },
+    {
+      "file": "ci38021432755-database-failure-context-sanitized.log",
+      "sha256": "896a96f9741e19634406a1ad7572f16755601bc06322ec1130e9757432ee147e",
+      "bytes": 1489
+    },
+    {
+      "file": "governance-rehearsal-compat-spec-review.json",
+      "sha256": "9aca25b2fd785359170bc48f540f1d14a97463f3df0a8a679e280a8fdcd92285",
+      "bytes": 3232
+    },
+    {
+      "file": "governance-rehearsal-compat-spec-python.log",
+      "sha256": "7517664b89111669a5d4ca6b5a47ee28eb6f1944b80558fa0be13669e4509513",
+      "bytes": 98
+    },
+    {
+      "file": "governance-rehearsal-compat-spec-node.log",
+      "sha256": "c4df3e7452ebb269deedd0a154ab456ae74734798d7200f0c2b178c09fd1019d",
+      "bytes": 390
+    },
+    {
+      "file": "governance-rehearsal-compat-standards-review.json",
+      "sha256": "8c912936f0ee291b786838f514725d303cdf8af9cc99b8a662bf2e692d84a012",
+      "bytes": 6414
+    }
+  ],
+  "limits": [
+    "Native15 groups include11 prior repair cases rerun plus4 new compatibility groups. Exact released table/FKs/RLS, guards and function bodies execute with explicit CompanyAccess/assert_owner/RF stubs; no full Supabase authorization, actual RF withdrawal or complete migration-topology proof.",
+    "Five Python tests include actual Node/Python byte parity;123 central Node tests pass. Independent Spec reruns5 Python and3 selected Node cases, overlapping the author tests.",
+    "The recorded e8d database job failed before RF workspace, selected RF database, browser and independent restore checks. Its application job was still in progress when the checks manifest was recorded. A terminal CI receipt remains separate; this repair needs a later complete run.",
+    "Concurrent RF archive work is excluded from this seven-file scope. A1\u2013A7 and both linked immutable complete gates remain pending. No provider, genuine-company, paid-service, production or launch authorization."
+  ]
+}

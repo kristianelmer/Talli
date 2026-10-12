@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import {
   chmodSync,
   existsSync,
@@ -14,12 +15,51 @@ import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { adaptGovernanceCompletionRehearsal } from "./support/governance_completion_rehearsal.mjs";
+
+test("disposable completion replay preserves frozen SQL except the exact successor return", () => {
+  const rule = JSON.parse(readFileSync(new URL("./fixtures/governance_completion_replay.json", import.meta.url), "utf8"));
+  const source = readFileSync(new URL(`../supabase/migrations/${rule.migration}`, import.meta.url), "utf8");
+  const adapted = adaptGovernanceCompletionRehearsal(`migrations/${rule.migration}`, source);
+  assert.equal(createHash("sha256").update(adapted).digest("hex"), rule.rehearsalSha256);
+  const [before, complete] = source.split("do $rewrite_complete$");
+  const [adaptedBefore, adaptedComplete] = adapted.split("do $rewrite_complete$");
+  assert.equal(adaptedBefore, before);
+  assert.equal(adaptedComplete.replace(rule.after, rule.before), complete);
+  assert.match(adaptedComplete, /before_row\.prosrc=new_body or pg_catalog\.md5\(before_row\.prosrc\)='93c0f6bb1c2eb4b6077ab1163e60c77c'/u);
+});
+
+test("disposable completion replay refuses changed and already adapted input", () => {
+  const rule = JSON.parse(readFileSync(new URL("./fixtures/governance_completion_replay.json", import.meta.url), "utf8"));
+  const source = readFileSync(new URL(`../supabase/migrations/${rule.migration}`, import.meta.url), "utf8");
+  const path = `migrations/${rule.migration}`;
+  for (const input of [source + "\n", source.replace(rule.before, ""), adaptGovernanceCompletionRehearsal(path, source), null]) {
+    assert.throws(() => adaptGovernanceCompletionRehearsal(path, input), /governance_completion_rehearsal_source_drift/u);
+  }
+});
+
+test("disposable completion replay does not change rollback or unrelated SQL", () => {
+  const rule = JSON.parse(readFileSync(new URL("./fixtures/governance_completion_replay.json", import.meta.url), "utf8"));
+  for (const path of [`rollback/${rule.migration}`, "migrations/unknown.sql"]) {
+    assert.equal(adaptGovernanceCompletionRehearsal(path, "unchanged SQL"), "unchanged SQL");
+  }
+});
 
 const workflowPath = new URL(
   "../.github/workflows/release-gate.yml",
   import.meta.url,
 );
 const vercelConfigPath = new URL("../vercel.json", import.meta.url);
+
+test("RF successor registry provides both forward and rollback migration files", () => {
+  const layers = JSON.parse(readFileSync(new URL("../scripts/rf-consequential-successors.json", import.meta.url), "utf8"));
+  for (const { migration } of layers) {
+    for (const directory of ["migrations", "rollback"]) {
+      assert.ok(readFileSync(new URL(`../supabase/${directory}/${migration}`, import.meta.url), "utf8").trim());
+    }
+  }
+});
+
 const localGatePath = new URL(
   "../scripts/run-customer-ready-gate.mjs",
   import.meta.url,
@@ -31,6 +71,178 @@ const databaseHarnessPath = new URL(
 const cleanWorktreePath = fileURLToPath(
   new URL("../scripts/check-clean-worktree.sh", import.meta.url),
 );
+
+const postgresPrefetchPath = fileURLToPath(new URL("../scripts/prefetch-postgres-fixture-images.sh", import.meta.url));
+
+function runPostgresPrefetch({ pullFailures = {}, failTag = false } = {}) {
+  const directory = mkdtempSync(join(tmpdir(), "talli-postgres-prefetch-test-"));
+  try {
+    const bin = join(directory, "bin");
+    const temporary = join(directory, "temporary");
+    const originalConfig = join(directory, "caller-config");
+    for (const path of [bin, temporary, originalConfig]) mkdirSync(path);
+    const original = '{"auths":{"private.example":{"auth":"synthetic-caller-auth"}},"credsStore":"synthetic-helper"}\n';
+    writeFileSync(join(originalConfig, "config.json"), original);
+    const trace = join(directory, "trace.jsonl");
+    const sleepTrace = join(directory, "sleep.jsonl");
+    const shim = join(bin, "docker");
+    writeFileSync(shim, `#!${process.execPath}
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const cliArgs = process.argv.slice(2);
+assert.deepEqual(cliArgs.slice(0, 2), ['--context', 'default']);
+const args = cliArgs.slice(2);
+const config = process.env.DOCKER_CONFIG;
+assert.ok(args[0] === 'pull' || args[0] === 'tag', 'unexpected Docker operation');
+assert.notEqual(config, process.env.PREFETCH_CALLER_CONFIG);
+assert.deepEqual(fs.readdirSync(config), ['config.json']);
+assert.deepEqual(JSON.parse(fs.readFileSync(path.join(config, 'config.json'))), {auths: {'public.ecr.aws': {}}});
+assert.equal(fs.statSync(config).mode & 0o077, 0);
+assert.equal(fs.statSync(path.join(config, 'config.json')).mode & 0o077, 0);
+for (const variable of ['DOCKER_AUTH_CONFIG', 'DOCKER_CONTEXT', 'DOCKER_HOST']) assert.equal(process.env[variable], undefined);
+const previousCalls = fs.existsSync(process.env.PREFETCH_TRACE)
+  ? fs.readFileSync(process.env.PREFETCH_TRACE, 'utf8').trim().split('\\n').map(line => JSON.parse(line)) : [];
+fs.appendFileSync(process.env.PREFETCH_TRACE, JSON.stringify({args, config}) + '\\n');
+if (args[0] === 'pull') {
+  const attempt = previousCalls.filter(call => call.args[0] === 'pull' && call.args[1] === args[1]).length;
+  const failures = JSON.parse(process.env.PREFETCH_PULL_FAILURES)[args[1].split(':').at(-1)] ?? [];
+  if (attempt < failures.length) {
+    process.stderr.write(failures[attempt] + '\\n');
+    process.exit(23);
+  }
+}
+if (args[0] === 'tag' && process.env.PREFETCH_FAIL_TAG === '1' && args[1].endsWith(':17-alpine')) process.exit(24);
+`);
+    chmodSync(shim, 0o755);
+    const sleepShim = join(bin, "sleep");
+    writeFileSync(sleepShim, `#!${process.execPath}
+require('node:fs').appendFileSync(process.env.PREFETCH_SLEEP_TRACE, JSON.stringify(process.argv.slice(2)) + '\\n');
+`);
+    chmodSync(sleepShim, 0o755);
+    const result = spawnSync("bash", [postgresPrefetchPath], {
+      encoding: "utf8", timeout: 10_000,
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, RUNNER_TEMP: temporary,
+        DOCKER_CONFIG: originalConfig, DOCKER_AUTH_CONFIG: "synthetic-caller-environment",
+        DOCKER_CONTEXT: "synthetic-caller-context", DOCKER_HOST: "tcp://synthetic.invalid:2376",
+        PREFETCH_CALLER_CONFIG: originalConfig, PREFETCH_TRACE: trace, PREFETCH_SLEEP_TRACE: sleepTrace,
+        PREFETCH_PULL_FAILURES: JSON.stringify(pullFailures), PREFETCH_FAIL_TAG: failTag ? "1" : "0" },
+    });
+    assert.ifError(result.error);
+    const calls = readFileSync(trace, "utf8").trim().split("\n").map(line => JSON.parse(line));
+    const sleeps = existsSync(sleepTrace)
+      ? readFileSync(sleepTrace, "utf8").trim().split("\n").map(line => JSON.parse(line)) : [];
+    const privateConfigs = new Set(calls.map(call => call.config));
+    assert.equal(privateConfigs.size, 1);
+    for (const config of privateConfigs) assert.equal(existsSync(config), false, "owned config is removed on every exit");
+    assert.deepEqual(readdirSync(temporary), []);
+    assert.equal(readFileSync(join(originalConfig, "config.json"), "utf8"), original);
+    return { result, calls: calls.map(call => call.args), sleeps };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+const postgresPrefetchCalls = ["17", "17-alpine", "16-alpine"].flatMap(tag => [
+  ["pull", `public.ecr.aws/docker/library/postgres:${tag}`],
+  ["tag", `public.ecr.aws/docker/library/postgres:${tag}`, `postgres:${tag}`],
+]);
+const ecrThrottle = 'Error response from daemon: toomanyrequests: Rate exceeded';
+const ecrDeadline = 'Error response from daemon: Head "https://public.ecr.aws/v2/docker/library/postgres/manifests/17-alpine": Get "https://public.ecr.aws/token/?scope=repository%3Adocker%2Flibrary%2Fpostgres%3Apull&service=public.ecr.aws": context deadline exceeded';
+
+for (const failure of [null, "pull", "tag"]) test(`PostgreSQL fixture prefetch preserves anonymous scope and stops on ${failure ?? "success"}`, () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({
+    pullFailures: failure === "pull" ? { "17-alpine": [""] } : {}, failTag: failure === "tag",
+  });
+  assert.equal(result.status, failure === "pull" ? 23 : failure === "tag" ? 24 : 0, result.stderr);
+  assert.deepEqual(calls, postgresPrefetchCalls.slice(0, failure === "pull" ? 3 : failure === "tag" ? 4 : 6));
+  assert.deepEqual(sleeps, []);
+});
+
+test("PostgreSQL fixture prefetch retries the throttled image anonymously then continues", () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: { "17-alpine": [ecrThrottle] } });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 3), ...postgresPrefetchCalls.slice(2)]);
+  assert.deepEqual(sleeps, [["5"]]);
+  assert.match(result.stderr, /toomanyrequests: Rate exceeded/u);
+});
+
+test("PostgreSQL fixture prefetch retries the observed registry token deadline anonymously", () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: { "17-alpine": [ecrDeadline] } });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 3), ...postgresPrefetchCalls.slice(2)]);
+  assert.deepEqual(sleeps, [["5"]]);
+});
+
+test("PostgreSQL fixture prefetch bounds repeated registry token deadlines", () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: { "17-alpine": Array(4).fill(ecrDeadline) } });
+  assert.equal(result.status, 23, result.stderr);
+  assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 2), ...Array(3).fill(postgresPrefetchCalls[2])]);
+  assert.deepEqual(sleeps, [["5"], ["10"]]);
+});
+
+test("PostgreSQL fixture prefetch bounds repeated throttle failures and stops before tagging", () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: { "17-alpine": Array(4).fill(ecrThrottle) } });
+  assert.equal(result.status, 23, result.stderr);
+  assert.deepEqual(calls, [...postgresPrefetchCalls.slice(0, 2), ...Array(3).fill(postgresPrefetchCalls[2])]);
+  assert.deepEqual(sleeps, [["5"], ["10"]]);
+});
+
+test("PostgreSQL fixture prefetch recovers from bounded temporary transport failures", () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: {
+    "17": ['net/http: TLS handshake timeout', 'error pulling image configuration: unexpected EOF'],
+    "17-alpine": ['dial tcp: lookup public.ecr.aws: temporary failure in name resolution'],
+  } });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(calls, [postgresPrefetchCalls[0], postgresPrefetchCalls[0], ...postgresPrefetchCalls.slice(0, 3), ...postgresPrefetchCalls.slice(2)]);
+  assert.deepEqual(sleeps, [["5"], ["10"], ["5"]]);
+});
+
+for (const message of [
+  'Error response from daemon: unauthorized: authentication required',
+  'Error response from daemon: manifest unknown',
+  'invalid reference format',
+  'x509: certificate has expired or is not yet valid',
+  'dial tcp: lookup public.ecr.aws: no such host',
+  'failed to register layer: no space left on device',
+  ecrDeadline + '\nError response from daemon: manifest unknown',
+  'toomanyrequests: Rate exceeded\nError response from daemon: denied: access forbidden',
+]) test(`PostgreSQL fixture prefetch does not retry permanent failure: ${message.split("\n").at(-1)}`, () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: { "17": [message] } });
+  assert.equal(result.status, 23, result.stderr);
+  assert.deepEqual(calls, postgresPrefetchCalls.slice(0, 1));
+  assert.deepEqual(sleeps, []);
+});
+
+test("PostgreSQL fixture prefetch stops if a retry encounters a permanent failure", () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: { "17": [ecrThrottle, 'manifest unknown'] } });
+  assert.equal(result.status, 23, result.stderr);
+  assert.deepEqual(calls, Array(2).fill(postgresPrefetchCalls[0]));
+  assert.deepEqual(sleeps, [["5"]]);
+});
+
+test("PostgreSQL prefetch rejects caller-selected image references before any command", () => {
+  const result = spawnSync("bash", [postgresPrefetchPath, "untrusted.example/postgres:latest"],
+    { encoding: "utf8", timeout: 10_000, env: { ...process.env, RUNNER_TEMP: "/unavailable-prefetch-test-directory" } });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /accepts no image overrides/u);
+  assert.equal(result.stdout, "");
+});
+
+test("every database-using gate job prefetches the same fixed official PostgreSQL images", () => {
+  const workflow = readFileSync(workflowPath, "utf8");
+  const command = "bash scripts/prefetch-postgres-fixture-images.sh";
+  assert.equal(workflow.split(command).length - 1, 3);
+  for (const [job, nextJob, aggregate] of [
+    ["application", "database", "npm run test:launch-rehearsal"],
+    ["database", "evidence", "npm run test:supabase:local"],
+    ["evidence", "release-gate", "npm run gate:customer-ready"],
+  ]) {
+    const section = workflow.slice(workflow.indexOf(`  ${job}:`), workflow.indexOf(`  ${nextJob}:`));
+    assert.ok(section.includes(command));
+    assert.ok(section.indexOf(command) < section.indexOf(aggregate));
+  }
+});
 
 function run(command, args, options = {}) {
   return spawnSync(command, args, {
@@ -150,6 +362,7 @@ test("release gate runs every customer-readiness check before promotion", () => 
     "npx playwright install --with-deps chromium",
     "npm run typecheck",
     "npm run check:architecture",
+    "node --test tests/company_tax_architecture.test.mjs",
     "npm run test:boundary",
     "npm run test:boundary-smoke",
     "npm run test:launch-rehearsal",
@@ -240,7 +453,7 @@ test("database isolation runs the complete ledger contract lifecycle", () => {
   assert.match(databaseHarness, /npm run test:ledger-database-lifecycle/u);
   assert.equal(
     packageJson.scripts["test:ledger-database-lifecycle"],
-    "node --test --test-concurrency=1 tests/ledger_capability_schema.test.mjs tests/ledger_capability_boundary_regressions.test.mjs tests/ledger_full_year_database_runtime.test.mjs tests/ledger_supported_patterns_database_runtime.test.mjs tests/ledger_opening_position_rebuild_schema.test.mjs tests/ledger_corrections_database_runtime.test.mjs tests/ledger_supported_event_reversals_schema.test.mjs tests/ledger_company_year_close_database_runtime.test.mjs tests/ledger_database_runtime.test.mjs",
+    "node --test --test-concurrency=1 tests/ledger_capability_schema.test.mjs tests/ledger_capability_boundary_regressions.test.mjs tests/ledger_full_year_database_runtime.test.mjs tests/ledger_supported_patterns_database_runtime.test.mjs tests/ledger_opening_position_rebuild_schema.test.mjs tests/ledger_corrections_database_runtime.test.mjs tests/ledger_supported_event_reversals_schema.test.mjs tests/ledger_receipt_replay.test.mjs tests/ledger_receipt_replay_adversarial.test.mjs tests/ledger_company_year_close_database_runtime.test.mjs tests/ledger_database_runtime.test.mjs",
   );
   assert.match(databaseHarness, /prepare-isolated-supabase-workdir\.mjs/u);
   assert.match(databaseHarness, /supabase start --workdir "\$isolated_workdir"/u);
@@ -382,8 +595,15 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
   const authorityLifecycle = packageJson.scripts["test:authority-connections-database"];
   const files = lifecycle.match(/apps\/backend\/tests\/test_\w+\.py/gu);
   const authorityFiles = authorityLifecycle.match(/apps\/backend\/tests\/test_\w+\.py/gu);
+  assert.match(authorityLifecycle, /&& uv run --project apps\/backend python scripts\/test-corporate-reporting-owned-clone\.py$/u);
+  const cloneRunner = readFileSync(new URL("../scripts/test-corporate-reporting-owned-clone.py", import.meta.url), "utf8");
+  const cloneFiles = cloneRunner.match(/apps\/backend\/tests\/test_\w+\.py/gu);
+  assert.deepEqual(cloneFiles, ["apps/backend/tests/test_corporate_reporting_year_database_runtime.py"]);
+  authorityFiles.push(...cloneFiles);
   assert.ok(files?.length, "the mandatory database lane must name its test files");
   assert.ok(authorityFiles?.length, "the mandatory Authority lane must name its test files");
+  assert.ok(authorityFiles.includes("apps/backend/tests/test_rf1086_company_test_retention_database.py"),
+    "company test retention must run against the complete Authority schema");
   const env = { ...process.env };
   delete env.DATABASE_URL;
   const collect = (command) => {
@@ -419,8 +639,21 @@ test("backend boundary partitions every test across the ordinary, Billing, Autho
   const accounts = collect(`${pytest} ${accountsFiles.join(" ")}`);
   assert.deepEqual(collect(`${pytest} apps/backend/tests -m accounts_database`), accounts);
   assert.ok(accounts.size >= 23);
+  assert.ok(packageJson.scripts["test:boundary-contract"].split(/\s+/u).includes("tests/contract/rf1086_company_test_retention_client.test.mjs"), "retention client must run in the mandatory contract lane");
   const boundary = collect(packageJson.scripts["test:boundary-backend"]);
   const all = collect(`${pytest} apps/backend/tests`);
+  for (const path of [
+    "apps/backend/tests/test_rf1086_company_test_retention_stream.py",
+    "apps/backend/tests/test_rf1086_company_test_retention_bundle.py",
+    "apps/backend/tests/test_rf1086_company_test_retention_restore_runner.py",
+    "apps/backend/tests/test_rf1086_company_test_inventory_identity_boundary.py",
+    "apps/backend/tests/test_verify_rf1086_company_test_retention.py",
+    "apps/backend/tests/test_rf1086_company_test_retention_http.py",
+    "apps/backend/tests/test_company_test_retention_download_policy.py",
+  ]) {
+    const nodePrefix = `${path.replace(/^apps\/backend\//u, "")}::`;
+    assert.ok([...boundary].some((id) => id.startsWith(nodePrefix)), `${path} must run in the ordinary backend lane`);
+  }
   assert.deepEqual(new Set([...boundary, ...database, ...authority, ...tax, ...accounts]), all, "no backend test may disappear between lanes");
   assert.deepEqual([...accounts].filter((id) => boundary.has(id) || database.has(id) || authority.has(id) || tax.has(id)), [], "Accounts must run only in its mandatory lane");
   assert.deepEqual([...boundary].filter((id) => database.has(id)), [], "database fixtures must not run in the ordinary boundary lane");
@@ -491,6 +724,7 @@ test("mandatory local lane preserves every predecessor before Billing and final 
 // Exact #150/#151 fixture dependency and source-file partition regressions.
 {
 const {rehearseAuthorityTopology}=await import("../scripts/rehearse-authority-topology.mjs");
+const {emptyGovernanceAmendmentTeardown}=await import("./support/governance_amendment_rehearsal.mjs");
 const AU='20260909120610_authority_connections_capability.sql';
 const OP='20260909123709_authority_operations_capability.sql';
 const RF='20260909125113_legacy_rf1086_authority_relocation.sql';
@@ -499,13 +733,25 @@ const SIGN='20260909125250_backend_system_launch_signoffs_contract.sql';
 const RFX='20260909190548_shareholder_register_filing_capability.sql';
 const RFC='20260909190905_shareholder_register_filing_cutover.sql';
 const RFF='20260909190955_shareholder_register_filing_contract.sql';
+const RFR='20260917110951_rf1086_action_required_read_recovery.sql';
+const RFA='20260917114424_rf1086_production_archive_evidence.sql';
+const RFY='20260923091509_rf1086_immutable_year_source.sql';
+const RFO='20260923102314_rf1086_register_observation_store.sql';
+const RFP='20260923105912_rf1086_source_backed_preview.sql';
+const RFG='20260924062746_rf1086_source_company_guard.sql';
+const DLG='20260923125730_documents_ledger_evidence_guard.sql';
+const TAX='20260913171000_company_tax_settlement_expand.sql';
 const predecessor={rf_owned:false,authority_kind:'r',ledger_kind:'v',ledger_setup:true,opening_kind:'r'};
-const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`];
-const workspaceForward=forward.filter(path=>path!==`contract-migrations/${AUC}`);
+const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`migrations/${RFA}`,`migrations/${RFY}`,`migrations/${RFO}`,`migrations/${RFP}`,`migrations/${RFG}`];
+const consequentialGuards=['20260924080208_company_access_rf_admission_guard.sql','20260924080249_documents_rf_consequential_company_guards.sql','20260924080355_governance_ledger_company_write_guards.sql','20260924083154_governance_guarded_reporting_year_read.sql','20260924084752_billing_rf_full_year_pilot_profile.sql','20260924085227_rf1086_source_review_bridge.sql','20260924091015_rf1086_source_approval_foundation.sql','20260924094631_rf1086_journal_company_guard.sql','20260928060732_rf1086_source_submission_claim.sql','20260928110000_rf1086_feedback_original_binding.sql','20260928124000_documents_historical_original_assertion.sql','20260929092425_banking_company_write_guards.sql','20260929144619_rf_annual_interview_read_admission.sql','20260929160247_rf_annual_ledger_read_admission.sql','20260929162030_rf_annual_document_read_admission.sql','20260929173935_rf1086_annual_approval_binding.sql','20260929182856_rf1086_durable_source_operation_intent.sql', '20260929192057_rf1086_dispatch_binding_identity.sql', '20260930083000_rf1086_override_receiver_cutover.sql', '20260930160335_rf1086_retained_archive_generations.sql', '20261009213032_rf1086_observation_withdrawal_foundation.sql', '20261009215302_rf1086_withdrawal_source_admission_guards.sql', '20261009220727_rf1086_withdrawal_archive_generation.sql', '20261009221151_rf1086_withdrawal_review_read_guards.sql', '20261009222053_rf1086_observation_evidence_assertions.sql', '20261009223340_governance_register_observation_completion_guard.sql', '20261009225857_ledger_governance_entry_assertion.sql', '20261009231107_rf1086_current_observation_evidence_reader.sql', '20261009232839_documents_historical_original_integrity.sql', '20261009234529_governance_register_evidence_amendments.sql', '20261010001936_governance_register_evidence_application.sql', '20261010004653_governance_register_evidence_company_guard.sql', '20261010005413_governance_reporting_register_evidence.sql', '20261010013307_rf1086_closed_year_source_v2.sql', '20261010015851_governance_rf_year_source_proof.sql', '20261010032531_governance_supported_event_replay_visibility.sql', '20261010111100_rf1086_closed_year_source_capture.sql', '20261010150223_rf1086_closed_retained_approval_v3.sql', '20261010212500_rf1086_closed_source_claim_v3.sql', '20261011045100_rf1086_closed_source_operation_v3.sql'].map(file=>`migrations/${file}`);
+const workspaceForward=[...forward.filter(path=>path!==`contract-migrations/${AUC}`),...consequentialGuards];
 function fake(initial,{fail,noEffect=false}={}) {
  const state={signoff_open:true,...initial},executed=[];
  return {state,executed,database:{async query(sql) {
   if(sql.startsWith('select\n')) return {rows:[{...state}]};
+  if(sql==='select phase from backend_system.tax_settlement_migration_state where singleton') return {rows:state.tax_phase?[{phase:state.tax_phase}]:[]};
+  if(sql.startsWith('select exists(select 1 from shareholder_register_filing.register_observations)')) return {rows:[{retained_observations:state.retained_observations??false}]};
+  if(sql.startsWith('select exists(select 1 from shareholder_register_filing.year_source_versions)')) return {rows:[{retained_sources:state.retained_sources??false}]};
   executed.push(sql); if(sql===fail) throw new Error('synthetic_dependency_failure');
   if(!noEffect){
    if(sql===`contract-migrations/${SIGN}`){if(!state.signoff_open)throw new Error('launch_signoff_policy_missing');state.signoff_open=false;}
@@ -525,9 +771,39 @@ const run=(direction,fixture)=>rehearseAuthorityTopology({direction,database:fix
 for(const authority_kind of ['v',null]) for(const rf_owned of [false,true]) {
  test(`rollback RF=${rf_owned} AU=${authority_kind} restores dependency order`,async()=>{
   const fixture=fake({...predecessor,authority_kind,rf_owned});await run('rollback',fixture);
-  assert.deepEqual(fixture.executed,[...(rf_owned?[`rollback/${RFX}`]:[]),`rollback/${SIGN}`,...(authority_kind===null?[`rollback/${AUC}`]:[]),`rollback/${RF}`,`rollback/${OP}`,`rollback/${AU}`]);
+  assert.deepEqual(fixture.executed,[...(rf_owned?[`rollback/${RFA}`,`rollback/${RFX}`]:[]),`rollback/${SIGN}`,...(authority_kind===null?[`rollback/${AUC}`]:[]),`rollback/${RF}`,`rollback/${OP}`,`rollback/${AU}`]);
  });
 }
+test('empty source-preview API rolls back before source APIs and full RF schema',async()=>{
+ const f=fake({...predecessor,rf_owned:true,rf_source_company_guard:true,rf_source_previews:true,rf_register_observations:true,rf_year_sources:true,authority_kind:null});
+ await run('rollback',f);
+ assert.deepEqual(f.executed.slice(0,6),[`rollback/${RFG}`,`rollback/${RFP}`,`rollback/${RFO}`,`rollback/${RFY}`,`rollback/${RFA}`,`rollback/${RFX}`]);
+});
+test('empty Governance amendment layer is unwound before historical RF and sibling owners',async()=>{
+ const f=fake({...predecessor,rf_owned:true,governance_amendments:true,authority_kind:null});
+ await run('rollback',f);
+ assert.deepEqual(f.executed.slice(0,3),[emptyGovernanceAmendmentTeardown,`rollback/${RFA}`,`rollback/${RFX}`]);
+});
+test('retained Governance amendment refusal prevents all predecessor mutations',async()=>{
+ const f=fake({...predecessor,rf_owned:true,governance_amendments:true,authority_kind:null},{fail:emptyGovernanceAmendmentTeardown});
+ await assert.rejects(run('rollback',f),/synthetic_dependency_failure/);
+ assert.deepEqual(f.executed,[emptyGovernanceAmendmentTeardown]);
+});
+test('retained RF observations prevent even empty Governance teardown',async()=>{
+ const f=fake({...predecessor,rf_owned:true,governance_amendments:true,rf_register_observations:true,retained_observations:true,authority_kind:null});
+ await assert.rejects(run('rollback',f),/rf1086_retained_register_observations_block_full_schema_rollback/);
+ assert.deepEqual(f.executed,[]);
+});
+test('retained independent register observations block full-schema rollback before any mutation',async()=>{
+ const f=fake({...predecessor,rf_owned:true,rf_register_observations:true,retained_observations:true,authority_kind:null});
+ await assert.rejects(run('rollback',f),/rf1086_retained_register_observations_block_full_schema_rollback/);
+ assert.deepEqual(f.executed,[]);
+});
+test('retained immutable RF year sources block full-schema rollback before any mutation',async()=>{
+ const f=fake({...predecessor,rf_owned:true,rf_year_sources:true,retained_sources:true,authority_kind:null});
+ await assert.rejects(run('rollback',f),/rf1086_retained_year_sources_block_full_schema_rollback/);
+ assert.deepEqual(f.executed,[]);
+});
 test('workspace rollback followed by final recutover restores signoff policy topology',async()=>{
  const f=fake(predecessor);await run('workspace',f);await run('rollback',f);
  f.state.ledger_kind=null;f.state.ledger_setup=false;
@@ -535,7 +811,22 @@ test('workspace rollback followed by final recutover restores signoff policy top
 });
 test('RF rollback failure prevents all predecessor mutations',async()=>{
  const f=fake({...predecessor,rf_owned:true,authority_kind:null},{fail:`rollback/${RFX}`});
- await assert.rejects(run('rollback',f),/synthetic_dependency_failure/);assert.deepEqual(f.executed,[`rollback/${RFX}`]);
+ await assert.rejects(run('rollback',f),/synthetic_dependency_failure/);assert.deepEqual(f.executed,[`rollback/${RFA}`,`rollback/${RFX}`]);
+});
+test('recutover failure identifies its migration and routine without printing SQL data',async()=>{
+ const fixture=fake({...predecessor,ledger_kind:null,ledger_setup:false});
+ const failure=Object.assign(new Error('permission denied for function lock_ledger_writer_year_v1'),{
+  code:'42501',where:'SQL statement "private fixture data"\nPL/pgSQL function inline_code_block line 17 at EXECUTE'});
+ const query=fixture.database.query;
+ fixture.database.query=async sql=>{if(sql===`migrations/${AU}`)throw failure;return query(sql);};
+ await assert.rejects(run('recutover',fixture),error=>{
+  assert.match(error.message,/migrations\/20260909120610_authority_connections_capability\.sql \[42501\]/u);
+  assert.match(error.message,/inline_code_block line 17 at EXECUTE/u);
+  assert.doesNotMatch(error.message,/private fixture data|SQL statement/u);
+  assert.equal(error.cause,failure);
+  return true;
+ });
+ assert.deepEqual(fixture.executed,[]);
 });
 test('workspace retains AU and Ledger overlap for Billing and sibling consumers',async()=>{
  const f=fake(predecessor);await run('workspace',f);assert.deepEqual(f.executed,workspaceForward);
@@ -545,14 +836,29 @@ for(const wrong of [{ledger_kind:null,ledger_setup:false},{ledger_kind:'r'},{led
  const f=fake({...predecessor,...wrong});await assert.rejects(run('workspace',f),/workspace_requires_ledger_ordinary_overlap/);assert.deepEqual(f.executed,[]);
 });
 test('final RF contract follows explicit final Ledger guard and owner recutover',async()=>{
- const f=fake({...predecessor,ledger_kind:null,ledger_setup:false});await run('recutover',f);assert.deepEqual(f.executed,[...forward,`contract-migrations/${RFF}`]);
+ const f=fake({...predecessor,ledger_kind:null,ledger_setup:false});await run('recutover',f);assert.deepEqual(f.executed,[...forward,`contract-migrations/${RFF}`,...consequentialGuards]);
+});
+for(const tax_phase of ['expanded','rolled_back']) test(`final RF rehearsal restores ${tax_phase} Tax bridge before successor guards`,async()=>{
+ const f=fake({...predecessor,ledger_kind:null,ledger_setup:false,tax_settlement:true,tax_phase});
+ await run('recutover',f);
+ assert.deepEqual(f.executed,[...forward,`contract-migrations/${RFF}`,`migrations/${TAX}`,...consequentialGuards]);
+});
+for(const tax_phase of ['cutover','contracted',undefined]) test(`final RF rehearsal refuses active or missing Tax phase ${tax_phase}`,async()=>{
+ const f=fake({...predecessor,ledger_kind:null,ledger_setup:false,tax_settlement:true,tax_phase});
+ await assert.rejects(run('recutover',f),/authority_rehearsal_requires_inactive_tax_settlement/);
+ assert.deepEqual(f.executed,[]);
+});
+test('failed Tax bridge restoration prevents every successor guard',async()=>{
+ const f=fake({...predecessor,ledger_kind:null,ledger_setup:false,tax_settlement:true,tax_phase:'expanded'},{fail:`migrations/${TAX}`});
+ await assert.rejects(run('recutover',f),/synthetic_dependency_failure/);
+ assert.deepEqual(f.executed,[...forward,`contract-migrations/${RFF}`,`migrations/${TAX}`]);
 });
 for(const wrong of [{ledger_kind:'v',ledger_setup:true},{ledger_kind:null,ledger_setup:true},{ledger_kind:'v',ledger_setup:false}])test(`final refuses incomplete Ledger contract ${JSON.stringify(wrong)}`,async()=>{
  const f=fake({...predecessor,...wrong});await assert.rejects(run('recutover',f),/final_rf_requires_ledger_contract/);assert.deepEqual(f.executed,[]);
 });
-for(const fail of [`migrations/${RF}`,`migrations/${RFX}`,`migrations/${RFC}`,`contract-migrations/${RFF}`])test(`dependency failure stops final sequence at ${fail}`,async()=>{
+for(const fail of [`migrations/${RF}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`contract-migrations/${RFF}`,...consequentialGuards])test(`dependency failure stops final sequence at ${fail}`,async()=>{
  const f=fake({...predecessor,ledger_kind:null,ledger_setup:false},{fail});await assert.rejects(run('recutover',f),/synthetic_dependency_failure/);
- const files=[...forward,`contract-migrations/${RFF}`];assert.deepEqual(f.executed,files.slice(0,files.indexOf(fail)+1));
+ const files=[...forward,`contract-migrations/${RFF}`,...consequentialGuards];assert.deepEqual(f.executed,files.slice(0,files.indexOf(fail)+1));
 });
 test('success is refused if SQL does not establish target state',async()=>{
  const f=fake(predecessor,{noEffect:true});await assert.rejects(run('workspace',f),/authority_rehearsal_target_not_reached/);
@@ -646,3 +952,10 @@ for(const fail of ['', 'topology:workspace','npm:test:supabase-rf-workspace','np
 }
 
 }
+
+test("company test history and download run in the mandatory ordinary web boundary", () => {
+  const scripts = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).scripts;
+  for (const path of ["apps/web/tests/rf1086-company-test-history.test.mjs", "apps/web/tests/rf1086-company-test-download.test.mjs"]) {
+    assert.ok(scripts["test:boundary-web"].split(/\s+/u).includes(path), `${path} must run in the required web lane`);
+  }
+});

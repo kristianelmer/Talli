@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_BANK_YEAR_AND_ARCHIVE_REPAIR",
+  "baseCommit": "5e3a03a5",
+  "scope": "Banking year observation, retained RF archive chronology/claim identity, and CI fixture repairs.",
+  "behavior": [
+    "Banking owns an accepted-owner-only, single-snapshot, unpaginated year count of canonical transactions, unmatched facts and accepted warnings. Wrong/missing scope, malformed counts or unavailable queries cannot become an empty result. No ready flag or filing authority is exposed.",
+    "Full-year archive validation preserves distinct review-projection transaction timestamps and subsequent bridge wall-clock timestamps, checking order instead of false equality. Original review hashes and bridge bindings remain exact.",
+    "Claim decoding normalizes PostgreSQL JSON and native-row timestamps to identical UTC text without losing microseconds; unrepresentable submicrosecond strings are rejected. Stored rows, manifests and archive codecs are unchanged.",
+    "Documents predecessor rehearsal removes/restores the installed historical assertion explicitly and verifies grants. Full-year SQL fixtures use valid Authority reference encoding, real owner context for FORCE RLS, the correct partial advisory lock and exact public error codes."
+  ],
+  "verification": {
+    "bankingUnit": "73 passed (includes 21 new projection cases); focused subset 45 passed.",
+    "archiveRegression": "140 passed, including distinct projection/bridge chronology and invalid future projections.",
+    "claimTimestamp": "83 passed, including JSON/native equivalence, UTC normalization, distinct microseconds and rejection of finer precision.",
+    "broaderRf": "2105 passed, 6614 deselected, three existing warnings before the final narrow claim timestamp normalization; its 83 focused tests passed afterward.",
+    "database": "101 passed in one final run: 49 actual source approval/claim/archive/recovery/facts tests and 52 Documents original tests. Separate runs passed all 40 legacy RF runtime cases and 3 Banking database cases, including 504 rows, scope isolation, revoked owner, restrictive grants and two rollback/replays.",
+    "documentsPredecessor": "Actual two-cycle Documents rollback/replay passed after Authority/RF rollback, including historical assertion grants.",
+    "harness": "92 CI/governance/Documents harness tests and 20 Banking schema tests passed.",
+    "architecture": "PASS (checker exit 0) after final source and evidence-index changes.",
+    "ci": "36536926077 at 5e3a03a5 failed at Documents schema rollback (2BP01 historical assertion left installed) and stale Application migration-inventory expectation. Both repaired locally. New revision CI pending."
+  },
+  "limits": [
+    "Local PostgreSQL applied all expansion migrations and contracted Ledger/Governance/Billing/Authority/RF. It uses a minimal Auth/Storage shim, not the full Supabase service lane. An Authority-only overlap-grant assertion cannot be credited by this superuser bootstrap; final CI remains required.",
+    "One earlier source-capture attempt rejected rf1086_source_storage_invalid without a diagnosed cause. The subsequent complete 101-case run passed; preserve that diagnostic for follow-up if it recurs.",
+    "Banking writer guards and guarded annual-readiness composition remain open. Canonical counts do not prove complete statement import.",
+    "No real AS data, hosted changes, production provider calls, actual database/object restoration or release completion. Full-year dispatch, uncertain-outcome recovery and all seven RF criteria remain pending."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-bank-year-archive-20260929-14d7",
+  "sha256": {
+    "talli-bank-year-unit.log": "d718962ebf2219b3b64999ba4c5228c7c98112d1b441f1e07b54833c3768e347",
+    "talli-bank-year-broader.log": "eceafa9d053d4d56f35622c536321012f25df50201a6f33521099420d4da9960",
+    "talli-bank-year-database.log": "a61061e49ddb1bc68f20f47454bcb8c60ccfc3de13ce98b228c4dee48e5689de",
+    "talli-bank-year-gates.log": "2c042c9c02ac40753d8fe3778c5aba4cb875359ea175a7252d20b1b542b3b986",
+    "talli-bank-year-schema.log": "72bf34721d3cec0a05911d8ccbc7f4f1a4a38284c8d8f11c19c2f60199e34a3e",
+    "talli-documents-historical-predecessor.log": "6c6aa82de5d8b969274fdc9101aa3cd4002b0655a3d613e7fe5c232492f1273a",
+    "talli-bridge-archive-regression.log": "49b20d8d3f8f74b9e99b1957d5639069fa72e3a6829ac66a71733f4ddd23d6ab",
+    "talli-claim-timestamp-regression.log": "cd66b85e0ea0cf88365b8c699e35263b84dbcac9d3d884a5e0c6d0be02e96aad",
+    "talli-rf-bank-year-regression.log": "ee4a745b6394c829a493741905a560647deaa14075109103689cdf907fc20590",
+    "talli-local-source-original-complete.log": "bf516201c0ee8cb5d9cfc8c469dcf70a36c7ebb30bffa91ad702c2e1f00f2125",
+    "talli-local-rf-bank-year-final.log": "867996d74d2033db055eaf8097186cc6c870e4e17d00dd1f89159390a3cd0bc3",
+    "talli-local-rf-focused-integration.log": "910c0b8dda61003ca77014153f7cb9854c5df490817c39d20740c5f04fd462bc",
+    "talli-local-source-original-integration.log": "dbfc30b93525e7b8d65684b4bfdbbc4efa9682e09c986182292ed4d6c2964da1",
+    "talli-local-rf-final-integration.log": "3fac52ef4e36e0bab88711ec822ec93bb0c041200aaf2271f7ee1b09e6e48046",
+    "talli-bank-year-final-bootstrap.log": "b013c72d5a074329c77e814020919b893834402099a121195cc9e415c49debff",
+    "talli-5e3a03-application.log": "47f53c1a6e544c31dd98c7607e402c5c730e30ec2c73a803501eaa0e2d2a82cb",
+    "talli-5e3a03-database.log": "4527ecf5b2618540366ab25e977aa13c98fbe3c49a4b834c3b8ac8e2e3f39571",
+    "talli-build-owned-bank-db.py": "d0e7ecddf552c34ae8647ed67ea5d23b7d31da0f1e0550a27f655e7445efa7a8",
+    "talli-bank-year-architecture-complete.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607"
+  }
+}

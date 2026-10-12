@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_BOUNDED_SOURCE_APPROVAL_IDENTITY",
+  "baseCommit": "3be17fc1ede7ee4f9be394bf795ed52a0b3496c5",
+  "scope": "Pure full-year approval manifest and exact documents for existing submit-once journal",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "425360c4e70fa7b5a4e0b6adcf6a466b9a876236942704fe9674c2e68c056b68",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_production.py": "af3ec123ed3efc96fff5c8e7f4c2ea5f8e92cdf5b91da33872699ce37538799c",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json": "ec4152b3bb485c27133944c712d2dfe7103d4ed97420a45358715dccdfe8fc4f",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "2dafb41b84cbb4c38610212bd99da752865f6e66fd5c587d5aa71b2aa4c4f210",
+    "apps/backend/tests/test_rf1086_source_production.py": "5cb5e15b1aa0c706592c85061ea9f52745ecbdaae078d0bc48e7cea02cece049"
+  },
+  "verification": {
+    "sourceManifestPreviewProductionPreparationTestsPassed": 267,
+    "existingHistoricalManifestVectors": "PASS; existing production tests included",
+    "supportedCanonicalCases": [
+      "no_activity",
+      "formation",
+      "dividend",
+      "cash_issue",
+      "cash_nominal_increase",
+      "loss_covering_reduction",
+      "mixed_formation_transfer_issue"
+    ],
+    "journalReplay": "Same persisted synthetic operation journal does not repost",
+    "architecture": "PASS",
+    "independentReview": "No actionable correctness flaws in pure identity scope"
+  },
+  "logSha256": {
+    "verified-focused.log": "5b0f8c674dcbb30a5a145070898bf8697defaa21f02d006736c3db87a20bfa0a",
+    "architecture.log": "2d5c3913df6b52bc58bb0b14ef57f05ea8e9d068627122c0e4b314062ea1dd10"
+  },
+  "limits": [
+    "No approval admission, AAL2/entitlement/Billing profile wiring, persistence or cross-owner action-time guarantee is added by this pure builder.",
+    "Canonical nominal-increase case is covered at the manifest seam; Governance capture support remains open.",
+    "Current readiness emits no warnings; extraneous acknowledgments are rejected, but positive warning-producing policy is not exercised.",
+    "No production activation or full RF acceptance."
+  ],
+  "privateProofSha256": "74017f8bdfb205ce4a79c5553148094e00064de08bfb160160c41575a38e0998"
+}

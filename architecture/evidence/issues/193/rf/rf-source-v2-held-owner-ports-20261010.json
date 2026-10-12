@@ -1,0 +1,115 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_ADDITIVE_RF_V2_HELD_OWNER_PORTS",
+  "recordedAtUtc": "2026-10-10T10:40:48.937397+00:00",
+  "baseRevision": "dab10cff2e44169fd36c4bead0edb7eff69afa5f",
+  "status": "PASS_BOUNDED_PORTS_RUNTIME_AUTHORITY_AND_COMBINED_CI_PENDING",
+  "sourceEvidence": [
+    {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_source_admission.py",
+      "sha256": "622a4cd30c175a0a03f380ae33a8bd49f6ba32aa0fd981380460bf4fc0f7b0b9",
+      "bytes": 12899
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py",
+      "sha256": "721ae3566d2d86c58c6d63c52a668ec95965189bc3a585d2bbedb4e4f3e4467f",
+      "bytes": 130214
+    },
+    {
+      "path": "apps/backend/src/talli_backend/adapters/postgres_corporate_reporting_evidence.py",
+      "sha256": "1491a7225d16b78a63faa83a2ed83314c7fc8cf151f90b352a3924d9bde51e9c",
+      "bytes": 6590
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_source_v2_held_owner_ports.py",
+      "sha256": "9b8ad92c75595bb25c492abe0bc11c2b229f56ce5edc7e37841357d21c015f6a",
+      "bytes": 10569
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "3b9c3d2060ecd1162240de2fff30c62fa5139c559707767156c140501817bf47",
+      "bytes": 122264
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "d1d5cb771fe0f3f029f67d51d58a399b8b9882892da6d92bb4053512e77e2626",
+      "bytes": 29338
+    }
+  ],
+  "behavior": [
+    "Complete Governance register evidence uses the unchanged owner decoder on the same held connection and exact company/year/current actor.",
+    "Both methods require the existing active lease and INTRANS. Expired scopes fail before SQL.",
+    "Proof preparation validates exact RF v2 type, public integrity and held company/year before calling the existing closed Governance producer. Historical source actor and bytes remain exact; the current verified actor supplies SQL subject.",
+    "Malformed SHA fails before SQL; producer/receiver forbidden, guard, storage and permission errors are sanitized. Cancellation propagates without fallback/retry.",
+    "Python does not mint proof or grant execution. Existing v1 callers, SQL and runtime ACLs remain unchanged."
+  ],
+  "tests": {
+    "passed": 252,
+    "newCases": 51,
+    "protectedCases": 201,
+    "seconds": 6.5,
+    "log": {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-held-owner-ports-and-protected-final-v5.log",
+      "sha256": "72fc504024e31fa6bab3abc5ecd073c6dba93d288de8851347f50d1434657082",
+      "bytes": 340
+    }
+  },
+  "oldFunctionsByteExact": 183,
+  "newFunctionDefinitions": 5,
+  "reviewFindings": {
+    "standards": 0,
+    "spec": 0
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-held-owner-ports-final-spec-review-v1.json",
+      "sha256": "c6b41f14b8ecc5894f562ffca85d2aa829874fbf08d17ec6593caf050216d84e",
+      "bytes": 12221
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-held-owner-ports-final-standards-review-v1.json",
+      "sha256": "06e4cc91ebfcb720ccdfc419b110fc33373b3edbbb17c25c379d4c15706650c5",
+      "bytes": 8191
+    }
+  ],
+  "architecture": {
+    "status": "PASS exact committed evidence",
+    "log": {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-held-owner-ports-declared-architecture-final-v3.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    }
+  },
+  "whitespace": "PASS",
+  "privateArtifactPins": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-held-owner-ports-source-freeze-v1.json",
+      "sha256": "84652e935c94ca6460bed9ad90a28486bd5c72780dfcf2cdce67f07a54bee4ec",
+      "bytes": 4008
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-held-owner-ports-root-final-checks-v1.json",
+      "sha256": "c249f89f36f7cd77942e40ff715c0c586899447705f8feceacb2be7069eb3680",
+      "bytes": 1784
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-held-owner-ports-plan-v1.json",
+      "sha256": "05bbcbac0fb574dd6b71d1e9f0427249a9942e09ac888227894ccc1c71544e4f",
+      "bytes": 4903
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-held-owner-ports-existing-function-freeze-v1.json",
+      "sha256": "0b8b2de871854cea2105e1e4ecf48f96778369f0d0c57281f2a09843f3f1a1b2",
+      "bytes": 32672
+    }
+  ],
+  "limits": [
+    "51 new + 201 protected tests use actual held methods/public codecs and synthetic connection authority. Counts overlap prior stages; do not add them to previous totals.",
+    "V4 test used a nonexistent event actor field; corrected to public anchor original_actor_id. This was a test assertion error, not product RED.",
+    "No live DB guards, current Auth/RLS, original bytes, transaction proof acceptance or append authority is established by these tests.",
+    "No existing workflow calls these ports; fresh replay-first capture/current admission, compatible consumers/UI, controlled runtime grants and binary drain remain required.",
+    "Current c103 attempt2 excludes these local sources; whole combined CI still required. No push while rerun is active.",
+    "All A1\u2013A7 remain pending; no activation, filing, spending or outreach."
+  ]
+}

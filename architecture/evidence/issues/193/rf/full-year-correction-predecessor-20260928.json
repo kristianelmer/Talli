@@ -1,0 +1,56 @@
+{
+  "baseCommit": "52c750232ac94694f375cc20844ec43b1023b006",
+  "status": "PASS_BOUNDED_FULL_YEAR_PREDECESSOR_FULL_STACK_PENDING",
+  "scope": [
+    "Full-year predecessor snapshot retains original source approval lineage and durable claim",
+    "Profile-specific manifest and payload validation uses retained versions, never current source/review facts",
+    "Claim binds exact submission, actor, company, year, payload, manifest and parent",
+    "Existing terminal feedback, complete-history admission and Documents original verification remain mandatory",
+    "Adapter shares retained approval lineage reader with historical archive, using one snapshot or guarded connection"
+  ],
+  "verification": {
+    "focusedBackendPassed": 332,
+    "newFullYearCorrectionCasesPassed": 45,
+    "fullYearCorrectionClaimWorkflow": "PASS",
+    "architecture": "PASS",
+    "backendPartitionAndPackageContractPassed": 2,
+    "approvalClaimDatabaseCasesCollected": 47,
+    "newDatabaseCasesCollected": 2,
+    "newDatabaseCasesExecuted": 0
+  },
+  "ci": {
+    "run": 36389099367,
+    "commit": "52c750232ac94694f375cc20844ec43b1023b006",
+    "status": "IN_PROGRESS_WHEN_RECORDED",
+    "note": "Keep this exact run alive while continuing independent archive work; new predecessor database cases require a later revision"
+  },
+  "remaining": [
+    "Full-year submission archive export and claim/head history coverage",
+    "Owned annual readiness, profile-specific provider dispatch and uncertain-outcome recovery",
+    "Complete synthetic, database, browser, retention, security and recovery gates",
+    "Genuine AS pilot after recruitment; all seven RF criteria remain PENDING"
+  ],
+  "limits": [
+    "No HTTP source send activation, provider operations or real AS data",
+    "New predecessor database cases are collected, not yet executed on full Supabase",
+    "Tax and Accounts unchanged"
+  ],
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "ae30058bc6d2d1e78a7683de94d4a9b07b71f572259c12e02268f92cf41a9f5d",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md": "746e9a28aeea51873260a924f352915a1911e7960609f4825cae2b12e0f73f83",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "1119d7fd877c83c4c2a8e7d3380845a141d87ffd25bbddbe0f883ab73d0461cd",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/source_correction.py": "eb854f58d728cb7f1bacefb67f26dec5bae4cf30e8fd83779f119f94dc02a5f6",
+    "apps/backend/tests/test_rf1086_source_approval_database.py": "86346c4634fac70838137b86d424938ae8bb22e1f0185b975a5ca256f2ad11c1",
+    "apps/backend/tests/test_rf1086_source_claim.py": "05cd614104e44b2b5a9acf0daef0be1aadaa3d378f1e4261755bff76f492cad0",
+    "apps/backend/tests/test_rf1086_source_correction.py": "e35d816bda1e2d7f7ff8cb4b6bb72ce89b0cf45c0b2288f0aca65206e356cf1d",
+    "architecture/evidence/issues/193/rf/source-production-integration-plan.md": "f57090ca6b36c4152c580d78abc27027d4d813f742cac76390e80e1fdaac8e9a",
+    "architecture/evidence/issues/193/rf/source-submission-claim-contract.md": "9d6fec5a280ff2058e1db1ff7affab4faf08fd0d5211bd573782afae3bc5536c",
+    "apps/backend/tests/test_rf1086_full_year_correction.py": "479457fffc6032b2db2658ac2917c60a39c1eff08d48434b6ec612e12f33fd34"
+  },
+  "privateProofSha256": {
+    "talli-full-correction-partitions.log": "9227dbed3f9cb76321c872bcd9c246130250b973d4e824bf05b9dd6c76aaf063",
+    "talli-full-correction-db-collection.log": "cff1fdd97f12bd386b52811f96f897d1dd08b02b9cd7117a3fcbe7e202e81f89",
+    "talli-full-correction-architecture.log": "56102893b029668398638f6072c62121fb9108e183a48b5a1a69bb11972c9d2e",
+    "talli-full-correction-backend.log": "df925c51b1ea0e03caf26ab87dd732f6efb7d172a6770b21e99225381be66ac5"
+  }
+}

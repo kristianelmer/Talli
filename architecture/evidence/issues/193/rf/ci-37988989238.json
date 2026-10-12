@@ -1,0 +1,172 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-09T21:02:27.941223+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "id": 37988989238,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/37988989238",
+    "event": "pull_request",
+    "headBranch": "codex/issue-193-completion-14d7",
+    "headSha": "5595cc03e6439bc223134d5ffe03225d9f474898",
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-09T20:44:26Z",
+    "updatedAt": "2026-10-09T20:58:37Z",
+    "durationSecondsFromCreatedToUpdated": 851
+  },
+  "checkout": {
+    "revision": "15856ca7099e6f8ef087fe2c71ea0506069c7bac",
+    "kind": "pull_request_merge_commit",
+    "observations": [
+      {
+        "jobId": 114018040738,
+        "revision": "15856ca7099e6f8ef087fe2c71ea0506069c7bac",
+        "headParent": "5595cc03e6439bc223134d5ffe03225d9f474898",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log, git log -1 --format=%H; parent identities independently checked with GitHub Git commit API. Raw logs not copied into Git."
+      },
+      {
+        "jobId": 114018040183,
+        "revision": "15856ca7099e6f8ef087fe2c71ea0506069c7bac",
+        "headParent": "5595cc03e6439bc223134d5ffe03225d9f474898",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log, git log -1 --format=%H; parent identities independently checked with GitHub Git commit API. Raw logs not copied into Git."
+      }
+    ],
+    "limit": "Run headSha identifies the PR head; both jobs checked out the recorded synthetic merge commit."
+  },
+  "jobs": [
+    {
+      "id": 114018040183,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T20:44:29Z",
+      "completedAt": "2026-10-09T20:50:11Z",
+      "durationSeconds": 342,
+      "failedSteps": [
+        {
+          "number": 6,
+          "name": "Rehearse migrations, RLS, storage, and owner persistence",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "id": 114018040738,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T20:44:29Z",
+      "completedAt": "2026-10-09T20:58:31Z",
+      "durationSeconds": 842,
+      "failedSteps": [
+        {
+          "number": 11,
+          "name": "Prove the web-to-FastAPI contract boundary",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "id": 114018041950,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-09T20:44:27Z",
+      "completedAt": "2026-10-09T20:44:27Z",
+      "durationSeconds": 0,
+      "failedSteps": []
+    },
+    {
+      "id": 114023212471,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T20:58:34Z",
+      "completedAt": "2026-10-09T20:58:37Z",
+      "durationSeconds": 3,
+      "failedSteps": [
+        {
+          "number": 2,
+          "name": "Require every readiness job",
+          "conclusion": "failure"
+        }
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "jobId": 114018040183,
+      "stepNumber": 6,
+      "step": "Rehearse migrations, RLS, storage, and owner persistence",
+      "test": "tests/supabase_workspace.test.mjs:557: Supabase authenticated workspace persists owner data and denies outsider",
+      "errorType": "Error",
+      "message": "owned_process_readiness_deadline_exceeded",
+      "stack": [
+        "tests/support/owned-process-lifecycle.mjs:68: waitForOwnedReadiness",
+        "tests/support/rf1086-workspace-api.mjs:66: startWorkspaceRfApi",
+        "tests/supabase_workspace.test.mjs:615: test context"
+      ],
+      "suiteResult": {
+        "passed": 0,
+        "failed": 1,
+        "durationMs": 31951.392927
+      },
+      "observationLimit": "The fixture API did not become ready before its deadline. This excerpt does not establish why readiness failed."
+    },
+    {
+      "jobId": 114018040738,
+      "stepNumber": 11,
+      "step": "Prove the web-to-FastAPI contract boundary",
+      "testFile": "tests/rf1086_workspace_fixture_safety.test.mjs",
+      "testDefinitionLine": 68,
+      "assertionLine": 71,
+      "failedCases": [
+        "workspace RF backend refuses hosted Supabase before opening a listener",
+        "workspace RF backend refuses global RF activation before opening a listener",
+        "workspace RF backend refuses global operator activation before opening a listener",
+        "workspace RF backend refuses ambient credential before opening a listener"
+      ],
+      "errorType": "AssertionError [ERR_ASSERTION]",
+      "assertion": "assert.ok(result.stderr.includes(failure))",
+      "actual": false,
+      "expected": true,
+      "precedingPythonBoundaryResult": {
+        "passed": 8058,
+        "skipped": 2,
+        "deselected": 1355,
+        "durationSeconds": 517.12
+      },
+      "observationLimit": "Four expected refusal substrings were absent. The assertion output did not print child stderr; it does not establish the underlying process failure or prove the safeguards were bypassed."
+    }
+  ],
+  "releaseGateEffect": "Release gate job114023212471 step2 Require every readiness job failed because Application and Database isolation did not succeed. Later application build/rehearsal/audit and database public-acquisition steps did not complete.",
+  "sanitizedFailureExcerpts": [
+    {
+      "jobId": 114018040183,
+      "path": "/private/tmp/talli-release-20261009/ci37988989238-database-failure-context-sanitized.log",
+      "sha256": "02dfd7d857e9e830954a28fe6a8618d749f9ef47efa17b33aa557cccf8cffab1",
+      "bytes": 1220,
+      "kind": "Bounded sanitized diagnostic context; not the full raw job log"
+    },
+    {
+      "jobId": 114018040738,
+      "path": "/private/tmp/talli-release-20261009/ci37988989238-application-failure-context-sanitized.log",
+      "sha256": "e8759a64a9a58f8935157c75bdbb83c37683a43c0ec10d940c38212fa397a72e",
+      "bytes": 3534,
+      "kind": "Bounded sanitized diagnostic context; not the full raw job log"
+    }
+  ],
+  "diagnosisBoundary": "This receipt records CI symptoms and exact tested revisions only. Any later local diagnoses or fixes are separate evidence and do not change this failed result; no underlying root cause is established by the bounded excerpts.",
+  "limits": [
+    "Historical result for PR head 5595cc03e6439bc223134d5ffe03225d9f474898 and checkout merge 15856ca7099e6f8ef087fe2c71ea0506069c7bac only; no claim about later commits or current uncommitted work.",
+    "Overall workflow failed. A passing Python boundary segment is not a complete Application, database or customer-ready gate pass.",
+    "Immutable evidence was skipped for the pull_request event. This is not an architecture/customer-ready-gate-evidence.schema.json receipt, an 11/11 complete gate, or either of two linked passing revisions.",
+    "No launch, production enablement, genuine-company acceptance, hosted restore clearance, criterion promotion or human signoff is implied.",
+    "Persistence wrote this observational artifact only; no index, source, rerun, dispatch, commit or push changes."
+  ]
+}

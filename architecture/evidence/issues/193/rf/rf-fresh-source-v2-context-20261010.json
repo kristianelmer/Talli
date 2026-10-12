@@ -1,0 +1,180 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_ADDITIVE_RF_SOURCE_V2_CONTEXT",
+  "recordedAtUtc": "2026-10-10T10:26:48.604996+00:00",
+  "baseRevision": "c10354f3d69a6a3209ec7d6714ecc58420f8bb0d",
+  "status": "LOCAL_TESTS_AND_REVIEWS_PASS_RUNTIME_WIRING_AND_COMBINED_CI_PENDING",
+  "sourceEvidence": [
+    {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_source_context_v2.py",
+      "sha256": "0fc2f303afb2a8cccfc94a02fae8c1b815afa22533f173e1b107dda80c34be03",
+      "bytes": 9490
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_source_context_v2.py",
+      "sha256": "2ebde5ee2a61f10fb4b6798000f88851e11b54a41658e8273f7b8e601d2f2042",
+      "bytes": 27127
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "153e7fe44ad1de2373237b31b4065c991af2344e64d3d51c8ef4487bdb68f197",
+      "bytes": 120978
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "89d043c3f214bc7d65378105e7fcb7a05eb1e8d6fded3cf9d16df39daa08dbf5",
+      "bytes": 29244
+    }
+  ],
+  "behavior": [
+    "Composes validated public Governance year/original/complete amendment chains into RF v2 context.",
+    "Preserves original finalization and register references while validating the effective current RF observation, event state, cutoff and exact document commitments.",
+    "Requires all supplied Documents to belong to the command company before owner reads; validates original, memo, intermediate and replacement unions without equating semantic revisions with document versions.",
+    "Keeps off-year complete chains opaque; requires no invented off-year observations or original bytes.",
+    "Reuses existing dividend and capital economics; no existing caller, public codec, SQL migration or grant changes."
+  ],
+  "tests": {
+    "passed": 280,
+    "seconds": 4.67,
+    "newCasesIncluded": 52,
+    "protectedCasesIncluded": 228,
+    "log": {
+      "path": "/private/tmp/talli-release-20261009/rf-fresh-source-v2-context-and-protected-final-v4.log",
+      "sha256": "6c93698a4b13915b6f1df0e764631bd5672b3c0398d747cae39d1a9bbe3e21f3",
+      "bytes": 340
+    }
+  },
+  "protectedSources": {
+    "pinEntries": 14,
+    "uniqueFiles": 13,
+    "byteExact": true,
+    "pins": [
+      {
+        "path": "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py",
+        "sha256": "e60bd4b6474cc2e6702693f9bb00f1bcfba22e2767e7bcd972c1ba6a8ee27d7b",
+        "bytes": 44386
+      },
+      {
+        "path": "apps/backend/src/talli_backend/application/shareholder_register_source_admission.py",
+        "sha256": "6b143a910768fc4061fc45aabcb4f754ca3df08f71d704d038d94d789993ceb5",
+        "bytes": 12617
+      },
+      {
+        "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source_v2.py",
+        "sha256": "3b253c01c3f7194c405daabf2f018a9bd4d0ac0139f197ac26910e2096ad5873",
+        "bytes": 17273
+      },
+      {
+        "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py",
+        "sha256": "8c4f81914db91d3f8764cb1b5d524ebb36ba1edd8861cdbde8990dba1e5cff34",
+        "bytes": 114838
+      },
+      {
+        "path": "apps/backend/src/talli_backend/modules/corporate_governance/reporting_register_evidence.py",
+        "sha256": "5d4967eaae8dacfa4a121e5cca0639cb3e79ba343e2c719736283731d3c9d588",
+        "bytes": 5921
+      },
+      {
+        "path": "apps/backend/src/talli_backend/adapters/supabase_corporate_governance.py",
+        "sha256": "56cc38ddde684052421f6287490883a61e4763e96946cbcaf64f2f4f6deb7e07",
+        "bytes": 75578
+      },
+      {
+        "path": "apps/backend/tests/rf1086_year_source_v2_database_fixture.py",
+        "sha256": "9432e81d13e6929d1a632cc464ba417c69116ea37bf2122ac541afed21736b64",
+        "bytes": 22033
+      },
+      {
+        "path": "apps/backend/tests/test_corporate_governance_reporting_register_evidence.py",
+        "sha256": "14345986628cb72f7e49eed7479fa75dc2876723a580ef9edb7f6cc190b5382f",
+        "bytes": 13058
+      },
+      {
+        "path": "apps/backend/tests/test_shareholder_register_capital_source_workflow.py",
+        "sha256": "7750cd1edc018fa9fa803dad83fffbb9d77da26ebde363a8b2fc3692827dd7d0",
+        "bytes": 16195
+      },
+      {
+        "path": "supabase/migrations/20261010015851_governance_rf_year_source_proof.sql",
+        "sha256": "3c7cd15573a733eb04be213e4096ec5d915c3430a74f8c293a86da9b22c62c51",
+        "bytes": 10562
+      },
+      {
+        "path": "apps/backend/tests/test_shareholder_register_source_workflow.py",
+        "sha256": "5759ec353fe18dcdb5057d022050116156634a189d026a8a460eddd3384400cf",
+        "bytes": 32141
+      },
+      {
+        "path": "apps/backend/tests/test_rf1086_source_production.py",
+        "sha256": "113804193e41e3c98b06d156dea4ea9ae708672878777c4aeae23fab12a23e7c",
+        "bytes": 11387
+      },
+      {
+        "path": "apps/backend/tests/test_rf1086_year_source_v2.py",
+        "sha256": "4ee7f739eceddba60a1356b1a1d880cdf8835a4909b655e0817ac3b118db00df",
+        "bytes": 32754
+      }
+    ]
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-fresh-source-v2-context-final-standards-review-v2.json",
+      "sha256": "b0906befa1e6db6a27912a28af52907eae96ee5332a41a593cadc89ca9b83f97",
+      "bytes": 9974
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-fresh-source-v2-context-final-spec-review-v1.json",
+      "sha256": "3dafb75dec682132fb260f05a8f601561ebd32372a8d287f0e688f3a17bfd0c7",
+      "bytes": 13453
+    }
+  ],
+  "reviewFindings": {
+    "standards": 0,
+    "specOpen": 0
+  },
+  "architecture": {
+    "result": "PASS exact committed evidence",
+    "log": {
+      "path": "/private/tmp/talli-release-20261009/rf-fresh-source-v2-context-declared-architecture-v2.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    }
+  },
+  "whitespace": "PASS",
+  "privateArtifactPins": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-fresh-source-v2-context-plan-v1.json",
+      "sha256": "8469605d3746b0555428d137b070c03e2dcc6c95c71d17557f0df7cfaef05b47",
+      "bytes": 8844
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-fresh-source-v2-context-source-freeze-v2.json",
+      "sha256": "e43ea049ddd87f5154e3479c52587139dcdf7171a104fd1af3867f6a1c7504fd",
+      "bytes": 3128
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-fresh-source-v2-context-root-final-checks-v1.json",
+      "sha256": "6904661367a4c5dfae73df0be55945c6fc151b68db3b61bc71249ff13b4aedc4",
+      "bytes": 2650
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-fresh-source-v2-context-company-scope-before-v1.json",
+      "sha256": "fa1c3a6a7f008a133204e41ff054de7ff3dd601e759edad3eb2355ee78fdf1b0",
+      "bytes": 752
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-fresh-source-v2-context-company-scope-after-v1.json",
+      "sha256": "dd4ad50ab2c55760a8e54b1df8af576588a74eaccdea348f7e9e1d872df2277d",
+      "bytes": 626
+    }
+  ],
+  "qualification": [
+    "Tests use actual public Governance/RF producers and source preparation with synthetic Documents/current authority. No database, current Auth, byte download, guard/proof/append or live writer evidence.",
+    "Prior helper admitted foreign-company unselected/basis documents into typed context; later pure source preparation already denied them. The repaired precondition rejects before owner reads; no existing runtime caller was affected.",
+    "Earlier fixture-construction failures and obsolete rejection expectations are setup corrections, not product RED. Old v1 rejection of withdrawn ancestors remains intentional.",
+    "CI38042950875 attempt 1 excludes this staged helper: Application passed; Billing deadlock prevented all authority/RF tests. Attempt 2 same-head diagnostic rerun is pending.",
+    "Fresh preflight, held current-owner/Documents/Governance reads, same-connection proof and append, retained approval/claim/intent and intake UI/drain remain required.",
+    "All A1\u2013A7 remain pending. No activation, filing, spending or outreach."
+  ]
+}

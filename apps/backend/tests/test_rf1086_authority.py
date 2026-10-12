@@ -312,7 +312,10 @@ from types import SimpleNamespace
 from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingSession, _PersistenceError
 from talli_backend.adapters.supabase_ledger import LedgerSupabaseConfiguration, _VerifiedActor
 from talli_backend.modules.shareholder_register_filing.public import Rf1086FeedbackArtifactPersistenceError, Rf1086ReconciliationArtifact
-from talli_backend.modules.documents.public import DocumentId, DocumentRecord, DocumentStatus, DocumentUploadTransfer, DocumentsError
+from talli_backend.modules.documents.public import (
+    DocumentId, DocumentRecord, DocumentStatus, DocumentUploadTransfer, DocumentsError,
+    VerifiedDocumentEvidence, RetainedDocumentOriginalReceipt, document_metadata_sha256,
+)
 from talli_backend.shared.kernel import ActorId, ActorKind, CompanyId, IncomeYear, UserId
 
 
@@ -355,6 +358,14 @@ class DocumentsFactory:
             raise self.cleanup_error
         self.records.pop(str(document_id))
 
+    async def verify_document_evidence(self, document_id):
+        self.events.append(('retain', str(document_id)))
+        document = self.records[str(document_id)]
+        receipt = RetainedDocumentOriginalReceipt(MAIN, document.document_id, document.company_id,
+            document.income_year, document_metadata_sha256(document), document.content_sha256,
+            document.byte_length, document.created_at)
+        return VerifiedDocumentEvidence(document, document.content_sha256, document.byte_length, document.status, receipt)
+
 
 def feedback_store(*, existing=(), metadata_error=None, response_status=200):
     documents, uploads, rows, identities = DocumentsFactory(), [], [], []
@@ -373,7 +384,10 @@ def feedback_store(*, existing=(), metadata_error=None, response_status=200):
             if isinstance(result, Exception):
                 raise result
             return [result] if result else []
-        assert statement.startswith("select id from shareholder_register_filing.record_production_feedback_artifact")
+        assert statement.startswith("select id from shareholder_register_filing.record_retained_feedback_artifact_v1")
+        assert any(event[0] == 'retain' for event in documents.events)
+        document = documents.records[parameters[2]]
+        assert parameters[8:] == (MAIN, document_metadata_sha256(document), document.created_at)
         if metadata_error:
             raise metadata_error
         return [{"id": MAIN}]
@@ -398,12 +412,13 @@ def test_receipt_uses_owned_documents_stage_signed_upload_finalize_and_original_
     assert stage.linked_to == "production_filing_submission:" + SUBMISSION_ID
     assert stage.file_name == "authority-feedback-" + ARTIFACT.sha256[:12] + ".xml"
     assert stage.header == ARTIFACT_BYTES[:5] and stage.byte_length == len(ARTIFACT_BYTES)
-    assert identities == ["rf1086-feedback-stage:" + document_id, "rf1086-feedback-finalize:" + document_id]
+    assert identities == ["rf1086-feedback-stage:" + document_id, "rf1086-feedback-finalize:" + document_id,
+        "rf1086-feedback-retain:" + document_id]
     assert len(uploads) == 1 and uploads[0].method == "PUT" and uploads[0].content == ARTIFACT_BYTES
     assert str(uploads[0].url).startswith(f"https://project.example.test/storage/v1/object/upload/sign/company-documents/{COMPANY_ID}/2025/{document_id}/")
     assert uploads[0].url.params["token"] == "private-signed-upload-token"
     assert uploads[0].headers["x-upsert"] == "false" and "authorization" not in uploads[0].headers
-    assert rows[-1][1] == (COMPANY_ID, SUBMISSION_ID, document_id, DOCUMENT, "application/xml", len(ARTIFACT_BYTES), ARTIFACT.sha256, "accepted")
+    assert rows[-1][1][:8] == (COMPANY_ID, SUBMISSION_ID, document_id, DOCUMENT, "application/xml", len(ARTIFACT_BYTES), ARTIFACT.sha256, "accepted")
     assert documents.records[document_id].status is DocumentStatus.STORED
 
 
@@ -411,6 +426,40 @@ def test_existing_canonical_artifact_is_reused_without_another_document_or_uploa
     journal, documents, uploads, _, _ = feedback_store(existing=[{"document_id": DOCUMENT, "sha256": ARTIFACT.sha256}])
     assert asyncio.run(journal.record_artifact(ARTIFACT)) == ARTIFACT.sha256
     assert not documents.events and not uploads
+
+
+@pytest.mark.parametrize('change', ['missing', 'metadata', 'document', 'company', 'year', 'content', 'length', 'status'])
+def test_new_feedback_metadata_cannot_precede_exact_retained_original(change):
+    journal, documents, _, rows, _ = feedback_store()
+    verify = documents.verify_document_evidence
+    async def altered(document_id):
+        value = await verify(document_id)
+        receipt = value.retained_original
+        if change == 'missing': return replace(value, retained_original=None)
+        if change == 'metadata': receipt = replace(receipt, metadata_sha256='f'*64)
+        if change == 'document': receipt = replace(receipt, document_id=DocumentId(DOCUMENT))
+        if change == 'company': receipt = replace(receipt, company_id=CompanyId(DOCUMENT))
+        if change == 'year': receipt = replace(receipt, source_income_year=IncomeYear(2024))
+        if change == 'content': receipt = replace(receipt, content_sha256='f'*64)
+        if change == 'length': receipt = replace(receipt, byte_length=1)
+        if change == 'status': return replace(value, integrity_status=DocumentStatus.ATTACHED)
+        return replace(value, retained_original=receipt)
+    documents.verify_document_evidence = altered
+    with pytest.raises(Rf1086FeedbackArtifactPersistenceError) as caught:
+        asyncio.run(journal.record_artifact(ARTIFACT))
+    assert not caught.value.retryable and len(rows) == 1
+    assert len(documents.records) == 1
+
+
+def test_ambiguous_retention_preserves_uploaded_document_without_committing_rf_metadata():
+    journal, documents, _, rows, _ = feedback_store()
+    async def unavailable(document_id):
+        raise DocumentsError.storage_unavailable()
+    documents.verify_document_evidence = unavailable
+    with pytest.raises(Rf1086FeedbackArtifactPersistenceError) as caught:
+        asyncio.run(journal.record_artifact(ARTIFACT))
+    assert caught.value.retryable and len(rows) == 1 and len(documents.records) == 1
+    assert not any(event[0] == 'remove' for event in documents.events)
 
 
 def test_ambiguous_metadata_readback_retains_uploaded_receipt_for_safe_retry():

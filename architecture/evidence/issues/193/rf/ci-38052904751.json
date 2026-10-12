@@ -1,0 +1,150 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-10T13:14:39.137152+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "databaseId": 38052904751,
+    "runAttempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "headSha": "2d7773267312add82702cf22180508d7c004f5cb",
+    "runStartedAt": "2026-10-10T12:41:49Z",
+    "updatedAt": "2026-10-10T13:12:39Z",
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38052904751"
+  },
+  "checkout": {
+    "revision": "3cecec0b179d05fa6b00f89182bb4d32e056697c",
+    "kind": "pull_request_merge_commit",
+    "parents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "2d7773267312add82702cf22180508d7c004f5cb"
+    ]
+  },
+  "jobs": [
+    {
+      "id": 114215489418,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T12:41:52Z",
+      "completed_at": "2026-10-10T13:03:57Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38052904751/job/114215489418"
+    },
+    {
+      "id": 114215489692,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-10T12:41:51Z",
+      "completed_at": "2026-10-10T13:12:33Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38052904751/job/114215489692"
+    },
+    {
+      "id": 114215490471,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-10T12:41:50Z",
+      "completed_at": "2026-10-10T12:41:49Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38052904751/job/114215490471"
+    },
+    {
+      "id": 114221054194,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T13:12:35Z",
+      "completed_at": "2026-10-10T13:12:38Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38052904751/job/114221054194"
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "conclusion": "success",
+      "boundaryBackend": {
+        "passed": 10728,
+        "skipped": 2,
+        "deselected": 2256,
+        "seconds": 879.86
+      },
+      "allJobSteps": "success",
+      "productionDependencyAudits": {
+        "rootVulnerabilities": 0,
+        "webVulnerabilities": 0
+      }
+    },
+    "database": {
+      "initialHarness": {
+        "passed": 17,
+        "skipped": 1
+      },
+      "billing": {
+        "passed": 700,
+        "seconds": 260.46
+      },
+      "authority": {
+        "passed": 1383,
+        "failed": 1,
+        "collected": 1468,
+        "notExecuted": 84,
+        "seconds": 580.77
+      },
+      "legacyLifecyclePassed": 64,
+      "sourceV2DatabasePassed": 74
+    }
+  },
+  "failure": {
+    "case": "test_rf1086_year_source_v2_database.py::test_owner_proof_is_required_for_exact_source_scope_and_transaction[transaction]",
+    "expected": "rf1086_source_governance_evidence_changed",
+    "actual": "rf1086_source_storage_invalid",
+    "reason": "The original source confirmation predates the second transaction. The unchanged append timestamp fence rejects it before its proof hook.",
+    "qualification": "This failure does not establish a production defect or execution of the intended transaction-proof assertion. The prior repaired year-mismatch case passed."
+  },
+  "notReached": [
+    "Remaining 34 source-v2 database cases",
+    "All 19 guarded-capture database cases",
+    "All 31 retained-correction database cases",
+    "Later owned clone, browser, independent Auth/object recovery, Tax and Accounts lanes"
+  ],
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38052904751-app-raw.log",
+      "sha256": "512297035cfc3a058d66610a8a6c9a560c98715d4288934c74e6a7c3eec72f31",
+      "bytes": 466495
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38052904751-db-raw.log",
+      "sha256": "7bf155f8c70b476c008de446cae8871feef0fc1ee35fc4bf0ef8bec097d752f5",
+      "bytes": 583900
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38052904751-terminal-api.json",
+      "sha256": "7487a3f9322642f526a2925e4ec35c42589b8b9807dc5aa073051dfa4b3600e8",
+      "bytes": 12730
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38052904751-terminal-jobs.json",
+      "sha256": "ebbc50d38e9e9c0bfe9f38d38508f0989a6fa1e7cc56df5f5e344aa4d7d36f21",
+      "bytes": 9999
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38052904751-merge-parents.json",
+      "sha256": "9e6df91c297f6b7b335d1f871232a9554d20068e4f356c7e329aace1cb2047c0",
+      "bytes": 149
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38052904751-summary-sanitized.log",
+      "sha256": "56545578b123f8bbe6c33033f620535a5a57146527083b75adc7553ba249e4d0",
+      "bytes": 994
+    }
+  ],
+  "limits": [
+    "Whole run failed; this is not a passing release or canonical immutable gate receipt.",
+    "Earlier Billing checkout migration deadlock remains unresolved despite later passing runs.",
+    "All A1-A7 and independent identity/object recovery remain pending.",
+    "No new admission WIP was included in this head."
+  ]
+}

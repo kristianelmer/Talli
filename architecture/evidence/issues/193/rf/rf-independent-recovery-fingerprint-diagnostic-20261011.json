@@ -1,0 +1,48 @@
+{
+  "schema": "rf-independent-recovery-fingerprint-diagnostic-local-v1",
+  "recordedAtUtc": "2026-10-11T03:45:50.505948+00:00",
+  "baselineHead": "e86d6ac3ead0f6a2f382ef16aa52f369cdda6623",
+  "status": "LOCAL_PASS_DIAGNOSTIC_ONLY_NO_RECOVERY_FIX",
+  "problem": "Published e86 attempt2 passes pg_restore then fails full recovered fingerprint equality; existing error omits mismatched component.",
+  "change": "Evaluate the same recovered fingerprint once and retain full dictionary inequality. Exact dictionaries with four fixed keys emit mismatched roles/catalog/auth/companyMemberships labels; unexpected shape emits unclassified. No raw SQL/rows/keys/digests.",
+  "sourcePins": [
+    {
+      "path": "scripts/rf1086_identity_restore.py",
+      "sha256": "e02953fd9b0c3f97b9a7b5c16817f560211674047e54b940c5748467b93b1994",
+      "bytes": 36476
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_identity_restore_runner.py",
+      "sha256": "54b45846e581bc0b8e7d769dc92b10f69d36da629e5cde0592f78bf3c16d66e7",
+      "bytes": 22436
+    }
+  ],
+  "checks": {
+    "protectedRestoreAndInventoryRunnerPassed": 142,
+    "newFinitePrivacyCases": 10,
+    "oldIdentityTestFunctionsExact": 12,
+    "strictComparisonAndAllOtherRunnerBytesExactAfterBoundedRemoval": true,
+    "fingerprintSqlAndHashMeaningsUnchanged": true,
+    "ordinaryCollectedOnly": {
+      "selected": 11354,
+      "deselected": 2372,
+      "total": 13726,
+      "notExecution": true
+    }
+  },
+  "rawEvidenceSha256": {
+    "rf-independent-recovery-fingerprint-diagnostic-plan-v1.json": "266dcdac813c61f3ca311c0e504ad72c63818ddfa3790c9d964d61e3ff70130d",
+    "rf-fingerprint-diagnostic-protected-baseline-v1.json": "8757c666f29bb17da1ea783adf62672c203f5cfa0f93b600c54992ea91467055",
+    "rf-identity-fingerprint-diagnostic-protected-unit-v1.log": "ca2bc2ee0b5a9369d57b52cd959db3c8155e13911de30e6bd5e366e566a88a08",
+    "rf-fingerprint-diagnostic-protected-baseline-v2.json": "966e6c5d9b03182553371c7d3f81344afe757fa48f1ddee9a1194c1d47edb424",
+    "rf-identity-fingerprint-diagnostic-protected-unit-v2.log": "83e16d05cde988fdba43b80996aa9ac9246bfa17384ffcfae2b960d1c3e615ee",
+    "rf-inventory-diagnostic-ordinary-collection-v1.log": "3bc228e53a300c0bacf058a22e6dd920f4ac924b96f019e5f931a60665a48f24"
+  },
+  "publicationCondition": "Paired Spec and Standards reviews with root pin verification and zero open findings before publishing.",
+  "limits": [
+    "Diagnostic does not identify actual mismatch until successor CI; no equality/ACL/Auth-row weakening or recovered acceptance.",
+    "No changed ownership/source/target/nonce checks, dump or restore flags, cleanup, queries or digest meanings.",
+    "Tests use explicit resource-free doubles. No local containers/VMs, hosted actions, spending, genuine data or filings."
+  ],
+  "contractRepair": "Unexpected dictionary shapes, including foreign/missing keys and non-dicts, return only unclassified; valid four-key mismatches have separate finite-label tests."
+}

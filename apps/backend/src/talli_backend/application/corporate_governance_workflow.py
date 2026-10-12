@@ -8,6 +8,10 @@ from dataclasses import replace
 from decimal import Decimal
 from typing import Protocol
 
+from talli_backend.application.corporate_register_evidence import (
+    CorporateRegisterEvidenceVerifier, requires_register_observation,
+)
+
 from talli_backend.application.corporate_governance_session import (
     CorporateGovernanceSessionFactory,
     CorporateGovernanceWorkflowTransaction,
@@ -36,6 +40,9 @@ from talli_backend.modules.corporate_governance.public import (
     CorporateGovernanceError,
     CorporateGovernanceErrorCode,
     CorporateLifecycleSnapshot,
+    CorporateGovernanceYearEvidence,
+    CorporateLedgerAmendment,
+    build_reporting_year_evidence,
     CorporateAccountMovementFacts,
     CorporateReadinessSource,
     CorporateSourceReference,
@@ -72,6 +79,7 @@ from talli_backend.modules.corporate_governance.public import (
     SupportedCorporatePerspective,
     SupportedCorporateRelationship,
 )
+from talli_backend.modules.corporate_governance import public as amendment
 from talli_backend.modules.corporate_governance.service import (
     CorporateGovernanceService,
 )
@@ -115,6 +123,7 @@ from talli_backend.shared.kernel import (
     ActorId,
     CompanyId,
     CorrelationId,
+    IdempotencyKey,
     IncomeYear,
     Money,
 )
@@ -320,16 +329,101 @@ class CorporateGovernanceApplication:
         session_factory: CorporateGovernanceSessionFactory,
         documents_session_factory: DocumentsSessionFactory,
         ledger_facade_factory: LedgerFacadeFactory,
+        register_evidence: CorporateRegisterEvidenceVerifier | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._documents_session_factory = documents_session_factory
         self._ledger_facade_factory = ledger_facade_factory
         self._service = CorporateGovernanceService()
+        self._register_evidence = register_evidence
 
     async def authenticated_actor_id(self, access_token: str) -> ActorId:
         """Resolve the verified actor without accepting an actor from transport input."""
 
         return (await self._session_factory.session(access_token)).actor_id
+
+    async def amend_supported_register_evidence(self, access_token: str,
+        command: amendment.AmendSupportedCorporateRegisterEvidence, *, idempotency_key: IdempotencyKey
+    ) -> amendment.SupportedCorporateRegisterEvidenceAmendment:
+        session = await self._session(access_token, command.actor_id)
+        try:
+            amendment.serialize_corporate_register_evidence_amendment_command(command)
+            if type(idempotency_key) is not IdempotencyKey:
+                raise ValueError()
+        except ValueError:
+            raise CorporateGovernanceError.invalid(CorporateGovernanceErrorCode.INVALID_INPUT,
+                'Invalid register-evidence amendment request.') from None
+        query = amendment.CorporateRegisterEvidenceQuery(command.company_id, command.income_year, command.actor_id, command.event_id)
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
+            await self._require_owner(transaction, command.company_id)
+            prepared = await transaction.prepare_register_evidence_amendment(command, idempotency_key=idempotency_key)
+            try:
+                if type(prepared) is not amendment.PreparedCorporateRegisterEvidenceAmendment:
+                    raise ValueError()
+                if prepared.status == 'recorded':
+                    if prepared.snapshot is not None:
+                        raise ValueError()
+                    amendment.assert_corporate_register_evidence_amendment_replay(prepared.receipt, command)
+                    return prepared.receipt
+                if prepared.status != 'ready' or prepared.receipt is not None:
+                    raise ValueError()
+                amendment.assert_corporate_register_evidence_chain_snapshot(prepared.snapshot, query=query)
+                chain = prepared.snapshot.chain
+                if (chain.anchor.anchor_sha256, chain.head, chain.effective_register_fact) != (
+                    command.expected_anchor_sha256, command.expected_head, command.withdrawal.target):
+                    raise ValueError()
+            except (ValueError, TypeError, AttributeError):
+                raise CorporateGovernanceError.unavailable() from None
+        # No RF/Documents session or object I/O until authorized replay and
+        # fresh admission have resolved and all Governance locks are released.
+        if self._register_evidence is None:
+            raise CorporateGovernanceError.unavailable()
+        originals = await self._register_evidence.verify_amendment(access_token, command, anchor=chain.anchor)
+        try:
+            amendment.serialize_corporate_register_evidence_originals(originals)
+        except (ValueError, TypeError, AttributeError):
+            raise CorporateGovernanceError.unavailable() from None
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
+            await self._require_owner(transaction, command.company_id)
+            receipt = await transaction.append_register_evidence_amendment(command,
+                originals=originals, idempotency_key=idempotency_key)
+            try:
+                amendment.assert_corporate_register_evidence_amendment_replay(receipt, command)
+            except (ValueError, TypeError, AttributeError):
+                raise CorporateGovernanceError.unavailable() from None
+            return receipt
+
+    async def read_register_evidence_chain(self, access_token: str, query: amendment.CorporateRegisterEvidenceQuery
+    ) -> amendment.CorporateRegisterEvidenceChainSnapshot:
+        session = await self._session(access_token, query.actor_id)
+        async with session.transaction(guarded_company_id=query.company_id) as transaction:
+            await self._require_owner(transaction, query.company_id)
+            snapshot = await transaction.read_register_evidence_chain(query)
+            try:
+                amendment.assert_corporate_register_evidence_chain_snapshot(snapshot, query=query)
+            except (ValueError, TypeError, AttributeError):
+                raise CorporateGovernanceError.unavailable() from None
+            return snapshot
+
+    async def lookup_register_evidence_amendment(self, access_token: str, query: amendment.CorporateRegisterEvidenceQuery,
+        *, idempotency_key: IdempotencyKey, request_sha256: str
+    ) -> amendment.CorporateRegisterEvidenceAmendmentLookup:
+        session = await self._session(access_token, query.actor_id)
+        async with session.transaction(guarded_company_id=query.company_id) as transaction:
+            await self._require_owner(transaction, query.company_id)
+            result = await transaction.lookup_register_evidence_amendment(query,
+                idempotency_key=idempotency_key, request_sha256=request_sha256)
+            try:
+                if type(result) is not amendment.CorporateRegisterEvidenceAmendmentLookup:
+                    raise ValueError()
+                raw = {'status': result.status}
+                if result.status == 'recorded':
+                    raw['receipt_text'] = amendment.serialize_corporate_register_evidence_amendment(result.receipt)
+                elif result.receipt is not None:
+                    raise ValueError()
+                return amendment.parse_corporate_register_evidence_amendment_lookup(raw, query=query, request_sha256=request_sha256)
+            except (ValueError, TypeError, AttributeError):
+                raise CorporateGovernanceError.unavailable() from None
 
     async def list_lifecycle(
         self,
@@ -339,6 +433,30 @@ class CorporateGovernanceApplication:
         session = await self._session_factory.session(access_token)
         async with session.transaction() as transaction:
             return await transaction.list_lifecycle(company_ids)
+
+    async def read_reporting_year_register_evidence(self, access_token: str,
+        query: amendment.CorporateReportingRegisterEvidenceQuery
+    ) -> amendment.CorporateGovernanceYearRegisterEvidence:
+        session = await self._session(access_token, query.actor_id)
+        async with session.transaction(guarded_company_id=query.company_id) as transaction:
+            await self._require_owner(transaction, query.company_id)
+            projection = await transaction.read_reporting_year_register_evidence(query)
+            amendment.assert_reporting_year_register_evidence(projection, query=query)
+            return projection
+
+    async def read_reporting_year_evidence(self, access_token: str, *, company_id: CompanyId,
+            income_year: IncomeYear, correlation_id: CorrelationId) -> CorporateGovernanceYearEvidence:
+        session = await self._session_factory.session(access_token)
+        async with session.transaction() as transaction:
+            basis = await transaction.read_reporting_year_basis(company_id)
+            rows = await self._ledger_facade_factory(transaction).list_entry_amendments(
+                actor_id=session.actor_id, company_id=company_id, correlation_id=correlation_id)
+            return build_reporting_year_evidence(basis=basis, income_year=income_year, amendments=tuple(
+                CorporateLedgerAmendment(AccountingEntryReference(str(row.original_entry_id)),
+                    AccountingEntryReference(str(row.reversal_entry_id)),
+                    AccountingEntryReference(str(row.replacement_entry_id)) if row.replacement_entry_id else None,
+                    row.company_id, row.income_year, row.reason, row.amended_by, row.amended_at.value)
+                for row in rows))
 
     async def read_lifecycle(
         self,
@@ -633,7 +751,7 @@ class CorporateGovernanceApplication:
         command: OwnerDividendProposalCommand,
     ) -> ProposedOwnerDividend:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             facts = await self._derive_decision_facts_in_transaction(
                 transaction,
@@ -669,7 +787,7 @@ class CorporateGovernanceApplication:
         command: AnnualCloseProposalCommand,
     ) -> ProposedAnnualClose:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             facts = await self._derive_decision_facts_in_transaction(
                 transaction,
@@ -739,7 +857,7 @@ class CorporateGovernanceApplication:
                     CorporateGovernanceErrorCode.UNSUPPORTED_DIVIDEND_BASIS,
                     "Document evidence does not match the owner-dividend proposal.",
                 )
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             return await transaction.register_owner_dividend_documents(command)
 
@@ -781,7 +899,7 @@ class CorporateGovernanceApplication:
                     CorporateGovernanceErrorCode.INVALID_INPUT,
                     "Document evidence does not match the annual-close proposal.",
                 )
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             return await transaction.register_annual_close_documents(command)
 
@@ -791,7 +909,7 @@ class CorporateGovernanceApplication:
         command: ApproveOwnerDividendCommand,
     ) -> OwnerDividendLifecycle:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             return await transaction.approve_owner_dividend(command)
 
@@ -801,7 +919,7 @@ class CorporateGovernanceApplication:
         command: ApproveAnnualCloseCommand,
     ) -> AnnualCloseLifecycle:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             return await transaction.approve_annual_close(command)
 
@@ -811,7 +929,7 @@ class CorporateGovernanceApplication:
         command: RecordAnnualCloseEventCommand,
     ) -> AnnualCloseLifecycle:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             return await transaction.record_annual_close_event(command)
 
@@ -821,7 +939,7 @@ class CorporateGovernanceApplication:
         command: FinalizeAnnualCloseCommand,
     ) -> AnnualCloseLifecycle:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             snapshot = await transaction.read_lifecycle(command.decision_id)
             if any(
@@ -874,7 +992,7 @@ class CorporateGovernanceApplication:
                 CorporateGovernanceErrorCode.INVALID_INPUT,
                 "Signed annual-close evidence does not match the uploaded document.",
             )
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             snapshot = await transaction.read_lifecycle(command.decision_id)
             readiness = self._service.assess_lifecycle(
@@ -896,7 +1014,7 @@ class CorporateGovernanceApplication:
         command: RecordOwnerDividendEventCommand,
     ) -> OwnerDividendLifecycle:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             return await transaction.record_owner_dividend_event(command)
 
@@ -932,7 +1050,7 @@ class CorporateGovernanceApplication:
                 CorporateGovernanceErrorCode.INVALID_INPUT,
                 "Signed owner-dividend evidence does not match the uploaded document.",
             )
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             snapshot = await transaction.read_lifecycle(command.decision_id)
             readiness = self._service.assess_lifecycle(
@@ -954,7 +1072,7 @@ class CorporateGovernanceApplication:
         command: FinalizeOwnerDividendCommand,
     ) -> OwnerDividendLifecycle:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             prepared = await transaction.prepare_owner_dividend_finalization(command)
             if prepared.replay is not None:
@@ -999,7 +1117,7 @@ class CorporateGovernanceApplication:
         command: RecordOwnerDividendPaymentCommand,
     ) -> OwnerDividendLifecycle:
         session = await self._session(access_token, command.actor_id)
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             prepared = await transaction.prepare_owner_dividend_payment(command)
             if prepared.replay is not None:
@@ -1052,35 +1170,40 @@ class CorporateGovernanceApplication:
     ) -> RecordedShareholderLoan:
         session = await self._session(access_token, command.actor_id)
         loan = self._service.validate_shareholder_loan(command)
-        async with session.transaction() as transaction:
+        if command.document_id is not None:
+            async with session.transaction(guarded_company_id=command.company_id) as transaction:
+                await self._require_owner(transaction, command.company_id)
+                prepared = await transaction.prepare_shareholder_loan(command, loan)
+                if prepared.replay is not None:
+                    return prepared.replay
+            documents = await self._documents_session_factory.session(access_token)
+            if documents.actor_id != command.actor_id:
+                raise CorporateGovernanceError.forbidden()
+            records = await documents.list_documents((command.company_id,))
+            record = next(
+                (
+                    item
+                    for item in records
+                    if str(item.document_id) == str(command.document_id)
+                ),
+                None,
+            )
+            if (
+                record is None
+                or record.company_id != command.company_id
+                or record.income_year != command.income_year
+                or record.status
+                in {DocumentStatus.QUARANTINED, DocumentStatus.REMOVED}
+            ):
+                raise CorporateGovernanceError.precondition(
+                    CorporateGovernanceErrorCode.INVALID_INPUT,
+                    "Shareholder-loan document evidence does not match the company year.",
+                )
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             prepared = await transaction.prepare_shareholder_loan(command, loan)
             if prepared.replay is not None:
                 return prepared.replay
-            if command.document_id is not None:
-                documents = await self._documents_session_factory.session(access_token)
-                if documents.actor_id != command.actor_id:
-                    raise CorporateGovernanceError.forbidden()
-                records = await documents.list_documents((command.company_id,))
-                record = next(
-                    (
-                        item
-                        for item in records
-                        if str(item.document_id) == str(command.document_id)
-                    ),
-                    None,
-                )
-                if (
-                    record is None
-                    or record.company_id != command.company_id
-                    or record.income_year != command.income_year
-                    or record.status
-                    in {DocumentStatus.QUARANTINED, DocumentStatus.REMOVED}
-                ):
-                    raise CorporateGovernanceError.precondition(
-                        CorporateGovernanceErrorCode.INVALID_INPUT,
-                        "Shareholder-loan document evidence does not match the company year.",
-                    )
             ledger = self._ledger_facade_factory(transaction)
             directions = {
                 "shareholder_to_company": LedgerShareholderLoanDirection.SHAREHOLDER_TO_COMPANY,
@@ -1145,6 +1268,14 @@ class CorporateGovernanceApplication:
     ) -> RecordedSupportedCorporateEvent:
         session = await self._session(access_token, command.actor_id)
         canonical = self._service.prepare_supported_event(command)
+        if requires_register_observation(command):
+            # Recover an authorized committed event before mutable Documents or
+            # RF reads. Release the company guard before any original-byte I/O.
+            async with session.transaction(guarded_company_id=command.company_id) as transaction:
+                await self._require_owner(transaction, command.company_id)
+                prepared = await transaction.prepare_supported_event(command, canonical)
+                if prepared.replay is not None:
+                    return prepared.replay
         documents = await self._documents_session_factory.session(access_token)
         if documents.actor_id != command.actor_id:
             raise CorporateGovernanceError.forbidden()
@@ -1164,11 +1295,18 @@ class CorporateGovernanceApplication:
                     "Corporate-event document evidence does not match the company year.",
                 )
 
-        async with session.transaction() as transaction:
+        evidence = None
+        if requires_register_observation(command):
+            if self._register_evidence is None:
+                raise CorporateGovernanceError.unavailable()
+            evidence = await self._register_evidence.verify(access_token, command)
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             prepared = await transaction.prepare_supported_event(command, canonical)
             if prepared.replay is not None:
                 return prepared.replay
+            if evidence is not None:
+                await transaction.assert_register_evidence(evidence)
             primary, corroborating = _ledger_sources(command, canonical.facts_sha256)
             posted = await self._ledger_facade_factory(
                 transaction
@@ -1216,11 +1354,17 @@ class CorporateGovernanceApplication:
                         str(posted.entry_id)
                     ),
                 )
-            return await transaction.complete_supported_event(
+            result = await transaction.complete_supported_event(
                 command,
                 AccountingEntryReference(str(posted.entry_id)),
                 prepared,
             )
+            if evidence is not None and evidence.observation.confirmed_at > result.recorded_at:
+                raise CorporateGovernanceError.precondition(
+                    CorporateGovernanceErrorCode.CORPORATE_EVENT_EVIDENCE_INCOMPLETE,
+                    "The independent register observation postdates the Governance event.",
+                )
+            return result
 
     async def reverse_supported_event(
         self,
@@ -1254,7 +1398,7 @@ class CorporateGovernanceApplication:
                 "The reversal document does not match the company year.",
             )
 
-        async with session.transaction() as transaction:
+        async with session.transaction(guarded_company_id=command.company_id) as transaction:
             await self._require_owner(transaction, command.company_id)
             events = await transaction.list_supported_events((command.company_id,))
             original = next(

@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawnSync, execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { startSystemUserAuthorityMock } from "./fixtures/system-user-authority-mock.mjs";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const python = process.env.TALLI_BACKEND_PYTHON_BIN || "apps/backend/.venv/bin/python";
-function characterize(program) {
-  const result = spawnSync(python, ["-c", `import runpy\nf = runpy.run_path('tests/fixtures/start_authority_connections_backend.py')\n${program}`],
+function characterize(program, launcher = "start_authority_connections_backend.py") {
+  const result = spawnSync(python, ["-c", `import runpy\nf = runpy.run_path('tests/fixtures/${launcher}')\n${program}`],
     { encoding: "utf8", timeout: 10000 });
   assert.equal(result.status, 0, result.stderr);
   return result.stdout.trim();
@@ -70,4 +72,34 @@ for method,url in [('POST',base+'?page=0&size=50'),('PATCH',base),('DELETE',base
     except ValueError: pass
     else: raise AssertionError('nonhistorical RF request admitted')
 print('rf-get-only')`), "rf-get-only");
+});
+
+
+test("browser authority mock reaches accepted through shipped token, Dialogporten and reconciliation adapters", async () => {
+  const mock = await startSystemUserAuthorityMock({ callbackOrigin: "http://localhost:45001" });
+  const submission = "10000000-0000-4000-8000-000000000001";
+  const dialog = "20000000-0000-4000-8000-000000000002";
+  mock.setFeedbackContext({ forsendelseId: submission, dialogId: dialog, organizationNumber: "310279617", incomeYear: 2025 });
+  try {
+    const result = await promisify(execFile)(python, ["tests/fixtures/reconcile_authority_browser_feedback.py"], {
+      env: { ...process.env, TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL: mock.baseUrl,
+        TALLI_FIXTURE_ORG: "310279617", TALLI_FIXTURE_SUBMISSION: submission, TALLI_FIXTURE_DIALOG: dialog },
+      timeout: 15000,
+    });
+    assert.deepEqual(JSON.parse(result.stdout), { state: "accepted", artifacts: 2 });
+    assert.deepEqual(mock.snapshot().map(({ operation }) => operation), ["token", "token", "read_dialog", "read_feedback"]);
+  } finally { await mock.close(); }
+});
+
+
+for (const launcher of ["start_authority_connections_backend.py", "start_shareholder_register_filing_backend.py"]) test(`${launcher} Dialogporten rewrite admits only the exact fixed GET resource`, () => {
+  assert.equal(characterize(`
+url='https://platform.altinn.no/dialogporten/api/v1/enduser/dialogs/20000000-0000-4000-8000-000000000002'
+mock='http://127.0.0.1:45000'
+assert f['provider_mock_url'](url,mock,'GET')==mock+'/dialogporten/dialogs/20000000-0000-4000-8000-000000000002'
+for method,value in [('POST',url),('PATCH',url),('DELETE',url),('GET',url+'?include=all'),('GET',url+'/attachments'),('GET',url.replace('platform.altinn.no','attacker.invalid')),('GET',url.replace('https:','http:')),('GET',url.replace('20000000-0000-4000-8000-000000000002','bad'))]:
+    try: f['provider_mock_url'](value,mock,method)
+    except ValueError: pass
+    else: raise AssertionError('unscoped Dialogporten route admitted')
+print('dialog-get-only')`, launcher), "dialog-get-only");
 });

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "axis": "standards",
+  "baseSha": "56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd",
+  "reviewedRevision": "uncommitted working tree",
+  "status": "FINDINGS",
+  "findings": [
+    {
+      "priority": 2,
+      "title": "Preserve web-first archive deployment compatibility",
+      "file": "apps/web/features/shareholder-register-filing/transport.ts",
+      "standard": "docs/adr/0012-govern-the-fastapi-web-and-operational-boundary.md",
+      "detail": "New required archive arrays are absent from old backend responses, causing rows.some to throw and legacy exports to fail."
+    }
+  ],
+  "architectureCheckerPassed": true,
+  "independentLocalTestsPassed": 187,
+  "databaseEvidenceSourceHashesMatched": 6,
+  "providerCalls": false,
+  "completeIssueAcceptance": false,
+  "report": "standards-archive-overlap-finding-20260923.md"
+}

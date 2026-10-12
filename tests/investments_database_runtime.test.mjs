@@ -28,6 +28,7 @@ const investmentsShareSaleLifecycleMigration = "20260901114000_investments_share
 const investmentsIncomeLifecycleMigration = "20260901115000_investments_income_lifecycle.sql";
 const investmentsLifecycleCorrectionsMigration = "20260901116000_investments_lifecycle_corrections.sql";
 const investmentsBankFactClaimMigration = "20260901117000_investments_bank_fact_claim.sql";
+const bankingCompanyGuardMigration = "20260929092425_banking_company_write_guards.sql";
 const investmentsYearEndMeasurementWorkflowMigration = "20260901118000_investments_year_end_measurement_workflow.sql";
 const investmentsLifecyclePublicCutoverMigration = "20260901150538_investments_lifecycle_public_cutover.sql";
 const investmentsMeasurementReversalsMigration = "20260901203025_investments_measurement_reversals.sql";
@@ -166,6 +167,7 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
         investmentsIncomeLifecycleMigration,
         investmentsLifecycleCorrectionsMigration,
         investmentsBankFactClaimMigration,
+        bankingCompanyGuardMigration,
         investmentsYearEndMeasurementWorkflowMigration,
         investmentsLifecyclePublicCutoverMigration,
         investmentsMeasurementReversalsMigration,
@@ -1382,6 +1384,11 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
     `), "true");
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsBankFactClaimMigration}`,
+    ]);
+    // This successor requires Banking's Investments claim routine, deliberately
+    // absent during the historical predecessor phase above.
+    psql(containerName, [
+      "--file", `/repo/supabase/migrations/${bankingCompanyGuardMigration}`,
     ]);
     psql(containerName, [
       "--file", `/repo/supabase/migrations/${investmentsYearEndMeasurementWorkflowMigration}`,
@@ -3700,6 +3707,11 @@ test("investments schema is private, forced-RLS, and restricted-role owned", { t
           and constraint_record.contype = 'c'
       )::text;
     `), "false:true:true:true:true");
+    assert.equal(scalar(containerName, String.raw`
+      select count(*) from pg_catalog.pg_proc
+      where pronamespace='banking'::regnamespace
+        and prosrc like '%rf193-banking-company-write-guard-v1%';
+    `), "22", "final Investments topology must retain every Banking writer guard");
   } finally {
     docker(["rm", "--force", "--volumes", containerName]);
   }

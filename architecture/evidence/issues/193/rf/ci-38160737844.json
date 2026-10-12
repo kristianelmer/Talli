@@ -1,0 +1,182 @@
+{
+  "schema": "rf-integration-ci-observation-v12",
+  "recordedAtUtc": "2026-10-11T19:15:44.232283+00:00",
+  "runId": 38160737844,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/38160737844",
+  "headSha": "55a079075c9a14123229e813ff92870ae506329a",
+  "mergeSha": "1c89a82cc193336c9f1badf943068a1a01b1e1a3",
+  "mainParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+  "status": "completed",
+  "conclusion": "failure",
+  "attempt": 1,
+  "application": {
+    "passed": 11716,
+    "skipped": 2,
+    "deselected": 2418,
+    "seconds": 1092.13
+  },
+  "billing": {
+    "pythonPassed": 700,
+    "pythonSeconds": 237.1,
+    "migrationLifecyclePassed": true,
+    "causalDeadlockFixEstablished": false,
+    "lockDiagnosticEmitted": false
+  },
+  "authority": {
+    "required": 1630,
+    "observedPassed": 1630,
+    "exactSourceNodeSetVerified": true,
+    "seconds": 1044.92
+  },
+  "intent": {
+    "required": 46,
+    "observedPassed": 46,
+    "requiredParent": 6,
+    "requiredParentPassed": 6
+  },
+  "narrowPrerequisites": {
+    "claim": 20,
+    "approval": 36,
+    "retention": 24,
+    "inventoryAuthority": 6,
+    "intent": 46,
+    "inventoryPipelineCleared": false
+  },
+  "rfBrowser": {
+    "selected": 38,
+    "passed": 37,
+    "failed": 1,
+    "durationMs": 1181630.177239,
+    "owningInventoryAccepted": false,
+    "independentRecoveryAccepted": false
+  },
+  "failure": {
+    "stage": "independent-recovery",
+    "fingerprintComponents": [
+      "catalog"
+    ],
+    "exactCatalogDifferenceAndCauseKnown": false,
+    "targetAuthCreationUnreached": true,
+    "catalogDifference": {
+      "sourceRecords": 2158,
+      "targetRecords": 2158,
+      "counts": {
+        "changed": 153,
+        "source-only": 0,
+        "target-only": 0
+      },
+      "truncated": true,
+      "retainedDetails": 32,
+      "retainedDetailKindCounts": {
+        "default_acl": 23,
+        "function": 3,
+        "relation": 6
+      },
+      "allRetainedIdentitiesMapped": true,
+      "omittedRecords": 121,
+      "summary": [
+        {
+          "fields": [
+            {
+              "change": "acl-entry-order-only",
+              "count": 23,
+              "field": "acl"
+            }
+          ],
+          "kind": "default_acl",
+          "records": 23,
+          "status": "changed"
+        },
+        {
+          "fields": [
+            {
+              "change": "acl-entry-order-only",
+              "count": 1,
+              "field": "acl"
+            },
+            {
+              "change": "target-null",
+              "count": 2,
+              "field": "configuration"
+            },
+            {
+              "change": "value",
+              "count": 2,
+              "field": "security_definer"
+            }
+          ],
+          "kind": "function",
+          "records": 3,
+          "status": "changed"
+        },
+        {
+          "fields": [
+            {
+              "change": "acl-entry-order-only",
+              "count": 21,
+              "field": "acl"
+            },
+            {
+              "change": "target-null",
+              "count": 104,
+              "field": "acl"
+            }
+          ],
+          "kind": "relation",
+          "records": 125,
+          "status": "changed"
+        },
+        {
+          "fields": [
+            {
+              "change": "target-null",
+              "count": 2,
+              "field": "acl"
+            }
+          ],
+          "kind": "schema",
+          "records": 2,
+          "status": "changed"
+        }
+      ],
+      "allChangedRecordKindsAndFieldsCounted": true,
+      "aclEntryOrderOnlyRecords": 45,
+      "aclTargetNullRecords": 106,
+      "functionConfigurationAndSecurityChangedRecords": 2,
+      "literalDiagnosticCopies": 5,
+      "directDiagnosticLines": 3,
+      "wrappedLiteralDiagnosticCopies": 2
+    }
+  },
+  "signedStatelessFixtureCompleted": true,
+  "currentSigningAlgorithmObserved": false,
+  "es256ActualAcceptance": false,
+  "limits": [
+    "Current Billing lifecycle success does not establish an intermittent deadlock causefix. Local29 diagnostic tests were not added to the CI selector.",
+    "Current1,630-node set and mandatory46/six-parent cases are exact; narrow passes do not clear the failed owning inventory pipeline.",
+    "The signed stateless fixture completed before the recovered catalog mismatch. Current token algorithm is not emitted; ES256-specific and current target Auth acceptance remain unproved.",
+    "Catalog mismatch precedes target Auth creation. Complete kind/field summary covers all153 changed records:45 exact ACL entry permutations,106 explicit ACLs restored as NULL,2 net function configuration/security changes. Only32 identities retained;121 omitted identities remain unknown. Source-default/effective-grant equivalence and actual net version/archive cause remain unproved. Strict fingerprints unchanged.",
+    "Later Tax/Accounts/public acquisition browsers unreached; immutable evidence skipped, zero artifacts; linked complete gates/hosted/human/all-three readiness remain pending.",
+    "No raw queries, tokens, keys, Auth/customer rows, actor IDs, PID/transaction detail or raw exception text published.",
+    "Copy-count correction:5 identical literal diagnostics comprise3 direct lines and2 exception-wrapper copies. Classification and test outcomes unchanged; predecessor count-only receipt preserved."
+  ],
+  "artifactCount": 0,
+  "jobTimedOut": false,
+  "wholePipelineCleared": false,
+  "allThreeReady": false,
+  "rawEvidenceSha256": {
+    "ci38160737844-terminal-run-v1.json": "3832da5b523bd35a6cf1a46a25657eed71a9add6fbc1275a822227ef29fd1aa0",
+    "ci38160737844-terminal-jobs-v1.json": "0aac63b10774501fc4b152be4adec4a62a08cce9ff8fc96f7cb3041f73ffb24d",
+    "ci38160737844-terminal-pr-v1.json": "cfddd555a963b592f5211b9b54eac97674d60ff14bf072ce2e7f27ce973ce2c1",
+    "ci38160737844-terminal-parents-v1.json": "b6002a15e684b0cd0600c8814bc9ba377601e3bfd9662076c64b5a8c0ac357d5",
+    "ci38160737844-terminal-artifacts-v1.json": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+    "ci38160737844-app-direct-raw-v1.log": "d854476b31589dbc4afd11f251b5976f1ed62233493bf857db770fd9f86a5b23",
+    "ci38160737844-db-direct-raw-v1.log": "acfa28d266c3357b9efa78e8acf26ae2b593b0ccb0587efd2114c1e6d5c44438",
+    "ci38160737844-terminal-inspection-candidate-v1.json": "4e5a9edb9bf7ea62bea40063d29950758bdab24a2c1c4aecefb364392c07013e",
+    "ci38160737844-terminal-receipt-v1.json": "b11e564a3dc7ea280c0c97fd81c2552f0133a443d92babfcd3f689cd507c8e97",
+    "ci38160737844-terminal-root-acceptance-v1.json": "35a4a5d1bc49d0a2ce445b31018420c07911b274d613093c58fb88edc89b06ef",
+    "ci38160737844-catalog-difference-actual-v1.json": "cc06f87f72ab92eee1695e2123b23781f80a390dc901e68604294989ba3fb282",
+    "ci38160737844-catalog-difference-actual-v2.json": "071d28f817019afaf904811fb1dbe10e996b36ef777e1a0cad6ada9b83eaf64b"
+  },
+  "databaseDurationSeconds": 3066.0
+}

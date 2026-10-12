@@ -1,0 +1,63 @@
+{
+  "schema": "rf-integration-ci-observation-v9",
+  "recordedAtUtc": "2026-10-11T13:28:49.382925+00:00",
+  "runId": 38140885974,
+  "url": "https://github.com/kristianelmer/Talli/actions/runs/38140885974",
+  "headSha": "3dae8b1971ff70cfecdd276ce692ce2baead6e7a",
+  "mergeSha": "fc53a40d4839f1ddb1a63d978b8b5eae78ba2a17",
+  "mainParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+  "status": "completed",
+  "conclusion": "failure",
+  "attempt": 1,
+  "application": {
+    "passed": 11623,
+    "skipped": 2,
+    "deselected": 2418,
+    "seconds": 896.52
+  },
+  "billing": {
+    "pythonPassed": 700,
+    "pythonSeconds": 207.2,
+    "migrationLifecyclePassed": false,
+    "failureSqlstate": "40P01",
+    "failureStage": "checkout-observation-reapplication"
+  },
+  "authority": {
+    "required": 1630,
+    "observedPassed": 0,
+    "executed": false
+  },
+  "intent": {
+    "required": 46,
+    "observedPassed": 0,
+    "requiredParent": 6,
+    "requiredParentPassed": 0,
+    "executed": false
+  },
+  "rfBrowser": {
+    "executed": false,
+    "owningInventoryAccepted": false,
+    "independentRecoveryAccepted": false
+  },
+  "failure": "Billing migration lifecycle deadlock before Authority/RF: migration waits for relation AccessExclusiveLock while peer waits ShareLock on migration transaction. Competing query and relation name unobserved; repeated earlier unresolved stage is not a causal fix. ES256 actual signer/Auth/recovery path was unreached.",
+  "limits": [
+    "Application11623/2/2418 and700BillingPython passes are narrow. All1630Authority/all46intent/all6parents/currentRF unobserved on this head; prior-head passes not transferred.",
+    "No actual captured-token key/signature/SID/currentAuth/independent restore/fingerprint acceptance.",
+    "Later Tax/Accounts/public acquisition browser work unobserved; immutable evidence skipped, zeroartifacts.",
+    "No raw query, credentials, Auth/customer rows, actor IDs, PID/transaction detail or raw error strings published."
+  ],
+  "artifactCount": 0,
+  "jobTimedOut": false,
+  "es256ActualAcceptance": false,
+  "wholePipelineCleared": false,
+  "allThreeReady": false,
+  "rawEvidenceSha256": {
+    "ci38140885974-app-direct-raw-v1.log": "d50ffe8d9c379963ff3c3ca7b1941857779c94b5e4abcabc9fa8cd4669333a8b",
+    "ci38140885974-db-direct-raw-v1.log": "3abcfd83a86a0493de00b9661d8e436025c86ed0c528eddb612b3081b3d8323c",
+    "ci38140885974-terminal-run-v1.json": "70cb0b6c4177add91e14712b7b52b652de71156011e7daa13b33eb09dddb5b22",
+    "ci38140885974-terminal-jobs-v1.json": "d703457c973966790f475ff612e0725c9efaeb6a6ff7e2ee5228c1b786c2fb46",
+    "ci38140885974-terminal-pr-v1.json": "959c87a93302a1389ffb7658884f4728b7d3e20da94236a9535b345e24586a7f",
+    "ci38140885974-terminal-parents-v1.json": "c0ddd9f69ac174357071048ad03cef98add5e2f11e7f3ca2e8a360df1e5e8aa9",
+    "ci38140885974-terminal-artifacts-v1.json": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c"
+  }
+}

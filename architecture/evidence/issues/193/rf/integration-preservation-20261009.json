@@ -1,0 +1,30 @@
+{
+  "capturedAt": "2026-10-09T19:43:09.884168+00:00",
+  "source": "/Users/kristianelmer/.codex/worktrees/14d7/Holding accounting",
+  "destination": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting",
+  "sourceHead": "3f6a82c888ec3b457be12e45639e58fb12d8e9c0",
+  "sourceBranch": "codex/issue-193-release-gate",
+  "sourceUnchanged": true,
+  "copiedFiles": {
+    "apps/backend/scripts/verify_rf1086_archive.py": "a005e7d860550cf108f761bf8de0fdf06d22e1479056d0f0a2ade7658fa6917e",
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "3ea7cccff5839e19656b5de9f3ab6ea7b4fad0683c7e1928b03412f693a7a96e",
+    "apps/backend/src/talli_backend/main.py": "ba50c11d388886347913715d4ed47454f538ea00e2957aba34c3a52f205a48e9",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/archive_storage.py": "e15d8d65fe3d7fa6d1b34bbc663309e80cae67b34c898de86ca4efac57d55e2e",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py": "bede4b4a86bfcc353e6e182a8a5a6e55be980ecb29c88eaf2245645977d17c14",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "9ff11d2774530bbf3dde26f539b2fbd26dccbfab42bfeb5c59a12be2a13eae66",
+    "apps/backend/tests/test_rf1086_database_runtime.py": "d589f9880f89bb69108a2e2e4f7b6e67bcbb63023ee7b880a857f64a7910f8df",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": "30200e4615fbf30807938afcb76fdde302f83186fa354639e73f79ad359f2d54",
+    "apps/web/app/lib/archive.ts": "41118f33243307d45dba35875013b1c8d7ef4bb64c5e1f4690654e14d56ab747",
+    "apps/web/app/lib/rf1086-original-integrity.ts": "31389784e250f2c2d1a20164b54a695ff949fa200a652ecd76c0842d4d1ee27a",
+    "apps/web/app/lib/rf1086-restore-integrity.ts": "e3a4982faa956f3ad0469a75538afe9f16ca3488067e6fd0320f01c36cc8c210",
+    "apps/web/tests/fixtures/rf1086-feedback-original-archive.json": "addcaae852083e2c4ed95732a600fd4dca2d73f752d55ff51a5f73489ed8ac09",
+    "contracts/openapi/talli-v1.json": "36685113e84460a57d088c09e998be5c0766c8fb897a39bb78d0b8c649c0fd82",
+    "packages/talli-api-client/src/generated/client.ts": "ea97b569749a6bc64b195084355c55922a368573b89aa9661c9ee38a141b5ea4",
+    "scripts/rehearse-rf1086-owned-restore.py": "f6498d01fa3d58fdbc99e791164dbea775fed4438361cc1fa389b0c94a316722",
+    "tests/fixtures/rf1086-source-browser-journey.mjs": "72a891fe4a0e148e9f32663e0afc677d11db0a7e09fbd4e79498fa9d10865023",
+    "apps/backend/tests/test_rf1086_override_archive.py": "2e0a82bfea2d81fe0d47d1a9c8301f42f06d02be974ab92b66f7eda9e8d3e445",
+    "apps/web/tests/fixtures/rf1086-override-archive.json": "18088747964947189cca1105cd8162d6993ad4df52a2a17191f3899861265bd5",
+    "apps/web/tests/rf1086-override-archive.test.mjs": "21007b43e4d07440b07a1a020ccfe9e60ecdec3f079cd89fe19d446624bbd568"
+  },
+  "count": 19
+}

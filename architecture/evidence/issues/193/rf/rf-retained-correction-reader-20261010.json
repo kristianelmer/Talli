@@ -1,0 +1,291 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "CLOSED_RF_RETAINED_CORRECTION_READER",
+  "recordedAtUtc": "2026-10-10T04:59:53.044587+00:00",
+  "baseRevision": "b05b85c6c2f2549337c6ec4216144baaf343f4dd",
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py",
+      "sha256": "5e2cea617dbba7d060f931e07bb0465c87461ed30c6b11ba5977079b2cd35836",
+      "bytes": 128708
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_source_admission.py",
+      "sha256": "6b143a910768fc4061fc45aabcb4f754ca3df08f71d704d038d94d789993ceb5",
+      "bytes": 12617
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "523c34546afffa66aee9d21437c264e7fbe6c6171a292f415af0fa6074055695",
+      "bytes": 107442
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "584a64ce824e23793fd221862a895754c5e4e9de3c17f7ec8c445f19b5d4ad2b",
+      "bytes": 28225
+    },
+    {
+      "path": "apps/backend/tests/test_postgres_rf_retained_correction.py",
+      "sha256": "d117935716107b6bdfe8e6e7157d2a94803492d3dcec84a6f233bac068e8d710",
+      "bytes": 5353
+    },
+    {
+      "path": "apps/backend/tests/test_postgres_rf_retained_correction_adversarial.py",
+      "sha256": "36dbaa2e38df46bf52ab2816a56bc71b1d40ebe02a20c771b5393568ca2cbab7",
+      "bytes": 14687
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_retained_correction_reader_database.py",
+      "sha256": "b7f2f0a1e41b0535b59a2d979917c4032c37f7e4f4d5cc95203539d3809be72c",
+      "bytes": 30419
+    },
+    {
+      "path": "package.json",
+      "sha256": "2d0949b203e1674e592cc78dc0058dd6555dfc9a5a3fb1acfd21e13e4255e98e",
+      "bytes": 34312
+    }
+  ],
+  "implementation": [
+    "Add read_retained_correction_archive to session and held source-admission protocols/implementations, returning a complete raw archive without switching existing callers.",
+    "Preflight validates exact original USER/scope/IDs, asserts selected submission access before enumeration and uses one read-only repeatable transaction. Held reads require live matching scope and existing parent-lock RPC on the same connection.",
+    "Preserve all actors/profiles; compare exact selected parent to a unique enumerated row. Later pure validation, external Documents original checks and final admitted write remain separate.",
+    "Three new unit/database test files and owner docs/inventory. Scope extended to the one necessary package.json test-list insertion so next CI can execute the new database cases; every pre-existing file/flag/order and package field remains unchanged."
+  ],
+  "checks": {
+    "focused": {
+      "passed": 361,
+      "seconds": 12.85,
+      "newRoot": 24,
+      "newIndependent": 53,
+      "existing": 284
+    },
+    "database": {
+      "selectedFiles": 45,
+      "totalCollected": 1449,
+      "newReaderCollected": 31,
+      "executed": 0
+    },
+    "legacy": {
+      "recoveryCorrection": 189,
+      "observedRecoveryCalls": 306,
+      "claimDispatch": 119,
+      "archive": 59,
+      "approval": 181,
+      "downstream": 7,
+      "annual": 217,
+      "comparison": "EXACT"
+    },
+    "compatibility": {
+      "oldAdapterDefinitionsExact": 134,
+      "oldProtocolDefinitionsExact": 36,
+      "otherSourceMigrationFilesByteUnchanged": 384,
+      "addedDefinitions": 6,
+      "wholeModuleASTExactAfterDeclaredAdditionsRemoved": true,
+      "exactPackageTestPathInsertion": true
+    },
+    "architecture": "PASS",
+    "whitespace": "PASS"
+  },
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "b02932012d9f13057a76037fe42e75ba52429bffa2a269e88320c5fe6b34f96f"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "b69c2f7336e917000ea02f675cea6833a6e55d92fe99ad39c3352455ed44c54c"
+    },
+    "Root": {
+      "unresolved": 0,
+      "reportSha256": "ed9aefe266ede258c1ad0382ccebb8071f4298c11e7a594f4a9c735c94a2aeeb"
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "rf-retained-correction-reader-final-freeze.json",
+      "sha256": "94e667a4962d5b927135440a8a9af040d235d13bda345e4baf0fab563bddc347",
+      "bytes": 3947
+    },
+    {
+      "file": "rf-retained-reader-integration-plan-v1.json",
+      "sha256": "ab0f68c4727dd7882098915fa9d17ef78bb303125f1ebfe5ef16f928b85a48ca",
+      "bytes": 10436
+    },
+    {
+      "file": "rf-retained-reader-integration-plan-v1-review.json",
+      "sha256": "71729500ebb6b932c3555f01fb7c97317effb984ea077577d2e13d570adf9212",
+      "bytes": 6861
+    },
+    {
+      "file": "rf-retained-correction-reader-root-decision.json",
+      "sha256": "e4a6d2d0ede23bd00bb1852222d58ea987dc9cd1eb6f54627c03b213ed276044",
+      "bytes": 3554
+    },
+    {
+      "file": "rf-retained-correction-reader-final-checks.json",
+      "sha256": "eac025d9c8dde0e002d474481e6adb3f80e5a41f81431b89f5c02e66dc4e436c",
+      "bytes": 7625
+    },
+    {
+      "file": "rf-retained-correction-reader-final-regression.log",
+      "sha256": "70fde62f11893984c61092308f665eaf60992aa6a6ebd576f8835dfd08c9d2d3",
+      "bytes": 501
+    },
+    {
+      "file": "rf-retained-correction-reader-final-full-db-collection.log",
+      "sha256": "858f3b6e73a34292c94063c84edb6d82bd2f533a9c27d96dac869be389e6e01f",
+      "bytes": 209885
+    },
+    {
+      "file": "rf-retained-correction-reader-architecture.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "file": "rf-retained-correction-reader-spec-focused.log",
+      "sha256": "70ccbed9ddca9d9322394d18795e28d7105ad1dda69c10c8214d789c3c05b365",
+      "bytes": 99
+    },
+    {
+      "file": "rf-retained-correction-reader-spec-static.json",
+      "sha256": "e38a081b735e9e7059e0242d32c36270c44229ef79b7122e8d37fc6bef162c75",
+      "bytes": 82329
+    },
+    {
+      "file": "rf-retained-correction-reader-package-spec.json",
+      "sha256": "12c20751c38a9133b011d01ca5ef8a94fd9e8ceff00919117ad333623c903449",
+      "bytes": 2134
+    },
+    {
+      "file": "rf-retained-correction-reader-legacy-comparisons.json",
+      "sha256": "6183cefb4d9192abf3c4da84fc8c8610c610a6e6a5c8046e6d9fd6165ad8d399",
+      "bytes": 8364
+    },
+    {
+      "file": "rf-retained-correction-reader-final-spec-review.json",
+      "sha256": "b02932012d9f13057a76037fe42e75ba52429bffa2a269e88320c5fe6b34f96f",
+      "bytes": 133261
+    },
+    {
+      "file": "rf-retained-correction-reader-spec-initial.log",
+      "sha256": "ae7e770d024e5b52b79d76033b290c39a1982fb6b68b6c268abb81591f0a7c9e",
+      "bytes": 1484
+    },
+    {
+      "file": "rf-retained-correction-reader-db-tests-v2.json",
+      "sha256": "cee5049a389a4c929348ea1483113b017f0df8f5e378eb0a17d764783c5d03c0",
+      "bytes": 7305
+    },
+    {
+      "file": "check-rf-retained-correction-reader-spec-static.py",
+      "sha256": "a3ff9e9c0a1fa00988f4c1100ab8f6975c7945a01987efabe591bfd92859ecdd",
+      "bytes": 4804
+    },
+    {
+      "file": "rf-retained-correction-reader-db-final-collection.log",
+      "sha256": "80c6ba7816508b1bd2b36112b8dd40adf1a3a5a56cf78852372a8ed66677e2d6",
+      "bytes": 3895
+    },
+    {
+      "file": "check-retained-correction-second-root-fixture.py",
+      "sha256": "a19e32101829979b846a7b133ff42aa6d8114d2313595c55f98c84c3976cfe29",
+      "bytes": 996
+    },
+    {
+      "file": "retained-correction-second-root-fixture.log",
+      "sha256": "1386c509bceb8cfab58ade17282b3f2014297ea0d1527cddb2b2a21b58c27829",
+      "bytes": 59
+    },
+    {
+      "file": "rf-retained-correction-reader-db-tests-v1.json",
+      "sha256": "ec0b057e748eb6bed3c428473011fff675b5a8a359b5951bff7bf83a78c0548f",
+      "bytes": 3347
+    },
+    {
+      "file": "freeze-rf-legacy-recovery-correction-pre-retained.py",
+      "sha256": "7df223fcdd2a1ac4a535faaa06f101327881930e1f9f977a77335284acf969c2",
+      "bytes": 13824
+    },
+    {
+      "file": "rf-retained-correction-reader-legacy-recovery-correction-pre-retained.log",
+      "sha256": "a0909dc2a91e7b0f965f93d55c48b7de4f5b7f599f557456c35d2659a548c713",
+      "bytes": 53
+    },
+    {
+      "file": "freeze-rf-legacy-claim-dispatch-pre-v3.py",
+      "sha256": "f157e0bf54b1d025c3c973b38b02d247d023ba67cbd80bf4d83c0717aa66e104",
+      "bytes": 14120
+    },
+    {
+      "file": "rf-retained-correction-reader-legacy-claim-dispatch-pre-v3.log",
+      "sha256": "5466280f6bd54e13a8d704e10c2fcd8d72660a1905b5dc62e8b069c75069d91e",
+      "bytes": 39
+    },
+    {
+      "file": "check-rf-retained-correction-reader-archive-oracle.py",
+      "sha256": "03df8d71f1dbcb7c4ef24005de870798533743201931c2b367e0c81f05b3d8d6",
+      "bytes": 1392
+    },
+    {
+      "file": "rf-retained-correction-reader-legacy-archive.log",
+      "sha256": "c94a8a59e337d8c358f1726045b1e495f02922b64338b7f6c86303ac5a005dea",
+      "bytes": 66
+    },
+    {
+      "file": "check-rf-retained-correction-reader-approval-oracle.py",
+      "sha256": "aa7ea10f21c7b2cdeaa3cd76e69503d316a8e0373d295f047663c0268b864b1a",
+      "bytes": 12808
+    },
+    {
+      "file": "rf-retained-correction-reader-legacy-approval.log",
+      "sha256": "ec603dad5363b2bd09bece4debcb84b8f10ec6a445dc0efad482bbb046fc984f",
+      "bytes": 3039
+    },
+    {
+      "file": "check-rf-retained-correction-reader-downstream-oracle.py",
+      "sha256": "5ee84a557baf0d0dc47ed70b3b146ccc407a42b4999081e18d535daa84970744",
+      "bytes": 4972
+    },
+    {
+      "file": "rf-retained-correction-reader-legacy-downstream.log",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "file": "rf-legacy-approval-pre-v3.json",
+      "sha256": "56807e01f93783fc05a4a5fc42b3c5f0a83a50da60c92e786ccc5aa698fcdd25",
+      "bytes": 5220965
+    },
+    {
+      "file": "rf-v1-downstream-pre-integration.json",
+      "sha256": "5b41be2a029992b27492ff5bb2c51cbde3e5c8fb2f8e4d26130791ea7a8c66ec",
+      "bytes": 156580
+    },
+    {
+      "file": "rf-v1-annual-policy-pre-consumer.json",
+      "sha256": "ab8a025dd1890734c3e33bdbb6cdfe08fa9f120090503c380ecb059f4d9dd3ba",
+      "bytes": 987379
+    },
+    {
+      "file": "rf-retained-correction-reader-final-standards-review.json",
+      "sha256": "b69c2f7336e917000ea02f675cea6833a6e55d92fe99ad39c3352455ed44c54c",
+      "bytes": 11209
+    },
+    {
+      "file": "rf-retained-correction-reader-root-review.json",
+      "sha256": "ed9aefe266ede258c1ad0382ccebb8071f4298c11e7a594f4a9c735c94a2aeeb",
+      "bytes": 2085
+    }
+  ],
+  "limits": [
+    "No existing runtime caller, HTTP, SQL, grant, approval, claim, intent or writer activation.",
+    "Unit SQL doubles prove routing/transaction code, not real RLS, locks, provenance or object bytes.",
+    "31 new real database cases only collected locally; execution awaits next CI. V3 rows are explicit designated-owner fixture data, not public writer activation.",
+    "Governance fixture repair and terminal CI receipt are separate changes outside this eight-file freeze.",
+    "Database fixture inserts are synthetic retained data under designated fixture authority; they do not demonstrate fresh v3 approval, claim or intent writer support.",
+    "Existing historical compact reader and reconciliation/export/application callers remain unchanged. Returned archive is raw evidence, not an authorization or completeness token for later use.",
+    "Ordinary PR CI on cdce excluded this reader and the preceding pure recovery/correction commit. Next CI must execute these bytes; previous head counts are not transferred.",
+    "A1\u2013A7 and both linked immutable release gates remain pending. No production filing, provider activation, paid action, genuine-company admission, outreach or launch clearance."
+  ]
+}

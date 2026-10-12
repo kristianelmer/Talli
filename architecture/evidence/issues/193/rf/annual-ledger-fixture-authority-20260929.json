@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_RESTRICTED_LEDGER_FIXTURE",
+  "failedRun": 36597657162,
+  "revision": "afe0ce3686e3668bf8dd44aa7d14bf97ce3ac8c8",
+  "finding": "Application passed; Database isolation stopped at the new Ledger fixture after153 passing authority cases. Supabase postgres lacked INSERT on ledger.opening_bank_inputs; the local PostgreSQL superuser had hidden that fixture assumption.",
+  "fix": "Only the disposable BYPASSRLS fixture principal temporarily receives missing INSERT on two Ledger tables. It borrows missing store-owner SET authority if necessary and restores original memberships, ACLs and FORCE RLS exactly. Application roles and production SQL are unchanged.",
+  "verification": "Reproduced the denial under a NOSUPERUSER BYPASSRLS login without initial store-owner SET, proved both table inserts after the temporary grant, and checked exact restoration.14 annual Ledger/Documents/opening database cases and52 input unit cases pass. Full Supabase rerun remains required.",
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-annual-ci-fixture-20260929-14d7",
+  "sha256": {
+    "restricted-probe.log": "a913925a26903d51295ef93d8961e2d8dd735320a821733485bf12647d596594",
+    "restricted-probe.py": "938e1e5db6c9de04a93e3925822324102f9cf7bff1ca38f89f5f19dd9fcb2e01",
+    "database.log": "df0142c742e45512807213a1a9c157e6a39ac30e3a316ebdf76552b8767ca96a",
+    "setup.log": "78eeabab5db479f1547612d9ff9efe7dab3113903012ac0406683ea3665bc7c6"
+  }
+}

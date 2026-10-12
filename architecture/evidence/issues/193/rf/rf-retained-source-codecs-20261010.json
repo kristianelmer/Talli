@@ -1,0 +1,210 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "RETAINED_RF_SOURCE_V1_V2_READ_AND_COMMITTED_REPLAY",
+  "recordedAtUtc": "2026-10-10T02:37:34.932224+00:00",
+  "baseRevision": "4844d1ac60877c038f4dacc7a98333340204aaa4",
+  "scope": "Retained source v1/v2 parsing, read and committed replay only. Current retained workflow integrity dispatch and truthful raw-read return unions. Fresh writer stays v1; v2 predecessor explicitly denied before adapter clock/retention/append. Frozen parsers/codecs/dataclasses/SQL/HTTP/manifests unchanged.",
+  "implementation": [
+    "Select only explicit v1/v2 codec, then pass original retained text to its unchanged strict public parser. Unknown, duplicate-key and cross-codec records fail closed; no reconstruction or fallback.",
+    "Keep every persisted identity, scope, actor, timestamp, correction-ordinal, predecessor, request and source-hash binding. Both committed-replay paths select the matching explicit replay validator.",
+    "Retained current-source workflow checks matching integrity and existing owner/AS/company/org requirements without rereading mutable original evidence. Raw persistence/read and replay return annotations admit both snapshot types.",
+    "Historical source previews validate the corresponding stored source codec and retain their original payload/hash/common-field bindings; they never rerender old rows.",
+    "Fresh capture remains v1. A v2 current head fails codec_downgrade before adapter clock, retention or append. Existing lookup-miss workflow preflight I/O is unchanged; admittedfresh result, source freshness and new-preview gates remain v1-only."
+  ],
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py",
+      "sha256": "70e410c80724cbc503d2cdd2801f5a0d10060708fdb94ab34473dc5f285e3195"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_source_admission.py",
+      "sha256": "13686dbaa4a9bb71f83cc3c3ab86ecd56907887fdda79077be355696979df8d0"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py",
+      "sha256": "e60bd4b6474cc2e6702693f9bb00f1bcfba22e2767e7bcd972c1ba6a8ee27d7b"
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py",
+      "sha256": "ce49fbe7c14d99a7a4dff9ba0a28fdf0303e452d85c536b82287871f54850d9d"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_capture_receipt_lookup.py",
+      "sha256": "3feb40d33718ca6ba9da799ce05d1c3b805cca052975c5e0ed1f8ff4d2c66166"
+    },
+    {
+      "path": "apps/backend/tests/test_shareholder_register_source_workflow.py",
+      "sha256": "5759ec353fe18dcdb5057d022050116156634a189d026a8a460eddd3384400cf"
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_source_preview.py",
+      "sha256": "c5b78b112404fc066b48738dba8f449a6ef54916b566fd8665af894c633a35d5"
+    }
+  ],
+  "checks": {
+    "affectedRegressionPassed": 460,
+    "affectedRegressionFiles": 8,
+    "durationSeconds": 30.53,
+    "independentSpecFocusedPassed": 108,
+    "independentSpecDeselected": 95,
+    "independentWorkflowPreviewPassed": 124,
+    "independentWorkflowPreviewNewCases": 45,
+    "overlap": "Independent108 and124 overlap final460; do not sum.",
+    "preeditV1DownstreamVectorsExact": 7,
+    "publicDefinitionsUnchanged": 271,
+    "onlyPublicDefinitionChange": "Four persistence protocol return annotations; old bodies and parameters retained.",
+    "rootDirectWireProjectionCases": 11,
+    "architecture": "PASS; generated dependency JSON exactly unchanged",
+    "unchangedFreshAst": [
+      "ShareholderRegisterSourceWorkflow._fresh_source",
+      "AdmittedRf1086Source",
+      "ShareholderRegisterSourceAdmission.admit"
+    ],
+    "fullDatabaseExecuted": 0,
+    "syntax": "PASS",
+    "diffCheck": "PASS"
+  },
+  "testCommands": [
+    {
+      "name": "Final eight-file retained/workflow/admission/archive/API regression",
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python -m pytest -c apps/backend/pyproject.toml apps/backend/tests/test_rf1086_capture_receipt_lookup.py apps/backend/tests/test_shareholder_register_source_workflow.py apps/backend/tests/test_rf1086_source_preview.py apps/backend/tests/test_shareholder_register_source_preview_workflow.py apps/backend/tests/test_rf1086_source_admission.py apps/backend/tests/test_postgres_rf_source_admission.py apps/backend/tests/test_rf1086_archive_history.py apps/backend/tests/test_shareholder_register_source_api.py -q > /private/tmp/talli-release-20261009/rf-retained-codec-regression.log 2>&1"
+    },
+    {
+      "name": "Seven immutable v1 downstream golden comparisons and public-definition audit",
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-rf-retained-v1-downstream.py > /private/tmp/talli-release-20261009/rf-retained-v1-downstream-comparison.log 2>&1"
+    },
+    {
+      "name": "Read-only architecture import and unchanged dependency-evidence check",
+      "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/node-v24.20.0-darwin-arm64/bin/node scripts/check-architecture.mjs > /private/tmp/talli-release-20261009/rf-retained-codec-architecture.log 2>&1"
+    },
+    {
+      "name": "Final source syntax, diff and unchanged fresh boundaries",
+      "command": "/Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/inventory-rf-retained-codec-checks.py"
+    },
+    {
+      "name": "Independent root unchanged wire projection",
+      "command": "PYTHONPATH=apps/backend/src:apps/backend/tests /Users/kristianelmer/.codex/issue-192-private/runtime/backend-native-312/bin/python /private/tmp/talli-release-20261009/check-retained-v2-wire.py > /private/tmp/talli-release-20261009/retained-v2-wire-projection.log 2>&1"
+    }
+  ],
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "2b19790850bd6219ead7cf2b03f7ffce94722eee73fac34e21e7d33bba809b49"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "fc8dee39ea756bbb420b8b979606e1b6fb7d4c07888cc850b352cec6409b3d9f"
+    },
+    "root": {
+      "unresolved": 0,
+      "reportSha256": "02d2be3f995b851cbf7a3d2ced9eda732a5b04e7ea3f6ae81f6efb4c911e7126"
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "rf-retained-codec-regression.log",
+      "sha256": "ac93a776b574225f009ef8cd5ab2e0a24bbdda36e66e8358b9307dc93e0c7c32",
+      "bytes": 581
+    },
+    {
+      "file": "check-rf-retained-v1-downstream.py",
+      "sha256": "db6beeae880dba8aa2601fe5a7a496345c41ba98e939c210909c3b4130e386ca",
+      "bytes": 4644
+    },
+    {
+      "file": "rf-retained-v1-downstream-comparison.json",
+      "sha256": "f85a50633c6565f77d313639cd32e4044e7bbcc9ec454eb02284625c752ea015",
+      "bytes": 683
+    },
+    {
+      "file": "rf-retained-v1-downstream-comparison.log",
+      "sha256": "f85a50633c6565f77d313639cd32e4044e7bbcc9ec454eb02284625c752ea015",
+      "bytes": 683
+    },
+    {
+      "file": "rf-v1-downstream-pre-integration.json",
+      "sha256": "5b41be2a029992b27492ff5bb2c51cbde3e5c8fb2f8e4d26130791ea7a8c66ec",
+      "bytes": 156580
+    },
+    {
+      "file": "rf-retained-codec-architecture.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "file": "retained-v2-workflow-preview-checks.json",
+      "sha256": "8751eeb99bc4c2b4cce5180ccc047ec3cd3a1f08788e36e76341613b57a798cf",
+      "bytes": 2225
+    },
+    {
+      "file": "retained-v2-workflow-preview-tests.log",
+      "sha256": "9b44fdfd2e21aa84658f767851686f27eccaf082bb990b794f1e1b62e94d3570",
+      "bytes": 180
+    },
+    {
+      "file": "retained-v2-wire-projection.json",
+      "sha256": "c36f4d848b162a760e0aff392a5e6422d5377972b725d58f8f9d02d164c58ae0",
+      "bytes": 2914
+    },
+    {
+      "file": "check-retained-v2-wire.py",
+      "sha256": "b649935b367309e27eb9d01711eebac86e26eb5a5abf318c725e9f9d71052260",
+      "bytes": 2711
+    },
+    {
+      "file": "retained-v2-wire-projection.log",
+      "sha256": "2024d456f998d8a8ece6eb29279fec55181e50c829ffdb0ecef35bc6082a1c48",
+      "bytes": 98
+    },
+    {
+      "file": "rf-retained-codec-adapter-final.log",
+      "sha256": "5d0a2e54fff96be23f0a35b5ded45438e6be4a9717b6fde2687ecd6607970c19",
+      "bytes": 179
+    },
+    {
+      "file": "rf-retained-codec-freeze.json",
+      "sha256": "f738d509f9eb22adc14afc98ab2546a51f2084672d4c02ea0c4c009d0d3ea0ac",
+      "bytes": 2208
+    },
+    {
+      "file": "rf-retained-codec-checks.json",
+      "sha256": "02b2706301d2b18ccbe1dc83d0facd08c0e3a1eb6995bd936937f9dd62e99728",
+      "bytes": 7511
+    },
+    {
+      "file": "rf-retained-codec-spec-review.json",
+      "sha256": "2b19790850bd6219ead7cf2b03f7ffce94722eee73fac34e21e7d33bba809b49",
+      "bytes": 9797
+    },
+    {
+      "file": "rf-retained-codec-standards-review.json",
+      "sha256": "fc8dee39ea756bbb420b8b979606e1b6fb7d4c07888cc850b352cec6409b3d9f",
+      "bytes": 4902
+    },
+    {
+      "file": "rf-retained-codec-root-review.json",
+      "sha256": "02d2be3f995b851cbf7a3d2ced9eda732a5b04e7ea3f6ae81f6efb4c911e7126",
+      "bytes": 2671
+    },
+    {
+      "file": "rf-retained-codec-spec-targeted.log",
+      "sha256": "05b1adc3b60166fdecd07c34677fd40527377a5e6bf67578bc0a1570b29293aa",
+      "bytes": 195
+    }
+  ],
+  "limits": [
+    "No new v2 writer, preview builder, source approval, archive, HTTP or provider activation.",
+    "Existing workflow fresh-evidence I/O before an uncommitted capture is unchanged; downgrade rejection precedes adapter clock/retention/append, not all preflight I/O.",
+    "Historical preview uses stored bytes and frozen preview codec/common-field bindings, never current rerender.",
+    "Tests use pure snapshots and adapter connection doubles; no full SQL/RLS/current-owner runtime proof.",
+    "AdmittedRf1086Source and fresh source/preview validation remain v1-only; union annotations describe raw retained reads and possible committed replay.",
+    "No SQL or native database changes/execution in this slice. Runtime v2 append/producer grants remain closed.",
+    "No HTTP/transport/schema changes; main.py historical common-field annotation remains v1-only pending separate annotation cleanup if needed.",
+    "Current fresh workflow may verify mutable owner evidence on lookup miss before entering adapter; downgrade denial does not claim zero preflight I/O.",
+    "Current CI38017341770 tests the baseline4844 and excludes this slice; no hosted results transfer to these bytes.",
+    "Existing application HTTP tests are local harnesses; root11 checks execute the unchanged projection directly and prove neither HTTP/Auth nor independent full DB authority.",
+    "Source readiness, annual proofs, approval/claim/intent, mixed archive history, final guarded owner validation and old-binary drain remain prerequisites before v2 writer activation. AllA1-A7 remain pending."
+  ],
+  "claim": "Retained reader and replay prerequisite only; no fresh v2 filing activation or release approval."
+}

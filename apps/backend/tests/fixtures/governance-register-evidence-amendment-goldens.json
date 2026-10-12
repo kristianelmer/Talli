@@ -1,0 +1,116 @@
+{
+  "provenance": "Unchanged released Governance pure receipt/anchor codec and additive command serializer; no SQL or owner authority claim.",
+  "anchor": {
+    "original": {
+      "eventId": "20000000-0000-0000-0000-000000000001",
+      "eventReference": "30000000-0000-0000-0000-000000000001",
+      "companyId": "10000000-0000-0000-0000-000000000001",
+      "incomeYear": 2026,
+      "eventDate": "2026-09-01",
+      "eventKind": "loss_coverage_capital_reduction",
+      "phase": "registered",
+      "policyVersion": "corporate-governance-supported-events-2026.1",
+      "canonicalFacts": {
+        "bankFact": null,
+        "businessFacts": {
+          "loss_evidenced": true,
+          "loss_only": true,
+          "new_share_capital": {
+            "amount": "30000.00",
+            "currency": "NOK"
+          },
+          "no_creditor_notice": true,
+          "no_simultaneous_capital_change": true,
+          "no_value_transfer": true,
+          "nominal_reduction": {
+            "amount": "20000.00",
+            "currency": "NOK"
+          },
+          "old_share_capital": {
+            "amount": "50000.00",
+            "currency": "NOK"
+          },
+          "other_equity_exhausted": true,
+          "register_reconciled": true,
+          "single_ordinary_class": true,
+          "unchanged_owners_and_share_count": true
+        },
+        "companyId": "10000000-0000-0000-0000-000000000001",
+        "documentFacts": [
+          {
+            "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "document_id": {
+              "value": "40000000-0000-0000-0000-000000000002"
+            },
+            "evidence_kind": "amended_articles",
+            "revision": 1
+          },
+          {
+            "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "document_id": {
+              "value": "40000000-0000-0000-0000-000000000003"
+            },
+            "evidence_kind": "registration_receipt",
+            "revision": 1
+          },
+          {
+            "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "document_id": {
+              "value": "40000000-0000-0000-0000-000000000001"
+            },
+            "evidence_kind": "signed_decision",
+            "revision": 1
+          }
+        ],
+        "eventDate": "2026-09-01",
+        "eventId": "20000000-0000-0000-0000-000000000001",
+        "eventKind": "loss_coverage_capital_reduction",
+        "eventReference": "30000000-0000-0000-0000-000000000001",
+        "incomeYear": 2026,
+        "phase": "registered",
+        "policyVersion": "corporate-governance-supported-events-2026.1",
+        "shareholderRegisterFact": {
+          "fact_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "record_id": {
+            "value": "50000000-0000-0000-0000-000000000001"
+          },
+          "revision": 1
+        },
+        "taxCalculationFact": null
+      },
+      "factsSha256": "970c562ebd94671205740d685f5419f7a08f781430226fca207b25f682248444",
+      "accountingEntryId": "90000000-0000-0000-0000-000000000001",
+      "bankTransactionId": null,
+      "correctionOfEventId": null,
+      "recordedAt": "2026-10-09T12:30:45.123456+00:00",
+      "replayed": false,
+      "finalizationSha256": "5fd3d02c4296e02397886de500c32f5735465ca90d36cfa59dd5ac17723b26a1"
+    },
+    "original_actor_id": "11000000-0000-0000-0000-000000000001",
+    "original_recorded_at": "2026-10-09T12:30:45.123456+00:00",
+    "anchor_sha256": "6045257ee43debca3771af735d9bfe62bb847cfc7f9e40245f82b82f30a21046"
+  },
+  "receipt_text": "{\"amendment\":{\"amendment_id\":\"90000000-0000-0000-0000-000000000003\",\"amendment_sha256\":\"5263fd822d863d3140657995d5ee6816bd484ee6c0f261a480401e458c0e949d\",\"anchor\":{\"anchor_sha256\":\"6045257ee43debca3771af735d9bfe62bb847cfc7f9e40245f82b82f30a21046\",\"original\":{\"accountingEntryId\":\"90000000-0000-0000-0000-000000000001\",\"bankTransactionId\":null,\"canonicalFacts\":{\"bankFact\":null,\"businessFacts\":{\"loss_evidenced\":true,\"loss_only\":true,\"new_share_capital\":{\"amount\":\"30000.00\",\"currency\":\"NOK\"},\"no_creditor_notice\":true,\"no_simultaneous_capital_change\":true,\"no_value_transfer\":true,\"nominal_reduction\":{\"amount\":\"20000.00\",\"currency\":\"NOK\"},\"old_share_capital\":{\"amount\":\"50000.00\",\"currency\":\"NOK\"},\"other_equity_exhausted\":true,\"register_reconciled\":true,\"single_ordinary_class\":true,\"unchanged_owners_and_share_count\":true},\"companyId\":\"10000000-0000-0000-0000-000000000001\",\"documentFacts\":[{\"content_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"document_id\":{\"value\":\"40000000-0000-0000-0000-000000000002\"},\"evidence_kind\":\"amended_articles\",\"revision\":1},{\"content_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"document_id\":{\"value\":\"40000000-0000-0000-0000-000000000003\"},\"evidence_kind\":\"registration_receipt\",\"revision\":1},{\"content_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"document_id\":{\"value\":\"40000000-0000-0000-0000-000000000001\"},\"evidence_kind\":\"signed_decision\",\"revision\":1}],\"eventDate\":\"2026-09-01\",\"eventId\":\"20000000-0000-0000-0000-000000000001\",\"eventKind\":\"loss_coverage_capital_reduction\",\"eventReference\":\"30000000-0000-0000-0000-000000000001\",\"incomeYear\":2026,\"phase\":\"registered\",\"policyVersion\":\"corporate-governance-supported-events-2026.1\",\"shareholderRegisterFact\":{\"fact_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"record_id\":{\"value\":\"50000000-0000-0000-0000-000000000001\"},\"revision\":1},\"taxCalculationFact\":null},\"companyId\":\"10000000-0000-0000-0000-000000000001\",\"correctionOfEventId\":null,\"eventDate\":\"2026-09-01\",\"eventId\":\"20000000-0000-0000-0000-000000000001\",\"eventKind\":\"loss_coverage_capital_reduction\",\"eventReference\":\"30000000-0000-0000-0000-000000000001\",\"factsSha256\":\"970c562ebd94671205740d685f5419f7a08f781430226fca207b25f682248444\",\"finalizationSha256\":\"5fd3d02c4296e02397886de500c32f5735465ca90d36cfa59dd5ac17723b26a1\",\"incomeYear\":2026,\"phase\":\"registered\",\"policyVersion\":\"corporate-governance-supported-events-2026.1\",\"recordedAt\":\"2026-10-09T12:30:45.123456+00:00\",\"replayed\":false},\"original_actor_id\":\"11000000-0000-0000-0000-000000000001\",\"original_recorded_at\":\"2026-10-09T12:30:45.123456+00:00\"},\"command\":{\"actor_id\":{\"kind\":\"USER\",\"subject\":\"11000000-0000-0000-0000-000000000001\"},\"company_id\":\"10000000-0000-0000-0000-000000000001\",\"correction_memo\":{\"content_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"document_id\":\"40000000-0000-0000-0000-000000000004\",\"evidence_kind\":\"correction_memo\",\"revision\":1},\"event_id\":\"20000000-0000-0000-0000-000000000001\",\"expected_anchor_sha256\":\"6045257ee43debca3771af735d9bfe62bb847cfc7f9e40245f82b82f30a21046\",\"expected_head\":null,\"income_year\":2026,\"reason\":\"  Feil original – ø 😀 å.\\n\",\"replacement\":{\"fact_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"record_id\":\"50000000-0000-0000-0000-000000000002\",\"revision\":1},\"withdrawal\":{\"target\":{\"fact_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"record_id\":\"50000000-0000-0000-0000-000000000001\",\"revision\":1},\"withdrawal_id\":\"90000000-0000-0000-0000-000000000002\",\"withdrawal_sha256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"}},\"originals\":[{\"byte_length\":120,\"company_id\":\"10000000-0000-0000-0000-000000000001\",\"content_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"document_id\":\"40000000-0000-0000-0000-000000000001\",\"metadata_sha256\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"original_id\":\"90000000-0000-0000-0000-000000000010\",\"retained_at\":\"2026-10-09T12:30:46.123456+00:00\",\"revision\":1,\"source_income_year\":2026},{\"byte_length\":120,\"company_id\":\"10000000-0000-0000-0000-000000000001\",\"content_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"document_id\":\"40000000-0000-0000-0000-000000000002\",\"metadata_sha256\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"original_id\":\"90000000-0000-0000-0000-000000000011\",\"retained_at\":\"2026-10-09T12:30:46.123456+00:00\",\"revision\":1,\"source_income_year\":2026},{\"byte_length\":120,\"company_id\":\"10000000-0000-0000-0000-000000000001\",\"content_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"document_id\":\"40000000-0000-0000-0000-000000000003\",\"metadata_sha256\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"original_id\":\"90000000-0000-0000-0000-000000000012\",\"retained_at\":\"2026-10-09T12:30:46.123456+00:00\",\"revision\":1,\"source_income_year\":2026},{\"byte_length\":120,\"company_id\":\"10000000-0000-0000-0000-000000000001\",\"content_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"document_id\":\"40000000-0000-0000-0000-000000000004\",\"metadata_sha256\":\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"original_id\":\"90000000-0000-0000-0000-000000000013\",\"retained_at\":\"2026-10-09T12:30:46.123456+00:00\",\"revision\":1,\"source_income_year\":2026}],\"recorded_at\":\"2026-10-09T12:30:47.123456+00:00\",\"request_sha256\":\"2f25beadbae92bbb5640872ad01ec154982736f7fceb80b9bcd9e0a6448c0027\",\"revision\":1},\"codec\":\"corporate-register-evidence-amendment-v1\"}",
+  "vectors": [
+    {
+      "name": "first",
+      "command_text": "{\"actor_id\":{\"kind\":\"USER\",\"subject\":\"11000000-0000-0000-0000-000000000001\"},\"company_id\":\"10000000-0000-0000-0000-000000000001\",\"correction_memo\":{\"content_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"document_id\":\"40000000-0000-0000-0000-000000000004\",\"evidence_kind\":\"correction_memo\",\"revision\":1},\"event_id\":\"20000000-0000-0000-0000-000000000001\",\"expected_anchor_sha256\":\"6045257ee43debca3771af735d9bfe62bb847cfc7f9e40245f82b82f30a21046\",\"expected_head\":null,\"income_year\":2026,\"reason\":\"  Feil original – ø 😀 å.\\n\",\"replacement\":{\"fact_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"record_id\":\"50000000-0000-0000-0000-000000000002\",\"revision\":1},\"withdrawal\":{\"target\":{\"fact_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"record_id\":\"50000000-0000-0000-0000-000000000001\",\"revision\":1},\"withdrawal_id\":\"90000000-0000-0000-0000-000000000002\",\"withdrawal_sha256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"}}",
+      "request_sha256": "2f25beadbae92bbb5640872ad01ec154982736f7fceb80b9bcd9e0a6448c0027"
+    },
+    {
+      "name": "second",
+      "command_text": "{\"actor_id\":{\"kind\":\"USER\",\"subject\":\"11000000-0000-0000-0000-000000000001\"},\"company_id\":\"10000000-0000-0000-0000-000000000001\",\"correction_memo\":{\"content_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"document_id\":\"40000000-0000-0000-0000-000000000004\",\"evidence_kind\":\"correction_memo\",\"revision\":1},\"event_id\":\"20000000-0000-0000-0000-000000000001\",\"expected_anchor_sha256\":\"6045257ee43debca3771af735d9bfe62bb847cfc7f9e40245f82b82f30a21046\",\"expected_head\":{\"amendment_id\":\"90000000-0000-0000-0000-000000000003\",\"amendment_sha256\":\"5263fd822d863d3140657995d5ee6816bd484ee6c0f261a480401e458c0e949d\",\"revision\":1},\"income_year\":2026,\"reason\":\"  Feil original – ø 😀 å.\\n\",\"replacement\":{\"fact_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"record_id\":\"50000000-0000-0000-0000-000000000003\",\"revision\":1},\"withdrawal\":{\"target\":{\"fact_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"record_id\":\"50000000-0000-0000-0000-000000000002\",\"revision\":1},\"withdrawal_id\":\"90000000-0000-0000-0000-000000000004\",\"withdrawal_sha256\":\"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\"}}",
+      "request_sha256": "718a5913d197616b846cd2c02837a5a89abfc0847f2fe057cd2716c5843f2220"
+    },
+    {
+      "name": "all-json-escapes",
+      "command_text": "{\"actor_id\":{\"kind\":\"USER\",\"subject\":\"11000000-0000-0000-0000-000000000001\"},\"company_id\":\"10000000-0000-0000-0000-000000000001\",\"correction_memo\":{\"content_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"document_id\":\"40000000-0000-0000-0000-000000000004\",\"evidence_kind\":\"correction_memo\",\"revision\":1},\"event_id\":\"20000000-0000-0000-0000-000000000001\",\"expected_anchor_sha256\":\"6045257ee43debca3771af735d9bfe62bb847cfc7f9e40245f82b82f30a21046\",\"expected_head\":null,\"income_year\":2026,\"reason\":\"\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007\\b\\t\\n\\u000b\\f\\r\\u000e\\u000f\\u0010\\u0011\\u0012\\u0013\\u0014\\u0015\\u0016\\u0017\\u0018\\u0019\\u001a\\u001b\\u001c\\u001d\\u001e\\u001f \\\" \\\\ ø 😀 å   \",\"replacement\":{\"fact_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"record_id\":\"50000000-0000-0000-0000-000000000002\",\"revision\":1},\"withdrawal\":{\"target\":{\"fact_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"record_id\":\"50000000-0000-0000-0000-000000000001\",\"revision\":1},\"withdrawal_id\":\"90000000-0000-0000-0000-000000000002\",\"withdrawal_sha256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"}}",
+      "request_sha256": "21a421a875d0f20c6f793592ca0ec5c986654f7f222ca59c3728f4c696261b1e"
+    },
+    {
+      "name": "unicode-boundary",
+      "command_text": "{\"actor_id\":{\"kind\":\"USER\",\"subject\":\"11000000-0000-0000-0000-000000000001\"},\"company_id\":\"10000000-0000-0000-0000-000000000001\",\"correction_memo\":{\"content_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"document_id\":\"40000000-0000-0000-0000-000000000004\",\"evidence_kind\":\"correction_memo\",\"revision\":1},\"event_id\":\"20000000-0000-0000-0000-000000000001\",\"expected_anchor_sha256\":\"6045257ee43debca3771af735d9bfe62bb847cfc7f9e40245f82b82f30a21046\",\"expected_head\":null,\"income_year\":2026,\"reason\":\"éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé\",\"replacement\":{\"fact_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"record_id\":\"50000000-0000-0000-0000-000000000002\",\"revision\":1},\"withdrawal\":{\"target\":{\"fact_sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"record_id\":\"50000000-0000-0000-0000-000000000001\",\"revision\":1},\"withdrawal_id\":\"90000000-0000-0000-0000-000000000002\",\"withdrawal_sha256\":\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"}}",
+      "request_sha256": "39e1f74eaf584524631b44892410f927473cce6ab44799a040fc2878981cf610"
+    }
+  ]
+}

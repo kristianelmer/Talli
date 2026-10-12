@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_HISTORICAL_REPLAY_REPAIR",
+  "baseCommit": "f8efa58e",
+  "problem": "Full local Supabase rehearsal passed 250 authority-lane cases, including the repaired correction reader, then the Tax bridge failed EXECUTE on ledger.post_entry before reaching its company guard. The historical Ledger year-close replay renames/recreates post_entry, losing the later Tax bridge grant. Guard replay intentionally preserves ACLs and therefore cannot restore it.",
+  "change": "During local final RF recutover, reapply the shipped inactive Tax settlement expansion before all consequential successor guards. Refuse an active or missing Tax phase before any mutation; do not enable Tax writers or alter production SQL.",
+  "verification": {
+    "reproduction": "Fresh disposable PostgreSQL17: Tax bridge EXECUTE true after migrations, false after historical Ledger year-close replay, still false after company-guard replay. Final RF recutover restores true. anon/authenticated/service_role stay denied.",
+    "focused": "67 Governance/Ledger, Banking and correction-journal database cases passed; all 22 Banking wrappers retained. The focused log initial count used an incorrect marker prefix; a subsequent exact rf193-banking-company-write-guard-v1 query confirmed 22, also enforced by the Banking suite.",
+    "harness": "76 CI/rehearsal tests passed, including inactive Tax replay ordering, active/missing phase refusal and failure short-circuit.",
+    "broader": "405 passed in 95.33s (0:01:35) across the RF/Banking/Document/lifecycle subset. Minimal Auth/Storage shims; not full Supabase proof.",
+    "supabaseBaseline": "Local run39728 terminated at the reproduced Tax bridge failure after250 authority tests; preceding owner/Billing/browser stages completed. Generated tracked Next files were restored by its cleanup.",
+    "ciBaseline": "Run36567309628 at068399fb: Application PASS (including full launch rehearsal), Database FAIL at the correction-reader SET fixture repaired byf8efa58e. New-revision CI still required.",
+    "minimalHarnessLimit": "Attempting all authority tests on the minimal superuser harness stopped after21 passes at the Supabase temporary-role-grant fixture baseline assertion. The RF/Banking/Document subset ran separately; this is not a full authority-lane pass."
+  },
+  "limits": [
+    "All seven RF acceptance criteria remain pending. No real AS or production provider operation.",
+    "No production migration or application permissions changed; this repair restores the disposable rehearsal dependency order."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-tax-bridge-replay-20260929-14d7",
+  "sha256": {
+    "talli-native-local-deps-full-supabase.log": "6b1450d898c33d4d9fabb075f4404bccac4abc230c206f57f26fc3a98b8fc515",
+    "talli-bridge-replay-build.log": "e14e9de818201e358d7bac44d6e7cdd4e2482854f128543b32672fd83ee83bcc",
+    "talli-bridge-replay-focused.log": "3b9590f478ec976854652e20f4cbde13e4efbcf5932b19ba3de38149fc4fb701",
+    "talli-bridge-ci-harness.log": "f38d21b0d698b031792ffe46a8f3536547964b585e017adc8df6d533dd287f1f",
+    "talli-bridge-authority-lane.log": "1c08fb92605c90fc6a054dc65b90d17ac6d050cf2b44810fe94032e7ded9d490",
+    "talli-bridge-rf-guard-lane.log": "00e78b8c5fc5901abb4925cf2798047577d9b8cef66c171070656f3b091c7b41"
+  }
+}

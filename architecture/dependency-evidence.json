@@ -313,6 +313,14 @@
       "to": "backend:ledger"
     },
     {
+      "from": "backend-system:corporate-governance",
+      "imports": [
+        "talli_backend.modules.shareholder_register_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:shareholder_register_filing"
+    },
+    {
       "from": "backend-system:investment-activity",
       "imports": [
         "talli_backend.modules.banking.public"
@@ -385,6 +393,30 @@
       "to": "backend-system:validation_observation"
     },
     {
+      "from": "backend-system:rf1086-company-test-retention-download",
+      "imports": [
+        "talli_backend.modules.company_access.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend-system:rf1086-company-test-retention-download",
+      "imports": [
+        "talli_backend.modules.shareholder_register_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:shareholder_register_filing"
+    },
+    {
+      "from": "backend-system:rf1086-company-test-retention-read",
+      "imports": [
+        "talli_backend.modules.shareholder_register_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:shareholder_register_filing"
+    },
+    {
       "from": "backend-system:shareholder-register-filing",
       "imports": [
         "talli_backend.modules.billing.public"
@@ -403,6 +435,14 @@
     {
       "from": "backend-system:shareholder-register-filing",
       "imports": [
+        "talli_backend.modules.corporate_governance.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:corporate_governance"
+    },
+    {
+      "from": "backend-system:shareholder-register-filing",
+      "imports": [
         "talli_backend.modules.documents.public"
       ],
       "kind": "workflow",
@@ -417,12 +457,73 @@
       "to": "backend:shareholder_register_filing"
     },
     {
+      "from": "backend-system:shareholder-register-source-approval",
+      "imports": [
+        "talli_backend.modules.documents.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend-system:shareholder-register-source-approval",
+      "imports": [
+        "talli_backend.modules.shareholder_register_filing.public"
+      ],
+      "kind": "workflow",
+      "to": "backend:shareholder_register_filing"
+    },
+    {
       "from": "backend-system:system-boundary-tracer",
       "imports": [
         "talli_backend.modules.system_boundary.public"
       ],
       "kind": "workflow",
       "to": "backend-system:system_boundary"
+    },
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
+        "public.company_access_has_fresh_mfa_v1()"
+      ],
+      "kind": "query",
+      "to": "backend:company_access"
+    },
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
+        "documents.assert_historical_original_integrity_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,timestamptz,text)",
+        "documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)"
+      ],
+      "kind": "query",
+      "to": "backend:documents"
+    },
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
+        "ledger.assert_unamended_governance_entry_v1(uuid,uuid,integer,uuid,uuid,date,text,timestamptz,jsonb,text)",
+        "ledger.list_entry_amendments_v1(uuid,text)"
+      ],
+      "kind": "query",
+      "to": "backend:ledger"
+    },
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
+        "shareholder_register_filing.invalidate_year_source_governance_proofs_v1(uuid)",
+        "shareholder_register_filing.receive_year_source_governance_proof_v1(uuid,integer,text,jsonb,text)"
+      ],
+      "kind": "command",
+      "to": "backend:shareholder_register_filing"
+    },
+    {
+      "from": "backend:corporate_governance",
+      "imports": [
+        "shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)",
+        "shareholder_register_filing.read_current_register_observation_evidence_v1(uuid,uuid,integer,integer,text,timestamptz,text)",
+        "shareholder_register_filing.read_retained_register_observation_withdrawal_v1(uuid,uuid,integer,uuid,integer,text,text,timestamptz,text)"
+      ],
+      "kind": "query",
+      "to": "backend:shareholder_register_filing"
     }
   ],
   "generatedBy": "scripts/check-architecture.mjs",

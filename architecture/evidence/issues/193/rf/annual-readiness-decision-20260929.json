@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_BOUNDED_RF_ANNUAL_READ_DECISION",
+  "baseCommit": "776ffe33319e291b9d313951b324e15fc172e5e3",
+  "change": "RF owns a versioned annual prerequisite proof bound to the source/preview, scoped input identities and five owner-evidence digests. The thin application workflow reads opening, Ledger, Banking, interview and Documents sequentially inside source admission. It preserves annual blockers/warnings and requires the Ledger opening-bank identity to match RF opening. Banking observation time is excluded; canonical fact and metadata changes alter the proof.",
+  "verification": {
+    "unit": "180 focused annual/source/approval/production/admission cases pass, including45 new annual policy/workflow cases, all seven supported full-year event profiles, malformed/foreign/unavailable owner inputs, warning behavior, exact proof tampering and changed metadata.",
+    "database": "One composed real database scenario exercises all five owner readers on the same restricted RF admission and moves missing \u2192 warning \u2192 ready \u2192 blocked after current interview changes, with immutable filing source unchanged. Prior opening/Documents/Ledger input suites separately verify writer waits, scope and permission behavior.",
+    "architecture": "Architecture check and79 CI/rehearsal harness cases pass.",
+    "cleanup": "Owned disposable database removed; Colima talli restored to stopped."
+  },
+  "limits": [
+    "Read-side policy only: stored-ready SQL, approval/review manifests and the first claim/send are not yet bound to this proof.",
+    "Current overrides/review, Authority permission, Billing, technical signoffs and explicit warning acknowledgement remain unevaluated release requirements.",
+    "The proof does not establish bank-statement coverage, filing authorization or original-byte integrity independently of source admission.",
+    "Existing V1 source proof and historical approval/archive hashes are unchanged. Full Supabase CI for this new commit remains required.",
+    "All seven RF acceptance criteria remain pending; no real company, hosted change or provider operation."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-annual-readiness-20260929-14d7",
+  "sha256": {
+    "unit-final.log": "7a0b0f3da5f0c0b6f252c1de3a95e91fea64c2c5bad172c997a09dca9e0af95a",
+    "database.log": "d40f86cec22ce9eff8b5bcb1061ca911ae5ea7854fd90fa8be313cf1e0e05292",
+    "architecture.log": "043b2b2f7f60912827748b97e2e81daef331ee352c2942ebfc6f5ebfaa019607",
+    "ci-harness.log": "3de3fdb50c21c4bfd5977dc9afc42d87ce9cd1ec31dfe7a63d32fe4a1f1718c3",
+    "cleanup.log": "754c867538dc05d255d7bd03f2f0c6ce1d54c02fcd88a6592eeef00a61e1af1a"
+  }
+}

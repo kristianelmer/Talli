@@ -1,0 +1,111 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_RF_PREDECESSOR_SUITE_ORDER_FIX",
+  "recordedAtUtc": "2026-10-10T11:06:20.985660+00:00",
+  "baseRevision": "2b771a447d7b6ec20621b196918e405564fd4006",
+  "status": "LOCAL_ORDER_PRECONDITION_AND_REVIEWS_PASS_FULL_LINUX_CI_PENDING",
+  "sourceEvidence": [
+    {
+      "path": "package.json",
+      "sha256": "9464f8b810ac98ef81688f6c39cfd6be412c6933e7092c9bbfeb3959f82404cf",
+      "bytes": 34453
+    },
+    {
+      "path": "apps/backend/tests/test_shareholder_register_filing_lifecycle.py",
+      "sha256": "f13d02794b62490cbec69a7223b198618c10dee16c0f2b18f017b5e13b387d5a",
+      "bytes": 59619
+    },
+    {
+      "path": "apps/backend/tests/test_authority_connections_database_runtime.py",
+      "sha256": "e14c260badfc7761e55aec796dbc066e62d8eda394822a13c7273d6fea22bc9d",
+      "bytes": 46985
+    }
+  ],
+  "change": "Move only existing legacy RF lifecycle file to first in mandatory authority/RF pytest selection, before retained successor-producing tests. Preserve all45 files, options and following owned reporting clone command.",
+  "reason": "Exact c103 attempt2 passed1245authority cases then correctly refused legacy predecessor rehearsal on populated RF193 originals. Full-schema rollback cannot preserve these newer originals; the refusal must remain.",
+  "checks": {
+    "collected": 1449,
+    "existingCiSelection": {
+      "passed": 122,
+      "failed": 1,
+      "qualification": "Global collection cannot import installed ICU75-linked extension; full Linux CI required. No test skipped or altered."
+    },
+    "nativeProbe": "Same actual retained probe: old order exactRED, new orderPASS, row/RLS/role state preserved; minimal/stub producer qualification retained.",
+    "oldTestsAndGuardByteExact": true,
+    "argvTokensMultisetAndOtherTokenOrderExact": true,
+    "whitespace": "PASS"
+  },
+  "reviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-predecessor-suite-order-spec-review-v1.json",
+      "sha256": "8522259022bd532a73f983dfbc10d75fb301096117fcd651f7a80ee403f66e41",
+      "bytes": 8260
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-predecessor-suite-order-standards-review-v1.json",
+      "sha256": "b157cd0f208a4c8cf05f8eb09ca0101d471c112d6b37f0391247479c12c6abe0",
+      "bytes": 5640
+    }
+  ],
+  "findings": {
+    "spec": 0,
+    "standards": 0
+  },
+  "privateArtifactPins": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-predecessor-suite-order-source-freeze-v1.json",
+      "sha256": "bb453b58676086503a8151557687c276bb8c5099e870f5c49428547d0ec4ef0c",
+      "bytes": 3452
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-predecessor-suite-order-repair-scope-v1.json",
+      "sha256": "583af4b6b1e31245a8f7e65d2a1a2b005f5e81105eaa0828d15338304c8b1a9b",
+      "bytes": 649
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/probe-rf-predecessor-suite-order-v1.py",
+      "sha256": "83b70a11042f5970de95080235a195daa5e06f58a99f7dfab35dfa0c53494943",
+      "bytes": 5648
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-predecessor-suite-order-before-v1.json",
+      "sha256": "822b4ad22fb358a224260e3e433c971efcf8c9465228b5d28e1a22dbd8eabd12",
+      "bytes": 1175
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-predecessor-suite-order-after-v1.json",
+      "sha256": "6faf3356c19092a9a5eeebe9052730de95237693602f4ba046e3f776337011bf",
+      "bytes": 1153
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-predecessor-suite-order-collection-v1.log",
+      "sha256": "7d625a4d6a8ae9fe32b3eca4467a66aaf7f9e8fd0c432ea323b06b76a33efc48",
+      "bytes": 209885
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-predecessor-suite-order-ci-selection-tests-v1.log",
+      "sha256": "efafd4422e23ef5d87121275a46b3dd32fec4933ad05fa16f8553fc250350149",
+      "bytes": 20090
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-predecessor-suite-order-ci-selection-tests-v2.log",
+      "sha256": "b316369490fea3208c1368190787f504b39d6252d3389bac3f0d408e0a4c8a5c",
+      "bytes": 103178
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-predecessor-suite-order-root-checks-v1.json",
+      "sha256": "529953d3298ac791ea8ed08d258c0febfce9f59f7309f61e6aefdd90537f3c7f",
+      "bytes": 1317
+    }
+  ],
+  "limits": [
+    "Native PG17 uses AST-extracted unchanged actual retained-data probe and FORCE-RLS, minimal phase/catalog and one-row fixture producer; consequential enumeration is a no-op stub. Not full project migration/producer/lifecycle proof. Owned clusters stopped and removed.",
+    "The one initial writer assertion miscounted45pytestfiles+following1clone as45total Pythonfiles; it failed before any edit. Final tokens validated45+1exactly.",
+    "Local global collection remains failed on missing native ICU75; the first incorrect environment invocation attempted default3.13 build. No local entire gate PASS or product RED claim.",
+    "Linux CI must prove no earlier aggregate retained residue, full legacy DDL compatibility, global test partition and all later RF/Tax/Accounts lanes.",
+    "No guard bypass, row deletion, weakened RLS/constraint, skipped test or altered production migration/role/timeout.",
+    "Billing deadlock remains unresolved despite same-head700-case green rerun.",
+    "AllA1\u2013A7pending; no activation, provider/genuine-company/recovery/service acceptance, filing, spending or outreach."
+  ]
+}

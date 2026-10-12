@@ -1,0 +1,44 @@
+{
+  "axis": "spec",
+  "base": "56c1f75236ea77bdcf77289fbf83ee3cf9bca6cd",
+  "scope": "Uncommitted RF source foundation and production archive delta; not full issue193 acceptance",
+  "reviewedAt": "2026-09-23",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/year_source.py": "e071b1310816be189664ca4f8abae4b86833527ffdc3fdcce1e418e4557c2078",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py": "14b249816e6f1c453c7e3ed698aa4ceb82379d70b86a47b6fe47adbdcb20f2b8",
+    "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py": "5b2c3e244a0e1a85734dee55a2c9cf44445a1c18966470f481e2143c5acd1e69",
+    "apps/backend/src/talli_backend/adapters/postgres_shareholder_register_filing.py": "dfd74164974598626d914aaa2dbb0b91b88379f4261f2f0149e10f3cf4ee222b",
+    "apps/web/app/lib/backup-restore.ts": "87bfa7f09adb9931b990734a5db6ab1c6aff3d1392cb4db939fd5579c3bfeacd",
+    "apps/web/app/lib/archive.ts": "33330ab1efa1a7821aea7afb0a22158b92cd23ac608466da12082650e710cdf8",
+    "apps/web/app/archive/[companyId]/[incomeYear]/download/route.ts": "f5cb2c7cb7a2b8e019b683ddfa01f8e2eb8338069be358f21feb9f7fd14589d7",
+    "supabase/migrations/20260917114424_rf1086_production_archive_evidence.sql": "d8d267f1e79d8eed2bc28a18622371a9c3c6be2288039c28fef5691434f50a44",
+    "supabase/rollback/20260917114424_rf1086_production_archive_evidence.sql": "241d95086b295766a301af51863331e085144d8e53bec781898e8610064c476e"
+  },
+  "findings": [
+    {
+      "id": "RF-RESTORE-01",
+      "priority": 2,
+      "file": "apps/web/app/lib/backup-restore.ts",
+      "line": 207,
+      "title": "Reject cyclic correction lineage during RF restore integrity checks",
+      "reproduction": "Existing rfProductionEvidence() fixture with productionSubmissions[0].supersedesSubmissionId = productionSubmissions[0].id yields assertRestoreIntegrity(...): ok=true, failures=[]",
+      "requirement": "#193: complete feedback/correction, final decision/receipt, and archive; preserve production-submission history and corrections",
+      "fix": "Walk predecessor chains and reject self-links or cycles, matching backend archive validation. Add self-link and two-node-cycle regression cases."
+    }
+  ],
+  "verification": {
+    "backendFocusedPassed": 212,
+    "webArchiveSchemaPassed": 70,
+    "databaseRuntimeRerun": false,
+    "providerCalls": 0
+  },
+  "priorFixesVerified": [
+    "Loss-reduction economics bind old and new share capital exactly.",
+    "Accepted/rejected archives require retained matching receipts and successful reconciliation evidence."
+  ],
+  "limits": [
+    "Year-source persistence, capture, application integration and production admission remain pending.",
+    "Full issue193 completion and later obligations remain pending.",
+    "SQL inspected but restricted-role database suite not independently rerun."
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 1,
+  "issue": "#193",
+  "slice": "RF-1086",
+  "status": "PASS_BOUNDED_CANONICAL_SYNTHETIC_CONFORMANCE",
+  "executionCheckout": "d40f2fd436208acb7503dae94ece668353607cc4",
+  "ownerAuthorization": {
+    "message": "approved",
+    "planSha256": "b1d60bd7cccc2b73cae0e5a5642792b6dfed9846bfa732aa5378f4bf1838d4dd"
+  },
+  "identity": {
+    "companyOrgNumber": "310279617",
+    "incomeYear": 2025,
+    "dialogId": "019f5fce-2119-7570-a78b-db0a9b0a5c1f",
+    "submissionTransmissionId": "01a0a376-44d7-7535-845a-322691b770c2",
+    "acceptanceTransmissionId": "01a0a378-9500-73e4-acaa-5c06d5eb3293"
+  },
+  "providerResult": {
+    "status": "CANONICAL_RECONCILIATION_FINISHED",
+    "reconciliation": {
+      "state": "accepted",
+      "archive_reads": 1,
+      "artifact_count": 3,
+      "artifact_hashes": [
+        "973eba661ce1509fa245d6e1dc36c2aff234d25ecf30e865df3948bddc356a1a",
+        "cc1200b5959c4b7a9ca9b1e89a4ecbb622eb50a440397385f02082084fb680bf",
+        "d07682421433886d339aac73dd70369678738b8cab25b40560ee989c3e6cab37"
+      ],
+      "safe_error_code": "RF1086_FEEDBACK_ACCEPTED",
+      "correlation_id": null,
+      "changed": true
+    },
+    "artifacts": [
+      {
+        "file": "artifact-01.pdf",
+        "authorityReference": "{\"dialogId\":\"019f5fce-2119-7570-a78b-db0a9b0a5c1f\",\"transmissionId\":\"01a0a378-9500-73e4-acaa-5c06d5eb3293\",\"relatedTransmissionId\":\"01a0a376-44d7-7535-845a-322691b770c2\",\"attachmentId\":\"01a0a378-9500-73e4-acaa-5c06d5eb3293\",\"createdAt\":\"2026-09-15T05:09:44.935459+00:00\",\"transmissionType\":\"Acceptance\",\"organizationNumber\":\"310279617\",\"incomeYear\":2025}",
+        "sha256": "d07682421433886d339aac73dd70369678738b8cab25b40560ee989c3e6cab37",
+        "contentType": "application/pdf",
+        "byteLength": 63599,
+        "classification": "accepted"
+      },
+      {
+        "file": "artifact-02.xml",
+        "authorityReference": "{\"dialogId\":\"019f5fce-2119-7570-a78b-db0a9b0a5c1f\",\"transmissionId\":\"01a0a378-9500-73e4-acaa-5c06d5eb3293\",\"relatedTransmissionId\":\"01a0a376-44d7-7535-845a-322691b770c2\",\"attachmentId\":\"01a0a378-95af-711f-a4d4-ec368b0a1992\",\"createdAt\":\"2026-09-15T05:09:44.935459+00:00\",\"transmissionType\":\"Acceptance\",\"organizationNumber\":\"310279617\",\"incomeYear\":2025}",
+        "sha256": "973eba661ce1509fa245d6e1dc36c2aff234d25ecf30e865df3948bddc356a1a",
+        "contentType": "application/xml",
+        "byteLength": 1998,
+        "classification": "accepted"
+      },
+      {
+        "file": "artifact-03.xml",
+        "authorityReference": "talli:rf1086-feedback-provenance:v1",
+        "sha256": "cc1200b5959c4b7a9ca9b1e89a4ecbb622eb50a440397385f02082084fb680bf",
+        "contentType": "application/xml",
+        "byteLength": 780,
+        "classification": "accepted"
+      }
+    ],
+    "persistence": "Private durable file journal; not hosted production storage",
+    "canonicalBusinessAcceptanceVerified": true,
+    "finishedAt": "2026-09-17T10:57:56.668839+00:00",
+    "trace": [
+      {
+        "kind": "token",
+        "method": "POST",
+        "url": "https://test.maskinporten.no/token",
+        "at": "2026-09-17T10:57:53.232970+00:00",
+        "status": 200
+      },
+      {
+        "kind": "token",
+        "method": "POST",
+        "url": "https://test.maskinporten.no/token",
+        "at": "2026-09-17T10:57:53.847449+00:00",
+        "status": 200
+      },
+      {
+        "kind": "dialog",
+        "method": "GET",
+        "url": "https://platform.tt02.altinn.no/dialogporten/api/v1/enduser/dialogs/019f5fce-2119-7570-a78b-db0a9b0a5c1f",
+        "at": "2026-09-17T10:57:53.931644+00:00",
+        "status": 200
+      },
+      {
+        "kind": "document",
+        "method": "GET",
+        "url": "https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/01a0a378-9500-73e4-acaa-5c06d5eb3293/dokumenter/01a0a378-9500-73e4-acaa-5c06d5eb3293",
+        "at": "2026-09-17T10:57:54.289672+00:00",
+        "status": 200
+      },
+      {
+        "kind": "document",
+        "method": "GET",
+        "url": "https://api-test.sits.no/api/aksjonaerregister/v1/2025/forsendelser/01a0a378-9500-73e4-acaa-5c06d5eb3293/dokumenter/01a0a378-95af-711f-a4d4-ec368b0a1992",
+        "at": "2026-09-17T10:57:56.254600+00:00",
+        "status": 200
+      }
+    ],
+    "filingPosts": 0,
+    "originalJournalUnchanged": true
+  },
+  "privateArtifactHashes": {
+    "action-plan.json": "b1d60bd7cccc2b73cae0e5a5642792b6dfed9846bfa732aa5378f4bf1838d4dd",
+    "run_conformance.py": "2212b41064f5deb1b0e92408c8717431f3409077469907efc025f6515e7862b8",
+    "authorization.json": "eeec8988c9431ae618242e468681958801773477009424445b5c2d69061dbf75",
+    "result.json": "f3aca46eac7db6cf2c4eae5d43c4ecc811982b5cbbd30392a89ee5a7e63005c8",
+    "reconciliation.json": "c875441c97a4d7cb7ca164c31de1d8a4bbb4cdccd6da4307fd872ce7229cb659",
+    "preparation-verification.json": "6fbb0ba4cc973a285ad61ac49fd6d81d80c0c34d84e36c9e051740579134381f",
+    "request-01.json": "325648462b6c834c13caa65230a4a36eb39e9aa387a06c744053c6d691d5e3da",
+    "request-02.json": "916aff92c5ec4d41c1c85d726a1659da8d0894664ac537e1022b5aa50ae4099e",
+    "request-03.json": "95aaf649438dfeff0ddc81ddefd16e17ab6e345123e326f50b0ec77cf80d5194",
+    "request-04.json": "2fad9e13131a17a1bb41e2fbf4ac3e858dd55752da5099d95f8746a0ba3f2f64",
+    "request-05.json": "b47eaa9e20e3c13694c362d202024980dddc24accbe7372339a32d502e254052",
+    "artifact-01.pdf": "d07682421433886d339aac73dd70369678738b8cab25b40560ee989c3e6cab37",
+    "artifact-01.pdf.json": "240ee4b439965884df90d61a8d9082af6d5d7c8e31be26303bb7547022557f88",
+    "artifact-02.xml": "973eba661ce1509fa245d6e1dc36c2aff234d25ecf30e865df3948bddc356a1a",
+    "artifact-02.xml.json": "f9fe33c8006bdd72762fa3a715f05c181e95bbde84b038f021e4878a4758b19a",
+    "artifact-03.xml": "cc1200b5959c4b7a9ca9b1e89a4ecbb622eb50a440397385f02082084fb680bf",
+    "artifact-03.xml.json": "214f0cb663856edb06371c6de1fa9b5c3a5bb84fd9f8f198fc79271f2ffd74a2",
+    "preparation-spec-review-original.md": "ce283d6b10a50395278cf0e7a1e7ff2cfe04a5cbc13e5a4480ae1ce0bfff512a",
+    "preparation-spec-review-final.md": "15d3a56698c3c2df381ee2e7401aed0cbfd1444fd594396ddde9bb8a814e2689",
+    "execution-spec-review.md": "bd54814a49ac81dc1332904cbe95e2c508ae6ad8718fa6b35a57bf843ddd06c5",
+    "execution-spec-review.json": "07f7722d8a99355a477871a0e5642a407d2537d469899e55adaa5a1e892a385a",
+    "preparation-standards-review-original.md": "bd304174694ce37a2808f56af6a8c9455b0510640178f23240c8b64cf64d5b35",
+    "preparation-standards-review-final.md": "1c20b67e68af0ee2c2eba74c1846d31f92e43ec480f9b2b8cb164f39448caaab",
+    "execution-standards-review.md": "5d96dc436eb48600a6998086c28c5660f56e9937ab224335d0191702b64ef36b",
+    "execution-standards-review.json": "eefed414a83ff64c2c06f0812f6d3397e26f4b4b6aff0b6380381e712c364e81"
+  },
+  "limits": [
+    "One approved five-minute action consumed; no further provider requests authorized",
+    "Existing synthetic no-activity return only; no new filing",
+    "Actual provider transport and canonical parsing; durable private file journal, not hosted production storage",
+    "Two original provider receipts unchanged; third artifact is a Talli-owned provenance manifest",
+    "Broader cases, correction/load coverage, representative genuine-company production evidence and all seven full RF acceptance criteria remain pending",
+    "No production activation, hosted changes, or Tax/Accounts progression"
+  ]
+}

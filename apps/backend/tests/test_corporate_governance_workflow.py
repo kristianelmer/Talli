@@ -447,7 +447,7 @@ class GovernanceSessionStub:
         self.commit_failures = 0
 
     @asynccontextmanager
-    async def transaction(self):
+    async def transaction(self, *, guarded_company_id=None):
         try:
             yield self.transaction_stub
             if self.commit_failures:

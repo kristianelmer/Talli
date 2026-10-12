@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "aa9eea64146a550af75e7cccc79b14823ccc2cd3",
+  "scope": "Separate owner-authorized verified RF source-document metadata route while restoring the existing DocumentWire contract",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/main.py": "055f70d14475ddb55a2f5061de054bb57d926bbbb51d2ebf58f11d732ac0a4e6",
+    "apps/backend/src/talli_backend/application/shareholder_register_source_workflow.py": "6aaef006ec4ba04e2272e94916d1c43ae864bae03a794344a2f8c560a9c876c9",
+    "apps/backend/tests/test_shareholder_register_source_api.py": "0a8e4d701f7219cf858325ed2c52aa4fe6ba86da49fd05d9071c6364392561a8",
+    "scripts/generate-api-client.mjs": "4f111c92ba23d983bd1cc27317b8e79d7c812ff868ed41d845947343c0540f49",
+    "packages/talli-api-client/src/generated/client.ts": "e953c63c50c33a6d5f45bc12eae52827796790428b7784a680c78f2aa39f876c",
+    "contracts/openapi/talli-v1.json": "820ed8854d1639019fcc0ac046777a59a009d1e51947a2892c30234fddede15e",
+    "tests/contract/web_fastapi_boundary.test.mjs": "75d9bccc29442bd9e175e875a5aed196cb13d216535234fc3b64452ba02f5c70",
+    "architecture/backend-system.json": "14576fdd4c8b0bfb69cf82871909d87f9e95803d325ff497d4f1c60253077e4a",
+    "architecture/BACKEND-SYSTEM.md": "73954f7867f55f5b334c1d29e79344996bfa391f1fb583f8adb8d984b49359b3"
+  },
+  "verification": {
+    "sourceAndDocumentWorkflowsPassed": 159,
+    "boundaryContractPassed": 55,
+    "typecheck": "PASS",
+    "architecture": "PASS",
+    "compatibility": {
+      "baselineCommit": "3a575cd037761d285f52bbb42590d45f49136a59",
+      "priorPaths": 160,
+      "priorSchemas": 446,
+      "changedPriorPaths": [],
+      "changedPriorSchemas": [],
+      "addedPaths": [
+        "/api/v1/shareholder-register-filings/register-observations",
+        "/api/v1/shareholder-register-filings/source-documents/{documentId}",
+        "/api/v1/shareholder-register-filings/source-previews",
+        "/api/v1/shareholder-register-filings/source-previews/{previewId}",
+        "/api/v1/shareholder-register-filings/year-sources"
+      ]
+    }
+  },
+  "limits": [
+    "Read verifies current originals at observation time; source capture rechecks evidence. This is not a consequential action-time lock.",
+    "No provider calls or production enablement. Full-year approval/send, customer UI, correction/archive lineage and broader release verification remain open."
+  ],
+  "status": "PASS_BOUNDED_SOURCE_METADATA_COMPATIBILITY",
+  "privateProofSha256": "72b7e77827e6ecf1e48f2c1d1f97d8708be8773a2f82480c534b76eb14e3a553"
+}

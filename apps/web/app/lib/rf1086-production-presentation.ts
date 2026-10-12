@@ -98,7 +98,7 @@ export function buildRf1086OwnerReconciliationActionState(
     shouldPoll: typeof feedbackState === "string"
       && POLLABLE_FEEDBACK_STATES.has(feedbackState),
     errorCode: options.errorCode ?? null,
-    requiresManualRetry: options.requiresManualRetry ?? false,
+    requiresManualRetry: feedbackState === "action_required" || (options.requiresManualRetry ?? false),
   };
 }
 

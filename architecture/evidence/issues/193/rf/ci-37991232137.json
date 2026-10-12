@@ -1,0 +1,236 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-09T21:20:44.333945+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "id": 37991232137,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/37991232137",
+    "event": "pull_request",
+    "headBranch": "codex/issue-193-completion-14d7",
+    "headSha": "6016eee19049453727fd7a1ec56d06de1129cea5",
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-09T21:05:04Z",
+    "updatedAt": "2026-10-09T21:19:27Z",
+    "durationSecondsFromCreatedToUpdated": 863
+  },
+  "checkout": {
+    "revision": "0b3db9a3b8978ae14bc8c8be94502a278bd3e558",
+    "kind": "pull_request_merge_commit",
+    "observations": [
+      {
+        "jobId": 114025621597,
+        "revision": "0b3db9a3b8978ae14bc8c8be94502a278bd3e558",
+        "headParent": "6016eee19049453727fd7a1ec56d06de1129cea5",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log, git log -1 --format=%H; parent identities checked against GitHub Git commit API. Raw logs not copied into Git."
+      },
+      {
+        "jobId": 114025622024,
+        "revision": "0b3db9a3b8978ae14bc8c8be94502a278bd3e558",
+        "headParent": "6016eee19049453727fd7a1ec56d06de1129cea5",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log, git log -1 --format=%H; parent identities checked against GitHub Git commit API. Raw logs not copied into Git."
+      }
+    ],
+    "limit": "Run headSha identifies the PR head; both jobs tested the recorded synthetic merge commit."
+  },
+  "jobs": [
+    {
+      "id": 114025621597,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T21:05:07Z",
+      "completedAt": "2026-10-09T21:19:20Z",
+      "durationSeconds": 853,
+      "failedSteps": [
+        {
+          "number": 15,
+          "name": "Run the complete launch rehearsal",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "id": 114025622024,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T21:05:07Z",
+      "completedAt": "2026-10-09T21:08:43Z",
+      "durationSeconds": 216,
+      "failedSteps": [
+        {
+          "number": 6,
+          "name": "Rehearse migrations, RLS, storage, and owner persistence",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "id": 114025623611,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-09T21:05:05Z",
+      "completedAt": "2026-10-09T21:05:05Z",
+      "durationSeconds": 0,
+      "failedSteps": []
+    },
+    {
+      "id": 114030801332,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T21:19:22Z",
+      "completedAt": "2026-10-09T21:19:26Z",
+      "durationSeconds": 4,
+      "failedSteps": [
+        {
+          "number": 2,
+          "name": "Require every readiness job",
+          "conclusion": "failure"
+        }
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "jobId": 114025622024,
+      "stepNumber": 6,
+      "step": "Rehearse migrations, RLS, storage, and owner persistence",
+      "stage": "test:ledger-database-lifecycle",
+      "test": "tests/ledger_database_runtime.test.mjs:1830: ledger authority survives expand, contract, concurrency, rollback, and recutover",
+      "assertionLine": 1844,
+      "errorType": "AssertionError [ERR_ASSERTION]",
+      "observedProcess": "docker run using postgres:17",
+      "observedExitCode": 125,
+      "expectedExitCode": 0,
+      "message": "Unable to find image 'postgres:17' locally; Docker daemon: toomanyrequests: You have reached your unauthenticated pull rate limit."
+    },
+    {
+      "jobId": 114025621597,
+      "stepNumber": 15,
+      "step": "Run the complete launch rehearsal",
+      "stage": "test:investments-database-lifecycle",
+      "test": "tests/investments_database_runtime.test.mjs:123: investments schema is private, forced-RLS, and restricted-role owned",
+      "assertionLine": 134,
+      "errorType": "AssertionError [ERR_ASSERTION]",
+      "observedProcess": "docker run using postgres:17",
+      "observedExitCode": 125,
+      "expectedExitCode": 0,
+      "message": "Unable to find image 'postgres:17' locally; Docker daemon: toomanyrequests: You have reached your unauthenticated pull rate limit."
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "pythonBoundary": {
+        "passed": 8069,
+        "skipped": 2,
+        "deselected": 1361,
+        "durationSeconds": 496.79
+      },
+      "workflowSteps": [
+        {
+          "number": 10,
+          "name": "Reject restored legacy filing interfaces",
+          "conclusion": "success",
+          "startedAt": "2026-10-09T21:06:48Z",
+          "completedAt": "2026-10-09T21:09:37Z"
+        },
+        {
+          "number": 11,
+          "name": "Prove the web-to-FastAPI contract boundary",
+          "conclusion": "success",
+          "startedAt": "2026-10-09T21:09:37Z",
+          "completedAt": "2026-10-09T21:18:24Z"
+        },
+        {
+          "number": 12,
+          "name": "Build the production web application",
+          "conclusion": "success",
+          "startedAt": "2026-10-09T21:18:24Z",
+          "completedAt": "2026-10-09T21:18:38Z"
+        },
+        {
+          "number": 13,
+          "name": "Build the production backend application",
+          "conclusion": "success",
+          "startedAt": "2026-10-09T21:18:38Z",
+          "completedAt": "2026-10-09T21:18:40Z"
+        },
+        {
+          "number": 14,
+          "name": "Start and smoke the production artifacts",
+          "conclusion": "success",
+          "startedAt": "2026-10-09T21:18:40Z",
+          "completedAt": "2026-10-09T21:18:48Z"
+        },
+        {
+          "number": 15,
+          "name": "Run the complete launch rehearsal",
+          "conclusion": "failure",
+          "startedAt": "2026-10-09T21:18:48Z",
+          "completedAt": "2026-10-09T21:19:18Z"
+        },
+        {
+          "number": 16,
+          "name": "Audit production dependencies",
+          "conclusion": "skipped",
+          "startedAt": "2026-10-09T21:19:18Z",
+          "completedAt": "2026-10-09T21:19:18Z"
+        },
+        {
+          "number": 17,
+          "name": "Reject whitespace errors",
+          "conclusion": "skipped",
+          "startedAt": "2026-10-09T21:19:18Z",
+          "completedAt": "2026-10-09T21:19:18Z"
+        }
+      ],
+      "limit": "Complete boundary, production web/backend builds and production smoke succeeded. Launch rehearsal stopped at Investments database lifecycle; later rehearsal stages and production dependency audit did not complete."
+    },
+    "database": {
+      "completedBeforeFailure": [
+        "test:supabase-advisors"
+      ],
+      "failedStage": "test:ledger-database-lifecycle",
+      "notReached": [
+        "test:supabase-rf-workspace",
+        "test:authority-connections-database, including RF persisted runtime/source/archive cases",
+        "test:supabase-rf-feedback",
+        "test:browser-shareholder-register-filing",
+        "independent Auth/database/object-storage restore inside the fresh RF browser journey"
+      ],
+      "basis": "Completed database job npm stage markers, plus serial order in scripts/test-supabase-local.sh at the tested revision. Reaching the Ledger stage does not attest completion of its suite."
+    }
+  },
+  "sanitizedFailureExcerpts": [
+    {
+      "jobId": 114025622024,
+      "path": "/private/tmp/talli-release-20261009/ci37991232137-database-failure-context-sanitized.log",
+      "sha256": "a60de1b7478ba0a0e256c433c75050ceb343cd749b58576de56759d5d5df837d",
+      "bytes": 1149,
+      "kind": "Bounded sanitized diagnostic context; not a full raw job log"
+    },
+    {
+      "jobId": 114025621597,
+      "path": "/private/tmp/talli-release-20261009/ci37991232137-application-failure-context-sanitized.log",
+      "sha256": "2ab6e037c220b7b8e143d520bb35e8307886c8ca75a5a00fa73dea2c427b37fa",
+      "bytes": 934,
+      "kind": "Bounded sanitized diagnostic context; not a full raw job log"
+    }
+  ],
+  "diagnosisBoundary": "Both excerpts directly identify a Docker Hub unauthenticated image-pull rate-limit refusal. This explains these fixture-start failures; it does not establish whether unreached RF database, browser or independent Auth restore stages pass. Later local image-source changes or reruns are separate evidence.",
+  "limits": [
+    "Historical failure for PR head 6016eee19049453727fd7a1ec56d06de1129cea5 and merge 0b3db9a3b8978ae14bc8c8be94502a278bd3e558 only; no claim about later commits or uncommitted work.",
+    "RF persisted database, fresh browser and independent Auth restore proof remain unverified by this run. Earlier failures were passed only to the extent of the explicitly recorded completed stages.",
+    "Immutable evidence was skipped for the pull_request event. This is not an architecture/customer-ready-gate-evidence.schema.json receipt, an 11/11 complete gate, or either of two linked passing revisions.",
+    "No launch, production enablement, genuine-company acceptance, hosted restore clearance, criterion promotion or human signoff is implied.",
+    "Observer performed no rerun, dispatch, cancellation, commit or push. Persistence wrote this artifact only; no index or product source edits."
+  ]
+}

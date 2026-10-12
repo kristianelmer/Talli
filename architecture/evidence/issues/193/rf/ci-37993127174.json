@@ -1,0 +1,234 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-09T21:51:03.522340+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "id": 37993127174,
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/37993127174",
+    "event": "pull_request",
+    "headBranch": "codex/issue-193-completion-14d7",
+    "headSha": "b5de6563d260a4e4deeb3ec4efaaaecfc0f4ff33",
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-09T21:23:09Z",
+    "updatedAt": "2026-10-09T21:49:25Z",
+    "durationSecondsFromCreatedToUpdated": 1576
+  },
+  "checkout": {
+    "revision": "fd6fda65c2a3cd0b91588a32112bc12c514f865c",
+    "kind": "pull_request_merge_commit",
+    "observations": [
+      {
+        "jobId": 114032167494,
+        "revision": "fd6fda65c2a3cd0b91588a32112bc12c514f865c",
+        "headParent": "b5de6563d260a4e4deeb3ec4efaaaecfc0f4ff33",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log, git log -1 --format=%H; parent identities checked through GitHub Git commit API. Raw logs not copied into Git."
+      },
+      {
+        "jobId": 114032167746,
+        "revision": "fd6fda65c2a3cd0b91588a32112bc12c514f865c",
+        "headParent": "b5de6563d260a4e4deeb3ec4efaaaecfc0f4ff33",
+        "baseParent": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+        "source": "Completed job checkout log, git log -1 --format=%H; parent identities checked through GitHub Git commit API. Raw logs not copied into Git."
+      }
+    ],
+    "limit": "Run headSha identifies the PR head; both jobs tested the recorded synthetic merge commit."
+  },
+  "jobs": [
+    {
+      "id": 114032167494,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-09T21:23:11Z",
+      "completedAt": "2026-10-09T21:49:18Z",
+      "durationSeconds": 1567,
+      "failedSteps": []
+    },
+    {
+      "id": 114032167746,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T21:23:12Z",
+      "completedAt": "2026-10-09T21:37:02Z",
+      "durationSeconds": 830,
+      "failedSteps": [
+        {
+          "number": 7,
+          "name": "Rehearse migrations, RLS, storage, and owner persistence",
+          "conclusion": "failure"
+        }
+      ]
+    },
+    {
+      "id": 114032169084,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "startedAt": "2026-10-09T21:23:10Z",
+      "completedAt": "2026-10-09T21:23:10Z",
+      "durationSeconds": 0,
+      "failedSteps": []
+    },
+    {
+      "id": 114041146286,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-09T21:49:21Z",
+      "completedAt": "2026-10-09T21:49:24Z",
+      "durationSeconds": 3,
+      "failedSteps": [
+        {
+          "number": 2,
+          "name": "Require every readiness job",
+          "conclusion": "failure"
+        }
+      ]
+    }
+  ],
+  "failure": {
+    "jobId": 114032167746,
+    "stepNumber": 7,
+    "step": "Rehearse migrations, RLS, storage, and owner persistence",
+    "stage": "test:authority-connections-database",
+    "test": "apps/backend/tests/test_rf1086_register_observation_database.py::test_committed_capture_lookup_preserves_superseded_receipt_and_conceals_other_actors",
+    "assertionLine": 188,
+    "expected": "ShareholderRegisterFilingError matching SHAREHOLDER_REGISTER_FILING_NOT_FOUND",
+    "actual": "Rf1086RegisterObservationError: rf1086_register_document_binding_invalid",
+    "stack": [
+      "adapters/postgres_shareholder_register_filing.py:430 computes the register capture request digest",
+      "modules/shareholder_register_filing/public.py:2121 delegates request_digest",
+      "modules/shareholder_register_filing/register_observation.py:211 normalizes the request",
+      "modules/shareholder_register_filing/register_observation.py:119 requires document company binding",
+      "modules/shareholder_register_filing/register_observation.py:18 raises the observed error"
+    ],
+    "suiteResult": {
+      "passed": 430,
+      "failed": 1,
+      "durationSeconds": 132.98,
+      "progressPercentAtFailure": 75
+    },
+    "observedFixtureMismatch": "The failing call replaces command.company_id with a fresh ID but retains documents bound to the original company, so request normalization fails before the intended foreign-company authorization query.",
+    "diagnosisLimit": "This stack supports a malformed negative-test fixture diagnosis. A later fixture correction is separate evidence and cannot turn this run into a pass."
+  },
+  "reachedStages": {
+    "prefetch": {
+      "application": "success",
+      "database": "success",
+      "databaseLogImages": [
+        "public.ecr.aws/docker/library/postgres:17",
+        "public.ecr.aws/docker/library/postgres:17-alpine",
+        "public.ecr.aws/docker/library/postgres:16-alpine"
+      ],
+      "basis": "Both workflow prefetch steps succeeded; completed database log records the three successful image downloads."
+    },
+    "application": {
+      "result": "success",
+      "pythonBoundary": {
+        "passed": 8069,
+        "skipped": 2,
+        "deselected": 1361,
+        "durationSeconds": 641.88
+      },
+      "verifiedCompleted": [
+        "typecheck",
+        "declared architecture",
+        "legacy-interface rejection",
+        "complete backend/web/contract boundary",
+        "production web build",
+        "production backend build",
+        "production-artifact smoke",
+        "complete launch rehearsal",
+        "production dependency audits",
+        "whitespace check"
+      ],
+      "workflowSteps": [
+        {
+          "number": 12,
+          "name": "Prove the web-to-FastAPI contract boundary",
+          "conclusion": "success",
+          "startedAt": "2026-10-09T21:28:57Z",
+          "completedAt": "2026-10-09T21:40:15Z"
+        },
+        {
+          "number": 13,
+          "name": "Build the production web application",
+          "conclusion": "success",
+          "startedAt": "2026-10-09T21:40:15Z",
+          "completedAt": "2026-10-09T21:40:34Z"
+        },
+        {
+          "number": 14,
+          "name": "Build the production backend application",
+          "conclusion": "success",
+          "startedAt": "2026-10-09T21:40:34Z",
+          "completedAt": "2026-10-09T21:40:36Z"
+        },
+        {
+          "number": 15,
+          "name": "Start and smoke the production artifacts",
+          "conclusion": "success",
+          "startedAt": "2026-10-09T21:40:36Z",
+          "completedAt": "2026-10-09T21:40:45Z"
+        },
+        {
+          "number": 16,
+          "name": "Run the complete launch rehearsal",
+          "conclusion": "success",
+          "startedAt": "2026-10-09T21:40:45Z",
+          "completedAt": "2026-10-09T21:49:16Z"
+        },
+        {
+          "number": 17,
+          "name": "Audit production dependencies",
+          "conclusion": "success",
+          "startedAt": "2026-10-09T21:49:16Z",
+          "completedAt": "2026-10-09T21:49:17Z"
+        }
+      ]
+    },
+    "database": {
+      "completedBeforeFailure": [
+        "initial Supabase advisor check",
+        "Ledger, Banking, Investments, Documents, Marketing and validation-observation database predecessors",
+        "Supabase predecessor checks",
+        "test:supabase-rf-workspace",
+        "test:browser-owner",
+        "Ledger migration-authority, Corporate Governance and Billing lifecycle predecessors"
+      ],
+      "boundedRfPasses": [
+        "test_rf1086_database_runtime.py::test_production_archive_captures_override_values_and_excludes_other_years",
+        "test_rf1086_year_source_database.py::test_committed_capture_lookup_preserves_superseded_receipt_and_conceals_other_actors",
+        "test_rf1086_year_source_database.py::test_capture_lookup_observes_commit_not_inflight_or_rollback[True]",
+        "test_rf1086_year_source_database.py::test_capture_lookup_observes_commit_not_inflight_or_rollback[False]"
+      ],
+      "notReached": [
+        "remaining Authority/RF database suite after the first failure",
+        "later final-topology Tax and Accounts database suites",
+        "fresh RF filing browser and its lost-capture recovery journey",
+        "independent Auth/database/object-store restore in that fresh RF browser journey",
+        "final database-job public acquisition journey"
+      ],
+      "basis": "Completed job stage markers and explicit PASSED lines. Earlier RF workspace/owner browser is distinct from the later fresh RF source-to-archive/independent-restore journey."
+    }
+  },
+  "sanitizedFailureExcerpt": {
+    "path": "/private/tmp/talli-release-20261009/ci37993127174-database-failure-context-sanitized.log",
+    "sha256": "5f95185b08943e8350ad938f11430262cb7f2a6c87bb389ea135bf9b00b3eb61",
+    "bytes": 4726,
+    "kind": "Bounded sanitized diagnostic context, not the full raw job log"
+  },
+  "limits": [
+    "Historical result for PR head b5de6563d260a4e4deeb3ec4efaaaecfc0f4ff33 and merge fd6fda65c2a3cd0b91588a32112bc12c514f865c only; later commits and uncommitted work are not covered.",
+    "Application succeeded, but the entire workflow failed. Bounded RF DB passes do not establish complete restricted-role, fresh browser or independent Auth restore acceptance.",
+    "Immutable evidence was skipped for this pull_request event; this is not an11/11 canonical gate receipt or either of two linked immutable complete passes.",
+    "All RF acceptance, genuine-company production, hosted recovery,12-lane/14-signoff launch and remaining implementation gates remain open.",
+    "Observer performed no rerun, dispatch, cancellation, commit or push. Persistence wrote this receipt only, without index or product changes."
+  ]
+}

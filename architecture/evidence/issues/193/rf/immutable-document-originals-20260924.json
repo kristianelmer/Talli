@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "35fa86cc7cdfcf4055511c087329b9a1d22e0059",
+  "status": "PASS_BOUNDED_IMMUTABLE_DOCUMENT_ORIGINALS",
+  "scope": "Documents-owned verified immutable byte copies and restricted transaction-bound read/assert contracts, distinct from filing retention or approval.",
+  "sourceSha256": {
+    "apps/backend/src/talli_backend/adapters/postgres_document_originals.py": "96e84ee9798072422715b49f013fcfbb8780f9d21f847279e036927784fb9541",
+    "apps/backend/src/talli_backend/adapters/supabase_documents.py": "456b4a4f48d8f12074b22fe0d4585dd3fbe90262a15fde4f5de6c9fc12a04470",
+    "apps/backend/src/talli_backend/modules/documents/public.py": "3ca9615e419a72fcff23bdc95920ee13edafe7d45d913ed949bbcfa89648a292",
+    "apps/backend/src/talli_backend/modules/documents/service.py": "67354fa15ecb46724141248ad057fd76ea7ebdc8a22a8b9bc26f01647fdf0fad",
+    "apps/backend/src/talli_backend/modules/documents/MODULE.md": "0fb4d27d541417516a3ed555a02883ce8e5b7723da4f98021e0e8b7f0d15035e",
+    "apps/backend/src/talli_backend/modules/documents/module.json": "60e008b6e675a0b3cd28aacc23bb21824d7b85898a08194e6578fa91b425774c",
+    "apps/backend/tests/test_documents.py": "f8a47c9751e29ff10487af71cfb06d5de8944fd87f8e1f5364646e4432d4f401",
+    "apps/backend/tests/test_supabase_documents.py": "4b6c9d9195ab370c8cde22a2e9d0dcb1a5b61c8310ae67a07dde2b7bb9c1d1bd",
+    "apps/backend/tests/test_document_originals.py": "1f538356a8576310419b079fcca8dbd75e6a5bfc7f0d6e2a1340baf8431aee70",
+    "apps/backend/tests/test_document_originals_database.py": "52bd71564377cb5bdcf1a6b6449751bf000939fda3127c86a8d9dd86886c2b70",
+    "tests/documents_migration_lifecycle.test.mjs": "fb2805082cd990c97fa6384c2454669c70db1f157148e05d8d207cd9ffbac56d",
+    "supabase/migrations/20260924062717_documents_immutable_retained_originals.sql": "ae0274b451314359b1f8b1cf6067f6abd14f8a65d89b41fd974cd9581d62d45b",
+    "supabase/rollback/20260924062717_documents_immutable_retained_originals.sql": "ada823c6b041ed243dd6d9038222cec2f5d2f1b770ae3aa2eeea9b4bc8d190a6"
+  },
+  "verification": {
+    "restrictedDatabaseTestsPassed": 27,
+    "offlineTestsPassed": 56,
+    "maximumByteLength": 10485760,
+    "earlierEmptyLifecycleCyclesPassed": 2,
+    "finalReplayAndNonemptyRollbackPassed": true,
+    "securityAdvisors": "No issues found",
+    "independentStaticReview": "No actionable correctness/security findings; actual missing actor-accessor privilege was found and corrected by database tests.",
+    "ownedStackAndVolumesRemoved": true,
+    "stableBackendLaneCollectionPassed": true
+  },
+  "privateProofSha256": "98af2c08e3a92de28f27dce028644dc939589f5cb0a5a55668ee51a64e129980",
+  "limits": [
+    "No hosted database or provider operations. No production customer or source data.",
+    "Receipt persistence occurs during verification/read and is distinct from a filing reference or approval.",
+    "RF consequential admission does not yet consume this immutable receipt in its complete cross-owner action-time guard.",
+    "Archive/export, backup/restore, expiry and cancellation/deletion lifecycle inventories must integrate retained copies before production rollout.",
+    "Copies intentionally survive original metadata removal. No automatic expiry purge is implemented.",
+    "Empty rollback preserves shared narrow lock, owner-predicate and metadata-assertion EXECUTE grants; only temporary role membership options are exactly restored.",
+    "Full empty rollback/recutover ran before the actor-binding-only correction; final exact SQL replay and nonempty refusal passed.",
+    "All full RF acceptance criteria remain pending.",
+    "All 27 database behaviors passed before a subsequent test-ID-only change: six forged-receipt parameters now have explicit stable semantic pytest IDs. Parameter values and behavior are unchanged; no database rerun was performed after this naming-only change."
+  ]
+}

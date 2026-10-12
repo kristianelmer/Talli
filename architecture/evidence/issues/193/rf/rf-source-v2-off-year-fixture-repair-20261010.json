@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "BOUNDED_2026_ONLY_OWNER_PROOF_FIXTURE_REPAIR",
+  "recordedAtUtc": "2026-10-10T12:41:20.075282+00:00",
+  "baseRevision": "121d8ffc24495efc2b08c32f0bb3fab7be39399e",
+  "failureReceipt": "ci-38049772036.json",
+  "sourcePin": {
+    "path": "/Users/kristianelmer/.codex/worktrees/talli-release-integration/Holding accounting/apps/backend/tests/test_rf1086_year_source_v2_database.py",
+    "sha256": "ecdf8e02d8aa0ad153cd59d6c4a9015971cc3c1bbce2a2ce1909bf186fd49fc5",
+    "bytes": 61053
+  },
+  "scope": "Three test functions/six parametercases, one privileged temporary-proof-slot helper and imports. Preserve the shipped 2026-only Company Access policy and all production SQL.",
+  "repair": [
+    "Mint a real supported2026 owner proof; privileged RF owner changes only its exact xid/actor/company/sourceSHA temporary slot to2025, asserts one affectedrow and restores caller role. Original source2026 append must reject the wrongyear proof.",
+    "Samecompany actual Governance write must invalidate both corruptedoffyear and genuine2026 slots; fresh public producer can remint supportedyear lineage. No unsupported2025 eligibility rows are inserted.",
+    "Four actual companylock races retain both lockorders/commit/rollback matrices and worker-result propagation. Proof-first catches exact RF STALE inside a savepoint acquired after outer guard/proof. Amendment-first fails CHANGED if committed or STALE if rolledback; waits, exact current Governance amendment count and zero source/head writes asserted."
+  ],
+  "preservation": {
+    "otherFunctionSpansByteExact": 54,
+    "productionAndOwnerFixtureSourcesExact": 4,
+    "captureStageSourcePinsExact": 12,
+    "previousImmutableRepair": "unchanged"
+  },
+  "checks": {
+    "collectedNotExecuted": 109,
+    "compiled": true,
+    "whitespace": "PASS",
+    "nativeTotalChecks": 34,
+    "nativeNewMechanicsChecks": 8,
+    "nativePriorCaptureChecks": 26
+  },
+  "nativeQualification": "Exact published2026 CHECK on projected eligibilitytable, exact RF proofbinding predicate on RF-owned private temp slots, actor/validsnapshot/projection stubs. Simulatederror proves PostgreSQL savepoint lockretention, not actual RFwithdrawal or the full new races. Owned native cluster stopped/directory deleted; preexisting containers untouched.",
+  "finalReviews": [
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-off-year-fixture-final-spec-review-v1.json",
+      "sha256": "43cc16aacb6fe4a1def9ba1057eb04de4514047024b3c529cab4c66b45082c60",
+      "bytes": 11542
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/rf-source-v2-off-year-fixture-repair-final-standards-review-v1.json",
+      "sha256": "d4859e210fba2df267a06c4f174b26ef14c9ea703aa0f8023c177e4ee4b65468",
+      "bytes": 6287
+    }
+  ],
+  "specOpenFindings": 0,
+  "standardsOpenFindings": 0,
+  "rootChecks": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-v2-off-year-fixture-root-checks-v1.json",
+    "sha256": "c248c84f7f2de1d72537a50b19b1b820e0936f6049906d84299efd32901d8b07",
+    "bytes": 1506
+  },
+  "freeze": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-v2-off-year-fixture-repair-freeze-v1.json",
+    "sha256": "15a69a059aae6e1f7a3d6ad41f11e22f31241255873f10ff9a65103fc76c996d",
+    "bytes": 4718
+  },
+  "native": {
+    "path": "/private/tmp/talli-release-20261009/rf-source-v2-off-year-fixture-native-v1.json",
+    "sha256": "bb51b193ccd1a7654a5219003b38acfc87156a7e1aa27744b0945816cf569753",
+    "bytes": 4614
+  },
+  "coverageChange": "The prior unsupportednon2026 producer/sourcepositive/race expectations are not claimed. New races exercise admitted2026 fail-closed lineage and withdrawnRF behavior. Separate actual supportedyear positive append/amendment/withdrawal coverage remains; whole combined CI still required.",
+  "limits": [
+    "Latest121d CI failed after1382 authority/RF passes, 1setup failure and66unexecuted; all31retained correction readerDB cases unreached.",
+    "New capture stage includes19 DBcases collectedonly; full new combined CI required.",
+    "AllA1-A7pending. Non2026 producer/sourcepositive coverage unsupported/pending under currentpolicy; no admission expansion.",
+    "No launch/provider/independentrestore/genuinecompany/filing/spending/outreach acceptance."
+  ]
+}

@@ -20,7 +20,7 @@ test("corporate-governance manifests declare the implemented public surface", as
 
   assert.equal(
     backend.owns.migrations,
-    "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql",
+    "supabase/contract-migrations/20260902110000_corporate_governance_contract.sql; supabase/migrations/20260924080355_governance_ledger_company_write_guards.sql; supabase/migrations/20260924083154_governance_guarded_reporting_year_read.sql; supabase/migrations/20261009223340_governance_register_observation_completion_guard.sql; supabase/migrations/20261009234529_governance_register_evidence_amendments.sql; supabase/migrations/20261010001936_governance_register_evidence_application.sql; supabase/migrations/20261010004653_governance_register_evidence_company_guard.sql; supabase/migrations/20261010005413_governance_reporting_register_evidence.sql; supabase/migrations/20261010015851_governance_rf_year_source_proof.sql; supabase/migrations/20261010032531_governance_supported_event_replay_visibility.sql",
   );
   for (const exportedType of [
     "AnnualCloseEventKind",
@@ -99,12 +99,37 @@ test("document evidence ownership is acyclic and declared", async () => {
     text("supabase/contract-migrations/20260902110000_corporate_governance_contract.sql"),
   ]);
 
-  assert.deepEqual(governance.dependencies, []);
+  assert.deepEqual(governance.dependencies, [{
+    module: "shareholder_register_filing",
+    kind: "query",
+    imports: [
+      "shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)",
+      "shareholder_register_filing.read_retained_register_observation_withdrawal_v1(uuid,uuid,integer,uuid,integer,text,text,timestamptz,text)",
+      "shareholder_register_filing.read_current_register_observation_evidence_v1(uuid,uuid,integer,integer,text,timestamptz,text)",
+    ],
+  }, {
+    module: "documents", kind: "query", imports: [
+      "documents.assert_historical_original_integrity_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,timestamptz,text)",
+      "documents.assert_retained_original_v1(uuid,uuid,uuid,integer,text,text,integer,timestamptz,text)",
+    ],
+  }, {
+    module: "ledger", kind: "query", imports: [
+      "ledger.assert_unamended_governance_entry_v1(uuid,uuid,integer,uuid,uuid,date,text,timestamptz,jsonb,text)",
+      "ledger.list_entry_amendments_v1(uuid,text)",
+    ],
+  }, {
+    module: "company_access", kind: "query", imports: ["public.company_access_has_fresh_mfa_v1()"],
+  }, {
+    module: "shareholder_register_filing", kind: "command", imports: [
+      "shareholder_register_filing.receive_year_source_governance_proof_v1(uuid,integer,text,jsonb,text)",
+      "shareholder_register_filing.invalidate_year_source_governance_proofs_v1(uuid)",
+    ],
+  }]);
   assert.deepEqual(documents.dependencies, []);
   assert.ok(documents.owns.tables.includes("documents.evidence_references"));
   assert.equal(
     documents.owns.migrations,
-    "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql",
+    "supabase/migrations/20260902030000_documents_evidence_reference_registry.sql; supabase/migrations/20260923102419_documents_verified_rf_evidence_retention.sql; supabase/migrations/20260923125730_documents_ledger_evidence_guard.sql; supabase/migrations/20260924062717_documents_immutable_retained_originals.sql; supabase/migrations/20260924080249_documents_rf_consequential_company_guards.sql; supabase/migrations/20260928083000_documents_historical_original_recovery.sql; supabase/migrations/20260928124000_documents_historical_original_assertion.sql; supabase/migrations/20261009232839_documents_historical_original_integrity.sql",
   );
   assert.match(registry, /documents\.register_evidence_reference_v1/iu);
   assert.match(lifecycle, /backend_system\.register_corporate_governance_documents_v1/iu);

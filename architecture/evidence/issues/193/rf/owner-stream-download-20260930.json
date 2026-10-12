@@ -1,0 +1,53 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "e52483e6c2a9a9b4ebe3497cd0c0251107f8b606",
+  "scope": "Owner RF archive download integration and reproducible Python allocation profile",
+  "sha256": {
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/archive/route.ts": "306f61ee2561d67f12155fca07a838e40bafee100f43ef881c6853b170819725",
+    "apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/page.tsx": "274909baab5b1cd1da6e29aff817a89dfe05bcee758887f11fa399a4d06afc6e",
+    "apps/web/features/shareholder-register-filing/transport.ts": "b29931b6bda9dcdbf9e72194b56029c34d18ad7f6d6a8c0a6f1ac99a1d3afedd",
+    "apps/web/tests/rf1086-archive-stream.test.mjs": "cbe3d360088fecacc9102fe126db6c61100f2601cb3adb6706f96bf6b9066660",
+    "apps/backend/tests/profile_rf1086_archive_stream.py": "776344032141a26d83001d7730b32f24b6079eae2b666a3bcf3c64dba653ea30"
+  },
+  "validation": {
+    "routeAndTransportTests": 23,
+    "combinedWebArchiveContractTests": 265,
+    "nextProductionBuild": "passed; new dynamic route emitted",
+    "architecture": "passed; dependency evidence unchanged",
+    "allocationProbe": {
+      "status": "passed",
+      "originalBytes": 1073741824,
+      "originals": 103,
+      "sourceHistoryRequired": true,
+      "strictFeedbackRequired": true,
+      "importPeak": 152256512,
+      "fixturePeak": 167411712,
+      "verifyPeakRssBytes": 795410432,
+      "pythonAllocationBytes": [
+        423481,
+        80883165
+      ],
+      "elapsedSeconds": 13.835,
+      "export": {
+        "wireBytes": 1431979582,
+        "importPeak": 152043520,
+        "fixturePeak": 167133184,
+        "exportPeakRssBytes": 878280704,
+        "pythonAllocationBytes": [
+          247842,
+          70312249
+        ]
+      }
+    },
+    "probeArgparseFollowup": "single-document run passed after strict CLI argument parsing added",
+    "exactRevisionCi": "pending; base Application passed, Database isolation still live"
+  },
+  "limitations": [
+    "Actual route tests stub session, membership, MFA and backend dependencies; no authenticated full-stack browser acceptance",
+    "Allocation probe uses synthetic Documents originals through an OS pipe; no real storage/provider/HTTP concurrency",
+    "256 MiB ceiling is a Python allocation regression bound, not a production RSS budget",
+    "macOS RSS remains high; platform/native memory and production concurrency sizing remain open",
+    "No database/object restore, legacy backfill or retention generations are claimed",
+    "All seven RF acceptance criteria remain pending"
+  ]
+}

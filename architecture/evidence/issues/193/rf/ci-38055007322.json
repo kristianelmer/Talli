@@ -1,0 +1,152 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "HISTORICAL_GITHUB_ACTIONS_TERMINAL_OBSERVATION",
+  "recordedAtUtc": "2026-10-10T13:52:08.714092+00:00",
+  "repository": "kristianelmer/Talli",
+  "pullRequest": 216,
+  "run": {
+    "databaseId": 38055007322,
+    "runAttempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "headSha": "36b57ba788c378e4ed349c9c83db223a8e5e589b",
+    "runStartedAt": "2026-10-10T13:15:11Z",
+    "updatedAt": "2026-10-10T13:37:12Z",
+    "url": "https://github.com/kristianelmer/Talli/actions/runs/38055007322"
+  },
+  "checkout": {
+    "revision": "f68655e65d3c2749f0fe6cd67ca128e801cdca3a",
+    "kind": "pull_request_merge_commit",
+    "parents": [
+      "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+      "36b57ba788c378e4ed349c9c83db223a8e5e589b"
+    ]
+  },
+  "jobs": [
+    {
+      "id": 114221548367,
+      "name": "Database isolation",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T13:15:14Z",
+      "completed_at": "2026-10-10T13:35:48Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38055007322/job/114221548367"
+    },
+    {
+      "id": 114221548528,
+      "name": "Application",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-10T13:15:13Z",
+      "completed_at": "2026-10-10T13:37:05Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38055007322/job/114221548528"
+    },
+    {
+      "id": 114221549494,
+      "name": "Immutable evidence",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-10T13:15:12Z",
+      "completed_at": "2026-10-10T13:15:12Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38055007322/job/114221549494"
+    },
+    {
+      "id": 114225727429,
+      "name": "Release gate",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-10-10T13:37:08Z",
+      "completed_at": "2026-10-10T13:37:11Z",
+      "html_url": "https://github.com/kristianelmer/Talli/actions/runs/38055007322/job/114225727429"
+    }
+  ],
+  "reachedStages": {
+    "application": {
+      "conclusion": "success",
+      "boundaryBackend": {
+        "passed": 10728,
+        "skipped": 2,
+        "deselected": 2256,
+        "seconds": 602.32
+      },
+      "allJobSteps": "success",
+      "productionDependencyAudits": {
+        "rootVulnerabilities": 0,
+        "webVulnerabilities": 0
+      }
+    },
+    "database": {
+      "initialHarness": {
+        "passed": 17,
+        "skipped": 1
+      },
+      "billing": {
+        "passed": 700,
+        "seconds": 252.14
+      },
+      "authority": {
+        "passed": 1413,
+        "failed": 1,
+        "collected": 1468,
+        "notExecuted": 54,
+        "seconds": 541.13
+      },
+      "legacyLifecyclePassed": 64,
+      "sourceV2DatabasePassed": 104,
+      "repairedTransactionProof": "PASS",
+      "repairedCompanyLockRacesPassed": 4
+    }
+  },
+  "failure": {
+    "case": "test_rf1086_year_source_v2_database.py::test_closed_producer_does_not_grant_rf_any_governance_query_or_private_access",
+    "expectedFunctionExecuteCounter": 0,
+    "actualFunctionExecuteCounter": 4,
+    "qualification": "This counter tests EXECUTE without schema USAGE. CI did not record the four identities/ACL origins or namespace permission; the result alone does not prove callable query access or a production grant defect.",
+    "repair": "Separate namespace denial/effective callable zero from all four new private-contract EXECUTE denial, private table SELECT denial and an actual private-helper call denied at namespace. Production SQL/ACLs remain unchanged; full-schema execution of repaired assertion pending."
+  },
+  "notReached": [
+    "Remaining 4 source-v2 database cases",
+    "All 19 guarded-capture database cases",
+    "All 31 retained-correction database cases",
+    "Later owned clone, browser, independent Auth/object recovery, Tax and Accounts lanes"
+  ],
+  "privateArtifacts": [
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38055007322-app-raw.log",
+      "sha256": "aa78b86ea9bb3df83d80e17dc8e8879a5b7ada473533cd1e98579e36ba4bcff9",
+      "bytes": 466160
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38055007322-db-raw.log",
+      "sha256": "038809a943c7863947bdaaf5adc0a48d02cdd9ec8372afb5ac438cb8716fbbe8",
+      "bytes": 600644
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38055007322-terminal-api.json",
+      "sha256": "8fa7bd9916dbb236ec97be04102bd34af7047de9a745286a3ec4ba872c8ecd1e",
+      "bytes": 12734
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38055007322-terminal-jobs.json",
+      "sha256": "25e3e58ceeb768cad9c067d514ce3a320f022afbd8e4905b48bcf73fe69f0241",
+      "bytes": 9999
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38055007322-merge-parents.json",
+      "sha256": "7fae3541484e1e19e4668a6518c96ca97f4de6bf0ab1a296dee755d5bd75981b",
+      "bytes": 149
+    },
+    {
+      "path": "/private/tmp/talli-release-20261009/ci38055007322-summary-sanitized.log",
+      "sha256": "9a7a730a5c8f9dce7ca7a24cd1717fdea5cbbb7406f67b61fb279c6ddf0cb787",
+      "bytes": 949
+    }
+  ],
+  "limits": [
+    "Whole run failed; this is not a passing release or canonical immutable gate receipt.",
+    "Earlier Billing checkout migration deadlock remains unresolved despite subsequent700-case passes.",
+    "All A1-A7 and independent identity/object recovery remain pending.",
+    "Local saved-source v2 admission and callable-access repair were not included."
+  ]
+}

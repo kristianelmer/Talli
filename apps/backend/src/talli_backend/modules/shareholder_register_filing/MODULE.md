@@ -1,7 +1,7 @@
 # Shareholder register filing
 
 <!-- architecture-inventory
-{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
+{"dependencies":[],"ownedTables":["shareholder_register_filing.authority_permissions","shareholder_register_filing.authority_test_runs","shareholder_register_filing.filing_approval_snapshots","shareholder_register_filing.filing_overrides","shareholder_register_filing.filing_previews","shareholder_register_filing.filing_review_comments","shareholder_register_filing.filing_submissions","shareholder_register_filing.opening_balance_setups","shareholder_register_filing.opening_shareholders","shareholder_register_filing.production_feedback_artifacts","shareholder_register_filing.production_filing_events","shareholder_register_filing.production_filing_submissions","shareholder_register_filing.year_source_heads","shareholder_register_filing.year_source_versions","shareholder_register_filing.register_observations","shareholder_register_filing.source_previews","shareholder_register_filing.source_review_bridges","shareholder_register_filing.source_approval_bindings","shareholder_register_filing.source_submission_bindings","shareholder_register_filing.submission_heads"],"ports":["OpeningSnapshotPersistence","ProductionOperationJournal","Rf1086FeedbackDiscovery","Rf1086MutationAuthority","Rf1086PreparationPersistence","Rf1086ProductionJournal","Rf1086ReadOnlyAuthority","Rf1086RegisterObservationPersistence","Rf1086SourceOperationJournal","Rf1086YearSourcePersistence","Rf1086CompanyTestRetentionPersistence"],"publicEntryPoints":["talli_backend.modules.shareholder_register_filing.public"]}
 -->
 
 ## Owned behavior
@@ -35,10 +35,31 @@ reconciliation outcomes retain their journal observation time separately from
 transport incidents and mutation observations. Source facts make no commercial
 refund decision.
 
-The archive projection reads previews and simulations for the requested year
+
+`rf1086-source-v2` also commits the complete retained full-year archive: source
+versions and head, independent observations and capture records, previews,
+review bridges, approval lineage, durable claims, submission head, journal and
+feedback-original bindings. The adapter reads these on the same repeatable
+snapshot as legacy facts and independently counts all eight new storage
+families. Coverage checks match both projections and exact family counts, and
+validate retained source/archive integrity. Missing or inconsistent evidence
+cannot certify complete history. Legacy v1 hashing remains byte-for-byte stable;
+previous v1 evidence cannot verify a v2 snapshot. Read timestamps remain excluded
+from the digest.
+
+Complete historical coverage does not establish current full-year readiness.
+When full-year sources exist, facts explicitly return
+`rf1086_full_year_readiness_not_evaluated` rather than falling back to an opening
+snapshot. Fresh admission and owned annual prerequisites remain separate work.
+
+The archive projection reads previews, simulations and production evidence for the requested year
 before decoding them, plus the original company-wide comments and permissions
-and test evidence referenced by those simulations. It does not require another
-year's payloads or extend the original archive to production submissions. The
+and test evidence referenced by those simulations. Its approvals, production submissions,
+complete journal and feedback metadata retain immutable manifests, payload hashes and
+Documents-owned byte references. Company/year and parent relationships, artifact
+counts and approval hashes are checked before publication. Missing or inconsistent
+evidence is unavailable; archive reads do not require current paid entitlement.
+It does not decode another year's payloads. The
 workspace query retains its existing all-year and optional-year behavior.
 
 ## Storage and migration
@@ -109,6 +130,8 @@ Queries:
 - `Rf1086FeedbackArtifactRecord`
 - `Rf1086WorkspaceSnapshot`
 - `Rf1086ArchiveSnapshot`
+- `Rf1086ArchiveProductionEventRecord`
+- `Rf1086ArchiveFeedbackArtifactRecord`
 - `Rf1086SourceSnapshot`
 - `Rf1086SourceFacts`
 - `VerifyRf1086SourceEvidenceQuery`
@@ -160,6 +183,10 @@ Values, identifiers and ports:
 - `Rf1086ShareSaleEvent`
 - `Rf1086DividendAllocation`
 - `Rf1086DividendEvent`
+- `Rf1086CashIssueEvent`
+- `Rf1086NominalIncreaseAllocation`
+- `Rf1086CashNominalIncreaseEvent`
+- `Rf1086LossCoveringReductionEvent`
 - `Rf1086Case`
 - `Rf1086ReadinessIssue`
 - `Rf1086DocumentSet`
@@ -179,6 +206,8 @@ Values, identifiers and ports:
 - `Rf1086DocumentPage`
 - `Rf1086AuthorityDocument`
 - `Rf1086ReadOnlyAuthority`
+- `Rf1086FeedbackDiscovery`
+- `Rf1086FeedbackTransmission`
 - `Rf1086MutationAuthority`
 - `ProductionOperation`
 - `ProductionOperationFailure`
@@ -228,3 +257,2135 @@ Values, identifiers and ports:
 - `Rf1086CodeDecision`
 
 The mandatory database lane also runs `apps/backend/tests/test_shareholder_register_filing_lifecycle.py` for real phase, role and retained-row regressions.
+
+## Related authority feedback
+
+RF feedback discovery binds the stored dialog and original submission to the
+company and RF service before returning any related transmission attachments.
+The backend uses a separate `digdir:dialogporten` system-user token; neither token
+nor dialog narrative/presentation URLs enters the public contract. All related
+receipt documents are acquired within the shared scan deadline before any
+persistence. A complete XML decision governs its accompanying PDF artifact;
+missing XML, unknown content and conflicting decisions require action. Exact
+Dialogporten IDs, provider creation time and expected company/year are retained
+in artifact metadata while Documents owns the unchanged receipt bytes. A final
+decision is appended only after every artifact has persisted.
+
+A deterministic owned XML provenance manifest preserves every attachment identity
+independently of content-hash deduplication; finalization also requires that
+manifest to be durable. Its reference distinguishes it from provider receipts.
+
+
+## Read-only action-required recovery
+
+An owner may explicitly recheck an `action_required` submission against its
+original confirmed transmission and dialog after repairing the reported problem.
+The existing owner, approval, entitlement identity, connection and lease checks
+still apply. This recheck never obtains a mutation binding or starts another
+submission; expired submission eligibility does not erase recovery access.
+Accepted and rejected decisions stay terminal. Receipt bytes and their recorded
+classifications remain immutable: a recheck cannot turn historical ambiguous or
+conflicting artifacts into acceptance. Such evidence requires separately designed
+adjudication/correction support; this recovery path does not authorize it.
+
+### Immutable full-year source foundation (#193)
+
+The public source contracts are `RecordRf1086YearSource`, `Rf1086YearSourceId`,
+`Rf1086PaidInSourceFacts`, `Rf1086YearDocumentEvidence`, `Rf1086YearEventEvidence`,
+`Rf1086YearGovernanceReceipt`, `Rf1086VerifiedYearSourceContext`,
+`Rf1086YearSourceFreshness`, `Rf1086YearSourceSnapshot`, and `Rf1086YearSourceError`.
+The public operations are `prepare_rf1086_year_source`,
+`assert_rf1086_year_source_fresh`, `assert_rf1086_year_source_integrity`,
+`assert_rf1086_year_source_replay`, `rf1086_year_source_digest`, and
+`rf1086_governance_economic_facts`.
+
+`year_source.py` validates complete RF-owned source facts, explicit tax paid-in
+amounts, verified document revisions, finalized corporate evidence, immutable
+correction lineage, canonical decimal digests and the full freshness vector.
+Previous-year documents may corroborate opening facts. There is no artificial
+holder/event count limit. Register observations must be independent of the year
+source that references the finalized governance receipt.
+
+`Rf1086VerifiedYearSourceContext` is a trusted application-workflow input. It must
+be assembled from authenticated owner public query contracts, never deserialized
+from a browser request. The RF capability itself imports no other capability.
+The command cannot supply verified context or finalized governance receipts.
+Persistence must enforce accepted-owner authorization, company/year RLS, a
+current-head compare-and-swap lock, and actor-scoped idempotency before using the
+pure preparation/replay functions.
+
+This is a deterministic contract foundation. Database capture, public Governance
+and Documents projection bindings, transport, complete preview/approval/send
+integration, source archive export, cross-owner freshness race closure and
+service conformance remain pending. Existing production admission is not widened.
+
+
+### Archive deployment overlap
+
+`legacy_archive_source` preserves the original `/archive-source` query extent and
+wire fields. Its adapter never reads or decodes production-only tables, and its
+validation covers only that original extent. `archive_source` remains the complete
+single-snapshot archive projection exposed by additive
+`/archive-source/production` (`rf1086GetProductionArchiveSource`). The latter
+includes original preview lineage and all four production evidence collections.
+Clients must not treat the original response as evidence of absent production
+history. This explicit overlap supports either deployment order under ADR-0012.
+
+### Immutable full-year source persistence
+
+`Rf1086YearSourcePersistence` records a verified workflow command and reads current
+or historical sources. `serialize_rf1086_year_source` and
+`parse_rf1086_year_source` use a closed versioned codec retaining exact decimal
+facts and validate immutable source hashes. The restricted RF adapter locks the
+company/year, checks current Company Access owner/year admission, resolves
+actor-scoped identical idempotency and appends a new version with an exact current
+predecessor. `shareholder_register_filing.year_source_versions` retains immutable
+source/evidence snapshots; `shareholder_register_filing.year_source_heads` stores
+only their current pointers. Both use FORCE RLS; only the append function writes.
+The migration rollback revokes the new API without deleting retained evidence.
+Source capture grants no correction filing or retry of an unknown provider action.
+
+#### Year-source rollback runbook
+
+Stop source capture before reversing `20260923091509_rf1086_immutable_year_source.sql`.
+Its matching rollback revokes the new executor read/write API and leaves every
+immutable source and current head intact; reapplying the migration restores access.
+The old #151 full rollback drops the entire RF schema and must never run while
+any year-source row exists. The coordinated authority topology runner fails with
+`rf1086_retained_year_sources_block_full_schema_rollback` before predecessor
+mutations. Use the bounded API rollback and preserve evidence; a deeper rollback
+requires a separately reviewed, lossless source relocation. This guard assumes
+source capture is stopped, as required before runtime/schema rollback.
+
+### Independent registered-share observation foundation
+
+The public `RecordRf1086RegisterObservation` / `prepare_rf1086_register_observation`
+contract binds complete, owner-confirmed one-class before/after register states
+for cash issues, nominal cash increases and loss-cover reductions to independently
+verified original Documents references. Registered capital and nominal amounts
+use exact Decimals; tax paid-in facts remain separate. Corrections append a new
+UUID/version/hash with an exact predecessor. `assert_rf1086_register_observation_integrity`
+checks retained content; `verify_rf1086_register_observation` matches an exact
+Governance reference and full event economics through
+`Rf1086RegisterObservationMatchQuery`.
+
+This is deterministic source preparation only. Trusted capture must supply
+`Rf1086VerifiedRegisterObservationContext` after live owner and original-byte
+verification; browser input cannot assert it. There is no register-observation
+store, current-head/withdrawal query, cross-capability lease or production route
+in this foundation. Existing opening/source hashes and arbitrary Governance
+references do not become verified observations. The remaining integration and
+noncircular evidence dependency are recorded in
+`architecture/evidence/issues/193/rf/register-observation-design.md`.
+
+The immutable value contracts are `Rf1086RegisterObservationId`,
+`Rf1086RegisterHolding`, `Rf1086RegisteredShareState`,
+`Rf1086RegisterDocumentEvidence`, and `Rf1086RegisterObservationSnapshot`.
+`Rf1086RegisterObservationError` carries closed diagnostics without identifiers
+or source document contents.
+
+`rf1086_register_observation_request_digest` validates and normalizes request
+content for stable idempotency comparisons independent of input holder/document
+ordering. It does not issue a new observation identity.
+
+`rf1086_event_register_states` projects exact before/after registered capital and active holders for a selected capital event using the same complete chronological reconciliation as readiness. It includes preceding formation and ownership transfers, validates the entire year and rejects non-capital selections or malformed identities. It does not attest external register truth or tax paid-in balances.
+
+### Independent register observation persistence
+
+`Rf1086RegisterObservationPersistence` appends independent observations to
+`shareholder_register_filing.register_observations`. Multiple initial observations
+may exist for one company/year. Each correction names the exact previous immutable
+ID/hash and reason. A unique predecessor and the company/year transaction lock
+prevent forks. Exact current reads return no result for a superseded ID; historical
+reads preserve it. `serialize_rf1086_register_observation` and
+`parse_rf1086_register_observation` use a closed, versioned codec and verify the
+original facts before returning them. Identical normalized idempotency replays
+return the original snapshot, including after a correction; authorization is
+checked again under the database transaction lock.
+
+The accepted, confirmed and locked AS owner can discover all retained company/year
+observations through `GET /api/v1/shareholder-register-filings/register-observations`.
+`list_register_observations` uses one snapshot transaction, fresh owner admission,
+existing executor SELECT/RLS, and no pagination limit. Every stored codec, row binding
+and complete predecessor chain is checked before any history is returned. The response
+pairs each receipt with its exact editable public draft and `isCurrent` (no retained
+successor). Three confirmations reset to false; the draft predecessor names that
+selected observation's ID/hash and its correction reason is cleared. Historical
+drafts remain readable, while capture independently requires the current predecessor.
+This read neither verifies original bytes nor certifies current evidence or approval.
+
+The RF adapter calls Documents-owned retention for each original in stable ID
+order within the same transaction. Complete current metadata, original document
+year, hash and byte length are checked while locking each document. A mismatch
+rolls back both retention and RF capture. Full-year capture checks retained
+register observations are still current under the same company/year lock.
+
+Migration `20260923102314_rf1086_register_observation_store.sql` and its bounded
+rollback preserve every immutable observation. Stop capture before API rollback.
+Full RF schema rollback fails with
+`rf1086_retained_register_observations_block_full_schema_rollback` when any original
+observation remains. A deeper reversal requires a separately reviewed lossless
+relocation, never deleting evidence to make the guard pass.
+
+### Source-backed full-year previews
+
+The internal source workflow re-verifies accepted ownership, retained original
+bytes, all relevant Governance receipts, and independent register observations
+before `GenerateRf1086SourcePreview`. Canonical full-year rendering includes
+supported events and an explicit review of tax paid-in capital and premium.
+`Rf1086SourcePreviewPreparation` persists the source id, source and case hashes,
+rendering profile, readiness, review text and exact XML in `source_previews`.
+
+Capture rechecks accepted ownership and the current source after acquiring the
+same company/year lock used by source corrections. Identical source/rendered
+content replays the same preview; corrected evidence creates a distinct preview
+even when XML is unchanged. Historical previews remain readable using their
+original stored rendering. The closed codec checks storage integrity without
+regenerating historical files. The migration and rollback preserve every preview;
+full RF rollback refuses to erase retained previews.
+
+This internal binding performs no provider operation. Customer routes, source
+review/approval/send integration and cross-owner action-time consistency remain
+pending. Existing legacy previews and production activation are unchanged.
+
+`Rf1086PreparedSourcePreview` binds the verified source to canonical rendering.
+`assert_rf1086_source_preview_matches` verifies new previews against that source.
+`serialize_rf1086_source_preview` and `parse_rf1086_source_preview` retain exact
+historical bytes and reject altered or unsupported storage. RF owns
+`shareholder_register_filing.source_previews`.
+
+<!-- architecture-inventory
+{"ownedTables":["shareholder_register_filing.source_previews"],"ports":["Rf1086SourcePreviewPreparation"]}
+-->
+
+## Full-year approval identity
+
+`build_rf1086_source_approval_manifest` creates the separate
+`production-source-approval-v1` identity for an exact retained source and preview.
+It commits source/case/freshness hashes, owner and entitlement identities, review
+projection and warning acknowledgments, XML bytes and optional predecessor
+submission/manifest/reason. It preserves the historical no-activity manifest.
+
+Full-year shareholder IDs are ordered by UTF-8 bytes and mapped to stable SHA-256
+journal keys so arbitrary supported IDs fit existing journal operation names.
+The returned immutable document map feeds the existing submit-once journal.
+Changing an input or adding unknown manifest keys invalidates the approval.
+
+This pure builder does not grant approval or submission authority. Transactional
+owner/AAL2/entitlement/review checks, cross-owner freshness, correction admission,
+persistence and production profile integration remain separate required work.
+
+## Source writer company guard
+
+`20260924062746_rf1086_source_company_guard.sql` makes source capture,
+register-observation capture and source-preview append acquire the existing
+company-wide archive advisory guard before the RF year lock and document/head
+row locks. Access is checked again after the company guard is acquired. The
+application capture transactions use READ COMMITTED. RF-owned row triggers also
+cover every permitted mutation of the four source tables, including a first
+insert into an empty year. The narrow guard grant adds no cross-owner table
+access. Rollback suspends these commands while retaining guards and originals.
+
+The original source guard covers RF source writers. The successor company
+guards below extend writer coverage; complete action-time source-backed
+production admission remains required. These guard-only triggers do not add
+source evidence to company archive exports or advance archive generations.
+
+## Source intake basis
+
+The authenticated `rf1086ReadSourceIntakeBasis` read returns the currently
+confirmed AS identity and Governance's complete reporting-year enumeration for
+customer source intake. The server projects typed economics using the same
+parsers as source capture. It retains pending, rejected, superseded, corrected,
+reversed and cross-year records; each capital lifecycle retains its original
+phases. Decision/finalization identities, original document references, register
+observation references and Ledger amendment lineage remain explicit. Dividend
+finalizations identify their exact signed originals on the server.
+
+`enumerationComplete` describes the Governance read only. Empty `blockers` does
+not establish source completeness, verified document bytes, an eligible
+finalization, filing readiness or approval. Original references are observations;
+source capture independently verifies all originals and current register facts.
+Capital document references have no source year in the Governance contract, so
+that field remains null until Documents supplies its verified metadata. The read
+performs no RF writes and does not create or advance source evidence.
+
+## Consequential company guards and Governance assertion
+
+`20260924080249_documents_rf_consequential_company_guards.sql` guards RF preview,
+review, permission, simulation, approval and begin commands before their local
+row locks, preserving each existing function owner and ACL. Command adapters
+explicitly use READ COMMITTED and guard before locking/rechecking their basis.
+Existing consistent read-only projections retain REPEATABLE READ.
+
+Governance can call `assert_current_register_observation_v1` with the exact
+observation identity, company/year, revision, hash and verified actor on its
+final guarded transaction connection. The assertion rereads current owner
+access and rejects an observation that has a successor. It gives Governance no
+RF table privileges. This closes the observation freshness gap only for callers
+that hold the shared company guard until their consequential write commits.
+
+Row backstops additionally serialize canonical/legacy overrides and readiness
+mutations. The legacy direct readiness writer still needs an owned command that
+guards before row locks and recomputes its evidence after the guard; a trigger
+alone does not prove a previously computed payload fresh. Complete full-year
+approval/send composition, source archive inclusion, and production readiness
+remain separate work. The safe rollback suspends guarded commands, preserving
+evidence and backstops. Database execution is required to verify migration,
+role, replay and concurrency behavior.
+
+## Guarded source admission scope
+
+The internal `ShareholderRegisterSourceAdmission.admit` context manager performs
+private original verification before opening a short READ COMMITTED transaction.
+Company Access then checks live owner/MFA/year eligibility and acquires the
+company guard before the RF year guard. Current source and preview, retained
+original assertions, complete Governance reporting-year evidence and referenced
+current register observations are read on that same connection. The shared
+capture/admission policy rebuilds the source freshness context. A change during
+preflight prevents the consumer from reaching its decision write.
+
+The yielded scope expires on context exit. Consumers must persist their decision
+before exiting it; an admitted value retained afterward grants no authority.
+`PostgresCorporateReportingEvidence` delegates to the narrow Governance public
+projection, which requires the caller's already held exact company guard and
+combines complete lifecycle, capital history and Ledger amendment projections.
+It grants RF no cross-owner table access. Object and provider I/O stay outside.
+
+This internal scope is not yet wired to an approval/send route. Full-year profile,
+review/permission, entitlement, immutable bridge, approval persistence, submission
+head/correction admission and journal integration remain required. Unit tests
+exercise policy and scope lifetime; actual database permission/concurrency tests
+must run in CI before runtime behavior is considered verified.
+
+
+The full-year review bridge retains the exact source-preview ID, source/hash
+binding, text, issues and XML under the existing filing-review identity without
+an opening setup. Arbitrary shareholder IDs map to the versioned manifest's
+stable hashed journal keys. It is immutable, tenant-scoped, and replayable only
+while its original source remains current. Historical review reads remain
+available after a source correction. The application materializes it within
+source admission, after retained-byte and complete Governance checks.
+
+The bridge itself enables review only. Legacy approval rejects the full-year
+marker. The dedicated full-year approval command enters fresh source admission,
+requires exact active pilot/Authority identity and current review/permission,
+and appends the canonical manifest with immutable source and raw review bindings.
+The review and append share the company/year guard. Exact replay rechecks current
+admission; changed review requires renewed confirmation. Historical archives
+rebuild full-year manifests from retained lineage without consulting current
+source heads. Full-year provider dispatch remains blocked pending its guarded application
+composition and journal integration. Claims and correction validation are described below. The legacy stored
+readiness prerequisite remains until its owned full-year replacement is ready.
+Rollback suspends new approvals while preserving evidence and send barriers.
+
+`Rf1086SourceApprovalReview` exposes the exact point-in-time review commitment,
+warning codes and blockers. `Rf1086ArchiveSourceReviewBridge` and
+`Rf1086ArchiveSourceApprovalLineage` retain the bridge, source, preview and exact
+approved manifest/review text needed to verify a historical full-year approval.
+
+Correction approval reverifies the exact previous terminal filing, manifest,
+reconciliation event and artifact set. Documents checks each private original
+before admission; the final RF transaction locks the predecessor and compares
+that complete snapshot and retained receipts before writing approval. Journal
+writers acquire the company guard before their submission row locks.
+
+Versioned source-readiness evidence binds the selected source and canonical
+preview after guarded freshness checks. It explicitly leaves annual
+prerequisites, current review/overrides, Authority, Billing and technical release
+unevaluated. It does not replace the legacy stored release gate yet.
+
+The held source-admission transaction can read Banking-owned
+`BankYearReconciliationEvidence` through `bank_year_evidence`. This keeps the
+exact canonical transaction digest and observation on the same company guard,
+without private Banking table access or a separate connection. It is a producer
+input for annual readiness; counts/digests do not prove bank-statement coverage
+and are not yet a replacement for the stored annual gate.
+
+`annual_interview` reads the frozen annual-data history API on that same held
+connection, then selects only the requested company/year. Earlier interviews
+cannot satisfy current prerequisites. Duplicate identities/years, malformed
+scope, timestamps or prerequisite booleans fail closed; an empty successful
+enumeration remains distinct from unavailable evidence. The view is deeply
+immutable. This consumer does not change the history reader's at-or-before-year
+semantics, browser permissions or interview writers. The read still grants no
+filing authorization; annual policy composition remains pending.
+
+The correction contract is `Rf1086CorrectionPredecessorSnapshot`, verified by
+`assert_rf1086_correction_predecessor`. Source assessment exports
+`Rf1086SourceReadinessEvidence`, `Rf1086SourceReadinessProof`,
+`build_rf1086_source_readiness` and `assert_rf1086_source_readiness_matches`.
+
+`assert_rf1086_submission_predecessor` checks the complete company/year production
+history before full-year approval. An initial approval requires empty history;
+a correction requires the exact terminal leaf of one complete linear chain.
+Duplicate identities, forks, competing roots, missing parents, cycles and
+unresolved outcomes fail. The adapter enumerates all submitters and profiles
+under the admission scope's company/year guards; it never chooses by timestamp.
+Original feedback and canonical manifest verification remain separate required
+checks. This approval check does not create the durable submission head or
+submit-once claim, which remain required before full-year sending opens.
+
+### Durable full-year submission claim
+
+Migration `20260928060732_rf1086_source_submission_claim.sql` retains immutable
+`source_submission_bindings` and one `submission_heads` row per company, year,
+obligation and production environment. The guarded database command binds the
+exact approved manifest and predecessor, checks every retained filing as one
+complete chain, then inserts the claim and journal row and advances the head in
+one transaction. Forks, disconnected history, stale predecessors and unresolved
+outcomes fail closed. The company/year guards precede head/parent rows and the
+Authority/Billing revalidation performed by the approval validator.
+
+An exact historical lookup remains available after approval invalidation or
+pilot expiry. Replay returns the existing claim without authorizing another
+provider POST. Legacy begin rejects source approvals, and a managed head blocks
+new unmanaged legacy insertions. Existing legacy approval replay remains valid.
+The immutable binding authorizes only matching full-year journal rows; ordinary
+journal status changes preserve their original payload and predecessor.
+
+Rollback revokes the new claim command but retains heads, claims and historical
+visibility. Replay the claim successor after the review/approval predecessors.
+The existing production submission generation trigger records claim insertion
+in the same transaction. Full-year application dispatch, owned annual readiness,
+original-byte revalidation at send remain required
+before enabling the full-year send path; this database foundation does not expose
+an HTTP send command or activate production.
+
+`Rf1086RetainedSourceApproval` carries the approval record and exact canonical
+manifest text. `inspect_rf1086_retained_source_approval` verifies its identity
+before source admission. `Rf1086SourceSubmissionClaim` retains the immutable
+approval, payload, actor and predecessor identity;
+`assert_rf1086_source_submission_claim` validates that identity on every read.
+`Rf1086SourceSubmissionClaimResult` distinguishes a new claim from historical
+recovery. Recovery never grants a second provider dispatch.
+
+The application claim workflow derives scope, preview and entitlement from the
+retained approval. It verifies original bytes before admission, then rechecks
+approval, complete history, correction receipts, source, Governance and review
+on the guarded connection before rebuilding the exact manifest and claiming.
+Retries first recover retained claims without demanding current source or pilot
+freshness. A concurrent commit can also be recovered after failed admission.
+This workflow has no provider binding and is not exposed as an HTTP send route.
+
+Full-year correction predecessors now retain `source_approval_lineage` and
+`source_claim` in `Rf1086CorrectionPredecessorSnapshot`. The validator rebuilds
+the original source preview and canonical approval from retained review evidence,
+checks the immutable claim's scope, actor, payload, manifest and parent, then
+requires matching terminal feedback artifacts and reconciliation. Legacy
+predecessors cannot carry source-only lineage. The adapter loads both forms on
+the caller's snapshot or guarded connection; it never substitutes current source
+or review inputs for captured history. The application still verifies feedback
+originals before the guard and compares the complete snapshot and original
+receipts inside it. Bound feedback artifacts read their exact historical Documents
+original before locking, including captured metadata and byte verification. Final
+admission compares the complete predecessor snapshot and asserts that same receipt
+under the company guard. Current document changes cannot substitute a newer
+original. Unbound legacy feedback retains its existing current-evidence check;
+this does not backfill missing historical bindings. This predecessor support does
+not open provider dispatch.
+
+The production archive now includes `source_submission_claims` and the scoped
+`Rf1086SubmissionHead` from the same database snapshot as original approvals and
+journal rows. Full-year records require exactly matching immutable claims and a
+complete linear history ending at that head. Their journal mutation names, XML
+hashes and persistent idempotency keys must match the approved source document
+order; terminal submissions require successful document posts and confirmation
+as well as retained reconciliation/artifact evidence. Unknown outcomes remain
+unknown in the export. The API exposes claim/head DTOs without granting send
+authority, and legacy-only archives preserve their existing shape plus empty
+claim/head fields. This is RF archive source coverage; company-wide retention
+generation and consolidated backup/restore validation still require separate proof.
+
+`serialize_rf1086_archive` and `parse_rf1086_archive` provide the closed
+`rf1086-production-archive-v3` record carried as `canonicalArchive` when feedback
+original bindings are present. Existing v1 and v2 records remain byte-for-byte
+round-trippable; v1 records
+explicitly lack the complete source-history capture. This preserves complete captured sources, freshness and
+Governance receipts, previews, review bridges, approvals, claims, heads, journals
+and feedback metadata. The parser checks the expected company/year and reuses RF
+source, approval and history validation. It preserves original numeric types and
+XML, rejects unknown record types, duplicate fields, nonfinite values, oversized
+records and invalid commitments, and never deserializes executable classes.
+
+`Rf1086ArchiveError` reports a closed integrity diagnostic. Records are bounded
+to 64 MiB; the command-line input file is bounded to 256 MiB.
+The nested snapshot text has an accidental-damage checksum; it is not an external
+signature. Parsing grants no identity, live freshness, database restore or send
+authority. The local `apps/backend/scripts/verify_rf1086_archive.py` verifier reads
+this authoritative record from either an API export or a company download. It
+performs no database/provider calls and does not prove retained object bytes.
+V2 captures every source version, the source head, every independent register
+observation and correction, source previews (including blocked/unbridged work),
+and review bridges on the same repeatable database snapshot as filing history.
+Capture records retain the original storage text, idempotency key and request
+hash. Validation rejects missing/forked chains, inconsistent heads, orphaned
+previews/bridges, changed capture records and incompatible approved lineage.
+Historical unapproved renderer output is preserved rather than regenerated.
+This is an export, not a database backup or completed restoration.
+
+
+The production archive composition additionally exports `sourceOriginals` via
+Documents' public historical-recovery and portable-record contracts. Exact
+versions are deduplicated by document/company/source year and metadata/content
+commitments, not document ID alone. Current metadata and current-year document
+lists cannot replace the captured version. Original lookup requires an accepted
+owner with AAL2 and the same verified actor as the RF session. Missing or changed
+originals fail the complete archive response before it can be downloaded.
+The inline bundle permits at most 128 MiB of combined source and feedback
+original bytes; larger bundles fail closed and need a future streaming transport.
+Unrelated company-document byte bundles and actual restore remain separate work. The offline verifier's `--require-source-originals` flag
+requires every captured source version and validates each with Documents policy;
+it reports source-byte verification separately from database/object restoration.
+
+Source originals now cover every v2 source and observation, including unapproved
+work, while v1 retains its approved-lineage requirements. The offline verifier's
+`--require-source-history` rejects older partial records; history counts and
+source-byte verification are reported separately. No restore/write authority is
+created by decoding either version.
+
+`Rf1086ArchiveSourceHistory` groups the complete source and observation snapshots,
+`Rf1086ArchiveYearSourceHead`, all retained `Rf1086ArchiveSourcePreview` records,
+and review bridges. `Rf1086ArchiveCaptureRecord` binds each source/observation to
+its original stored text, request hash and actor-scoped idempotency key.
+
+
+For newly uploaded authority feedback, the adapter requires Documents-owned
+verification and immutable-original retention before recording RF artifact
+metadata. It checks the receipt against the exact uploaded document metadata and
+content commitments. Ambiguous retention failures preserve the uploaded record
+without acknowledging RF metadata. The owned
+`record_retained_feedback_artifact_v1` writer reasserts the exact Documents
+receipt under the company guard, then atomically stores the artifact and its
+original ID, metadata digest, source year and retention timestamp. Bound rows
+reject mutation. Existing canonical artifacts keep their attribution and legacy
+null bindings; legacy backfill remains separate work.
+
+Bound feedback records export their original ID, metadata digest, source year and
+retention time in the v3 canonical record and transport projection. The
+`feedbackOriginals` bundle contains the Documents-owned original bytes and metadata.
+Export, download and offline verification require an exact receipt match, submission
+link, uploader attribution and content commitments. Current bucket metadata cannot
+replace or invalidate this retained version. Web checks compare bindings with the
+canonical record and preserve submillisecond timestamp precision.
+
+`--require-feedback-originals` requires retained bytes for every feedback artifact;
+older unbound artifacts fail that strict check. Without the flag, legacy records
+remain readable and the verifier reports partial feedback coverage. Verification
+of supplied bytes grants no independent authenticity, provider or restoration
+authority. Both v1 and v2 records keep their original codec and bytes.
+
+
+`prepare_rf1086_source_reconciliation` reconstructs read-only feedback input for
+confirmed full-year submissions from the validated canonical archive. It checks
+the authenticated submitter, retained approval and claim, complete original
+journal, exact confirmation/dialog identity and the immutable source preview.
+The returned input retains the approved `source_*` document keys and original XML;
+current source facts cannot substitute for the claimed payload.
+
+The authenticated recovery workflow supports both production profiles. Full-year
+recovery reads this retained snapshot after obtaining its feedback lease and
+before acquiring a read-only authority token. It retains accepted-owner and exact
+historical entitlement/connection checks but permits revoked or expired pilots
+and invalidated approvals to recover their already-confirmed submission. Archive
+failure or changed evidence releases the lease without a provider call. An
+unconfirmed unknown mutation still cannot be replayed or treated as confirmed.
+The legacy send entry explicitly rejects full-year approvals; owned readiness and
+full-year dispatch remain separate work.
+
+
+The RF admission scope also reads Ledger-owned opening-bank inputs and complete
+period-lock history on its held connection, through the unchanged Ledger public
+queries. The application selects the exact reporting year only after all pages
+complete; cursor cycles, inconsistent extents, duplicate identities and foreign
+company facts are unavailable. Missing current-year inputs stay empty instead of
+reusing another year. The immutable result preserves Ledger Money values (its existing two-decimal normalization),
+original identities and attribution. It is not a company-year close assessment, statement coverage or
+RF readiness decision. Only two existing read EXECUTE grants are added. Rollback
+disables those calls while retaining harmless namespace visibility; historical
+rehearsal restores the grants after Ledger/RF function recreation.
+
+`annual_document_inputs` enumerates active Documents metadata through the unchanged
+Documents owner query on the held admission connection, then selects the exact
+company/year. It preserves statuses and original metadata; staged, quarantined
+and accepted-missing records are not silently discarded. Inconsistent scope,
+duplicate identities, removed records or malformed metadata fail closed. No
+object download occurs while holding the company guard. This projection proves
+neither original-byte integrity nor filing readiness. The only new database
+authority is EXECUTE on `documents.list_documents_v1(uuid[],text)`; rollback
+revokes it and historical rehearsal restores it after owner function recreation.
+
+`annual_opening_inputs` reads RF's existing opening and shareholder owner queries
+inside source admission. It retains exact company/year, snapshot identity and a
+versioned digest of every opening/holder field, including lock time and original
+attribution. Missing openings remain distinct from malformed or quarantined
+records. Duplicate parents/holders, mismatched scope, missing lock timestamps,
+non-finite capital or inconsistent share totals fail closed. This digest is
+separate from the legacy opening-rendering source digest. The projection does
+not render a no-activity case or equate an onboarding snapshot with the statutory
+start-of-year capital of a newly formed company. No SQL grant or writer changes.
+
+### Annual prerequisite proof
+
+`Rf1086AnnualReadinessInputs` carries scoped, complete owner projections and all
+five family evidence digests; `Rf1086AnnualDocumentStatus` retains document
+identity, linkage and status for RF policy. `build_rf1086_annual_readiness` binds
+these inputs to the exact source/preview in `Rf1086AnnualReadinessProof`.
+`assert_rf1086_annual_readiness_matches` rebuilds the entire proof, including
+issues, required/accepted warnings and explicit unevaluated release families.
+The application reads each owner sequentially on the held admission connection.
+Banking observation time is excluded from proof identity; changes to canonical
+facts or other owner metadata change the proof even when counts remain equal.
+
+Annual hard conditions include locked opening, matching Ledger opening-bank
+identity, unmatched unaccepted transactions, unsupported unpaid items and annual
+authority confirmation. Period/interview/bank-confirmation warnings remain
+unaccepted until a later explicit acknowledgement. Missing interview preserves
+RF's existing warning behavior. Missing interview answer keys retain their
+existing false defaults; present non-boolean answers are unavailable. Accepted
+missing-document status is retained as an accepted warning. Canonical ASCII RF
+linkage, Norwegian linkage and RF-1086 labels all select the obligation. Unknown
+or removed document statuses fail closed at the input boundary.
+
+This is a read-only point-in-time prerequisite assessment. Review/overrides,
+current Authority permission, Billing, technical signoffs and warning acceptance
+remain independent release checks. Consequential consumers must rebuild under
+their own held guard; the proof alone grants no permission to approve or send.
+
+`serialize_rf1086_annual_readiness` and `parse_rf1086_annual_readiness` retain a
+closed, canonical proof encoding and replay RF policy against the exact retained
+source/preview. Noncanonical bytes, duplicate/unknown fields, foreign scope and
+changed derived policy fail closed. A manifest basis with `annual_readiness`
+produces `production-source-approval-v2`, binding both the policy digest and exact
+proof bytes. Blocked annual proofs cannot produce approval manifests; every
+required warning must be acknowledged. The XML/document order and production
+adapter version stay unchanged. A basis without annual evidence retains exact
+V1 manifest bytes for historical recovery.
+
+V2 archives rebuild the retained annual proof without current owner queries. A
+matching `rf1086-source-review-v2` records the same annual binding,
+`otherOverridesReady` and the independent technical gate; V1 archives retain
+their original stored-release review contract. Claim identity inspection accepts
+both manifest versions, but does not grant freshness or dispatch authority.
+Live full-year review, approval and first claim use V2. The thin workflow reads
+all annual owners again inside held source admission and passes only its
+server-computed proof to persistence. No request accepts annual proof bytes or a
+caller ready flag. SQL commits the exact proof with current authorization and
+review, validates its source/preview scope and requires first-claim proof bytes
+to equal the retained approval. A changed annual digest requires a new approval,
+even if the XML and warning set are unchanged. The adapter revalidates the proof
+codec against the held source/preview before passing it to SQL.
+
+The old browser-written stored-ready prerequisite no longer decides new full-year
+approval or claim. Its non-RF blocking-override predicate is preserved through
+`backend_system.rf1086_other_overrides_ready_v1`, with the existing receiver owner
+and current member check. RF overrides/comments, Authority/Billing, post-wait MFA
+and technical signoffs remain independent gates. Annual policy stays in RF Python;
+SQL enforces persistence, identity and authorization, not a second policy engine.
+
+V1 full-year effect RPC grants are revoked. Unclaimed V1 approvals need fresh V2
+approval; exact committed claims and historical archives remain recoverable.
+Rollback suspends new V2 effects, leaves V1 effects closed and preserves history.
+Mandatory successor replay restores V2 after historical migrations. Provider
+send remains unexposed pending profile-specific dispatch and recovery.
+
+
+### Retained dispatch position and uncertain attempts
+
+`assess_rf1086_source_dispatch` returns `Rf1086SourceDispatchAssessment` and reconstructs the exact immutable payload, source
+keys, document order, durable claim and journal position from the validated
+archive. It produces no provider authority. Unstarted V2 operations require
+current admission; a retryable failure requires a new durable retry admission
+using its original key. A prepared operation without a committed outcome is
+uncertain, just like an explicit unknown result. Neither may be automatically
+repeated. Attempt 20 and explicitly blocked failures cannot retry. Unstarted V1
+claims require current approval rather than obtaining authority from recovery.
+
+The assessment rejects gaps, conflicting outcomes, duplicate intents, retries
+after success/unknown/block, backward attempt timestamps, and downstream
+mutations without predecessor success. Original successful outcomes without a
+prepared row remain readable for historical imports. Confirmed feedback recovery
+now applies these checks before acquiring a read-only provider binding. The
+archive codec remains unchanged; these stricter checks govern recovery use.
+
+The next dispatch step must commit its initial/retry intent under current source,
+annual and authorization admission before network I/O. This assessment is a
+read-only position, not that admission; it grants no provider operation.
+
+
+### Durable source operation intent
+
+`Rf1086SourceOperationPreparation` reports the persisted journal event and whether
+this transaction created it. The private underlying `prepare_source_operation_v1`
+serializes company/year and submission scope, checks original claim/manifest,
+operation order, payload hashes and current owner/MFA, Authority, Billing,
+permission, overrides and technical release gates. Before the main POST it also
+requires current annual evidence and the exact approved review. Continuation
+retains the originally approved bytes even if today's annual facts change.
+
+Initial and retry intents commit before network I/O. A retry retains the original
+key and increments the persisted attempt exactly once. A competing request sees
+the existing intent and receives no new dispatch grant. Prepared, unknown,
+blocked and exhausted attempts never grant an automatic retry. The generic
+legacy mutation commands reject full-year operations, including trimmed names.
+
+`finish_source_operation_v1` records only an exact prepared mutation's outcome.
+Exact replay is idempotent; contradictory outcomes and stale intent IDs fail.
+Recording a completed request does not require the earlier MFA or entitlement
+to remain fresh. Rollback suspends preparation while preserving this outcome
+recording and historical recovery. No new tables or archive codecs are added.
+The application component consumes these intents through the authenticated full-year send route.
+
+
+`Rf1086SourceOperationJournal` binds each admitted intent and exact outcome.
+`execute_rf1086_source_dispatch` consumes its `newly_prepared` result explicitly;
+an old retryable failure never becomes a send grant. The application
+source-dispatch component of `shareholder-register-filing` verifies retained archive/claim
+identity, acquires and discards the provider binding outside database admission,
+commits current annual evidence for the main document, and preserves approved
+bytes during subsequent current-authority admissions. It performs no provider
+mutation while a database guard is held. A generic transport or persistence
+exception leaves an unknown outcome. The authenticated full-year route accepts only retained approval identity; production configuration and current release gates remain mandatory.
+
+Migration `20260929192057_rf1086_dispatch_binding_identity.sql` binds the exact
+credential request/external identity to each intent under Authority/Billing locks.
+It closes the older prepare RPC; rollback also keeps that bypass closed while
+preserving in-flight completion. Tests cover simulated dispatch/crash behavior,
+exact replay, and database binding changes without actual provider credentials.
+
+`inspect_rf1086_source_dispatch_position` returns `Rf1086SourceDispatchPosition` from validated retained approval/claim/archive evidence. Unclaimed, current-admission, retry, uncertainty, blocked, fresh-approval and confirmed states never grant a provider operation. The read requires original actor identity and does not acquire credentials, claim a filing, or reread current originals.
+
+### Override archive transport overlap
+
+`archive_source` captures override history in the domain snapshot. Codec v4 preserves those records; `None` remains uncaptured history, distinct from an empty tuple. The additive `/archive-source/production-v4` and `/archive-source/production-stream-v4` routes require captured history. Existing production routes retain their original response schema and codecs v1–v3 by intentionally omitting overrides in a separate transport projection; they do not alter the authoritative snapshot. This preserves old web and offline consumers during either deployment order (ADR0012).
+
+
+### Recovering committed capture receipts
+
+`Rf1086YearSourcePersistence.read_year_source_capture_receipt` and
+`Rf1086RegisterObservationPersistence.read_register_observation_capture_receipt`
+are read queries over the original capture command and `IdempotencyKey`.
+The adapter uses a bounded READ ONLY / REPEATABLE READ transaction, current
+accepted-owner authorization through the Company Access public predicate, and
+exact company/year/verified actor/key selection. The retained codec/row binding
+and canonical original request must match. Superseded receipts remain observable;
+a mismatched request conflicts. Other actors' keys are never disclosed, including
+to another current owner; unauthorized company scope is concealed as not found.
+
+Lookup does not require current AS identity, Documents originals, Governance
+receipts, or fresh capture eligibility. It cannot create a new record, change a
+head, refresh authorization for a filing, or call a provider. API queries reuse
+strict capture DTOs in POST bodies so sensitive original facts and keys are not
+placed in URLs. Responses are no-store and tagged `recorded` with the original
+receipt or `not_observed` with null. A pending/rolled-back/unobserved transaction
+cannot be distinguished from absence by this query. Errors/unavailability are
+not converted to `not_observed`; neither outcome authorizes a new key or retry.
+
+Regression coverage: `apps/backend/tests/test_rf1086_capture_receipt_lookup.py`,
+plus the existing year-source and observation database suites for current-owner,
+replay/conflict, historical identity, commit/rollback and concurrent visibility.
+
+### Register observation withdrawal foundation
+
+`WithdrawRf1086RegisterObservation` names the exact company/year and observation
+ID/version/fact hash, verified user actor and reason. The reason remains exact:
+nonblank, at most 1000 Unicode characters, valid UTF-8 without PostgreSQL's
+unsupported NUL. It is neither trimmed nor Unicode-normalized. The separate
+`Rf1086RegisterObservationWithdrawalId` is a canonical server UUID.
+`Rf1086RegisterObservationWithdrawal` retains the command, server withdrawal
+instant, request digest and receipt digest. All values are immutable.
+
+`prepare_rf1086_register_observation_withdrawal` validates the retained target's
+integrity and exact identity, and refuses withdrawal before its capture instant.
+The withdrawing user may differ from the historical capturing user. Aware times
+normalize to UTC with all six PostgreSQL microsecond digits in canonical bytes.
+`rf1086_register_observation_withdrawal_request_digest` binds every command field;
+`assert_rf1086_register_observation_withdrawal_integrity` also binds the receipt
+ID and time. `assert_rf1086_register_observation_withdrawal_replay` requires the
+exact original command, including actor and reason, without current evidence.
+It does not select or authorize an idempotency key. These functions report closed
+`Rf1086RegisterObservationWithdrawalError` codes without reason/identity values.
+
+`derive_rf1086_register_observation_lifecycle` validates a supplied scoped history
+and returns `Rf1086RegisterObservationLifecycle` values sorted by observation ID.
+It derives supersession before withdrawal: each retained observation is active,
+superseded or withdrawn. A withdrawn head never reactivates its ancestors.
+Duplicate IDs/withdrawals, forks, orphan links, invalid version/hash/scope/time
+chains, and withdrawal of an ancestor are inconsistent history. A new independent
+root remains possible without changing the terminal lineage.
+
+These calculations establish neither completeness nor live authorization.
+An omitted successor or withdrawal cannot be detected from the remaining rows.
+A future repository must use a complete locked snapshot, server-derived current
+accepted-owner authority, original actor/key replay and a current terminal head
+with no prior withdrawal. Exact replay must be selected before fresh head checks.
+No caller currentness/owner flags are accepted. A prepared receipt alone is not
+proof of persistence or permission to withdraw, correct, approve or submit.
+
+`serialize_rf1086_register_observation_withdrawal` and
+`parse_rf1086_register_observation_withdrawal` implement the dedicated closed
+`rf1086-register-observation-withdrawal-v1` codec. Canonical UTF-8 JSON, exact keys
+and primitive types, duplicate rejection, bounded decoding, UTC microsecond
+formatting and both digests are verified. Existing observation and archive
+codecs v1–v4 remain unchanged. This foundation has no persistence port changes,
+migrations, HTTP/web behavior, archive coverage or command activation; those
+require the separately owned admission, Governance and archive work in the plan.
+
+Pure regression coverage: `apps/backend/tests/test_rf1086_register_observation_withdrawal.py`.
+
+### Staged withdrawal storage: no runtime command grant
+
+`supabase/migrations/20261009213032_rf1086_observation_withdrawal_foundation.sql`
+adds RF-owned `shareholder_register_filing.register_observation_withdrawals`.
+FORCE RLS permits accepted-member history and verified-owner insertion through
+the store owner. Runtime roles receive no direct mutation rights. Each immutable
+row binds exact observation ID/company/year/version/hash, original actor/key,
+exact reason, server UUID/time and both canonical commitments. Unique target and
+actor/key constraints prevent duplicate terminal evidence; a composite foreign
+key prevents changing or deleting the retained target.
+
+The private SQL append contract accepts only typed scope/target/reason/key.
+It accepts no receipt, caller hash, actor, ID, time or currentness flag. The
+database constructs fixed-shape canonical v1 JSON and both digests itself using
+UTF-8 SHA-256; table constraints independently rebuild the receipt from its row.
+Text escaping uses PostgreSQL `to_json(text)`, not generic `jsonb::text` output.
+Typed SQL arguments already reflect PostgreSQL input normalization: lexical UUID
+spelling and integer coercion must remain strict in a future HTTP DTO. PostgreSQL
+UTF-8/text excludes invalid UTF-8/NUL. Reason whitespace validation uses the
+Python whitespace set, preserves the original text and caps 1000 characters.
+SQL/Python canonical parity remains a required real-database test, not a claim
+established by static inspection.
+
+Append rechecks current accepted owner around the company lock, then acquires
+the established RF company/year lock. Exact actor/key replay precedes fresh
+head validation and returns original bytes. A fresh withdrawal requires the
+exact unsuperseded, unwithdrawn target and cannot predate capture. Commercial or
+current company-year admission is not required to withdraw historical evidence.
+
+Unconditional backstops protect only the existing correction append and public
+exact-current-observation assertion. They retain old function OIDs/signatures/
+ACLs and use an RF-private active-observation predicate. Historical reads and
+capture-receipt recovery retain their existing behavior. Rollback refuses
+retained withdrawal rows and otherwise leaves inert storage and guards intact;
+it never deletes evidence or removes invalidation checks. The successor registry
+reapplies this layer after historical routines are replayed.
+
+The narrow active-observation predicate requires READ COMMITTED. Old correction
+entry points cannot use a pre-withdrawal REPEATABLE READ snapshot after waiting
+for the company lock; the lock alone would not refresh that snapshot. Historical
+reads retain their existing transaction isolation choices.
+
+This staged append has **no execute grant** for PUBLIC, browser, service, RF or
+Governance runtime executors. There is no adapter, public persistence-port method,
+HTTP route or activation. The database tests grant only a unique disposable
+NOLOGIN/NOBYPASSRLS fixture role and remove that role and its exact fixture rows.
+Source/preview/approval/claim/new-intent SQL guards, Governance final SQL admission
+and repair, archive completion coverage and truthful old/new list behavior remain
+incomplete. Those dependencies must be resolved before runtime withdrawal is
+available. The existing adapter cannot yet claim withdrawal-aware current reads.
+
+Database coverage: `apps/backend/tests/test_rf1086_register_observation_withdrawal_database.py`
+in the mandatory Authority lane. Local collection/static checks do not establish
+a database, RLS, concurrency or rollback pass.
+
+<!-- architecture-inventory
+{"ownedTables":["shareholder_register_filing.register_observation_withdrawals"]}
+-->
+
+### Withdrawal archive format and source evidence
+
+`Rf1086ArchiveSnapshot.withdrawal_capture_records` retains each canonical withdrawal
+receipt with its exact original actor-scoped recovery key. `None` means unknown
+coverage; an empty tuple means captured-empty. Codec
+`rf1086-production-archive-v5` requires source, override and withdrawal histories.
+The owner validates receipt bytes and digests, capture identity/key uniqueness,
+target binding and the complete supplied observation lineage. Withdrawal leaves
+historical source, approval, journal and original-document facts intact; it cannot
+reactivate a superseded ancestor. Integrity validation cannot prove that a producer
+enumerated every stored row or establish current authorization.
+
+Archive codecs v1–v4 omit the new field, reject injected withdrawal coverage and
+parse it as unknown. Their bytes remain frozen. Existing RF JSON and stream HTTP
+routes deliberately project their original versions; no v5 HTTP producer or
+database reader is exposed by this foundation. Those old projections cannot
+satisfy a future complete-withdrawal export requirement. The archive-owner
+completion fence and separate old-list fencing remain activation dependencies.
+
+`rf1086-source-v3` binds captured withdrawal records and an independently supplied
+`register_observation_withdrawals` family count. Missing coverage, count mismatch
+or disagreement between archive/workspace override facts prevents complete
+history. Existing source-evidence v1/v2 digests and validation remain unchanged.
+The current adapter still returns unknown withdrawal coverage; a future complete
+producer must read all records and counts within its authorized database snapshot.
+
+The offline verifier accepts v5 JSON/NDJSON and offers
+`--require-register-withdrawal-history`. It reports included/count separately;
+successful transfer or codec verification is neither a database restore nor a
+Company Archive completion receipt. Regression coverage:
+`apps/backend/tests/test_rf1086_withdrawal_archive.py`.
+
+### Downstream observation admission guards (staged)
+
+`20261009215302_rf1086_withdrawal_source_admission_guards.sql` adds private,
+ungranted reference guards for the frozen year-source codec. Under held company/
+year locks and READ COMMITTED, they bind each governed case event to its indexed
+evidence and exact receipt, then require each referenced observation to remain
+active and to predate source capture. Missing collections, duplicate JSON keys,
+invalid reference pairs and omitted event bindings fail closed. This validates
+stored reference structure, not complete foreign Governance enumeration or capital
+economics.
+
+The old source/preview/bridge/approval v1-v2/claim v1-v2 functions check before a
+fresh mutation, after their existing replay branches. The guarded private intent
+v1, called by public v2, covers every new main/child/confirmation/retry intent.
+Old revoked ACLs stay revoked; historical recovery and already-admitted outcome
+recording retain their behavior. Rollback cannot remove these guards. Coverage:
+`apps/backend/tests/test_rf1086_withdrawal_admission_database.py`; collected tests
+are not a real database/RLS/race pass.
+
+The canonical database archive now enumerates withdrawal capture records and an
+independent family count in its one REPEATABLE READ snapshot. Existing HTTP
+projections preserve their old codecs; no v5 route or withdrawal activation is
+provided. Shared approval-context reads remain unchanged to preserve existing
+approval replay; separate truthful current-readiness/list behavior, Governance
+final admission/repair and the archive-owner completion fence remain prerequisites.
+
+### Withdrawal archive-generation tracking (staged)
+
+`20261009220727_rf1086_withdrawal_archive_generation.sql` registers the RF-owned
+withdrawal table with the existing public archive-generation protocol. Its distinct
+AFTER row trigger requires the existing BEFORE company guard; exact replay and
+no-op inserts leave generations stable. First installation invalidates each
+company/year with retained withdrawals, preserving source rows, historical receipts,
+RLS, role memberships and runtime grants. Application rollback retains tracking.
+Tests cover generation changes, migration replay, rollback and both company-lock
+orders with export completion in
+`apps/backend/tests/test_rf1086_withdrawal_archive_generation_database.py`.
+
+This makes a pre-withdrawal receipt stale and, under READ COMMITTED, blocks an
+in-flight older export from completing after withdrawal. An old-format export
+begun **after** withdrawal can still complete under the unchanged public API.
+That API also lacks a READ COMMITTED requirement: an older REPEATABLE READ
+snapshot can still complete with a generation already stale to later readers.
+The separate Archive-owner completion fence must address both limits. No
+withdrawal command is activated here.
+
+`Rf1086RegisterObservationLifecycleSnapshot` pairs the complete immutable
+observation history with its withdrawal receipts in one authorized read snapshot.
+The additive lifecycle query derives current, superseded and withdrawn states;
+it does not grant withdrawal or establish later mutation authority.
+
+### Staged public SQL evidence assertions
+
+`20261009222053_rf1086_observation_evidence_assertions.sql` adds two RF-owned
+SECURITY DEFINER contracts with an empty search path and no runtime EXECUTE grant,
+including to the Governance store owner. Existing v1 signatures and ACLs stay
+unchanged; rollback retains the staged contracts.
+
+- `assert_current_register_observation_v2(id, company, year, revision, fact_sha,
+  not_after, subject)` requires the verified subject, accepted owner, READ COMMITTED
+  and company lock through v1, then binds capture time to a finite, nonfuture cutoff.
+- `read_retained_register_observation_withdrawal_v1(id, company, year, observation,
+  revision, fact_sha, withdrawal_sha, not_after, subject)` returns the original
+  canonical receipt only after current-owner authorization, exact identity/digest
+  checks and `capture <= withdrawal <= cutoff`. It does not require the historical
+  target to remain active or its original actor to be the current owner. The recovery
+  key is not returned.
+
+These are same-transaction identity/time assertions, not original-byte verification,
+economic equivalence, MFA recency or business admission. An owning caller must
+persist the exact immutable event cutoff it supplies. A statement-start cutoff
+preserves existing event semantics but conservatively rejects captures newer than
+that start after a company-lock wait; RF cannot prove timestamp provenance. Authorized committed replay must
+precede mutable evidence checks in that caller. Any Governance integration/grant
+requires its own bounded owner turn. Restricted DB tests live in
+`apps/backend/tests/test_rf1086_observation_evidence_assertions_database.py`.
+
+The subsequent bounded Governance migration `20261009223340` grants only RF schema
+USAGE and current-v2 EXECUTE to the Governance store owner. The retained withdrawal
+reader stays ungranted. Prerequisite tests assert closed predecessor privileges,
+then reapply that exact successor and assert the narrow final-chain grant.
+
+### Closed current-observation evidence reader
+
+`20261009231107_rf1086_current_observation_evidence_reader.sql` adds
+`read_current_register_observation_evidence_v1(id uuid, company uuid, year integer,
+revision integer, fact_sha text, not_after timestamptz, subject text) ->
+(snapshot_text text, confirmed_at timestamptz)`. It delegates to current-v2 first,
+retaining current-owner, verified-subject, READ COMMITTED, company-lock and cutoff
+rules. It takes no RF year lock. All consumer EXECUTE grants remain closed;
+private validation helpers are likewise ungranted, including after reinstallation.
+
+The reader validates the selected row's complete closed typed snapshot, register
+state/holder arithmetic and transitions, three document roles, consistent repeated
+document bindings, chronology and local correction fields. It reconstructs the
+unchanged v1 fact and request digest payloads and checks every retained identity,
+actor, capture time, predecessor, reason and digest field. A matching stored hash
+string alone is insufficient. Success returns the exact retained text and capture
+time; it writes no rows, original evidence, receipts or archive generations.
+
+This additive contract accepts canonical text emitted by the existing Python v1
+serializer: exact sorted compact UTF-8 JSON and expected wrappers/field types.
+It rejects duplicate keys, scientific/fractional bare integer tokens, reordered
+keys, whitespace alternatives and noncanonical scalar encodings before trusting
+JSONB. Bare positive integers have a fixed 4,300-digit compatibility ceiling,
+matching the unchanged Python 3.12 codec's default conversion limit. This ceiling
+does not apply to Decimal wrapper strings. Historical parsers and writers still
+accept their previous input language;
+no stored bytes, old hashes or old route/schema are rewritten. Decimal values use
+the old six-place domain rule and trailing-zero-free digest strings. Capture time
+normalizes to UTC for its hash; document timestamp offsets remain in the hash,
+including second/fractional-second offsets. Effective time remains civil seconds.
+
+Scope is one current selected row, not complete ancestor history, authorization
+of a later action, economic agreement with Governance or original document bytes.
+Document fields commit the actual source year, which may differ from the RF year;
+a null year retains the old pure codec meaning and does not establish a usable
+Documents receipt. A future consumer must enumerate every distinct referenced
+document and verify it through the Documents owner's public contract. This reader
+does not prove independent provenance, original capture-time byte verification,
+signedness or the truth of owner-reviewed register contents. No transport key is
+returned. Future consumer grants and final admission remain separate owner work;
+rollback retains this closed additive contract.
+
+Frozen synthetic v1 bytes and both hashes live in
+`apps/backend/tests/fixtures/rf1086_observation_evidence_reader_v1.json`, with
+additional typed vectors in `test_rf1086_observation_evidence_reader_codec.py`.
+Restricted real-database cases are in
+`test_rf1086_register_observation_evidence_reader_database.py`; collection and
+isolated native codec probes are not full Supabase/RLS/race execution evidence.
+
+### Pure full-year source v2 foundation
+
+The additive `Rf1086YearSourceSnapshotV2` and explicit `*_year_source_*_v2`
+functions bind unchanged business commands to effective register evidence after a
+Governance evidence amendment. They have no activated workflow, HTTP, preview, readiness, production or Archive
+consumer. The closed persistence foundation below stages v2 validation while the
+existing executable SQL writer remains v1-only. Neither foundation activates
+source capture.
+
+`Rf1086YearGovernanceReceiptV2` retains the exact old ten-field original receipt
+and adds the complete effective RF observation. The separate RF-local projection
+retains all eligible non-correction Governance original chains for the company,
+sorted by event ID, including other years. Each chain binds original finalization,
+anchor, recording time and RF fact, every linear amendment head/previous head,
+withdrawal identity/digest and target/replacement fact, count, chain digest, final
+head and effective fact. The cutoff is the original recording time for zero
+amendments or the last amendment time otherwise. New times are UTC; effective
+observation capture may equal the cutoff, while both must precede source capture.
+Frozen observation and v1 predecessor timestamp encodings remain unchanged and
+are compared by instant. Source revision remains a history ordinal, independent
+of codec version: first v2 may be revision 1, and an explicit v1-to-v2 correction
+requires an exact predecessor, new identity, reason, later time and ordinal + 1.
+
+The source and freshness commit three distinct Governance digests: unchanged old
+year enumeration, complete company-wide chain manifest, and combined projection.
+RF recomputes the public compact manifest and combined digest and checks complete
+supplied target-year chain/capital-receipt and receipt/case-event bijections. It
+validates effective RF observation integrity, identity, states, date and all
+original-document bindings. Cash issue and loss-covering reduction are the
+current capital boundary; v2 does not invent Governance support for nominal
+increases. Dividends retain their unchanged original receipt without an RF chain.
+Off-year chains remain committed without creating off-year reporting events.
+
+These are internal consistency checks, not proof that a foreign owner supplied
+complete history, current status or authentic hashes. Full Governance receipt,
+anchor and chain-enumeration digests remain owner commitments; RF does not
+reimplement their private receipt codec or infer every corrected/reversed/
+conflicting or cross-year reporting rule. The future workflow must reject those
+owner statuses, verify actual original bytes and current accepted ownership, and
+reread the public owner projection under its held company guard. A recomputed
+self-consistent omitted foreign history cannot be detected from compact values
+alone. Integrity also cannot establish the existence of a correction predecessor;
+preparation validates the supplied typed predecessor separately.
+
+The unchanged v1 business validator is reused through a discarded correction-free
+validation projection only. That temporary value is never stored or claimed as a
+historical predecessor. Old public fields, command/request identity and v1 hashes,
+codec registries and behavior are untouched. `year_source_storage_v2.py` owns an
+independent closed record allowlist and explicit `rf1086-year-source-v2` envelope;
+v1 and v2 roots/nested source records cannot substitute for one another. Duplicate
+JSON keys, unknown fields/types and invalid primitive or linkage values fail
+closed. Tests and pre-edit seven-case v1 byte/hash goldens live in
+`test_rf1086_year_source_v2.py`, `test_rf1086_year_source_storage_v2.py` and
+`fixtures/rf1086_year_source_v1_pre_v2.json`. Pure success does not prove database
+admission, currentness, complete historical recovery or external execution.
+
+The additive value exports are `Rf1086YearRegisterFactV2`,
+`Rf1086YearGovernanceHeadV2`, `Rf1086YearGovernanceLinkV2`,
+`Rf1086YearGovernanceChainV2`, `Rf1086YearGovernanceProjectionV2`,
+`Rf1086YearGovernanceReceiptV2`, `Rf1086VerifiedYearSourceContextV2`,
+`Rf1086YearSourceFreshnessV2` and `Rf1086YearSourceSnapshotV2`. The explicit entry
+points are `prepare_rf1086_year_source_v2`, `assert_rf1086_year_source_fresh_v2`,
+`assert_rf1086_year_source_integrity_v2`, `assert_rf1086_year_source_replay_v2`,
+`serialize_rf1086_year_source_v2` and `parse_rf1086_year_source_v2`. Freshness checks
+compare the entire stored compact projection as well as its named digests, because
+opaque owner digest labels alone cannot authenticate different supplied links.
+
+
+### Closed year-source v2 SQL foundation
+
+`20261010013307_rf1086_closed_year_source_v2.sql` adds
+`append_year_source_v2(id uuid, company uuid, year integer, version integer,
+source_sha text, request_sha text, key text, previous uuid, previous_sha text,
+reason text, snapshot text, confirmed_at timestamptz) RETURNS void`. Only its
+store owner can execute it; no runtime role, workflow, HTTP route or adapter
+selects this writer. The signature and insertion/lock/predecessor/duplicate
+ordering follow v1. Direct append is not a replay API: exact committed recovery
+continues through the existing actor/company/year/key lookup, before fresh work.
+A repeated raw append may fail the predecessor gate before the duplicate-key
+check. Source revision is independent of storage codec version.
+
+The thirteen new routines form a closed RF-owned implementation: `append_year_source_v2`,
+`assert_year_source_v2_internal_v1`, `receive_year_source_governance_proof_v1`,
+`invalidate_year_source_governance_proofs_v1` and
+`year_source_v2_{require,json,sha,shape,decode,validate,row,compact,proof_catalog}_internal_v1`.
+Their decoder derives field types from
+an independent closed registry, rejects noncanonical raw JSON, duplicate/extra
+keys, exponent/fractional bare integers and integers exceeding the released
+Python 4,300-digit ceiling. It preserves embedded observation offsets/decimal
+wrapper values while recomputing source, request, case and freshness hashes with
+unchanged source numeric canonical semantics. Fresh rows bind authenticated USER
+kind/subject, scope, every argument, predecessor and strictly later capture time.
+It checks local chain linkage/times, manifest, receipt/event bijection and
+observation/document bindings. These checks do not duplicate full RF case
+readiness or economic policy; final pure preparation remains required.
+
+Governance produces an explicit RF-owned compact proof through
+`receive_year_source_governance_proof_v1(company uuid, year integer, source_sha text,
+proof jsonb, subject text) RETURNS void`. Its JSON object has exactly `codec`
+(`rf1086-year-governance-proof-v1`), plain UUID `company_id`, integer `income_year`,
+`chain_count`, `chain_enumeration_sha256` and `chains`. Chains use the decoded
+RF v2 chain value shape, including boxed company/year/observation identities,
+complete links, original anchor/finalization, head, effective fact and cutoff.
+Only Governance's store owner receives EXECUTE; no caller-supplied GUC/JSON can
+mint authority. RF never queries/imports Governance. The caller must already hold
+company then RF-year guards under READ COMMITTED; subject and current accepted
+owner are checked. The producer and writer remain closed to runtime roles.
+
+The receiver creates `pg_temp.rf1086_year_source_governance_proofs` as the RF store
+owner, `ON COMMIT DROP`, with only six NOT NULL builtin columns: transaction_id
+(xid8), actor_id/company_id (uuid), income_year (integer), source_sha256 (text)
+and proof (jsonb). Each receive/use/invalidation checks the fixed session-temp
+namespace, ordinary temporary relation, exact RF owner/columns/types/nullability,
+owner-only table/column ACLs and absence of defaults/generated/identity fields,
+constraints, indexes, rules, triggers, inheritance, partitions and RLS. It never
+adopts or alters a caller-created substitute. Missing RF-owner database TEMP
+privilege fails closed; no database privilege is added. Every use binds the full
+transaction ID, verified current actor, company/year, source SHA and entire proof;
+cleanup is not the only barrier to cross-transaction reuse. Multiple source proofs
+may coexist and be reused by nested fresh hooks in the same transaction.
+
+Governance's owned mutation triggers call only
+`invalidate_year_source_governance_proofs_v1(company uuid) RETURNS void`; they
+clear all proofs for the company, including other years/actors/source hashes.
+NULL is reserved for its TRUNCATE invalidation. Successful same-transaction
+mutation therefore requires proof reacquisition; rolling back the mutation also
+rolls back its invalidation. Company guards serialize other transactions.
+RF independently rereads each current effective observation and compares exact
+retained wrapper bytes on every use. No foreign private table/helper is queried.
+
+The proof authenticates the company-wide chain manifest and every compact link;
+Governance's original reporting-year selection/status/hash is not in its SQL
+projection. The old-year label remains syntactically/hash-bound, not independently
+authenticated here. The later same-connection public Python producer must validate
+it and the combined projection before activation. These comparisons do not prove
+original object bytes, historical signedness or current economic policy.
+
+Only the raw-source assertion gains an exact-codec dispatch. Its v1 body and all
+eight hook locations remain unchanged, including replay-before-fresh-admission
+ordering. The existing executable `append_year_source_v1` remains v1-only; its
+sole added rule rejects a fresh v1 insert after the current head is v2 with
+`rf1086_source_codec_downgrade`. No new Governance dependency is applied to an
+unchanged v1 scope. Malformed storage/argument bindings fail with
+`rf1086_source_storage_invalid`; changed current RF reference with
+`rf1086_source_register_observation_stale`; changed owner chain commitment with
+`rf1086_source_governance_evidence_changed`. Unknown dependency failures remain
+errors, not fabricated empty history.
+
+RF reinstallation closes non-owner grants on all thirteen new routines; the
+ordered Governance proof suffix restores only the two owner command grants and
+its four invalidation triggers. Retentive rollbacks keep rows/heads, definitions,
+dispatch, downgrade fence, triggers and installed owner proof grants while closing
+new runtime callers. They are not old-binary rollbacks. Predecessor fixtures
+restore both ordered suffixes. Presence probes use exact catalog OID/name/signature
+joins without foreign schema privileges. Empty-only disposable Governance
+rehearsal recognizes the exact additional four routines/triggers; populated
+amendment history still refuses teardown.
+
+Writer selection remains blocked on dual-read runtime/preview/approval/intake/
+archive support, same-connection business validation, byte preflight and verified
+old-producer drain. The amended-before-first-v2 case remains a separate activation
+gate: it must not silently fall back to a v1 source from withdrawn original
+facts. No Archive-facade, cancellation or external activation policy changes.
+`test_rf1086_year_source_v2_database.py` uses released owner writers and a unique
+fixture-only append and producer grants. Collection is not full database execution. Isolated
+native codec/migration probes label their public-owner stubs explicitly.
+
+
+### Pure v2 preview and readiness consumers (2026-10-10)
+
+The existing preview command/result accept an exact v2 source alongside v1.
+V2 checks command company/year against the source, then uses the unchanged
+renderer, rendering profile, preview storage codec and original case. No temporary
+v1 source or invented predecessor is produced. Existing v1 input behavior and
+preview bytes remain unchanged; source revision remains independent of codec.
+
+`Rf1086SourceReadinessEvidenceV2` and `Rf1086SourceReadinessProofV2` bind v2
+freshness, exact source/case and preview identities, serialized preview SHA,
+assessment and explicit omitted release families. Their public builder/assertion
+are `build_rf1086_source_readiness_v2` and
+`assert_rf1086_source_readiness_matches_v2`. `Rf1086AnnualReadinessProofV2` adds
+the unchanged `Rf1086AnnualReadinessInputs`, assessed by one private policy shared
+with v1. Validation/error precedence, issue order, warnings and accepted-warning
+rules remain unchanged. Its public builder/assertion use the corresponding
+`build_rf1086_annual_readiness_v2` and
+`assert_rf1086_annual_readiness_matches_v2` names. New proof assertions validate
+exact nested public record/scalar/tuple shapes and declared mappings before
+comparing unchanged value-only canonical hashes; equal hashes alone do not prove
+record types or distinguish integers from equivalent floats.
+
+`serialize_rf1086_annual_readiness_v2` and
+`parse_rf1086_annual_readiness_v2` use the independent, eleven-record
+`rf1086-annual-readiness-v2` codec. It accepts only the required proof, evidence,
+input, issue, freshness and identity records; no source/observation/actor records,
+datetime/decimal wrappers or old readiness tags. Exact canonical UTF-8 JSON,
+closed fields, duplicate-key rejection and source-aware assessment validation
+prevent cross-codec substitution. Its private versioned binding uses
+`rf1086-annual-readiness-binding-v2`, exact proof text/SHA and proof SHA; a blocked
+proof is retained by the codec but cannot pass that readiness binding.
+
+This is pure support only. Runtime source admission, fresh preview persistence,
+source approval, SQL writer selection, HTTP and Archive consumers remain on their
+existing paths; old approval rejects a v2 source even with a valid v2 annual
+proof. No current owner, live source/head, complete foreign enumeration, document
+bytes, statutory business eligibility or filing permission is proven here.
+Nominal-capital-increase Governance producer support is not added. All old source,
+annual and archive registries and hashes remain unchanged. New tests are
+`test_rf1086_source_readiness_v2.py` and `test_rf1086_annual_readiness_v2.py`,
+automatically included in the existing backend non-database lane; existing pure
+preview tests cover the additive format while the runtime workflow fence remains.
+
+
+### Pure approval v3 for v2 evidence (2026-10-10)
+
+`Rf1086SourceApprovalManifestBasisV3` requires a v2 source and v2 annual proof.
+The additive builder/assertion/serializer use the
+`build_rf1086_source_approval_manifest_v3`,
+`assert_rf1086_source_approval_manifest_matches_v3` and
+`serialize_rf1086_source_approval_manifest_v3` public functions. The manifest
+schema is `production-source-approval-v3`; `source.codec` is explicitly
+`rf1086-year-source-v2`, independent of the source correction ordinal. Separate
+Governance original-year, chain-enumeration and combined-projection hashes are
+bound alongside source/case, company identity, Documents and receipt hashes.
+The mandatory annual binding is `rf1086-annual-readiness-binding-v2` with exact
+canonical proof text and both hashes. Required warnings must be acknowledged
+exactly; accepted warnings need no extra acknowledgement.
+
+Document ordering, UTF-8 shareholder identity, derived operation keys, renderer,
+profile and adapter version remain unchanged. The submitted-approval predecessor
+is explicit and preserves its exact reason; a source correction does not invent
+one. A small private helper shares only canonical encoding, document projection
+and predecessor formatting with the frozen v1/v2 builder. Legacy validation order,
+errors and canonical bytes remain the compatibility contract.
+
+The new boundary checks exact basis/actor/preview/predecessor records and strict
+annual proof shape, while delegating source economics and integrity to the source
+owner's existing v2 contract. The source-aware assertion rebuilds every manifest
+field and rendered byte; serialization verifies v3 codec/binding and byte/hash
+integrity but cannot establish live evidence or permission. Claim, preparation,
+SQL admission, dispatch, application, HTTP and runtime Archive consumers remain closed to
+v3. No owner/MFA, entitlement, source/head currentness, complete foreign history,
+original document bytes or correction eligibility is proven by this pure stage.
+`test_rf1086_source_production_v3.py` owns its additive unit coverage.
+
+### Private retained approval validation foundation (2026-10-10)
+
+`retained_source_approval` reconstructs complete approval-v1/v2/v3 identity from
+the exact saved preview, typed source and matching annual proof without invoking
+the current renderer or fresh preview/readiness/approval builders. A shared
+private composition step preserves the existing fresh builders' validation order,
+errors and bytes. The retained boundary checks exact record/scalar shapes while
+leaving source economic numeric representations to the source owner's integrity
+contract. Invalid retained inputs use `basis_unavailable`; a mismatched approved
+result uses `payload_changed`.
+
+`retained_readiness` binds the saved preview to source/case/scope and its canonical
+preview-envelope commitment. When original payload text is supplied, its exact
+hash and parsed identity must also match. Absent text proves only that canonical
+saved-preview commitment, not uncaptured raw bytes or complete history. Annual
+v1/v2 decoding uses their existing separate closed codecs, reconstructs source
+readiness from the retained preview, and reapplies the existing versioned annual
+assessment to captured inputs. Exact nested proof, warnings, exclusions and
+digests must agree; a rehashed assessment alone is insufficient. Future policy
+versions must preserve the v1/v2 assessment for these historical codecs.
+
+These private functions establish internal commitment consistency, not authentic
+origin, currentness, complete foreign enumeration, document bytes or permission.
+No old parser/serializer, archive registry, claim, admission, application or SQL
+path is changed to call them. The explicit retained v1–v6 reader below is an
+additive consumer; it does not change the old APIs' validation semantics.
+`test_rf1086_retained_source_approval.py` checks positive/fresh parity;
+`test_rf1086_retained_source_approval_adversarial.py` independently checks altered
+commitments and unavailable current renderers/builders.
+
+
+### Private mixed retained source history (2026-10-10)
+
+`archive_history_v6.validate` accepts captured year-source v1/v2 history through
+explicit codec dispatch on the original snapshot text. Capture/request identity,
+source ordinals, current retained head and correction links must agree; a v1 to
+v2 correction is explicit, and v2 to v1 downgrade is rejected. The old validator
+shares unchanged capture, observation/withdrawal and preview/bridge checks;
+existing public archive parsers, serializers and v1–v5 registries remain closed.
+The two archive source annotations admit either source record without adding
+fields or changing canonical hashes.
+
+Every v2 source proves its own scope and complete compact Governance projection
+integrity before local dereferencing. For the archive year, original,
+intermediate and effective RF references bind exact retained ID/version/hash;
+the effective body and each withdrawal receipt, target and chronology must also
+agree. Governance replacement observations may be independent version-one roots.
+Historical withdrawn evidence remains readable; this does not establish fresh
+head eligibility. Off-year chains remain typed and hash-bound owner commitments,
+without claiming that this year archive contains their observations or originals.
+The final effective body is checked by the RF source contract. Earlier tuple
+commitments do not independently authenticate their correspondence to original
+Governance economics/date; this layer neither duplicates that foreign policy nor
+requires identical effective instants across independent replacement roots.
+
+Unapproved and blocked previews keep their exact captured bytes, including
+accepted noncanonical JSON; validation never renders. Approved canonical preview
+commitments and full retained manifests belong to the separate retained-lineage
+layer. Unknown history/withdrawal coverage remains `None`; absent referenced
+same-year withdrawal evidence fails closed. These checks establish internal
+consistency, not authentic origin, omitted-row completeness, current authority or
+external original bytes. No public reader, workflow, SQL, writer, Archive facade,
+or provider is activated by this private stage.
+`test_rf1086_archive_history_v6.py` owns its additive unit coverage;
+`test_rf1086_archive_history_v6_adversarial.py` independently exercises lineage,
+capture and referenced-body disagreements. V6 compares the owner codec's canonical
+source/observation bodies as well as semantic equality: equal datetime instants
+or Decimal values cannot conceal different retained representations. Consistent
+original offsets/scales and noncanonical raw envelope formatting remain valid;
+the frozen legacy validator is unchanged.
+
+
+### Explicit retained archive v1–v6 reader and v6 serializer (2026-10-10)
+
+`parse_rf1086_retained_archive` accepts original v1–v5 envelopes without requiring
+rewrapping, plus canonical `rf1086-production-archive-v6`. It validates saved
+preview, source, annual proof, full manifest, review, claim, submission ancestry,
+journal and feedback correspondence without the current renderer or fresh
+preview/readiness/approval builders. Annual v1/v2 assessments use the preserved
+versioned policy on captured inputs. Manifest hashes alone are insufficient.
+Source-v1 pairs only with approval-v1/review-v1 or approval-v2/review-v2 with
+annual binding-v1; source-v2 pairs only with approval-v3/review-v3 and annual
+binding-v2. Review-v3 has the same closed top-level keys as review-v2, with its
+explicit version and matching binding-v2; historical actor, permission, pilot,
+request, scope, warning and bridge checks remain required.
+
+`serialize_rf1086_archive_v6` requires all three captured sections: source
+history, overrides and withdrawal captures. Empty tuples represent captured
+emptiness; `None` remains unknown and is rejected for v6 serialization. Original
+legacy reads preserve unknown sections and their original snapshot-text checksum
+semantics. A v1 artifact without raw preview history proves only its canonical
+saved-preview commitment, not exact uncaptured bytes. Unapproved/blocked history
+still accepts and preserves its valid noncanonical raw preview text; approved
+lineage separately requires the saved canonical commitment.
+
+The v6 allowlist adds exactly eight v2 source/receipt/chain records; old archive,
+source and annual registries stay unchanged. A private common archive codec
+preserves old finite float/int/Decimal distinctions, offsets, tuple order,
+feedback-original omission and unknown-section encoding. Legacy entrypoint
+signatures, validation order, error normalization and v1–v5 bytes remain unchanged.
+No generic fallback or codec downgrade is introduced. The private retained
+entrypoint selects its lineage/history validation internally; no public bypass
+flag is exposed.
+
+These are pure retained-artifact APIs. Internal typed/hash consistency cannot
+establish authentic origin, authoritative omitted-row completeness, signed
+provenance, original object-store bytes, current access/MFA or permission to file.
+Company-wide off-year Governance chains remain commitments, not a claim that this
+archive holds their off-year observations/originals. No adapter, runtime workflow,
+HTTP, SQL, writer, claim, dispatch or Archive-owner completion/eligibility/
+cancellation policy is activated. `test_rf1086_archive_storage_v6.py` covers the
+explicit reader/serializer; its pure fixtures do not establish a live producer.
+
+### Explicit retained claim and dispatch inspection (2026-10-10)
+
+`inspect_rf1086_retained_source_approval_v3` checks the saved approval's actor,
+header, canonical manifest text/hash, source-v2 codec marker and annual-binding-v2
+envelope. It returns predecessor identity without proving ancestry, source/XML
+correspondence, the annual assessment, review authorization or current admission.
+It does not fabricate a document-bearing manifest to inspect a header.
+The existing v1/v2 inspector and its live callers remain unchanged.
+
+`assess_rf1086_retained_source_dispatch` and
+`inspect_rf1086_retained_source_dispatch_position` first validate the complete
+retained archive correspondence, then apply the shared ordered journal projection
+to the original XML, document order, keys and outcomes. They never render or call
+fresh builders. Both require an exact USER `ActorId` with an exact `UserId` subject.
+Any approval-v3 or source-v2 anywhere in the input requires captured
+source history, overrides and withdrawals; omitted sections are unavailable, even
+when the selected approval is legacy. Legacy-only unknown coverage remains unknown.
+The guard belongs to these additive typed-input APIs; old archive APIs are unchanged.
+
+The existing result types and dispositions describe history and unmet admission
+requirements. Confirmed, uncertain and blocked outcomes retain precedence; a
+prepared intent without an outcome remains uncertain. Valid unstarted/retryable
+v3 history requires current/retry admission, and unclaimed v3 remains unclaimed.
+None is a committed intent or permission to send. Header integrity and coherent
+history cannot establish authentic origin, authoritative completeness, external
+original bytes, current owner/MFA or provider effects. Off-year Governance
+commitments do not imply local off-year capture coverage.
+
+The old claim/dispatch entrypoints preserve their validation/error order and
+behavior through narrow private header and journal extractions. Application,
+adapter, SQL, recovery and correction callers stay on their existing interfaces;
+fresh claims/intents still require approval-v2. Separate work must cover retained
+adapter reads, correction snapshots, confirmed recovery, final held-connection
+Governance proof and complete document-byte verification before writer activation.
+No runtime, HTTP, Archive-owner policy or provider path is activated here.
+`test_rf1086_retained_source_dispatch.py` owns pure fixtures and header/parity tests;
+`test_rf1086_retained_source_dispatch_adversarial.py` independently checks missing
+captures, forged correspondence, ordered outcomes and the no-fresh-builder rule.
+
+### Explicit retained recovery and correction projection (2026-10-10)
+
+`prepare_rf1086_retained_source_reconciliation` produces the existing read-only
+reconciliation input from the complete retained assessment and exact original
+confirmation references. It preserves saved XML and document keys without a
+renderer, current-source query or fresh builder. A confirmed ancestor remains
+recoverable after a later correction; it need not be the current leaf. Canonical
+UUID arguments and duplicate-free confirmation JSON remain required, while the
+saved JSON's whitespace/key order and the original mutable-feedback comparison
+semantics are preserved.
+
+`prepare_rf1086_retained_correction_predecessor` validates the supplied full
+archive and its unfiltered company/year production chain, selects the unique
+accepted/rejected terminal leaf, and derives the existing compact predecessor
+snapshot. Exact selected actor/approval/manifest/claim identity, confirmed
+full-year journal, feedback artifact set and successful reconciliation evidence
+must agree. Genuine no-activity predecessors keep their existing saved-payload
+policy. A no-activity leaf after a managed full-year submission cannot become
+valid by filtering history. Both new entrypoints preserve the retained capture
+guard for any v2 source or v3 approval, including material outside the selected
+parent; legacy-only unknown capture coverage remains unknown.
+
+The compact result is a projection, not a completeness certificate or permission
+to correct. The exact USER query actor must be the selected original submitter;
+current accepted-owner access remains a separate adapter obligation. Feedback
+metadata does not verify external original bytes. The correction application
+verifies selected feedback originals outside locks, rereads the full archive on
+the same held company/year connection, revalidates its terminal head and compares
+exact selected owner-codec representations before asserting originals or writing. Off-year
+Governance commitments do not invent local off-year capture coverage.
+
+The old recovery/correction APIs retain their fixed validators and error order
+through private mechanics shared with the new entrypoints. Historical feedback
+recovery now uses the retained recovery entrypoint as described below. The
+retained correction application and additive v6 export now use these retained
+contracts. SQL, fresh claim/intent, fresh v2 writer and Archive-owner policy paths
+remain separately staged. Pure fixtures and immutable legacy comparisons verify
+internal correspondence; they do not prove authoritative enumeration, current
+access, original bytes, database races or signed provenance.
+`test_rf1086_retained_recovery_correction.py` covers the new pure contracts;
+`test_rf1086_retained_recovery_correction_adversarial.py` independently checks
+complete ancestry, actor/capture boundaries and original reference bindings.
+
+### Closed retained correction archive reader (2026-10-10)
+
+The additive `read_retained_correction_archive(query, submission_id)` adapter
+method returns the complete raw company/year archive for later retained pure
+projection. It requires exact typed scope and canonical IDs, the verified USER
+actor and the selected original submitter. Preflight uses one read-only,
+repeatable-read transaction: `assert_submission_v1` establishes original-actor
+and current accepted-owner access before selecting the exact parent or
+enumerating the archive. It needs no current pilot, fresh MFA, provider binding
+or current-source eligibility.
+
+The source-admission method first requires a live matching scope, then calls
+`lock_correction_predecessor_v1` on the existing connection. That owner RPC
+requires the already-held company then RF-year guards and read-committed
+isolation. The same connection enumerates the full archive after locking the
+parent; no second transaction or external I/O occurs. Both paths preserve all
+actors and profiles in the company/year history and require exactly one
+archived selected row equal to the selected/locked parent.
+
+These methods establish access and enumeration, not a valid correction basis.
+The raw result can contain competing or unsupported history that the retained
+pure projector must reject. Correction application wiring now invokes that
+projector, verifies selected feedback originals outside guards, and repeats
+validation inside final admission before writing, as described below. This reader
+adds no SQL, grants or fresh v2 writer authority.
+
+`test_postgres_rf_retained_correction.py` covers malformed identity and selected
+scope boundaries with routing doubles. The independent
+`test_postgres_rf_retained_correction_adversarial.py` runs the actual transaction
+and archive methods against synthetic SQL results to check ordering, cleanup,
+unfiltered enumeration and active-scope rules. Those doubles do not prove RLS or
+locking. `test_rf1086_retained_correction_reader_database.py` defines restricted
+executor reads and lock/race checks against real disposable PostgreSQL. Its v3
+approval/claim/journal fixtures use explicit designated-owner inserts with
+existing constraints and triggers, not an activated v3 runtime writer; database
+execution evidence must be reported separately from collection.
+
+### Retained feedback recovery integration (2026-10-10)
+
+The full-year branch of `reconcile_rf1086_production` now calls
+`prepare_rf1086_retained_source_reconciliation` on the existing raw authenticated
+`session.archive_source` result. This activates historical feedback recovery for
+retained v2 sources and v3 approvals. The only workflow edits are the imported
+function name and its call target; existing no-activity handling, arguments,
+error precedence, lease ownership and cleanup remain unchanged.
+
+The selected submission must still belong to the original actor. Before a lease,
+the workflow matches the current owner, original approval, pilot identity and
+accepted connection; historical recovery does not require a currently active
+pilot or fresh MFA. Accepted/rejected submissions return before acquiring a
+lease. For other states, the owned lease precedes archive retrieval. Complete
+retained validation and organization matching precede read-only credentials.
+Recovery uses the saved XML, exact `source_*` keys and confirmed dialog and
+transmission IDs, without current rendering or new submission authority.
+
+Existing archive/export callers and the correction application still use their
+previous paths. Fresh source, approval, claim and send-intent gates, adapters,
+SQL, public codecs and transport contracts are unchanged. Retained consistency
+does not prove authoritative enumeration, current access or signed provenance.
+
+`test_rf1086_retained_recovery_workflow.py` covers coherent capital fixtures with
+zero, one and two amendment links, exact payloads/references, terminal fast
+returns and existing HTTP response shapes. The independent
+`test_rf1086_retained_recovery_workflow_adversarial.py` checks proof rejection,
+reference binding, access/error precedence and cleanup. These are unit and HTTP
+doubles, not real Auth, lease/race or provider evidence. The ancestor case models
+an earlier nonterminal selected view and a later archive containing its accepted
+parent and correction; it does not establish that SQL grants a new lease to an
+already terminal parent.
+
+### Complete retained archive query (2026-10-10)
+
+The additive `retained_archive_source(query)` method on preparation service,
+public query protocol and workflow returns the original immutable archive after
+retained validation. The workflow checks its session actor before one call to
+the existing raw persistence `archive_source`. No adapter alias, new database
+contract, workspace query, serialization round-trip or current evidence is
+needed. Existing archive methods and codec APIs are unchanged. The explicit
+production-stream-v6 route selects this query; earlier export routes retain
+their existing methods and transport projections.
+
+Every result must explicitly include `Rf1086ArchiveSourceHistory`, tuple
+overrides and tuple withdrawal captures, including empty and legacy-only years.
+Missing sections mean unknown coverage and fail unavailable. The new private
+validation boundary applies this requirement before the existing retained
+scope, production and mixed-history checks. Stored legacy envelope parsing
+continues to preserve its original unknown coverage. Unapproved saved previews
+keep their permitted noncanonical raw text; approved lineage uses its existing
+stronger retained commitments.
+
+This is a member-authorized company archive query, not selected-submitter
+recovery or new filing admission. It preserves all original actors and the
+company-wide review records. Persistence access errors and cancellation escape
+unchanged; malformed returned evidence maps to dependency unavailable. No
+current renderer, fresh builder, clock, byte store or provider is called.
+
+The existing adapter supplies a repeatable snapshot; these typed checks do not
+prove SQL enumeration, current owner access, original document bytes or signed
+provenance. They do not add the serializer's size or canonical transport rules,
+or invent RF captures for opaque off-year Governance commitments. Fresh v2
+writers and final current-source admission remain separate work. The explicit retained stream
+adds the bounded outward export described below.
+
+`test_rf1086_retained_archive_source.py` and the independent
+`test_rf1086_retained_archive_source_adversarial.py` exercise exact returns,
+complete capture requirements, malformed evidence and access/error boundaries
+with synthetic persistence. They establish no database, RLS or provider proof.
+
+
+### Explicit retained archive stream (2026-10-10)
+
+`prepare_retained_archive_stream` and `verify_retained_archive_stream` in the
+application composition module use outer `rf1086-production-stream-v2` with an
+inner canonical `rf1086-production-archive-v6` only. The verifier passes the
+original inner text to the public retained parser; it rejects older envelopes
+under the new stream label. Existing stream-v1 functions, inline JSON exports,
+old CLI and codec entrypoints keep their original behavior. A private mechanical
+extraction gives old and new entrypoints fixed serializer/parser and label
+arguments, preserving old validation and error order.
+
+`GET /archive-source/production-stream-v6` calls the complete retained query
+without removing captured sections. Before the response begins, the producer
+checks its session actor, serializes v6, derives the exact source/feedback query
+union and shared byte budget, and checks the Documents session actor when any
+original is needed. Originals are read and validated lazily through Documents'
+public retained-byte interface. Each original retains its exact metadata,
+content, receipt and source labels. The stream covers every captured RF source
+version and independent observation, including prior-year originals; opaque
+Governance commitments do not invent uncaptured document bytes.
+
+The existing limits remain: 1 GiB aggregate original bytes, 256 MiB header and
+32 MiB record, plus the archive codec's 64 MiB canonical envelope limit. Reading
+one original at a time limits content retention; the bounded archive/header is
+still materialized. The offline verifier uses bounded line reads and validates
+exact expected identities, types, order, bytes and footer. A missing, revoked or
+corrupt original, cancellation or dependency failure after the header leaves a
+truncated transfer. No retry or completion footer is produced after failure.
+
+`verify_rf1086_retained_archive_stream.py` is an explicit local command for the
+new format. All expected source originals and bound feedback originals must be
+present. Legacy feedback without an original binding remains incomplete;
+`--require-feedback-originals` rejects it. Verified transferred bytes are not a
+signature, authenticated origin, authoritative enumeration, database restore or
+new submission authority. No provider, object-store write or extraction occurs.
+
+The backend route keeps existing authenticated member access and safe errors.
+It declares private/no-store, nosniff and attachment headers; the existing RF
+request middleware emits `Cache-Control: no-store`. This route adds no owner or
+MFA policy. The separately protected web download composes existing owner/MFA
+controls without changing the foreign Company Archive workflow.
+
+The stream tests build actual Documents metadata/content/receipts first, then
+reconstruct RF observations, withdrawals, source versions, previews and v3
+proofs through public pure interfaces. A strict fake Documents store returns
+only the exact requested version. Governance and annual authority labels and
+saved journals remain synthetic: these tests prove retained composition and
+bytes, not real Auth, SQL/RLS, blob-store, provider or origin authority. Fresh
+v2 source/approval/claim/intent writers remain separately gated. Retained
+correction application wiring is described below.
+
+
+### Retained correction application (2026-10-10)
+
+`ShareholderRegisterSourceCorrection` now reads the complete retained archive on
+both preflight and final admission and calls the public
+`prepare_rf1086_retained_correction_predecessor`. The live read must explicitly
+contain `Rf1086ArchiveSourceHistory`, tuple overrides and tuple withdrawal
+captures, including genuine legacy no-activity histories. Unknown coverage is
+rejected before Documents; it is never converted into an empty enumeration.
+Existing captured-history validation requires the selected full-year source
+capture. Portable legacy unknown-coverage policy remains a separate pure contract.
+
+The private verified result keeps the selected compact predecessor and an exact
+selected-evidence binding: version-directed public source serialization, public
+preview serialization, selected raw source capture and selected saved preview
+capture. Literal manifest/review/bridge/claim fields remain in the compact
+comparison. RF timestamp offsets, Decimal representation, capture keys and raw
+payload text cannot disappear through dataclass equality. Genuine legacy
+no-activity has an explicit not-applicable lineage binding. Missing full-year
+lineage cannot select that branch. Full unfiltered history is revalidated on each
+read; unrelated valid captured history is not part of the selected equality check.
+No complete archive serialization, new transaction or fallback to compact reads
+is used.
+
+Documents verification retains the existing selected feedback scope. Bound
+historical feedback uses exact retained queries and checks original ID, actual
+bytes/hash/length, metadata, owner, creator, link and receipt. Legacy unbound
+feedback retains current verification and retention. Final admission asserts the
+same historical or current originals on the existing guarded connection, after
+full archive validation and exact selected comparison. Documents receipt-time
+and canonical metadata semantics are preserved. This ancestry check does not
+claim to audit every historical source original, Governance memo or replacement
+byte body; that wider effective-original union remains required for fresh v2
+admission. Override text does not contain a Documents byte commitment.
+
+Outer approval, claim, admission and dispatch bodies retain their contracts.
+Durable exact claim recovery runs first and the guarded second recovery stays
+before final correction work. Retained v2/v3 parent ancestry can be checked by
+this helper; fresh v2 child capture/approval/claim remains closed pending its
+current Governance/economics/status proof and complete required original union.
+No fresh renderer, provider credential or object I/O occurs under this check.
+
+`test_rf1086_retained_correction_workflow.py` uses complete archive-first legacy
+outer fixtures and actual Documents-first capital parents with zero, one and two
+amendments. V3 cases prove helper preflight/final checks only; synthetic persistence
+and authority do not establish SQL or durable claim rows.
+`test_rf1086_retained_correction_workflow_adversarial.py` checks both completeness
+boundaries, exact selected wire, unrelated valid evolution, actor order,
+cancellation and byte/guard separation. Pure compact fixture builders and old
+public validators stay unchanged. The coherent pre-change application vectors
+remain frozen; each changed reader/projector trace and intended v3 transition is
+reviewed separately. Actual restricted-role database and full release evidence
+must be reported from execution, including any unexecuted cases.
+
+
+### Staged source-v2 context builder (2026-10-10)
+
+`application/shareholder_register_source_context_v2.py` adds
+`build_verified_source_context_v2` from complete public Governance year-register
+projection, verified Documents projections and the supplied current RF read
+scope. Existing capture, admission, HTTP, persistence and SQL grants do not call
+it. It validates the public owner projection, maps every company-wide compact
+chain, and pairs each selected capital receipt with its full effective RF
+observation. Original Governance event, actor, finalization, document commitments
+and amendment/withdrawal references remain unchanged. The current observation
+must match event economics, scope, before/after states and the chain cutoff.
+
+The selected document union includes original Governance documents, all
+amendment memos and intermediate/effective replacements. Retained metadata,
+source year, hash and length commitments must match the supplied projections;
+conflicting shared-document commitments fail. Governance semantic revisions are
+not Documents versions. Prior-year RF originals keep their real source year;
+Governance original/memo source-year policy remains its public owner's rule.
+Off-year chains remain opaque owner commitments without invented local bytes or
+observation reads. Dividend receipts use the existing normalization; unsupported
+nominal-increase producers and unresolved/reversed originals remain blocked.
+
+Focused tests compose actual public Governance service/anchor/amendment/year
+builders and RF observation/source builders with synthetic Documents and current
+reader authority. They establish correspondence and exact owner bytes, not live
+owner completeness, retained byte availability, RLS, Auth or write admission.
+Future capture/admission must perform original-byte I/O outside guards, return
+committed key replay first, then rerun complete public validation and original
+assertions on the held company/year connection before Governance proof production
+and RF append. Fresh source/approval/claim/intent, intake UI and binary drain
+remain separate activation prerequisites.
+
+### Staged v2 held owner ports
+
+The existing RF source-admission transaction exposes an additive complete
+Governance register reader and a v2-source proof preparation port. Both reject
+expired scopes and non-transactional connections. The reader uses the existing
+public Governance decoder on the identical held connection and company/year,
+with the current verified actor. Legacy Governance evidence and admission
+methods remain unchanged.
+
+Proof preparation first validates the exact RF v2 source type, integrity and
+held company/year. It delegates the source hash to the Governance-owned SQL
+producer on the same connection. The retained source actor and bytes remain
+unchanged; the current actor supplies authorization. Python neither manufactures
+a proof nor grants SQL authority. The producer's execute permission remains
+closed, and SQL independently checks current ownership and both guards.
+
+Focused connection-double tests cover complete-chain decoding, malformed
+projections/source values, exact arguments, scope lifetime and sanitized SQL
+errors. They do not establish real RLS, locks, proof acceptance or append. The
+staged capture below uses these ports; existing routes remain unchanged. Fresh
+admission wiring, compatible consumers, runtime grants and binary drain remain
+required.
+
+### Closed guarded v2 capture
+
+`ShareholderRegisterSourceCaptureV2.capture_year_source` returns an actor/company/
+year/key committed v1 or v2 receipt before company and document refresh. A fresh
+request checks the current accepted AS owner and company identity, then verifies
+every supplied original's bytes through Documents outside the RF transaction.
+Foreign, duplicate or mismatched documents and retained receipts fail before
+the atomic writer. Original source years remain part of each commitment.
+
+`record_year_source_v2` hides the transaction phases: current owner capture guard,
+racing receipt lookup, fresh Company Access admission, original assertions,
+complete Governance read, effective RF observation checks, source/head/version
+preparation, stable document retention, Governance proof and closed append. All
+held reads/proof/writes use one connection. A saved row must decode to the exact
+emitted v2 bytes; failure or cancellation rolls back retention and append, and
+the admission scope closes. Historical v1/v2 receipts keep their original bytes.
+
+`lock_year_source_capture_v2(uuid,integer)` rejects non-READ-COMMITTED isolation,
+checks the current owner before and after the shared Company Archive Lock, then
+takes the RF-year guard. It deliberately leaves fresh MFA/year admission after
+the racing receipt lookup. Its execute permissions and the append/proof ports
+remain closed to ordinary runtime roles. Retentive rollback closes new grants
+while preserving the guard definition/OID and retained source rows; reapply
+closes grants again. No existing route or caller is activated.
+
+Focused capture tests use actual public producers, Documents byte validation and
+adapters with SQL/authority doubles. Mandatory Authority DB cases separately
+exercise the full owner schema using real Ledger/Governance/RF/Documents records
+and a restricted disposable login granted only the staged contracts. The DB
+transaction fixture replaces runtime-role selection and supplies explicit
+verified claims; it does not establish live Auth or object-store recovery.
+Collection alone is not execution. Native guard probes use the actual shared
+lock body with explicit preparation-authority stubs. Complete CI and compatible
+admission/approval/claim/intent consumers remain release prerequisites.
+
+### Saved v2 source admission and readiness observations
+
+`ShareholderRegisterSourceAdmissionV2` reads a preview through additive session
+and held-scope ports bound to actor/company/year/preview ID. Both reads retain
+the exact saved payload text, SHA, creator and creation time. The public
+`build_rf1086_retained_source_readiness_v2` and
+`build_rf1086_retained_annual_readiness_v2` check source/preview correspondence
+and apply the existing readiness policies without invoking today's renderer.
+They produce observations; callers separately establish current authority.
+
+Admission verifies every original through Documents outside the RF guard. It
+then uses the existing current-owner Company Access admission and RF-year guard,
+rechecks the exact source and saved capture, asserts all retained originals, and
+reads complete current Governance and effective RF evidence on one connection.
+A current actor authorizes those reads; the historical source command, actors,
+receipts and wire bytes remain unchanged. Failure or cancellation closes the
+scope. Returned observations confer no authority after that scope is released.
+
+Annual observation reads Opening, Ledger, Banking, Interview and Documents in
+the existing order through the held owner ports, preserving ready/warning/blocked
+policy and explicit conditions not evaluated. The old admission, fresh builders,
+annual function and codecs remain unchanged. No route, runtime grant, proof,
+approval, claim, dispatch intent or submission writer is activated by this stage.
+
+Focused tests exercise real adapters, Governance producers and Documents byte
+verification with explicit SQL/authority/annual-owner doubles. Mandatory full
+schema cases use restricted disposable RF/Documents logins, real owner records,
+guards and retention; claims and membership refresh are fixtures, and storage
+reads locally retained fixture bytes. Collection does not establish execution,
+live Auth, independent object-store recovery or release readiness.
+
+### Closed v2 preview creation
+
+`ShareholderRegisterSourcePreviewV2.generate` authenticates and reads the
+requested committed source, then uses the existing public preparation service
+outside the guard. Its persistence facade enters
+`ShareholderRegisterSourceAdmissionV2.admit_year_source`: original byte checks
+outside the guard; current-owner identity, exact current source, retained
+original assertions and complete Governance/effective RF context inside it.
+The shared source phases preserve saved admission's source → capture → original
+and Governance validation order. A source-only lease reads no saved preview.
+
+The additive held `capture_source_preview_v2` port requires an active scope,
+exact company/year/current source and complete prepared RF correspondence through
+`assert_rf1086_prepared_source_preview_matches`, including the filing label used
+in preview identity. This additive contract compares every prepared field with
+the unchanged pure preparation; legacy correspondence APIs stay unchanged. It uses the unchanged UUID5 identity formula and preview codec, mints the existing
+closed Governance/RF transaction proof, appends through the existing preview RPC
+and rechecks exact raw saved bytes on the same connection. Canonical validation
+repeats bounded in-memory rendering inside the guard; Documents/storage/provider
+I/O remains outside. Failure or cancellation rolls back append and proof.
+
+Every v2 generation, including deterministic replay, requires this fresh full
+source lease and proof before the RPC. The existing SQL replay lookup precedes
+its fresh-insert proof hook; its timing and the legacy v1 adapter are unchanged.
+Replay returns original saved payload, creator and time. A changed renderer can
+create a distinct new preview without rewriting historical captures. Saved
+readiness readers still do not render. No routes, ordinary runtime grants,
+approval, claim, bridge or dispatch consumer are activated.
+
+Local tests use actual public preparation, Documents byte verification and
+held RF/Governance adapters with explicit SQL/auth/storage doubles. Required
+Authority database cases use actual owner records, proof/append, races and
+restricted fixture logins; authentication state/claims and locally retained
+fixture bytes do not prove live Auth or independent object-store recovery.
+Collection alone is not execution or release acceptance.
+
+
+## Closed retained v3 review and approval (#193)
+
+`ShareholderRegisterSourceApprovalV3` uses saved v2 admission. The held review
+port takes preview/entitlement/correlation only; it reads Opening, Ledger, Bank,
+Annual Interview and Documents on the same connection in the established order.
+RF derives retained annual policy from those inputs and the exact saved capture.
+`Rf1086SourceApprovalContextV3` is immutable observation data, with no authority
+after the lease closes. The held append repeats every owner read and current
+review, builds the complete retained v3 manifest and rejects supplied mismatches.
+Fresh rendering and caller-supplied ready flags cannot authorize these writes.
+
+`build_rf1086_retained_source_approval_manifest_v3` and
+`assert_rf1086_retained_source_approval_manifest_matches_v3` validate raw capture
+bytes/hash/metadata and delegate existing retained composition.
+`serialize_rf1086_retained_annual_readiness_v2` accepts blocked/warning/ready policy
+outcomes, checks correspondence and uses the existing codec without rendering. All old
+public builders, codecs and functions remain unchanged.
+
+Migration `20261010150223_rf1086_closed_retained_approval_v3.sql` derives new owned
+versions of annual binding, current review and approval append from published
+legacy bodies. Complete legacy-body fingerprints, finite anchors and owner/security/search-path checks reject drift.
+SQL consumes current source/Governance proof even on replay, checks exact capture
+and annual structure, locks Authority before Billing, rechecks MFA/expiry after
+waits, and retains permission, review, override, release and predecessor guards.
+Python RF owns annual policy; these closed SQL contracts trust the backend's
+policy output and do not authenticate producer origin or recompute economics.
+All five new contracts revoke PUBLIC and every nonowner grant. Existing routes,
+ordinary callers/grants, claims, intent and provider dispatch remain unchanged.
+Rollback retains definitions/OIDs and history while revoking new nonowner grants;
+reapply stays closed. Disposable fixtures borrow the frozen RF executor role for
+existing cross-owner contracts and restore exact ACLs and login SET edges. The
+separate ordinary-role denial cases run after those fixture grants close.
+
+Mandatory v3 database cases use actual owner schemas, guards, proof and writes.
+Authentication/claims are explicit fixtures and object reads use locally retained
+fixture bytes; they do not establish live Auth or independent object recovery.
+
+
+The closed `assert_retained_annual_readiness_v2_shape_internal_v1(text)` checks the
+fixed RF wire grammar: eleven registered records, exact wrapper/field keys,
+primitive types, literals, arrays, optional values and string mappings. Expected
+types come only from the fixed owner grammar, never from a stored record label.
+The annual binding invokes it before accepting proof bytes; same-count renamed
+keys, boolean/string/count confusion and malformed nested data fail closed. This
+checks structure without duplicating annual policy or authenticating origin.
+
+## Company test retention foundation
+
+`Rf1086CompanyTestRetentionQuery` carries company and authenticated actor only.
+`Rf1086CompanyTestRetentionPersistence` reads all thirteen original test-record
+fields for that company and canonical RF obligation, across actors, environments,
+statuses and dates. Records have no intrinsic income year. Current accepted
+owner, reviewer or read-only membership is required; fresh filing evidence is
+not part of this historical query. The application read component is unwired.
+
+`Rf1086CompanyTestRetentionSnapshot` distinguishes complete zero records from
+unavailable history. `Rf1086CompanyTestRetentionBounds` fixes64MiB artifact,
+100,000 records,256KiB canonical record,64KiB per TEXT field and32-row cursor
+batches. The adapter also gates raw SQL transfer before decoding each original
+cell. Overflow produces no partial complete snapshot. Limits bound serialized
+and transferred data; they do not claim64MiB total process memory.
+
+`create_rf1086_company_test_retention_capture` returns the bounded
+`Rf1086CompanyTestRetentionCapture`; `rf1086_company_test_retention_bounds`
+provides its fixed limits. `prepare_rf1086_company_test_retention`,
+`serialize_rf1086_company_test_retention` and
+`parse_rf1086_company_test_retention` implement the separate canonical standalone
+codec. Portable structure/count/hash consistency does not prove source origin
+or completeness; URLs and original references remain opaque.
+Original nullable `payload_hash` is also opaque bounded text, distinct from the
+owned artifact and record-inventory SHA256 commitments; spelling is preserved.
+
+`assert_company_test_retention_source_capture_matches` compares exact trusted
+source observation and bytes. `assert_company_test_retention_target_inventory_matches`
+compares complete record inventories while allowing the target's independently
+captured observation time. Neither comparison grants filing authority.
+
+Unit and mandatory full-schema evidence belong to
+`test_rf1086_company_test_retention.py` and
+`test_rf1086_company_test_retention_database.py`. This closed read/codec foundation
+does not complete RET002, the public download/stream/UI/CLI/restore pipeline,
+legal company export, independent Auth recovery or any filing handoff.
+
+
+The separate system application
+`shareholder_register_company_test_retention_stream` frames a fully validated
+complete capture as `rf1086-company-test-retention-stream-v1`. Its canonical
+header, thirteen-field record wrappers and completion footer preserve the
+source observation and originals. Strict EOF, counts, record digest, complete
+artifact SHA256 and header-plus-record frame SHA256 detect malformed or
+truncated transfers. Fixed limits:72MiB total,4KiB header,256KiB+64 record
+frame,1KiB footer. Record framing adds28bytes; the conservative
+64MiB+100000*28+4096+1024 bound is69,913,984bytes. These are serialized byte
+limits, not a total process memory or load guarantee. Unavailable captures
+cannot emit a complete stream. Cancellation emits no completion footer.
+
+`scripts/verify_rf1086_company_test_retention.py` reads regular local files
+only, with a bounded prefix and fixed artifact/stream parser. It reports
+`STRUCTURAL_INTEGRITY_ONLY`, original capture metadata and `sourceOrigin`
+`UNVERIFIED`. Optional `--expected-source-capture` compares the exact source
+capture with the RF public comparator; `EXPECTED_CAPTURE_MATCH` establishes
+consistency with that supplied file, not authentic origin or access authority.
+Unavailable direct artifacts omit observation and count. The verifier performs
+no extraction, network, database, Auth, provider or restore writes.
+
+`test_rf1086_company_test_retention_stream.py` and
+`test_verify_rf1086_company_test_retention.py` are unmarked ordinary backend
+tests selected by `test:boundary-backend`; the latter runs actual CLI
+subprocesses. Existing archive/stream/verifier paths stay unchanged. This closed
+component has no route or UI activation. Public HTTP/member/action MFA, typed
+client, standalone UI/download/bundle and independent Auth target restore
+remain required before RET002 closure or filing handoff.
+
+
+The separate system application
+`shareholder_register_company_test_retention_http` binds the company query to a
+current authenticated actor through the narrow `CompanyTestRetentionSessionFactory`.
+`PostgresCompanyTestRetentionSessionFactory` authenticates via the canonical
+server Auth adapter, then requires a canonical nonzero signed session_id and
+verified subject correspondence. It constructs the existing RF reader without
+Billing, Documents, CompanyAccess producer or provider bindings. Existing RF
+authentication/transaction/reader bodies stay unchanged.
+
+The typed historical query preserves the RF canonical artifact and all original
+thirteen keys/scalars, including status/environment/hash/timestamp strings. It
+requires current accepted membership without fresh MFA. The separate standalone
+download repeats the CompanyAccess-owned archive action before capture and
+after full RF validation/stream priming. Current subject/company correspondence
+is required both times; no partial response or headers count as completion.
+Database/cursor acquisition closes before network transfer, and cancellation
+produces no completion footer or legal company-year export receipt.
+
+Both new HTTP operations are default-closed503: only an explicitly injected
+`company_test_retention_session_factory` enables controlled technical composition.
+No environment/general-RF fallback exists. Old liveness/readiness remains exact
+and does not establish readiness of this component or all three filings.
+`test_rf1086_company_test_retention_http.py` is an ordinary backend test; its
+Auth/DB doubles do not prove live session, independent target or full pipeline.
+Actual20claim/fullAuthority/24retention/currentcomponent/ownedAuth acceptance
+and later explicit designated-backend wiring remain required before activation.
+
+
+## Standalone company test bundle
+
+The application layer packages the existing RF company capture as
+`rf1086-company-test-retention-bundle-v1`: two fixed ZIP_STORED entries,
+`manifest.json` and `company-test-retention.json`. It reuses the RF public
+serializer, parser, bounds and source/target comparison contracts. The manifest
+commits the original capture bytes, observation time, count and record digest.
+The verifier bounds the whole package and each entry, checks local and central
+metadata before reading, verifies CRC and rejects any noncanonical package bytes.
+It performs no extraction, decompression, network access or database mutation.
+
+Complete zero is a captured result; unavailable cannot be packaged. Portable
+integrity proves neither origin nor live access. An independently obtained
+SOURCE capture still supplies the completeness expectation; a fresh TARGET
+observation preserves original records/count/digest without rewriting source time.
+This standalone test bundle carries no annual company archive or legal export
+receipt. Owned independent Auth/restore and the full retention pipeline remain
+separate mandatory checks.
+
+The owned technical browser fixture supplies the dedicated current-Auth factory
+explicitly. Its separate synthetic company records four original test events
+through the unchanged API/SQL writer, across actors, statuses and environments.
+Existing simulation commands create two separate year scopes; reference links
+are explicit synthetic fixture setup and carry no authority receipt claim. An
+independent fixed SQL projection checks all thirteen stored values and record IDs
+before the real company query, history page and complete browser download.
+
+`scripts/rehearse-rf1086-company-test-retention-restore.py` first validates the
+unchanged exact workdir/container/live source/Auth binding and restricted reader.
+It compares the saved stream with the independent writer expectation and a fresh
+owning current-Auth capture, packages those original SOURCE bytes, then owns
+exactly one unchanged `restored_identity` context. Inside that lifetime,
+`scripts/rf1086_company_test_inventory_identity_restore.py` constructs the fixed
+target factory, checks the live target session before every synthetic mutation,
+and tests current accepted roles, outsider/unaccepted/ban/membership revocation,
+session logout, soft deletion and an authorized successor. Original recorded
+actors remain data; physical erasure is a separate historical-FK restriction.
+The helper creates/removes no resource and returns only an immutable finite
+report. Cleanup failure or changed source fingerprint/inventory prevents a
+successful runner report. Fresh SOURCE/TARGET observations keep their own times;
+the original saved capture bytes/time/hash are never rewritten.
+
+The browser timeout sends SIGTERM to the new runner. Its scoped handler interrupts
+active verification but defers termination through the unchanged owner's resource
+acquisition and cleanup, including repeated signals. Pending cancellation prevents
+acceptance; cleanup failure still fails the run. The prior handler is restored.
+This cooperative timeout can wait for existing acquisition/cleanup operations;
+it is not a hard 180-second process deadline or protection against SIGKILL.
+Resource-free subprocess tests signal acquisition, active verification and cleanup.
+
+The signed stateless negative fixture supports the captured local HS256 setup
+only after verifying its signing key against the already authenticated owner
+token. It removes the session ID without extending time or changing role; other
+signing configurations fail closed rather than skip this required assertion.
+This is a local fixture, not hosted signing-key recovery or session issuance.
+
+Local lifecycle tests use explicit doubles; installed-schema collection is not
+execution. Actual owning browser/GoTrue/independent restoration must pass on the
+exact published source before pipeline acceptance. Production composition still
+defaults closed. Legacy provenance, quarantine, lawful purge, hosted objects and
+keys, whole-app recovery targets and the annual compliance loop remain separate.
+
+
+Closed V3 operation preflight
+-----------------------------
+
+`inspect_rf1086_source_operation_identity_v3` binds the current original actor,
+owned claim, retained V3 header, payload and predecessor. It grants no effect.
+`assert_rf1086_source_main_preflight_v3` reuses the existing retained annual
+parser and saved-manifest builder to prove every source/preview/manifest field
+without invoking the current renderer or acquiring fresh admission.
+
+The staged dispatch application's `prepare_main_intent_v3` repeats owned claim
+and header reads before Documents/correction original-byte I/O. Its frozen
+`PreparedRf1086MainOperationV3` carries only claim, retained header, verified
+preview and required correction; no annual proof, connection, live scope or
+provider authority. A declared predecessor cannot disappear or change actor,
+company, year or identity. The configured held validator reuses the unchanged correction and Source V2
+validators on the already fresh scope. No object I/O, new connection or nested
+admission runs inside that scope. No route or runtime grant activates it.
+
+
+`Rf1086SourceOperationRecoveryV3` carries only an owned committed claim, complete
+retained archive and strictly derived historical assessment. The staged adapter
+reuses the unchanged company/year historical guard and reads all three on its
+same active READ COMMITTED connection. Its new compatible approval reader picks
+only the strict inspector matching the stored V1/V2/V3 version; callers cannot
+choose a codec or upgrade historical evidence into fresh permission. Scope reads
+fail after close or loss of transaction/actor binding. The explicit fresh transition repeats
+historical classification before current company/year admission on that same
+connection. Its required held reads check both lifetimes and the original
+connection/query/actor binding. Fixed main/child/confirm methods derive their proof inputs from that same
+connection. Main derives full current annual/review/manifest and verifies
+preflight originals; child/confirm use the exact saved Source V2 and the real
+current Governance producer, without main byte preflight or annual rebuilding.
+The new closed `prepare_source_operation_v3` copies the guarded legacy body
+with bounded changes; existing intent disposition precedes current admission.
+Every new effect retains the original register/withdrawal backstop. Retentive
+rollback closes execution and preserves routine OIDs, definitions and journal.
+
+The staged application reads exact history before configuration, Billing,
+credentials or main preflight. Confirmed history returns its saved submission;
+prepared/unknown stops. Main preflight occurs outside guards before mutable
+provider dependencies. The journal rechecks history after waits, validates on
+the same scope, then returns preparation only after commit. Typed current
+denials recover on a separate historical scope after the failed scope closes;
+that recovery returns historical success or stops, never a fresh send grant.
+Cancellation propagates. Existing routes, legacy first-effect behavior and
+production composition are unchanged; absent legacy first claims remain
+closed in this staged application pending the separate compatibility slice.
+
+Local tests and the small native PostgreSQL probe qualify explicit Auth/SQL
+projections only. Full-schema mandatory tests, actual source/actor/permission
+provenance, concurrent commit failure/recovery, complete orchestration tests
+and paired review remain required before publishing or activation.
+
+
+Fixed V3 main receiver repair (staged)
+------------------------------------
+
+The additive `PostgresShareholderRegisterSourceDispatchV3Adapter` delegates
+unchanged parent current Auth/session construction and privately composes a
+genuine configured SourceCorrection receiver. Historical lookup requires no
+Documents configuration. A required fresh correction needs exact typed
+company/year/actor/predecessor data and the configured unchanged held receiver
+inside the fixed main write boundary itself, followed by a scope-lifetime check.
+No service or callback travels in the four-field prepared DTO; no new production
+composition, route, runtime grant, dummy factory or copied correction policy.
+
+`assert_rf1086_source_operation_history_v3` binds the already committed current
+claim's exact submission row and metadata. It then applies unchanged terminal
+predecessor policy to every other row, excluding only that exact owned leaf.
+The first-claim policy cannot be applied unchanged to a history containing its
+own new sending row. No actor/year/profile/status filter hides competing rows,
+forks or successors. A missing or rebound current leaf denies preparation.
+
+The earlier unit SQL double omitted the claimed row; the new regression includes
+it and demonstrates first-claim refusal versus correct claimed-leaf validation.
+Current factory/receiver/history tests remain qualified SQL/Auth/owner doubles.
+Required full-schema child/confirm refusal and atomicity/race coverage, actual
+execution and paired repair review remain pending. This staged slice is unpublished.
+
+The repair now registers forty mandatory full-schema intent cases: complete
+main/child/confirm flows, historical refusals, definition drift and retentive
+rollback, real producer/receiver missing/rebound proof negatives, stale
+amendment/withdrawal evidence, scope/physical connection loss, late failure,
+cancellation, deferred commit failure and actual advisory-wait recovery/revocation.
+Collection is not execution; these Auth request claims remain explicit fixture
+inputs and prove no GoTrue/hosted identity on their own. The eight-check native
+fixture-control probe proves role key/options/catalog identity restoration and
+real deferred commit rollback only, not the forty domain cases.
+
+Initial header-generation or missing Documents refusal also recovers a raced
+exact claim using the unchanged historical claim guard. This recovers data only;
+a legacy absent first claim remains staged closed. No dummy Documents factory,
+caller-provided receiver or configuration check can grant an effect.
+
+### Claimed correction parent, closed operation slice
+
+`prepare_rf1086_claimed_correction_predecessor_v3` validates the complete retained
+archive and the exactly bound current V3 claim before projecting its required
+parent. The original correction projector keeps its preclaim terminal-parent
+policy. No archive rows or managed head are removed or rewritten to reuse that
+policy after claim.
+
+The configured `ShareholderRegisterSourceCorrection` gains fixed
+`prepare_claimed_operation_v3` and `assert_claimed_operation_admitted_v3` methods.
+They preserve current authenticated ownership, reverify selected feedback bytes
+outside guards, and independently reproject the complete archive and exact
+selected evidence/receipts on the existing held connection. Existing service
+methods remain byte-preserved. The V3 fixed main writer independently invokes
+this receiver; no constructor, factory default, route, SQL grant or legacy
+policy changes. Bounded duplicate receipt mechanics preserve the old version's
+method bytes; no caller-selected projector or generation callback is introduced.
+
+Pure/unit checks use complete synthetic archives and explicit Auth/SQL/storage
+doubles. Mandatory schema cases create parent intents, record synthetic provider
+results, retain actual Docs feedback, reconcile, approve and claim the successor
+through existing owner commands. Collection does not establish execution, live
+Auth, independent recovery, origin, provider or all-three readiness.

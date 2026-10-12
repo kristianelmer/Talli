@@ -1,0 +1,63 @@
+{
+  "date": "2026-09-30",
+  "baseRevision": "87549d59c61ebbca72602ce1ed77c7da25458e24",
+  "scope": "Restore installed RF successors after the historical V1 approval fixture",
+  "failure": {
+    "ciRunId": 36687670485,
+    "result": "failure",
+    "application": "passed",
+    "rfAuthorityDatabaseTests": 560,
+    "browserSymptom": "Full-year source production review returned 503 after final capability contracts",
+    "cause": "The historical source approval fixture replayed only the original annual approval migration during teardown, replacing the cutover-aware override receiver with a reference to the retired public.filing_overrides table"
+  },
+  "fix": "Capture the installed consequential successor topology before rewinding V1 and replay those migrations in registry order during teardown",
+  "validation": {
+    "regressionBefore": {
+      "result": "failed",
+      "durationSeconds": 1.21
+    },
+    "regressionAfter": {
+      "result": "passed",
+      "durationSeconds": 1.09,
+      "assertions": [
+        "exact override receiver definition retained",
+        "exact role memberships retained",
+        "installed successor topology retained"
+      ]
+    },
+    "finalTopologyBrowser": {
+      "result": "passed",
+      "tests": 16,
+      "journeyDurationMs": 66308.650208,
+      "sequence": "Disposable Supabase migrations, prerequisite contracts, Authority/RF recutover, real historical fixture setup/teardown, Tax and Accounts final contracts, authenticated legacy/full-year browser"
+    },
+    "taxActivationTests": [
+      22,
+      3,
+      7
+    ],
+    "accountsActivationTests": 41,
+    "ciControlTests": 89,
+    "currentRevisionCi": {
+      "revision": "e985ebd919b6725c46e8f21d16cc117dd45cde74",
+      "runId": 36698538102,
+      "result": "failure",
+      "application": "passed",
+      "rfAuthorityDatabaseTestsPassed": 497,
+      "cause": "The current override receiver was preserved; the historical RF lifecycle then exposed its missing rollback file"
+    },
+    "cleanup": "Passed: owned stack removed, 42 dormant containers restored, Colima stopped and generated Next files restored",
+    "credentialScan": "passed",
+    "whitespace": "passed"
+  },
+  "limitations": [
+    "Focused local sequence does not replace complete ordered CI",
+    "No application or provider behavior changed by this fixture fix",
+    "All seven RF acceptance criteria remain pending",
+    "No real AS, production enablement, hosted database change or genuine provider operation"
+  ],
+  "sha256": {
+    "apps/backend/tests/test_rf1086_source_approval_database.py": "ee237f76bdd6bee38ca75bc88560e11b221d58211a8f56b0d57ddc3212cd90e8",
+    "apps/backend/tests/test_rf1086_annual_approval_database.py": "0f86d353cb9e7dca25ee5645580cfa309369b922a0f677cd69321debad91f2af"
+  }
+}

@@ -1,0 +1,340 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "evidenceKind": "ADDITIVE_COMPLETE_RF_RETAINED_ARCHIVE_QUERY",
+  "recordedAtUtc": "2026-10-10T05:30:38.928888+00:00",
+  "baseRevision": "b9a1b9f4da047411c3832db829f812120c9dfab8",
+  "parentRevision": "3efa23e72daa7e7c2a6ed7baa0daf79f2475bbed",
+  "sourceFiles": [
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/preparation.py",
+      "sha256": "bbacd32653d6e30ee5d38469c696d6c666293863a25a783ae7db98807c28e51a",
+      "bytes": 36280
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/public.py",
+      "sha256": "8c4f81914db91d3f8764cb1b5d524ebb36ba1edd8861cdbde8990dba1e5cff34",
+      "bytes": 114838
+    },
+    {
+      "path": "apps/backend/src/talli_backend/application/shareholder_register_filing_workflow.py",
+      "sha256": "9ba0c73b1f23cb1591540395f0d6d180de743836a7c4d1c71756af61b0f37945",
+      "bytes": 15817
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_retained_archive_source.py",
+      "sha256": "7392bc9959b48a6fb20473ef9a9033f3ebd9c2679d9d1d647dc9d2fa5f07502d",
+      "bytes": 9625
+    },
+    {
+      "path": "apps/backend/tests/test_rf1086_retained_archive_source_adversarial.py",
+      "sha256": "1aa4349f37cac4cf058c359556998a33267bf4bfc1779072828c860da7973b8f",
+      "bytes": 12756
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/MODULE.md",
+      "sha256": "17b97f10c3b83ae2bfbe234793c2cdd46b9a9daa05ead0013a597a8662b1b57a",
+      "bytes": 111839
+    },
+    {
+      "path": "apps/backend/src/talli_backend/modules/shareholder_register_filing/module.json",
+      "sha256": "b7fe4d3a42dee88ce2f54f723cfc4eb3487c49a5c1fac770c2f8850862fb62ec",
+      "bytes": 28643
+    }
+  ],
+  "implementation": "Additive complete retained_archive_source query at preparation service, existing query protocol and workflow. Four definitions added; existing method/import bodies untouched. No route, persistence alias, export, correction or fresh writer activation.",
+  "checks": [
+    {
+      "name": "Final focused regression",
+      "exitCode": 0,
+      "result": {
+        "passed": 542,
+        "seconds": 23.31,
+        "newAuthor": 49,
+        "newIndependent": 56,
+        "selectedExisting": 437
+      }
+    },
+    {
+      "name": "Original recovery/correction oracle",
+      "exitCode": 0,
+      "result": {
+        "vectors": 189,
+        "observedCalls": 306,
+        "comparison": "exact"
+      }
+    },
+    {
+      "name": "Original claim/dispatch oracle",
+      "exitCode": 0,
+      "result": {
+        "vectors": 119,
+        "comparison": "exact"
+      }
+    },
+    {
+      "name": "archive oracle",
+      "exitCode": 0,
+      "result": {
+        "oldExact": 59,
+        "retainedPositive": 38,
+        "retainedRejection": 21
+      }
+    },
+    {
+      "name": "approval oracle",
+      "exitCode": 0,
+      "result": {
+        "vectors": 181,
+        "outputs": 113,
+        "expectedRejections": 68
+      }
+    },
+    {
+      "name": "downstream oracle",
+      "exitCode": 0,
+      "result": {
+        "downstreamVectors": 7,
+        "annualVectors": 217,
+        "exactProofBytes": 147,
+        "expectedRejections": 70
+      }
+    },
+    {
+      "name": "Exact additive and byte-preservation checks",
+      "exitCode": 0,
+      "result": {
+        "addedDefinitions": 4,
+        "oldFunctionAndMethodSegmentsBytePreserved": 251,
+        "trackedFilesBytePreserved": 866,
+        "priorWholeModuleASTRestoredByRemovingAdditions": 3,
+        "actualNewQueryCallers": 1
+      }
+    },
+    {
+      "name": "Architecture",
+      "exitCode": 0,
+      "result": {
+        "status": "PASS",
+        "writeEvidence": false
+      }
+    },
+    {
+      "name": "Whitespace",
+      "exitCode": 0,
+      "result": "No output; observed directly, no separate log."
+    }
+  ],
+  "reviews": {
+    "Spec": {
+      "unresolved": 0,
+      "reportSha256": "f454df1df9ce84e185bc30adae563ac5e3ccb6ca8f95f45025eb7ffedcdff680"
+    },
+    "Standards": {
+      "unresolved": 0,
+      "reportSha256": "e388cf0ebc1563e29ecb658562c8694a3b363180af55f68ec96d31a16d0e5090"
+    },
+    "Root": {
+      "unresolved": 0,
+      "reportSha256": "8166b7c8dbfb236c3b3be5c92211531707aedd873e8eab8425f631194c1becac"
+    }
+  },
+  "privateArtifactPins": [
+    {
+      "file": "rf-retained-archive-query-final-freeze.json",
+      "sha256": "b3a8a97a61a933256d1304eb42e10647ed27e39b58b9d54824a1e6e4aab3bdb8",
+      "bytes": 3066
+    },
+    {
+      "file": "rf-retained-archive-query-plan-v1.json",
+      "sha256": "bfdd6986f8d4f43a4d8f51bf07fbf860d35350ef0e6e5390958b8fae55ab6e86",
+      "bytes": 13361
+    },
+    {
+      "file": "rf-retained-archive-query-root-decision.json",
+      "sha256": "7382ad923e40dc871d079bc5338185d79ad405f19892b6151d20919a647dfbed",
+      "bytes": 7248
+    },
+    {
+      "file": "rf-retained-archive-query-final-checks.json",
+      "sha256": "50c9a9c2466d560d7a32e813166db760c649a6e5bc027a744fdc826089f34add",
+      "bytes": 14696
+    },
+    {
+      "file": "rf-retained-archive-query-final-regression.log",
+      "sha256": "3d42a8410fab105d6cc0b17fd8b4cf249e10496210b25c4f3e75e2bfbcd1048f",
+      "bytes": 661
+    },
+    {
+      "file": "freeze-rf-legacy-recovery-correction-pre-retained.py",
+      "sha256": "7df223fcdd2a1ac4a535faaa06f101327881930e1f9f977a77335284acf969c2",
+      "bytes": 13824
+    },
+    {
+      "file": "rf-retained-archive-query-legacy189.log",
+      "sha256": "a0909dc2a91e7b0f965f93d55c48b7de4f5b7f599f557456c35d2659a548c713",
+      "bytes": 53
+    },
+    {
+      "file": "freeze-rf-legacy-claim-dispatch-pre-v3.py",
+      "sha256": "f157e0bf54b1d025c3c973b38b02d247d023ba67cbd80bf4d83c0717aa66e104",
+      "bytes": 14120
+    },
+    {
+      "file": "rf-retained-archive-query-legacy119.log",
+      "sha256": "5466280f6bd54e13a8d704e10c2fcd8d72660a1905b5dc62e8b069c75069d91e",
+      "bytes": 39
+    },
+    {
+      "file": "check-rf-retained-archive-query-archive-oracle.py",
+      "sha256": "3560ec31153f051338c16b6ef79986adc79b741d7233b969c8833f449d79ff3c",
+      "bytes": 1388
+    },
+    {
+      "file": "rf-retained-archive-query-archive-oracle.log",
+      "sha256": "c94a8a59e337d8c358f1726045b1e495f02922b64338b7f6c86303ac5a005dea",
+      "bytes": 66
+    },
+    {
+      "file": "rf-retained-archive-query-archive-oracle.json",
+      "sha256": "7c1e1dd65228f9ffb4785c0a05d08345654ba818358029a504c2a9199918bf28",
+      "bytes": 74
+    },
+    {
+      "file": "check-rf-retained-archive-query-approval-oracle.py",
+      "sha256": "97be945a9c04df6af72e79b9f5b1bb73675b158100111ab150572c61cb55db5c",
+      "bytes": 12804
+    },
+    {
+      "file": "rf-retained-archive-query-approval-oracle.log",
+      "sha256": "f7fc214303d1f631e8b2f84605efbc95a70628dfda7c9a00b1a25136309f1d50",
+      "bytes": 3039
+    },
+    {
+      "file": "rf-retained-archive-query-approval-oracle.json",
+      "sha256": "f7fc214303d1f631e8b2f84605efbc95a70628dfda7c9a00b1a25136309f1d50",
+      "bytes": 3039
+    },
+    {
+      "file": "check-rf-retained-archive-query-downstream-oracle.py",
+      "sha256": "3e46eeb8733ec703c4f400fb7cf8dc78a0ae21da9ae89715832bffc7ae002b49",
+      "bytes": 4968
+    },
+    {
+      "file": "rf-retained-archive-query-downstream-oracle.log",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "file": "rf-retained-archive-query-downstream-oracle.json",
+      "sha256": "967ceb419924229c2bf014f84b9635ac9e96e3f565d7c0b1c39f41df8f7d060a",
+      "bytes": 685
+    },
+    {
+      "file": "check-rf-retained-archive-query-compatibility.py",
+      "sha256": "20bb8f7191654c59b87d86a57e60c4744206fd060615e4824665a974975718a2",
+      "bytes": 4558
+    },
+    {
+      "file": "rf-retained-archive-query-compatibility.log",
+      "sha256": "19e90d398930c6ca7214fb0132904bc256a4337f59b1a85a693603cfd0bc759d",
+      "bytes": 1809
+    },
+    {
+      "file": "rf-retained-archive-query-compatibility.json",
+      "sha256": "1cc7da4e2bb78497f0aa429f93d51b19a7ff57502ab8927ae07f12ea8e46edd5",
+      "bytes": 175879
+    },
+    {
+      "file": "rf-retained-archive-query-architecture.log",
+      "sha256": "5ec883f062ac92edcd4b16e1a13efd68e94e57a5caeae755b1490f88a930229d",
+      "bytes": 20012
+    },
+    {
+      "file": "rf-retained-archive-query-author-first.log",
+      "sha256": "a21dc50349df64009059a81359f511a6ca24070d4842553ce1551d1041d70747",
+      "bytes": 99
+    },
+    {
+      "file": "rf-legacy-recovery-correction-pre-retained.json",
+      "sha256": "d7fb2ad0e661fbc6b42b5de0f8725e3de90b6b538fe9dbb39b31aae16c78a268",
+      "bytes": 539917
+    },
+    {
+      "file": "rf-legacy-claim-dispatch-pre-v3.json",
+      "sha256": "57d6883de7adc7aa1accb60997cb8127a0fe1fa480b225fa84655be9c149e111",
+      "bytes": 620589
+    },
+    {
+      "file": "rf-legacy-archive-pre-v6.json",
+      "sha256": "ffd9b4c926fd4e1470ace5d242eb0e0ce44d5d571caa17b903a9256dafee4a31",
+      "bytes": 3985354
+    },
+    {
+      "file": "rf-legacy-approval-pre-v3.json",
+      "sha256": "56807e01f93783fc05a4a5fc42b3c5f0a83a50da60c92e786ccc5aa698fcdd25",
+      "bytes": 5220965
+    },
+    {
+      "file": "rf-v1-downstream-pre-integration.json",
+      "sha256": "5b41be2a029992b27492ff5bb2c51cbde3e5c8fb2f8e4d26130791ea7a8c66ec",
+      "bytes": 156580
+    },
+    {
+      "file": "rf-v1-annual-policy-pre-consumer.json",
+      "sha256": "ab8a025dd1890734c3e33bdbb6cdfe08fa9f120090503c380ecb059f4d9dd3ba",
+      "bytes": 987379
+    },
+    {
+      "file": "rf-retained-archive-query-spec-focused.log",
+      "sha256": "73d4d1fa1bc457fe82273dff25098fbee749a7bc966b891993a015b956477ee0",
+      "bytes": 99
+    },
+    {
+      "file": "rf-retained-archive-query-spec-static.json",
+      "sha256": "6cce6f82810aefbff70e401506a019810997ecca58846430d1ef0249c5c3fc6c",
+      "bytes": 173765
+    },
+    {
+      "file": "rf-retained-archive-query-final-spec-review.json",
+      "sha256": "f454df1df9ce84e185bc30adae563ac5e3ccb6ca8f95f45025eb7ffedcdff680",
+      "bytes": 10946
+    },
+    {
+      "file": "rf-retained-archive-query-spec-initial.log",
+      "sha256": "73c76b53b96d8d77a96b5346a87596b8188dff2206f9a3a70373ee174a22f8b5",
+      "bytes": 2647
+    },
+    {
+      "file": "governance-cutoff-fixture-privilege-spec-diagnosis.json",
+      "sha256": "390f78b49370e1802e5bf7f1d733a3f851a3c813fb24bfdc1544b6d2e36da2ba",
+      "bytes": 9739
+    },
+    {
+      "file": "rf-retained-archive-query-final-standards-review.json",
+      "sha256": "e388cf0ebc1563e29ecb658562c8694a3b363180af55f68ec96d31a16d0e5090",
+      "bytes": 14955
+    },
+    {
+      "file": "rf-retained-archive-query-root-static.json",
+      "sha256": "0c25f7c9b7f696a630943657c042beddb291931ea84d1371395574a3839c98f1",
+      "bytes": 883
+    },
+    {
+      "file": "rf-retained-archive-query-root-review.json",
+      "sha256": "8166b7c8dbfb236c3b3be5c92211531707aedd873e8eab8425f631194c1becac",
+      "bytes": 2166
+    }
+  ],
+  "limits": [
+    "Unit and synthetic persistence only. No real Auth/member access, PostgreSQL/RLS, transaction/race, provider or end-to-end execution.",
+    "Retained fixtures use public pure builders but owner commitments and claims/journals are synthetic; not authentic owner-write provenance.",
+    "Exact returned object and captured owner representations are retained; typed query does not add serializer size/canonical transport guarantees.",
+    "Existing raw adapter obtains one repeatable snapshot but does not set SQL READ ONLY; this change adds no persistence method or isolation policy.",
+    "New query is member-authorized archive access, not original-submitter/current-owner fresh admission. Complete tuples do not prove authoritative storage enumeration.",
+    "Counts overlap. Old oracle and historical evidence files unchanged; comparison copies wrote only fresh stage2 outputs.",
+    "Stage1 recovery remains active. New archive query has no route or export caller; correction and fresh writers remain deferred. No foreign Archive-owner behavior, SQL, HTTP, commit, push or CI action.",
+    "Evidence-only receipt 3efa and Governance fixture b61 are separate preceding commits. No results from terminal CI38026082849 are transferred to this source slice; next ordinary PR CI must test the new head.",
+    "A1\u2013A7 and both linked immutable release gates remain pending. No production filing, provider activation, paid action, genuine-company admission, outreach or launch clearance."
+  ]
+}

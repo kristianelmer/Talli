@@ -1,0 +1,162 @@
+[
+  {
+    "migration": "20260924080208_company_access_rf_admission_guard.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='company_access_read_rf_admission_v1')"
+  },
+  {
+    "migration": "20260924080249_documents_rf_consequential_company_guards.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='documents' and p.proname='lock_company_write_v1')"
+  },
+  {
+    "migration": "20260924080355_governance_ledger_company_write_guards.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.proname='acquire_company_write_guard_v1')"
+  },
+  {
+    "migration": "20260924083154_governance_guarded_reporting_year_read.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.proname='read_guarded_reporting_year_inputs_v1')"
+  },
+  {
+    "migration": "20260924084752_billing_rf_full_year_pilot_profile.sql",
+    "presenceQuery": "select exists(select 1 from pg_constraint where conrelid=to_regclass('billing.production_pilot_entitlements') and pg_get_constraintdef(oid) like '%rf1086_full_year_v1%')"
+  },
+  {
+    "migration": "20260924085227_rf1086_source_review_bridge.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='bridge_source_preview_v1')"
+  },
+  {
+    "migration": "20260924091015_rf1086_source_approval_foundation.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='append_source_approval_v1')"
+  },
+  {
+    "migration": "20260924094631_rf1086_journal_company_guard.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='lock_submission_company_write_v1')"
+  },
+  {
+    "migration": "20260928060732_rf1086_source_submission_claim.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='claim_source_submission_v1')"
+  },
+  {
+    "migration": "20260928110000_rf1086_feedback_original_binding.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='record_retained_feedback_artifact_v1')"
+  },
+  {
+    "migration": "20260928124000_documents_historical_original_assertion.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='documents' and p.proname='assert_historical_original_v1')"
+  },
+  {
+    "migration": "20260929092425_banking_company_write_guards.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='banking' and p.proname='acquire_company_write_guard_v1')"
+  },
+  {
+    "migration": "20260929144619_rf_annual_interview_read_admission.sql",
+    "presenceQuery": "select coalesce(has_function_privilege('shareholder_register_filing_executor',to_regprocedure('backend_system.list_annual_data_legacy_v1(uuid,integer,text)'),'EXECUTE'),false)"
+  },
+  {
+    "migration": "20260929160247_rf_annual_ledger_read_admission.sql",
+    "presenceQuery": "select coalesce(has_function_privilege('shareholder_register_filing_executor',to_regprocedure('ledger.list_period_locks(uuid[],text,integer,text)'),'EXECUTE'),false)"
+  },
+  {
+    "migration": "20260929162030_rf_annual_document_read_admission.sql",
+    "presenceQuery": "select coalesce(has_function_privilege('shareholder_register_filing_executor',to_regprocedure('documents.list_documents_v1(uuid[],text)'),'EXECUTE'),false)"
+  },
+  {
+    "migration": "20260929173935_rf1086_annual_approval_binding.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='append_source_approval_v2')"
+  },
+  {
+    "migration": "20260929182856_rf1086_durable_source_operation_intent.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='prepare_source_operation_v1')"
+  },
+  {
+    "migration": "20260929192057_rf1086_dispatch_binding_identity.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='prepare_source_operation_v2')"
+  },
+  {
+    "migration": "20260930083000_rf1086_override_receiver_cutover.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='backend_system' and p.proname='rf1086_other_overrides_ready_v1' and position('annual_accounts_filing.has_blocking_override_v1' in pg_get_functiondef(p.oid))>0)"
+  },
+  {
+    "migration": "20260930160335_rf1086_retained_archive_generations.sql",
+    "presenceQuery": "select exists(select 1 from pg_trigger where tgrelid=to_regclass('shareholder_register_filing.year_source_versions') and tgname='company_archive_track_retained_rf')"
+  },
+  {
+    "migration": "20261009213032_rf1086_observation_withdrawal_foundation.sql",
+    "presenceQuery": "select to_regclass('shareholder_register_filing.register_observation_withdrawals') is not null"
+  },
+  {
+    "migration": "20261009215302_rf1086_withdrawal_source_admission_guards.sql",
+    "presenceQuery": "select exists(select 1 from pg_proc where oid=to_regprocedure('shareholder_register_filing.append_year_source_v1(uuid,uuid,integer,integer,text,text,text,uuid,text,text,text,timestamptz)') and position('rf193-withdrawal-source-admission-v1' in prosrc)>0)"
+  },
+  {
+    "migration": "20261009220727_rf1086_withdrawal_archive_generation.sql",
+    "presenceQuery": "select exists(select 1 from pg_trigger where tgrelid=to_regclass('shareholder_register_filing.register_observation_withdrawals') and tgname='company_archive_track_rf_withdrawal' and tgenabled='O' and tgtype=29 and tgqual is null and not tgisinternal and tgconstraint=0 and not tgdeferrable and not tginitdeferred and tgoldtable is null and tgnewtable is null and tgnargs=2 and encode(tgargs,'escape')=E'year\\\\000company_id\\\\000' and tgfoid=to_regprocedure('public.company_archive_track_source_write_v1()'))"
+  },
+  {
+    "migration": "20261009221151_rf1086_withdrawal_review_read_guards.sql",
+    "presenceQuery": "select count(*)=2 from pg_proc where oid in (to_regprocedure('shareholder_register_filing.read_source_approval_context_v1(uuid,uuid,text)'),to_regprocedure('shareholder_register_filing.read_source_approval_context_v2(uuid,uuid,text,text)')) and position('rf1086_withdrawal_current_review_guard_v1' in prosrc)>0"
+  },
+  {
+    "migration": "20261009222053_rf1086_observation_evidence_assertions.sql",
+    "presenceQuery": "select count(*)=2 from pg_proc where oid in (to_regprocedure('shareholder_register_filing.assert_current_register_observation_v2(uuid,uuid,integer,integer,text,timestamptz,text)'),to_regprocedure('shareholder_register_filing.read_retained_register_observation_withdrawal_v1(uuid,uuid,integer,uuid,integer,text,text,timestamptz,text)'))"
+  },
+  {
+    "migration": "20261009223340_governance_register_observation_completion_guard.sql",
+    "presenceQuery": "select (select count(*)=2 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.prokind='f' and pg_catalog.oidvectortypes(p.proargtypes)='jsonb, text' and ((p.proname='prepare_supported_event_v1' and position('rf193-governance-replay-null-safe-v1' in p.prosrc)>0) or (p.proname='complete_supported_event_v1' and position('rf193-governance-register-completion-v1' in p.prosrc)>0))) and coalesce((select pg_catalog.has_schema_privilege('corporate_governance_store_owner',n.oid,'USAGE') and pg_catalog.has_function_privilege('corporate_governance_store_owner',p.oid,'EXECUTE') from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.prokind='f' and p.proname='assert_current_register_observation_v2' and pg_catalog.oidvectortypes(p.proargtypes)='uuid, uuid, integer, integer, text, timestamp with time zone, text'),false)"
+  },
+  {
+    "migration": "20261009225857_ledger_governance_entry_assertion.sql",
+    "presenceQuery": "select exists(select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='ledger' and p.prokind='f' and p.proname='assert_unamended_governance_entry_v1' and pg_catalog.oidvectortypes(p.proargtypes)='uuid, uuid, integer, uuid, uuid, date, text, timestamp with time zone, jsonb, text')"
+  },
+  {
+    "migration": "20261009231107_rf1086_current_observation_evidence_reader.sql",
+    "presenceQuery": "select exists(select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.prokind='f' and p.proname='read_current_register_observation_evidence_v1' and pg_catalog.oidvectortypes(p.proargtypes)='uuid, uuid, integer, integer, text, timestamp with time zone, text')"
+  },
+  {
+    "migration": "20261009232839_documents_historical_original_integrity.sql",
+    "presenceQuery": "select exists(select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='documents' and p.prokind='f' and p.proname='assert_historical_original_integrity_v1' and pg_catalog.oidvectortypes(p.proargtypes)='uuid, uuid, uuid, integer, text, text, integer, timestamp with time zone, timestamp with time zone, text')"
+  },
+  {
+    "migration": "20261009234529_governance_register_evidence_amendments.sql",
+    "presenceQuery": "select (select count(*)=3 from (values ('append_register_evidence_amendment_v1','text, jsonb, text, text'),('read_register_evidence_chain_v1','uuid, integer, uuid, text'),('lookup_register_evidence_amendment_v1','uuid, integer, uuid, text, text, text')) expected(name,args) join pg_catalog.pg_proc p on p.proname=expected.name and pg_catalog.oidvectortypes(p.proargtypes)=expected.args join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.prokind='f') and (select count(*)=8 and bool_and(pg_catalog.has_schema_privilege('corporate_governance_store_owner',n.oid,'USAGE') and pg_catalog.has_function_privilege('corporate_governance_store_owner',p.oid,'EXECUTE')) from (values ('public','company_access_has_fresh_mfa_v1',''),('shareholder_register_filing','assert_current_register_observation_v2','uuid, uuid, integer, integer, text, timestamp with time zone, text'),('shareholder_register_filing','read_retained_register_observation_withdrawal_v1','uuid, uuid, integer, uuid, integer, text, text, timestamp with time zone, text'),('shareholder_register_filing','read_current_register_observation_evidence_v1','uuid, uuid, integer, integer, text, timestamp with time zone, text'),('ledger','list_entry_amendments_v1','uuid, text'),('ledger','assert_unamended_governance_entry_v1','uuid, uuid, integer, uuid, uuid, date, text, timestamp with time zone, jsonb, text'),('documents','assert_historical_original_integrity_v1','uuid, uuid, uuid, integer, text, text, integer, timestamp with time zone, timestamp with time zone, text'),('documents','assert_retained_original_v1','uuid, uuid, uuid, integer, text, text, integer, timestamp with time zone, text')) expected(schema_name,name,args) join pg_catalog.pg_namespace n on n.nspname=expected.schema_name join pg_catalog.pg_proc p on p.pronamespace=n.oid and p.proname=expected.name and pg_catalog.oidvectortypes(p.proargtypes)=expected.args where p.prokind='f')"
+  },
+  {
+    "migration": "20261010001936_governance_register_evidence_application.sql",
+    "presenceQuery": "select count(*)=4 and bool_and(pg_catalog.has_function_privilege('corporate_governance_workflow_executor',p.oid,'EXECUTE')) from (values ('prepare_register_evidence_amendment_v1','text, text, text'),('append_register_evidence_amendment_v1','text, jsonb, text, text'),('read_register_evidence_chain_v1','uuid, integer, uuid, text'),('lookup_register_evidence_amendment_v1','uuid, integer, uuid, text, text, text')) expected(name,args) join pg_catalog.pg_proc p on p.proname=expected.name and pg_catalog.oidvectortypes(p.proargtypes)=expected.args join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.prokind='f'"
+  },
+  {
+    "migration": "20261010004653_governance_register_evidence_company_guard.sql",
+    "presenceQuery": "select exists(select 1 from pg_catalog.pg_trigger t join pg_catalog.pg_class c on c.oid=t.tgrelid join pg_catalog.pg_namespace n on n.oid=c.relnamespace join pg_catalog.pg_proc p on p.oid=t.tgfoid join pg_catalog.pg_namespace fn on fn.oid=p.pronamespace where n.nspname='corporate_governance' and c.relname='register_evidence_amendments' and c.relkind='r' and t.tgname='aa_company_write_guard' and t.tgtype=31 and t.tgenabled='O' and t.tgqual is null and not t.tgisinternal and t.tgconstraint=0 and not t.tgdeferrable and not t.tginitdeferred and t.tgnargs=0 and octet_length(t.tgargs)=0 and t.tgattr::text='' and t.tgoldtable is null and t.tgnewtable is null and fn.nspname='corporate_governance' and p.proname='lock_company_write_v1' and pg_catalog.oidvectortypes(p.proargtypes)='' and p.prorettype='trigger'::regtype and p.prokind='f')"
+  },
+  {
+    "migration": "20261010005413_governance_reporting_register_evidence.sql",
+    "presenceQuery": "select exists(select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.prokind='f' and p.proname='read_guarded_reporting_register_evidence_v1' and pg_catalog.oidvectortypes(p.proargtypes)='uuid, integer, text' and pg_catalog.has_function_privilege('corporate_governance_workflow_executor',p.oid,'EXECUTE'))"
+  },
+  {
+    "migration": "20261010013307_rf1086_closed_year_source_v2.sql",
+    "presenceQuery": "select (select count(*)=1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='append_year_source_v2' and p.prokind='f' and pg_catalog.oidvectortypes(p.proargtypes)='uuid, uuid, integer, integer, text, text, text, uuid, text, text, text, timestamp with time zone') and (select count(*)=2 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and ((p.proname='assert_source_register_observations_active_internal_v1' and pg_catalog.oidvectortypes(p.proargtypes)='uuid, integer, text' and position('rf193-source-codec-dispatch-v2' in p.prosrc)>0) or (p.proname='append_year_source_v1' and position('rf193-source-v1-downgrade-fence' in p.prosrc)>0)))"
+  },
+  {
+    "migration": "20261010015851_governance_rf_year_source_proof.sql",
+    "presenceQuery": "select (select count(*)=4 from (values ('rf_year_source_fact_internal_v1','jsonb'),('rf_year_source_chain_internal_v1','jsonb'),('prepare_rf_year_source_governance_proof_v1','uuid, integer, text, text'),('invalidate_rf_year_source_proof_internal_v1','')) e(name,args) join pg_catalog.pg_proc p on p.proname=e.name and pg_catalog.oidvectortypes(p.proargtypes)=e.args join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.prokind='f') and (select count(*)=2 and bool_and(pg_catalog.has_schema_privilege('corporate_governance_store_owner',n.oid,'USAGE') and pg_catalog.has_function_privilege('corporate_governance_store_owner',p.oid,'EXECUTE')) from (values ('receive_year_source_governance_proof_v1','uuid, integer, text, jsonb, text'),('invalidate_year_source_governance_proofs_v1','uuid')) e(name,args) join pg_catalog.pg_proc p on p.proname=e.name and pg_catalog.oidvectortypes(p.proargtypes)=e.args join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.prokind='f') and (select count(*)=4 from pg_catalog.pg_trigger t join pg_catalog.pg_class c on c.oid=t.tgrelid join pg_catalog.pg_namespace n on n.oid=c.relnamespace join pg_catalog.pg_proc p on p.oid=t.tgfoid where n.nspname='corporate_governance' and c.relname in ('supported_events','register_evidence_amendments') and p.pronamespace=n.oid and p.proname='invalidate_rf_year_source_proof_internal_v1' and t.tgenabled='O' and not t.tgisinternal and t.tgqual is null and t.tgnargs=0 and t.tgattr::text='' and ((t.tgname='zz_rf_year_source_proof_invalidation' and t.tgtype=29) or (t.tgname='zz_rf_year_source_proof_truncate_invalidation' and t.tgtype=32)))"
+  },
+  {
+    "migration": "20261010032531_governance_supported_event_replay_visibility.sql",
+    "presenceQuery": "select exists(select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='corporate_governance' and p.proname='complete_supported_event_v1' and p.prokind='f' and pg_catalog.oidvectortypes(p.proargtypes)='jsonb, text' and pg_catalog.md5(p.prosrc)='93c0f6bb1c2eb4b6077ab1163e60c77c')"
+  },
+  {
+    "migration": "20261010111100_rf1086_closed_year_source_capture.sql",
+    "presenceQuery": "select exists(select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='shareholder_register_filing' and p.proname='lock_year_source_capture_v2' and p.prokind='f' and pg_catalog.oidvectortypes(p.proargtypes)='uuid, integer' and p.proowner='shareholder_register_filing_store_owner'::regrole and p.prosecdef and p.provolatile='v' and p.proconfig=array['search_path=\"\"']::text[] and pg_catalog.md5(p.prosrc)='9f7ddfc5022f1241a2725aa6364b72c5')"
+  },
+  {
+    "migration": "20261010150223_rf1086_closed_retained_approval_v3.sql",
+    "presenceQuery": "select count(*)=5 from pg_catalog.pg_proc p where p.oid in (pg_catalog.to_regprocedure('shareholder_register_filing.assert_retained_annual_readiness_v2_shape_internal_v1(text)'),pg_catalog.to_regprocedure('shareholder_register_filing.source_annual_binding_internal_v2(uuid,text)'),pg_catalog.to_regprocedure('shareholder_register_filing.source_approval_context_internal_v3(uuid,uuid,text,text)'),pg_catalog.to_regprocedure('shareholder_register_filing.read_source_approval_context_v3(uuid,uuid,text,text)'),pg_catalog.to_regprocedure('shareholder_register_filing.append_source_approval_v3(uuid,uuid,text,text,text,text)')) and p.proowner='shareholder_register_filing_store_owner'::regrole and ((p.proname='assert_retained_annual_readiness_v2_shape_internal_v1' and not p.prosecdef and p.provolatile='i') or (p.proname<>'assert_retained_annual_readiness_v2_shape_internal_v1' and p.prosecdef and p.provolatile='v')) and p.proconfig=array['search_path=\"\"']::text[]"
+  },
+  {
+    "migration": "20261010212500_rf1086_closed_source_claim_v3.sql",
+    "presenceQuery": "select count(*)=2 from pg_catalog.pg_proc p where p.oid in (pg_catalog.to_regprocedure('shareholder_register_filing.lock_source_claim_recovery_v3(uuid,text,text)'),pg_catalog.to_regprocedure('shareholder_register_filing.claim_source_submission_v3(uuid,text,uuid,text,text)')) and p.proowner='shareholder_register_filing_store_owner'::regrole and p.prosecdef and p.provolatile='v' and p.proparallel='u' and p.proconfig=array['search_path=\"\"']::text[]"
+  },
+  {
+    "migration": "20261011045100_rf1086_closed_source_operation_v3.sql",
+    "presenceQuery": "select exists(select 1 from pg_catalog.pg_proc p where p.oid=pg_catalog.to_regprocedure('shareholder_register_filing.prepare_source_operation_v3(uuid,text,text,text,uuid,uuid,text,uuid,text,text)') and p.proowner='shareholder_register_filing_store_owner'::regrole and p.prosecdef and p.provolatile='v' and p.proparallel='u' and p.proconfig=array['search_path=\"\"']::text[] and pg_catalog.md5(p.prosrc)='0c77a2e69d474bf15e6a4f15e7e183c8')"
+  }
+]

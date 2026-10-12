@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0",
+  "issue": 193,
+  "recordedAt": "2026-09-29",
+  "status": "PASS_RETAINED_DISPATCH_AND_RECOVERY_ASSESSMENT",
+  "baseRevision": "ea40437c2cce02319275a28c135b5ca3b63815e1",
+  "changes": [
+    "Reconstruct exact payload, document order and durable claim from validated full-year archive.",
+    "Classify current admission, durable retry admission, uncertain recovery, blocked/exhausted, current approval required and confirmed without granting a mutation.",
+    "Reject gapped attempts, conflicting outcomes, duplicate intents, retries after success/unknown/block, backward timestamps and downstream operations before predecessor success.",
+    "Apply assessment in existing confirmed feedback recovery before acquiring read-only provider credentials; legacy archive codecs remain unchanged."
+  ],
+  "verification": {
+    "focusedCases": 593,
+    "architecture": "Failed at original checkpoint: MODULE.md omitted Rf1086SourceDispatchAssessment. A later whitespace command masked the checker exit code. Corrected in the durable-intent follow-up and checked independently.",
+    "profiles": [
+      "no_activity",
+      "formation",
+      "dividend",
+      "cash_issue",
+      "cash_nominal_increase",
+      "loss_covering_reduction",
+      "mixed"
+    ],
+    "boundaries": [
+      "crash/unknown at main, shareholder document and confirmation",
+      "stable original key and exact payload",
+      "retry exhaustion at 20",
+      "V1 and invalidated V2 cannot grant unstarted mutation",
+      "malformed claim/manifest/company/year/actor evidence",
+      "retained correction ancestry",
+      "conflicting confirmed history releases lease without acquiring credentials"
+    ]
+  },
+  "limits": [
+    "The versioned durable initial/retry intent command and application dispatch remain required.",
+    "An unknown result cannot be resolved by appending a contradictory success alone; an explicit verified recovery mechanism is still required.",
+    "No full-year provider send route, credentials or provider operations enabled.",
+    "No database migration in this checkpoint. Earlier annual-enforcement CI is still running at ea40437c; do not replace that fixed revision while its run is live.",
+    "All seven RF acceptance criteria remain pending."
+  ],
+  "privateEvidenceDirectory": "/Users/kristianelmer/.codex/issue-192-private/issue193-rf-dispatch-assessment-20260929-14d7",
+  "sha256": {
+    "focused-final.log": "7d700b9f7d1ffb6596788a5037eb4d12492a1b1b628343c472d7256be055b898",
+    "architecture.log": "5993d94cbddd6675a053c251ce99e2ed585a325d3b7c33152fe3d74964f440e2"
+  }
+}

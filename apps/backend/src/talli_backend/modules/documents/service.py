@@ -11,6 +11,8 @@ import unicodedata
 from talli_backend.modules.documents.public import (
     BeginDocumentUploadCommand,
     DocumentBackupObject,
+    RetainedDocumentOriginalQuery,
+    RetainedDocumentOriginalSnapshot,
     DocumentId,
     DocumentObjectStorage,
     DocumentObjectTransfer,
@@ -20,6 +22,8 @@ from talli_backend.modules.documents.public import (
     DocumentsError,
     DocumentsPersistence,
     DocumentStatus,
+    VerifiedDocumentEvidence,
+    document_metadata_sha256,
     DocumentTransferKind,
     DocumentUploadTransfer,
 )
@@ -187,6 +191,49 @@ class DocumentsService:
                 raise DocumentsError.forbidden()
         return await self._persistence.list_documents(company_ids)
 
+    async def verify_document_evidence(self, document_id: DocumentId) -> VerifiedDocumentEvidence:
+        """Verify private bytes for an authenticated backend consumer.
+
+        Object I/O happens outside a database transaction. Recheck metadata and
+        owner access after I/O; callers still need a separate freshness lease
+        for consequential cross-capability operations.
+        """
+        document = await self._persistence.get_document(document_id)
+        if document is None or document.status not in {
+            DocumentStatus.ATTACHED,
+            DocumentStatus.GENERATED_UNSIGNED,
+            DocumentStatus.SIGNED_OWNER_ATTESTED,
+            DocumentStatus.STORED,
+        }:
+            raise DocumentsError.not_found()
+        if await self._persistence.refresh_actor_role(document.company_id) != "owner":
+            raise DocumentsError.forbidden()
+        stored = await self._storage.read_object(
+            bucket=COMPANY_DOCUMENTS_BUCKET, storage_key=document.storage_key
+        )
+        if (not stored.content or len(stored.content) > MAX_DOCUMENT_UPLOAD_BYTES
+                or document.byte_length != len(stored.content)
+                or document.content_sha256 != sha256(stored.content).hexdigest()):
+            raise DocumentsError.integrity_failed()
+        current = await self._persistence.get_document(document_id)
+        if await self._persistence.refresh_actor_role(document.company_id) != "owner":
+            raise DocumentsError.forbidden()
+        if current != document:
+            raise DocumentsError.conflict()
+        # Retain the actual verified bytes before returning an immutable receipt.
+        # Persistence rechecks current owner and complete metadata under its own
+        # short transaction; object I/O has already completed.
+        retained = await self._persistence.retain_verified_original(document, stored.content)
+        if (retained.document_id != document.document_id or retained.company_id != document.company_id
+                or retained.source_income_year != document.income_year
+                or retained.metadata_sha256 != document_metadata_sha256(document)
+                or retained.content_sha256 != document.content_sha256 or retained.byte_length != document.byte_length):
+            raise DocumentsError.integrity_failed()
+        return VerifiedDocumentEvidence(
+            document=document, content_sha256=document.content_sha256,
+            byte_length=document.byte_length, integrity_status=document.status, retained_original=retained,
+        )
+
     async def create_transfer(self, document_id: DocumentId, kind: DocumentTransferKind) -> DocumentObjectTransfer:
         document = await self._persistence.get_document(document_id)
         if document is None or document.status not in {
@@ -235,6 +282,30 @@ class DocumentsService:
             await self._persistence.restore_after_storage_failure(document_id)
             raise
         return removed
+
+    async def read_retained_evidence(self, query: RetainedDocumentOriginalQuery) -> RetainedDocumentOriginalSnapshot:
+        """Recover exact captured metadata/bytes without consulting mutable originals."""
+        if await self._persistence.refresh_actor_role(query.company_id) != "owner":
+            raise DocumentsError.forbidden()
+        if not self._persistence.aal2:
+            raise DocumentsError.step_up_required()
+        result = await self._persistence.read_retained_evidence(query)
+        if await self._persistence.refresh_actor_role(query.company_id) != "owner":
+            raise DocumentsError.forbidden()
+        document, original = result.document, result.original
+        receipt = original.receipt
+        if (receipt.document_id != query.document_id or receipt.company_id != query.company_id
+                or receipt.source_income_year != query.source_income_year
+                or receipt.metadata_sha256 != query.metadata_sha256
+                or receipt.content_sha256 != query.content_sha256 or receipt.byte_length != query.byte_length
+                or document.document_id != query.document_id or document.company_id != query.company_id
+                or document.income_year != query.source_income_year
+                or document_metadata_sha256(document) != query.metadata_sha256
+                or document.content_sha256 != query.content_sha256 or document.byte_length != query.byte_length
+                or len(original.content) != query.byte_length
+                or sha256(original.content).hexdigest() != query.content_sha256):
+            raise DocumentsError.integrity_failed()
+        return result
 
     async def backup_projection(self, company_id: CompanyId, income_year: IncomeYear) -> tuple[DocumentBackupObject, ...]:
         if await self._persistence.actor_role(company_id) is None:

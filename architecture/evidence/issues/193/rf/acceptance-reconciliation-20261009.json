@@ -1,0 +1,356 @@
+{
+  "schemaVersion": "1.0",
+  "issue": "#193",
+  "slice": "RF-1086",
+  "observedAtUtc": "2026-10-09T21:24:36.576584+00:00",
+  "status": "RECONCILIATION_ONLY_ALL_CRITERIA_PENDING",
+  "testedHead": "6016eee19049453727fd7a1ec56d06de1129cea5",
+  "testedMerge": "0b3db9a3b8978ae14bc8c8be94502a278bd3e558",
+  "testedBase": "7d0426ecc5c64c63c64463bc38b4b48d69b565de",
+  "terminalCi": {
+    "runId": 37991232137,
+    "conclusion": "failure",
+    "backendBoundaryPassed": 8069,
+    "backendSkipped": 2,
+    "backendDeselected": 1361,
+    "fullBoundary": "success",
+    "productionWebBuild": "success",
+    "productionBackendBuild": "success",
+    "productionSmoke": "success",
+    "launchRehearsal": "failed_at_investments_postgres_image_pull",
+    "database": "failed_at_ledger_postgres_image_pull",
+    "rfDatabaseBrowserIndependentAuthRestore": "NOT_REACHED",
+    "immutableEvidence": "skipped"
+  },
+  "successor": {
+    "revision": "b5de6563d260a4e4deeb3ec4efaaaecfc0f4ff33",
+    "ciStatusAtReconciliation": "PENDING_NOT_EVIDENCE_FOR_TESTED_HEAD",
+    "scope": "Successor infrastructure-prefetch and reviewed evidence/plan changes; no successor test result is inferred."
+  },
+  "authorityAndScope": {
+    "acceptedScope": "All three filings and the complete supported atomic company-year at NOK1490 including VAT; #172 scope cannot be silently reduced.",
+    "humanSequencingAuthority": "Verified direct human instruction: complete and test Talli technical launch readiness before later owner/Codex pilot outreach. Serial RF\u2192Tax\u2192Accounts remains; no parallel future-capability writers and no repeat sequencing approval request.",
+    "reference": "LifeManager human thread01a11715-54c1-7583-9015-7192838a29e9, direct instruction verified by parent; releasePlan records the handoff.",
+    "canonicalLimit": "Older issue wording requires full evidence before next stage. Record the verified technical-first authority and bounded technical handoffs in canonical records before advancement; full A3/#193, genuine production and12 lanes/14 signoffs remain open."
+  },
+  "researchBoundary": {
+    "planOnlyReferences": [
+      "capitalPlan",
+      "capitalLaw",
+      "capitalRules",
+      "withdrawalPlan",
+      "externalUnknownResearch"
+    ],
+    "clarification": "Current-law source retrieval supersedes only the earlier access failure. Rule mapping and withdrawal/unknown-outcome research are not business implementation, automatic clearance, external outcome reconciliation or acceptance evidence. Any newer uncommitted domain foundation is excluded from this tested-head assessment."
+  },
+  "criteria": [
+    {
+      "id": "GH-193-RF-A1",
+      "requirement": "official-source mapping, current schema/code-list pin and drift gate;",
+      "status": "PENDING",
+      "implementedTechnicalEvidence": [
+        "Official event mapping, pinned main/subform XSD and code lists, examples and current-byte drift checker exist. October9 manual checker observed10 matches; no saved log was claimed."
+      ],
+      "unverifiedTechnicalProof": [
+        "Complete official mapping and golden-case proof for the accepted capital/history patterns; byte currency alone does not prove semantics."
+      ],
+      "missingImplementation": [
+        "Map persistent prior-year distribution restrictions, cash nominal-increase source subtype and registered paid-in/fund-origin allocation into complete source and output contracts. Current law retrieval and reviewed rule mapping are research, not implemented clearance."
+      ],
+      "externalOrLaterGates": [
+        "Current service/production acceptance remains A3; any precise unresolved capital-rule boundary remains explicit pending its supported contract."
+      ],
+      "nextOwnedAction": {
+        "owner": "Corporate Governance/Ledger public contracts, then RF serially",
+        "action": "Implement the three capital source contracts with versioned official-rule references and golden XML/reconciliation cases; replace restrictive guards only when the replacement proof passes."
+      },
+      "evidenceReferences": [
+        "officialMapping",
+        "officialPins",
+        "olderGapAudit",
+        "capitalPlan",
+        "capitalLaw",
+        "capitalRules"
+      ]
+    },
+    {
+      "id": "GH-193-RF-A2",
+      "requirement": "complete readiness, preview, cross-output reconciliation, review, AAL2 approval, authority entitlement, idempotent journal, submit-once, feedback/correction, final decision/receipt, and archive;",
+      "status": "PENDING",
+      "implementedTechnicalEvidence": [
+        "Source-backed preview/review/AAL2 approval, durable claim and dispatch, known-confirmed feedback/correction, source/history archive and retained originals exist with bounded September evidence.",
+        "Committed checkpoint adds override export/recovery, independent identity-restore implementation and read-only lost-capture receipt lookup; focused/unit/contract evidence exists. RF-RET-001 is no longer an absent-export claim."
+      ],
+      "unverifiedTechnicalProof": [
+        "Current restricted-role RF runtime, new lookup DB cases, fresh authenticated full-year/correction/browser journey and independent Auth/object restore were not reached by this CI run."
+      ],
+      "missingImplementation": [
+        "Capital/history contracts; explicit observation withdrawal/invalidation with owning-Governance repair/admission and archive-completeness dependencies; unreferenced customer-owned test-evidence coverage and unresolved legacy original completeness."
+      ],
+      "externalOrLaterGates": [
+        "Cross-output full atomic company-year proof must be completed serially across RF, Tax and Accounts; final production decision/receipt is later A3 evidence."
+      ],
+      "nextOwnedAction": {
+        "owner": "RF integration first; Corporate Governance/Documents/Ledger or archive owner only through declared serial contracts",
+        "action": "Run the implemented RF DB/browser/restore paths after infrastructure repair; then finish capital and withdrawal owner contracts without changing frozen facade behavior by implication."
+      },
+      "evidenceReferences": [
+        "sourceSend",
+        "historicalRestore",
+        "integration",
+        "captureLookup",
+        "terminalCi",
+        "capitalPlan",
+        "capitalRules",
+        "withdrawalPlan",
+        "retentionInventory"
+      ]
+    },
+    {
+      "id": "GH-193-RF-A3",
+      "requirement": "current TT02/service conformance plus representative genuine-company final production evidence;",
+      "status": "PENDING",
+      "implementedTechnicalEvidence": [
+        "September synthetic TT02/canonical acceptance covers transfer, cash issue, nominal increase, dividend before loss reduction; source artifact explicitly excludes formation and complete supported-case coverage."
+      ],
+      "unverifiedTechnicalProof": [
+        "Fresh service conformance for the complete accepted case matrix and final candidate; no October9 current service acceptance follows from pin checks or backend tests."
+      ],
+      "missingImplementation": [
+        "No distinct A3-only code gap established here; supported-path implementation gaps are retained under A1/A2/A4."
+      ],
+      "externalOrLaterGates": [
+        "Representative genuine-company final production decisions and receipts after all-three technical readiness, owner-led later pilot outreach and separately authorized provider actions. No genuine production AS is established by these artifacts."
+      ],
+      "nextOwnedAction": {
+        "owner": "RF conformance owner, then owner/operator for later genuine-company validation",
+        "action": "Build the complete case matrix and evidence package after technical gaps close; preserve the human-authorized technical-first sequence without asking for sequencing approval again."
+      },
+      "evidenceReferences": [
+        "broaderConformance",
+        "requirements",
+        "releasePlan",
+        "terminalCi"
+      ]
+    },
+    {
+      "id": "GH-193-RF-A4",
+      "requirement": "safe unknown-outcome reconciliation and no duplicate logical submission;",
+      "status": "PENDING",
+      "implementedTechnicalEvidence": [
+        "Durable exact-key intent, immutable outcomes and serialized admission prevent a new automatic send for prepared/unknown outcomes; known committed successes and confirmed feedback have read-only recovery.",
+        "Capture receipt lookup recovers a committed local source/register receipt with exact original actor/body/key; not_observed preserves uncertainty and authorizes no new key or authority POST."
+      ],
+      "unverifiedTechnicalProof": [
+        "New local lookup live DB/browser loss-of-response proof is pending; prior synthetic unknown/crash evidence does not establish external provider resolution."
+      ],
+      "missingImplementation": [
+        "Exact externally justified resolution of unknown main/subform/confirmation remains unresolved. Current public API research establishes no operation discovery by idempotency key and no complete safe replay lifetime/confirmation contract; an append-only owned resolution contract would be required once justified."
+      ],
+      "externalOrLaterGates": [
+        "Authority-owned positive correlation or a sufficiently explicit replay contract; matching XML/company/year, missing search results and GLD_019 cannot supply that fact."
+      ],
+      "nextOwnedAction": {
+        "owner": "RF and Authority Connections through their public contracts",
+        "action": "Prove committed local lookup on real isolated DB/browser; pursue the exact external correlation/replay contract and keep unknown provider mutations safely blocked meanwhile. A stop is not final-outcome resolution."
+      },
+      "evidenceReferences": [
+        "externalUnknownResearch",
+        "captureLookup",
+        "sourceSend",
+        "terminalCi"
+      ]
+    },
+    {
+      "id": "GH-193-RF-A5",
+      "requirement": "precise enabled/disabled/blocked customer copy and operator kill switch;",
+      "status": "PENDING",
+      "implementedTechnicalEvidence": [
+        "Source/send/recovery UI distinguishes blocked or uncertain states; explicit capture lookup preserves the frozen attempt. Configured kill-switch admission and entitlement/AAL2 checks have bounded implementation/test evidence.",
+        "Dependency readiness now probes actual configured DB roles and Auth endpoints; production build/smoke passed on the tested merge. The earlier unconditional-ready gap is superseded."
+      ],
+      "unverifiedTechnicalProof": [
+        "Full owner/mobile/browser enabled-disabled-blocked matrix and actual dependency-failure behavior under the restricted runtime; hosted operational readiness and action-time provider checks are separate."
+      ],
+      "missingImplementation": [
+        "Customer/operator states and exact next actions for capital history, withdrawal/repair and genuine unresolved provider outcome must be finished with those contracts. The final14-signoff integration remains later release work."
+      ],
+      "externalOrLaterGates": [
+        "Hosted readiness, operator/founder and obligation signoffs; no kill switch retroactively cancels an already admitted operation."
+      ],
+      "nextOwnedAction": {
+        "owner": "RF presentation/application and system-boundary owner; later launch-control owner",
+        "action": "Run fresh rendered browser cases and reconcile copy with actual state/admission semantics; add gap-specific states only alongside their owned behavior."
+      },
+      "evidenceReferences": [
+        "captureLookup",
+        "dependencyReadiness",
+        "sourceSend",
+        "withdrawalPlan",
+        "releasePlan",
+        "terminalCi"
+      ]
+    },
+    {
+      "id": "GH-193-RF-A6",
+      "requirement": "provider credentials isolated in backend; security, privacy, load, incident/rollback, browser/mobile, and two immutable complete gates;",
+      "status": "PENDING",
+      "implementedTechnicalEvidence": [
+        "Backend authority isolation and bounded security/archive/load/rollback tests exist. New override/independent identity restoration and dependency probes are implemented; current backend8069-pass segment, full boundary, builds and production smoke passed.",
+        "Historical source/database/object/cancellation restore evidence remains bounded to its recorded revisions."
+      ],
+      "unverifiedTechnicalProof": [
+        "Current RF restricted-role DB, fresh browser, deleted/revoked-actor independent Auth restore, complete launch rehearsal and two linked immutable complete gates. This ordinary PR run failed and skipped immutable evidence.",
+        "Hosted database/object/key/identity recovery and current incident, mobile, privacy/load proof required by acceptance are not supplied by this run."
+      ],
+      "missingImplementation": [
+        "RF-RET-002 unreferenced test-evidence coverage, RF-RET-003 attributable quarantine/unreferenced-copy disposition and RF-RET-004 owner-controlled retention/purge remain. Company deletion marker is not physical purge; implemented independent restore is still unproven here."
+      ],
+      "externalOrLaterGates": [
+        "Hosted/security/privacy/deletion owner signoffs, complete12-lane/14-signoff launch gates and real-company production validation; physical Auth erasure is not claimed."
+      ],
+      "nextOwnedAction": {
+        "owner": "RF proof owner first; Documents/Company Access/archive/security owners serially",
+        "action": "Clear disposable image-pull infrastructure, execute full DB/browser/independent restore, retain exact logs and independent reviews, then produce two distinct linked complete immutable gates without trimming coverage; resolve retention owner work separately."
+      },
+      "evidenceReferences": [
+        "terminalCi",
+        "integration",
+        "historicalRestore",
+        "retentionInventory",
+        "dependencyReadiness",
+        "releasePlan"
+      ]
+    },
+    {
+      "id": "GH-193-RF-A7",
+      "requirement": "old generic filing writers/rules/adapters removed.",
+      "status": "PENDING",
+      "implementedTechnicalEvidence": [
+        "Canonical RF capability owns the inspected filing mutations; legacy-named compatibility routes delegate to it. Declared architecture and legacy-interface rejection passed in this run."
+      ],
+      "unverifiedTechnicalProof": [
+        "Final full-scope forbidden writer/rule/adapter inventory after remaining RF changes, including deployment overlap and complete gate proof."
+      ],
+      "missingImplementation": [
+        "No additional duplicate RF writer was identified by the bounded audit. Remaining annual-compliance/audit/notification/company-archive facades are explicit later owners, not evidence that every legacy-named RF route is a duplicate."
+      ],
+      "externalOrLaterGates": [
+        "Later serialized facade retirements and architecture review remain at their owning stages; RF completion cannot grant new frozen-facade business behavior."
+      ],
+      "nextOwnedAction": {
+        "owner": "RF architecture owner; later each named compatibility owner",
+        "action": "Recheck public ownership, imports, RPC grants and write inventory on the final RF candidate; retire only demonstrated duplicate RF writers and preserve declared overlap."
+      },
+      "evidenceReferences": [
+        "compatibility",
+        "olderGapAudit",
+        "terminalCi",
+        "withdrawalPlan"
+      ]
+    }
+  ],
+  "evidenceReferences": {
+    "requirements": {
+      "path": "architecture/evidence/issues/193/rf/requirements.json",
+      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+      "sha256": "ea0b86de5f94df19bdc347ce0827d699bbb524d08cdeb56e2d74273470a5ad78"
+    },
+    "terminalCi": {
+      "path": "architecture/evidence/issues/193/rf/ci-37991232137.json",
+      "revision": "b5de6563d260a4e4deeb3ec4efaaaecfc0f4ff33",
+      "sha256": "c020d87277c2ee6c500fe33fb357018eedc7afe66546d5e4e2b68a9c7eb18fd9"
+    },
+    "integration": {
+      "path": "architecture/evidence/issues/193/rf/integration-verification-20261009.json",
+      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+      "sha256": "c8c358deea78603f2ea8b9e34fccd5a027ac2a7372e4e6c6bfe6beb49fcfc623"
+    },
+    "captureLookup": {
+      "path": "architecture/evidence/issues/193/rf/capture-receipt-lookup-20261009.json",
+      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+      "sha256": "49f03bfcc6577411416eca2a0296b60f8f3abc5cc8fe04e404d31ae52178c7d7"
+    },
+    "externalUnknownResearch": {
+      "path": "architecture/evidence/issues/193/rf/unknown-outcome-recovery-20261009.json",
+      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+      "sha256": "12e5fde672fcff71aae830638e69fd8318fa189b736572758107c5d362e67c7a"
+    },
+    "olderGapAudit": {
+      "path": "architecture/evidence/issues/193/rf/remaining-technical-gaps-20261009.json",
+      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+      "sha256": "79d555dc5e86b91b531225b3969782a869a44455fd410fd8a679dba369ae7def"
+    },
+    "capitalPlan": {
+      "path": "architecture/evidence/issues/193/rf/capital-source-plan-20261009.md",
+      "revision": "b5de6563d260a4e4deeb3ec4efaaaecfc0f4ff33",
+      "sha256": "90a48962d3054999b2e85bb3b1edeb3de2be83e6fbbe8d1c0ebe43a6d6865fb0"
+    },
+    "capitalLaw": {
+      "path": "architecture/evidence/issues/193/rf/capital-law-source-20261009.json",
+      "revision": "b5de6563d260a4e4deeb3ec4efaaaecfc0f4ff33",
+      "sha256": "a79356ae72da8d21011a27d2cfb94bbd1b2e04a97f0289cf8cb5b6de2922f2fd"
+    },
+    "capitalRules": {
+      "path": "architecture/evidence/issues/193/rf/capital-restriction-rule-mapping-20261009.json",
+      "revision": "b5de6563d260a4e4deeb3ec4efaaaecfc0f4ff33",
+      "sha256": "04e5470096e897fd41b54aa5386a6c1ebfc4c2f332c7d14281015e10ee7a2297"
+    },
+    "withdrawalPlan": {
+      "path": "architecture/evidence/issues/193/rf/observation-withdrawal-plan-20261009.json",
+      "revision": "b5de6563d260a4e4deeb3ec4efaaaecfc0f4ff33",
+      "sha256": "31aa3fa3ecd2a100426fb8520967f30a6df4a956548f061b32d35d5a50fbeda5"
+    },
+    "retentionInventory": {
+      "path": "architecture/evidence/issues/193/rf/retention-inventory-20260930.json",
+      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+      "sha256": "a2aeac22715afc0d770e131429101af32d8f21a737332d4ece92191a081963de"
+    },
+    "broaderConformance": {
+      "path": "architecture/evidence/issues/193/rf/broader-canonical-acceptance-20260923.json",
+      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+      "sha256": "5fef8d2a1ebba8f43b516be2bf547c9502152884987699f9d1f007cbe5537f06"
+    },
+    "sourceSend": {
+      "path": "architecture/evidence/issues/193/rf/source-send-ui-api-20260930.json",
+      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+      "sha256": "1d9128e15001941f4f7ba1e5d50c9e321397162a97a44ac5d5952d73ab6b43f0"
+    },
+    "historicalRestore": {
+      "path": "architecture/evidence/issues/193/rf/original-generations-restore-20260930.json",
+      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+      "sha256": "699f920288bf89df7210b70ee916b3e98ba151777e20b09f190009323dcc0943"
+    },
+    "releasePlan": {
+      "path": "architecture/evidence/issues/193/rf/release-plan-20261009.md",
+      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+      "sha256": "2c0e086bcfc833047123a2619f8c34689954aece27e446773179edf648da2177"
+    },
+    "dependencyReadiness": {
+      "path": "architecture/evidence/issues/196/dependency-readiness-20261009.json",
+      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+      "sha256": "825169594d864614fb473f9dbf5e66d085d4af1857a22e5a0df0d79178db7d82"
+    },
+    "officialMapping": {
+      "path": "architecture/evidence/issues/193/rf/official-event-mapping-20260917.md",
+      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+      "sha256": "ff6ffe8c3bc7531c7939d60e6a55f960ee06f31b9804d24b971ae76df85a2e47"
+    },
+    "officialPins": {
+      "path": "docs/filing/rf1086-official-sources.json",
+      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+      "sha256": "37962deeb79b62e03e13a1e5370716575117ecfe9b87fea72d4c583dbf702d1a"
+    },
+    "compatibility": {
+      "path": "architecture/compatibility.json",
+      "revision": "6016eee19049453727fd7a1ec56d06de1129cea5",
+      "sha256": "7d973f22609439486f5dda1be39c55c4e075e5e6d1ea106097eabd536d36d67c"
+    }
+  },
+  "validation": {
+    "allCriteria": "PENDING",
+    "implementationOrIndexChanged": false,
+    "method": "Read committed6016 evidence/current canonical issue; reconcile against exact terminal receipt and separately versioned research. No new runtime, browser, provider or production proof executed.",
+    "supersessionRule": "Older absent-implementation findings are qualified by subsequent committed implementation; historical evidence is never promoted into a current live pass."
+  }
+}
