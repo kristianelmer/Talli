@@ -25,6 +25,7 @@ import { exerciseFullYearSourceJourney, seedFullYearAdmission } from "./fixtures
 import { exerciseRfPilotExpiry, exerciseRfCancellation, exerciseRfFinalDeletion } from "./fixtures/rf1086-cancellation-browser-journey.mjs";
 import { exerciseCompanyTestRetention } from "./fixtures/rf1086-company-test-retention-browser-journey.mjs";
 import { actualReplayEnvironment } from "./support/rf1086-actual-replay-environment.mjs";
+import { assertRfArchiveLowAalDenied } from "./support/rf1086-low-aal-archive-diagnostic.mjs";
 
 const nextCli = createRequire(new URL("../apps/web/package.json", import.meta.url)).resolve("next/dist/bin/next");
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -207,7 +208,7 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
     const lowAalSession = await browserSession(context);
     const rfArchiveUrl = `${siteOrigin}/filing/aksjonaerregisteroppgaven/source/archive?companyId=${primary.id}&incomeYear=2025`;
     const noMfaArchive = await context.request.get(rfArchiveUrl, { maxRedirects: 0 });
-    assert.equal(noMfaArchive.status(), 403);
+    await assertRfArchiveLowAalDenied(noMfaArchive);
     assert.equal(noMfaArchive.headers()["content-disposition"], undefined);
     assert.ok(!(await noMfaArchive.text()).includes("canonicalArchive"));
     await establishOwnerAal2(page, siteOrigin);
