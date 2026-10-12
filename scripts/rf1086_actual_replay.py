@@ -23,6 +23,7 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 import rf1086_catalog_semantics as commands
+import rf1086_sql_ledger as sql_ledger
 from rf1086_catalog_causal_capture import _snapshot, _files, FILE_OUTPUT_CAP, PHASES
 from rf1086_catalog_difference import CatalogCapture, _encoded, _records
 from rf1086_actual_replay_package import (
@@ -67,7 +68,8 @@ F2_KEYS = frozenset(('status', 'fingerprint', 'F2EqualsF', 'causalSnapshotEquals
 INPUT_KEYS = ('binding', 'image', 'source', 'sourceAuth', 'sourceNetwork', 'initSha256', 'code',
     'files', 'before', 'failed', 'cleanupComplete', 'identitySourcePostcheck',
     'outerBusinessPostchecks', 'exportBudget')
-FULL_SQL_COMMAND = 'exec pg_restore --verbose --clean --if-exists --create --file=- 2>/dev/null'
+FULL_SQL_COMMAND = (sql_ledger.FIFO_PREDICATE
+                    + ' && exec pg_restore --verbose --clean --if-exists --create --file=- 2>/dev/null')
 TOOL_COMMAND = '''set -eu
 binary=$(command -v pg_restore)
 case "$binary" in /*) ;; *) exit 1;; esac
@@ -398,6 +400,8 @@ def summary_fits(result, metadata):
 
 def fit_optional(f2, optional, metadata):
     result = f2 | {'Fsql': optional}
+    if not summary_fits(result, metadata) and optional.get('status') == 'full_sql_verified':
+        result['Fsql'] = optional | {'ledger': sql_ledger.unavailable('summary', 'summary')}
     if not summary_fits(result, metadata):
         result['Fsql'] = unavailable_fsql('summary_oversized')
     if not summary_fits(result, metadata):
@@ -423,7 +427,7 @@ def read_f2(path, metadata):
     return validate_f2(load_json(read_private(path / 'f2.json', MAX_PLAINTEXT)), metadata)
 
 
-def full_sql_control(path, metadata, previous_target, roles, failed_raw, deadline):
+def full_sql_control(path, metadata, previous_target, roles, failed_raw, deadline, *, toc=None, inventory=None):
     failure = {'stage': 'tool_probe', 'command': None, 'tool': None, 'stream': None}
     try:
         tool_raw = command(['docker', 'exec', previous_target, 'sh', '-c', TOOL_COMMAND], deadline, cap=4096)
@@ -457,7 +461,7 @@ def full_sql_control(path, metadata, previous_target, roles, failed_raw, deadlin
         psql(target, script, deadline, database='template1')
         failure['stage'] = 'final_observation'
         fingerprint, catalog = failed_state(target, metadata, failed_raw, deadline)
-        return {'status': 'full_sql_verified', 'stream': stream,
+        result = {'status': 'full_sql_verified', 'stream': stream,
                 'tool': {'version': tool[1].decode(), 'sha256': tool[2].decode()},
                 'initializedEqualsOriginal': True, 'freshTarget': True,
                 'fingerprint': fingerprint, 'catalog': catalog, 'FsqlEqualsF2': True,
@@ -467,11 +471,20 @@ def full_sql_control(path, metadata, previous_target, roles, failed_raw, deadlin
             failure['command'] = error.observation
         reason = error.reason if isinstance(error, Unavailable) else 'control_unavailable'
         raise FullSqlUnavailable(reason, failure) from None
+    # A ledger observation is subordinate to the completed Fsql control. Its
+    # ordinary errors never acquire the preceding command's failure stage.
+    try:
+        result['ledger'] = sql_ledger.observe(path, script, toc, metadata, inventory,
+                                             result, deadline, read_private=read_private)
+    except Exception:
+        result['ledger'] = sql_ledger.unavailable('internal', 'metadata')
+    return result
 
 
-def add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline):
+def add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline, *, toc=None):
     return optional_observation(path, metadata, f2, deadline,
-        lambda until: full_sql_control(path, metadata, target, roles, failed_raw, until))
+        lambda until: full_sql_control(path, metadata, target, roles, failed_raw, until,
+                                      toc=toc, inventory=f2['inventory']))
 
 
 def measure_full_sql(path, target, deadline):
@@ -580,7 +593,7 @@ def replay(path, metadata, deadline):
             'input': {key: metadata[key] for key in INPUT_KEYS},
             'sourceCommandSha256': phases['source_pre_dump']['sourceCommandSha256'],
             'sourceInstalledFiles': phases['source_pre_dump']['files']}
-    return add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline)
+    return add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline, toc=toc)
 
 
 def seal(payload, aad, public_key):
@@ -721,7 +734,7 @@ def validate_measurement(value):
     return value
 
 
-def validate_fsql(value, metadata):
+def validate_fsql(value, metadata, inventory=None):
     if type(value) is not dict or value.get('recoveryAccepted') is not False or value.get('causalAttributionAccepted') is not False:
         raise Unavailable('optional_result_invalid')
     if value.get('status') == 'unavailable':
@@ -737,13 +750,19 @@ def validate_fsql(value, metadata):
         validate_failure(value['failure'], value['reason'])
         return value
     fields = {'status', 'stream', 'tool', 'initializedEqualsOriginal', 'freshTarget', 'fingerprint',
-              'catalog', 'FsqlEqualsF2', 'causalSnapshotEqualsF2', 'recoveryAccepted', 'causalAttributionAccepted'}
+              'catalog', 'FsqlEqualsF2', 'causalSnapshotEqualsF2', 'recoveryAccepted', 'causalAttributionAccepted', 'ledger'}
     if (set(value) != fields or value['status'] != 'full_sql_verified'
             or any(value[k] is not True for k in ('initializedEqualsOriginal', 'freshTarget', 'FsqlEqualsF2', 'causalSnapshotEqualsF2'))
             or value['fingerprint'] != metadata['failed'] or value['catalog'] != metadata['phases']['mismatch']['catalog']):
         raise Unavailable('optional_result_invalid')
     validate_stream(value['stream'])
     validate_tool(value['tool'])
+    try:
+        sql_ledger.validate_receipt(value['ledger'], fsql=value, inventory=inventory,
+            archive_binding=metadata.get('files', {}).get('archive.dump'), code=metadata.get('code'),
+            catalog=metadata['phases']['mismatch']['catalog'])
+    except (ValueError, KeyError, TypeError):
+        raise Unavailable('optional_result_invalid') from None
     return value
 
 
@@ -756,7 +775,7 @@ def completed_result(path, metadata):
     if type(result) is not dict or set(result) != F2_KEYS | {'Fsql'}:
         raise Unavailable('optional_result_invalid')
     f2 = validate_f2({key: result[key] for key in F2_KEYS}, metadata)
-    return fit_optional(f2, validate_fsql(result['Fsql'], metadata), metadata)
+    return fit_optional(f2, validate_fsql(result['Fsql'], metadata, f2['inventory']), metadata)
 
 
 def fallback_result(path, metadata, outcome):

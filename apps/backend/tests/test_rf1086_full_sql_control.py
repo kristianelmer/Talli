@@ -44,11 +44,13 @@ def control(setup):
         'tool': {'version': '17.6', 'sha256': 'f' * 64}, 'initializedEqualsOriginal': True,
         'freshTarget': True, 'fingerprint': metadata['failed'], 'catalog': catalog,
         'FsqlEqualsF2': True, 'causalSnapshotEqualsF2': True,
-        'recoveryAccepted': False, 'causalAttributionAccepted': False}
+        'recoveryAccepted': False, 'causalAttributionAccepted': False,
+        'ledger': replay.sql_ledger.unavailable('headroom', 'admission')}
     return path, metadata, f2, optional, hashed, setup['failed_raw']
 
 
-def test_full_script_is_unfiltered_unchanged_and_uses_fresh_initialized_target(control, monkeypatch):
+@pytest.mark.parametrize('ledger_fault', ['unavailable', 'error', 'cancel'])
+def test_full_script_is_unfiltered_unchanged_and_uses_fresh_initialized_target(control, monkeypatch, ledger_fault):
     path, metadata, _, _, _, failed = control
     script = b'COPY fixture FROM stdin;\n-- TOC entry 99999\n\\.\n\\connect postgres\n'
     calls = []
@@ -56,7 +58,7 @@ def test_full_script_is_unfiltered_unchanged_and_uses_fresh_initialized_target(c
         calls.append(('command', args, deadline, kw))
         if args[-1] == replay.TOOL_COMMAND: return b'pg_restore (PostgreSQL) 17.6\n' + b'f' * 64 + b'\n'
         assert kw['archive'].read() == b'private-archive'
-        assert args[-1] == 'exec pg_restore --verbose --clean --if-exists --create --file=- 2>/dev/null'
+        assert args[-1] == 'test -p /proc/self/fd/0 && exec pg_restore --verbose --clean --if-exists --create --file=- 2>/dev/null'
         assert kw['cap'] == 128 * 1024**2
         return script
     monkeypatch.setattr(replay, 'command', command)
@@ -65,6 +67,17 @@ def test_full_script_is_unfiltered_unchanged_and_uses_fresh_initialized_target(c
     monkeypatch.setattr(replay, 'psql', lambda *a, **kw: calls.append(('psql', a, kw)))
     monkeypatch.setattr(replay, '_snapshot', lambda *a, **kw: metadata['phases']['target_initialized']['catalog'])
     monkeypatch.setattr(replay, 'failed_state', lambda *a: (metadata['failed'], metadata['phases']['mismatch']['catalog']))
+    def observe(p, actual_script, toc, m, inventory, fsql, deadline, **kw):
+        assert actual_script is script and fsql['FsqlEqualsF2'] is True
+        assert fsql['fingerprint'] == metadata['failed']
+        if ledger_fault == 'error': raise RuntimeError('synthetic-private-canary')
+        if ledger_fault == 'cancel': raise KeyboardInterrupt()
+        return replay.sql_ledger.unavailable('role', 'emitter')
+    monkeypatch.setattr(replay.sql_ledger, 'observe', observe)
+    if ledger_fault == 'cancel':
+        with pytest.raises(KeyboardInterrupt):
+            replay.full_sql_control(path, metadata, 'old', b'fixed roles', failed, 999)
+        return
     result = replay.full_sql_control(path, metadata, 'old', b'fixed roles', failed, 999)
     assert calls[2][0] == 'cleanup' and calls[3][0] == 'start'
     assert [c[1][1] for c in calls if c[0] == 'psql'] == [b'fixed roles', b'drop database postgres with (force);', script]
@@ -72,6 +85,19 @@ def test_full_script_is_unfiltered_unchanged_and_uses_fresh_initialized_target(c
     assert result['stream'] == {'bytes': len(script), 'sha256': package.digest(script)}
     assert result['fingerprint'] == metadata['failed'] and result['FsqlEqualsF2']
     assert result['recoveryAccepted'] is result['causalAttributionAccepted'] is False
+    assert result['ledger']['status'] == 'unavailable'
+    assert result['ledger']['reason'] == ('role' if ledger_fault == 'unavailable' else 'internal')
+
+
+def test_summary_reduces_ledger_before_verified_fsql(control, monkeypatch):
+    path, metadata, f2, optional, _, _ = control
+    reduced = optional | {'ledger': replay.sql_ledger.unavailable('summary', 'summary')}
+    size = len(package._encoded(f2 | {'Fsql': reduced, 'optionalWorkerOutcome': 'result_invalid', 'ownedCleanupComplete': False}))
+    monkeypatch.setattr(replay, 'MAX_PLAINTEXT', size)
+    optional['ledger'] = {'syntheticOversizedShape': 'x'*4096}
+    result = replay.fit_optional(f2, optional, metadata)
+    assert result['Fsql'] == reduced and result['Fsql']['status'] == 'full_sql_verified'
+    assert result['fingerprint'] == f2['fingerprint']
 
 
 @pytest.mark.parametrize('fault', ['tool', 'empty', 'generation_failure', 'cleanup', 'same_target', 'initialized'])
@@ -111,7 +137,7 @@ def test_every_strict_comparison_remains_required(control, monkeypatch, fault):
 def test_saved_f2_precedes_optional_work_and_deadline_reserve(control, monkeypatch, fault):
     path, metadata, f2, _, _, failed = control
     called = []
-    def optional(*args):
+    def optional(*args, **kwargs):
         assert replay.read_f2(path, metadata) == f2
         assert not (path / 'f2.pending').exists()
         called.append(args[-1])
@@ -181,7 +207,7 @@ def test_command_unwind_leaves_publication_reserve(control, monkeypatch):
     path, metadata, f2, _, _, failed = control
     ticks=[100.0]
     monkeypatch.setattr(replay.time,'monotonic',lambda:ticks[0])
-    def late(*args):
+    def late(*args, **kwargs):
         assert args[-1]==504.0
         ticks[0]=506.0  # The optional command plus its full two-second unwind.
         raise package.Unavailable('command_unavailable')
@@ -203,7 +229,7 @@ r.FSQL_HEADROOM_SECONDS=0
 r.FSQL_RESERVE_SECONDS=0.1
 if mode=='oversized':r.MAX_PLAINTEXT=int(os.environ['TEST_FSQL_MAX'])
 r.read_package=lambda:(path,metadata,'a'*64)
-def stage(*args):
+def stage(*args, **kwargs):
     os.write(ack,b'1');os.close(ack)
     if mode=='failed':raise SystemExit(2)
     if mode=='oversized':return optional
