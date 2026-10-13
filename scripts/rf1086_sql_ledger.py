@@ -17,7 +17,7 @@ import rf1086_raw_toc as raw_toc
 import rf1086_sql_identifiers as identifiers
 import rf1086_sql_lexical as lexical
 
-SCHEMA = 'rf1086-sql-ledger-v2'
+SCHEMA = 'rf1086-sql-ledger-v3'
 PROFILE = 'pg176-fifo-custom116-utf8-on-v1'
 SOURCE_COMMIT = '7885b94dd81b98bbab9ed878680d156df7bf857f'
 FIFO_PREDICATE = 'test -p /proc/self/fd/0'

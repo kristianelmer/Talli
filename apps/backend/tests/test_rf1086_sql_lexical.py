@@ -140,7 +140,9 @@ class Tests(unittest.TestCase):
             ('MAX_BINDINGS', 5, COPY+b'\\.\n', {'copy_commands':(COPY,)})]
         for attr, limit, raw, args in cases:
             with self.subTest(attr=attr), patch.object(m, attr, limit): self.reject(raw, **args)
-        with patch.object(m, 'MAX_TOKEN', 100): self.reject(COPY+b'x'*101+b'\n\\.\n', copy_commands=(COPY,))
+        with patch.object(m, 'MAX_TOKEN', 100):
+            raw = COPY+b'x'*101+b'\n\\.\n'
+            self.verify(raw, self.scan(raw, copy_commands=(COPY,)))
 
     def test_quote_comment_truncations_require_the_full_bound_script(self):
         fragments = [b"SELECT 'semi;''quote';\n", b"SELECT E'escaped\\\'quote;';\n",
@@ -176,7 +178,8 @@ class Tests(unittest.TestCase):
     def test_matching_and_dollar_checks_run_after_validation(self):
         long_copy = b'COPY public.fixture ('+b', '.join(b'column'+str(i).encode() for i in range(6000))+b') FROM stdin;\n'
         scenarios = [('matches', long_copy+b'\\.\n', {'copy_commands':(long_copy,)}),
-            ('dollar', b'SELECT $abc$'+b'x'*60000+b'$abc$;\n', {})]
+            ('dollar', b'SELECT $abc$'+b'x'*60000+b'$abc$;\n', {}),
+            ('copy_payload', COPY+b'x'*(2*1024**2)+b'\n\\.\n', {'copy_commands': (COPY,)})]
         for method, raw, kw in scenarios:
             for cancellation in (False, True):
                 with self.subTest(method=method, cancellation=cancellation):

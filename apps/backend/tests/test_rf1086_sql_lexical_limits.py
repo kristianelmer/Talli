@@ -1,7 +1,9 @@
 """Finite rejection diagnostics use synthetic inputs, never retained CI data."""
 from copy import deepcopy
+import hashlib
 import json
 import time
+import tracemalloc
 
 import pytest
 
@@ -16,6 +18,22 @@ META = (b'\\restrict key\n', b'\\unrestrict key\n', b'\\connect postgres\n',
 
 def scan(raw, **kw):
     return lexical.scan(raw, deadline=time.monotonic()+5, profile=lexical.PROFILE, **kw)
+
+
+@pytest.mark.parametrize('token_limit,line_bytes', [(1048576, 2*1024**2), (64, 65)])
+def test_copy_row_length_is_independent_of_sql_token_limit(monkeypatch, token_limit, line_bytes):
+    monkeypatch.setattr(lexical, 'MAX_TOKEN', token_limit)
+    payload = b'x'*line_bytes+b'\n'
+    raw = COPY+payload+b'\\.\nSELECT 1;\n'
+    result = scan(raw, copy_commands=(COPY,))
+    leaves = list(lexical.RECORD.iter_unpack(result.leaves))
+    assert [(a, z) for kind, a, z in leaves if kind == lexical.COPY_DATA] == [(len(COPY), len(COPY)+len(payload))]
+    assert [(a, z) for kind, a, z in leaves if kind == lexical.COPY_END] == [(len(COPY)+len(payload), len(COPY)+len(payload)+3)]
+    assert leaves[0][1] == 0 and leaves[-1][2] == len(raw)
+    assert all(left[2] == right[1] for left, right in zip(leaves, leaves[1:]))
+    receipt = json.loads(result.receipt)
+    assert receipt['statements'] == 2
+    assert receipt['input'] == {'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()}
 
 
 @pytest.mark.parametrize('cap,ceiling,site', [
@@ -44,8 +62,6 @@ def test_observation_identifies_the_first_rejected_guard(tmp_path, monkeypatch, 
     ({'MAX_IDENTIFIER': 3}, COPY+b'\\.\n', {'copy_commands': (COPY,)}, 'identifier_bytes', 'bytes', False),
     ({'MAX_TAG': 2}, b'SELECT $long$x$long$;\n', {}, 'dollar_tag_prefix_bytes', 'bytes', True),
     ({'MAX_TOKEN': 8}, b'SELECT $$0123456789$$;\n', {}, 'dollar_body_bytes', 'bytes', True),
-    ({'MAX_TOKEN': 64, 'CHUNK': 16}, COPY+b'x'*96+b'\n\\.\n',
-        {'copy_commands': (COPY,)}, 'copy_line_bytes', 'bytes', True),
     ({'MAX_STATEMENTS': 1}, b'SELECT 1;SELECT 2;\n', {}, 'statements', 'statements', True),
     ({'MAX_RECEIPT': 8}, b'SELECT 1;\n', {}, 'receipt_bytes', 'bytes', False),
 ])
@@ -89,23 +105,56 @@ def test_first_guard_precedence_is_preserved(monkeypatch):
     assert caught.value.limit['site'] == 'token_bytes'
 
 
-def test_existing_copy_final_guard_is_not_reclassified(monkeypatch):
-    monkeypatch.setattr(lexical, 'MAX_TOKEN', 64)
+@pytest.mark.parametrize('shift', range(-3, 4))
+def test_long_copy_line_suffix_cannot_impersonate_standalone_end(shift):
+    payload = b'x'*(1048576+shift)+b'\\.\n\\\\.\nSELECT 99; \\connect hidden -- TOC entry\n\n'
+    raw = COPY+payload+b'\\.\n'+COPY+b'last\n\\.\nSELECT 1;\n'
+    result = scan(raw, copy_commands=(COPY, COPY))
+    payloads = [(a, z) for kind, a, z in lexical.RECORD.iter_unpack(result.leaves) if kind == lexical.COPY_DATA]
+    first_end = len(COPY)+len(payload)
+    second_start = first_end+3+len(COPY)
+    assert payloads == [(len(COPY), first_end), (second_start, second_start+5)]
+    assert json.loads(result.receipt)['statements'] == 3
+
+
+@pytest.mark.parametrize('tail', [b'\n', b'\\.\n', b'\n\\.extra\n', b'\n \\.\n', b'\n\\\\.\n'])
+def test_long_copy_row_still_requires_its_complete_standalone_terminator(tail):
     with pytest.raises(lexical.Unavailable) as caught:
-        scan(COPY+b'x'*65+b'\n\\.\n', copy_commands=(COPY,))
-    assert caught.value.reason == 'copy' and caught.value.limit is None
+        scan(COPY+b'x'*(2*1024**2)+tail, copy_commands=(COPY,))
+    assert caught.value.reason == 'unfinished' and caught.value.limit is None
 
 
-def test_copy_prefix_measurement_does_not_scan_to_line_end(monkeypatch):
-    monkeypatch.setattr(lexical, 'MAX_TOKEN', 64)
-    monkeypatch.setattr(lexical, 'CHUNK', 16)
-    results = []
-    for length in (100, 300):
-        with pytest.raises(lexical.Unavailable) as caught:
-            scan(COPY+b'x'*length+b'\n\\.\n', copy_commands=(COPY,))
-        results.append(caught.value.limit)
-    assert results[0] == results[1]
-    assert results[0]['observed'] == 80 and results[0]['offset'] == len(COPY)+80
+@pytest.mark.parametrize('bad', [b'\r', b'\0', b'\xff'])
+def test_long_copy_row_does_not_bypass_global_encoding_profile(bad):
+    with pytest.raises(lexical.Unavailable) as caught:
+        scan(COPY+b'x'*(2*1024**2)+bad+b'\n\\.\n', copy_commands=(COPY,))
+    assert caught.value.reason == 'encoding'
+
+
+def test_long_copy_row_still_obeys_complete_input_bound(monkeypatch):
+    raw = COPY+b'x'*(2*1024**2)+b'\n\\.\n'
+    monkeypatch.setattr(lexical, 'MAX_INPUT', len(raw))
+    assert json.loads(scan(raw, copy_commands=(COPY,)).receipt)['input']['bytes'] == len(raw)
+    monkeypatch.setattr(lexical, 'MAX_INPUT', len(raw)-1)
+    with pytest.raises(lexical.Unavailable) as caught:
+        scan(raw, copy_commands=(COPY,))
+    assert caught.value.reason == 'input'
+
+
+def test_copy_scanner_additional_allocation_does_not_grow_with_row_size():
+    peaks = []
+    for size in (2*1024**2, 8*1024**2):
+        # Fixture/input allocation is deliberately outside the measured scope.
+        raw = COPY+b'x'*size+b'\n\\.\n'
+        tracemalloc.start()
+        try:
+            result = scan(raw, copy_commands=(COPY,))
+            peaks.append(tracemalloc.get_traced_memory()[1])
+        finally:
+            tracemalloc.stop()
+        assert json.loads(result.receipt)['copyGroups'] == 1
+    assert max(peaks) < 512*1024
+    assert peaks[1] <= peaks[0]+256*1024
 
 
 def test_ordinary_progress_guard_reports_only_the_scanned_prefix():
@@ -121,6 +170,18 @@ def limit_receipt():
               'unit': 'records', 'offset': 3}
     return ledger.unavailable('limit', 'lexical', {
         'rowIndex': None, 'dumpId': None, 'descriptor': None, 'offset': None, 'limit': detail})
+
+
+def test_removed_copy_line_diagnostic_is_rejected_by_current_contract():
+    detail = {'site': 'copy_line_bytes', 'ceiling': 1048576, 'observed': 1052672,
+              'unit': 'bytes', 'offset': 14677748}
+    with pytest.raises(lexical.Unavailable):
+        lexical.validate_limit(detail)
+    value = limit_receipt()
+    value['context']['limit'] = detail
+    with pytest.raises(ledger.Unavailable):
+        ledger.validate_receipt(value, fsql={'status': 'full_sql_verified', 'FsqlEqualsF2': True,
+            'stream': {'bytes': 134217728, 'sha256': 'a'*64}})
 
 
 @pytest.mark.parametrize('field,value', [
@@ -145,7 +206,7 @@ def test_limit_receipt_requires_correct_reason_stage_stream_and_schema(tmp_path)
     value = limit_receipt()
     assert ledger.validate_receipt(value, **args) is value
     changes = [value | {'reason': 'deadline'}, value | {'stage': 'emitter'},
-               value | {'schema': 'rf1086-sql-ledger-v1'},
+               value | {'schema': 'rf1086-sql-ledger-v1'}, value | {'schema': 'rf1086-sql-ledger-v2'},
                success | {'limit': value['context']['limit']}]
     for bad in changes:
         with pytest.raises(ledger.Unavailable):
@@ -164,8 +225,7 @@ def test_limit_receipt_requires_correct_reason_stage_stream_and_schema(tmp_path)
 
 def test_span_count_cannot_exceed_its_script_position():
     for site, ceiling in [('token_bytes', 1048576), ('identifier_bytes', 16384),
-                          ('dollar_tag_prefix_bytes', 129), ('dollar_body_bytes', 1048576),
-                          ('copy_line_bytes', 1048576)]:
+                          ('dollar_tag_prefix_bytes', 129), ('dollar_body_bytes', 1048576)]:
         with pytest.raises(lexical.Unavailable):
             lexical.validate_limit({'site': site, 'ceiling': ceiling, 'observed': ceiling+1,
                                     'unit': 'bytes', 'offset': ceiling})

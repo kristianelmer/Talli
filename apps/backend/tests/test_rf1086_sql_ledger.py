@@ -184,6 +184,22 @@ def test_copy_markers_are_payload_and_occurrences_derive_from_requests():
     with pytest.raises(ledger.Unavailable): core(script_fixture(rows, copy_payload=payload, two_occurrences=True), rows)
 
 
+def test_complete_ledger_preserves_long_copy_rows_and_selected_cuts():
+    rows = source_rows()
+    rows.insert(8, row(41, b'TABLE DATA', b'fixture', dumper=1, namespace=b'public',
+                        copy=b'COPY public.fixture (id, value) FROM stdin;\n'))
+    payload = b'1\t'+b'x'*(2*1024**2)+b'\\.\n2\t-- TOC entry 30; \\connect hidden\n'
+    script = script_fixture(rows, copy_payload=payload)
+    result = core(script, rows)
+    baseline = core(script_fixture(rows, copy_payload=b'1\tshort\n'), rows)
+    assert result.selected == baseline.selected
+    assert result.counts['copyGroups'] == 1 and result.counts['occurrences'] == 8
+    assert result.counts == baseline.counts
+    assert result.script == {'bytes': len(script), 'sha256': hashlib.sha256(script).hexdigest()}
+    assert result.indexes['regions'] != baseline.indexes['regions']
+    assert result.indexes['decisions'] == baseline.indexes['decisions']
+
+
 def test_native_two_schema_core_cannot_validate_as_production(tmp_path):
     value, args = receipt_context(tmp_path)
     native = core(selectors=ledger.SELECTORS[:2])

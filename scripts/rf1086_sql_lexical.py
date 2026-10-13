@@ -9,7 +9,7 @@ import struct
 import time
 
 PROFILE = 'UTF8-standard-strings-on-throughout'
-RULE_VERSION = 'sql-lexical-scanner-v1'
+RULE_VERSION = 'sql-lexical-scanner-v2'
 MAX_INPUT = 128 * 1024**2
 MAX_TOKEN = 1024**2
 MAX_IDENTIFIER = 16 * 1024
@@ -67,7 +67,6 @@ def limit_rules():
         'dollar_tag_prefix_bytes': (MAX_TAG + 1, MAX_TAG + 2, 'bytes', 'required', None),
         'dollar_body_bytes': (MAX_TOKEN, min(MAX_INPUT, MAX_TOKEN + max(MAX_TAG + 2, min(CHUNK, 4096))),
                               'bytes', 'required', None),
-        'copy_line_bytes': (MAX_TOKEN, min(MAX_INPUT, MAX_TOKEN + CHUNK), 'bytes', 'required', None),
         'copy_groups': (MAX_COPY, MAX_COPY + 1, 'groups', 'required', None),
         'statements': (MAX_STATEMENTS, MAX_STATEMENTS + 1, 'statements', 'required', None),
         # Receipt chunks contain fixed keys, bounded integers and64-byte hashes.
@@ -93,7 +92,7 @@ def validate_limit(value, *, input_bytes=None):
         require(type(bound) is int and 0 <= bound <= MAX_INPUT
                 and type(offset) is int and 0 <= offset <= bound, 'binding')
         if value['site'] in ('token_bytes', 'identifier_bytes', 'dollar_tag_prefix_bytes',
-                              'dollar_body_bytes', 'copy_line_bytes'):
+                              'dollar_body_bytes'):
             require(value['observed'] <= offset, 'binding')
     return value
 
@@ -352,15 +351,17 @@ class Scanner:
     def copy_payload(self, at):
         self.copies += 1; limit_guard(self.copies, MAX_COPY, 'copy_groups', at)
         start = at
+        # COPY rows are opaque spans, bounded by MAX_INPUT rather than the SQL
+        # token limit. Retain offsets only; never allocate a whole line buffer.
         while at < self.n:
             line = at
             while at < self.n:
-                self.check(); limit_guard(at-line, MAX_TOKEN, 'copy_line_bytes', at)
+                self.check()
                 found = self.raw.find(b'\n', at, min(self.n, at+CHUNK))
                 if found >= 0:
                     at = found+1; break
                 at = min(self.n, at+CHUNK)
-            require(at > line and self.raw[at-1:at] == b'\n' and at-line <= MAX_TOKEN, 'copy')
+            require(at > line and self.raw[at-1:at] == b'\n', 'copy')
             if at-line == 3 and self.raw[line:at] == b'\\.\n':
                 self.add(self.leaves, COPY_DATA, start, line)
                 self.add(self.leaves, COPY_END, line, at)
