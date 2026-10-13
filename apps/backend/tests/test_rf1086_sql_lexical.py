@@ -57,6 +57,46 @@ class Tests(unittest.TestCase):
         result = self.scan(raw, expected_meta=META)
         self.assertEqual(self.verify(raw, result)['metaLines'], 5)
 
+    def test_retained_tokens_preserve_original_byte_offsets_and_all_seven_kinds(self):
+        parts = [(None, b' \t-- prefix\n'), (None, b'/* outer /* inner */ */ '),
+            (m.IDENT, b'SELECT'), (None, b'\t'), (m.QUOTED_IDENT, '"blå"'.encode()),
+            (m.PUNCT, b','), (None, b' /* interior */ '), (m.NUMBER, b'1.2e-3'),
+            (m.PUNCT, b','), (None, b' '), (m.STRING, "'北欧; -- TOC entry'".encode()),
+            (m.PUNCT, b','), (None, b'-- between\n'), (m.ESCAPE, b"E'x\\n'"),
+            (m.PUNCT, b','), (None, b' '), (m.DOLLAR, b'$q$;\\connect hidden\n$q$'),
+            (m.PUNCT, b';'), (None, b' -- suffix\n')]
+        expected = []; offset = 0
+        for kind, value in parts:
+            if kind is not None: expected.append((kind, offset, offset+len(value)))
+            offset += len(value)
+        raw = b''.join(value for _, value in parts)
+        result = self.scan(raw)
+        self.assertEqual(self.verify(raw, result)['statements'], 1)
+        self.assertEqual(list(m.RECORD.iter_unpack(result.tokens)), expected)
+        self.assertEqual({kind for kind, _, _ in expected}, set(m.RETAINED_TOKEN_KINDS))
+
+    def test_omitted_trivia_still_obeys_deadline_and_cancellation(self):
+        for raw in (b' '*10000+b'SELECT 1;\n', b'--'+b'x'*10000+b'\nSELECT 1;\n',
+                    b'/*'+b'x'*10000+b'*/ SELECT 1;\n'):
+            for cancellation in (False, True):
+                with self.subTest(raw=raw[:2], cancellation=cancellation):
+                    active = [False]; ticks = [0]; interrupt = KeyboardInterrupt()
+                    original = m.Scanner.progress
+                    def progress(instance, *args, **kw):
+                        active[0] = True
+                        return original(instance, *args, **kw)
+                    def clock():
+                        if active[0]:
+                            ticks[0] += 1
+                            if cancellation and ticks[0] == 2: raise interrupt
+                        return ticks[0]*0.6
+                    with patch.object(m.Scanner, 'progress', progress), patch.object(m.time, 'monotonic', clock):
+                        with self.assertRaises(KeyboardInterrupt if cancellation else m.Unavailable) as caught:
+                            m.scan(raw, profile=m.PROFILE, deadline=5)
+                    self.assertTrue(active[0])
+                    if cancellation: self.assertIs(caught.exception, interrupt)
+                    else: self.assertEqual(caught.exception.reason, 'deadline')
+
     def test_copy_payload_remains_opaque_and_empty_payload_is_valid(self):
         for data in (b'', b'\n', b'-- TOC entry 123\nBEGIN; $q$ \\connect bad\n\\\\.\n \\.\n\\.extra\n'):
             raw = COPY+data+b'\\.\n\n\nSELECT 1;\n'

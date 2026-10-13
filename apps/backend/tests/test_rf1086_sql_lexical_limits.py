@@ -20,6 +20,62 @@ def scan(raw, **kw):
     return lexical.scan(raw, deadline=time.monotonic()+5, profile=lexical.PROFILE, **kw)
 
 
+@pytest.mark.parametrize('bound', [8, 262144])
+def test_trivia_does_not_consume_the_retained_token_bound(monkeypatch, bound):
+    monkeypatch.setattr(lexical, 'MAX_RECORDS', bound)
+    prefix = b' \t-- discard\n' * (bound//2+1)
+    raw = prefix+b'SELECT 1;\n'
+    result = scan(raw)
+    start = len(prefix)
+    assert list(lexical.RECORD.iter_unpack(result.tokens)) == [
+        (lexical.IDENT, start, start+6),
+        (lexical.NUMBER, start+7, start+8),
+        (lexical.PUNCT, start+8, start+9),
+    ]
+    assert list(lexical.RECORD.iter_unpack(result.leaves)) == [
+        (lexical.TRIVIA, 0, start), (lexical.SQL, start, start+9),
+        (lexical.TRIVIA, start+9, len(raw)),
+    ]
+    receipt = json.loads(result.receipt)
+    assert receipt['input'] == {'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()}
+    assert receipt['statements'] == 1 and receipt['tokens']['bytes'] == 3*lexical.RECORD.size
+
+
+@pytest.mark.parametrize('wrapper', [lambda n: b' '*n,
+    lambda n: b'--'+b'x'*(n-3)+b'\n', lambda n: b'/*'+b'x'*(n-4)+b'*/'])
+def test_omitted_trivia_still_obeys_exact_token_length_bound(monkeypatch, wrapper):
+    monkeypatch.setattr(lexical, 'MAX_TOKEN', 64)
+    scan(wrapper(64)+b'SELECT 1;\n')
+    with pytest.raises(lexical.Unavailable) as caught:
+        scan(wrapper(65)+b'SELECT 1;\n')
+    assert caught.value.limit == {'site': 'token_bytes', 'ceiling': 64,
+        'observed': 65, 'unit': 'bytes', 'offset': 65}
+
+
+def test_significant_token_guard_keeps_its_exact_boundary_and_original_offset(monkeypatch):
+    monkeypatch.setattr(lexical, 'MAX_RECORDS', 3)
+    prefix = b'-- prefix\n'*10
+    assert len(scan(prefix+b'SELECT 1;\n').tokens) == 3*lexical.RECORD.size
+    with pytest.raises(lexical.Unavailable) as caught:
+        scan(prefix+b'SELECT 1,2;\n')
+    assert caught.value.limit == {'site': 'token_records', 'ceiling': 3,
+        'observed': 4, 'unit': 'records', 'offset': len(prefix)+10}
+
+
+def test_leaf_and_aggregate_index_guards_still_include_trivia_leaves(monkeypatch):
+    monkeypatch.setattr(lexical, 'MAX_RECORDS', 3)
+    raw = META[0]+b'-- middle\n'+META[-1]+b'-- suffix\n'
+    with pytest.raises(lexical.Unavailable) as caught:
+        scan(raw, expected_meta=(META[0], META[-1]))
+    assert caught.value.limit == {'site': 'leaf_records', 'ceiling': 3,
+        'observed': 4, 'unit': 'records', 'offset': len(raw)}
+    monkeypatch.setattr(lexical, 'MAX_INDEX', 35)
+    with pytest.raises(lexical.Unavailable) as caught:
+        scan(b'SELECT 1;\n')
+    assert caught.value.limit == {'site': 'index_bytes', 'ceiling': 35,
+        'observed': 36, 'unit': 'bytes', 'offset': 9}
+
+
 @pytest.mark.parametrize('token_limit,line_bytes', [(1048576, 2*1024**2), (64, 65)])
 def test_copy_row_length_is_independent_of_sql_token_limit(monkeypatch, token_limit, line_bytes):
     monkeypatch.setattr(lexical, 'MAX_TOKEN', token_limit)
@@ -37,7 +93,8 @@ def test_copy_row_length_is_independent_of_sql_token_limit(monkeypatch, token_li
 
 
 @pytest.mark.parametrize('cap,ceiling,site', [
-    ('MAX_RECORDS', 1, 'token_records'),
+    # Allow the header/meta leaves, then reject the first SET's fifth token.
+    ('MAX_RECORDS', 4, 'token_records'),
     ('MAX_STATEMENTS', 1, 'statements'),
 ])
 def test_observation_identifies_the_first_rejected_guard(tmp_path, monkeypatch, cap, ceiling, site):
@@ -207,6 +264,7 @@ def test_limit_receipt_requires_correct_reason_stage_stream_and_schema(tmp_path)
     assert ledger.validate_receipt(value, **args) is value
     changes = [value | {'reason': 'deadline'}, value | {'stage': 'emitter'},
                value | {'schema': 'rf1086-sql-ledger-v1'}, value | {'schema': 'rf1086-sql-ledger-v2'},
+               value | {'schema': 'rf1086-sql-ledger-v3'},
                success | {'limit': value['context']['limit']}]
     for bad in changes:
         with pytest.raises(ledger.Unavailable):

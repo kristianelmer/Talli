@@ -17,7 +17,7 @@ import rf1086_raw_toc as raw_toc
 import rf1086_sql_identifiers as identifiers
 import rf1086_sql_lexical as lexical
 
-SCHEMA = 'rf1086-sql-ledger-v3'
+SCHEMA = 'rf1086-sql-ledger-v4'
 PROFILE = 'pg176-fifo-custom116-utf8-on-v1'
 SOURCE_COMMIT = '7885b94dd81b98bbab9ed878680d156df7bf857f'
 FIFO_PREDICATE = 'test -p /proc/self/fd/0'
@@ -78,6 +78,7 @@ CONFIG = {
                   'occurrenceBytes': MAX_OCCURRENCE_BYTES},
     'seconds': {'total': TOTAL_SECONDS, 'phases': dict.fromkeys(STAGES, PHASE_SECONDS)},
     'lexicalLimitRules': lexical.limit_rules(),
+    'lexicalTokens': {'rule': lexical.RULE_VERSION, 'retainedKinds': list(lexical.RETAINED_TOKEN_KINDS)},
     'records': {'decisions': DECISION.format, 'regions': REGION.format, 'occurrences': OCCURRENCE.format},
     'enums': {'passes': PASSES, 'noOutput': NO_OUTPUT, 'regions': REGIONS, 'roles': ROLES},
     'selectors': [v[0] for v in SELECTORS],

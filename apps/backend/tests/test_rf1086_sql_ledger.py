@@ -132,6 +132,31 @@ def test_complete_forward_coverage_and_selected_order():
     assert not hasattr(result, 'status') and not hasattr(result, 'schema')
 
 
+def test_complete_ledger_preserves_comment_bytes_and_selected_cuts():
+    baseline = core()
+    rows = source_rows()
+    rows[8]['definition'] = (b'-- leading\n/* outer /* nested */ */ GRANT /* interior */ '
+        b'USAGE ON SCHEMA graphql TO reader; -- trailing\n')
+    script = script_fixture(rows)
+    result = core(script, rows)
+    assert result.selected == baseline.selected
+    assert result.counts == baseline.counts
+    assert result.script == {'bytes': len(script), 'sha256': hashlib.sha256(script).hexdigest()}
+    assert result.script != baseline.script
+    assert result.indexes['regions'] != baseline.indexes['regions']
+    for before, after in ((b'/* interior */ ', b''), (b'-- trailing', b'-- changed')):
+        with pytest.raises(ledger.Unavailable) as caught:
+            core(script.replace(before, after), rows)
+        assert caught.value.reason == 'emitter'
+
+
+@pytest.mark.parametrize('schema', ['rf1086-sql-ledger-v2', 'rf1086-sql-ledger-v3'])
+def test_previous_token_contract_cannot_validate_as_current(tmp_path, schema):
+    value, args = receipt_context(tmp_path)
+    with pytest.raises(ledger.Unavailable):
+        ledger.validate_receipt(value | {'schema': schema}, **args)
+
+
 @pytest.mark.parametrize('stamp', [b'01:02:03 UTC', b'01:02:04 UTC'])
 def test_timestamp_requires_zone_separator_even_with_empty_zone(stamp):
     script = script_fixture()

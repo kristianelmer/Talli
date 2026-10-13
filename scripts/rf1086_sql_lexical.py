@@ -9,7 +9,7 @@ import struct
 import time
 
 PROFILE = 'UTF8-standard-strings-on-throughout'
-RULE_VERSION = 'sql-lexical-scanner-v2'
+RULE_VERSION = 'sql-lexical-scanner-v3'
 MAX_INPUT = 128 * 1024**2
 MAX_TOKEN = 1024**2
 MAX_IDENTIFIER = 16 * 1024
@@ -27,6 +27,8 @@ RECORD = struct.Struct('<BII')
 # Leaf and token kind namespaces are separate and fixed.
 TRIVIA, SQL, META, COPY_DATA, COPY_END = range(1, 6)
 SPACE, IDENT, NUMBER, STRING, ESCAPE, QUOTED_IDENT, DOLLAR, LINE_COMMENT, BLOCK_COMMENT, PUNCT = range(1, 11)
+TRIVIA_TOKEN_KINDS = (SPACE, LINE_COMMENT, BLOCK_COMMENT)
+RETAINED_TOKEN_KINDS = (IDENT, NUMBER, STRING, ESCAPE, QUOTED_IDENT, DOLLAR, PUNCT)
 DIGITS = b'0123456789'
 HEX = b'0123456789abcdefABCDEF'
 ASCII_START = b'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
@@ -197,6 +199,12 @@ class Scanner:
     def token(self, kind, start, end, *, identifier=False):
         limit_guard(end-start, MAX_IDENTIFIER if identifier else MAX_TOKEN,
                     'identifier_bytes' if identifier else 'token_bytes', end)
+        if kind in TRIVIA_TOKEN_KINDS:
+            # Trivia still drives the scanner state and complete byte leaves.
+            # Statement grammar skips it, so retain no redundant token record.
+            self.check()
+            require(0 <= start < end <= self.n, 'coverage')
+            return
         self.add(self.tokens, kind, start, end)
 
     def progress(self, start, end, *, limit=MAX_TOKEN, site='token_bytes', script=True):
