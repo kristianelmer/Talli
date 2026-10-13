@@ -1,5 +1,6 @@
 """Rejected restores expose bound grant evidence without accepting equivalence."""
 from copy import deepcopy
+import errno
 import hashlib
 import io
 import json
@@ -376,3 +377,217 @@ def test_opt_in_output_overflow_observes_only_one_detection_byte(s0_children):
             stdout_cap=7,reap_deadline=end+2,child_owner=owner)
     assert caught.value.observation==dict(kind='stdout_limit',stdoutBytes=8,stderrBytes=0,stdoutCap=7,exitCode=None)
     assert all(s.process is None for s in owner.slots) and not owner.uncertain
+
+
+def prefix_reader(tail):
+    return ('import os,hashlib,json,time\nremaining=4096\n'
+            'while remaining:\n'
+            ' part=os.read(0,remaining)\n'
+            ' if not part: os._exit(19)\n'
+            ' remaining-=len(part)\n'
+            'os.close(0)\n' + tail)
+
+
+def observe_broken_pipe(monkeypatch, children):
+    """Real EPIPE first, without timing sleeps or replacing the child transport."""
+    read, write = evidence.os.read, evidence.os.write
+    observed = []
+    def record(fd, data):
+        try: return write(fd, data)
+        except BrokenPipeError as error:
+            observed.append(error)
+            raise
+    def after_close(fd, size):
+        outputs = [pipe.fileno() for child in children for pipe in (child.stdout, child.stderr)
+                   if pipe is not None and not pipe.closed]
+        if fd in outputs and not observed:
+            raise BlockingIOError()
+        return read(fd, size)
+    monkeypatch.setattr(evidence.os, 'write', record)
+    monkeypatch.setattr(evidence.os, 'read', after_close)
+    return observed
+
+
+@pytest.mark.parametrize('exit_code', [0, 7])
+def test_listing_early_close_drains_and_classifies(monkeypatch, s0_children, exit_code):
+    from rf1086_s0_control import ChildOwner
+    owner = ChildOwner()
+    observed = observe_broken_pipe(monkeypatch, s0_children)
+    code = prefix_reader('for fd,payload in ((1,b"l"*98304),(2,b"e"*60000)):\n'
+                         ' while payload: payload=payload[os.write(fd,payload):]\n'
+                         f'os._exit({exit_code})\n')
+    end = time.monotonic()+3
+    def run():
+        return evidence._command([sys.executable, '-I', '-S', '-c', code], end,
+            data=b'x'*1024**2, stdout_cap=128*1024, reap_deadline=end+2,
+            child_owner=owner, allow_early_stdin_close=True)
+    if exit_code:
+        with pytest.raises(evidence.CommandFailure) as caught: run()
+        assert caught.value.observation == dict(kind='nonzero_exit', stdoutBytes=98304,
+            stderrBytes=60000, stdoutCap=128*1024, exitCode=7)
+    else:
+        assert run() == b'l'*98304
+    assert len(observed) == 1 and observed[0].errno == errno.EPIPE
+    assert len(s0_children) == 1 and s0_children[0].returncode == exit_code
+    assert all(pipe.closed for pipe in (s0_children[0].stdin,s0_children[0].stdout,s0_children[0].stderr))
+    assert all(slot.process is None for slot in owner.slots) and not owner.uncertain
+
+
+@pytest.mark.parametrize('explicit_default', [False, True])
+def test_default_command_keeps_original_epipe(monkeypatch, s0_children, explicit_default):
+    from rf1086_s0_control import ChildOwner
+    owner = ChildOwner(); observed = observe_broken_pipe(monkeypatch, s0_children)
+    end = time.monotonic()+3
+    options = {'allow_early_stdin_close': False} if explicit_default else {}
+    with pytest.raises(BrokenPipeError) as caught:
+        evidence._command([sys.executable, '-I', '-S', '-c', prefix_reader('os._exit(0)')],
+            end, data=b'x'*1024**2, stdout_cap=4096, reap_deadline=end+2,
+            child_owner=owner, **options)
+    assert caught.value is observed[0] and caught.value.errno == errno.EPIPE
+    assert all(child.returncode is not None for child in s0_children)
+    assert not owner.uncertain and all(s.process is None for s in owner.slots)
+
+
+@pytest.mark.parametrize('allow', [False, True])
+def test_complete_input_hash_is_unchanged_by_listing_option(s0_children, allow):
+    from rf1086_s0_control import ChildOwner
+    owner = ChildOwner(); payload = bytes(range(256))*4096
+    code = ('import sys,hashlib,json\nraw=sys.stdin.buffer.read()\n'
+            'print(json.dumps({"bytes":len(raw),"sha256":hashlib.sha256(raw).hexdigest()}))')
+    end = time.monotonic()+3
+    result = evidence._command([sys.executable, '-I', '-S', '-c', code], end, data=payload,
+        stdout_cap=4096, reap_deadline=end+2, child_owner=owner, allow_early_stdin_close=allow)
+    assert json.loads(result) == {'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest()}
+    assert s0_children[0].returncode == 0 and not owner.uncertain
+
+
+@pytest.mark.parametrize('case', ['stdout', 'stderr', 'deadline'])
+def test_early_close_still_enforces_both_caps_and_original_deadline(monkeypatch, s0_children, case):
+    from rf1086_s0_control import ChildOwner
+    owner = ChildOwner(); observed = observe_broken_pipe(monkeypatch, s0_children)
+    tail = ('time.sleep(30)' if case == 'deadline' else
+            f'payload=b"x"*70000\nwhile payload: payload=payload[os.write({1 if case == "stdout" else 2},payload):]')
+    end = time.monotonic()+(.5 if case == 'deadline' else 3)
+    with pytest.raises(evidence.CommandFailure) as caught:
+        evidence._command([sys.executable, '-I', '-S', '-c', prefix_reader(tail)], end,
+            data=b'x'*1024**2, stdout_cap=4096, reap_deadline=end+2, child_owner=owner,
+            allow_early_stdin_close=True)
+    observation = caught.value.observation
+    assert len(observed) == 1 and observed[0].errno == errno.EPIPE
+    assert observation['kind'] == {'stdout':'stdout_limit','stderr':'stderr_limit','deadline':'deadline'}[case]
+    if case != 'deadline':
+        assert observation[case+'Bytes'] == (4097 if case == 'stdout' else 65537)
+    assert observation['exitCode'] is None and observation['stdoutCap'] == 4096
+    assert time.monotonic() < end+2
+    assert all(child.returncode is not None for child in s0_children)
+    assert not owner.uncertain and all(s.process is None for s in owner.slots)
+
+
+@pytest.mark.parametrize('case', ['true_without_owner','no_data','archive','measured',
+                                  'integer','null','text'])
+def test_early_close_option_rejects_invalid_modes_before_launch(monkeypatch, case):
+    from rf1086_s0_control import ChildOwner
+    owner = ChildOwner(); end = time.monotonic()+3
+    options = dict(data=b'x', measured=False, stdout_cap=4096, reap_deadline=end+2,
+                   child_owner=owner, allow_early_stdin_close=True)
+    if case == 'true_without_owner':
+        for key in ('child_owner','reap_deadline','stdout_cap'): options.pop(key)
+    elif case == 'no_data': options['data'] = None
+    elif case == 'archive': options['archive'] = io.BytesIO(b'x')
+    elif case == 'measured': options['measured'] = True
+    else: options['allow_early_stdin_close'] = {'integer':1,'null':None,'text':'true'}[case]
+    monkeypatch.setattr(owner, 'launch', lambda *a,**kw:pytest.fail('acquired child'))
+    monkeypatch.setattr(subprocess, 'Popen', lambda *a,**kw:pytest.fail('acquired child'))
+    with pytest.raises(ValueError, match='catalog_semantics_unavailable'):
+        evidence._run_command(['unused'], end, **options)
+
+
+@pytest.mark.parametrize('primary', [OSError(errno.EBADF, 'generated'),
+                                    BrokenPipeError(errno.EIO, 'generated')])
+def test_early_close_option_does_not_suppress_other_write_errors(monkeypatch, s0_children, primary):
+    from rf1086_s0_control import ChildOwner
+    owner = ChildOwner(); end = time.monotonic()+3
+    def fail(fd, data): raise primary
+    monkeypatch.setattr(evidence.os, 'write', fail)
+    with pytest.raises(OSError) as caught:
+        evidence._command([sys.executable, '-I', '-S', '-c', 'import time;time.sleep(30)'], end,
+            data=b'x', stdout_cap=4096, reap_deadline=end+2, child_owner=owner,
+            allow_early_stdin_close=True)
+    assert caught.value is primary
+    assert all(child.returncode is not None for child in s0_children)
+
+
+@pytest.mark.parametrize('fault', ['none', 'wait', 'close'])
+def test_cancel_after_early_close_preserves_identity_and_cleanup_uncertainty(monkeypatch, s0_children, fault):
+    from rf1086_s0_control import ChildOwner
+    owner = ChildOwner(); primary = KeyboardInterrupt('generated cancellation')
+    observed = observe_broken_pipe(monkeypatch, s0_children)
+    read, launch = evidence.os.read, owner.launch
+    def cancel(fd, size):
+        if observed: raise primary
+        return read(fd, size)
+    class CloseFailure:
+        def __init__(self, stream): self.stream, self.failed = stream, False
+        def __getattr__(self, name): return getattr(self.stream, name)
+        def close(self):
+            self.stream.close()
+            if not self.failed:
+                self.failed = True
+                raise OSError('generated close failure')
+    def launch_with_fault(*a, **kw):
+        child = launch(*a, **kw)
+        if fault == 'close': child.stdout = CloseFailure(child.stdout)
+        if fault == 'wait':
+            wait = child.wait
+            def fail_wait(*a, **kw):
+                wait(*a, **kw)
+                raise OSError('generated wait failure after actual reap')
+            child.wait = fail_wait
+        return child
+    monkeypatch.setattr(evidence.os, 'read', cancel)
+    monkeypatch.setattr(owner, 'launch', launch_with_fault)
+    end = time.monotonic()+3
+    with pytest.raises(KeyboardInterrupt) as caught:
+        evidence._command([sys.executable, '-I', '-S', '-c', prefix_reader('os.write(1,b"x");time.sleep(30)')],
+            end, data=b'x'*1024**2, stdout_cap=4096, reap_deadline=end+2,
+            child_owner=owner, allow_early_stdin_close=True)
+    assert observed and caught.value is primary and owner.primary is primary and owner.cancelled
+    assert owner.uncertain is (fault != 'none')
+    if fault != 'none': assert fault in owner.errors
+    assert all(child.returncode is not None for child in s0_children)
+
+
+@pytest.mark.parametrize('fault', ['unregister', 'stdin_close'])
+def test_early_close_teardown_error_is_not_suppressed(monkeypatch, s0_children, fault):
+    from rf1086_s0_control import ChildOwner
+    owner = ChildOwner(); primary = OSError('generated teardown failure')
+    observed = observe_broken_pipe(monkeypatch, s0_children); failed = []
+    if fault == 'unregister':
+        factory = evidence.selectors.DefaultSelector
+        def create_selector():
+            selector = factory(); unregister = selector.unregister
+            def fail_once(stream):
+                if observed and not failed and stream is s0_children[0].stdin:
+                    failed.append(True); raise primary
+                return unregister(stream)
+            selector.unregister = fail_once
+            return selector
+        monkeypatch.setattr(evidence.selectors, 'DefaultSelector', create_selector)
+    else:
+        launch = owner.launch
+        class CloseFailure:
+            def __init__(self, stream): self.stream = stream
+            def __getattr__(self, name): return getattr(self.stream, name)
+            def close(self):
+                self.stream.close()
+                if not failed: failed.append(True); raise primary
+        def start(*a, **kw):
+            child = launch(*a, **kw); child.stdin = CloseFailure(child.stdin); return child
+        monkeypatch.setattr(owner, 'launch', start)
+    end = time.monotonic()+3
+    with pytest.raises(OSError) as caught:
+        evidence._command([sys.executable, '-I', '-S', '-c', prefix_reader('os.write(1,b"x");time.sleep(30)')],
+            end, data=b'x'*1024**2, stdout_cap=4096, reap_deadline=end+2,
+            child_owner=owner, allow_early_stdin_close=True)
+    assert caught.value is primary and observed and failed
+    assert all(child.returncode is not None for child in s0_children)

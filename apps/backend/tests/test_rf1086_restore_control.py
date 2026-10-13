@@ -102,6 +102,48 @@ def test_offline_generation_is_once_fifo_only_without_database_arguments():
     assert '--dbname' not in args[-1] and '--file=-' in args[-1]
     assert args[-1].startswith('test -p /proc/self/fd/0 && exec pg_restore ')
     assert kw['data'] is archive and kw['cap']==128*1024**2
+    assert kw.get('allow_early_stdin_close', False) is False
+
+
+@pytest.mark.parametrize('change', ['uppercase_source','short_source','nonhex_source','source_type',
+    'no_list','extra_arg','different_binary','shell','tuple','no_data','archive','integer','null'])
+def test_listing_option_exact_argv_and_mode_reject_before_command(monkeypatch, change):
+    budget = control.RecoveryBudget(time.monotonic())
+    args = ['docker','exec','-i','a'*64,'pg_restore','--list','--verbose']
+    options = {'data':b'fixture','allow_early_stdin_close':True}
+    if change == 'uppercase_source': args[3] = 'A'*64
+    elif change == 'short_source': args[3] = 'a'*63
+    elif change == 'nonhex_source': args[3] = 'g'*64
+    elif change == 'source_type': args[3] = 12
+    elif change == 'no_list': args[5] = '--file=-'
+    elif change == 'extra_arg': args.append('--dbname=postgres')
+    elif change == 'different_binary': args[4] = 'psql'
+    elif change == 'shell': args[4:] = ['sh','-c','pg_restore --list --verbose']
+    elif change == 'tuple': args = tuple(args)
+    elif change == 'no_data': options['data'] = None
+    elif change == 'archive': options['archive'] = object()
+    else: options['allow_early_stdin_close'] = {'integer':1,'null':None}[change]
+    monkeypatch.setattr(control.commands,'_command',lambda *a,**kw:pytest.fail('invalid command reached helper'))
+    with pytest.raises(control.RestoreUnavailable): budget.command(args,**options)
+
+
+def test_listing_option_preserves_shared_endpoints_caps_and_other_defaults(monkeypatch):
+    monkeypatch.setattr(control.time,'monotonic',lambda:1000.0)
+    budget = control.RecoveryBudget(1000.0); calls = []
+    def command(args, deadline, **kw): calls.append((args,deadline,kw)); return b'generated'
+    monkeypatch.setattr(control.commands,'_command',command)
+    args = ['docker','exec','-i','a'*64,'pg_restore','--list','--verbose']
+    payload = b'fixture'
+    assert budget.command(args,data=payload,cap=2*1024**2,end=budget.end-70,
+                          allow_early_stdin_close=True) == b'generated'
+    _,work,options = calls[0]
+    assert work == 1043 and options['reap_deadline'] == 1045
+    assert options['stdout_cap'] == 2*1024**2 and options['data'] is payload
+    assert options['child_owner'] is budget.context.owner and options['allow_early_stdin_close'] is True
+    control.generate_sql('a'*64,payload,budget=budget,end=budget.end-70)
+    budget.checked(['generated-command'],input=payload)
+    assert all(call[2]['allow_early_stdin_close'] is False for call in calls[1:])
+    assert budget.phase == 'construction' and budget.end == 1115
 
 
 def test_schedule_uses_actual_order_even_when_net_precedes_graphql():
@@ -314,7 +356,7 @@ class TestPrepareArchive(unittest.TestCase):
         source_id='1'*64
         self.calls=[]
         self.diagnostic = None
-        def command(b,args,*,data=None,archive=None,cap=1024**2,end=None):
+        def command(b,args,*,data=None,archive=None,cap=1024**2,end=None,allow_early_stdin_close=False):
             b.remaining(end=end)
             self.assertIsNone(archive)
             self.assertEqual(end,b.end-70)
@@ -322,12 +364,15 @@ class TestPrepareArchive(unittest.TestCase):
             for name in ('pg_restore','psql'):
                 if args==['docker','exec',source_id,'sh','-c',control.TOOL_COMMAND.replace('@TOOL@',name)]:
                     self.assertIsNone(data);self.assertEqual(cap,4096)
+                    self.assertIs(allow_early_stdin_close,False)
                     return (name+' (PostgreSQL) 17.6\n'+'a'*64+'\n').encode()
             if args==['docker','exec','-i',source_id,'pg_restore','--list','--verbose']:
                 self.assertEqual(data,f['raw']);self.assertEqual(cap,2*1024**2)
+                self.assertIs(allow_early_stdin_close,True)
                 return f['list']
             if args==['docker','exec','-i',source_id,'sh','-c',control.OFFLINE_RESTORE]:
                 self.assertEqual(data,f['raw']);self.assertEqual(cap,control.MAX_SCRIPT)
+                self.assertIs(allow_early_stdin_close,False)
                 if cancel is not None:raise cancel
                 return f['script'] if script is None else script
             self.fail('unexpected external boundary')
@@ -359,6 +404,19 @@ class TestPrepareArchive(unittest.TestCase):
     def test_complete_ordinary_ordered_acl(self):self.positive()
     def test_complete_extension_owned_object(self):self.positive(extension=True)
     def test_complete_explicit_default_acl(self):self.positive(ordered=False)
+
+    def test_truncated_listing_is_rejected_before_prepared_restore(self):
+        f=self.fixture(); f['list']=f['list'][:40]
+        with self.assertRaises(control.raw_toc.Unavailable): self.invoke(f)
+        self.assertEqual(self.diagnostic.failure['step'],'raw_metadata')
+        self.assertEqual(len(self.calls),4)
+
+    def test_mismatched_listing_is_rejected_before_prepared_restore(self):
+        f=self.fixture(); f['list']=f['list'].replace(b'TABLE public t ',b'TABLE public wrong ',1)
+        self.assertIn(b'TABLE public wrong ',f['list'])
+        with self.assertRaises(control.raw_toc.Unavailable): self.invoke(f)
+        self.assertEqual(self.diagnostic.failure['step'],'raw_metadata')
+        self.assertEqual(len(self.calls),4)
 
     def test_insufficient_original_headroom_stops_before_external_boundary(self):
         f=self.fixture();budget=control.RecoveryBudget(time.monotonic()-46)

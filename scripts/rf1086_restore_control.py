@@ -138,17 +138,25 @@ class RecoveryBudget:
         time.sleep(min(seconds, self.remaining(end=end)))
         self.remaining(end=end)
 
-    def command(self, args, *, data=None, archive=None, cap=1024**2, end=None):
+    def command(self, args, *, data=None, archive=None, cap=1024**2, end=None,
+                allow_early_stdin_close=False):
         """Two-slot owner drains/reaps even when acquisition or cancellation fails."""
         require(type(cap) is int and 0 < cap <= MAX_SCRIPT, 'limit')
         require(data is None or archive is None, 'internal')
+        require(type(allow_early_stdin_close) is bool, 'internal')
+        if allow_early_stdin_close:
+            require(type(args) is list and len(args) == 7
+                    and args[:3] == ['docker', 'exec', '-i']
+                    and type(args[3]) is str and re.fullmatch(r'[a-f0-9]{64}', args[3]) is not None
+                    and args[4:] == ['pg_restore', '--list', '--verbose']
+                    and data is not None and archive is None, 'internal')
         reap_end = min(self.end, self.end if end is None else end)
         self.remaining(reserve=2, end=reap_end)
         work_end = min(reap_end-2, time.monotonic()+43)
         try:
             return commands._command(args, work_end, data=data, archive=archive,
                 stdout_cap=cap, reap_deadline=min(reap_end, work_end+2),
-                child_owner=self.context.owner)
+                child_owner=self.context.owner, allow_early_stdin_close=allow_early_stdin_close)
         except commands.CommandFailure as error:
             self.context.raise_if_fatal()
             reason = {'deadline': 'deadline', 'stdout_limit': 'limit',
@@ -695,7 +703,7 @@ def prepare_archive(source, *, archive, roles, metadata, budget, diagnostic=None
         tools = bind_tools(source, budget=budget, end=end)
     with _diagnostic_operation(diagnostic, 'archive_list'):
         listing = budget.command(['docker', 'exec', '-i', source, 'pg_restore', '--list', '--verbose'],
-                                 data=archive, cap=2*1024**2, end=end)
+                                 data=archive, cap=2*1024**2, end=end, allow_early_stdin_close=True)
     with _diagnostic_operation(diagnostic, 'sql_generation'):
         script = generate_sql(source, archive, budget=budget, end=end)
     _diagnostic_remember(diagnostic, 'scriptBytes', len(script))

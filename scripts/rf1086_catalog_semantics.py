@@ -1,4 +1,5 @@
 """Read-only, bounded evidence for a rejected restore; never acceptance logic."""
+import errno
 import hashlib
 import json
 import math
@@ -50,10 +51,11 @@ class CommandFailure(ValueError):
 
 
 def _command(args, deadline, *, data=None, archive=None, stdout_cap=None,
-             reap_deadline=None, child_owner=None):
+             reap_deadline=None, child_owner=None, allow_early_stdin_close=False):
     """Drain both pipes concurrently; no threads, raw errors or unbounded wait."""
     return _run_command(args, deadline, data=data, archive=archive, measured=False,
-                        stdout_cap=stdout_cap, reap_deadline=reap_deadline, child_owner=child_owner)
+                        stdout_cap=stdout_cap, reap_deadline=reap_deadline, child_owner=child_owner,
+                        allow_early_stdin_close=allow_early_stdin_close)
 
 
 def _measure_command(args, deadline, *, archive=None):
@@ -62,8 +64,12 @@ def _measure_command(args, deadline, *, archive=None):
 
 
 def _run_command(args, deadline, *, data=None, archive=None, measured,
-                 stdout_cap=None, reap_deadline=None, child_owner=None):
+                 stdout_cap=None, reap_deadline=None, child_owner=None,
+                 allow_early_stdin_close=False):
     owned = child_owner is not None
+    if type(allow_early_stdin_close) is not bool or (allow_early_stdin_close and
+            (not owned or measured or data is None or archive is not None)):
+        _unavailable()
     supplied = (stdout_cap is not None, reap_deadline is not None, owned)
     if any(supplied) and (not all(supplied) or measured or type(stdout_cap) is not int
                          or not 0 < stdout_cap <= 128 * 1024**2
@@ -115,6 +121,16 @@ def _run_command(args, deadline, *, data=None, archive=None, measured,
                     except BlockingIOError:
                         if owned: continue
                         raise
+                    except BrokenPipeError as error:
+                        if not allow_early_stdin_close or error.errno != errno.EPIPE:
+                            raise
+                        # A metadata-only reader may finish before the data suffix.
+                        # Its output EOFs, exit status and owned reap still decide success.
+                        selector.unregister(stream)
+                        stream.close()
+                        pending = memoryview(b'')
+                        remaining()
+                        continue
                     if owned: remaining()
                     if owned and written <= 0: _unavailable()
                     pending = pending[written:]
