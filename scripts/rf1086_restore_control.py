@@ -5,7 +5,7 @@ and SQL are private inputs; public observations contain finite labels and hashes
 """
 from dataclasses import dataclass
 from copy import deepcopy
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import hashlib
 import json
 import os
@@ -415,36 +415,318 @@ class PreparedRestore:
     code_binding: dict
 
 
-def prepare_archive(source, *, archive, roles, metadata, budget):
+DIAGNOSTIC_PREFIX = 'owned_identity_restore_pre_target_diagnostic '
+DIAGNOSTIC_SCHEMA = 'rf1086-restore-pre-target-diagnostic-v1'
+DIAGNOSTIC_STEPS = frozenset(('source_fingerprint', 'source_roles', 'source_metadata_query',
+    'source_metadata_decode', 'source_snapshot', 'source_snapshot_bind', 'source_preload',
+    'source_roles_dump', 'source_archive_dump', 'source_recheck', 'prepare_headroom',
+    'archive_hash', 'roles_hash', 'role_program', 'tool_probe', 'archive_list', 'sql_generation',
+    'raw_metadata', 'archive_profile', 'restore_ledger', 'metadata_index', 'acl_compile',
+    'code_bindings', 'target_admission', 'unclassified'))
+DIAGNOSTIC_METADATA_STEPS = frozenset(('source_metadata_decode', 'source_snapshot_bind',
+    'role_program', 'metadata_index', 'acl_compile'))
+DIAGNOSTIC_MODULES = dict(zip(('control', 'metadata', 'ledger', 'lexical', 'raw_toc',
+    'identifiers', 'identity', 'capture', 'difference', 'semantics'),
+    ('rf1086_restore_control', 'rf1086_restore_metadata', 'rf1086_sql_ledger',
+     'rf1086_sql_lexical', 'rf1086_raw_toc', 'rf1086_sql_identifiers',
+     'rf1086_identity_restore', 'rf1086_catalog_causal_capture',
+     'rf1086_catalog_difference', 'rf1086_catalog_semantics'), strict=True))
+DIAGNOSTIC_RAW_REASONS = frozenset(('archive_input_invalid', 'archive_profile_unsupported',
+    'deadline_exhausted', 'deadline_invalid', 'decimal_invalid', 'decimal_range_invalid',
+    'dependency_count_exceeded', 'description_invalid', 'entry_id_or_dumper_invalid',
+    'header_string_empty', 'integer_invalid', 'length_invalid', 'list_entries_mismatch',
+    'list_header_invalid', 'list_header_mismatch', 'list_input_invalid', 'list_timestamp_invalid',
+    'metadata_oversized', 'metadata_truncated', 'offset_invalid', 'offset_out_of_range',
+    'relkind_unsupported', 'rendered_list_oversized', 'required_string_missing', 'section_invalid',
+    'string_encoding_invalid', 'string_length_invalid', 'string_nul', 'timestamp_invalid',
+    'toc_count_invalid', 'version_multiline', 'with_oids_unsupported'))
+
+
+def _diagnostic_keys(value, keys):
+    require(type(value) is dict and value.keys() == set(keys), 'internal')
+
+
+def _diagnostic_hash(value):
+    require(type(value) is str and len(value) == 64
+            and re.fullmatch('[0-9a-f]{64}', value) is not None, 'internal')
+
+
+def _diagnostic_inputs(value):
+    _diagnostic_keys(value, ('source', 'archive', 'roles', 'scriptBytes', 'script', 'archiveRows'))
+    if value['source'] is not None:
+        _diagnostic_keys(value['source'], ('roles', 'catalog', 'auth', 'companyMemberships'))
+        for digest in value['source'].values(): _diagnostic_hash(digest)
+    for name, cap in (('archive', MAX_ARCHIVE), ('roles', MAX_ROLES), ('script', MAX_SCRIPT)):
+        bound = value[name]
+        if bound is not None:
+            _diagnostic_keys(bound, ('bytes', 'sha256'))
+            require(type(bound['bytes']) is int and 1 <= bound['bytes'] <= cap, 'internal')
+            _diagnostic_hash(bound['sha256'])
+    for name, cap in (('scriptBytes', MAX_SCRIPT), ('archiveRows', raw_toc.MAX_ROWS)):
+        require(value[name] is None or type(value[name]) is int and 1 <= value[name] <= cap, 'internal')
+    require(value['script'] is None or value['script']['bytes'] == value['scriptBytes'], 'internal')
+
+
+def _diagnostic_reason(component, reason, step):
+    # No module import on the exception path. The compiler is already loaded
+    # before any operation that can emit its typed refusal.
+    metadata = sys.modules.get('rf1086_restore_metadata')
+    if type(component) is not str or type(reason) is not str or len(reason) > 64:
+        return False
+    return ((component == 'control' and reason in REASONS)
+        or (component == 'metadata' and step in DIAGNOSTIC_METADATA_STEPS
+            and reason in getattr(metadata, 'REASONS', ()))
+        or (component == 'raw_toc' and step == 'raw_metadata' and reason in ('deadline', 'metadata'))
+        or (component == 'ledger' and step == 'restore_ledger' and reason in ledger.REASON_STAGES)
+        or (component == 'lexical' and step == 'restore_ledger'
+            and reason in ('deadline', 'limit', 'binding', 'profile', 'lexical'))
+        or (component == 'identifiers' and step == 'restore_ledger' and reason == 'profile')
+        or (component == 'unknown' and reason == 'internal'))
+
+
+def validate_pre_target_diagnostic(value):
+    """Closed failure observation, never a construction or Fsql admission."""
+    _diagnostic_keys(value, ('schema', 'step', 'component', 'reason', 'inputs', 'ledger',
+                             'lexicalLimit', 'location'))
+    require(value['schema'] == DIAGNOSTIC_SCHEMA and type(value['step']) is str
+            and value['step'] in DIAGNOSTIC_STEPS, 'internal')
+    require(_diagnostic_reason(value['component'], value['reason'], value['step']), 'internal')
+    inputs = value['inputs']; _diagnostic_inputs(inputs)
+    nested = value['ledger']
+    if nested is not None:
+        require(value['step'] in ('raw_metadata', 'restore_ledger'), 'internal')
+        _diagnostic_keys(nested, ('schema', 'status', 'reason', 'stage', 'context'))
+        require(nested['status'] == 'unavailable' and type(nested['reason']) is str
+                and type(nested['stage']) is str, 'internal')
+        require(nested['stage'] in (('metadata',) if value['step'] == 'raw_metadata'
+                                   else ledger.STAGES), 'internal')
+        context = nested['context']
+        _diagnostic_keys(context, ('rowIndex', 'dumpId', 'descriptor', 'offset', 'limit'))
+        require(context['limit'] is None, 'internal')
+        for name in ('rowIndex', 'dumpId', 'offset'):
+            require(context[name] is None or type(context[name]) is int, 'internal')
+        require(context['descriptor'] is None or type(context['descriptor']) is str
+                and context['descriptor'] in (*raw_toc.DESCRIPTORS, 'unknown'), 'internal')
+        ledger.validate_receipt(nested, fsql=None)
+        expected = value['reason']
+        if expected not in ledger.REASON_STAGES or nested['stage'] not in ledger.REASON_STAGES[expected]:
+            expected = 'internal'
+        require(nested['reason'] == expected, 'internal')
+        require(context['rowIndex'] is None or inputs['archiveRows'] is None
+                or context['rowIndex'] < inputs['archiveRows'], 'internal')
+        require(context['offset'] is None or inputs['scriptBytes'] is not None
+                and context['offset'] <= inputs['scriptBytes'], 'internal')
+    detail = value['lexicalLimit']
+    if detail is not None:
+        require(value['component'] == 'lexical' and value['reason'] == 'limit'
+                and nested is not None and nested['stage'] == 'lexical'
+                and inputs['scriptBytes'] is not None, 'internal')
+        ledger.lexical.validate_limit(detail, input_bytes=inputs['scriptBytes'])
+    location = value['location']
+    if location is not None:
+        _diagnostic_keys(location, ('module', 'line', 'depth', 'edge'))
+        require(type(location['module']) is str and location['module'] in DIAGNOSTIC_MODULES
+                and type(location['line']) is int and 1 <= location['line'] <= 8192
+                and type(location['depth']) is int and 0 <= location['depth'] <= 2
+                and type(location['edge']) is str
+                and location['edge'] in (('primary',) if location['depth'] == 0
+                    else ('cause', 'context', 'suppressed_context')), 'internal')
+    require(len(DIAGNOSTIC_PREFIX) + len(ledger.canonical(value)) + 1 <= 4096, 'internal')
+    return value
+
+
+def _diagnostic_location(error, budget):
+    """Structural, bounded source attribution; no messages, locals or source I/O."""
+    try:
+        paths = {os.path.join(os.path.dirname(os.path.abspath(__file__)), name+'.py'): key
+                 for key, name in DIAGNOSTIC_MODULES.items()}
+        skips = {module.require.__code__ for module in
+                 (sys.modules[__name__], ledger, ledger.lexical, raw_toc, ledger.identifiers)}
+        metadata = sys.modules.get('rf1086_restore_metadata')
+        if metadata is not None and hasattr(metadata, 'require'):
+            skips.add(metadata.require.__code__)
+        structural = lambda name, value: BaseException.__dict__[name].__get__(value, type(value))
+        seen, frames, count, selected, edge = set(), set(), 0, None, 'primary'
+        for depth in range(3):
+            budget.remaining()
+            if id(error) in seen: return None
+            seen.add(id(error))
+            trace = structural('__traceback__', error)
+            candidate = None
+            while trace is not None:
+                budget.remaining()
+                if count == 64 or id(trace) in frames: return None
+                frames.add(id(trace)); count += 1
+                code, line = trace.tb_frame.f_code, trace.tb_lineno
+                module = paths.get(code.co_filename)
+                if module is not None and code not in skips:
+                    if type(line) is not int or not 1 <= line <= 8192: return None
+                    candidate = {'module': module, 'line': line, 'depth': depth, 'edge': edge}
+                trace = trace.tb_next
+            if candidate is not None: selected = candidate
+            cause = structural('__cause__', error)
+            context = structural('__context__', error)
+            suppressed = structural('__suppress_context__', error)
+            error = cause if cause is not None else context
+            if error is None: return selected
+            edge = 'cause' if cause is not None else 'suppressed_context' if suppressed else 'context'
+        return None
+    except Exception:
+        return None
+
+
+def _diagnostic_classify(error, step):
+    known = ((RestoreUnavailable, 'control'), (ledger.Unavailable, 'ledger'),
+             (ledger.lexical.Unavailable, 'lexical'), (raw_toc.Unavailable, 'raw_toc'),
+             (ledger.identifiers.Unavailable, 'identifiers'))
+    metadata = sys.modules.get('rf1086_restore_metadata')
+    known += ((getattr(metadata, 'MetadataUnavailable', None), 'metadata'),)
+    component = next((name for kind, name in known if type(error) is kind), 'unknown')
+    if component == 'unknown': return 'unknown', 'internal'
+    fields = BaseException.__dict__['__dict__'].__get__(error, type(error))
+    reason = fields.get('reason')
+    if component == 'identifiers': reason = 'profile'
+    elif type(reason) is not str or len(reason) > 64: return 'unknown', 'internal'
+    elif component == 'raw_toc':
+        if reason not in DIAGNOSTIC_RAW_REASONS: return 'unknown', 'internal'
+        reason = 'deadline' if reason in ('deadline_invalid', 'deadline_exhausted') else 'metadata'
+    elif component == 'lexical':
+        if reason not in ledger.lexical.REASONS: return 'unknown', 'internal'
+        reason = reason if reason in ('deadline', 'limit', 'binding', 'profile') else 'lexical'
+    return (component, reason) if _diagnostic_reason(component, reason, step) else ('unknown', 'internal')
+
+
+def _diagnostic_cancel(budget, error, primary):
+    owner = budget.context.owner
+    if owner.primary is None: owner.primary = primary
+    owner._cancel(error)
+
+
+class PreTargetDiagnostic:
+    """One invocation's first propagated denial; never retains exception/raw data."""
+    def __init__(self, budget):
+        self.budget, self.enabled, self.attempted, self.failure = budget, True, False, None
+        self.inputs = dict.fromkeys(('source', 'archive', 'roles', 'scriptBytes', 'script', 'archiveRows'))
+
+    def remember(self, name, value):
+        try:
+            proposed = self.inputs | {name: value}
+            _diagnostic_inputs(proposed)
+            self.inputs = deepcopy(proposed)
+        except Exception:
+            pass  # An invalid observation is unavailable, never a new refusal.
+
+    def disable(self):
+        self.enabled = False
+
+    def _capture(self, error, step, walk):
+        safe_step = step if type(step) is str and step in DIAGNOSTIC_STEPS else 'unclassified'
+        value = {'schema': DIAGNOSTIC_SCHEMA, 'step': safe_step, 'component': 'unknown',
+            'reason': 'internal', 'inputs': deepcopy(self.inputs), 'ledger': None,
+            'lexicalLimit': None, 'location': None}
+        # Install the closed fallback before attempting optional projection.
+        self.failure = value
+        projected = deepcopy(value)
+        projected['component'], projected['reason'] = _diagnostic_classify(error, safe_step)
+        if walk is not None and safe_step in ('raw_metadata', 'restore_ledger'):
+            stage, reason = walk.stage, projected['reason']
+            if reason not in ledger.REASON_STAGES or stage not in ledger.REASON_STAGES[reason]:
+                reason = 'internal'
+            projected['ledger'] = ledger.unavailable(reason, stage, dict(walk.context))
+            if projected['component'] == 'lexical' and reason == 'limit' and stage == 'lexical':
+                projected['lexicalLimit'] = BaseException.__dict__['__dict__'].__get__(error, type(error)).get('limit')
+        projected['location'] = _diagnostic_location(error, self.budget)
+        validate_pre_target_diagnostic(projected)
+        self.failure = deepcopy(projected)
+
+    @contextmanager
+    def operation(self, step, *, walk=None):
+        try:
+            yield
+        except Exception as primary:
+            if self.enabled and self.failure is None:
+                try:
+                    with self.budget.context.owner.deferred(primary):
+                        self._capture(primary, step, walk)
+                except BaseException as secondary:
+                    if not isinstance(secondary, Exception):
+                        _diagnostic_cancel(self.budget, secondary, primary)
+            raise
+
+    def publish(self, *, primary):
+        if self.attempted or self.failure is None: return
+        self.attempted = True
+        owner = self.budget.context.owner
+        original = owner.original if isinstance(owner, _UnwindOwner) else owner
+        if owner.cancelled or owner.uncertain or original.cancelled or original.uncertain: return
+        try:
+            with owner.deferred(primary), io_deadline(self.budget):
+                validate_pre_target_diagnostic(self.failure)
+                line = DIAGNOSTIC_PREFIX + ledger.canonical(self.failure).decode('ascii') + '\n'
+                sys.stderr.write(line)
+                sys.stderr.flush()
+        except BaseException as error:
+            if not isinstance(error, Exception): _diagnostic_cancel(self.budget, error, primary)
+
+
+def _diagnostic_operation(diagnostic, step, *, walk=None):
+    return nullcontext() if diagnostic is None else diagnostic.operation(step, walk=walk)
+
+
+def _diagnostic_remember(diagnostic, name, value):
+    if diagnostic is not None: diagnostic.remember(name, value)
+
+
+def prepare_archive(source, *, archive, roles, metadata, budget, diagnostic=None):
     """Complete generation, attribution and source admission before any target."""
     import rf1086_restore_metadata as compiler
     end = budget.end - 70
-    budget.remaining(end=end)
-    archive_binding = bounded_hash(archive, deadline=end, cap=MAX_ARCHIVE)
-    roles_binding = bounded_hash(roles, deadline=end, cap=MAX_ROLES)
-    role_program = compiler.role_program(roles, metadata, deadline=end)
-    tools = bind_tools(source, budget=budget, end=end)
-    listing = budget.command(['docker', 'exec', '-i', source, 'pg_restore', '--list', '--verbose'],
-                             data=archive, cap=2*1024**2, end=end)
-    script = generate_sql(source, archive, budget=budget, end=end)
-    walk_budget = ledger.Budget(end)
-    walk_budget.phase('metadata')
-    raw_archive, _ = raw_toc.inspect(archive, listing, walk_budget.deadline)
+    with _diagnostic_operation(diagnostic, 'prepare_headroom'):
+        budget.remaining(end=end)
+    with _diagnostic_operation(diagnostic, 'archive_hash'):
+        archive_binding = bounded_hash(archive, deadline=end, cap=MAX_ARCHIVE)
+    _diagnostic_remember(diagnostic, 'archive', archive_binding)
+    with _diagnostic_operation(diagnostic, 'roles_hash'):
+        roles_binding = bounded_hash(roles, deadline=end, cap=MAX_ROLES)
+    _diagnostic_remember(diagnostic, 'roles', roles_binding)
+    with _diagnostic_operation(diagnostic, 'role_program'):
+        role_program = compiler.role_program(roles, metadata, deadline=end)
+    with _diagnostic_operation(diagnostic, 'tool_probe'):
+        tools = bind_tools(source, budget=budget, end=end)
+    with _diagnostic_operation(diagnostic, 'archive_list'):
+        listing = budget.command(['docker', 'exec', '-i', source, 'pg_restore', '--list', '--verbose'],
+                                 data=archive, cap=2*1024**2, end=end)
+    with _diagnostic_operation(diagnostic, 'sql_generation'):
+        script = generate_sql(source, archive, budget=budget, end=end)
+    _diagnostic_remember(diagnostic, 'scriptBytes', len(script))
+    with _diagnostic_operation(diagnostic, 'raw_metadata'):
+        walk_budget = ledger.Budget(end)
+    with _diagnostic_operation(diagnostic, 'raw_metadata', walk=walk_budget):
+        walk_budget.phase('metadata')
+        raw_archive, _ = raw_toc.inspect(archive, listing, walk_budget.deadline)
+    _diagnostic_remember(diagnostic, 'archiveRows', len(raw_archive.entries))
     version = rb'17\.6(?: \([^\r\n]{1,128}\))?'
-    require(raw_archive.database == b'postgres' and re.fullmatch(version, raw_archive.remote_version)
-            and re.fullmatch(version, raw_archive.dump_version), 'archive_profile')
-    index = ledger.verify_restore_core(script, raw_archive, catalog=metadata.selected_catalog,
-                                       budget=walk_budget)
-    repair_index = compiler.restore_metadata_index(script, raw_archive, index, metadata, deadline=end)
-    plan = compiler.compile_plan(metadata, script=script, archive=raw_archive,
-                                 index=repair_index, deadline=end)
+    with _diagnostic_operation(diagnostic, 'archive_profile'):
+        require(raw_archive.database == b'postgres' and re.fullmatch(version, raw_archive.remote_version)
+                and re.fullmatch(version, raw_archive.dump_version), 'archive_profile')
+    with _diagnostic_operation(diagnostic, 'restore_ledger', walk=walk_budget):
+        index = ledger.verify_restore_core(script, raw_archive, catalog=metadata.selected_catalog,
+                                           budget=walk_budget)
+    _diagnostic_remember(diagnostic, 'script', index.core.script)
+    with _diagnostic_operation(diagnostic, 'metadata_index'):
+        repair_index = compiler.restore_metadata_index(script, raw_archive, index, metadata, deadline=end)
+    with _diagnostic_operation(diagnostic, 'acl_compile'):
+        plan = compiler.compile_plan(metadata, script=script, archive=raw_archive,
+                                     index=repair_index, deadline=end)
     code = {}
-    for name in ('rf1086_restore_control.py','rf1086_restore_metadata.py','rf1086_identity_restore.py',
-                 'rf1086_sql_ledger.py','rf1086_sql_lexical.py','rf1086_sql_identifiers.py','rf1086_raw_toc.py',
-                 'rf1086_s0_control.py','rf1086_s0_protocol.py','rf1086_catalog_semantics.py',
-                 'rf1086_catalog_causal_capture.py','rf1086_catalog_causal.sql','rf1086_catalog_difference.py'):
-        code[name] = bounded_hash(bounded_file(Path(__file__).with_name(name),cap=256*1024),deadline=end,cap=256*1024)
-    budget.before_target()
+    with _diagnostic_operation(diagnostic, 'code_bindings'):
+        for name in ('rf1086_restore_control.py','rf1086_restore_metadata.py','rf1086_identity_restore.py',
+                     'rf1086_sql_ledger.py','rf1086_sql_lexical.py','rf1086_sql_identifiers.py','rf1086_raw_toc.py',
+                     'rf1086_s0_control.py','rf1086_s0_protocol.py','rf1086_catalog_semantics.py',
+                     'rf1086_catalog_causal_capture.py','rf1086_catalog_causal.sql','rf1086_catalog_difference.py'):
+            code[name] = bounded_hash(bounded_file(Path(__file__).with_name(name),cap=256*1024),deadline=end,cap=256*1024)
+    with _diagnostic_operation(diagnostic, 'target_admission'):
+        budget.before_target()
     return PreparedRestore(script, index, plan, role_program, tools, archive_binding, roles_binding,code)
 
 

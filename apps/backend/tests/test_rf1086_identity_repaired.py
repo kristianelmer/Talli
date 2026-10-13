@@ -1,5 +1,6 @@
 """Recovery orchestration never allocates on admission failure or replays repair."""
 import hashlib
+import json
 import sys
 import time
 from contextlib import nullcontext
@@ -82,8 +83,17 @@ def test_failed_preparation_allocates_nothing_and_preserves_source_postcheck(rep
     assert caught.value.reason==fault and owners==[]
     assert not any(args[1] in ('create','network','volume') for args,_ in calls)
     assert state['postchecks']>=2 and state['metadata']==3
-    output=capsys.readouterr().out
-    assert output.startswith('owned_identity_restore_profile repair_profile_not_legacy_replay\n')
+    captured=capsys.readouterr()
+    assert captured.out==''
+    lines=captured.err.splitlines()
+    assert lines[:2]==[
+        'owned_identity_restore_profile repair_profile_not_legacy_replay',
+        'owned_identity_restore_construction {"schema":"fixture-safe-receipt"}']
+    assert len(lines)==3 and lines[2].startswith(control.DIAGNOSTIC_PREFIX)
+    observation=json.loads(lines[2][len(control.DIAGNOSTIC_PREFIX):])
+    control.validate_pre_target_diagnostic(observation)
+    assert observation['step']==('source_recheck' if fault=='source_drift' else 'unclassified')
+    assert observation['reason']==fault and observation['inputs']['source']==state['receipt']['before']
     assert state['receipt']['cleanup_complete'] and state['receipt']['source_postcheck']
     assert not (tmp_path/'legacy-package-must-not-exist').exists()
 
@@ -136,7 +146,7 @@ def test_final_fingerprints_share_ten_seconds_clipped_to_construction(repaired_m
     assert streamed[0] < strict[0] <= streamed[0]+min(10.1,remaining)
 
 
-def test_constructed_context_yields_same_budget_then_cleans_and_checks_source(repaired_model,tmp_path,monkeypatch):
+def test_constructed_context_yields_same_budget_then_cleans_and_checks_source(repaired_model,tmp_path,monkeypatch,capsys):
     budget,state,calls,owners,_=repaired_model;state['recoverPass']=True
     (tmp_path/'supabase').mkdir()
     (tmp_path/'supabase/config.toml').write_text('project_id="fixture"\n')
@@ -157,3 +167,86 @@ def test_constructed_context_yields_same_budget_then_cleans_and_checks_source(re
     receipt=state['receipt']
     assert receipt['before']==receipt['recovered']
     assert receipt['cleanup_complete'] and receipt['source_postcheck'] and receipt['business_complete']
+    expected={'status':'fixture_wrapper_complete'}
+    print(json.dumps(expected))
+    captured=capsys.readouterr()
+    assert json.loads(captured.out)==expected
+    assert captured.out==json.dumps(expected)+'\n'
+    assert captured.err.splitlines()==[
+        'owned_identity_restore_profile repair_profile_not_legacy_replay',
+        'owned_identity_restore_construction {"schema":"fixture-safe-receipt"}']
+
+
+@pytest.mark.parametrize('step',[
+    'source_fingerprint','source_roles','source_metadata_query','source_metadata_decode',
+    'source_snapshot','source_snapshot_bind','source_preload','source_roles_dump',
+    'source_archive_dump','source_recheck','target_admission',
+])
+def test_diagnostic_reports_only_the_actual_active_caller(repaired_model,tmp_path,monkeypatch,capsys,step):
+    budget,state,calls,owners,_=repaired_model
+    primary=ValueError('private source URL, SQL and error details')
+    def fail(*args,**kwargs):raise primary
+    module=sys.modules['rf1086_restore_metadata']
+    if step=='source_fingerprint':monkeypatch.setattr(identity,'fingerprint',fail)
+    elif step in ('source_roles','source_preload'):
+        original=identity.source_query
+        def source_query(container,statement,**kwargs):
+            if (statement==identity.ROLE_SQL)==(step=='source_roles'):raise primary
+            return original(container,statement,**kwargs)
+        monkeypatch.setattr(identity,'source_query',source_query)
+    elif step=='source_metadata_decode':monkeypatch.setattr(module,'decode_metadata',fail)
+    elif step=='source_snapshot_bind':monkeypatch.setattr(module,'bind_source_snapshot',fail)
+    elif step=='source_snapshot':monkeypatch.setattr(control,'source_fixed_snapshot',fail)
+    elif step=='target_admission':monkeypatch.setattr(budget,'before_target',fail)
+    else:
+        original=budget.command
+        metadata_calls=0
+        def command(args,**kwargs):
+            nonlocal metadata_calls
+            if kwargs.get('data')==b'metadata':metadata_calls+=1
+            if (step=='source_metadata_query' and metadata_calls==1
+                or step=='source_recheck' and kwargs.get('data')==b'metadata' and metadata_calls==2
+                or step=='source_roles_dump' and 'pg_dumpall' in args
+                or step=='source_archive_dump' and 'pg_dump' in args):raise primary
+            return original(args,**kwargs)
+        monkeypatch.setattr(budget,'command',command)
+    with pytest.raises(ValueError) as caught:
+        with identity.restored_identity(SOURCE_URL,tmp_path,None,budget=budget):
+            raise AssertionError('unadmitted yield')
+    assert caught.value is primary and not owners
+    output=capsys.readouterr()
+    assert output.out=='' and 'private source' not in output.err
+    lines=[line for line in output.err.splitlines() if line.startswith(control.DIAGNOSTIC_PREFIX)]
+    assert len(lines)==1
+    value=json.loads(lines[0][len(control.DIAGNOSTIC_PREFIX):])
+    assert value['step']==step and value['component']=='unknown' and value['reason']=='internal'
+    assert state['receipt']['cleanup_complete']
+    assert value['inputs']['source'] is None if step=='source_fingerprint' else value['inputs']['source'] is not None
+
+
+def test_capture_is_disabled_before_uuid_or_any_target_setup(repaired_model,tmp_path,monkeypatch,capsys):
+    budget,state,calls,owners,_=repaired_model
+    primary=ValueError('later uuid error')
+    def fail():raise primary
+    monkeypatch.setattr(identity,'uuid4',fail)
+    with pytest.raises(ValueError) as caught:
+        with identity.restored_identity(SOURCE_URL,tmp_path,None,budget=budget):
+            raise AssertionError('unadmitted yield')
+    assert caught.value is primary and not owners
+    assert control.DIAGNOSTIC_PREFIX not in capsys.readouterr().err
+
+
+def test_caller_cancellation_never_becomes_diagnostic_or_resource_admission(repaired_model,tmp_path,monkeypatch,capsys):
+    budget,state,calls,owners,_=repaired_model
+    primary=KeyboardInterrupt('private')
+    original=budget.command
+    def command(args,**kwargs):
+        if 'pg_dump' in args:raise primary
+        return original(args,**kwargs)
+    monkeypatch.setattr(budget,'command',command)
+    with pytest.raises(KeyboardInterrupt) as caught:
+        with identity.restored_identity(SOURCE_URL,tmp_path,None,budget=budget):
+            raise AssertionError('unadmitted yield')
+    assert caught.value is primary and not owners
+    assert state['receipt']['cleanup_complete'] and state['receipt']['source_postcheck']
+    assert control.DIAGNOSTIC_PREFIX not in capsys.readouterr().err

@@ -4,6 +4,7 @@ import ast
 from contextlib import contextmanager
 import importlib.util
 from pathlib import Path
+import selectors
 import signal
 import sys
 import time
@@ -70,16 +71,35 @@ def test_nested_earlier_alarm_not_reset_and_primary_cancellation_preserved():
     assert caught.value is original and signal.getitimer(signal.ITIMER_REAL)[0] == 0
 
 
-def test_async_whole_call_deadline_and_external_cancellation_identity():
-    async def check():
+@pytest.mark.parametrize('delayed_selector', [False, True])
+def test_async_whole_call_deadline_and_external_cancellation_identity(monkeypatch, delayed_selector):
+    previous = signal.getsignal(signal.SIGALRM)
+    original_select = selectors.DefaultSelector.select
+    def delayed_select(selector, timeout=None):
+        if timeout is not None and timeout > 0:
+            # Model scheduler lateness without extending the real deadline.
+            time.sleep(timeout + .005)
+            return original_select(selector, 0)
+        return original_select(selector, timeout)
+    async def expires():
+        async with control.async_scope(budget(.02)): await asyncio.sleep(.2)
+    with monkeypatch.context() as local:
+        if delayed_selector:
+            local.setattr(selectors.DefaultSelector, 'select', delayed_select)
+        # SIGALRM can interrupt the loop's wait outside the coroutine itself.
         with pytest.raises(control.RestoreUnavailable) as caught:
-            async with control.async_scope(budget(.02)): await asyncio.sleep(.2)
-        assert caught.value.reason == 'deadline'
-        original = asyncio.CancelledError('synthetic')
+            asyncio.run(expires())
+    assert caught.value.reason == 'deadline'
+    assert signal.getsignal(signal.SIGALRM) is previous
+    assert signal.getitimer(signal.ITIMER_REAL)[0] == 0
+    original = asyncio.CancelledError('synthetic')
+    async def cancelled():
         with pytest.raises(asyncio.CancelledError) as caught:
             async with control.async_scope(budget()): raise original
         assert caught.value is original
-    asyncio.run(check())
+    asyncio.run(cancelled())
+    assert signal.getsignal(signal.SIGALRM) is previous
+    assert signal.getitimer(signal.ITIMER_REAL)[0] == 0
 
 
 def test_command_owner_never_receives_adapter_alarm_and_error_identity_survives():

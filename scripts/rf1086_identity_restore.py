@@ -418,12 +418,13 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
     # inapplicable even when TALLI_RF_REPLAY_DIR was supplied by the enclosing job.
     with construction.io_deadline(budget):
         construction.require_direct_loopback(budget)
-        print('owned_identity_restore_profile repair_profile_not_legacy_replay', flush=True)
+        print('owned_identity_restore_profile repair_profile_not_legacy_replay', file=sys.stderr, flush=True)
         db, auth, source_env = owned_identity_source(workdir, source_url, boundary)
     source = db['Id']; before = source_metadata = owner = configuration = None
     prepared = delivery = mutations = recovered = target = None
     raw_snapshot = None
     business_complete = cleanup_complete = source_postcheck = False
+    diagnostic = construction.PreTargetDiagnostic(budget)
     checked_call = partial(budget.checked, capture_cap=construction.MAX_METADATA)
 
     def fingerprint_now(container, *, end=None, **kwargs):
@@ -438,27 +439,41 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
 
     try:
         with CatalogCapture() as source_catalog:
-            before = fingerprint_now(source, catalog_capture=source_catalog)
-            roles_observed = source_query(source, ROLE_SQL, checked_call=checked_call)
-            construction.require(hashlib.sha256(roles_observed).hexdigest()==before['roles'],'source_drift')
-            raw_metadata = observe_source()
-            source_metadata = metadata.decode_metadata(raw_metadata, catalog_raw=source_catalog._raw,
-                roles_raw=roles_observed, deadline=budget.end)
-            raw_snapshot=construction.source_fixed_snapshot(source,budget=budget)
-            source_metadata=metadata.bind_source_snapshot(source_metadata,raw_snapshot,deadline=budget.end)
-        preload = source_query(source,'show shared_preload_libraries;',checked_call=checked_call).decode().strip()
-        construction.require(re.fullmatch(r'[A-Za-z0-9_, .-]*',preload) is not None,'source_binding')
-        roles = budget.command(['docker','exec',source,'pg_dumpall','-U','supabase_admin','--roles-only'],
-                               cap=construction.MAX_ROLES)
-        archive = budget.command(['docker','exec',source,'pg_dump','-U','supabase_admin',
-            '--format=custom','--dbname','postgres'],cap=construction.MAX_ARCHIVE)
-        construction.require(observe_source()==raw_metadata
-            and construction.source_fixed_snapshot(source,budget=budget)==raw_snapshot
-            and fingerprint_now(source)==before,'source_drift')
-        prepared = construction.prepare_archive(source,archive=archive,roles=roles,
-                                                 metadata=source_metadata,budget=budget)
+            with diagnostic.operation('source_fingerprint'):
+                before = fingerprint_now(source, catalog_capture=source_catalog)
+            diagnostic.remember('source', before)
+            with diagnostic.operation('source_roles'):
+                roles_observed = source_query(source, ROLE_SQL, checked_call=checked_call)
+                construction.require(hashlib.sha256(roles_observed).hexdigest()==before['roles'],'source_drift')
+            with diagnostic.operation('source_metadata_query'):
+                raw_metadata = observe_source()
+            with diagnostic.operation('source_metadata_decode'):
+                source_metadata = metadata.decode_metadata(raw_metadata, catalog_raw=source_catalog._raw,
+                    roles_raw=roles_observed, deadline=budget.end)
+            with diagnostic.operation('source_snapshot'):
+                raw_snapshot=construction.source_fixed_snapshot(source,budget=budget)
+            with diagnostic.operation('source_snapshot_bind'):
+                source_metadata=metadata.bind_source_snapshot(source_metadata,raw_snapshot,deadline=budget.end)
+        with diagnostic.operation('source_preload'):
+            preload = source_query(source,'show shared_preload_libraries;',checked_call=checked_call).decode().strip()
+            construction.require(re.fullmatch(r'[A-Za-z0-9_, .-]*',preload) is not None,'source_binding')
+        with diagnostic.operation('source_roles_dump'):
+            roles = budget.command(['docker','exec',source,'pg_dumpall','-U','supabase_admin','--roles-only'],
+                                   cap=construction.MAX_ROLES)
+        with diagnostic.operation('source_archive_dump'):
+            archive = budget.command(['docker','exec',source,'pg_dump','-U','supabase_admin',
+                '--format=custom','--dbname','postgres'],cap=construction.MAX_ARCHIVE)
+        with diagnostic.operation('source_recheck'):
+            construction.require(observe_source()==raw_metadata
+                and construction.source_fixed_snapshot(source,budget=budget)==raw_snapshot
+                and fingerprint_now(source)==before,'source_drift')
+        with diagnostic.operation('unclassified'):
+            prepared = construction.prepare_archive(source,archive=archive,roles=roles,
+                metadata=source_metadata,budget=budget,diagnostic=diagnostic)
         del archive,roles,roles_observed
-        budget.before_target()
+        with diagnostic.operation('target_admission'):
+            budget.before_target()
+        diagnostic.disable()
         setup_end=min(budget.end-55,time.monotonic()+15)
         nonce=uuid4().hex
         owner=construction.ResourceOwner(nonce,source,db['Image'],auth['Image'],budget)
@@ -572,7 +587,8 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
                     budget=budget,prepared=prepared,delivery=delivery,mutations=mutations,
                     source=source,target=target,image=db['Image'],before=before,recovered=recovered,
                     cleanup_complete=cleanup_complete,source_postcheck=source_postcheck,
-                    business_complete=business_complete,reason=reason),flush=True)
+                    business_complete=business_complete,reason=reason),file=sys.stderr,flush=True)
+            diagnostic.publish(primary=primary if primary is not None else error)
             if errors:raise errors[0]
 
 

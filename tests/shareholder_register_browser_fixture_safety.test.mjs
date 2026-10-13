@@ -238,14 +238,14 @@ print('receipt-buffer-boundary-enforced')
 test("browser selects source capture response loss only for the bounded rejected-predecessor scenario", () => {
   const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
   const start = source.indexOf("const scenarios = [");
-  const end = source.indexOf("for (const { lostResponse", start);
+  const end = source.indexOf("for (const [scenarioIndex, { lostResponse", start);
   assert.ok(start >= 0 && end > start);
   const scenarios = vm.runInNewContext(`${source.slice(start, end)}\nscenarios`);
   assert.equal(scenarios.length, 10);
   assert.deepEqual(JSON.parse(JSON.stringify(scenarios.filter(scenario => scenario.recoverSourceCapture))), [
     { lostResponse: "main", crash: false, predecessorFeedback: "rejected", recoverSourceCapture: true },
   ]);
-  assert.match(source, /recoverSourceCapture = false \} of scenarios/u);
+  assert.match(source, /recoverSourceCapture = false \}\] of scenarios\.entries\(\)/u);
   assert.match(source, /TALLI_TEST_RF1086_LOST_SOURCE_CAPTURE_RESPONSE: String\(recoverSourceCapture\)/u);
 });
 

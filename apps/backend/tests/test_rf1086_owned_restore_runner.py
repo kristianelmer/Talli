@@ -2,6 +2,7 @@
 import importlib.util
 from pathlib import Path
 import subprocess
+import time
 
 import pytest
 
@@ -84,6 +85,8 @@ def test_company_access_reader_keeps_the_same_boundary_and_cannot_select_an_admi
 
 @pytest.mark.parametrize('retained', [False, True])
 def test_download_verification_precedes_every_owned_restore_resource(monkeypatch, tmp_path, retained):
+    # Both main calls below share this one synthetic invocation clock.
+    monkeypatch.setattr(runner, '_RECOVERY_STARTED', time.monotonic())
     from test_rf1086_retained_archive_stream_adversarial import legacy_case
     from test_rf1086_archive_stream import download as legacy_download
     from rf1086_retained_stream_fixture import retained_stream_fixture

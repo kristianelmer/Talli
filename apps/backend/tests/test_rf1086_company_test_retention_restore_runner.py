@@ -285,6 +285,8 @@ def test_failure_diagnostic_never_echoes_unknown_exception_or_caller_stage(error
 
 
 def test_main_failure_reports_bounded_progress_and_no_exception_text(monkeypatch,capsys):
+    # This unit call represents a fresh CLI entry, not pytest collection time.
+    monkeypatch.setattr(runner, '_RECOVERY_STARTED', time.monotonic())
     def failed(args, *, progress):
         progress['stage']='source-artifacts'
         raise ValueError('secret-token raw-company-row')
@@ -351,6 +353,7 @@ def test_stateless_formatter_never_echoes_unknown_metadata_or_exception():
 
 
 def test_stateless_failure_diagnostic_reaches_entry_point_without_recovery_or_secret_output(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(runner, '_RECOVERY_STARTED', time.monotonic())
     args, events, _, _, _ = _configure_owned_runner_double(monkeypatch, tmp_path, None)
     monkeypatch.setenv('TALLI_RF_RESTORE_OWNER_TOKEN', signed(CLAIMS, header={'alg': 'ES256', 'kid': 'private-kid'}))
     monkeypatch.setattr(sys, 'argv', ['runner', '--company-id', args.company_id, '--stream', args.stream,
