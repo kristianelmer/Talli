@@ -24,7 +24,9 @@ CODE_FILES = ('rf1086_identity_restore.py', 'rf1086_catalog_causal.sql',
               'rf1086_catalog_causal_capture.py', 'rf1086_actual_replay_package.py',
               'rf1086_actual_replay.py', 'rf1086_catalog_semantics.py',
               'rf1086_raw_toc.py', 'rf1086_sql_identifiers.py',
-              'rf1086_sql_lexical.py', 'rf1086_sql_ledger.py')
+              'rf1086_sql_lexical.py', 'rf1086_sql_ledger.py',
+              'rf1086_catalog_difference.py', 'rf1086_s0_protocol.py',
+              'rf1086_s0_control.py')
 _EXPORT_STARTED = None
 STATUS_TAG = 'owned_identity_actual_replay_status_v1 '
 STATUS_REASONS = frozenset({

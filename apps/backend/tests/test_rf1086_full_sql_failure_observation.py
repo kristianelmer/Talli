@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from test_rf1086_full_sql_control import control
+from test_rf1086_full_sql_control import control, completed
 from test_rf1086_actual_replay import setup
 import rf1086_actual_replay as replay
 import rf1086_actual_replay_package as package
@@ -202,7 +202,7 @@ def test_new_helper_is_in_exact_code_binding_and_unavailable_details_reset(contr
     assert metadata['code']['rf1086_catalog_semantics.py'] == package.digest(package.Path(commands.__file__).read_bytes())
     detailed = replay.unavailable_fsql('command_unavailable', detail('full_script_apply', 8*1024**2))
     fallback = replay.unavailable_fsql('summary_oversized')
-    limit = len(package._encoded(f2 | {'Fsql': fallback, 'optionalWorkerOutcome':'result_invalid','ownedCleanupComplete':False}))
+    limit = len(package._encoded(completed(f2, fallback, reason='summary_oversized', stage='composition') | {'optionalWorkerOutcome':'result_invalid','ownedCleanupComplete':False}))
     monkeypatch.setattr(replay, 'MAX_PLAINTEXT', limit)
     result = replay.fit_optional(f2, detailed, metadata)
     assert result['Fsql'] == fallback

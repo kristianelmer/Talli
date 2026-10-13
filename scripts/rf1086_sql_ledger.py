@@ -17,9 +17,12 @@ import rf1086_raw_toc as raw_toc
 import rf1086_sql_identifiers as identifiers
 import rf1086_sql_lexical as lexical
 
-SCHEMA = 'rf1086-sql-ledger-v4'
+SCHEMA = 'rf1086-sql-ledger-v5'
 PROFILE = 'pg176-fifo-custom116-utf8-on-v1'
 SOURCE_COMMIT = '7885b94dd81b98bbab9ed878680d156df7bf857f'
+DESCRIPTOR_POLICY = {'schema': 's0-session-descriptor-v1', 'anchor': 'before-exact-FIXED',
+    'assignment': 'latest-actually-emitted-session-SET-semantic-UTF8-sha256',
+    'null': 'same-epoch-baseline', 'return': 'receipt-and-private-descriptor-once', 'bytes': 16384}
 FIFO_PREDICATE = 'test -p /proc/self/fd/0'
 MODULES = ('rf1086_raw_toc.py', 'rf1086_sql_identifiers.py',
            'rf1086_sql_lexical.py', 'rf1086_sql_ledger.py')
@@ -70,6 +73,7 @@ REASON_STAGES = {
 }
 CONFIG = {
     'schema': SCHEMA, 'profile': PROFILE, 'sourceCommit': SOURCE_COMMIT,
+    'descriptorPolicy': DESCRIPTOR_POLICY,
     'helperCaps': {name: {key: value for key, value in vars(module).items()
                          if key.startswith('MAX_') and type(value) is int}
                    for name, module in (('raw', raw_toc), ('identifiers', identifiers), ('lexical', lexical))},
@@ -298,6 +302,7 @@ class CoreEvidence:
     indexes: dict
     selected: tuple
     script: dict
+    session_references: dict
 
 
 FIXED = (b'SET statement_timeout = 0;\nSET lock_timeout = 0;\n'
@@ -315,6 +320,8 @@ class Emitter:
         self.tablespace = self.tableam = None
         self.dump_id = 0
         self.selected = []
+        self.epochs, self.cut_sessions = [], []
+        self.tablespace_ref = self.tableam_ref = None
 
     def statement_spans(self, end, allow):
         while self.leaf < len(self.scan.leaves):
@@ -383,7 +390,10 @@ class Emitter:
         self.region(end+2, name, 'trivia')
 
     def fixed(self, name='global'):
+        anchor = self.pos
         self.exact(FIXED, name)
+        self.epochs.append([anchor, self.pos])
+        self.tablespace_ref = self.tableam_ref = None
 
     def header(self, entry, role):
         parts = [b'--\n', f'-- TOC entry {entry.dump_id} (class {entry.class_oid} OID {entry.object_oid})\n'.encode()]
@@ -425,9 +435,11 @@ class Emitter:
             value = identifier(entry.tablespace, self.budget) if entry.tablespace else b"''"
             self.exact(b'SET default_tablespace = '+value+b';\n\n', 'prelude')
             self.tablespace = entry.tablespace
+            self.tablespace_ref = [self.pos, hashlib.sha256(entry.tablespace).hexdigest()]
         if entry.relkind != ord('p') and entry.tableam is not None and entry.tableam != self.tableam:
             self.exact(b'SET default_table_access_method = '+identifier(entry.tableam, self.budget)+b';\n\n', 'prelude')
             self.tableam = entry.tableam
+            self.tableam_ref = [self.pos, hashlib.sha256(entry.tableam).hexdigest()]
         self.header(entry, role)
         definition_start = self.pos
         if entry.definition:
@@ -467,6 +479,7 @@ class Emitter:
                     'objectOid': entry.object_oid, 'occurrence': occurrence, 'preludeStart': start,
                     'definitionStart': definition_start, 'entryEnd': self.pos, 'cut': self.pos,
                     'nextPreludeStart': self.pos, 'semanticSha256': self.prepared.semantics[kind][1]})
+                self.cut_sessions.append([len(self.epochs)-1, self.tablespace_ref, self.tableam_ref])
 
     def run(self):
         self.exact(b'--\n-- PostgreSQL database dump\n--\n\n', 'global', 'trivia')
@@ -505,7 +518,8 @@ class Emitter:
         indexes = {key: self.budget.digest(value) for key, value in (
             ('decisions', self.prepared.decisions), ('regions', self.regions), ('occurrences', self.occurrences))}
         self.budget.check()
-        return CoreEvidence(counts, indexes, tuple(self.selected), receipt['input'])
+        return CoreEvidence(counts, indexes, tuple(self.selected), receipt['input'],
+                            {'epochs': self.epochs, 'cuts': self.cut_sessions})
 
 
 def verify_core(script, archive, *, selectors, catalog, budget):
@@ -1350,9 +1364,15 @@ def validate_receipt(value, *, fsql, inventory=None, archive_binding=None, code=
 
 
 def observe(path, script, toc, metadata, inventory, fsql, deadline, *, read_private):
-    """Production entrypoint; ordinary failures preserve already verified Fsql."""
+    """Compatibility entrypoint; no descriptor or second traversal is exposed."""
+    return observe_with_descriptor(path, script, toc, metadata, inventory, fsql, deadline,
+                                   read_private=read_private)[0]
+
+
+def observe_with_descriptor(path, script, toc, metadata, inventory, fsql, deadline, *, read_private):
+    """Return the completed ledger and its private, same-walk session references."""
     if deadline-time.monotonic() < TOTAL_SECONDS:
-        return unavailable('headroom', 'admission')
+        return unavailable('headroom', 'admission'), None
     budget = Budget(deadline)
     lexical_limit = None
     try:
@@ -1382,7 +1402,16 @@ def observe(path, script, toc, metadata, inventory, fsql, deadline, *, read_priv
         validate_receipt(receipt, fsql=fsql, inventory=inventory, archive_binding=archive_input,
                          code=metadata['code'], catalog=metadata['phases']['mismatch']['catalog'])
         budget.check()
-        return receipt
+        # A descriptor-only failure cannot erase already completed byte coverage.
+        # The protocol performs full cross-validation; ledger never imports it.
+        try:
+            descriptor = {'schema': DESCRIPTOR_POLICY['schema'], 'ledgerSha256': semantic_hash(receipt),
+                          'database': 'postgres', **core.session_references}
+            require(len(canonical(descriptor)) <= DESCRIPTOR_POLICY['bytes'], 'limit')
+            budget.check()
+        except Exception:
+            descriptor = None
+        return receipt, descriptor
     except lexical.Unavailable as error:
         reason = error.reason if error.reason in ('deadline', 'limit', 'binding', 'profile') else 'lexical'
         if reason == 'limit' and budget.stage == 'lexical':
@@ -1398,4 +1427,4 @@ def observe(path, script, toc, metadata, inventory, fsql, deadline, *, read_priv
     # No exception text, raw descriptor, SQL or user identifier leaves this layer.
     if reason not in REASON_STAGES or budget.stage not in REASON_STAGES[reason]:
         reason = 'internal'
-    return unavailable(reason, budget.stage, budget.context | {'limit': lexical_limit})
+    return unavailable(reason, budget.stage, budget.context | {'limit': lexical_limit}), None

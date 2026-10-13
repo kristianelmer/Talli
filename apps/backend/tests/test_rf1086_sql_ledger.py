@@ -56,7 +56,9 @@ def header(e, data=False):
     owner = e['owner'] if e['owner'] is not None else b'-'
     return (f"--\n-- TOC entry {e['id']} (class {e['class_oid'].decode()} OID {e['oid'].decode()})\n".encode()
         +dep+b'-- '+(b'Data for ' if data else b'')+b'Name: '+e['tag']+b'; Type: '+e['description']
-        +b'; Schema: '+ns+b'; Owner: '+owner+f"\n-- Data Pos: {e['offset']}\n--\n\n".encode())
+        +b'; Schema: '+ns+b'; Owner: '+owner
+        +(b'; Tablespace: '+e['tablespace'] if e['tablespace'] else b'')
+        +f"\n-- Data Pos: {e['offset']}\n--\n\n".encode())
 
 
 def script_fixture(rows=None, *, copy_payload=None, two_occurrences=False):
@@ -64,7 +66,14 @@ def script_fixture(rows=None, *, copy_payload=None, two_occurrences=False):
     output = (b'--\n-- PostgreSQL database dump\n--\n\n\\restrict '+KEY+b'\n\n'
         b'-- Dumped from database version 17.6\n-- Dumped by pg_dump version 17.6\n\n'
         b'-- Started on 2026-10-12 01:02:03 UTC\n\n'+SETTINGS+b'DROP DATABASE IF EXISTS postgres;\n')
+    tablespace = tableam = None
     for e in rows[3:]:
+        if e['tablespace'] is not None and e['tablespace'] != tablespace:
+            output += b'SET default_tablespace = '+(e['tablespace'] or b"''")+b';\n\n'
+            tablespace = e['tablespace']
+        if e['relkind'] != ord('p') and e['tableam'] is not None and e['tableam'] != tableam:
+            output += b'SET default_table_access_method = '+e['tableam']+b';\n\n'
+            tableam = e['tableam']
         if e['description'] == b'TABLE DATA':
             if two_occurrences:
                 output += header(e)+e['definition']+b'\n\n'
@@ -74,8 +83,11 @@ def script_fixture(rows=None, *, copy_payload=None, two_occurrences=False):
         output += header(e)+e['definition']+b'\n\n'
         if e['description'] in (b'DATABASE', b'SCHEMA') and e['owner']:
             output += b'ALTER '+e['description']+b' '+e['tag']+b' OWNER TO '+e['owner']+b';\n\n'
-        if e['description'] == b'DATABASE':
+        if e['relkind'] == ord('p') and e['tableam'] is not None:
+            output += b'ALTER TABLE '+e['namespace']+b'.'+e['tag']+b' SET ACCESS METHOD '+e['tableam']+b';\n\n'
+        if e['description'] in (b'DATABASE', b'DATABASE PROPERTIES'):
             output += b'\\unrestrict '+KEY+b'\n\\connect postgres\n\\restrict '+KEY+b'\n\n'+SETTINGS
+            tablespace = tableam = None
     return output+b'-- Completed on 2026-10-12 01:02:04 UTC\n\n--\n-- PostgreSQL database dump complete\n--\n\n\\unrestrict '+KEY+b'\n\n'
 
 
@@ -150,7 +162,7 @@ def test_complete_ledger_preserves_comment_bytes_and_selected_cuts():
         assert caught.value.reason == 'emitter'
 
 
-@pytest.mark.parametrize('schema', ['rf1086-sql-ledger-v2', 'rf1086-sql-ledger-v3'])
+@pytest.mark.parametrize('schema', ['rf1086-sql-ledger-v2', 'rf1086-sql-ledger-v3', 'rf1086-sql-ledger-v4'])
 def test_previous_token_contract_cannot_validate_as_current(tmp_path, schema):
     value, args = receipt_context(tmp_path)
     with pytest.raises(ledger.Unavailable):
@@ -438,3 +450,96 @@ def test_selected_last_and_unsupported_raw_descriptor_reject():
     assert caught.value.reason == 'boundary'
     rows = source_rows(); rows[7]['description'] = b'UNMODELED'
     with pytest.raises(ledger.Unavailable): core(script_fixture(), rows)
+
+
+def test_descriptor_is_before_each_fixed_block_and_cut_order():
+    script = script_fixture(); result = core(script)
+    refs = result.session_references
+    assert refs['epochs'] == [[start, start+len(SETTINGS)] for start in
+                             (script.index(SETTINGS), script.index(SETTINGS, script.index(SETTINGS)+1))]
+    assert refs['cuts'] == [[1, None, None]]*3
+    assert [s['kind'] for s in result.selected] == ['pg_net_extension', 'graphql_public_schema', 'graphql_schema']
+
+
+def test_descriptor_latest_emitted_set_empty_unchanged_partition_and_reconnect():
+    rows = source_rows()
+    def table(id, name, **kw):
+        return row(id, b'TABLE', name, b'CREATE TABLE public.'+name+b' (id integer);\n',
+                   namespace=b'public', relkind=ord('r'), **kw)
+    # First SETs before pg_net; empty tablespace before graphql_public. A repeated
+    # property emits nothing; partition ALTER is not a session-AM assignment.
+    rows.insert(4, table(11, b'first_table', tablespace=b'space_a', tableam=b'heap'))
+    rows.insert(6, table(12, b'empty_table', tablespace=b'', tableam=b'heap'))
+    rows.insert(7, row(13, b'TABLE', b'part', b'CREATE TABLE public.part (id integer) PARTITION BY RANGE (id);\n',
+                       namespace=b'public', relkind=ord('p'), tableam=b'other'))
+    rows.insert(9, table(14, b'last_table', tablespace=b'', tableam=b'other'))
+    script = script_fixture(rows); result = core(script, rows)
+    cuts = result.session_references['cuts']
+    def assignment(text, value):
+        return [script.index(text)+len(text), hashlib.sha256(value).hexdigest()]
+    space = assignment(b'SET default_tablespace = space_a;\n\n', b'space_a')
+    empty = assignment(b"SET default_tablespace = '';\n\n", b'')
+    heap = assignment(b'SET default_table_access_method = heap;\n\n', b'heap')
+    other = assignment(b'SET default_table_access_method = other;\n\n', b'other')
+    assert cuts == [[1, space, heap], [1, empty, heap], [1, empty, other]]
+    assert script.count(b'SET default_tablespace') == 2 and script.count(b'SET default_table_access_method') == 2
+    # Properties reconnect between the second and third selected occurrence.
+    index = next(i for i, e in enumerate(rows) if e['id'] == 14)
+    rows.insert(index, row(15, b'DATABASE PROPERTIES', b'postgres', b"ALTER DATABASE postgres SET statement_timeout TO '0';\n"))
+    # Remove last_table assignments so the post-reconnect cut relies on baseline.
+    next(e for e in rows if e['id'] == 14).update(tablespace=None, tableam=None)
+    result = core(rows=rows)
+    assert len(result.session_references['epochs']) == 3
+    assert result.session_references['cuts'][-1] == [2, None, None]
+    assert result.session_references['cuts'][:2] == cuts[:2]
+
+
+def test_observe_descriptor_is_single_walk_private_and_only_after_completion(tmp_path, monkeypatch):
+    receipt, args = receipt_context(tmp_path)
+    rows = source_rows(); archive, listing = wire_and_list(rows); script = script_fixture(rows)
+    metadata = {'files': {'archive.dump': args['archive_binding']}, 'code': args['code'],
+                'phases': {'mismatch': {'catalog': CATALOG}}}
+    counts = {'read': 0, 'core': 0}
+    original = ledger.verify_core
+    def read(path, cap): counts['read'] += 1; return archive
+    def counted(*a, **kw): counts['core'] += 1; return original(*a, **kw)
+    monkeypatch.setattr(ledger, 'verify_core', counted)
+    call = lambda raw=script: ledger.observe_with_descriptor(tmp_path, raw, listing, metadata, args['inventory'],
+        args['fsql'], time.monotonic()+21, read_private=read)
+    value, D = call()
+    assert counts == {'read': 1, 'core': 1} and value == receipt
+    assert D['ledgerSha256'] == ledger.semantic_hash(value)
+    assert 'descriptor' not in value and D['epochs'] == core().session_references['epochs']
+    invalid, D = call(script+b'SELECT 1;\n')
+    assert invalid['status'] == 'unavailable' and D is None
+    # Only the post-validation descriptor serialization fails; completed ledger survives.
+    encode = ledger.canonical
+    def reject_descriptor(obj):
+        if type(obj) is dict and obj.get('schema') == 's0-session-descriptor-v1': raise ValueError('synthetic')
+        return encode(obj)
+    monkeypatch.setattr(ledger, 'canonical', reject_descriptor)
+    assert call() == (receipt, None)
+    cancel = KeyboardInterrupt('synthetic')
+    def cancel_descriptor(obj):
+        if type(obj) is dict and obj.get('schema') == 's0-session-descriptor-v1': raise cancel
+        return encode(obj)
+    monkeypatch.setattr(ledger, 'canonical', cancel_descriptor)
+    with pytest.raises(KeyboardInterrupt) as caught: call()
+    assert caught.value is cancel
+
+
+def test_positive_ledger_still_requires_full_inventory_correlations(tmp_path):
+    value, args = receipt_context(tmp_path)
+    independent = {key: item for key, item in args.items() if key != 'inventory'}
+    with pytest.raises((ledger.Unavailable, TypeError)):
+        ledger.validate_receipt(value, **independent)
+    for bad_inventory in (args['inventory'] | {'sha256': '0'*64},
+                          args['inventory'] | {'checkpointIds': [301, 311, 201]},
+                          args['inventory'] | {'total': 11}):
+        with pytest.raises(ledger.Unavailable): ledger.validate_receipt(value, **(args | {'inventory': bad_inventory}))
+    for field in ('code', 'archive_binding', 'catalog'):
+        bad = deepcopy(args)
+        if field == 'code': bad[field]['rf1086_sql_ledger.py'] = '0'*64
+        elif field == 'archive_binding': bad[field]['sha256'] = '0'*64
+        else: bad[field]['schemas'][0]['row'][2] = 'other'
+        with pytest.raises(ledger.Unavailable): ledger.validate_receipt(value, **bad)

@@ -1,7 +1,7 @@
-"""One bounded same-image full replay, then inventory; never a repair/receipt.
+"""Bounded same-image controls and conditional checkpoints; never a repair.
 
 Only a same-job, hash-bound private package may be consumed. Raw roles, archive,
-writer SQL and service state never enter logs. No checkpointed replay is enabled.
+writer SQL and service state never enter logs. S0 requires its own matched control.
 """
 import argparse
 import base64
@@ -24,6 +24,8 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 import rf1086_catalog_semantics as commands
 import rf1086_sql_ledger as sql_ledger
+import rf1086_s0_protocol as s0_protocol
+import rf1086_s0_control as s0_control
 from rf1086_catalog_causal_capture import _snapshot, _files, FILE_OUTPUT_CAP, PHASES
 from rf1086_catalog_difference import CatalogCapture, _encoded, _records
 from rf1086_actual_replay_package import (
@@ -32,7 +34,8 @@ from rf1086_actual_replay_package import (
     STATUS_TAG, report_unavailable,
 )
 
-TAG = 'owned_identity_actual_replay_v1 '
+TAG = 'owned_identity_actual_replay_v2 '
+CONTROL_SCHEMA = 'actual-image-control-v2'
 LABEL = 'talli.rf.actual.replay'
 MAX_PLAINTEXT = 64 * 1024
 MAX_ENVELOPE = 96 * 1024
@@ -123,8 +126,9 @@ def command(args, deadline, *, data=None, archive=None, cap=8 * 1024**2):
         commands.MAX_BYTES = old
 
 
-def inspect(kind, name, deadline):
-    raw = command(['docker', kind, 'inspect', name], deadline, cap=64 * 1024)
+def inspect(kind, name, deadline, *, run=None):
+    execute = command if run is None else run
+    raw = execute(['docker', kind, 'inspect', name], deadline, cap=64 * 1024)
     result = load_json(raw)
     if type(result) is not list or len(result) != 1 or type(result[0]) is not dict:
         raise Unavailable('resource_inspection_invalid')
@@ -136,12 +140,13 @@ def resource_names(nonce):
             'container': 'rf193_replay_db_' + nonce, 'initializer': 'rf193_replay_init_' + nonce}
 
 
-def resource_exists(kind, name, deadline):
+def resource_exists(kind, name, deadline, *, run=None):
     if kind == 'container':
         args = ['docker', 'container', 'ls', '--all', '--no-trunc', '--filter', 'name=^/' + name + '$', '--format', '{{.Names}}']
     else:
         args = ['docker', kind, 'ls', '--filter', 'name=^' + name + '$', '--format', '{{.Name}}']
-    rows = command(args, deadline, cap=4096).decode().splitlines()
+    execute = command if run is None else run
+    rows = execute(args, deadline, cap=4096).decode().splitlines()
     if rows not in ([], [name]):
         raise Unavailable('resource_listing_invalid')
     return bool(rows)
@@ -163,8 +168,9 @@ def assert_source_absent(metadata, deadline):
         raise Unavailable('source_teardown_unproved')
 
 
-def verify_resource(kind, name, nonce, deadline):
-    value = inspect(kind, name, deadline)
+def verify_resource(kind, name, nonce, deadline, *, run=None):
+    options = {} if run is None else {'run': run}
+    value = inspect(kind, name, deadline, **options)
     labels = value.get('Config', {}).get('Labels', {}) if kind == 'container' else value.get('Labels', {})
     expected_name = '/' + name if kind == 'container' else name
     if value.get('Name') != expected_name or (labels or {}).get(LABEL) != nonce:
@@ -176,19 +182,21 @@ def verify_resource(kind, name, nonce, deadline):
     return value
 
 
-def cleanup_resources(path, deadline):
+def cleanup_resources(path, deadline, *, run=None):
     ownership = owner(path)
     nonce = ownership['nonce']
     names = resource_names(nonce)
     errors = []
+    execute = command if run is None else run
+    options = {} if run is None else {'run': run}
     for slot in ('initializer', 'container', 'volume', 'network'):
         kind = 'container' if slot == 'initializer' else slot
         name = names[slot]
         try:
-            if resource_exists(kind, name, deadline):
-                verify_resource(kind, name, nonce, deadline)
-                command(['docker', kind, 'rm', *(['--force'] if kind == 'container' else []), name], deadline, cap=4096)
-                if resource_exists(kind, name, deadline):
+            if resource_exists(kind, name, deadline, **options):
+                verify_resource(kind, name, nonce, deadline, **options)
+                execute(['docker', kind, 'rm', *(['--force'] if kind == 'container' else []), name], deadline, cap=4096)
+                if resource_exists(kind, name, deadline, **options):
                     raise Unavailable('cleanup_incomplete')
         except Exception:
             errors.append(slot)
@@ -224,31 +232,33 @@ def cleanup_package(path):
         raise Unavailable('cleanup_incomplete')
 
 
-def start_target(metadata, deadline):
+def start_target(metadata, deadline, *, run=None, pause=None):
     from rf1086_identity_restore import INIT
     if metadata['initSha256'] != digest(INIT.encode()):
         raise Unavailable('init_binding_mismatch')
     nonce = metadata['nonce']
     names = resource_names(nonce)
+    execute = command if run is None else run
+    options = {} if run is None else {'run': run}
     preload = metadata['preload']
     if not re.fullmatch(r'[A-Za-z0-9_, .-]{0,256}', preload):
         raise Unavailable('preload_invalid')
     for slot, name in names.items():
-        if resource_exists('container' if slot == 'initializer' else slot, name, deadline):
+        if resource_exists('container' if slot == 'initializer' else slot, name, deadline, **options):
             raise Unavailable('resource_preexisting')
-    command(['docker', 'image', 'inspect', '--format', '{{.Id}}', IMAGE], deadline, cap=4096)
-    command(['docker', 'network', 'create', '--internal', '--label', LABEL + '=' + nonce, names['network']], deadline)
-    verify_resource('network', names['network'], nonce, deadline)
-    command(['docker', 'volume', 'create', '--label', LABEL + '=' + nonce, names['volume']], deadline)
-    verify_resource('volume', names['volume'], nonce, deadline)
-    command(['docker', 'run', '--rm', '--pull=never', '--name', names['initializer'], '--label', LABEL + '=' + nonce,
+    execute(['docker', 'image', 'inspect', '--format', '{{.Id}}', IMAGE], deadline, cap=4096)
+    execute(['docker', 'network', 'create', '--internal', '--label', LABEL + '=' + nonce, names['network']], deadline)
+    verify_resource('network', names['network'], nonce, deadline, **options)
+    execute(['docker', 'volume', 'create', '--label', LABEL + '=' + nonce, names['volume']], deadline)
+    verify_resource('volume', names['volume'], nonce, deadline, **options)
+    execute(['docker', 'run', '--rm', '--pull=never', '--name', names['initializer'], '--label', LABEL + '=' + nonce,
              '--network', 'none', '--user', '0', '--entrypoint', 'sh', '-v', names['volume'] + ':/tmp/rf-recovery',
              IMAGE, '-c', 'chown postgres:postgres /tmp/rf-recovery'], deadline)
-    target = command(['docker', 'create', '--pull=never', '--name', names['container'], '--label', LABEL + '=' + nonce,
+    target = execute(['docker', 'create', '--pull=never', '--name', names['container'], '--label', LABEL + '=' + nonce,
         '--network', names['network'], '--user', 'postgres', '--entrypoint', 'sh',
         '-e', 'RECOVERY_BOOTSTRAP=supabase_admin', '-e', 'RECOVERY_PRELOAD=' + preload,
         '-v', names['volume'] + ':/tmp/rf-recovery', IMAGE, '-c', INIT], deadline).decode().strip()
-    value = verify_resource('container', names['container'], nonce, deadline)
+    value = verify_resource('container', names['container'], nonce, deadline, **options)
     if (not re.fullmatch(r'[a-f0-9]{64}', target) or value.get('Id') != target
             or target in (metadata['source'], metadata['sourceAuth'])
             or value.get('Config', {}).get('Entrypoint') != ['sh']
@@ -259,21 +269,26 @@ def start_target(metadata, deadline):
             or value['Mounts'][0].get('Name') != names['volume']
             or value['Mounts'][0].get('Destination') != '/tmp/rf-recovery'):
         raise Unavailable('target_binding_invalid')
-    command(['docker', 'start', target], deadline)
+    execute(['docker', 'start', target], deadline)
     for _ in range(90):
         try:
-            command(['docker', 'exec', target, 'pg_isready', '-h', '/tmp', '-U', 'supabase_admin'], deadline, cap=4096)
+            execute(['docker', 'exec', target, 'pg_isready', '-h', '/tmp', '-U', 'supabase_admin'], deadline, cap=4096)
             return target
         except Unavailable:
             if time.monotonic() >= deadline:
                 break
-            time.sleep(0.25)
+            if pause is None:
+                time.sleep(0.25)
+            else:
+                pause(0.25, deadline)
     raise Unavailable('target_not_ready')
 
 
-def psql(target, statement, deadline, database='postgres'):
-    return command(['docker', 'exec', '-i', target, 'psql', '-U', 'supabase_admin', '-h', '/tmp',
-                    '-d', database, '-XqAt', '-v', 'ON_ERROR_STOP=1'], deadline, data=statement)
+def psql(target, statement, deadline, database='postgres', *, run=None):
+    execute = command if run is None else run
+    args = s0_protocol.writer_argv(target)
+    args[args.index('-d') + 1] = database
+    return execute(args, deadline, data=statement)
 
 
 def toc_inventory(raw):
@@ -341,22 +356,22 @@ def installed_files(target, snapshots, deadline):
         command(args, min(shared_deadline, time.monotonic() + 5), cap=FILE_OUTPUT_CAP))
 
 
-def failed_state(target, metadata, failed_raw, deadline):
+def failed_state(target, metadata, failed_raw, deadline, *, run=None):
     import rf1086_identity_restore as identity
-    original_checked = identity.checked
-    identity.checked = lambda args, **kw: SimpleNamespace(stdout=command(args, deadline,
+    execute = command if run is None else run
+    checked_call = lambda args, **kw: SimpleNamespace(stdout=execute(args, deadline,
         data=kw.get('input'), archive=kw.get('stdin')))
-    try:
-        with CatalogCapture() as captured:
-            result = identity.fingerprint(target, restored=True, bootstrap='supabase_admin', catalog_capture=captured)
-            if result != metadata['failed'] or captured._raw != failed_raw:
-                raise Unavailable('full_control_mismatch')
-            snapshot = _snapshot(target, min(deadline, time.monotonic() + COMMAND_SECONDS), target=True, retained=captured)
-            if snapshot != metadata['phases']['mismatch']['catalog']:
-                raise Unavailable('full_causal_control_mismatch')
-            return result, snapshot
-    finally:
-        identity.checked = original_checked
+    options = {} if run is None else {'run': run}
+    with CatalogCapture() as captured:
+        result = identity.fingerprint(target, restored=True, bootstrap='supabase_admin',
+                                      catalog_capture=captured, checked_call=checked_call)
+        if result != metadata['failed'] or captured._raw != failed_raw:
+            raise Unavailable('full_control_mismatch')
+        snapshot = _snapshot(target, min(deadline, time.monotonic() + COMMAND_SECONDS),
+                             target=True, retained=captured, **options)
+        if snapshot != metadata['phases']['mismatch']['catalog']:
+            raise Unavailable('full_causal_control_mismatch')
+        return result, snapshot
 
 
 def unavailable_fsql(reason, failure=None):
@@ -390,30 +405,35 @@ def validate_f2(result, metadata):
 def summary_fits(result, metadata):
     # Include the longest finite consumer outcome and cleanup field before work.
     raw = _encoded(result | {'optionalWorkerOutcome': 'result_invalid', 'ownedCleanupComplete': False})
-    aad = {'version': 1, **metadata['binding'], 'image': IMAGE,
+    aad = {'version': 2, **metadata['binding'], 'image': IMAGE,
            'packageSha256': 'f' * 64, 'publicKeySha256': 'f' * 64}
     # RSA3072, 12-byte nonce, AES-GCM tag, exact JSON/base64 framing overhead.
     framed = TAG.encode() + _encoded({'aad': aad, 'key': 'A' * 512, 'nonce': 'A' * 16,
-                                     'ciphertext': 'A' * (4 * ((len(raw) + 16 + 2) // 3))})
+                                     'ciphertext': 'A' * (4 * ((len(raw) + 16 + 2) // 3))}) + b'\n'
     return len(raw) <= MAX_PLAINTEXT and len(framed) <= MAX_ENVELOPE
 
 
-def fit_optional(f2, optional, metadata):
-    result = f2 | {'Fsql': optional}
+def fit_optional(f2, optional, metadata, *, s0=None):
+    result = f2 | {'schema': CONTROL_SCHEMA, 'Fsql': optional,
+                   'S0': s0_protocol.unavailable('dependency', 'admission') if s0 is None else s0}
+    if not summary_fits(result, metadata):
+        result['S0'] = s0_protocol.unavailable('summary_oversized', 'composition')
     if not summary_fits(result, metadata) and optional.get('status') == 'full_sql_verified':
         result['Fsql'] = optional | {'ledger': sql_ledger.unavailable('summary', 'summary')}
     if not summary_fits(result, metadata):
         result['Fsql'] = unavailable_fsql('summary_oversized')
     if not summary_fits(result, metadata):
         raise Unavailable('summary_oversized')
-    return result
+    return validate_control(result, metadata)
 
 
 def checkpoint_f2(path, metadata, f2):
     validate_f2(f2, metadata)
     # Reserve the largest finite fallback before allocating another target.
     for reason in FSQL_REASONS:
-        if not summary_fits(f2 | {'Fsql': unavailable_fsql(reason)}, metadata):
+        fallback = f2 | {'schema': CONTROL_SCHEMA, 'Fsql': unavailable_fsql(reason),
+                        'S0': s0_protocol.unavailable('worker_result_invalid', 'unobserved')}
+        if not summary_fits(fallback, metadata):
             raise Unavailable('summary_oversized')
     if owner(path)['nonce'] != metadata['nonce'] or (path / 'f2.json').exists() or (path / 'f2.json').is_symlink():
         raise Unavailable('checkpoint_invalid')
@@ -427,7 +447,8 @@ def read_f2(path, metadata):
     return validate_f2(load_json(read_private(path / 'f2.json', MAX_PLAINTEXT)), metadata)
 
 
-def full_sql_control(path, metadata, previous_target, roles, failed_raw, deadline, *, toc=None, inventory=None):
+def full_sql_control(path, metadata, previous_target, roles, failed_raw, deadline, *,
+                     toc=None, inventory=None, s0_context=None, f2=None):
     failure = {'stage': 'tool_probe', 'command': None, 'tool': None, 'stream': None}
     try:
         tool_raw = command(['docker', 'exec', previous_target, 'sh', '-c', TOOL_COMMAND], deadline, cap=4096)
@@ -473,18 +494,47 @@ def full_sql_control(path, metadata, previous_target, roles, failed_raw, deadlin
         raise FullSqlUnavailable(reason, failure) from None
     # A ledger observation is subordinate to the completed Fsql control. Its
     # ordinary errors never acquire the preceding command's failure stage.
+    descriptor = None
     try:
-        result['ledger'] = sql_ledger.observe(path, script, toc, metadata, inventory,
-                                             result, deadline, read_private=read_private)
+        if s0_context is None:
+            result['ledger'] = sql_ledger.observe(path, script, toc, metadata, inventory,
+                                                 result, deadline, read_private=read_private)
+        else:
+            result['ledger'], descriptor = sql_ledger.observe_with_descriptor(
+                path, script, toc, metadata, inventory, result, deadline, read_private=read_private)
     except Exception:
+        if s0_context is not None:
+            s0_context.raise_if_fatal()
         result['ledger'] = sql_ledger.unavailable('internal', 'metadata')
+    if s0_context is not None:
+        s0_context.raise_if_fatal()
+        s0_context.result = s0_control.observe_s0(context=s0_context, script=script,
+            descriptor=descriptor, f2=f2, fsql=result, metadata=metadata,
+            previous_target=target, optional_deadline=deadline,
+            resources=_s0_resources(path, metadata, roles, failed_raw, f2, result))
+        s0_context.raise_if_fatal()
     return result
 
 
-def add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline, *, toc=None):
+def _s0_resources(path, metadata, roles, failed_raw, f2, fsql):
+    """Bind existing ownership and strict comparison operations to the controller."""
+    return SimpleNamespace(
+        cleanup=lambda deadline, *, run: cleanup_resources(path, deadline, run=run),
+        start=lambda deadline, *, run, pause: start_target(metadata, deadline, run=run, pause=pause),
+        apply_roles=lambda target, deadline, *, run: psql(target, roles, deadline, run=run),
+        initialized=lambda target, deadline, *, run: _snapshot(target, deadline, target=True, run=run),
+        drop_default=lambda target, deadline, *, run: psql(target,
+            b'drop database postgres with (force);', deadline, database='template1', run=run),
+        final_state=lambda target, deadline, *, run: failed_state(target, metadata, failed_raw, deadline, run=run),
+        summary_fits=lambda s0: summary_fits(f2 | {'schema': CONTROL_SCHEMA, 'Fsql': fsql, 'S0': s0}, metadata),
+    )
+
+
+def add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline, *, toc=None, s0_context=None):
+    options = {} if s0_context is None else {'s0_context': s0_context, 'f2': f2}
     return optional_observation(path, metadata, f2, deadline,
         lambda until: full_sql_control(path, metadata, target, roles, failed_raw, until,
-                                      toc=toc, inventory=f2['inventory']))
+                                      toc=toc, inventory=f2['inventory'], **options), s0_context=s0_context)
 
 
 def measure_full_sql(path, target, deadline):
@@ -524,7 +574,9 @@ def add_full_sql_measurement(path, metadata, target, f2, deadline):
         lambda until: measure_full_sql(path, target, until))
 
 
-def optional_observation(path, metadata, f2, deadline, operation):
+def optional_observation(path, metadata, f2, deadline, operation, *, s0_context=None):
+    if s0_context is not None:
+        s0_context.raise_if_fatal()
     checkpoint_f2(path, metadata, f2)
     optional_deadline = deadline - FSQL_RESERVE_SECONDS
     if optional_deadline - time.monotonic() < FSQL_HEADROOM_SECONDS:
@@ -532,15 +584,23 @@ def optional_observation(path, metadata, f2, deadline, operation):
     try:
         optional = operation(optional_deadline)
     except FullSqlUnavailable as error:
+        if s0_context is not None:
+            s0_context.raise_if_fatal()
         optional = unavailable_fsql(error.reason, error.failure)
     except Unavailable as error:
+        if s0_context is not None:
+            s0_context.raise_if_fatal()
         optional = unavailable_fsql(error.reason)
     except Exception:
+        if s0_context is not None:
+            s0_context.raise_if_fatal()
         optional = unavailable_fsql('control_unavailable')
-    return fit_optional(f2, optional, metadata)
+    if s0_context is not None:
+        s0_context.raise_if_fatal()
+    return fit_optional(f2, optional, metadata, s0=None if s0_context is None else s0_context.result)
 
 
-def replay(path, metadata, deadline):
+def replay(path, metadata, deadline, *, s0_context=None):
     import rf1086_identity_restore as identity
     assert_source_absent(metadata, deadline)
     source_raw = read_private(path / 'source.catalog', LIMITS['source.catalog'])
@@ -574,8 +634,7 @@ def replay(path, metadata, deadline):
     with (path / 'archive.dump').open('rb') as archive:
         command(['docker', 'exec', '-i', target, 'pg_restore', '-U', 'supabase_admin', '-h', '/tmp',
                  '--exit-on-error', '--clean', '--if-exists', '--create', '--dbname', 'template1'], deadline, archive=archive)
-    # Reuse the actual acceptance query bytes, under this consumer's tighter
-    # command/overall deadlines. The patch is process-local, never production.
+    # Reuse the actual acceptance query bytes under the consumer's deadlines.
     result, snapshot = failed_state(target, metadata, failed_raw, deadline)
     with (path / 'archive.dump').open('rb') as archive:
         toc = command(['docker', 'exec', '-i', target, 'pg_restore', '--list', '--verbose'], deadline, archive=archive, cap=2 * 1024**2)
@@ -593,7 +652,7 @@ def replay(path, metadata, deadline):
             'input': {key: metadata[key] for key in INPUT_KEYS},
             'sourceCommandSha256': phases['source_pre_dump']['sourceCommandSha256'],
             'sourceInstalledFiles': phases['source_pre_dump']['files']}
-    return add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline, toc=toc)
+    return add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline, toc=toc, s0_context=s0_context)
 
 
 def seal(payload, aad, public_key):
@@ -605,7 +664,7 @@ def seal(payload, aad, public_key):
     wrapped = public_key.encrypt(key, padding.OAEP(mgf=padding.MGF1(hashes.SHA256()), algorithm=hashes.SHA256(), label=None))
     line = TAG + _encoded({'aad': aad, **{k: base64.b64encode(v).decode() for k, v in
         (('key', wrapped), ('nonce', nonce), ('ciphertext', ciphertext))}}).decode()
-    if len(line.encode()) > MAX_ENVELOPE:
+    if len(line.encode()) + 1 > MAX_ENVELOPE:
         raise Unavailable('envelope_oversized')
     return line
 
@@ -627,7 +686,7 @@ def decrypt(log, private_key, expected):
     if len(lines) != 1:
         raise Unavailable('envelope_count_invalid')
     value = load_json(lines[0])
-    if set(value) != {'aad', 'key', 'nonce', 'ciphertext'} or value['aad'] != {'version': 1, **expected}:
+    if set(value) != {'aad', 'key', 'nonce', 'ciphertext'} or value['aad'] != {'version': 2, **expected}:
         raise Unavailable('envelope_binding_invalid')
     wrapped, nonce, ciphertext = [base64.b64decode(value[k], validate=True) for k in ('key', 'nonce', 'ciphertext')]
     if len(wrapped) != 384 or len(nonce) != 12 or len(ciphertext) > MAX_PLAINTEXT + 16:
@@ -766,24 +825,93 @@ def validate_fsql(value, metadata, inventory=None):
     return value
 
 
-def completed_result(path, metadata):
-    result = load_json(read_private(path / 'result.json', MAX_PLAINTEXT))
-    if type(result) is dict and result.get('status') == 'unavailable':
-        if set(result) != {'status', 'reason', 'recoveryAccepted'} or result['recoveryAccepted'] is not False:
+THIN_REASONS = frozenset(('consumer_failed', 'worker_deadline', 'worker_failed', 'worker_result_invalid'))
+WORKER_REASONS = {'deadline': 'worker_deadline', 'failed': 'worker_failed', 'result_invalid': 'worker_result_invalid'}
+
+
+def thin_control(reason):
+    reason = reason if type(reason) is str and reason in THIN_REASONS else 'consumer_failed'
+    return {'schema': CONTROL_SCHEMA, 'status': 'unavailable', 'reason': reason,
+            'recoveryAccepted': False, 'S0': s0_protocol.unavailable(
+                'control_unavailable' if reason == 'consumer_failed' else reason, 'unobserved')}
+
+
+def _f2_view(result):
+    # Only this view has the durable literal; validate the original typed S0 too.
+    return {key: result[key] if key != 'S0' else 'unavailable' for key in F2_KEYS}
+
+
+def validate_control(result, metadata):
+    if type(result) is not dict or result.get('schema') != CONTROL_SCHEMA:
+        raise Unavailable('optional_result_invalid')
+    if result.get('status') == 'unavailable':
+        if (set(result) != {'schema', 'status', 'reason', 'recoveryAccepted', 'S0'}
+                or type(result['reason']) is not str or result['reason'] not in THIN_REASONS
+                or result['recoveryAccepted'] is not False
+                or result != thin_control(result['reason'])):
+            raise Unavailable('optional_result_invalid')
+        s0_protocol.validate_unavailable(result['S0'])
+        return result
+    if set(result) != F2_KEYS | {'schema', 'Fsql'}:
+        raise Unavailable('optional_result_invalid')
+    f2 = validate_f2(_f2_view(result), metadata)
+    validate_fsql(result['Fsql'], metadata, f2['inventory'])
+    try:
+        s0_protocol.validate_receipt(result['S0'], fsql=result['Fsql'], f2_input=f2['input'],
+                                     metadata=metadata, inventory=f2['inventory'])
+    except (ValueError, KeyError, TypeError):
+        raise Unavailable('optional_result_invalid') from None
+    return result
+
+
+def validate_published_control(result, metadata):
+    if (type(result) is not dict or not {'optionalWorkerOutcome', 'ownedCleanupComplete'} <= set(result)
+            or type(result['optionalWorkerOutcome']) is not str
+            or result['optionalWorkerOutcome'] not in ('completed', *WORKER_REASONS)
+            or type(result['ownedCleanupComplete']) is not bool):
+        raise Unavailable('optional_result_invalid')
+    payload = {k: v for k, v in result.items() if k not in ('optionalWorkerOutcome', 'ownedCleanupComplete')}
+    outcome, cleaned = result['optionalWorkerOutcome'], result['ownedCleanupComplete']
+    if not cleaned and payload.get('S0') != s0_protocol.unavailable('parent_cleanup', 'cleanup'):
+        raise Unavailable('optional_result_invalid')
+    if payload.get('status') == 'unavailable':
+        # Validate the parent's exact redaction before checking the worker shape.
+        worker_view = payload if cleaned else payload | {'S0': thin_control(payload.get('reason'))['S0']}
+        validate_control(worker_view, metadata)
+        if outcome != 'completed' and payload['reason'] != WORKER_REASONS[outcome]:
             raise Unavailable('optional_result_invalid')
         return result
-    if type(result) is not dict or set(result) != F2_KEYS | {'Fsql'}:
+    validate_control(payload, metadata)
+    if not cleaned and (payload['Fsql']['status'] != 'unavailable'
+                        or payload['Fsql']['reason'] == 'measurement_only'):
         raise Unavailable('optional_result_invalid')
-    f2 = validate_f2({key: result[key] for key in F2_KEYS}, metadata)
-    return fit_optional(f2, validate_fsql(result['Fsql'], metadata, f2['inventory']), metadata)
+    if outcome != 'completed':
+        if (payload['Fsql'] != unavailable_fsql(WORKER_REASONS[outcome])
+                or cleaned and payload['S0'] != s0_protocol.unavailable(WORKER_REASONS[outcome], 'unobserved')):
+            raise Unavailable('optional_result_invalid')
+    try:
+        s0_protocol.validate_receipt(payload['S0'], fsql=payload['Fsql'], f2_input=payload['input'],
+            metadata=metadata, inventory=payload['inventory'], published=True,
+            worker_outcome=outcome, owned_cleanup=cleaned)
+    except (ValueError, KeyError, TypeError):
+        raise Unavailable('optional_result_invalid') from None
+    return result
+
+
+def completed_result(path, metadata):
+    result = validate_control(load_json(read_private(path / 'result.json', MAX_PLAINTEXT)), metadata)
+    if result['status'] == 'unavailable':
+        return result
+    return fit_optional(_f2_view(result), result['Fsql'], metadata, s0=result['S0'])
 
 
 def fallback_result(path, metadata, outcome):
-    reason = {'deadline': 'worker_deadline', 'failed': 'worker_failed', 'result_invalid': 'worker_result_invalid'}[outcome]
+    reason = WORKER_REASONS[outcome]
     try:
-        return fit_optional(read_f2(path, metadata), unavailable_fsql(reason), metadata)
+        return fit_optional(read_f2(path, metadata), unavailable_fsql(reason), metadata,
+                            s0=s0_protocol.unavailable(reason, 'unobserved'))
     except Exception:
-        return {'status': 'unavailable', 'reason': reason, 'recoveryAccepted': False}
+        return thin_control(reason)
 
 
 def worker():
@@ -791,15 +919,21 @@ def worker():
     deadline = float(os.environ['TALLI_RF_REPLAY_ACTIVE_DEADLINE'])
     if not math.isfinite(deadline) or not 0 < deadline - time.monotonic() <= ACTIVE_SECONDS:
         raise Unavailable('worker_deadline_invalid')
+    context = s0_control.new_context()
     try:
-        result = replay(path, metadata, deadline)
+        result = replay(path, metadata, deadline, s0_context=context)
     except Unavailable as error:
-        result = {'status': 'unavailable', 'reason': error.reason, 'recoveryAccepted': False}
+        context.raise_if_fatal()
+        result = thin_control(error.reason)
     except Exception:
-        result = {'status': 'unavailable', 'reason': 'consumer_failed', 'recoveryAccepted': False}
+        context.raise_if_fatal()
+        result = thin_control('consumer_failed')
+    context.raise_if_fatal()
+    validate_control(result, metadata)
     raw = _encoded(result)
     if len(raw) > MAX_PLAINTEXT:
         raise Unavailable('summary_oversized')
+    context.raise_if_fatal()
     write_private(path / 'result.json', raw)
 
 
@@ -836,7 +970,7 @@ def consume():
     if not 0 <= elapsed <= 90 * 60 - (600 + 120 + 120):
         raise Unavailable('job_headroom_unproved')
     process = None
-    result = {'status': 'unavailable', 'reason': 'consumer_cancelled', 'recoveryAccepted': False}
+    result = thin_control('consumer_failed')
     outcome = 'completed'
     deadline = time.monotonic() + ACTIVE_SECONDS
     try:
@@ -880,6 +1014,8 @@ def consume():
             signal.signal(signal.SIGINT, signal.SIG_IGN)
             try:
                 result['ownedCleanupComplete'] = cleanup_resources(path, time.monotonic() + CLEANUP_SECONDS)
+                if not result['ownedCleanupComplete']:
+                    result['S0'] = s0_protocol.unavailable('parent_cleanup', 'cleanup')
                 if not result['ownedCleanupComplete'] and result.get('Fsql', {}).get('reason') == 'measurement_only':
                     result['Fsql'] = unavailable_fsql('measurement_cleanup_unproved')
                 if not result['ownedCleanupComplete'] and result.get('Fsql', {}).get('status') == 'full_sql_verified':
@@ -891,7 +1027,17 @@ def consume():
     public = serialization.load_pem_public_key(public_bytes)
     if not isinstance(public, rsa.RSAPublicKey) or public.key_size != 3072:
         raise Unavailable('public_key_invalid')
-    aad = {'version': 1, **binding(), 'image': IMAGE, 'packageSha256': package_hash, 'publicKeySha256': digest(public_bytes)}
+    validate_published_control(result, metadata)
+    if not summary_fits(result, metadata):
+        if result['status'] != 'unavailable':
+            parent = {k: result[k] for k in ('optionalWorkerOutcome', 'ownedCleanupComplete')}
+            result = fit_optional(_f2_view(result), result['Fsql'], metadata, s0=result['S0']) | parent
+            if not parent['ownedCleanupComplete']:
+                result['S0'] = s0_protocol.unavailable('parent_cleanup', 'cleanup')
+        if not summary_fits(result, metadata):
+            raise Unavailable('summary_oversized')
+        validate_published_control(result, metadata)
+    aad = {'version': 2, **binding(), 'image': IMAGE, 'packageSha256': package_hash, 'publicKeySha256': digest(public_bytes)}
     print(seal(result, aad, public), flush=True)
     if not result['ownedCleanupComplete']:
         raise Unavailable('cleanup_incomplete')

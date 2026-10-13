@@ -93,8 +93,9 @@ def inspect_resource(kind, reference):
             time.sleep(0.1)
 
 
-def query(container, statement, *, user='supabase_admin', database='postgres'):
-    return checked(['docker', 'exec', '-i', container, 'psql', '-U', user, '-h', '/tmp',
+def query(container, statement, *, user='supabase_admin', database='postgres', checked_call=None):
+    run = checked if checked_call is None else checked_call
+    return run(['docker', 'exec', '-i', container, 'psql', '-U', user, '-h', '/tmp',
                     '--dbname', database, '-XAt', '-v', 'ON_ERROR_STOP=1'],
                    input=statement.encode(), stdout=subprocess.PIPE).stdout
 
@@ -176,8 +177,9 @@ select coalesce(jsonb_agg(jsonb_build_array(case when s.setdatabase=0 then '*' e
 """
 
 
-def fingerprint(container, *, restored=False, bootstrap=None, catalog_capture=None):
-    run = (lambda statement: query(container, statement, user=bootstrap)) if restored else lambda statement: source_query(container, statement)
+def fingerprint(container, *, restored=False, bootstrap=None, catalog_capture=None, checked_call=None):
+    options = {} if checked_call is None else {'checked_call': checked_call}
+    run = (lambda statement: query(container, statement, user=bootstrap, **options)) if restored else lambda statement: source_query(container, statement)
     roles = run(ROLE_SQL)
     catalog = run(CATALOG_SQL)
     if catalog_capture is not None:

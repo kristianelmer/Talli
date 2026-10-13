@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives import serialization
 import pytest
 
 from test_rf1086_actual_replay import setup, key, toc
-from test_rf1086_full_sql_control import control
+from test_rf1086_full_sql_control import control, completed
 import rf1086_actual_replay as replay
 import rf1086_actual_replay_package as package
 import rf1086_catalog_semantics as commands
@@ -266,7 +266,7 @@ def test_actual_parent_redacts_measurement_when_owned_cleanup_is_unproved(contro
     class Child:
         returncode = 0
         def __init__(self):
-            package.write_private(path/'result.json', package._encoded(f2 | {'Fsql': optional()}))
+            package.write_private(path/'result.json', package._encoded(completed(f2, optional())))
         def wait(self, **kw): return 0
     monkeypatch.setattr(replay.subprocess, 'Popen', lambda *a, **kw: Child())
     monkeypatch.setattr(replay, 'cleanup_resources', lambda *a: cleanup)
@@ -289,9 +289,9 @@ def test_actual_parent_redacts_measurement_when_owned_cleanup_is_unproved(contro
 def test_oversized_optional_measurement_preserves_f2(control, monkeypatch):
     _, metadata, f2, _, _, _ = control
     fallback = replay.unavailable_fsql('summary_oversized')
-    size = len(package._encoded(f2 | {'Fsql':fallback, 'optionalWorkerOutcome':'result_invalid', 'ownedCleanupComplete':False}))
+    size = len(package._encoded(completed(f2, fallback, reason='summary_oversized', stage='composition') | {'optionalWorkerOutcome':'result_invalid', 'ownedCleanupComplete':False}))
     monkeypatch.setattr(replay, 'MAX_PLAINTEXT', size)
-    assert replay.fit_optional(f2, optional(), metadata) == f2 | {'Fsql':fallback}
+    assert replay.fit_optional(f2, optional(), metadata) == completed(f2, fallback, reason='summary_oversized', stage='composition')
 
 
 @pytest.mark.parametrize('stage', ['tool_probe', 'full_script_measurement'])
@@ -310,7 +310,7 @@ def test_measurement_command_outcome_exact_bounds(stage, kind):
 def test_measurement_encryption_limits_and_fallback(control, monkeypatch, key):
     _, metadata, f2, _, _, _ = control
     public = key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
-    aad = {'version': 1, **metadata['binding'], 'image': package.IMAGE,
+    aad = {'version': 2, **metadata['binding'], 'image': package.IMAGE,
            'packageSha256': 'a'*64, 'publicKeySha256': package.digest(public)}
     result = replay.fit_optional(f2, optional(), metadata)
     result.update(optionalWorkerOutcome='completed', ownedCleanupComplete=True)
@@ -322,9 +322,9 @@ def test_measurement_encryption_limits_and_fallback(control, monkeypatch, key):
     monkeypatch.setattr(replay, 'MAX_PLAINTEXT', len(raw)-1)
     with pytest.raises(package.Unavailable): replay.seal(result, aad, key.public_key())
     monkeypatch.setattr(replay, 'MAX_PLAINTEXT', 64*1024)
-    monkeypatch.setattr(replay, 'MAX_ENVELOPE', len(line.encode()))
+    monkeypatch.setattr(replay, 'MAX_ENVELOPE', len(line.encode())+1)
     assert replay.seal(result, aad, key.public_key())
-    monkeypatch.setattr(replay, 'MAX_ENVELOPE', len(line.encode())-1)
+    monkeypatch.setattr(replay, 'MAX_ENVELOPE', len(line.encode()))
     with pytest.raises(package.Unavailable): replay.seal(result, aad, key.public_key())
 
 
@@ -332,7 +332,7 @@ def test_measurement_encryption_limits_and_fallback(control, monkeypatch, key):
 def test_parent_fallback_discards_even_a_complete_measurement(control, outcome):
     path, metadata, f2, _, _, _ = control
     replay.checkpoint_f2(path, metadata, f2)
-    package.write_private(path/'result.json', package._encoded(f2 | {'Fsql':optional()}))
+    package.write_private(path/'result.json', package._encoded(completed(f2, optional())))
     result = replay.fallback_result(path, metadata, outcome)
     assert result['F2EqualsF'] is True
     assert result['Fsql']['status'] == 'unavailable' and 'measurement' not in result['Fsql']

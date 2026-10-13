@@ -316,3 +316,63 @@ def test_cleanup_failure_cannot_replace_user_cancellation(monkeypatch, cleanup_f
 def test_incomplete_toc_cannot_be_reported_as_zero_function_definitions(raw):
     with pytest.raises(ValueError, match='unavailable'):
         evidence._toc_report(raw, ['owner', 'owner'])
+
+
+@pytest.mark.parametrize('change', ['owner_only', 'cap_only', 'reap_only', 'bool_cap', 'inf', 'nan', 'order'])
+def test_inclusive_command_opt_in_is_all_or_nothing_before_acquisition(monkeypatch, change):
+    from rf1086_s0_control import ChildOwner
+    owner=ChildOwner(); end=time.monotonic()+5
+    options={'stdout_cap':32,'reap_deadline':end+2,'child_owner':owner}
+    if change=='owner_only': options={'child_owner':owner}
+    elif change=='cap_only': options={'stdout_cap':32}
+    elif change=='reap_only': options={'reap_deadline':end+2}
+    elif change=='bool_cap': options['stdout_cap']=True
+    elif change=='inf': options['reap_deadline']=float('inf')
+    elif change=='nan': end=float('nan')
+    elif change=='order': options['reap_deadline']=end-1
+    monkeypatch.setattr(owner,'launch',lambda *a,**kw:pytest.fail('invalid option acquired child'))
+    with pytest.raises(ValueError): evidence._command(['unused'],end,**options)
+
+
+@pytest.fixture
+def s0_children(monkeypatch):
+    # Independent cleanup also runs if an ownership regression breaks an assertion.
+    original,kill,wait=subprocess.Popen,subprocess.Popen.kill,subprocess.Popen.wait
+    children=[]
+    def launch(*a,**kw):
+        child=original(*a,**kw); children.append(child); return child
+    monkeypatch.setattr(subprocess,'Popen',launch)
+    yield children
+    for child in children:
+        try: wait(child,timeout=0)
+        except subprocess.TimeoutExpired:
+            kill(child); wait(child,timeout=2)
+        for stream in (child.stdin,child.stdout,child.stderr):
+            if stream is not None: stream.close()
+
+
+def test_explicit_owner_cap_and_eagain_keep_default_global_unchanged(monkeypatch,s0_children):
+    from rf1086_s0_control import ChildOwner
+    owner=ChildOwner(); original_read=evidence.os.read; blocked=[False]; global_cap=evidence.MAX_BYTES
+    def read(fd,n):
+        # Only active output pipes; do not interfere with Popen's acquisition pipe.
+        fds=[p.fileno() for s in owner.slots if s.process for p in (s.process.stdout,s.process.stderr) if not p.closed]
+        if fd in fds and not blocked[0]:
+            blocked[0]=True; raise BlockingIOError()
+        return original_read(fd,n)
+    monkeypatch.setattr(evidence.os,'read',read)
+    end=time.monotonic()+3
+    assert evidence._command([sys.executable,'-c','print("abcd")'],end,
+        stdout_cap=5,reap_deadline=end+2,child_owner=owner)==b'abcd\n'
+    assert blocked[0] and evidence.MAX_BYTES==global_cap
+    assert all(s.process is None for s in owner.slots) and not owner.uncertain
+
+
+def test_opt_in_output_overflow_observes_only_one_detection_byte(s0_children):
+    from rf1086_s0_control import ChildOwner
+    owner=ChildOwner(); end=time.monotonic()+3
+    with pytest.raises(evidence.CommandFailure) as caught:
+        evidence._command([sys.executable,'-c','import os; os.write(1,b"x"*1000)'],end,
+            stdout_cap=7,reap_deadline=end+2,child_owner=owner)
+    assert caught.value.observation==dict(kind='stdout_limit',stdoutBytes=8,stderrBytes=0,stdoutCap=7,exitCode=None)
+    assert all(s.process is None for s in owner.slots) and not owner.uncertain

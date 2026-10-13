@@ -1,6 +1,7 @@
 """Read-only, bounded evidence for a rejected restore; never acceptance logic."""
 import hashlib
 import json
+import math
 import os
 import re
 import selectors
@@ -48,9 +49,11 @@ class CommandFailure(ValueError):
         super().__init__('catalog_semantics_unavailable')
 
 
-def _command(args, deadline, *, data=None, archive=None):
+def _command(args, deadline, *, data=None, archive=None, stdout_cap=None,
+             reap_deadline=None, child_owner=None):
     """Drain both pipes concurrently; no threads, raw errors or unbounded wait."""
-    return _run_command(args, deadline, data=data, archive=archive, measured=False)
+    return _run_command(args, deadline, data=data, archive=archive, measured=False,
+                        stdout_cap=stdout_cap, reap_deadline=reap_deadline, child_owner=child_owner)
 
 
 def _measure_command(args, deadline, *, archive=None):
@@ -58,8 +61,18 @@ def _measure_command(args, deadline, *, archive=None):
     return _run_command(args, deadline, archive=archive, measured=True)
 
 
-def _run_command(args, deadline, *, data=None, archive=None, measured):
-    cap = MAX_MEASUREMENT_BYTES if measured else MAX_BYTES
+def _run_command(args, deadline, *, data=None, archive=None, measured,
+                 stdout_cap=None, reap_deadline=None, child_owner=None):
+    owned = child_owner is not None
+    supplied = (stdout_cap is not None, reap_deadline is not None, owned)
+    if any(supplied) and (not all(supplied) or measured or type(stdout_cap) is not int
+                         or not 0 < stdout_cap <= 128 * 1024**2
+                         or type(deadline) not in (int, float)
+                         or type(reap_deadline) not in (int, float)
+                         or not math.isfinite(deadline) or not math.isfinite(reap_deadline)
+                         or not deadline <= reap_deadline):
+        _unavailable()
+    cap = stdout_cap if owned else (MAX_MEASUREMENT_BYTES if measured else MAX_BYTES)
     output = None if measured else bytearray()
     hashed = hashlib.sha256() if measured else None
     output_bytes = 0
@@ -77,8 +90,12 @@ def _run_command(args, deadline, *, data=None, archive=None, measured):
     pending = memoryview(data or b'')
     try:
         selector = selectors.DefaultSelector()
-        process = subprocess.Popen(args, stdin=archive if archive is not None else subprocess.PIPE,
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if owned:
+            process = child_owner.launch(args, stdin=archive if archive is not None else subprocess.PIPE)
+            remaining()
+        else:
+            process = subprocess.Popen(args, stdin=archive if archive is not None else subprocess.PIPE,
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         for stream in (process.stdout, process.stderr):
             os.set_blocking(stream.fileno(), False)
             selector.register(stream, selectors.EVENT_READ)
@@ -90,16 +107,31 @@ def _run_command(args, deadline, *, data=None, archive=None, measured):
                 process.stdin.close()
         while selector.get_map():
             for key, _ in selector.select(min(remaining(), 0.1)):
+                if owned: remaining()
                 stream = key.fileobj
                 if stream is process.stdin:
-                    written = os.write(stream.fileno(), pending[:65536])
+                    try:
+                        written = os.write(stream.fileno(), pending[:65536])
+                    except BlockingIOError:
+                        if owned: continue
+                        raise
+                    if owned: remaining()
+                    if owned and written <= 0: _unavailable()
                     pending = pending[written:]
                     if not pending:
                         selector.unregister(stream)
                         stream.close()
                     continue
                 size = min(65536, cap + 1 - output_bytes) if measured and stream is process.stdout else 65536
-                chunk = os.read(stream.fileno(), size)
+                if owned:
+                    remaining()
+                    size = min(size, (cap-output_bytes+1) if stream is process.stdout else (65536-error_bytes+1))
+                try:
+                    chunk = os.read(stream.fileno(), size)
+                except BlockingIOError:
+                    if owned: continue
+                    raise
+                if owned: remaining()
                 if not chunk:
                     selector.unregister(stream)
                     stream.close()
@@ -116,6 +148,9 @@ def _run_command(args, deadline, *, data=None, archive=None, measured):
                     if error_bytes > 65536:
                         raise CommandFailure('stderr_limit', output_bytes, error_bytes, cap)
         exit_code = process.wait(timeout=remaining())
+        if owned:
+            child_owner.reaped(process)
+            remaining()
         if exit_code:
             if type(exit_code) is not int or not -127 <= exit_code <= 255:
                 _unavailable()
@@ -124,7 +159,11 @@ def _run_command(args, deadline, *, data=None, archive=None, measured):
     finally:
         primary = sys.exception()
         cleanup_errors = []
-        if process is not None:
+        if owned:
+            # The owner also knows a child whose acquisition raised before the
+            # assignment above. Never add the default helper's one-second wait.
+            child_owner.unwind(reap_deadline, primary=primary, selector=selector)
+        elif process is not None:
             try:
                 if process.poll() is None:
                     process.kill()
@@ -140,7 +179,7 @@ def _run_command(args, deadline, *, data=None, archive=None, measured):
                         stream.close()
                     except BaseException as error:
                         cleanup_errors.append(error)
-        if selector is not None:
+        if selector is not None and not owned:
             try:
                 selector.close()
             except BaseException as error:

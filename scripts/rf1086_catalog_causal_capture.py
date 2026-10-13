@@ -69,12 +69,19 @@ def _extensions(rows, width):
     if len(set(names)) != len(names): _unavailable()
 
 
-def _snapshot(container, deadline, *, target=False, retained=None):
+def _snapshot_statement():
     statement = Path(__file__).with_name('rf1086_catalog_causal.sql').read_bytes()
     if len(statement) > 16 * 1024: _unavailable()
+    return statement
+
+
+def _snapshot(container, deadline, *, target=False, retained=None, run=None):
+    statement = _snapshot_statement()
     args = ['docker', 'exec', '-i', container, 'psql', '-U', 'supabase_admin']
     if target: args += ['-h', '/tmp']
-    raw = _command(args + ['-d', 'postgres', '-XqAt', '-v', 'ON_ERROR_STOP=1'], deadline, data=statement)
+    execute = _command if run is None else run
+    options = {} if run is None else {'cap': 32 * 1024}
+    raw = execute(args + ['-d', 'postgres', '-XqAt', '-v', 'ON_ERROR_STOP=1'], deadline, data=statement, **options)
     if len(raw) > 32 * 1024: _unavailable()
     result = json.loads(raw, object_pairs_hook=_object, parse_constant=_reject_constant)
     return _validate_snapshot(result, retained)

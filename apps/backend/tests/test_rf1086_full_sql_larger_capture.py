@@ -11,7 +11,7 @@ import time
 import pytest
 
 from test_rf1086_actual_replay import setup, toc
-from test_rf1086_full_sql_control import control
+from test_rf1086_full_sql_control import control, completed
 import rf1086_actual_replay as replay
 import rf1086_actual_replay_package as package
 import rf1086_catalog_semantics as commands
@@ -130,7 +130,7 @@ def test_parent_requires_final_cleanup_before_full_sql_success(control, monkeypa
     monkeypatch.setenv('TALLI_RF_REPLAY_JOB_STARTED', str(time.monotonic()))
     class Child:
         returncode = 0
-        def __init__(self): package.write_private(path/'result.json', package._encoded(f2 | {'Fsql': optional}))
+        def __init__(self): package.write_private(path/'result.json', package._encoded(completed(f2, optional)))
         def wait(self, **kw): return 0
     monkeypatch.setattr(replay.subprocess, 'Popen', lambda *a, **kw: Child())
     failure = KeyboardInterrupt() if cleanup == 'cancel' else RuntimeError('cleanup unproved')
@@ -183,4 +183,5 @@ def test_actual_replay_selects_one_full_control_after_verified_f2(control, monke
     result = replay.replay(path, metadata, time.monotonic()+416)
     assert calls == ['start', 'psql', 'psql', 'full-control']
     assert result['F2EqualsF'] and result['Fsql'] == optional
-    assert result['S0'] == result['Is'] == 'unavailable'
+    assert result['S0'] == replay.s0_protocol.unavailable('dependency', 'admission')
+    assert result['Is'] == 'unavailable'

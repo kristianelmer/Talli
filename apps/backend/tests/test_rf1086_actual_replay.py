@@ -169,7 +169,7 @@ def key():
 
 def aad(key):
     public = key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
-    return {'version': 1, 'run': '123', 'attempt': '1', 'mergeSha': 'a' * 40,
+    return {'version': 2, 'run': '123', 'attempt': '1', 'mergeSha': 'a' * 40,
             'image': package.IMAGE, 'packageSha256': 'c' * 64, 'publicKeySha256': package.digest(public)}
 
 
@@ -247,7 +247,8 @@ def test_full_control_requires_fresh_failed_bindings_before_inventory(setup, mon
     else:
         result = replay.replay(path, metadata, time.monotonic() + 5)
         assert result['F2EqualsF'] and result['causalSnapshotEqualsF']
-        assert result['S0'] == result['Is'] == 'unavailable'
+        assert result['S0'] == replay.s0_protocol.unavailable('dependency', 'admission')
+        assert result['Is'] == 'unavailable'
         assert result['In'] == 'archive_function_equivalence_unproved'
         assert result['netSourceAttributesObserved'] is True
         assert result['recoveryAccepted'] is result['causalAttributionAccepted'] is False
