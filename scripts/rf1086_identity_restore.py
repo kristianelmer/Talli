@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 from threading import Thread
 import time
@@ -84,10 +85,11 @@ def _restore_failure_diagnostic(stderr):
     return 'unclassified'
 
 
-def inspect_resource(kind, reference):
+def inspect_resource(kind, reference, *, checked_call=None):
+    run = checked if checked_call is None else checked_call
     for attempt in range(3):
         try:
-            return json.loads(checked(['docker', kind, 'inspect', reference], stdout=subprocess.PIPE).stdout)[0]
+            return json.loads(run(['docker', kind, 'inspect', reference], stdout=subprocess.PIPE).stdout)[0]
         except (RuntimeError, ValueError, IndexError):
             if attempt == 2: raise RuntimeError('Recovery ' + kind + ' ownership could not be inspected; cleanup may be required') from None
             time.sleep(0.1)
@@ -100,28 +102,33 @@ def query(container, statement, *, user='supabase_admin', database='postgres', c
                    input=statement.encode(), stdout=subprocess.PIPE).stdout
 
 
-def source_query(container, statement):
-    return checked(['docker', 'exec', '-i', container, 'psql', '-U', 'supabase_admin',
+def source_query(container, statement, *, checked_call=None):
+    run = checked if checked_call is None else checked_call
+    return run(['docker', 'exec', '-i', container, 'psql', '-U', 'supabase_admin',
                     '--dbname', 'postgres', '-XAt', '-v', 'ON_ERROR_STOP=1'],
                    input=statement.encode(), stdout=subprocess.PIPE).stdout
 
 
-def prepare_new_target_database(source, target, name, nonce, image, bootstrap):
+def prepare_new_target_database(source, target, name, nonce, image, bootstrap, *, checked_call=None,
+                                construction=False):
     """Remove only this invocation's new default database before exact restore."""
     if (not ID.fullmatch(source) or not ID.fullmatch(target) or source == target
             or not re.fullmatch(r'[a-f0-9]{32}', nonce)
             or name != 'rf193_identity_db_' + nonce or not IMAGE.fullmatch(image)
-            or bootstrap != 'supabase_admin'):
+            or (not construction and bootstrap != 'supabase_admin')
+            or type(bootstrap) is not str or not 0 < len(bootstrap.encode()) <= 63 or '\0' in bootstrap):
         raise ValueError('Recovery database preparation ownership mismatch')
-    observed = inspect_resource('container', target)
+    options = {} if checked_call is None else {'checked_call': checked_call}
+    observed = inspect_resource('container', target, **options)
     if (observed.get('Id') != target or observed.get('Name') != '/' + name
             or observed.get('Image') != image
             or observed.get('Config', {}).get('Labels', {}).get(LABEL) != nonce
             or not observed.get('State', {}).get('Running')):
         raise ValueError('Recovery database preparation ownership mismatch')
     statement = 'select system_identifier from pg_control_system();'
-    source_system = source_query(source, statement).strip()
-    target_system = query(target, statement, user=bootstrap, database='template1').strip()
+    operator = 'supabase_admin' if construction else bootstrap
+    source_system = source_query(source, statement, **options).strip()
+    target_system = query(target, statement, user=operator, database='template1', **options).strip()
     if (not re.fullmatch(rb'[0-9]{1,20}', source_system)
             or not re.fullmatch(rb'[0-9]{1,20}', target_system)
             or source_system == target_system):
@@ -129,7 +136,7 @@ def prepare_new_target_database(source, target, name, nonce, image, bootstrap):
     # A preload worker can connect to the new postgres database even while jobs
     # are disabled. FORCE closes those target-only connections under the drop
     # lock; pg_restore then recreates source ownership, ACLs and database GUCs.
-    query(target, 'drop database postgres with (force);', user=bootstrap, database='template1')
+    query(target, 'drop database postgres with (force);', user=operator, database='template1', **options)
 
 
 # Compare names, attributes and grants, never database-local catalog OIDs.
@@ -179,7 +186,7 @@ select coalesce(jsonb_agg(jsonb_build_array(case when s.setdatabase=0 then '*' e
 
 def fingerprint(container, *, restored=False, bootstrap=None, catalog_capture=None, checked_call=None):
     options = {} if checked_call is None else {'checked_call': checked_call}
-    run = (lambda statement: query(container, statement, user=bootstrap, **options)) if restored else lambda statement: source_query(container, statement)
+    run = (lambda statement: query(container, statement, user=bootstrap, **options)) if restored else lambda statement: source_query(container, statement, **options)
     roles = run(ROLE_SQL)
     catalog = run(CATALOG_SQL)
     if catalog_capture is not None:
@@ -259,8 +266,15 @@ def auth_environment(source, host):
 
 
 @contextmanager
-def auth_gateway(port):
+def auth_gateway(port, *, budget=None):
     """Prefix bridge only; the independent Auth process verifies every session."""
+    from rf1086_restore_control import current_budget, bounded_gateway
+    budget = current_budget(budget)
+    if budget is not None:
+        with bounded_gateway(port, prefix='/auth/v1', body_cap=65536, budget=budget,
+                             unavailable='Owned Auth unavailable') as url:
+            yield url
+        return
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *_): pass
         def do_GET(self): self.forward()
@@ -312,19 +326,23 @@ def loopback_port(container, port, boundary):
     return int(bindings[0]['HostPort'])
 
 
-def verify_target_session(database_url, container, bootstrap):
+def verify_target_session(database_url, container, bootstrap, *, budget=None):
     """Observe the exact host connection inside the new pinned target before writes."""
+    from rf1086_restore_control import bounded_connection, current_budget, io_checked
+    budget = current_budget(budget)
     marker = 'rf193_identity_session_' + uuid4().hex
-    with psycopg.connect(database_url, application_name=marker) as connection:
+    with bounded_connection(psycopg.connect, database_url, budget=budget, application_name=marker) as connection:
         pid = connection.execute('select pg_backend_pid()').fetchone()[0]
         statement = ("select count(*) from pg_stat_activity where datname='postgres' "
                      f"and usename='postgres' and pid={int(pid)} and application_name='{marker}';")
-        if query(container, statement, user=bootstrap).strip() != b'1':
+        if query(container, statement, user=bootstrap, **({'checked_call': lambda *a, **kw: io_checked(budget, *a, **kw)} if budget is not None else {})).strip() != b'1':
             raise ValueError('Recovered DATABASE_URL is not served by the newly created target')
 
 
-def verify_target_auth(database_url, auth_url):
+def verify_target_auth(database_url, auth_url, *, budget=None):
     """A target-only nonce proves HTTP Auth uses this independent database."""
+    from rf1086_restore_control import bounded_connection, current_budget, io_deadline, io_timeout
+    budget = current_budget(budget)
     token = os.environ.get('TALLI_RF_RESTORE_OWNER_TOKEN', '')
     try:
         payload = token.split('.')[1]
@@ -332,14 +350,14 @@ def verify_target_auth(database_url, auth_url):
     except (IndexError, KeyError, ValueError, TypeError):
         raise ValueError('Independent Auth binding requires the captured owner token') from None
     key, nonce = 'rf193_identity_recovery_probe', uuid4().hex
-    with psycopg.connect(database_url) as connection:
+    with bounded_connection(psycopg.connect, database_url, budget=budget) as connection:
         original = connection.execute('select raw_app_meta_data from auth.users where id=%s', (actor,)).fetchone()
         if original is None: raise ValueError('Captured owner is missing from the recovery database')
         metadata = original[0]
         connection.execute('update auth.users set raw_app_meta_data=%s::jsonb where id=%s',
             (json.dumps({**(metadata or {}), key: nonce}), actor))
     try:
-        with httpx.Client(trust_env=False, timeout=10) as client:
+        with io_deadline(budget), httpx.Client(trust_env=False, timeout=io_timeout(budget, 10)) as client:
             response = client.get(auth_url + '/auth/v1/user', headers={'Authorization': 'Bearer ' + token})
             if response.status_code != 200:
                 raise ValueError('Independent Auth binding rejected the captured owner session')
@@ -347,9 +365,17 @@ def verify_target_auth(database_url, auth_url):
             if body.get('id') != actor or body.get('app_metadata', {}).get(key) != nonce:
                 raise ValueError('Recovered Auth HTTP endpoint does not use the new target database')
     finally:
-        with psycopg.connect(database_url) as connection:
-            connection.execute('update auth.users set raw_app_meta_data=%s::jsonb where id=%s',
-                (None if metadata is None else json.dumps(metadata), actor))
+        primary = __import__('sys').exception()
+        try:
+            with bounded_connection(psycopg.connect, database_url, budget=budget) as connection:
+                connection.execute('update auth.users set raw_app_meta_data=%s::jsonb where id=%s',
+                    (None if metadata is None else json.dumps(metadata), actor))
+        except BaseException as error:
+            if budget is not None:
+                budget.context.owner._uncertain('auth_probe_restore', error, primary)
+            if primary is not None:
+                raise primary
+            raise
 
 
 @dataclass(frozen=True)
@@ -360,6 +386,7 @@ class RecoveredIdentity:
     database_container: str
     bootstrap: str
     proof: dict
+    budget: object = None
 
     def reader_url(self, source_reader):
         source = conninfo_to_dict(source_reader)
@@ -367,8 +394,190 @@ class RecoveredIdentity:
         return make_conninfo(source_reader, host=recovered['host'], port=recovered['port'], dbname=recovered['dbname'])
 
 
+def restored_identity(source_url, workdir, boundary, *, budget=None):
+    """Explicit construction selection; a failed repair never falls back to replay."""
+    if budget is not None:
+        return _restored_identity_scoped(source_url, workdir, boundary, budget)
+    return _restored_identity_legacy(source_url, workdir, boundary)
+
+
 @contextmanager
-def restored_identity(source_url, workdir, boundary):
+def _restored_identity_scoped(source_url, workdir, boundary, budget):
+    from rf1086_restore_control import bounded_boundary, budget_scope
+    with budget_scope(budget):
+        with _restored_identity_repaired(source_url,workdir,bounded_boundary(boundary,budget),budget) as value:
+            yield value
+
+
+@contextmanager
+def _restored_identity_repaired(source_url, workdir, boundary, budget):
+    from functools import partial
+    import rf1086_restore_control as construction
+    import rf1086_restore_metadata as metadata
+    # The old publisher describes a different bootstrap/restore program. It is
+    # inapplicable even when TALLI_RF_REPLAY_DIR was supplied by the enclosing job.
+    with construction.io_deadline(budget):
+        construction.require_direct_loopback(budget)
+        print('owned_identity_restore_profile repair_profile_not_legacy_replay', flush=True)
+        db, auth, source_env = owned_identity_source(workdir, source_url, boundary)
+    source = db['Id']; before = source_metadata = owner = configuration = None
+    prepared = delivery = mutations = recovered = target = None
+    raw_snapshot = None
+    business_complete = cleanup_complete = source_postcheck = False
+    checked_call = partial(budget.checked, capture_cap=construction.MAX_METADATA)
+
+    def fingerprint_now(container, *, end=None, **kwargs):
+        bounded = checked_call if end is None else partial(budget.checked,
+            capture_cap=construction.MAX_METADATA, end=end)
+        return fingerprint(container, checked_call=bounded, **kwargs)
+
+    def observe_source():
+        return budget.command(['docker','exec','-i',source,'psql','-U','supabase_admin',
+            '--dbname','postgres','-XqAt','-v','ON_ERROR_STOP=1'],
+            data=metadata.METADATA_SQL, cap=construction.MAX_METADATA)
+
+    try:
+        with CatalogCapture() as source_catalog:
+            before = fingerprint_now(source, catalog_capture=source_catalog)
+            roles_observed = source_query(source, ROLE_SQL, checked_call=checked_call)
+            construction.require(hashlib.sha256(roles_observed).hexdigest()==before['roles'],'source_drift')
+            raw_metadata = observe_source()
+            source_metadata = metadata.decode_metadata(raw_metadata, catalog_raw=source_catalog._raw,
+                roles_raw=roles_observed, deadline=budget.end)
+            raw_snapshot=construction.source_fixed_snapshot(source,budget=budget)
+            source_metadata=metadata.bind_source_snapshot(source_metadata,raw_snapshot,deadline=budget.end)
+        preload = source_query(source,'show shared_preload_libraries;',checked_call=checked_call).decode().strip()
+        construction.require(re.fullmatch(r'[A-Za-z0-9_, .-]*',preload) is not None,'source_binding')
+        roles = budget.command(['docker','exec',source,'pg_dumpall','-U','supabase_admin','--roles-only'],
+                               cap=construction.MAX_ROLES)
+        archive = budget.command(['docker','exec',source,'pg_dump','-U','supabase_admin',
+            '--format=custom','--dbname','postgres'],cap=construction.MAX_ARCHIVE)
+        construction.require(observe_source()==raw_metadata
+            and construction.source_fixed_snapshot(source,budget=budget)==raw_snapshot
+            and fingerprint_now(source)==before,'source_drift')
+        prepared = construction.prepare_archive(source,archive=archive,roles=roles,
+                                                 metadata=source_metadata,budget=budget)
+        del archive,roles,roles_observed
+        budget.before_target()
+        setup_end=min(budget.end-55,time.monotonic()+15)
+        nonce=uuid4().hex
+        owner=construction.ResourceOwner(nonce,source,db['Image'],auth['Image'],budget)
+        names=owner.names; label=LABEL+'='+nonce
+        owner.acquire('network',['docker','network','create','--internal','--label',label,names['network']],end=setup_end)
+        owner.acquire('volume',['docker','volume','create','--label',label,names['volume']],end=setup_end)
+        # The volume initializer is named, labelled and registered too: killing
+        # a Docker CLI must not leave an unowned daemon-side helper running.
+        initial=owner.acquire('init',['docker','create','--pull=never','--name',names['init'],
+            '--label',label,'--network','none','--user','0','--entrypoint','sh',
+            '-v',names['volume']+':/tmp/rf-recovery',db['Image'],'-c',
+            'chown postgres:postgres /tmp/rf-recovery'],end=setup_end)
+        budget.command(['docker','start','-a',initial],end=setup_end,cap=4096)
+        bootstrap=prepared.roles.bootstrap
+        target=owner.acquire('database',['docker','create','--pull=never','--name',names['database'],
+            '--label',label,'--network',names['network'],'--user','postgres','--entrypoint','sh',
+            '-e','RECOVERY_BOOTSTRAP='+bootstrap,'-e','RECOVERY_PRELOAD='+preload,
+            '-v',names['volume']+':/tmp/rf-recovery','-p',published_port('DB',5432),db['Image'],'-c',INIT],end=setup_end)
+        budget.command(['docker','start',target],end=setup_end,cap=4096)
+        while True:
+            try:
+                budget.command(['docker','exec',target,'pg_isready','-h','/tmp','-U',bootstrap],
+                               end=setup_end,cap=4096)
+                break
+            except construction.RestoreUnavailable as error:
+                if error.reason!='child_failure':raise
+                budget.pause(.1,end=setup_end)
+        construction.require(construction.bind_tools(target,budget=budget,end=setup_end)==prepared.tools,'source_binding')
+        # Every ALTER remains in this one persistent bootstrap backend. A later
+        # NOLOGIN on OID10 therefore does not require reconnecting as that role.
+        budget.command(['docker','exec','-i',target,'psql','-U',bootstrap,'-h','/tmp',
+            '-d','postgres','-XqAt','-v','ON_ERROR_STOP=1'],data=prepared.roles.sql,end=setup_end,cap=1024**2)
+        setup_checked=partial(budget.checked,capture_cap=construction.MAX_METADATA,end=setup_end)
+        operator='supabase_admin'
+        construction.require(query(target,'select current_user;',user=operator,
+            checked_call=setup_checked)==b'supabase_admin\n','role_profile')
+        role_order=budget.command(['docker','exec','-i',target,'psql','-U',operator,'-h','/tmp',
+            '-d','postgres','-XqAt','-v','ON_ERROR_STOP=1'],data=metadata.ROLE_ORDER_SQL,
+            end=setup_end,cap=construction.MAX_ROLES)
+        metadata.validate_role_order(source_metadata,role_order,deadline=setup_end)
+        construction.require(hashlib.sha256(query(target,ROLE_SQL,user=operator,
+            checked_call=setup_checked)).hexdigest()==before['roles'],'role_order')
+        prepare_new_target_database(source,target,names['database'],nonce,db['Image'],bootstrap,
+                                    checked_call=setup_checked,construction=True)
+        delivery,mutations=construction.stream_restore(target,script=prepared.script,index=prepared.index,
+            plan=prepared.plan,budget=budget,end=min(budget.end-10,time.monotonic()+45))
+        strict_end=min(budget.end,time.monotonic()+10)
+        recovered=fingerprint_now(target,restored=True,bootstrap=operator,end=strict_end)
+        if recovered!=before:
+            raise ValueError('Independent recovery roles, ownership, ACLs or Auth rows differ; components='
+                             +_fingerprint_mismatch_components(before,recovered))
+        budget.enter('actors')
+        env=auth_environment(source_env,names['database'])
+        configuration=owner.directory/'auth.env'
+        configuration.touch(mode=0o600)
+        configuration.write_text(''.join(key+'='+value+'\n' for key,value in env.items()))
+        target_auth=owner.acquire('auth',['docker','create','--pull=never','--name',names['auth'],
+            '--label',label,'--network',names['network'],'--env-file',str(configuration),
+            '-p',published_port('AUTH',9999),auth['Image']],end=budget.end)
+        budget.command(['docker','start',target_auth],cap=4096)
+        port=loopback_port(target_auth,9999,boundary);db_port=loopback_port(target,5432,boundary)
+        with forwarded_ports((db_port,port)):
+            with construction.io_deadline(budget), httpx.Client(trust_env=False) as client:
+                while True:
+                    try:
+                        if client.get(f'http://127.0.0.1:{port}/health',timeout=min(1,budget.remaining())).status_code==200:break
+                    except httpx.HTTPError:pass
+                    budget.pause(.1)
+            database_url=make_conninfo(source_url,host='127.0.0.1',port=db_port)
+            verify_target_session(database_url,target,operator,budget=budget)
+            construction.require(source_query(source,'select system_identifier from pg_control_system();',
+                checked_call=checked_call)!=query(target,'select system_identifier from pg_control_system();',
+                user=operator,checked_call=checked_call),'source_binding')
+            storage=boundary.inspect_container('supabase_storage_'+tomllib.loads((Path(workdir)/'supabase/config.toml').read_text())['project_id'])
+            storage_env=dict(item.split('=',1) for item in storage['Config']['Env'])
+            admin_key=storage_env.get('SERVICE_KEY','')
+            construction.require(bool(admin_key),'source_binding')
+            with auth_gateway(port,budget=budget) as gateway:
+                verify_target_auth(database_url,gateway,budget=budget)
+                yield RecoveredIdentity(database_url,gateway,admin_key,target,operator,
+                    {'independentClusterRestored':True,'independentAuthRestored':True,
+                     'roleAttributesAndMembershipsRestored':True,'ownershipGrantsAndRlsRestored':True,
+                     'authRowsRestoredExactly':True,'authHttpTargetBindingVerified':True,
+                     'authSigningConfigSource':'captured-local-service-config','hostedKeyRecoveryVerified':False},
+                    budget=budget)
+                business_complete=True
+    finally:
+        primary=sys.exception()
+        with construction.unwind_scope(budget):
+            errors=[]
+            try:
+                budget.enter('cleanup')
+                if configuration is not None:configuration.unlink(missing_ok=True)
+                if owner is not None:owner.cleanup()
+                cleanup_complete=True
+            except BaseException as error:errors.append(error)
+            try:
+                budget.enter('source_post')
+                if before is not None:
+                    construction.require(fingerprint_now(source)==before,'source_drift')
+                if source_metadata is not None:
+                    construction.require(observe_source()==raw_metadata,'source_drift')
+                    if raw_snapshot is not None:
+                        construction.require(construction.source_fixed_snapshot(source,budget=budget)==raw_snapshot,'source_drift')
+                source_postcheck=before is not None and source_metadata is not None and raw_snapshot is not None
+            except BaseException as error:errors.append(error)
+            error=errors[0] if errors else primary
+            reason=getattr(error,'reason','postcondition' if recovered is not None and recovered!=before else 'internal')
+            with construction.io_deadline(budget):
+                print('owned_identity_restore_construction '+construction.construction_receipt(
+                    budget=budget,prepared=prepared,delivery=delivery,mutations=mutations,
+                    source=source,target=target,image=db['Image'],before=before,recovered=recovered,
+                    cleanup_complete=cleanup_complete,source_postcheck=source_postcheck,
+                    business_complete=business_complete,reason=reason),flush=True)
+            if errors:raise errors[0]
+
+
+@contextmanager
+def _restored_identity_legacy(source_url, workdir, boundary):
     db, auth, source_env = owned_identity_source(workdir, source_url, boundary)
     nonce = uuid4().hex
     network, volume = 'rf193_identity_net_' + nonce, 'rf193_identity_data_' + nonce
@@ -506,100 +715,104 @@ def restored_identity(source_url, workdir, boundary):
 async def verify_actor_recovery(recovery, reader_url, query, expected_canonical, originals, original_queries, read_originals, *,
                                 stream_codec="rf1086-production-stream-v1"):
     """Target-only lifecycle fixture; it never rewrites captured historical actors."""
-    from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingSession
-    from talli_backend.adapters.supabase_ledger import LedgerSupabaseConfiguration, SupabaseLedgerAdapter
-    from talli_backend.application.ledger_workflow import LedgerAuthenticationError
-    from talli_backend.application.shareholder_register_archive import serialize_download_archive
-    from talli_backend.modules.shareholder_register_filing import public as rf
-    configuration = LedgerSupabaseConfiguration(recovery.auth_url, os.environ['SUPABASE_ANON_KEY'], reader_url)
-    authentication = SupabaseLedgerAdapter(configuration)
-    owner_token = os.environ['TALLI_RF_RESTORE_OWNER_TOKEN']
-    other_token = os.environ['TALLI_RF_RESTORE_OUTSIDER_TOKEN']
-    owner = await authentication._verified_actor(owner_token)
-    other = await authentication._verified_actor(other_token)
-    if owner.actor_id != query.actor_id or owner.actor_id == other.actor_id:
-        raise ValueError('Recovered sessions do not identify distinct expected actors')
+    from rf1086_restore_control import async_scope, bounded_connection, current_budget, deadline_dsn, io_timeout, connection_factory
+    budget = current_budget(getattr(recovery, 'budget', None))
+    async with async_scope(budget):
+        from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingSession
+        from talli_backend.adapters.supabase_ledger import LedgerSupabaseConfiguration, SupabaseLedgerAdapter
+        from talli_backend.application.ledger_workflow import LedgerAuthenticationError
+        from talli_backend.application.shareholder_register_archive import serialize_download_archive
+        from talli_backend.modules.shareholder_register_filing import public as rf
+        configuration = LedgerSupabaseConfiguration(recovery.auth_url, os.environ['SUPABASE_ANON_KEY'], deadline_dsn(reader_url, budget))
+        authentication = SupabaseLedgerAdapter(configuration,
+            connect=connection_factory(budget) if budget is not None else None)
+        owner_token = os.environ['TALLI_RF_RESTORE_OWNER_TOKEN']
+        other_token = os.environ['TALLI_RF_RESTORE_OUTSIDER_TOKEN']
+        owner = await authentication._verified_actor(owner_token)
+        other = await authentication._verified_actor(other_token)
+        if owner.actor_id != query.actor_id or owner.actor_id == other.actor_id:
+            raise ValueError('Recovered sessions do not identify distinct expected actors')
 
-    async def archive(token):
-        verified = await authentication._verified_actor(token)
-        current = rf.Rf1086ArchiveQuery(query.company_id, query.income_year, verified.actor_id)
-        session = PostgresShareholderRegisterFilingSession(configuration, verified, access_token=token,
-            billing=None, documents=None, company_access=None)
-        value = await session.archive_source(current)
-        return serialize_download_archive(value, query=current, stream_codec=stream_codec)
+        async def archive(token):
+            verified = await authentication._verified_actor(token)
+            current = rf.Rf1086ArchiveQuery(query.company_id, query.income_year, verified.actor_id)
+            session = PostgresShareholderRegisterFilingSession(configuration, verified, access_token=token,
+                billing=None, documents=None, company_access=None)
+            value = await session.archive_source(current)
+            return serialize_download_archive(value, query=current, stream_codec=stream_codec)
 
-    async def denied(token):
-        try: await archive(token)
-        except rf.ShareholderRegisterFilingError as error:
-            if error.code != rf.ShareholderRegisterFilingErrorCode.NOT_FOUND: raise
-        else: raise ValueError('Recovered archive admitted a revoked or unrelated actor')
+        async def denied(token):
+            try: await archive(token)
+            except rf.ShareholderRegisterFilingError as error:
+                if error.code != rf.ShareholderRegisterFilingErrorCode.NOT_FOUND: raise
+            else: raise ValueError('Recovered archive admitted a revoked or unrelated actor')
 
-    async def auth_denied(token):
-        try: await archive(token)
-        except LedgerAuthenticationError: pass
-        else: raise ValueError('Independent Auth accepted a revoked or soft-deleted session')
+        async def auth_denied(token):
+            try: await archive(token)
+            except LedgerAuthenticationError: pass
+            else: raise ValueError('Independent Auth accepted a revoked or soft-deleted session')
 
-    if await archive(owner_token) != expected_canonical:
-        raise ValueError('Independent authenticated recovery changed RF history')
-    await denied(other_token)
-    async def originals_denied(actor):
-        if original_queries:
-            try: await read_originals(reader_url, actor, original_queries[:1])
-            except psycopg.Error as error:
-                if error.diag.message_primary != 'documents_forbidden': raise
-            else: raise ValueError('Independent Documents admitted an unrelated or revoked actor')
-    await originals_denied(other.actor_id)
+        if await archive(owner_token) != expected_canonical:
+            raise ValueError('Independent authenticated recovery changed RF history')
+        await denied(other_token)
+        async def originals_denied(actor):
+            if original_queries:
+                try: await read_originals(reader_url, actor, original_queries[:1])
+                except psycopg.Error as error:
+                    if error.diag.message_primary != 'documents_forbidden': raise
+                else: raise ValueError('Independent Documents admitted an unrelated or revoked actor')
+        await originals_denied(other.actor_id)
 
-    # Explicit synthetic fixture setup on the newly restored target only. Actual
-    # production successor authorization remains a separate owner/support act.
-    with psycopg.connect(recovery.database_url) as connection:
-        if connection.execute('select count(*) from public.company_memberships where company_id=%s and user_id=%s',
-            (str(query.company_id), str(other.actor_id.subject))).fetchone()[0] != 0:
-            raise ValueError('Recovery actor already has a company membership')
-        connection.execute("insert into public.company_memberships(company_id,user_id,role,accepted_at) values(%s,%s,'owner',now())",
-            (str(query.company_id), str(other.actor_id.subject)))
-        removed = connection.execute('delete from public.company_memberships where company_id=%s and user_id=%s returning user_id',
-            (str(query.company_id), str(owner.actor_id.subject))).fetchall()
-        if len(removed) != 1: raise ValueError('Historical owner membership was not uniquely revoked')
-    await denied(owner_token)
-    await originals_denied(owner.actor_id)
-    if await archive(other_token) != expected_canonical or await read_originals(reader_url, other.actor_id, original_queries) != originals:
-        raise ValueError('Independent successor recovery changed captured history or original bytes')
-    with psycopg.connect(recovery.database_url) as connection:
-        sessions = connection.execute("select coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) from auth.sessions s where user_id=%s",
-            (str(owner.actor_id.subject),)).fetchone()[0]
-        if not sessions: raise ValueError('Revocation rehearsal requires a captured live Auth session')
-    async with httpx.AsyncClient(trust_env=False, timeout=15) as client:
-        response = await client.post(recovery.auth_url + '/auth/v1/logout?scope=global', headers={'Authorization': 'Bearer ' + owner_token})
-        if response.status_code != 204: raise ValueError('Independent Auth session revocation failed')
-        await auth_denied(owner_token)
-        # Restore this target's captured session rows once to prove deletion from
-        # an authenticated baseline independently of the preceding logout test.
-        with psycopg.connect(recovery.database_url) as connection:
-            connection.execute('insert into auth.sessions select * from jsonb_populate_recordset(null::auth.sessions,%s::jsonb)', (json.dumps(sessions),))
-        if (await authentication._verified_actor(owner_token)).actor_id != owner.actor_id:
-            raise ValueError('Independent deletion baseline did not restore the captured session')
-        response = await client.request('DELETE', recovery.auth_url + '/auth/v1/admin/users/' + str(owner.actor_id.subject),
-            headers={'Authorization': 'Bearer ' + recovery.admin_key}, json={'should_soft_delete': True})
-        if response.status_code != 200: raise ValueError('Independent Auth soft deletion failed')
-        await auth_denied(owner_token)
+        # Explicit synthetic fixture setup on the newly restored target only. Actual
+        # production successor authorization remains a separate owner/support act.
+        with bounded_connection(psycopg.connect, recovery.database_url, budget=budget) as connection:
+            if connection.execute('select count(*) from public.company_memberships where company_id=%s and user_id=%s',
+                (str(query.company_id), str(other.actor_id.subject))).fetchone()[0] != 0:
+                raise ValueError('Recovery actor already has a company membership')
+            connection.execute("insert into public.company_memberships(company_id,user_id,role,accepted_at) values(%s,%s,'owner',now())",
+                (str(query.company_id), str(other.actor_id.subject)))
+            removed = connection.execute('delete from public.company_memberships where company_id=%s and user_id=%s returning user_id',
+                (str(query.company_id), str(owner.actor_id.subject))).fetchall()
+            if len(removed) != 1: raise ValueError('Historical owner membership was not uniquely revoked')
+        await denied(owner_token)
         await originals_denied(owner.actor_id)
-    with psycopg.connect(recovery.database_url) as connection:
-        retained = connection.execute('select deleted_at is not null from auth.users where id=%s', (str(owner.actor_id.subject),)).fetchone()
-        if retained != (True,): raise ValueError('Soft-deleted historical actor tombstone is missing')
-        # Always roll back this probe, even if the expected FK restriction fails.
-        try:
-            with connection.transaction(force_rollback=True):
-                connection.execute('delete from auth.users where id=%s', (str(owner.actor_id.subject),))
-        except psycopg.errors.ForeignKeyViolation:
-            pass
-        else:
-            raise ValueError('Expected historical-actor physical-erasure restriction is absent')
-    if await archive(other_token) != expected_canonical or await read_originals(reader_url, other.actor_id, original_queries) != originals:
-        raise ValueError('Soft-deleted actor recovery changed captured history or original bytes')
-    return {'independentAuthenticatedArchiveVerified': True, 'originalOutsiderDenied': True,
-        'syntheticRecoveryOwnerProvisionedOnlyInTarget': True, 'revokedMembershipReadsDenied': True,
-        'revokedAuthSessionDenied': True, 'softDeletedAuthSessionDenied': True,
-        'softDeletionTestStartedFromLiveSession': True, 'historicalActorIdentityPreserved': True,
-        'independentAuthorizedActorRecoveredArchiveAndOriginals': True,
-        'physicalAuthUserErasure': 'blocked-by-preserved-historical-foreign-keys'}
+        if await archive(other_token) != expected_canonical or await read_originals(reader_url, other.actor_id, original_queries) != originals:
+            raise ValueError('Independent successor recovery changed captured history or original bytes')
+        with bounded_connection(psycopg.connect, recovery.database_url, budget=budget) as connection:
+            sessions = connection.execute("select coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) from auth.sessions s where user_id=%s",
+                (str(owner.actor_id.subject),)).fetchone()[0]
+            if not sessions: raise ValueError('Revocation rehearsal requires a captured live Auth session')
+        async with httpx.AsyncClient(trust_env=False, timeout=io_timeout(budget, 15)) as client:
+            response = await client.post(recovery.auth_url + '/auth/v1/logout?scope=global', headers={'Authorization': 'Bearer ' + owner_token})
+            if response.status_code != 204: raise ValueError('Independent Auth session revocation failed')
+            await auth_denied(owner_token)
+            # Restore this target's captured session rows once to prove deletion from
+            # an authenticated baseline independently of the preceding logout test.
+            with bounded_connection(psycopg.connect, recovery.database_url, budget=budget) as connection:
+                connection.execute('insert into auth.sessions select * from jsonb_populate_recordset(null::auth.sessions,%s::jsonb)', (json.dumps(sessions),))
+            if (await authentication._verified_actor(owner_token)).actor_id != owner.actor_id:
+                raise ValueError('Independent deletion baseline did not restore the captured session')
+            response = await client.request('DELETE', recovery.auth_url + '/auth/v1/admin/users/' + str(owner.actor_id.subject),
+                headers={'Authorization': 'Bearer ' + recovery.admin_key}, json={'should_soft_delete': True})
+            if response.status_code != 200: raise ValueError('Independent Auth soft deletion failed')
+            await auth_denied(owner_token)
+            await originals_denied(owner.actor_id)
+        with bounded_connection(psycopg.connect, recovery.database_url, budget=budget) as connection:
+            retained = connection.execute('select deleted_at is not null from auth.users where id=%s', (str(owner.actor_id.subject),)).fetchone()
+            if retained != (True,): raise ValueError('Soft-deleted historical actor tombstone is missing')
+            # Always roll back this probe, even if the expected FK restriction fails.
+            try:
+                with connection.transaction(force_rollback=True):
+                    connection.execute('delete from auth.users where id=%s', (str(owner.actor_id.subject),))
+            except psycopg.errors.ForeignKeyViolation:
+                pass
+            else:
+                raise ValueError('Expected historical-actor physical-erasure restriction is absent')
+        if await archive(other_token) != expected_canonical or await read_originals(reader_url, other.actor_id, original_queries) != originals:
+            raise ValueError('Soft-deleted actor recovery changed captured history or original bytes')
+        return {'independentAuthenticatedArchiveVerified': True, 'originalOutsiderDenied': True,
+            'syntheticRecoveryOwnerProvisionedOnlyInTarget': True, 'revokedMembershipReadsDenied': True,
+            'revokedAuthSessionDenied': True, 'softDeletedAuthSessionDenied': True,
+            'softDeletionTestStartedFromLiveSession': True, 'historicalActorIdentityPreserved': True,
+            'independentAuthorizedActorRecoveredArchiveAndOriginals': True,
+            'physicalAuthUserErasure': 'blocked-by-preserved-historical-foreign-keys'}

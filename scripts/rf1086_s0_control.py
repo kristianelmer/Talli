@@ -297,6 +297,55 @@ class MutationPolicy:
 def transport(script, descriptor, ledger, *, context, nonce, writer_args, observer_request,
               parse_session, parse_witness, project, probe, points, work_end, reap_end,
               mutation_policy=None, exchange_complete=None):
+    return _transport(script, descriptor, ledger, context=context, nonce=nonce,
+        writer_args=writer_args, observer_request=observer_request, parse_session=parse_session,
+        parse_witness=parse_witness, project=project, probe=probe, points=points,
+        work_end=work_end, reap_end=reap_end, mutation_policy=mutation_policy,
+        exchange_complete=exchange_complete)
+
+
+def restore_transport(script, descriptor, selections, *, context, nonce, writer_args,
+                      observer_request, parse_session, parse_witness, project, probe,
+                      points, work_end, reap_end, exchange_complete):
+    """Closed construction profile: three pre/post hooks, at most three epochs.
+
+    The callback runs only after a successful, reaped observer. At each cut it
+    selects bytes from the source-compiled plan; it must validate each post
+    observation before the next original byte is released. This entry returns
+    transport evidence only, never legacy S0/C1 or recovery acceptance.
+    """
+    positions = tuple(points)
+    cuts = [p[1] for p, _ in positions if p[0] == 'cut']
+    anchors = [p[1] for p, _ in positions if p[0] == 'anchor']
+    if (len(positions) not in (8, 9) or sorted(cuts) != [0, 1, 2]
+            or anchors not in ([0, 1], [0, 1, 2])
+            or [s.get('kind') for s in selections] != ['Is', 'In', 'acl']
+            or any(type(offset) is not int or not 0 <= offset <= len(script)
+                   for _, offset in positions)
+            or any(a[1] > b[1] for a, b in zip(positions, positions[1:]))):
+        raise ControlFailure('input')
+    for i, (point, offset) in enumerate(positions):
+        if point[0] == 'cut':
+            if i+1 == len(positions) or positions[i+1] != (('post', point[1]), offset):
+                raise ControlFailure('input')
+        elif point[0] == 'post':
+            if i == 0 or positions[i-1] != (('cut', point[1]), offset):
+                raise ControlFailure('input')
+        elif point[0] != 'anchor':
+            raise ControlFailure('input')
+    if (not callable(exchange_complete) or reap_end-work_end > 2
+            or reap_end < work_end or work_end-time.monotonic() > 43):
+        raise ControlFailure('input')
+    return _transport(script, descriptor, {'selected': selections}, context=context, nonce=nonce,
+        writer_args=writer_args, observer_request=observer_request, parse_session=parse_session,
+        parse_witness=parse_witness, project=project, probe=probe, points=positions,
+        work_end=work_end, reap_end=reap_end, exchange_complete=exchange_complete,
+        construction=True)
+
+
+def _transport(script, descriptor, ledger, *, context, nonce, writer_args, observer_request,
+               parse_session, parse_witness, project, probe, points, work_end, reap_end,
+               mutation_policy=None, exchange_complete=None, construction=False):
     """Shared mechanics only; injected fixture policies cannot mint an S0 receipt.
 
     observer_request(point, sequence, pid) -> (argv, exact input bytes).
@@ -307,7 +356,7 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
     selector = None
     writer = observer = None
     positions = tuple(points)
-    marker = b'S0'
+    marker = b'R1' if construction else b'S0'
     if mutation_policy is not None:
         if (type(mutation_policy) is not MutationPolicy or mutation_policy.kind not in ('Is', 'In')
                 or type(mutation_policy.point) is not tuple or len(mutation_policy.point) != 2
@@ -324,13 +373,15 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
                 or positions[post[0]] != (('post', mutation_policy.point[1]), positions[pre[0]][1])):
             raise ControlFailure('input')
         marker = b'C1'
-    elif any(p[0] == 'post' for p, _ in positions):
+    elif not construction and any(p[0] == 'post' for p, _ in positions):
         raise ControlFailure('input')
     baseline = {}
     exchanges = []
     original_hash, probe_hash, mutation_hash = (hashlib.sha256() for _ in range(3))
     original_count = probe_count = 0
     mutation_count = 0
+    expected_mutation_count = 0
+    mutation_exchanges = []
     sequence = 0
     state = 'original'
     pending = memoryview(b'')
@@ -395,7 +446,7 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
         role = roles[observer_part]
         try:
             if role == 'catalog':
-                if len(line) > 32768:
+                if len(line) > (8 * 1024**2 if construction else 32768):
                     raise ControlFailure('partial_catalog', point)
                 catalog = project(line, ledger['selected'][point[1]])
             else:
@@ -458,7 +509,8 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
                 observer_pending = memoryview(data)
                 selector.register(observer.stdin, selectors.EVENT_WRITE, ('observer_input', 0))
                 observer_lines = _Lines((),
-                    lambda: 32768 if point[0] != 'anchor' and observer_part == 1 else 4096,
+                    lambda: (8 * 1024**2 if construction else 32768)
+                            if point[0] != 'anchor' and observer_part == 1 else 4096,
                     observer_line, check=check)
                 counters['observer'], ends['observer'] = [0, 0], [False, False]
                 observer_part, witnesses, catalog = 0, [], None
@@ -476,15 +528,38 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
                 exchange = {'point': list(point), 'input': [original_count, original_count],
                     'session': session, 'barrierPid': barrier_pid, 'witnesses': witnesses,
                     'observer': _io(counters['observer']), 'catalog': catalog}
+                selected_mutation = None
                 if exchange_complete is not None:
-                    exchange_complete(exchange)
+                    selected_mutation = exchange_complete(exchange)
                     check()
+                if construction:
+                    if point[0] == 'cut':
+                        cap = 1024**2 if point[1] == 2 else 2048
+                        if (type(selected_mutation) is not bytes or len(selected_mutation) > cap
+                                or selected_mutation and (not selected_mutation.startswith(b'BEGIN;\n')
+                                    or not selected_mutation.endswith(b'COMMIT;\n'))):
+                            raise ControlFailure('input', point)
+                        expected_mutation_count += len(selected_mutation)
+                        if expected_mutation_count > 1024**2:
+                            raise ControlFailure('input', point)
+                        mutation_exchanges.append({'point': list(point),
+                            'bytes': len(selected_mutation),
+                            'sha256': hashlib.sha256(selected_mutation).hexdigest()})
+                    elif selected_mutation is not None:
+                        raise ControlFailure('input', point)
                 exchanges.append(exchange)
                 if point[0] == 'anchor':
                     baseline[point[1]] = {'session': session, 'witness': witnesses[0]}
                 observer = None
                 sequence += 1
-                if mutation_policy is not None and point == mutation_policy.point:
+                if construction and selected_mutation:
+                    if work_end-time.monotonic() < 4:
+                        raise ControlFailure('deadline', point)
+                    exchange_end = min(time.monotonic()+4, work_end)
+                    cleanup_end = exchange_end
+                    schedule(selected_mutation, 'mutation')
+                    state = 'writing_mutation'
+                elif mutation_policy is not None and point == mutation_policy.point:
                     if mutation_count or work_end-time.monotonic() < 4:
                         raise ControlFailure('deadline', point)
                     exchange_end = min(time.monotonic()+4, work_end)
@@ -509,6 +584,11 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
                     if mutation_count != len(mutation_policy.sql):
                         raise ControlFailure('input')
                     result['delivery']['mutation'] = {'bytes': mutation_count, 'sha256': mutation_hash.hexdigest()}
+                if construction:
+                    if mutation_count != expected_mutation_count or len(mutation_exchanges) != 3:
+                        raise ControlFailure('input')
+                    result['delivery']['mutation'] = {'bytes': mutation_count,
+                        'sha256': mutation_hash.hexdigest(), 'exchanges': mutation_exchanges}
                 return result
             for key, _ in selector.select(min(0.05, max(0, check()-time.monotonic()))):
                 check()
@@ -527,11 +607,11 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
                             original_hash.update(data[:n]); original_count += n
                         elif pending_kind == 'mutation':
                             mutation_hash.update(data[:n]); mutation_count += n
-                            if mutation_count > 2048: raise ControlFailure('input', point)
+                            if mutation_count > (1024**2 if construction else 2048): raise ControlFailure('input', point)
                         else:
                             probe_hash.update(data[:n]); probe_count += n
                             if probe_count > 16384: raise ControlFailure('input', point)
-                        if probe_count+mutation_count > 16384: raise ControlFailure('input', point)
+                        if probe_count+mutation_count > (1024**2+16384 if construction else 16384): raise ControlFailure('input', point)
                         pending = pending[n:]
                         if not pending:
                             selector.unregister(key.fileobj)
@@ -544,7 +624,7 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
                         if not observer_pending:
                             selector.unregister(key.fileobj); key.fileobj.close()
                     continue
-                cap = (1048576 if name == 'writer' else 49152) if index == 0 else (65536 if name == 'writer' else 0)
+                cap = (1048576 if name == 'writer' else (8*1024**2 if construction else 49152)) if index == 0 else (65536 if name == 'writer' else 0)
                 try:
                     data = os.read(key.fd, min(65536, cap-counters[name][index]+1))
                 except BlockingIOError:

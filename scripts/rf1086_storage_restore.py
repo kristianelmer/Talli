@@ -23,6 +23,8 @@ from uuid import uuid4
 import httpx
 from psycopg.conninfo import conninfo_to_dict
 from rf1086_local_forwarding import forwarded_ports
+from rf1086_restore_control import (budget_scope, current_budget, io_checked, io_timeout,
+    io_deadline, async_scope, budgeted_sync, deadline_dsn, bounded_boundary, bounded_gateway, unwind_scope, require_direct_loopback)
 
 from talli_backend.adapters.supabase_documents import (
     DocumentsSupabaseConfiguration, SupabaseDocumentsAdapter, SupabaseDocumentObjectStorage,
@@ -60,7 +62,7 @@ for (const entry of JSON.parse(fs.readFileSync(0, 'utf8'))) {
 
 
 def attributes(container):
-    return checked(['docker', 'exec', container, 'node', '-e', CAPTURE_ATTRIBUTES], stdout=subprocess.PIPE).stdout
+    return checked(['docker', 'exec', container, 'node', '-e', CAPTURE_ATTRIBUTES], stdout=subprocess.PIPE, **({'capture_cap': 8 * 1024**2} if current_budget() is not None else {})).stdout
 
 
 def ordinary_originals(snapshots):
@@ -88,7 +90,10 @@ def current_original(document, generations):
     return matches[0]
 
 
-def storage_source(workdir, database_url, boundary):
+@budgeted_sync
+def storage_source(workdir, database_url, boundary, *, budget=None):
+    require_direct_loopback(budget)
+    boundary = bounded_boundary(boundary, budget)
     db_id, _ = boundary.owned_source(workdir, database_url, boundary.inspect_container)
     boundary.verify_source_session(database_url, db_id)
     config = tomllib.loads((Path(workdir) / 'supabase/config.toml').read_text())
@@ -146,6 +151,9 @@ def clone_environment(env, restored_url):
 
 
 def checked(args, **kwargs):
+    budget = current_budget()
+    if budget is not None:
+        return io_checked(budget, args, end=min(budget.end, time.monotonic()+30), **kwargs)
     # Avoid command diagnostics that could include configuration or object URLs.
     try:
         result = subprocess.run(args, stderr=subprocess.PIPE, timeout=30, **kwargs)
@@ -157,16 +165,29 @@ def checked(args, **kwargs):
 
 
 def snapshot(container, target):
-    checked(['docker', 'exec', container, 'tar', '-C', '/mnt', '-cf', '-', '.'], stdout=target)
+    checked(['docker', 'exec', container, 'tar', '-C', '/mnt', '-cf', '-', '.'], stdout=target,
+            **({'capture_cap': 64 * 1024**2} if current_budget() is not None else {}))
     target.seek(0)
-    digest = hashlib.file_digest(target, 'sha256').hexdigest()
+    digest = hashlib.sha256()
+    while True:
+        with io_deadline():
+            block = target.read(65536)
+        if not block: break
+        digest.update(block)
+    digest = digest.hexdigest()
     target.seek(0)
     return digest
 
 
 @contextmanager
-def storage_gateway(port):
+def storage_gateway(port, *, budget=None):
     """Local gateway prefix only; authorization and bytes belong to Storage API."""
+    budget = current_budget(budget)
+    if budget is not None:
+        with bounded_gateway(port, prefix='/storage/v1', body_cap=10 * 1024**2, budget=budget,
+                             unavailable='Owned Storage unavailable') as url:
+            yield url
+        return
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *_):
             pass  # A signed URL is a credential, never a diagnostic.
@@ -214,107 +235,101 @@ def storage_gateway(port):
 
 
 @contextmanager
-def restored_storage(source, env, network, restored_url, boundary):
-    restored_env = clone_environment(env, restored_url)
-    nonce = uuid4().hex
-    volume = 'rf193_objects_' + nonce
-    container = None
-    volume_created = False
-    with tempfile.TemporaryFile() as archive, tempfile.TemporaryDirectory(prefix='talli-rf-storage-') as directory:
-        before = snapshot(source['Id'], archive)
-        original_attributes = attributes(source['Id'])
-        try:
-            checked(['docker', 'volume', 'create', '--label', 'talli.rf.restore=' + nonce, volume], stdout=subprocess.PIPE)
-            inspected = json.loads(subprocess.check_output(['docker', 'volume', 'inspect', volume]))[0]
-            if inspected['Name'] != volume or inspected.get('Labels', {}).get('talli.rf.restore') != nonce:
-                raise ValueError('Storage volume ownership mismatch')
-            volume_created = True
-            checked(['docker', 'run', '--rm', '--pull=never', '--network', 'none', '--user', '0', '--entrypoint', 'tar',
-                     '-i', '-v', volume + ':/mnt', source['Image'], '-C', '/mnt', '-xf', '-'],
-                    stdin=archive, stdout=subprocess.PIPE)
-            helper = ['docker', 'run', '--rm', '--pull=never', '--network', 'none', '--user', '0',
-                      '--entrypoint', 'node', '-i', '-v', volume + ':/mnt', source['Image']]
-            checked(helper + ['-e', RESTORE_ATTRIBUTES], input=original_attributes, stdout=subprocess.PIPE)
-            restored_attributes = checked(helper + ['-e', CAPTURE_ATTRIBUTES], stdout=subprocess.PIPE).stdout
-            if restored_attributes != original_attributes:
-                raise ValueError('Restored Storage file attributes differ from source')
-            configuration = Path(directory) / 'storage.env'
-            configuration.touch(mode=0o600)
-            configuration.write_text(''.join(key + '=' + value + '\n'
-                                            for key, value in restored_env.items()))
-            result = checked(['docker', 'create', '--pull=never', '--name', 'rf193_storage_' + nonce,
-                              '--label', 'talli.rf.restore=' + nonce, '--network', network,
-                              '--env-file', str(configuration), '-v', volume + ':/mnt',
-                              '-p', '127.0.0.1::5000', source['Image']], stdout=subprocess.PIPE)
-            created_id = result.stdout.decode().strip()
-            if not re.fullmatch(r'[a-f0-9]{64}', created_id):
-                raise ValueError('Storage container identity missing')
-            container = created_id
-            checked(['docker', 'start', container], stdout=subprocess.PIPE)
-            running = boundary.inspect_container(container)
-            ports = running['NetworkSettings']['Ports']['5000/tcp']
-            if len(ports) != 1 or ports[0]['HostIp'] != '127.0.0.1':
-                raise ValueError('Restored Storage must bind only loopback')
-            port = int(ports[0]['HostPort'])
-            with forwarded_ports((port,)):
-                with httpx.Client(trust_env=False, timeout=1) as client:
-                    for _ in range(60):
-                        try:
-                            if client.get(f'http://127.0.0.1:{port}/status').status_code == 200:
-                                break
-                        except httpx.HTTPError:
-                            pass
-                        time.sleep(0.25)
-                    else:
-                        raise RuntimeError('Restored Storage did not become ready')
-                with storage_gateway(port) as gateway:
-                    yield gateway
-        finally:
+def restored_storage(source, env, network, restored_url, boundary, *, budget=None):
+    from contextlib import nullcontext
+    from rf1086_storage_restore_owner import StorageOwner
+    budget = current_budget(budget)
+    require_direct_loopback(budget)
+    with budget_scope(budget):
+        restored_env = clone_environment(env, restored_url)
+        with tempfile.TemporaryFile() as archive:
+            owner = StorageOwner(source, network, uuid4().hex, budget=budget, legacy_checked=checked)
             try:
-                if container:
-                    checked(['docker', 'rm', '-f', container], stdout=subprocess.PIPE)
+                owner.verify_source()
+                before = snapshot(source['Id'], archive)
+                original_attributes = attributes(source['Id'])
+                volume = owner.names['volume']
+                owner.acquire('volume', ['docker', 'volume', 'create', '--label',
+                    'talli.rf.restore=' + owner.nonce, volume])
+                owner.helper('tar', ['tar', '-C', '/mnt', '-xf', '-'], archive=archive)
+                owner.helper('attributes', ['node', '-e', RESTORE_ATTRIBUTES], data=original_attributes)
+                restored_attributes = owner.helper('capture', ['node', '-e', CAPTURE_ATTRIBUTES], cap=8 * 1024**2)
+                if restored_attributes != original_attributes:
+                    raise ValueError('Restored Storage file attributes differ from source')
+                configuration = owner.write_configuration(restored_env)
+                container = owner.acquire('service', ['docker', 'create', '--pull=never',
+                    '--name', owner.names['service'], '--label', 'talli.rf.restore=' + owner.nonce,
+                    '--network', network, '--env-file', str(configuration), '-v', volume + ':/mnt',
+                    '-p', '127.0.0.1::5000', owner.image])
+                owner.command(['docker', 'start', container], cap=4096)
+                running = owner.inspect('service')
+                if running is None or running.get('State', {}).get('Running') is not True:
+                    raise ValueError('Restored Storage is not running')
+                ports = running['NetworkSettings']['Ports']['5000/tcp']
+                if len(ports) != 1 or ports[0]['HostIp'] != '127.0.0.1':
+                    raise ValueError('Restored Storage must bind only loopback')
+                port = int(ports[0]['HostPort'])
+                with forwarded_ports((port,)):
+                    with io_deadline(budget), httpx.Client(trust_env=False, timeout=io_timeout(budget, 1)) as client:
+                        for _ in range(60):
+                            try:
+                                if client.get(f'http://127.0.0.1:{port}/status', **({'timeout': io_timeout(budget, 1)} if budget is not None else {})).status_code == 200:
+                                    break
+                            except httpx.HTTPError:
+                                pass
+                            budget.pause(0.25) if budget is not None else time.sleep(0.25)
+                        else:
+                            raise RuntimeError('Restored Storage did not become ready')
+                    with storage_gateway(port) as gateway:
+                        yield gateway
             finally:
-                if volume_created:
-                    checked(['docker', 'volume', 'rm', volume], stdout=subprocess.PIPE)
-        with tempfile.TemporaryFile() as after:
-            if snapshot(source['Id'], after) != before or attributes(source['Id']) != original_attributes:
-                raise ValueError('Restore rehearsal changed source Storage files')
+                primary = __import__('sys').exception()
+                with unwind_scope(budget) if budget is not None else nullcontext():
+                    owner.cleanup(primary)
+            owner.verify_source()
+            with tempfile.TemporaryFile() as after:
+                if snapshot(source['Id'], after) != before or attributes(source['Id']) != original_attributes:
+                    raise ValueError('Restore rehearsal changed source Storage files')
 
 
-async def verify_objects(database_url, company_access_url, storage_url, originals, *, storage_key=None):
+async def verify_objects(database_url, company_access_url, storage_url, originals, *, storage_key=None, budget=None):
     """Real Auth verification + restored Company Access/Documents + restored bytes."""
-    factory = SupabaseDocumentsAdapter(DocumentsSupabaseConfiguration(
-        os.environ['SUPABASE_URL'], os.environ['SUPABASE_ANON_KEY'], os.environ['SUPABASE_SERVICE_ROLE_KEY'],
-        database_url, company_access_url))
-    # The original gateway accepts an opaque secret key and translates it to
-    # Storage's internal JWT. The restored direct Storage API needs that JWT.
-    factory._storage = SupabaseDocumentObjectStorage(storage_url, storage_key or os.environ['SUPABASE_SERVICE_ROLE_KEY'])
-    sessions = {name: await factory.session(os.environ['TALLI_RF_RESTORE_' + name + '_TOKEN'])
-                for name in ('OWNER', 'OUTSIDER', 'LOW_AAL')}
-    documents = []
-    async with httpx.AsyncClient(trust_env=False, follow_redirects=False, timeout=15) as client:
-        for generations in originals:
-            identity = generations[0].receipt.document_id
-            transfer = await sessions['OWNER'].create_transfer(identity, DocumentTransferKind.DOWNLOAD)
-            original = current_original(transfer.document, generations)
-            if urlsplit(transfer.signed_url).netloc != urlsplit(storage_url).netloc:
-                raise ValueError('Signed object URL left the restored store')
-            response = await client.get(transfer.signed_url)
-            if response.status_code != 200 or response.content != original.content:
-                raise ValueError('Restored ordinary object differs from retained bytes')
-            documents.append(transfer.document)
-            for name, codes in [('OUTSIDER', {DocumentErrorCode.FORBIDDEN, DocumentErrorCode.NOT_FOUND}),
-                                ('LOW_AAL', {DocumentErrorCode.STEP_UP_REQUIRED})]:
-                try:
-                    await sessions[name].create_transfer(identity, DocumentTransferKind.DOWNLOAD)
-                except DocumentsError as error:
-                    if error.code not in codes:
-                        raise
-                else:
-                    raise ValueError('Restored Documents admitted ' + name)
-            direct = storage_url + '/storage/v1/object/authenticated/company-documents/' + quote(transfer.document.storage_key, safe='/')
-            for token in ('', os.environ['TALLI_RF_RESTORE_OWNER_TOKEN'], os.environ['TALLI_RF_RESTORE_OUTSIDER_TOKEN']):
-                response = await client.get(direct, headers={'Authorization': 'Bearer ' + token} if token else {})
-                if response.status_code not in (400, 401, 403, 404):
-                    raise ValueError('Restored Storage admitted a direct object read')
-    return documents
+    budget = current_budget(budget)
+    async with async_scope(budget):
+        from rf1086_restore_control import connection_factory
+        factory = SupabaseDocumentsAdapter(DocumentsSupabaseConfiguration(
+            os.environ['SUPABASE_URL'], os.environ['SUPABASE_ANON_KEY'], os.environ['SUPABASE_SERVICE_ROLE_KEY'],
+            deadline_dsn(database_url, budget), deadline_dsn(company_access_url, budget)),
+            **({'connect': connection_factory(budget)} if budget is not None else {}))
+        # The original gateway accepts an opaque secret key and translates it to
+        # Storage's internal JWT. The restored direct Storage API needs that JWT.
+        factory._storage = SupabaseDocumentObjectStorage(storage_url, storage_key or os.environ['SUPABASE_SERVICE_ROLE_KEY'])
+        sessions = {name: await factory.session(os.environ['TALLI_RF_RESTORE_' + name + '_TOKEN'])
+                    for name in ('OWNER', 'OUTSIDER', 'LOW_AAL')}
+        documents = []
+        async with httpx.AsyncClient(trust_env=False, follow_redirects=False, timeout=io_timeout(budget, 15)) as client:
+            for generations in originals:
+                identity = generations[0].receipt.document_id
+                transfer = await sessions['OWNER'].create_transfer(identity, DocumentTransferKind.DOWNLOAD)
+                original = current_original(transfer.document, generations)
+                if urlsplit(transfer.signed_url).netloc != urlsplit(storage_url).netloc:
+                    raise ValueError('Signed object URL left the restored store')
+                response = await client.get(transfer.signed_url, **({'timeout': io_timeout(budget, 15)} if budget is not None else {}))
+                if response.status_code != 200 or response.content != original.content:
+                    raise ValueError('Restored ordinary object differs from retained bytes')
+                documents.append(transfer.document)
+                for name, codes in [('OUTSIDER', {DocumentErrorCode.FORBIDDEN, DocumentErrorCode.NOT_FOUND}),
+                                    ('LOW_AAL', {DocumentErrorCode.STEP_UP_REQUIRED})]:
+                    try:
+                        await sessions[name].create_transfer(identity, DocumentTransferKind.DOWNLOAD)
+                    except DocumentsError as error:
+                        if error.code not in codes:
+                            raise
+                    else:
+                        raise ValueError('Restored Documents admitted ' + name)
+                direct = storage_url + '/storage/v1/object/authenticated/company-documents/' + quote(transfer.document.storage_key, safe='/')
+                for token in ('', os.environ['TALLI_RF_RESTORE_OWNER_TOKEN'], os.environ['TALLI_RF_RESTORE_OUTSIDER_TOKEN']):
+                    response = await client.get(direct, **({'timeout': io_timeout(budget, 15)} if budget is not None else {}), headers={'Authorization': 'Bearer ' + token} if token else {})
+                    if response.status_code not in (400, 401, 403, 404):
+                        raise ValueError('Restored Storage admitted a direct object read')
+        return documents

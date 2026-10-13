@@ -305,6 +305,15 @@ class CoreEvidence:
     session_references: dict
 
 
+@dataclass(frozen=True)
+class RestoreIndex:
+    """Private construction index from one complete walk, never a causal receipt."""
+    core: CoreEvidence
+    occurrences: bytes
+    regions: bytes
+    pre_acl: dict
+
+
 FIXED = (b'SET statement_timeout = 0;\nSET lock_timeout = 0;\n'
          b'SET idle_in_transaction_session_timeout = 0;\nSET transaction_timeout = 0;\n'
          b"SET client_encoding = 'UTF8';\nSET standard_conforming_strings = on;\n"
@@ -322,6 +331,7 @@ class Emitter:
         self.selected = []
         self.epochs, self.cut_sessions = [], []
         self.tablespace_ref = self.tableam_ref = None
+        self.pre_acl = None
 
     def statement_spans(self, end, allow):
         while self.leaf < len(self.scan.leaves):
@@ -431,6 +441,11 @@ class Emitter:
         self.budget.locate(index, entry, self.pos)
         self.dump_id = entry.dump_id
         start = self.pos
+        # Capture the boundary before this entry can emit its own session
+        # prelude. Recovery consumes it only after the entire walk succeeds.
+        if self.pre_acl is None and restore_pass(entry) == 'ACL':
+            self.pre_acl = {'cut': start, 'occurrence': len(self.occurrences)//OCCURRENCE.size,
+                            'session': [len(self.epochs)-1, self.tablespace_ref, self.tableam_ref]}
         if entry.tablespace is not None and entry.tablespace != self.tablespace:
             value = identifier(entry.tablespace, self.budget) if entry.tablespace else b"''"
             self.exact(b'SET default_tablespace = '+value+b';\n\n', 'prelude')
@@ -530,6 +545,41 @@ def verify_core(script, archive, *, selectors, catalog, budget):
                         copy_commands=prepared.copies, deadline=budget.deadline, profile=lexical.PROFILE)
     budget.phase('emitter')
     return Emitter(script, archive, prepared, scan, budget).run()
+
+
+def verify_restore_core(script, archive, *, catalog, budget):
+    """Retain bounded private indexes without fabricating an Fsql/S0 wrapper.
+
+    The caller binds source/archive/tool identity and consumes the metadata
+    phase. No recovery resource may be allocated before this succeeds.
+    """
+    prepared = prepare(script, archive, SELECTORS, catalog, budget)
+    budget.phase('lexical')
+    scan = lexical.scan(script, expected_meta=prepared.meta, database=archive.database,
+                        copy_commands=prepared.copies, deadline=budget.deadline, profile=lexical.PROFILE)
+    budget.phase('emitter')
+    emitter = Emitter(script, archive, prepared, scan, budget)
+    core = emitter.run()
+    hook = emitter.pre_acl
+    require(hook is not None and 0 < hook['occurrence'] < core.counts['occurrences'], 'boundary')
+    # The source model already schedules by pass. Check the retained index too,
+    # so this interface cannot bless a detached/comment-derived hook.
+    found_acl = False
+    for offset in range(0, len(emitter.occurrences), OCCURRENCE.size):
+        budget.check()
+        occurrence = OCCURRENCE.unpack_from(emitter.occurrences, offset)
+        ordinal = offset//OCCURRENCE.size
+        if ordinal < hook['occurrence']:
+            require(occurrence[1] == PASSES['MAIN'] and occurrence[5] <= hook['cut'], 'boundary')
+        else:
+            require(occurrence[1] in (PASSES['ACL'], PASSES['POST_ACL']), 'boundary')
+            if ordinal == hook['occurrence']:
+                require(occurrence[1] == PASSES['ACL'] and occurrence[3] == hook['cut'], 'boundary')
+                found_acl = True
+    require(found_acl and 0 <= hook['session'][0] < len(core.session_references['epochs']), 'boundary')
+    require(core.session_references['epochs'][hook['session'][0]][1] <= hook['cut'], 'boundary')
+    budget.check()
+    return RestoreIndex(core, bytes(emitter.occurrences), bytes(emitter.regions), hook)
 
 
 class Statement:

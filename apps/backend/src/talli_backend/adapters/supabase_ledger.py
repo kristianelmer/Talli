@@ -560,8 +560,9 @@ def _map_database_error(message: str) -> LedgerError:
 class SupabaseLedgerAdapter:
     """Authenticate one bearer and return a request-bound RLS persistence session."""
 
-    def __init__(self, configuration: LedgerSupabaseConfiguration) -> None:
+    def __init__(self, configuration: LedgerSupabaseConfiguration, *, connect=None) -> None:
         self._configuration = configuration
+        self._connect = connect
         self._origin = _validated_origin(configuration.url)
         self._anon_key = configuration.anon_key
         self._opener = build_opener(_RejectRedirects)
@@ -642,14 +643,16 @@ class SupabaseLedgerAdapter:
 
     async def session(self, access_token: str) -> SupabaseLedgerSession:
         verified = await self._verified_actor(access_token)
-        return SupabaseLedgerSession(self._configuration.database_url, verified)
+        return SupabaseLedgerSession(self._configuration.database_url, verified,
+            **({'connect': self._connect} if self._connect is not None else {}))
 
 
 @ledger_persistence_adapter(LedgerPersistence)
 class SupabaseLedgerSession:
-    def __init__(self, database_url: str, verified: _VerifiedActor) -> None:
+    def __init__(self, database_url: str, verified: _VerifiedActor, *, connect=None) -> None:
         self._database_url = database_url
         self._verified = verified
+        self._connect = connect
 
     @property
     def actor_id(self) -> ActorId:
@@ -759,7 +762,7 @@ class SupabaseLedgerSession:
 
         def execute() -> list[Mapping[str, object]]:
             try:
-                with psycopg.connect(
+                with (self._connect or psycopg.connect)(
                     self._database_url,
                     connect_timeout=5,
                     row_factory=dict_row,

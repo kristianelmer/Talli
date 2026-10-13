@@ -118,8 +118,12 @@ jobs:
     name: Database isolation
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      # The repaired bootstrap/stream is outside the sealed bare-restore protocol.
+      TALLI_RF_LEGACY_REPLAY: "false"
     steps:
       - name: Record the diagnostic job budget
+        if: ${{ env.TALLI_RF_LEGACY_REPLAY == 'true' }}
         run: |
           echo "TALLI_RF_REPLAY_JOB_STARTED=$(python3 -c 'import time; print(time.monotonic())')" >> "$GITHUB_ENV"
           echo "TALLI_RF_REPLAY_DIR=$RUNNER_TEMP/talli-rf-replay-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
@@ -158,16 +162,18 @@ jobs:
         env:
           TALLI_PYTHON_BIN: .venv/bin/python
         run: |
-          .venv/bin/python scripts/rf1086_actual_replay.py prepare || true
+          if [ "$TALLI_RF_LEGACY_REPLAY" = "true" ]; then
+            .venv/bin/python scripts/rf1086_actual_replay.py prepare || true
+          fi
           npm run test:supabase:local
 
       - name: Diagnose the rejected identity archive in the same image
-        if: ${{ failure() && steps.rehearsal.outcome == 'failure' }}
+        if: ${{ failure() && steps.rehearsal.outcome == 'failure' && env.TALLI_RF_LEGACY_REPLAY == 'true' }}
         timeout-minutes: 10
         run: .venv/bin/python scripts/rf1086_actual_replay.py consume
 
       - name: Remove private identity replay evidence and owned resources
-        if: ${{ always() }}
+        if: ${{ always() && env.TALLI_RF_LEGACY_REPLAY == 'true' }}
         timeout-minutes: 2
         run: |
           if [ -x .venv/bin/python ]; then

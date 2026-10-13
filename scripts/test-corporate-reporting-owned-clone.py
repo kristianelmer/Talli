@@ -47,27 +47,42 @@ def owned_source(workdir, database_url, inspect):
     return container["Id"], info["dbname"]
 
 
-def inspect_container(name):
+def inspect_container(name, *, budget=None):
+    if budget is not None:
+        from rf1086_restore_control import io_command
+        return json.loads(io_command(budget, ["docker", "inspect", name], cap=1024**2))[0]
     return json.loads(subprocess.check_output(["docker", "inspect", name]))[0]
 
 
-def verify_source_session(source_url, container):
+def verify_source_session(source_url, container, *, budget=None):
     # A remote Docker context can publish the same numeric port on another
     # machine. Observe this exact live source connection inside the pinned
     # container before authorizing dump/create/drop there.
     marker = "rf193_clone_" + uuid4().hex
-    with psycopg.connect(source_url, application_name=marker) as connection:
+    if budget is None:
+        manager = psycopg.connect(source_url, application_name=marker)
+    else:
+        from rf1086_restore_control import bounded_connection, io_command
+        manager = bounded_connection(psycopg.connect, source_url, budget=budget, application_name=marker)
+    with manager as connection:
         pid = connection.execute("select pg_backend_pid()").fetchone()[0]
         query = ("select count(*) from pg_stat_activity where datname='postgres' "
                  f"and usename='postgres' and pid={int(pid)} and application_name='{marker}'")
-        observed = subprocess.check_output(["docker", "exec", container, "psql", "-U", "supabase_admin",
-                                            "--dbname", "postgres", "-XAt", "-c", query], text=True).strip()
+        args = ["docker", "exec", container, "psql", "-U", "supabase_admin",
+                "--dbname", "postgres", "-XAt", "-c", query]
+        observed = (io_command(budget, args, cap=4096).decode() if budget is not None
+                    else subprocess.check_output(args, text=True)).strip()
         if observed != "1":
             raise ValueError("DATABASE_URL is not served by the owned Supabase container")
 
 
-def role_memberships(source_url):
-    with psycopg.connect(source_url) as connection:
+def role_memberships(source_url, *, budget=None):
+    if budget is None:
+        manager = psycopg.connect(source_url)
+    else:
+        from rf1086_restore_control import bounded_connection, io_command
+        manager = bounded_connection(psycopg.connect, source_url, budget=budget)
+    with manager as connection:
         return connection.execute(
             "select roleid,member,grantor,admin_option,inherit_option,set_option "
             "from pg_auth_members order by roleid,member,grantor"

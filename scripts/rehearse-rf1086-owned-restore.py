@@ -6,6 +6,9 @@ recovery uses a fresh volume and service; cluster-wide role recovery is separate
 """
 from __future__ import annotations
 
+import time as _entry_time
+_RECOVERY_STARTED = _entry_time.monotonic()
+
 from pathlib import Path
 import sys
 
@@ -30,6 +33,8 @@ from uuid import UUID, uuid4
 import psycopg
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from psycopg.rows import dict_row
+from rf1086_restore_control import (RecoveryBudget, run_async, budget_scope, current_budget, bounded_boundary,
+    budgeted_async, deadline_dsn, io_deadline, io_checked, unwind_scope, connection_factory)
 
 sys.path.insert(0, str(ROOT / 'apps/backend/src'))
 from talli_backend.adapters.postgres_document_originals import PostgresDocumentOriginals
@@ -54,34 +59,65 @@ spec.loader.exec_module(boundary)
 
 
 @contextmanager
-def restored_database(source_url, workdir):
-    container, source_name = boundary.owned_source(workdir, source_url, boundary.inspect_container)
-    boundary.verify_source_session(source_url, container)
-    memberships = boundary.role_memberships(source_url)
-    clone = 'rf193_restore_' + uuid4().hex
-    created = False
-    docker = ['docker', 'exec', '-i', container]
-    with tempfile.TemporaryFile() as dump:
-        subprocess.run(docker + ['pg_dump', '-U', 'supabase_admin', '--format=custom', '--dbname', source_name],
-                       stdout=dump, check=True)
-        try:
-            subprocess.run(docker + ['createdb', '-U', 'supabase_admin', '--template=template0', clone], check=True)
-            created = True
-            dump.seek(0)
-            subprocess.run(docker + ['pg_restore', '-U', 'supabase_admin', '--exit-on-error', '--dbname', clone],
-                           stdin=dump, check=True)
-            yield make_conninfo(source_url, dbname=clone)
-        finally:
-            if created:
-                subprocess.run(docker + ['dropdb', '-U', 'supabase_admin', '--force', clone], check=True)
-            if boundary.role_memberships(source_url) != memberships:
-                raise RuntimeError('RF restore rehearsal changed cluster role memberships')
+def restored_database(source_url, workdir, *, budget=None):
+    budget = current_budget(budget)
+    source_boundary = bounded_boundary(boundary, budget)
+    def run(args, **kwargs):
+        if budget is None:
+            return subprocess.run(args, **kwargs)
+        kwargs.pop('check', None)
+        return io_checked(budget, args, **kwargs)
+    with budget_scope(budget):
+        with io_deadline(budget):
+            container, source_name = source_boundary.owned_source(workdir, source_url, source_boundary.inspect_container)
+        source_boundary.verify_source_session(source_url, container)
+        memberships = source_boundary.role_memberships(source_url)
+        clone = 'rf193_restore_' + uuid4().hex
+        created = False
+        owner = None
+        docker = ['docker', 'exec', '-i', container]
+        with tempfile.TemporaryFile() as dump:
+            run(docker + ['pg_dump', '-U', 'supabase_admin', '--format=custom', '--dbname', source_name],
+                stdout=dump, check=True, **({'capture_cap': 64 * 1024**2} if budget is not None else {}))
+            try:
+                if budget is None:
+                    run(docker + ['createdb', '-U', 'supabase_admin', '--template=template0', clone], check=True)
+                else:
+                    from rf1086_database_clone_owner import DatabaseCloneOwner
+                    owner = DatabaseCloneOwner(container, source_name, clone, budget)
+                    owner.create()
+                created = True
+                dump.seek(0)
+                run(docker + ['pg_restore', '-U', 'supabase_admin', '--exit-on-error', '--dbname', clone],
+                    stdin=dump, check=True)
+                yield make_conninfo(source_url, dbname=clone)
+            finally:
+                primary = sys.exception()
+                def finish():
+                    errors = []
+                    try:
+                        if owner is not None: owner.cleanup()
+                        elif created:
+                            run(docker + ['dropdb', '-U', 'supabase_admin', '--force', clone], check=True)
+                    except BaseException as error: errors.append(error)
+                    try:
+                        if source_boundary.role_memberships(source_url) != memberships:
+                            raise RuntimeError('RF restore rehearsal changed cluster role memberships')
+                    except BaseException as error: errors.append(error)
+                    if errors:
+                        if budget is not None:
+                            for error in errors: budget.context.owner._uncertain('clone_cleanup', error, primary)
+                        if primary is not None: raise primary
+                        raise errors[0]
+                if budget is None: finish()
+                else:
+                    with unwind_scope(budget): finish()
 
 
 def owner_session(url, actor):
     claims = json.dumps({'sub': str(actor.subject), 'role': 'authenticated', 'aal': 'aal2'})
     return PostgresShareholderRegisterFilingSession(
-        LedgerSupabaseConfiguration('https://local.example.test', '', url), _VerifiedActor(actor, claims),
+        LedgerSupabaseConfiguration('https://local.example.test', '', deadline_dsn(url)), _VerifiedActor(actor, claims),
         access_token='owned-local-restore-rehearsal', billing=None, documents=None, company_access=None)
 
 
@@ -94,6 +130,7 @@ def owner_read_url(source_url, reader_url, role='talli_ledger_backend'):
     return reader_url
 
 
+@budgeted_async
 async def canonical(url, query, *, stream_codec=STREAM_CODEC):
     store = owner_session(url, query.actor_id)
     archive = await store.archive_source(query)
@@ -101,9 +138,10 @@ async def canonical(url, query, *, stream_codec=STREAM_CODEC):
     return serialize_download_archive(archive, query=query, stream_codec=stream_codec), archive
 
 
+@budgeted_async
 async def read_originals(url, actor, queries):
     contents = []
-    async with await psycopg.AsyncConnection.connect(url, row_factory=dict_row) as connection, connection.transaction():
+    async with await psycopg.AsyncConnection.connect(deadline_dsn(url), row_factory=dict_row) as connection, connection.transaction():
         await connection.execute('set local role documents_executor')
         await connection.execute("select set_config('talli.verified_actor_id',%s,true), set_config('request.jwt.claims',%s,true)",
                                  (str(actor.subject), json.dumps({'sub': str(actor.subject), 'role': 'authenticated'})))
@@ -115,6 +153,7 @@ async def read_originals(url, actor, queries):
     return contents
 
 
+@budgeted_async
 async def verify_restored(url, query, expected_canonical, expected_originals, queries, *, stream_codec=STREAM_CODEC):
     restored_canonical, archive = await canonical(url, query, stream_codec=stream_codec)
     if restored_canonical != expected_canonical:
@@ -142,10 +181,11 @@ async def verify_restored(url, query, expected_canonical, expected_originals, qu
     return archive
 
 
+@budgeted_async
 async def expired_pilot_evidence(url, query, entitlement_id):
     """Preserve the expired receipt without reactivating access after recovery."""
     adapter = SupabaseBillingAdapter(LedgerSupabaseConfiguration(
-        url=os.environ['SUPABASE_URL'], anon_key=os.environ['SUPABASE_ANON_KEY'], database_url=url))
+        url=os.environ['SUPABASE_URL'], anon_key=os.environ['SUPABASE_ANON_KEY'], database_url=deadline_dsn(url)))
     session = await adapter.session(os.environ['TALLI_RF_RESTORE_OWNER_TOKEN'])
     workflow = BillingWorkflow(session, SimulationBillingProvider())
     correlation = CorrelationId('owned-rf-expiry-restore')
@@ -171,10 +211,12 @@ async def expired_pilot_evidence(url, query, entitlement_id):
     return snapshot, decision
 
 
+@budgeted_async
 async def cancellation_evidence(url, query, cancellation_id, status):
     """Read through Company Access with the browser's real authenticated users."""
     adapter = SupabaseCompanyAccessAdapter(SupabaseConfiguration(
-        url=os.environ['SUPABASE_URL'], anon_key=os.environ['SUPABASE_ANON_KEY'], database_url=url))
+        url=os.environ['SUPABASE_URL'], anon_key=os.environ['SUPABASE_ANON_KEY'], database_url=deadline_dsn(url)),
+        connect=connection_factory() if current_budget() is not None else None)
     rows = await adapter.cancellations(os.environ['TALLI_RF_RESTORE_OWNER_TOKEN'], str(query.company_id))
     if (len(rows) != 1 or str(rows[0]['id']) != str(cancellation_id)
             or str(rows[0]['company_id']) != str(query.company_id)
@@ -187,9 +229,11 @@ async def cancellation_evidence(url, query, cancellation_id, status):
     return rows
 
 
+@budgeted_async
 async def deletion_evidence(url, query, cancellation_id, case_id, review_id):
     adapter = SupabaseCompanyAccessAdapter(SupabaseConfiguration(
-        url=os.environ['SUPABASE_URL'], anon_key=os.environ['SUPABASE_ANON_KEY'], database_url=url))
+        url=os.environ['SUPABASE_URL'], anon_key=os.environ['SUPABASE_ANON_KEY'], database_url=deadline_dsn(url)),
+        connect=connection_factory() if current_budget() is not None else None)
     case = await adapter.read_support_case(os.environ['TALLI_RF_RESTORE_REVIEWER_TOKEN'], str(case_id))
     if not case or str(case['company_id']) != str(query.company_id) or str(case['case_id']) != str(case_id):
         raise ValueError('Restored independent review case is absent')
@@ -205,6 +249,12 @@ async def deletion_evidence(url, query, cancellation_id, case_id, review_id):
 
 
 def main():
+    budget = RecoveryBudget(_RECOVERY_STARTED)
+    with budget_scope(budget):
+        return _main(budget)
+
+
+def _main(budget):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('archive', type=Path)
     parser.add_argument('--company-id', required=True, type=UUID)
@@ -235,7 +285,7 @@ def main():
     reader_url = owner_read_url(source_url, reader_url)
     actor = ActorId(ActorKind.USER, UserId(str(args.actor_id)))
     query = rf.Rf1086ArchiveQuery(CompanyId(str(args.company_id)), IncomeYear(args.income_year), actor)
-    with args.archive.open('rb') as stream:
+    with io_deadline(budget), args.archive.open('rb') as stream:
         stream_codec = download_archive_codec(stream)
         expected, sources, feedback = verify_download_archive_stream(stream, query=query,
             require_source_history=True, require_feedback_originals=True)
@@ -243,59 +293,61 @@ def main():
         raise ValueError('Current recovery requires captured override history')
     expected_canonical = serialize_download_archive(expected, query=query, stream_codec=stream_codec)
     # Verify ownership before even the first application read against this URL.
-    container, _ = boundary.owned_source(workdir, source_url, boundary.inspect_container)
-    boundary.verify_source_session(source_url, container)
-    before, _ = asyncio.run(canonical(reader_url, query, stream_codec=stream_codec))
+    source_boundary = bounded_boundary(boundary, budget)
+    with io_deadline(budget):
+        container, _ = source_boundary.owned_source(workdir, source_url, source_boundary.inspect_container)
+    source_boundary.verify_source_session(source_url, container)
+    before, _ = run_async(canonical(reader_url, query, stream_codec=stream_codec))
     if before != expected_canonical:
         raise ValueError('Source database differs from downloaded RF archive')
     queries = source_original_queries(expected) + feedback_original_queries(expected, require_complete=True)
-    originals = asyncio.run(read_originals(reader_url, actor, queries))
+    originals = run_async(read_originals(reader_url, actor, queries))
     storage_proof = {}
     cancellation_proof = {}
     deletion_proof = {}
     expiry_proof = {}
     if args.expired_pilot_id:
-        expiry_before = asyncio.run(expired_pilot_evidence(reader_url, query, args.expired_pilot_id))
+        expiry_before = run_async(expired_pilot_evidence(reader_url, query, args.expired_pilot_id))
     if args.cancellation_id or args.restore_storage:
         access_url = owner_read_url(source_url, os.environ.get('TALLI_COMPANY_ACCESS_DATABASE_URL', ''),
                                     'talli_company_access_backend')
     if args.cancellation_id:
-        cancellation_before = asyncio.run(cancellation_evidence(access_url, query, args.cancellation_id, args.cancellation_status))
+        cancellation_before = run_async(cancellation_evidence(access_url, query, args.cancellation_id, args.cancellation_status))
     if args.support_case_id:
-        deletion_before = asyncio.run(deletion_evidence(access_url, query, args.cancellation_id,
+        deletion_before = run_async(deletion_evidence(access_url, query, args.cancellation_id,
                                                        args.support_case_id, args.deletion_review_id))
     if args.restore_storage:
         from rf1086_storage_restore import ordinary_originals, storage_source, restored_storage, verify_objects
-        source_storage, storage_env, network = storage_source(workdir, source_url, boundary)
+        source_storage, storage_env, network = storage_source(workdir, source_url, boundary, budget=budget)
         # The browser is quiescent here. Authenticate its real sessions, read
         # restored memberships through Company Access and enforce Documents policy.
         ordinary = ordinary_originals(originals)
-        source_documents = asyncio.run(verify_objects(reader_url, access_url, os.environ['SUPABASE_URL'], ordinary))
-    with restored_database(source_url, workdir) as restored_url:
+        source_documents = run_async(verify_objects(reader_url, access_url, os.environ['SUPABASE_URL'], ordinary))
+    with restored_database(source_url, workdir, budget=budget) as restored_url:
         restored_reader = make_conninfo(reader_url, dbname=conninfo_to_dict(restored_url)['dbname'])
-        recovered = asyncio.run(verify_restored(restored_reader, query, expected_canonical, originals, queries, stream_codec=stream_codec))
+        recovered = run_async(verify_restored(restored_reader, query, expected_canonical, originals, queries, stream_codec=stream_codec))
         if args.expired_pilot_id:
-            if asyncio.run(expired_pilot_evidence(restored_reader, query, args.expired_pilot_id)) != expiry_before:
+            if run_async(expired_pilot_evidence(restored_reader, query, args.expired_pilot_id)) != expiry_before:
                 raise ValueError('Restored expired pilot or entitlement decision differs from source')
             expiry_proof = {'expiredPilotRestored': True}
         if args.cancellation_id or args.restore_storage:
             restored_access = make_conninfo(access_url, dbname=conninfo_to_dict(restored_url)['dbname'])
         if args.cancellation_id:
-            if asyncio.run(cancellation_evidence(restored_access, query, args.cancellation_id, args.cancellation_status)) != cancellation_before:
+            if run_async(cancellation_evidence(restored_access, query, args.cancellation_id, args.cancellation_status)) != cancellation_before:
                 raise ValueError('Restored cancellation differs from source')
             cancellation_proof = {'cancellationRestored': True, 'cancellationStatus': args.cancellation_status}
         if args.support_case_id:
-            if asyncio.run(deletion_evidence(restored_access, query, args.cancellation_id,
+            if run_async(deletion_evidence(restored_access, query, args.cancellation_id,
                                             args.support_case_id, args.deletion_review_id)) != deletion_before:
                 raise ValueError('Restored independent deletion evidence differs from source')
             deletion_proof = {'deletionReviewRestored': True, 'deletedCompanyRestored': True}
         if args.restore_storage:
-            with restored_storage(source_storage, storage_env, network, restored_url, boundary) as gateway:
-                restored_documents = asyncio.run(verify_objects(restored_reader, restored_access, gateway, ordinary,
+            with restored_storage(source_storage, storage_env, network, restored_url, boundary, budget=budget) as gateway:
+                restored_documents = run_async(verify_objects(restored_reader, restored_access, gateway, ordinary,
                                                                storage_key=storage_env['SERVICE_KEY']))
                 if restored_documents != source_documents:
                     raise ValueError('Restored ordinary document metadata differs from source')
-            if asyncio.run(verify_objects(reader_url, access_url, os.environ['SUPABASE_URL'], ordinary)) != source_documents:
+            if run_async(verify_objects(reader_url, access_url, os.environ['SUPABASE_URL'], ordinary)) != source_documents:
                 raise ValueError('Restore rehearsal changed source document metadata')
             storage_proof = {'ordinaryObjects': len(ordinary), 'storageVolumeRemoved': True,
                              'ordinaryRetainedGenerations': sum(len(group) for group in ordinary),
@@ -306,32 +358,36 @@ def main():
     identity_proof = {}
     if args.restore_identity:
         from rf1086_identity_restore import restored_identity, verify_actor_recovery
-        with restored_identity(source_url, workdir, boundary) as identity:
-            identity_proof = {**identity.proof, **asyncio.run(verify_actor_recovery(
+        with restored_identity(source_url, workdir, source_boundary, budget=budget) as identity:
+            identity_proof = {**identity.proof, **run_async(verify_actor_recovery(
                 identity, identity.reader_url(reader_url), query, expected_canonical, originals, queries, read_originals,
                 stream_codec=stream_codec))}
         identity_proof.update(independentRecoveryResourcesRemoved=True, sourceIdentityAndRolesUnchanged=True)
-    after, _ = asyncio.run(canonical(reader_url, query, stream_codec=stream_codec))
+    budget.enter('source_post')
+    after, _ = run_async(canonical(reader_url, query, stream_codec=stream_codec))
     if after != before:
         raise ValueError('Restore rehearsal changed source RF history')
     if args.expired_pilot_id:
-        if asyncio.run(expired_pilot_evidence(reader_url, query, args.expired_pilot_id)) != expiry_before:
+        if run_async(expired_pilot_evidence(reader_url, query, args.expired_pilot_id)) != expiry_before:
             raise ValueError('Restore rehearsal changed source expired pilot or entitlement decision')
     if args.cancellation_id:
-        if asyncio.run(cancellation_evidence(access_url, query, args.cancellation_id, args.cancellation_status)) != cancellation_before:
+        if run_async(cancellation_evidence(access_url, query, args.cancellation_id, args.cancellation_status)) != cancellation_before:
             raise ValueError('Restore rehearsal changed source cancellation')
     if args.support_case_id:
-        if asyncio.run(deletion_evidence(access_url, query, args.cancellation_id,
+        if run_async(deletion_evidence(access_url, query, args.cancellation_id,
                                         args.support_case_id, args.deletion_review_id)) != deletion_before:
             raise ValueError('Restore rehearsal changed independent deletion evidence')
-    print(json.dumps({'status': 'verified_owned_rf_database_restore', 'databaseRestorePerformed': True,
-        'retainedOriginalBytesRestored': True, 'objectStorageRestorePerformed': args.restore_storage,
-        'sourceOriginals': sources, 'feedbackOriginals': feedback,
-        'overrideHistoryRestored': recovered.overrides is not None, 'overrides': len(recovered.overrides),
-        'sourceVersions': len(recovered.source_history.year_sources),
-        'submissions': len(recovered.production_submissions), 'crossOwnerReadsDenied': True,
-        'sourceHistoryUnchanged': True, 'cloneRemoved': True, 'clusterMembershipsUnchanged': True,
-        **storage_proof, **cancellation_proof, **deletion_proof, **expiry_proof, **identity_proof}))
+    budget.enter('output')
+    with io_deadline(budget):
+        print(json.dumps({'status': 'verified_owned_rf_database_restore', 'databaseRestorePerformed': True,
+            'retainedOriginalBytesRestored': True, 'objectStorageRestorePerformed': args.restore_storage,
+            'sourceOriginals': sources, 'feedbackOriginals': feedback,
+            'overrideHistoryRestored': recovered.overrides is not None, 'overrides': len(recovered.overrides),
+            'sourceVersions': len(recovered.source_history.year_sources),
+            'submissions': len(recovered.production_submissions), 'crossOwnerReadsDenied': True,
+            'sourceHistoryUnchanged': True, 'cloneRemoved': True, 'clusterMembershipsUnchanged': True,
+            **storage_proof, **cancellation_proof, **deletion_proof, **expiry_proof, **identity_proof}))
+    budget.remaining()
     return 0
 
 

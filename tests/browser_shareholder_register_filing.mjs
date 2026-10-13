@@ -26,6 +26,7 @@ import { exerciseRfPilotExpiry, exerciseRfCancellation, exerciseRfFinalDeletion 
 import { exerciseCompanyTestRetention } from "./fixtures/rf1086-company-test-retention-browser-journey.mjs";
 import { actualReplayEnvironment } from "./support/rf1086-actual-replay-environment.mjs";
 import { assertRfArchiveLowAalDenied } from "./support/rf1086-low-aal-archive-diagnostic.mjs";
+import requestObserver from "./support/rf1086-low-aal-request-observer.cjs";
 
 const nextCli = createRequire(new URL("../apps/web/package.json", import.meta.url)).resolve("next/dist/bin/next");
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -40,7 +41,7 @@ const scenarios = [
     [{ lostResponse, crash: false }, { lostResponse, crash: true }, { lostResponse, crash: true, beforeMutation: true }]),
   { lostResponse: "main", crash: false, predecessorFeedback: "rejected", recoverSourceCapture: true },
 ];
-for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepted", recoverSourceCapture = false } of scenarios) test(`owner completes RF capture, ${predecessorFeedback === "rejected" ? "rejected-predecessor correction" : "correction"} and ${beforeMutation ? "process crash before" : crash ? "process crash at" : "lost"} ${lostResponse} ${beforeMutation ? "provider mutation" : "response"} through the canonical backend`, {
+for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFeedback = "accepted", recoverSourceCapture = false }] of scenarios.entries()) test(`owner completes RF capture, ${predecessorFeedback === "rejected" ? "rejected-predecessor correction" : "correction"} and ${beforeMutation ? "process crash before" : crash ? "process crash at" : "lost"} ${lostResponse} ${beforeMutation ? "provider mutation" : "response"} through the canonical backend`, {
   timeout: 360_000,
 }, async (t) => {
   const replayTestStarted = performance.now();
@@ -56,6 +57,7 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
   const apiCalls = [];
   let primaryFailure;
   t.after(async () => {
+    resources.requestObservation?.dispose();
     const cleanupErrors = [];
     const attempt = async (operation) => { try { await operation(); } catch (error) { cleanupErrors.push(error); } };
     await attempt(() => resources.browser?.close());
@@ -188,6 +190,9 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
       await waitForOwnedReadiness({ process: resources.backend, url: `${backendOrigin}/health/ready` });
     };
     await waitForOwnedReadiness({ process: resources.backend, url: `${backendOrigin}/health/ready` });
+    const observation = await requestObserver.prepare({ root: process.cwd(), nextCli, port: webPort,
+      scenario: scenarioIndex + 1, deadline: replayTestStarted + 360_000, signal: t.signal,
+      nodeOptions: `--import=${new URL("./fixtures/system-user-authority-mock.mjs", import.meta.url).href}` });
     resources.web = startOwnedProcess({ command: process.execPath,
       args: [nextCli, "dev", "apps/web", "--hostname", "127.0.0.1", "--port", String(webPort)],
       cwd: process.cwd(), readinessProof: "Ready in", env: {
@@ -196,19 +201,21 @@ for (const { lostResponse, crash, beforeMutation, predecessorFeedback = "accepte
         TALLI_BACKEND_URL: backendOrigin, SITE_URL: siteOrigin,
         TALLI_AUTHORITY_CALLBACK_INTERNAL_KEY: callbackKey,
         TALLI_LOCAL_AUTHORITY_MOCK_BASE_URL: resources.mock.baseUrl,
-        NODE_OPTIONS: `--import=${new URL("./fixtures/system-user-authority-mock.mjs", import.meta.url).href}`,
+        ...observation.env,
       } });
+    resources.requestObservation = observation.bind(resources.web);
     await waitForOwnedReadiness({ process: resources.web, url: siteOrigin });
     resources.browser = await chromium.launch({ headless: true });
     const context = await resources.browser.newContext({ viewport: { width: 1440, height: 900 } });
+    context.rfLowAalObservation = resources.requestObservation;
     captureBrowserHealth(context, health);
     await installBrowserEgressGuard(context, { approvalEnabled: true, blockedRequests: egressViolations, mockBaseUrl: resources.mock.baseUrl });
     const page = await context.newPage();
     await login(page, siteOrigin, owner);
     const lowAalSession = await browserSession(context);
     const rfArchiveUrl = `${siteOrigin}/filing/aksjonaerregisteroppgaven/source/archive?companyId=${primary.id}&incomeYear=2025`;
-    const noMfaArchive = await context.request.get(rfArchiveUrl, { maxRedirects: 0 });
-    await assertRfArchiveLowAalDenied(noMfaArchive);
+    const noMfaArchive = await context.request.get(rfArchiveUrl, { maxRedirects: 0, ...context.rfLowAalObservation?.requestOptions });
+    await assertRfArchiveLowAalDenied(noMfaArchive, { observation: context.rfLowAalObservation });
     assert.equal(noMfaArchive.headers()["content-disposition"], undefined);
     assert.ok(!(await noMfaArchive.text()).includes("canonicalArchive"));
     await establishOwnerAal2(page, siteOrigin);

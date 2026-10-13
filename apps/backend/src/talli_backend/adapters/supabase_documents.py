@@ -340,14 +340,14 @@ class SupabaseDocumentsAuthorization(DocumentsAuthorization):
 
 
 class SupabaseDocumentsAdapter(DocumentsSessionFactory):
-    def __init__(self, configuration: DocumentsSupabaseConfiguration) -> None:
+    def __init__(self, configuration: DocumentsSupabaseConfiguration, *, connect=None) -> None:
         self._configuration = configuration
         self._authentication = SupabaseLedgerAdapter(
             LedgerSupabaseConfiguration(
                 url=configuration.url,
                 anon_key=configuration.anon_key,
                 database_url=configuration.database_url,
-            )
+            ), **({'connect': connect} if connect is not None else {})
         )
         self._storage = SupabaseDocumentObjectStorage(configuration.url, configuration.service_role_key)
         self._authorization = SupabaseDocumentsAuthorization(SupabaseCompanyAccessAdapter(
@@ -355,7 +355,7 @@ class SupabaseDocumentsAdapter(DocumentsSessionFactory):
                 url=configuration.url,
                 anon_key=configuration.anon_key,
                 database_url=configuration.company_access_database_url,
-            )
+            ), **({'connect': connect} if connect is not None else {})
         ))
 
     @classmethod

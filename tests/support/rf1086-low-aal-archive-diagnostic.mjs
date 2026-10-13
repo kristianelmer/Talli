@@ -10,12 +10,22 @@ const MANIFEST_LIMIT = 64 * 1024;
 
 // This preserves the original403 assertion. Diagnostics never fetch again or
 // read Playwright's whole-body APIs, which cannot provide a bounded prefix.
-export async function assertRfArchiveLowAalDenied(response, { root = process.cwd() } = {}) {
+export async function assertRfArchiveLowAalDenied(response, { root = process.cwd(), observation, deadline = Infinity } = {}) {
   const status = response.status();
+  const end = Math.min(deadline, observation?.deadline ?? Infinity, performance.now() + (status === 403 ? 250 : 1_000));
+  // Optional collection shares this absolute deadline with the existing file
+  // diagnostics; it cannot replace the original status assertion.
+  let requestObservation;
+  if (observation) {
+    try { requestObservation = await observation.finish(response, end); } catch {}
+  }
   if (status === 403) return;
   const evidence = {
     responsePathMatches: null, contentType: "unavailable", attachmentHeaderPresent: null,
     bodyInspection: "unavailable", routeManifest: "unavailable", compiledRoute: "unavailable",
+  };
+  if (requestObservation) evidence.requestObservation = {
+    status: requestObservation.status, reason: requestObservation.reason, shape: requestObservation.shape,
   };
   try { evidence.responsePathMatches = new URL(response.url()).pathname === ARCHIVE_PATH; } catch {}
   try {
@@ -39,7 +49,7 @@ export async function assertRfArchiveLowAalDenied(response, { root = process.cwd
           evidence.compiledRoute = info.isFile() ? "present" : "unavailable";
         }, error => { evidence.compiledRoute = error.code === "ENOENT" ? "absent" : "unavailable"; }),
       ]),
-      new Promise(resolve => { timer = setTimeout(() => { controller.abort(); resolve(); }, 1_000); }),
+      new Promise(resolve => { timer = setTimeout(() => { controller.abort(); resolve(); }, Math.max(0, end - performance.now())); }),
     ]);
   } catch {
     // Evidence collection must not replace the original access assertion.

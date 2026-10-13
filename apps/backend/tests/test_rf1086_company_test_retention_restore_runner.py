@@ -82,7 +82,7 @@ def _configure_owned_runner_double(monkeypatch, tmp_path, failure):
     def source_boundary(*args):
         stage('source-boundary');return 'owned-source-container', 'postgres'
     monkeypatch.setattr(runner.owned.boundary, 'owned_source', source_boundary)
-    monkeypatch.setattr(runner.owned.boundary, 'verify_source_session', lambda *args: stage('source-session'))
+    monkeypatch.setattr(runner.owned.boundary, 'verify_source_session', lambda *args, **kwargs: stage('source-session'))
     old_reader = runner.owned.owner_read_url
     def reader(*args):
         stage('reader');return old_reader(*args)
@@ -91,12 +91,15 @@ def _configure_owned_runner_double(monkeypatch, tmp_path, failure):
         stage('auth-binding');return {'Id': 'owned-source-container'}, {}, {'GOTRUE_JWT_SECRET': 'owned-synthetic-HS256-key'}
     monkeypatch.setattr(runner, 'owned_identity_source', auth_binding)
     fingerprints = []
-    def fingerprint(*args):
+    def fingerprint(*args, **kwargs):
         fingerprints.append('fingerprint');return {'source': 'changed' if failure == 'fingerprint' and len(fingerprints)==2 else 'original'}
     monkeypatch.setattr(runner, 'fingerprint', fingerprint)
     class Factory:
         def __init__(self, config):
-            stage('factory');assert config.database_url == reader_url
+            stage('factory')
+            actual = runner.owned.conninfo_to_dict(config.database_url)
+            expected_url = runner.owned.conninfo_to_dict(reader_url)
+            assert {k:v for k,v in actual.items() if k not in ('options', 'connect_timeout')} == expected_url
     monkeypatch.setattr(runner, 'PostgresCompanyTestRetentionSessionFactory', Factory)
     captures = []
     async def capture_source(*args):
@@ -105,8 +108,9 @@ def _configure_owned_runner_double(monkeypatch, tmp_path, failure):
         return capture(*expected.records, observed_at='2026-10-12T01:02:03+00:00')
     monkeypatch.setattr(runner, 'capture_owned_company_test_retention', capture_source)
     @contextmanager
-    def restore(url, workdir, boundary):
-        assert url == source_url and boundary is runner.owned.boundary
+    def restore(url, workdir, boundary, *, budget=None):
+        assert url == source_url
+        assert boundary is runner.owned.boundary or boundary._recovery_budget is budget
         stage('enter-target')
         try:
             yield SimpleNamespace(proof={'synthetic-lifecycle-double': True})
@@ -195,7 +199,7 @@ async def capture(*args):
 patch.setattr(runner, 'capture_owned_company_test_retention', capture)
 
 @contextmanager
-def restore(*args):
+def restore(*args, **kwargs):
     event('acquiring')
     if phase == 'acquisition':
         pause('ready')

@@ -3,6 +3,9 @@
 No hosted target, reusable clone, public runtime activation or filing authority.
 Portable hashes remain integrity claims, separate from current source Auth.
 """
+import time as _entry_time
+_RECOVERY_STARTED = _entry_time.monotonic()
+
 from pathlib import Path
 import sys
 
@@ -30,6 +33,8 @@ from uuid import UUID
 sys.path.insert(0, str(ROOT / 'apps/backend/src'))
 
 from rf1086_identity_restore import fingerprint, owned_identity_source, restored_identity
+from rf1086_restore_control import (RecoveryBudget, run_async, current_budget, budget_scope, bounded_boundary,
+    budgeted_async, io_deadline, io_checked, deadline_dsn, unwind_scope)
 from rf1086_stateless_owner_fixture import stateless_es256_owner_token
 from rf1086_company_test_inventory_identity_restore import verify_company_test_inventory_actor_recovery
 from verify_rf1086_company_test_retention import artifact_capture, local_file
@@ -47,6 +52,7 @@ owned = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(owned)
 
 
+@budgeted_async
 async def capture_owned_company_test_retention(factory, owner_token, company_id):
     session = await factory.session(owner_token)
     return await session.read_company_test_retention(rf.Rf1086CompanyTestRetentionQuery(company_id, session.actor_id))
@@ -166,64 +172,69 @@ def _termination_scope():
         signal.signal(signal.SIGTERM, previous)
 
 
-def rehearse(args, *, progress=None):
-    with _termination_scope() as termination:
+def rehearse(args, *, progress=None, budget=None):
+    with budget_scope(current_budget(budget)), _termination_scope() as termination:
         return _rehearse(args, termination, progress)
 
 
 def _rehearse(args, termination, progress=None):
+    budget = current_budget()
+    boundary = bounded_boundary(owned.boundary, budget)
+    def fingerprint_now(container):
+        return fingerprint(container, **({'checked_call': lambda *a, **kw: io_checked(budget, *a, capture_cap=8*1024**2, **kw)} if budget is not None else {}))
     def stage(name):
         if progress is not None:
             progress['stage'] = name
-    stage('source-boundary')
-    if str(UUID(args.company_id)) != args.company_id or UUID(args.company_id).int == 0:
-        raise ValueError('Canonical nonzero company required')
-    company_id = CompanyId(args.company_id)
-    source_url, workdir = os.environ['DATABASE_URL'], os.environ['TALLI_SUPABASE_WORKDIR']
-    # Exact source/container/live-session/Auth binding BEFORE any capture/package/Auth I/O.
-    container, _ = owned.boundary.owned_source(workdir, source_url, owned.boundary.inspect_container)
-    owned.boundary.verify_source_session(source_url, container)
-    reader = owned.owner_read_url(source_url, os.environ['TALLI_LEDGER_DATABASE_URL'])
-    db, _, auth_environment = owned_identity_source(workdir, source_url, owned.boundary)
-    if db['Id'] != container:
-        raise ValueError('Owned inventory source changed identity')
-    before_identity = fingerprint(container)
-    owner_token = os.environ['TALLI_RF_RESTORE_OWNER_TOKEN']
-    outsider_token = os.environ['TALLI_RF_RESTORE_OUTSIDER_TOKEN']
-    anon_key = os.environ['SUPABASE_ANON_KEY']
-    factory = PostgresCompanyTestRetentionSessionFactory(LedgerSupabaseConfiguration(
-        os.environ['SUPABASE_URL'], anon_key, reader))
-    stage('source-capture')
-    before = asyncio.run(capture_owned_company_test_retention(factory, owner_token, company_id))
-    stage('source-artifacts')
-    with local_file(args.stream) as source:
-        captured = verify_company_test_retention_stream(source, company_id=company_id)
-    with local_file(args.writer_expectation) as source:
-        writer_expectation = artifact_capture(source, company_id)
-    # Fresh owning reads have their own observation time. Never rewrite saved SOURCE bytes.
-    rf.assert_company_test_retention_target_inventory_matches(captured, writer_expectation)
-    rf.assert_company_test_retention_target_inventory_matches(captured, before)
-    source_raw = rf.serialize_rf1086_company_test_retention(captured).encode('utf-8')
-    source_sha = sha256(source_raw).hexdigest()
-    package = pack_company_test_retention(captured)
-    verified = verify_company_test_retention_bundle(BytesIO(package), company_id=company_id)
-    rf.assert_company_test_retention_source_capture_matches(verified, captured)
-    stage('stateless-token')
-    if progress is not None:
-        progress.update(_stateless_diagnostic_metadata(owner_token, auth_environment))
-    stateless_token = _signed_stateless_owned_owner_token(owner_token, auth_environment)
+    with io_deadline(budget):
+        stage('source-boundary')
+        if str(UUID(args.company_id)) != args.company_id or UUID(args.company_id).int == 0:
+            raise ValueError('Canonical nonzero company required')
+        company_id = CompanyId(args.company_id)
+        source_url, workdir = os.environ['DATABASE_URL'], os.environ['TALLI_SUPABASE_WORKDIR']
+        # Exact source/container/live-session/Auth binding BEFORE any capture/package/Auth I/O.
+        container, _ = boundary.owned_source(workdir, source_url, boundary.inspect_container)
+        boundary.verify_source_session(source_url, container)
+        reader = owned.owner_read_url(source_url, os.environ['TALLI_LEDGER_DATABASE_URL'])
+        db, _, auth_environment = owned_identity_source(workdir, source_url, boundary)
+        if db['Id'] != container:
+            raise ValueError('Owned inventory source changed identity')
+        before_identity = fingerprint_now(container)
+        owner_token = os.environ['TALLI_RF_RESTORE_OWNER_TOKEN']
+        outsider_token = os.environ['TALLI_RF_RESTORE_OUTSIDER_TOKEN']
+        anon_key = os.environ['SUPABASE_ANON_KEY']
+        factory = PostgresCompanyTestRetentionSessionFactory(LedgerSupabaseConfiguration(
+            os.environ['SUPABASE_URL'], anon_key, deadline_dsn(reader, budget)))
+        stage('source-capture')
+        before = run_async(capture_owned_company_test_retention(factory, owner_token, company_id))
+        stage('source-artifacts')
+        with io_deadline(budget), local_file(args.stream) as source:
+            captured = verify_company_test_retention_stream(source, company_id=company_id)
+        with io_deadline(budget), local_file(args.writer_expectation) as source:
+            writer_expectation = artifact_capture(source, company_id)
+        # Fresh owning reads have their own observation time. Never rewrite saved SOURCE bytes.
+        rf.assert_company_test_retention_target_inventory_matches(captured, writer_expectation)
+        rf.assert_company_test_retention_target_inventory_matches(captured, before)
+        source_raw = rf.serialize_rf1086_company_test_retention(captured).encode('utf-8')
+        source_sha = sha256(source_raw).hexdigest()
+        package = pack_company_test_retention(captured)
+        verified = verify_company_test_retention_bundle(BytesIO(package), company_id=company_id)
+        rf.assert_company_test_retention_source_capture_matches(verified, captured)
+        stage('stateless-token')
+        if progress is not None:
+            progress.update(_stateless_diagnostic_metadata(owner_token, auth_environment))
+        stateless_token = _signed_stateless_owned_owner_token(owner_token, auth_environment)
     # Sole lifecycle owner. No target credentials, factory or live handle escapes.
     # Defer termination through acquisition: the old owner must register resources
     # before interruption. Defer through cleanup too, including repeated SIGTERM.
     termination.check()
     termination.interruptible = False
     stage('independent-recovery')
-    with restored_identity(source_url, workdir, owned.boundary) as recovery:
+    with restored_identity(source_url, workdir, boundary, **({'budget': budget} if budget is not None else {})) as recovery:
         try:
             termination.interruptible = True
             termination.check()
             identity_proof = dict(recovery.proof)
-            target_report = asyncio.run(verify_company_test_inventory_actor_recovery(
+            target_report = run_async(verify_company_test_inventory_actor_recovery(
                 recovery, company_id, captured, source_sha, source_reader_url=reader,
                 anon_key=anon_key, owner_token=owner_token, outsider_token=outsider_token,
                 stateless_owner_token=stateless_token))
@@ -232,12 +243,15 @@ def _rehearse(args, termination, progress=None):
     termination.interruptible = True
     termination.check()
     # Any context cleanup/fingerprint failure raises before a report can be accepted.
-    stage('source-postcheck')
-    after = asyncio.run(capture_owned_company_test_retention(factory, owner_token, company_id))
-    rf.assert_company_test_retention_target_inventory_matches(captured, after)
-    if (sha256(rf.serialize_rf1086_company_test_retention(captured).encode()).hexdigest() != source_sha
-            or fingerprint(container) != before_identity):
-        raise ValueError('Inventory restore changed the original SOURCE capture or identity')
+    if budget is not None: budget.enter('source_post')
+    with io_deadline(budget):
+        stage('source-postcheck')
+        after = run_async(capture_owned_company_test_retention(factory, owner_token, company_id))
+        rf.assert_company_test_retention_target_inventory_matches(captured, after)
+        if (sha256(rf.serialize_rf1086_company_test_retention(captured).encode()).hexdigest() != source_sha
+                or fingerprint_now(container) != before_identity):
+            raise ValueError('Inventory restore changed the original SOURCE capture or identity')
+    if budget is not None: budget.remaining()
     return {'status': 'verified_owned_company_test_inventory_restore',
         'sourceArtifactSha256': source_sha, 'bundleSha256': sha256(package).hexdigest(),
         'bundleBytes': len(package), 'sourceObservationUnchanged': True,
@@ -268,6 +282,25 @@ def _failure_diagnostic(error, progress):
 
 
 def main():
+    budget = RecoveryBudget(_RECOVERY_STARTED)
+    with budget_scope(budget):
+        return _main(budget)
+
+
+def _failure_output(error, lines, budget):
+    # Only finite diagnostics; output receives no extension beyond T0+180.
+    # An expired pipe/secondary termination cannot replace the handled failure.
+    try:
+        with unwind_scope(budget):
+            budget.enter('output')
+            with io_deadline(budget):
+                for line in lines: print(line, file=sys.stderr, flush=True)
+    except BaseException as failure:
+        if failure is not error:
+            raise
+
+
+def _main(budget):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--company-id', required=True)
     parser.add_argument('--stream', required=True)
@@ -276,16 +309,20 @@ def main():
     progress = {}
     try:
         result = rehearse(args, progress=progress)
-    except _TerminationRequested:
-        print('owned_company_test_inventory_restore_cancelled', file=sys.stderr)
+    except _TerminationRequested as error:
+        _failure_output(error, ('owned_company_test_inventory_restore_cancelled',), budget)
         return 143
     except Exception as error:
-        print('owned_company_test_inventory_restore_failed', file=sys.stderr)
-        print('owned_company_test_inventory_restore_diagnostic ' + _failure_diagnostic(error, progress), file=sys.stderr)
+        lines = ['owned_company_test_inventory_restore_failed',
+            'owned_company_test_inventory_restore_diagnostic ' + _failure_diagnostic(error, progress)]
         if progress.get('stage') == 'stateless-token':
-            print('owned_company_test_inventory_restore_stateless_diagnostic ' + _stateless_failure_diagnostic(error, progress), file=sys.stderr)
+            lines.append('owned_company_test_inventory_restore_stateless_diagnostic ' + _stateless_failure_diagnostic(error, progress))
+        _failure_output(error, lines, budget)
         return 1
-    print(json.dumps(result, sort_keys=True, separators=(',', ':'), allow_nan=False))
+    budget.enter('output')
+    with io_deadline(budget):
+        print(json.dumps(result, sort_keys=True, separators=(',', ':'), allow_nan=False))
+    budget.remaining()
     return 0
 
 

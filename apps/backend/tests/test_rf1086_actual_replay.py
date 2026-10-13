@@ -203,6 +203,11 @@ def test_original_timeouts_and_failure_only_workflow_contract():
     assert "failure() && steps.rehearsal.outcome == 'failure'" in workflow
     assert workflow.index('actual_replay.py consume') < workflow.index('actual_replay.py cleanup')
     assert 'upload-artifact' not in workflow[workflow.index('  database:'):workflow.index('  evidence:')]
+    # Repaired bootstrap/stream never schedules the old bare-restore consumer.
+    database = workflow[workflow.index('  database:'):workflow.index('  evidence:')]
+    assert 'TALLI_RF_LEGACY_REPLAY: "false"' in database
+    assert database.count("env.TALLI_RF_LEGACY_REPLAY == 'true'") == 3
+    assert 'if [ "$TALLI_RF_LEGACY_REPLAY" = "true" ]; then' in database
 
 @pytest.mark.parametrize('fault', [None, 'archive_binding', 'initialized', 'strict_roles', 'strict_catalog', 'causal'])
 def test_full_control_requires_fresh_failed_bindings_before_inventory(setup, monkeypatch, fault):

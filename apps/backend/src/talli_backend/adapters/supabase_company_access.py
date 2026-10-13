@@ -106,8 +106,9 @@ class _RejectRedirects(HTTPRedirectHandler):
 class SupabaseCompanyAccessAdapter:
     """Validate Supabase sessions and install their actor in restricted RLS transactions."""
 
-    def __init__(self, configuration: SupabaseConfiguration) -> None:
+    def __init__(self, configuration: SupabaseConfiguration, *, connect=None) -> None:
         self._configuration = configuration
+        self._connect = connect
         self._origin = _validated_origin(configuration.url)
         self._anon_key = configuration.anon_key
         self._opener = build_opener(_RejectRedirects)
@@ -229,7 +230,7 @@ class SupabaseCompanyAccessAdapter:
 
         def execute() -> list[Mapping[str, object]]:
             try:
-                with psycopg.connect(
+                with (self._connect or psycopg.connect)(
                     self._configuration.database_url,
                     connect_timeout=5,
                     row_factory=dict_row,
