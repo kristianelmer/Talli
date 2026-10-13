@@ -18,9 +18,12 @@ import rf1086_actual_replay_package as package
 
 
 def completed(f2, optional, *, reason='dependency', stage='admission'):
-    return f2 | {'schema': 'actual-image-control-v2', 'Fsql': optional,
-                 'S0': {'schema': 's0-checkpoint-v1', 'status': 'unavailable',
-                        'reason': reason, 'stage': stage, 'point': None}}
+    return f2 | {'schema': 'actual-image-control-v3', 'Fsql': optional,
+                 'S0': {'schema': 's0-checkpoint-v2', 'status': 'unavailable',
+                        'reason': reason, 'stage': stage, 'point': None},
+                 **{kind: {'schema': 'causal-branch-v1', 'kind': kind, 'status': 'unavailable',
+                           'reason': 'dependency', 'stage': 'unobserved', 'point': None}
+                    for kind in ('Is', 'In')}}
 
 
 @pytest.fixture
@@ -175,10 +178,13 @@ def test_partial_or_tampered_checkpoints_never_accept_f2(control, fault):
         if fault == 'symlink':
             (path / 'f2.json').rename(path / 'f2.pending');(path / 'f2.json').symlink_to(path / 'f2.pending')
     result = replay.fallback_result(path, metadata, 'deadline')
-    assert result == {'schema': 'actual-image-control-v2', 'status': 'unavailable',
+    assert result == {'schema': 'actual-image-control-v3', 'status': 'unavailable',
                       'reason': 'worker_deadline', 'recoveryAccepted': False,
-                      'S0': {'schema': 's0-checkpoint-v1', 'status': 'unavailable',
-                             'reason': 'worker_deadline', 'stage': 'unobserved', 'point': None}}
+                      'S0': {'schema': 's0-checkpoint-v2', 'status': 'unavailable',
+                             'reason': 'worker_deadline', 'stage': 'unobserved', 'point': None},
+                      **{kind: {'schema': 'causal-branch-v1', 'kind': kind, 'status': 'unavailable',
+                                'reason': 'worker_deadline', 'stage': 'unobserved', 'point': None}
+                         for kind in ('Is', 'In')}}
 
 
 @pytest.mark.parametrize('fault', ['fingerprint', 'catalog', 'version', 'hash', 'zero_bytes', 'too_large', 'accepted', 'extra'])
@@ -204,7 +210,7 @@ def test_optional_size_fallback_reserves_consumer_fields_and_crypto_framing(cont
     assert result['Fsql']['reason'] == 'summary_oversized'
     result.update(optionalWorkerOutcome='result_invalid', ownedCleanupComplete=False)
     public = key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
-    aad = {'version': 2, **metadata['binding'], 'image': package.IMAGE, 'packageSha256': 'a'*64, 'publicKeySha256': package.digest(public)}
+    aad = {'version': 3, **metadata['binding'], 'image': package.IMAGE, 'packageSha256': 'a'*64, 'publicKeySha256': package.digest(public)}
     line = replay.seal(result, aad, key.public_key())
     assert len(line.encode()) <= replay.MAX_ENVELOPE
     assert replay.decrypt(line, key, {k:v for k,v in aad.items() if k!='version'}) == result
@@ -264,7 +270,8 @@ def test_real_worker_interruption_preserves_checkpoint_after_reaping(control, mo
     monkeypatch.setattr(replay, 'ACTIVE_SECONDS', 3)
     if mode=='oversized':
         limit=max(len(package._encoded(completed(f2, replay.unavailable_fsql(reason), reason='worker_result_invalid', stage='unobserved') | {
-            'optionalWorkerOutcome':'result_invalid','ownedCleanupComplete':False})) for reason in replay.FSQL_REASONS)
+            'optionalWorkerOutcome':'result_invalid','ownedCleanupComplete':False,
+            **replay._unavailable_branches('worker_result_invalid')})) for reason in replay.FSQL_REASONS)
         monkeypatch.setenv('TEST_FSQL_MAX',str(limit))
         monkeypatch.setattr(replay,'MAX_PLAINTEXT',limit)
     monkeypatch.setenv('TALLI_RF_REPLAY_JOB_STARTED', str(time.monotonic()))

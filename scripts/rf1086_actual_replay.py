@@ -26,6 +26,9 @@ import rf1086_catalog_semantics as commands
 import rf1086_sql_ledger as sql_ledger
 import rf1086_s0_protocol as s0_protocol
 import rf1086_s0_control as s0_control
+import rf1086_causal_protocol as causal_protocol
+import rf1086_causal_control as causal_control
+from rf1086_causal_catalog import prepare_prediction, PredictionUnavailable
 from rf1086_catalog_causal_capture import _snapshot, _files, FILE_OUTPUT_CAP, PHASES
 from rf1086_catalog_difference import CatalogCapture, _encoded, _records
 from rf1086_actual_replay_package import (
@@ -34,8 +37,8 @@ from rf1086_actual_replay_package import (
     STATUS_TAG, report_unavailable,
 )
 
-TAG = 'owned_identity_actual_replay_v2 '
-CONTROL_SCHEMA = 'actual-image-control-v2'
+TAG = 'owned_identity_actual_replay_v3 '
+CONTROL_SCHEMA = 'actual-image-control-v3'
 LABEL = 'talli.rf.actual.replay'
 MAX_PLAINTEXT = 64 * 1024
 MAX_ENVELOPE = 96 * 1024
@@ -405,7 +408,7 @@ def validate_f2(result, metadata):
 def summary_fits(result, metadata):
     # Include the longest finite consumer outcome and cleanup field before work.
     raw = _encoded(result | {'optionalWorkerOutcome': 'result_invalid', 'ownedCleanupComplete': False})
-    aad = {'version': 2, **metadata['binding'], 'image': IMAGE,
+    aad = {'version': 3, **metadata['binding'], 'image': IMAGE,
            'packageSha256': 'f' * 64, 'publicKeySha256': 'f' * 64}
     # RSA3072, 12-byte nonce, AES-GCM tag, exact JSON/base64 framing overhead.
     framed = TAG.encode() + _encoded({'aad': aad, 'key': 'A' * 512, 'nonce': 'A' * 16,
@@ -413,9 +416,20 @@ def summary_fits(result, metadata):
     return len(raw) <= MAX_PLAINTEXT and len(framed) <= MAX_ENVELOPE
 
 
-def fit_optional(f2, optional, metadata, *, s0=None):
+def _unavailable_branches(reason='dependency', stage='unobserved'):
+    return {kind: causal_protocol.unavailable(kind, reason, stage) for kind in ('Is', 'In')}
+
+
+def fit_optional(f2, optional, metadata, *, s0=None, branches=None):
+    if branches is not None and (type(branches) is not dict or set(branches) != {'Is', 'In'}):
+        raise Unavailable('optional_result_invalid')
     result = f2 | {'schema': CONTROL_SCHEMA, 'Fsql': optional,
-                   'S0': s0_protocol.unavailable('dependency', 'admission') if s0 is None else s0}
+                   'S0': s0_protocol.unavailable('dependency', 'admission') if s0 is None else s0,
+                   **(_unavailable_branches() if branches is None else branches)}
+    if not summary_fits(result, metadata):
+        for kind in ('Is', 'In'):
+            if result[kind].get('status') == 'prediction_matched':
+                result[kind] = causal_protocol.unavailable(kind, 'summary_oversized', 'composition')
     if not summary_fits(result, metadata):
         result['S0'] = s0_protocol.unavailable('summary_oversized', 'composition')
     if not summary_fits(result, metadata) and optional.get('status') == 'full_sql_verified':
@@ -432,7 +446,8 @@ def checkpoint_f2(path, metadata, f2):
     # Reserve the largest finite fallback before allocating another target.
     for reason in FSQL_REASONS:
         fallback = f2 | {'schema': CONTROL_SCHEMA, 'Fsql': unavailable_fsql(reason),
-                        'S0': s0_protocol.unavailable('worker_result_invalid', 'unobserved')}
+                        'S0': s0_protocol.unavailable('worker_result_invalid', 'unobserved'),
+                        **_unavailable_branches('worker_result_invalid', 'unobserved')}
         if not summary_fits(fallback, metadata):
             raise Unavailable('summary_oversized')
     if owner(path)['nonce'] != metadata['nonce'] or (path / 'f2.json').exists() or (path / 'f2.json').is_symlink():
@@ -448,7 +463,7 @@ def read_f2(path, metadata):
 
 
 def full_sql_control(path, metadata, previous_target, roles, failed_raw, deadline, *,
-                     toc=None, inventory=None, s0_context=None, f2=None):
+                     toc=None, inventory=None, s0_context=None, f2=None, source_raw=None):
     failure = {'stage': 'tool_probe', 'command': None, 'tool': None, 'stream': None}
     try:
         tool_raw = command(['docker', 'exec', previous_target, 'sh', '-c', TOOL_COMMAND], deadline, cap=4096)
@@ -471,6 +486,13 @@ def full_sql_control(path, metadata, previous_target, roles, failed_raw, deadlin
         target = start_target(metadata, deadline)
         if target == previous_target:
             raise Unavailable('full_sql_target_reused')
+        if s0_context is not None:
+            s0_context.raise_if_fatal()
+            acquired = getattr(s0_context, 'acquired_targets', set())
+            if type(acquired) is not set:
+                raise Unavailable('full_sql_target_reused')
+            acquired.update((previous_target, target))
+            s0_context.acquired_targets = acquired
         failure['stage'] = 'roles_apply'
         psql(target, roles, deadline)
         failure['stage'] = 'initialized_snapshot'
@@ -508,16 +530,65 @@ def full_sql_control(path, metadata, previous_target, roles, failed_raw, deadlin
         result['ledger'] = sql_ledger.unavailable('internal', 'metadata')
     if s0_context is not None:
         s0_context.raise_if_fatal()
-        s0_context.result = s0_control.observe_s0(context=s0_context, script=script,
+        sequence = causal_control.observe_causal_sequence(context=s0_context, script=script,
             descriptor=descriptor, f2=f2, fsql=result, metadata=metadata,
             previous_target=target, optional_deadline=deadline,
-            resources=_s0_resources(path, metadata, roles, failed_raw, f2, result))
+            resources=_s0_resources(path, metadata, roles, failed_raw, f2, result,
+                                    source_raw=source_raw))
+        s0_context.result = sequence['S0']
+        s0_context.branches = {kind: sequence[kind] for kind in ('Is', 'In')}
         s0_context.raise_if_fatal()
     return result
 
 
-def _s0_resources(path, metadata, roles, failed_raw, f2, fsql):
+def _s0_resources(path, metadata, roles, failed_raw, f2, fsql, *, source_raw=None):
     """Bind existing ownership and strict comparison operations to the controller."""
+    predictions = {}
+
+    def raw_prediction(kind, deadline):
+        nonlocal source_raw
+        if (type(deadline) not in (int, float) or not math.isfinite(deadline)
+                or time.monotonic() >= deadline):
+            raise PredictionUnavailable('deadline')
+        if kind not in ('Is', 'In'):
+            raise PredictionUnavailable()
+        if kind not in predictions:
+            if source_raw is None:
+                source_raw = read_private(path / 'source.catalog', LIMITS['source.catalog'])
+            if (digest(source_raw) != metadata['before']['catalog']
+                    or digest(failed_raw) != metadata['failed']['catalog']):
+                raise PredictionUnavailable()
+            predictions[kind] = prepare_prediction(kind, source_raw, failed_raw,
+                source_catalog=metadata['phases']['source_pre_dump']['catalog'],
+                failed_catalog=metadata['phases']['mismatch']['catalog'], deadline=deadline)
+        return predictions[kind]
+
+    def branch_final_state(target, deadline, *, run, branch_policy, references):
+        import rf1086_identity_restore as identity
+        checked_call = lambda args, **kw: SimpleNamespace(stdout=run(args, deadline,
+            data=kw.get('input'), archive=kw.get('stdin')))
+        prediction = raw_prediction(branch_policy.kind, deadline)
+        with CatalogCapture() as captured:
+            fingerprint = identity.fingerprint(target, restored=True, bootstrap='supabase_admin',
+                catalog_capture=captured, checked_call=checked_call)
+            if any(fingerprint.get(key) != metadata['failed'][key]
+                   for key in ('roles', 'auth', 'companyMemberships')):
+                raise s0_control.ControlFailure('fingerprint_mismatch')
+            raw = prediction.compare(captured._raw, deadline)
+            if fingerprint.get('catalog') != raw['actual']['sha256']:
+                raise s0_control.ControlFailure('fingerprint_mismatch')
+            snapshot = _snapshot(target, deadline, target=True, retained=captured, run=run)
+            if time.monotonic() >= deadline:
+                raise s0_control.ControlFailure('deadline')
+            if snapshot != branch_policy.expected_final:
+                raise s0_control.ControlFailure('enriched_prediction_mismatch')
+            return {'fingerprint': fingerprint, 'enriched': s0_protocol.snapshot_commitment(snapshot),
+                    'raw': raw}
+
+    def summary_fits_sequence(s0, branches, shared_refs=None):
+        return summary_fits(f2 | {'schema': CONTROL_SCHEMA, 'Fsql': fsql,
+                                  'S0': s0, **branches}, metadata)
+
     return SimpleNamespace(
         cleanup=lambda deadline, *, run: cleanup_resources(path, deadline, run=run),
         start=lambda deadline, *, run, pause: start_target(metadata, deadline, run=run, pause=pause),
@@ -526,15 +597,19 @@ def _s0_resources(path, metadata, roles, failed_raw, f2, fsql):
         drop_default=lambda target, deadline, *, run: psql(target,
             b'drop database postgres with (force);', deadline, database='template1', run=run),
         final_state=lambda target, deadline, *, run: failed_state(target, metadata, failed_raw, deadline, run=run),
-        summary_fits=lambda s0: summary_fits(f2 | {'schema': CONTROL_SCHEMA, 'Fsql': fsql, 'S0': s0}, metadata),
+        summary_fits=lambda s0: summary_fits_sequence(s0, _unavailable_branches()),
+        raw_prediction=raw_prediction, branch_final_state=branch_final_state,
+        summary_fits_sequence=summary_fits_sequence,
     )
 
 
-def add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline, *, toc=None, s0_context=None):
+def add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline, *, toc=None,
+                 s0_context=None, source_raw=None):
     options = {} if s0_context is None else {'s0_context': s0_context, 'f2': f2}
     return optional_observation(path, metadata, f2, deadline,
         lambda until: full_sql_control(path, metadata, target, roles, failed_raw, until,
-                                      toc=toc, inventory=f2['inventory'], **options), s0_context=s0_context)
+                                      toc=toc, inventory=f2['inventory'], source_raw=source_raw,
+                                      **options), s0_context=s0_context)
 
 
 def measure_full_sql(path, target, deadline):
@@ -597,7 +672,8 @@ def optional_observation(path, metadata, f2, deadline, operation, *, s0_context=
         optional = unavailable_fsql('control_unavailable')
     if s0_context is not None:
         s0_context.raise_if_fatal()
-    return fit_optional(f2, optional, metadata, s0=None if s0_context is None else s0_context.result)
+    return fit_optional(f2, optional, metadata, s0=None if s0_context is None else s0_context.result,
+                        branches=None if s0_context is None else getattr(s0_context, 'branches', None))
 
 
 def replay(path, metadata, deadline, *, s0_context=None):
@@ -652,7 +728,8 @@ def replay(path, metadata, deadline, *, s0_context=None):
             'input': {key: metadata[key] for key in INPUT_KEYS},
             'sourceCommandSha256': phases['source_pre_dump']['sourceCommandSha256'],
             'sourceInstalledFiles': phases['source_pre_dump']['files']}
-    return add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline, toc=toc, s0_context=s0_context)
+    return add_full_sql(path, metadata, target, roles, failed_raw, f2, deadline, toc=toc,
+                        s0_context=s0_context, source_raw=source_raw)
 
 
 def seal(payload, aad, public_key):
@@ -686,7 +763,7 @@ def decrypt(log, private_key, expected):
     if len(lines) != 1:
         raise Unavailable('envelope_count_invalid')
     value = load_json(lines[0])
-    if set(value) != {'aad', 'key', 'nonce', 'ciphertext'} or value['aad'] != {'version': 2, **expected}:
+    if set(value) != {'aad', 'key', 'nonce', 'ciphertext'} or value['aad'] != {'version': 3, **expected}:
         raise Unavailable('envelope_binding_invalid')
     wrapped, nonce, ciphertext = [base64.b64decode(value[k], validate=True) for k in ('key', 'nonce', 'ciphertext')]
     if len(wrapped) != 384 or len(nonce) != 12 or len(ciphertext) > MAX_PLAINTEXT + 16:
@@ -833,24 +910,29 @@ def thin_control(reason):
     reason = reason if type(reason) is str and reason in THIN_REASONS else 'consumer_failed'
     return {'schema': CONTROL_SCHEMA, 'status': 'unavailable', 'reason': reason,
             'recoveryAccepted': False, 'S0': s0_protocol.unavailable(
+                'control_unavailable' if reason == 'consumer_failed' else reason, 'unobserved'),
+            **_unavailable_branches(
                 'control_unavailable' if reason == 'consumer_failed' else reason, 'unobserved')}
 
 
 def _f2_view(result):
-    # Only this view has the durable literal; validate the original typed S0 too.
-    return {key: result[key] if key != 'S0' else 'unavailable' for key in F2_KEYS}
+    # Only this view has durable literals; validate all original typed fields too.
+    literals = {'S0': 'unavailable', 'Is': 'unavailable', 'In': 'archive_function_equivalence_unproved'}
+    return {key: literals[key] if key in literals else result[key] for key in F2_KEYS}
 
 
 def validate_control(result, metadata):
     if type(result) is not dict or result.get('schema') != CONTROL_SCHEMA:
         raise Unavailable('optional_result_invalid')
     if result.get('status') == 'unavailable':
-        if (set(result) != {'schema', 'status', 'reason', 'recoveryAccepted', 'S0'}
+        if (set(result) != {'schema', 'status', 'reason', 'recoveryAccepted', 'S0', 'Is', 'In'}
                 or type(result['reason']) is not str or result['reason'] not in THIN_REASONS
                 or result['recoveryAccepted'] is not False
                 or result != thin_control(result['reason'])):
             raise Unavailable('optional_result_invalid')
         s0_protocol.validate_unavailable(result['S0'])
+        for kind in ('Is', 'In'):
+            causal_protocol.validate_unavailable(result[kind], kind=kind)
         return result
     if set(result) != F2_KEYS | {'schema', 'Fsql'}:
         raise Unavailable('optional_result_invalid')
@@ -859,6 +941,12 @@ def validate_control(result, metadata):
     try:
         s0_protocol.validate_receipt(result['S0'], fsql=result['Fsql'], f2_input=f2['input'],
                                      metadata=metadata, inventory=f2['inventory'])
+        for kind, other in (('Is', 'In'), ('In', 'Is')):
+            if type(result[kind]) is not dict or result[kind].get('kind') != kind:
+                raise Unavailable('optional_result_invalid')
+            causal_protocol.validate_receipt(result[kind], s0_receipt=result['S0'],
+                fsql=result['Fsql'], f2_input=f2['input'], metadata=metadata,
+                inventory=f2['inventory'], other=result[other])
     except (ValueError, KeyError, TypeError):
         raise Unavailable('optional_result_invalid') from None
     return result
@@ -874,9 +962,13 @@ def validate_published_control(result, metadata):
     outcome, cleaned = result['optionalWorkerOutcome'], result['ownedCleanupComplete']
     if not cleaned and payload.get('S0') != s0_protocol.unavailable('parent_cleanup', 'cleanup'):
         raise Unavailable('optional_result_invalid')
+    if not cleaned and any(payload.get(kind) != value for kind, value in
+                           _unavailable_branches('parent_cleanup', 'cleanup').items()):
+        raise Unavailable('optional_result_invalid')
     if payload.get('status') == 'unavailable':
         # Validate the parent's exact redaction before checking the worker shape.
-        worker_view = payload if cleaned else payload | {'S0': thin_control(payload.get('reason'))['S0']}
+        worker_view = payload if cleaned else payload | {
+            kind: thin_control(payload.get('reason'))[kind] for kind in ('S0', 'Is', 'In')}
         validate_control(worker_view, metadata)
         if outcome != 'completed' and payload['reason'] != WORKER_REASONS[outcome]:
             raise Unavailable('optional_result_invalid')
@@ -889,10 +981,18 @@ def validate_published_control(result, metadata):
         if (payload['Fsql'] != unavailable_fsql(WORKER_REASONS[outcome])
                 or cleaned and payload['S0'] != s0_protocol.unavailable(WORKER_REASONS[outcome], 'unobserved')):
             raise Unavailable('optional_result_invalid')
+        if cleaned and any(payload[kind] != value for kind, value in
+                           _unavailable_branches(WORKER_REASONS[outcome]).items()):
+            raise Unavailable('optional_result_invalid')
     try:
         s0_protocol.validate_receipt(payload['S0'], fsql=payload['Fsql'], f2_input=payload['input'],
             metadata=metadata, inventory=payload['inventory'], published=True,
             worker_outcome=outcome, owned_cleanup=cleaned)
+        for kind, other in (('Is', 'In'), ('In', 'Is')):
+            causal_protocol.validate_receipt(payload[kind], s0_receipt=payload['S0'],
+                fsql=payload['Fsql'], f2_input=payload['input'], metadata=metadata,
+                inventory=payload['inventory'], published=True,
+                worker_outcome=outcome, owned_cleanup=cleaned, other=payload[other])
     except (ValueError, KeyError, TypeError):
         raise Unavailable('optional_result_invalid') from None
     return result
@@ -902,14 +1002,16 @@ def completed_result(path, metadata):
     result = validate_control(load_json(read_private(path / 'result.json', MAX_PLAINTEXT)), metadata)
     if result['status'] == 'unavailable':
         return result
-    return fit_optional(_f2_view(result), result['Fsql'], metadata, s0=result['S0'])
+    return fit_optional(_f2_view(result), result['Fsql'], metadata, s0=result['S0'],
+                        branches={kind: result[kind] for kind in ('Is', 'In')})
 
 
 def fallback_result(path, metadata, outcome):
     reason = WORKER_REASONS[outcome]
     try:
         return fit_optional(read_f2(path, metadata), unavailable_fsql(reason), metadata,
-                            s0=s0_protocol.unavailable(reason, 'unobserved'))
+                            s0=s0_protocol.unavailable(reason, 'unobserved'),
+                            branches=_unavailable_branches(reason))
     except Exception:
         return thin_control(reason)
 
@@ -1015,6 +1117,7 @@ def consume():
             try:
                 result['ownedCleanupComplete'] = cleanup_resources(path, time.monotonic() + CLEANUP_SECONDS)
                 if not result['ownedCleanupComplete']:
+                    result.update(_unavailable_branches('parent_cleanup', 'cleanup'))
                     result['S0'] = s0_protocol.unavailable('parent_cleanup', 'cleanup')
                 if not result['ownedCleanupComplete'] and result.get('Fsql', {}).get('reason') == 'measurement_only':
                     result['Fsql'] = unavailable_fsql('measurement_cleanup_unproved')
@@ -1031,13 +1134,15 @@ def consume():
     if not summary_fits(result, metadata):
         if result['status'] != 'unavailable':
             parent = {k: result[k] for k in ('optionalWorkerOutcome', 'ownedCleanupComplete')}
-            result = fit_optional(_f2_view(result), result['Fsql'], metadata, s0=result['S0']) | parent
+            result = fit_optional(_f2_view(result), result['Fsql'], metadata, s0=result['S0'],
+                                  branches={kind: result[kind] for kind in ('Is', 'In')}) | parent
             if not parent['ownedCleanupComplete']:
+                result.update(_unavailable_branches('parent_cleanup', 'cleanup'))
                 result['S0'] = s0_protocol.unavailable('parent_cleanup', 'cleanup')
         if not summary_fits(result, metadata):
             raise Unavailable('summary_oversized')
         validate_published_control(result, metadata)
-    aad = {'version': 2, **binding(), 'image': IMAGE, 'packageSha256': package_hash, 'publicKeySha256': digest(public_bytes)}
+    aad = {'version': 3, **binding(), 'image': IMAGE, 'packageSha256': package_hash, 'publicKeySha256': digest(public_bytes)}
     print(seal(result, aad, public), flush=True)
     if not result['ownedCleanupComplete']:
         raise Unavailable('cleanup_incomplete')

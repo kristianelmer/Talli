@@ -13,11 +13,11 @@ import rf1086_sql_ledger as ledger
 import rf1086_catalog_causal_capture as capture
 from rf1086_catalog_difference import _object, _reject_constant
 
-CONFIG = {'schema': 's0-config-v1',
- 'receipt': 's0-checkpoint-v1',
- 'completedControl': 'actual-image-control-v2',
- 'replay': {'tag': 'owned_identity_actual_replay_v2 ',
-            'aadVersion': 2,
+CONFIG = {'schema': 's0-config-v2',
+ 'receipt': 's0-checkpoint-v2',
+ 'completedControl': 'actual-image-control-v3',
+ 'replay': {'tag': 'owned_identity_actual_replay_v3 ',
+            'aadVersion': 3,
             'durableF2': 'unchanged-literal-S0-unavailable',
             'legacyPhases': 'unchanged',
             'thinReasons': ['consumer_failed',
@@ -45,7 +45,10 @@ CONFIG = {'schema': 's0-config-v1',
                'rf1086_sql_ledger.py',
                'rf1086_catalog_difference.py',
                'rf1086_s0_protocol.py',
-               'rf1086_s0_control.py'],
+               'rf1086_s0_control.py',
+               'rf1086_causal_protocol.py',
+               'rf1086_causal_control.py',
+               'rf1086_causal_catalog.py'],
  'encoding': {'canonical': 'ASCII-sorted-compact-ensure_ascii-true-allow_nan-false',
               'ioLowerBound': 'UTF8-compact-ensure_ascii-false',
               'hash': 'sha256-lowercase-hex',
@@ -552,6 +555,12 @@ def _epoch(value):
 
 
 def _witness(value, *, nonce, sequence, session, epoch_witness=None):
+    return _witness_fields(value, session=session, query=probe(nonce, sequence)[1][:-1].decode('ascii'),
+                           epoch_witness=epoch_witness)
+
+
+def _witness_fields(value, *, session, query, epoch_witness=None):
+    """Shared field checks; only closed protocol wrappers derive expected query."""
     _require(type(value) is list and len(value) == 17 and len(_canonical(value)) <= CAPS['Wcanonical'])
     _require(value[0] == value[4] == session[0] and value[2] == session[1])
     _integer(value[2], 1, 2147483647)
@@ -559,7 +568,7 @@ def _witness(value, *, nonce, sequence, session, epoch_witness=None):
     _require(type(value[5]) is str and TIMESTAMP.fullmatch(value[5]) is not None)
     datetime.fromisoformat(value[5])
     _require(value[6:10] == ['idle', None, None, None]
-             and value[10] == probe(nonce, sequence)[1][:-1].decode('ascii')
+             and value[10] == query
              and value[11:13] == ['UTF8', 'UTF8'] and value[14:] == ['B', 'postmaster', 'integer'])
     _require(type(value[13]) is str and re.fullmatch(r'[1-9][0-9]{0,6}', value[13]) is not None)
     _integer(int(value[13]), *CONFIG['witness']['activityCapacity'])
@@ -628,7 +637,19 @@ def _selected(value, selected, reference_catalog):
 @_closed
 def project(raw_catalog, *, selected, reference_catalog):
     """Decode/validate fresh raw JSON once; normalized references are never reparsed."""
+    return project_with_reference(raw_catalog, selected=selected, reference_catalog=reference_catalog)[0]
+
+
+@_closed
+def project_with_reference(raw_catalog, *, selected, reference_catalog):
+    """One raw validation; return a separate projection and owned normalized graph."""
     catalog = capture._validate_snapshot(_json(raw_catalog, CAPS['catalogLine']), None)
+    return project_normalized(catalog, selected=selected, reference_catalog=reference_catalog), catalog
+
+
+@_closed
+def project_normalized(catalog, *, selected, reference_catalog):
+    """Project already validated normalized input; never reparse hashed hooks."""
     _require(catalog['serverVersion'] == 170006)
     expected_extensions = CONFIG['projection']['extensions']
     seen = [row[0] for row in catalog['extensions']]

@@ -98,7 +98,7 @@ def valid_receipt_context(tmp_path, *, extra_reconnect=False):
             'barrierPid': pid, 'witnesses': [deepcopy(witness) for _ in range(1 if kind == 'anchor' else 2)],
             'observer': io_record(), 'catalog': projection})
     probes = b''.join(part for seq in range(len(exchanges)) for part in protocol.probe(nonce, seq))
-    receipt = {'schema': 's0-checkpoint-v1', 'status': 'matched',
+    receipt = {'schema': protocol.SCHEMA, 'status': 'matched',
         'bindings': {'input': digest(f2_input), 'configuration': digest(protocol.CONFIG),
                      'ledger': digest(result), 'descriptor': digest(D)},
         'target': {'id': '5'*64, 'previous': '6'*64, 'initialized': protocol.snapshot_commitment(initialized)},
@@ -127,7 +127,7 @@ def descriptor(context):
 
 
 def test_exact_accepted_configuration_and_templates():
-    assert digest(protocol.CONFIG) == '2556cbf451cc3a5eefb966bfeda889f4a40b8cee9075f5bcef3fe30f86c761cb'
+    assert digest(protocol.CONFIG) == '175e7d6d253822d5f4a3d05369ddba54380f77e63bdd077c5839b8b0145e3f08'
     p, q = protocol.probe('a'*32, 5)
     assert len(p) == 953 and len(q) == 99 and q.endswith(b';\n')
     assert q == b"SELECT pg_catalog.concat('S0B/"+b'a'*32+b"/05/', pg_catalog.pg_backend_pid());\n"
@@ -472,3 +472,47 @@ def test_descriptor_missing_on_incomplete_ledger_cannot_validate(context):
         with pytest.raises(protocol.Unavailable): protocol.validate_descriptor(bad, context[1]['ledger'], context[1]['stream'])
     old = deepcopy(context[1]['ledger']); old['schema'] = 'rf1086-sql-ledger-v4'
     with pytest.raises(protocol.Unavailable): protocol.validate_descriptor(descriptor(context), old, context[1]['stream'])
+
+
+def test_v2_profile_binds_all_sixteen_files_and_rejects_old_receipt(context):
+    assert protocol.CONFIG['schema'] == 's0-config-v2'
+    assert protocol.SCHEMA == 's0-checkpoint-v2'
+    assert len(protocol.CONFIG['codeFiles']) == 16
+    old = deepcopy(context[0]); old['schema'] = 's0-checkpoint-v1'
+    with pytest.raises(protocol.Unavailable):
+        protocol.validate_receipt(old, **arguments(context))
+
+
+def test_v2_profile_is_single_family():
+    assert protocol.CONFIG['completedControl'] == 'actual-image-control-v3'
+    assert protocol.CONFIG['replay']['tag'] == 'owned_identity_actual_replay_v3 '
+    assert protocol.CONFIG['replay']['aadVersion'] == 3
+
+
+@pytest.mark.parametrize('name', ['rf1086_causal_protocol.py', 'rf1086_causal_control.py', 'rf1086_causal_catalog.py'])
+def test_every_new_bound_file_is_required_for_positive_and_maximum(context, name):
+    changed = deepcopy(context)
+    changed[2]['code'].pop(name); changed[3]['code'].pop(name)
+    for call in (lambda: protocol.validate_receipt(changed[0], **arguments(changed)),
+                 lambda: protocol.maximum_receipt(**arguments(changed), descriptor=descriptor(changed))):
+        with pytest.raises(protocol.Unavailable): call()
+
+
+def test_optional_reference_seam_validates_once_preserves_normalized_hooks_and_detaches(context, monkeypatch):
+    raw = deepcopy(context[1]['catalog']); identity = capture.HOOKS[0]
+    raw['hooks'] = [{'identity': identity, 'row': identity+['owner', None, True, '{search_path=public}'],
+                     'body_sha256': 'd'*64, 'definition_sha256': 'e'*64}]
+    encoded = canonical(raw); selected = context[1]['ledger']['selected'][-1]
+    validator = capture._validate_snapshot; calls = []
+    def counted(value, retained): calls.append(retained); return validator(value, retained)
+    monkeypatch.setattr(capture, '_validate_snapshot', counted)
+    projection, normalized = protocol.project_with_reference(encoded, selected=selected, reference_catalog=context[1]['catalog'])
+    assert calls == [None]
+    assert normalized['hooks'][0]['configurationEncoding'] == 'sha256-of-canonical-json'
+    assert normalized['hooks'][0]['row'][-1] == hashlib.sha256(canonical('{search_path=public}')).hexdigest()
+    assert protocol.project_normalized(normalized, selected=selected, reference_catalog=context[1]['catalog']) == projection
+    assert calls == [None] and canonical(raw) == encoded
+    normalized['hooks'][0]['row'][-1] = 'f'*64
+    assert projection['hooks'][0] != protocol.project_normalized(normalized,
+        selected=selected, reference_catalog=context[1]['catalog'])['hooks'][0]
+    assert projection['snapshot'] != protocol.snapshot_commitment(normalized)

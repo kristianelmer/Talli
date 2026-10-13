@@ -1,5 +1,6 @@
 """Owned, bounded S0 control. No recovery, intervention or acceptance policy."""
 from contextlib import contextmanager
+from dataclasses import dataclass
 import hashlib
 import json
 import math
@@ -285,8 +286,17 @@ def _payload(line, prefix, cap):
     return bytes.fromhex(value.decode('ascii'))
 
 
+@dataclass(frozen=True, repr=False)
+class MutationPolicy:
+    """One already-admitted transaction; no arbitrary scheduling or retries."""
+    kind: str
+    point: tuple
+    sql: bytes
+
+
 def transport(script, descriptor, ledger, *, context, nonce, writer_args, observer_request,
-              parse_session, parse_witness, project, probe, points, work_end, reap_end):
+              parse_session, parse_witness, project, probe, points, work_end, reap_end,
+              mutation_policy=None, exchange_complete=None):
     """Shared mechanics only; injected fixture policies cannot mint an S0 receipt.
 
     observer_request(point, sequence, pid) -> (argv, exact input bytes).
@@ -297,10 +307,30 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
     selector = None
     writer = observer = None
     positions = tuple(points)
+    marker = b'S0'
+    if mutation_policy is not None:
+        if (type(mutation_policy) is not MutationPolicy or mutation_policy.kind not in ('Is', 'In')
+                or type(mutation_policy.point) is not tuple or len(mutation_policy.point) != 2
+                or mutation_policy.point[0] != 'cut' or type(mutation_policy.point[1]) is not int
+                or not 0 <= mutation_policy.point[1] <= 2
+                or type(mutation_policy.sql) is not bytes or not 0 < len(mutation_policy.sql) <= 2048
+                or not mutation_policy.sql.startswith(b'BEGIN;\n')
+                or not mutation_policy.sql.endswith(b'COMMIT;\n')
+                or exchange_complete is None):
+            raise ControlFailure('input')
+        pre = [i for i, (p, _) in enumerate(positions) if p == mutation_policy.point]
+        post = [i for i, (p, _) in enumerate(positions) if p[0] == 'post']
+        if (len(pre) != 1 or post != [pre[0]+1] or len(positions) not in (6, 7)
+                or positions[post[0]] != (('post', mutation_policy.point[1]), positions[pre[0]][1])):
+            raise ControlFailure('input')
+        marker = b'C1'
+    elif any(p[0] == 'post' for p, _ in positions):
+        raise ControlFailure('input')
     baseline = {}
     exchanges = []
-    original_hash, probe_hash = hashlib.sha256(), hashlib.sha256()
+    original_hash, probe_hash, mutation_hash = (hashlib.sha256() for _ in range(3))
     original_count = probe_count = 0
+    mutation_count = 0
     sequence = 0
     state = 'original'
     pending = memoryview(b'')
@@ -340,13 +370,13 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
             if state == 'expect_p':
                 epoch = point[1] if point[0] == 'anchor' else descriptor['cuts'][point[1]][0]
                 previous = None if point[0] == 'anchor' else baseline[epoch]['session']
-                session = parse_session(_payload(line, b'S0P' + prefix, 2000),
+                session = parse_session(_payload(line, marker + b'P' + prefix, 2000),
                     point=point, descriptor=descriptor, baseline=previous)
                 state = 'send_q'
             elif state == 'expect_b':
-                if not line.startswith(b'S0B' + prefix):
+                if not line.startswith(marker + b'B' + prefix):
                     raise ControlFailure('frame')
-                pid = line[len(b'S0B' + prefix):-1]
+                pid = line[len(marker + b'B' + prefix):-1]
                 if re.fullmatch(rb'[1-9][0-9]{0,9}', pid) is None or int(pid) != session[1]:
                     raise ControlFailure('frame')
                 barrier_pid, state = int(pid), 'start_observer'
@@ -371,7 +401,7 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
             else:
                 if len(line) > 4096:
                     raise ControlFailure('frame', point)
-                prefix = f'S0O/{nonce}/{sequence:02d}/{role}/'.encode('ascii')
+                prefix = marker + f'O/{nonce}/{sequence:02d}/{role}/'.encode('ascii')
                 epoch = point[1] if point[0] == 'anchor' else descriptor['cuts'][point[1]][0]
                 previous = None if point[0] == 'anchor' else baseline[epoch]['witness']
                 witness = parse_witness(_payload(line, prefix, 2000), nonce=nonce,
@@ -387,7 +417,7 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
             raise ControlFailure('partial_catalog' if role == 'catalog' else 'observer', point) from None
         observer_part += 1
 
-    writer_lines = _Lines((b'S0P/', b'S0B/'), 4096, frame, ordinary=True, check=check)
+    writer_lines = _Lines((marker+b'P/', marker+b'B/'), 4096, frame, ordinary=True, check=check)
     observer_lines = None
     try:
         check()
@@ -428,7 +458,7 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
                 observer_pending = memoryview(data)
                 selector.register(observer.stdin, selectors.EVENT_WRITE, ('observer_input', 0))
                 observer_lines = _Lines((),
-                    lambda: 32768 if point[0] == 'cut' and observer_part == 1 else 4096,
+                    lambda: 32768 if point[0] != 'anchor' and observer_part == 1 else 4096,
                     observer_line, check=check)
                 counters['observer'], ends['observer'] = [0, 0], [False, False]
                 observer_part, witnesses, catalog = 0, [], None
@@ -443,15 +473,27 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
                 if exit_code or observer_part != (1 if point[0] == 'anchor' else 3):
                     raise ControlFailure('observer', point)
                 owner.finish(observer, exchange_end)
-                exchanges.append({'point': list(point), 'input': [original_count, original_count],
+                exchange = {'point': list(point), 'input': [original_count, original_count],
                     'session': session, 'barrierPid': barrier_pid, 'witnesses': witnesses,
-                    'observer': _io(counters['observer']), 'catalog': catalog})
+                    'observer': _io(counters['observer']), 'catalog': catalog}
+                if exchange_complete is not None:
+                    exchange_complete(exchange)
+                    check()
+                exchanges.append(exchange)
                 if point[0] == 'anchor':
                     baseline[point[1]] = {'session': session, 'witness': witnesses[0]}
                 observer = None
                 sequence += 1
-                point, exchange_end = None, None
-                cleanup_end, state = reap_end, 'original'
+                if mutation_policy is not None and point == mutation_policy.point:
+                    if mutation_count or work_end-time.monotonic() < 4:
+                        raise ControlFailure('deadline', point)
+                    exchange_end = min(time.monotonic()+4, work_end)
+                    cleanup_end = exchange_end
+                    schedule(mutation_policy.sql, 'mutation')
+                    state = 'writing_mutation'
+                else:
+                    point, exchange_end = None, None
+                    cleanup_end, state = reap_end, 'original'
             if state == 'drain' and all(ends['writer']):
                 exit_code = writer.wait(timeout=max(0, check()-time.monotonic()))
                 owner.reaped(writer)
@@ -459,10 +501,15 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
                 if exit_code:
                     raise ControlFailure('command')
                 owner.finish(writer, reap_end)
-                return {'exchanges': exchanges, 'delivery': {
+                result = {'exchanges': exchanges, 'delivery': {
                     'original': {'bytes': original_count, 'sha256': original_hash.hexdigest()},
                     'probes': {'bytes': probe_count, 'sha256': probe_hash.hexdigest()},
                     'frames': [sequence, sequence], 'writer': _io(counters['writer'])}}
+                if mutation_policy is not None:
+                    if mutation_count != len(mutation_policy.sql):
+                        raise ControlFailure('input')
+                    result['delivery']['mutation'] = {'bytes': mutation_count, 'sha256': mutation_hash.hexdigest()}
+                return result
             for key, _ in selector.select(min(0.05, max(0, check()-time.monotonic()))):
                 check()
                 name, index = key.data
@@ -478,13 +525,20 @@ def transport(script, descriptor, ledger, *, context, nonce, writer_args, observ
                     if name == 'writer_input':
                         if pending_kind == 'original':
                             original_hash.update(data[:n]); original_count += n
+                        elif pending_kind == 'mutation':
+                            mutation_hash.update(data[:n]); mutation_count += n
+                            if mutation_count > 2048: raise ControlFailure('input', point)
                         else:
                             probe_hash.update(data[:n]); probe_count += n
                             if probe_count > 16384: raise ControlFailure('input', point)
+                        if probe_count+mutation_count > 16384: raise ControlFailure('input', point)
                         pending = pending[n:]
                         if not pending:
                             selector.unregister(key.fileobj)
-                            if pending_kind != 'original': state = pending_kind
+                            if pending_kind == 'mutation':
+                                point, exchange_end = None, None
+                                cleanup_end, state = reap_end, 'original'
+                            elif pending_kind != 'original': state = pending_kind
                     else:
                         observer_pending = observer_pending[n:]
                         if not observer_pending:
@@ -521,11 +575,32 @@ def _io(counts):
 
 
 def observe_s0(*, context, script, descriptor, f2, fsql, metadata, previous_target,
-               optional_deadline, resources):
+               optional_deadline, resources, reference_sink=None, control_started=None):
+    """Default S0 is unchanged; an optional cache is subordinate to its proof."""
+    sealed = False
+    try:
+        result = _observe_s0(context=context, script=script, descriptor=descriptor,
+            f2=f2, fsql=fsql, metadata=metadata, previous_target=previous_target,
+            optional_deadline=optional_deadline, resources=resources,
+            reference_sink=reference_sink, control_started=control_started)
+        if reference_sink is not None:
+            sealed = result.get('status') == 'matched' and reference_sink.ready
+        return result
+    finally:
+        if reference_sink is not None and not sealed:
+            reference_sink.clear()
+
+
+def _observe_s0(*, context, script, descriptor, f2, fsql, metadata, previous_target,
+                optional_deadline, resources, reference_sink=None, control_started=None):
     protocol = _protocol()
     context.raise_if_fatal()
     stage, point = 'admission', None
-    started = time.monotonic()
+    now = time.monotonic()
+    started = now if control_started is None else control_started
+    if type(started) not in (int, float) or not math.isfinite(started) or started > now:
+        context.result = protocol.unavailable('headroom', stage)
+        return context.result
     hard_end = started + 120
     if (type(optional_deadline) not in (int, float)
             or not math.isfinite(optional_deadline) or hard_end > optional_deadline):
@@ -625,13 +700,33 @@ def observe_s0(*, context, script, descriptor, f2, fsql, metadata, previous_targ
             data = w('anchor') if at[0] == 'anchor' else w('before') + catalog_sql + w('after')
             return protocol.observer_argv(target, database), data
 
+        def projection(raw, selected):
+            if reference_sink is None:
+                return protocol.project(raw, selected=selected,
+                    reference_catalog=metadata['phases']['mismatch']['catalog'])
+            projected, normalized = protocol.project_with_reference(raw, selected=selected,
+                reference_catalog=metadata['phases']['mismatch']['catalog'])
+            try:
+                reference_sink.stage(fsql['ledger']['selected'].index(selected), projected, normalized)
+            except Exception:
+                context.raise_if_fatal()
+                reference_sink.clear()
+            return projected
+
+        def confirmed(exchange):
+            try:
+                reference_sink.complete(exchange)
+            except Exception:
+                context.raise_if_fatal()
+                reference_sink.clear()
+
+        options = {} if reference_sink is None else {'exchange_complete': confirmed}
         evidence = transport(script, descriptor, fsql['ledger'], context=context, nonce=nonce,
             writer_args=protocol.writer_argv(target), observer_request=observer_request,
             parse_session=protocol.parse_session, parse_witness=protocol.parse_witness,
-            project=lambda raw, selected: protocol.project(raw, selected=selected,
-                reference_catalog=metadata['phases']['mismatch']['catalog']),
+            project=projection,
             probe=protocol.probe, points=protocol.ordered_points(descriptor, fsql['ledger']),
-            work_end=min(time.monotonic()+43, runner.end-2), reap_end=runner.end)
+            work_end=min(time.monotonic()+43, runner.end-2), reap_end=runner.end, **options)
         if evidence['delivery']['original'] != fsql['stream']:
             raise ControlFailure('input')
         phase('final', 15, 105)
@@ -641,7 +736,7 @@ def observe_s0(*, context, script, descriptor, f2, fsql, metadata, previous_targ
         final_hash = protocol.snapshot_commitment(final_catalog)
         if final_hash != protocol.snapshot_commitment(metadata['phases']['mismatch']['catalog']):
             raise ControlFailure('enriched_mismatch')
-        result = {'schema': 's0-checkpoint-v1', 'status': 'matched',
+        result = {'schema': protocol.CONFIG['receipt'], 'status': 'matched',
             'bindings': {'input': _hash(f2['input']), 'configuration': _hash(protocol.CONFIG),
                 'ledger': _hash(fsql['ledger']), 'descriptor': _hash(descriptor)},
             'target': {'id': target, 'previous': previous_target, 'initialized': initialized_hash},
@@ -679,6 +774,12 @@ def observe_s0(*, context, script, descriptor, f2, fsql, metadata, previous_targ
         alive()
         if not resources.summary_fits(result):
             result = protocol.unavailable('summary_oversized', 'composition')
+        if reference_sink is not None and result.get('status') == 'matched':
+            try:
+                reference_sink.seal(result)
+            except Exception:
+                context.raise_if_fatal()
+                reference_sink.clear()
         alive()
     except Exception:
         context.raise_if_fatal()

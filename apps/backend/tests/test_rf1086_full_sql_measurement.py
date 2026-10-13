@@ -310,7 +310,7 @@ def test_measurement_command_outcome_exact_bounds(stage, kind):
 def test_measurement_encryption_limits_and_fallback(control, monkeypatch, key):
     _, metadata, f2, _, _, _ = control
     public = key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
-    aad = {'version': 2, **metadata['binding'], 'image': package.IMAGE,
+    aad = {'version': 3, **metadata['binding'], 'image': package.IMAGE,
            'packageSha256': 'a'*64, 'publicKeySha256': package.digest(public)}
     result = replay.fit_optional(f2, optional(), metadata)
     result.update(optionalWorkerOutcome='completed', ownedCleanupComplete=True)

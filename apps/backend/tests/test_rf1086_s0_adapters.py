@@ -35,7 +35,8 @@ def test_thin_control_is_closed_and_parent_redaction_is_checked(control, reason)
     assert replay.validate_control(value, metadata) == value
     published = value | {'optionalWorkerOutcome': 'completed', 'ownedCleanupComplete': True}
     assert replay.validate_published_control(published, metadata) == published
-    redacted = published | {'ownedCleanupComplete': False, 'S0': replay.s0_protocol.unavailable('parent_cleanup', 'cleanup')}
+    redacted = published | {'ownedCleanupComplete': False, 'S0': replay.s0_protocol.unavailable('parent_cleanup', 'cleanup'),
+                            **replay._unavailable_branches('parent_cleanup', 'cleanup')}
     assert replay.validate_published_control(redacted, metadata) == redacted
     for corrupt in [value | {'S0': 'unavailable'}, value | {'extra': True}, value | {'recoveryAccepted': 0},
                     value | {'reason': []}, value | {'S0': replay.s0_protocol.unavailable('dependency', 'admission')}]:
@@ -67,14 +68,15 @@ def test_parent_outcome_is_finite_strict_and_mandatory(control, outcome):
     with pytest.raises(package.Unavailable): replay.validate_published_control(completed(f2, optional), metadata)
 
 
-def test_original_v1_aad_and_tag_are_not_accepted_by_new_reader(key):
+@pytest.mark.parametrize('old_version', (1, 2))
+def test_original_aad_and_tag_are_not_accepted_by_new_reader(key, old_version):
     bound = aad(key)
     expected = {k:v for k,v in bound.items() if k != 'version'}
-    v1aad = replay.seal({'canary': True}, bound | {'version': 1}, key.public_key())
-    with pytest.raises(package.Unavailable): replay.decrypt(v1aad, key, expected)
-    v2 = replay.seal({'canary': True}, bound, key.public_key())
+    old_aad = replay.seal({'canary': True}, bound | {'version': old_version}, key.public_key())
+    with pytest.raises(package.Unavailable): replay.decrypt(old_aad, key, expected)
+    v3 = replay.seal({'canary': True}, bound, key.public_key())
     with pytest.raises(package.Unavailable):
-        replay.decrypt(v2.replace('owned_identity_actual_replay_v2 ', 'owned_identity_actual_replay_v1 ', 1), key, expected)
+        replay.decrypt(v3.replace('owned_identity_actual_replay_v3 ', f'owned_identity_actual_replay_v{old_version} ', 1), key, expected)
 
 
 def test_injected_fingerprint_keeps_query_bytes_order_and_global_checked(monkeypatch):
@@ -156,11 +158,12 @@ def test_optional_shield_never_hides_fatal_context(control, error_kind):
     assert replay.read_f2(path,metadata)==f2 and not (path/'result.json').exists()
 
 
-def test_code_binding_contains_all_thirteen_direct_dependencies(control):
+def test_code_binding_contains_all_sixteen_direct_dependencies(control):
     _,metadata,_,_,_,_=control
-    assert len(metadata['code']) == 13
+    assert len(metadata['code']) == 16
     assert set(metadata['code']) == set(package.CODE_FILES)
-    for name in ['rf1086_s0_protocol.py','rf1086_s0_control.py','rf1086_catalog_difference.py']:
+    for name in ['rf1086_s0_protocol.py','rf1086_s0_control.py','rf1086_catalog_difference.py',
+                 'rf1086_causal_protocol.py','rf1086_causal_control.py','rf1086_causal_catalog.py']:
         assert metadata['code'][name] == package.digest(package.Path(package.__file__).with_name(name).read_bytes())
 
 
@@ -185,16 +188,17 @@ def test_s0_receives_same_completed_stream_descriptor_and_actual_fsql_target(con
         events.append('ledger');return ledger,descriptor
     monkeypatch.setattr(replay.sql_ledger,'observe_with_descriptor',observe)
     def s0(**kw):
-        events.append('S0')
+        events.append('sequence')
         assert kw['script'] is script and kw['descriptor'] is descriptor
         assert kw['previous_target'] == 'e'*64 and kw['previous_target'] != 'd'*64
         assert kw['f2'] is f2 and kw['fsql']['ledger'] is ledger
         assert kw['context'] is context
-        return replay.s0_protocol.unavailable('descriptor_invalid','admission')
-    monkeypatch.setattr(replay.s0_control,'observe_s0',s0)
+        return {'S0': replay.s0_protocol.unavailable('descriptor_invalid','admission'),
+                **replay._unavailable_branches()}
+    monkeypatch.setattr(replay.causal_control,'observe_causal_sequence',s0)
     result=replay.full_sql_control(path,metadata,'d'*64,b'roles',failed,time.monotonic()+200,
                                   s0_context=context,f2=f2,inventory=f2['inventory'])
-    assert events==['ledger','S0'] and result['ledger'] is ledger
+    assert events==['ledger','sequence'] and result['ledger'] is ledger
     assert context.result == replay.s0_protocol.unavailable('descriptor_invalid','admission')
     assert result['stream'] == {'bytes':len(script),'sha256':hashlib.sha256(script).hexdigest()}
 

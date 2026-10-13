@@ -174,14 +174,15 @@ def test_actual_replay_selects_one_full_control_after_verified_f2(control, monke
         catalog_capture.capture(failed); return metadata['failed']
     monkeypatch.setattr(identity, 'fingerprint', fingerprint)
     monkeypatch.setattr(replay, 'command', lambda args, *a, **kw: toc() if '--list' in args else b'schema-only-writer-output')
-    def capture(p, m, target, roles, raw, until, *, toc, inventory):
+    def capture(p, m, target, roles, raw, until, *, toc, inventory, source_raw):
         assert replay.read_f2(p, m)['F2EqualsF'] is True
         assert target == 'owned' and raw == failed and b'CREATE ROLE supabase_admin;' not in roles
         assert inventory['sha256'] == package.digest(toc)
+        assert package.digest(source_raw) == metadata['before']['catalog']
         calls.append('full-control'); return optional
     monkeypatch.setattr(replay, 'full_sql_control', capture)
     result = replay.replay(path, metadata, time.monotonic()+416)
     assert calls == ['start', 'psql', 'psql', 'full-control']
     assert result['F2EqualsF'] and result['Fsql'] == optional
     assert result['S0'] == replay.s0_protocol.unavailable('dependency', 'admission')
-    assert result['Is'] == 'unavailable'
+    assert result['Is'] == replay._unavailable_branches()['Is']
