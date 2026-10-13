@@ -17,7 +17,7 @@ import rf1086_raw_toc as raw_toc
 import rf1086_sql_identifiers as identifiers
 import rf1086_sql_lexical as lexical
 
-SCHEMA = 'rf1086-sql-ledger-v1'
+SCHEMA = 'rf1086-sql-ledger-v2'
 PROFILE = 'pg176-fifo-custom116-utf8-on-v1'
 SOURCE_COMMIT = '7885b94dd81b98bbab9ed878680d156df7bf857f'
 FIFO_PREDICATE = 'test -p /proc/self/fd/0'
@@ -77,6 +77,7 @@ CONFIG = {
                   'regionBytes': MAX_REGION_BYTES, 'occurrences': MAX_OCCURRENCES,
                   'occurrenceBytes': MAX_OCCURRENCE_BYTES},
     'seconds': {'total': TOTAL_SECONDS, 'phases': dict.fromkeys(STAGES, PHASE_SECONDS)},
+    'lexicalLimitRules': lexical.limit_rules(),
     'records': {'decisions': DECISION.format, 'regions': REGION.format, 'occurrences': OCCURRENCE.format},
     'enums': {'passes': PASSES, 'noOutput': NO_OUTPUT, 'regions': REGIONS, 'roles': ROLES},
     'selectors': [v[0] for v in SELECTORS],
@@ -106,7 +107,7 @@ def require(test, reason='binding'):
 
 def unavailable(reason, stage, context=None):
     return {'schema': SCHEMA, 'status': 'unavailable', 'reason': reason, 'stage': stage,
-            'context': context or dict.fromkeys(('rowIndex', 'dumpId', 'descriptor', 'offset'))}
+            'context': {'limit': None} | (context or dict.fromkeys(('rowIndex', 'dumpId', 'descriptor', 'offset')))}
 
 
 class Budget:
@@ -1253,7 +1254,7 @@ def validate_receipt(value, *, fsql, inventory=None, archive_binding=None, code=
         require(type(reason) is str and reason in REASON_STAGES
                 and type(stage) is str and stage in REASON_STAGES[reason])
         context = value['context']
-        keys(context, ('rowIndex', 'dumpId', 'descriptor', 'offset'))
+        keys(context, ('rowIndex', 'dumpId', 'descriptor', 'offset', 'limit'))
         present = context['rowIndex'] is not None
         require(present == (context['dumpId'] is not None) == (context['descriptor'] is not None))
         if present:
@@ -1265,6 +1266,15 @@ def validate_receipt(value, *, fsql, inventory=None, archive_binding=None, code=
         if context['offset'] is not None:
             require(stage == 'emitter')
             number(context['offset'], 0, lexical.MAX_INPUT)
+        if context['limit'] is not None:
+            require(reason == 'limit' and stage == 'lexical')
+            require(type(fsql) is dict and fsql.get('status') == 'full_sql_verified'
+                    and fsql.get('FsqlEqualsF2') is True and type(fsql.get('stream')) is dict)
+            sized_hash(fsql['stream'], 1, lexical.MAX_INPUT)
+            try:
+                lexical.validate_limit(context['limit'], input_bytes=fsql['stream']['bytes'])
+            except lexical.Unavailable:
+                raise Unavailable('binding') from None
         return value
     keys(value, ('schema', 'status', 'profile', 'configurationSha256', 'inputs', 'code',
                  'counts', 'indexes', 'selected', 'claims'))
@@ -1343,6 +1353,7 @@ def observe(path, script, toc, metadata, inventory, fsql, deadline, *, read_priv
     if deadline-time.monotonic() < TOTAL_SECONDS:
         return unavailable('headroom', 'admission')
     budget = Budget(deadline)
+    lexical_limit = None
     try:
         budget.phase('metadata')
         require(fsql['status'] == 'full_sql_verified' and fsql['FsqlEqualsF2'] is True
@@ -1373,6 +1384,8 @@ def observe(path, script, toc, metadata, inventory, fsql, deadline, *, read_priv
         return receipt
     except lexical.Unavailable as error:
         reason = error.reason if error.reason in ('deadline', 'limit', 'binding', 'profile') else 'lexical'
+        if reason == 'limit' and budget.stage == 'lexical':
+            lexical_limit = error.limit
     except raw_toc.Unavailable as error:
         reason = 'deadline' if error.reason.startswith('deadline') else 'metadata'
     except identifiers.Unavailable:
@@ -1384,4 +1397,4 @@ def observe(path, script, toc, metadata, inventory, fsql, deadline, *, read_priv
     # No exception text, raw descriptor, SQL or user identifier leaves this layer.
     if reason not in REASON_STAGES or budget.stage not in REASON_STAGES[reason]:
         reason = 'internal'
-    return unavailable(reason, budget.stage, budget.context.copy())
+    return unavailable(reason, budget.stage, budget.context | {'limit': lexical_limit})

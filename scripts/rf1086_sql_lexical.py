@@ -36,14 +36,73 @@ REASONS = frozenset(('input', 'profile', 'deadline', 'encoding', 'limit', 'bindi
 
 
 class Unavailable(ValueError):
-    def __init__(self, reason):
+    def __init__(self, reason, limit=None):
         self.reason = reason if reason in REASONS else 'input'
+        if limit is not None:
+            require(self.reason == 'limit', 'binding')
+            validate_limit(limit)
+        self.limit = limit
         super().__init__('sql_lexical_unavailable')
 
 
 def require(test, reason):
     if not test:
         raise Unavailable(reason)
+
+
+def limit_rules():
+    """Closed guard expressions, not estimates of unscanned object sizes."""
+    return {
+        'binding_bytes': (MAX_BINDINGS, MAX_BINDINGS + MAX_TOKEN, 'bytes', 'none', None),
+        'token_records': (MAX_RECORDS, MAX_RECORDS + 1, 'records', 'required', None),
+        'leaf_records': (MAX_RECORDS, MAX_RECORDS + 1, 'records', 'required', None),
+        'index_bytes': (MAX_INDEX, MAX_INDEX + RECORD.size, 'bytes', 'required', None),
+        # An escape advances at most10bytes; a final E-string span adds at most2.
+        'token_bytes': (MAX_TOKEN, min(MAX_INPUT, MAX_TOKEN + 10), 'bytes', 'required', None),
+        # Quoted script identifiers first use the generic token progress guard.
+        # Binding identifiers use the tighter guard throughout; a doubled quote
+        # can overshoot that guard by2. The fifth field bounds null offsets.
+        'identifier_bytes': (MAX_IDENTIFIER, min(MAX_INPUT, max(MAX_TOKEN + 1, MAX_IDENTIFIER + 2)),
+                             'bytes', 'optional', min(MAX_TOKEN, MAX_IDENTIFIER + 2)),
+        'dollar_tag_prefix_bytes': (MAX_TAG + 1, MAX_TAG + 2, 'bytes', 'required', None),
+        'dollar_body_bytes': (MAX_TOKEN, min(MAX_INPUT, MAX_TOKEN + max(MAX_TAG + 2, min(CHUNK, 4096))),
+                              'bytes', 'required', None),
+        'copy_line_bytes': (MAX_TOKEN, min(MAX_INPUT, MAX_TOKEN + CHUNK), 'bytes', 'required', None),
+        'copy_groups': (MAX_COPY, MAX_COPY + 1, 'groups', 'required', None),
+        'statements': (MAX_STATEMENTS, MAX_STATEMENTS + 1, 'statements', 'required', None),
+        # Receipt chunks contain fixed keys, bounded integers and64-byte hashes.
+        'receipt_bytes': (MAX_RECEIPT, MAX_RECEIPT + 1024, 'bytes', 'none', None),
+    }
+
+
+def validate_limit(value, *, input_bytes=None):
+    require(type(value) is dict and set(value) == {'site', 'ceiling', 'observed', 'unit', 'offset'}, 'binding')
+    rules = limit_rules()
+    require(type(value['site']) is str and value['site'] in rules, 'binding')
+    ceiling, maximum, unit, position, binding_maximum = rules[value['site']]
+    require(type(value['ceiling']) is int and value['ceiling'] == ceiling
+            and type(value['observed']) is int and ceiling < value['observed'] <= maximum
+            and type(value['unit']) is str and value['unit'] == unit, 'binding')
+    offset = value['offset']
+    require(position != 'required' or offset is not None, 'binding')
+    require(position != 'none' or offset is None, 'binding')
+    if offset is None and binding_maximum is not None:
+        require(value['observed'] <= binding_maximum, 'binding')
+    if offset is not None:
+        bound = MAX_INPUT if input_bytes is None else input_bytes
+        require(type(bound) is int and 0 <= bound <= MAX_INPUT
+                and type(offset) is int and 0 <= offset <= bound, 'binding')
+        if value['site'] in ('token_bytes', 'identifier_bytes', 'dollar_tag_prefix_bytes',
+                              'dollar_body_bytes', 'copy_line_bytes'):
+            require(value['observed'] <= offset, 'binding')
+    return value
+
+
+def limit_guard(observed, ceiling, site, offset=None):
+    if observed > ceiling:
+        unit = limit_rules()[site][2]
+        raise Unavailable('limit', {'site': site, 'ceiling': ceiling,
+                                   'observed': observed, 'unit': unit, 'offset': offset})
 
 
 def ident_start(c):
@@ -90,7 +149,7 @@ class Scanner:
             self.check()
             require(type(value) is bytes and len(value) <= MAX_TOKEN, 'binding')
             total += len(value)
-            require(total <= MAX_BINDINGS, 'limit')
+            limit_guard(total, MAX_BINDINGS, 'binding_bytes')
             self.validate_bytes(value)
         self.meta_modes = self.validate_meta()
         for value in copy_commands:
@@ -129,18 +188,20 @@ class Scanner:
     def add(self, target, kind, start, end):
         self.check()
         require(0 <= start <= end <= self.n and (start < end or kind == COPY_DATA and target is self.leaves), 'coverage')
-        require(len(target)//RECORD.size < MAX_RECORDS
-                and len(self.tokens)+len(self.leaves)+RECORD.size <= MAX_INDEX, 'limit')
+        limit_guard(len(target)//RECORD.size + 1, MAX_RECORDS,
+                    'leaf_records' if target is self.leaves else 'token_records', end)
+        limit_guard(len(self.tokens)+len(self.leaves)+RECORD.size, MAX_INDEX, 'index_bytes', end)
         target.extend(RECORD.pack(kind, start, end))
         if target is self.leaves:
             self.counts[kind] += 1
 
     def token(self, kind, start, end, *, identifier=False):
-        require(end-start <= (MAX_IDENTIFIER if identifier else MAX_TOKEN), 'limit')
+        limit_guard(end-start, MAX_IDENTIFIER if identifier else MAX_TOKEN,
+                    'identifier_bytes' if identifier else 'token_bytes', end)
         self.add(self.tokens, kind, start, end)
 
-    def progress(self, start, end, *, limit=MAX_TOKEN):
-        require(end-start <= limit, 'limit')
+    def progress(self, start, end, *, limit=MAX_TOKEN, site='token_bytes', script=True):
+        limit_guard(end-start, limit, site, end if script else None)
         self.work += 1
         if self.work >= 256:  # Each loop advances at most an11-byte escape.
             self.work = 0
@@ -183,20 +244,20 @@ class Scanner:
         if raw[at] == 34:
             at += 1; content = at
             while at < len(raw):
-                self.progress(start, at, limit=MAX_IDENTIFIER)
+                self.progress(start, at, limit=MAX_IDENTIFIER, site='identifier_bytes', script=False)
                 require(raw[at] not in (0, 10, 13), 'copy')
                 if raw[at] == 34:
                     if at+1 < len(raw) and raw[at+1] == 34: at += 2; continue
                     require(at > content, 'copy')
-                    require(at+1-start <= MAX_IDENTIFIER, 'limit')
+                    limit_guard(at+1-start, MAX_IDENTIFIER, 'identifier_bytes')
                     return at+1
                 at += 1
             raise Unavailable('copy')
         require(ident_start(raw[at]), 'copy')
         at += 1
         while at < len(raw) and ident_cont(raw[at]):
-            self.progress(start, at, limit=MAX_IDENTIFIER); at += 1
-        require(at-start <= MAX_IDENTIFIER, 'limit')
+            self.progress(start, at, limit=MAX_IDENTIFIER, site='identifier_bytes', script=False); at += 1
+        limit_guard(at-start, MAX_IDENTIFIER, 'identifier_bytes')
         return at
 
     def validate_copy(self, raw):
@@ -244,18 +305,18 @@ class Scanner:
         if at < self.n and self.raw[at] != 36:
             require(self.raw[at] in ASCII_START, 'literal')
             while at < self.n and self.raw[at] in ASCII_CONT:
-                at += 1; require(at-start <= MAX_TAG+1, 'limit')
+                at += 1; limit_guard(at-start, MAX_TAG+1, 'dollar_tag_prefix_bytes', at)
         require(at < self.n and self.raw[at] == 36, 'literal')
         delimiter = self.raw[start:at+1]
         at += 1
         while at < self.n:
-            self.check(); require(at-start <= MAX_TOKEN, 'limit')
+            self.check(); limit_guard(at-start, MAX_TOKEN, 'dollar_body_bytes', at)
             window = max(len(delimiter), min(CHUNK, 4096))
             end = min(self.n, at+window)
             found = self.raw.find(delimiter, at, end)
             self.check()
             if found >= 0:
-                require(found+len(delimiter)-start <= MAX_TOKEN, 'limit')
+                limit_guard(found+len(delimiter)-start, MAX_TOKEN, 'dollar_body_bytes', found+len(delimiter))
                 return found+len(delimiter)
             if end == self.n: raise Unavailable('unfinished')
             at = end-len(delimiter)+1  # Retain overlap inside the next bounded window.
@@ -289,12 +350,12 @@ class Scanner:
         return True
 
     def copy_payload(self, at):
-        self.copies += 1; require(self.copies <= MAX_COPY, 'limit')
+        self.copies += 1; limit_guard(self.copies, MAX_COPY, 'copy_groups', at)
         start = at
         while at < self.n:
             line = at
             while at < self.n:
-                self.check(); require(at-line <= MAX_TOKEN, 'limit')
+                self.check(); limit_guard(at-line, MAX_TOKEN, 'copy_line_bytes', at)
                 found = self.raw.find(b'\n', at, min(self.n, at+CHUNK))
                 if found >= 0:
                     at = found+1; break
@@ -361,7 +422,7 @@ class Scanner:
             elif ident_start(c):
                 at += 1
                 while at < self.n and ident_cont(self.raw[at]):
-                    self.progress(start, at, limit=MAX_IDENTIFIER); at += 1
+                    self.progress(start, at, limit=MAX_IDENTIFIER, site='identifier_bytes'); at += 1
                 self.token(IDENT, start, at, identifier=True)
                 word = self.raw[start:at].lower() if at-start in (4, 5) else None
                 require(word != b'begin', 'begin')
@@ -378,7 +439,7 @@ class Scanner:
             elif c == 59:
                 at += 1; self.token(PUNCT, start, at)
                 if depth == 0:
-                    self.statements += 1; require(self.statements <= MAX_STATEMENTS, 'limit')
+                    self.statements += 1; limit_guard(self.statements, MAX_STATEMENTS, 'statements', at)
                     if copy:
                         require(self.copy_at < len(self.copy_commands) and self.raw[at:at+1] == b'\n', 'copy')
                         expected = self.copy_commands[self.copy_at]
@@ -412,7 +473,7 @@ class Scanner:
         output = bytearray()
         for chunk in json.JSONEncoder(sort_keys=True, separators=(',', ':')).iterencode(receipt):
             self.check(); encoded = chunk.encode('ascii')
-            require(len(output)+len(encoded) <= MAX_RECEIPT, 'limit'); output.extend(encoded)
+            limit_guard(len(output)+len(encoded), MAX_RECEIPT, 'receipt_bytes'); output.extend(encoded)
         result = Scan(bytes(self.leaves), bytes(self.tokens), bytes(output)); self.check()
         return result
 
