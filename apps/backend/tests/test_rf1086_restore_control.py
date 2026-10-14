@@ -465,19 +465,35 @@ class TestPrepareArchive(unittest.TestCase):
         self.assertEqual(result.index,f['walk'])
         self.assertEqual(result.archive_binding,dict(bytes=len(f['raw']),sha256=hashlib.sha256(f['raw']).hexdigest()))
         self.assertEqual(result.index.core.script,dict(bytes=len(f['script']),sha256=hashlib.sha256(f['script']).hexdigest()))
-        self.assertEqual([c.object.identity for c in result.plan.candidates],[('relation','public','t')])
+        expected=[('relation','public','t')]
+        if not empty_family:expected.append(('relation','public','column_table'))
+        self.assertEqual([c.object.identity for c in result.plan.candidates],expected)
         archive=control.raw_toc.inspect(f['raw'],f['list'],fixtures.end())[0]
         index=metadata.restore_metadata_index(f['script'],archive,result.index,f['source'],deadline=fixtures.end())
         self.assertTrue(all(not row['aclSpans'] for row in index['objects']))
         self.assertTrue(all(row['identity'][1]!='pg_catalog' for row in index['objects']))
-        self.assertNotIn(b'column_table',b''.join(c.sql for c in result.plan.candidates))
+        supplement=b''.join(c.sql for c in result.plan.candidates)
+        self.assertNotIn(b'(id)',supplement)
+        if empty_family:self.assertNotIn(b'column_table',supplement)
+        else:self.assertIn(b'ON TABLE public.column_table',supplement)
         self.assertEqual(result.plan.counts['objects'],len(f['source'].objects))
         self.assertIsNone(self.diagnostic.failure)
         self.assertEqual(len(self.calls),4)
         self.assertGreaterEqual(budget.remaining(),70)
 
-    def test_unmodeled_source_table_column_acl_through_real_preparation(self):
+    def test_source_table_acl_seed_keeps_column_statements_original_through_real_preparation(self):
         self.assert_column_preparation(empty_family=False)
+
+    def test_missing_owner_column_table_through_real_preparation(self):
+        def change(wire):
+            obj=wire['objects'][0];obj['columnAclCount']=1
+            obj['acl']=fixtures.acl([fixtures.item('writer',('SELECT',)),fixtures.item('reader',('SELECT',))])
+        sql=(b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n'
+             b'GRANT SELECT ON TABLE public.t TO reader;\n'
+             b'GRANT SELECT ON TABLE public.t TO writer;\n'
+             b'GRANT SELECT(id) ON TABLE public.t TO reader;\n')
+        self.positive(wire_change=change,column_rows=(['column_acl','public','t','id',
+            '{reader=r/supabase_admin}'],),walk_options={'acl_sql':sql})
 
     def test_unmodeled_pg_catalog_column_acl_through_real_preparation(self):
         self.assert_column_preparation(empty_family=True)

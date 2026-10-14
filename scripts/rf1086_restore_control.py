@@ -815,9 +815,12 @@ def _validate_relation_profiles(profiles, diff):
                     and item['initialAclEqualsSource'] == item['initialAclNull'], 'internal')
         else:
             require(not (item['initialAclNull'] and item['initialAclEqualsSource']), 'internal')
-            expected_branch = ('unsupported-column' if item['hasColumnAcls'] else
+            column_table = (item['hasColumnAcls'] and item['relationKind'] == 'r'
+                and item['initialAclNull'] and not item['extensionMember'])
+            rejected_owner = failures and not (column_table and failures == ['owner-item-not-default'])
+            expected_branch = ('unsupported-column' if item['hasColumnAcls'] and not column_table else
                 'unsupported-relkind' if item['relationKind'] not in ('r', 'p', 'v', 'm', 'f', 'S') else
-                'owner-profile-rejected' if failures else
+                'owner-profile-rejected' if rejected_owner else
                 'candidate' if branch == 'candidate' else 'predicted-source-archive-only')
             require(branch == expected_branch, 'internal')
         if item['sourceAclEqualsDefault']:
@@ -909,10 +912,12 @@ def _catalog_relation_profiles(source, prepared, diff, construction_raw, source_
                 any(x.grantee is None and x.options for x in obj.acl.items),
                 sum(x == owner_item for x in obj.acl.items) != 1)
             failures = [label for label, failed in zip(_OWNER_PROFILE_FAILURES, conditions, strict=True) if failed]
+        column_table = metadata._column_table_profile(obj)
+        rejected_owner = failures and not (column_table and failures == ['owner-item-not-default'])
         branch = ('source-acl-null' if obj.acl is None else
-            'unsupported-column' if obj.columns else
+            'unsupported-column' if obj.columns and not column_table else
             'unsupported-relkind' if obj.kind not in ('r', 'p', 'v', 'm', 'f', 'S') else
-            'owner-profile-rejected' if failures else
+            'owner-profile-rejected' if rejected_owner else
             'candidate' if digest in candidates else 'predicted-source-archive-only')
         require((digest in candidates) == (branch == 'candidate'), 'internal')
         result.append({'identitySha256': digest, 'branch': branch, 'relationKind': obj.kind,

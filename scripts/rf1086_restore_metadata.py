@@ -689,6 +689,16 @@ def _supported(obj):
         not typ[1].startswith('_') for typ in obj.argument_types)
 
 
+def _column_table_profile(obj):
+    """Table ACL only; original column grants run after the empty-column cut."""
+    return (obj.identity[0] == 'relation' and obj.kind == 'r' and obj.columns > 0
+            and not obj.extension and obj.initial is None and obj.initial_type is None)
+
+
+def _seed_supported(obj):
+    return _supported(obj) or _column_table_profile(obj)
+
+
 TYPE_WORDS = {'int2': (b'SMALLINT',), 'int4': (b'INTEGER',), 'int8': (b'BIGINT',),
     'float4': (b'REAL',), 'float8': (b'DOUBLE', b'PRECISION'), 'bool': (b'BOOLEAN',),
     'varchar': (b'CHARACTER', b'VARYING'), 'bpchar': (b'CHARACTER',),
@@ -838,6 +848,18 @@ def _owner_profile(acl, default, owner):
     return (len(pairs) == len(set(pairs)) and all(x.grantor == owner and x.privileges
         and not (x.grantee is None and x.options) for x in acl.items)
         and sum(x == owner_item for x in acl.items) == 1)
+
+
+def _seed_owner_profile(obj, acl):
+    if not _column_table_profile(obj):
+        return _owner_profile(acl, obj.default, obj.owner)
+    if acl is None:
+        return True
+    # An owner retains grant authority even without its full ordinary ACL item.
+    # This exception never admits another grantor or an empty privilege item.
+    pairs = [(x.grantee, x.grantor) for x in acl.items]
+    return len(pairs) == len(set(pairs)) and all(x.grantor == obj.owner and x.privileges
+        and not (x.grantee is None and x.options) for x in acl.items)
 
 
 def _stable(acl, operations, obj, budget):
@@ -1051,7 +1073,7 @@ def compile_plan(source, *, script, archive, index, deadline):
         if row is not None:
             require((row['classOid'], row['objectOid'], row['owner'], row['kind']) ==
                     (obj.class_oid, obj.object_oid, obj.owner, obj.kind), 'archive_profile')
-        if obj.acl is None or not _supported(obj) or not _owner_profile(obj.acl, obj.default, obj.owner):
+        if obj.acl is None or not _seed_supported(obj) or not _seed_owner_profile(obj, obj.acl):
             archive_only += 1; unmodeled += int(obj.acl is not None)
             continue
         # A missing lifecycle cannot be supplied by a matching comment/target result.
@@ -1075,8 +1097,8 @@ def compile_plan(source, *, script, archive, index, deadline):
             archive_only += 1
             unmodeled += int(row['laterMutation'])
             continue
-        require(not row['laterMutation'] and _owner_profile(obj.acl, obj.default, obj.owner)
-                and _owner_profile(baseline, obj.default, obj.owner), 'suffix_profile')
+        require(not row['laterMutation'] and _seed_owner_profile(obj, obj.acl)
+                and _seed_owner_profile(obj, baseline), 'suffix_profile')
         _stable(obj.acl, operations, obj, budget)
         materialize = obj.identity[0] == 'relation' and len(obj.acl.items) == 1 and obj.acl == obj.default
         if materialize and baseline is None:
@@ -1143,7 +1165,10 @@ def pre_acl(plan, target, *, deadline):
     pieces, applied, noop, selected = [], 0, 0, []
     for candidate in plan.candidates:
         budget.check(); source = candidate.object; actual = by_id[source.identity]
-        require(_object_static(source) == _object_static(actual), 'creation_profile')
+        # Table REVOKE also revokes column rights. Require their absence before
+        # both mutation and noop; the original stream establishes them later.
+        creation = replace(source, columns=0) if _column_table_profile(source) else source
+        require(_object_static(creation) == _object_static(actual), 'creation_profile')
         if actual.acl == source.acl:
             noop += 1
         else:
@@ -1416,6 +1441,7 @@ CONFIG = {
     'unsupportedAclTargets': 'whole-family-or-plain-in-arity-disjoint-v1',
     'unmodeledPgCatalogAclTargets': 'empty-family-closed-single-target-v1',
     'unmodeledTableColumnAcls': 'single-identical-token-column-v1',
+    'columnTableAclSeed': 'ordinary-no-init-owner-origin-zero-target-columns-stable-suffix-v1',
 }
 CONFIG_SHA256 = hashlib.sha256(canonical(CONFIG)).hexdigest()
 
@@ -1433,10 +1459,10 @@ def _statement_copy(statement, budget, first=None):
 
 
 def _unmodeled_table_prefix(s):
-    """Validate a column prefix without adding modeled ACL operations."""
+    """Validate ordinary or single-column rights and retain the distinction."""
     first = s.at
     try:
-        return _operation_prefix(s, DOMAINS['r'])
+        return (*_operation_prefix(s, DOMAINS['r']), False)
     except ledger.Unavailable as error:
         if type(error) is not ledger.Unavailable or type(error.reason) is not str or error.reason != 'role':
             raise
@@ -1475,7 +1501,7 @@ def _unmodeled_table_prefix(s):
             break
     s.need(b'ON')
     s.budget.check()
-    return grant, options, frozenset(rights)
+    return grant, options, frozenset(rights), True
 
 
 def _unsupported_target(statement, matches, kind, ns, n, roles, budget):
@@ -1483,7 +1509,11 @@ def _unsupported_target(statement, matches, kind, ns, n, roles, budget):
     s = _statement_copy(statement, budget)
     domain = DOMAINS['f' if kind in (b'FUNCTION', b'PROCEDURE') else
                      'S' if kind == b'SEQUENCE' else 'r']
-    grant, options, _ = _unmodeled_table_prefix(s) if kind == b'TABLE' else _operation_prefix(s, domain)
+    column = False
+    if kind == b'TABLE':
+        grant, options, _, column = _unmodeled_table_prefix(s)
+    else:
+        grant, options, _ = _operation_prefix(s, domain)
     s.need(kind)
     require(s.name() == (ns, n), 'suffix_profile')
     if kind in (b'FUNCTION', b'PROCEDURE'):
@@ -1496,6 +1526,7 @@ def _unsupported_target(statement, matches, kind, ns, n, roles, budget):
     # This requires immediate TO/FROM and consumes the entire closed ending.
     _operation_ending(s, grant=grant, options=options, roles=roles, owners=owners)
     budget.check()
+    return column
 
 
 def _plain_in(obj):
@@ -1629,10 +1660,13 @@ def _target_candidates(statement, candidates, budget, *, roles):
         _arity_disjoint_target(statement, matches, ns, n, roles, budget)
         return ACLTarget(unmodeled=True)
     require(len(found) == 1, 'suffix_profile')
-    if not _supported(found[0]):
-        _unsupported_target(statement, matches, kind, ns, n, roles, budget)
+    unmodeled = not _supported(found[0])
+    if unmodeled:
+        column = _unsupported_target(statement, matches, kind, ns, n, roles, budget)
+        if _column_table_profile(found[0]) and not column:
+            unmodeled = False
     budget.check()
-    return ACLTarget(exact=found[0], unmodeled=not _supported(found[0]))
+    return ACLTarget(exact=found[0], unmodeled=unmodeled)
 
 
 @closed
@@ -1751,7 +1785,11 @@ def restore_metadata_index(script, archive, restore_index, source, *, deadline):
                 obj = found.exact
                 row = records.get(obj.identity)
                 if row is None:
-                    require(obj.acl is None or not _supported(obj), 'archive_profile'); continue
+                    require(obj.acl is None or not _seed_supported(obj), 'archive_profile'); continue
+                # Column statements stay unmodeled, but their authorization
+                # context must still veto a newly eligible table supplement.
+                if authorized and _column_table_profile(obj):
+                    auth_targets.add(obj.identity)
                 if obj.identity in omitted:
                     if found.unmodeled:
                         continue

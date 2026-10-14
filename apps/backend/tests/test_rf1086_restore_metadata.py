@@ -1081,6 +1081,140 @@ def test_nonowner_and_column_profiles_explicitly_unmodeled_without_supplement():
     assert not plan.candidates and plan.counts['unmodeled'] == 1
 
 
+def column_table_walk(shape='missing', *, acl_sql=None, acl_deps=None, wire_change=None):
+    """Generated source and real archive walk; source column grants are final state."""
+    wire = fixture()
+    obj = wire['objects'][0]
+    obj['columnAclCount'] = 1
+    if shape == 'missing':
+        desired = [item('writer', ('SELECT',)), item('reader', ('SELECT',))]
+        table_sql = (b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n'
+            b'GRANT SELECT ON TABLE public.t TO reader;\n'
+            b'GRANT SELECT ON TABLE public.t TO writer;\n')
+    elif shape == 'partial':
+        desired = [item('writer', ('SELECT',)), item(OWNER, ('SELECT',)), item('reader', ('UPDATE',))]
+        table_sql = (b'REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON TABLE public.t FROM supabase_admin;\n'
+            b'GRANT UPDATE ON TABLE public.t TO reader;\n'
+            b'GRANT SELECT ON TABLE public.t TO writer;\n')
+    else:
+        assert shape in ('default', 'empty')
+        desired = [item()] if shape == 'default' else []
+        table_sql = b''
+    obj['acl'] = acl(desired)
+    if wire_change is not None:
+        wire_change(wire)
+    src = source(wire, column_rows=(['column_acl', 'public', 't', 'id',
+                                    '{reader=r/supabase_admin}'],))
+    sql = table_sql + b'GRANT SELECT(id) ON TABLE public.t TO reader;\n' if acl_sql is None else acl_sql
+    script, archive, walk = complete_walk(wire, acl_sql=sql, acl_deps=acl_deps)
+    index = m.restore_metadata_index(script, archive, walk, src, deadline=end())
+    return wire, src, script, archive, index
+
+
+@pytest.mark.parametrize('shape', ['missing', 'partial', 'default', 'empty'])
+def test_column_table_acl_seed_preserves_source_order_before_original_column_grants(shape):
+    wire, src, script, archive, index = column_table_walk(shape)
+    original = bytes(script)
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert len(plan.candidates) == 1
+    spans = index['objects'][0]['aclSpans']
+    assert all(b'SELECT(id)' not in script[slice(*span)] for span in spans)
+    assert len(spans) == (3 if shape in ('missing', 'partial') else 0)
+    creation = deepcopy(wire); creation['objects'][0]['columnAclCount'] = 0
+    before = target(creation)
+    mutation = m.pre_acl(plan, before, deadline=end())
+    assert mutation.applied == 1 and mutation.noop == 0
+    assert b'(id)' not in mutation.sql and script == original
+    if shape in ('missing', 'partial'):
+        assert mutation.sql.index(b'TO writer;') < mutation.sql.index(b'TO reader;')
+    if shape == 'missing':
+        assert b'TO supabase_admin' not in mutation.sql
+    if shape == 'partial':
+        assert b'GRANT SELECT ON TABLE public.t TO supabase_admin;' in mutation.sql
+    assert plan.candidates[0].materialize is (shape == 'default')
+    after = target(creation, explicit=True)
+    m.post_acl(plan, before, after, mutation, deadline=end())
+    noop = m.pre_acl(plan, after, deadline=end())
+    assert noop.sql == b'' and noop.applied == 0 and noop.noop == 1
+
+
+@pytest.mark.parametrize('shape', ['missing', 'default'])
+@pytest.mark.parametrize('explicit', [False, True])
+def test_column_table_creation_requires_zero_columns_even_for_noop(shape, explicit):
+    wire, src, script, archive, index = column_table_walk(shape)
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    with pytest.raises(m.MetadataUnavailable) as error:
+        m.pre_acl(plan, target(wire, explicit=explicit), deadline=end())
+    assert error.value.reason == 'creation_profile'
+
+
+@pytest.mark.parametrize('drift', ['column', 'unrelated-acl', 'selected-owner', 'selected-acl'])
+def test_column_table_immediate_postcheck_preserves_other_state(drift):
+    wire, src, script, archive, index = column_table_walk()
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    creation = deepcopy(wire); creation['objects'][0]['columnAclCount'] = 0
+    before, after = target(creation), target(creation, explicit=True)
+    mutation = m.pre_acl(plan, before, deadline=end())
+    objects = list(after.objects)
+    if drift == 'column': objects[0] = replace(objects[0], columns=1)
+    elif drift == 'unrelated-acl': objects[1] = replace(objects[1], acl=objects[0].acl)
+    elif drift == 'selected-owner': objects[0] = replace(objects[0], owner='reader')
+    else: objects[0] = replace(objects[0], acl=None)
+    with pytest.raises(m.MetadataUnavailable):
+        m.post_acl(plan, before, replace(after, objects=tuple(objects)), mutation, deadline=end())
+
+
+def test_column_table_destructive_owner_suffix_cannot_be_rescued_by_later_grant():
+    sql = (b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n'
+        b'GRANT SELECT ON TABLE public.t TO supabase_admin;\n'
+        b'GRANT UPDATE ON TABLE public.t TO reader;\n'
+        b'GRANT SELECT ON TABLE public.t TO writer;\n'
+        b'GRANT SELECT(id) ON TABLE public.t TO reader;\n')
+    _, src, script, archive, index = column_table_walk('partial', acl_sql=sql)
+    with pytest.raises(m.MetadataUnavailable) as error:
+        m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert error.value.reason == 'suffix_profile'
+
+
+def test_column_table_unmodeled_column_authorization_still_taints_table_seed():
+    sql = (b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n'
+        b'GRANT SELECT ON TABLE public.t TO reader;\n'
+        b'GRANT SELECT ON TABLE public.t TO writer;\n'
+        b'SET SESSION AUTHORIZATION reader;\n'
+        b'GRANT SELECT(id) ON TABLE public.t TO reader;\n'
+        b'RESET SESSION AUTHORIZATION;\n')
+    _, src, script, archive, index = column_table_walk(acl_sql=sql)
+    row = next(row for row in index['objects'] if row['identity'] == ['relation', 'public', 't'])
+    assert row['laterMutation'] and len(row['aclSpans']) == 3
+    with pytest.raises(m.MetadataUnavailable) as error:
+        m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert error.value.reason == 'suffix_profile'
+
+
+@pytest.mark.parametrize('fault', ['extension', 'initial', 'partitioned', 'nonowner',
+                                 'duplicate', 'empty-item', 'public-option'])
+def test_column_table_seed_domain_does_not_expand_other_profiles(fault):
+    def change(wire):
+        obj = wire['objects'][0]
+        if fault == 'extension': obj['extension'] = [['pg_net', '0.20.3', OWNER]]
+        elif fault == 'initial':
+            obj['initialAcl'] = deepcopy(obj['defaultAcl']); obj['initialPrivilegeType'] = 'e'
+        elif fault == 'partitioned': obj['kind'] = 'p'
+        elif fault == 'nonowner': obj['acl'] = acl([item('reader', ('SELECT',), grantor='writer')])
+        elif fault == 'duplicate': obj['acl'] = acl([item('reader', ('SELECT',))] * 2)
+        elif fault == 'empty-item': obj['acl'] = acl([item('reader', ())])
+        else: obj['acl'] = acl([item(None, ('SELECT',), ('SELECT',))])
+    _, src, script, archive, index = column_table_walk(wire_change=change)
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert not plan.candidates and plan.counts['unmodeled'] == 1
+
+
+def test_new_column_table_profile_retains_exact_direct_dependency():
+    with pytest.raises(m.MetadataUnavailable) as error:
+        column_table_walk('default', acl_deps=(20,))
+    assert error.value.reason == 'archive_profile'
+
+
 def test_acl_array_quoting_unicode_and_public_role_are_not_public():
     wire = fixture(); n = 'odd ,"é'
     wire['roles'].append({'name':n,'oid':17004,'superuser':False,'login':False})

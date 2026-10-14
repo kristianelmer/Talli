@@ -564,9 +564,13 @@ def _relation_plan_case(case):
     wire=f.fixture(ordered=case in ('candidate','predicted','initial-equal'))
     obj=wire['objects'][0];suffix=b'';columns=()
     if case=='source-null':obj['acl']=None
-    elif case=='column':
+    elif case in ('column','column-seed','column-partial','column-missing','column-nonowner'):
         obj['columnAclCount']=1
         columns=(['column_acl','public','t','id','{reader=r/supabase_admin}'],)
+        if case=='column':obj['kind']='p'  # Outside the new ordinary-table domain.
+        elif case=='column-partial':obj['acl']=f.acl([f.item(rights=('SELECT',))])
+        elif case=='column-missing':obj['acl']=f.acl([f.item('reader',('SELECT',))])
+        elif case=='column-nonowner':obj['acl']=f.acl([f.item(),f.item('reader',('SELECT',),grantor='writer')])
     elif case=='relkind':obj['kind']='i'
     elif case=='partial-owner':obj['acl']=f.acl([f.item(rights=('SELECT',))])
     elif case=='duplicate':obj['acl']=f.acl([f.item(),f.item()])
@@ -592,6 +596,9 @@ def _relation_plan_case(case):
 
 @pytest.mark.parametrize('case,branch,failures',[
     ('source-null','source-acl-null',[]),('column','unsupported-column',[]),
+    ('column-seed','candidate',[]),('column-partial','candidate',['owner-item-not-default']),
+    ('column-missing','candidate',['owner-item-not-default']),
+    ('column-nonowner','owner-profile-rejected',['nonowner-grantor']),
     ('relkind','unsupported-relkind',[]),('partial-owner','owner-profile-rejected',['owner-item-not-default']),
     ('duplicate','owner-profile-rejected',['duplicate-pairs','owner-item-not-default']),
     ('nonowner','owner-profile-rejected',['nonowner-grantor']),
@@ -607,12 +614,12 @@ def test_real_compiler_branch_traits_are_diagnostic_not_a_mutation_claim(case,br
     value=_catalog_line(capsys);assert value['status']=='observed'
     traits=value['relationProfiles'][0]
     assert traits['branch']==branch and traits['ownerProfileFailures']==failures
-    assert traits['hasColumnAcls'] is (case=='column')
-    assert traits['sourceAclEqualsDefault'] is (case in ('column','relkind','materialize','extension'))
+    assert traits['hasColumnAcls'] is case.startswith('column')
+    assert traits['sourceAclEqualsDefault'] is (case in ('column','column-seed','relkind','materialize','extension'))
     assert traits['initialAclNull'] is (case!='initial-equal')
     assert traits['initialAclEqualsSource'] is (case in ('source-null','initial-equal'))
     assert traits['extensionMember'] is (case=='extension')
-    assert traits['candidateMaterialize']==(case in ('materialize','extension') if branch=='candidate' else None)
+    assert traits['candidateMaterialize']==(case in ('materialize','extension','column-seed') if branch=='candidate' else None)
     assert not any(key in traits for key in ('name','acl','owner','grantor','sql','applied','noop'))
     encoded=json.dumps(value)
     assert all(text not in encoded for text in ('supabase_admin','private_extension','=arwdDxtm/','"reader"'))
@@ -650,6 +657,10 @@ def test_real_compiler_branch_traits_are_diagnostic_not_a_mutation_claim(case,br
     ('duplicate',lambda v:v['relationProfiles'][0].update(ownerProfileFailures=['owner-item-not-default','duplicate-pairs'])),
     ('duplicate',lambda v:v['relationProfiles'][0].update(ownerProfileFailures=['duplicate-pairs','duplicate-pairs'])),
     ('column',lambda v:v['relationProfiles'][0].update(branch='candidate',candidateMaterialize=True)),
+    ('column-seed',lambda v:v['relationProfiles'][0].update(extensionMember=True)),
+    ('column-seed',lambda v:v['relationProfiles'][0].update(initialAclNull=False)),
+    ('column-seed',lambda v:v['relationProfiles'][0].update(branch='unsupported-column',candidateMaterialize=None)),
+    ('column-partial',lambda v:v['relationProfiles'][0].update(ownerProfileFailures=['nonowner-grantor','owner-item-not-default'])),
     ('materialize',lambda v:v.update(schema='rf1086-restore-catalog-diagnostic-v1')),
 ])
 def test_relation_profile_forgery_rejected_even_with_matching_outer_hashes(case,mutation,capsys):
