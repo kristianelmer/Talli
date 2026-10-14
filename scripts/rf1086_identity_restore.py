@@ -46,6 +46,15 @@ initdb -D /tmp/rf-recovery/data --username="$RECOVERY_BOOTSTRAP" --auth-local=tr
 exec postgres -D /tmp/rf-recovery/data -c listen_addresses='*' -c unix_socket_directories=/tmp -c shared_preload_libraries="$RECOVERY_PRELOAD" -c cron.launch_active_jobs=off
 """
 
+REPAIRED_INIT = """set -eu
+mkdir -p /tmp/rf-recovery/data
+initdb -D /tmp/rf-recovery/data --username="$RECOVERY_BOOTSTRAP" --auth-local=trust --auth-host=scram-sha-256 >/dev/null
+umask 077
+set -C
+printf '%s' "$RECOVERY_HBA" > /tmp/rf-recovery/pg_hba.owned.conf
+exec postgres -D /tmp/rf-recovery/data -c listen_addresses='*' -c unix_socket_directories=/tmp -c shared_preload_libraries="$RECOVERY_PRELOAD" -c cron.launch_active_jobs=off -c hba_file=/tmp/rf-recovery/pg_hba.owned.conf
+"""
+
 
 def checked(args, **kwargs):
     """Never render command stderr: dumps, Auth env and SQL may contain secrets."""
@@ -478,9 +487,11 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
         diagnostic.disable()
         setup_end=min(budget.end-55,time.monotonic()+15)
         nonce=uuid4().hex
-        owner=construction.ResourceOwner(nonce,source,db['Image'],auth['Image'],budget)
-        names=owner.names; label=LABEL+'='+nonce
-        owner.acquire('network',['docker','network','create','--internal','--label',label,names['network']],end=setup_end)
+        with construction.io_deadline(budget,end=setup_end):
+            owner=construction.ResourceOwner(nonce,source,db['Image'],auth['Image'],budget)
+            names=owner.names; label=LABEL+'='+nonce
+            owner.acquire('network',['docker','network','create','--internal','--label',label,names['network']],end=setup_end)
+            hba_policy=owner.bind_hba(end=setup_end)
         owner.acquire('volume',['docker','volume','create','--label',label,names['volume']],end=setup_end)
         # The volume initializer is named, labelled and registered too: killing
         # a Docker CLI must not leave an unowned daemon-side helper running.
@@ -493,7 +504,8 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
         target=owner.acquire('database',['docker','create','--pull=never','--name',names['database'],
             '--label',label,'--network',names['network'],'--user','postgres','--entrypoint','sh',
             '-e','RECOVERY_BOOTSTRAP='+bootstrap,'-e','RECOVERY_PRELOAD='+preload,
-            '-v',names['volume']+':/tmp/rf-recovery',db['Image'],'-c',INIT],end=setup_end)
+            '-e','RECOVERY_HBA='+hba_policy.decode('ascii'),
+            '-v',names['volume']+':/tmp/rf-recovery',db['Image'],'-c',REPAIRED_INIT],end=setup_end)
         budget.command(['docker','start',target],end=setup_end,cap=4096)
         while True:
             try:
@@ -529,6 +541,7 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
             catalog_mismatch = recovered['catalog'] != before['catalog']
             raise ValueError('Independent recovery roles, ownership, ACLs or Auth rows differ; components='
                              +_fingerprint_mismatch_components(before,recovered))
+        owner.verify_hba(end=strict_end)
         budget.enter('actors')
         env=auth_environment(source_env,names['database'])
         configuration=owner.directory/'auth.env'

@@ -243,6 +243,226 @@ def test_failed_acquisition_is_recorded_reconciled_and_removed(resource_model):
     assert not model.values and not directory.exists()
 
 
+_OWNED_HBA_POLICY = (
+    b'local all all trust\n'
+    b'host all all 127.0.0.1/32 scram-sha-256\n'
+    b'host all all ::1/128 scram-sha-256\n'
+    b'local replication all trust\n'
+    b'host replication all 127.0.0.1/32 scram-sha-256\n'
+    b'host replication all ::1/128 scram-sha-256\n'
+    b'host postgres supabase_auth_admin 172.28.0.0/24 scram-sha-256\n'
+    b'host postgres postgres 172.28.0.1/32 scram-sha-256\n'
+    b'host postgres talli_ledger_backend 172.28.0.1/32 scram-sha-256\n')
+
+
+@pytest.fixture
+def hba_owner(resource_model, admission_io, monkeypatch):
+    """Real constructor, registration, inspect/fsync and cleanup; no daemon/child."""
+    model, directory = resource_model
+    budget, clock = admission_io
+    state = {'reply': b't\n', 'fault': None, 'advance': 0, 'readbacks': []}
+    def command(args, **kw):
+        budget.remaining(end=kw.get('end'))
+        if args[:3] == ['docker', 'exec', '-i']:
+            state['readbacks'].append((args, kw))
+            if state['fault'] is not None: raise state['fault']
+            clock[0] += state['advance']
+            return state['reply']  # Whole-scope post-yield check must catch late return.
+        return model.command(args, **kw)
+    monkeypatch.setattr(budget, 'command', command)
+    owner = control.ResourceOwner('a'*32, 'c'*64, 'sha256:'+'d'*64, 'sha256:'+'e'*64, budget)
+    owner.acquire('network', ['docker','network','create',owner.names['network']], end=1005.)
+    network = model.values[owner.names['network']]
+    network.update(Driver='bridge', Scope='local', EnableIPv6=False,
+        IPAM={'Config':[{'Subnet':'172.28.0.0/24','Gateway':'172.28.0.1'}]}, Containers={})
+    return owner, network, model, directory, clock, state
+
+
+def test_owned_hba_binds_once_to_real_registered_empty_bridge(hba_owner):
+    owner, _, model, directory, _, _ = hba_owner
+    old_keys = set(json.loads(owner.record.read_bytes()))
+    assert owner._hba_commitment is None
+    assert owner.bind_hba(end=1005.) == _OWNED_HBA_POLICY
+    assert type(owner._hba_commitment) is tuple
+    assert owner._hba_commitment == ('b'*64,'172.28.0.0/24','172.28.0.1',_OWNED_HBA_POLICY)
+    assert len(_OWNED_HBA_POLICY) <= 4096 and owner.attempted == ['network']
+    assert set(json.loads(owner.record.read_bytes())) == old_keys
+    assert owner.record.stat().st_mode & 0o777 == 0o600
+    assert directory.stat().st_mode & 0o777 == 0o700
+    count = len(model.calls)
+    with pytest.raises(control.RestoreUnavailable): owner.bind_hba(end=1005.)
+    assert len(model.calls) == count
+    owner.cleanup()
+    assert not model.values and not directory.exists()
+
+
+@pytest.mark.parametrize('path,value', [
+    (('Driver',),'overlay'), (('Scope',),'swarm'), (('EnableIPv6',),True),
+    (('Containers',),{'foreign':{}}), (('Containers',),[]),
+    (('IPAM','Config'),[{},{}]), (('IPAM','Config'),None),
+    (('IPAM','Config',0,'Subnet'),'0.0.0.0/0'),
+    (('IPAM','Config',0,'Subnet'),'192.0.2.0/24'),
+    (('IPAM','Config',0,'Subnet'),'172.28.0.1/24'),
+    (('IPAM','Config',0,'Subnet'),'172.28.0.0/31'),
+    (('IPAM','Config',0,'Subnet'),'172.28.0.0/24\nhost all all all trust'),
+    (('IPAM','Config',0,'Subnet'),'x'*4097),
+    (('IPAM','Config',0,'Subnet'),True), (('IPAM','Config',0,'Subnet'),2887516160),
+    (('IPAM','Config',0,'Gateway'),'172.28.0.0'),
+    (('IPAM','Config',0,'Gateway'),'172.28.0.255'),
+    (('IPAM','Config',0,'Gateway'),'172.29.0.1'),
+    (('IPAM','Config',0,'Gateway'),'0172.28.0.1'),
+    (('IPAM','Config',0,'Gateway'),'172.28.0.1 '),
+    (('IPAM','Config',0,'Gateway'),2887516161),
+])
+def test_owned_hba_rejects_bad_prestart_profile_and_keeps_cleanup(hba_owner,path,value):
+    owner, network, model, directory, _, _ = hba_owner
+    target=network
+    for key in path[:-1]: target=target[key]
+    target[path[-1]]=value
+    with pytest.raises(control.RestoreUnavailable): owner.bind_hba(end=1005.)
+    assert owner._hba_commitment is None and owner.attempted==['network']
+    owner.cleanup()
+    assert not model.values and not directory.exists()
+
+
+@pytest.mark.parametrize('attempted', [[], ['volume'], ['network','volume']])
+def test_owned_hba_refuses_unregistered_or_late_binding(hba_owner,attempted):
+    owner, _, model, _, _, _ = hba_owner
+    owner.attempted=attempted
+    count=len(model.calls)
+    with pytest.raises(control.RestoreUnavailable): owner.bind_hba(end=1005.)
+    assert owner._hba_commitment is None and len(model.calls)==count
+
+
+def test_owned_hba_missing_network_cannot_create_a_commitment(hba_owner):
+    owner, _, model, _, _, _ = hba_owner
+    model.values.clear()
+    with pytest.raises(control.RestoreUnavailable): owner.bind_hba(end=1005.)
+    assert owner._hba_commitment is None
+
+
+def test_owned_hba_record_and_policy_work_cannot_outlive_setup_end(hba_owner,monkeypatch):
+    owner, _, model, directory, clock, _=hba_owner
+    record=owner._record
+    def late_record():
+        record();clock[0]=1005.01
+    monkeypatch.setattr(owner,'_record',late_record)
+    with pytest.raises(control.RestoreUnavailable) as caught:owner.bind_hba(end=1005.)
+    assert caught.value.reason=='deadline' and owner.attempted==['network']
+    monkeypatch.setattr(owner,'_record',record)
+    owner.budget.enter('cleanup');owner.cleanup()
+    assert not model.values and not directory.exists()
+
+
+@pytest.mark.parametrize('fault', ['record','inspect','expired'])
+def test_owned_hba_binding_failure_preserves_identity_and_registered_cleanup(hba_owner,monkeypatch,fault):
+    owner, _, model, directory, clock, _ = hba_owner
+    primary=KeyboardInterrupt('generated acquisition cancellation')
+    original = owner._record if fault=='record' else owner.inspect
+    if fault=='expired':clock[0]=1005.01
+    else:
+        def fail(*args,**kw):raise primary
+        monkeypatch.setattr(owner, '_record' if fault=='record' else 'inspect', fail)
+    with pytest.raises(control.RestoreUnavailable if fault=='expired' else KeyboardInterrupt) as caught:
+        owner.bind_hba(end=1005.)
+    if fault!='expired':
+        assert caught.value is primary
+        monkeypatch.setattr(owner, '_record' if fault=='record' else 'inspect', original)
+    else:assert caught.value.reason=='deadline'
+    assert owner._hba_commitment is None
+    owner.budget.enter('cleanup');owner.cleanup()
+    assert not model.values and not directory.exists()
+
+
+def _hba_host_method(policy, database, role, address):
+    """Independent finite evaluator for generated literal host rules, not a PG probe."""
+    from ipaddress import ip_address, ip_network
+    peer=ip_address(address)
+    for line in policy.decode('ascii').splitlines():
+        parts=line.split()
+        if parts[0]!='host':continue
+        _, db, user, cidr, method=parts
+        if (db in ('all',database) and user in ('all',role)
+                and peer in ip_network(cidr)):
+            return method
+    return None
+
+
+@pytest.mark.parametrize('database,role,address,allowed', [
+    ('postgres','supabase_auth_admin','172.28.0.3',True),
+    ('postgres','postgres','172.28.0.1',True),
+    ('postgres','talli_ledger_backend','172.28.0.1',True),
+    ('postgres','postgres','172.28.0.3',False),
+    ('postgres','talli_ledger_backend','172.28.0.3',False),
+    ('postgres','talli_company_access_backend','172.28.0.1',False),
+    ('postgres','unknown','172.28.0.1',False),
+    ('other','supabase_auth_admin','172.28.0.3',False),
+    ('other','postgres','172.28.0.1',False),
+    ('other','talli_ledger_backend','172.28.0.1',False),
+    ('postgres','supabase_auth_admin','172.29.0.3',False),
+    ('postgres','postgres','203.0.113.1',False),
+    ('postgres','postgres','fd00::1',False),
+])
+def test_owned_hba_finite_remote_policy_has_only_three_role_scopes(hba_owner,database,role,address,allowed):
+    owner,*_=hba_owner
+    method=_hba_host_method(owner.bind_hba(end=1005.),database,role,address)
+    assert method==('scram-sha-256' if allowed else None)
+
+
+def test_owned_hba_target_readback_has_fixed_path_operator_cap_and_original_end(hba_owner):
+    owner, _, _, _, _, state=hba_owner
+    owner.bind_hba(end=1005.);owner.identities['database']='f'*64
+    original_end=owner.budget.end
+    owner.verify_hba(end=1007.)
+    args,kw=state['readbacks'][0]
+    assert args==['docker','exec','-i','f'*64,'psql','-U','supabase_admin','-h','/tmp',
+                  '--dbname','postgres','-XqAt','-v','ON_ERROR_STOP=1']
+    expected=("select current_setting('hba_file') = '/tmp/rf-recovery/pg_hba.owned.conf' and "
+        "pg_read_binary_file('/tmp/rf-recovery/pg_hba.owned.conf',0,4097) = decode('"+
+        _OWNED_HBA_POLICY.hex()+"','hex');\n").encode('ascii')
+    assert kw=={'data':expected,'cap':32,'end':1007.}
+    assert owner.budget.end==original_end and owner.budget.phase=='construction'
+
+
+@pytest.mark.parametrize('reply',[b'',b'f\n',b't',b't\n\n',b't\nf\n',b' t\n',b't\r\n',b't\n'+b'x'*32])
+def test_owned_hba_readback_refuses_any_nonexact_boolean(hba_owner,reply):
+    owner, _, _, _, _, state=hba_owner
+    owner.bind_hba(end=1005.);owner.identities['database']='f'*64
+    state['reply']=reply
+    with pytest.raises(control.RestoreUnavailable) as caught:owner.verify_hba(end=1007.)
+    assert caught.value.reason=='source_binding'
+
+
+@pytest.mark.parametrize('bad', [None, [], ('b'*64,), ('f'*64,'172.28.0.0/24','172.28.0.1',_OWNED_HBA_POLICY),
+    ('b'*64,'172.28.0.0/24','172.28.0.1','not bytes'),
+    ('b'*64,'172.28.0.0/24','172.28.0.1',b'x'*4097)])
+def test_owned_hba_readback_rejects_missing_or_invalid_commitment_before_command(hba_owner,bad):
+    owner, _, _, _, _, state=hba_owner
+    owner._hba_commitment=bad;owner.identities['database']='f'*64
+    with pytest.raises(control.RestoreUnavailable):owner.verify_hba(end=1007.)
+    assert not state['readbacks']
+
+
+@pytest.mark.parametrize('primary', [KeyboardInterrupt('cancel'),SystemExit(21),
+    control.RestoreUnavailable('deadline'),control.RestoreUnavailable('child_failure')])
+def test_owned_hba_readback_preserves_command_failure_identity(hba_owner,primary):
+    owner, _, _, _, _, state=hba_owner
+    owner.bind_hba(end=1005.);owner.identities['database']='f'*64;state['fault']=primary
+    with pytest.raises(type(primary)) as caught:owner.verify_hba(end=1007.)
+    assert caught.value is primary
+
+
+@pytest.mark.parametrize('expired_before',[False,True])
+def test_owned_hba_readback_cannot_refresh_exhausted_strict_window(hba_owner,expired_before):
+    owner, _, _, _, clock, state=hba_owner
+    owner.bind_hba(end=1005.);owner.identities['database']='f'*64
+    if expired_before:clock[0]=1007.01
+    else:state['advance']=7.01
+    with pytest.raises(control.RestoreUnavailable) as caught:owner.verify_hba(end=1007.)
+    assert caught.value.reason=='deadline'
+    assert len(state['readbacks'])==(0 if expired_before else 1)
+
+
 def test_absence_after_unseen_failed_acquisition_does_not_erase_owner_record(resource_model):
     model,_=resource_model;model.fail_before_create=True
     owner=control.ResourceOwner('a'*32,'c'*64,'sha256:'+'d'*64,'sha256:'+'e'*64,model)
@@ -1385,6 +1605,7 @@ def internal_endpoint_model(admission_io, monkeypatch):
     owner.names = {'network': 'rf193_identity_net_' + owner.nonce,
         'database': 'rf193_identity_db_' + owner.nonce, 'auth': 'rf193_identity_auth_' + owner.nonce}
     owner.identities = {'network': 'b'*64, 'database': 'c'*64, 'auth': 'd'*64}
+    owner._hba_commitment = ('b'*64, '172.28.0.0/24', '172.28.0.1', b'fixture-policy')
     owner.images = {'database': 'sha256:'+'1'*64, 'auth': 'sha256:'+'2'*64}
     owner.attempted = ['network', 'database', 'auth']
     labels = {owner.label: owner.nonce}
@@ -1431,6 +1652,20 @@ def test_internal_endpoint_admission_uses_real_owner_and_reciprocal_ip_not_publi
     assert owner.internal_endpoints() == (('172.28.0.2', 5432), ('172.28.0.3', 9999))
     assert state['records'] == 3 and len(state['calls']) == 6
     assert all(0 < kwargs['cap'] <= 1024**2 for _, kwargs in state['calls'])
+
+
+@pytest.mark.parametrize('fault',['missing','network','subnet','gateway'])
+def test_owned_hba_live_admission_cannot_drop_or_drift_prestart_commitment(internal_endpoint_model,fault):
+    owner, _, state=internal_endpoint_model
+    if fault=='missing':del owner._hba_commitment
+    else:
+        bound=list(owner._hba_commitment)
+        at={'network':0,'subnet':1,'gateway':2}[fault]
+        bound[at]={'network':'9'*64,'subnet':'172.28.0.0/25','gateway':'172.28.0.254'}[fault]
+        owner._hba_commitment=tuple(bound)
+    with pytest.raises(control.RestoreUnavailable) as caught:owner.internal_endpoints()
+    assert caught.value.reason=='source_binding'
+    assert len(state['calls'])==2  # No service predicate/capture if network binding failed.
 
 
 @pytest.mark.parametrize('path,value', [

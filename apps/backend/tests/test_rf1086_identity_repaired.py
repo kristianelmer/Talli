@@ -70,6 +70,10 @@ def repaired_model(tmp_path,monkeypatch):
             return b'drift' if state['fault']=='source_drift' and state['metadata']==2 else b'source metadata'
         if 'pg_dumpall' in args:return b'roles'
         if 'pg_dump' in args:return b'archive'
+        if b"current_setting('hba_file')" in (kwargs.get('data') or b''):
+            state['hbaReadback']=(budget.phase,kwargs['end'])
+            if state.get('hbaFailure') is not None:raise state['hbaFailure']
+            return state.get('hbaResult',b't\n')
         return b''
     monkeypatch.setattr(budget,'command',command)
     def prepare(*args,**kwargs):
@@ -90,13 +94,26 @@ def repaired_model(tmp_path,monkeypatch):
                 sort_keys=True,separators=(',',':'))
         return '{"schema":"fixture-safe-receipt"}'
     monkeypatch.setattr(control,'construction_receipt',receipt)
+    real_owner=control.ResourceOwner
+    state['realOwner']=real_owner
     class Owner:
         def __init__(self,nonce,*args):
             owners.append(self);self.cleaned=False;self.directory=tmp_path
+            self.budget=budget;self.source=DB['Id'];self.identities={};self.attempted=[]
+            self._hba_commitment=None
             self.names={k:'rf193_identity_'+k+'_'+nonce for k in ('network','volume','init','database','auth')}
             self.names['database']='rf193_identity_db_'+nonce
         def acquire(self,kind,args,**kw):
-            command(args,**kw);return {'init':'d'*64,'database':'e'*64}.get(kind,'f'*64)
+            self.attempted.append(kind);command(args,**kw)
+            value={'init':'d'*64,'database':'e'*64}.get(kind,'f'*64)
+            self.identities[kind]=value
+            return value
+        def inspect(self,kind,**kw):
+            assert kind=='network' and self.attempted==['network']
+            return {'Driver':'bridge','Scope':'local','Internal':True,'EnableIPv6':False,
+                'IPAM':{'Config':[{'Subnet':'172.28.0.0/24','Gateway':'172.28.0.1'}]},'Containers':{}}
+        bind_hba=real_owner.bind_hba
+        verify_hba=real_owner.verify_hba
         def cleanup(self):
             self.cleaned=True
             if state['cleanupFault']:raise control.RestoreUnavailable('cleanup_uncertain')
@@ -157,6 +174,159 @@ def test_legacy_ssh_profile_refuses_before_source_or_target_work(repaired_model,
     assert state['postchecks']==0
 
 
+def test_owned_hba_policy_is_installed_before_database_start(repaired_model,tmp_path):
+    budget,_,calls,_,_=repaired_model
+    with pytest.raises(ValueError,match='components=catalog'):
+        with identity.restored_identity(SOURCE_URL,tmp_path,None,budget=budget):
+            pytest.fail('strict mismatch admitted')
+    created=[args for args,_ in calls if args[:2]==['docker','create']
+             and '--user' in args and args[args.index('--user')+1]=='postgres']
+    assert len(created)==1
+    args=created[0]
+    assert '-c hba_file=/tmp/rf-recovery/pg_hba.owned.conf' in args[-1]
+    policy=next(value.split('=',1)[1] for value in args
+                if value.startswith('RECOVERY_HBA='))
+    assert 'host postgres supabase_auth_admin 172.28.0.0/24 scram-sha-256\n' in policy
+    assert 'host postgres talli_ledger_backend 172.28.0.1/32 scram-sha-256\n' in policy
+
+
+def test_owned_hba_initializer_is_fixed_exclusive_and_fail_before_exec():
+    # Shell contract only: generated orchestration tests below cover startup refusal;
+    # no shell/PG execution is claimed here.
+    rows=identity.REPAIRED_INIT.splitlines()
+    assert rows[:3]==identity.INIT.splitlines()[:3]
+    assert rows[3:6]==['umask 077','set -C',
+        'printf \'%s\' "$RECOVERY_HBA" > /tmp/rf-recovery/pg_hba.owned.conf']
+    assert rows[0]=='set -eu' and len(rows)==7
+    assert rows[-1]==identity.INIT.splitlines()[-1]+' -c hba_file=/tmp/rf-recovery/pg_hba.owned.conf'
+    assert 'RECOVERY_HBA' not in identity.INIT and 'hba_file=' not in identity.INIT
+
+
+@pytest.mark.parametrize('primary',[ValueError('generated readback fault'),KeyboardInterrupt('generated cancel'),
+    SystemExit(23),control.RestoreUnavailable('deadline')])
+@pytest.mark.parametrize('cleanup_fault',[False,True])
+def test_owned_hba_readback_failure_never_reaches_auth_preserves_primary_and_sourcepost(
+        repaired_model,tmp_path,primary,cleanup_fault):
+    budget,state,calls,owners,_=repaired_model
+    state.update(recoverPass=True,hbaFailure=primary,cleanupFault=cleanup_fault)
+    with pytest.raises(type(primary)) as caught:
+        with identity.restored_identity(SOURCE_URL,tmp_path,None,budget=budget):
+            pytest.fail('failed HBA readback yielded')
+    assert caught.value is primary and owners[0].cleaned
+    assert state['hbaReadback'][0]=='construction'
+    assert state['receipt']['before']==state['receipt']['recovered']
+    assert state['receipt']['source_postcheck'] and state['postchecks']==3
+    assert state['receipt']['cleanup_complete'] is (not cleanup_fault)
+    assert not any('--env-file' in args for args,_ in calls)
+    assert not state['receipt']['business_complete'] and budget.phase=='source_post'
+
+
+@pytest.mark.parametrize('reply',[b'f\n',b't\n\n',b''])
+def test_owned_hba_readback_boolean_refusal_happens_before_actors(repaired_model,tmp_path,reply):
+    budget,state,calls,owners,_=repaired_model
+    state.update(recoverPass=True,hbaResult=reply)
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        with identity.restored_identity(SOURCE_URL,tmp_path,None,budget=budget):pytest.fail('invalid readback')
+    assert caught.value.reason=='source_binding'
+    assert owners[0].cleaned and state['receipt']['source_postcheck']
+    assert not any('--env-file' in args for args,_ in calls)
+
+
+@pytest.mark.parametrize('expire_fingerprint',[False,True])
+def test_owned_hba_readback_shares_fingerprint_strict_end_without_reset(repaired_model,tmp_path,monkeypatch,expire_fingerprint):
+    budget,state,calls,_,_=repaired_model;state['recoverPass']=True
+    clock=[budget.started];ends=[]
+    monkeypatch.setattr(control.time,'monotonic',lambda:clock[0])
+    fingerprint=identity.fingerprint
+    def observe(container,**kw):
+        result=fingerprint(container,**kw)
+        if container!=DB['Id']:
+            ends.append(kw['checked_call'].keywords['end'])
+            clock[0]+=10.01 if expire_fingerprint else 3
+        return result
+    monkeypatch.setattr(identity,'fingerprint',observe)
+    primary=ValueError('stop after verifying unchanged deadline')
+    state['hbaFailure']=primary
+    with pytest.raises(control.RestoreUnavailable if expire_fingerprint else ValueError) as caught:
+        with identity.restored_identity(SOURCE_URL,tmp_path,None,budget=budget):pytest.fail('unexpected entry')
+    assert ends==[budget.started+10]
+    if expire_fingerprint:
+        assert caught.value.reason=='deadline' and 'hbaReadback' not in state
+    else:
+        assert caught.value is primary and state['hbaReadback']==('construction',ends[0])
+    assert state['receipt']['cleanup_complete'] and state['receipt']['source_postcheck']
+    assert not any('--env-file' in args for args,_ in calls)
+
+
+@pytest.mark.parametrize('fault',['constructor_record','acquire_record','create_lost','inspect_bad','bind_cancel'])
+def test_owned_hba_real_constructor_and_early_network_failure_preserve_owner_scope(
+        repaired_model,tmp_path,monkeypatch,fault):
+    budget,state,calls,_,_=repaired_model
+    real_owner=state['realOwner']; created=[];daemon={};primary=KeyboardInterrupt('generated early cancellation')
+    directory=tmp_path/'real-owner';directory.mkdir()
+    monkeypatch.setattr(control.tempfile,'mkdtemp',lambda **kw:str(directory))
+    class Owner(real_owner):
+        def __init__(self,*args):
+            created.append(self);super().__init__(*args)
+        def _record(self):
+            if fault=='constructor_record' or fault=='acquire_record' and self.attempted:
+                raise primary
+            super()._record()
+        def bind_hba(self,**kw):
+            if fault=='bind_cancel':raise primary
+            return super().bind_hba(**kw)
+    monkeypatch.setattr(control,'ResourceOwner',Owner)
+    original=budget.command
+    def command(args,**kw):
+        if args[:2]!=['docker','network']:return original(args,**kw)
+        calls.append((args,kw));budget.remaining(end=kw.get('end'))
+        if args[2]=='create':
+            owner=created[0]
+            assert json.loads(owner.record.read_bytes())['attempted']==['network']
+            daemon[args[-1]]={'Id':'f'*64,'Name':args[-1],'Labels':{owner.label:owner.nonce},
+                'Internal':True,'Driver':'overlay' if fault=='inspect_bad' else 'bridge',
+                'Scope':'local','EnableIPv6':False,'Containers':{},
+                'IPAM':{'Config':[{'Subnet':'172.28.0.0/24','Gateway':'172.28.0.1'}]}}
+            if fault=='create_lost':raise primary
+            return b'f'*64+b'\n'
+        if args[2]=='ls':return b''.join((json.dumps(name)+'\n').encode() for name in daemon)
+        if args[2]=='inspect':return json.dumps([daemon[args[-1]]]).encode()
+        if args[2]=='rm':
+            assert args[-1]=='f'*64;daemon.clear();return b''
+        pytest.fail('unexpected network command')
+    monkeypatch.setattr(budget,'command',command)
+    with pytest.raises(control.RestoreUnavailable if fault=='inspect_bad' else KeyboardInterrupt) as caught:
+        with identity.restored_identity(SOURCE_URL,tmp_path,None,budget=budget):pytest.fail('invalid early binding')
+    if fault!='inspect_bad':assert caught.value is primary
+    assert state['receipt']['source_postcheck'] and not daemon
+    assert not any(args[:3] in (['docker','volume','create'],['docker','create','--pull=never']) for args,_ in calls)
+    if fault in ('constructor_record','acquire_record'):
+        assert directory.exists()  # Failed local ownership acquisition is retained, not falsely erased.
+        assert state['receipt']['cleanup_complete'] is (fault=='constructor_record')
+    else:
+        assert not directory.exists() and state['receipt']['cleanup_complete']
+
+
+@pytest.mark.parametrize('fault',['start','policy_write_prevents_ready'])
+def test_owned_hba_startup_failures_cannot_pass_readiness_or_reach_auth(repaired_model,tmp_path,monkeypatch,fault):
+    budget,state,calls,owners,_=repaired_model;state['recoverPass']=True
+    clock=[budget.started]
+    monkeypatch.setattr(control.time,'monotonic',lambda:clock[0])
+    original=budget.command;primary=control.RestoreUnavailable('child_failure')
+    def command(args,**kw):
+        if args==['docker','start','e'*64] and fault=='start':raise primary
+        if 'pg_isready' in args:raise control.RestoreUnavailable('child_failure')
+        return original(args,**kw)
+    def pause(*args,**kw):clock[0]+=16;budget.remaining(end=kw['end'])
+    monkeypatch.setattr(budget,'command',command);monkeypatch.setattr(budget,'pause',pause)
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        with identity.restored_identity(SOURCE_URL,tmp_path,None,budget=budget):pytest.fail('unready server yielded')
+    if fault=='start':assert caught.value is primary
+    else:assert caught.value.reason=='deadline'
+    assert owners[0].cleaned and state['receipt']['source_postcheck']
+    assert 'hbaReadback' not in state and not any('--env-file' in args for args,_ in calls)
+
+
 @pytest.mark.parametrize('remaining',[100,4])
 def test_final_fingerprints_share_ten_seconds_clipped_to_construction(repaired_model,tmp_path,monkeypatch,remaining):
     budget,state,calls,owners,_=repaired_model
@@ -202,6 +372,11 @@ def test_constructed_context_yields_same_budget_then_cleans_and_checks_source(re
         assert (tmp_path/'auth.env').exists()
     assert budget.phase=='source_post' and owners[0].cleaned
     assert relays==[(owners[0],(19001,19003),budget)]
+    readback_index=next(i for i,(_,kw) in enumerate(calls) if b"current_setting('hba_file')" in kw.get('data',b''))
+    auth_index=next(i for i,(args,_) in enumerate(calls) if args[:2]==['docker','create'] and '--env-file' in args)
+    assert readback_index<auth_index and state['hbaReadback'][0]=='construction'
+    assert owners[0]._hba_commitment[3].endswith(
+        b'host postgres talli_ledger_backend 172.28.0.1/32 scram-sha-256\n')
     assert all('-p' not in args for args,_ in calls if args[:2]==['docker','create'])
     assert not (tmp_path/'auth.env').exists()
     receipt=state['receipt']

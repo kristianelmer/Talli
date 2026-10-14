@@ -47,7 +47,11 @@ CONFIG = {'schema': SCHEMA, 'archiveBytes': MAX_ARCHIVE, 'scriptBytes': MAX_SCRI
                              'accepts': 128, 'queueBytes': 65536},
           'actorFailureDiagnostic': {'version': 'auth-startup-tail-v2', 'seconds': 4,
               'reapSeconds': 2, 'bytes': 65536, 'tailLines': 128,
-              'records': 128, 'recordBytes': 16384}}
+              'records': 128, 'recordBytes': 16384},
+          'actorAuthentication': {'version': 'owned-internal-hba-v1',
+              'method': 'scram-sha-256', 'policyBytes': 4096, 'readbackBytes': 4097,
+              'remoteRoles': ['supabase_auth_admin', 'postgres', 'talli_ledger_backend'],
+              'network': 'owned-subnet-auth-gateway-callers'}}
 OFFLINE_RESTORE = ('test -p /proc/self/fd/0 && exec pg_restore --verbose '
                    '--clean --if-exists --create --file=- 2>/dev/null')
 TOOL_COMMAND = '''set -eu
@@ -402,6 +406,36 @@ class RecoveryBudget:
         return SimpleNamespace(stdout=raw, returncode=0)
 
 
+OWNED_HBA_PATH = '/tmp/rf-recovery/pg_hba.owned.conf'
+
+
+def _internal_network_profile(network):
+    """One closed address profile shared by pre-start and live admission."""
+    from ipaddress import IPv4Address, IPv4Network
+    try:
+        require(type(network) is dict and network['Driver'] == 'bridge'
+                and network['Scope'] == 'local' and network['Internal'] is True
+                and network['EnableIPv6'] is False, 'source_binding')
+        configs = network['IPAM']['Config']
+        require(type(configs) is list and len(configs) == 1
+                and type(configs[0]) is dict
+                and type(configs[0]['Subnet']) is str and type(configs[0]['Gateway']) is str,
+                'source_binding')
+        subnet, gateway = IPv4Network(configs[0]['Subnet']), IPv4Address(configs[0]['Gateway'])
+        require(str(subnet) == configs[0]['Subnet'] and str(gateway) == configs[0]['Gateway'],
+                'source_binding')
+        private = tuple(IPv4Network(cidr) for cidr in ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'))
+        require(any(subnet.subnet_of(cidr) for cidr in private)
+                and subnet.prefixlen <= 30 and gateway in subnet
+                and gateway not in (subnet.network_address, subnet.broadcast_address), 'source_binding')
+        require(type(network['Containers']) is dict, 'source_binding')
+        return subnet, gateway
+    except RestoreUnavailable:
+        raise
+    except (KeyError, TypeError, ValueError):
+        raise RestoreUnavailable('source_binding') from None
+
+
 class ResourceOwner:
     """Reconcile only nonce-owned resources; retain the private record on ambiguity."""
     label = 'talli.rf.identity.restore'
@@ -418,6 +452,7 @@ class ResourceOwner:
                       'auth': 'rf193_identity_auth_'+nonce}
         self.images = {'init': image, 'database': image, 'auth': auth_image}
         self.attempted, self.identities = [], {}
+        self._hba_commitment = None
         self.directory = Path(tempfile.mkdtemp(prefix='talli-rf-restore-owner-'))
         os.chmod(self.directory, 0o700)
         self.record = self.directory/'owner.json'
@@ -492,25 +527,54 @@ class ResourceOwner:
         self.budget.command(args+[self.identities[kind]],cap=4096)
         require(self.inspect(kind) is None,'cleanup_uncertain')
 
+    def bind_hba(self, *, end):
+        """Bind once, before any container/volume, to the registered empty bridge."""
+        with io_deadline(self.budget, end=end):
+            require(self._hba_commitment is None and self.attempted == ['network'], 'source_binding')
+            network = self.inspect('network', end=end)
+            subnet, gateway = _internal_network_profile(network)
+            require(not network['Containers'], 'source_binding')
+            policy = ('local all all trust\n'
+                'host all all 127.0.0.1/32 scram-sha-256\n'
+                'host all all ::1/128 scram-sha-256\n'
+                'local replication all trust\n'
+                'host replication all 127.0.0.1/32 scram-sha-256\n'
+                'host replication all ::1/128 scram-sha-256\n'
+                f'host postgres supabase_auth_admin {subnet} scram-sha-256\n'
+                f'host postgres postgres {gateway}/32 scram-sha-256\n'
+                f'host postgres talli_ledger_backend {gateway}/32 scram-sha-256\n').encode('ascii')
+            require(len(policy) <= 4096, 'limit')
+            self._hba_commitment = (self.identities['network'], str(subnet), str(gateway), policy)
+            return policy
+
+    def verify_hba(self, *, end):
+        """Current path/file equality, not an atomic observation of loaded rules."""
+        with io_deadline(self.budget, end=end):
+            commitment = self._hba_commitment
+            require(type(commitment) is tuple and len(commitment) == 4
+                    and commitment[0] == self.identities.get('network')
+                    and type(commitment[3]) is bytes and 0 < len(commitment[3]) <= 4096,
+                    'source_binding')
+            target = self.identities.get('database')
+            require(type(target) is str and re.fullmatch('[a-f0-9]{64}', target) is not None
+                    and target != self.source, 'source_binding')
+            query = ("select current_setting('hba_file') = '"+OWNED_HBA_PATH+"' and "
+                     "pg_read_binary_file('"+OWNED_HBA_PATH+"',0,4097) = decode('"+
+                     commitment[3].hex()+"','hex');\n").encode('ascii')
+            result = self.budget.command(['docker','exec','-i',target,'psql','-U','supabase_admin',
+                '-h','/tmp','--dbname','postgres','-XqAt','-v','ON_ERROR_STOP=1'],
+                data=query, cap=32, end=end)
+            require(result == b't\n', 'source_binding')
+
     def internal_endpoints(self):
         """Inspect reciprocal membership, never infer a destination from a name."""
-        from ipaddress import IPv4Address, IPv4Network
+        from ipaddress import IPv4Address
         try:
             network = self.inspect('network')
-            require(network is not None and network['Driver'] == 'bridge'
-                    and network['Scope'] == 'local' and network['Internal'] is True
-                    and network['EnableIPv6'] is False, 'source_binding')
-            configs = network['IPAM']['Config']
-            require(type(configs) is list and len(configs) == 1, 'source_binding')
-            require(type(configs[0]['Subnet']) is str and type(configs[0]['Gateway']) is str,
+            subnet, gateway = _internal_network_profile(network)
+            require(type(self._hba_commitment) is tuple and len(self._hba_commitment) == 4
+                    and self._hba_commitment[:3] == (self.identities['network'], str(subnet), str(gateway)),
                     'source_binding')
-            subnet = IPv4Network(configs[0]['Subnet'])
-            gateway = IPv4Address(configs[0]['Gateway'])
-            require(str(subnet) == configs[0]['Subnet'] and str(gateway) == configs[0]['Gateway'],
-                    'source_binding')
-            private = tuple(IPv4Network(cidr) for cidr in ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'))
-            require(any(subnet.subnet_of(cidr) for cidr in private)
-                    and subnet.prefixlen <= 30 and gateway in subnet, 'source_binding')
             members = network['Containers']
             require(set(members) == {self.identities['database'], self.identities['auth']}, 'source_binding')
             result = []
