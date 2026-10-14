@@ -1664,3 +1664,338 @@ def test_endpoint_admission_exception_constructor_requires_exact_strings(field):
     with pytest.raises(control.RestoreUnavailable) as caught:
         control.EndpointAdmissionFailure(**args)
     assert type(caught.value) is control.RestoreUnavailable
+
+
+def auth_startup_record(message, **extra):
+    return (json.dumps({'time':'2026-01-01T00:00:00Z', 'level':'fatal',
+                        'msg':message, **extra})+'\n').encode()
+
+
+@pytest.fixture
+def auth_startup_model(internal_endpoint_model, monkeypatch):
+    owner, rows, inspected = internal_endpoint_model
+    owner.budget.enter('actors')
+    rows['auth']['State'].update(Running=False, Status='exited', ExitCode=1, OOMKilled=False)
+    model = {'raw':auth_startup_record('unable to load config', error='private-error-canary'),
+             'calls':[], 'error':None, 'active':None}
+    original = owner.budget.command
+    def command(args, **kw):
+        if args[0] != '/bin/sh': return original(args, **kw)
+        model['calls'].append((args,kw)); model['active'] = sys.exception()
+        if model['error'] is not None: raise model['error']
+        return model['raw']
+    monkeypatch.setattr(owner.budget, 'command', command)
+    return owner, rows, inspected, model
+
+
+def test_auth_startup_capture_preserves_active_primary_and_exact_owned_command(auth_startup_model):
+    owner, rows, inspected, model = auth_startup_model
+    old_end = owner.budget.end
+    with pytest.raises(control.EndpointAdmissionFailure) as caught: owner.internal_endpoints()
+    primary = caught.value
+    assert model['active'] is primary and (primary.service,primary.predicate)==('auth','running')
+    assert len(model['calls']) == 1 and len(inspected['calls']) == 6
+    args,kw = model['calls'][0]
+    assert args == ['/bin/sh','-c','exec docker logs --tail 128 "$1" 2>&1','auth-startup','d'*64]
+    assert kw == {'cap':65536, 'end':1004.0}
+    value = primary.auth_startup
+    assert value['classification'] == {'stage':'serve_config','reportedSQLSTATE':None}
+    assert value['state'] == {'status':'exited','exitCode':1,'oomKilled':False}
+    assert value['tail'] == {'bytes':len(model['raw']), 'sha256':hashlib.sha256(model['raw']).hexdigest(),
+                             'records':1,'fatalRecords':1}
+    assert control.validate_auth_startup(value) is value
+    assert 'private-error-canary' not in json.dumps(value)
+    assert owner.budget.end == old_end and owner.budget.phase == 'actors'
+
+
+def auth_startup_wrapped(cause='private-cause', label='checking database connection', line=74,
+                         *, architecture='amd64', prefix='/go/src/'):
+    return (cause+'\n'+label+'\ngithub.com/supabase/auth/cmd.migrate\n\t'+prefix+
+            'github.com/supabase/auth/cmd/migrate_cmd.go:'+str(line)+
+            '\nruntime.goexit\n\t/go/src/runtime/asm_'+architecture+'.s:100')
+
+
+def auth_startup_observe(model, raw):
+    owner, _, _, state = model; state['raw'] = raw
+    with pytest.raises(control.EndpointAdmissionFailure) as caught: owner.internal_endpoints()
+    assert state['active'] is caught.value
+    return caught.value.auth_startup
+
+
+@pytest.mark.parametrize('message,stage', [
+    ('unable to load config','serve_config'), ('http server listen failed','http_listen'),
+    ('http server serve failed','http_serve'), ('Failed to load configuration: private','initial_config'),
+    ('Failed to parse log level: private','logging_level'), ('error opening database: private','serve_database'),
+    ('running db migrations: private','migration_apply'),
+    *[(auth_startup_wrapped(label=label,line=line),stage) for label,line,stage in [
+      ('parsing db connection url',27,'migration_database_url'),
+      ('opening db connection',69,'migration_connection_open'),
+      ('checking database connection',74,'migration_connection_check'),
+      ('creating db migrator',80,'migration_setup'),
+      ('migration status',90,'migration_status'),('migration status',109,'migration_status')]]])
+def test_auth_startup_closed_twelve_stages_from_complete_fatal_record(auth_startup_model, message, stage):
+    result = auth_startup_observe(auth_startup_model, auth_startup_record(message))
+    assert result['classification'] == {'stage':stage,'reportedSQLSTATE':None}
+    assert 'private' not in json.dumps(result)
+
+
+@pytest.mark.parametrize('architecture,prefix', [('amd64','/go/src/'),('arm64','')])
+def test_auth_startup_terminal_runtime_assembly_and_nested_cause(auth_startup_model, architecture, prefix):
+    message = auth_startup_wrapped('private-cause\nprivate.wrapper\n\t/module/source.go:12',
+                                   architecture=architecture,prefix=prefix)
+    assert auth_startup_observe(auth_startup_model, auth_startup_record(message))['classification'] == {
+        'stage':'migration_connection_check','reportedSQLSTATE':None}
+
+
+@pytest.mark.parametrize('frames', [1,32])
+def test_auth_startup_accepts_bounded_frames_without_requiring_goexit(auth_startup_model, frames):
+    message = auth_startup_wrapped().rsplit('\nruntime.goexit',1)[0]
+    message += '\nmodule.fn\n\t/go/src/module/file.go:1'*(frames-1)
+    assert auth_startup_observe(auth_startup_model, auth_startup_record(message))['classification']['stage'] == 'migration_connection_check'
+
+
+@pytest.mark.parametrize('code', ['28P01','28000','3D000','42501'])
+@pytest.mark.parametrize('layout', ['direct','server error','failed SASL auth'])
+def test_auth_startup_sqlstate_requires_whole_canonical_cause(auth_startup_model, code, layout):
+    cause = 'FATAL: private authentication failure (SQLSTATE '+code+')'
+    if layout != 'direct': cause = 'failed to connect to `host=private user=private database=private`: '+layout+' ('+cause+')'
+    result = auth_startup_observe(auth_startup_model, auth_startup_record(auth_startup_wrapped(cause)))
+    assert result['classification'] == {'stage':'migration_connection_check','reportedSQLSTATE':code}
+    assert 'private' not in json.dumps(result)
+
+
+@pytest.mark.parametrize('cause', [
+    'FATAL: private (SQLSTATE 28P01)\nextra',
+    'FATAL: private (SQLSTATE 28P01)\nmodule.fn\n\t/module/private.go:12',
+    'FATAL: private (SQLSTATE 28P01)\nFATAL: private (SQLSTATE 42501)',
+    'outer: FATAL: private (SQLSTATE 28P01)', 'FATAL: private (SQLSTATE ZZ999)',
+    'FATAL: private (nested) (SQLSTATE 28P01)', 'FATAL: private`value (SQLSTATE 28P01)',
+    'FATAL: private (SQLSTATE 28P01) trailing',
+    'FATAL: fake (SQLSTATE 42501) (SQLSTATE 28P01)',
+    'failed to connect to `host=private user=private database=private`: other (FATAL: private (SQLSTATE 28P01))'])
+def test_auth_startup_multiline_or_unsupported_cause_preserves_stage_without_code(auth_startup_model, cause):
+    result = auth_startup_observe(auth_startup_model, auth_startup_record(auth_startup_wrapped(cause)))
+    assert result['classification'] == {'stage':'migration_connection_check','reportedSQLSTATE':None}
+
+
+@pytest.mark.parametrize('fault', ['function','path','line','wrong-label-line','duplicate-label',
+    'trailing-lf','trailing-text','missing-tab','odd','unknown','assembly-function','assembly-directory',
+    'assembly-architecture','nonfinal-assembly','repeated-assembly','dotdot','zero-line','large-line',
+    '33frames','long-component','long-cause','many-lines','cr','nul','control','fake-prefix'])
+def test_auth_startup_malformed_wrapped_layout_stays_unclassified(auth_startup_model, fault):
+    message = auth_startup_wrapped()
+    if fault=='function': message=message.replace('cmd.migrate','cmd.serve')
+    elif fault=='path': message=message.replace('/cmd/migrate_cmd.go','/other/migrate_cmd.go')
+    elif fault=='line': message=message.replace('.go:74','.go:75')
+    elif fault=='wrong-label-line': message=message.replace('checking database connection','opening db connection')
+    elif fault=='duplicate-label': message='checking database connection\n'+message
+    elif fault=='trailing-lf': message+='\n'
+    elif fault=='trailing-text': message+='\nprivate-extra'
+    elif fault=='missing-tab': message=message.replace('\n\t','\n',1)
+    elif fault=='odd': message+='\nmodule.fn'
+    elif fault=='unknown': message=message.replace('/cmd/migrate_cmd.go','/cmd/unknown')
+    elif fault=='assembly-function': message=message.replace('runtime.goexit','runtime.other')
+    elif fault=='assembly-directory': message=message.replace('/runtime/asm_','/other/asm_')
+    elif fault=='assembly-architecture': message=message.replace('asm_amd64.s','asm_386.s')
+    elif fault=='nonfinal-assembly': message+='\nmodule.fn\n\t/module/file.go:1'
+    elif fault=='repeated-assembly': message+='\nruntime.goexit\n\t/runtime/asm_amd64.s:1'
+    elif fault=='dotdot': message=message.replace('/cmd/','/../cmd/')
+    elif fault=='zero-line': message=message.replace('.s:100','.s:0')
+    elif fault=='large-line': message=message.replace('.s:100','.s:1000000')
+    elif fault=='33frames': message=message.rsplit('\nruntime.goexit',1)[0]+'\nmodule.fn\n\t/module/file.go:1'*32
+    elif fault=='long-component': message=message.replace('/cmd/', '/'+('x'*1024)+'/cmd/')
+    elif fault=='long-cause': message=message.replace('private-cause','x'*2049)
+    elif fault=='many-lines': message=message.replace('private-cause','x\n'*160)
+    elif fault=='cr': message=message.replace('private-cause','private\rvalue')
+    elif fault=='nul': message=message.replace('private-cause','private\0value')
+    elif fault=='control': message=message.replace('private-cause','private\x01value')
+    elif fault=='fake-prefix': message='contains checking database connection only'
+    assert auth_startup_observe(auth_startup_model, auth_startup_record(message))['classification'] is None
+
+
+@pytest.mark.parametrize('character', ['\x7f', '\x80', '\x85', '\x9f'])
+def test_auth_startup_del_and_c1_in_opaque_cause_decline_classification(auth_startup_model, character):
+    message = auth_startup_wrapped('private'+character+'cause')
+    value = auth_startup_observe(auth_startup_model, auth_startup_record(message))
+    assert value['classification'] is None and value['tail']['fatalRecords'] == 1
+
+
+@pytest.mark.parametrize('raw', [b'\n',b'{}',b'{}\n',b'[]\n',b'null\n',b'\xff\n',
+    b'{"time":"x","level":"fatal","msg":"unable to load config","msg":"other"}\n',
+    b'{"time":"x","level":"fatal","msg":"unable to load config","count":true}\n',
+    b'{"time":"x","level":"fatal","msg":"unable to load config","count":NaN}\n',
+    b'{"time":"x","level":"fatal","msg":"unable to load config","extra":"private"}\n',
+    b'{"time":"x","level":"fatal","msg":"unable to load config","error":{}}\n',
+    b'{"time":"x","level":"fatal","msg":"\\ud800"}\n',
+    auth_startup_record('x').replace(b'\n',b'\r\n'), auth_startup_record('x')+b'bad',
+    auth_startup_record('x'*16384),auth_startup_record('x')*129,b'x'*65537])
+def test_auth_startup_invalid_or_over_limit_tail_is_entirely_unavailable(auth_startup_model, raw):
+    assert auth_startup_observe(auth_startup_model,raw) is None
+
+
+@pytest.mark.parametrize('raw,records,fatals', [(b'',0,0),
+    (auth_startup_record('private',level='info'),1,0),
+    (auth_startup_record('unable to load config')*2,2,2),
+    (auth_startup_record('private',level='info')*128,128,0)])
+def test_auth_startup_empty_or_ambiguous_tail_never_claims_absence(auth_startup_model,raw,records,fatals):
+    value=auth_startup_observe(auth_startup_model,raw)
+    assert value['classification'] is None and value['tail']['records']==records
+    assert value['tail']['fatalRecords']==fatals
+
+
+@pytest.mark.parametrize('field,value', [('Running',0),('Paused',None),('Restarting',True),
+    ('Dead',None),('Dead',True),('OOMKilled',None),('Status','running'),('Status',None),
+    ('ExitCode',True),('ExitCode',-1),('ExitCode',256)])
+def test_auth_startup_malformed_same_state_skips_command(auth_startup_model,field,value):
+    owner,rows,_,model=auth_startup_model;rows['auth']['State'][field]=value
+    with pytest.raises(control.EndpointAdmissionFailure) as caught:owner.internal_endpoints()
+    assert caught.value.auth_startup is None and not model['calls']
+
+
+@pytest.mark.parametrize('phase,remaining', [('construction',35),('actors',4.25),('actors',4),('cleanup',15)])
+def test_auth_startup_only_actors_with_full_headroom_capture(auth_startup_model,phase,remaining):
+    owner,_,_,model=auth_startup_model;owner.budget.phase=phase;owner.budget.end=1000+remaining
+    with pytest.raises(control.EndpointAdmissionFailure) as caught:owner.internal_endpoints()
+    assert getattr(caught.value,'auth_startup',None) is None and not model['calls']
+
+
+@pytest.mark.parametrize('error', [ValueError('private-error'),control.RestoreUnavailable('deadline'),
+    KeyboardInterrupt('private-cancel'),SystemExit('private-exit')])
+def test_auth_startup_capture_fault_keeps_original_primary_and_fatal_state(auth_startup_model,error):
+    owner,_,_,model=auth_startup_model;model['error']=error
+    with pytest.raises(control.EndpointAdmissionFailure) as caught:owner.internal_endpoints()
+    assert caught.value is model['active'] and caught.value.auth_startup is None
+    assert owner.budget.context.owner.primary is caught.value
+    assert owner.budget.context.owner.cancelled == (not isinstance(error,Exception))
+    events=[]
+    try:raise caught.value
+    except control.EndpointAdmissionFailure:
+        with pytest.raises(control.EndpointAdmissionFailure) if not isinstance(error,Exception) else control.nullcontext():
+            with control.unwind_scope(owner.budget):
+                owner.budget.enter('cleanup');events.append('cleanup')
+                owner.budget.enter('source_post');events.append('source_post')
+    assert events==['cleanup','source_post']
+
+
+def test_auth_startup_once_and_uncertain_child_cannot_publish(auth_startup_model,monkeypatch):
+    owner,rows,_,model=auth_startup_model
+    primary=control.EndpointAdmissionFailure('auth','running')
+    def command(*args,**kw):
+        owner.budget.context.owner._uncertain('wait',OSError('private'),ValueError('secondary'))
+        return model['raw']
+    monkeypatch.setattr(owner.budget,'command',command)
+    try:raise primary
+    except control.EndpointAdmissionFailure:
+        control._capture_auth_startup(owner,rows['auth'],primary)
+    assert primary.auth_startup is None and owner.budget.context.owner.primary is primary
+    monkeypatch.setattr(owner.budget,'command',lambda *a,**kw:pytest.fail('repeated capture'))
+    control._capture_auth_startup(owner,rows['auth'],primary)
+
+
+@pytest.mark.parametrize('where', ['command','parse'])
+def test_auth_startup_expiry_during_capture_discards_value_and_restores_alarm(auth_startup_model,monkeypatch,where):
+    owner,_,_,model=auth_startup_model; prior=signal.getsignal(signal.SIGALRM)
+    def expired(*a,**kw):
+        monkeypatch.setattr(control.time,'monotonic',lambda:1005)
+        return (dict(bytes=0,sha256=hashlib.sha256(b'').hexdigest(),records=0,fatalRecords=0),None) if where=='parse' else model['raw']
+    if where=='parse':monkeypatch.setattr(control,'_auth_startup_tail',expired)
+    else:
+        original=owner.budget.command
+        monkeypatch.setattr(owner.budget,'command',lambda args,**kw:expired() if args[0]=='/bin/sh' else original(args,**kw))
+    with pytest.raises(control.EndpointAdmissionFailure) as caught:owner.internal_endpoints()
+    assert caught.value.auth_startup is None and signal.getsignal(signal.SIGALRM) is prior
+    assert signal.getitimer(signal.ITIMER_REAL)==(0,0)
+
+
+@pytest.mark.parametrize('fault', ['source-short','source-bool','database-missing','auth-uppercase',
+    'same-identity','image-short','image-missing'])
+def test_auth_startup_unbound_identity_or_image_skips_tail(auth_startup_model, fault):
+    owner, _, _, model = auth_startup_model
+    if fault == 'source-short': owner.source = 'a'*63
+    elif fault == 'source-bool': owner.source = True
+    elif fault == 'database-missing': del owner.identities['database']
+    elif fault == 'auth-uppercase': owner.identities['auth'] = 'D'*64
+    elif fault == 'same-identity': owner.source = owner.identities['database']
+    elif fault == 'image-short': owner.images['auth'] = 'sha256:123'
+    else: del owner.images['auth']
+    primary = control.EndpointAdmissionFailure('auth','running')
+    # Test capture's independent binding check, without weakening earlier inspect checks.
+    control._capture_auth_startup(owner, {'State':dict(Running=False, Paused=False,
+        Restarting=False, Dead=False, OOMKilled=False, Status='exited', ExitCode=1)}, primary)
+    assert primary.auth_startup is None and not model['calls']
+
+
+@pytest.mark.parametrize('kind', ['database','other-predicate','subclass','chain'])
+def test_auth_startup_capture_does_not_follow_ineligible_primary(auth_startup_model, kind):
+    owner, rows, _, model = auth_startup_model
+    class Child(control.EndpointAdmissionFailure): pass
+    primary = (Child('auth','running') if kind == 'subclass' else
+        control.EndpointAdmissionFailure('database' if kind == 'database' else 'auth',
+                                        'dead' if kind == 'other-predicate' else 'running'))
+    if kind == 'chain':
+        outer = ValueError('private-outer'); outer.__cause__ = primary; primary = outer
+    control._capture_auth_startup(owner, rows['auth'], primary)
+    assert not model['calls'] and not hasattr(primary,'auth_startup')
+
+
+@pytest.mark.parametrize('mode', ['complete','nonzero','cap','partial','acquire-cancel','drain-cancel'])
+def test_auth_startup_generated_owned_pipe_merges_drains_refuses_and_reaps(monkeypatch,children,mode):
+    # Substitute only the command boundary with a generated local Python child.
+    # No Docker, service, network or actual log is involved.
+    import socket
+    monkeypatch.setattr(socket,'create_connection',lambda *a,**kw:pytest.fail('network forbidden'))
+    owner = object.__new__(control.ResourceOwner)
+    owner.source = 'a'*64; owner.identities = {'database':'b'*64,'auth':'c'*64}
+    owner.images = {'auth':'sha256:'+'d'*64}
+    owner.budget = control.RecoveryBudget(time.monotonic()); owner.budget.enter('actors')
+    state = {'State':dict(Running=False,Paused=False,Restarting=False,Dead=False,
+                         OOMKilled=False,Status='exited',ExitCode=1)}
+    primary = control.EndpointAdmissionFailure('auth','running'); cancellation = KeyboardInterrupt('private-token')
+    first = auth_startup_record('private-info',level='info')
+    second = auth_startup_record(auth_startup_wrapped('FATAL: private (SQLSTATE 28P01)'))
+    if mode == 'cap': second = b'x'*65537
+    if mode == 'partial': second = second[:-1]
+    program = f'import os;os.write(1,{first!r});os.write(2,{second!r});raise SystemExit({7 if mode=="nonzero" else 0})'
+    command = control.commands._command; observed = []
+    def generated(args, deadline, **options):
+        assert args == ['/bin/sh','-c','exec docker logs --tail 128 "$1" 2>&1','auth-startup','c'*64]
+        assert sys.exception() is primary
+        assert options['reap_deadline']-deadline == 2 and options['stdout_cap'] == 65536
+        assert options['child_owner'] is owner.budget.context.owner
+        observed.append(args)
+        return command(['/bin/sh','-c','exec "$1" -B -c "$2" 2>&1',
+                        'generated-auth-tail',sys.executable,program],deadline,**options)
+    monkeypatch.setattr(control.commands,'_command',generated)
+    if mode == 'acquire-cancel':
+        start = control.subprocess.Popen
+        def cancel_start(*args,**kw):
+            child = start(*args,**kw)
+            signal.getsignal(signal.SIGTERM)(signal.SIGTERM,None)
+            return child
+        monkeypatch.setattr(control.subprocess,'Popen',cancel_start)
+    elif mode == 'drain-cancel':
+        read = control.commands.os.read
+        def cancel_read(fd, size):
+            if children and fd in (children[0].stdout.fileno(),children[0].stderr.fileno()):
+                raise cancellation
+            return read(fd,size)
+        monkeypatch.setattr(control.commands.os,'read',cancel_read)
+    old_handler = signal.getsignal(signal.SIGALRM); old_alarm = signal.getitimer(signal.ITIMER_REAL)
+    try:
+        signal.setitimer(signal.ITIMER_REAL,.75)
+        try: raise primary
+        except control.EndpointAdmissionFailure:
+            control._capture_auth_startup(owner,state,primary)
+        assert signal.getsignal(signal.SIGALRM) is old_handler
+        assert 0 < signal.getitimer(signal.ITIMER_REAL)[0] <= .75
+    finally:
+        signal.setitimer(signal.ITIMER_REAL,*old_alarm)
+    assert len(observed)==1 and len(children)==1 and children[0].returncode is not None
+    assert all(slot.process is None for slot in owner.budget.context.owner.slots)
+    assert owner.budget.context.owner.primary is primary
+    if mode == 'complete':
+        assert primary.auth_startup['tail']['sha256'] == hashlib.sha256(first+second).hexdigest()
+        assert primary.auth_startup['tail']['records'] == 2
+        assert primary.auth_startup['classification'] == {'stage':'migration_connection_check','reportedSQLSTATE':'28P01'}
+    else: assert primary.auth_startup is None
+    assert owner.budget.context.owner.cancelled == mode.endswith('cancel')

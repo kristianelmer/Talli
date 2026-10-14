@@ -44,7 +44,10 @@ CONFIG = {'schema': SCHEMA, 'archiveBytes': MAX_ARCHIVE, 'scriptBytes': MAX_SCRI
           'targetHeadroomSeconds': 70, 'writerWorkSeconds': 43, 'writerUnwindSeconds': 2,
           'sourceConsistency': 'checked-M0-M1-final-not-atomic', 'legacyReplay': 'inapplicable',
           'actorTransport': {'version': 'owned-internal-loopback-v1', 'pairs': 16,
-                             'accepts': 128, 'queueBytes': 65536}}
+                             'accepts': 128, 'queueBytes': 65536},
+          'actorFailureDiagnostic': {'version': 'auth-startup-tail-v1', 'seconds': 4,
+              'reapSeconds': 2, 'bytes': 65536, 'tailLines': 128,
+              'records': 128, 'recordBytes': 16384}}
 OFFLINE_RESTORE = ('test -p /proc/self/fd/0 && exec pg_restore --verbose '
                    '--clean --if-exists --create --file=- 2>/dev/null')
 TOOL_COMMAND = '''set -eu
@@ -60,6 +63,12 @@ printf '%s\\n%s\\n' "$version" "${hashed%% *}"
 ENDPOINT_ADMISSION_SERVICES = ('database', 'auth')
 ENDPOINT_ADMISSION_PREDICATES = ('exists', 'running', 'paused', 'restarting', 'dead',
     'network_mode', 'publish_all_ports', 'port_bindings')
+AUTH_STARTUP_SCHEMA = 'rf1086-auth-startup-tail-v1'
+AUTH_STARTUP_WRAPPED = ('migration_database_url', 'migration_connection_open',
+    'migration_connection_check', 'migration_setup', 'migration_status')
+AUTH_STARTUP_STAGES = ('serve_config', 'http_listen', 'http_serve', 'initial_config',
+    'logging_level', 'serve_database', 'migration_apply', *AUTH_STARTUP_WRAPPED)
+AUTH_STARTUP_SQLSTATES = ('28P01', '28000', '3D000', '42501')
 
 
 class RestoreUnavailable(ValueError):
@@ -76,6 +85,189 @@ class EndpointAdmissionFailure(RestoreUnavailable):
             raise RestoreUnavailable('source_binding')
         super().__init__('source_binding')
         self.service, self.predicate = service, predicate
+
+
+def validate_auth_startup(value, *, identities=None):
+    """Validate finite reported patterns, never promote them to an Auth cause."""
+    _diagnostic_keys(value, ('schema', 'evidence', 'sourceIdentitySha256',
+        'targetIdentitySha256', 'authIdentitySha256', 'authImageSha256',
+        'state', 'tail', 'classification'))
+    require(type(value['schema']) is str and value['schema'] == AUTH_STARTUP_SCHEMA
+            and type(value['evidence']) is str
+            and value['evidence'] == 'source-pattern-compatible-only', 'internal')
+    for key in ('sourceIdentitySha256', 'targetIdentitySha256', 'authIdentitySha256', 'authImageSha256'):
+        _diagnostic_hash(value[key])
+    require(len({value['sourceIdentitySha256'], value['targetIdentitySha256'],
+                 value['authIdentitySha256']}) == 3, 'internal')
+    if identities is not None:
+        require(type(identities) is dict, 'internal')
+        for key in ('source', 'target'):
+            _diagnostic_hash(identities.get(key))
+            require(value[key+'IdentitySha256'] == identities[key], 'internal')
+    state, tail, classification = value['state'], value['tail'], value['classification']
+    _diagnostic_keys(state, ('status', 'exitCode', 'oomKilled'))
+    require(type(state['status']) is str and state['status'] in ('created', 'exited', 'dead')
+            and type(state['exitCode']) is int and 0 <= state['exitCode'] <= 255
+            and type(state['oomKilled']) is bool, 'internal')
+    _diagnostic_keys(tail, ('bytes', 'sha256', 'records', 'fatalRecords'))
+    _diagnostic_hash(tail['sha256'])
+    require(type(tail['bytes']) is int and 0 <= tail['bytes'] <= 65536
+            and type(tail['records']) is int and 0 <= tail['records'] <= 128
+            and type(tail['fatalRecords']) is int and 0 <= tail['fatalRecords'] <= tail['records']
+            and (tail['bytes'] == 0) == (tail['records'] == 0), 'internal')
+    if tail['bytes'] == 0:
+        require(tail['sha256'] == hashlib.sha256(b'').hexdigest(), 'internal')
+    if classification is not None:
+        _diagnostic_keys(classification, ('stage', 'reportedSQLSTATE'))
+        stage, code = classification['stage'], classification['reportedSQLSTATE']
+        require(tail['fatalRecords'] == 1 and type(stage) is str and stage in AUTH_STARTUP_STAGES,
+                'internal')
+        require(code is None or (type(code) is str and code in AUTH_STARTUP_SQLSTATES
+                and stage in AUTH_STARTUP_WRAPPED), 'internal')
+    return value
+
+
+def _auth_startup_frame(function, file_line, *, terminal):
+    if (re.fullmatch(r'[A-Za-z0-9_./@+*()\[\]-]{1,256}', function) is None
+            or '.' not in function or not file_line.startswith('\t')):
+        return None
+    path, separator, number = file_line[1:].rpartition(':')
+    if (not separator or len(path) > 1024
+            or re.fullmatch(r'[1-9][0-9]{0,5}', number) is None):
+        return None
+    parts = path.removeprefix('/').split('/')
+    if any(part in ('', '.', '..', 'unknown') or
+           re.fullmatch(r'[A-Za-z0-9_!@+.~-]+', part) is None for part in parts):
+        return None
+    if path.endswith('.s'):
+        if (not terminal or function != 'runtime.goexit'
+                or parts[-2:] not in (['runtime', 'asm_amd64.s'], ['runtime', 'asm_arm64.s'])):
+            return None
+    elif not path.endswith('.go'):
+        return None
+    return parts, int(number)
+
+
+def _auth_startup_classify(message):
+    exact = {'unable to load config':'serve_config', 'http server listen failed':'http_listen',
+             'http server serve failed':'http_serve'}
+    prefixes = {'Failed to load configuration: ':'initial_config',
+        'Failed to parse log level: ':'logging_level', 'error opening database: ':'serve_database',
+        'running db migrations: ':'migration_apply'}
+    stage = exact.get(message)
+    if stage is None:
+        stage = next((value for prefix, value in prefixes.items() if message.startswith(prefix)), None)
+    if stage is not None: return {'stage':stage, 'reportedSQLSTATE':None}
+    # C0 (except the structural LF/TAB), DEL and C1 are not opaque cause text.
+    if len(message.encode('utf-8')) > 16384 or any(
+            (ord(c) < 32 and c not in '\n\t') or 0x7f <= ord(c) <= 0x9f for c in message):
+        return None
+    lines = message.split('\n')
+    if len(lines) > 160 or any(len(line.encode('utf-8')) > 2048 for line in lines): return None
+    labels = {'parsing db connection url':('migration_database_url', (27,)),
+        'opening db connection':('migration_connection_open', (69,)),
+        'checking database connection':('migration_connection_check', (74,)),
+        'creating db migrator':('migration_setup', (80,)),
+        'migration status':('migration_status', (90,109))}
+    matches = [i for i, line in enumerate(lines) if line in labels]
+    if len(matches) != 1: return None
+    index = matches[0]; suffix = lines[index+1:]; cause = '\n'.join(lines[:index])
+    if not cause or not 2 <= len(suffix) <= 64 or len(suffix) % 2: return None
+    stage, source_lines = labels[lines[index]]
+    for i in range(0, len(suffix), 2):
+        frame = _auth_startup_frame(suffix[i], suffix[i+1], terminal=i == len(suffix)-2)
+        if frame is None: return None
+        if i == 0 and (suffix[i] != 'github.com/supabase/auth/cmd.migrate'
+                or frame[0][-2:] != ['cmd','migrate_cmd.go'] or frame[1] not in source_lines):
+            return None
+    code = None
+    if '\n' not in cause:
+        direct = r'(?:FATAL|ERROR): [\x20-\x27\x2a-\x5f\x61-\x7e]{1,1024} \(SQLSTATE ([A-Z0-9]{5})\)'
+        atom = r'[A-Za-z0-9_.:/@+-]{1,256}'
+        connection = (r'failed to connect to `host='+atom+' user='+atom+' database='+atom
+            +r'`: (?:server error|failed SASL auth) \('+direct+r'\)')
+        matched = re.fullmatch(direct, cause) or re.fullmatch(connection, cause)
+        if matched is not None and matched[1] in AUTH_STARTUP_SQLSTATES: code = matched[1]
+    return {'stage':stage, 'reportedSQLSTATE':code}
+
+
+def _auth_startup_tail(raw):
+    rows = row = fatal = message = line = value = None
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            require(key not in result, 'internal'); result[key] = value
+        return result
+    def invalid(_): raise RestoreUnavailable('internal')
+    try:
+        require(type(raw) is bytes and len(raw) <= 65536, 'limit')
+        rows = [] if not raw else raw.split(b'\n')
+        if raw:
+            require(rows[-1] == b'', 'internal'); rows.pop()
+        require(len(rows) <= 128, 'limit')
+        fatals = 0
+        for line in rows:
+            require(0 < len(line) <= 16384 and b'\r' not in line, 'internal')
+            row = json.loads(line.decode('utf-8'), object_pairs_hook=pairs, parse_constant=invalid)
+            require(type(row) is dict and {'time','level','msg'} <= row.keys()
+                    and row.keys() <= {'time','level','msg','error','component','count'}, 'internal')
+            require(all(type(v) is str for k,v in row.items() if k != 'count'), 'internal')
+            # Encoding checks also reject escaped lone surrogates, not just malformed input bytes.
+            for key, value in row.items():
+                if key != 'count': value.encode('utf-8')
+            require('count' not in row or (type(row['count']) is int and row['count'] >= 0), 'internal')
+            require(row['level'] in ('trace','debug','info','warning','error','fatal','panic'), 'internal')
+            if row['level'] == 'fatal': fatals += 1; fatal = row['msg']
+        message = _auth_startup_classify(fatal) if fatals == 1 else None
+        return {'bytes':len(raw), 'sha256':hashlib.sha256(raw).hexdigest(),
+                'records':len(rows), 'fatalRecords':fatals}, message
+    finally:
+        raw = rows = row = fatal = message = line = value = None
+
+
+def _capture_auth_startup(owner, value, primary):
+    """One optional owned tail while the unchanged endpoint refusal is active."""
+    raw = state = identities = diagnostic = tail = classification = None
+    budget = owner.budget
+    try:
+        if (type(primary) is not EndpointAdmissionFailure or primary.service != 'auth'
+                or primary.predicate != 'running' or budget.phase != 'actors'):
+            return
+        fields = BaseException.__dict__['__dict__'].__get__(primary, type(primary))
+        if 'auth_startup' in fields: return
+        primary.auth_startup = None
+        require(type(value) is dict and type(value.get('State')) is dict, 'internal')
+        state = value['State']
+        require(all(state.get(key) is False for key in ('Running','Paused','Restarting'))
+                and type(state.get('Dead')) is bool and type(state.get('OOMKilled')) is bool
+                and type(state.get('Status')) is str and state['Status'] in ('created','exited','dead')
+                and state['Dead'] == (state['Status'] == 'dead')
+                and type(state.get('ExitCode')) is int and 0 <= state['ExitCode'] <= 255, 'internal')
+        identities = (owner.source, owner.identities['database'], owner.identities['auth'])
+        require(all(type(v) is str and re.fullmatch('[a-f0-9]{64}',v) for v in identities)
+                and len(set(identities)) == 3 and type(owner.images['auth']) is str
+                and re.fullmatch('sha256:[a-f0-9]{64}',owner.images['auth']) is not None, 'internal')
+        if budget.remaining() <= 4.25: return
+        end = min(budget.end-.25, time.monotonic()+4)
+        child_owner = budget.context.owner
+        if child_owner.primary is None: child_owner.primary = primary
+        with child_owner.deferred(primary), io_deadline(budget, end=end):
+            raw = budget.command(['/bin/sh','-c','exec docker logs --tail 128 "$1" 2>&1',
+                                  'auth-startup',identities[2]], end=end, cap=65536)
+            tail, classification = _auth_startup_tail(raw)
+            diagnostic = {'schema':AUTH_STARTUP_SCHEMA, 'evidence':'source-pattern-compatible-only',
+                **{key:hashlib.sha256(v.encode('ascii')).hexdigest() for key,v in zip(
+                    ('sourceIdentitySha256','targetIdentitySha256','authIdentitySha256','authImageSha256'),
+                    (*identities,owner.images['auth']))},
+                'state':{'status':state['Status'], 'exitCode':state['ExitCode'], 'oomKilled':state['OOMKilled']},
+                'tail':tail, 'classification':classification}
+            validate_auth_startup(diagnostic)
+        primary.auth_startup = diagnostic
+    except BaseException as error:
+        if not isinstance(error, Exception): _diagnostic_cancel(budget, error, primary)
+        # ChildOwner already retains uncertainty/cancellation and the original primary.
+    finally:
+        raw = state = identities = diagnostic = tail = classification = value = None
 
 
 def require(condition, reason):
@@ -312,7 +504,11 @@ class ResourceOwner:
                 if value is None:
                     raise EndpointAdmissionFailure(kind, 'exists')
                 if value['State']['Running'] is not True:
-                    raise EndpointAdmissionFailure(kind, 'running')
+                    try:
+                        raise EndpointAdmissionFailure(kind, 'running')
+                    except EndpointAdmissionFailure as primary:
+                        _capture_auth_startup(self, value, primary)
+                        raise
                 if value['State'].get('Paused') is not False:
                     raise EndpointAdmissionFailure(kind, 'paused')
                 if value['State'].get('Restarting') is not False:

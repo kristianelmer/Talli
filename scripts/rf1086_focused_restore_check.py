@@ -24,7 +24,7 @@ from rf1086_actual_replay_package import IMAGE
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = "rf1086-focused-restore-check-v2"
-FAILURE_SCHEMA = "rf1086-focused-post-construction-failure-v2"
+FAILURE_SCHEMA = "rf1086-focused-post-construction-failure-v3"
 CONSTRUCTION_PREFIX = "owned_identity_restore_construction "
 CATALOG_PREFIX = "owned_identity_restore_catalog_diagnostic "
 MAX_OUTPUT = 64 * 1024
@@ -114,20 +114,44 @@ def source_bindings():
             for name in SOURCE_PATHS}
 
 
-def failure_details(error, budget):
+def failure_details(error, budget, *, construction=None):
     try:
         with control.io_deadline(budget, end=min(budget.end, time.monotonic() + 0.250)):
-            endpoint = None
+            endpoint = startup = None
             if type(error) is control.EndpointAdmissionFailure:
                 service, predicate = error.service, error.predicate
                 if (type(service) is str and service in control.ENDPOINT_ADMISSION_SERVICES
                         and type(predicate) is str and predicate in control.ENDPOINT_ADMISSION_PREDICATES):
                     endpoint = {"service": service, "predicate": predicate}
+                fields = BaseException.__dict__['__dict__'].__get__(error, type(error))
+                if endpoint == {'service':'auth','predicate':'running'} and fields.get('auth_startup') is not None:
+                    try:
+                        need(type(construction) is dict and construction['status'] == 'constructed'
+                             and construction['cleanupComplete'] is True
+                             and construction['identitySourcePostcheck'] is True
+                             and construction['fingerprints']['source'] is not None
+                             and construction['fingerprints']['source'] == construction['fingerprints']['target'],
+                             'producer_output')
+                        delivery = construction['delivery']; original = delivery['original']; writer = delivery['writer']
+                        need(type(original) is dict and set(original) == {'bytes','sha256'}
+                             and type(original['bytes']) is int and 0 < original['bytes'] <= control.MAX_SCRIPT
+                             and original == construction['bindings']['script']
+                             and writer['stdoutEnd'] == writer['stderrEnd'] == 'eof'
+                             and type(writer['exitCode']) is int and writer['exitCode'] == 0
+                             and writer['reap'] == 'waited', 'producer_output')
+                        control._diagnostic_hash(original['sha256'])
+                        need(type(construction['identities']) is dict, 'producer_output')
+                        candidate = control.validate_auth_startup(fields['auth_startup'], identities=construction['identities'])
+                        # Canonical roundtrip copies only the already validated finite fields.
+                        startup = strict_json(control.ledger.canonical(candidate))
+                    except Exception:
+                        budget.context.raise_if_fatal()
+                        startup = None
             return {"location": control._diagnostic_location(error, budget),
-                    "endpointAdmission": endpoint}
+                    "endpointAdmission": endpoint, "authStartup": startup}
     except Exception:
         budget.context.raise_if_fatal()
-        return {"location": None, "endpointAdmission": None}
+        return {"location": None, "endpointAdmission": None, "authStartup": None}
 
 
 def run_context(database_url, api_url, workdir, boundary, budget):
@@ -188,7 +212,7 @@ def run_context(database_url, api_url, workdir, boundary, budget):
         if (failure is not None and not entered and not completed and clean and matching
                 and receipt["status"] == "constructed"):
             post_failure = {"schema": FAILURE_SCHEMA, "constructionSha256": receipt_hash,
-                            **failure_details(failure, budget)}
+                            **failure_details(failure, budget, construction=receipt)}
         return {"identityOutcome": outcome, "identityContextEntered": entered,
                 "identityContextCompleted": completed, "construction": receipt,
                 "constructionReceiptSha256": receipt_hash,
