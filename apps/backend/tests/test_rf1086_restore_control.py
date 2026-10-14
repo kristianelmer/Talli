@@ -333,11 +333,13 @@ def forbidden_prepare_io(*args, **kwargs):
     raise AssertionError('process/network forbidden in generated preparation')
 
 class TestPrepareArchive(unittest.TestCase):
-    def fixture(self, *, extension=False, ordered=True):
+    def fixture(self, *, extension=False, ordered=True, walk_options=None,
+                wire_change=None, compile_expected=True):
         wire=fixtures.fixture(ordered=ordered)
         if ordered:
             wire['objects'][0]['acl']=fixtures.acl([fixtures.item('reader',('SELECT',)),fixtures.item()])
         if extension: wire['objects'][0]['extension']=[['pg_net','0.20.3',fixtures.OWNER]]
+        if wire_change is not None: wire_change(wire)
         source=fixtures.source(wire)
         generated={}
         original_wire=ledger_fixtures.wire_and_list
@@ -345,11 +347,15 @@ class TestPrepareArchive(unittest.TestCase):
             generated['raw'],generated['list']=original_wire(rows)
             return generated['raw'],generated['list']
         with patch.object(ledger_fixtures,'wire_and_list',capture_wire):
-            script,archive,walk=fixtures.complete_walk(wire,extension_created=extension,
+            options=dict(extension_created=extension,
                 acl_sql=b'GRANT SELECT ON TABLE public.t TO reader;\n' if ordered else None)
+            options.update(walk_options or {})
+            script,archive,walk=fixtures.complete_walk(wire,**options)
         self.assertEqual(archive.raw,generated['raw'])
-        repair_index=metadata.restore_metadata_index(script,archive,walk,source,deadline=fixtures.end())
-        plan=metadata.compile_plan(source,script=script,archive=archive,index=repair_index,deadline=fixtures.end())
+        plan=None
+        if compile_expected:
+            repair_index=metadata.restore_metadata_index(script,archive,walk,source,deadline=fixtures.end())
+            plan=metadata.compile_plan(source,script=script,archive=archive,index=repair_index,deadline=fixtures.end())
         return dict(generated,script=script,source=source,walk=walk,plan=plan,roles=fixtures.role_sql(wire))
 
     def invoke(self,f,*,budget=None,script=None,cancel=None):
@@ -404,6 +410,63 @@ class TestPrepareArchive(unittest.TestCase):
     def test_complete_ordinary_ordered_acl(self):self.positive()
     def test_complete_extension_owned_object(self):self.positive(extension=True)
     def test_complete_explicit_default_acl(self):self.positive(ordered=False)
+
+    def test_omitted_member_without_acl_gets_real_seed_before_target(self):
+        self.positive(extension=True,walk_options={'acl_sql':None})
+
+    def test_unsupported_routine_stays_unmodeled_through_real_preparation(self):
+        def change(wire): wire['objects'][1]['argumentModes']=['v']
+        def acl_namespace(rows):
+            next(r for r in rows if r['id']==52)['namespace']=b'net'
+        f=self.fixture(extension=True,wire_change=change,walk_options={
+            'acl_sql':b'GRANT EXECUTE ON FUNCTION net.http_get(url text[], params jsonb) TO reader;\n',
+            'rows_change':acl_namespace})
+        result,_=self.invoke(f)
+        self.assertEqual(result.plan,f['plan'])
+        self.assertEqual(len(result.plan.candidates),1)  # Only the unrelated table seed.
+        self.assertEqual(result.plan.candidates[0].object.identity,('relation','public','t'))
+
+    def test_metadata_admission_and_unsupported_tail_refuse_before_target(self):
+        event=ledger_fixtures.source_rows()[-1]
+        cases=[
+            ({'acl_deps':(20,)},None,'metadata_index'),
+            ({'post_rows':(event,)},None,'acl_compile'),
+            ({'acl_sql':None,'post_rows':(event,)},None,'acl_compile'),
+        ]
+        def unsupported(wire):wire['objects'][1]['argumentModes']=['v']
+        for verb,direction in ((b'GRANT',b'TO'),(b'REVOKE',b'FROM')):
+            cases.append(({'acl_sql':verb+b' EXECUTE ON FUNCTION net.http_get(url text[]), '
+                b'net.http_post(text) '+direction+b' reader;\n'},unsupported,'metadata_index'))
+        for options,change,step in cases:
+            with self.subTest(options=options):
+                f=self.fixture(extension=True,walk_options=options,wire_change=change,compile_expected=False)
+                with patch.object(control.RecoveryBudget,'before_target',side_effect=AssertionError('allocation reached')) as admission:
+                    with self.assertRaises((metadata.MetadataUnavailable,control.ledger.Unavailable)):
+                        self.invoke(f)
+                admission.assert_not_called()
+                self.assertEqual(self.diagnostic.failure['step'],step)
+                self.assertEqual(len(self.calls),4)
+
+    def test_fallback_deadline_and_cancel_cannot_become_success_or_admission(self):
+        def unsupported(wire):wire['objects'][1]['argumentModes']=['v']
+        f=self.fixture(extension=True,wire_change=unsupported,compile_expected=False,walk_options={
+            'acl_sql':b'GRANT EXECUTE ON FUNCTION net.http_get(url text[]) TO reader;\n'})
+        for primary in (metadata.MetadataUnavailable('deadline'),KeyboardInterrupt('synthetic cancel')):
+            with self.subTest(kind=type(primary).__name__):
+                original=metadata._unsupported_target
+                def fail_ending(*args,**kwargs):
+                    # Real structural parsing succeeds first; then the final check
+                    # must propagate the exact initiating failure, never continue.
+                    original(*args,**kwargs)
+                    raise primary
+                with patch.object(metadata,'_unsupported_target',fail_ending), patch.object(
+                    control.RecoveryBudget,'before_target',side_effect=AssertionError('allocation reached')) as admission:
+                    with self.assertRaises(type(primary)) as caught:self.invoke(f)
+                self.assertIs(caught.exception,primary)
+                admission.assert_not_called()
+                self.assertEqual(len(self.calls),4)
+                if isinstance(primary,KeyboardInterrupt):self.assertIsNone(self.diagnostic.failure)
+                else:self.assertEqual(self.diagnostic.failure['reason'],'deadline')
 
     def test_truncated_listing_is_rejected_before_prepared_restore(self):
         f=self.fixture(); f['list']=f['list'][:40]

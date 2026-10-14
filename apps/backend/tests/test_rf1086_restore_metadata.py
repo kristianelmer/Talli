@@ -381,7 +381,8 @@ def test_query_qualifies_functions_without_changing_snapshot_json_keys():
     assert m.METADATA_SQL.count(b"'sha256',pg_catalog.encode(") == 2
 
 
-def complete_walk(wire, *, extension_created=False, acl_sql=None, acl_deps=None):
+def complete_walk(wire, *, extension_created=False, acl_sql=None, acl_deps=None,
+                  post_rows=(), rows_change=None):
     import rf1086_raw_toc as raw_toc
     import rf1086_sql_ledger as ledger
     from test_rf1086_sql_ledger import source_rows, row, wire_and_list, script_fixture
@@ -395,7 +396,12 @@ def complete_walk(wire, *, extension_created=False, acl_sql=None, acl_deps=None)
         rows.insert(-2, table)
     if acl_sql is not None:
         rows.insert(-1, row(52,b'ACL',b'TABLE t',acl_sql,class_oid=b'0',oid=b'0',
-            namespace=b'public', owner=OWNER.encode(), deps=(20 if extension_created else 42,) if acl_deps is None else acl_deps))
+            namespace=b'public', owner=OWNER.encode(), deps=(42,) if acl_deps is None else acl_deps))
+    # A dependencyless EVENT TRIGGER is deliberately unknown later-writer proof,
+    # not part of a minimal positive ACL fixture. Negative tests add it explicitly.
+    rows = [entry for entry in rows if entry['id'] != 60] + list(post_rows)
+    if rows_change is not None:
+        rows_change(rows)
     raw, listing = wire_and_list(rows); script = script_fixture(rows)
     if not extension_created:
         definition = table['definition'] + b'\n\n'
@@ -430,6 +436,334 @@ def test_index_requires_typed_target_and_dependency_not_just_either():
     with pytest.raises(m.MetadataUnavailable): m.restore_metadata_index(script,archive,walk,src,deadline=end())
     script,archive,walk = complete_walk(wire,acl_sql=b'GRANT SELECT ON TABLE public.other TO reader;\n')
     with pytest.raises(m.MetadataUnavailable): m.restore_metadata_index(script,archive,walk,src,deadline=end())
+
+
+def test_omitted_member_acl_uses_semantic_binding_not_extension_dump_id():
+    wire = fixture(ordered=True)
+    wire['objects'][0]['acl'] = acl([item('reader', ('SELECT',)), item()])
+    wire['objects'][0]['extension'] = [['pg_net', '0.20.3', OWNER]]
+    src = source(wire)
+    script, archive, walk = complete_walk(wire, extension_created=True,
+        acl_sql=b'GRANT SELECT ON TABLE public.t TO reader;\n', acl_deps=(42,))
+    assert 42 not in {entry.dump_id for entry in archive.entries}
+    index = m.restore_metadata_index(script, archive, walk, src, deadline=end())
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert len(plan.candidates) == 1
+    indexed = next(row for row in index['objects'] if row['identity'] == ['relation', 'public', 't'])
+    assert len(indexed['aclSpans']) == 1
+    assert script[slice(*indexed['aclSpans'][0])] == b'GRANT SELECT ON TABLE public.t TO reader;'
+
+
+def omitted_wire(*, no_acl=False):
+    wire = fixture(ordered=True)
+    wire['objects'][0]['acl'] = acl([item('reader', ('SELECT',)), item()])
+    wire['objects'][0]['extension'] = [['pg_net', '0.20.3', OWNER]]
+    return wire, None if no_acl else b'GRANT SELECT ON TABLE public.t TO reader;\n'
+
+
+@pytest.mark.parametrize('deps', [(), (20,), (42, 43), (42, 42), (0,)])
+def test_omitted_member_dependency_shape_never_authenticates_a_present_id(deps):
+    wire, sql = omitted_wire()
+    # Raw TOC may refuse duplicates/zero even before the adapter sees them.
+    with pytest.raises((m.MetadataUnavailable, m.ledger.raw_toc.Unavailable)):
+        script, archive, walk = complete_walk(wire, extension_created=True, acl_sql=sql, acl_deps=deps)
+        m.restore_metadata_index(script, archive, walk, source(wire), deadline=end())
+
+
+def test_other_absent_dependency_changes_archive_not_semantic_identity():
+    wire, sql = omitted_wire(); results = []
+    for deps in ((42,), (999999,)):
+        script, archive, walk = complete_walk(wire, extension_created=True, acl_sql=sql, acl_deps=deps)
+        index = m.restore_metadata_index(script, archive, walk, source(wire), deadline=end())
+        plan = m.compile_plan(source(wire), script=script, archive=archive, index=index, deadline=end())
+        results.append((archive.raw, plan.candidates))
+        assert index['objects'][0]['identity'] == ['relation', 'public', 't']
+    assert results[0][0] != results[1][0]
+    assert results[0][1] == results[1][1]  # No claim of authenticating the opaque ID.
+
+
+@pytest.mark.parametrize('change', ['namespace', 'owner', 'class', 'oid', 'raw_pair',
+    'missing_membership', 'wrong_membership', 'multiple_membership', 'extension_owner',
+    'duplicate_extension', 'late_extension'])
+def test_omitted_member_complete_lifecycle_and_acl_identity_required(change):
+    from test_rf1086_sql_ledger import row
+    wire, sql = omitted_wire()
+    if change == 'missing_membership': wire['objects'][0]['extension'] = []
+    if change == 'wrong_membership': wire['objects'][0]['extension'][0][0] = 'missing'
+    if change == 'multiple_membership': wire['objects'][0]['extension'] *= 2
+    def alter(rows):
+        aclrow = next(r for r in rows if r['id'] == 52)
+        extension = next(r for r in rows if r['id'] == 20)
+        if change == 'namespace': aclrow['namespace'] = b'wrong'
+        if change == 'owner': aclrow['owner'] = b'writer'
+        if change == 'class': aclrow['class_oid'] = b'1259'
+        if change == 'oid': aclrow['oid'] = b'20000'
+        if change == 'raw_pair':
+            # A non-creation raw row is still evidence against omitted membership.
+            aclrow.update(class_oid=b'1259', oid=b'20000')
+        if change == 'extension_owner': extension['owner'] = b'writer'
+        if change == 'duplicate_extension':
+            rows.insert(5, dict(extension, id=21))
+        if change == 'late_extension':
+            rows.remove(extension); rows.append(extension)
+    with pytest.raises((m.MetadataUnavailable, m.ledger.Unavailable)):
+        src = source(wire)
+        script, archive, walk = complete_walk(wire, extension_created=True, acl_sql=sql, rows_change=alter)
+        m.restore_metadata_index(script, archive, walk, src, deadline=end())
+
+
+def test_extension_owner_and_namespace_are_not_member_owner_or_namespace():
+    wire, sql = omitted_wire(); wire['objects'][0]['owner'] = 'writer'
+    wire['objects'][0]['defaultAcl'] = acl([item('writer', grantor='writer')])
+    wire['objects'][0]['acl'] = acl([item('reader', ('SELECT',), grantor='writer'), item('writer', grantor='writer')])
+    def alter(rows):
+        next(r for r in rows if r['id'] == 52)['owner'] = b'writer'
+    script, archive, walk = complete_walk(wire, extension_created=True, acl_sql=sql, rows_change=alter)
+    index = m.restore_metadata_index(script, archive, walk, source(wire), deadline=end())
+    plan = m.compile_plan(source(wire), script=script, archive=archive, index=index, deadline=end())
+    assert len(plan.candidates) == 1 and plan.candidates[0].object.owner == 'writer'
+
+
+@pytest.mark.parametrize('sql', [
+    b'GRANT SELECT ON TABLE public.t TO reader extra;',
+    b'GRANT SELECT ON TABLE public.t TO reader; GRANT USAGE ON SCHEMA graphql TO reader;',
+    b'GRANT SELECT (id) ON TABLE public.t TO reader;',
+    b'GRANT SELECT ON TABLE public.t, public.t TO reader;',
+    b'GRANT SELECT ON TABLE public.t TO missing;',
+    b'GRANT SELECT ON TABLE public.t TO reader GRANTED BY writer;',
+    b'GRANT EXECUTE ON FUNCTION net.http_get(wrong text) TO reader;',
+])
+def test_semantic_acl_whole_statement_and_same_member_entry_required(sql):
+    wire, _ = omitted_wire()
+    with pytest.raises((m.MetadataUnavailable, m.ledger.Unavailable)):
+        script, archive, walk = complete_walk(wire, extension_created=True, acl_sql=sql+b'\n')
+        m.restore_metadata_index(script, archive, walk, source(wire), deadline=end())
+
+
+@pytest.mark.parametrize('deps', [(), (99999,), (30,), (20, 99999), (20,)])
+@pytest.mark.parametrize('no_acl', [False, True])
+def test_later_unknown_or_extension_writer_taints_all_omitted_even_no_acl(deps, no_acl):
+    from test_rf1086_sql_ledger import source_rows
+    wire, sql = omitted_wire(no_acl=no_acl)
+    event = dict(source_rows()[-1], deps=deps)
+    script, archive, walk = complete_walk(wire, extension_created=True, acl_sql=sql, post_rows=(event,))
+    src = source(wire); index = m.restore_metadata_index(script, archive, walk, src, deadline=end())
+    assert len(index['objects']) == len(src.objects)
+    assert all(r['laterMutation'] for r in index['objects'])
+    with pytest.raises(m.MetadataUnavailable) as caught:
+        m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert caught.value.reason == 'suffix_profile'
+
+
+def test_no_acl_omitted_seed_and_source_null_rows_registered_without_invented_spans():
+    wire, _ = omitted_wire(); src = source(wire)
+    script, archive, walk = complete_walk(wire, extension_created=True)
+    index = m.restore_metadata_index(script, archive, walk, src, deadline=end())
+    assert len(index['objects']) == len(src.objects)
+    assert all(r['aclSpans'] == [] and not r['laterMutation'] for r in index['objects'])
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert len(plan.candidates) == 1 and plan.counts['archiveOnly'] == 2
+
+
+def test_unknown_later_writer_archive_only_is_counted_not_silently_seeded():
+    from test_rf1086_sql_ledger import source_rows
+    wire = fixture(ordered=True); wire['objects'][0]['extension'] = [['pg_net', '0.20.3', OWNER]]
+    script, archive, walk = complete_walk(wire, extension_created=True,
+        acl_sql=b'GRANT SELECT ON TABLE public.t TO reader;\n', post_rows=(source_rows()[-1],))
+    src = source(wire); index = m.restore_metadata_index(script, archive, walk, src, deadline=end())
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert not plan.candidates and plan.counts['archiveOnly'] == 3 and plan.counts['unmodeled'] == 1
+
+
+@pytest.mark.parametrize('authorized', [False, True])
+def test_supported_member_function_arguments_full_operation_and_auth_taint(authorized):
+    wire, _ = omitted_wire()
+    sql = b'GRANT EXECUTE ON FUNCTION net.http_get(url text, params jsonb, headers jsonb, timeout_milliseconds integer) TO reader;\n'
+    if authorized: sql = b'SET SESSION AUTHORIZATION supabase_admin;\n'+sql+b'RESET SESSION AUTHORIZATION;\n'
+    def change(rows): next(r for r in rows if r['id']==52)['namespace'] = b'net'
+    script, archive, walk = complete_walk(wire, extension_created=True, acl_sql=sql, rows_change=change)
+    index = m.restore_metadata_index(script, archive, walk, source(wire), deadline=end())
+    function = next(r for r in index['objects'] if r['identity'][2]=='http_get')
+    assert len(function['aclSpans']) == 1 and function['laterMutation'] is authorized
+    assert script[slice(*function['aclSpans'][0])].startswith(b'GRANT EXECUTE')
+
+
+@pytest.mark.parametrize('sql', [b'RESET SESSION AUTHORIZATION;\n',
+    b'SET SESSION AUTHORIZATION supabase_admin;\nGRANT SELECT ON TABLE public.t TO reader;\n',
+    b'SET SESSION AUTHORIZATION supabase_admin;\nSET SESSION AUTHORIZATION supabase_admin;\n'])
+def test_semantic_session_authorization_cannot_hide_unbalanced_state(sql):
+    wire, _ = omitted_wire()
+    with pytest.raises((m.MetadataUnavailable, m.ledger.Unavailable)):
+        script, archive, walk = complete_walk(wire, extension_created=True, acl_sql=sql)
+        m.restore_metadata_index(script, archive, walk, source(wire), deadline=end())
+
+
+@pytest.mark.parametrize('second_unsupported', [False, True])
+def test_semantic_entry_cannot_mix_two_member_targets(second_unsupported):
+    wire, _ = omitted_wire()
+    if second_unsupported: wire['objects'][2]['argumentModes'] = ['v']
+    sql = (b'GRANT EXECUTE ON FUNCTION net.http_get(url text, params jsonb, headers jsonb, timeout_milliseconds integer) TO reader;\n'
+        b'GRANT EXECUTE ON FUNCTION net.http_post(url text, body jsonb, params jsonb, headers jsonb, timeout_milliseconds integer) TO reader;\n')
+    def change(rows): next(r for r in rows if r['id']==52)['namespace'] = b'net'
+    script, archive, walk = complete_walk(wire, extension_created=True, acl_sql=sql, rows_change=change)
+    with pytest.raises(m.MetadataUnavailable) as caught:
+        m.restore_metadata_index(script, archive, walk, source(wire), deadline=end())
+    assert caught.value.reason == 'archive_profile'
+
+
+def test_direct_extension_member_does_not_retry_semantics_on_numeric_mismatch():
+    wire, sql = omitted_wire()
+    script, archive, walk = complete_walk(wire, extension_created=False, acl_sql=sql, acl_deps=(999999,))
+    with pytest.raises(m.MetadataUnavailable) as caught:
+        m.restore_metadata_index(script, archive, walk, source(wire), deadline=end())
+    assert caught.value.reason == 'archive_profile'
+
+
+def test_resolved_direct_writer_only_taints_direct_object_and_oid_does_not_clear_unknown():
+    from test_rf1086_sql_ledger import source_rows
+    wire = fixture(); src = source(wire)
+    for deps, all_omitted in (((42,), False), ((99999,), True)):
+        event = dict(source_rows()[-1], deps=deps, class_oid=b'1259', oid=b'20000')
+        script, archive, walk = complete_walk(wire, post_rows=(event,))
+        index = m.restore_metadata_index(script, archive, walk, src, deadline=end())
+        assert index['objects'][0]['laterMutation'] is True
+        assert all(r['laterMutation'] is all_omitted for r in index['objects'][1:])
+
+
+def unsupported_candidates(*, owners=(OWNER, OWNER)):
+    base = source().objects[1]
+    # Deliberately unsupported array/mode signatures: unit input to target matching,
+    # not a fabricated claim that selected pg_net functions have these signatures.
+    return tuple(replace(base, identity=('function', 'private_schema', 'f', f'a type_{i}[]'),
+        argument_types=(('private_schema', f'_type_{i}'),), argument_modes=('v',), owner=owner)
+        for i, owner in enumerate(owners))
+
+
+def resolve_unsupported(raw, *, matches=None, budget=None):
+    matches = unsupported_candidates() if matches is None else matches
+    budget = m.Budget(end()) if budget is None else budget
+    statement = next(m._statements(raw+b'\n', budget))
+    return m._target_candidates(statement, {('function', b'private_schema', b'f'): matches},
+        budget, roles={'reader', 'writer', OWNER})
+
+
+@pytest.mark.parametrize('group', [b'()', b'(a private_schema.type_0[], b integer)',
+    b'("TO, FROM" private_schema.type_0[] /* ) , TO reader */)'])
+@pytest.mark.parametrize('form', [b'GRANT EXECUTE ON FUNCTION %s TO reader;',
+    b'REVOKE GRANT OPTION FOR EXECUTE ON FUNCTION %s FROM reader RESTRICT;',
+    b'GRANT ALL PRIVILEGES ON FUNCTION %s TO reader GRANTED BY supabase_admin;'])
+def test_unsupported_single_group_is_structural_not_overload_identity(group, form):
+    result = resolve_unsupported(form % (b'private_schema.f'+group))
+    assert result.exact is None and result.unmodeled is True
+
+
+@pytest.mark.parametrize('sql', [
+    b'GRANT EXECUTE ON FUNCTION private_schema.f(a t[]), net.http_get(text) TO reader;',
+    b'REVOKE EXECUTE ON FUNCTION private_schema.f(a t[]), net.http_get(text) FROM reader;',
+    b'GRANT EXECUTE ON FUNCTION private_schema.f(a t[]), private_schema.f(b t[]) TO reader;',
+    b'REVOKE EXECUTE ON FUNCTION private_schema.f(a t[]), private_schema.f(b t[]) FROM reader;',
+    b'GRANT EXECUTE ON FUNCTION private_schema.f(a t[]) FROM reader;',
+    b'REVOKE EXECUTE ON FUNCTION private_schema.f(a t[]) TO reader;',
+    b'GRANT BANANA ON FUNCTION private_schema.f(a t[]) TO reader;',
+    b'GRANT EXECUTE (column) ON FUNCTION private_schema.f(a t[]) TO reader;',
+    b'GRANT EXECUTE ON FUNCTION private_schema.f TO reader;',
+    b'GRANT EXECUTE ON FUNCTION private_schema.f(a t[]) () TO reader;',
+    b'GRANT EXECUTE ON FUNCTION private_schema.f(a t[]) TO reader, writer;',
+    b'REVOKE EXECUTE ON FUNCTION private_schema.f(a t[]) FROM reader CASCADE;',
+    b'GRANT EXECUTE ON FUNCTION private_schema.f(a t[]) TO PUBLIC WITH GRANT OPTION;',
+    b'GRANT EXECUTE ON FUNCTION private_schema.f(a t[]) TO reader GRANTED BY writer;',
+    b'GRANT EXECUTE ON FUNCTION private_schema.f(a t[]) TO missing;',
+    b'GRANT EXECUTE ON FUNCTION private_schema.f(a t[]) TO reader extra;',
+    b'GRANT EXECUTE ON FUNCTION private_schema.f(a t[] TO reader;',
+])
+def test_unsupported_statement_never_hides_unread_targets_or_tail(sql):
+    with pytest.raises((m.MetadataUnavailable, m.ledger.Unavailable, m.lexical.Unavailable)):
+        resolve_unsupported(sql)
+
+
+def test_unsupported_granted_by_cannot_borrow_first_owner_or_supported_overload():
+    sql = b'GRANT EXECUTE ON FUNCTION private_schema.f(a t[]) TO reader GRANTED BY supabase_admin;'
+    matches = unsupported_candidates(owners=(OWNER, 'writer'))
+    with pytest.raises(m.MetadataUnavailable): resolve_unsupported(sql, matches=matches)
+    matches = unsupported_candidates()
+    supported = replace(matches[0], argument_modes=None, argument_types=(('pg_catalog', 'text'),),
+                        identity=('function', 'private_schema', 'f', 'text'))
+    with pytest.raises(m.MetadataUnavailable): resolve_unsupported(sql, matches=(matches[0], supported))
+
+
+@pytest.mark.parametrize('extension', [False, True])
+def test_exact_unsupported_has_no_spans_but_direct_numeric_guard_remains(extension):
+    wire, sql = omitted_wire()
+    wire['objects'][0]['kind'] = 'c'
+    src = source(wire)
+    script, archive, walk = complete_walk(wire, extension_created=extension, acl_sql=sql)
+    index = m.restore_metadata_index(script, archive, walk, src, deadline=end())
+    assert index['objects'][0]['aclSpans'] == []
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert not plan.candidates and plan.counts['archiveOnly'] == 3 and plan.counts['unmodeled'] == 1
+    if not extension:
+        script, archive, walk = complete_walk(wire, acl_sql=sql, acl_deps=(20,))
+        with pytest.raises(m.MetadataUnavailable) as caught:
+            m.restore_metadata_index(script, archive, walk, src, deadline=end())
+        assert caught.value.reason == 'archive_profile'
+
+
+@pytest.mark.parametrize('token', [m.MetadataUnavailable('deadline'), m.ledger.Unavailable('deadline'),
+                                   KeyboardInterrupt('generated cancellation')])
+@pytest.mark.parametrize('seam', ['target', 'argument', 'fallback_group', 'ending'])
+def test_new_matching_paths_preserve_deadline_and_cancellation_identity(monkeypatch, token, seam):
+    raw = b'GRANT EXECUTE ON FUNCTION private_schema.f(a t[], b integer) TO reader;\n'
+    budget = m.Budget(end()); statement = next(m._statements(raw, budget))
+    matches = unsupported_candidates()
+    def stop(*args, **kwargs): raise token
+    if seam == 'target': monkeypatch.setattr(m, '_target', stop)
+    elif seam == 'argument': monkeypatch.setattr(m, '_type', stop)
+    elif seam == 'fallback_group': monkeypatch.setattr(m.Statement, 'group', stop)
+    else: monkeypatch.setattr(m, '_operation_ending', stop)
+    with pytest.raises(type(token)) as caught:
+        m._target_candidates(statement, {('function', b'private_schema', b'f'): matches},
+                             budget, roles={'reader', OWNER})
+    assert caught.value is token
+
+
+@pytest.mark.parametrize('token', [m.MetadataUnavailable('deadline'), m.ledger.Unavailable('deadline'),
+                                   KeyboardInterrupt('one-shot cancellation')])
+def test_one_shot_type_failure_cannot_be_retried_as_valid_named_argument(monkeypatch, token):
+    budget = m.Budget(end())
+    statement = next(m._statements(b'x(url text);\n', budget))
+    statement.ident(b'x'); statement.need(b'(')
+    original = m._type; calls = []
+    def once(s, typ):
+        calls.append(True)
+        if len(calls) == 1: raise token
+        return original(s, typ)
+    monkeypatch.setattr(m, '_type', once)
+    with pytest.raises(type(token)) as caught: m._argument(statement, ('pg_catalog', 'text'))
+    assert caught.value is token and len(calls) == 1
+
+
+def test_one_shot_target_deadline_cannot_fall_back_to_archive_only(monkeypatch):
+    primary = m.MetadataUnavailable('deadline'); original = m._target; calls = []
+    def once(s, obj):
+        calls.append(True)
+        if len(calls) == 1: raise primary
+        return original(s, obj)
+    monkeypatch.setattr(m, '_target', once)
+    with pytest.raises(m.MetadataUnavailable) as caught:
+        resolve_unsupported(b'GRANT EXECUTE ON FUNCTION private_schema.f(a t[], b integer) TO reader;')
+    assert caught.value is primary and len(calls) == 1
+
+
+def test_fallback_last_budget_check_refuses_even_after_valid_ending(monkeypatch):
+    original = m._operation_ending
+    def expire(s, **kwargs):
+        result = original(s, **kwargs)
+        s.budget.deadline = time.monotonic()-1
+        return result
+    monkeypatch.setattr(m, '_operation_ending', expire)
+    with pytest.raises(m.MetadataUnavailable) as caught:
+        resolve_unsupported(b'GRANT EXECUTE ON FUNCTION private_schema.f() TO reader;')
+    assert caught.value.reason == 'deadline'
 
 
 def test_index_rejects_tampered_packed_regions_and_script_binding():

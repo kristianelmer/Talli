@@ -709,7 +709,9 @@ def _argument(s, typ):
         _type(s, typ)
         require(s.is_(b',') or s.is_(b')'), 'suffix_profile')
         return None
-    except (MetadataUnavailable, ledger.Unavailable):
+    except (MetadataUnavailable, ledger.Unavailable) as error:
+        if error.reason not in ('suffix_profile', 'role'):
+            raise
         s.at = first
     argument = _sname(s)
     _type(s, typ)
@@ -763,7 +765,7 @@ def _rights(s, domain):
     return frozenset(rights)
 
 
-def _operation(s, *, obj=None, default_key=None, roles):
+def _operation_prefix(s, domain):
     if s.take(b'GRANT'):
         grant, options = True, False
     else:
@@ -771,12 +773,11 @@ def _operation(s, *, obj=None, default_key=None, roles):
         options = s.take(b'GRANT')
         if options:
             s.need(b'OPTION', b'FOR')
-    domain = _domain(obj) if obj is not None else DOMAINS[default_key[2]]
     rights = _rights(s, domain); s.need(b'ON')
-    if obj is not None:
-        _target(s, obj)
-    else:
-        s.need({'r': b'TABLES', 'S': b'SEQUENCES', 'f': b'FUNCTIONS', 'T': b'TYPES', 'n': b'SCHEMAS'}[default_key[2]])
+    return grant, options, rights
+
+
+def _operation_ending(s, *, grant, options, roles, owners):
     s.need(b'TO' if grant else b'FROM')
     if s.take(b'PUBLIC'):
         grantee = None
@@ -786,11 +787,23 @@ def _operation(s, *, obj=None, default_key=None, roles):
         s.need(b'GRANT', b'OPTION'); options = True
     if s.take(b'GRANTED'):
         s.need(b'BY')
-        require(_sname(s) == (obj.owner if obj is not None else default_key[0]), 'suffix_profile')
+        require(owners == {_sname(s)}, 'suffix_profile')
     if not grant:
         s.take(b'RESTRICT')
-    s.finish()  # CASCADE, columns, multiple targets/grantees and extra SQL fail here.
+    s.finish()  # CASCADE, multiple targets/grantees and extra SQL fail here.
     require(not (grantee is None and options and grant), 'suffix_profile')
+    return grantee, options
+
+
+def _operation(s, *, obj=None, default_key=None, roles):
+    domain = _domain(obj) if obj is not None else DOMAINS[default_key[2]]
+    grant, options, rights = _operation_prefix(s, domain)
+    if obj is not None:
+        _target(s, obj)
+    else:
+        s.need({'r': b'TABLES', 'S': b'SEQUENCES', 'f': b'FUNCTIONS', 'T': b'TYPES', 'n': b'SCHEMAS'}[default_key[2]])
+    grantee, options = _operation_ending(s, grant=grant, options=options, roles=roles,
+        owners={obj.owner if obj is not None else default_key[0]})
     return Operation(grant, rights, grantee, options)
 
 
@@ -1396,14 +1409,46 @@ CONFIG = {
     'consistency': 'checked-M0-M1-final-not-atomic',
     'selection': 'source-before-target-restricted-per-operation-identity',
     'sourceOids': 'archive-only-never-target-assignment',
+    'aclAttribution': 'direct-id-or-omitted-extension-semantic-v1',
 }
 CONFIG_SHA256 = hashlib.sha256(canonical(CONFIG)).hexdigest()
 
 
-def _target_candidates(statement, candidates, budget):
+@dataclass(frozen=True, repr=False)
+class ACLTarget:
+    exact: Object | None = None
+    unmodeled: bool = False
+
+
+def _statement_copy(statement, budget, first=None):
+    return Statement(statement.raw, statement.tokens,
+        statement.first if first is None else first, statement.end,
+        statement.start, statement.stop, budget)
+
+
+def _unsupported_target(statement, matches, kind, ns, n, roles, budget):
+    """Bound one unsupported target, without claiming its signature/overload."""
+    s = _statement_copy(statement, budget)
+    domain = DOMAINS['f' if kind in (b'FUNCTION', b'PROCEDURE') else
+                     'S' if kind == b'SEQUENCE' else 'r']
+    grant, options, _ = _operation_prefix(s, domain)
+    s.need(kind)
+    require(s.name() == (ns, n), 'suffix_profile')
+    if kind in (b'FUNCTION', b'PROCEDURE'):
+        s.group(nonempty=False)
+    owners = set()
+    for obj in matches:
+        budget.check()
+        require(not _supported(obj), 'suffix_profile')
+        owners.add(obj.owner)
+    # This requires immediate TO/FROM and consumes the entire closed ending.
+    _operation_ending(s, grant=grant, options=options, roles=roles, owners=owners)
+    budget.check()
+
+
+def _target_candidates(statement, candidates, budget, *, roles):
     """Locate only exposed typed ON targets; never substring/comment matching."""
-    s = Statement(statement.raw, statement.tokens, statement.first, statement.end,
-                  statement.start, statement.stop, budget)
+    s = _statement_copy(statement, budget)
     if not (s.take(b'GRANT') or s.take(b'REVOKE')):
         return None
     if s.take(b'GRANT'):
@@ -1417,7 +1462,7 @@ def _target_candidates(statement, candidates, budget):
     at = s.at
     kind = s.ident().upper()
     if kind not in (b'TABLE', b'SEQUENCE', b'FUNCTION', b'PROCEDURE'):
-        return ()
+        return ACLTarget()
     ns, n = s.name()
     require(ns is not None, 'suffix_profile')
     matches = candidates.get(('function' if kind in (b'FUNCTION', b'PROCEDURE') else 'relation', ns, n), ())
@@ -1425,20 +1470,23 @@ def _target_candidates(statement, candidates, budget):
     found = []
     for obj in matches:
         budget.check()
-        cursor = Statement(statement.raw, statement.tokens, at, statement.end,
-                           statement.start, statement.stop, budget)
+        cursor = _statement_copy(statement, budget, at)
         try:
             _target(cursor, obj)
             require(cursor.is_(b'TO') or cursor.is_(b'FROM'), 'suffix_profile')
-        except (MetadataUnavailable, ledger.Unavailable):
+        except (MetadataUnavailable, ledger.Unavailable) as error:
+            if error.reason not in ('suffix_profile', 'role'):
+                raise
             continue
         found.append(obj)
     if not found and all(not _supported(obj) for obj in matches):
-        # These rows cannot receive a supplement or a static preservation claim.
-        # Their complete original commands remain archive-only and final-gated.
-        return tuple(matches)
+        _unsupported_target(statement, matches, kind, ns, n, roles, budget)
+        return ACLTarget(unmodeled=True)
     require(len(found) == 1, 'suffix_profile')
-    return tuple(found)
+    if not _supported(found[0]):
+        _unsupported_target(statement, matches, kind, ns, n, roles, budget)
+    budget.check()
+    return ACLTarget(exact=found[0], unmodeled=not _supported(found[0]))
 
 
 @closed
@@ -1462,7 +1510,11 @@ def restore_metadata_index(script, archive, restore_index, source, *, deadline):
             and core.indexes['regions'] == binding(regions, budget), 'archive_profile')
     hook = restore_index.pre_acl['cut']
     integer(hook, 1, len(script)-1)
-    by_dump = {e.dump_id: e for e in archive.entries}
+    by_dump, archive_pairs = {}, set()
+    for entry in archive.entries:
+        budget.check()
+        by_dump[entry.dump_id] = entry
+        archive_pairs.add((entry.class_oid, entry.object_oid))
     by_pair, by_extension, emitted, full_occurrences = {}, {}, {}, []
     for at in range(0, len(occurrences), ledger.OCCURRENCE.size):
         budget.check()
@@ -1482,13 +1534,18 @@ def restore_metadata_index(script, archive, restore_index, source, *, deadline):
     cuts = {'Is': max(selected['graphql_schema']['cut'], selected['graphql_public_schema']['cut']),
             'In': selected['pg_net_extension']['cut']}
     require(all(type(x) is int and 0 < x < hook for x in cuts.values()), 'archive_profile')
-    records, targets, lifecycles = {}, {}, {}
+    records, targets, lifecycles, omitted = {}, {}, {}, set()
     for obj in source.objects:
         budget.check()
         targets.setdefault((obj.identity[0], obj.identity[1].encode(), obj.identity[2].encode()), []).append(obj)
         found = by_pair.get((obj.class_oid, obj.object_oid))
-        if found is None and len(obj.extension) == 1:
+        if found is None and obj.extension:
+            require(len(obj.extension) == 1
+                    and (obj.class_oid, obj.object_oid) not in archive_pairs, 'archive_profile')
             found = by_extension.get(obj.extension[0][0].encode())
+            require(found is not None and found[0].owner in
+                    (None, b'', obj.extension[0][2].encode()), 'archive_profile')
+            omitted.add(obj.identity)
         if found is None:
             continue
         entry, stop = found
@@ -1503,15 +1560,20 @@ def restore_metadata_index(script, archive, restore_index, source, *, deadline):
         dependencies_to_objects.setdefault(did, []).append(identity)
         row = records[identity]
         pairs_to_objects[(row['classOid'], row['objectOid'])] = identity
-    defaults, statement_count = [], 0
+    defaults, statement_count, unknown_later = [], 0, False
+    roles = {r.name for r in source.roles}
     for entry, pass_, role, start, definition, stop in full_occurrences:
         budget.check()
         if entry.description not in (b'ACL', b'DEFAULT ACL'):
             if pass_ != ledger.PASSES['MAIN']:
                 # Direct dependencies plus source class/object identity. DDL
                 # expressions are not treated as provably effect-free.
+                if not entry.dependencies:
+                    unknown_later = True
                 for dependency in entry.dependencies:
                     budget.check()
+                    if dependency not in dependencies_to_objects:
+                        unknown_later = True
                     for identity in dependencies_to_objects.get(dependency, ()):
                         budget.check(); records[identity]['laterMutation'] = True
                 identity = pairs_to_objects.get((entry.class_oid, entry.object_oid))
@@ -1523,6 +1585,7 @@ def restore_metadata_index(script, archive, restore_index, source, *, deadline):
                 and script[definition:definition+len(entry.definition)] == entry.definition, 'archive_profile')
         authorized = False
         auth_targets = set()
+        entry_targets, semantic_targets = set(), set()
         for s in _statements(entry.definition, budget):
             statement_count += 1; require(statement_count <= MAX_ROLE_STATEMENTS, 'limit')
             a, b = definition+s.start, definition+s.stop
@@ -1535,20 +1598,43 @@ def restore_metadata_index(script, archive, restore_index, source, *, deadline):
             if s.is_(b'RESET'):
                 s.need(b'RESET', b'SESSION', b'AUTHORIZATION'); s.finish()
                 require(authorized, 'suffix_profile'); authorized = False; continue
-            found = _target_candidates(s, targets, budget)
+            found = _target_candidates(s, targets, budget, roles=roles)
             require(found is not None, 'suffix_profile')
-            for obj in found:
+            entry_targets.add(None if found.exact is None else found.exact.identity)
+            if found.exact is not None:
+                obj = found.exact
                 row = records.get(obj.identity)
                 if row is None:
                     require(obj.acl is None or not _supported(obj), 'archive_profile'); continue
-                # The exact typed ON identity and raw TOC dependency must both bind.
-                require(lifecycles[obj.identity] in entry.dependencies, 'archive_profile')
+                if obj.identity in omitted:
+                    if found.unmodeled:
+                        continue
+                    # The opaque member dump ID is not the extension lifecycle.
+                    require(entry.class_oid == entry.object_oid == 0
+                            and entry.namespace == obj.identity[1].encode()
+                            and entry.owner == obj.owner.encode()
+                            and len(entry.dependencies) == 1
+                            and entry.dependencies[0] > 0
+                            and entry.dependencies[0] not in by_dump, 'archive_profile')
+                    _operation(_statement_copy(s, budget), obj=obj, roles=roles)
+                    semantic_targets.add(obj.identity)
+                else:
+                    # Direct objects retain their exact numeric binding.
+                    require(lifecycles[obj.identity] in entry.dependencies, 'archive_profile')
+                    if found.unmodeled:
+                        continue
                 require(len(row['aclSpans']) < MAX_STATEMENTS, 'limit')
                 row['aclSpans'].append([a,b])
                 if authorized:
                     auth_targets.add(obj.identity)
         require(not authorized, 'suffix_profile')
+        if semantic_targets:
+            require(len(semantic_targets) == 1 and entry_targets == semantic_targets, 'archive_profile')
         for identity in auth_targets:
+            records[identity]['laterMutation'] = True
+    if unknown_later:
+        for identity in omitted:
+            budget.check()
             records[identity]['laterMutation'] = True
     result = {'schema': 'rf1086-repair-index-v1', 'script': core.script.copy(), 'preAcl': hook,
               'cuts': cuts, 'objects': list(records.values()), 'defaultAclSpans': defaults}
