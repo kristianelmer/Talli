@@ -24,7 +24,7 @@ from rf1086_actual_replay_package import IMAGE
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = "rf1086-focused-restore-check-v2"
-FAILURE_SCHEMA = "rf1086-focused-post-construction-failure-v1"
+FAILURE_SCHEMA = "rf1086-focused-post-construction-failure-v2"
 CONSTRUCTION_PREFIX = "owned_identity_restore_construction "
 CATALOG_PREFIX = "owned_identity_restore_catalog_diagnostic "
 MAX_OUTPUT = 64 * 1024
@@ -114,13 +114,20 @@ def source_bindings():
             for name in SOURCE_PATHS}
 
 
-def failure_location(error, budget):
+def failure_details(error, budget):
     try:
         with control.io_deadline(budget, end=min(budget.end, time.monotonic() + 0.250)):
-            return control._diagnostic_location(error, budget)
+            endpoint = None
+            if type(error) is control.EndpointAdmissionFailure:
+                service, predicate = error.service, error.predicate
+                if (type(service) is str and service in control.ENDPOINT_ADMISSION_SERVICES
+                        and type(predicate) is str and predicate in control.ENDPOINT_ADMISSION_PREDICATES):
+                    endpoint = {"service": service, "predicate": predicate}
+            return {"location": control._diagnostic_location(error, budget),
+                    "endpointAdmission": endpoint}
     except Exception:
         budget.context.raise_if_fatal()
-        return None
+        return {"location": None, "endpointAdmission": None}
 
 
 def run_context(database_url, api_url, workdir, boundary, budget):
@@ -181,7 +188,7 @@ def run_context(database_url, api_url, workdir, boundary, budget):
         if (failure is not None and not entered and not completed and clean and matching
                 and receipt["status"] == "constructed"):
             post_failure = {"schema": FAILURE_SCHEMA, "constructionSha256": receipt_hash,
-                            "location": failure_location(failure, budget)}
+                            **failure_details(failure, budget)}
         return {"identityOutcome": outcome, "identityContextEntered": entered,
                 "identityContextCompleted": completed, "construction": receipt,
                 "constructionReceiptSha256": receipt_hash,

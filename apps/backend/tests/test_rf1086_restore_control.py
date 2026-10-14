@@ -1577,3 +1577,90 @@ def test_internal_endpoint_admission_requires_canonical_endpoint_ip_string(inter
     with pytest.raises(control.RestoreUnavailable) as caught:
         owner.internal_endpoints()
     assert caught.value.reason == 'source_binding'
+
+
+def test_endpoint_admission_classifies_first_service_running_refusal(internal_endpoint_model):
+    owner, rows, state = internal_endpoint_model
+    rows['database']['State']['Running'] = False
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        owner.internal_endpoints()
+    assert type(caught.value).__name__ == 'EndpointAdmissionFailure'
+    assert caught.value.service == 'database' and caught.value.predicate == 'running'
+    assert caught.value.reason == 'source_binding' and len(state['calls']) == 4
+
+
+@pytest.mark.parametrize('kind', ['database', 'auth'])
+@pytest.mark.parametrize('predicate', ['exists', 'running', 'paused', 'restarting', 'dead',
+    'network_mode', 'publish_all_ports', 'port_bindings'])
+def test_endpoint_admission_first_false_guard_is_lazy_closed_and_same_order(
+        internal_endpoint_model, monkeypatch, kind, predicate):
+    owner, rows, _ = internal_endpoint_model
+    row = rows[kind]
+    original = owner.inspect
+    inspections = []
+    def inspect(which, **kwargs):
+        inspections.append(which)
+        if which == kind and predicate == 'exists': return None
+        return original(which, **kwargs)
+    monkeypatch.setattr(owner, 'inspect', inspect)
+    if predicate in ('running', 'paused', 'restarting', 'dead'):
+        row['State'][predicate.title()] = predicate != 'running'
+        # Later guards would raise TypeError if evaluated eagerly.
+        row['HostConfig'] = None
+    elif predicate == 'network_mode':
+        row['HostConfig']['NetworkMode'] = 'private-wrong-network'
+        del row['HostConfig']['PortBindings']
+    elif predicate == 'publish_all_ports':
+        row['HostConfig']['PublishAllPorts'] = True
+        del row['HostConfig']['PortBindings']
+    elif predicate == 'port_bindings':
+        row['HostConfig']['PortBindings'] = []
+        row['NetworkSettings'] = None
+    with pytest.raises(control.EndpointAdmissionFailure) as caught:
+        owner.internal_endpoints()
+    error = caught.value
+    assert type(error) is control.EndpointAdmissionFailure
+    assert vars(error) == {'reason':'source_binding', 'service':kind, 'predicate':predicate}
+    assert str(error) == 'restore_construction_unavailable'
+    assert inspections == (['network', 'database'] if kind == 'database'
+                           else ['network', 'database', 'auth'])
+
+
+@pytest.mark.parametrize('kind', ['database', 'auth'])
+@pytest.mark.parametrize('fault', ['state-null', 'state-list', 'running-missing',
+    'host-null', 'mode-missing', 'bindings-missing'])
+def test_endpoint_admission_malformed_access_remains_generic(internal_endpoint_model, kind, fault):
+    owner, rows, _ = internal_endpoint_model
+    row = rows[kind]
+    if fault == 'state-null': row['State'] = None
+    elif fault == 'state-list': row['State'] = []
+    elif fault == 'running-missing': del row['State']['Running']
+    elif fault == 'host-null': row['HostConfig'] = None
+    elif fault == 'mode-missing': del row['HostConfig']['NetworkMode']
+    elif fault == 'bindings-missing': del row['HostConfig']['PortBindings']
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        owner.internal_endpoints()
+    assert type(caught.value) is control.RestoreUnavailable
+    assert vars(caught.value) == {'reason':'source_binding'}
+
+
+@pytest.mark.parametrize('field,value', [('service', 'private-service'), ('service', False),
+    ('service', ['database']), ('predicate', 'private-predicate'), ('predicate', 1),
+    ('predicate', None)])
+def test_endpoint_admission_exception_constructor_refuses_nonenum_inputs(field, value):
+    args = {'service':'database', 'predicate':'exists'}
+    args[field] = value
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        control.EndpointAdmissionFailure(**args)
+    assert type(caught.value) is control.RestoreUnavailable
+    assert vars(caught.value) == {'reason':'source_binding'} and 'private-' not in str(caught.value)
+
+
+@pytest.mark.parametrize('field', ['service', 'predicate'])
+def test_endpoint_admission_exception_constructor_requires_exact_strings(field):
+    class Text(str): pass
+    args = {'service':'auth', 'predicate':'paused'}
+    args[field] = Text(args[field])
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        control.EndpointAdmissionFailure(**args)
+    assert type(caught.value) is control.RestoreUnavailable

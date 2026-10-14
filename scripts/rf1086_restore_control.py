@@ -57,10 +57,25 @@ printf '%s\\n%s\\n' "$version" "${hashed%% *}"
 '''
 
 
+ENDPOINT_ADMISSION_SERVICES = ('database', 'auth')
+ENDPOINT_ADMISSION_PREDICATES = ('exists', 'running', 'paused', 'restarting', 'dead',
+    'network_mode', 'publish_all_ports', 'port_bindings')
+
+
 class RestoreUnavailable(ValueError):
     def __init__(self, reason):
         self.reason = reason if reason in REASONS else 'internal'
         super().__init__('restore_construction_unavailable')
+
+
+class EndpointAdmissionFailure(RestoreUnavailable):
+    """Finite primary guard classification; never retain inspected values."""
+    def __init__(self, service, predicate):
+        if (type(service) is not str or service not in ENDPOINT_ADMISSION_SERVICES
+                or type(predicate) is not str or predicate not in ENDPOINT_ADMISSION_PREDICATES):
+            raise RestoreUnavailable('source_binding')
+        super().__init__('source_binding')
+        self.service, self.predicate = service, predicate
 
 
 def require(condition, reason):
@@ -294,15 +309,24 @@ class ResourceOwner:
             result = []
             for kind, port in (('database', 5432), ('auth', 9999)):
                 value = self.inspect(kind)
-                require(value is not None and value['State']['Running'] is True
-                        and value['State'].get('Paused') is False
-                        and value['State'].get('Restarting') is False
-                        and value['State'].get('Dead') is False
-                        and value['HostConfig']['NetworkMode'] == self.names['network']
-                        and value['HostConfig'].get('PublishAllPorts') is False
-                        and (value['HostConfig']['PortBindings'] is None or
-                             (type(value['HostConfig']['PortBindings']) is dict
-                              and not value['HostConfig']['PortBindings'])), 'source_binding')
+                if value is None:
+                    raise EndpointAdmissionFailure(kind, 'exists')
+                if value['State']['Running'] is not True:
+                    raise EndpointAdmissionFailure(kind, 'running')
+                if value['State'].get('Paused') is not False:
+                    raise EndpointAdmissionFailure(kind, 'paused')
+                if value['State'].get('Restarting') is not False:
+                    raise EndpointAdmissionFailure(kind, 'restarting')
+                if value['State'].get('Dead') is not False:
+                    raise EndpointAdmissionFailure(kind, 'dead')
+                if value['HostConfig']['NetworkMode'] != self.names['network']:
+                    raise EndpointAdmissionFailure(kind, 'network_mode')
+                if value['HostConfig'].get('PublishAllPorts') is not False:
+                    raise EndpointAdmissionFailure(kind, 'publish_all_ports')
+                if not (value['HostConfig']['PortBindings'] is None or
+                        (type(value['HostConfig']['PortBindings']) is dict
+                         and not value['HostConfig']['PortBindings'])):
+                    raise EndpointAdmissionFailure(kind, 'port_bindings')
                 settings = value['NetworkSettings']
                 require(set(settings['Networks']) == {self.names['network']}
                         and type(settings['Ports']) is dict

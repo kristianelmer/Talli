@@ -89,6 +89,108 @@ def test_matching_hashes_without_completed_context_are_not_success(monkeypatch):
     result = observe()
     assert result["identityOutcome"] == "unavailable"
     assert result['postConstructionFailure']['location'] is None
+    assert result['postConstructionFailure']['endpointAdmission'] is None
+
+
+def test_post_construction_endpoint_primary_is_closed_and_bound(monkeypatch, capsys):
+    primary = driver.control.EndpointAdmissionFailure('auth', 'port_bindings')
+    install_context(monkeypatch, receipt(success=True), error=primary,
+                    extra='private-inspection-output-canary')
+    result = observe()
+    diagnostic = result['postConstructionFailure']
+    assert diagnostic['schema'] == 'rf1086-focused-post-construction-failure-v2'
+    assert set(diagnostic) == {'schema', 'constructionSha256', 'location', 'endpointAdmission'}
+    assert diagnostic['constructionSha256'] == result['constructionReceiptSha256']
+    assert diagnostic['endpointAdmission'] == {'service':'auth', 'predicate':'port_bindings'}
+    assert result['identityOutcome'] == 'unavailable' and not result['identityContextEntered']
+    assert 'private-' not in json.dumps(result) and capsys.readouterr() == ('', '')
+
+
+@pytest.mark.parametrize('case', ['ordinary', 'subclass', 'cause', 'context', 'forged-attributes'])
+def test_endpoint_details_never_promote_other_primary_or_chain(monkeypatch, case):
+    typed = driver.control.EndpointAdmissionFailure('auth', 'running')
+    primary = ValueError('private-primary-canary')
+    if case == 'subclass':
+        class Derived(driver.control.EndpointAdmissionFailure): pass
+        primary = Derived('auth', 'running')
+    elif case == 'cause': primary.__cause__ = typed
+    elif case == 'context': primary.__context__ = typed
+    elif case == 'forged-attributes': primary.service, primary.predicate = 'auth', 'running'
+    install_context(monkeypatch, receipt(success=True), error=primary)
+    result = observe()
+    assert result['postConstructionFailure']['endpointAdmission'] is None
+    assert 'private-' not in json.dumps(result)
+
+
+@pytest.mark.parametrize('field,value', [('service', 'private-service'), ('service', False),
+    ('predicate', 'private-predicate'), ('predicate', 1)])
+def test_endpoint_details_revalidate_mutated_enum_values(monkeypatch, field, value):
+    primary = driver.control.EndpointAdmissionFailure('database', 'exists')
+    setattr(primary, field, value)
+    install_context(monkeypatch, receipt(success=True), error=primary)
+    result = observe()
+    assert result['postConstructionFailure']['endpointAdmission'] is None
+    assert 'private-' not in json.dumps(result)
+
+
+@pytest.mark.parametrize('fault', ['missing', 'string-subclass'])
+def test_endpoint_details_reject_missing_or_nonexact_attributes(monkeypatch, fault):
+    primary = driver.control.EndpointAdmissionFailure('database', 'exists')
+    if fault == 'missing': del primary.service
+    else:
+        class Text(str): pass
+        primary.service = Text('database')
+    install_context(monkeypatch, receipt(success=True), error=primary)
+    assert observe()['postConstructionFailure']['endpointAdmission'] is None
+
+
+@pytest.mark.parametrize('case', ['completed', 'entered-failure', 'catalog', 'pretarget', 'cleanup', 'source'])
+def test_endpoint_classification_never_bypasses_postfailure_eligibility(monkeypatch, case):
+    primary = driver.control.EndpointAdmissionFailure('database', 'running')
+    value = receipt(success=case not in ('catalog', 'pretarget'), clean=case != 'cleanup',
+                    source_post=case != 'source')
+    if case == 'pretarget': value['fingerprints']['target'] = None
+    if case == 'entered-failure':
+        @contextmanager
+        def restore(*args, **kwargs):
+            try:
+                yield object()
+                raise primary
+            finally:
+                print(driver.CONSTRUCTION_PREFIX + driver.control.ledger.canonical(value).decode('ascii'), file=sys.stderr)
+        monkeypatch.setattr(driver.identity, 'restored_identity', restore)
+    else: install_context(monkeypatch, value, error=primary, yield_context=case == 'completed')
+    def forbidden(*args): raise AssertionError('ineligible diagnostic extraction')
+    monkeypatch.setattr(driver, 'failure_details', forbidden)
+    result = observe()
+    assert result['postConstructionFailure'] is None
+    assert result['identityContextCompleted'] is (case == 'completed')
+
+
+@pytest.mark.parametrize('short_end', [False, True])
+def test_endpoint_classification_and_location_share_one_live_window(monkeypatch, short_end):
+    primary = driver.control.EndpointAdmissionFailure('auth', 'paused')
+    primary.add_note('private-note-canary')
+    budget = driver.control.RecoveryBudget(time.monotonic())
+    if short_end: budget.end = time.monotonic() + .1
+    original_end = budget.end
+    seen = []
+    def read(self, name):
+        if name in ('service', 'predicate'):
+            seen.append((name, signal.getitimer(signal.ITIMER_REAL)[0]))
+        return object.__getattribute__(self, name)
+    def location(*args):
+        seen.append(('location', signal.getitimer(signal.ITIMER_REAL)[0]))
+        return None
+    monkeypatch.setattr(driver.control.EndpointAdmissionFailure, '__getattribute__', read)
+    monkeypatch.setattr(driver.control, '_diagnostic_location', location)
+    result = driver.failure_details(primary, budget)
+    assert result == {'location':None, 'endpointAdmission':{'service':'auth', 'predicate':'paused'}}
+    assert [name for name, _ in seen] == ['service', 'predicate', 'location']
+    left = [remaining for _, remaining in seen]
+    assert 0 < left[2] <= left[1] <= left[0] <= (.1 if short_end else .250)
+    assert budget.end == original_end and budget.phase == 'construction'
+    assert 'private-' not in json.dumps(result)
 
 
 def test_post_construction_failure_reports_bound_location_without_private_values(monkeypatch, capsys):
@@ -106,8 +208,9 @@ def test_post_construction_failure_reports_bound_location_without_private_values
     budget = driver.control.RecoveryBudget(time.monotonic())
     result = driver.run_context('postgresql://private', 'http://127.0.0.1:54321', Path('/private/fixture'), object(), budget)
     diagnostic = result['postConstructionFailure']
-    assert diagnostic['schema'] == 'rf1086-focused-post-construction-failure-v1'
+    assert diagnostic['schema'] == 'rf1086-focused-post-construction-failure-v2'
     assert diagnostic['constructionSha256'] == result['constructionReceiptSha256']
+    assert diagnostic['endpointAdmission'] is None
     location = diagnostic['location']
     assert location['module'] == 'identity' and location['depth'] == 0 and location['edge'] == 'primary'
     line = (ROOT/'scripts/rf1086_identity_restore.py').read_text().splitlines()[location['line']-1]
@@ -123,32 +226,35 @@ def test_post_construction_location_is_failure_only_after_clean_matching_constru
     if case == 'pretarget': value['fingerprints']['target'] = None
     install_context(monkeypatch, value, yield_context=case == 'completed')
     def forbidden(*args): raise AssertionError('ineligible extraction')
-    monkeypatch.setattr(driver, 'failure_location', forbidden)
+    monkeypatch.setattr(driver, 'failure_details', forbidden)
     assert observe()['postConstructionFailure'] is None
 
 
 @pytest.mark.parametrize('error', [ValueError('private-error'), driver.control.RestoreUnavailable('deadline')])
-def test_failure_location_ordinary_extraction_error_is_unknown(monkeypatch, error):
+def test_failure_details_ordinary_extraction_error_is_unknown(monkeypatch, error):
     def fail(*args): raise error
     monkeypatch.setattr(driver.control, '_diagnostic_location', fail)
     budget = driver.control.RecoveryBudget(time.monotonic())
-    assert driver.failure_location(ValueError('private-primary'), budget) is None
+    assert driver.failure_details(ValueError('private-primary'), budget) == {
+        'location':None, 'endpointAdmission':None}
 
 
 @pytest.mark.parametrize('error', [KeyboardInterrupt('private-cancel'), SystemExit('private-exit')])
-def test_failure_location_cancellation_identity_propagates(monkeypatch, error):
+def test_failure_details_cancellation_identity_propagates(monkeypatch, error):
     def fail(*args): raise error
     monkeypatch.setattr(driver.control, '_diagnostic_location', fail)
     budget = driver.control.RecoveryBudget(time.monotonic())
     with pytest.raises(type(error)) as caught:
-        driver.failure_location(ValueError('private-primary'), budget)
+        driver.failure_details(driver.control.EndpointAdmissionFailure('auth', 'running'), budget)
     assert caught.value is error
 
 
-def test_failure_location_cancellation_still_clears_private_output(monkeypatch):
+def test_failure_details_cancellation_still_clears_private_output(monkeypatch):
     private = driver.PrivateOutput()
     monkeypatch.setattr(driver, 'PrivateOutput', lambda: private)
-    install_context(monkeypatch, receipt(success=True), extra='private-output-canary')
+    install_context(monkeypatch, receipt(success=True),
+                    error=driver.control.EndpointAdmissionFailure('auth', 'running'),
+                    extra='private-output-canary')
     error = KeyboardInterrupt('private-cancel')
     def fail(*args): raise error
     monkeypatch.setattr(driver.control, '_diagnostic_location', fail)
@@ -156,18 +262,18 @@ def test_failure_location_cancellation_still_clears_private_output(monkeypatch):
     assert caught.value is error and private.parts == [] and private.bytes == 0
 
 
-def test_failure_location_preserves_sticky_fatal_identity(monkeypatch):
+def test_failure_details_preserves_sticky_fatal_identity(monkeypatch):
     error = driver.control.RestoreUnavailable('cleanup_uncertain')
     def fail(): raise error
     budget = driver.control.RecoveryBudget(time.monotonic())
     monkeypatch.setattr(budget.context, 'raise_if_fatal', fail)
     with pytest.raises(type(error)) as caught:
-        driver.failure_location(ValueError('private-primary'), budget)
+        driver.failure_details(driver.control.EndpointAdmissionFailure('auth', 'running'), budget)
     assert caught.value is error
 
 
 @pytest.mark.parametrize('short_end', [False, True])
-def test_failure_location_postcheck_discards_result_after_clipped_expiry(monkeypatch, short_end):
+def test_failure_details_postcheck_discards_both_results_after_clipped_expiry(monkeypatch, short_end):
     budget = driver.control.RecoveryBudget(time.monotonic())
     if short_end: budget.end = time.monotonic() + 0.1
     calls = []
@@ -178,14 +284,15 @@ def test_failure_location_postcheck_discards_result_after_clipped_expiry(monkeyp
     monkeypatch.setattr(budget, 'remaining', remaining)
     monkeypatch.setattr(driver.control, '_diagnostic_location', lambda *args: {'module':'identity','line':1,'depth':0,'edge':'primary'})
     started = time.monotonic()
-    assert driver.failure_location(ValueError('private-primary'), budget) is None
+    assert driver.failure_details(driver.control.EndpointAdmissionFailure('auth', 'running'), budget) == {
+        'location':None, 'endpointAdmission':None}
     assert len(calls) == 2 and calls[0] == calls[1]
     assert started < calls[0] <= min(budget.end, time.monotonic() + 0.250)
     if short_end: assert calls[0] == budget.end
     assert budget.phase == 'construction' and budget.phase_elapsed == {}
 
 
-def test_failure_location_retains_earlier_alarm_and_restores_handler(monkeypatch):
+def test_failure_details_retains_earlier_alarm_and_restores_handler(monkeypatch):
     original_handler = signal.getsignal(signal.SIGALRM)
     original_timer = signal.getitimer(signal.ITIMER_REAL)
     started = time.monotonic()
@@ -199,7 +306,8 @@ def test_failure_location_retains_earlier_alarm_and_restores_handler(monkeypatch
         signal.signal(signal.SIGALRM, prior)
         signal.setitimer(signal.ITIMER_REAL, 0.15)
         budget = driver.control.RecoveryBudget(time.monotonic())
-        assert driver.failure_location(ValueError('private-primary'), budget) is None
+        assert driver.failure_details(ValueError('private-primary'), budget) == {
+            'location':None, 'endpointAdmission':None}
         assert 0 < observed[0] <= 0.15
         assert signal.getsignal(signal.SIGALRM) is prior
         assert 0 < signal.getitimer(signal.ITIMER_REAL)[0] <= observed[0]
