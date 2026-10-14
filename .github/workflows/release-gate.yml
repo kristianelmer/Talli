@@ -6,6 +6,14 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      rf_scope:
+        description: Full release validation or RF10 diagnostic feedback only
+        required: false
+        type: choice
+        default: full
+        options:
+          - full
+          - rf10-diagnostic
       record_evidence:
         description: Produce and retain the canonical immutable gate receipt
         required: false
@@ -161,11 +169,16 @@ jobs:
         id: rehearsal
         env:
           TALLI_PYTHON_BIN: .venv/bin/python
+          RF_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.rf_scope || 'full' }}
         run: |
           if [ "$TALLI_RF_LEGACY_REPLAY" = "true" ]; then
             .venv/bin/python scripts/rf1086_actual_replay.py prepare || true
           fi
-          npm run test:supabase:local
+          case "$RF_SCOPE" in
+            full) npm run test:supabase:local ;;
+            rf10-diagnostic) npm run test:supabase:rf10-diagnostic ;;
+            *) echo "Unsupported RF scope" >&2; exit 2 ;;
+          esac
 
       - name: Diagnose the rejected identity archive in the same image
         if: ${{ failure() && steps.rehearsal.outcome == 'failure' && env.TALLI_RF_LEGACY_REPLAY == 'true' }}
@@ -185,7 +198,7 @@ jobs:
 
   evidence:
     name: Immutable evidence
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.record_evidence }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.record_evidence && (inputs.rf_scope || 'full') == 'full' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
@@ -247,11 +260,13 @@ jobs:
     steps:
       - name: Require every readiness job
         env:
+          RF_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.rf_scope || 'full' }}
           APPLICATION_RESULT: ${{ needs.application.result }}
           DATABASE_RESULT: ${{ needs.database.result }}
           EVIDENCE_RESULT: ${{ needs.evidence.result }}
           RECORD_EVIDENCE: ${{ inputs.record_evidence }}
         run: |
+          test "$RF_SCOPE" = "full"
           test "$APPLICATION_RESULT" = "success"
           test "$DATABASE_RESULT" = "success"
           if [[ "$RECORD_EVIDENCE" = "true" ]]; then

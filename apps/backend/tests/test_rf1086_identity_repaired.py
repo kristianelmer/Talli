@@ -16,6 +16,118 @@ import rf1086_restore_control as control
 import test_rf1086_restore_metadata as metadata_fixtures
 
 
+@pytest.fixture
+def postconstruction_model(repaired_model, tmp_path, monkeypatch):
+    """Real repaired generator/receipt; generated transport and external services."""
+    from test_rf1086_restore_control import postconstruction_inputs
+    budget,state,calls,owners,_=repaired_model
+    state['recoverPass']=True
+    (tmp_path/'supabase').mkdir()
+    (tmp_path/'supabase/config.toml').write_text('project_id="fixture"\n')
+    monkeypatch.setattr(control,'internal_loopback_ports',lambda *a,**kw:nullcontext((19001,19003)))
+    monkeypatch.setattr(identity,'auth_gateway',lambda *a,**kw:nullcontext('http://127.0.0.1:19002'))
+    monkeypatch.setattr(identity,'verify_target_session',lambda *a,**kw:None)
+    monkeypatch.setattr(identity,'verify_target_auth',lambda *a,**kw:None)
+    monkeypatch.setattr(identity.httpx,'Client',lambda **kw:nullcontext(
+        SimpleNamespace(get=lambda *a,**kw:SimpleNamespace(status_code=200))))
+    boundary=SimpleNamespace(inspect_container=lambda *a,**kw:{'Config':{'Env':['SERVICE_KEY=fixture-key']}})
+    generated=postconstruction_inputs()
+    generated['prepared'].roles=SimpleNamespace(bootstrap='original_bootstrap',sql=b'persistent role program')
+    generated['prepared'].script=b'original stream'
+    monkeypatch.setattr(control,'prepare_archive',lambda *a,**kw:generated['prepared'])
+    monkeypatch.setattr(control,'bind_tools',lambda *a,**kw:generated['prepared'].tools)
+    def receipt(**kwargs):
+        state['receipt']=kwargs;state['receiptCalls']=state.get('receiptCalls',0)+1
+        for name in ('budget','source','target','image','before','recovered',
+                     'cleanup_complete','source_postcheck','business_complete','reason'):
+            if name in kwargs:generated[name]=kwargs[name]
+        return state['constructionReceipt'](**generated)
+    monkeypatch.setattr(control,'construction_receipt',receipt)
+    return budget,state,calls,owners,boundary
+
+
+@pytest.mark.parametrize('site,edge,business',[
+    ('actors','before_yield',False),('auth','before_yield',False),
+    ('caller','yield_boundary',False),('exit','after_yield',True)])
+def test_postconstruction_marker_locates_context_edge_without_replacing_failure(
+        postconstruction_model,tmp_path,monkeypatch,capsys,site,edge,business):
+    from contextlib import contextmanager
+    budget,state,calls,owners,boundary=postconstruction_model
+    primary=ValueError('PRIVATE message/session/caller')
+    def fail(*a,**kw):raise primary
+    if site=='actors':monkeypatch.setattr(identity,'auth_environment',fail)
+    if site=='auth':monkeypatch.setattr(identity,'verify_target_auth',fail)
+    if site=='exit':
+        @contextmanager
+        def gateway(*a,**kw):
+            yield 'http://127.0.0.1:19002'
+            raise primary
+        monkeypatch.setattr(identity,'auth_gateway',gateway)
+    with pytest.raises(ValueError) as caught:
+        with identity.restored_identity(SOURCE_URL,tmp_path,boundary,budget=budget):
+            if site=='caller':raise primary
+    assert caught.value is primary and owners[0].cleaned
+    assert state['postchecks']==3 and state['metadata']==3 and state['receiptCalls']==1
+    assert state['targetCapture']._raw is None
+    output=capsys.readouterr();assert output.out=='' and 'PRIVATE' not in output.err
+    lines=output.err.splitlines()
+    raw=next(line.split(' ',1)[1] for line in lines if line.startswith('owned_identity_restore_construction '))
+    marker=[line.split(' ',1)[1] for line in lines
+            if line.startswith('owned_identity_restore_post_construction_location ')]
+    assert len(marker)==1
+    value=json.loads(marker[0]);receipt=json.loads(raw)
+    assert value['constructionSha256']==hashlib.sha256(raw.encode('ascii')).hexdigest()
+    assert value['contextEdge']==edge and receipt['businessComplete'] is business
+    assert value['location']['module']=='identity' and value['location']['edge']=='primary'
+    assert receipt['status']=='constructed' and receipt['cleanupComplete'] and receipt['identitySourcePostcheck']
+    assert control.validate_post_construction_location(value,construction_raw=raw) is value
+    assert len(marker[0])+len(control.POST_CONSTRUCTION_PREFIX)+1<=4096
+
+
+@pytest.mark.parametrize('fault',['success','cleanup','source_post','cancel','system_exit',
+                                  'write','write_cancel','classifier_cancel'])
+def test_postconstruction_unavailable_observation_preserves_context_unwind(
+        postconstruction_model,tmp_path,monkeypatch,capsys,fault):
+    budget,state,calls,owners,boundary=postconstruction_model
+    primary=(KeyboardInterrupt('PRIVATE') if fault=='cancel' else
+             SystemExit('PRIVATE') if fault=='system_exit' else ValueError('PRIVATE'))
+    if fault=='cleanup':state['cleanupFault']=True
+    if fault=='source_post':
+        command=budget.command
+        def drift(args,**kw):
+            result=command(args,**kw)
+            return b'changed' if kw.get('data')==b'metadata' and state['metadata']==3 else result
+        monkeypatch.setattr(budget,'command',drift)
+    if fault=='classifier_cancel':
+        def cancel(*a):raise KeyboardInterrupt('PRIVATE secondary')
+        monkeypatch.setattr(control,'_diagnostic_location',cancel)
+    if fault in ('write','write_cancel'):
+        stderr=sys.stderr
+        class Writer:
+            def write(self,text):
+                if text.startswith(control.POST_CONSTRUCTION_PREFIX):
+                    if fault=='write_cancel':raise KeyboardInterrupt('PRIVATE secondary')
+                    raise OSError('PRIVATE secondary')
+                return stderr.write(text)
+            def flush(self):return stderr.flush()
+        monkeypatch.setattr(sys,'stderr',Writer())
+    if fault=='success':
+        with identity.restored_identity(SOURCE_URL,tmp_path,boundary,budget=budget):pass
+    else:
+        with pytest.raises(type(primary)) as caught:
+            with identity.restored_identity(SOURCE_URL,tmp_path,boundary,budget=budget):raise primary
+        assert caught.value is primary
+    assert owners[0].cleaned and state['postchecks']==3 and state['metadata']==3
+    assert state['receiptCalls']==1 and state['targetCapture']._raw is None
+    assert not (tmp_path/'auth.env').exists()
+    assert state['receipt']['cleanup_complete'] is (fault!='cleanup')
+    assert state['receipt']['source_postcheck'] is (fault!='source_post')
+    output=capsys.readouterr();assert output.out=='' and 'PRIVATE' not in output.err
+    assert control.POST_CONSTRUCTION_PREFIX not in output.err
+    if fault in ('write_cancel','classifier_cancel'):
+        assert budget.context.owner.cancelled and budget.context.owner.primary is primary
+
+
 def _empty_diagnostic_plan(raw):
     """Generated publisher-boundary fixture; no claim of database/source admission."""
     metadata=metadata_fixtures.m
@@ -93,6 +205,7 @@ def repaired_model(tmp_path,monkeypatch):
                 'fingerprints':{'source':kwargs['before'],'target':kwargs['recovered']}},
                 sort_keys=True,separators=(',',':'))
         return '{"schema":"fixture-safe-receipt"}'
+    state['constructionReceipt']=control.construction_receipt
     monkeypatch.setattr(control,'construction_receipt',receipt)
     real_owner=control.ResourceOwner
     state['realOwner']=real_owner

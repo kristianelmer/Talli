@@ -537,6 +537,332 @@ def test_safe_receipt_rejects_unmodeled_fields_in_observer_receipt():
     with pytest.raises(control.RestoreUnavailable):control.construction_receipt(**args)
 
 
+def postconstruction_inputs(*, business=False):
+    args=safe_receipt_input();args['business_complete']=business
+    names={name+'.py' for name in control.DIAGNOSTIC_MODULES.values()}
+    names.update(('rf1086_s0_control.py','rf1086_s0_protocol.py','rf1086_catalog_causal.sql'))
+    args['prepared'].code_binding={name:{'bytes':1,'sha256':'a'*64} for name in names}
+    args['prepared'].plan.binding['script']=dict(args['prepared'].index.core.script)
+    return args
+
+
+def postconstruction_receipt(*, business=False):
+    return control.construction_receipt(**postconstruction_inputs(business=business))
+
+
+def postconstruction_value(raw, *, edge='before_yield', location=None):
+    return {'schema':'rf1086-restore-post-construction-location-v1',
+        'constructionSha256':hashlib.sha256(raw.encode('ascii')).hexdigest(),
+        'contextEdge':edge,'location':location}
+
+
+@pytest.mark.parametrize('edge,business',[
+    ('before_yield',False),('yield_boundary',False),('yield_boundary',True),('after_yield',True)])
+def test_postconstruction_closed_validator_binds_exact_receipt_and_structural_edge(edge,business):
+    raw=postconstruction_receipt(business=business)
+    value=postconstruction_value(raw,edge=edge)
+    assert control.validate_post_construction_location(value,construction_raw=raw) is value
+    assert control.validate_post_construction_location(value) is value
+
+
+@pytest.mark.parametrize('change',[
+    lambda v:v.update(schema='other'),lambda v:v.update(raw='PRIVATE'),
+    lambda v:v.update(constructionSha256='A'*64),lambda v:v.update(constructionSha256='b'*64),
+    lambda v:v.update(contextEdge='caller_entered'),lambda v:v.update(contextEdge=[]),
+    lambda v:v.update(contextEdge='after_yield'),lambda v:v.update(location=[]),
+    lambda v:v['location'].update(module='private/file.py'),
+    lambda v:v['location'].update(module=[]),lambda v:v['location'].update(line=True),
+    lambda v:v['location'].update(line=0),lambda v:v['location'].update(line=8193),
+    lambda v:v['location'].update(depth=True),lambda v:v['location'].update(depth=3),
+    lambda v:v['location'].update(edge='context'),lambda v:v['location'].update(raw='PRIVATE')])
+def test_postconstruction_validator_refuses_forged_marker(change):
+    raw=postconstruction_receipt()
+    value=postconstruction_value(raw,location={'module':'identity','line':600,'depth':0,'edge':'primary'})
+    change(value)
+    with pytest.raises(ValueError):control.validate_post_construction_location(value,construction_raw=raw)
+
+
+@pytest.mark.parametrize('change',[
+    lambda r:r.update(schema='other'),lambda r:r.update(status='unavailable'),
+    lambda r:r.update(reason='internal'),lambda r:r.update(cleanupComplete=False),
+    lambda r:r.update(identitySourcePostcheck=False),lambda r:r.update(businessComplete=0),
+    lambda r:r.update(outerBusinessPostchecks=True),lambda r:r.update(configurationSha256='a'*64),
+    lambda r:r['code'].pop('rf1086_identity_restore.py'),
+    lambda r:r['code']['rf1086_identity_restore.py'].update(bytes=True),
+    lambda r:r['code']['rf1086_identity_restore.py'].update(bytes=256*1024+1),
+    lambda r:r['identities'].update(target=None),
+    lambda r:r['fingerprints'].update(target=None),
+    lambda r:r['fingerprints']['target'].update(catalog='c'*64),
+    lambda r:r['fingerprints']['target'].update(raw='PRIVATE'),
+    lambda r:r['bindings']['script'].update(bytes=True),
+    lambda r:r['bindings']['archive'].update(bytes=control.MAX_ARCHIVE+1),
+    lambda r:r['bindings']['roles'].update(sha256='private'),
+    lambda r:r['bindings']['plan'].update(extra='PRIVATE'),
+    lambda r:r['bindings']['plan']['index'].update(bytes=True),
+    lambda r:r['bindings']['tools']['pg_restore'].update(version='17.5'),
+    lambda r:r['bindings']['tools']['psql'].update(sha256='PRIVATE'),
+    lambda r:r['counts'].update(objects=True),lambda r:r['counts'].update(raw='PRIVATE'),
+    lambda r:r['hooks'].update(acl=1),lambda r:r['hooks'].update(Is=True),
+    lambda r:r['mutations']['acl'].update(noop=-1),
+    lambda r:r['mutations']['acl'].update(sha256='PRIVATE'),
+    lambda r:r['mutations']['Is'].update(bytes=2049),
+    lambda r:r['phaseElapsedSeconds'].update(actors=True),
+    lambda r:r['phaseElapsedSeconds'].update(unknown=0),
+    lambda r:r['phaseElapsedSeconds'].update(actors=float('inf')),
+    lambda r:r['bindings']['plan']['script'].update(sha256='c'*64),
+    lambda r:r['delivery']['original'].update(sha256='c'*64),
+    lambda r:r['delivery']['writer'].update(stdoutEnd='open'),
+    lambda r:r['delivery']['writer'].update(stderrEnd='open'),
+    lambda r:r['delivery']['writer'].update(exitCode=1),
+    lambda r:r['delivery']['writer'].update(exitCode=False),
+    lambda r:r['delivery']['writer'].update(reap='poll'),
+    lambda r:r['delivery']['writer'].update(stderrBytes=65537),
+    lambda r:r['delivery']['probes'].update(bytes=16385),
+    lambda r:r['delivery']['mutation']['exchanges'][0].update(point=['cut',True]),
+    lambda r:r['delivery']['mutation']['exchanges'][0].update(point=['cut',1]),
+    lambda r:r['delivery']['mutation'].update(raw='PRIVATE'),
+    lambda r:r['delivery'].update(frames=[8,9]),
+    lambda r:r['observers'].pop(),lambda r:r['observers'][0].update(reap='poll')])
+def test_postconstruction_refuses_unproved_construction_and_never_writes(change,capsys):
+    receipt=json.loads(postconstruction_receipt());change(receipt)
+    # Include nonfinite malicious wire input; the production canonical encoder
+    # rightly refuses to generate it, so do not use it to build that negative.
+    raw=json.dumps(receipt,sort_keys=True,separators=(',',':'))
+    value=postconstruction_value(raw)
+    with pytest.raises(ValueError):control.validate_post_construction_location(value,construction_raw=raw)
+    budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    control.publish_post_construction_location(budget,prepared=postconstruction_inputs()['prepared'],construction_raw=raw,
+        primary=ValueError('PRIVATE'),context_edge='before_yield')
+    assert capsys.readouterr()==('','')
+
+
+@pytest.mark.parametrize('raw_change',[
+    lambda r:' '+r,lambda r:r[:-1]+',"schema":"rf1086-restore-construction-v1"}',
+    lambda r:'x'*16385,lambda r:'\u00e9',lambda r:r.encode('ascii')])
+def test_postconstruction_requires_bounded_exact_canonical_ascii(raw_change,capsys):
+    raw=raw_change(postconstruction_receipt())
+    budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    control.publish_post_construction_location(budget,prepared=postconstruction_inputs()['prepared'],construction_raw=raw,
+        primary=ValueError('PRIVATE'),context_edge='before_yield')
+    assert capsys.readouterr()==('','')
+
+
+@pytest.mark.parametrize('primary',[None,KeyboardInterrupt('PRIVATE'),SystemExit('PRIVATE')])
+def test_postconstruction_absent_or_fatal_primary_does_not_start_observation(primary,monkeypatch,capsys):
+    def forbidden(*a,**kw):pytest.fail('observation attempted')
+    monkeypatch.setattr(control,'_post_construction_receipt',forbidden)
+    budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    control.publish_post_construction_location(budget,prepared=postconstruction_inputs()['prepared'],construction_raw='unused',
+        primary=primary,context_edge='before_yield')
+    assert capsys.readouterr()==('','')
+
+
+@pytest.mark.parametrize('flag',['cancelled','uncertain'])
+@pytest.mark.parametrize('unwind',[False,True])
+def test_postconstruction_sticky_original_owner_prevents_publication(flag,unwind,monkeypatch,capsys):
+    budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    original=budget.context.owner;setattr(original,flag,True)
+    if unwind:budget.context.owner=control._UnwindOwner(original,ValueError('PRIVATE'))
+    monkeypatch.setattr(control,'_post_construction_receipt',lambda *a:pytest.fail('observed sticky failure'))
+    control.publish_post_construction_location(budget,prepared=postconstruction_inputs()['prepared'],construction_raw='unused',
+        primary=ValueError('PRIVATE'),context_edge='before_yield')
+    assert capsys.readouterr()==('','')
+
+
+@pytest.mark.parametrize('where',['receipt','location','validation','serialization','write','flush'])
+def test_postconstruction_entire_publisher_is_clipped_and_restores_prior_alarm(where,monkeypatch,capsys):
+    raw=postconstruction_receipt();budget=control.RecoveryBudget(time.monotonic())
+    budget.enter('source_post');budget.end=time.monotonic()+.035
+    old_handler=signal.getsignal(signal.SIGALRM);old_timer=signal.getitimer(signal.ITIMER_REAL)
+    assert old_timer==(0.0,0.0)
+    handler=lambda *a:None
+    signal.signal(signal.SIGALRM,handler);signal.setitimer(signal.ITIMER_REAL,2)
+    def blocked(*a,**kw):time.sleep(.5);pytest.fail('blocked publisher completed')
+    if where in ('receipt','location','validation'):
+        name={'receipt':'_post_construction_receipt','location':'_diagnostic_location',
+              'validation':'validate_post_construction_location'}[where]
+        monkeypatch.setattr(control,name,blocked)
+    elif where=='serialization':
+        canonical=control.ledger.canonical
+        def encode(value):
+            if isinstance(value,dict) and value.get('schema')==control.POST_CONSTRUCTION_SCHEMA:blocked()
+            return canonical(value)
+        monkeypatch.setattr(control.ledger,'canonical',encode)
+    else:
+        stderr=sys.stderr
+        class Writer:
+            def write(self,text):
+                if where=='write':blocked()
+                return stderr.write(text)
+            def flush(self):
+                if where=='flush':blocked()
+                return stderr.flush()
+        monkeypatch.setattr(sys,'stderr',Writer())
+    end=budget.end;started=time.monotonic()
+    try:
+        control.publish_post_construction_location(budget,prepared=postconstruction_inputs()['prepared'],construction_raw=raw,
+            primary=ValueError('PRIVATE'),context_edge='before_yield')
+        assert time.monotonic()-started<.25 and budget.end==end and budget.phase=='source_post'
+        assert signal.getsignal(signal.SIGALRM) is handler
+        assert 0<signal.getitimer(signal.ITIMER_REAL)[0]<2
+        output=capsys.readouterr();assert output.out=='' and 'PRIVATE' not in output.err
+        if where!='flush':assert output.err==''
+    finally:
+        if where in ('write','flush'):monkeypatch.setattr(sys,'stderr',stderr)
+        signal.setitimer(signal.ITIMER_REAL,0);signal.signal(signal.SIGALRM,old_handler)
+
+
+def test_postconstruction_timeout_swallowed_by_classifier_stops_before_validation(monkeypatch,capsys):
+    from contextlib import contextmanager
+    raw=postconstruction_receipt();budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    real=control.io_deadline;endpoints=[]
+    @contextmanager
+    def scope(value,*,end):
+        endpoints.append(end)
+        with real(value,end=end):yield
+    monkeypatch.setattr(control,'io_deadline',scope)
+    def location(*a):
+        # Same ordinary timeout-to-null behavior as the existing classifier.
+        try:time.sleep(1)
+        except control.RestoreUnavailable:return None
+    monkeypatch.setattr(control,'_diagnostic_location',location)
+    monkeypatch.setattr(control,'validate_post_construction_location',lambda *a,**kw:pytest.fail('validated after expiry'))
+    start=time.monotonic();parent_end=budget.end
+    control.publish_post_construction_location(budget,prepared=postconstruction_inputs()['prepared'],construction_raw=raw,
+        primary=ValueError('PRIVATE'),context_edge='before_yield')
+    assert .2<time.monotonic()-start<.6
+    assert start<endpoints[0]<=start+.251 and budget.end==parent_end
+    assert capsys.readouterr()==('','') and signal.getitimer(signal.ITIMER_REAL)[0]==0
+
+
+@pytest.mark.parametrize('secondary',[RuntimeError('PRIVATE'),KeyboardInterrupt('PRIVATE'),SystemExit('PRIVATE')])
+def test_postconstruction_secondary_fault_keeps_initiating_primary(secondary,monkeypatch,capsys):
+    raw=postconstruction_receipt();budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    primary=ValueError('ORIGINAL PRIVATE')
+    def fail(*a,**kw):raise secondary
+    monkeypatch.setattr(control,'validate_post_construction_location',fail)
+    control.publish_post_construction_location(budget,prepared=postconstruction_inputs()['prepared'],construction_raw=raw,
+        primary=primary,context_edge='before_yield')
+    if not isinstance(secondary,Exception):
+        assert budget.context.owner.cancelled and budget.context.owner.primary is primary
+        with pytest.raises(ValueError) as caught:budget.context.raise_if_fatal()
+        assert caught.value is primary
+    assert capsys.readouterr()==('','')
+
+
+def test_postconstruction_closed_marker_preserves_only_structural_suppressed_context(monkeypatch,capsys):
+    namespace={}
+    exec(compile('def fail():\n secret="PRIVATE locals"\n raise ValueError("PRIVATE inner")\n',
+                 str(control.Path(control.__file__).with_name('rf1086_identity_restore.py')),'exec'),namespace)
+    try:
+        try:namespace['fail']()
+        except ValueError:raise RuntimeError('PRIVATE outer') from None
+    except RuntimeError as error:primary=error
+    raw=postconstruction_receipt();budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    control.publish_post_construction_location(budget,prepared=postconstruction_inputs()['prepared'],construction_raw=raw,primary=primary,context_edge='yield_boundary')
+    output=capsys.readouterr();assert output.out=='' and 'PRIVATE' not in output.err
+    value=json.loads(output.err[len(control.POST_CONSTRUCTION_PREFIX):])
+    assert value['location']=={'module':'identity','line':3,'depth':1,'edge':'suppressed_context'}
+    assert control.validate_post_construction_location(value,construction_raw=raw) is value
+
+
+@pytest.mark.parametrize('fault',['unknown_trace','expired','wrong_phase','marker_cap'])
+def test_postconstruction_unknown_location_is_null_but_ineligible_publication_is_absent(fault,monkeypatch,capsys):
+    raw=postconstruction_receipt();budget=control.RecoveryBudget(time.monotonic())
+    if fault!='wrong_phase':budget.enter('source_post')
+    if fault=='expired':budget.end=time.monotonic()-1
+    if fault=='marker_cap':monkeypatch.setattr(control,'POST_CONSTRUCTION_CAP',100)
+    try:raise ValueError('PRIVATE test-only trace')
+    except ValueError as error:primary=error
+    control.publish_post_construction_location(budget,prepared=postconstruction_inputs()['prepared'],construction_raw=raw,
+        primary=primary,context_edge='before_yield')
+    output=capsys.readouterr();assert output.out=='' and 'PRIVATE' not in output.err
+    if fault=='unknown_trace':
+        value=json.loads(output.err[len(control.POST_CONSTRUCTION_PREFIX):])
+        assert value['location'] is None
+    else:assert output.err==''
+
+
+def test_postconstruction_publication_has_post_yield_check_without_new_time(monkeypatch,capsys):
+    raw=postconstruction_receipt();clock=[time.monotonic()]
+    monkeypatch.setattr(control.time,'monotonic',lambda:clock[0])
+    budget=control.RecoveryBudget(clock[0]);budget.enter('source_post')
+    end=budget.end;stderr=sys.stderr;checks=[];remaining=budget.remaining
+    def check(**kwargs):
+        checks.append((clock[0],kwargs))
+        return remaining(**kwargs)
+    monkeypatch.setattr(budget,'remaining',check)
+    class Writer:
+        def write(self,text):return stderr.write(text)
+        def flush(self):clock[0]+=.3
+    monkeypatch.setattr(sys,'stderr',Writer())
+    control.publish_post_construction_location(budget,prepared=postconstruction_inputs()['prepared'],construction_raw=raw,
+        primary=ValueError('PRIVATE'),context_edge='before_yield')
+    monkeypatch.setattr(sys,'stderr',stderr)
+    assert checks[-1][1]['end']<checks[-1][0] and budget.end==end
+    assert budget.phase=='source_post' and signal.getitimer(signal.ITIMER_REAL)[0]==0
+    # A completed write cannot be withdrawn if a later flush/post-yield check
+    # fails; the marker itself makes no publication/completion success claim.
+    assert 'PRIVATE' not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize('secondary',[RuntimeError('PRIVATE'),KeyboardInterrupt('PRIVATE'),SystemExit('PRIVATE')])
+def test_postconstruction_handler_restoration_uncertainty_keeps_original(secondary,monkeypatch,capsys):
+    raw=postconstruction_receipt();budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    primary=ValueError('ORIGINAL PRIVATE');real_signal=signal.signal
+    original={number:signal.getsignal(number) for number in (signal.SIGINT,signal.SIGTERM,signal.SIGALRM)}
+    once=[]
+    def signal_call(number,handler):
+        if number==signal.SIGINT and handler is original[number] and not once:
+            once.append(True);raise secondary
+        return real_signal(number,handler)
+    monkeypatch.setattr(signal,'signal',signal_call)
+    try:
+        control.publish_post_construction_location(budget,prepared=postconstruction_inputs()['prepared'],construction_raw=raw,
+            primary=primary,context_edge='before_yield')
+        assert once and budget.context.owner.uncertain and budget.context.owner.primary is primary
+        with pytest.raises(ValueError) as caught:budget.context.raise_if_fatal()
+        assert caught.value is primary
+    finally:
+        for number,handler in original.items():real_signal(number,handler)
+        signal.setitimer(signal.ITIMER_REAL,0)
+    assert 'PRIVATE' not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize('field',['code','archive','roles','script','plan','tools','counts','hooks','missing'])
+def test_postconstruction_retained_admission_bindings_must_match(field,capsys):
+    raw=postconstruction_receipt();prepared=postconstruction_inputs()['prepared']
+    if field=='code':prepared.code_binding['rf1086_identity_restore.py']['sha256']='c'*64
+    if field=='archive':prepared.archive_binding['sha256']='c'*64
+    if field=='roles':prepared.roles_binding['sha256']='c'*64
+    if field=='script':prepared.index.core.script['sha256']='c'*64
+    if field=='plan':prepared.plan.binding['profile']='c'*64
+    if field=='tools':prepared.tools['psql']['sha256']='c'*64
+    if field=='counts':prepared.plan.counts['objects']=1
+    if field=='hooks':prepared.plan.pre_acl=400
+    if field=='missing':prepared=None
+    budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    control.publish_post_construction_location(budget,prepared=prepared,construction_raw=raw,
+        primary=ValueError('PRIVATE'),context_edge='before_yield')
+    assert capsys.readouterr()==('','')
+
+
+@pytest.mark.parametrize('secondary',[RuntimeError('PRIVATE'),KeyboardInterrupt('PRIVATE'),SystemExit('PRIVATE')])
+def test_postconstruction_cancel_bookkeeping_fault_cannot_escape_first_error(secondary,monkeypatch,capsys):
+    raw=postconstruction_receipt();prepared=postconstruction_inputs()['prepared']
+    budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    primary=ValueError('ORIGINAL PRIVATE')
+    def interrupt():raise KeyboardInterrupt('PRIVATE first secondary')
+    def broken_bookkeeping(*a):raise secondary
+    monkeypatch.setattr(control.time,'monotonic',interrupt)
+    monkeypatch.setattr(control,'_diagnostic_cancel',broken_bookkeeping)
+    control.publish_post_construction_location(budget,prepared=prepared,construction_raw=raw,
+        primary=primary,context_edge='before_yield')
+    assert budget.context.owner.uncertain and budget.context.owner.primary is primary
+    with pytest.raises(ValueError) as caught:budget.context.raise_if_fatal()
+    assert caught.value is primary and capsys.readouterr()==('','')
+
+
 # Direct generated integration: the only replaced production boundary is command.
 from pathlib import Path
 import socket

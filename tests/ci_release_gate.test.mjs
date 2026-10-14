@@ -429,6 +429,81 @@ test("manual release gates can retain linked immutable evidence", () => {
   assert.match(workflow, /test "\$EVIDENCE_RESULT" = "success"/u);
 });
 
+test("RF10 workflow selection is closed and cannot produce a release verdict", () => {
+  const workflow = readFileSync(workflowPath, "utf8");
+  assert.match(workflow, /rf_scope:\n\s+description: [^\n]+\n\s+required: false\n\s+type: choice\n\s+default: full\n\s+options:\n\s+- full\n\s+- rf10-diagnostic/u);
+  const normalized = "${{ github.event_name == 'workflow_dispatch' && inputs.rf_scope || 'full' }}";
+  const rehearsal = workflow.split("      - name: Rehearse migrations, RLS, storage, and owner persistence\n")[1]?.split("\n      - name:")[0];
+  const verdict = workflow.split("      - name: Require every readiness job\n")[1];
+  assert.ok(rehearsal?.includes(`RF_SCOPE: ${normalized}`));
+  assert.ok(verdict?.includes(`RF_SCOPE: ${normalized}`));
+  const evidence = workflow.split("  evidence:\n")[1]?.split("\n  release-gate:")[0];
+  assert.match(evidence, /if: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.record_evidence && \(inputs\.rf_scope \|\| 'full'\) == 'full' \}\}/u);
+  const script = section => section.split("        run: |\n")[1].split("\n").map(line => line.replace(/^          /u, "")).join("\n");
+  const dir = mkdtempSync(join(tmpdir(), "talli-rf10-workflow-"));
+  try {
+    const npm = join(dir, "npm");
+    writeFileSync(npm, '#!/usr/bin/env bash\nprintf "COMMAND:%s\\n" "$*"\n');
+    chmodSync(npm, 0o755);
+    for (const [scope, command] of [["full", "test:supabase:local"], ["rf10-diagnostic", "test:supabase:rf10-diagnostic"], ["unknown", null]]) {
+      const result = run("bash", ["-e", "-c", script(rehearsal)], { cwd: dir, timeout: 5000, killSignal: "SIGKILL", maxBuffer: 65536,
+        env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, RF_SCOPE: scope, TALLI_RF_LEGACY_REPLAY: "false" } });
+      assert.equal(result.error, undefined);
+      assert.equal(result.status, command ? 0 : 2, result.stderr);
+      assert.equal(result.stdout, command ? `COMMAND:run ${command}\n` : "");
+      for (const record of ["false", "true"]) {
+        const verdictResult = run("bash", ["-e", "-c", script(verdict)], { timeout: 5000, killSignal: "SIGKILL", maxBuffer: 65536,
+          env: { ...process.env, RF_SCOPE: scope, RECORD_EVIDENCE: record, APPLICATION_RESULT: "success", DATABASE_RESULT: "success", EVIDENCE_RESULT: record === "true" ? "success" : "skipped" } });
+        assert.equal(verdictResult.error, undefined);
+        assert.equal(verdictResult.status === 0, scope === "full", `${scope}/${record}`);
+      }
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+  const producer = readFileSync(localGatePath, "utf8");
+  assert.match(producer, /"database-isolation",\s*"TALLI_PYTHON_BIN=apps\/backend\/\.venv\/bin\/python npm run test:supabase:local",\s*"npm",\s*\["run", "test:supabase:local"\]/u);
+  assert.doesNotMatch(producer, /rf10-diagnostic|RF_SCOPE/u, "canonical producer must use the unchanged zero-argument aggregate");
+});
+
+test("RF10 package argv selects only the exact source title and omits unmatched generated cases", (t) => {
+  const scripts = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).scripts;
+  const title = "owner completes RF capture, rejected-predecessor correction and lost main response through the canonical backend";
+  const command = `node --test --test-concurrency=1 --test-name-pattern='^${title}$' tests/shareholder_register_browser_fixture_safety.test.mjs tests/browser_shareholder_register_filing.mjs`;
+  assert.equal(scripts["test:supabase:rf10-diagnostic"], "bash scripts/test-supabase-local.sh --rf10-diagnostic");
+  assert.equal(scripts["test:supabase:local"], "bash scripts/test-supabase-local.sh");
+  assert.equal(scripts["test:browser-shareholder-register-filing:rf10-diagnostic"], command);
+  const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
+  const start = source.indexOf("const scenarios = [");
+  const boundary = "`, {\n  timeout: 360_000,\n}, async (t) => {";
+  const end = source.indexOf(boundary, start);
+  assert.ok(start >= 0 && end > start);
+  assert.equal(source.indexOf(boundary, end + 1), -1);
+  const dir = mkdtempSync(join(tmpdir(), "talli-rf10-selection-"));
+  try {
+    mkdirSync(join(dir, "tests"));
+    const imports = 'import test, {before, after} from "node:test";\nimport {appendFileSync} from "node:fs";\n';
+    writeFileSync(join(dir, "tests/shareholder_register_browser_fixture_safety.test.mjs"), imports
+      + Array.from({ length: 28 }, (_, i) => `test("generated safety omitted ${i}", () => { throw new Error("unmatched safety executed"); });`).join("\n"));
+    writeFileSync(join(dir, "tests/browser_shareholder_register_filing.mjs"), imports
+      + 'before(() => appendFileSync("events", "before\\n"));\nafter(() => appendFileSync("events", "after\\n"));\n'
+      + source.slice(start, end + 1) + ', () => { if (scenarioIndex !== 9) throw new Error("unmatched RF executed"); appendFileSync("events", "rf-10\\n"); });\n'
+      + ["prefix " + title, title + " suffix"].map(name => `test(${JSON.stringify(name)}, () => { throw new Error("partial title matched"); });`).join("\n"));
+    const env = { ...process.env, PATH: `${dirname(process.execPath)}:${process.env.PATH}`, NODE_OPTIONS: "", NODE_DISABLE_COLORS: "1" };
+    // This is a fresh generated test runner, not a worker in the outer runner.
+    delete env.NODE_TEST_CONTEXT;
+    const result = run("bash", ["-e", "-c", command], { cwd: dir, timeout: 10000, killSignal: "SIGKILL", maxBuffer: 65536, env });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(readFileSync(join(dir, "events"), "utf8"), "before\nrf-10\nafter\n");
+    // Node reports the file with no matching tests, not its 28 omitted cases.
+    assert.match(result.stdout, /✔ tests\/shareholder_register_browser_fixture_safety\.test\.mjs \([\d.]+ms\)/u);
+    assert.match(result.stdout, /ℹ tests 2\r?$/mu);
+    assert.match(result.stdout, /ℹ pass 2\r?$/mu);
+    assert.match(result.stdout, /ℹ skipped 0\r?$/mu);
+    assert.doesNotMatch(result.stdout, /generated safety omitted|prefix owner|backend suffix|correction and process crash/u);
+    t.diagnostic(`generated selection parent ${result.pid} exited ${result.status}; spawnSync waited`);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test("database isolation uses the locked Python renderer environment", () => {
   const workflow = readFileSync(workflowPath, "utf8");
   const databaseJob =
@@ -884,7 +959,7 @@ test("complete local runner requires the fresh RF browser after historical recov
     "node --test --test-concurrency=1 tests/shareholder_register_browser_fixture_safety.test.mjs tests/browser_shareholder_register_filing.mjs");
   const harness = readFileSync(databaseHarnessPath, "utf8");
   const fresh = "npm run test:browser-shareholder-register-filing";
-  assert.equal(harness.split(fresh).length, 2);
+  assert.equal(harness.split("\n").filter(line => line.trim() === fresh).length, 1);
   assert.ok(harness.indexOf(fresh) > harness.indexOf("npm run test:browser-authority-connections"));
 });
 
@@ -893,6 +968,22 @@ test("complete local runner requires the fresh RF browser after historical recov
 // Execute the actual shell with local shims; no database or provider process starts.
 {
 const shell=fileURLToPath(new URL('../scripts/test-supabase-local.sh',import.meta.url));
+test('RF10 diagnostic arguments reject unknown, repeated and extra tokens before acquisition', () => {
+ const dir=mkdtempSync(join(tmpdir(),'talli-rf10-argv-'));
+ try {
+  mkdirSync(join(dir,'bin'));
+  const sentinel=join(dir,'bin','mktemp');
+  writeFileSync(sentinel,'#!/usr/bin/env bash\nprintf acquired > acquired\nexit 91\n');
+  chmodSync(sentinel,0o755);
+  for(const args of [['--unknown'],['--rf10-diagnostic=1'],['--rf10-diagnostic','--rf10-diagnostic'],['--rf10-diagnostic','extra'],[''],['--']]) {
+   const result=run('bash',[shell,...args],{cwd:dir,timeout:5000,killSignal:'SIGKILL',maxBuffer:65536,
+    env:{...process.env,PATH:join(dir,'bin')+':'+process.env.PATH}});
+   assert.equal(result.error,undefined);
+   assert.equal(result.status,2,JSON.stringify(args)+result.stderr);
+   assert.equal(existsSync(join(dir,'acquired')),false,'must reject before mktemp or any fixture acquisition');
+  }
+ } finally {rmSync(dir,{recursive:true,force:true});}
+});
 const phases=['topology:rollback:1','npm:test:ledger-database-lifecycle','npm:test:banking-database-lifecycle',
  'npm:test:investments-database-lifecycle','npm:test:documents-database-lifecycle','npm:test:marketing-measurement-database',
  'npm:test:validation-observation','npm:test:supabase-predecessor','topology:workspace','npm:test:supabase-rf-workspace',
@@ -929,20 +1020,30 @@ if [[ "$2" == "test:browser-owner" ]]; then
 fi
 if [[ "$phase" == "$FAIL_PHASE" ]]; then exit 23; fi
 `;
-for(const fail of ['', 'topology:workspace','npm:test:supabase-rf-workspace','npm:test:browser-owner','topology:rollback:2',
+const fullFailures=['', 'topology:workspace','npm:test:supabase-rf-workspace','npm:test:browser-owner','topology:rollback:2',
  'npm:test:ledger-hosted-migration-authority','npm:test:billing-database-lifecycle','topology:recutover','npm:test:supabase-rf-feedback',
- 'npm:test:company-tax-database','npm:test:annual-accounts-database','npm:test:browser-owner-annual','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts']) {
- test(`real shell stops at ${fail||'success'} and restores owned generated files`,()=>{
+ 'npm:test:company-tax-database','npm:test:annual-accounts-database','npm:test:browser-owner-annual','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts'];
+const diagnosticPhases=[...phases.slice(0,phases.indexOf('npm:test:browser-shareholder-register-filing')),'npm:test:browser-shareholder-register-filing:rf10-diagnostic'];
+for(const {fail,args=[],ambient={},expected=phases,label=fail||'success'} of [
+ ...fullFailures.map(fail=>({fail})),
+ {fail:'',ambient:{RF_SCOPE:'rf10-diagnostic',TALLI_RF_SCOPE:'rf10-diagnostic',rf10_diagnostic:'1'},label:'ambient RF10 still full'},
+ ...['','npm:test:authority-connections-database','npm:test:browser-shareholder-register-filing:rf10-diagnostic'].map(fail=>({
+  fail,args:['--rf10-diagnostic'],expected:diagnosticPhases,label:`RF10 diagnostic ${fail||'success'}`,
+ })),
+]) {
+ test(`real shell stops at ${label} and restores owned generated files`,()=>{
   const dir=mkdtempSync(join(tmpdir(),'talli-151-shell-proof-'));
   try {
    mkdirSync(join(dir,'apps/web'),{recursive:true});mkdirSync(join(dir,'bin'));mkdirSync(join(dir,'snapshots'));
    writeFileSync(join(dir,'apps/web/next-env.d.ts'),'original declaration\r\n');
    writeFileSync(join(dir,'apps/web/tsconfig.json'),'original config\r\n');
    for(const [name,body] of [['node',nodeShim],['npm',npmShim]]) {const path=join(dir,'bin',name);writeFileSync(path,body);chmodSync(path,0o755);}
-   const result=spawnSync('bash',[shell],{cwd:dir,encoding:'utf8',env:{...process.env,FAIL_PHASE:fail,PATH:join(dir,'bin')+':'+process.env.PATH,TMPDIR:join(dir,'snapshots')}});
+   const result=spawnSync('bash',[shell,...args],{cwd:dir,encoding:'utf8',timeout:10000,killSignal:'SIGKILL',maxBuffer:65536,
+    env:{...process.env,...ambient,FAIL_PHASE:fail,PATH:join(dir,'bin')+':'+process.env.PATH,TMPDIR:join(dir,'snapshots')}});
+   assert.equal(result.error,undefined);
    assert.equal(result.status,fail?23:0,result.stderr);
    const seen=result.stdout.split('\n').filter(x=>x.startsWith('PHASE:')).map(x=>x.slice(6));
-   assert.deepEqual(seen,fail?phases.slice(0,phases.indexOf(fail)+1):phases);
+   assert.deepEqual(seen,fail?expected.slice(0,expected.indexOf(fail)+1):expected);
    assert.equal(readFileSync(join(dir,'apps/web/next-env.d.ts'),'utf8'),'original declaration\r\n');
    assert.equal(readFileSync(join(dir,'apps/web/tsconfig.json'),'utf8'),'original config\r\n');
    assert.deepEqual(readdirSync(join(dir,'apps/web')).sort(),['next-env.d.ts','tsconfig.json']);

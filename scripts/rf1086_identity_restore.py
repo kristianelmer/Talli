@@ -433,6 +433,7 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
     prepared = delivery = mutations = recovered = target = None
     raw_snapshot = None
     business_complete = cleanup_complete = source_postcheck = False
+    context_edge = 'before_yield'
     diagnostic = construction.PreTargetDiagnostic(budget)
     target_catalog = CatalogCapture()
     catalog_mismatch = False
@@ -571,13 +572,16 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
             construction.require(bool(admin_key),'source_binding')
             with auth_gateway(port,budget=budget) as gateway:
                 verify_target_auth(database_url,gateway,budget=budget)
-                yield RecoveredIdentity(database_url,gateway,admin_key,target,operator,
+                recovered_identity=RecoveredIdentity(database_url,gateway,admin_key,target,operator,
                     {'independentClusterRestored':True,'independentAuthRestored':True,
                      'roleAttributesAndMembershipsRestored':True,'ownershipGrantsAndRlsRestored':True,
                      'authRowsRestoredExactly':True,'authHttpTargetBindingVerified':True,
                      'authSigningConfigSource':'captured-local-service-config','hostedKeyRecoveryVerified':False},
                     budget=budget)
+                context_edge='yield_boundary'
+                yield recovered_identity
                 business_complete=True
+                context_edge='after_yield'
     finally:
         primary=sys.exception()
         try:
@@ -612,6 +616,8 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
                     construction.publish_catalog_postcondition(budget, construction_raw=receipt_raw,
                         source_metadata=source_metadata, target_capture=target_catalog, primary=primary,
                         prepared=prepared)
+                construction.publish_post_construction_location(budget,construction_raw=receipt_raw,
+                    primary=primary,context_edge=context_edge,prepared=prepared)
                 diagnostic.publish(primary=primary if primary is not None else error)
                 if errors:raise errors[0]
         finally:

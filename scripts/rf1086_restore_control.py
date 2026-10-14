@@ -973,6 +973,187 @@ def _diagnostic_cancel(budget, error, primary):
     owner._cancel(error)
 
 
+POST_CONSTRUCTION_PREFIX = 'owned_identity_restore_post_construction_location '
+POST_CONSTRUCTION_SCHEMA = 'rf1086-restore-post-construction-location-v1'
+POST_CONSTRUCTION_EDGES = ('before_yield', 'yield_boundary', 'after_yield')
+POST_CONSTRUCTION_CAP = 4096
+
+
+def _post_construction_receipt(raw, *, prepared=None):
+    """Validate the closed receipt and optionally bind retained admission facts."""
+    require(type(raw) is str and 1 <= len(raw) <= 16384, 'internal')
+    encoded = raw.encode('ascii')
+    receipt = json.loads(encoded)
+    _diagnostic_keys(receipt, ('schema', 'status', 'reason', 'configurationSha256', 'code',
+        'bindings', 'identities', 'counts', 'hooks', 'mutations', 'delivery', 'observers',
+        'fingerprints', 'cleanupComplete', 'identitySourcePostcheck', 'businessComplete',
+        'outerBusinessPostchecks', 'phaseElapsedSeconds'))
+    require(ledger.canonical(receipt) == encoded and receipt['schema'] == SCHEMA
+            and receipt['status'] == 'constructed' and receipt['reason'] is None
+            and receipt['configurationSha256'] == hashlib.sha256(ledger.canonical(CONFIG)).hexdigest()
+            and receipt['cleanupComplete'] is True and receipt['identitySourcePostcheck'] is True
+            and type(receipt['businessComplete']) is bool
+            and receipt['outerBusinessPostchecks'] is None, 'internal')
+    def sized(value, cap, minimum=0):
+        _diagnostic_keys(value, ('bytes', 'sha256'))
+        require(type(value['bytes']) is int and minimum <= value['bytes'] <= cap, 'internal')
+        _diagnostic_hash(value['sha256'])
+    code = receipt['code']
+    names = {name+'.py' for name in DIAGNOSTIC_MODULES.values()}
+    names.update(('rf1086_s0_control.py', 'rf1086_s0_protocol.py', 'rf1086_catalog_causal.sql'))
+    _diagnostic_keys(code, names)
+    for bound in code.values(): sized(bound, 256*1024, 1)
+    _diagnostic_keys(receipt['identities'], ('source', 'target', 'image'))
+    for digest in receipt['identities'].values(): _diagnostic_hash(digest)
+    fingerprints = receipt['fingerprints']
+    _diagnostic_keys(fingerprints, ('source', 'target'))
+    for item in fingerprints.values():
+        _diagnostic_keys(item, ('roles', 'catalog', 'auth', 'companyMemberships'))
+        for digest in item.values(): _diagnostic_hash(digest)
+    require(fingerprints['source'] == fingerprints['target'], 'internal')
+    bindings = receipt['bindings']
+    _diagnostic_keys(bindings, ('archive', 'roles', 'script', 'plan', 'tools'))
+    for name, cap in (('archive', MAX_ARCHIVE), ('roles', MAX_ROLES), ('script', MAX_SCRIPT)):
+        sized(bindings[name], cap, 1)
+    plan = bindings['plan']
+    _diagnostic_keys(plan, ('profile', 'source', 'fixedSnapshot', 'catalogObservation',
+        'roleObservation', 'archive', 'script', 'index', 'supplement'))
+    _diagnostic_hash(plan['profile'])
+    for name, cap in (('source', MAX_METADATA), ('fixedSnapshot', 32768),
+                     ('catalogObservation', MAX_METADATA), ('roleObservation', MAX_ROLES),
+                     ('archive', MAX_ARCHIVE), ('script', MAX_SCRIPT), ('index', MAX_METADATA),
+                     ('supplement', MAX_ROLES)):
+        sized(plan[name], cap)
+    require(plan['script'] == bindings['script'], 'internal')
+    _diagnostic_keys(bindings['tools'], ('pg_restore', 'psql'))
+    for tool in bindings['tools'].values():
+        _diagnostic_keys(tool, ('version', 'sha256'))
+        require(tool['version'] == '17.6', 'internal')
+        _diagnostic_hash(tool['sha256'])
+    counts = receipt['counts']
+    _diagnostic_keys(counts, ('objects', 'candidates', 'archiveOnly', 'unmodeled', 'statements', 'defaultAcls'))
+    require(all(type(n) is int and 0 <= n <= 32768 for n in counts.values()), 'internal')
+    hooks = receipt['hooks']
+    _diagnostic_keys(hooks, ('Is', 'In', 'acl'))
+    require(all(type(n) is int and 0 < n < MAX_SCRIPT for n in hooks.values())
+            and max(hooks['Is'], hooks['In']) < hooks['acl'], 'internal')
+    _diagnostic_keys(receipt['mutations'], ('Is', 'In', 'acl'))
+    for kind, mutation in receipt['mutations'].items():
+        _diagnostic_keys(mutation, ('applied', 'noop', 'bytes', 'sha256'))
+        require(all(type(mutation[k]) is int and 0 <= mutation[k] <= 8192
+                    for k in ('applied', 'noop')), 'internal')
+        sized({k: mutation[k] for k in ('bytes', 'sha256')}, MAX_ROLES if kind == 'acl' else 2048)
+    delivery = receipt['delivery']
+    _diagnostic_keys(delivery, ('original', 'probes', 'frames', 'writer', 'mutation'))
+    sized(delivery['original'], MAX_SCRIPT)
+    require(delivery['original'] == bindings['script'], 'internal')
+    sized(delivery['probes'], 16384)
+    mutation = delivery['mutation']
+    _diagnostic_keys(mutation, ('bytes', 'sha256', 'exchanges'))
+    sized({k: mutation[k] for k in ('bytes', 'sha256')}, MAX_ROLES)
+    require(type(mutation['exchanges']) is list and len(mutation['exchanges']) == 3, 'internal')
+    points = []
+    for exchange in mutation['exchanges']:
+        _diagnostic_keys(exchange, ('point', 'bytes', 'sha256'))
+        point = exchange['point']
+        require(type(point) is list and len(point) == 2 and point[0] == 'cut'
+                and type(point[1]) is int and 0 <= point[1] <= 2, 'internal')
+        points.append(point[1])
+        sized({k: exchange[k] for k in ('bytes', 'sha256')}, MAX_ROLES)
+    require(set(points) == {0, 1, 2}, 'internal')
+    def io(value, stdout_cap, stderr_cap):
+        _diagnostic_keys(value, ('stdoutBytes', 'stderrBytes', 'stdoutEnd', 'stderrEnd', 'exitCode', 'reap'))
+        require(type(value['stdoutBytes']) is int and 0 <= value['stdoutBytes'] <= stdout_cap
+                and type(value['stderrBytes']) is int and 0 <= value['stderrBytes'] <= stderr_cap
+                and value['stdoutEnd'] == value['stderrEnd'] == 'eof'
+                and type(value['exitCode']) is int and value['exitCode'] == 0
+                and value['reap'] == 'waited', 'internal')
+    io(delivery['writer'], 1024**2, 65536)
+    observations = receipt['observers']
+    require(type(observations) is list and len(observations) in (8, 9)
+            and type(delivery['frames']) is list
+            and all(type(n) is int for n in delivery['frames'])
+            and delivery['frames'] == [len(observations), len(observations)], 'internal')
+    for observation in observations: io(observation, MAX_METADATA, 0)
+    elapsed = receipt['phaseElapsedSeconds']
+    require(type(elapsed) is dict and set(elapsed) <= set(PHASES)
+            and all(type(n) in (int, float) and math.isfinite(n) and 0 <= n <= 180
+                    for n in elapsed.values()), 'internal')
+    if prepared is not None:
+        # These facts were read/admitted before target work. No source I/O,
+        # construction recomputation, imports or clock reset at publication.
+        require(code == prepared.code_binding and counts == prepared.plan.counts
+                and hooks == prepared.plan.cuts | {'acl': prepared.plan.pre_acl}
+                and bindings == {'archive': prepared.archive_binding, 'roles': prepared.roles_binding,
+                    'script': prepared.index.core.script, 'plan': prepared.plan.binding,
+                    'tools': prepared.tools}, 'internal')
+    return hashlib.sha256(encoded).hexdigest(), receipt['businessComplete']
+
+
+def validate_post_construction_location(value, *, construction_raw=None):
+    """Closed structural location; neither caller-entry nor scenario attribution."""
+    _diagnostic_keys(value, ('schema', 'constructionSha256', 'contextEdge', 'location'))
+    require(value['schema'] == POST_CONSTRUCTION_SCHEMA and type(value['contextEdge']) is str
+            and value['contextEdge'] in POST_CONSTRUCTION_EDGES, 'internal')
+    _diagnostic_hash(value['constructionSha256'])
+    location = value['location']
+    if location is not None:
+        _diagnostic_keys(location, ('module', 'line', 'depth', 'edge'))
+        require(type(location['module']) is str and location['module'] in DIAGNOSTIC_MODULES
+                and type(location['line']) is int and 1 <= location['line'] <= 8192
+                and type(location['depth']) is int and 0 <= location['depth'] <= 2
+                and type(location['edge']) is str
+                and location['edge'] in (('primary',) if location['depth'] == 0
+                    else ('cause', 'context', 'suppressed_context')), 'internal')
+    if construction_raw is not None:
+        digest, business = _post_construction_receipt(construction_raw)
+        require(value['constructionSha256'] == digest
+                and (value['contextEdge'] != 'before_yield' or not business)
+                and (value['contextEdge'] != 'after_yield' or business), 'internal')
+    require(len(POST_CONSTRUCTION_PREFIX) + len(ledger.canonical(value)) + 1
+            <= POST_CONSTRUCTION_CAP, 'internal')
+    return value
+
+
+def publish_post_construction_location(budget, *, construction_raw, primary, context_edge, prepared):
+    """Failure-only observation, borrowing 250ms from the current phase."""
+    original = None
+    try:
+        if not isinstance(primary, Exception): return
+        owner = budget.context.owner
+        original = owner.original if isinstance(owner, _UnwindOwner) else owner
+        if owner.cancelled or owner.uncertain or original.cancelled or original.uncertain: return
+        end = min(budget.end, time.monotonic() + .250)
+        with owner.deferred(primary), io_deadline(budget, end=end):
+            require(budget.phase == 'source_post', 'internal')
+            require(prepared is not None, 'internal')
+            digest, _ = _post_construction_receipt(construction_raw, prepared=prepared)
+            value = {'schema': POST_CONSTRUCTION_SCHEMA, 'constructionSha256': digest,
+                     'contextEdge': context_edge, 'location': _diagnostic_location(primary, budget)}
+            # The existing classifier can turn its own ordinary timeout into
+            # null; do not begin validation or writing after that spent alarm.
+            budget.remaining(end=end)
+            validate_post_construction_location(value, construction_raw=construction_raw)
+            line = POST_CONSTRUCTION_PREFIX + ledger.canonical(value).decode('ascii') + '\n'
+            budget.remaining(end=end)
+            sys.stderr.write(line)
+            sys.stderr.flush()
+    except BaseException as error:
+        if not isinstance(error, Exception):
+            try:
+                _diagnostic_cancel(budget, error, primary)
+            except BaseException as secondary:
+                # Even faulted cancellation bookkeeping must not escape this
+                # best-effort publisher or replace its initiating exception.
+                try:
+                    if original is not None:
+                        original._uncertain('post_construction_diagnostic', secondary, primary)
+                except BaseException:
+                    pass
+    finally:
+        primary = construction_raw = prepared = value = None
+
+
 class PreTargetDiagnostic:
     """One invocation's first propagated denial; never retains exception/raw data."""
     def __init__(self, budget):

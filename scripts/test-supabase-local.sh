@@ -2,6 +2,15 @@
 
 set -euo pipefail
 
+# Diagnostic selection is explicit argv only; canonical callers remain full.
+rf10_diagnostic=0
+if [[ "$#" == "1" && "$1" == "--rf10-diagnostic" ]]; then
+  rf10_diagnostic=1
+elif [[ "$#" != "0" ]]; then
+  printf 'Usage: %s [--rf10-diagnostic]\n' "$0" >&2
+  exit 2
+fi
+
 # test:supabase is the complete aggregate alias for this disposable local stack.
 # For an already configured test database, use only the named predecessor,
 # RF-workspace or RF-feedback command that matches its explicit schema phase.
@@ -177,6 +186,19 @@ DATABASE_URL="$DB_URL" \
 npm run test:browser-authority-connections
 
 # The fresh RF journey must create its own preview, approval and filing journal.
+if [[ "$rf10_diagnostic" == "1" ]]; then
+  NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
+  NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \
+  SUPABASE_URL="$API_URL" \
+  SUPABASE_ANON_KEY="$local_anon_key" \
+  SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+  DATABASE_URL="$DB_URL" \
+  TALLI_SUPABASE_WORKDIR="$isolated_workdir" \
+  npm run test:browser-shareholder-register-filing:rf10-diagnostic
+  # This is not a release verdict; the full gate still requires Tax and Accounts.
+  exit 0
+fi
+
 NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_URL="$API_URL" \
