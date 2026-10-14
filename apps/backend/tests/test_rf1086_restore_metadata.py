@@ -22,6 +22,61 @@ def end():
     return time.monotonic() + 5
 
 
+@pytest.mark.parametrize('kind', [m.ledger.Unavailable, m.lexical.Unavailable])
+@pytest.mark.parametrize('reason', ['deadline', 'limit'])
+def test_closed_preserves_exact_resource_failure_identity(kind, reason):
+    primary = kind(reason)
+    before = dict(vars(primary))
+    @m.closed
+    def operation():
+        raise primary
+    with pytest.raises(kind) as caught:
+        operation()
+    assert caught.value is primary and vars(primary) == before
+
+
+@pytest.mark.parametrize('case', ['ledger_subclass', 'lexical_subclass', 'foreign',
+    'ledger_other', 'lexical_other', 'ledger_nonstring', 'lexical_nonstring',
+    'string_subclass', 'type', 'key', 'index', 'unicode', 'overflow', 'recursion'])
+def test_closed_keeps_other_conversion_behavior(case):
+    class LedgerSubclass(m.ledger.Unavailable): pass
+    class LexicalSubclass(m.lexical.Unavailable): pass
+    class StringSubclass(str): pass
+    errors = {
+        'ledger_subclass': LedgerSubclass('deadline'),
+        'lexical_subclass': LexicalSubclass('limit'),
+        'foreign': ValueError('generated'),
+        'ledger_other': m.ledger.Unavailable('role'),
+        'lexical_other': m.lexical.Unavailable('profile'),
+        'ledger_nonstring': m.ledger.Unavailable(None),
+        'lexical_nonstring': m.lexical.Unavailable('deadline'),
+        'string_subclass': m.ledger.Unavailable(StringSubclass('deadline')),
+        'type': TypeError(), 'key': KeyError(), 'index': IndexError(),
+        'unicode': UnicodeError(), 'overflow': OverflowError(), 'recursion': RecursionError(),
+    }
+    errors['foreign'].reason = 'deadline'
+    errors['lexical_nonstring'].reason = ['limit']
+    primary = errors[case]
+    @m.closed
+    def operation():
+        raise primary
+    with pytest.raises(m.MetadataUnavailable) as caught:
+        operation()
+    assert type(caught.value) is m.MetadataUnavailable
+    assert caught.value.reason == 'metadata_profile' and caught.value is not primary
+
+
+@pytest.mark.parametrize('primary', [m.MetadataUnavailable('deadline'),
+    KeyboardInterrupt('generated'), SystemExit('generated')])
+def test_closed_keeps_metadata_and_fatal_identity(primary):
+    @m.closed
+    def operation():
+        raise primary
+    with pytest.raises(type(primary)) as caught:
+        operation()
+    assert caught.value is primary
+
+
 def encode(value):
     return json.dumps(value, separators=(',', ':'), ensure_ascii=False).encode()
 
@@ -72,8 +127,16 @@ def catalog(wire):
         if o['identity'][0] == 'relation':
             rows.append(o['identity'] + [o['kind'], o['owner'], None if o['acl'] is None else o['acl']['raw'], False, False])
         else:
-            f = next(f for f in wire['selectedFunctions'] if f['identity'] == o['identity'])
-            rows.append(f['row'])
+            f = next((f for f in wire['selectedFunctions'] if f['identity'] == o['identity']), None)
+            if f is not None:
+                rows.append(f['row'])
+            else:
+                # Ordinary generated functions need raw catalog owner/ACL binding
+                # without pretending they belong to the selected net pair.
+                row = deepcopy(wire['selectedFunctions'][0]['row'])
+                row[:4] = o['identity']; row[4] = o['owner']
+                row[5] = None if o['acl'] is None else o['acl']['raw']
+                rows.append(row)
     rows.extend(s['row'] for s in wire['selectedSchemas'])
     rows.extend(['default_acl', d['owner'], d['schema'], d['kind'], d['acl']['raw']] for d in wire['defaultAcls'])
     return encode(rows) + b'\n{}\n[]\n'
@@ -436,6 +499,214 @@ def test_index_requires_typed_target_and_dependency_not_just_either():
     with pytest.raises(m.MetadataUnavailable): m.restore_metadata_index(script,archive,walk,src,deadline=end())
     script,archive,walk = complete_walk(wire,acl_sql=b'GRANT SELECT ON TABLE public.other TO reader;\n')
     with pytest.raises(m.MetadataUnavailable): m.restore_metadata_index(script,archive,walk,src,deadline=end())
+
+
+def arity_family(wire, *, group='bytea, text[], text[]', modes=None):
+    """Synthetic ordinary overloads, not observed pgcrypto/pg_net contents."""
+    for i, (identity, types) in enumerate((('bytea', ['bytea']),
+                                          (group, ['bytea', '_text', '_text']))):
+        obj = deepcopy(wire['objects'][1])
+        obj.update(objectOid=22000+i, identity=['function', 'public', 'fixture_armor', identity],
+                   argumentTypes=[['pg_catalog', t] for t in types],
+                   argumentModes=None if i == 0 else modes)
+        if i == 1:
+            obj['acl'] = acl([item(None, ('EXECUTE',)), item(OWNER, ('EXECUTE',)),
+                              item('reader', ('EXECUTE',))])
+        wire['objects'].append(obj)
+
+
+@pytest.mark.parametrize('verb,direction', [('GRANT', 'TO'), ('REVOKE', 'FROM')])
+@pytest.mark.parametrize('modes', [None, ['i', 'i', 'i']])
+def test_mixed_arity_acl_archive_only_through_complete_walk(verb, direction, modes):
+    wire = fixture(ordered=True)
+    wire['objects'][0]['acl'] = acl([item('reader', ('SELECT',)), item()])
+    arity_family(wire, modes=modes)
+    src = source(wire)
+    sql = f'{verb} EXECUTE ON FUNCTION public.fixture_armor(bytea, text[], text[]) {direction} reader;\n'.encode()
+    script, archive, walk = complete_walk(wire, acl_sql=sql, acl_deps=(420,))
+    index = m.restore_metadata_index(script, archive, walk, src, deadline=end())
+    family = [row for row in index['objects'] if row['identity'][2] == 'fixture_armor']
+    assert len(family) == 2 and all(row['aclSpans'] == [] for row in family)
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert [c.object.identity for c in plan.candidates] == [('relation', 'public', 't')]
+    assert plan.counts['unmodeled'] == 1
+
+
+def arity_candidates():
+    wire = fixture(); arity_family(wire)
+    return tuple(o for o in source(wire).objects if o.identity[2] == 'fixture_armor')
+
+
+def resolve_arity(*, matches=None, group=None, sql=None, budget=None):
+    matches = arity_candidates() if matches is None else matches
+    if sql is None:
+        group = matches[1].identity[3].encode() if group is None else group
+        sql = b'GRANT EXECUTE ON FUNCTION public.fixture_armor('+group+b') TO reader;'
+    budget = m.Budget(end()) if budget is None else budget
+    statement = next(m._statements(sql+b'\n', budget))
+    return m._target_candidates(statement, {('function', b'public', b'fixture_armor'): matches},
+                                budget, roles={'reader', 'writer', OWNER})
+
+
+@pytest.mark.parametrize('group', ['bytea, text[], text[]',
+    '"a, (b)" bytea, second text[], third text[]', 'bytea, nested(1, 2)[], text[]'])
+def test_arity_witness_preserves_original_group_and_never_selects_a_type(group):
+    scalar, array = arity_candidates()
+    # Different catalog namespace and deliberately opaque nested spelling: only
+    # arity exclusion is claimed, not PostgreSQL type resolution or grammar.
+    array = replace(array, identity=(*array.identity[:3], group),
+                    argument_types=(('other', '_one'), ('other', '_two'), ('other', '_three')))
+    result = resolve_arity(matches=(scalar, array))
+    assert result.exact is None and result.unmodeled is True
+
+
+@pytest.mark.parametrize('group', ['bytea, pg_catalog.text[], text[]', 'bytea,text[], text[]',
+                                 'bytea, text[] /* source lacks this */, text[]'])
+def test_arity_witness_does_not_normalize_qualification_or_trivia(group):
+    with pytest.raises(m.MetadataUnavailable): resolve_arity(group=group.encode())
+
+
+@pytest.mark.parametrize('kind', ['f', 'p'])
+def test_any_same_arity_supported_candidate_refuses_exclusion(kind):
+    scalar, array = arity_candidates()
+    same_arity = replace(scalar, object_oid=23000, kind=kind,
+        identity=(*scalar.identity[:3], 'bytea, text, text'),
+        argument_types=(('pg_catalog', 'bytea'), ('pg_catalog', 'text'), ('pg_catalog', 'text')))
+    with pytest.raises(m.MetadataUnavailable): resolve_arity(matches=(scalar, array, same_arity))
+
+
+@pytest.mark.parametrize('modes', [('o','i','i'), ('b','i','i'), ('t','i','i'),
+                                 ('v','i','i'), ('i','v','o'), (), ('i',), ('i',)*4])
+@pytest.mark.parametrize('kind', ['f', 'a', 'w', 'p'])
+def test_same_arity_modes_cannot_borrow_a_plain_in_witness(modes, kind):
+    scalar, array = arity_candidates()
+    other = replace(array, object_oid=23000, identity=(*array.identity[:3], 'a bytea, b text[], c text[]'),
+                    argument_modes=modes, kind=kind)
+    with pytest.raises(m.MetadataUnavailable): resolve_arity(matches=(scalar, array, other))
+
+
+@pytest.mark.parametrize('kind', ['p', 'a', 'w'])
+def test_only_an_ordinary_function_can_witness_canonical_arity(kind):
+    scalar, array = arity_candidates()
+    with pytest.raises(m.MetadataUnavailable): resolve_arity(matches=(scalar, replace(array, kind=kind)))
+
+
+@pytest.mark.parametrize('kind', ['f', 'a', 'w'])
+def test_possible_same_arity_owners_include_plain_in_aggregates_and_windows(kind):
+    scalar, array = arity_candidates()
+    other = replace(array, object_oid=23000, kind=kind, owner='writer',
+        identity=(*array.identity[:3], 'a bytea, b text[], c text[]'), argument_modes=('i',)*3)
+    family = (scalar, array, other)
+    assert resolve_arity(matches=family).exact is None  # No new implicit owner equality rule.
+    raw = b'GRANT EXECUTE ON FUNCTION public.fixture_armor(bytea, text[], text[]) TO reader GRANTED BY supabase_admin;'
+    with pytest.raises(m.MetadataUnavailable): resolve_arity(matches=family, sql=raw)
+    assert resolve_arity(matches=(scalar, array, replace(other, owner=OWNER)), sql=raw).unmodeled
+
+
+def test_different_arity_and_unsupported_procedure_owners_are_not_function_owners():
+    scalar, array = arity_candidates()
+    different = replace(array, object_oid=23000, owner='writer', argument_types=(('pg_catalog','_text'),),
+                        argument_modes=('v',), identity=(*array.identity[:3], 'VARIADIC text[]'))
+    procedure = replace(array, object_oid=23001, kind='p', owner='writer',
+                        identity=(*array.identity[:3], 'IN a bytea, IN b text[], IN c text[]'))
+    raw = b'GRANT EXECUTE ON FUNCTION public.fixture_armor(bytea, text[], text[]) TO reader GRANTED BY supabase_admin;'
+    assert resolve_arity(matches=(scalar, array, different, procedure), sql=raw).exact is None
+
+
+@pytest.mark.parametrize('group', ['', ',bytea, text[]', 'bytea,, text[]', 'bytea, text[],',
+                                 'bytea, text[], text[], text[]'])
+def test_canonical_text_does_not_override_structural_arity_or_empty_segments(group):
+    scalar, array = arity_candidates()
+    array = replace(array, identity=(*array.identity[:3], group))
+    with pytest.raises((m.MetadataUnavailable, m.ledger.Unavailable)):
+        resolve_arity(matches=(scalar, array))
+
+
+def test_duplicate_canonical_witnesses_refuse_without_first_match_selection():
+    scalar, array = arity_candidates()
+    with pytest.raises(m.MetadataUnavailable): resolve_arity(matches=(scalar, array, array))
+
+
+def test_group_boundary_excludes_trivia_after_closing_parenthesis():
+    raw = b'GRANT EXECUTE ON FUNCTION public.fixture_armor(bytea, text[], text[]) /* outside */ TO reader;'
+    assert resolve_arity(sql=raw).exact is None
+
+
+def test_typed_ambiguity_and_exact_unsupported_rejection_never_retry_arity(monkeypatch):
+    scalar, array = arity_candidates()
+    def forbidden(*args, **kwargs): raise AssertionError('typed result downgraded')
+    monkeypatch.setattr(m, '_arity_disjoint_target', forbidden)
+    with pytest.raises(m.MetadataUnavailable):
+        resolve_arity(matches=(scalar, scalar, array), group=b'bytea')
+    exact_unsupported = replace(array, identity=(*array.identity[:3], 'value bytea'),
+                               argument_types=(('pg_catalog','bytea'),), argument_modes=('v',))
+    with pytest.raises(m.MetadataUnavailable):
+        resolve_arity(matches=(scalar, exact_unsupported), group=b'value bytea')
+
+
+@pytest.mark.parametrize('verb,direction', [(b'GRANT', b'TO'), (b'REVOKE', b'FROM')])
+@pytest.mark.parametrize('tail', [b', public.fixture_armor(bytea) @ reader;', b'() @ reader;',
+    b'@ reader, writer;', b'@ reader extra;', b'@ missing;', b'@ reader CASCADE;',
+    b'@ reader GRANTED BY writer;'])
+def test_arity_exclusion_consumes_one_target_and_the_complete_ending(verb, direction, tail):
+    raw = verb+b' EXECUTE ON FUNCTION public.fixture_armor(bytea, text[], text[]) '+tail.replace(b'@',direction)
+    with pytest.raises((m.MetadataUnavailable, m.ledger.Unavailable)): resolve_arity(sql=raw)
+
+
+@pytest.mark.parametrize('raw', [
+    b'GRANT BANANA ON FUNCTION public.fixture_armor(bytea, text[], text[]) TO reader;',
+    b'GRANT EXECUTE ON FUNCTION public.fixture_armor(bytea, text[], text[]) FROM reader;',
+    b'REVOKE EXECUTE ON FUNCTION public.fixture_armor(bytea, text[], text[]) TO reader;',
+    b'GRANT EXECUTE ON FUNCTION public.fixture_armor(bytea, text[], text[]) TO PUBLIC WITH GRANT OPTION;',
+    b'GRANT EXECUTE (col) ON FUNCTION public.fixture_armor(bytea, text[], text[]) TO reader;',
+])
+def test_arity_exclusion_retains_closed_privilege_and_option_rules(raw):
+    with pytest.raises((m.MetadataUnavailable, m.ledger.Unavailable)): resolve_arity(sql=raw)
+
+
+def test_new_group_cap_long_prefix_and_existing_whole_family_fallback():
+    scalar, array = arity_candidates()
+    suffix = 'bytea, text[], text[]'
+    group = ' '*(m.MAX_ROW-len(suffix)) + suffix
+    array = replace(array, identity=(*array.identity[:3], group))
+    assert resolve_arity(matches=(scalar, array)).exact is None
+    with pytest.raises(m.MetadataUnavailable):
+        resolve_arity(matches=(scalar, array), group=(group[:-2]+'x]').encode())
+    oversized = replace(array, identity=(*array.identity[:3], ' '+group))
+    with pytest.raises(m.MetadataUnavailable) as caught: resolve_arity(matches=(scalar, oversized))
+    assert caught.value.reason == 'limit'
+    # Old all-unsupported structural branch retains its old larger-group limits.
+    assert resolve_arity(matches=(oversized,), group=(' '+group).encode()).exact is None
+
+
+@pytest.mark.parametrize('error_kind', ['metadata', 'ledger', 'keyboard', 'exit', 'clock'])
+@pytest.mark.parametrize('seam,visit', [('_arity_disjoint_target',1), ('_arity_disjoint_target',3),
+    ('_arity_disjoint_target',5), ('_arity_disjoint_target',6),
+    ('_argument_group_span',5), ('_canonical_group_equal',2), ('_canonical_group_equal',7)])
+def test_arity_paths_propagate_expiry_and_cancellation(seam, visit, error_kind):
+    import inspect
+    scalar, array = arity_candidates()
+    group = ' '*8192 + array.identity[3]
+    array = replace(array, identity=(*array.identity[:3], group))
+    errors = {'metadata': m.MetadataUnavailable('deadline'), 'ledger': m.ledger.Unavailable('deadline'),
+              'keyboard': KeyboardInterrupt('generated'), 'exit': SystemExit('generated')}
+    token = errors.get(error_kind)
+    code = getattr(m, seam).__code__
+    class TripBudget(m.Budget):
+        visits = 0
+        def check(self):
+            if inspect.currentframe().f_back.f_code is code:
+                self.visits += 1
+                if self.visits == visit:
+                    if token is not None: raise token
+                    self.deadline = -1  # Real existing clock guard, no extra time.
+            super().check()
+    budget = TripBudget(end())
+    with pytest.raises(type(token) if token is not None else m.MetadataUnavailable) as caught:
+        resolve_arity(matches=(scalar, array), budget=budget)
+    if token is not None: assert caught.value is token
+    else: assert caught.value.reason == 'deadline'
+    assert budget.visits == visit
 
 
 def test_omitted_member_acl_uses_semantic_binding_not_extension_dump_id():

@@ -70,7 +70,10 @@ def closed(function):
             return function(*args, **kwargs)
         except MetadataUnavailable:
             raise
-        except (ValueError, TypeError, KeyError, IndexError, UnicodeError, OverflowError, RecursionError):
+        except (ValueError, TypeError, KeyError, IndexError, UnicodeError, OverflowError, RecursionError) as error:
+            if (type(error) in (ledger.Unavailable, lexical.Unavailable)
+                    and type(error.reason) is str and error.reason in ('deadline', 'limit')):
+                raise
             raise MetadataUnavailable('metadata_profile') from None
     return call
 
@@ -1410,6 +1413,7 @@ CONFIG = {
     'selection': 'source-before-target-restricted-per-operation-identity',
     'sourceOids': 'archive-only-never-target-assignment',
     'aclAttribution': 'direct-id-or-omitted-extension-semantic-v1',
+    'unsupportedAclTargets': 'whole-family-or-plain-in-arity-disjoint-v1',
 }
 CONFIG_SHA256 = hashlib.sha256(canonical(CONFIG)).hexdigest()
 
@@ -1442,6 +1446,94 @@ def _unsupported_target(statement, matches, kind, ns, n, roles, budget):
         require(not _supported(obj), 'suffix_profile')
         owners.add(obj.owner)
     # This requires immediate TO/FROM and consumes the entire closed ending.
+    _operation_ending(s, grant=grant, options=options, roles=roles, owners=owners)
+    budget.check()
+
+
+def _plain_in(obj):
+    return obj.argument_modes in (None, ('i',) * len(obj.argument_types))
+
+
+def _argument_group_span(s):
+    """Original interior and structural arity, without interpreting types."""
+    first = s.at
+    _, _, start = s.peek()
+    s.group(nonempty=False)
+    closing = s.at - lexical.RECORD.size
+    while True:
+        s.budget.check()
+        kind, stop, end = lexical.RECORD.unpack_from(s.tokens, closing)
+        if kind not in (lexical.SPACE, lexical.LINE_COMMENT, lexical.BLOCK_COMMENT):
+            break
+        closing -= lexical.RECORD.size
+    require(kind == lexical.PUNCT and end-stop == 1 and s.raw[stop:end] == b')', 'suffix_profile')
+    require(0 <= stop-start <= MAX_ROW, 'limit')
+    cursor = _statement_copy(s, s.budget, first)
+    cursor.need(b'(')
+    count, present = 0, False
+    while cursor.at < closing:
+        s.budget.check()
+        if cursor.take(b','):
+            require(present, 'suffix_profile')
+            count += 1; present = False
+        elif cursor.is_(b'('):
+            cursor.group(nonempty=False); present = True
+        else:
+            cursor.advance(); present = True
+    require(cursor.at == closing and (present or count == 0), 'suffix_profile')
+    s.budget.check()
+    return start, stop, count + int(present)
+
+
+def _canonical_group_equal(raw, start, stop, identity, budget):
+    budget.check()
+    require(len(identity) <= MAX_ROW, 'limit')
+    expected = identity.encode('utf8')
+    budget.check()
+    require(len(expected) <= MAX_ROW, 'limit')
+    if stop-start != len(expected):
+        budget.check()
+        return False
+    actual, canonical_group = memoryview(raw), memoryview(expected)
+    for offset in range(0, len(expected), 4096):
+        budget.check()
+        end = min(offset + 4096, len(expected))
+        equal = actual[start+offset:start+end] == canonical_group[offset:end]
+        budget.check()
+        if not equal:
+            return False
+    budget.check()
+    return True
+
+
+def _arity_disjoint_target(statement, matches, ns, n, roles, budget):
+    """Exclude supported arities; equal source text never selects an overload."""
+    budget.check()
+    s = _statement_copy(statement, budget)
+    grant, options, _ = _operation_prefix(s, DOMAINS['f'])
+    s.need(b'FUNCTION')
+    require(s.name() == (ns, n), 'suffix_profile')
+    start, stop, count = _argument_group_span(s)
+    require(s.is_(b'TO' if grant else b'FROM'), 'suffix_profile')
+    arity = None
+    for obj in matches:
+        budget.check()
+        if obj.kind != 'f' or _supported(obj) or not _plain_in(obj):
+            continue
+        if _canonical_group_equal(s.raw, start, stop, obj.identity[3], budget):
+            require(arity is None and count == len(obj.argument_types), 'suffix_profile')
+            arity = count
+    require(arity is not None, 'suffix_profile')
+    owners = set()
+    for obj in matches:
+        budget.check()
+        if len(obj.argument_types) != arity:
+            continue
+        require(_plain_in(obj) and not _supported(obj), 'suffix_profile')
+        if obj.kind != 'p':
+            require(obj.kind in ('f', 'a', 'w'), 'suffix_profile')
+            owners.add(obj.owner)
+    require(owners, 'suffix_profile')
     _operation_ending(s, grant=grant, options=options, roles=roles, owners=owners)
     budget.check()
 
@@ -1481,6 +1573,9 @@ def _target_candidates(statement, candidates, budget, *, roles):
         found.append(obj)
     if not found and all(not _supported(obj) for obj in matches):
         _unsupported_target(statement, matches, kind, ns, n, roles, budget)
+        return ACLTarget(unmodeled=True)
+    if not found and kind == b'FUNCTION':
+        _arity_disjoint_target(statement, matches, ns, n, roles, budget)
         return ACLTarget(unmodeled=True)
     require(len(found) == 1, 'suffix_profile')
     if not _supported(found[0]):

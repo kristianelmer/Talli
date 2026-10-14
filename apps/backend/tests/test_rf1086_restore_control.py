@@ -426,6 +426,126 @@ class TestPrepareArchive(unittest.TestCase):
         self.assertEqual(len(result.plan.candidates),1)  # Only the unrelated table seed.
         self.assertEqual(result.plan.candidates[0].object.identity,('relation','public','t'))
 
+    def test_arity_disjoint_family_through_real_preparation(self):
+        for verb, direction in (('GRANT','TO'), ('REVOKE','FROM')):
+            for modes in (None, ['i']*3):
+                with self.subTest(verb=verb,modes=modes):
+                    def change(wire): fixtures.arity_family(wire,modes=modes)
+                    sql=f'{verb} EXECUTE ON FUNCTION public.fixture_armor(bytea, text[], text[]) {direction} reader;\n'.encode()
+                    f=self.fixture(wire_change=change,compile_expected=False,
+                        walk_options={'acl_sql':sql,'acl_deps':(420,)})
+                    result,budget=self.invoke(f)
+                    self.assertEqual(result.script,f['script'])
+                    self.assertEqual([c.object.identity for c in result.plan.candidates],
+                                     [('relation','public','t')])
+                    self.assertEqual(result.plan.counts['unmodeled'],1)
+                    self.assertEqual(result.plan.counts['archiveOnly'],4)
+                    self.assertEqual(len(result.code_binding),13)
+                    for name,bound in result.code_binding.items():
+                        raw=(ROOT/'scripts'/name).read_bytes()
+                        self.assertEqual(bound,dict(bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest()))
+                    self.assertIsNone(self.diagnostic.failure)
+                    self.assertEqual(len(self.calls),4)
+                    self.assertGreaterEqual(budget.remaining(),70)
+
+    def test_arity_disjoint_denials_precede_real_target_admission(self):
+        for case in ('supported','mode','grant_tail','revoke_tail','qualification'):
+            with self.subTest(case=case):
+                def change(wire):
+                    fixtures.arity_family(wire)
+                    if case in ('supported','mode'):
+                        other=deepcopy(wire['objects'][-1]); other['objectOid']=23000
+                        other['identity'][3]='a bytea, b text[], c text[]'
+                        if case=='supported':
+                            other['identity'][3]='bytea, text, text'
+                            other['argumentTypes']=[['pg_catalog',t] for t in ('bytea','text','text')]
+                        else:other['argumentModes']=['o','i','i']
+                        wire['objects'].append(other)
+                target='public.fixture_armor(bytea, text[], text[])'
+                if case in ('grant_tail','revoke_tail'):target+=', public.fixture_armor(bytea)'
+                if case=='qualification':target=target.replace('text[]','pg_catalog.text[]',1)
+                verb,direction=('REVOKE','FROM') if case=='revoke_tail' else ('GRANT','TO')
+                sql=f'{verb} EXECUTE ON FUNCTION {target} {direction} reader;\n'.encode()
+                f=self.fixture(wire_change=change,compile_expected=False,
+                    walk_options={'acl_sql':sql,'acl_deps':(420,)})
+                with patch.object(control.RecoveryBudget,'before_target',side_effect=AssertionError('admission reached')) as admission:
+                    with self.assertRaises((metadata.MetadataUnavailable,control.ledger.Unavailable)):
+                        self.invoke(f)
+                admission.assert_not_called()
+                self.assertEqual(len(self.calls),4)
+
+    def test_extra_statement_after_arity_acl_is_rejected_by_real_ledger(self):
+        rows=[]
+        f=self.fixture(extension=True,wire_change=fixtures.arity_family,compile_expected=False,walk_options={
+            'acl_sql':b'GRANT EXECUTE ON FUNCTION public.fixture_armor(bytea, text[], text[]) TO reader;\n',
+            'acl_deps':(420,), 'rows_change':lambda values:rows.extend(deepcopy(values))})
+        next(row for row in rows if row['id']==52)['definition']+=b'SELECT 1;\n'
+        f['raw'],f['list']=ledger_fixtures.wire_and_list(rows)
+        f['script']=ledger_fixtures.script_fixture(rows)
+        with patch.object(control.RecoveryBudget,'before_target',side_effect=AssertionError('admission reached')) as admission:
+            with self.assertRaises(control.ledger.Unavailable):self.invoke(f)
+        admission.assert_not_called()
+        self.assertEqual(self.diagnostic.failure['step'],'restore_ledger')
+        self.assertEqual(len(self.calls),4)
+
+    def test_arity_final_check_cannot_swallow_expiry_or_cancel_before_target(self):
+        f=self.fixture(wire_change=fixtures.arity_family,compile_expected=False,walk_options={
+            'acl_sql':b'GRANT EXECUTE ON FUNCTION public.fixture_armor(bytea, text[], text[]) TO reader;\n',
+            'acl_deps':(420,)})
+        for token in (metadata.MetadataUnavailable('deadline'),metadata.ledger.Unavailable('deadline'),
+                      metadata.ledger.Unavailable('limit'),metadata.lexical.Unavailable('deadline'),
+                      metadata.lexical.Unavailable('limit'),
+                      KeyboardInterrupt('generated'),SystemExit('generated'),None):
+            with self.subTest(kind=type(token).__name__):
+                original=metadata._operation_ending
+                def ending(*args,**kwargs):
+                    original(*args,**kwargs)
+                    if token is not None:raise token
+                    args[0].budget.deadline=-1  # Existing real final deadline check.
+                with patch.object(metadata,'_operation_ending',ending), patch.object(
+                    control.RecoveryBudget,'before_target',side_effect=AssertionError('admission reached')) as admission:
+                    with self.assertRaises(type(token) if token is not None else metadata.MetadataUnavailable) as caught:
+                        self.invoke(f)
+                if token is not None:self.assertIs(caught.exception,token)
+                else:self.assertEqual(caught.exception.reason,'deadline')
+                admission.assert_not_called()
+                self.assertEqual(len(self.calls),4)
+                if type(token) in (metadata.ledger.Unavailable,metadata.lexical.Unavailable):
+                    self.assertEqual(self.diagnostic.failure['step'],'metadata_index')
+                    self.assertEqual(self.diagnostic.failure['component'],'unknown')
+                    self.assertEqual(self.diagnostic.failure['reason'],'internal')
+                    self.assertIsNone(self.diagnostic.failure['ledger'])
+                    self.assertIsNone(self.diagnostic.failure['lexicalLimit'])
+                    control.validate_pre_target_diagnostic(self.diagnostic.failure)
+
+    def test_metadata_lexical_resource_denial_preserves_identity_before_target(self):
+        import inspect
+        sql=b'GRANT EXECUTE ON FUNCTION public.fixture_armor(bytea, text[], text[]) TO reader;\n'
+        f=self.fixture(wire_change=fixtures.arity_family,compile_expected=False,
+                       walk_options={'acl_sql':sql,'acl_deps':(420,)})
+        for reason in ('deadline','limit'):
+            with self.subTest(reason=reason):
+                token=metadata.lexical.Unavailable(reason)
+                original=metadata.lexical.scan
+                hits=[]
+                def scan(raw,*args,**kwargs):
+                    if raw==sql and inspect.currentframe().f_back.f_code is metadata._statements.__code__:
+                        hits.append(True)
+                        raise token
+                    return original(raw,*args,**kwargs)
+                with patch.object(metadata.lexical,'scan',scan), patch.object(
+                    control.RecoveryBudget,'before_target',side_effect=AssertionError('admission reached')) as admission:
+                    with self.assertRaises(metadata.lexical.Unavailable) as caught:self.invoke(f)
+                self.assertIs(caught.exception,token)
+                self.assertEqual(hits,[True]); admission.assert_not_called()
+                self.assertEqual(len(self.calls),4)
+                self.assertEqual(self.diagnostic.failure['step'],'metadata_index')
+                self.assertEqual(self.diagnostic.failure['component'],'unknown')
+                self.assertEqual(self.diagnostic.failure['reason'],'internal')
+                self.assertIsNone(self.diagnostic.failure['ledger'])
+                self.assertIsNone(self.diagnostic.failure['lexicalLimit'])
+                control.validate_pre_target_diagnostic(self.diagnostic.failure)
+
     def test_metadata_admission_and_unsupported_tail_refuse_before_target(self):
         event=ledger_fixtures.source_rows()[-1]
         cases=[
