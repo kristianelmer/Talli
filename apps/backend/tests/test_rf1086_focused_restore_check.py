@@ -5,6 +5,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import signal
 import sys
 import time
 
@@ -53,7 +54,8 @@ def install_context(monkeypatch, value, *, error=None, yield_context=False, repe
 
 
 def observe():
-    return driver.run_context("postgresql://private", "http://127.0.0.1:54321", Path("/private/fixture"), object(), object())
+    return driver.run_context("postgresql://private", "http://127.0.0.1:54321", Path("/private/fixture"),
+                              object(), driver.control.RecoveryBudget(time.monotonic()))
 
 
 def test_rejected_catalog_is_a_diagnostic_result_not_recovery_success(monkeypatch, capsys):
@@ -84,7 +86,128 @@ def test_incomplete_cleanup_source_check_or_different_failure_stays_unavailable(
 
 def test_matching_hashes_without_completed_context_are_not_success(monkeypatch):
     install_context(monkeypatch, receipt(success=True))
-    assert observe()["identityOutcome"] == "unavailable"
+    result = observe()
+    assert result["identityOutcome"] == "unavailable"
+    assert result['postConstructionFailure']['location'] is None
+
+
+def test_post_construction_failure_reports_bound_location_without_private_values(monkeypatch, capsys):
+    value = receipt(success=True)
+    @contextmanager
+    def restore(*args, **kwargs):
+        try:
+            driver.identity.auth_environment({
+                'GOTRUE_DB_DATABASE_URL':'postgres://private-user:private-pass@private-host/postgres',
+                'GOTRUE_JWT_SECRET':'private-signing-canary\nprivate-line'}, 'rf193_identity_db_' + 'a'*32)
+            yield object()
+        finally:
+            print(driver.CONSTRUCTION_PREFIX + driver.control.ledger.canonical(value).decode('ascii'), file=sys.stderr)
+    monkeypatch.setattr(driver.identity, 'restored_identity', restore)
+    budget = driver.control.RecoveryBudget(time.monotonic())
+    result = driver.run_context('postgresql://private', 'http://127.0.0.1:54321', Path('/private/fixture'), object(), budget)
+    diagnostic = result['postConstructionFailure']
+    assert diagnostic['schema'] == 'rf1086-focused-post-construction-failure-v1'
+    assert diagnostic['constructionSha256'] == result['constructionReceiptSha256']
+    location = diagnostic['location']
+    assert location['module'] == 'identity' and location['depth'] == 0 and location['edge'] == 'primary'
+    line = (ROOT/'scripts/rf1086_identity_restore.py').read_text().splitlines()[location['line']-1]
+    assert "raise ValueError('Auth environment cannot contain line breaks')" in line
+    assert result['identityOutcome'] == 'unavailable'
+    assert not result['identityContextEntered'] and not result['identityContextCompleted']
+    assert 'private-' not in json.dumps(result) and capsys.readouterr() == ('', '')
+
+
+@pytest.mark.parametrize('case', ['completed', 'catalog', 'pretarget', 'cleanup', 'source'])
+def test_post_construction_location_is_failure_only_after_clean_matching_construction(monkeypatch, case):
+    value = receipt(success=case not in ('catalog', 'pretarget'), clean=case != 'cleanup', source_post=case != 'source')
+    if case == 'pretarget': value['fingerprints']['target'] = None
+    install_context(monkeypatch, value, yield_context=case == 'completed')
+    def forbidden(*args): raise AssertionError('ineligible extraction')
+    monkeypatch.setattr(driver, 'failure_location', forbidden)
+    assert observe()['postConstructionFailure'] is None
+
+
+@pytest.mark.parametrize('error', [ValueError('private-error'), driver.control.RestoreUnavailable('deadline')])
+def test_failure_location_ordinary_extraction_error_is_unknown(monkeypatch, error):
+    def fail(*args): raise error
+    monkeypatch.setattr(driver.control, '_diagnostic_location', fail)
+    budget = driver.control.RecoveryBudget(time.monotonic())
+    assert driver.failure_location(ValueError('private-primary'), budget) is None
+
+
+@pytest.mark.parametrize('error', [KeyboardInterrupt('private-cancel'), SystemExit('private-exit')])
+def test_failure_location_cancellation_identity_propagates(monkeypatch, error):
+    def fail(*args): raise error
+    monkeypatch.setattr(driver.control, '_diagnostic_location', fail)
+    budget = driver.control.RecoveryBudget(time.monotonic())
+    with pytest.raises(type(error)) as caught:
+        driver.failure_location(ValueError('private-primary'), budget)
+    assert caught.value is error
+
+
+def test_failure_location_cancellation_still_clears_private_output(monkeypatch):
+    private = driver.PrivateOutput()
+    monkeypatch.setattr(driver, 'PrivateOutput', lambda: private)
+    install_context(monkeypatch, receipt(success=True), extra='private-output-canary')
+    error = KeyboardInterrupt('private-cancel')
+    def fail(*args): raise error
+    monkeypatch.setattr(driver.control, '_diagnostic_location', fail)
+    with pytest.raises(KeyboardInterrupt) as caught: observe()
+    assert caught.value is error and private.parts == [] and private.bytes == 0
+
+
+def test_failure_location_preserves_sticky_fatal_identity(monkeypatch):
+    error = driver.control.RestoreUnavailable('cleanup_uncertain')
+    def fail(): raise error
+    budget = driver.control.RecoveryBudget(time.monotonic())
+    monkeypatch.setattr(budget.context, 'raise_if_fatal', fail)
+    with pytest.raises(type(error)) as caught:
+        driver.failure_location(ValueError('private-primary'), budget)
+    assert caught.value is error
+
+
+@pytest.mark.parametrize('short_end', [False, True])
+def test_failure_location_postcheck_discards_result_after_clipped_expiry(monkeypatch, short_end):
+    budget = driver.control.RecoveryBudget(time.monotonic())
+    if short_end: budget.end = time.monotonic() + 0.1
+    calls = []
+    def remaining(*, end):
+        calls.append(end)
+        if len(calls) == 2: raise driver.control.RestoreUnavailable('deadline')
+        return min(end, budget.end) - time.monotonic()
+    monkeypatch.setattr(budget, 'remaining', remaining)
+    monkeypatch.setattr(driver.control, '_diagnostic_location', lambda *args: {'module':'identity','line':1,'depth':0,'edge':'primary'})
+    started = time.monotonic()
+    assert driver.failure_location(ValueError('private-primary'), budget) is None
+    assert len(calls) == 2 and calls[0] == calls[1]
+    assert started < calls[0] <= min(budget.end, time.monotonic() + 0.250)
+    if short_end: assert calls[0] == budget.end
+    assert budget.phase == 'construction' and budget.phase_elapsed == {}
+
+
+def test_failure_location_retains_earlier_alarm_and_restores_handler(monkeypatch):
+    original_handler = signal.getsignal(signal.SIGALRM)
+    original_timer = signal.getitimer(signal.ITIMER_REAL)
+    started = time.monotonic()
+    def prior(*args): raise KeyboardInterrupt('private-alarm')
+    observed = []
+    def location(*args):
+        observed.append(signal.getitimer(signal.ITIMER_REAL)[0])
+        return None
+    monkeypatch.setattr(driver.control, '_diagnostic_location', location)
+    try:
+        signal.signal(signal.SIGALRM, prior)
+        signal.setitimer(signal.ITIMER_REAL, 0.15)
+        budget = driver.control.RecoveryBudget(time.monotonic())
+        assert driver.failure_location(ValueError('private-primary'), budget) is None
+        assert 0 < observed[0] <= 0.15
+        assert signal.getsignal(signal.SIGALRM) is prior
+        assert 0 < signal.getitimer(signal.ITIMER_REAL)[0] <= observed[0]
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, original_handler)
+        if original_timer[0]:
+            signal.setitimer(signal.ITIMER_REAL, max(0.000001, original_timer[0]-(time.monotonic()-started)), original_timer[1])
 
 
 def test_repeated_receipt_rejects_ambiguous_result(monkeypatch):

@@ -23,7 +23,8 @@ from rf1086_actual_replay_package import IMAGE
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SCHEMA = "rf1086-focused-restore-check-v1"
+SCHEMA = "rf1086-focused-restore-check-v2"
+FAILURE_SCHEMA = "rf1086-focused-post-construction-failure-v1"
 CONSTRUCTION_PREFIX = "owned_identity_restore_construction "
 CATALOG_PREFIX = "owned_identity_restore_catalog_diagnostic "
 MAX_OUTPUT = 64 * 1024
@@ -113,6 +114,15 @@ def source_bindings():
             for name in SOURCE_PATHS}
 
 
+def failure_location(error, budget):
+    try:
+        with control.io_deadline(budget, end=min(budget.end, time.monotonic() + 0.250)):
+            return control._diagnostic_location(error, budget)
+    except Exception:
+        budget.context.raise_if_fatal()
+        return None
+
+
 def run_context(database_url, api_url, workdir, boundary, budget):
     private = PrivateOutput()
     entered = completed = False
@@ -167,10 +177,16 @@ def run_context(database_url, api_url, workdir, boundary, budget):
         pre_target = preparation[0][0] if preparation else None
         if pre_target is not None:
             control.validate_pre_target_diagnostic(pre_target)
+        post_failure = None
+        if (failure is not None and not entered and not completed and clean and matching
+                and receipt["status"] == "constructed"):
+            post_failure = {"schema": FAILURE_SCHEMA, "constructionSha256": receipt_hash,
+                            "location": failure_location(failure, budget)}
         return {"identityOutcome": outcome, "identityContextEntered": entered,
                 "identityContextCompleted": completed, "construction": receipt,
                 "constructionReceiptSha256": receipt_hash,
-                "catalogDiagnostic": diagnostic, "preTargetDiagnostic": pre_target}
+                "catalogDiagnostic": diagnostic, "preTargetDiagnostic": pre_target,
+                "postConstructionFailure": post_failure}
     finally:
         private.clear()
 
