@@ -411,6 +411,102 @@ class TestPrepareArchive(unittest.TestCase):
     def test_complete_extension_owned_object(self):self.positive(extension=True)
     def test_complete_explicit_default_acl(self):self.positive(ordered=False)
 
+    def test_pg_catalog_empty_family_through_real_preparation(self):
+        def pg_namespace(rows):
+            row=next(row for row in rows if row['id']==52)
+            row.update(namespace=b'pg_catalog',tag=b'FUNCTION current_database()')
+        f=self.fixture(compile_expected=False,walk_options={
+            'acl_sql':b'GRANT EXECUTE ON FUNCTION pg_catalog.current_database() TO reader;\n',
+            'acl_deps':(420,), 'rows_change':pg_namespace})
+        result,budget=self.invoke(f)
+        self.assertEqual(result.script,f['script'])
+        self.assertEqual(result.index,f['walk'])
+        self.assertEqual(result.archive_binding,dict(bytes=len(f['raw']),sha256=hashlib.sha256(f['raw']).hexdigest()))
+        self.assertEqual([c.object.identity for c in result.plan.candidates],[('relation','public','t')])
+        index=metadata.restore_metadata_index(f['script'],
+            control.raw_toc.inspect(f['raw'],f['list'],fixtures.end())[0],
+            result.index,f['source'],deadline=fixtures.end())
+        self.assertTrue(all(row['identity'][1]!='pg_catalog' and not row['aclSpans'] for row in index['objects']))
+        self.assertNotIn(b'pg_catalog',b''.join(c.sql for c in result.plan.candidates))
+        self.assertEqual(result.plan.counts['objects'],len(f['source'].objects))
+        self.assertIsNone(self.diagnostic.failure)
+        self.assertEqual(len(self.calls),4)
+        self.assertGreaterEqual(budget.remaining(),70)
+
+    def test_pg_catalog_denials_precede_target_admission(self):
+        for sql in (
+            b'GRANT EXECUTE ON FUNCTION public.missing() TO reader;\n',
+            b'GRANT EXECUTE ON FUNCTION pg_toast.missing() TO reader;\n',
+            b'GRANT EXECUTE ON FUNCTION information_schema.missing() TO reader;\n',
+            b'GRANT EXECUTE ON FUNCTION pg_catalog.f() TO reader GRANTED BY supabase_admin;\n',
+            b'GRANT SELECT (oid) ON TABLE pg_catalog.pg_class TO reader;\n',
+            b'GRANT EXECUTE ON FUNCTION pg_catalog.f(), net.http_get(text) TO reader;\n',
+            b'REVOKE EXECUTE ON FUNCTION pg_catalog.f(), net.http_get(text) FROM reader;\n',
+        ):
+            with self.subTest(sql=sql):
+                rows=[]
+                f=self.fixture(extension=True,compile_expected=False,walk_options={
+                    'acl_sql':b'GRANT EXECUTE ON FUNCTION pg_catalog.current_database() TO reader;\n',
+                    'acl_deps':(420,), 'rows_change':lambda values:rows.extend(deepcopy(values))})
+                next(row for row in rows if row['id']==52)['definition']=sql
+                f['raw'],f['list']=ledger_fixtures.wire_and_list(rows)
+                f['script']=ledger_fixtures.script_fixture(rows)
+                with patch.object(control.RecoveryBudget,'before_target',side_effect=AssertionError('admission reached')) as admission:
+                    with self.assertRaises((metadata.MetadataUnavailable,metadata.ledger.Unavailable)):
+                        self.invoke(f)
+                admission.assert_not_called()
+                self.assertEqual(len(self.calls),4)
+
+    def test_pg_catalog_extra_statement_still_fails_whole_ledger(self):
+        rows=[]
+        f=self.fixture(extension=True,compile_expected=False,walk_options={
+            'acl_sql':b'GRANT EXECUTE ON FUNCTION pg_catalog.current_database() TO reader;\n',
+            'acl_deps':(420,), 'rows_change':lambda values:rows.extend(deepcopy(values))})
+        next(row for row in rows if row['id']==52)['definition']+=b'SELECT 1;\n'
+        f['raw'],f['list']=ledger_fixtures.wire_and_list(rows)
+        f['script']=ledger_fixtures.script_fixture(rows)
+        with patch.object(control.RecoveryBudget,'before_target',side_effect=AssertionError('admission reached')) as admission:
+            with self.assertRaises(control.ledger.Unavailable):self.invoke(f)
+        admission.assert_not_called()
+        self.assertEqual(self.diagnostic.failure['step'],'restore_ledger')
+
+    def test_pg_catalog_resource_and_cancel_failures_precede_admission(self):
+        import inspect
+        sql=b'GRANT EXECUTE ON FUNCTION pg_catalog.current_database() TO reader;\n'
+        f=self.fixture(compile_expected=False,walk_options={'acl_sql':sql,'acl_deps':(420,)})
+        for seam in ('group','ending'):
+            for token in (metadata.MetadataUnavailable('deadline'),metadata.ledger.Unavailable('deadline'),
+                          metadata.ledger.Unavailable('limit'),metadata.lexical.Unavailable('deadline'),
+                          metadata.lexical.Unavailable('limit'),KeyboardInterrupt('generated'),
+                          SystemExit('generated'),None):
+                with self.subTest(seam=seam,kind=type(token).__name__):
+                    owner=metadata.Statement if seam=='group' else metadata
+                    name='group' if seam=='group' else '_operation_ending'
+                    original=getattr(owner,name)
+                    hits=[]
+                    def stop(s,*args,**kwargs):
+                        result=original(s,*args,**kwargs)
+                        if (s.raw==sql and inspect.currentframe().f_back.f_code is
+                                metadata._unsupported_target.__code__):
+                            hits.append(True)
+                            if token is not None:raise token
+                            s.budget.deadline=-1
+                        return result
+                    with patch.object(owner,name,stop), patch.object(
+                        control.RecoveryBudget,'before_target',side_effect=AssertionError('admission reached')) as admission:
+                        with self.assertRaises(type(token) if token is not None else metadata.MetadataUnavailable) as caught:
+                            self.invoke(f)
+                    self.assertEqual(hits,[True]); admission.assert_not_called()
+                    if token is not None:self.assertIs(caught.exception,token)
+                    else:self.assertEqual(caught.exception.reason,'deadline')
+                    self.assertEqual(len(self.calls),4)
+                    if isinstance(token,(KeyboardInterrupt,SystemExit)):
+                        self.assertIsNone(self.diagnostic.failure)
+                    else:self.assertEqual(self.diagnostic.failure['step'],'metadata_index')
+                    if type(token) in (metadata.ledger.Unavailable,metadata.lexical.Unavailable):
+                        self.assertEqual(self.diagnostic.failure['component'],'unknown')
+                        self.assertEqual(self.diagnostic.failure['reason'],'internal')
+
     def test_omitted_member_without_acl_gets_real_seed_before_target(self):
         self.positive(extension=True,walk_options={'acl_sql':None})
 

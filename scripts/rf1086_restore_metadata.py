@@ -1414,6 +1414,7 @@ CONFIG = {
     'sourceOids': 'archive-only-never-target-assignment',
     'aclAttribution': 'direct-id-or-omitted-extension-semantic-v1',
     'unsupportedAclTargets': 'whole-family-or-plain-in-arity-disjoint-v1',
+    'unmodeledPgCatalogAclTargets': 'empty-family-closed-single-target-v1',
 }
 CONFIG_SHA256 = hashlib.sha256(canonical(CONFIG)).hexdigest()
 
@@ -1558,6 +1559,9 @@ def _target_candidates(statement, candidates, budget, *, roles):
     ns, n = s.name()
     require(ns is not None, 'suffix_profile')
     matches = candidates.get(('function' if kind in (b'FUNCTION', b'PROCEDURE') else 'relation', ns, n), ())
+    if not matches and ns == b'pg_catalog':
+        _unsupported_target(statement, (), kind, ns, n, roles, budget)
+        return ACLTarget(unmodeled=True)
     require(matches, 'source_binding')
     found = []
     for obj in matches:

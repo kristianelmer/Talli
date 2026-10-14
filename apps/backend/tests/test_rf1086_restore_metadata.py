@@ -1218,3 +1218,134 @@ def test_prefix_consumes_once_normalized_hooks_without_hashing_again():
     assert after['hooks']==before['hooks']
     after['hooks'][0]['row'][-1]='c'*64
     with pytest.raises(m.MetadataUnavailable):m.prefix_postcheck(plan,'Is',before,after,deadline=end())
+
+
+# These are excluded source-domain targets, not simulated system objects.
+def pg_catalog_target(raw, *, candidates=None, budget=None):
+    budget = m.Budget(end()) if budget is None else budget
+    statement = next(m._statements(raw + b'\n', budget))
+    return m._target_candidates(statement, {} if candidates is None else candidates,
+        budget, roles={'reader', 'writer', OWNER})
+
+
+@pytest.mark.parametrize('target,right', [
+    (b'TABLE pg_catalog.pg_class', b'SELECT'),
+    (b'SEQUENCE pg_catalog.synthetic_sequence', b'USAGE'),
+    (b'FUNCTION pg_catalog.current_database()', b'EXECUTE'),
+    (b'FUNCTION "pg_catalog".synthetic_function(a text[], b integer)', b'EXECUTE'),
+    (b'PROCEDURE pg_catalog.synthetic_procedure()', b'EXECUTE'),
+    (b'PROCEDURE pg_catalog.synthetic_procedure("TO, FROM" text /* ) */)', b'EXECUTE'),
+])
+@pytest.mark.parametrize('form', [
+    b'GRANT %s ON %s TO reader;', b'GRANT %s ON %s TO PUBLIC;',
+    b'GRANT %s ON %s TO reader WITH GRANT OPTION;',
+    b'REVOKE %s ON %s FROM reader;',
+    b'REVOKE GRANT OPTION FOR %s ON %s FROM reader RESTRICT;',
+])
+def test_pg_catalog_empty_family_is_structural_only(target, right, form):
+    result = pg_catalog_target(form % (right, target))
+    assert result.exact is None and result.unmodeled is True
+
+
+@pytest.mark.parametrize('target', [b'public.missing()', b'information_schema.missing()',
+    b'pg_toast.missing()', b'pg_temp.missing()', b'pg_catalogue.missing()',
+    b'PG_CATALOG.missing()', b'"PG_CATALOG".missing()', b'"pg_catalog.missing"()',
+    b'public."pg_catalog.missing"()', b'missing()'])
+def test_pg_catalog_exception_never_exempts_other_missing_families(target):
+    with pytest.raises(m.MetadataUnavailable) as caught:
+        pg_catalog_target(b'GRANT EXECUTE ON FUNCTION ' + target + b' TO reader;')
+    assert caught.value.reason in ('source_binding', 'suffix_profile')
+
+
+@pytest.mark.parametrize('raw', [
+    b'GRANT EXECUTE ON FUNCTION pg_catalog.f() TO reader GRANTED BY supabase_admin;',
+    b'REVOKE EXECUTE ON FUNCTION pg_catalog.f() FROM reader GRANTED BY reader;',
+    b'GRANT EXECUTE ON FUNCTION pg_catalog.f() TO reader GRANTED BY missing;',
+    b'GRANT SELECT (oid) ON TABLE pg_catalog.pg_class TO reader;',
+    b'GRANT EXECUTE (arg) ON FUNCTION pg_catalog.f() TO reader;',
+    b'GRANT USAGE ON TABLE pg_catalog.pg_class TO reader;',
+    b'GRANT INSERT ON SEQUENCE pg_catalog.seq TO reader;',
+    b'GRANT SELECT ON FUNCTION pg_catalog.f() TO reader;',
+    b'GRANT EXECUTE ON FUNCTION pg_catalog.f() FROM reader;',
+    b'REVOKE EXECUTE ON FUNCTION pg_catalog.f() TO reader;',
+    b'GRANT EXECUTE ON FUNCTION pg_catalog.f() TO missing;',
+    b'GRANT EXECUTE ON FUNCTION pg_catalog.f(), net.http_get(text) TO reader;',
+    b'REVOKE EXECUTE ON FUNCTION pg_catalog.f(), net.http_get(text) FROM reader;',
+    b'GRANT SELECT ON TABLE pg_catalog.pg_class, public.t TO reader;',
+    b'REVOKE SELECT ON TABLE pg_catalog.pg_class, public.t FROM reader;',
+    b'GRANT EXECUTE ON FUNCTION pg_catalog.f() TO reader, writer;',
+    b'REVOKE EXECUTE ON FUNCTION pg_catalog.f() FROM reader CASCADE;',
+    b'GRANT EXECUTE ON FUNCTION pg_catalog.f() TO PUBLIC WITH GRANT OPTION;',
+    b'GRANT EXECUTE ON FUNCTION pg_catalog.f TO reader;',
+    b'GRANT EXECUTE ON FUNCTION pg_catalog.f() () TO reader;',
+    b'GRANT EXECUTE ON FUNCTION pg_catalog.f(text TO reader;',
+    b'GRANT EXECUTE ON FUNCTION pg_catalog.f(; SELECT 1) TO reader;',
+    b'GRANT EXECUTE ON FUNCTION pg_catalog.f() TO reader extra;',
+])
+def test_pg_catalog_empty_family_requires_complete_closed_statement(raw):
+    with pytest.raises((m.MetadataUnavailable, m.ledger.Unavailable, m.lexical.Unavailable)):
+        pg_catalog_target(raw)
+
+
+def test_pg_catalog_nonempty_family_uses_existing_exact_checks():
+    # Contradictory synthetic input, deliberately not a claim about METADATA_SQL.
+    obj = replace(source().objects[0], identity=('relation', 'pg_catalog', 'pg_class'))
+    candidates = {('relation', b'pg_catalog', b'pg_class'): (obj,)}
+    raw = b'GRANT SELECT ON TABLE pg_catalog.pg_class TO reader GRANTED BY supabase_admin;'
+    result = pg_catalog_target(raw, candidates=candidates)
+    assert result.exact is obj and result.unmodeled is False
+    with pytest.raises(m.MetadataUnavailable): pg_catalog_target(raw)
+    with pytest.raises(m.MetadataUnavailable):
+        pg_catalog_target(b'GRANT USAGE ON SEQUENCE pg_catalog.pg_class TO reader;', candidates=candidates)
+
+
+@pytest.mark.parametrize('deps', [(42,), (99999,)])
+def test_pg_catalog_exclusion_preserves_direct_spans_and_dependency_guard(deps):
+    wire = fixture(ordered=True)
+    system = b'GRANT EXECUTE ON FUNCTION pg_catalog.current_database() TO reader;\n'
+    ordinary = b'GRANT SELECT ON TABLE public.t TO reader;\n'
+    script, archive, walk = complete_walk(wire, acl_sql=system+ordinary, acl_deps=deps)
+    if deps != (42,):
+        with pytest.raises(m.MetadataUnavailable) as caught:
+            m.restore_metadata_index(script, archive, walk, source(wire), deadline=end())
+        assert caught.value.reason == 'archive_profile'
+        return
+    index = m.restore_metadata_index(script, archive, walk, source(wire), deadline=end())
+    spans = [span for row in index['objects'] for span in row['aclSpans']]
+    assert len(spans) == 1 and script[slice(*spans[0])] == ordinary.rstrip(b'\n')
+    assert all(row['identity'][1] != 'pg_catalog' for row in index['objects'])
+
+
+def test_pg_catalog_exclusion_cannot_mix_with_omitted_semantic_member():
+    wire, ordinary = omitted_wire()
+    sql = b'GRANT EXECUTE ON FUNCTION pg_catalog.current_database() TO reader;\n' + ordinary
+    script, archive, walk = complete_walk(wire, extension_created=True, acl_sql=sql, acl_deps=(42,))
+    with pytest.raises(m.MetadataUnavailable) as caught:
+        m.restore_metadata_index(script, archive, walk, source(wire), deadline=end())
+    assert caught.value.reason == 'archive_profile'
+
+
+@pytest.mark.parametrize('seam', ['group', 'ending'])
+@pytest.mark.parametrize('primary', [m.MetadataUnavailable('deadline'),
+    m.ledger.Unavailable('deadline'), m.ledger.Unavailable('limit'),
+    m.lexical.Unavailable('deadline'), m.lexical.Unavailable('limit'),
+    KeyboardInterrupt('generated'), SystemExit('generated')])
+def test_pg_catalog_exclusion_preserves_resource_and_cancel_identity(monkeypatch, seam, primary):
+    def stop(*args, **kwargs): raise primary
+    if seam == 'group': monkeypatch.setattr(m.Statement, 'group', stop)
+    else: monkeypatch.setattr(m, '_operation_ending', stop)
+    with pytest.raises(type(primary)) as caught:
+        pg_catalog_target(b'GRANT EXECUTE ON FUNCTION pg_catalog.f(a text, b integer) TO reader;')
+    assert caught.value is primary
+
+
+def test_pg_catalog_exclusion_checks_deadline_after_complete_ending(monkeypatch):
+    original = m._operation_ending
+    def expire(s, **kwargs):
+        result = original(s, **kwargs)
+        s.budget.deadline = -1
+        return result
+    monkeypatch.setattr(m, '_operation_ending', expire)
+    with pytest.raises(m.MetadataUnavailable) as caught:
+        pg_catalog_target(b'GRANT EXECUTE ON FUNCTION pg_catalog.f() TO reader;')
+    assert caught.value.reason == 'deadline'
