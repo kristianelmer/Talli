@@ -71,6 +71,48 @@ def test_nested_earlier_alarm_not_reset_and_primary_cancellation_preserved():
     assert caught.value is original and signal.getitimer(signal.ITIMER_REAL)[0] == 0
 
 
+def test_explicit_io_end_checked_after_yield_without_resetting_parent(monkeypatch):
+    value=budget(8);parent_end=value.end;now=time.monotonic();clock=[now]
+    monkeypatch.setattr(control.time,'monotonic',lambda:clock[0])
+    previous=signal.getsignal(signal.SIGALRM)
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        with control.io_deadline(value,end=now+1):
+            clock[0]=now+1.1
+    assert caught.value.reason=='deadline' and value.end==parent_end
+    assert value.phase=='construction' and signal.getsignal(signal.SIGALRM) is previous
+    assert signal.getitimer(signal.ITIMER_REAL)[0]==0
+
+
+def test_explicit_io_end_preserves_earlier_alarm_and_handler():
+    value=budget(.5);primary=KeyboardInterrupt('earlier alarm')
+    previous=signal.getsignal(signal.SIGALRM);prior=signal.getitimer(signal.ITIMER_REAL)
+    delivered=[]
+    def earlier(*args):
+        delivered.append(True)
+        # The existing restoration policy re-arms an elapsed external alarm;
+        # record that delivery without injecting a second cancellation token.
+        if len(delivered)==1:raise primary
+    try:
+        signal.signal(signal.SIGALRM,earlier)
+        signal.setitimer(signal.ITIMER_REAL,.025)
+        with pytest.raises(KeyboardInterrupt) as caught:
+            with control.io_deadline(value,end=time.monotonic()+1):time.sleep(.2)
+        assert delivered and caught.value is primary and signal.getsignal(signal.SIGALRM) is earlier
+    finally:
+        signal.setitimer(signal.ITIMER_REAL,0)
+        signal.signal(signal.SIGALRM,previous)
+        signal.setitimer(signal.ITIMER_REAL,*prior)
+
+
+def test_explicit_io_end_cannot_extend_parent_and_expired_entry_does_not_yield():
+    value=budget(.5);upper=value.remaining()
+    with control.io_deadline(value,end=time.monotonic()+10):
+        assert 0<signal.getitimer(signal.ITIMER_REAL)[0]<=upper
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        with control.io_deadline(value,end=time.monotonic()-1):raise AssertionError('expired entry yielded')
+    assert caught.value.reason=='deadline' and signal.getitimer(signal.ITIMER_REAL)[0]==0
+
+
 @pytest.mark.parametrize('delayed_selector', [False, True])
 def test_async_whole_call_deadline_and_external_cancellation_identity(monkeypatch, delayed_selector):
     previous = signal.getsignal(signal.SIGALRM)

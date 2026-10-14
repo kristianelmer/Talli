@@ -425,6 +425,8 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
     raw_snapshot = None
     business_complete = cleanup_complete = source_postcheck = False
     diagnostic = construction.PreTargetDiagnostic(budget)
+    target_catalog = CatalogCapture()
+    catalog_mismatch = False
     checked_call = partial(budget.checked, capture_cap=construction.MAX_METADATA)
 
     def fingerprint_now(container, *, end=None, **kwargs):
@@ -521,8 +523,10 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
         delivery,mutations=construction.stream_restore(target,script=prepared.script,index=prepared.index,
             plan=prepared.plan,budget=budget,end=min(budget.end-10,time.monotonic()+45))
         strict_end=min(budget.end,time.monotonic()+10)
-        recovered=fingerprint_now(target,restored=True,bootstrap=operator,end=strict_end)
+        recovered=fingerprint_now(target,restored=True,bootstrap=operator,end=strict_end,
+                                  catalog_capture=target_catalog)
         if recovered!=before:
+            catalog_mismatch = recovered['catalog'] != before['catalog']
             raise ValueError('Independent recovery roles, ownership, ACLs or Auth rows differ; components='
                              +_fingerprint_mismatch_components(before,recovered))
         budget.enter('actors')
@@ -562,34 +566,41 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
                 business_complete=True
     finally:
         primary=sys.exception()
-        with construction.unwind_scope(budget):
-            errors=[]
-            try:
-                budget.enter('cleanup')
-                if configuration is not None:configuration.unlink(missing_ok=True)
-                if owner is not None:owner.cleanup()
-                cleanup_complete=True
-            except BaseException as error:errors.append(error)
-            try:
-                budget.enter('source_post')
-                if before is not None:
-                    construction.require(fingerprint_now(source)==before,'source_drift')
-                if source_metadata is not None:
-                    construction.require(observe_source()==raw_metadata,'source_drift')
-                    if raw_snapshot is not None:
-                        construction.require(construction.source_fixed_snapshot(source,budget=budget)==raw_snapshot,'source_drift')
-                source_postcheck=before is not None and source_metadata is not None and raw_snapshot is not None
-            except BaseException as error:errors.append(error)
-            error=errors[0] if errors else primary
-            reason=getattr(error,'reason','postcondition' if recovered is not None and recovered!=before else 'internal')
-            with construction.io_deadline(budget):
-                print('owned_identity_restore_construction '+construction.construction_receipt(
-                    budget=budget,prepared=prepared,delivery=delivery,mutations=mutations,
-                    source=source,target=target,image=db['Image'],before=before,recovered=recovered,
-                    cleanup_complete=cleanup_complete,source_postcheck=source_postcheck,
-                    business_complete=business_complete,reason=reason),file=sys.stderr,flush=True)
-            diagnostic.publish(primary=primary if primary is not None else error)
-            if errors:raise errors[0]
+        try:
+            with construction.unwind_scope(budget):
+                errors=[]
+                try:
+                    budget.enter('cleanup')
+                    if configuration is not None:configuration.unlink(missing_ok=True)
+                    if owner is not None:owner.cleanup()
+                    cleanup_complete=True
+                except BaseException as error:errors.append(error)
+                try:
+                    budget.enter('source_post')
+                    if before is not None:
+                        construction.require(fingerprint_now(source)==before,'source_drift')
+                    if source_metadata is not None:
+                        construction.require(observe_source()==raw_metadata,'source_drift')
+                        if raw_snapshot is not None:
+                            construction.require(construction.source_fixed_snapshot(source,budget=budget)==raw_snapshot,'source_drift')
+                    source_postcheck=before is not None and source_metadata is not None and raw_snapshot is not None
+                except BaseException as error:errors.append(error)
+                error=errors[0] if errors else primary
+                reason=getattr(error,'reason','postcondition' if recovered is not None and recovered!=before else 'internal')
+                with construction.io_deadline(budget):
+                    receipt_raw=construction.construction_receipt(
+                        budget=budget,prepared=prepared,delivery=delivery,mutations=mutations,
+                        source=source,target=target,image=db['Image'],before=before,recovered=recovered,
+                        cleanup_complete=cleanup_complete,source_postcheck=source_postcheck,
+                        business_complete=business_complete,reason=reason)
+                    print('owned_identity_restore_construction '+receipt_raw,file=sys.stderr,flush=True)
+                if catalog_mismatch:
+                    construction.publish_catalog_postcondition(budget, construction_raw=receipt_raw,
+                        source_metadata=source_metadata, target_capture=target_catalog, primary=primary)
+                diagnostic.publish(primary=primary if primary is not None else error)
+                if errors:raise errors[0]
+        finally:
+            target_catalog.clear()
 
 
 @contextmanager

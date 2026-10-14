@@ -1,8 +1,10 @@
 """Recovery orchestration never allocates on admission failure or replays repair."""
 import hashlib
 import json
+import signal
 import sys
 import time
+from copy import deepcopy
 from contextlib import nullcontext
 from types import SimpleNamespace
 
@@ -16,10 +18,13 @@ import rf1086_restore_control as control
 def repaired_model(tmp_path,monkeypatch):
     calls=[];owners=[];state={'metadata':0,'postchecks':0,'fault':None,'cleanupFault':False}
     role_raw=b'role observation'
+    state['sourceCatalog']=b'[]\n{"datconnlimit":-1}\n[]\n'
+    state['targetCatalog']=b'[]\n{"datconnlimit":10}\n[]\n'
     before=dict.fromkeys(('roles','catalog','auth','companyMemberships'),'a'*64)
     before['roles']=hashlib.sha256(role_raw).hexdigest()
+    before['catalog']=hashlib.sha256(state['sourceCatalog']).hexdigest()
     metadata=SimpleNamespace(METADATA_SQL=b'metadata',ROLE_ORDER_SQL=b'role order',
-        decode_metadata=lambda *a,**kw:SimpleNamespace(),validate_role_order=lambda *a,**kw:None,
+        decode_metadata=lambda *a,**kw:SimpleNamespace(_catalog=state['sourceCatalog']),validate_role_order=lambda *a,**kw:None,
         bind_source_snapshot=lambda source,*a,**kw:source)
     monkeypatch.setitem(sys.modules,'rf1086_restore_metadata',metadata)
     monkeypatch.setattr(identity,'owned_identity_source',lambda *a:(DB,AUTH,ENV))
@@ -30,9 +35,12 @@ def repaired_model(tmp_path,monkeypatch):
     def fingerprint(container,**kwargs):
         if container==DB['Id']:
             state['postchecks']+=1
-            if capture:=kwargs.get('catalog_capture'):capture.capture(b'[]\n{}\n[]\n')
+            if capture:=kwargs.get('catalog_capture'):capture.capture(state['sourceCatalog'])
             return dict(before)
-        return dict(before) if state.get('recoverPass') else before|{'catalog':'b'*64}
+        raw=state['sourceCatalog'] if state.get('recoverPass') else state['targetCatalog']
+        if capture:=kwargs.get('catalog_capture'):
+            capture.capture(raw);state['targetCapture']=capture
+        return before|{'catalog':hashlib.sha256(raw).hexdigest()}
     monkeypatch.setattr(identity,'fingerprint',fingerprint)
     monkeypatch.setattr(identity,'source_query',lambda c,s,**kw:role_raw if s==identity.ROLE_SQL else b'pg_stat_statements')
     budget=control.RecoveryBudget(time.monotonic())
@@ -55,6 +63,11 @@ def repaired_model(tmp_path,monkeypatch):
     monkeypatch.setattr(control,'stream_restore',lambda *a,**kw:({'original':'complete'},{}))
     def receipt(**kwargs):
         state['receipt']=kwargs
+        state['receiptCalls']=state.get('receiptCalls',0)+1
+        if state.get('diagnosticReceipt'):
+            return json.dumps({'schema':control.SCHEMA,'status':'unavailable',
+                'fingerprints':{'source':kwargs['before'],'target':kwargs['recovered']}},
+                sort_keys=True,separators=(',',':'))
         return '{"schema":"fixture-safe-receipt"}'
     monkeypatch.setattr(control,'construction_receipt',receipt)
     class Owner:
@@ -250,3 +263,235 @@ def test_caller_cancellation_never_becomes_diagnostic_or_resource_admission(repa
     assert caught.value is primary and not owners
     assert state['receipt']['cleanup_complete'] and state['receipt']['source_postcheck']
     assert control.DIAGNOSTIC_PREFIX not in capsys.readouterr().err
+
+
+def test_final_catalog_diagnostic_commits_exact_once_emitted_receipt_after_cleanup(repaired_model,tmp_path,capsys):
+    budget,state,_,owners,_=repaired_model;state['diagnosticReceipt']=True
+    with pytest.raises(ValueError,match='components=catalog'):
+        with identity.restored_identity(SOURCE_URL,tmp_path,None,budget=budget):
+            raise AssertionError('strict mismatch waived')
+    output=capsys.readouterr();assert output.out==''
+    receipt_line=next(line for line in output.err.splitlines() if line.startswith('owned_identity_restore_construction '))
+    diagnostic_lines=[line for line in output.err.splitlines() if line.startswith('owned_identity_restore_catalog_diagnostic ')]
+    assert len(diagnostic_lines)==1
+    value=json.loads(diagnostic_lines[0].split(' ',1)[1])
+    assert value['schema']=='rf1086-restore-catalog-diagnostic-v1' and value['status']=='observed'
+    assert value['constructionSha256']==hashlib.sha256(receipt_line.split(' ',1)[1].encode()).hexdigest()
+    assert value['source']=={'bytes':len(state['sourceCatalog']),'sha256':state['receipt']['before']['catalog']}
+    assert value['target']=={'bytes':len(state['targetCatalog']),'sha256':state['receipt']['recovered']['catalog']}
+    assert value['difference']['summary']==[{'kind':'database','status':'changed','records':1,
+        'fields':[{'field':'datconnlimit','change':'value','count':1}]}]
+    assert state['receiptCalls']==1 and owners[0].cleaned and state['receipt']['source_postcheck']
+    assert budget.phase=='source_post' and state['targetCapture']._raw is None
+    assert len(diagnostic_lines[0].encode())+1<=20*1024
+
+
+def _catalog_receipt(source,target):
+    fingerprints={key:dict.fromkeys(('roles','catalog','auth','companyMemberships'),'a'*64)
+                  for key in ('source','target')}
+    for key,raw in (('source',source),('target',target)):
+        fingerprints[key]['catalog']=hashlib.sha256(raw).hexdigest()
+    return control.ledger.canonical({'schema':control.SCHEMA,'status':'unavailable',
+                                    'fingerprints':fingerprints}).decode('ascii')
+
+
+def _publish_catalog(source,target,*,receipt=None,budget=None):
+    receipt=receipt or _catalog_receipt(source,target)
+    if budget is None:
+        budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    control.publish_catalog_postcondition(budget,construction_raw=receipt,
+        source_metadata=SimpleNamespace(_catalog=source),target_capture=SimpleNamespace(_raw=target),
+        primary=ValueError('private primary'))
+    return receipt,budget
+
+
+def _catalog_line(capsys):
+    output=capsys.readouterr();assert output.out==''
+    lines=output.err.splitlines()
+    assert len(lines)==1 and lines[0].startswith(control.CATALOG_DIAGNOSTIC_PREFIX)
+    assert len(output.err.encode())<=20*1024 and 'private-' not in output.err
+    return json.loads(lines[0][len(control.CATALOG_DIAGNOSTIC_PREFIX):])
+
+
+@pytest.mark.parametrize('kind',['schema','relation','function','default_acl','column_acl',
+    'policy','database','unknown_database_fields','settings','representation','truncated'])
+def test_catalog_projection_preserves_classifier_vocabulary_and_raw_hashes(kind,capsys):
+    from test_rf1086_catalog_difference import raw,ROWS
+    source=raw();rows=deepcopy(ROWS)
+    if kind=='database':target=raw(database={'datconnlimit':10})
+    elif kind=='unknown_database_fields':
+        source=raw(database={'private-a':1,'private-b':2})
+        target=raw(database={'private-a':3,'private-b':4})
+    elif kind=='settings':target=raw(settings=[])
+    elif kind=='representation':target=raw(list(reversed(rows)))
+    elif kind=='truncated':
+        source=raw(rows=[['schema',f'private-{i}','owner',None] for i in range(80)])
+        target=raw(rows=[])
+    else:
+        target=raw(rows=[row for row in ROWS if row[0]!=kind])
+    receipt,budget=_publish_catalog(source,target)
+    value=_catalog_line(capsys)
+    assert value['status']=='observed' and budget.phase=='source_post'
+    control.validate_catalog_postcondition(value,construction_raw=receipt)
+    assert value['source']['sha256']==hashlib.sha256(source).hexdigest()
+    assert value['target']['sha256']==hashlib.sha256(target).hexdigest()
+    if kind=='representation':assert value['difference']['status']=='representation-only'
+    if kind=='truncated':assert value['difference']['truncated'] and len(value['difference']['details'])==32
+
+
+@pytest.fixture
+def observed_catalog_diagnostic(capsys):
+    source=b'[]\n{"datconnlimit":-1}\n[]\n';target=b'[]\n{"datconnlimit":10}\n[]\n'
+    receipt,_=_publish_catalog(source,target)
+    return _catalog_line(capsys),receipt
+
+
+@pytest.mark.parametrize('mutation',[
+    lambda v:v.update(extra='private-raw'),
+    lambda v:v.update(constructionSha256='f'*64),
+    lambda v:v['source'].update(bytes=True),
+    lambda v:v['target'].update(bytes=8*1024*1024+1),
+    lambda v:v['target'].update(sha256=v['source']['sha256']),
+    lambda v:v['difference'].update(status='equal'),
+    lambda v:v['difference'].update(qualification='accepted'),
+    lambda v:v['difference']['counts'].update(changed=True),
+    lambda v:v['difference'].update(sourceRecords=v['difference']['sourceRecords']+1),
+    lambda v:v['difference']['summary'][0].update(records=2),
+    lambda v:v['difference']['summary'][0].update(kind='private-kind'),
+    lambda v:v['difference']['details'][0].update(schema='private-schema'),
+    lambda v:v['difference']['details'][0].update(kind=[]),
+    lambda v:v['difference']['details'][0].update(raw='private-raw'),
+    lambda v:v['difference']['details'][0]['fields'][0].update(field='private-field'),
+    lambda v:v['difference']['details'][0]['fields'][0].update(change='private-change'),
+    lambda v:v['difference']['details'].append(deepcopy(v['difference']['details'][0])),
+    lambda v:v['difference'].update(truncated=True),
+    lambda v:v.update(status='unavailable',reason='input'),
+])
+def test_catalog_reader_rejects_malformed_or_unbound_projection(observed_catalog_diagnostic,mutation):
+    value,receipt=observed_catalog_diagnostic;mutation(value)
+    with pytest.raises(ValueError):control.validate_catalog_postcondition(value,construction_raw=receipt)
+
+
+@pytest.mark.parametrize(('fault','reason'),[
+    ('missing','input'),('oversize','input'),('hash','binding'),('raw','classifier'),('classifier','classifier')])
+def test_catalog_diagnostic_invalid_inputs_and_classifier_never_reflect_values(fault,reason,monkeypatch,capsys):
+    source=b'[]\n{}\n[]\n';target=b'[]\n{"datconnlimit":10}\n[]\n'
+    if fault=='raw':source=b'private-invalid-catalog'
+    receipt=_catalog_receipt(source,target)
+    if fault=='missing':source=None
+    if fault=='oversize':source=b'x'*(8*1024*1024+1)
+    if fault=='hash':source=b'private-different-value'
+    if fault=='classifier':
+        monkeypatch.setattr(control.difference,'catalog_difference',lambda *a:{'raw':'private-catalog'})
+    _publish_catalog(source,target,receipt=receipt)
+    value=_catalog_line(capsys)
+    assert value['status']=='unavailable' and value['reason']==reason
+    assert value['source'] is value['target'] is value['difference'] is None
+    control.validate_catalog_postcondition(value,construction_raw=receipt)
+
+
+@pytest.mark.parametrize('fault',['classifier','cancel_classifier','cancel_write','broken_write',
+    'expired','blocked_write','cleanup','source_post','missing_retention','broken_retention','cancel_retention'])
+def test_catalog_diagnostic_failure_preserves_primary_cleanup_and_clears_capture(
+        repaired_model,tmp_path,monkeypatch,capsys,fault):
+    budget,state,_,owners,_=repaired_model;state['diagnosticReceipt']=True
+    if fault=='cleanup':state['cleanupFault']=True
+    original_publish=control.publish_catalog_postcondition;seen=[]
+    def publish(value,**kwargs):
+        seen.append(kwargs['primary'])
+        assert owners[0].cleaned and value.phase=='source_post' and state['metadata']==3
+        if fault=='expired':value.end=time.monotonic()-1
+        if fault=='blocked_write':value.end=time.monotonic()+.03
+        if fault.endswith('retention'):
+            if fault=='missing_retention':kwargs['source_metadata']=object()
+            else:
+                class Broken:
+                    @property
+                    def _catalog(self):
+                        if fault=='cancel_retention':raise KeyboardInterrupt('private-retention')
+                        raise RuntimeError('private-retention')
+                kwargs['source_metadata']=Broken()
+        return original_publish(value,**kwargs)
+    monkeypatch.setattr(control,'publish_catalog_postcondition',publish)
+    if fault in ('classifier','cancel_classifier'):
+        def fail(*a):
+            if fault=='cancel_classifier':raise KeyboardInterrupt('private-classifier')
+            raise ValueError('private-classifier')
+        monkeypatch.setattr(control.difference,'catalog_difference',fail)
+    if fault.endswith('write'):
+        stderr=sys.stderr
+        class Writer:
+            def write(self,text):
+                if text.startswith(control.CATALOG_DIAGNOSTIC_PREFIX):
+                    if fault=='cancel_write':raise KeyboardInterrupt('private-write')
+                    if fault=='broken_write':raise OSError('private-write')
+                    time.sleep(.3)
+                return stderr.write(text)
+            def flush(self):return stderr.flush()
+        monkeypatch.setattr(sys,'stderr',Writer())
+    if fault=='source_post':
+        command=budget.command
+        def changed(args,**kwargs):
+            raw=command(args,**kwargs)
+            return b'changed' if kwargs.get('data')==b'metadata' and state['metadata']==3 else raw
+        monkeypatch.setattr(budget,'command',changed)
+    started=time.monotonic()
+    with pytest.raises(ValueError,match='components=catalog') as caught:
+        with identity.restored_identity(SOURCE_URL,tmp_path,None,budget=budget):
+            raise AssertionError('strict mismatch waived')
+    assert seen==[caught.value] and state['targetCapture']._raw is None
+    assert owners[0].cleaned and state['postchecks']==3 and state['receiptCalls']==1
+    assert budget.context.owner.cancelled is fault.startswith('cancel_')
+    output=capsys.readouterr();assert output.out=='' and 'private-' not in output.err
+    if fault in ('expired','blocked_write'):
+        assert control.CATALOG_DIAGNOSTIC_PREFIX not in output.err
+    if fault=='blocked_write':assert time.monotonic()-started<.25
+    assert signal.getitimer(signal.ITIMER_REAL)[0]==0
+
+
+def test_non_catalog_mismatch_does_not_publish_catalog_diagnostic(repaired_model,tmp_path,monkeypatch,capsys):
+    budget,state,_,_,_=repaired_model;state['recoverPass']=True
+    original=identity.fingerprint
+    def fingerprint(container,**kwargs):
+        value=original(container,**kwargs)
+        return value if container==DB['Id'] else value|{'auth':'f'*64}
+    monkeypatch.setattr(identity,'fingerprint',fingerprint)
+    with pytest.raises(ValueError,match='components=auth'):
+        with identity.restored_identity(SOURCE_URL,tmp_path,None,budget=budget):pass
+    assert control.CATALOG_DIAGNOSTIC_PREFIX not in capsys.readouterr().err
+    assert state['targetCapture']._raw is None
+
+
+def test_classifier_and_publication_share_one_end_no_write_after_elapsed(monkeypatch,capsys):
+    source=b'[]\n{}\n[]\n';target=b'[]\n{"datconnlimit":10}\n[]\n'
+    value=control.RecoveryBudget(time.monotonic());value.enter('source_post');end=value.end
+    now=time.monotonic();clock=[now]
+    original=control.difference.catalog_difference
+    def classify(*args):
+        assert 0<signal.getitimer(signal.ITIMER_REAL)[0]<=1
+        result=original(*args);clock[0]=now+1.1;return result
+    monkeypatch.setattr(control.difference,'catalog_difference',classify)
+    monkeypatch.setattr(control.time,'monotonic',lambda:clock[0])
+    _publish_catalog(source,target,budget=value)
+    assert capsys.readouterr().err=='' and value.phase=='source_post' and value.end==end
+    assert signal.getitimer(signal.ITIMER_REAL)[0]==0
+
+
+def test_catalog_envelope_limit_is_total_line_and_unavailable_is_closed(monkeypatch,capsys):
+    source=b'[]\n{}\n[]\n';target=b'[]\n{"datconnlimit":10}\n[]\n'
+    fields=sorted(control.difference._DATABASE_FIELDS)
+    changes=[{'field':field,'change':'value'} for field in fields]
+    oversized={'status':'different','sourceRecords':32,'targetRecords':32,
+        'counts':{'changed':32,'source-only':0,'target-only':0},
+        'summary':[{'kind':'database','status':'changed','records':32,
+                    'fields':[item|{'count':32} for item in changes]}],
+        'details':[{'kind':'database','schema':'unclassified',
+                    'identitySha256':hashlib.sha256(str(i).encode()).hexdigest(),
+                    'status':'changed','fields':deepcopy(changes)} for i in range(32)],
+        'truncated':False,'qualification':'diagnostic-only-strict-fingerprint-unchanged'}
+    assert len(control.ledger.canonical(oversized))>20*1024
+    monkeypatch.setattr(control.difference,'catalog_difference',lambda *a:oversized)
+    receipt,_=_publish_catalog(source,target)
+    value=_catalog_line(capsys)
+    assert value['status']=='unavailable' and value['reason']=='limit'
+    control.validate_catalog_postcondition(value,construction_raw=receipt)

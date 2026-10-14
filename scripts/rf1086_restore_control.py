@@ -24,6 +24,7 @@ import rf1086_s0_protocol as wire
 import rf1086_sql_ledger as ledger
 import rf1086_raw_toc as raw_toc
 import rf1086_catalog_causal_capture as capture
+import rf1086_catalog_difference as difference
 
 
 SCHEMA = 'rf1086-restore-construction-v1'
@@ -685,6 +686,169 @@ def _diagnostic_remember(diagnostic, name, value):
     if diagnostic is not None: diagnostic.remember(name, value)
 
 
+CATALOG_DIAGNOSTIC_PREFIX = 'owned_identity_restore_catalog_diagnostic '
+CATALOG_DIAGNOSTIC_SCHEMA = 'rf1086-restore-catalog-diagnostic-v1'
+CATALOG_DIAGNOSTIC_CAP = 20 * 1024
+_CATALOG_CHANGES = frozenset(('source-null', 'target-null', 'array-order-only', 'value',
+    'source-field-missing', 'target-field-missing', 'acl-entry-order-only'))
+
+
+def _catalog_construction(raw):
+    require(type(raw) is str and len(raw) <= 16384, 'internal')
+    encoded = raw.encode('ascii')
+    value = json.loads(encoded)
+    require(ledger.canonical(value) == encoded and value['schema'] == SCHEMA
+            and value['status'] == 'unavailable', 'internal')
+    fingerprints = value['fingerprints']
+    _diagnostic_keys(fingerprints, ('source', 'target'))
+    for item in fingerprints.values():
+        _diagnostic_keys(item, ('roles', 'catalog', 'auth', 'companyMemberships'))
+        for digest in item.values(): _diagnostic_hash(digest)
+    require(fingerprints['source']['catalog'] != fingerprints['target']['catalog'], 'internal')
+    return hashlib.sha256(encoded).hexdigest(), fingerprints
+
+
+def _validate_catalog_difference(value):
+    """Only the classifier's finite vocabulary and hashes may leave memory."""
+    _diagnostic_keys(value, ('status', 'sourceRecords', 'targetRecords', 'counts',
+        'summary', 'details', 'truncated', 'qualification'))
+    fields = {kind: set(layout[1]) for kind, layout in difference._LAYOUTS.items()}
+    fields.update(database=set(difference._DATABASE_FIELDS) | {'unclassified'},
+                  database_role_setting={'settings'})
+    def count(n, minimum=0):
+        require(type(n) is int and minimum <= n <= difference.MAX_RECORDS, 'internal')
+    for key in ('sourceRecords', 'targetRecords'): count(value[key])
+    counts = value['counts']
+    _diagnostic_keys(counts, ('changed', 'source-only', 'target-only'))
+    for n in counts.values(): count(n)
+    total = sum(counts.values())
+    require(counts['changed'] + counts['source-only'] <= value['sourceRecords']
+            and counts['changed'] + counts['target-only'] <= value['targetRecords']
+            and value['sourceRecords'] - counts['source-only']
+                == value['targetRecords'] - counts['target-only'], 'internal')
+    require(value['status'] == ('different' if total else 'representation-only')
+            and value['qualification'] == 'diagnostic-only-strict-fingerprint-unchanged', 'internal')
+    require(type(value['summary']) is list and len(value['summary']) <= 3 * len(fields)
+            and type(value['details']) is list and len(value['details']) <= difference.MAX_DETAILS
+            and type(value['truncated']) is bool
+            and value['truncated'] == (total > len(value['details'])), 'internal')
+    def changes(items, kind, status, maximum=None):
+        require(type(items) is list and len(items) <= len(fields[kind]) * len(_CATALOG_CHANGES), 'internal')
+        seen = set()
+        for item in items:
+            _diagnostic_keys(item, ('field', 'change') if maximum is None else ('field', 'change', 'count'))
+            require(type(item['field']) is str and item['field'] in fields[kind]
+                    and type(item['change']) is str and item['change'] in _CATALOG_CHANGES, 'internal')
+            pair = (item['field'], item['change'])
+            # Several bounded database fields can share the classifier's single
+            # unclassified label; summary counts aggregate those occurrences.
+            opaque = kind == 'database' and item['field'] == 'unclassified'
+            require(pair not in seen or (maximum is None and opaque), 'internal'); seen.add(pair)
+            if maximum is not None:
+                count(item['count'], 1); require(item['count'] <= maximum * (64 if opaque else 1), 'internal')
+        require(bool(items) == (status == 'changed'), 'internal')
+    groups = {}; sums = dict.fromkeys(counts, 0)
+    for group in value['summary']:
+        _diagnostic_keys(group, ('kind', 'status', 'records', 'fields'))
+        kind, status = group['kind'], group['status']
+        require(type(kind) is str and kind in fields and type(status) is str and status in counts, 'internal')
+        count(group['records'], 1); key = (kind, status)
+        require(key not in groups, 'internal'); groups[key] = group
+        sums[status] += group['records']; changes(group['fields'], kind, status, group['records'])
+    require(sums == counts, 'internal')
+    identities = set(); detail_counts = {}; field_counts = {}
+    for item in value['details']:
+        _diagnostic_keys(item, ('kind', 'schema', 'identitySha256', 'status', 'fields'))
+        require(type(item['kind']) is str and type(item['status']) is str, 'internal')
+        key = (item['kind'], item['status'])
+        require(key in groups and type(item['schema']) is str
+                and item['schema'] in difference._SCHEMAS | {'unclassified'}, 'internal')
+        _diagnostic_hash(item['identitySha256'])
+        require(item['identitySha256'] not in identities, 'internal'); identities.add(item['identitySha256'])
+        changes(item['fields'], *key)
+        detail_counts[key] = detail_counts.get(key, 0) + 1
+        require(detail_counts[key] <= groups[key]['records'], 'internal')
+        allowed = {(f['field'], f['change']): f['count'] for f in groups[key]['fields']}
+        for item_field in item['fields']:
+            pair = (item_field['field'], item_field['change']); field_key = (*key, *pair)
+            field_counts[field_key] = field_counts.get(field_key, 0) + 1
+            require(pair in allowed and field_counts[field_key] <= allowed[pair], 'internal')
+    if not value['truncated']:
+        require(all(detail_counts.get(key, 0) == group['records'] for key, group in groups.items()), 'internal')
+        require(all(field_counts.get((*key, f['field'], f['change']), 0) == f['count']
+                    for key, group in groups.items() for f in group['fields']), 'internal')
+
+
+def validate_catalog_postcondition(value, *, construction_raw=None):
+    """Closed diagnostic shape; supplied construction text cross-binds fingerprints."""
+    _diagnostic_keys(value, ('schema', 'status', 'reason', 'constructionSha256', 'source', 'target', 'difference'))
+    require(value['schema'] == CATALOG_DIAGNOSTIC_SCHEMA, 'internal')
+    _diagnostic_hash(value['constructionSha256'])
+    if value['status'] == 'observed':
+        require(value['reason'] is None, 'internal')
+        for key in ('source', 'target'):
+            _diagnostic_keys(value[key], ('bytes', 'sha256'))
+            require(type(value[key]['bytes']) is int and 1 <= value[key]['bytes'] <= difference.MAX_CAPTURE_BYTES, 'internal')
+            _diagnostic_hash(value[key]['sha256'])
+        require(value['source']['sha256'] != value['target']['sha256'], 'internal')
+        _validate_catalog_difference(value['difference'])
+    else:
+        require(value['status'] == 'unavailable' and type(value['reason']) is str
+                and value['reason'] in ('input', 'binding', 'classifier', 'limit')
+                and value['source'] is None and value['target'] is None and value['difference'] is None, 'internal')
+    if construction_raw is not None:
+        digest, fingerprints = _catalog_construction(construction_raw)
+        require(value['constructionSha256'] == digest, 'internal')
+        if value['status'] == 'observed':
+            for key in ('source', 'target'):
+                require(value[key]['sha256'] == fingerprints[key]['catalog'], 'internal')
+    require(len(CATALOG_DIAGNOSTIC_PREFIX) + len(ledger.canonical(value)) + 1 <= CATALOG_DIAGNOSTIC_CAP, 'limit')
+
+
+def publish_catalog_postcondition(budget, *, construction_raw, source_metadata, target_capture, primary):
+    """Borrow at most one second; never advance phase or replace recovery failure."""
+    owner = budget.context.owner
+    original = owner.original if isinstance(owner, _UnwindOwner) else owner
+    if owner.cancelled or owner.uncertain or original.cancelled or original.uncertain: return
+    end = min(budget.end, time.monotonic() + 1)
+    try:
+        with owner.deferred(primary), io_deadline(budget, end=end):
+            require(budget.phase == 'source_post', 'internal')
+            digest, fingerprints = _catalog_construction(construction_raw)
+            value = dict(schema=CATALOG_DIAGNOSTIC_SCHEMA, status='unavailable', reason='input',
+                         constructionSha256=digest, source=None, target=None, difference=None)
+            reason = 'input'
+            try:
+                # Retention itself can fail: keep access inside the same deadline
+                # and failure shield as classification, never beside its caller.
+                source_raw = getattr(source_metadata, '_catalog', None)
+                target_raw = getattr(target_capture, '_raw', None)
+                for raw in (source_raw, target_raw):
+                    require(type(raw) is bytes and 1 <= len(raw) <= difference.MAX_CAPTURE_BYTES, 'internal')
+                bound = {key: {'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()}
+                         for key, raw in (('source', source_raw), ('target', target_raw))}
+                reason = 'binding'
+                require(all(bound[key]['sha256'] == fingerprints[key]['catalog'] for key in bound), 'internal')
+                reason = 'classifier'
+                with difference.CatalogCapture() as left, difference.CatalogCapture() as right:
+                    left.capture(source_raw); right.capture(target_raw)
+                    diff = difference.catalog_difference(left, right)
+                proposed = value | {'status': 'observed', 'reason': None, **bound, 'difference': diff}
+                validate_catalog_postcondition(proposed, construction_raw=construction_raw)
+                value = proposed
+            except Exception as error:
+                # Expiry must not start another write with an already spent alarm.
+                if isinstance(error, RestoreUnavailable) and error.reason == 'deadline': return
+                value['reason'] = 'limit' if isinstance(error, RestoreUnavailable) and error.reason == 'limit' else reason
+            validate_catalog_postcondition(value, construction_raw=construction_raw)
+            line = CATALOG_DIAGNOSTIC_PREFIX + ledger.canonical(value).decode('ascii') + '\n'
+            budget.remaining(end=end)
+            sys.stderr.write(line)
+            sys.stderr.flush()
+    except BaseException as error:
+        if not isinstance(error, Exception): _diagnostic_cancel(budget, error, primary)
+
+
 def prepare_archive(source, *, archive, roles, metadata, budget, diagnostic=None):
     """Complete generation, attribution and source admission before any target."""
     import rf1086_restore_metadata as compiler
@@ -970,7 +1134,7 @@ def io_timeout(budget=None, maximum=15, *, reserve=0):
 
 
 @contextmanager
-def io_deadline(budget=None):
+def io_deadline(budget=None, *, end=None):
     """Bound synchronous waits and positive commit; no driver monkeypatch.
 
     Async callers also use this main-thread guard because asyncio cancellation
@@ -983,7 +1147,7 @@ def io_deadline(budget=None):
         return
     require(_io_threading.current_thread() is _io_threading.main_thread(), 'deadline')
     started = time.monotonic()
-    duration = budget.remaining()
+    duration = budget.remaining(end=end)
     previous = _io_signal.getsignal(_io_signal.SIGALRM)
     prior, interval = _io_signal.getitimer(_io_signal.ITIMER_REAL)
     earlier = prior > 0 and prior <= duration
@@ -1002,7 +1166,7 @@ def io_deadline(budget=None):
     _io_signal.setitimer(_io_signal.ITIMER_REAL, min(duration, prior) if prior else duration)
     try:
         yield
-        budget.remaining()
+        budget.remaining(end=end)
     finally:
         _io_signal.setitimer(_io_signal.ITIMER_REAL, 0)
         _io_signal.signal(_io_signal.SIGALRM, previous)
