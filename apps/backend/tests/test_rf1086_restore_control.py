@@ -495,6 +495,20 @@ class TestPrepareArchive(unittest.TestCase):
         self.positive(wire_change=change,column_rows=(['column_acl','public','t','id',
             '{reader=r/supabase_admin}'],),walk_options={'acl_sql':sql})
 
+    def test_column_table_owner_reset_through_real_preparation(self):
+        def change(wire):
+            obj=wire['objects'][0];obj['columnAclCount']=1
+            obj['acl']=fixtures.acl([fixtures.item('writer',('UPDATE',)),
+                fixtures.item('reader',('SELECT',)), fixtures.item(fixtures.OWNER,('SELECT','UPDATE'),('SELECT',))])
+        sql=(b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n'
+             b'GRANT UPDATE ON TABLE public.t TO supabase_admin;\n'
+             b'GRANT SELECT ON TABLE public.t TO supabase_admin WITH GRANT OPTION;\n'
+             b'GRANT SELECT ON TABLE public.t TO reader;\n'
+             b'GRANT UPDATE ON TABLE public.t TO writer;\n'
+             b'GRANT SELECT(id) ON TABLE public.t TO reader;\n')
+        self.positive(wire_change=change,column_rows=(['column_acl','public','t','id',
+            '{reader=r/supabase_admin}'],),walk_options={'acl_sql':sql})
+
     def test_unmodeled_pg_catalog_column_acl_through_real_preparation(self):
         self.assert_column_preparation(empty_family=True)
 

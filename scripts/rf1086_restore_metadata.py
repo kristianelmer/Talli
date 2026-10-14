@@ -877,6 +877,39 @@ def _stable(acl, operations, obj, budget):
         require(current == acl, 'suffix_profile')
 
 
+def _stable_seed_suffix(acl, operations, obj, budget):
+    budget.check()
+    owner = next((row for row in acl.items if row.grantee == obj.owner), None)
+    default_owner = next(row for row in obj.default.items if row.grantee == obj.owner)
+    reset = Operation(False, frozenset(_domain(obj)), obj.owner, False)
+    if (not _column_table_profile(obj) or owner is None or owner == default_owner
+            or not operations or operations[0] != reset):
+        return _stable(acl, operations, obj, budget)
+    # PG17.6 compares whole ACL items and emits the owner restoration first.
+    # Admit only that complete block; deleting/reappending must preserve order.
+    restore = tuple(Operation(True, rights, obj.owner, options)
+        for rights, options in ((owner.privileges - owner.options, False), (owner.options, True))
+        if rights)
+    stop = 1 + len(restore)
+    require(operations[1:stop] == restore and (stop == len(operations)
+            or not (operations[stop].grant and operations[stop].grantee == obj.owner)), 'suffix_profile')
+    desired = {(row.grantee, row.grantor): row for row in acl.items}
+    current = acl
+    for op in operations[:stop]:
+        budget.check()
+        current = _apply(current, op, obj.acl_kind, obj.owner)
+        for row in current.items:
+            budget.check()
+            wanted = desired.get((row.grantee, row.grantor))
+            require(wanted is not None and row.privileges <= wanted.privileges
+                    and row.options <= wanted.options, 'suffix_profile')
+    require(current == acl, 'suffix_profile')
+    for op in operations[stop:]:
+        budget.check()
+        require(not (op.grant and op.grantee == obj.owner), 'suffix_profile')
+    _stable(acl, operations[stop:], obj, budget)
+
+
 def _render_target(obj, budget):
     target = _ident(obj.identity[1], budget) + b'.' + _ident(obj.identity[2], budget)
     if obj.identity[0] == 'function':
@@ -1099,7 +1132,7 @@ def compile_plan(source, *, script, archive, index, deadline):
             continue
         require(not row['laterMutation'] and _seed_owner_profile(obj, obj.acl)
                 and _seed_owner_profile(obj, baseline), 'suffix_profile')
-        _stable(obj.acl, operations, obj, budget)
+        _stable_seed_suffix(obj.acl, operations, obj, budget)
         materialize = obj.identity[0] == 'relation' and len(obj.acl.items) == 1 and obj.acl == obj.default
         if materialize and baseline is None:
             rights = b', '.join(x.encode() for x in _domain(obj))
@@ -1441,7 +1474,7 @@ CONFIG = {
     'unsupportedAclTargets': 'whole-family-or-plain-in-arity-disjoint-v1',
     'unmodeledPgCatalogAclTargets': 'empty-family-closed-single-target-v1',
     'unmodeledTableColumnAcls': 'single-identical-token-column-v1',
-    'columnTableAclSeed': 'ordinary-no-init-owner-origin-zero-target-columns-stable-suffix-v1',
+    'columnTableAclSeed': 'ordinary-no-init-owner-origin-zero-columns-owner-reset-prefix-v2',
 }
 CONFIG_SHA256 = hashlib.sha256(canonical(CONFIG)).hexdigest()
 
@@ -1741,6 +1774,7 @@ def restore_metadata_index(script, archive, restore_index, source, *, deadline):
         row = records[identity]
         pairs_to_objects[(row['classOid'], row['objectOid'])] = identity
     defaults, statement_count, unknown_later = [], 0, False
+    seen_columns = set()
     roles = {r.name for r in source.roles}
     for entry, pass_, role, start, definition, stop in full_occurrences:
         budget.check()
@@ -1790,6 +1824,11 @@ def restore_metadata_index(script, archive, restore_index, source, *, deadline):
                 # context must still veto a newly eligible table supplement.
                 if authorized and _column_table_profile(obj):
                     auth_targets.add(obj.identity)
+                if _column_table_profile(obj):
+                    if found.unmodeled:
+                        seen_columns.add(obj.identity)
+                    elif obj.identity in seen_columns:
+                        row['laterMutation'] = True
                 if obj.identity in omitted:
                     if found.unmodeled:
                         continue

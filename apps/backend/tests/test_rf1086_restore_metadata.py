@@ -1176,6 +1176,138 @@ def test_column_table_destructive_owner_suffix_cannot_be_rescued_by_later_grant(
     assert error.value.reason == 'suffix_profile'
 
 
+def owner_reset_walk(options=(), *, owner_position=2, sql=None):
+    rights = ('SELECT', 'UPDATE')
+    plain = tuple(right for right in rights if right not in options)
+    restore = b''
+    if plain:
+        restore += b'GRANT ' + ', '.join(plain).encode() + b' ON TABLE public.t TO supabase_admin;\n'
+    if options:
+        restore += b'GRANT ' + ', '.join(options).encode() + b' ON TABLE public.t TO supabase_admin WITH GRANT OPTION;\n'
+    original = (b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n' + restore
+        + b'GRANT SELECT ON TABLE public.t TO reader;\n'
+        + b'GRANT UPDATE ON TABLE public.t TO writer;\n'
+        + b'GRANT SELECT(id) ON TABLE public.t TO reader;\n')
+    def change(wire):
+        items = [item('writer', ('UPDATE',)), item('reader', ('SELECT',))]
+        items.insert(owner_position, item(OWNER, rights, options))
+        wire['objects'][0]['acl'] = acl(items)
+    return column_table_walk('partial', acl_sql=original if sql is None else sql, wire_change=change)
+
+
+@pytest.mark.parametrize('options', [(), ('SELECT',), ('SELECT', 'UPDATE')])
+def test_column_table_owner_reset_restores_exact_order_before_stable_tail(options):
+    wire, src, script, archive, index = owner_reset_walk(options)
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert len(plan.candidates) == 1
+    assert plan.candidates[0].object.acl == src.objects[0].acl
+    creation = deepcopy(wire); creation['objects'][0]['columnAclCount'] = 0
+    before, after = target(creation), target(creation, explicit=True)
+    mutation = m.pre_acl(plan, before, deadline=end())
+    assert mutation.applied == 1 and b'(id)' not in mutation.sql
+    assert mutation.sql.index(b'TO writer;') < mutation.sql.index(b'TO reader;') < mutation.sql.index(b'TO supabase_admin')
+    m.post_acl(plan, before, after, mutation, deadline=end())
+
+
+@pytest.mark.parametrize('position', [0, 1])
+def test_column_table_owner_reset_rejects_owner_reappend_order_change(position):
+    _, src, script, archive, index = owner_reset_walk(owner_position=position)
+    with pytest.raises(m.MetadataUnavailable) as error:
+        m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert error.value.reason == 'suffix_profile'
+
+
+def test_column_table_owner_reset_rejects_later_owner_group_after_other_grantee():
+    sql = (b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n'
+        b'GRANT SELECT, UPDATE ON TABLE public.t TO supabase_admin;\n'
+        b'GRANT SELECT ON TABLE public.t TO reader;\n'
+        b'GRANT SELECT, UPDATE ON TABLE public.t TO supabase_admin;\n'
+        b'GRANT UPDATE ON TABLE public.t TO writer;\n'
+        b'GRANT SELECT(id) ON TABLE public.t TO reader;\n')
+    _, src, script, archive, index = owner_reset_walk(sql=sql)
+    with pytest.raises(m.MetadataUnavailable) as error:
+        m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert error.value.reason == 'suffix_profile'
+
+
+@pytest.mark.parametrize('fault', ['missing', 'overgrant', 'options', 'other-reset',
+    'second-reset', 'duplicate-group', 'reversed-groups', 'overlapping-groups', 'cascade', 'authorization'])
+def test_column_table_owner_reset_rejects_unproved_prefixes(fault):
+    reset = b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n'
+    plain = b'GRANT UPDATE ON TABLE public.t TO supabase_admin;\n'
+    option = b'GRANT SELECT ON TABLE public.t TO supabase_admin WITH GRANT OPTION;\n'
+    restore = plain + option
+    if fault == 'missing': restore = plain
+    elif fault == 'overgrant': restore = plain.replace(b'UPDATE', b'INSERT, UPDATE') + option
+    elif fault == 'options': restore = plain + option.replace(b'SELECT', b'SELECT, UPDATE')
+    elif fault == 'other-reset': reset = reset.replace(b'supabase_admin', b'reader')
+    elif fault == 'second-reset': restore += reset
+    elif fault == 'duplicate-group': restore += option
+    elif fault == 'reversed-groups': restore = option + plain
+    elif fault == 'overlapping-groups': restore = plain.replace(b'UPDATE', b'SELECT, UPDATE') + option
+    elif fault == 'cascade': reset = reset.replace(b';', b' CASCADE;')
+    else: reset = b'SET SESSION AUTHORIZATION reader;\n' + reset + b'RESET SESSION AUTHORIZATION;\n'
+    sql = (reset + restore + b'GRANT SELECT ON TABLE public.t TO reader;\n'
+        + b'GRANT UPDATE ON TABLE public.t TO writer;\n'
+        + b'GRANT SELECT(id) ON TABLE public.t TO reader;\n')
+    # Malformed emitter programs may reject at the earlier ledger boundary.
+    with pytest.raises((m.MetadataUnavailable, m.ledger.Unavailable)) as error:
+        _, src, script, archive, index = owner_reset_walk(('SELECT',), sql=sql)
+        m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert error.value.reason == ('role' if fault in ('second-reset', 'cascade', 'authorization') else 'suffix_profile')
+
+
+@pytest.mark.parametrize('column_first', [False, True])
+def test_column_table_seed_requires_table_before_columns_across_acl_occurrences(column_first):
+    from test_rf1086_sql_ledger import row
+    wire, src, _, _, _ = owner_reset_walk()
+    column = b'GRANT SELECT(id) ON TABLE public.t TO reader;\n'
+    table = (b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n'
+        b'GRANT SELECT, UPDATE ON TABLE public.t TO supabase_admin;\n'
+        b'GRANT SELECT ON TABLE public.t TO reader;\n'
+        b'GRANT UPDATE ON TABLE public.t TO writer;\n')
+    def change(rows):
+        position = next(i for i, entry in enumerate(rows) if entry['id'] == 52)
+        rows.insert(position if column_first else position + 1,
+            row(53, b'ACL', b'COLUMN t.id', column, class_oid=b'0', oid=b'0',
+                namespace=b'public', owner=OWNER.encode(), deps=(42,)))
+    script, archive, walk = complete_walk(wire, acl_sql=table, rows_change=change)
+    index = m.restore_metadata_index(script, archive, walk, src, deadline=end())
+    entry = next(entry for entry in index['objects'] if entry['identity'] == ['relation', 'public', 't'])
+    assert entry['laterMutation'] is column_first
+    assert len(entry['aclSpans']) == 4
+    if column_first:
+        with pytest.raises(m.MetadataUnavailable) as error:
+            m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+        assert error.value.reason == 'suffix_profile'
+    else:
+        assert len(m.compile_plan(src, script=script, archive=archive, index=index, deadline=end()).candidates) == 1
+
+
+def test_owner_reset_does_not_expand_noncolumn_profile():
+    wire, _, script, archive, index = owner_reset_walk()
+    wire['objects'][0]['columnAclCount'] = 0
+    plan = m.compile_plan(source(wire), script=script, archive=archive, index=index, deadline=end())
+    assert not plan.candidates and plan.counts['unmodeled'] == 1
+
+
+@pytest.mark.parametrize('failure', [m.MetadataUnavailable('deadline'), m.ledger.Unavailable('limit'),
+                                   KeyboardInterrupt('generated'), SystemExit('generated')])
+def test_owner_reset_prefix_keeps_resource_and_cancellation_identity(failure):
+    _, src, script, _, index = owner_reset_walk(('SELECT',))
+    obj = src.objects[0]
+    operations = tuple(m._operation(statement, obj=obj, roles={role.name for role in src.roles})
+        for statement in m._spans(index['objects'][0]['aclSpans'], script, index['preAcl'], m.Budget(end()), set()))
+    class Expired:
+        calls = 0
+        def check(self):
+            self.calls += 1
+            if self.calls == 3: raise failure
+    with pytest.raises(type(failure)) as caught:
+        m._stable_seed_suffix(obj.acl, operations, obj, Expired())
+    assert caught.value is failure
+
+
 def test_column_table_unmodeled_column_authorization_still_taints_table_seed():
     sql = (b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n'
         b'GRANT SELECT ON TABLE public.t TO reader;\n'
