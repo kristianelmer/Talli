@@ -334,13 +334,13 @@ def forbidden_prepare_io(*args, **kwargs):
 
 class TestPrepareArchive(unittest.TestCase):
     def fixture(self, *, extension=False, ordered=True, walk_options=None,
-                wire_change=None, compile_expected=True):
+                wire_change=None, compile_expected=True, column_rows=()):
         wire=fixtures.fixture(ordered=ordered)
         if ordered:
             wire['objects'][0]['acl']=fixtures.acl([fixtures.item('reader',('SELECT',)),fixtures.item()])
         if extension: wire['objects'][0]['extension']=[['pg_net','0.20.3',fixtures.OWNER]]
         if wire_change is not None: wire_change(wire)
-        source=fixtures.source(wire)
+        source=fixtures.source(wire,column_rows=column_rows)
         generated={}
         original_wire=ledger_fixtures.wire_and_list
         def capture_wire(rows):
@@ -433,13 +433,125 @@ class TestPrepareArchive(unittest.TestCase):
         self.assertEqual(len(self.calls),4)
         self.assertGreaterEqual(budget.remaining(),70)
 
+    def column_fixture(self, *, empty_family, sql=None, deps=None):
+        namespace, target = (b'pg_catalog', b'pg_class') if empty_family else (b'public', b'column_table')
+        sql = b'GRANT SELECT (id) ON TABLE '+namespace+b'.'+target+b' TO reader;\n' if sql is None else sql
+        def change(wire):
+            if not empty_family:
+                obj=deepcopy(wire['objects'][0])
+                obj.update(objectOid=20001,identity=['relation','public','column_table'],columnAclCount=1)
+                wire['objects'].append(obj)
+        def rows_change(rows):
+            acl=next(row for row in rows if row['id']==52)
+            acl.update(namespace=namespace,tag=b'TABLE '+target)
+            if not empty_family:
+                table=ledger_fixtures.row(43,b'TABLE',target,b'CREATE TABLE public.column_table (id integer);\n',
+                    class_oid=b'1259',oid=b'20001',namespace=namespace,owner=fixtures.OWNER.encode(),
+                    drop=b'DROP TABLE public.column_table;\n')
+                rows.insert(next(i for i,row in enumerate(rows) if row['id']==42),table)
+        columns=() if empty_family else (['column_acl','public','column_table','id','{reader=r/supabase_admin}'],)
+        return self.fixture(compile_expected=False,wire_change=change,column_rows=columns,
+            walk_options={'acl_sql':sql,'acl_deps':(420,) if empty_family else (43,) if deps is None else deps,
+                          'rows_change':rows_change})
+
+    def assert_column_preparation(self, *, empty_family):
+        f=self.column_fixture(empty_family=empty_family)
+        try:
+            result,budget=self.invoke(f)
+        except metadata.MetadataUnavailable as error:
+            error.add_note('Generated preparation diagnostic: '+json.dumps(self.diagnostic.failure))
+            raise
+        self.assertEqual(result.script,f['script'])
+        self.assertEqual(result.index,f['walk'])
+        self.assertEqual(result.archive_binding,dict(bytes=len(f['raw']),sha256=hashlib.sha256(f['raw']).hexdigest()))
+        self.assertEqual(result.index.core.script,dict(bytes=len(f['script']),sha256=hashlib.sha256(f['script']).hexdigest()))
+        self.assertEqual([c.object.identity for c in result.plan.candidates],[('relation','public','t')])
+        archive=control.raw_toc.inspect(f['raw'],f['list'],fixtures.end())[0]
+        index=metadata.restore_metadata_index(f['script'],archive,result.index,f['source'],deadline=fixtures.end())
+        self.assertTrue(all(not row['aclSpans'] for row in index['objects']))
+        self.assertTrue(all(row['identity'][1]!='pg_catalog' for row in index['objects']))
+        self.assertNotIn(b'column_table',b''.join(c.sql for c in result.plan.candidates))
+        self.assertEqual(result.plan.counts['objects'],len(f['source'].objects))
+        self.assertIsNone(self.diagnostic.failure)
+        self.assertEqual(len(self.calls),4)
+        self.assertGreaterEqual(budget.remaining(),70)
+
+    def test_unmodeled_source_table_column_acl_through_real_preparation(self):
+        self.assert_column_preparation(empty_family=False)
+
+    def test_unmodeled_pg_catalog_column_acl_through_real_preparation(self):
+        self.assert_column_preparation(empty_family=True)
+
+    def test_column_denials_and_direct_dependency_precede_target_admission(self):
+        for empty in (False,True):
+            table=b'pg_catalog.pg_class' if empty else b'public.column_table'
+            for rights in (b'SELECT(id,other)',b'SELECT("C"),UPDATE(C)',b'SELECT(id),UPDATE(other)'):
+                with self.subTest(empty=empty,rights=rights):
+                    f=self.column_fixture(empty_family=empty,sql=b'GRANT '+rights+b' ON TABLE '+table+b' TO reader;\n')
+                    with patch.object(control.RecoveryBudget,'before_target',side_effect=AssertionError('admission reached')) as admission:
+                        with self.assertRaises((metadata.MetadataUnavailable,metadata.ledger.Unavailable)):
+                            self.invoke(f)
+                    admission.assert_not_called()
+        f=self.column_fixture(empty_family=False,deps=(42,))
+        with patch.object(control.RecoveryBudget,'before_target',side_effect=AssertionError('admission reached')) as admission:
+            with self.assertRaises(metadata.MetadataUnavailable) as caught:self.invoke(f)
+        self.assertEqual(caught.exception.reason,'archive_profile');admission.assert_not_called()
+        f=self.fixture(compile_expected=False,walk_options={'acl_sql':b'GRANT SELECT(id) ON TABLE public.t TO reader;\n'})
+        with patch.object(control.RecoveryBudget,'before_target',side_effect=AssertionError('admission reached')) as admission:
+            with self.assertRaises(metadata.MetadataUnavailable):self.invoke(f)
+        self.assertEqual(self.diagnostic.failure['step'],'acl_compile');admission.assert_not_called()
+
+    def test_column_statement_cannot_hide_extra_sql(self):
+        rows=[]
+        # Rebuild a genuine generated archive, not an unbound script mutation.
+        f=self.fixture(compile_expected=False,walk_options={
+            'acl_sql':b'GRANT SELECT(id) ON TABLE pg_catalog.pg_class TO reader;\n',
+            'acl_deps':(420,), 'rows_change':lambda values:rows.extend(deepcopy(values))})
+        next(row for row in rows if row['id']==52)['definition']+=b'SELECT 1;\n'
+        f['raw'],f['list']=ledger_fixtures.wire_and_list(rows)
+        f['script']=ledger_fixtures.script_fixture(rows)
+        with patch.object(control.RecoveryBudget,'before_target',side_effect=AssertionError('admission reached')) as admission:
+            with self.assertRaises(control.ledger.Unavailable):self.invoke(f)
+        admission.assert_not_called();self.assertEqual(self.diagnostic.failure['step'],'restore_ledger')
+
+    def test_column_fallback_resource_and_cancel_identity_before_admission(self):
+        import inspect
+        for empty in (False,True):
+            table=b'pg_catalog.pg_class' if empty else b'public.column_table'
+            for seam in ('prefix','column','ending'):
+                rights=b'SELECT' if seam=='prefix' else b'SELECT(id)'
+                sql=b'GRANT '+rights+b' ON TABLE '+table+b' TO reader;\n'
+                f=self.column_fixture(empty_family=empty,sql=sql)
+                for token in (metadata.MetadataUnavailable('deadline'),metadata.ledger.Unavailable('deadline'),
+                              metadata.ledger.Unavailable('limit'),metadata.lexical.Unavailable('deadline'),
+                              metadata.lexical.Unavailable('limit'),KeyboardInterrupt('generated'),SystemExit('generated'),None):
+                    with self.subTest(empty=empty,seam=seam,kind=type(token).__name__):
+                        name={'prefix':'_operation_prefix','column':'_sname','ending':'_operation_ending'}[seam]
+                        original=getattr(metadata,name);hits=[]
+                        caller=metadata._unsupported_target if seam=='ending' else metadata._unmodeled_table_prefix
+                        def stop(s,*args,**kwargs):
+                            result=original(s,*args,**kwargs)
+                            if s.raw==sql and inspect.currentframe().f_back.f_code is caller.__code__:
+                                hits.append(True)
+                                if token is not None:raise token
+                                s.budget.deadline=-1
+                            return result
+                        with patch.object(metadata,name,stop), patch.object(
+                            control.RecoveryBudget,'before_target',side_effect=AssertionError('admission reached')) as admission:
+                            with self.assertRaises(type(token) if token is not None else metadata.MetadataUnavailable) as caught:
+                                self.invoke(f)
+                        self.assertEqual(hits,[True]);admission.assert_not_called()
+                        if token is not None:self.assertIs(caught.exception,token)
+                        else:self.assertEqual(caught.exception.reason,'deadline')
+                        self.assertEqual(len(self.calls),4)
+
     def test_pg_catalog_denials_precede_target_admission(self):
         for sql in (
             b'GRANT EXECUTE ON FUNCTION public.missing() TO reader;\n',
             b'GRANT EXECUTE ON FUNCTION pg_toast.missing() TO reader;\n',
             b'GRANT EXECUTE ON FUNCTION information_schema.missing() TO reader;\n',
             b'GRANT EXECUTE ON FUNCTION pg_catalog.f() TO reader GRANTED BY supabase_admin;\n',
-            b'GRANT SELECT (oid) ON TABLE pg_catalog.pg_class TO reader;\n',
+            b'GRANT SELECT (oid, relname) ON TABLE pg_catalog.pg_class TO reader;\n',
             b'GRANT EXECUTE ON FUNCTION pg_catalog.f(), net.http_get(text) TO reader;\n',
             b'REVOKE EXECUTE ON FUNCTION pg_catalog.f(), net.http_get(text) FROM reader;\n',
         ):

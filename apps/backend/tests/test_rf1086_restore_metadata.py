@@ -149,9 +149,13 @@ def role_rows(wire):
              'rolpassword': None, 'rolvaliduntil': None} for r in wire['roles']]
 
 
-def source(wire=None):
+def source(wire=None, *, column_rows=()):
     wire = fixture() if wire is None else wire
-    result = m.decode_metadata(encode(wire), catalog_raw=catalog(wire),
+    raw = catalog(wire)
+    if column_rows:
+        first, rest = raw.split(b'\n', 1)
+        raw = encode(json.loads(first) + list(column_rows)) + b'\n' + rest
+    result = m.decode_metadata(encode(wire), catalog_raw=raw,
                              roles_raw=encode(role_rows(wire)) + b'\n[]\n', deadline=end())
     snapshot, _ = catalogs()
     snapshot['schemas'] = deepcopy(wire['selectedSchemas'])
@@ -466,9 +470,11 @@ def complete_walk(wire, *, extension_created=False, acl_sql=None, acl_deps=None,
     if rows_change is not None:
         rows_change(rows)
     raw, listing = wire_and_list(rows); script = script_fixture(rows)
-    if not extension_created:
-        definition = table['definition'] + b'\n\n'
-        script = script.replace(definition, definition + b'ALTER TABLE public.t OWNER TO supabase_admin;\n\n')
+    for entry in rows:
+        if entry['description'] == b'TABLE' and entry['owner']:
+            definition = entry['definition'] + b'\n\n'
+            script = script.replace(definition, definition + b'ALTER TABLE ' + entry['namespace']
+                + b'.' + entry['tag'] + b' OWNER TO ' + entry['owner'] + b';\n\n')
     budget = ledger.Budget(end()); budget.phase('metadata')
     archive, _ = raw_toc.inspect(raw, listing, budget.deadline)
     source_catalog, _ = catalogs()
@@ -1261,7 +1267,7 @@ def test_pg_catalog_exception_never_exempts_other_missing_families(target):
     b'GRANT EXECUTE ON FUNCTION pg_catalog.f() TO reader GRANTED BY supabase_admin;',
     b'REVOKE EXECUTE ON FUNCTION pg_catalog.f() FROM reader GRANTED BY reader;',
     b'GRANT EXECUTE ON FUNCTION pg_catalog.f() TO reader GRANTED BY missing;',
-    b'GRANT SELECT (oid) ON TABLE pg_catalog.pg_class TO reader;',
+    b'GRANT SELECT (oid, relname) ON TABLE pg_catalog.pg_class TO reader;',
     b'GRANT EXECUTE (arg) ON FUNCTION pg_catalog.f() TO reader;',
     b'GRANT USAGE ON TABLE pg_catalog.pg_class TO reader;',
     b'GRANT INSERT ON SEQUENCE pg_catalog.seq TO reader;',
@@ -1349,3 +1355,112 @@ def test_pg_catalog_exclusion_checks_deadline_after_complete_ending(monkeypatch)
     with pytest.raises(m.MetadataUnavailable) as caught:
         pg_catalog_target(b'GRANT EXECUTE ON FUNCTION pg_catalog.f() TO reader;')
     assert caught.value.reason == 'deadline'
+
+
+def column_target(raw, *, empty_family):
+    candidates = {}
+    obj = None
+    if not empty_family:
+        obj = replace(source().objects[0], columns=1)
+        candidates[('relation', b'public', b't')] = (obj,)
+    target = b'pg_catalog.pg_class' if empty_family else b'public.t'
+    result = pg_catalog_target(raw.replace(b'@TABLE@', target), candidates=candidates)
+    assert result.unmodeled is True and result.exact is obj
+    return result
+
+
+@pytest.mark.parametrize('empty_family', [False, True])
+@pytest.mark.parametrize('rights', [b'SELECT(id)', b'INSERT(id)', b'REFERENCES(id)', b'UPDATE(id)',
+    b'ALL(id)', b'ALL PRIVILEGES(id)', b'SELECT(id),INSERT(id),REFERENCES(id),UPDATE(id)',
+    b'SELECT("C"),UPDATE("C")', b'SELECT("odd,""name"),UPDATE("odd,""name")',
+    'SELECT("é"),UPDATE("é")'.encode(), b'SELECT (oid)',
+    b'SELECT /* trivia */ (id), UPDATE(id)', b'SELECT("'+b'""'*63+b'")'])
+def test_unmodeled_column_rights_preserve_bounded_single_token(rights, empty_family):
+    column_target(b'GRANT '+rights+b' ON TABLE @TABLE@ TO reader;', empty_family=empty_family)
+
+
+@pytest.mark.parametrize('empty_family', [False, True])
+@pytest.mark.parametrize('sql', [
+    b'GRANT SELECT(id) ON TABLE @TABLE@ TO PUBLIC;',
+    b'GRANT SELECT(id) ON TABLE @TABLE@ TO reader WITH GRANT OPTION;',
+    b'REVOKE SELECT(id) ON TABLE @TABLE@ FROM reader;',
+    b'REVOKE GRANT OPTION FOR SELECT(id) ON TABLE @TABLE@ FROM reader RESTRICT;',
+])
+def test_unmodeled_column_existing_endings(sql, empty_family):
+    column_target(sql, empty_family=empty_family)
+
+
+@pytest.mark.parametrize('empty_family', [False, True])
+@pytest.mark.parametrize('rights', [b'SELECT()', b'SELECT((id))', b'SELECT(id,other)',
+    b'SELECT(id+1)', b'SELECT(t.id)', b'SELECT(id::text)', b'SELECT(id),UPDATE(other)',
+    b'SELECT("C"),UPDATE(C)', b'SELECT(C),UPDATE(c)', b'SELECT("id"),UPDATE(id)',
+    b'SELECT(id),SELECT(id)', b'SELECT(id),UPDATE', b'SELECT,UPDATE(id)',
+    b'ALL(id),UPDATE(id)', b'SELECT(id),ALL(id)', b'DELETE(id)', b'EXECUTE(id)',
+    b'"SELECT"(id)', b'SELECT(\'id\')', b'SELECT("")', b'SELECT("'+b'x'*64+b'")'])
+def test_unmodeled_column_refuses_noncanonical_groups(rights, empty_family):
+    with pytest.raises((m.MetadataUnavailable, m.ledger.Unavailable)):
+        column_target(b'GRANT '+rights+b' ON TABLE @TABLE@ TO reader;', empty_family=empty_family)
+
+
+@pytest.mark.parametrize('empty_family', [False, True])
+@pytest.mark.parametrize('sql', [
+    b'GRANT SELECT(id) ON TABLE @TABLE@, public.other TO reader;',
+    b'GRANT SELECT(id) ON TABLE @TABLE@ TO reader, writer;',
+    b'GRANT SELECT(id) ON TABLE @TABLE@ FROM reader;',
+    b'GRANT SELECT(id) ON TABLE @TABLE@ TO missing;',
+    b'GRANT SELECT(id) ON TABLE @TABLE@ TO PUBLIC WITH GRANT OPTION;',
+    b'GRANT SELECT(id) ON TABLE @TABLE@ TO reader WITH OPTION;',
+    b'GRANT SELECT(id) ON TABLE @TABLE@ TO reader GRANTED BY writer;',
+    b'REVOKE SELECT(id) ON TABLE @TABLE@ FROM reader CASCADE;',
+    b'GRANT SELECT(id) ON TABLE @TABLE@ TO reader extra;',
+])
+def test_unmodeled_column_requires_entire_existing_ending(sql, empty_family):
+    with pytest.raises((m.MetadataUnavailable, m.ledger.Unavailable)):
+        column_target(sql, empty_family=empty_family)
+
+
+def test_unmodeled_column_cannot_invent_empty_owner_or_change_other_target_kinds():
+    sql = b'GRANT SELECT(id) ON TABLE @TABLE@ TO reader GRANTED BY supabase_admin;'
+    column_target(sql, empty_family=False)
+    with pytest.raises(m.MetadataUnavailable): column_target(sql, empty_family=True)
+    for sql in (b'GRANT SELECT(id) ON TABLE public.missing TO reader;',
+                b'GRANT SELECT(id) ON SEQUENCE pg_catalog.seq TO reader;',
+                b'GRANT EXECUTE(id) ON FUNCTION pg_catalog.f() TO reader;'):
+        with pytest.raises((m.MetadataUnavailable, m.ledger.Unavailable)):
+            pg_catalog_target(sql)
+
+
+@pytest.mark.parametrize('sql', [b'GRANT SELECT ON TABLE pg_catalog.t TO reader;',
+                                b'GRANT SELECT(id) ON TABLE pg_catalog.t TO reader;'])
+@pytest.mark.parametrize('primary', [m.MetadataUnavailable('deadline'),
+    m.ledger.Unavailable('deadline'), m.ledger.Unavailable('limit'),
+    m.lexical.Unavailable('deadline'), m.lexical.Unavailable('limit'),
+    KeyboardInterrupt('generated'), SystemExit('generated')])
+def test_unmodeled_table_prefix_preserves_nonrole_failure_identity(monkeypatch, sql, primary):
+    def stop(*args): raise primary
+    monkeypatch.setattr(m, '_operation_prefix', stop)
+    with pytest.raises(type(primary)) as caught: pg_catalog_target(sql)
+    assert caught.value is primary
+
+
+def test_unmodeled_table_fallback_is_exact_class_reason_and_cursor_only(monkeypatch):
+    class Subclass(m.ledger.Unavailable): pass
+    class Reason(str): pass
+    sql = b'GRANT SELECT(id) ON TABLE pg_catalog.t TO reader;'
+    for token in (Subclass('role'), m.ledger.Unavailable(Reason('role')), m.ledger.Unavailable('binding')):
+        def stop(*args): raise token
+        with monkeypatch.context() as patcher:
+            patcher.setattr(m, '_operation_prefix', stop)
+            with pytest.raises(type(token)) as caught: pg_catalog_target(sql)
+            assert caught.value is token
+    seen = []
+    def expire(s, domain):
+        seen.append(s.budget)
+        s.budget.deadline = -1
+        # Deliberate required-token failure after cursor advancement. The
+        # fallback must check the same expired budget, never construct a new one.
+        s.at += m.lexical.RECORD.size
+        raise m.ledger.Unavailable('role')
+    monkeypatch.setattr(m, '_operation_prefix', expire)
+    with pytest.raises(m.MetadataUnavailable) as caught: pg_catalog_target(sql)
+    assert caught.value.reason == 'deadline' and len(seen) == 1

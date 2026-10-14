@@ -1415,6 +1415,7 @@ CONFIG = {
     'aclAttribution': 'direct-id-or-omitted-extension-semantic-v1',
     'unsupportedAclTargets': 'whole-family-or-plain-in-arity-disjoint-v1',
     'unmodeledPgCatalogAclTargets': 'empty-family-closed-single-target-v1',
+    'unmodeledTableColumnAcls': 'single-identical-token-column-v1',
 }
 CONFIG_SHA256 = hashlib.sha256(canonical(CONFIG)).hexdigest()
 
@@ -1431,12 +1432,58 @@ def _statement_copy(statement, budget, first=None):
         statement.start, statement.stop, budget)
 
 
+def _unmodeled_table_prefix(s):
+    """Validate a column prefix without adding modeled ACL operations."""
+    first = s.at
+    try:
+        return _operation_prefix(s, DOMAINS['r'])
+    except ledger.Unavailable as error:
+        if type(error) is not ledger.Unavailable or type(error.reason) is not str or error.reason != 'role':
+            raise
+    s.budget.check()
+    s.at = first
+    if s.take(b'GRANT'):
+        grant, options = True, False
+    else:
+        s.need(b'REVOKE'); grant = False
+        options = s.take(b'GRANT')
+        if options:
+            s.need(b'OPTION', b'FOR')
+    all_rights = s.take(b'ALL')
+    if all_rights:
+        s.take(b'PRIVILEGES')
+    domain = ('SELECT', 'INSERT', 'REFERENCES', 'UPDATE')
+    rights, column = set(), None
+    while True:
+        s.budget.check()
+        if all_rights:
+            rights.update(domain)
+        else:
+            require(s.peek()[0] == lexical.IDENT, 'suffix_profile')
+            word = s.ident().decode('utf8').upper()
+            require(word in domain and word not in rights, 'suffix_profile')
+            rights.add(word)
+        s.need(b'(')
+        kind, start, stop = s.peek()
+        _sname(s)  # Existing UTF-8/name bound before retaining token bytes.
+        s.budget.check()
+        token = (kind, s.raw[start:stop])
+        require(column is None or token == column, 'suffix_profile')
+        column = token
+        s.need(b')')
+        if all_rights or not s.take(b','):
+            break
+    s.need(b'ON')
+    s.budget.check()
+    return grant, options, frozenset(rights)
+
+
 def _unsupported_target(statement, matches, kind, ns, n, roles, budget):
     """Bound one unsupported target, without claiming its signature/overload."""
     s = _statement_copy(statement, budget)
     domain = DOMAINS['f' if kind in (b'FUNCTION', b'PROCEDURE') else
                      'S' if kind == b'SEQUENCE' else 'r']
-    grant, options, _ = _operation_prefix(s, domain)
+    grant, options, _ = _unmodeled_table_prefix(s) if kind == b'TABLE' else _operation_prefix(s, domain)
     s.need(kind)
     require(s.name() == (ns, n), 'suffix_profile')
     if kind in (b'FUNCTION', b'PROCEDURE'):
