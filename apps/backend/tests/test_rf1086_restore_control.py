@@ -1722,6 +1722,116 @@ def auth_startup_observe(model, raw):
     return caught.value.auth_startup
 
 
+def test_auth_startup_migration_transaction_reports_canonical_code(auth_startup_model):
+    message = ("running db migrations: Migrator: problem creating schema migrations: "
+               "couldn't start a new transaction: could not create new transaction: "
+               "FATAL: private-migration-canary (SQLSTATE 28P01)")
+    value = auth_startup_observe(auth_startup_model, auth_startup_record(message))
+    assert value['classification'] == {'stage':'migration_apply', 'reportedSQLSTATE':'28P01'}
+    assert 'private-migration-canary' not in json.dumps(value)
+
+
+AUTH_STARTUP_MIGRATION_CHAINS = (
+    "running db migrations: Migrator: problem creating schema migrations: "
+    "couldn't start a new transaction: could not create new transaction: ",
+    "running db migrations: couldn't start a new transaction: "
+    "could not create new transaction: ")
+
+
+@pytest.mark.parametrize('chain', AUTH_STARTUP_MIGRATION_CHAINS)
+@pytest.mark.parametrize('layout', ['direct','server error','failed SASL auth'])
+@pytest.mark.parametrize('code', ['28P01','28000','3D000','42501'])
+@pytest.mark.parametrize('severity', ['FATAL','ERROR'])
+def test_auth_startup_migration_exact_chains_report_only_finite_code(
+        auth_startup_model, chain, layout, code, severity):
+    cause = severity+': private-migration-canary (SQLSTATE '+code+')'
+    if layout != 'direct':
+        cause = 'failed to connect to `host=private-host user=private-user database=private-db`: '+layout+' ('+cause+')'
+    value = auth_startup_observe(auth_startup_model, auth_startup_record(chain+cause))
+    assert value['schema'] == 'rf1086-auth-startup-tail-v2'
+    assert value['evidence'] == 'source-pattern-compatible-only'
+    assert value['classification'] == {'stage':'migration_apply','reportedSQLSTATE':code}
+    assert control.validate_auth_startup(value) is value
+    assert 'private-' not in json.dumps(value)
+
+
+@pytest.mark.parametrize('chain', AUTH_STARTUP_MIGRATION_CHAINS)
+@pytest.mark.parametrize('fault', ['first-wrapper','second-wrapper','both-wrappers',
+    'reorder','duplicate','outer-wrapper','sql-prefix','path-prefix','fake-wrapper',
+    'severity','code','extra-eof','nested-code','lf','cr','nul','tab','c0','del','c1',
+    'unicode-message','message-empty','message-large','parentheses','backtick',
+    'connection-stage','atom-empty','atom-large','atom-space','atom-unicode',
+    'atom-delimiter','duplicate-cause'])
+def test_auth_startup_migration_unsupported_message_keeps_stage_without_code(
+        auth_startup_model, chain, fault):
+    cause = 'FATAL: private-canary (SQLSTATE 28P01)'
+    if fault == 'first-wrapper': chain = chain.replace("couldn't start a new transaction: ", '')
+    elif fault == 'second-wrapper': chain = chain.replace('could not create new transaction: ', '')
+    elif fault == 'both-wrappers': chain = 'running db migrations: '
+    elif fault == 'reorder': chain = chain.replace(
+        "couldn't start a new transaction: could not create new transaction: ",
+        "could not create new transaction: couldn't start a new transaction: ")
+    elif fault == 'duplicate': chain += 'could not create new transaction: '
+    elif fault == 'outer-wrapper': chain = 'running db migrations: private-wrapper: '+chain
+    elif fault == 'sql-prefix': chain += 'could not execute SELECT private: '
+    elif fault == 'path-prefix': chain += 'error executing private.sql, sql: SELECT private: '
+    elif fault == 'fake-wrapper': chain = chain.replace('could not create', 'could not Create')
+    elif fault == 'severity': cause = cause.replace('FATAL:', 'PANIC:')
+    elif fault == 'code': cause = cause.replace('28P01', 'XX999')
+    elif fault == 'extra-eof': cause += ' private-trailing'
+    elif fault == 'nested-code': cause = cause.replace('private-canary', 'private (SQLSTATE 42501)')
+    elif fault in ('lf','cr','nul','tab','c0','del','c1'):
+        cause = cause.replace('private-canary', 'private'+{
+            'lf':'\n','cr':'\r','nul':'\0','tab':'\t','c0':'\x01','del':'\x7f','c1':'\x85'}[fault]+'canary')
+    elif fault == 'unicode-message': cause = cause.replace('private-canary', 'private-ø')
+    elif fault == 'message-empty': cause = cause.replace('private-canary', '')
+    elif fault == 'message-large': cause = cause.replace('private-canary', 'x'*1025)
+    elif fault == 'parentheses': cause = cause.replace('private-canary', 'private(nested)')
+    elif fault == 'backtick': cause = cause.replace('private-canary', 'private`canary')
+    elif fault == 'duplicate-cause': cause += ' '+cause
+    else:
+        atom = {'atom-empty':'','atom-large':'x'*257,'atom-space':'private value',
+            'atom-unicode':'privaté','atom-delimiter':'private`'}
+        stage = 'unknown' if fault == 'connection-stage' else 'server error'
+        cause = ('failed to connect to `host='+atom.get(fault,'private')+
+                 ' user=private database=private`: '+stage+' ('+cause+')')
+    value = auth_startup_observe(auth_startup_model, auth_startup_record(chain+cause))
+    assert value['classification'] == {'stage':'migration_apply','reportedSQLSTATE':None}
+    assert 'private' not in json.dumps(value)
+
+
+@pytest.mark.parametrize('leader', ['prefix ', ' ', '\n'])
+def test_auth_startup_migration_chain_cannot_be_found_inside_other_text(auth_startup_model, leader):
+    message = leader+AUTH_STARTUP_MIGRATION_CHAINS[0]+'FATAL: private (SQLSTATE 28P01)'
+    value = auth_startup_observe(auth_startup_model, auth_startup_record(message))
+    assert value['classification'] is None
+
+
+@pytest.mark.parametrize('layout', ['direct','server error','failed SASL auth'])
+def test_auth_startup_migration_private_atoms_at_exact_bounds(auth_startup_model, layout):
+    cause = 'ERROR: '+('x'*1024)+' (SQLSTATE 42501)'
+    if layout != 'direct':
+        cause = ('failed to connect to `host='+('h'*256)+' user='+('u'*256)+
+                 ' database='+('d'*256)+'`: '+layout+' ('+cause+')')
+    value = auth_startup_observe(auth_startup_model, auth_startup_record(AUTH_STARTUP_MIGRATION_CHAINS[1]+cause))
+    assert value['classification'] == {'stage':'migration_apply','reportedSQLSTATE':'42501'}
+
+
+@pytest.mark.parametrize('error', [control.RestoreUnavailable('deadline'),
+    KeyboardInterrupt('private-cancel'), SystemExit('private-exit')])
+def test_auth_startup_migration_parser_failure_preserves_primary_and_cancellation(
+        auth_startup_model, monkeypatch, error):
+    owner, _, _, model = auth_startup_model
+    prior = signal.getsignal(signal.SIGALRM)
+    def fail(cause): raise error
+    monkeypatch.setattr(control, '_auth_startup_sqlstate', fail)
+    value = auth_startup_observe(auth_startup_model, auth_startup_record(
+        AUTH_STARTUP_MIGRATION_CHAINS[0]+'FATAL: private (SQLSTATE 28P01)'))
+    assert value is None and owner.budget.context.owner.primary is model['active']
+    assert owner.budget.context.owner.cancelled == (not isinstance(error, Exception))
+    assert signal.getsignal(signal.SIGALRM) is prior and signal.getitimer(signal.ITIMER_REAL) == (0,0)
+
+
 @pytest.mark.parametrize('message,stage', [
     ('unable to load config','serve_config'), ('http server listen failed','http_listen'),
     ('http server serve failed','http_serve'), ('Failed to load configuration: private','initial_config'),
@@ -1756,11 +1866,17 @@ def test_auth_startup_accepts_bounded_frames_without_requiring_goexit(auth_start
 
 @pytest.mark.parametrize('code', ['28P01','28000','3D000','42501'])
 @pytest.mark.parametrize('layout', ['direct','server error','failed SASL auth'])
-def test_auth_startup_sqlstate_requires_whole_canonical_cause(auth_startup_model, code, layout):
+@pytest.mark.parametrize('label,line,stage', [
+    ('parsing db connection url',27,'migration_database_url'),
+    ('opening db connection',69,'migration_connection_open'),
+    ('checking database connection',74,'migration_connection_check'),
+    ('creating db migrator',80,'migration_setup'),
+    ('migration status',90,'migration_status'),('migration status',109,'migration_status')])
+def test_auth_startup_sqlstate_requires_whole_canonical_cause(auth_startup_model, code, layout, label, line, stage):
     cause = 'FATAL: private authentication failure (SQLSTATE '+code+')'
     if layout != 'direct': cause = 'failed to connect to `host=private user=private database=private`: '+layout+' ('+cause+')'
-    result = auth_startup_observe(auth_startup_model, auth_startup_record(auth_startup_wrapped(cause)))
-    assert result['classification'] == {'stage':'migration_connection_check','reportedSQLSTATE':code}
+    result = auth_startup_observe(auth_startup_model, auth_startup_record(auth_startup_wrapped(cause,label,line)))
+    assert result['classification'] == {'stage':stage,'reportedSQLSTATE':code}
     assert 'private' not in json.dumps(result)
 
 

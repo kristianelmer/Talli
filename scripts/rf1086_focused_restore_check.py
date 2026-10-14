@@ -24,7 +24,7 @@ from rf1086_actual_replay_package import IMAGE
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = "rf1086-focused-restore-check-v2"
-FAILURE_SCHEMA = "rf1086-focused-post-construction-failure-v3"
+FAILURE_SCHEMA = "rf1086-focused-post-construction-failure-v4"
 CONSTRUCTION_PREFIX = "owned_identity_restore_construction "
 CATALOG_PREFIX = "owned_identity_restore_catalog_diagnostic "
 MAX_OUTPUT = 64 * 1024

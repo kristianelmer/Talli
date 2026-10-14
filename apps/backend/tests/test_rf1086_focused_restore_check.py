@@ -59,7 +59,7 @@ def observe():
 
 
 def auth_startup_value():
-    return {'schema':'rf1086-auth-startup-tail-v1','evidence':'source-pattern-compatible-only',
+    return {'schema':'rf1086-auth-startup-tail-v2','evidence':'source-pattern-compatible-only',
         'sourceIdentitySha256':'1'*64,'targetIdentitySha256':'2'*64,
         'authIdentitySha256':'3'*64,'authImageSha256':'4'*64,
         'state':{'status':'exited','exitCode':1,'oomKilled':False},
@@ -80,7 +80,7 @@ def test_auth_startup_export_is_same_primary_receipt_bound_closed_copy(monkeypat
     primary=driver.control.EndpointAdmissionFailure('auth','running');primary.auth_startup=auth_startup_value()
     install_context(monkeypatch,auth_startup_receipt(),error=primary,extra='private-output-canary')
     result=observe();failure=result['postConstructionFailure']
-    assert failure['schema']=='rf1086-focused-post-construction-failure-v3'
+    assert failure['schema']=='rf1086-focused-post-construction-failure-v4'
     assert failure['authStartup']==primary.auth_startup and failure['authStartup'] is not primary.auth_startup
     assert failure['authStartup']['classification']['reportedSQLSTATE']=='28P01'
     assert failure['constructionSha256']==result['constructionReceiptSha256']
@@ -89,9 +89,38 @@ def test_auth_startup_export_is_same_primary_receipt_bound_closed_copy(monkeypat
     assert failure['authStartup']['state']['status']=='exited' and capsys.readouterr()==('','')
 
 
+@pytest.mark.parametrize('code', [None,'28P01','28000','3D000','42501'])
+def test_auth_startup_migration_reported_code_export_stays_qualified_and_receipt_bound(monkeypatch, code):
+    primary = driver.control.EndpointAdmissionFailure('auth','running')
+    primary.auth_startup = auth_startup_value()
+    primary.auth_startup['classification'] = {'stage':'migration_apply','reportedSQLSTATE':code}
+    install_context(monkeypatch, auth_startup_receipt(), error=primary)
+    value = observe(); failure = value['postConstructionFailure']
+    assert failure['schema'] == 'rf1086-focused-post-construction-failure-v4'
+    assert failure['constructionSha256'] == value['constructionReceiptSha256']
+    assert failure['authStartup']['schema'] == 'rf1086-auth-startup-tail-v2'
+    assert failure['authStartup']['classification'] == {'stage':'migration_apply','reportedSQLSTATE':code}
+    assert failure['authStartup']['evidence'] == 'source-pattern-compatible-only'
+    assert value['identityOutcome'] == 'unavailable'
+    assert not value['identityContextEntered'] and not value['identityContextCompleted']
+
+
+@pytest.mark.parametrize('stage', ['serve_config','http_listen','http_serve',
+    'initial_config','logging_level','serve_database'])
+def test_auth_startup_other_simple_stages_still_reject_reported_codes(monkeypatch, stage):
+    primary = driver.control.EndpointAdmissionFailure('auth','running')
+    primary.auth_startup = auth_startup_value()
+    primary.auth_startup['classification']['stage'] = stage
+    install_context(monkeypatch, auth_startup_receipt(), error=primary)
+    failure = observe()['postConstructionFailure']
+    assert failure['authStartup'] is None
+    assert failure['endpointAdmission'] == {'service':'auth','predicate':'running'}
+
+
 @pytest.mark.parametrize('fault',['source','target','same-auth','missing','extra','schema','evidence',
     'state-status','state-exit-bool','state-oom','tail-count-bool','tail-empty-hash','tail-overflow',
-    'tail-fatal-count','stage','code','code-simple','extra-nested','hash-uppercase'])
+    'tail-fatal-count','stage','code','code-simple','extra-nested','hash-uppercase',
+    'old-schema','code-bool','code-int','migration-code-unknown'])
 def test_auth_startup_export_rejects_forged_finite_fields_preserving_endpoint(monkeypatch,fault):
     primary=driver.control.EndpointAdmissionFailure('auth','running');value=auth_startup_value()
     if fault=='source':value['sourceIdentitySha256']='a'*64
@@ -100,6 +129,7 @@ def test_auth_startup_export_rejects_forged_finite_fields_preserving_endpoint(mo
     elif fault=='missing':del value['state']
     elif fault=='extra':value['private']='canary'
     elif fault=='schema':value['schema']='private'
+    elif fault=='old-schema':value['schema']='rf1086-auth-startup-tail-v1'
     elif fault=='evidence':value['evidence']='proved-cause'
     elif fault=='state-status':value['state']['status']='running'
     elif fault=='state-exit-bool':value['state']['exitCode']=True
@@ -111,6 +141,9 @@ def test_auth_startup_export_rejects_forged_finite_fields_preserving_endpoint(mo
     elif fault=='stage':value['classification']['stage']='private'
     elif fault=='code':value['classification']['reportedSQLSTATE']='99999'
     elif fault=='code-simple':value['classification']['stage']='serve_database'
+    elif fault=='code-bool':value['classification']['reportedSQLSTATE']=True
+    elif fault=='code-int':value['classification']['reportedSQLSTATE']=28000
+    elif fault=='migration-code-unknown':value['classification']={'stage':'migration_apply','reportedSQLSTATE':'XX999'}
     elif fault=='extra-nested':value['classification']['private']='canary'
     elif fault=='hash-uppercase':value['authImageSha256']='A'*64
     primary.auth_startup=value
@@ -143,8 +176,10 @@ def test_auth_startup_export_requires_original_delivery_and_exact_primary(monkey
 
 
 @pytest.mark.parametrize('error',[KeyboardInterrupt('private-cancel'),SystemExit(4)])
-def test_auth_startup_export_cancellation_preserves_token_and_clears_private(monkeypatch,error):
+@pytest.mark.parametrize('stage',['migration_connection_check','migration_apply'])
+def test_auth_startup_export_cancellation_preserves_token_and_clears_private(monkeypatch,error,stage):
     primary=driver.control.EndpointAdmissionFailure('auth','running');primary.auth_startup=auth_startup_value()
+    primary.auth_startup['classification']['stage']=stage
     private=driver.PrivateOutput();monkeypatch.setattr(driver,'PrivateOutput',lambda:private)
     install_context(monkeypatch,auth_startup_receipt(),error=primary,extra='private-canary')
     def cancel(*args,**kwargs):raise error
@@ -205,7 +240,7 @@ def test_post_construction_endpoint_primary_is_closed_and_bound(monkeypatch, cap
                     extra='private-inspection-output-canary')
     result = observe()
     diagnostic = result['postConstructionFailure']
-    assert diagnostic['schema'] == 'rf1086-focused-post-construction-failure-v3'
+    assert diagnostic['schema'] == 'rf1086-focused-post-construction-failure-v4'
     assert set(diagnostic) == {'schema', 'constructionSha256', 'location', 'endpointAdmission', 'authStartup'}
     assert diagnostic['constructionSha256'] == result['constructionReceiptSha256']
     assert diagnostic['endpointAdmission'] == {'service':'auth', 'predicate':'port_bindings'}
@@ -315,7 +350,7 @@ def test_post_construction_failure_reports_bound_location_without_private_values
     budget = driver.control.RecoveryBudget(time.monotonic())
     result = driver.run_context('postgresql://private', 'http://127.0.0.1:54321', Path('/private/fixture'), object(), budget)
     diagnostic = result['postConstructionFailure']
-    assert diagnostic['schema'] == 'rf1086-focused-post-construction-failure-v3'
+    assert diagnostic['schema'] == 'rf1086-focused-post-construction-failure-v4'
     assert diagnostic['constructionSha256'] == result['constructionReceiptSha256']
     assert diagnostic['endpointAdmission'] is None
     location = diagnostic['location']

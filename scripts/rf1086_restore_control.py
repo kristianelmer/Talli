@@ -45,7 +45,7 @@ CONFIG = {'schema': SCHEMA, 'archiveBytes': MAX_ARCHIVE, 'scriptBytes': MAX_SCRI
           'sourceConsistency': 'checked-M0-M1-final-not-atomic', 'legacyReplay': 'inapplicable',
           'actorTransport': {'version': 'owned-internal-loopback-v1', 'pairs': 16,
                              'accepts': 128, 'queueBytes': 65536},
-          'actorFailureDiagnostic': {'version': 'auth-startup-tail-v1', 'seconds': 4,
+          'actorFailureDiagnostic': {'version': 'auth-startup-tail-v2', 'seconds': 4,
               'reapSeconds': 2, 'bytes': 65536, 'tailLines': 128,
               'records': 128, 'recordBytes': 16384}}
 OFFLINE_RESTORE = ('test -p /proc/self/fd/0 && exec pg_restore --verbose '
@@ -63,7 +63,7 @@ printf '%s\\n%s\\n' "$version" "${hashed%% *}"
 ENDPOINT_ADMISSION_SERVICES = ('database', 'auth')
 ENDPOINT_ADMISSION_PREDICATES = ('exists', 'running', 'paused', 'restarting', 'dead',
     'network_mode', 'publish_all_ports', 'port_bindings')
-AUTH_STARTUP_SCHEMA = 'rf1086-auth-startup-tail-v1'
+AUTH_STARTUP_SCHEMA = 'rf1086-auth-startup-tail-v2'
 AUTH_STARTUP_WRAPPED = ('migration_database_url', 'migration_connection_open',
     'migration_connection_check', 'migration_setup', 'migration_status')
 AUTH_STARTUP_STAGES = ('serve_config', 'http_listen', 'http_serve', 'initial_config',
@@ -123,7 +123,7 @@ def validate_auth_startup(value, *, identities=None):
         require(tail['fatalRecords'] == 1 and type(stage) is str and stage in AUTH_STARTUP_STAGES,
                 'internal')
         require(code is None or (type(code) is str and code in AUTH_STARTUP_SQLSTATES
-                and stage in AUTH_STARTUP_WRAPPED), 'internal')
+                and stage in (*AUTH_STARTUP_WRAPPED, 'migration_apply')), 'internal')
     return value
 
 
@@ -148,6 +148,15 @@ def _auth_startup_frame(function, file_line, *, terminal):
     return parts, int(number)
 
 
+def _auth_startup_sqlstate(cause):
+    direct = r'(?:FATAL|ERROR): [\x20-\x27\x2a-\x5f\x61-\x7e]{1,1024} \(SQLSTATE ([A-Z0-9]{5})\)'
+    atom = r'[A-Za-z0-9_.:/@+-]{1,256}'
+    connection = (r'failed to connect to `host='+atom+' user='+atom+' database='+atom
+        +r'`: (?:server error|failed SASL auth) \('+direct+r'\)')
+    matched = re.fullmatch(direct, cause) or re.fullmatch(connection, cause)
+    return matched[1] if matched is not None and matched[1] in AUTH_STARTUP_SQLSTATES else None
+
+
 def _auth_startup_classify(message):
     exact = {'unable to load config':'serve_config', 'http server listen failed':'http_listen',
              'http server serve failed':'http_serve'}
@@ -157,7 +166,18 @@ def _auth_startup_classify(message):
     stage = exact.get(message)
     if stage is None:
         stage = next((value for prefix, value in prefixes.items() if message.startswith(prefix)), None)
-    if stage is not None: return {'stage':stage, 'reportedSQLSTATE':None}
+    if stage is not None:
+        code = None
+        if stage == 'migration_apply' and len(message.encode('utf-8')) <= 16384:
+            chains = (
+                "running db migrations: Migrator: problem creating schema migrations: "
+                "couldn't start a new transaction: could not create new transaction: ",
+                "running db migrations: couldn't start a new transaction: "
+                "could not create new transaction: ")
+            causes = [message[len(chain):] for chain in chains if message.startswith(chain)]
+            if len(causes) == 1:
+                code = _auth_startup_sqlstate(causes[0])
+        return {'stage':stage, 'reportedSQLSTATE':code}
     # C0 (except the structural LF/TAB), DEL and C1 are not opaque cause text.
     if len(message.encode('utf-8')) > 16384 or any(
             (ord(c) < 32 and c not in '\n\t') or 0x7f <= ord(c) <= 0x9f for c in message):
@@ -182,12 +202,7 @@ def _auth_startup_classify(message):
             return None
     code = None
     if '\n' not in cause:
-        direct = r'(?:FATAL|ERROR): [\x20-\x27\x2a-\x5f\x61-\x7e]{1,1024} \(SQLSTATE ([A-Z0-9]{5})\)'
-        atom = r'[A-Za-z0-9_.:/@+-]{1,256}'
-        connection = (r'failed to connect to `host='+atom+' user='+atom+' database='+atom
-            +r'`: (?:server error|failed SASL auth) \('+direct+r'\)')
-        matched = re.fullmatch(direct, cause) or re.fullmatch(connection, cause)
-        if matched is not None and matched[1] in AUTH_STARTUP_SQLSTATES: code = matched[1]
+        code = _auth_startup_sqlstate(cause)
     return {'stage':stage, 'reportedSQLSTATE':code}
 
 
