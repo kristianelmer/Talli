@@ -877,25 +877,31 @@ def _stable(acl, operations, obj, budget):
         require(current == acl, 'suffix_profile')
 
 
-def _stable_seed_suffix(acl, operations, obj, budget):
+def _seed_acl_for_suffix(acl, operations, obj, budget):
     budget.check()
     owner = next((row for row in acl.items if row.grantee == obj.owner), None)
     default_owner = next(row for row in obj.default.items if row.grantee == obj.owner)
     reset = Operation(False, frozenset(_domain(obj)), obj.owner, False)
     if (not _column_table_profile(obj) or owner is None or owner == default_owner
             or not operations or operations[0] != reset):
-        return _stable(acl, operations, obj, budget)
+        _stable(acl, operations, obj, budget)
+        return acl
     # PG17.6 compares whole ACL items and emits the owner restoration first.
-    # Admit only that complete block; deleting/reappending must preserve order.
+    # Retain only earlier source entries so the original grants append the owner
+    # and remaining pairs in their exact source order.
     restore = tuple(Operation(True, rights, obj.owner, options)
         for rights, options in ((owner.privileges - owner.options, False), (owner.options, True))
         if rights)
     stop = 1 + len(restore)
-    require(operations[1:stop] == restore and (stop == len(operations)
-            or not (operations[stop].grant and operations[stop].grantee == obj.owner)), 'suffix_profile')
+    require(operations[1:stop] == restore, 'suffix_profile')
+    for op in operations[stop:]:
+        budget.check()
+        require(op.grant and op.grantee != obj.owner, 'suffix_profile')
+    items = acl.items[:acl.items.index(owner)]
+    seed = ACL(_acl_raw(items), items)
     desired = {(row.grantee, row.grantor): row for row in acl.items}
-    current = acl
-    for op in operations[:stop]:
+    current = seed
+    for op in operations:
         budget.check()
         current = _apply(current, op, obj.acl_kind, obj.owner)
         for row in current.items:
@@ -904,10 +910,7 @@ def _stable_seed_suffix(acl, operations, obj, budget):
             require(wanted is not None and row.privileges <= wanted.privileges
                     and row.options <= wanted.options, 'suffix_profile')
     require(current == acl, 'suffix_profile')
-    for op in operations[stop:]:
-        budget.check()
-        require(not (op.grant and op.grantee == obj.owner), 'suffix_profile')
-    _stable(acl, operations[stop:], obj, budget)
+    return seed
 
 
 def _render_target(obj, budget):
@@ -945,6 +948,7 @@ def _seed_sql(obj, baseline, budget):
 class Candidate:
     object: Object
     baseline: ACL | None
+    seed_acl: ACL
     sql: bytes
     statements: int
     materialize: bool
@@ -1132,18 +1136,18 @@ def compile_plan(source, *, script, archive, index, deadline):
             continue
         require(not row['laterMutation'] and _seed_owner_profile(obj, obj.acl)
                 and _seed_owner_profile(obj, baseline), 'suffix_profile')
-        _stable_seed_suffix(obj.acl, operations, obj, budget)
+        seed_acl = _seed_acl_for_suffix(obj.acl, operations, obj, budget)
         materialize = obj.identity[0] == 'relation' and len(obj.acl.items) == 1 and obj.acl == obj.default
         if materialize and baseline is None:
             rights = b', '.join(x.encode() for x in _domain(obj))
             sql = b'GRANT ' + rights + b' ON ' + _render_target(obj, budget) + b' TO ' + _ident(obj.owner, budget) + b';\n'
             n = 1
         else:
-            sql, n = _seed_sql(obj, baseline, budget)
+            sql, n = _seed_sql(replace(obj, acl=seed_acl), baseline, budget)
         statements += n; require(statements + 2 <= MAX_STATEMENTS, 'limit')
         sql_size += len(sql)
         require(sql_size + 16 <= MAX_SQL, 'limit')
-        candidates.append(Candidate(obj, baseline, sql, n, materialize))
+        candidates.append(Candidate(obj, baseline, seed_acl, sql, n, materialize))
     _default_program(source, script, index['defaultAclSpans'], hook, budget, used)
     # Ensure spans of different objects cannot overlap or alias each other.
     spans = sorted(used)
@@ -1202,7 +1206,7 @@ def pre_acl(plan, target, *, deadline):
         # both mutation and noop; the original stream establishes them later.
         creation = replace(source, columns=0) if _column_table_profile(source) else source
         require(_object_static(creation) == _object_static(actual), 'creation_profile')
-        if actual.acl == source.acl:
+        if actual.acl == candidate.seed_acl:
             noop += 1
         else:
             require(actual.acl == candidate.baseline, 'creation_profile')
@@ -1221,7 +1225,7 @@ def post_acl(plan, before, after, mutation, *, deadline):
     _same_target(before, after, set(expected._identities), budget)
     actual = {o.identity: o for o in after.objects}
     for c in plan.candidates:
-        budget.check(); require(actual[c.object.identity].acl == c.object.acl, 'postcondition')
+        budget.check(); require(actual[c.object.identity].acl == c.seed_acl, 'postcondition')
 
 
 def _normal(catalog, budget):
@@ -1474,7 +1478,7 @@ CONFIG = {
     'unsupportedAclTargets': 'whole-family-or-plain-in-arity-disjoint-v1',
     'unmodeledPgCatalogAclTargets': 'empty-family-closed-single-target-v1',
     'unmodeledTableColumnAcls': 'single-identical-token-column-v1',
-    'columnTableAclSeed': 'ordinary-no-init-owner-origin-zero-columns-owner-reset-prefix-v2',
+    'columnTableAclSeed': 'ordinary-no-init-owner-origin-zero-columns-source-prefix-seed-v3',
 }
 CONFIG_SHA256 = hashlib.sha256(canonical(CONFIG)).hexdigest()
 

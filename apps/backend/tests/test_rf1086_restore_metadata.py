@@ -1164,19 +1164,19 @@ def test_column_table_immediate_postcheck_preserves_other_state(drift):
         m.post_acl(plan, before, replace(after, objects=tuple(objects)), mutation, deadline=end())
 
 
-def test_column_table_destructive_owner_suffix_cannot_be_rescued_by_later_grant():
+def test_column_table_owner_middle_prefix_preserves_pairs_before_owner():
     sql = (b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n'
         b'GRANT SELECT ON TABLE public.t TO supabase_admin;\n'
         b'GRANT UPDATE ON TABLE public.t TO reader;\n'
         b'GRANT SELECT ON TABLE public.t TO writer;\n'
         b'GRANT SELECT(id) ON TABLE public.t TO reader;\n')
     _, src, script, archive, index = column_table_walk('partial', acl_sql=sql)
-    with pytest.raises(m.MetadataUnavailable) as error:
-        m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
-    assert error.value.reason == 'suffix_profile'
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert plan.candidates[0].seed_acl.raw == '{writer=r/supabase_admin}'
+    assert plan.candidates[0].object == src.objects[0]
 
 
-def owner_reset_walk(options=(), *, owner_position=2, sql=None):
+def owner_reset_walk(options=(), *, owner_position=2, prefix_options=(), sql=None):
     rights = ('SELECT', 'UPDATE')
     plain = tuple(right for right in rights if right not in options)
     restore = b''
@@ -1186,35 +1186,146 @@ def owner_reset_walk(options=(), *, owner_position=2, sql=None):
         restore += b'GRANT ' + ', '.join(options).encode() + b' ON TABLE public.t TO supabase_admin WITH GRANT OPTION;\n'
     original = (b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n' + restore
         + b'GRANT SELECT ON TABLE public.t TO reader;\n'
-        + b'GRANT UPDATE ON TABLE public.t TO writer;\n'
+        + b'GRANT UPDATE ON TABLE public.t TO writer' + (b' WITH GRANT OPTION' if prefix_options else b'') + b';\n'
         + b'GRANT SELECT(id) ON TABLE public.t TO reader;\n')
     def change(wire):
-        items = [item('writer', ('UPDATE',)), item('reader', ('SELECT',))]
+        items = [item('writer', ('UPDATE',), prefix_options), item('reader', ('SELECT',))]
         items.insert(owner_position, item(OWNER, rights, options))
         wire['objects'][0]['acl'] = acl(items)
     return column_table_walk('partial', acl_sql=original if sql is None else sql, wire_change=change)
 
 
 @pytest.mark.parametrize('options', [(), ('SELECT',), ('SELECT', 'UPDATE')])
-def test_column_table_owner_reset_restores_exact_order_before_stable_tail(options):
-    wire, src, script, archive, index = owner_reset_walk(options)
+@pytest.mark.parametrize('position', [1, 2])
+def test_column_table_owner_reset_seeds_prefix_before_original_restoration(options, position):
+    wire, src, script, archive, index = owner_reset_walk(options, owner_position=position)
+    original = bytes(script)
     plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
     assert len(plan.candidates) == 1
-    assert plan.candidates[0].object.acl == src.objects[0].acl
+    candidate = plan.candidates[0]
+    assert candidate.object == src.objects[0]
+    assert candidate.seed_acl.items == src.objects[0].acl.items[:position]
+    assert candidate.seed_acl.raw == ('{writer=w/supabase_admin}' if position == 1
+        else '{writer=w/supabase_admin,reader=r/supabase_admin}')
     creation = deepcopy(wire); creation['objects'][0]['columnAclCount'] = 0
-    before, after = target(creation), target(creation, explicit=True)
+    before = target(creation)
+    after = replace(before, objects=(replace(before.objects[0], acl=candidate.seed_acl), *before.objects[1:]))
     mutation = m.pre_acl(plan, before, deadline=end())
     assert mutation.applied == 1 and b'(id)' not in mutation.sql
-    assert mutation.sql.index(b'TO writer;') < mutation.sql.index(b'TO reader;') < mutation.sql.index(b'TO supabase_admin')
+    assert b'TO supabase_admin' not in mutation.sql
+    assert b'GRANT UPDATE ON TABLE public.t TO writer;' in mutation.sql
+    assert (b'TO reader;' in mutation.sql) is (position == 2)
     m.post_acl(plan, before, after, mutation, deadline=end())
+    noop = m.pre_acl(plan, after, deadline=end())
+    assert noop.sql == b'' and noop.applied == 0 and noop.noop == 1
+    m.post_acl(plan, after, after, noop, deadline=end())
+    assert script == original
 
 
-@pytest.mark.parametrize('position', [0, 1])
-def test_column_table_owner_reset_rejects_owner_reappend_order_change(position):
-    _, src, script, archive, index = owner_reset_walk(owner_position=position)
+def test_column_table_owner_reset_rejects_wrong_remaining_grantee_order():
+    _, src, script, archive, index = owner_reset_walk(owner_position=0)
     with pytest.raises(m.MetadataUnavailable) as error:
         m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
     assert error.value.reason == 'suffix_profile'
+
+
+@pytest.mark.parametrize('position', [1, 2])
+def test_column_table_source_prefix_preserves_grant_options(position):
+    _, src, script, archive, index = owner_reset_walk(('SELECT',), owner_position=position, prefix_options=('UPDATE',))
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    candidate = plan.candidates[0]
+    assert candidate.seed_acl.items[0].options == frozenset({'UPDATE'})
+    assert candidate.seed_acl.raw.startswith('{writer=w*/supabase_admin')
+    assert b'GRANT UPDATE ON TABLE public.t TO writer WITH GRANT OPTION;\n' in candidate.sql
+    assert b'TO supabase_admin' not in candidate.sql
+
+
+@pytest.mark.parametrize('options', [(), ('SELECT',), ('SELECT', 'UPDATE')])
+def test_column_table_owner_first_canonical_program_remains_archive_only(options):
+    plain = tuple(right for right in ('SELECT', 'UPDATE') if right not in options)
+    sql = b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n'
+    for rights, suffix in ((plain, b''), (options, b' WITH GRANT OPTION')):
+        if rights:
+            sql += b'GRANT ' + ', '.join(rights).encode() + b' ON TABLE public.t TO supabase_admin' + suffix + b';\n'
+    sql += (b'GRANT UPDATE ON TABLE public.t TO writer;\n'
+        b'GRANT SELECT ON TABLE public.t TO reader;\n'
+        b'GRANT SELECT(id) ON TABLE public.t TO reader;\n')
+    _, src, script, archive, index = owner_reset_walk(options, owner_position=0, sql=sql)
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert not plan.candidates and plan.counts['unmodeled'] == 0
+    # The helper's empty prefix remains explicit even though the compiler needs
+    # no seed when this canonical program already reconstructs from baseline.
+    obj = src.objects[0]
+    operations = tuple(m._operation(statement, obj=obj, roles={role.name for role in src.roles})
+        for statement in m._spans(index['objects'][0]['aclSpans'], script, index['preAcl'], m.Budget(end()), set()))
+    seed = m._seed_acl_for_suffix(obj.acl, operations, obj, m.Budget(end()))
+    assert seed is not None and seed.raw == '{}' and seed.items == ()
+    assert m._seed_sql(replace(obj, acl=seed), None, m.Budget(end())) == (
+        b'REVOKE ALL ON TABLE public.t FROM supabase_admin RESTRICT;\n', 1)
+
+
+@pytest.mark.parametrize('position', [1, 2])
+def test_column_table_prefix_cannot_noop_at_full_source(position):
+    wire, src, script, archive, index = owner_reset_walk(('SELECT',), owner_position=position)
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    creation = deepcopy(wire); creation['objects'][0]['columnAclCount'] = 0
+    with pytest.raises(m.MetadataUnavailable) as error:
+        m.pre_acl(plan, target(creation, explicit=True), deadline=end())
+    assert error.value.reason == 'creation_profile'
+
+
+@pytest.mark.parametrize('noop', [False, True])
+@pytest.mark.parametrize('drift', ['full-source', 'null', 'order', 'column', 'unrelated-acl', 'rights', 'options'])
+def test_column_table_prefix_postcheck_requires_exact_seed_even_for_noop(noop, drift):
+    wire, src, script, archive, index = owner_reset_walk(('SELECT',))
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    creation = deepcopy(wire); creation['objects'][0]['columnAclCount'] = 0
+    baseline = target(creation)
+    seed = plan.candidates[0].seed_acl
+    good = replace(baseline, objects=(replace(baseline.objects[0], acl=seed), *baseline.objects[1:]))
+    before = good if noop else baseline
+    mutation = m.pre_acl(plan, before, deadline=end())
+    objects = list(good.objects)
+    if drift == 'full-source': objects[0] = replace(objects[0], acl=src.objects[0].acl)
+    elif drift == 'null': objects[0] = replace(objects[0], acl=None)
+    elif drift == 'column': objects[0] = replace(objects[0], columns=1)
+    elif drift == 'unrelated-acl': objects[1] = replace(objects[1], acl=seed)
+    else:
+        items = tuple(reversed(seed.items)) if drift == 'order' else (
+            replace(seed.items[0], **({'privileges':frozenset({'SELECT','UPDATE'})} if drift == 'rights'
+                else {'options':frozenset({'UPDATE'})})), *seed.items[1:])
+        objects[0] = replace(objects[0], acl=m.ACL(m._acl_raw(items), items))
+    with pytest.raises(m.MetadataUnavailable) as error:
+        m.post_acl(plan, before, replace(good, objects=tuple(objects)), mutation, deadline=end())
+    assert error.value.reason == 'postcondition'
+
+
+@pytest.mark.parametrize('noop', [False, True])
+def test_column_table_prefix_precheck_requires_zero_columns(noop):
+    wire, src, script, archive, index = owner_reset_walk(owner_position=1)
+    plan = m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    actual = target(wire)
+    if noop:
+        actual = replace(actual, objects=(replace(actual.objects[0], acl=plan.candidates[0].seed_acl), *actual.objects[1:]))
+    with pytest.raises(m.MetadataUnavailable) as error:
+        m.pre_acl(plan, actual, deadline=end())
+    assert error.value.reason == 'creation_profile'
+
+
+@pytest.mark.parametrize('tail', [b'REVOKE INSERT ON TABLE public.t FROM reader;\n',
+    b'GRANT INSERT ON TABLE public.t TO reader;\n',
+    b'GRANT SELECT ON TABLE public.t TO reader WITH GRANT OPTION;\n',
+    b'GRANT SELECT ON TABLE public.t TO bootstrap;\n'])
+def test_column_table_prefix_rejects_tail_revokes_extra_pairs_rights_and_options(tail):
+    sql = (b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n'
+        b'GRANT SELECT, UPDATE ON TABLE public.t TO supabase_admin;\n'
+        b'GRANT SELECT ON TABLE public.t TO reader;\n'
+        b'GRANT UPDATE ON TABLE public.t TO writer;\n' + tail
+        + b'GRANT SELECT(id) ON TABLE public.t TO reader;\n')
+    with pytest.raises((m.MetadataUnavailable, m.ledger.Unavailable)) as error:
+        _, src, script, archive, index = owner_reset_walk(owner_position=1, sql=sql)
+        m.compile_plan(src, script=script, archive=archive, index=index, deadline=end())
+    assert error.value.reason == ('role' if tail.startswith(b'REVOKE') else 'suffix_profile')
 
 
 def test_column_table_owner_reset_rejects_later_owner_group_after_other_grantee():
@@ -1304,7 +1415,7 @@ def test_owner_reset_prefix_keeps_resource_and_cancellation_identity(failure):
             self.calls += 1
             if self.calls == 3: raise failure
     with pytest.raises(type(failure)) as caught:
-        m._stable_seed_suffix(obj.acl, operations, obj, Expired())
+        m._seed_acl_for_suffix(obj.acl, operations, obj, Expired())
     assert caught.value is failure
 
 

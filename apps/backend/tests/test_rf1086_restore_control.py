@@ -495,19 +495,29 @@ class TestPrepareArchive(unittest.TestCase):
         self.positive(wire_change=change,column_rows=(['column_acl','public','t','id',
             '{reader=r/supabase_admin}'],),walk_options={'acl_sql':sql})
 
-    def test_column_table_owner_reset_through_real_preparation(self):
+    def test_column_table_owner_middle_reset_through_real_preparation(self):
         def change(wire):
             obj=wire['objects'][0];obj['columnAclCount']=1
             obj['acl']=fixtures.acl([fixtures.item('writer',('UPDATE',)),
-                fixtures.item('reader',('SELECT',)), fixtures.item(fixtures.OWNER,('SELECT','UPDATE'),('SELECT',))])
+                fixtures.item(fixtures.OWNER,('SELECT','UPDATE'),('SELECT',)), fixtures.item('reader',('SELECT',))])
         sql=(b'REVOKE ALL ON TABLE public.t FROM supabase_admin;\n'
              b'GRANT UPDATE ON TABLE public.t TO supabase_admin;\n'
              b'GRANT SELECT ON TABLE public.t TO supabase_admin WITH GRANT OPTION;\n'
              b'GRANT SELECT ON TABLE public.t TO reader;\n'
              b'GRANT UPDATE ON TABLE public.t TO writer;\n'
              b'GRANT SELECT(id) ON TABLE public.t TO reader;\n')
-        self.positive(wire_change=change,column_rows=(['column_acl','public','t','id',
+        f=self.fixture(compile_expected=False,wire_change=change,column_rows=(['column_acl','public','t','id',
             '{reader=r/supabase_admin}'],),walk_options={'acl_sql':sql})
+        result,budget=self.invoke(f)
+        self.assertEqual(result.script,f['script']);self.assertEqual(result.index,f['walk'])
+        self.assertEqual(len(result.plan.candidates),1)
+        candidate=result.plan.candidates[0]
+        self.assertEqual(candidate.object,f['source'].objects[0])
+        self.assertEqual(candidate.seed_acl.raw,'{writer=w/supabase_admin}')
+        self.assertEqual(candidate.sql,b'REVOKE ALL ON TABLE public.t FROM supabase_admin RESTRICT;\n'
+            b'GRANT UPDATE ON TABLE public.t TO writer;\n')
+        self.assertIsNone(self.diagnostic.failure)
+        self.assertEqual(len(self.calls),4);self.assertGreaterEqual(budget.remaining(),70)
 
     def test_unmodeled_pg_catalog_column_acl_through_real_preparation(self):
         self.assert_column_preparation(empty_family=True)
