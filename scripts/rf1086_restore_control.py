@@ -687,8 +687,13 @@ def _diagnostic_remember(diagnostic, name, value):
 
 
 CATALOG_DIAGNOSTIC_PREFIX = 'owned_identity_restore_catalog_diagnostic '
-CATALOG_DIAGNOSTIC_SCHEMA = 'rf1086-restore-catalog-diagnostic-v1'
+CATALOG_DIAGNOSTIC_SCHEMA = 'rf1086-restore-catalog-diagnostic-v2'
 CATALOG_DIAGNOSTIC_CAP = 20 * 1024
+_RELATION_KINDS = ('r', 'p', 'v', 'm', 'f', 'S', 'i', 'I', 't', 'c')
+_RELATION_BRANCHES = ('source-acl-null', 'unsupported-column', 'unsupported-relkind',
+    'owner-profile-rejected', 'candidate', 'predicted-source-archive-only')
+_OWNER_PROFILE_FAILURES = ('duplicate-pairs', 'nonowner-grantor', 'empty-privileges',
+    'public-grant-option', 'owner-item-not-default')
 _CATALOG_CHANGES = frozenset(('source-null', 'target-null', 'array-order-only', 'value',
     'source-field-missing', 'target-field-missing', 'acl-entry-order-only'))
 
@@ -779,9 +784,56 @@ def _validate_catalog_difference(value):
                     for key, group in groups.items() for f in group['fields']), 'internal')
 
 
+def _validate_relation_profiles(profiles, diff):
+    """Validate finite traits, not unexported source ACLs or compiler execution."""
+    require(type(profiles) is list and len(profiles) <= difference.MAX_DETAILS, 'internal')
+    expected = [d for d in diff['details'] if d['kind'] == 'relation' and d['status'] == 'changed']
+    require(len(profiles) == len(expected), 'internal')
+    for item, detail in zip(profiles, expected, strict=True):
+        _diagnostic_keys(item, ('identitySha256', 'branch', 'relationKind', 'hasColumnAcls',
+            'sourceAclEqualsDefault', 'initialAclNull', 'initialAclEqualsSource',
+            'extensionMember', 'candidateMaterialize', 'ownerProfileFailures'))
+        require(item['identitySha256'] == detail['identitySha256']
+                and type(item['branch']) is str and item['branch'] in _RELATION_BRANCHES
+                and type(item['relationKind']) is str and item['relationKind'] in _RELATION_KINDS, 'internal')
+        for key in ('hasColumnAcls', 'sourceAclEqualsDefault', 'initialAclNull',
+                    'initialAclEqualsSource', 'extensionMember'):
+            require(type(item[key]) is bool, 'internal')
+        failures = item['ownerProfileFailures']
+        require(type(failures) is list and len(failures) <= len(_OWNER_PROFILE_FAILURES)
+                and all(type(x) is str and x in _OWNER_PROFILE_FAILURES for x in failures)
+                and failures == [x for x in _OWNER_PROFILE_FAILURES if x in failures], 'internal')
+        branch = item['branch']
+        for change in detail['fields']:
+            if change['field'] == 'acl':
+                if change['change'] == 'source-null':
+                    require(branch == 'source-acl-null', 'internal')
+                elif change['change'] in ('target-null', 'value', 'array-order-only', 'acl-entry-order-only'):
+                    require(branch != 'source-acl-null', 'internal')
+        if branch == 'source-acl-null':
+            require(not item['sourceAclEqualsDefault'] and not failures
+                    and item['initialAclEqualsSource'] == item['initialAclNull'], 'internal')
+        else:
+            require(not (item['initialAclNull'] and item['initialAclEqualsSource']), 'internal')
+            expected_branch = ('unsupported-column' if item['hasColumnAcls'] else
+                'unsupported-relkind' if item['relationKind'] not in ('r', 'p', 'v', 'm', 'f', 'S') else
+                'owner-profile-rejected' if failures else
+                'candidate' if branch == 'candidate' else 'predicted-source-archive-only')
+            require(branch == expected_branch, 'internal')
+        if item['sourceAclEqualsDefault']:
+            require(not failures, 'internal')
+        if branch == 'candidate':
+            require(type(item['candidateMaterialize']) is bool
+                    and item['candidateMaterialize'] == item['sourceAclEqualsDefault']
+                    and not item['initialAclEqualsSource'], 'internal')
+        else:
+            require(item['candidateMaterialize'] is None, 'internal')
+
+
 def validate_catalog_postcondition(value, *, construction_raw=None):
     """Closed diagnostic shape; supplied construction text cross-binds fingerprints."""
-    _diagnostic_keys(value, ('schema', 'status', 'reason', 'constructionSha256', 'source', 'target', 'difference'))
+    _diagnostic_keys(value, ('schema', 'status', 'reason', 'constructionSha256', 'source', 'target',
+        'difference', 'relationProfiles'))
     require(value['schema'] == CATALOG_DIAGNOSTIC_SCHEMA, 'internal')
     _diagnostic_hash(value['constructionSha256'])
     if value['status'] == 'observed':
@@ -792,10 +844,12 @@ def validate_catalog_postcondition(value, *, construction_raw=None):
             _diagnostic_hash(value[key]['sha256'])
         require(value['source']['sha256'] != value['target']['sha256'], 'internal')
         _validate_catalog_difference(value['difference'])
+        _validate_relation_profiles(value['relationProfiles'], value['difference'])
     else:
         require(value['status'] == 'unavailable' and type(value['reason']) is str
                 and value['reason'] in ('input', 'binding', 'classifier', 'limit')
-                and value['source'] is None and value['target'] is None and value['difference'] is None, 'internal')
+                and value['source'] is None and value['target'] is None and value['difference'] is None
+                and value['relationProfiles'] is None, 'internal')
     if construction_raw is not None:
         digest, fingerprints = _catalog_construction(construction_raw)
         require(value['constructionSha256'] == digest, 'internal')
@@ -805,7 +859,74 @@ def validate_catalog_postcondition(value, *, construction_raw=None):
     require(len(CATALOG_DIAGNOSTIC_PREFIX) + len(ledger.canonical(value)) + 1 <= CATALOG_DIAGNOSTIC_CAP, 'limit')
 
 
-def publish_catalog_postcondition(budget, *, construction_raw, source_metadata, target_capture, primary):
+def _catalog_relation_profiles(source, prepared, diff, construction_raw, source_binding, budget, end):
+    """Borrow the successful same-source plan; never rerun or broaden its compiler."""
+    import rf1086_restore_metadata as metadata
+    plan = getattr(prepared, 'plan', None)
+    require(type(source) is metadata.Metadata and type(plan) is metadata.RepairPlan
+            and plan.source is source, 'internal')
+    bound = plan.binding
+    receipt = json.loads(construction_raw)
+    require(bound == receipt['bindings']['plan'] and plan.counts == receipt['counts']
+            and bound['source'] == source.binding and bound['catalogObservation'] == source_binding
+            and bound['profile'] == metadata.CONFIG_SHA256
+            and bound['fixedSnapshot'] == source.snapshot_binding, 'internal')
+    require(type(source._wire) is bytes and len(source._wire) <= MAX_METADATA
+            and bound['source'] == {'bytes': len(source._wire),
+                'sha256': hashlib.sha256(source._wire).hexdigest()}, 'internal')
+    require(type(source.objects) is tuple and len(source.objects) <= 8192
+            and type(plan.candidates) is tuple and len(plan.candidates) <= len(source.objects)
+            and plan.counts['objects'] == len(source.objects)
+            and plan.counts['candidates'] == len(plan.candidates), 'internal')
+    objects, candidates = {}, {}
+    for obj in source.objects:
+        budget.remaining(end=end)
+        require(type(obj) is metadata.Object, 'internal')
+        # This must match the classifier's UTF8 identity encoding, not ledger ASCII.
+        digest = hashlib.sha256(difference._encoded(obj.identity)).hexdigest()
+        require(digest not in objects, 'internal'); objects[digest] = obj
+    for candidate in plan.candidates:
+        budget.remaining(end=end)
+        require(type(candidate) is metadata.Candidate, 'internal')
+        digest = hashlib.sha256(difference._encoded(candidate.object.identity)).hexdigest()
+        require(digest in objects and candidate.object == objects[digest]
+                and digest not in candidates and type(candidate.materialize) is bool, 'internal')
+        candidates[digest] = candidate
+    result = []
+    for detail in diff['details']:
+        budget.remaining(end=end)
+        if detail['kind'] != 'relation' or detail['status'] != 'changed': continue
+        digest = detail['identitySha256']; require(digest in objects, 'internal')
+        obj = objects[digest]; require(obj.identity[0] == 'relation', 'internal')
+        failures = []
+        if obj.acl is not None:
+            require(len(obj.acl.items) <= 64, 'internal')
+            pairs = [(x.grantee, x.grantor) for x in obj.acl.items]
+            owner_item = next(x for x in obj.default.items if x.grantee == obj.owner)
+            conditions = (len(pairs) != len(set(pairs)),
+                any(x.grantor != obj.owner for x in obj.acl.items),
+                any(not x.privileges for x in obj.acl.items),
+                any(x.grantee is None and x.options for x in obj.acl.items),
+                sum(x == owner_item for x in obj.acl.items) != 1)
+            failures = [label for label, failed in zip(_OWNER_PROFILE_FAILURES, conditions, strict=True) if failed]
+        branch = ('source-acl-null' if obj.acl is None else
+            'unsupported-column' if obj.columns else
+            'unsupported-relkind' if obj.kind not in ('r', 'p', 'v', 'm', 'f', 'S') else
+            'owner-profile-rejected' if failures else
+            'candidate' if digest in candidates else 'predicted-source-archive-only')
+        require((digest in candidates) == (branch == 'candidate'), 'internal')
+        result.append({'identitySha256': digest, 'branch': branch, 'relationKind': obj.kind,
+            'hasColumnAcls': bool(obj.columns), 'sourceAclEqualsDefault': obj.acl == obj.default,
+            'initialAclNull': obj.initial is None, 'initialAclEqualsSource': obj.initial == obj.acl,
+            'extensionMember': bool(obj.extension),
+            'candidateMaterialize': candidates[digest].materialize if digest in candidates else None,
+            'ownerProfileFailures': failures})
+    budget.remaining(end=end)
+    return result
+
+
+def publish_catalog_postcondition(budget, *, construction_raw, source_metadata, target_capture, primary,
+                                  prepared=None):
     """Borrow at most one second; never advance phase or replace recovery failure."""
     owner = budget.context.owner
     original = owner.original if isinstance(owner, _UnwindOwner) else owner
@@ -816,7 +937,7 @@ def publish_catalog_postcondition(budget, *, construction_raw, source_metadata, 
             require(budget.phase == 'source_post', 'internal')
             digest, fingerprints = _catalog_construction(construction_raw)
             value = dict(schema=CATALOG_DIAGNOSTIC_SCHEMA, status='unavailable', reason='input',
-                         constructionSha256=digest, source=None, target=None, difference=None)
+                         constructionSha256=digest, source=None, target=None, difference=None, relationProfiles=None)
             reason = 'input'
             try:
                 # Retention itself can fail: keep access inside the same deadline
@@ -833,7 +954,12 @@ def publish_catalog_postcondition(budget, *, construction_raw, source_metadata, 
                 with difference.CatalogCapture() as left, difference.CatalogCapture() as right:
                     left.capture(source_raw); right.capture(target_raw)
                     diff = difference.catalog_difference(left, right)
-                proposed = value | {'status': 'observed', 'reason': None, **bound, 'difference': diff}
+                _validate_catalog_difference(diff)
+                reason = 'binding'
+                profiles = _catalog_relation_profiles(source_metadata, prepared, diff, construction_raw,
+                    bound['source'], budget, end)
+                proposed = value | {'status': 'observed', 'reason': None, **bound, 'difference': diff,
+                                    'relationProfiles': profiles}
                 validate_catalog_postcondition(proposed, construction_raw=construction_raw)
                 value = proposed
             except Exception as error:

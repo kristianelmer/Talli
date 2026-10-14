@@ -96,7 +96,7 @@ def test_repeated_receipt_rejects_ambiguous_result(monkeypatch):
 def test_diagnostic_must_bind_the_same_construction_receipt(monkeypatch):
     diagnostic = {"schema": driver.control.CATALOG_DIAGNOSTIC_SCHEMA, "status": "unavailable",
                   "reason": "input", "constructionSha256": "0" * 64,
-                  "source": None, "target": None, "difference": None}
+                  "source": None, "target": None, "difference": None, "relationProfiles": None}
     install_context(monkeypatch, receipt(), extra=driver.CATALOG_PREFIX + driver.control.ledger.canonical(diagnostic).decode("ascii"))
     with pytest.raises(ValueError):
         observe()
@@ -106,7 +106,7 @@ def test_bound_unavailable_diagnostic_remains_explicit(monkeypatch):
     value = receipt()
     diagnostic = {"schema": driver.control.CATALOG_DIAGNOSTIC_SCHEMA, "status": "unavailable",
                   "reason": "input", "constructionSha256": hashlib.sha256(driver.control.ledger.canonical(value)).hexdigest(),
-                  "source": None, "target": None, "difference": None}
+                  "source": None, "target": None, "difference": None, "relationProfiles": None}
     install_context(monkeypatch, value, extra=driver.CATALOG_PREFIX + driver.control.ledger.canonical(diagnostic).decode("ascii"))
     assert observe()["catalogDiagnostic"] == diagnostic
 

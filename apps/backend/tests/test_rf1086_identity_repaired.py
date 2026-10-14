@@ -6,12 +6,26 @@ import sys
 import time
 from copy import deepcopy
 from contextlib import nullcontext
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
 
 from test_rf1086_identity_restore_runner import identity, DB, AUTH, ENV, SOURCE_URL
 import rf1086_restore_control as control
+import test_rf1086_restore_metadata as metadata_fixtures
+
+
+def _empty_diagnostic_plan(raw):
+    """Generated publisher-boundary fixture; no claim of database/source admission."""
+    metadata=metadata_fixtures.m
+    source=replace(metadata_fixtures.source(),objects=(),_catalog=raw)
+    counts={'objects':0,'candidates':0,'archiveOnly':0,'unmodeled':0,'statements':0,'defaultAcls':0}
+    binding={'profile':metadata.CONFIG_SHA256,'source':source.binding,
+        'fixedSnapshot':source.snapshot_binding,
+        'catalogObservation':{'bytes':len(raw) if isinstance(raw,bytes) else 0,
+            'sha256':hashlib.sha256(raw if isinstance(raw,bytes) else b'').hexdigest()}}
+    return metadata.RepairPlan(source,(),1,b'{}',metadata.canonical(counts),metadata.canonical(binding),())
 
 
 @pytest.fixture
@@ -23,8 +37,12 @@ def repaired_model(tmp_path,monkeypatch):
     before=dict.fromkeys(('roles','catalog','auth','companyMemberships'),'a'*64)
     before['roles']=hashlib.sha256(role_raw).hexdigest()
     before['catalog']=hashlib.sha256(state['sourceCatalog']).hexdigest()
+    plan=_empty_diagnostic_plan(state['sourceCatalog'])
     metadata=SimpleNamespace(METADATA_SQL=b'metadata',ROLE_ORDER_SQL=b'role order',
-        decode_metadata=lambda *a,**kw:SimpleNamespace(_catalog=state['sourceCatalog']),validate_role_order=lambda *a,**kw:None,
+        Metadata=metadata_fixtures.m.Metadata,RepairPlan=metadata_fixtures.m.RepairPlan,
+        Object=metadata_fixtures.m.Object,Candidate=metadata_fixtures.m.Candidate,
+        CONFIG_SHA256=metadata_fixtures.m.CONFIG_SHA256,
+        decode_metadata=lambda *a,**kw:plan.source,validate_role_order=lambda *a,**kw:None,
         bind_source_snapshot=lambda source,*a,**kw:source)
     monkeypatch.setitem(sys.modules,'rf1086_restore_metadata',metadata)
     monkeypatch.setattr(identity,'owned_identity_source',lambda *a:(DB,AUTH,ENV))
@@ -56,7 +74,7 @@ def repaired_model(tmp_path,monkeypatch):
     def prepare(*args,**kwargs):
         if state['fault']:raise control.RestoreUnavailable(state['fault'])
         return SimpleNamespace(roles=SimpleNamespace(bootstrap='original_bootstrap',sql=b'persistent role program'),
-            tools={'bound':True},script=b'original stream',index=object(),plan=object())
+            tools={'bound':True},script=b'original stream',index=object(),plan=plan)
     monkeypatch.setattr(control,'prepare_archive',prepare)
     monkeypatch.setattr(control,'bind_tools',lambda *a,**kw:{'bound':True})
     monkeypatch.setattr(control,'source_fixed_snapshot',lambda *a,**kw:b'fixed snapshot')
@@ -66,6 +84,7 @@ def repaired_model(tmp_path,monkeypatch):
         state['receiptCalls']=state.get('receiptCalls',0)+1
         if state.get('diagnosticReceipt'):
             return json.dumps({'schema':control.SCHEMA,'status':'unavailable',
+                'bindings':{'plan':plan.binding},'counts':plan.counts,
                 'fingerprints':{'source':kwargs['before'],'target':kwargs['recovered']}},
                 sort_keys=True,separators=(',',':'))
         return '{"schema":"fixture-safe-receipt"}'
@@ -275,7 +294,8 @@ def test_final_catalog_diagnostic_commits_exact_once_emitted_receipt_after_clean
     diagnostic_lines=[line for line in output.err.splitlines() if line.startswith('owned_identity_restore_catalog_diagnostic ')]
     assert len(diagnostic_lines)==1
     value=json.loads(diagnostic_lines[0].split(' ',1)[1])
-    assert value['schema']=='rf1086-restore-catalog-diagnostic-v1' and value['status']=='observed'
+    assert value['schema']=='rf1086-restore-catalog-diagnostic-v2' and value['status']=='observed'
+    assert value['relationProfiles']==[]
     assert value['constructionSha256']==hashlib.sha256(receipt_line.split(' ',1)[1].encode()).hexdigest()
     assert value['source']=={'bytes':len(state['sourceCatalog']),'sha256':state['receipt']['before']['catalog']}
     assert value['target']=={'bytes':len(state['targetCatalog']),'sha256':state['receipt']['recovered']['catalog']}
@@ -295,12 +315,16 @@ def _catalog_receipt(source,target):
                                     'fingerprints':fingerprints}).decode('ascii')
 
 
-def _publish_catalog(source,target,*,receipt=None,budget=None):
+def _publish_catalog(source,target,*,receipt=None,budget=None,plan=None):
     receipt=receipt or _catalog_receipt(source,target)
+    plan=plan or _empty_diagnostic_plan(source)
+    parsed=json.loads(receipt)
+    parsed.setdefault('bindings',{'plan':plan.binding});parsed.setdefault('counts',plan.counts)
+    receipt=control.ledger.canonical(parsed).decode('ascii')
     if budget is None:
         budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
     control.publish_catalog_postcondition(budget,construction_raw=receipt,
-        source_metadata=SimpleNamespace(_catalog=source),target_capture=SimpleNamespace(_raw=target),
+        source_metadata=plan.source,prepared=SimpleNamespace(plan=plan),target_capture=SimpleNamespace(_raw=target),
         primary=ValueError('private primary'))
     return receipt,budget
 
@@ -383,7 +407,7 @@ def test_catalog_diagnostic_invalid_inputs_and_classifier_never_reflect_values(f
     if fault=='hash':source=b'private-different-value'
     if fault=='classifier':
         monkeypatch.setattr(control.difference,'catalog_difference',lambda *a:{'raw':'private-catalog'})
-    _publish_catalog(source,target,receipt=receipt)
+    receipt,_=_publish_catalog(source,target,receipt=receipt)
     value=_catalog_line(capsys)
     assert value['status']=='unavailable' and value['reason']==reason
     assert value['source'] is value['target'] is value['difference'] is None
@@ -391,7 +415,8 @@ def test_catalog_diagnostic_invalid_inputs_and_classifier_never_reflect_values(f
 
 
 @pytest.mark.parametrize('fault',['classifier','cancel_classifier','cancel_write','broken_write',
-    'expired','blocked_write','cleanup','source_post','missing_retention','broken_retention','cancel_retention'])
+    'expired','blocked_write','cleanup','source_post','missing_retention','broken_retention','cancel_retention',
+    'missing_plan','broken_plan','cancel_plan'])
 def test_catalog_diagnostic_failure_preserves_primary_cleanup_and_clears_capture(
         repaired_model,tmp_path,monkeypatch,capsys,fault):
     budget,state,_,owners,_=repaired_model;state['diagnosticReceipt']=True
@@ -411,6 +436,15 @@ def test_catalog_diagnostic_failure_preserves_primary_cleanup_and_clears_capture
                         if fault=='cancel_retention':raise KeyboardInterrupt('private-retention')
                         raise RuntimeError('private-retention')
                 kwargs['source_metadata']=Broken()
+        if fault.endswith('_plan'):
+            if fault=='missing_plan':kwargs['prepared']=None
+            else:
+                class BrokenPlan:
+                    @property
+                    def plan(self):
+                        if fault=='cancel_plan':raise KeyboardInterrupt('private-plan')
+                        raise RuntimeError('private-plan')
+                kwargs['prepared']=BrokenPlan()
         return original_publish(value,**kwargs)
     monkeypatch.setattr(control,'publish_catalog_postcondition',publish)
     if fault in ('classifier','cancel_classifier'):
@@ -495,3 +529,247 @@ def test_catalog_envelope_limit_is_total_line_and_unavailable_is_closed(monkeypa
     value=_catalog_line(capsys)
     assert value['status']=='unavailable' and value['reason']=='limit'
     control.validate_catalog_postcondition(value,construction_raw=receipt)
+
+
+def test_relation_branch_uses_same_compiled_plan_and_exact_unicode_identity(capsys):
+    import test_rf1086_restore_metadata as fixtures
+    wire=fixtures.fixture();wire['objects'][0]['identity'][2]='table_é'
+    source,script,archive,index=fixtures.plan_data(wire)
+    archive.entries[0].tag='table_é'.encode()
+    plan=fixtures.compile_((source,script,archive,index))
+    rows=json.loads(source._catalog.split(b'\n')[0]);rows[0][5]=None
+    target=fixtures.encode(rows)+b'\n{}\n[]\n'
+    receipt=json.loads(_catalog_receipt(source._catalog,target))
+    receipt['bindings']={'plan':plan.binding}
+    receipt['counts']=plan.counts
+    receipt=control.ledger.canonical(receipt).decode('ascii')
+    budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    control.publish_catalog_postcondition(budget,construction_raw=receipt,
+        source_metadata=source,prepared=SimpleNamespace(plan=plan),target_capture=SimpleNamespace(_raw=target),
+        primary=ValueError('private primary'))
+    value=_catalog_line(capsys)
+    assert value['schema']=='rf1086-restore-catalog-diagnostic-v2' and value['status']=='observed'
+    # Literal UTF8 identity, independently of the ASCII ledger canonicalizer.
+    digest=hashlib.sha256('["relation","public","table_é"]'.encode('utf8')).hexdigest()
+    assert value['relationProfiles']==[{'identitySha256':digest,'branch':'candidate',
+        'relationKind':'r','hasColumnAcls':False,'sourceAclEqualsDefault':True,
+        'initialAclNull':True,'initialAclEqualsSource':False,'extensionMember':False,
+        'candidateMaterialize':True,'ownerProfileFailures':[]}]
+    control.validate_catalog_postcondition(value,construction_raw=receipt)
+
+
+def _relation_plan_case(case):
+    """Real metadata decoder/compiler; only the final generated catalog is changed."""
+    f=metadata_fixtures;m=f.m
+    wire=f.fixture(ordered=case in ('candidate','predicted','initial-equal'))
+    obj=wire['objects'][0];suffix=b'';columns=()
+    if case=='source-null':obj['acl']=None
+    elif case=='column':
+        obj['columnAclCount']=1
+        columns=(['column_acl','public','t','id','{reader=r/supabase_admin}'],)
+    elif case=='relkind':obj['kind']='i'
+    elif case=='partial-owner':obj['acl']=f.acl([f.item(rights=('SELECT',))])
+    elif case=='duplicate':obj['acl']=f.acl([f.item(),f.item()])
+    elif case=='nonowner':obj['acl']=f.acl([f.item(),f.item('reader',('SELECT',),grantor='writer')])
+    elif case=='empty-rights':obj['acl']=f.acl([f.item(),f.item('reader',())])
+    elif case=='public-option':obj['acl']=f.acl([f.item(),f.item(None,('SELECT',),('SELECT',))])
+    elif case=='initial-equal':
+        obj['initialAcl']=deepcopy(obj['acl']);obj['initialPrivilegeType']='e'
+    elif case=='extension':obj['extension']=[['private_extension','1.0',f.OWNER]]
+    if case in ('candidate','predicted'):
+        suffix=b'GRANT SELECT ON TABLE public.t TO reader;\n'
+        if case=='candidate':obj['acl']=f.acl(list(reversed(obj['acl']['items'])))
+    _,script,archive,index=f.plan_data(suffix=suffix)
+    archive.entries[0].description=b'TABLE'
+    source=f.source(wire,column_rows=columns)
+    index['objects'][0]['kind']=obj['kind']
+    plan=m.compile_plan(source,script=script,archive=archive,index=index,deadline=f.end())
+    rows=json.loads(source._catalog.split(b'\n')[0])
+    rows[0][5]=source.objects[0].default.raw if obj['acl'] is None else None
+    target=f.encode(rows)+b'\n{}\n[]\n'
+    return plan,target
+
+
+@pytest.mark.parametrize('case,branch,failures',[
+    ('source-null','source-acl-null',[]),('column','unsupported-column',[]),
+    ('relkind','unsupported-relkind',[]),('partial-owner','owner-profile-rejected',['owner-item-not-default']),
+    ('duplicate','owner-profile-rejected',['duplicate-pairs','owner-item-not-default']),
+    ('nonowner','owner-profile-rejected',['nonowner-grantor']),
+    ('empty-rights','owner-profile-rejected',['empty-privileges']),
+    ('public-option','owner-profile-rejected',['public-grant-option']),
+    ('materialize','candidate',[]),('candidate','candidate',[]),
+    ('predicted','predicted-source-archive-only',[]),('initial-equal','predicted-source-archive-only',[]),
+    ('extension','candidate',[]),
+])
+def test_real_compiler_branch_traits_are_diagnostic_not_a_mutation_claim(case,branch,failures,capsys):
+    plan,target=_relation_plan_case(case)
+    receipt,_=_publish_catalog(plan.source._catalog,target,plan=plan)
+    value=_catalog_line(capsys);assert value['status']=='observed'
+    traits=value['relationProfiles'][0]
+    assert traits['branch']==branch and traits['ownerProfileFailures']==failures
+    assert traits['hasColumnAcls'] is (case=='column')
+    assert traits['sourceAclEqualsDefault'] is (case in ('column','relkind','materialize','extension'))
+    assert traits['initialAclNull'] is (case!='initial-equal')
+    assert traits['initialAclEqualsSource'] is (case in ('source-null','initial-equal'))
+    assert traits['extensionMember'] is (case=='extension')
+    assert traits['candidateMaterialize']==(case in ('materialize','extension') if branch=='candidate' else None)
+    assert not any(key in traits for key in ('name','acl','owner','grantor','sql','applied','noop'))
+    encoded=json.dumps(value)
+    assert all(text not in encoded for text in ('supabase_admin','private_extension','=arwdDxtm/','"reader"'))
+    control.validate_catalog_postcondition(value,construction_raw=receipt)
+    if case=='candidate':
+        # Selected candidate can be a real compiler no-op; publication does not imply SQL ran.
+        wire=metadata_fixtures.fixture(ordered=True)
+        wire['objects'][0]['acl']=metadata_fixtures.acl(list(reversed(wire['objects'][0]['acl']['items'])))
+        mutation=metadata_fixtures.m.pre_acl(plan,metadata_fixtures.target(wire,explicit=True),
+                                            deadline=metadata_fixtures.end())
+        assert mutation.noop==1 and mutation.applied==0 and mutation.sql==b''
+
+
+@pytest.mark.parametrize('case,mutation',[
+    ('materialize',lambda v:v.update(relationProfiles=None)),
+    ('materialize',lambda v:v.update(relationProfiles=[])),
+    ('materialize',lambda v:v['relationProfiles'].append(deepcopy(v['relationProfiles'][0]))),
+    ('materialize',lambda v:v['relationProfiles'][0].update(identitySha256='f'*64)),
+    ('materialize',lambda v:v['relationProfiles'][0].update(raw='private-secret')),
+    ('materialize',lambda v:v['relationProfiles'][0].update(branch='private-secret')),
+    ('materialize',lambda v:v['relationProfiles'][0].update(relationKind='private-secret')),
+    ('materialize',lambda v:v['relationProfiles'][0].update(hasColumnAcls=1)),
+    ('materialize',lambda v:v['relationProfiles'][0].update(extensionMember=0)),
+    ('materialize',lambda v:v['relationProfiles'][0].update(initialAclNull=0)),
+    ('materialize',lambda v:v['relationProfiles'][0].update(initialAclEqualsSource=True)),
+    ('materialize',lambda v:v['relationProfiles'][0].update(candidateMaterialize=1)),
+    ('materialize',lambda v:v['relationProfiles'][0].update(candidateMaterialize=False)),
+    ('materialize',lambda v:v['relationProfiles'][0].update(ownerProfileFailures=['private-secret'])),
+    ('materialize',lambda v:v['relationProfiles'][0].update(branch='unsupported-column',candidateMaterialize=None)),
+    ('materialize',lambda v:v['relationProfiles'][0].update(branch='unsupported-relkind',candidateMaterialize=None)),
+    ('materialize',lambda v:v['relationProfiles'][0].update(branch='owner-profile-rejected',candidateMaterialize=None)),
+    ('materialize',lambda v:v['relationProfiles'][0].update(branch='source-acl-null',
+        sourceAclEqualsDefault=False,initialAclEqualsSource=True,candidateMaterialize=None)),
+    ('source-null',lambda v:v['relationProfiles'][0].update(branch='predicted-source-archive-only',initialAclEqualsSource=False)),
+    ('duplicate',lambda v:v['relationProfiles'][0].update(ownerProfileFailures=['owner-item-not-default','duplicate-pairs'])),
+    ('duplicate',lambda v:v['relationProfiles'][0].update(ownerProfileFailures=['duplicate-pairs','duplicate-pairs'])),
+    ('column',lambda v:v['relationProfiles'][0].update(branch='candidate',candidateMaterialize=True)),
+    ('materialize',lambda v:v.update(schema='rf1086-restore-catalog-diagnostic-v1')),
+])
+def test_relation_profile_forgery_rejected_even_with_matching_outer_hashes(case,mutation,capsys):
+    plan,target=_relation_plan_case(case)
+    receipt,_=_publish_catalog(plan.source._catalog,target,plan=plan)
+    value=_catalog_line(capsys);assert value['status']=='observed'
+    mutation(value)
+    with pytest.raises(ValueError):control.validate_catalog_postcondition(value,construction_raw=receipt)
+
+
+@pytest.mark.parametrize('case',['source-null','materialize'])
+def test_non_acl_changes_do_not_invent_source_acl_state(case,capsys):
+    plan,_=_relation_plan_case(case)
+    rows=json.loads(plan.source._catalog.split(b'\n')[0]);rows[0][6]=True
+    target=metadata_fixtures.encode(rows)+b'\n{}\n[]\n'
+    receipt,_=_publish_catalog(plan.source._catalog,target,plan=plan)
+    value=_catalog_line(capsys)
+    assert value['status']=='observed' and value['difference']['details'][0]['fields']==[
+        {'field':'rls','change':'value'}]
+    assert value['relationProfiles'][0]['branch']==('source-acl-null' if case=='source-null' else 'candidate')
+    control.validate_catalog_postcondition(value,construction_raw=receipt)
+
+
+@pytest.mark.parametrize('fault',['missing-prepared','missing-plan','foreign-plan','source-copy',
+    'binding','catalog-binding','wire-binding','profile','counts','candidate-object',
+    'candidate-duplicate','candidate-missing','duplicate-source','missing-source','object-cap'])
+def test_branch_binding_failure_never_infers_archive_only(fault,capsys):
+    plan,target=_relation_plan_case('materialize');source=plan.source
+    receipt=json.loads(_catalog_receipt(source._catalog,target))
+    receipt.update(bindings={'plan':plan.binding},counts=plan.counts)
+    if fault=='source-copy':plan=replace(plan,source=replace(source))
+    elif fault in ('binding','catalog-binding','wire-binding','profile'):
+        binding=plan.binding
+        if fault=='binding':binding['source']['sha256']='f'*64
+        elif fault=='catalog-binding':binding['catalogObservation']['bytes']+=1
+        elif fault=='wire-binding':source=replace(source,_wire=b'private-mutated');plan=replace(plan,source=source)
+        else:binding['profile']='f'*64
+        plan=replace(plan,_binding=control.ledger.canonical(binding))
+        receipt['bindings']['plan']=binding
+    elif fault=='counts':receipt['counts']['candidates']=0
+    elif fault=='candidate-object':
+        obj=replace(plan.candidates[0].object,owner='private-owner')
+        plan=replace(plan,candidates=(replace(plan.candidates[0],object=obj),))
+    elif fault=='candidate-duplicate':
+        plan=replace(plan,candidates=plan.candidates*2)
+        counts=plan.counts;counts['candidates']=2
+        plan=replace(plan,_counts=control.ledger.canonical(counts));receipt['counts']=counts
+    elif fault=='candidate-missing':
+        obj=replace(plan.candidates[0].object,identity=('relation','public','private-absent'))
+        plan=replace(plan,candidates=(replace(plan.candidates[0],object=obj),))
+    elif fault in ('duplicate-source','missing-source','object-cap'):
+        objects=source.objects+(source.objects[0],) if fault=='duplicate-source' else (
+            source.objects[1:] if fault=='missing-source' else (source.objects[0],)*8193)
+        source=replace(source,objects=objects);counts=plan.counts;counts['objects']=len(objects)
+        plan=replace(plan,source=source,_counts=control.ledger.canonical(counts));receipt['counts']=counts
+    prepared=SimpleNamespace(plan=plan)
+    if fault=='missing-prepared':prepared=None
+    elif fault=='missing-plan':prepared=object()
+    elif fault=='foreign-plan':prepared=SimpleNamespace(plan=object())
+    raw=control.ledger.canonical(receipt).decode('ascii')
+    budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    control.publish_catalog_postcondition(budget,construction_raw=raw,
+        source_metadata=source,prepared=prepared,target_capture=SimpleNamespace(_raw=target),
+        primary=ValueError('private primary'))
+    value=_catalog_line(capsys)
+    assert value['status']=='unavailable' and value['reason']=='binding'
+    assert value['relationProfiles'] is value['difference'] is value['source'] is value['target'] is None
+    control.validate_catalog_postcondition(value,construction_raw=raw)
+
+
+def _many_relation_plan(count):
+    f=metadata_fixtures;m=f.m
+    wire=f.fixture();_,script,archive,index=f.plan_data()
+    original=wire['objects'][0];wire['objects']=wire['objects'][1:]
+    for i in range(count):
+        row=deepcopy(original);row['identity'][2]=f't_{i:02}';row['objectOid']+=i
+        # Source-null rows need no lifecycle/seed and still exercise actual compiler classification.
+        row['acl']=None;wire['objects'].append(row)
+    source=f.source(wire);index['objects']=[]
+    plan=m.compile_plan(source,script=script,archive=archive,index=index,deadline=f.end())
+    rows=json.loads(source._catalog.split(b'\n')[0])
+    for row in rows:
+        if row[0]=='relation':row[5]=original['defaultAcl']['raw']
+    return plan,f.encode(rows)+b'\n{}\n[]\n'
+
+
+@pytest.mark.parametrize('count',[32,33])
+def test_relation_profiles_exact_retained_order_and_truncation_not_full_coverage(count,capsys):
+    plan,target=_many_relation_plan(count)
+    receipt,_=_publish_catalog(plan.source._catalog,target,plan=plan)
+    value=_catalog_line(capsys);assert value['status']=='observed'
+    assert len(value['relationProfiles'])==32 and value['difference']['counts']['changed']==count
+    assert value['difference']['truncated'] is (count==33)
+    assert [p['identitySha256'] for p in value['relationProfiles']]==[
+        d['identitySha256'] for d in value['difference']['details']]
+    assert all(p['branch']=='source-acl-null' for p in value['relationProfiles'])
+    value['relationProfiles'].reverse()
+    with pytest.raises(ValueError):control.validate_catalog_postcondition(value,construction_raw=receipt)
+
+
+@pytest.mark.parametrize('fault',['broken','cancel','expired'])
+def test_plan_retention_failure_is_shielded_and_cancellation_sticky(fault,capsys):
+    plan,target=_relation_plan_case('materialize');source=plan.source
+    receipt=json.loads(_catalog_receipt(source._catalog,target))
+    receipt.update(bindings={'plan':plan.binding},counts=plan.counts)
+    raw=control.ledger.canonical(receipt).decode('ascii')
+    budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    phase,end=budget.phase,budget.end;primary=ValueError('private original')
+    class Prepared:
+        @property
+        def plan(self):
+            assert 0<signal.getitimer(signal.ITIMER_REAL)[0]<=1
+            if fault=='cancel':raise KeyboardInterrupt('private secondary')
+            if fault=='expired':raise control.RestoreUnavailable('deadline')
+            raise AttributeError('private missing plan')
+    control.publish_catalog_postcondition(budget,construction_raw=raw,
+        source_metadata=source,prepared=Prepared(),target_capture=SimpleNamespace(_raw=target),primary=primary)
+    assert budget.phase==phase and budget.end==end
+    assert signal.getitimer(signal.ITIMER_REAL)[0]==0
+    assert budget.context.owner.cancelled is (fault=='cancel')
+    if fault=='broken':
+        value=_catalog_line(capsys);assert value['status']=='unavailable' and value['reason']=='binding'
+    else:assert capsys.readouterr().err==''

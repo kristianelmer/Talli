@@ -596,7 +596,8 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
                     print('owned_identity_restore_construction '+receipt_raw,file=sys.stderr,flush=True)
                 if catalog_mismatch:
                     construction.publish_catalog_postcondition(budget, construction_raw=receipt_raw,
-                        source_metadata=source_metadata, target_capture=target_catalog, primary=primary)
+                        source_metadata=source_metadata, target_capture=target_catalog, primary=primary,
+                        prepared=prepared)
                 diagnostic.publish(primary=primary if primary is not None else error)
                 if errors:raise errors[0]
         finally:
