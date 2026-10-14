@@ -1,4 +1,4 @@
-"""One borrowed entry clock bounds adapters; tests never open DB/HTTP services."""
+"""Borrowed deadlines; transport tests use only owned loopback TCP fixtures."""
 import asyncio
 import ast
 from contextlib import contextmanager
@@ -24,6 +24,420 @@ def budget(seconds=8):
     value = control.RecoveryBudget(time.monotonic())
     value.end = time.monotonic() + seconds
     return value
+
+
+@pytest.fixture
+def relays(monkeypatch):
+    values = []
+    original = control._InternalRelay.__init__
+    def init(self, *args):
+        original(self, *args)
+        values.append(self)
+    monkeypatch.setattr(control._InternalRelay, '__init__', init)
+    return values
+
+
+def relay_owner(value, endpoints):
+    calls = []
+    def inspect():
+        calls.append(True)
+        return endpoints
+    return SimpleNamespace(budget=value, internal_endpoints=inspect), calls
+
+
+@contextmanager
+def relay_upstream():
+    """One finite test peer; reads through EOF before returning reversed bytes."""
+    import socket
+    import threading
+    listener = socket.socket()
+    listener.bind(('127.0.0.1', 0)); listener.listen(1); listener.settimeout(.05)
+    stop = threading.Event()
+    failures = []
+    def serve():
+        try:
+            while not stop.is_set():
+                try:
+                    connection, _ = listener.accept()
+                except socket.timeout:
+                    continue
+                with connection:
+                    connection.settimeout(2)
+                    received = bytearray()
+                    while data := connection.recv(65536):
+                        received.extend(data)
+                    connection.sendall(received[::-1])
+                return
+        except BaseException as error:
+            if not stop.is_set(): failures.append(error)
+    thread = threading.Thread(target=serve, daemon=True, name='relay-test-peer')
+    thread.start()
+    try:
+        yield listener.getsockname()
+    finally:
+        stop.set(); listener.close(); thread.join(timeout=3)
+        assert not thread.is_alive() and not failures
+
+
+def test_internal_relay_duplex_half_close_and_queue_bound(relays, monkeypatch):
+    import socket
+    maximum = [0]
+    original = control._InternalRelay.refresh
+    def refresh(self, sock):
+        maximum[0] = max(maximum[0], *(len(s['out']) for s in self.peers.values()))
+        return original(self, sock)
+    monkeypatch.setattr(control._InternalRelay, 'refresh', refresh)
+    with relay_upstream() as db, relay_upstream() as auth:
+        value = budget(6); value.phase = 'actors'; end = value.end
+        owner, inspections = relay_owner(value, (db, auth))
+        with control.internal_loopback_ports(owner, budget=value) as ports:
+            assert len(set(ports)) == 2
+            for index, port in enumerate(ports):
+                payload = bytes(range(256)) * (4096 if index == 0 else 32)
+                with socket.create_connection(('127.0.0.1', port), timeout=2) as client:
+                    client.sendall(payload); client.shutdown(socket.SHUT_WR)
+                    received = bytearray()
+                    while data := client.recv(65536): received.extend(data)
+                    assert received == payload[::-1]
+            assert all(s.getsockname()[0] == '127.0.0.1' for s in relays[0].listeners)
+        assert len(inspections) == 2 and value.end == end and value.phase == 'actors'
+        assert 0 < maximum[0] <= 65536
+        assert not relays[0].thread.is_alive() and not relays[0].sockets
+        assert not value.context.owner.uncertain
+
+
+def test_internal_relay_partial_bind_failure_closes_only_owned_listeners(relays):
+    import socket
+    with socket.socket() as existing:
+        existing.bind(('127.0.0.1', 0)); existing.listen(1)
+        value = budget(); value.phase = 'actors'
+        owner, _ = relay_owner(value, (('127.0.0.1', 1), ('127.0.0.1', 2)))
+        with pytest.raises(OSError):
+            with control.internal_loopback_ports(owner, (0, existing.getsockname()[1]), budget=value):
+                pytest.fail('occupied port admitted')
+        assert existing.fileno() >= 0
+        assert not relays[0].sockets and relays[0].thread is None
+
+
+@pytest.mark.parametrize('started', [False, True])
+def test_internal_relay_thread_start_cancellation_is_owned_and_preserved(relays, monkeypatch, started):
+    original = control._io_threading.Thread.start
+    primary = KeyboardInterrupt('generated cancellation')
+    def start(self):
+        if started: original(self)
+        raise primary
+    monkeypatch.setattr(control._io_threading.Thread, 'start', start)
+    value = budget(); value.phase = 'actors'
+    owner, _ = relay_owner(value, (('127.0.0.1', 1), ('127.0.0.1', 2)))
+    with pytest.raises(KeyboardInterrupt) as caught:
+        with control.internal_loopback_ports(owner, budget=value):
+            pytest.fail('cancelled start yielded')
+    assert caught.value is primary
+    assert not relays[0].sockets and not relays[0].thread.is_alive()
+
+
+def test_internal_relay_deadline_closes_idle_connections_without_new_phase(relays):
+    import socket
+    value = budget(.45); value.phase = 'actors'; end = value.end
+    owner, _ = relay_owner(value, (('127.0.0.1', 1), ('127.0.0.1', 2)))
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        with control.internal_loopback_ports(owner, budget=value) as ports:
+            with socket.create_connection(('127.0.0.1', ports[0]), timeout=1):
+                time.sleep(1)
+    assert caught.value.reason == 'deadline'
+    assert value.end == end and value.phase == 'actors'
+    assert not relays[0].thread.is_alive() and not relays[0].sockets
+
+
+def test_internal_relay_background_failure_cannot_mint_success(relays, monkeypatch):
+    import socket
+    primary = RuntimeError('generated reactor failure')
+    def fail(*args): raise primary
+    monkeypatch.setattr(control._InternalRelay, 'accept', fail)
+    value = budget(); value.phase = 'actors'
+    owner, _ = relay_owner(value, (('127.0.0.1', 1), ('127.0.0.1', 2)))
+    with pytest.raises(RuntimeError) as caught:
+        with control.internal_loopback_ports(owner, budget=value) as ports:
+            with socket.create_connection(('127.0.0.1', ports[0]), timeout=1):
+                relays[0].thread.join(timeout=1)
+    assert caught.value is primary
+    assert not relays[0].thread.is_alive() and not relays[0].sockets
+
+
+def test_internal_relay_unexpected_failure_racing_stop_is_retained(relays, monkeypatch):
+    import socket
+    primary = control.RestoreUnavailable('limit')
+    def fail(self, *args):
+        self.stop.set()
+        raise primary
+    monkeypatch.setattr(control._InternalRelay, 'accept', fail)
+    value = budget(); value.phase = 'actors'
+    owner, _ = relay_owner(value, (('127.0.0.1', 1), ('127.0.0.1', 2)))
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        with control.internal_loopback_ports(owner, budget=value) as ports:
+            with socket.create_connection(('127.0.0.1', ports[0]), timeout=1):
+                relays[0].thread.join(timeout=1)
+    assert caught.value is primary and relays[0].failure is primary
+    assert not relays[0].thread.is_alive() and not relays[0].sockets
+
+
+def test_internal_relay_setup_expiry_closes_sockets_before_thread_exists(relays, monkeypatch):
+    original = control._InternalRelay.setup
+    value = budget(); value.phase = 'actors'
+    owner, _ = relay_owner(value, (('127.0.0.1', 1), ('127.0.0.1', 2)))
+    def setup(self, *args):
+        result = original(self, *args)
+        value.end = time.monotonic() - .01
+        return result
+    monkeypatch.setattr(control._InternalRelay, 'setup', setup)
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        with control.internal_loopback_ports(owner, budget=value): pytest.fail('expired')
+    assert caught.value.reason == 'deadline'
+    assert not relays[0].sockets and relays[0].thread is None
+    assert relays[0].selector.get_map() is None and value.context.owner.uncertain
+
+
+@pytest.mark.parametrize('primary_failure', [False, True])
+def test_internal_relay_unjoined_worker_is_sticky_and_keeps_primary(relays, monkeypatch, primary_failure):
+    threads = []
+    class Thread:
+        ident = None
+        def __init__(self, **kwargs): threads.append(self); self.joined = False
+        def start(self): self.ident = 123
+        def join(self, timeout): self.joined = True; assert 0 <= timeout <= 8
+        def is_alive(self): return True
+    monkeypatch.setattr(control._io_threading, 'Thread', Thread)
+    value = budget(); value.phase = 'actors'
+    owner, _ = relay_owner(value, (('127.0.0.1', 1), ('127.0.0.1', 2)))
+    primary = KeyboardInterrupt('generated caller cancellation')
+    error_type = KeyboardInterrupt if primary_failure else control.RestoreUnavailable
+    with pytest.raises(error_type) as caught:
+        with control.internal_loopback_ports(owner, budget=value):
+            if primary_failure: raise primary
+    if primary_failure: assert caught.value is primary
+    assert threads[0].joined and value.context.owner.uncertain
+    assert not relays[0].sockets and relays[0].selector.get_map() is None
+
+
+def test_internal_relay_endpoint_drift_rejects_after_cleanup(relays):
+    value = budget(); value.phase = 'actors'
+    calls = []
+    def inspect():
+        calls.append(True)
+        return (('127.0.0.1', len(calls)), ('127.0.0.1', 2))
+    owner = SimpleNamespace(budget=value, internal_endpoints=inspect)
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        with control.internal_loopback_ports(owner, budget=value): pass
+    assert caught.value.reason == 'source_binding' and len(calls) == 2
+    assert not relays[0].sockets and not relays[0].thread.is_alive()
+
+
+@pytest.mark.parametrize('cap', ['pairs', 'accepts'])
+def test_internal_relay_caps_include_pending_connections(relays, monkeypatch, cap):
+    import socket
+    limits = dict(control.CONFIG['actorTransport']); limits[cap] = 1
+    monkeypatch.setitem(control.CONFIG, 'actorTransport', limits)
+    with socket.socket() as upstream:
+        upstream.bind(('127.0.0.1', 0)); upstream.listen(4)
+        value = budget(); value.phase = 'actors'
+        owner, _ = relay_owner(value, (upstream.getsockname(), upstream.getsockname()))
+        with pytest.raises(control.RestoreUnavailable) as caught:
+            with control.internal_loopback_ports(owner, budget=value) as ports:
+                with socket.create_connection(('127.0.0.1', ports[0]), timeout=1) as first:
+                    first.sendall(b'kept open')
+                    with socket.create_connection(('127.0.0.1', ports[1]), timeout=1):
+                        relays[0].thread.join(timeout=1)
+        assert caught.value.reason == 'limit'
+    assert not relays[0].sockets and not relays[0].thread.is_alive()
+
+
+def test_internal_relay_close_fault_is_sticky_even_if_retry_closes(relays, monkeypatch):
+    original = control._InternalRelay.close
+    def close(self, sock):
+        self.close_failed = True  # Model a reported close fault followed by closure.
+        original(self, sock)
+    monkeypatch.setattr(control._InternalRelay, 'close', close)
+    value = budget(); value.phase = 'actors'
+    owner, _ = relay_owner(value, (('127.0.0.1', 1), ('127.0.0.1', 2)))
+    with pytest.raises(control.RestoreUnavailable):
+        with control.internal_loopback_ports(owner, budget=value): pass
+    assert value.context.owner.uncertain
+    assert not relays[0].sockets and not relays[0].thread.is_alive()
+
+
+def test_internal_relay_partial_socket_acquisition_preserves_cancellation(relays, monkeypatch):
+    original = control._InternalRelay.track
+    primary = KeyboardInterrupt('generated acquisition cancellation')
+    def track(self, sock):
+        result = original(self, sock)
+        if len(self.sockets) == 2: raise primary
+        return result
+    monkeypatch.setattr(control._InternalRelay, 'track', track)
+    value = budget(); value.phase = 'actors'
+    owner, _ = relay_owner(value, (('127.0.0.1', 1), ('127.0.0.1', 2)))
+    with pytest.raises(KeyboardInterrupt) as caught:
+        with control.internal_loopback_ports(owner, budget=value): pytest.fail('cancelled')
+    assert caught.value is primary
+    assert not relays[0].sockets and relays[0].thread is None
+
+
+def test_internal_relay_allows_bounded_health_retry_after_connection_refused(relays, monkeypatch):
+    import errno
+    import socket
+    with socket.socket() as upstream:
+        upstream.bind(('127.0.0.1', 0)); upstream.listen(1); upstream.settimeout(1)
+        refusals = []
+        original = socket.socket
+        class RefuseOnce(original):
+            def connect_ex(self, address):
+                if address == upstream.getsockname() and not refusals:
+                    refusals.append(True)
+                    return errno.ECONNREFUSED
+                return super().connect_ex(address)
+        monkeypatch.setattr(socket, 'socket', RefuseOnce)
+        value = budget(); value.phase = 'actors'
+        owner, _ = relay_owner(value, (upstream.getsockname(), upstream.getsockname()))
+        with control.internal_loopback_ports(owner, budget=value) as ports:
+            # Inject only the first connect result; the retry uses real TCP bytes.
+            with socket.create_connection(('127.0.0.1', ports[0]), timeout=1) as client:
+                assert client.recv(1) == b''
+            with socket.create_connection(('127.0.0.1', ports[0]), timeout=1) as client:
+                client.sendall(b'ready')
+                server, _ = upstream.accept()
+                with server:
+                    server.settimeout(1)
+                    assert server.recv(5) == b'ready'
+                    server.sendall(b'ok')
+                assert client.recv(2) == b'ok'
+        assert relays[0].failure is None and refusals == [True]
+    assert not relays[0].sockets and not relays[0].thread.is_alive()
+
+
+@pytest.mark.parametrize('stage', ['connect', 'so-error', 'recv', 'send'])
+@pytest.mark.parametrize('code', ['EIO', 'EBADF', 'ECONNRESET'])
+def test_internal_relay_distinguishes_expected_disconnect_from_io_failure(stage, code, monkeypatch):
+    import errno
+    primary = OSError(getattr(errno, code), 'generated peer fault')
+    relay = control._InternalRelay((('172.28.0.2', 5432), ('172.28.0.3', 9999)), time.monotonic()+2)
+    class Socket:
+        def setblocking(self, value): pass
+        def close(self): pass
+        def connect_ex(self, address): return primary.errno
+        def getsockopt(self, *args): return primary.errno
+        def recv(self, size): raise primary
+        def send(self, data): raise primary
+        def shutdown(self, how): pass
+    left, right = Socket(), Socket()
+    relay.track(left); relay.track(right)
+    calls = []
+    def select(timeout):
+        if calls:
+            relay.stop.set(); return []
+        calls.append(True)
+        return [(SimpleNamespace(fileobj=left), selectors.EVENT_WRITE if stage=='send' else selectors.EVENT_READ)]
+    relay.selector = SimpleNamespace(unregister=lambda *a:None, register=lambda *a:None, select=select)
+    try:
+        if stage == 'connect':
+            listener = SimpleNamespace(accept=lambda:(left, ('127.0.0.1', 1)))
+            # A hashable generated listener avoids any actual network operation.
+            class Listener:
+                def accept(self): return left, ('127.0.0.1', 1)
+            listener = Listener(); relay.listeners[listener] = relay.endpoints[0]
+            monkeypatch.setattr(relay, 'new_socket', lambda:right)
+            action = lambda:relay.accept(listener)
+        else:
+            relay.peers = {
+                left: {'peer':right,'out':bytearray(b'x' if stage=='send' else b''),
+                       'read':True,'write':True,'connecting':stage=='so-error'},
+                right: {'peer':left,'out':bytearray(),'read':True,'write':True,'connecting':False}}
+            action = lambda:relay.exchange(left, selectors.EVENT_WRITE)
+        if stage in ('connect', 'so-error'):
+            if code == 'ECONNRESET': action()
+            else:
+                with pytest.raises(OSError) as caught: action()
+                assert caught.value.errno == primary.errno
+        else:
+            relay.run()
+            assert relay.failure is (None if code=='ECONNRESET' else primary)
+    finally:
+        relay.close_all()
+    assert not relay.sockets
+
+
+@pytest.mark.parametrize('stage', ['setup', 'start-before', 'start-after'])
+def test_internal_relay_live_deadline_interrupts_delayed_acquisition(relays, monkeypatch, stage):
+    value = budget(.5); value.phase = 'actors'; end = value.end
+    owner, _ = relay_owner(value, (('127.0.0.1', 1), ('127.0.0.1', 2)))
+    if stage == 'setup':
+        original = control._InternalRelay.setup
+        def setup(self, *args):
+            result = original(self, *args); time.sleep(1); return result
+        monkeypatch.setattr(control._InternalRelay, 'setup', setup)
+    else:
+        original = control._io_threading.Thread.start
+        def start(self):
+            if stage == 'start-after': original(self)
+            time.sleep(1)
+            if stage == 'start-before': original(self)
+        monkeypatch.setattr(control._io_threading.Thread, 'start', start)
+    began = time.monotonic()
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        with control.internal_loopback_ports(owner, budget=value): pytest.fail('delayed startup yielded')
+    assert caught.value.reason == 'deadline' and time.monotonic()-began < .8
+    assert value.end == end and value.phase == 'actors'
+    assert not relays[0].sockets
+    assert relays[0].thread is None or not relays[0].thread.is_alive()
+    if stage == 'start-before':
+        assert value.context.owner.uncertain and value.context.owner.primary is caught.value
+
+
+@pytest.mark.parametrize('earlier', [False, True])
+@pytest.mark.parametrize('close_error', [KeyboardInterrupt('generated close interrupt'),
+    SystemExit(17), control.RestoreUnavailable('deadline')])
+def test_internal_relay_retains_first_close_exception_and_prior_primary(relays, monkeypatch, earlier, close_error):
+    import socket
+    import threading
+    original = socket.socket
+    fired = []; lock = threading.Lock()
+    class CloseFault(original):
+        def close(self):
+            with lock:
+                first = not fired
+                if first: fired.append(True)
+            super().close()
+            if first: raise close_error
+    monkeypatch.setattr(socket, 'socket', CloseFault)
+    value = budget(); value.phase = 'actors'
+    owner, _ = relay_owner(value, (('127.0.0.1', 1), ('127.0.0.1', 2)))
+    body_error = ValueError('generated earlier caller failure')
+    expected = body_error if earlier else close_error
+    with pytest.raises(type(expected)) as caught:
+        with control.internal_loopback_ports(owner, budget=value):
+            if earlier: raise body_error
+    assert caught.value is expected and value.context.owner.primary is expected
+    assert value.context.owner.uncertain and relays[0].close_error is close_error
+    assert not relays[0].sockets and not relays[0].thread.is_alive()
+
+
+@pytest.mark.parametrize('inspection', ['before', 'after'])
+def test_internal_relay_inspection_record_waits_share_live_actor_deadline(relays, inspection):
+    value = budget(.5); value.phase = 'actors'; end = value.end
+    calls = []
+    def inspect():
+        calls.append(True)
+        if len(calls) == (1 if inspection == 'before' else 2):
+            time.sleep(1)  # Stand in for a blocked ownership-record fsync.
+        return (('127.0.0.1', 1), ('127.0.0.1', 2))
+    owner = SimpleNamespace(budget=value, internal_endpoints=inspect)
+    started = time.monotonic()
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        with control.internal_loopback_ports(owner, budget=value): pass
+    assert caught.value.reason == 'deadline' and time.monotonic()-started < .8
+    assert value.end == end and value.phase == 'actors'
+    if inspection == 'before':
+        assert len(calls) == 1 and relays == []
+    else:
+        assert len(calls) == 2 and not relays[0].sockets and not relays[0].thread.is_alive()
 
 
 @pytest.mark.parametrize('script', ['rehearse-rf1086-owned-restore.py', 'rehearse-rf1086-company-test-retention-restore.py'])

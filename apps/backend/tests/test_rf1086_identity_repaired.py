@@ -46,6 +46,7 @@ def repaired_model(tmp_path,monkeypatch):
         bind_source_snapshot=lambda source,*a,**kw:source)
     monkeypatch.setitem(sys.modules,'rf1086_restore_metadata',metadata)
     monkeypatch.setattr(identity,'owned_identity_source',lambda *a:(DB,AUTH,ENV))
+    monkeypatch.setattr(control,'require_local_docker',control.require_direct_loopback)
     def forbidden(*a,**kw):raise AssertionError('legacy diagnostic used during repaired restore')
     for name in ('CausalCapture','publish_actual_replay','emit_catalog_difference','emit_catalog_semantics'):
         monkeypatch.setattr(identity,name,forbidden)
@@ -182,8 +183,13 @@ def test_constructed_context_yields_same_budget_then_cleans_and_checks_source(re
     budget,state,calls,owners,_=repaired_model;state['recoverPass']=True
     (tmp_path/'supabase').mkdir()
     (tmp_path/'supabase/config.toml').write_text('project_id="fixture"\n')
-    monkeypatch.setattr(identity,'loopback_port',lambda *args:19001)
-    monkeypatch.setattr(identity,'forwarded_ports',lambda *args:nullcontext())
+    relays=[]
+    def relay(owner,ports,*,budget):
+        relays.append((owner,ports,budget))
+        return nullcontext((19001,19003))
+    monkeypatch.setattr(control,'internal_loopback_ports',relay)
+    monkeypatch.setenv('TALLI_RF_IDENTITY_DB_PORT','19001')
+    monkeypatch.setenv('TALLI_RF_IDENTITY_AUTH_PORT','19003')
     monkeypatch.setattr(identity,'auth_gateway',lambda *args,**kw:nullcontext('http://127.0.0.1:19002'))
     monkeypatch.setattr(identity,'verify_target_session',lambda *args,**kw:None)
     monkeypatch.setattr(identity,'verify_target_auth',lambda *args,**kw:None)
@@ -195,6 +201,8 @@ def test_constructed_context_yields_same_budget_then_cleans_and_checks_source(re
         assert recovered.proof['independentClusterRestored']
         assert (tmp_path/'auth.env').exists()
     assert budget.phase=='source_post' and owners[0].cleaned
+    assert relays==[(owners[0],(19001,19003),budget)]
+    assert all('-p' not in args for args,_ in calls if args[:2]==['docker','create'])
     assert not (tmp_path/'auth.env').exists()
     receipt=state['receipt']
     assert receipt['before']==receipt['recovered']
@@ -207,6 +215,30 @@ def test_constructed_context_yields_same_budget_then_cleans_and_checks_source(re
     assert captured.err.splitlines()==[
         'owned_identity_restore_profile repair_profile_not_legacy_replay',
         'owned_identity_restore_construction {"schema":"fixture-safe-receipt"}']
+
+
+@pytest.mark.parametrize('cleanup_fault', [False, True])
+@pytest.mark.parametrize('primary', [ValueError('generated relay failure'), KeyboardInterrupt('generated cancellation')])
+def test_relay_failure_preserves_primary_through_identity_cleanup_and_source_post(repaired_model,tmp_path,monkeypatch,cleanup_fault,primary):
+    budget,state,calls,owners,_=repaired_model
+    state['recoverPass']=True;state['cleanupFault']=cleanup_fault
+    original_owner=control.ResourceOwner
+    class Owner(original_owner):
+        def __init__(self,*args):
+            super().__init__(*args);self.budget=budget
+        def internal_endpoints(self):return (('127.0.0.1',1),('127.0.0.1',2))
+    monkeypatch.setattr(control,'ResourceOwner',Owner)
+    def fail_setup(*args):raise primary
+    monkeypatch.setattr(control._InternalRelay,'setup',fail_setup)
+    with pytest.raises(type(primary)) as caught:
+        with identity.restored_identity(SOURCE_URL,tmp_path,None,budget=budget):
+            pytest.fail('failed relay admitted identity')
+    assert caught.value is primary and owners[0].cleaned
+    assert state['postchecks']==3 and state['metadata']==3
+    assert state['receipt']['source_postcheck']
+    assert state['receipt']['cleanup_complete'] is (not cleanup_fault)
+    assert not state['receipt']['business_complete']
+    assert not (tmp_path/'auth.env').exists()
 
 
 @pytest.mark.parametrize('step',[

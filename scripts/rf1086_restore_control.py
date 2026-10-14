@@ -42,7 +42,9 @@ CONFIG = {'schema': SCHEMA, 'archiveBytes': MAX_ARCHIVE, 'scriptBytes': MAX_SCRI
           'metadataBytes': MAX_METADATA, 'rolesBytes': MAX_ROLES, 'cutKinds': ['Is','In','acl'],
           'phaseEndpoints': PHASES, 'phaseMaximumSeconds': PHASE_MAX,
           'targetHeadroomSeconds': 70, 'writerWorkSeconds': 43, 'writerUnwindSeconds': 2,
-          'sourceConsistency': 'checked-M0-M1-final-not-atomic', 'legacyReplay': 'inapplicable'}
+          'sourceConsistency': 'checked-M0-M1-final-not-atomic', 'legacyReplay': 'inapplicable',
+          'actorTransport': {'version': 'owned-internal-loopback-v1', 'pairs': 16,
+                             'accepts': 128, 'queueBytes': 65536}}
 OFFLINE_RESTORE = ('test -p /proc/self/fd/0 && exec pg_restore --verbose '
                    '--clean --if-exists --create --file=- 2>/dev/null')
 TOOL_COMMAND = '''set -eu
@@ -267,6 +269,67 @@ class ResourceOwner:
         args = ['docker', resource, 'rm'] + (['-f'] if resource=='container' else [])
         self.budget.command(args+[self.identities[kind]],cap=4096)
         require(self.inspect(kind) is None,'cleanup_uncertain')
+
+    def internal_endpoints(self):
+        """Inspect reciprocal membership, never infer a destination from a name."""
+        from ipaddress import IPv4Address, IPv4Network
+        try:
+            network = self.inspect('network')
+            require(network is not None and network['Driver'] == 'bridge'
+                    and network['Scope'] == 'local' and network['Internal'] is True
+                    and network['EnableIPv6'] is False, 'source_binding')
+            configs = network['IPAM']['Config']
+            require(type(configs) is list and len(configs) == 1, 'source_binding')
+            require(type(configs[0]['Subnet']) is str and type(configs[0]['Gateway']) is str,
+                    'source_binding')
+            subnet = IPv4Network(configs[0]['Subnet'])
+            gateway = IPv4Address(configs[0]['Gateway'])
+            require(str(subnet) == configs[0]['Subnet'] and str(gateway) == configs[0]['Gateway'],
+                    'source_binding')
+            private = tuple(IPv4Network(cidr) for cidr in ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'))
+            require(any(subnet.subnet_of(cidr) for cidr in private)
+                    and subnet.prefixlen <= 30 and gateway in subnet, 'source_binding')
+            members = network['Containers']
+            require(set(members) == {self.identities['database'], self.identities['auth']}, 'source_binding')
+            result = []
+            for kind, port in (('database', 5432), ('auth', 9999)):
+                value = self.inspect(kind)
+                require(value is not None and value['State']['Running'] is True
+                        and value['State'].get('Paused') is False
+                        and value['State'].get('Restarting') is False
+                        and value['State'].get('Dead') is False
+                        and value['HostConfig']['NetworkMode'] == self.names['network']
+                        and value['HostConfig'].get('PublishAllPorts') is False
+                        and (value['HostConfig']['PortBindings'] is None or
+                             (type(value['HostConfig']['PortBindings']) is dict
+                              and not value['HostConfig']['PortBindings'])), 'source_binding')
+                settings = value['NetworkSettings']
+                require(set(settings['Networks']) == {self.names['network']}
+                        and type(settings['Ports']) is dict
+                        and all(item is None or item == [] for item in settings['Ports'].values()), 'source_binding')
+                endpoint = settings['Networks'][self.names['network']]
+                member = members[self.identities[kind]]
+                require(type(endpoint['IPAddress']) is str, 'source_binding')
+                address = IPv4Address(endpoint['IPAddress'])
+                require(str(address) == endpoint['IPAddress']
+                        and endpoint['NetworkID'] == self.identities['network']
+                        and re.fullmatch('[a-f0-9]{64}', endpoint['EndpointID']) is not None
+                        and type(endpoint['IPPrefixLen']) is int
+                        and endpoint['IPPrefixLen'] == subnet.prefixlen
+                        and not endpoint.get('GlobalIPv6Address')
+                        and address in subnet
+                        and address not in (gateway, subnet.network_address, subnet.broadcast_address)
+                        and member['Name'] == self.names[kind]
+                        and member['EndpointID'] == endpoint['EndpointID']
+                        and member['IPv4Address'] == str(address) + '/' + str(subnet.prefixlen)
+                        and not member.get('IPv6Address'), 'source_binding')
+                result.append((str(address), port))
+            require(result[0][0] != result[1][0], 'source_binding')
+            return tuple(result)
+        except RestoreUnavailable:
+            raise
+        except (KeyError, TypeError, ValueError, AttributeError):
+            raise RestoreUnavailable('source_binding') from None
 
     def cleanup(self):
         errors=[]
@@ -1760,3 +1823,301 @@ def require_direct_loopback(budget=None):
     if current_budget(budget) is not None:
         require(not os.environ.get('TALLI_RF_RESTORE_SSH_CONFIG')
                 and not os.environ.get('TALLI_RF_RESTORE_SSH_HOST'), 'source_binding')
+
+
+def require_local_docker(budget):
+    """The repaired bridge transport requires this process on the daemon host."""
+    require_direct_loopback(budget)
+    require(sys.platform == 'linux' and not any(os.environ.get(key) for key in
+            ('DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH')),
+            'source_binding')
+    end = min(budget.end, time.monotonic() + 5)
+    require(budget.command(['docker', 'context', 'show'], end=end, cap=4096).strip() == b'default',
+            'source_binding')
+    raw = budget.command(['docker', 'context', 'inspect', 'default'], end=end, cap=4096)
+    try:
+        rows = json.loads(raw)
+        require(type(rows) is list and len(rows) == 1 and rows[0]['Name'] == 'default'
+                and rows[0]['Endpoints']['docker']['Host'] == 'unix:///var/run/docker.sock',
+                'source_binding')
+    except (KeyError, TypeError, ValueError):
+        raise RestoreUnavailable('source_binding') from None
+
+
+class _RelayStopped(Exception):
+    """An acquisition observed this relay's explicit shutdown request."""
+
+
+class _InternalRelay:
+    """Two fixed destinations, one reactor, bounded queues and no payload logging."""
+    def __init__(self, endpoints, end):
+        import socket
+        self.socket = socket
+        self.endpoints, self.end = endpoints, end
+        self.stop = _io_threading.Event()
+        self.lock = _io_threading.Lock()
+        self.sockets, self.listeners, self.peers = set(), {}, {}
+        self.selector = self.thread = None
+        self.accepted = 0
+        self.failure = None
+        self.close_failed = False
+        self.close_error = None
+        self.acquiring = self.start_pending = False
+
+    def track(self, sock):
+        with self.lock:
+            self.sockets.add(sock)
+            self.acquiring = False
+        # The reactor can finish an acquisition while the caller requests stop.
+        if self.stop.is_set():
+            self.close(sock)
+            raise _RelayStopped()
+        return sock
+
+    def close(self, sock):
+        try:
+            sock.close()
+        except BaseException as error:
+            with self.lock:
+                self.close_failed = True
+                if self.close_error is None: self.close_error = error
+        else:
+            with self.lock:
+                self.sockets.discard(sock)
+
+    def close_all(self):
+        self.stop.set()
+        with self.lock:
+            sockets = tuple(self.sockets)
+        for sock in sockets:
+            self.close(sock)
+
+    def setup(self, ports):
+        import selectors
+        self.acquiring = True
+        self.selector = selectors.DefaultSelector()
+        self.acquiring = False
+        bound = []
+        for endpoint, port in zip(self.endpoints, ports, strict=True):
+            listener = self.new_socket()
+            listener.setblocking(False)
+            listener.bind(('127.0.0.1', port))
+            listener.listen(16)
+            address = listener.getsockname()
+            require(address[0] == '127.0.0.1' and 1024 <= address[1] <= 65535, 'source_binding')
+            self.listeners[listener] = endpoint
+            self.selector.register(listener, selectors.EVENT_READ)
+            bound.append(address[1])
+        require(len(set(bound)) == 2, 'source_binding')
+        return tuple(bound)
+
+    def new_socket(self):
+        self.acquiring = True
+        return self.track(self.socket.socket(self.socket.AF_INET, self.socket.SOCK_STREAM))
+
+    @staticmethod
+    def expected_disconnect(status):
+        import errno
+        return status in (errno.ECONNREFUSED, errno.ECONNRESET, errno.ECONNABORTED,
+                          errno.EPIPE, errno.ETIMEDOUT, errno.ENOTCONN)
+
+    def discard_pair(self, sock):
+        state = self.peers.get(sock)
+        if state is None:
+            return
+        for item in (sock, state['peer']):
+            self.peers.pop(item, None)
+            try:
+                self.selector.unregister(item)
+            except KeyError:
+                pass
+            self.close(item)
+
+    def accept(self, listener):
+        import errno
+        self.acquiring = True
+        try:
+            client, _ = listener.accept()
+        except BlockingIOError:
+            self.acquiring = False
+            raise
+        self.track(client)
+        self.accepted += 1
+        limits = CONFIG['actorTransport']
+        require(self.accepted <= limits['accepts'] and len(self.peers) < 2 * limits['pairs'], 'limit')
+        client.setblocking(False)
+        upstream = self.new_socket()
+        upstream.setblocking(False)
+        status = upstream.connect_ex(self.listeners[listener])
+        if status not in (0, errno.EINPROGRESS, errno.EWOULDBLOCK, errno.EALREADY):
+            if not self.expected_disconnect(status):
+                raise OSError(status, 'Owned relay connection failed')
+            self.close(client); self.close(upstream)
+            return  # Auth may still be starting; its bounded health check retries.
+        self.peers[client] = {'peer': upstream, 'out': bytearray(), 'read': True, 'write': True, 'connecting': False}
+        self.peers[upstream] = {'peer': client, 'out': bytearray(), 'read': True, 'write': True, 'connecting': status != 0}
+        self.refresh(client)
+
+    def refresh(self, sock):
+        import selectors
+        state = self.peers.get(sock)
+        if state is None:
+            return
+        other = self.peers[state['peer']]
+        if not state['read'] and not other['read'] and not state['out'] and not other['out']:
+            self.discard_pair(sock)
+            return
+        for item in (sock, state['peer']):
+            own = self.peers[item]
+            peer = self.peers[own['peer']]
+            # Flush bytes already received before propagating the peer's EOF.
+            if not peer['read'] and not own['out'] and own['write'] and not own['connecting']:
+                item.shutdown(self.socket.SHUT_WR)
+                own['write'] = False
+            events = 0
+            if own['read'] and not own['connecting'] and len(peer['out']) < CONFIG['actorTransport']['queueBytes']:
+                events |= selectors.EVENT_READ
+            if own['connecting'] or own['out']:
+                events |= selectors.EVENT_WRITE
+            try:
+                self.selector.unregister(item)
+            except KeyError:
+                pass
+            if events:
+                self.selector.register(item, events)
+
+    def exchange(self, sock, events):
+        import selectors
+        state = self.peers.get(sock)
+        if state is None:
+            return
+        if state['connecting']:
+            status = sock.getsockopt(self.socket.SOL_SOCKET, self.socket.SO_ERROR)
+            if status:
+                if not self.expected_disconnect(status):
+                    raise OSError(status, 'Owned relay connection failed')
+                self.discard_pair(sock)
+                return
+            state['connecting'] = False
+        if events & selectors.EVENT_WRITE and state['out']:
+            try:
+                sent = sock.send(state['out'])
+                if sent == 0:
+                    self.discard_pair(sock)
+                    return
+                del state['out'][:sent]
+            except BlockingIOError:
+                pass
+        peer = self.peers[state['peer']]
+        room = CONFIG['actorTransport']['queueBytes'] - len(peer['out'])
+        if events & selectors.EVENT_READ and state['read'] and room:
+            try:
+                data = sock.recv(room)
+                if data:
+                    peer['out'].extend(data)
+                else:
+                    state['read'] = False
+            except BlockingIOError:
+                pass
+        self.refresh(sock)
+
+    def run(self):
+        try:
+            while not self.stop.is_set():
+                left = self.end - time.monotonic()
+                require(left > 0, 'deadline')
+                for key, events in self.selector.select(min(.05, left)):
+                    if self.stop.is_set():
+                        break
+                    sock = key.fileobj
+                    try:
+                        if sock in self.listeners:
+                            self.accept(sock)
+                        else:
+                            self.exchange(sock, events)
+                    except BlockingIOError:
+                        pass
+                    except OSError as error:
+                        if sock in self.listeners or not self.expected_disconnect(error.errno):
+                            raise
+                        self.discard_pair(sock)
+        except _RelayStopped as error:
+            if not self.stop.is_set(): self.failure = error
+        except BaseException as error:
+            import errno
+            expected_close = (self.stop.is_set() and isinstance(error, OSError)
+                              and error.errno in (errno.EBADF, errno.ENOTSOCK))
+            if not expected_close: self.failure = error
+        finally:
+            self.close_all()
+            for state in self.peers.values():
+                state['out'].clear()
+            self.peers.clear()
+
+
+@contextmanager
+def internal_loopback_ports(owner, ports=(0, 0), *, budget):
+    """Expose only this owner's two isolated endpoints within the actors clock."""
+    require(budget.phase == 'actors' and owner.budget is budget
+            and type(ports) is tuple and len(ports) == 2
+            and all(type(p) is int and (p == 0 or 1024 <= p <= 65535) for p in ports), 'source_binding')
+    end = budget.end
+    budget.remaining(reserve=.25, end=end)
+    with io_deadline(budget, end=end - .25):
+        endpoints = owner.internal_endpoints()
+    relay = _InternalRelay(endpoints, end - .25)
+    primary = None
+    try:
+        with io_deadline(budget, end=end - .25):
+            with budget.context.owner.deferred():
+                bound = relay.setup(ports)
+                budget.remaining(reserve=.25, end=end)
+                relay.thread = _io_threading.Thread(target=relay.run, name='rf-identity-relay', daemon=True)
+                relay.start_pending = True
+                relay.thread.start()
+                relay.start_pending = False
+            yield bound
+            if relay.failure is not None:
+                raise relay.failure
+            if relay.close_error is not None:
+                raise relay.close_error
+    except BaseException as error:
+        primary = error
+        raise
+    finally:
+        with unwind_scope(budget):
+            errors = []
+            try:
+                with io_deadline(budget, end=end):
+                    relay.close_all()
+                    if relay.thread is not None and relay.thread.ident is not None:
+                        relay.thread.join(timeout=max(0, min(end, budget.end) - time.monotonic()))
+                    require(relay.thread is None or not relay.thread.is_alive(), 'cleanup_uncertain')
+                    require(not relay.acquiring and (not relay.start_pending or
+                            (relay.thread is not None and relay.thread.ident is not None)), 'cleanup_uncertain')
+                    if relay.close_error is not None: raise relay.close_error
+                    require(not relay.close_failed and not relay.sockets, 'cleanup_uncertain')
+            except BaseException as error:
+                errors.append(error)
+            # A join/deadline failure must not skip the remaining owned handles.
+            # These are local nonblocking closes, also attempted after expiry.
+            try:
+                relay.close_all()
+            except BaseException as error:
+                errors.append(error)
+            try:
+                if relay.selector is not None:
+                    relay.selector.close()
+            except BaseException as error:
+                errors.append(error)
+            if relay.close_error is not None:
+                errors.insert(0, relay.close_error)
+            for error in errors:
+                budget.context.owner._uncertain('relay_close', error, primary)
+            if errors and primary is None:
+                raise errors[0]
+    if relay.failure is not None:
+        raise relay.failure
+    with io_deadline(budget, end=end):
+        require(owner.internal_endpoints() == endpoints, 'source_binding')
+    budget.remaining(end=end)

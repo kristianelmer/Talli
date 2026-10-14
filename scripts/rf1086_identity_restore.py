@@ -417,7 +417,7 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
     # The old publisher describes a different bootstrap/restore program. It is
     # inapplicable even when TALLI_RF_REPLAY_DIR was supplied by the enclosing job.
     with construction.io_deadline(budget):
-        construction.require_direct_loopback(budget)
+        construction.require_local_docker(budget)
         print('owned_identity_restore_profile repair_profile_not_legacy_replay', file=sys.stderr, flush=True)
         db, auth, source_env = owned_identity_source(workdir, source_url, boundary)
     source = db['Id']; before = source_metadata = owner = configuration = None
@@ -493,7 +493,7 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
         target=owner.acquire('database',['docker','create','--pull=never','--name',names['database'],
             '--label',label,'--network',names['network'],'--user','postgres','--entrypoint','sh',
             '-e','RECOVERY_BOOTSTRAP='+bootstrap,'-e','RECOVERY_PRELOAD='+preload,
-            '-v',names['volume']+':/tmp/rf-recovery','-p',published_port('DB',5432),db['Image'],'-c',INIT],end=setup_end)
+            '-v',names['volume']+':/tmp/rf-recovery',db['Image'],'-c',INIT],end=setup_end)
         budget.command(['docker','start',target],end=setup_end,cap=4096)
         while True:
             try:
@@ -536,10 +536,11 @@ def _restored_identity_repaired(source_url, workdir, boundary, budget):
         configuration.write_text(''.join(key+'='+value+'\n' for key,value in env.items()))
         target_auth=owner.acquire('auth',['docker','create','--pull=never','--name',names['auth'],
             '--label',label,'--network',names['network'],'--env-file',str(configuration),
-            '-p',published_port('AUTH',9999),auth['Image']],end=budget.end)
+            auth['Image']],end=budget.end)
         budget.command(['docker','start',target_auth],cap=4096)
-        port=loopback_port(target_auth,9999,boundary);db_port=loopback_port(target,5432,boundary)
-        with forwarded_ports((db_port,port)):
+        reserved=tuple(int(published_port(service,target_port).split(':')[1] or '0')
+                       for service,target_port in (('DB',5432),('AUTH',9999)))
+        with construction.internal_loopback_ports(owner,reserved,budget=budget) as (db_port,port):
             with construction.io_deadline(budget), httpx.Client(trust_env=False) as client:
                 while True:
                     try:

@@ -1262,3 +1262,318 @@ def test_raw_metadata_context_allows_null_optional_commitments():
     value['ledger']=control.ledger.unavailable('internal','metadata')
     assert all(v is None for v in value['inputs'].values())
     control.validate_pre_target_diagnostic(value)
+
+
+# SPEC-authored admission checks: all Docker output is generated; no socket,
+# daemon or child is acquired. Relay mechanics are tested in the deadline file.
+_ADMISSION_OVERRIDES = ('DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_TLS_VERIFY',
+    'DOCKER_CERT_PATH', 'TALLI_RF_RESTORE_SSH_CONFIG', 'TALLI_RF_RESTORE_SSH_HOST')
+
+
+@pytest.fixture
+def admission_io(monkeypatch):
+    import socket
+    def forbidden(*args, **kwargs):
+        raise AssertionError('admission tests must not acquire sockets or children')
+    monkeypatch.setattr(control.subprocess, 'Popen', forbidden)
+    monkeypatch.setattr(socket, 'socket', forbidden)
+    monkeypatch.setattr(socket, 'create_connection', forbidden)
+    monkeypatch.setattr(control.sys, 'platform', 'linux')
+    for key in _ADMISSION_OVERRIDES:
+        monkeypatch.delenv(key, raising=False)
+    clock = [1000.0]
+    monkeypatch.setattr(control.time, 'monotonic', lambda: clock[0])
+    budget = control.RecoveryBudget(clock[0])
+    return budget, clock
+
+
+@pytest.fixture
+def local_docker_model(admission_io, monkeypatch):
+    budget, clock = admission_io
+    state = {'show': b'default\n', 'inspect': json.dumps([{'Name': 'default',
+        'Endpoints': {'docker': {'Host': 'unix:///var/run/docker.sock'}}}]).encode(),
+        'calls': [], 'fault': None, 'advance': 0.0}
+    def command(args, *, end, cap):
+        budget.remaining(end=end)
+        state['calls'].append((args, end, cap))
+        if state['fault'] is not None:
+            raise state['fault']
+        if args == ['docker', 'context', 'show']:
+            clock[0] += state['advance']
+            budget.remaining(end=end)
+            return state['show']
+        assert args == ['docker', 'context', 'inspect', 'default']
+        return state['inspect']
+    monkeypatch.setattr(budget, 'command', command)
+    return budget, clock, state
+
+
+@pytest.mark.parametrize('remaining', [115, 3])
+def test_local_docker_admission_shares_one_clipped_five_second_end(local_docker_model, remaining):
+    budget, clock, state = local_docker_model
+    budget.end = clock[0] + remaining
+    state['advance'] = 1.0
+    original_end = budget.end
+    control.require_local_docker(budget)
+    assert [args for args, _, _ in state['calls']] == [
+        ['docker', 'context', 'show'], ['docker', 'context', 'inspect', 'default']]
+    assert [end for _, end, _ in state['calls']] == [min(1005.0, original_end)] * 2
+    assert all(cap == 4096 for _, _, cap in state['calls'])
+    assert budget.end == original_end and budget.phase == 'construction'
+
+
+@pytest.mark.parametrize('fault', ['darwin', 'win32', *_ADMISSION_OVERRIDES])
+def test_local_docker_admission_refuses_host_or_forwarding_overrides_before_commands(local_docker_model, monkeypatch, fault):
+    budget, _, state = local_docker_model
+    if fault in ('darwin', 'win32'):
+        monkeypatch.setattr(control.sys, 'platform', fault)
+    else:
+        monkeypatch.setenv(fault, 'private-override')
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        control.require_local_docker(budget)
+    assert caught.value.reason == 'source_binding' and not state['calls']
+    assert 'private-override' not in str(caught.value)
+
+
+@pytest.mark.parametrize('shown', [b'remote\n', b'default\nremote\n', b''])
+def test_local_docker_admission_never_uses_inspected_default_for_another_effective_context(local_docker_model, shown):
+    budget, _, state = local_docker_model
+    state['show'] = shown
+    with pytest.raises(control.RestoreUnavailable):
+        control.require_local_docker(budget)
+    assert len(state['calls']) == 1
+
+
+@pytest.mark.parametrize('raw', [b'not-json', b'\xff', b'null', b'{}', b'[]', b'[{},{}]',
+    b'[{"Name":"foreign","Endpoints":{"docker":{"Host":"unix:///var/run/docker.sock"}}}]',
+    b'[{"Name":"default","Endpoints":null}]',
+    b'[{"Name":"default","Endpoints":{"docker":{"Host":"tcp://127.0.0.1:2375"}}}]',
+    b'[{"Name":"default","Endpoints":{"docker":{"Host":"ssh://host"}}}]',
+    b'[{"Name":"default","Endpoints":{"docker":{"Host":"unix:///tmp/other.sock"}}}]'])
+def test_local_docker_admission_requires_one_exact_local_default_endpoint(local_docker_model, raw):
+    budget, _, state = local_docker_model
+    state['inspect'] = raw
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        control.require_local_docker(budget)
+    assert caught.value.reason == 'source_binding' and len(state['calls']) == 2
+
+
+@pytest.mark.parametrize('primary', [KeyboardInterrupt('owned cancel'), SystemExit(23),
+    control.RestoreUnavailable('deadline')])
+def test_local_docker_admission_preserves_command_failure_identity(local_docker_model, primary):
+    budget, _, state = local_docker_model
+    state['fault'] = primary
+    with pytest.raises(type(primary)) as caught:
+        control.require_local_docker(budget)
+    assert caught.value is primary and len(state['calls']) == 1
+
+
+def test_local_docker_admission_does_not_restart_expired_shared_subdeadline(local_docker_model):
+    budget, _, state = local_docker_model
+    state['advance'] = 5.001
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        control.require_local_docker(budget)
+    assert caught.value.reason == 'deadline' and len(state['calls']) == 1
+
+
+@pytest.fixture
+def internal_endpoint_model(admission_io, monkeypatch):
+    budget, _ = admission_io
+    owner = object.__new__(control.ResourceOwner)
+    owner.nonce, owner.source, owner.budget = 'a'*32, 'e'*64, budget
+    owner.child_owner = budget.context.owner
+    owner.names = {'network': 'rf193_identity_net_' + owner.nonce,
+        'database': 'rf193_identity_db_' + owner.nonce, 'auth': 'rf193_identity_auth_' + owner.nonce}
+    owner.identities = {'network': 'b'*64, 'database': 'c'*64, 'auth': 'd'*64}
+    owner.images = {'database': 'sha256:'+'1'*64, 'auth': 'sha256:'+'2'*64}
+    owner.attempted = ['network', 'database', 'auth']
+    labels = {owner.label: owner.nonce}
+    network = {'Id': owner.identities['network'], 'Name': owner.names['network'],
+        'Labels': dict(labels), 'Internal': True, 'Driver': 'bridge', 'Scope': 'local',
+        'EnableIPv6': False, 'IPAM': {'Config': [{'Subnet': '172.28.0.0/24', 'Gateway': '172.28.0.1'}]},
+        'Containers': {}}
+    rows = {'network': network}
+    for kind, ip, endpoint_id, port in (('database', '172.28.0.2', '3'*64, 5432),
+                                       ('auth', '172.28.0.3', '4'*64, 9999)):
+        network['Containers'][owner.identities[kind]] = {'Name': owner.names[kind],
+            'EndpointID': endpoint_id, 'IPv4Address': ip+'/24', 'IPv6Address': ''}
+        rows[kind] = {'Id': owner.identities[kind], 'Name': '/'+owner.names[kind],
+            'Image': owner.images[kind], 'Config': {'Labels': dict(labels)},
+            'State': {'Running': True, 'Restarting': False, 'Dead': False, 'Paused': False},
+            'HostConfig': {'NetworkMode': owner.names['network'], 'PortBindings': {}, 'PublishAllPorts': False},
+            'NetworkSettings': {'Ports': {str(port)+'/tcp': None}, 'Networks': {owner.names['network']: {
+                'NetworkID': owner.identities['network'], 'EndpointID': endpoint_id,
+                'IPAddress': ip, 'IPPrefixLen': 24, 'Gateway': '172.28.0.1',
+                'GlobalIPv6Address': '', 'IPv6Gateway': ''}}}}
+    state = {'calls': [], 'records': 0}
+    def record(): state['records'] += 1
+    monkeypatch.setattr(owner, '_record', record)
+    def command(args, **kwargs):
+        budget.remaining(end=kwargs.get('end'))
+        state['calls'].append((args, kwargs))
+        assert args[:2] in (['docker', 'network'], ['docker', 'container'])
+        assert args[2] in ('ls', 'inspect')  # Exercise real inspect; no acquisition/removal allowed.
+        if args[2] == 'ls':
+            name = args[-1].removeprefix('name=')
+            assert name in owner.names.values()
+            return (json.dumps(name)+'\n').encode()
+        kind = next(kind for kind, name in owner.names.items() if name == args[-1])
+        return json.dumps([rows[kind]]).encode()
+    monkeypatch.setattr(budget, 'command', command)
+    return owner, rows, state
+
+
+@pytest.mark.parametrize('ports', [None, [], 'empty'])
+def test_internal_endpoint_admission_uses_real_owner_and_reciprocal_ip_not_published_port(internal_endpoint_model, ports):
+    owner, rows, state = internal_endpoint_model
+    for kind, port in (('database', 5432), ('auth', 9999)):
+        rows[kind]['NetworkSettings']['Ports'] = {} if ports == 'empty' else {str(port)+'/tcp': ports}
+    assert owner.internal_endpoints() == (('172.28.0.2', 5432), ('172.28.0.3', 9999))
+    assert state['records'] == 3 and len(state['calls']) == 6
+    assert all(0 < kwargs['cap'] <= 1024**2 for _, kwargs in state['calls'])
+
+
+@pytest.mark.parametrize('path,value', [
+    (('Id',), '9'*64), (('Name',), 'foreign'), (('Labels', control.ResourceOwner.label), 'foreign'),
+    (('Internal',), False), (('Driver',), 'overlay'), (('Scope',), 'swarm'), (('EnableIPv6',), True),
+    (('IPAM', 'Config'), []), (('IPAM', 'Config'), [{}, {}]),
+    (('IPAM', 'Config', 0, 'Subnet'), '192.0.2.0/24'),
+    (('IPAM', 'Config', 0, 'Subnet'), '127.0.0.0/24'),
+    (('IPAM', 'Config', 0, 'Subnet'), '172.28.0.0/31'),
+    (('IPAM', 'Config', 0, 'Gateway'), '172.29.0.1'),
+    (('IPAM', 'Config', 0, 'Gateway'), 'not-an-address'),
+    (('Containers',), {}), (('Containers', 'f'*64), {})])
+def test_internal_endpoint_admission_rejects_foreign_or_unsupported_network(internal_endpoint_model, path, value):
+    owner, rows, _ = internal_endpoint_model
+    target = rows['network']
+    for key in path[:-1]: target = target[key]
+    target[path[-1]] = value
+    with pytest.raises(control.RestoreUnavailable): owner.internal_endpoints()
+
+
+@pytest.mark.parametrize('kind', ['database', 'auth'])
+@pytest.mark.parametrize('fault', ['identity', 'image', 'label', 'stopped', 'restarting', 'dead', 'paused', 'paused-missing',
+    'network-mode', 'extra-network', 'network-id', 'endpoint-id', 'prefix-type', 'prefix-value',
+    'ipv6', 'outside', 'gateway', 'broadcast', 'network-address', 'publication-request',
+    'publish-all', 'publication-binding', 'member-name', 'member-endpoint', 'member-prefix', 'member-ipv6'])
+def test_internal_endpoint_admission_rejects_mismatched_service(internal_endpoint_model, kind, fault):
+    owner, rows, _ = internal_endpoint_model
+    row = rows[kind]
+    settings = row['NetworkSettings']; endpoint = settings['Networks'][owner.names['network']]
+    member = rows['network']['Containers'][owner.identities[kind]]
+    if fault == 'identity': row['Id'] = owner.source
+    elif fault == 'image': row['Image'] = 'sha256:'+'9'*64
+    elif fault == 'label': row['Config']['Labels'][owner.label] = 'foreign'
+    elif fault == 'stopped': row['State']['Running'] = False
+    elif fault == 'restarting': row['State']['Restarting'] = True
+    elif fault == 'dead': row['State']['Dead'] = True
+    elif fault == 'paused': row['State']['Paused'] = True
+    elif fault == 'paused-missing': del row['State']['Paused']
+    elif fault == 'network-mode': row['HostConfig']['NetworkMode'] = 'host'
+    elif fault == 'extra-network': settings['Networks']['other'] = dict(endpoint)
+    elif fault == 'network-id': endpoint['NetworkID'] = '9'*64
+    elif fault == 'endpoint-id': endpoint['EndpointID'] = 'not-an-id'
+    elif fault == 'prefix-type': endpoint['IPPrefixLen'] = '24'
+    elif fault == 'prefix-value': endpoint['IPPrefixLen'] = 23
+    elif fault == 'ipv6': endpoint['GlobalIPv6Address'] = 'fd00::2'
+    elif fault == 'outside': endpoint['IPAddress'] = '172.29.0.2'
+    elif fault == 'gateway': endpoint['IPAddress'] = '172.28.0.1'
+    elif fault == 'broadcast': endpoint['IPAddress'] = '172.28.0.255'
+    elif fault == 'network-address': endpoint['IPAddress'] = '172.28.0.0'
+    elif fault == 'publication-request': row['HostConfig']['PortBindings'] = {'5432/tcp': [{'HostIp': '127.0.0.1', 'HostPort': ''}]}
+    elif fault == 'publish-all': row['HostConfig']['PublishAllPorts'] = True
+    elif fault == 'publication-binding': settings['Ports'] = {'9999/tcp': [{'HostIp': '0.0.0.0', 'HostPort': '12345'}]}
+    elif fault == 'member-name': member['Name'] = 'foreign'
+    elif fault == 'member-endpoint': member['EndpointID'] = '9'*64
+    elif fault == 'member-prefix': member['IPv4Address'] = endpoint['IPAddress']+'/23'
+    elif fault == 'member-ipv6': member['IPv6Address'] = 'fd00::2/64'
+    else: raise AssertionError(fault)
+    with pytest.raises(control.RestoreUnavailable): owner.internal_endpoints()
+
+
+def test_internal_endpoint_admission_rejects_duplicate_ipv4_even_with_matching_members(internal_endpoint_model):
+    owner, rows, _ = internal_endpoint_model
+    rows['auth']['NetworkSettings']['Networks'][owner.names['network']]['IPAddress'] = '172.28.0.2'
+    rows['network']['Containers'][owner.identities['auth']]['IPv4Address'] = '172.28.0.2/24'
+    with pytest.raises(control.RestoreUnavailable): owner.internal_endpoints()
+
+
+@pytest.mark.parametrize('primary', [KeyboardInterrupt('inspect cancelled'), SystemExit(17),
+    control.RestoreUnavailable('deadline')])
+def test_internal_endpoint_admission_preserves_inspection_failure_identity(internal_endpoint_model, monkeypatch, primary):
+    owner, _, state = internal_endpoint_model
+    original = owner.inspect
+    def inspect(kind, **kwargs):
+        if kind == 'auth': raise primary
+        return original(kind, **kwargs)
+    monkeypatch.setattr(owner, 'inspect', inspect)
+    with pytest.raises(type(primary)) as caught: owner.internal_endpoints()
+    assert caught.value is primary and state['records'] == 2
+
+
+@pytest.mark.parametrize('database_bindings', [None, {}], ids=['null', 'empty-dict'])
+@pytest.mark.parametrize('auth_bindings', [None, {}], ids=['null', 'empty-dict'])
+def test_internal_endpoint_admission_accepts_only_explicit_absent_publication_forms(
+        internal_endpoint_model, database_bindings, auth_bindings):
+    owner, rows, state = internal_endpoint_model
+    rows['database']['HostConfig']['PortBindings'] = database_bindings
+    rows['auth']['HostConfig']['PortBindings'] = auth_bindings
+    assert owner.internal_endpoints() == (('172.28.0.2', 5432), ('172.28.0.3', 9999))
+    assert state['records'] == 3 and len(state['calls']) == 6
+
+
+@pytest.mark.parametrize('kind', ['database', 'auth'])
+@pytest.mark.parametrize('bindings', [[], '', False, 0], ids=['list', 'string', 'bool', 'integer'])
+def test_internal_endpoint_admission_rejects_falsey_malformed_port_bindings(
+        internal_endpoint_model, kind, bindings):
+    owner, rows, _ = internal_endpoint_model
+    rows[kind]['HostConfig']['PortBindings'] = bindings
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        owner.internal_endpoints()
+    assert caught.value.reason == 'source_binding'
+
+
+@pytest.mark.parametrize('kind', ['database', 'auth'])
+def test_internal_endpoint_admission_requires_port_bindings_key(internal_endpoint_model, kind):
+    owner, rows, _ = internal_endpoint_model
+    del rows[kind]['HostConfig']['PortBindings']
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        owner.internal_endpoints()
+    assert caught.value.reason == 'source_binding'
+
+
+@pytest.mark.parametrize('field,value', [
+    ('Subnet', int.from_bytes(bytes([172, 28, 0, 0]), 'big')),
+    ('Subnet', True), ('Subnet', None),
+    ('Subnet', ' 172.28.0.0/24'), ('Subnet', '172.28.0.0/24 '),
+    ('Subnet', '172.28.0.0/255.255.255.0'), ('Subnet', '172.28.0.0/024'),
+    ('Subnet', '172.028.0.0/24'),
+    ('Gateway', int.from_bytes(bytes([172, 28, 0, 1]), 'big')),
+    ('Gateway', True), ('Gateway', None),
+    ('Gateway', ' 172.28.0.1'), ('Gateway', '172.28.0.1 '),
+    ('Gateway', '172.028.0.1'), ('Gateway', '172.28.0.01'),
+    ('Gateway', '172.28.0.1/24')])
+def test_internal_endpoint_admission_requires_canonical_ipam_strings(internal_endpoint_model, field, value):
+    owner, rows, _ = internal_endpoint_model
+    rows['network']['IPAM']['Config'][0][field] = value
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        owner.internal_endpoints()
+    assert caught.value.reason == 'source_binding'
+
+
+@pytest.mark.parametrize('kind', ['database', 'auth'])
+@pytest.mark.parametrize('form', ['integer', 'bool', 'null', 'leading-space', 'trailing-space',
+    'zero-padded-octet', 'zero-padded-last-octet', 'cidr'])
+def test_internal_endpoint_admission_requires_canonical_endpoint_ip_string(internal_endpoint_model, kind, form):
+    owner, rows, _ = internal_endpoint_model
+    endpoint = rows[kind]['NetworkSettings']['Networks'][owner.names['network']]
+    original = endpoint['IPAddress']
+    # Integer form denotes the same address; reciprocal member data stays valid.
+    forms = {'integer': int.from_bytes(bytes(map(int, original.split('.'))), 'big'),
+        'bool': True, 'null': None, 'leading-space': ' '+original,
+        'trailing-space': original+' ', 'zero-padded-octet': original.replace('.28.', '.028.'),
+        'zero-padded-last-octet': original[:-1]+'0'+original[-1], 'cidr': original+'/24'}
+    endpoint['IPAddress'] = forms[form]
+    with pytest.raises(control.RestoreUnavailable) as caught:
+        owner.internal_endpoints()
+    assert caught.value.reason == 'source_binding'
