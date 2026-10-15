@@ -84,6 +84,46 @@ def test_postconstruction_marker_locates_context_edge_without_replacing_failure(
     assert len(marker[0])+len(control.POST_CONSTRUCTION_PREFIX)+1<=4096
 
 
+def test_postconstruction_inventory_invariant_keeps_real_frame_and_retained_binding(
+        postconstruction_model,tmp_path,monkeypatch,capsys):
+    import rf1086_company_test_inventory_identity_restore as inventory
+    budget,state,calls,owners,boundary=postconstruction_model
+    monkeypatch.setattr(inventory.rf,'serialize_rf1086_company_test_retention',lambda _: 'generated')
+    def forbidden(*a,**kw):raise AssertionError('inventory target IO before first invariant')
+    monkeypatch.setattr(inventory,'verify_target_session',forbidden)
+    with pytest.raises(ValueError) as caught:
+        with identity.restored_identity(SOURCE_URL,tmp_path,boundary,budget=budget) as recovery:
+            control.run_async(inventory.verify_company_test_inventory_actor_recovery(
+                recovery,'selected',SimpleNamespace(company_id='different'),'a'*64,
+                source_reader_url='postgresql://talli_ledger_backend@127.0.0.1/postgres',
+                anon_key='generated',owner_token='generated',outsider_token='generated',
+                stateless_owner_token='generated'),budget=budget)
+    frames=[];tb=caught.value.__traceback__
+    while tb is not None:
+        if tb.tb_frame.f_code is inventory.verify_company_test_inventory_actor_recovery.__code__:
+            frames.append(tb.tb_lineno)
+        tb=tb.tb_next
+    assert len(frames)==1 and owners[0].cleaned
+    default_location=control._diagnostic_location(caught.value,budget)
+    assert default_location['module']=='control' and default_location['depth']==0
+    assert control._diagnostic_location(caught.value,budget,post_construction=True)=={
+        'module':'inventory','line':frames[0],'depth':0,'edge':'primary'}
+    assert state['postchecks']==3 and state['metadata']==3 and state['receiptCalls']==1
+    assert state['targetCapture']._raw is None
+    output=capsys.readouterr();assert output.out==''
+    lines=output.err.splitlines()
+    raw=next(line.split(' ',1)[1] for line in lines if line.startswith('owned_identity_restore_construction '))
+    markers=[json.loads(line.split(' ',1)[1]) for line in lines
+             if line.startswith(control.POST_CONSTRUCTION_PREFIX)]
+    assert len(markers)==1
+    marker=markers[0]
+    assert marker['location']=={'module':'inventory','line':frames[0],'depth':0,'edge':'primary'}
+    assert marker['contextEdge']=='yield_boundary'
+    assert marker['constructionSha256']==hashlib.sha256(raw.encode('ascii')).hexdigest()
+    assert 'rf1086_company_test_inventory_identity_restore.py' in json.loads(raw)['code']
+    assert control.validate_post_construction_location(marker,construction_raw=raw) is marker
+
+
 @pytest.mark.parametrize('fault',['success','cleanup','source_post','cancel','system_exit',
                                   'write','write_cancel','classifier_cancel'])
 def test_postconstruction_unavailable_observation_preserves_context_unwind(
@@ -99,7 +139,7 @@ def test_postconstruction_unavailable_observation_preserves_context_unwind(
             return b'changed' if kw.get('data')==b'metadata' and state['metadata']==3 else result
         monkeypatch.setattr(budget,'command',drift)
     if fault=='classifier_cancel':
-        def cancel(*a):raise KeyboardInterrupt('PRIVATE secondary')
+        def cancel(*a,**kw):raise KeyboardInterrupt('PRIVATE secondary')
         monkeypatch.setattr(control,'_diagnostic_location',cancel)
     if fault in ('write','write_cancel'):
         stderr=sys.stderr

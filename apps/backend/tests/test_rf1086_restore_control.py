@@ -539,7 +539,7 @@ def test_safe_receipt_rejects_unmodeled_fields_in_observer_receipt():
 
 def postconstruction_inputs(*, business=False):
     args=safe_receipt_input();args['business_complete']=business
-    names={name+'.py' for name in control.DIAGNOSTIC_MODULES.values()}
+    names={name+'.py' for name in control.POST_CONSTRUCTION_MODULES.values()}
     names.update(('rf1086_s0_control.py','rf1086_s0_protocol.py','rf1086_catalog_causal.sql'))
     args['prepared'].code_binding={name:{'bytes':1,'sha256':'a'*64} for name in names}
     args['prepared'].plan.binding['script']=dict(args['prepared'].index.core.script)
@@ -551,7 +551,7 @@ def postconstruction_receipt(*, business=False):
 
 
 def postconstruction_value(raw, *, edge='before_yield', location=None):
-    return {'schema':'rf1086-restore-post-construction-location-v1',
+    return {'schema':'rf1086-restore-post-construction-location-v2',
         'constructionSha256':hashlib.sha256(raw.encode('ascii')).hexdigest(),
         'contextEdge':edge,'location':location}
 
@@ -566,7 +566,9 @@ def test_postconstruction_closed_validator_binds_exact_receipt_and_structural_ed
 
 
 @pytest.mark.parametrize('change',[
-    lambda v:v.update(schema='other'),lambda v:v.update(raw='PRIVATE'),
+    lambda v:v.update(schema='other'),
+    lambda v:v.update(schema='rf1086-restore-post-construction-location-v1'),
+    lambda v:v.update(raw='PRIVATE'),
     lambda v:v.update(constructionSha256='A'*64),lambda v:v.update(constructionSha256='b'*64),
     lambda v:v.update(contextEdge='caller_entered'),lambda v:v.update(contextEdge=[]),
     lambda v:v.update(contextEdge='after_yield'),lambda v:v.update(location=[]),
@@ -721,7 +723,7 @@ def test_postconstruction_timeout_swallowed_by_classifier_stops_before_validatio
         endpoints.append(end)
         with real(value,end=end):yield
     monkeypatch.setattr(control,'io_deadline',scope)
-    def location(*a):
+    def location(*a,**kw):
         # Same ordinary timeout-to-null behavior as the existing classifier.
         try:time.sleep(1)
         except control.RestoreUnavailable:return None
@@ -878,6 +880,196 @@ ROOT = Path(__file__).resolve().parents[3]
 def forbidden_prepare_io(*args, **kwargs):
     raise AssertionError('process/network forbidden in generated preparation')
 
+
+@pytest.mark.parametrize('module',tuple(control.POST_CONSTRUCTION_MODULES))
+def test_inventory_post_profile_addition_does_not_expand_pretarget(module):
+    assert len(control.DIAGNOSTIC_MODULES)==10
+    assert control.POST_CONSTRUCTION_MODULES==control.DIAGNOSTIC_MODULES | {
+        'inventory':'rf1086_company_test_inventory_identity_restore'}
+    raw=postconstruction_receipt()
+    value=postconstruction_value(raw,location={'module':module,'line':65,'depth':0,'edge':'primary'})
+    assert control.validate_post_construction_location(value,construction_raw=raw) is value
+    pre=diagnostic_failure().failure
+    pre['location']=dict(value['location'])
+    if module=='inventory':
+        with pytest.raises(ValueError):control.validate_pre_target_diagnostic(pre)
+    else:assert control.validate_pre_target_diagnostic(pre) is pre
+
+
+@pytest.mark.parametrize('fault',['missing','extra','stale_receipt','stale_retained','oversize'])
+def test_inventory_post_receipt_requires_exact_retained_fourteenth_binding(fault,capsys):
+    prepared=postconstruction_inputs()['prepared'];receipt=json.loads(postconstruction_receipt())
+    name='rf1086_company_test_inventory_identity_restore.py'
+    assert len(receipt['code'])==14
+    if fault=='missing':receipt['code'].pop(name)
+    if fault=='extra':receipt['code']['private.py']=dict(receipt['code'][name])
+    if fault=='stale_receipt':receipt['code'][name]['sha256']='b'*64
+    if fault=='stale_retained':prepared.code_binding[name]['sha256']='b'*64
+    if fault=='oversize':receipt['code'][name]['bytes']=256*1024+1
+    raw=control.ledger.canonical(receipt).decode('ascii')
+    with pytest.raises(ValueError):control._post_construction_receipt(raw,prepared=prepared)
+    budget=control.RecoveryBudget(time.monotonic());budget.enter('source_post')
+    control.publish_post_construction_location(budget,prepared=prepared,construction_raw=raw,
+        primary=ValueError('PRIVATE'),context_edge='yield_boundary')
+    assert capsys.readouterr()==('','')
+
+
+@pytest.mark.parametrize('closed',[False,True])
+def test_inventory_post_selection_preserves_real_actor_and_closed_coroutine_contrasts(closed,monkeypatch):
+    import asyncio
+    import rf1086_identity_restore as identity
+    from talli_backend.adapters.supabase_ledger import SupabaseLedgerAdapter
+    for key in ('SUPABASE_ANON_KEY','TALLI_RF_RESTORE_OWNER_TOKEN','TALLI_RF_RESTORE_OUTSIDER_TOKEN'):
+        monkeypatch.setenv(key,'generated')
+    calls=[];loops=[];token=ValueError('PRIVATE actor sentinel')
+    async def actor(*a,**kw):calls.append(True);raise token
+    monkeypatch.setattr(SupabaseLedgerAdapter,'_verified_actor',actor)
+    monkeypatch.setattr(subprocess,'Popen',forbidden_prepare_io)
+    monkeypatch.setattr(socket.socket,'connect',forbidden_prepare_io)
+    new_loop=asyncio.new_event_loop
+    def tracked_loop():
+        loop=new_loop();loops.append(loop);return loop
+    monkeypatch.setattr(asyncio,'new_event_loop',tracked_loop)
+    budget=control.RecoveryBudget(time.monotonic());budget.enter('actors');end=budget.end
+    recovery=SimpleNamespace(budget=budget,auth_url='http://127.0.0.1:9')
+    awaitable=identity.verify_actor_recovery(recovery,
+        'postgresql://talli_ledger_backend@127.0.0.1:9/postgres',SimpleNamespace(),'generated',(),(),None)
+    if closed:awaitable.close()
+    try:
+        with pytest.raises(RuntimeError if closed else ValueError) as caught:
+            control.run_async(awaitable,budget=budget)
+    finally:awaitable.close()
+    assert calls==([] if closed else [True])
+    assert len(loops)==1 and loops[0].is_closed() and budget.end==end and budget.phase=='actors'
+    if not closed:assert caught.value is token
+    default=control._diagnostic_location(caught.value,budget)
+    assert default==control._diagnostic_location(caught.value,budget,post_construction=True)
+    assert default['module']==('control' if closed else 'identity')
+
+
+def test_inventory_prepare_all_fourteen_reads_and_hashes_share_live_original_end(monkeypatch):
+    from contextlib import contextmanager
+    case=TestPrepareArchive();fixture=case.fixture();budget=control.RecoveryBudget(time.monotonic())
+    end=budget.end-70;scopes=[];reads=[];hashes=[];active=[];admitted=[]
+    original_deadline=control.io_deadline;original_file=control.bounded_file
+    original_hash=control.bounded_hash;original_admission=budget.before_target
+    @contextmanager
+    def deadline(selected=None,*,end=None):
+        scopes.append((selected,end))
+        with original_deadline(selected,end=end):
+            active.append(True)
+            try:yield
+            finally:active.pop()
+    def read(path,*,cap):
+        assert active==[True] and cap==256*1024
+        assert 0<signal.getitimer(signal.ITIMER_REAL)[0]<=end-time.monotonic()+.01
+        reads.append(path.name);return original_file(path,cap=cap)
+    def hashed(raw,*,deadline,cap):
+        if active:
+            assert deadline==end and cap==256*1024
+            hashes.append(hashlib.sha256(raw).hexdigest())
+        return original_hash(raw,deadline=deadline,cap=cap)
+    def admission():
+        assert not active and len(reads)==len(hashes)==14
+        admitted.append(True);original_admission()
+    monkeypatch.setattr(control,'io_deadline',deadline)
+    monkeypatch.setattr(control,'bounded_file',read)
+    monkeypatch.setattr(control,'bounded_hash',hashed)
+    monkeypatch.setattr(budget,'before_target',admission)
+    result,_=case.invoke(fixture,budget=budget)
+    assert scopes==[(budget,end)] and admitted==[True]
+    assert len(set(reads))==14 and 'rf1086_company_test_inventory_identity_restore.py' in reads
+    assert set(result.code_binding)==set(reads)
+    assert list(result.code_binding.values())==[{'bytes':(ROOT/'scripts'/name).stat().st_size,'sha256':sha}
+                                              for name,sha in zip(reads,hashes,strict=True)]
+
+
+@pytest.mark.parametrize('site',['open','read','close'])
+def test_inventory_prepare_delayed_file_is_bounded_without_surrounding_alarm(site,monkeypatch):
+    case=TestPrepareArchive();fixture=case.fixture();budget=control.RecoveryBudget(time.monotonic())
+    budget.end=time.monotonic()+70+.2;end=budget.end;handler=signal.getsignal(signal.SIGALRM)
+    assert signal.getitimer(signal.ITIMER_REAL)==(0.0,0.0)
+    original_open=Path.open;seen=[];closed=[];admission=[]
+    class SlowFile:
+        def __init__(self,file):self.file=file
+        def __enter__(self):return self
+        def read(self,*a):
+            if site=='read':time.sleep(.6)
+            return self.file.read(*a)
+        def __exit__(self,*a):
+            try:
+                if site=='close':time.sleep(.6)
+            finally:self.file.close();closed.append(True)
+    def opened(path,*a,**kw):
+        if path==Path(control.__file__).with_name('rf1086_company_test_inventory_identity_restore.py'):
+            seen.append(site)
+            if site=='open':time.sleep(.6)
+            return SlowFile(original_open(path,*a,**kw))
+        return original_open(path,*a,**kw)
+    monkeypatch.setattr(Path,'open',opened)
+    monkeypatch.setattr(budget,'before_target',lambda:admission.append(True))
+    with pytest.raises(control.RestoreUnavailable) as caught:case.invoke(fixture,budget=budget)
+    assert caught.value.reason=='deadline' and seen==[site] and not admission
+    assert time.monotonic()<end-70+.25
+    assert case.diagnostic.failure['step']=='code_bindings'
+    assert closed==([] if site=='open' else [True])
+    assert budget.end==end and budget.phase=='construction'
+    assert signal.getsignal(signal.SIGALRM) is handler and signal.getitimer(signal.ITIMER_REAL)==(0.0,0.0)
+
+
+@pytest.mark.parametrize('fault',['missing','oversize','keyboard','system_exit'])
+def test_inventory_prepare_file_refusal_or_cancellation_never_admits_target(fault,monkeypatch):
+    case=TestPrepareArchive();fixture=case.fixture();budget=control.RecoveryBudget(time.monotonic())
+    end=budget.end;original=control.bounded_file;admission=[]
+    token={'missing':FileNotFoundError('generated'), 'keyboard':KeyboardInterrupt('generated'),
+           'system_exit':SystemExit('generated')}.get(fault)
+    def read(path,*,cap):
+        if path.name=='rf1086_company_test_inventory_identity_restore.py':
+            if token is not None:raise token
+            return b'x'*(cap+1)
+        return original(path,cap=cap)
+    monkeypatch.setattr(control,'bounded_file',read)
+    monkeypatch.setattr(budget,'before_target',lambda:admission.append(True))
+    with pytest.raises(type(token) if token is not None else control.RestoreUnavailable) as caught:
+        case.invoke(fixture,budget=budget)
+    if token is not None:assert caught.value is token
+    assert not admission and budget.end==end and budget.phase=='construction'
+    assert signal.getitimer(signal.ITIMER_REAL)==(0.0,0.0)
+
+
+@pytest.mark.parametrize('fault',['prior_alarm','keyboard','system_exit'])
+def test_inventory_prepare_preserves_prior_alarm_and_primary_identity(fault,monkeypatch):
+    case=TestPrepareArchive();fixture=case.fixture();budget=control.RecoveryBudget(time.monotonic())
+    end=budget.end;original=control.bounded_file;admission=[];seen=[];fired=[]
+    saved=signal.getsignal(signal.SIGALRM);assert signal.getitimer(signal.ITIMER_REAL)==(0.0,0.0)
+    token=SystemExit('generated') if fault=='system_exit' else KeyboardInterrupt('generated')
+    def alarm(*a):
+        # An already-fired ordinary handler may be rearmed immediately by the
+        # unchanged helper; only its initiating call raises this sentinel.
+        if not fired:fired.append(True);raise token
+    def read(path,*,cap):
+        if path.name=='rf1086_company_test_inventory_identity_restore.py':
+            seen.append(True)
+            if fault=='prior_alarm':time.sleep(.5)
+            else:raise token
+        return original(path,cap=cap)
+    monkeypatch.setattr(control,'bounded_file',read)
+    monkeypatch.setattr(budget,'before_target',lambda:admission.append(True))
+    interval=.1 if fault=='prior_alarm' else 2
+    signal.signal(signal.SIGALRM,alarm);started=time.monotonic();signal.setitimer(signal.ITIMER_REAL,interval)
+    try:
+        with pytest.raises(type(token)) as caught:case.invoke(fixture,budget=budget)
+        assert caught.value is token and seen==[True] and not admission
+        assert signal.getsignal(signal.SIGALRM) is alarm
+        remaining=signal.getitimer(signal.ITIMER_REAL)[0]
+        assert remaining<=max(0,interval-(time.monotonic()-started))+.01
+        if fault!='prior_alarm':assert remaining>0
+        assert fired==([True] if fault=='prior_alarm' else [])
+        assert budget.end==end and budget.phase=='construction'
+    finally:
+        signal.setitimer(signal.ITIMER_REAL,0);signal.signal(signal.SIGALRM,saved)
+
+
 class TestPrepareArchive(unittest.TestCase):
     def fixture(self, *, extension=False, ordered=True, walk_options=None,
                 wire_change=None, compile_expected=True, column_rows=()):
@@ -943,7 +1135,7 @@ class TestPrepareArchive(unittest.TestCase):
         self.assertEqual(result.roles,metadata.role_program(f['roles'],f['source'],deadline=fixtures.end()))
         for got,data in ((result.archive_binding,f['raw']),(result.roles_binding,f['roles'])):
             self.assertEqual(got,dict(bytes=len(data),sha256=hashlib.sha256(data).hexdigest()))
-        self.assertEqual(len(result.code_binding),13)
+        self.assertEqual(len(result.code_binding),14)
         self.assertIsNone(self.diagnostic.failure)
         self.assertEqual(self.diagnostic.inputs['script'],result.index.core.script)
         for name,bound in result.code_binding.items():
@@ -1234,7 +1426,7 @@ class TestPrepareArchive(unittest.TestCase):
                                      [('relation','public','t')])
                     self.assertEqual(result.plan.counts['unmodeled'],1)
                     self.assertEqual(result.plan.counts['archiveOnly'],4)
-                    self.assertEqual(len(result.code_binding),13)
+                    self.assertEqual(len(result.code_binding),14)
                     for name,bound in result.code_binding.items():
                         raw=(ROOT/'scripts'/name).read_bytes()
                         self.assertEqual(bound,dict(bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest()))

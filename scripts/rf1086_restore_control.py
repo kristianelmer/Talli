@@ -906,11 +906,12 @@ def validate_pre_target_diagnostic(value):
     return value
 
 
-def _diagnostic_location(error, budget):
+def _diagnostic_location(error, budget, *, post_construction=False):
     """Structural, bounded source attribution; no messages, locals or source I/O."""
     try:
+        modules = POST_CONSTRUCTION_MODULES if post_construction else DIAGNOSTIC_MODULES
         paths = {os.path.join(os.path.dirname(os.path.abspath(__file__)), name+'.py'): key
-                 for key, name in DIAGNOSTIC_MODULES.items()}
+                 for key, name in modules.items()}
         skips = {module.require.__code__ for module in
                  (sys.modules[__name__], ledger, ledger.lexical, raw_toc, ledger.identifiers)}
         metadata = sys.modules.get('rf1086_restore_metadata')
@@ -974,7 +975,9 @@ def _diagnostic_cancel(budget, error, primary):
 
 
 POST_CONSTRUCTION_PREFIX = 'owned_identity_restore_post_construction_location '
-POST_CONSTRUCTION_SCHEMA = 'rf1086-restore-post-construction-location-v1'
+POST_CONSTRUCTION_SCHEMA = 'rf1086-restore-post-construction-location-v2'
+POST_CONSTRUCTION_MODULES = DIAGNOSTIC_MODULES | {
+    'inventory': 'rf1086_company_test_inventory_identity_restore'}
 POST_CONSTRUCTION_EDGES = ('before_yield', 'yield_boundary', 'after_yield')
 POST_CONSTRUCTION_CAP = 4096
 
@@ -999,7 +1002,7 @@ def _post_construction_receipt(raw, *, prepared=None):
         require(type(value['bytes']) is int and minimum <= value['bytes'] <= cap, 'internal')
         _diagnostic_hash(value['sha256'])
     code = receipt['code']
-    names = {name+'.py' for name in DIAGNOSTIC_MODULES.values()}
+    names = {name+'.py' for name in POST_CONSTRUCTION_MODULES.values()}
     names.update(('rf1086_s0_control.py', 'rf1086_s0_protocol.py', 'rf1086_catalog_causal.sql'))
     _diagnostic_keys(code, names)
     for bound in code.values(): sized(bound, 256*1024, 1)
@@ -1099,7 +1102,7 @@ def validate_post_construction_location(value, *, construction_raw=None):
     location = value['location']
     if location is not None:
         _diagnostic_keys(location, ('module', 'line', 'depth', 'edge'))
-        require(type(location['module']) is str and location['module'] in DIAGNOSTIC_MODULES
+        require(type(location['module']) is str and location['module'] in POST_CONSTRUCTION_MODULES
                 and type(location['line']) is int and 1 <= location['line'] <= 8192
                 and type(location['depth']) is int and 0 <= location['depth'] <= 2
                 and type(location['edge']) is str
@@ -1129,7 +1132,8 @@ def publish_post_construction_location(budget, *, construction_raw, primary, con
             require(prepared is not None, 'internal')
             digest, _ = _post_construction_receipt(construction_raw, prepared=prepared)
             value = {'schema': POST_CONSTRUCTION_SCHEMA, 'constructionSha256': digest,
-                     'contextEdge': context_edge, 'location': _diagnostic_location(primary, budget)}
+                     'contextEdge': context_edge,
+                     'location': _diagnostic_location(primary, budget, post_construction=True)}
             # The existing classifier can turn its own ordinary timeout into
             # null; do not begin validation or writing after that spent alarm.
             budget.remaining(end=end)
@@ -1566,11 +1570,13 @@ def prepare_archive(source, *, archive, roles, metadata, budget, diagnostic=None
                                      index=repair_index, deadline=end)
     code = {}
     with _diagnostic_operation(diagnostic, 'code_bindings'):
-        for name in ('rf1086_restore_control.py','rf1086_restore_metadata.py','rf1086_identity_restore.py',
-                     'rf1086_sql_ledger.py','rf1086_sql_lexical.py','rf1086_sql_identifiers.py','rf1086_raw_toc.py',
-                     'rf1086_s0_control.py','rf1086_s0_protocol.py','rf1086_catalog_semantics.py',
-                     'rf1086_catalog_causal_capture.py','rf1086_catalog_causal.sql','rf1086_catalog_difference.py'):
-            code[name] = bounded_hash(bounded_file(Path(__file__).with_name(name),cap=256*1024),deadline=end,cap=256*1024)
+        with io_deadline(budget, end=end):
+            for name in ('rf1086_restore_control.py','rf1086_restore_metadata.py','rf1086_identity_restore.py',
+                         'rf1086_sql_ledger.py','rf1086_sql_lexical.py','rf1086_sql_identifiers.py','rf1086_raw_toc.py',
+                         'rf1086_s0_control.py','rf1086_s0_protocol.py','rf1086_catalog_semantics.py',
+                         'rf1086_catalog_causal_capture.py','rf1086_catalog_causal.sql','rf1086_catalog_difference.py',
+                         'rf1086_company_test_inventory_identity_restore.py'):
+                code[name] = bounded_hash(bounded_file(Path(__file__).with_name(name),cap=256*1024),deadline=end,cap=256*1024)
     with _diagnostic_operation(diagnostic, 'target_admission'):
         budget.before_target()
     return PreparedRestore(script, index, plan, role_program, tools, archive_binding, roles_binding,code)
