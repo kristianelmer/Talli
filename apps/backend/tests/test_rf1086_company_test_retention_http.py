@@ -313,3 +313,123 @@ def test_untrusted_auth_response_subject_has_finite_http_denial_before_database(
     result=browser.get(PATH,params={'companyId':str(COMPANY)},headers={'Authorization':'Bearer '+token(sub=subject)})
     assert result.status_code==expected and result.headers['content-type'].startswith('application/problem+json')
     assert 'records' not in result.json()
+
+
+@pytest.fixture
+def current_ban_factory(monkeypatch):
+    """Real inventory factory and Ledger adapter with only canonical HTTP faked."""
+    from datetime import timezone
+    import talli_backend.adapters.supabase_ledger as ledger_adapter
+    state = {"body": json.dumps({"id": str(ACTOR.subject), "email": "synthetic@example.invalid",
+                                "banned_until": "2026-10-15T12:00:00.000000001Z"}).encode(),
+             "failure": None}
+    requests, reads, closes, clock_calls, database_calls = [], [], [], [], []
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            assert tz is timezone.utc
+            clock_calls.append(tz)
+            return datetime(2026, 10, 15, 12, tzinfo=timezone.utc)
+    monkeypatch.setattr(ledger_adapter, "datetime", Clock)
+    class Response:
+        status = 200
+        def __enter__(self): return self
+        def __exit__(self, *_args): closes.append(True)
+        def read(self, size):
+            reads.append(size)
+            assert size == 65_537
+            return state["body"]
+    class Opener:
+        def open(self, request, *, timeout):
+            requests.append((request, timeout))
+            assert request.full_url == "https://project.supabase.co/auth/v1/user"
+            assert request.method == "GET" and timeout == 5
+            assert request.get_header("Apikey") == "synthetic-anon"
+            if state["failure"] is not None: raise state["failure"]
+            return Response()
+    def no_database(*_args, **_kwargs):
+        database_calls.append(True)
+        pytest.fail("Auth rejection/session creation must not query a database")
+    monkeypatch.setattr(ledger_adapter.psycopg, "connect", no_database)
+    factory = PostgresCompanyTestRetentionSessionFactory(LedgerSupabaseConfiguration(
+        "https://project.supabase.co", "synthetic-anon", "postgresql://unused"))
+    monkeypatch.setattr(factory._authentication, "_opener", Opener())
+    return factory, state, requests, reads, closes, clock_calls, database_calls
+
+
+def test_current_ban_real_factory_rejects_future_canonical_ban_without_database(current_ban_factory):
+    factory, _, requests, reads, closes, clocks, database_calls = current_ban_factory
+    bearer = token()
+    with pytest.raises(ShareholderRegisterFilingAuthenticationError) as failure:
+        asyncio.run(factory.session(bearer))
+    assert failure.value.args == () and failure.value.__cause__ is None
+    assert len(requests) == len(clocks) == 1 and reads == [65_537] and closes == [True]
+    assert requests[0][0].get_header("Authorization") == "Bearer " + bearer
+    assert database_calls == []
+
+
+def test_current_ban_real_factory_unban_preserves_session_claim_boundary(current_ban_factory):
+    factory, state, requests, reads, closes, clocks, database_calls = current_ban_factory
+    with pytest.raises(ShareholderRegisterFilingAuthenticationError):
+        asyncio.run(factory.session(token()))
+    state["body"] = json.dumps({"id": str(ACTOR.subject), "email": "synthetic@example.invalid",
+                                "banned_until": None}).encode()
+    session = asyncio.run(factory.session(token()))
+    assert session.actor_id == ACTOR
+    assert session._billing is None and session._documents is None and session._company_access is None
+    assert session._environment == {}
+    with pytest.raises(ShareholderRegisterFilingAuthenticationError):
+        asyncio.run(factory.session(token(session_id=None)))
+    assert len(requests) == len(clocks) == 3 and reads == [65_537] * 3 and closes == [True] * 3
+    assert database_calls == []
+
+
+def test_current_ban_http_inventory_uses_real_factory_and_sanitized_denial(current_ban_factory):
+    factory, _, requests, _, _, _, database_calls = current_ban_factory
+    gateway = ArchiveGateway()
+    with TestClient(create_app(company_access_gateway=gateway, company_test_retention_session_factory=factory)) as browser:
+        response = browser.get(PATH, params={"companyId": str(COMPANY)}, headers={"Authorization": "Bearer " + token()})
+    assert response.status_code == 401
+    assert "banned_until" not in response.text and "synthetic@example.invalid" not in response.text
+    assert len(requests) == 1 and gateway.calls == [] and database_calls == []
+
+
+@pytest.mark.parametrize("body", [
+    '{"banned_until":null,"banned_until":"2099-01-01T00:00:00Z"}',
+    '{"banned_until":"2099-01-01T00:00:00Z","banned_until":null}',
+    '{"banned_until":"not-a-date"}',
+])
+def test_current_ban_factory_translates_closed_status_rejection(current_ban_factory, body):
+    factory, state, requests, _, _, _, database_calls = current_ban_factory
+    identity = json.dumps({"id": str(ACTOR.subject), "email": "synthetic@example.invalid"})
+    state["body"] = (identity[:-1] + "," + body[1:]).encode()
+    with pytest.raises(ShareholderRegisterFilingAuthenticationError) as failure:
+        asyncio.run(factory.session(token()))
+    assert failure.value.args == () and len(requests) == 1 and database_calls == []
+
+
+@pytest.mark.parametrize("failure_type", [RuntimeError, asyncio.CancelledError, KeyboardInterrupt, SystemExit])
+def test_current_ban_factory_preserves_unexpected_canonical_error_identity(current_ban_factory, failure_type):
+    factory, state, requests, _, _, clocks, database_calls = current_ban_factory
+    failure = failure_type("synthetic-private-canary")
+    state["failure"] = failure
+    async def exercise():
+        try:
+            await factory.session(token())
+        except BaseException as caught:
+            assert caught is failure
+        else:
+            pytest.fail("expected original error")
+    asyncio.run(exercise())
+    assert len(requests) == 1 and clocks == [] and database_calls == []
+
+
+def test_current_ban_factory_preserves_provider_unavailability(current_ban_factory):
+    from urllib.error import URLError
+    factory, state, requests, _, _, clocks, database_calls = current_ban_factory
+    state["failure"] = URLError("synthetic-private-canary")
+    with pytest.raises(rf.ShareholderRegisterFilingError) as failure:
+        asyncio.run(factory.session(token()))
+    assert failure.value.code == rf.ShareholderRegisterFilingError.unavailable().code
+    assert "synthetic-private-canary" not in str(failure.value)
+    assert len(requests) == 1 and clocks == [] and database_calls == []

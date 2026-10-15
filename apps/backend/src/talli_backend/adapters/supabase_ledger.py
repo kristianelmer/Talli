@@ -7,10 +7,11 @@ import base64
 import ipaddress
 import json
 import os
+import re
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, replace
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
@@ -161,6 +162,56 @@ def _validated_origin(raw: str) -> str:
 class _RejectRedirects(HTTPRedirectHandler):
     def redirect_request(self, *_args: object, **_kwargs: object) -> None:
         return None
+
+
+class _CurrentAuthUser(dict[str, object]):
+    """Retain only the root decoder's repeated-ban signal, outside payload keys."""
+
+    __slots__ = ("_duplicate_ban",)
+
+    def __init__(self, pairs: list[tuple[str, object]]) -> None:
+        super().__init__()
+        self._duplicate_ban = False
+        for key, value in pairs:
+            if key == "banned_until" and key in self:
+                self._duplicate_ban = True
+            self[key] = value
+
+
+def _require_current_user_unbanned(identity: Mapping[str, object], now: datetime) -> None:
+    if isinstance(identity, _CurrentAuthUser) and identity._duplicate_ban:
+        raise LedgerAuthenticationError from None
+    value = identity.get("banned_until")
+    if value is None:
+        return
+    if type(value) is not str or not 20 <= len(value) <= 35 or not value.isascii():
+        raise LedgerAuthenticationError from None
+    match = re.fullmatch(
+        r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})"
+        r"(?:\.([0-9]{1,9}))?(Z|[+-][0-9]{2}:[0-9]{2})", value,
+    )
+    if match is None:
+        raise LedgerAuthenticationError from None
+    try:
+        local = datetime(*(int(match[i]) for i in range(1, 7)))
+        zone = match[8]
+        offset = 0
+        if zone != "Z":
+            hours, minutes = int(zone[1:3]), int(zone[4:6])
+            if zone == "-00:00" or hours > 23 or minutes > 59:
+                raise ValueError()
+            offset = (hours * 60 + minutes) * 60 * (1 if zone[0] == "+" else -1)
+        seconds = ((local.toordinal() - 1) * 86400 + local.hour * 3600
+                   + local.minute * 60 + local.second - offset)
+        expiry_ns = seconds * 1_000_000_000 + int((match[7] or "").ljust(9, "0"))
+        if not 0 <= expiry_ns < date.max.toordinal() * 86400 * 1_000_000_000:
+            raise ValueError()
+    except (ValueError, TypeError, OverflowError):
+        raise LedgerAuthenticationError from None
+    now_ns = (((now.toordinal() - 1) * 86400 + now.hour * 3600
+               + now.minute * 60 + now.second) * 1_000_000_000 + now.microsecond * 1000)
+    if expiry_ns > now_ns:
+        raise LedgerAuthenticationError from None
 
 
 def _timestamp(value: object) -> Timestamp:
@@ -601,7 +652,7 @@ class SupabaseLedgerAdapter:
                     body = response.read(65_537)
                     if len(body) > 65_536:
                         raise self._unavailable()
-                    decoded = json.loads(body.decode("utf-8"))
+                    decoded = json.loads(body.decode("utf-8"), object_pairs_hook=_CurrentAuthUser)
             except HTTPError as error:
                 if error.code in {401, 403}:
                     raise LedgerAuthenticationError from None
@@ -628,6 +679,7 @@ class SupabaseLedgerAdapter:
             raise LedgerAuthenticationError from None
         if not isinstance(decoded, Mapping) or decoded.get("sub") != identity_id:
             raise LedgerAuthenticationError
+        _require_current_user_unbanned(identity, datetime.now(timezone.utc))
         claims: dict[str, object] = {
             "sub": identity_id,
             "email": identity_email.strip().lower(),
