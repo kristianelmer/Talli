@@ -172,6 +172,8 @@ def inventory_denial_model(monkeypatch):
                 {'Authorization': 'Bearer generated-admin'}, {'should_soft_delete': True})
             assert state['events'][-1] == ('target-proof',)
             state['events'].append(('http', 'delete')); state['deleted'] = True
+            if 'delete_response' in state:
+                return state['delete_response']
             return SimpleNamespace(status_code=200)
     monkeypatch.setattr(inventory.httpx, 'AsyncClient', Client)
 
@@ -1417,3 +1419,214 @@ def test_plan_retention_failure_is_shielded_and_cancellation_sticky(fault,capsys
     if fault=='broken':
         value=_catalog_line(capsys);assert value['status']=='unavailable' and value['reason']=='binding'
     else:assert capsys.readouterr().err==''
+
+
+# Response injection is generated; no actual Auth response or mutation is claimed.
+def _softdelete_location_lines(inventory):
+    import ast
+    from pathlib import Path
+    tree = ast.parse(Path(inventory.__file__).read_text())
+    labels = {}
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.If) and isinstance(node.test, ast.Compare)
+                and isinstance(node.test.left, ast.Name) and node.test.left.id == 'category'
+                and len(node.test.ops) == 1 and isinstance(node.test.ops[0], ast.Eq)
+                and len(node.test.comparators) == 1 and isinstance(node.test.comparators[0], ast.Constant)
+                and len(node.body) == 1 and isinstance(node.body[0], ast.Raise)):
+            labels[node.test.comparators[0].value] = node.body[0].lineno
+        if (isinstance(node, ast.If) and isinstance(node.test, ast.Compare)
+                and isinstance(node.test.left, ast.Attribute) and node.test.left.attr == 'status_code'
+                and isinstance(node.test.left.value, ast.Name) and node.test.left.value.id == 'response'
+                and isinstance(node.test.ops[0], ast.NotEq)
+                and isinstance(node.test.comparators[0], ast.Constant)
+                and node.test.comparators[0].value == 200
+                and isinstance(node.body[-1], ast.Raise)):
+            labels['other_non200'] = node.body[-1].lineno
+    return labels
+
+
+def test_inventory_softdelete_status_has_distinct_source_location(inventory_denial_model):
+    model = inventory_denial_model
+    model.state['delete_response'] = SimpleNamespace(status_code=401, content=b'generated private response')
+    with pytest.raises(ValueError) as caught:
+        model.run()
+    assert str(caught.value) == 'Independent inventory Auth soft deletion failed'
+    location = control._diagnostic_location(caught.value, model.budget, post_construction=True)
+    expected = _softdelete_location_lines(model.inventory)
+    assert len(expected) == 14, (location, expected)
+    assert location == dict(module='inventory', line=expected['http_401'], depth=0, edge='primary')
+    assert caught.value.__context__ is None
+
+
+_SOFTDELETE_MESSAGES = [
+    ('load_user', 'Database error loading user'),
+    ('audit', 'Error recording audit log entry'),
+    ('soft_user', 'Error soft deleting user'),
+    ('soft_identities', 'Error soft deleting user identities'),
+    ('factors', "Error deleting user's factors"),
+    ('webauthn', "Error deleting user's WebAuthn credentials"),
+    ('sessions', "Error deleting user's sessions"),
+    ('hard_user', 'Database error deleting user'),
+]
+
+
+def _assert_softdelete_stopped(model):
+    point = model.expected_events.index(('http', 'delete'))
+    assert model.events() == model.expected_events[:point + 1]
+    assert list(model.pending_auth) == [('owner', 'deleted'), ('outsider', None)]
+    assert [step[0] for step in model.sql_steps] == ['deleted', 'erase']
+    assert model.state['connections'] == model.state['closes']
+    assert model.state['http_open'] == model.state['http_close'] == 1
+
+
+def _assert_softdelete_category(model, response, category, capsys):
+    model.state['delete_response'] = response
+    phase, end = model.budget.phase, model.budget.end
+    with pytest.raises(ValueError) as caught:
+        model.run()
+    assert type(caught.value) is ValueError
+    assert str(caught.value) == 'Independent inventory Auth soft deletion failed'
+    assert caught.value.__context__ is None and caught.value.__cause__ is None
+    lines = _softdelete_location_lines(model.inventory)
+    assert len(lines) == len(set(lines.values())) == 14
+    location = control._diagnostic_location(caught.value, model.budget, post_construction=True)
+    assert location == dict(module='inventory', line=lines[category], depth=0, edge='primary')
+    assert 'PRIVATE' not in json.dumps(location)
+    output = capsys.readouterr()
+    assert output.out == output.err == ''
+    assert (model.budget.phase, model.budget.end) == (phase, end)
+    _assert_softdelete_stopped(model)
+
+
+@pytest.mark.parametrize('status,category', [
+    (401, 'http_401'), (403, 'http_403'), (404, 'http_404'), (502, 'http_502'),
+    (201, 'other_non200'), (204, 'other_non200'), (429, 'other_non200'), (503, 'other_non200'),
+])
+def test_inventory_softdelete_non500_never_reads_body(inventory_denial_model, capsys, status, category):
+    class Response:
+        status_code = status
+        @property
+        def content(self):
+            raise AssertionError('non500 content must not be inspected')
+    _assert_softdelete_category(inventory_denial_model, Response(), category, capsys)
+
+
+@pytest.mark.parametrize('category,message', _SOFTDELETE_MESSAGES)
+@pytest.mark.parametrize('shape', ['legacy', 'legacy_id', 'new'])
+def test_inventory_softdelete_exact_public_message_locations(inventory_denial_model, capsys, category, message, shape):
+    body = ({'code': 'unexpected_failure', 'message': message} if shape == 'new' else
+            {'code': 500, 'error_code': 'unexpected_failure', 'msg': message})
+    if shape == 'legacy_id':
+        body['error_id'] = 'PRIVATE ignored identifier'
+    _assert_softdelete_category(inventory_denial_model,
+        SimpleNamespace(status_code=500, content=json.dumps(body).encode()), category, capsys)
+
+
+@pytest.mark.parametrize('body', [
+    b'', b'{', b'\xff', b'\xed\xa0\x80', b'\xef\xbb\xbf{}', b'null', b'[]', b'500', b'true', b'"PRIVATE"',
+    b'[' * 2000 + b']' * 2000,
+    b'{"code":500,"code":500,"error_code":"unexpected_failure","msg":"Error soft deleting user"}',
+    br'{"code":500,"error_code":"unexpected_failure","msg":"Error soft deleting user","m\u0073g":"Error soft deleting user"}',
+    b'{"code":500,"error_code":"unexpected_failure","msg":{"x":1,"x":2}}',
+    b'{"code":NaN,"error_code":"unexpected_failure","msg":"Error soft deleting user"}',
+    b'{"code":Infinity,"error_code":"unexpected_failure","msg":"Error soft deleting user"}',
+    b'{"code":-Infinity,"error_code":"unexpected_failure","msg":"Error soft deleting user"}',
+    *[json.dumps(body).encode() for body in [
+        {},
+        {'code': True, 'error_code': 'unexpected_failure', 'msg': 'Error soft deleting user'},
+        {'code': 500.0, 'error_code': 'unexpected_failure', 'msg': 'Error soft deleting user'},
+        {'code': '500', 'error_code': 'unexpected_failure', 'msg': 'Error soft deleting user'},
+        {'code': 401, 'error_code': 'unexpected_failure', 'msg': 'Error soft deleting user'},
+        {'code': 500, 'error_code': 'PRIVATE', 'msg': 'Error soft deleting user'},
+        {'code': 500, 'error_code': 'unexpected_failure', 'msg': ['Error soft deleting user']},
+        {'code': 500, 'error_code': 'unexpected_failure', 'msg': 'Error soft deleting user', 'error_id': None},
+        {'code': 500, 'error_code': 'unexpected_failure', 'msg': 'Error soft deleting user', 'message': 'Error soft deleting user'},
+        {'code': 500, 'error_code': 'unexpected_failure', 'msg': 'Error soft deleting user', 'internal_error': 'PRIVATE'},
+        {'code': 500, 'msg': 'Error soft deleting user'},
+        {'code': 'unexpected_failure', 'message': 'PRIVATE Error soft deleting user'},
+        {'code': 'unexpected_failure', 'message': 'Error soft deleting user PRIVATE'},
+        {'code': 'unexpected_failure', 'message': 'error soft deleting user'},
+        {'code': 'unexpected_failure', 'message': 'Error soft deleting user\n'},
+        {'code': 'unexpected_failure', 'message': None},
+        {'code': 'unexpected_failure', 'message': {'PRIVATE': 'Error soft deleting user'}},
+        {'code': 'unexpected_failure', 'message': 'Error soft deleting user', 'error_id': 'PRIVATE'},
+        {'code': 'unexpected_failure', 'message': 'Error soft deleting user', 'extra': 'PRIVATE'},
+        {'code': 500, 'message': 'Error soft deleting user'},
+        {'code': 'PRIVATE', 'message': 'Error soft deleting user'},
+    ]],
+    'PRIVATE nonbytes', None,
+])
+def test_inventory_softdelete_invalid_body_stays_generic_without_context(inventory_denial_model, capsys, body):
+    _assert_softdelete_category(inventory_denial_model,
+        SimpleNamespace(status_code=500, content=body), 'http_500', capsys)
+
+
+@pytest.mark.parametrize('length,category', [(4096, 'soft_user'), (4097, 'http_500')])
+def test_inventory_softdelete_body_byte_cap(inventory_denial_model, capsys, length, category):
+    raw = b'{"code":"unexpected_failure","message":"Error soft deleting user"}'
+    raw += b' ' * (length - len(raw))
+    assert len(raw) == length
+    _assert_softdelete_category(inventory_denial_model,
+        SimpleNamespace(status_code=500, content=raw), category, capsys)
+
+
+def test_inventory_softdelete_success_body_unread_exact_lifecycle(inventory_denial_model):
+    from dataclasses import asdict
+    model = inventory_denial_model
+    class Response:
+        status_code = 200
+        @property
+        def content(self):
+            raise AssertionError('200 content must not be inspected')
+    model.state['delete_response'] = Response()
+    phase, end = model.budget.phase, model.budget.end
+    result = asdict(model.run())
+    assert result['revoked_and_soft_deleted_sessions_denied'] is True
+    assert result['physical_auth_user_erasure'] == 'blocked-by-preserved-historical-foreign-keys'
+    assert model.events() == model.expected_events
+    assert model.state['auth'] == model.auth_order and not model.pending_auth and not model.sql_steps
+    assert (model.budget.phase, model.budget.end) == (phase, end)
+
+
+@pytest.mark.parametrize('seam', ['content', 'decode', 'object_hook'])
+@pytest.mark.parametrize('kind', ['deadline', 'limit', 'ordinary', 'cancel', 'interrupt', 'exit'])
+def test_inventory_softdelete_unexpected_failure_identity(inventory_denial_model, monkeypatch, seam, kind):
+    import asyncio
+    model = inventory_denial_model
+    primary = {
+        'deadline': lambda: control.RestoreUnavailable('deadline'),
+        'limit': lambda: control.RestoreUnavailable('limit'),
+        'ordinary': lambda: ValueError('PRIVATE unexpected'),
+        'cancel': lambda: asyncio.CancelledError('PRIVATE cancellation'),
+        'interrupt': lambda: KeyboardInterrupt('PRIVATE interrupt'),
+        'exit': lambda: SystemExit('PRIVATE exit'),
+    }[kind]()
+    content = b'{"code":"unexpected_failure","message":"Error soft deleting user"}'
+    class Response:
+        status_code = 500
+        @property
+        def content(self):
+            if seam == 'content':
+                raise primary
+            return content
+    saved_loads = model.inventory.json.loads
+    def loads(value, **kwargs):
+        if 'object_pairs_hook' not in kwargs:
+            return saved_loads(value, **kwargs)
+        if seam == 'decode':
+            raise primary
+        if seam == 'object_hook':
+            hook = kwargs['object_pairs_hook']
+            def pairs(items):
+                yield items[0]
+                raise primary
+            kwargs['object_pairs_hook'] = lambda items: hook(pairs(items))
+        return saved_loads(value, **kwargs)
+    monkeypatch.setattr(model.inventory.json, 'loads', loads)
+    model.state['delete_response'] = Response()
+    phase, end = model.budget.phase, model.budget.end
+    with pytest.raises(type(primary)) as caught:
+        model.run()
+    assert caught.value is primary
+    assert (model.budget.phase, model.budget.end) == (phase, end)
+    _assert_softdelete_stopped(model)

@@ -46,6 +46,57 @@ def _target_connection(recovery: RecoveredIdentity):
         yield connection
 
 
+def _softdelete_failure_category(response):
+    """Closed response labels only; neither origin nor underlying cause is proved."""
+    status = response.status_code
+    if status != 500:
+        return {401: 'http_401', 403: 'http_403', 404: 'http_404', 502: 'http_502'}.get(status, 'other_non200')
+    content = response.content
+    if type(content) is not bytes or len(content) > 4096:
+        return 'http_500'
+
+    def object_pairs(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise json.JSONDecodeError('Invalid response', '', 0)
+            value[key] = item
+        return value
+
+    def nonfinite(_):
+        raise json.JSONDecodeError('Invalid response', '', 0)
+
+    try:
+        value = json.loads(content.decode('utf-8'), object_pairs_hook=object_pairs, parse_constant=nonfinite)
+    except (json.JSONDecodeError, UnicodeDecodeError, RecursionError):
+        return 'http_500'
+    if type(value) is not dict:
+        return 'http_500'
+    keys = set(value)
+    if keys in ({'code', 'error_code', 'msg'}, {'code', 'error_code', 'msg', 'error_id'}):
+        if (type(value['code']) is not int or value['code'] != 500
+                or value['error_code'] != 'unexpected_failure' or type(value['msg']) is not str
+                or ('error_id' in value and type(value['error_id']) is not str)):
+            return 'http_500'
+        message = value['msg']
+    elif keys == {'code', 'message'}:
+        if value['code'] != 'unexpected_failure' or type(value['message']) is not str:
+            return 'http_500'
+        message = value['message']
+    else:
+        return 'http_500'
+    return {
+        'Database error loading user': 'load_user',
+        'Error recording audit log entry': 'audit',
+        'Error soft deleting user': 'soft_user',
+        'Error soft deleting user identities': 'soft_identities',
+        "Error deleting user's factors": 'factors',
+        "Error deleting user's WebAuthn credentials": 'webauthn',
+        "Error deleting user's sessions": 'sessions',
+        'Database error deleting user': 'hard_user',
+    }.get(message, 'http_500')
+
+
 async def verify_company_test_inventory_actor_recovery(
     recovery: RecoveredIdentity, company_id: CompanyId,
     expected: rf.Rf1086CompanyTestRetentionSnapshot, source_artifact_sha256: str,
@@ -177,6 +228,34 @@ async def verify_company_test_inventory_actor_recovery(
             response = await client.request('DELETE', recovery.auth_url + '/auth/v1/admin/users/' + str(owner.subject),
                 headers={'Authorization': 'Bearer ' + recovery.admin_key}, json={'should_soft_delete': True})
             if response.status_code != 200:
+                category = _softdelete_failure_category(response)
+                # Distinct raise lines carry finite categories through the existing location marker.
+                if category == 'http_401':
+                    raise ValueError('Independent inventory Auth soft deletion failed')
+                if category == 'http_403':
+                    raise ValueError('Independent inventory Auth soft deletion failed')
+                if category == 'http_404':
+                    raise ValueError('Independent inventory Auth soft deletion failed')
+                if category == 'http_500':
+                    raise ValueError('Independent inventory Auth soft deletion failed')
+                if category == 'http_502':
+                    raise ValueError('Independent inventory Auth soft deletion failed')
+                if category == 'load_user':
+                    raise ValueError('Independent inventory Auth soft deletion failed')
+                if category == 'audit':
+                    raise ValueError('Independent inventory Auth soft deletion failed')
+                if category == 'soft_user':
+                    raise ValueError('Independent inventory Auth soft deletion failed')
+                if category == 'soft_identities':
+                    raise ValueError('Independent inventory Auth soft deletion failed')
+                if category == 'factors':
+                    raise ValueError('Independent inventory Auth soft deletion failed')
+                if category == 'webauthn':
+                    raise ValueError('Independent inventory Auth soft deletion failed')
+                if category == 'sessions':
+                    raise ValueError('Independent inventory Auth soft deletion failed')
+                if category == 'hard_user':
+                    raise ValueError('Independent inventory Auth soft deletion failed')
                 raise ValueError('Independent inventory Auth soft deletion failed')
             if not await authentication_is_denied(owner_token):
                 raise ValueError('Independent inventory accepted a revoked or deleted session')
