@@ -31,11 +31,13 @@ export default async function CompanyTestHistoryPage({ params, searchParams }: P
     history = companyTestHistoryPage(await loadCompanyTestHistory(accessToken, companyId, requestId), page);
   } catch (error) {
     if (error instanceof TalliApiError && error.status === 401) redirect(`/login?next=${encodeURIComponent(href)}`);
+    const denied = error instanceof TalliApiError && [403, 404].includes(error.status);
     return <main className="appMain">
       <h1 className="pageTitle">Testhistorikk</h1>
-      <p role="alert">{error instanceof TalliApiError && [403, 404].includes(error.status)
+      <p role="alert">{denied
         ? "Testhistorikken er ikke tilgjengelig for denne innloggingen."
         : "Testhistorikken er midlertidig utilgjengelig. Prøv igjen senere."}</p>
+      {!denied ? <a className="btn btn--secondary" href={href}>Prøv igjen</a> : null}
     </main>;
   }
   return <main className="appMain">
@@ -44,7 +46,10 @@ export default async function CompanyTestHistoryPage({ params, searchParams }: P
       <p className="pageLede">Registrerte tester for aksjonærregisteroppgaven, på tvers av år og registrerende personer.</p>
       <p className="cardNote">Dette er testhistorikk. Selskapets fullstendige årsarkiv lastes ned separat.</p>
     </div>
-    {history.kind === "unavailable" ? <p role="alert">Historikken kunne ikke bekreftes. Antall registrerte tester er ukjent.</p>
+    {history.kind === "unavailable" ? <>
+      <p role="alert">Historikken kunne ikke bekreftes. Antall registrerte tester er ukjent.</p>
+      <a className="btn btn--secondary" href={href}>Prøv igjen</a>
+    </>
       : history.kind === "out_of_range" ? <section className="card">
         <p>Denne siden finnes ikke i historikken som ble hentet. Antall registrerte tester: {history.recordCount}.</p>
         <Link href={companyTestHistoryHref(companyId)}>Gå til første side</Link>
@@ -67,10 +72,10 @@ export default async function CompanyTestHistoryPage({ params, searchParams }: P
               </div>)}</dl>
             </details>)}
           </section>
-          <nav aria-label="Sider i testhistorikken">
-            {page > 1 ? <Link href={companyTestHistoryHref(companyId, page - 1)}>Forrige side</Link> : null}
-            <span> Side {page} av {history.pageCount} </span>
-            {page < history.pageCount ? <Link href={companyTestHistoryHref(companyId, page + 1)}>Neste side</Link> : null}
+          <nav aria-label="Sider i testhistorikken" style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", flexWrap: "wrap", marginBlock: "var(--space-4)" }}>
+            {page > 1 ? <Link className="btn btn--secondary" href={companyTestHistoryHref(companyId, page - 1)}>Forrige side</Link> : null}
+            <span aria-current="page">Side {page} av {history.pageCount}</span>
+            {page < history.pageCount ? <Link className="btn btn--secondary" href={companyTestHistoryHref(companyId, page + 1)}>Neste side</Link> : null}
           </nav>
         </>}
       </>}

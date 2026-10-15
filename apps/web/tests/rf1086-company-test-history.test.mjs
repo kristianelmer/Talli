@@ -94,7 +94,7 @@ function compile(source, dependencies) {
   return exports;
 }
 const pageSource = readFileSync(new URL('../app/companies/[companyId]/rf1086-test-history/page.tsx', import.meta.url), 'utf8');
-const Link = ({ href, children }) => React.createElement('a', { href }, children);
+const Link = ({ children, ...props }) => React.createElement('a', props, children);
 async function render(value, page = undefined, role = 'owner', failure = null) {
   const calls = [];
   const { default: Page } = compile(pageSource, {
@@ -124,6 +124,18 @@ test('actual page renders fifty records and local navigation from a full101-reco
   assert.ok(html.includes(history.companyTestHistoryHref(company, 3)));
   assert.ok(!html.includes('Original test 1</summary>'));
 });
+test('pagination identifies the current page and uses shared navigation controls', async () => {
+  const { html } = await render(capture(101), '2');
+  const navigation = html.match(/<nav\b[^>]*>([\s\S]*?)<\/nav>/u)?.[1];
+  assert.ok(navigation);
+  assert.match(navigation, /aria-current="page">Side 2 av 3/u);
+  const links = [...navigation.matchAll(/<a\b([^>]*)href="([^"]+)"[^>]*>([^<]+)<\/a>/gu)];
+  assert.deepEqual(links.map(([, , href, label]) => [href, label]), [
+    ['/companies/10000000-0000-0000-0000-000000000001/rf1086-test-history', 'Forrige side'],
+    ['/companies/10000000-0000-0000-0000-000000000001/rf1086-test-history?page=3', 'Neste side'],
+  ]);
+  for (const [markup] of links) assert.match(markup, /class="btn btn--secondary"/u);
+});
 test('actual page keeps unavailable, completezero and out-of-range distinct', async () => {
   const unknown = (await render(unavailable())).html;
   assert.ok(unknown.includes('Antall registrerte tester er ukjent'));
@@ -136,6 +148,29 @@ test('actual page keeps unavailable, completezero and out-of-range distinct', as
 test('actual page dependency refusal remains finite and hides private upstream details', async () => {
   const { html } = await render(capture(), undefined, 'owner', new Error('private database object/key'));
   assert.ok(html.includes('midlertidig utilgjengelig')); assert.ok(!html.includes('private database'));
+});
+
+test('unknown or temporarily unavailable history offers an explicit same-page read retry', async () => {
+  for (const [value, failure] of [
+    [unavailable(), null], [capture(), new Error('private failure')],
+    [capture(), new TalliApiError(503, undefined)],
+  ]) {
+    const { html } = await render(value, '2', 'owner', failure);
+    const retry = html.match(/<a\b[^>]*href="([^"]+)"[^>]*>Prøv igjen<\/a>/u);
+    assert.equal(retry?.[1], '/companies/10000000-0000-0000-0000-000000000001/rf1086-test-history?page=2');
+    assert.ok(!html.includes('Registrerte tester: 0'));
+    assert.ok(!html.includes('private failure'));
+  }
+});
+
+test('history read errors preserve access denial and the scoped login return', async () => {
+  for (const status of [403, 404]) {
+    const { html } = await render(capture(), '2', 'owner', new TalliApiError(status, undefined));
+    assert.ok(html.includes('ikke tilgjengelig for denne innloggingen'));
+    assert.ok(!html.includes('Prøv igjen'));
+  }
+  await assert.rejects(render(capture(), '2', 'owner', new TalliApiError(401, undefined)), error =>
+    error.location === '/login?next=%2Fcompanies%2F10000000-0000-0000-0000-000000000001%2Frf1086-test-history%3Fpage%3D2');
 });
 
 test('collapsible labels preserve long originals and declare narrow-width wrapping', async () => {
