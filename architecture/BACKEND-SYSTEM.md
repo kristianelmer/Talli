@@ -930,16 +930,28 @@ Existing capture and receipt lookup contracts keep their shapes.
 
 
 <!-- architecture-inventory
-{"transportDependencies":["talli_backend.application.shareholder_register_company_test_retention_http"],"workflowDependencies":["talli_backend.application.shareholder_register_company_test_retention_http"],"workflows":["rf1086-company-test-retention-read","rf1086-company-test-retention-download"],"workflowPurposes":["rf1086-company-test-retention-read=>Default-closed current authenticated accepted-member company-wide history query with exact original13 fields and no income-year/MFA/Billing producer gate. Explicit owned technical composition only; no ambient runtime wiring.","rf1086-company-test-retention-download=>Default-closed standalone company test download under current CompanyAccess Auth/member/fifteen-minute archive step-up before and after capture/stream priming. Exact RF originals; no full legal company-year export receipt, provider or filing authority."],"routes":["/api/v1/shareholder-register-filings/company-test-retention","/api/v1/shareholder-register-filings/company-test-retention/stream-v1"],"publicPackages":["talli_backend.modules.company_access.public","talli_backend.modules.shareholder_register_filing.public"]}
+{"transportDependencies":["talli_backend.application.shareholder_register_company_test_retention_http"],"workflowDependencies":["talli_backend.application.shareholder_register_company_test_retention_http"],"workflows":["rf1086-company-test-retention-read","rf1086-company-test-retention-download"],"workflowPurposes":["rf1086-company-test-retention-read=>Default-closed current authenticated accepted-member company-wide history query with exact original13 fields and no income-year/MFA/Billing producer gate. Explicit factory or validated opt-in postgres runtime; dedicated history DSN with no general fallback.","rf1086-company-test-retention-download=>Default-closed standalone company test download under current CompanyAccess Auth/member/fifteen-minute archive step-up before and after capture/stream priming. Exact RF originals; no full legal company-year export receipt, provider or filing authority."],"routes":["/api/v1/shareholder-register-filings/company-test-retention","/api/v1/shareholder-register-filings/company-test-retention/stream-v1"],"publicPackages":["talli_backend.modules.company_access.public","talli_backend.modules.shareholder_register_filing.public"]}
 -->
 
 Company-wide RF test history has separate member-read and archive-download
-workflows. Both require an explicitly injected dedicated factory and default to
-503 before Auth/DB/provider/record I/O. Existing environment/general RF factories
-cannot enable them. The historical query needs current accepted membership;
+workflows. Both default to 503 before Auth/DB/provider/record I/O. An explicitly
+injected dedicated factory takes precedence; otherwise the small
+`talli_backend.adapters.company_test_retention_runtime` adapter validates exact
+`TALLI_COMPANY_TEST_RETENTION_MODE=postgres`, shared Auth and its dedicated
+`TALLI_COMPANY_TEST_RETENTION_DATABASE_URL` before constructing the existing reader.
+Missing/off stays closed; invalid enabled configuration stops startup with
+setting-only errors. General RF, Ledger or privileged DSNs cannot substitute.
+The selected dedicated DSN/executor and shared Auth join bounded readiness,
+independently of general RF injection. Custom factories own their readiness. The historical query needs current accepted membership;
 the standalone download also requires CompanyAccess-owned current session and
 fifteen-minute MFA before and after RF capture/stream priming. It creates no
-legal company-year export receipt or filing/provider authority. Old readiness
-contracts remain exact and cannot establish this component or all-three readiness.
-Actual foundation/component/owned Auth acceptance and separately reviewed
-designated-backend wiring remain required before activation.
+legal company-year export receipt or filing/provider authority. Readiness proves
+Auth-settings/key access and connectivity/SET ROLE only. Target alignment with
+CompanyAccess, credential provenance, restricted login/grants, installed schema,
+retained records and persisted-session behavior remain owner admission checks;
+configuration does not establish them or all-three readiness. No target is
+provisioned or enabled by this source change.
+
+<!-- architecture-inventory
+{"transportDependencies":["talli_backend.adapters.company_test_retention_runtime"],"adapterDependencies":["talli_backend.adapters.postgres_shareholder_register_filing"]}
+-->

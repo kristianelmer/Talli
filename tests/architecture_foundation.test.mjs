@@ -638,6 +638,30 @@ test("architecture manifests, scoped documentation, and dependency evidence agre
     "to": "backend-system:validation_observation"
   },
   {
+    "from": "backend-system:rf1086-company-test-retention-download",
+    "imports": [
+      "talli_backend.modules.company_access.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:company_access"
+  },
+  {
+    "from": "backend-system:rf1086-company-test-retention-download",
+    "imports": [
+      "talli_backend.modules.shareholder_register_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:shareholder_register_filing"
+  },
+  {
+    "from": "backend-system:rf1086-company-test-retention-read",
+    "imports": [
+      "talli_backend.modules.shareholder_register_filing.public"
+    ],
+    "kind": "workflow",
+    "to": "backend:shareholder_register_filing"
+  },
+  {
     "from": "backend-system:shareholder-register-filing",
     "imports": [
       "talli_backend.modules.billing.public"

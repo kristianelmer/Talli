@@ -2199,14 +2199,22 @@ is required both times; no partial response or headers count as completion.
 Database/cursor acquisition closes before network transfer, and cancellation
 produces no completion footer or legal company-year export receipt.
 
-Both new HTTP operations are default-closed503: only an explicitly injected
-`company_test_retention_session_factory` enables controlled technical composition.
-No environment/general-RF fallback exists. Old liveness/readiness remains exact
-and does not establish readiness of this component or all three filings.
-`test_rf1086_company_test_retention_http.py` is an ordinary backend test; its
-Auth/DB doubles do not prove live session, independent target or full pipeline.
-Actual20claim/fullAuthority/24retention/currentcomponent/ownedAuth acceptance
-and later explicit designated-backend wiring remain required before activation.
+Both HTTP operations remain default-closed503. An explicitly injected
+`company_test_retention_session_factory` takes precedence over ambient settings.
+Otherwise `company_test_retention_runtime` selects the existing dedicated factory
+only for exact `TALLI_COMPANY_TEST_RETENTION_MODE=postgres`, with shared Auth and
+`TALLI_COMPANY_TEST_RETENTION_DATABASE_URL`; missing/off stays closed. Invalid
+enabled settings stop startup without disclosing values. No general-RF, Ledger
+or privileged database fallback exists, and construction performs no I/O.
+Internally composed history adds its dedicated DSN/executor and Auth to bounded
+readiness. This attests connectivity/SET ROLE and Auth-settings/key access, not
+schema, least privilege, retained data, persisted sessions or all-three readiness.
+Owner-designated target alignment with CompanyAccess, credentials, schema/grants
+and live session/download acceptance remain separate activation requirements.
+`test_company_test_retention_runtime_configuration.py` and the existing ordinary
+HTTP/policy tests use external Auth/DB doubles; they do not prove hosted operation.
+Member, fresh-MFA, exact-original and cancellation/stream-close authority stays
+in the existing reader and HTTP workflow.
 
 
 ## Standalone company test bundle

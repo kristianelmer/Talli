@@ -549,7 +549,7 @@
     },
     {
       "name": "rf1086-company-test-retention-read",
-      "purpose": "Default-closed current authenticated accepted-member company-wide history query with exact original13 fields and no income-year/MFA/Billing producer gate. Explicit owned technical composition only; no ambient runtime wiring.",
+      "purpose": "Default-closed current authenticated accepted-member company-wide history query with exact original13 fields and no income-year/MFA/Billing producer gate. Explicit factory or validated opt-in postgres runtime; dedicated history DSN with no general fallback.",
       "publicPackages": [
         "talli_backend.modules.shareholder_register_filing.public"
       ],
@@ -1186,7 +1186,8 @@
       "talli_backend.application.shareholder_register_archive",
       "talli_backend.application.shareholder_register_source_dispatch",
       "talli_backend.adapters.dependency_readiness",
-      "talli_backend.application.shareholder_register_company_test_retention_http"
+      "talli_backend.application.shareholder_register_company_test_retention_http",
+      "talli_backend.adapters.company_test_retention_runtime"
     ],
     "workflows": [
       "talli_backend.application.annual_checkout_prerequisites",
@@ -1288,7 +1289,8 @@
       "talli_backend.modules.audit.public",
       "talli_backend.adapters.postgres_document_evidence",
       "talli_backend.adapters.supabase_documents",
-      "talli_backend.application.corporate_register_evidence"
+      "talli_backend.application.corporate_register_evidence",
+      "talli_backend.adapters.postgres_shareholder_register_filing"
     ]
   }
 }

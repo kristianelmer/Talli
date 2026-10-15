@@ -52,6 +52,7 @@ from talli_backend.modules.billing.public import AnnualNotificationRejected, Ann
 
 from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
 from talli_backend.adapters.annual_billing_runtime import compose_annual_billing_runtime
+from talli_backend.adapters.company_test_retention_runtime import compose_company_test_retention_runtime
 from talli_backend.adapters.supabase_banking import compose_banking_application
 from talli_backend.adapters.simulation_billing import SimulationBillingProvider
 from talli_backend.adapters.supabase_billing import SupabaseBillingAdapter
@@ -5405,6 +5406,10 @@ def create_app(
         require_database("TALLI_COMPANY_ACCESS_DATABASE_URL", ("company_access_executor", "company_access_recovery_executor"))
     if banking_session_factory is None:
         require_database("TALLI_BANKING_DATABASE_URL", ("banking_executor", "banking_provider_executor", "banking_workflow_executor"))
+    if company_test_retention_session_factory is None:
+        company_test_retention_session_factory = compose_company_test_retention_runtime()
+        if company_test_retention_session_factory is not None:
+            require_database("TALLI_COMPANY_TEST_RETENTION_DATABASE_URL", ("shareholder_register_filing_executor",))
     auth_required = bool(database_roles)
     if marketing_measurement_gateway is None:
         require_database("TALLI_MARKETING_MEASUREMENT_DATABASE_URL", ("marketing_measurement_ingest_executor", "marketing_measurement_report_executor"))

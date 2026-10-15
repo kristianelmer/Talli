@@ -63,7 +63,11 @@ Authority Connections executors), Company Access, Banking, and Marketing
 Measurement. Banking uses its existing ledger fallback only when its setting
 is absent; an explicit empty value fails. Marketing is always composed for HTTP
 and retention maintenance. Enabled default `vipps-mt` notification intake adds
-its notification DSN/executor. It never uses privileged `DATABASE_URL`.
+its notification DSN/executor. Exact `TALLI_COMPANY_TEST_RETENTION_MODE=postgres`
+adds the dedicated history DSN and `shareholder_register_filing_executor`, plus
+shared Auth, even when general RF is injected. Missing/off remains closed; an
+explicit history factory bypasses ambient history settings and owns its probe.
+No history DSN fallback exists. It never uses privileged `DATABASE_URL`.
 
 Each probe has a two-second deadline, inside a three-second total deadline.
 Checks run concurrently; database connections close on cancellation. Shared
