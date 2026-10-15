@@ -1,81 +1,75 @@
 import assert from "node:assert/strict";
-import { createHmac, randomUUID } from "node:crypto";
+import { createHmac } from "node:crypto";
+import { performance } from "node:perf_hooks";
 import { createRequire } from "node:module";
 import test from "node:test";
 
 import { createClient } from "@supabase/supabase-js";
 import { chromium } from "playwright";
 import pg from "pg";
-import { allocateLoopbackPort, startOwnedProcess, stopOwnedProcess, waitForOwnedReadiness } from "./support/owned-process-lifecycle.mjs";
-import { isLoopbackPostgresUrl, isLoopbackSupabaseUrl } from "./support/supabase_fixture_safety.mjs";
+import { startOwnedProcess, stopOwnedProcess, waitForOwnedReadiness } from "./support/owned-process-lifecycle.mjs";
+import { readFixtureManifest, admitFixture, appendOwnership, makeBoundedFetch, listMail, jsonResponse, createOwnedUsers, checkedExpiryPair, cleanupOwned, runWithCleanup, boundedClose } from "./support/auth_recovery_fixture.mjs";
 import { captureFrontendStep } from "./support/frontend-capture.mjs";
 import { activate, fillField, tabTo } from "./support/frontend-keyboard-audit.mjs";
 
 test("local password and MFA recovery retain identity, uncertainty and return scope", { timeout: 300_000 }, async (t) => {
-  const api = process.env.SUPABASE_URL;
-  const anon = process.env.SUPABASE_ANON_KEY;
-  const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const db = process.env.DATABASE_URL;
-  const mail = process.env.TALLI_AUTH_TEST_MAIL_URL;
-  if (!api || !anon || !service || !db || !mail) { t.skip("explicit owned Auth/mail fixture env required"); return; }
-  assert.ok(isLoopbackSupabaseUrl(api) && isLoopbackPostgresUrl(db) && isLoopbackSupabaseUrl(mail), "Auth fixtures cannot leave loopback");
-  assert.ok(process.env.DOCKER_CONTEXT?.startsWith("colima-talli-frontend-"), "explicit frontend-owned context required");
-  const port = Number(process.env.TALLI_AUTH_TEST_WEB_PORT) || await allocateLoopbackPort();
-  const base = `http://localhost:${port}`;
+  const manifestPath = process.env.TALLI_AUTH_TEST_MANIFEST;
+  const manifestSha = process.env.TALLI_AUTH_TEST_MANIFEST_SHA256;
+  if (!manifestPath && !["SUPABASE_URL", "DATABASE_URL", "TALLI_AUTH_TEST_MAIL_URL"].some(key => process.env[key])) {
+    t.skip("explicit owned Auth/mail fixture manifest required"); return;
+  }
+  const admitted = admitFixture(await readFixtureManifest(manifestPath, manifestSha), process.env);
+  // The caller persists both user IDs before any mutation; cleanup also works after a lost create response.
+  await appendOwnership(manifestPath, manifestSha, { kind: "harness", pid: process.pid });
+  const { api, mail, web: base } = admitted.manifest.origins;
+  const { anon, service } = admitted;
+  const port = Number(new URL(base).port);
+  const testEnd = performance.now() + 300_000;
+  const workEnd = testEnd - 15_000;
+  const authFetch = makeBoundedFetch({ origin: api, deadline: workEnd, signal: t.signal });
   const next = "/sjekk-selskapet?via=password-recovery#company";
-  const prefix = `auth-browser-${randomUUID()}`;
-  const emails = [`${prefix}-alice@example.invalid`, `${prefix}-bob@example.invalid`];
+  const emails = admitted.manifest.users.map(user => user.email);
+  const ids = admitted.manifest.users.map(user => user.id);
   const oldPassword = "Synthetic-Old-Password-123!";
   const newPassword = "Synthetic-New-Password-456!";
-  const admin = createClient(api, service, { auth: { persistSession: false, autoRefreshToken: false } });
-  const client = () => createClient(api, anon, { auth: { persistSession: false, autoRefreshToken: false } });
-  const database = new pg.Client({ connectionString: db });
-  const ids = [];
+  const options = { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: authFetch } };
+  const admin = createClient(api, service, options);
+  const client = () => createClient(api, anon, options);
+  const database = new pg.Client(admitted.database);
   const seenMail = new Set();
-  let server, browser;
-  const allowed = new Set([String(port), new URL(api).port, new URL(mail).port]);
+  let server, browser, browserServer;
+  const allowed = new Set([base, api, mail]);
   const remote = [];
-  t.after(async () => {
-    const errors = [];
-    try { await browser?.close(); } catch { errors.push(new Error("owned browser cleanup failed")); }
-    try { await stopOwnedProcess(server); } catch { errors.push(new Error("owned Next cleanup failed")); }
-    for (const id of ids) {
-      const result = await admin.auth.admin.deleteUser(id);
-      if (result.error) errors.push(new Error(`fixture user cleanup:${result.error.code}`));
-    }
-    try {
-      const messages = (await (await fetch(`${mail}/api/v1/messages`)).json()).messages;
-      const owned = messages.filter(message => message.To.some(({ Address }) => emails.includes(Address.toLowerCase()))).map(({ ID }) => ID);
-      if (owned.length) {
-        const response = await fetch(`${mail}/api/v1/messages`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ IDs: owned }) });
-        if (!response.ok) errors.push(new Error("owned mail cleanup failed"));
-      }
-    } catch { errors.push(new Error("owned mail cleanup unavailable")); }
-    try { await database.end(); } catch { errors.push(new Error("fixture database disconnect failed")); }
-    if (errors.length) throw new AggregateError(errors, "Auth fixture cleanup incomplete");
-  });
+  await runWithCleanup(async () => {
   await database.connect();
-  for (const email of emails) {
-    const result = await admin.auth.admin.createUser({ email, password: oldPassword, email_confirm: true });
-    assert.equal(result.error, null, `fixture create:${result.error?.code}`); ids.push(result.data.user.id);
-  }
+  await createOwnedUsers(admitted, admin, oldPassword);
   const nextCli = createRequire(new URL("../apps/web/package.json", import.meta.url)).resolve("next/dist/bin/next");
+  await appendOwnership(manifestPath, manifestSha, { kind: "next_launch", pid: process.pid });
   server = startOwnedProcess({ command: process.execPath, args: [nextCli, process.env.TALLI_AUTH_TEST_BUILT === "1" ? "start" : "dev", "apps/web", "--hostname", "127.0.0.1", "--port", String(port)],
     cwd: process.cwd(), env: { PATH: process.env.PATH, NODE_ENV: process.env.TALLI_AUTH_TEST_BUILT === "1" ? "production" : "test", NEXT_TELEMETRY_DISABLED: "1",
       SUPABASE_URL: api, SUPABASE_ANON_KEY: anon, SUPABASE_SERVICE_ROLE_KEY: service,
       NEXT_PUBLIC_SUPABASE_URL: api, NEXT_PUBLIC_SUPABASE_ANON_KEY: anon,
       SITE_URL: base, TALLI_BACKEND_URL: "http://127.0.0.1:1" }, readinessProof: "Ready in" });
+  await appendOwnership(manifestPath, manifestSha, { kind: "next", pid: server.pid });
   await waitForOwnedReadiness({ process: server, url: `${base}/login?reauth=1` });
-  browser = await chromium.launch({ headless: true });
+  await appendOwnership(manifestPath, manifestSha, { kind: "browser_launch", pid: process.pid });
+  browserServer = await chromium.launchServer({ headless: true, timeout: 15000,
+    args: [`--talli-auth-fixture=${admitted.manifest.runId}`], env: {
+    PATH: process.env.PATH, HOME: process.env.HOME,
+    ...(process.env.TMPDIR ? { TMPDIR: process.env.TMPDIR } : {}), LANG: "en_US.UTF-8",
+  } });
+  await appendOwnership(manifestPath, manifestSha, { kind: "browser", pid: browserServer.process().pid });
+  browser = await chromium.connect(browserServer.wsEndpoint());
   async function page() {
-    const value = await browser.newPage({ viewport: { width: 320, height: 844 } });
+    const value = await browser.newPage({ viewport: { width: 320, height: 844 }, serviceWorkers: "block" });
     await value.context().route("**/*", route => {
       const url = new URL(route.request().url());
-      if (["http:", "https:"].includes(url.protocol) && !(["localhost", "127.0.0.1", "[::1]"].includes(url.hostname) && allowed.has(url.port))) {
-        remote.push(`${url.origin}${url.pathname}`); return route.abort();
+      if (["http:", "https:"].includes(url.protocol) && !(allowed.has(url.origin) && !url.username && !url.password)) {
+        remote.push("unadmitted-origin"); return route.abort();
       }
       return route.continue();
     });
+    await value.context().routeWebSocket("**/*", socket => { remote.push("websocket"); socket.close(); });
     return value;
   }
   async function hashLink(email) {
@@ -107,20 +101,29 @@ test("local password and MFA recovery retain identity, uncertainty and return sc
     }
   }
   async function deliveredLink(email) {
-    const deadline = Date.now() + 10_000;
-    while (Date.now() < deadline) {
-      const list = (await (await fetch(`${mail}/api/v1/messages`)).json()).messages;
-      const summary = list.find(message => !seenMail.has(message.ID) && message.To.some(({ Address }) => Address.toLowerCase() === email));
+    const deadline = Math.min(workEnd, performance.now() + 10_000);
+    const fetchMail = makeBoundedFetch({ origin: mail, deadline, signal: t.signal });
+    while (performance.now() < deadline) {
+      const list = await listMail(fetchMail);
+      const summary = list.find(message => !seenMail.has(message.ID) && Array.isArray(message.To) && message.To.some(item => item?.Address?.toLowerCase() === email));
       if (summary) {
         seenMail.add(summary.ID);
-        const message = await (await fetch(`${mail}/api/v1/message/${summary.ID}`)).json();
-        const links = (message.HTML.match(/href="([^"]+)"/gu) || []).map(value => new URL(value.slice(6, -1).replaceAll("&amp;", "&")));
+        const response = await fetchMail(mail + "/api/v1/message/" + summary.ID);
+        assert.equal(response.status, 200, "owned mail detail unavailable");
+        const message = await jsonResponse(response);
+        assert.equal(typeof message.HTML, "string", "owned mail HTML absent");
+        let links;
+        try { links = (message.HTML.match(/href="([^"]+)"/gu) || []).map(value => new URL(value.slice(6, -1).replaceAll("&amp;", "&"))); }
+        catch { throw new Error("owned mail link malformed"); }
         const url = links.find(url => url.origin === api && url.pathname === "/auth/v1/verify" && url.searchParams.get("type") === "recovery");
-        assert.ok(url, "owned mail has no recovery verification link");
-        assert.equal(new URL(url.searchParams.get("redirect_to")).origin, base, "Auth link escaped the owned web origin");
+        assert.ok(url && !url.username && !url.password && !url.hash, "owned mail has no recovery verification link");
+        assert.equal(url.searchParams.getAll("redirect_to").length, 1);
+        let redirect;
+        try { redirect = new URL(url.searchParams.get("redirect_to")); } catch { throw new Error("owned mail redirect malformed"); }
+        assert.ok(redirect.origin === base && !redirect.username && !redirect.password, "Auth link escaped the owned web origin");
         return url.href;
       }
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, Math.min(100, Math.max(0, deadline - performance.now()))));
     }
     assert.fail("owned recovery mail delivery timed out");
   }
@@ -249,12 +252,8 @@ test("local password and MFA recovery retain identity, uncertainty and return sc
     const value = await page(); await value.goto(await hashLink(emails[0]));
     await value.getByRole("heading", { name: "Velg nytt passord" }).waitFor();
     const session = await browserSession(value);
-    const [header, encoded] = session.access_token.split(".");
-    const payload = JSON.parse(Buffer.from(encoded, "base64url")); payload.exp = Math.floor(Date.now() / 1_000) - 60;
-    const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-    const token = `${header}.${body}.${createHmac("sha256", process.env.TALLI_AUTH_TEST_JWT_SECRET).update(`${header}.${body}`).digest("base64url")}`;
-    assert.ok((await client().auth.getUser(token)).error, "owned Auth did not reject expired input");
-    await replaceBrowserSession(value, { ...session, access_token: token, refresh_token: "synthetic-invalid-refresh", expires_at: payload.exp });
+    const pair = await checkedExpiryPair({ session, expectedUser: ids[0], signingMaterial: admitted.signingMaterial, getUser: token => client().auth.getUser(token) });
+    await replaceBrowserSession(value, { ...session, access_token: pair.expired, refresh_token: "synthetic-invalid-refresh", expires_at: pair.expiredAt });
     await fillField(value, value.getByLabel(/^Nytt passord/u), "Synthetic-Blocked-Change-789!");
     await fillField(value, value.getByLabel("Gjenta nytt passord"), "Synthetic-Blocked-Change-789!");
     await activate(value, value.getByRole("button", { name: "Endre passord" }));
@@ -312,6 +311,23 @@ test("local password and MFA recovery retain identity, uncertainty and return sc
   });
   assert.deepEqual(remote, [], "browser egress escaped the owned fixture");
   assert.equal((await database.query("select count(*)::int as count from public.companies where created_by = any($1::uuid[])", [ids])).rows[0].count, 0);
+  }, async () => {
+    const errors = [];
+    const close = async (name, action) => {
+      try { await boundedClose(action, Math.max(1, Math.min(5000, testEnd - performance.now()))); }
+      catch { errors.push(name); }
+    };
+    await close("browser_connection", async () => { await browser?.close(); });
+    await close("browser_process", async () => { await browserServer?.close(); });
+    await close("next_process", async () => { await stopOwnedProcess(server); });
+    // This is best effort inside the test. The outer owner independently calls cleanupOwned
+    // with its reserved deadline even if this process is cancelled or killed.
+    let owned;
+    try { owned = await cleanupOwned({ admitted, deadline: Math.min(testEnd, performance.now() + 15000) }); }
+    catch { errors.push("owned_cleanup_unavailable"); }
+    await close("database_disconnect", async () => { await database.end(); });
+    return { complete: errors.length === 0 && owned?.complete === true, errors: [...errors, ...(owned?.errors || [])] };
+  });
 });
 
 async function browserSession(page) {
