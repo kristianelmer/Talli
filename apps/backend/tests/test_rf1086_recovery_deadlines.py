@@ -850,3 +850,84 @@ def test_company_failure_output_expiry_preserves_first_failure(monkeypatch):
         fixture.runner._failure_output(original, ('finite_label',), value)
     assert len(calls) == 1 and value.context.owner.primary is primary
     assert value.context.owner.uncertain and signal.getitimer(signal.ITIMER_REAL)[0] == 0
+
+
+@pytest.mark.parametrize('release_mode', ['caller_exit', 'while_open'])
+def test_internal_relay_finishes_registration_before_owned_close(relays, monkeypatch, release_mode):
+    import socket
+    import threading
+    value = budget(); value.phase = 'actors'; end = value.end
+    ready = threading.Event(); release = threading.Event(); done = threading.Event()
+    observed = {}
+    original_setup = control._InternalRelay.setup
+    def left():
+        return max(0, end - .25 - time.monotonic())
+    def setup(self, ports):
+        bound = original_setup(self, ports)
+        real_register = self.selector.register
+        def register(item, events, data=None):
+            if (threading.current_thread() is self.thread
+                    and item not in self.listeners and not observed):
+                observed['socket'] = item
+                observed['initial_fd'] = item.fileno()
+                observed['initial_stop'] = self.stop.is_set()
+                observed['tracked'] = item in self.sockets and item in self.peers
+                ready.set()
+                assert release.wait(left()), 'register barrier expired'
+                observed['register_fd'] = item.fileno()
+                observed['register_stop'] = self.stop.is_set()
+                try:
+                    result = real_register(item, events, data)
+                    observed['registered'] = True
+                    return result
+                finally:
+                    # Control stops only after real registration, avoiding a
+                    # second, uninstrumented caller-close race at teardown.
+                    if release_mode == 'while_open':
+                        self.stop.set()
+                    done.set()
+            return real_register(item, events, data)
+        monkeypatch.setattr(self.selector, 'register', register)
+        return bound
+    monkeypatch.setattr(control._InternalRelay, 'setup', setup)
+    client = None
+    primary = None
+    try:
+        with socket.socket() as upstream:
+            upstream.bind(('127.0.0.1', 0)); upstream.listen(1); upstream.settimeout(1)
+            owner, inspections = relay_owner(value, (upstream.getsockname(), upstream.getsockname()))
+            with control.internal_loopback_ports(owner, budget=value) as ports:
+                relay = relays[0]
+                real_join = relay.thread.join
+                def join(timeout=None):
+                    # Release at the actual owned join, after the caller has
+                    # requested stop. The real selector decides whether fd is valid.
+                    release.set()
+                    return real_join(timeout)
+                monkeypatch.setattr(relay.thread, 'join', join)
+                client = socket.create_connection(('127.0.0.1', ports[0]), timeout=1)
+                assert ready.wait(left()), 'register was not reached'
+                assert observed['initial_fd'] >= 0 and observed['tracked']
+                assert observed['initial_stop'] is False
+                if release_mode == 'while_open':
+                    release.set()
+                    assert done.wait(left()), 'open registration did not finish'
+                    real_join(left())
+                    assert not relay.thread.is_alive()
+            assert len(inspections) == 2
+    except BaseException as error:
+        primary = error
+        raise
+    finally:
+        release.set()
+        if client is not None:
+            try:
+                client.close()
+            except BaseException:
+                if primary is None:
+                    raise
+    assert observed['registered'] and observed['register_fd'] >= 0
+    assert observed['register_stop'] is (release_mode == 'caller_exit')
+    assert relays[0].failure is None and not relays[0].close_failed
+    assert not relays[0].thread.is_alive() and not relays[0].sockets
+    assert value.end == end and value.phase == 'actors'

@@ -2575,10 +2575,12 @@ def internal_loopback_ports(owner, ports=(0, 0), *, budget):
             errors = []
             try:
                 with io_deadline(budget, end=end):
-                    relay.close_all()
+                    # Let the reactor finish socket operations before caller-owned close.
+                    relay.stop.set()
                     if relay.thread is not None and relay.thread.ident is not None:
                         relay.thread.join(timeout=max(0, min(end, budget.end) - time.monotonic()))
                     require(relay.thread is None or not relay.thread.is_alive(), 'cleanup_uncertain')
+                    relay.close_all()
                     require(not relay.acquiring and (not relay.start_pending or
                             (relay.thread is not None and relay.thread.ident is not None)), 'cleanup_uncertain')
                     if relay.close_error is not None: raise relay.close_error
