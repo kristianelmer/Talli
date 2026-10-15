@@ -828,6 +828,19 @@ h2 {
   width: 100%;
 }
 
+.ownerMfaCard {
+  min-width: 0;
+}
+
+.ownerMfaCard code {
+  overflow-wrap: anywhere;
+}
+
+.ownerMfaCard img {
+  height: auto;
+  max-width: 100%;
+}
+
 .authTitle {
   font-size: var(--text-2xl);
   margin: 0;

@@ -9,7 +9,7 @@ import { sanitizeInternalRedirect } from "../../lib/internal-redirect";
 import { GoogleSignInButton } from "../GoogleSignInButton";
 
 type LoginProps = {
-  searchParams?: Promise<{ error?: string; next?: string; reauth?: string }>;
+  searchParams?: Promise<{ error?: string; next?: string; reauth?: string; passwordChanged?: string }>;
 };
 
 export default async function LoginPage({ searchParams }: LoginProps) {
@@ -32,8 +32,11 @@ export default async function LoginPage({ searchParams }: LoginProps) {
         <span>{ownerCopy.brand}</span>
       </div>
       <h1 className="authTitle">{ownerCopy.auth.signInTitle}</h1>
-      <p className="authIntro">{ownerCopy.auth.signInIntro}</p>
+      {next.split("?")[0] === "/invite/accept" ? (
+        <p className="authIntro">{ownerCopy.auth.invitationIntro}</p>
+      ) : <p className="authIntro">{ownerCopy.auth.signInIntro}</p>}
       {params?.error ? <Banner variant="danger">{params.error}</Banner> : null}
+      {params?.passwordChanged === "1" ? <Banner variant="success">Logg inn med det nye passordet.</Banner> : null}
       {!hasSupabaseEnv() ? (
         <Banner variant="danger" title={ownerCopy.auth.unavailableTitle}>
           {ownerCopy.auth.unavailable}
@@ -61,6 +64,7 @@ export default async function LoginPage({ searchParams }: LoginProps) {
           {ownerCopy.auth.signInCta}
         </SubmitButton>
       </form>
+      <p className="authAlt"><Link href={`/forgot-password?${new URLSearchParams({ next })}`}>Glemt passord?</Link></p>
       <p className="authDivider">{ownerCopy.auth.orDivider}</p>
       <GoogleSignInButton next={next} reauthenticate={reauthenticate} />
       <p className="authAlt">

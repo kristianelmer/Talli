@@ -233,6 +233,7 @@ export const ownerCopy = {
   auth: {
     signInTitle: "Logg inn",
     signInIntro: "Holding-først årsrapportering for enkle AS.",
+    invitationIntro: "Bruk e-postadressen som fikk invitasjonen.",
     signInCta: "Logg inn",
     signInPending: "Logger inn …",
     signUpTitle: "Opprett bruker",

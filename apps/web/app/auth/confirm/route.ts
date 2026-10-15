@@ -13,6 +13,14 @@ import { sanitizeInternalRedirect } from "../../lib/internal-redirect";
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
+  if (searchParams.get("type") === "recovery") {
+    const target = new URL("/auth/recovery", origin);
+    target.search = searchParams.toString();
+    const response = NextResponse.redirect(target);
+    response.headers.set("Cache-Control", "private, no-store");
+    response.headers.set("Referrer-Policy", "no-referrer");
+    return response;
+  }
   const next = sanitizeInternalRedirect(searchParams.get("next"), "/email-confirmed");
   const reauthenticate = searchParams.get("reauth") === "1";
   const tokenHash = searchParams.get("token_hash");
