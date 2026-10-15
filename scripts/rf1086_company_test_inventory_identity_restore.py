@@ -83,13 +83,13 @@ async def verify_company_test_inventory_actor_recovery(
             else:
                 raise ValueError('Independent inventory admitted an unrelated or revoked member')
 
-        async def authentication_denied(token):
+        async def authentication_is_denied(token):
             try:
                 await inventory(token)
             except ShareholderRegisterFilingAuthenticationError:
-                pass
+                return True
             else:
-                raise ValueError('Independent inventory accepted a revoked or deleted session')
+                return False
 
         owner = (await factory.session(owner_token)).actor_id
         outsider = (await factory.session(outsider_token)).actor_id
@@ -108,7 +108,8 @@ async def verify_company_test_inventory_actor_recovery(
                 raise ValueError()
         except (IndexError, KeyError, ValueError, TypeError, AttributeError):
             raise ValueError('Inventory stateless probe must bind the original owner') from None
-        await authentication_denied(stateless_owner_token)
+        if not await authentication_is_denied(stateless_owner_token):
+            raise ValueError('Independent inventory accepted a revoked or deleted session')
         initial = await inventory(owner_token)
         await membership_denied(outsider_token)
         with _target_connection(recovery) as connection:
@@ -133,7 +134,8 @@ async def verify_company_test_inventory_actor_recovery(
             banned_until = connection.execute('select banned_until from auth.users where id=%s', (str(owner.subject),)).fetchone()[0]
             connection.execute("update auth.users set banned_until=now()+interval '1 hour' where id=%s", (str(owner.subject),))
         try:
-            await authentication_denied(owner_token)
+            if not await authentication_is_denied(owner_token):
+                raise ValueError('Independent inventory accepted a revoked or deleted session')
         finally:
             with _target_connection(recovery) as connection:
                 connection.execute('update auth.users set banned_until=%s where id=%s', (banned_until, str(owner.subject)))
@@ -162,7 +164,8 @@ async def verify_company_test_inventory_actor_recovery(
                 headers={'Authorization': 'Bearer ' + owner_token})
             if response.status_code != 204:
                 raise ValueError('Independent inventory session revocation failed')
-            await authentication_denied(owner_token)
+            if not await authentication_is_denied(owner_token):
+                raise ValueError('Independent inventory accepted a revoked or deleted session')
             # Only this disposable TARGET baseline is restored for an independent deletion test.
             with _target_connection(recovery) as connection:
                 connection.execute('insert into auth.sessions select * from jsonb_populate_recordset(null::auth.sessions,%s::jsonb)',
@@ -175,7 +178,8 @@ async def verify_company_test_inventory_actor_recovery(
                 headers={'Authorization': 'Bearer ' + recovery.admin_key}, json={'should_soft_delete': True})
             if response.status_code != 200:
                 raise ValueError('Independent inventory Auth soft deletion failed')
-            await authentication_denied(owner_token)
+            if not await authentication_is_denied(owner_token):
+                raise ValueError('Independent inventory accepted a revoked or deleted session')
         with _target_connection(recovery) as connection:
             if connection.execute('select deleted_at is not null from auth.users where id=%s', (str(owner.subject),)).fetchone() != (True,):
                 raise ValueError('Original recorded actor tombstone is missing')

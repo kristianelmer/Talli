@@ -17,6 +17,279 @@ import test_rf1086_restore_metadata as metadata_fixtures
 
 
 @pytest.fixture
+def inventory_denial_model(monkeypatch):
+    """Real verifier; deliberately admitted branches are not real Auth/SQL proof."""
+    import base64
+    import socket
+    from collections import deque
+    from pathlib import Path
+    import ast
+    from test_rf1086_company_test_retention import COMPANY, ACTOR, capture, record, wire
+    from talli_backend.shared.kernel import ActorId, ActorKind, UserId
+    import rf1086_company_test_inventory_identity_restore as inventory
+
+    budget = control.RecoveryBudget(time.monotonic())
+    budget.enter('actors')
+    expected = capture(record())
+    outsider = ActorId(ActorKind.USER, UserId('00000000-0000-0000-0000-000000000008'))
+    owner_id, outsider_id, company_id = str(ACTOR.subject), str(outsider.subject), str(COMPANY)
+    source_reader = 'postgresql://talli_ledger_backend@127.0.0.1:55001/postgres'
+    target_url = 'postgresql://postgres@127.0.0.1:55002/postgres'
+    stateless = 'generated.' + base64.urlsafe_b64encode(json.dumps({'sub': owner_id}).encode()).decode().rstrip('=') + '.signature'
+    tokens = {'owner': 'generated-owner', 'outsider': 'generated-outsider', 'stateless': stateless}
+    token_names = {value: key for key, value in tokens.items()}
+    auth_order = [('owner', None), ('outsider', None), ('stateless', 'stateless'),
+                  ('owner', None), ('outsider', None), ('owner', None), ('owner', None),
+                  ('owner', None), ('owner', None), ('owner', None), ('owner', 'banned'),
+                  ('owner', None), ('owner', None), ('outsider', None), ('owner', 'logout'),
+                  ('owner', None), ('owner', 'deleted'), ('outsider', None)]
+    pending_auth = deque(auth_order)
+    state = dict(admit=None, fault=None, fault_at='auth', owner=True, outsider=False, accepted='generated-accepted',
+                 role='owner', banned=None, logged_out=False, deleted=False, events=[],
+                 auth=[], sql=[], connections=0, closes=0, http_open=0, http_close=0)
+    recovery = SimpleNamespace(budget=budget, database_url=target_url,
+        database_container='generated-target', bootstrap='generated-bootstrap',
+        auth_url='http://127.0.0.1:55003', admin_key='generated-admin',
+        reader_url=lambda _: source_reader, proof={key: True for key in (
+            'independentClusterRestored', 'independentAuthRestored', 'authHttpTargetBindingVerified',
+            'roleAttributesAndMembershipsRestored', 'ownershipGrantsAndRlsRestored', 'authRowsRestoredExactly')})
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError('generated inventory test attempted external IO')
+    monkeypatch.setattr(budget, 'command', forbidden)
+    monkeypatch.setattr(control.subprocess, 'Popen', forbidden)
+    monkeypatch.setattr(socket.socket, 'connect', forbidden)
+    monkeypatch.setattr(socket, 'create_connection', forbidden)
+
+    class Session:
+        def __init__(self, name, probe=None):
+            self.name, self.probe = name, probe
+            self.actor_id = outsider if name == 'outsider' else ACTOR
+        async def read_company_test_retention(self, query):
+            assert query.company_id == COMPANY and query.actor_id == self.actor_id
+            state['events'].append(('read', self.name))
+            if state['fault'] and state['fault'][0] == self.probe and state['fault_at'] == 'read':
+                raise state['fault'][1]
+            # The branch-injected success intentionally bypasses modeled membership
+            # for logout/deleted and SID admission for stateless; it proves location only.
+            allowed = state['outsider'] if self.name == 'outsider' else state['owner'] and state['accepted'] is not None
+            if self.probe is None and not allowed:
+                raise inventory.rf.ShareholderRegisterFilingError.not_found()
+            return expected
+
+    class Factory:
+        def __init__(self, configuration):
+            assert configuration.url == recovery.auth_url
+        async def session(self, token):
+            name = token_names[token]
+            assert pending_auth, 'unexpected additional Auth invocation'
+            required_name, probe = pending_auth.popleft()
+            assert name == required_name
+            state['auth'].append((name, probe)); state['events'].append(('auth', name, probe))
+            if probe:
+                if probe == 'banned': assert state['banned'] == 'future'
+                if probe == 'logout': assert state['logged_out'] and not state['owner']
+                if probe == 'deleted': assert state['deleted'] and not state['owner']
+                fault = state['fault'] and state['fault'][0] == probe
+                if fault and state['fault_at'] == 'auth':
+                    raise state['fault'][1]
+                if state['admit'] != probe and not fault:
+                    raise inventory.ShareholderRegisterFilingAuthenticationError()
+            return Session(name, probe=probe)
+    monkeypatch.setattr(inventory, 'PostgresCompanyTestRetentionSessionFactory', Factory)
+
+    sql_steps = deque([
+        ('membership', 'select role,accepted_at from public.company_memberships where company_id=%s and user_id=%s', (company_id, owner_id), [('owner', 'generated-accepted')]),
+        *[(role, 'update public.company_memberships set role=%s where company_id=%s and user_id=%s', (role, company_id, owner_id), []) for role in ('owner', 'reviewer', 'read_only')],
+        ('unaccept', 'update public.company_memberships set role=%s,accepted_at=null where company_id=%s and user_id=%s', ('owner', company_id, owner_id), []),
+        ('accept', 'update public.company_memberships set accepted_at=%s where company_id=%s and user_id=%s', ('generated-accepted', company_id, owner_id), []),
+        ('ban_before', 'select banned_until from auth.users where id=%s', (owner_id,), [(None,)]),
+        ('ban', "update auth.users set banned_until=now()+interval '1 hour' where id=%s", (owner_id,), []),
+        ('unban', 'update auth.users set banned_until=%s where id=%s', (None, owner_id), []),
+        ('outsider_before', 'select count(*) from public.company_memberships where company_id=%s and user_id=%s', (company_id, outsider_id), [(0,)]),
+        ('successor', "insert into public.company_memberships(company_id,user_id,role,accepted_at) values(%s,%s,'owner',now())", (company_id, outsider_id), []),
+        ('revoke_member', 'delete from public.company_memberships where company_id=%s and user_id=%s returning user_id', (company_id, owner_id), [(owner_id,)]),
+        ('sessions', "select coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) from auth.sessions s where user_id=%s", (owner_id,), [([{'user_id': owner_id}],)]),
+        ('restore_session', 'insert into auth.sessions select * from jsonb_populate_recordset(null::auth.sessions,%s::jsonb)', (json.dumps([{'user_id': owner_id}]),), []),
+        ('deleted', 'select deleted_at is not null from auth.users where id=%s', (owner_id,), [(True,)]),
+        ('erase', 'delete from auth.users where id=%s', (owner_id,), []),
+    ])
+
+    class Connection:
+        def __enter__(self):
+            state['connections'] += 1
+            return self
+        def __exit__(self, *args): self.close()
+        def close(self): state['closes'] += 1
+        def transaction(self, **kwargs):
+            assert kwargs == {'force_rollback': True}
+            return nullcontext()
+        def execute(self, sql, params):
+            if sql == "select set_config('statement_timeout',%s,false)":
+                assert len(params) == 1 and int(params[0]) > 0
+                return None
+            assert sql_steps, 'unexpected additional SQL'
+            label, required_sql, required_params, rows = sql_steps.popleft()
+            assert (sql, params) == (required_sql, required_params)
+            state['sql'].append(label); state['events'].append(('sql', label))
+            if label in ('owner', 'reviewer', 'read_only'): state['role'] = label
+            elif label == 'unaccept': state.update(role='owner', accepted=None)
+            elif label == 'accept': state['accepted'] = 'generated-accepted'
+            elif label == 'ban': state['banned'] = 'future'
+            elif label == 'unban': state['banned'] = None
+            elif label == 'successor': state['outsider'] = True
+            elif label == 'revoke_member': state['owner'] = False
+            elif label == 'restore_session': state['logged_out'] = False
+            elif label == 'erase': raise inventory.psycopg.errors.ForeignKeyViolation('generated retained history')
+            return SimpleNamespace(fetchone=lambda: rows[0], fetchall=lambda: rows)
+
+    def verified(*args, **kwargs):
+        assert args == (target_url, recovery.database_container, recovery.bootstrap)
+        assert kwargs == {'budget': budget}
+        state['events'].append(('target-proof',))
+    def connect(dsn, **kwargs):
+        assert state['events'][-1] == ('target-proof',)
+        assert inventory.conninfo_to_dict(dsn)['port'] == '55002'
+        return Connection()
+    monkeypatch.setattr(inventory, 'verify_target_session', verified)
+    monkeypatch.setattr(inventory.psycopg, 'connect', connect)
+
+    class Client:
+        def __init__(self, **kwargs):
+            assert kwargs['trust_env'] is False and 0 < kwargs['timeout'] <= 15
+        async def __aenter__(self):
+            state['http_open'] += 1
+            return self
+        async def __aexit__(self, *args): state['http_close'] += 1
+        async def post(self, url, *, headers):
+            assert url == recovery.auth_url + '/auth/v1/logout?scope=global'
+            assert headers == {'Authorization': 'Bearer ' + tokens['owner']}
+            assert state['events'][-1] == ('target-proof',)
+            state['events'].append(('http', 'logout')); state['logged_out'] = True
+            return SimpleNamespace(status_code=204)
+        async def request(self, method, url, *, headers, json):
+            assert (method, url, headers, json) == ('DELETE', recovery.auth_url + '/auth/v1/admin/users/' + owner_id,
+                {'Authorization': 'Bearer generated-admin'}, {'should_soft_delete': True})
+            assert state['events'][-1] == ('target-proof',)
+            state['events'].append(('http', 'delete')); state['deleted'] = True
+            return SimpleNamespace(status_code=200)
+    monkeypatch.setattr(inventory.httpx, 'AsyncClient', Client)
+
+    def run():
+        return control.run_async(inventory.verify_company_test_inventory_actor_recovery(
+            recovery, COMPANY, expected, hashlib.sha256(wire(expected).encode()).hexdigest(),
+            source_reader_url=source_reader, anon_key='generated-anon', owner_token=tokens['owner'],
+            outsider_token=tokens['outsider'], stateless_owner_token=tokens['stateless']), budget=budget)
+
+    # Expected locations come from four guarded raise statements, never caught traceback.
+    tree = ast.parse(Path(inventory.__file__).read_text())
+    guards = sorted((node for node in ast.walk(tree) if isinstance(node, ast.If)
+        and isinstance(node.test, ast.UnaryOp) and isinstance(node.test.op, ast.Not)
+        and isinstance(node.test.operand, ast.Await) and isinstance(node.test.operand.value, ast.Call)
+        and isinstance(node.test.operand.value.func, ast.Name)
+        and node.test.operand.value.func.id == 'authentication_is_denied'), key=lambda node: node.lineno)
+    expected_lines = {name: node.body[0].lineno for name, node in zip(
+        ('stateless', 'banned', 'logout', 'deleted'), guards)}
+    expected_events = [
+        ('auth', 'owner', None), ('auth', 'outsider', None), ('auth', 'stateless', 'stateless'),
+        ('auth', 'owner', None), ('read', 'owner'), ('auth', 'outsider', None), ('read', 'outsider'),
+        ('sql', 'membership'), ('sql', 'owner'), ('auth', 'owner', None), ('read', 'owner'),
+        ('sql', 'reviewer'), ('auth', 'owner', None), ('read', 'owner'),
+        ('sql', 'read_only'), ('auth', 'owner', None), ('read', 'owner'),
+        ('sql', 'unaccept'), ('auth', 'owner', None), ('read', 'owner'),
+        ('sql', 'accept'), ('auth', 'owner', None), ('read', 'owner'),
+        ('sql', 'ban_before'), ('sql', 'ban'), ('auth', 'owner', 'banned'), ('sql', 'unban'),
+        ('auth', 'owner', None), ('read', 'owner'), ('sql', 'outsider_before'),
+        ('sql', 'successor'), ('sql', 'revoke_member'), ('auth', 'owner', None), ('read', 'owner'),
+        ('auth', 'outsider', None), ('read', 'outsider'), ('sql', 'sessions'),
+        ('http', 'logout'), ('auth', 'owner', 'logout'), ('sql', 'restore_session'),
+        ('auth', 'owner', None), ('http', 'delete'), ('auth', 'owner', 'deleted'),
+        ('sql', 'deleted'), ('sql', 'erase'), ('auth', 'outsider', None), ('read', 'outsider'),
+    ]
+    def events():
+        return [event for event in state['events'] if event[0] != 'target-proof']
+    def stopped_at(probe, *, read):
+        name = 'stateless' if probe == 'stateless' else 'owner'
+        point = expected_events.index(('auth', name, probe))
+        required = expected_events[:point + 1]
+        if read: required += [('read', name)]
+        if probe == 'banned': required += [('sql', 'unban')]
+        assert events() == required
+    yield SimpleNamespace(run=run, state=state, budget=budget, inventory=inventory,
+        expected=expected, expected_lines=expected_lines, pending_auth=pending_auth, sql_steps=sql_steps,
+        auth_order=auth_order, expected_events=expected_events, events=events, stopped_at=stopped_at)
+    assert state['connections'] == state['closes']
+    assert state['http_open'] == state['http_close']
+    assert signal.getitimer(signal.ITIMER_REAL)[0] == 0
+
+
+@pytest.mark.parametrize('probe', ['stateless', 'banned', 'logout', 'deleted'])
+def test_inventory_denial_callsite_branch_injection_has_distinct_location(inventory_denial_model, probe):
+    """Deliberate normal return tests attribution, not actual Auth/SQL reachability."""
+    model = inventory_denial_model
+    model.state['admit'] = probe
+    with pytest.raises(ValueError) as caught:
+        model.run()
+    assert str(caught.value) == 'Independent inventory accepted a revoked or deleted session'
+    location = control._diagnostic_location(caught.value, model.budget, post_construction=True)
+    assert location == {'module': 'inventory', 'line': model.expected_lines.get(probe),
+                        'depth': 0, 'edge': 'primary'}, (probe, location, model.expected_lines)
+    assert len(set(model.expected_lines.values())) == 4
+    assert model.state['auth'] == model.auth_order[:len(model.state['auth'])]
+    assert model.state['auth'][-1][1] == probe
+    model.stopped_at(probe, read=True)
+    if probe == 'banned':
+        assert model.state['banned'] is None and model.state['sql'][-1] == 'unban'
+    if probe in ('logout', 'deleted'):
+        assert model.state['owner'] is False
+
+
+def test_inventory_denial_callsite_expected_denials_continue_exact_lifecycle(inventory_denial_model):
+    from dataclasses import asdict
+    model = inventory_denial_model
+    phase, end = model.budget.phase, model.budget.end
+    report = model.run()
+    assert asdict(report) == dict(
+        record_count=model.expected.record_count, records_sha256=model.expected.records_sha256,
+        target_observed_at=model.expected.observed_at,
+        source_artifact_sha256=hashlib.sha256(model.inventory.rf.serialize_rf1086_company_test_retention(model.expected).encode()).hexdigest(),
+        original_recorded_actors_preserved=True, current_membership_roles_verified=True,
+        outsider_unaccepted_banned_and_revoked_denied=True, revoked_and_soft_deleted_sessions_denied=True,
+        authorized_successor_recovered_inventory=True, stateless_owner_session_denied=True,
+        physical_auth_user_erasure='blocked-by-preserved-historical-foreign-keys')
+    assert model.state['auth'] == model.auth_order and not model.pending_auth and not model.sql_steps
+    assert model.events() == model.expected_events
+    assert model.state['owner'] is False and model.state['outsider'] is True
+    assert model.state['banned'] is None and model.state['deleted'] is True
+    assert (model.budget.phase, model.budget.end) == (phase, end)
+
+
+@pytest.mark.parametrize('probe', ['stateless', 'banned', 'logout', 'deleted'])
+@pytest.mark.parametrize('kind', ['domain', 'unavailable', 'ordinary', 'cancel', 'interrupt', 'exit'])
+def test_inventory_denial_callsite_unexpected_error_identity_and_unwind(inventory_denial_model, probe, kind):
+    import asyncio
+    model = inventory_denial_model
+    primary = {
+        'domain': model.inventory.rf.ShareholderRegisterFilingError.not_found,
+        'unavailable': model.inventory.rf.ShareholderRegisterFilingError.unavailable,
+        'ordinary': lambda: ValueError('generated unexpected failure'),
+        'cancel': lambda: asyncio.CancelledError('generated cancellation'),
+        'interrupt': lambda: KeyboardInterrupt('generated interruption'),
+        'exit': lambda: SystemExit('generated exit'),
+    }[kind]()
+    model.state['fault'] = (probe, primary)
+    model.state['fault_at'] = 'read' if kind in ('domain', 'unavailable', 'ordinary') else 'auth'
+    phase, end = model.budget.phase, model.budget.end
+    with pytest.raises(type(primary)) as caught:
+        model.run()
+    assert caught.value is primary
+    model.stopped_at(probe, read=model.state['fault_at'] == 'read')
+    assert (model.budget.phase, model.budget.end) == (phase, end)
+    if probe == 'banned':
+        assert model.state['banned'] is None and model.state['sql'][-1] == 'unban'
+
+
+@pytest.fixture
 def postconstruction_model(repaired_model, tmp_path, monkeypatch):
     """Real repaired generator/receipt; generated transport and external services."""
     from test_rf1086_restore_control import postconstruction_inputs
