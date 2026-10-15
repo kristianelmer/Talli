@@ -257,6 +257,7 @@ def auth_environment(source, host):
     if not re.fullmatch(r'rf193_identity_db_[a-f0-9]{32}', host):
         raise ValueError('Auth recovery requires this invocation\'s fresh database')
     allowed = {'GOTRUE_JWT_SECRET', 'GOTRUE_JWT_KEYS', 'GOTRUE_JWT_AUD', 'GOTRUE_JWT_ADMIN_ROLES',
+               'GOTRUE_JWT_VALID_METHODS', 'GOTRUE_JWT_VALIDMETHODS',
                'GOTRUE_JWT_DEFAULT_GROUP_NAME', 'GOTRUE_JWT_EXP', 'GOTRUE_DB_NAMESPACE',
                'GOTRUE_SECURITY_REFRESH_TOKEN_ROTATION_ENABLED', 'GOTRUE_SECURITY_REFRESH_TOKEN_REUSE_INTERVAL',
                'GOTRUE_MFA_TOTP_ENROLL_ENABLED', 'GOTRUE_MFA_TOTP_VERIFY_ENABLED'}

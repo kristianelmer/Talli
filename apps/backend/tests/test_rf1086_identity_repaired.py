@@ -1630,3 +1630,81 @@ def test_inventory_softdelete_unexpected_failure_identity(inventory_denial_model
     assert caught.value is primary
     assert (model.budget.phase, model.budget.end) == (phase, end)
     _assert_softdelete_stopped(model)
+
+
+@pytest.mark.parametrize('settings', [
+    {'GOTRUE_JWT_VALID_METHODS': 'HS256,RS256,ES256'},
+    {'GOTRUE_JWT_VALIDMETHODS': 'HS256,RS256,ES256'},
+    {'GOTRUE_JWT_VALID_METHODS': 'HS256,RS256,ES256',
+     'GOTRUE_JWT_VALIDMETHODS': 'HS256,RS256,ES256'},
+    {},
+    {'GOTRUE_JWT_VALID_METHODS': ''},
+    {'GOTRUE_JWT_VALIDMETHODS': ''},
+    {'GOTRUE_JWT_VALID_METHODS': '', 'GOTRUE_JWT_VALIDMETHODS': ''},
+    {'GOTRUE_JWT_VALID_METHODS': 'ES256, CUSTOM ,HS256,ES256'},
+    {'GOTRUE_JWT_VALIDMETHODS': 'RS256, CUSTOM ,ES256,RS256'},
+    {'GOTRUE_JWT_VALID_METHODS': 'HS256',
+     'GOTRUE_JWT_VALIDMETHODS': 'RS256,ES256'},
+], ids=['canonical', 'legacy', 'both', 'absent', 'canonical-empty',
+        'legacy-empty', 'both-empty', 'canonical-custom', 'legacy-custom', 'divergent'])
+def test_auth_validmethods_preserves_captured_settings(settings):
+    source = ENV | {
+        'GOTRUE_HOOK_SEND_EMAIL_URI': 'https://provider.invalid',
+        'GOTRUE_SMTP_HOST': 'provider.invalid',
+        'GOTRUE_JWT_VALID_METHODS_EXTRA': 'unrelated',
+    } | settings
+    before = dict(source)
+    host = 'rf193_identity_db_' + 'e' * 32
+    env = identity.auth_environment(source, host)
+    aliases = ('GOTRUE_JWT_VALID_METHODS', 'GOTRUE_JWT_VALIDMETHODS')
+    assert {key: env[key] for key in aliases if key in env} == settings
+    assert env['GOTRUE_JWT_SECRET'] == source['GOTRUE_JWT_SECRET']
+    assert env['GOTRUE_JWT_KEYS'] == source['GOTRUE_JWT_KEYS']
+    assert env['GOTRUE_DB_DATABASE_URL'] == (
+        'postgresql://supabase_auth_admin:local@' + host + ':5432/postgres')
+    assert env['GOTRUE_DISABLE_SIGNUP'] == 'true'
+    assert not {'GOTRUE_HOOK_SEND_EMAIL_URI', 'GOTRUE_SMTP_HOST',
+                'GOTRUE_JWT_VALID_METHODS_EXTRA'} & env.keys()
+    assert source == before
+
+
+@pytest.mark.parametrize('name', ['GOTRUE_JWT_VALID_METHODS', 'GOTRUE_JWT_VALIDMETHODS'])
+@pytest.mark.parametrize('separator', ['\n', '\r'], ids=['LF', 'CR'])
+def test_auth_validmethods_rejects_line_injection(name, separator):
+    source = ENV | {name: 'HS256' + separator + 'GOTRUE_DISABLE_SIGNUP=false'}
+    before = dict(source)
+    with pytest.raises(ValueError, match='Auth environment cannot contain line breaks'):
+        identity.auth_environment(source, 'rf193_identity_db_' + 'e' * 32)
+    assert source == before
+
+
+@pytest.mark.parametrize('settings', [
+    {'GOTRUE_JWT_VALID_METHODS': 'HS256,RS256,ES256'},
+    {'GOTRUE_JWT_VALIDMETHODS': 'HS256,RS256,ES256'},
+    {'GOTRUE_JWT_VALID_METHODS': 'HS256', 'GOTRUE_JWT_VALIDMETHODS': 'RS256,ES256'},
+], ids=['canonical', 'legacy', 'divergent'])
+def test_auth_validmethods_repaired_constructor_writes_captured_private_environment(
+        postconstruction_model, tmp_path, monkeypatch, settings):
+    # Real repaired generator and env file; all external services remain generated.
+    budget, state, calls, owners, boundary = postconstruction_model
+    source = ENV | settings
+    before = dict(source)
+    monkeypatch.setattr(identity, 'owned_identity_source', lambda *a: (DB, AUTH, source))
+    with identity.restored_identity(SOURCE_URL, tmp_path, boundary, budget=budget):
+        path = tmp_path / 'auth.env'
+        assert path.stat().st_mode & 0o777 == 0o600
+        env = dict(line.split('=', 1) for line in path.read_text().splitlines())
+        aliases = ('GOTRUE_JWT_VALID_METHODS', 'GOTRUE_JWT_VALIDMETHODS')
+        assert {key: env[key] for key in aliases if key in env} == settings
+        auth_create = [args for args, _ in calls
+                       if args[:2] == ['docker', 'create'] and '--env-file' in args]
+        assert len(auth_create) == 1
+        assert auth_create[0][auth_create[0].index('--env-file') + 1] == str(path)
+        assert auth_create[0][-1] == AUTH['Image']
+        assert env['GOTRUE_DB_DATABASE_URL'] == (
+            'postgresql://supabase_auth_admin:local@' + owners[0].names['database'] + ':5432/postgres')
+        assert source == before
+    assert owners[0].cleaned and budget.phase == 'source_post'
+    assert state['receipt']['cleanup_complete'] and state['receipt']['source_postcheck']
+    assert not path.exists()
+    assert source == before
