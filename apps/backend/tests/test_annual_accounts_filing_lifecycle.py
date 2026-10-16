@@ -69,7 +69,7 @@ def apply(db, name, *, rollback=False):
     assert set(memberships(db)) == expected
     # Emulate each artifact's ON COMMIT DROP without committing the outer test.
     for schema, table in db.execute("select n.nspname,c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.oid=pg_my_temp_schema() and c.relkind='r'").fetchall():
-        db.execute(sql.SQL('drop table {}.{} cascade').format(sql.Identifier(schema), sql.Identifier(table)))
+        db.execute(sql.SQL('drop table {}.{}').format(sql.Identifier(schema), sql.Identifier(table)))
 
 
 @pytest.fixture
