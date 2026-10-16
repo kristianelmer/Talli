@@ -13,6 +13,7 @@ import {
   inspectOwnerMfa,
   ownerMfaEnrollmentControl,
   ownerMfaCopy,
+  ownerMfaHistoryDownloadReturn,
   startOwnerMfaEnrollment,
   verifyOwnerMfa,
   type OwnerMfaErrorKind,
@@ -38,6 +39,7 @@ export function OwnerMfa({
   supabaseUrl,
   supabaseAnonKey,
 }: OwnerMfaProps) {
+  const historyDownloadReturn = ownerMfaHistoryDownloadReturn(returnTo);
   const supabase = useMemo(
     () => createBrowserClient(supabaseUrl, supabaseAnonKey),
     [supabaseAnonKey, supabaseUrl],
@@ -255,7 +257,12 @@ export function OwnerMfa({
       ) : null}
 
       {mode === "verified" ? (
-        <p aria-live="polite">Bekreftet. Åpner siden …</p>
+        historyDownloadReturn ? (
+          <div className="authForm">
+            <p aria-live="polite">Identiteten er bekreftet.</p>
+            <a className="btn btn--secondary" href={historyDownloadReturn}>Til testhistorikken</a>
+          </div>
+        ) : <p aria-live="polite">Bekreftet. Åpner siden …</p>
       ) : null}
     </div>
   );

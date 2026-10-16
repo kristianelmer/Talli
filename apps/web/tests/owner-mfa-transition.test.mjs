@@ -9,6 +9,7 @@ import {
   inspectOwnerMfa as inspectOwnerMfaApi,
   ownerMfaEnrollmentControl,
   ownerMfaCopy,
+  ownerMfaHistoryDownloadReturn,
   startOwnerMfaEnrollment,
   verifyOwnerMfa,
 } from "../app/lib/owner-mfa.ts";
@@ -28,6 +29,18 @@ function problem(status, code) {
     requestId: "request-owner-mfa",
   };
 }
+
+test("MFA download completion returns to the same company's history without accepting other destinations", () => {
+  const company = "10000000-0000-0000-0000-000000000001";
+  const history = `/companies/${company}/rf1086-test-history`;
+  assert.equal(ownerMfaHistoryDownloadReturn(`${history}/download`), history);
+  for (const value of [history, `${history}/download?next=/dashboard`, `${history}/download#other`,
+    `https://outside.invalid${history}/download`, `//outside.invalid${history}/download`,
+    "/companies/00000000-0000-0000-0000-000000000000/rf1086-test-history/download",
+    "/dashboard", "/auth/callback", "/companies/not-a-company/rf1086-test-history/download"]) {
+    assert.equal(ownerMfaHistoryDownloadReturn(value), null);
+  }
+});
 
 function mfaApi(overrides = {}) {
   return {

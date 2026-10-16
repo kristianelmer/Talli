@@ -2,6 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type OwnerMfaApi = SupabaseClient["auth"]["mfa"];
 
+/** A browser download leaves the verified MFA page open instead of navigating. */
+export function ownerMfaHistoryDownloadReturn(returnTo: string): string | null {
+  const match = /^\/companies\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/rf1086-test-history\/download$/u.exec(returnTo);
+  if (!match || match[1] === "00000000-0000-0000-0000-000000000000") return null;
+  return `/companies/${match[1]}/rf1086-test-history`;
+}
+
 export const ownerMfaCopy = {
   heading: "Beskytt kontoen før du fortsetter",
   intro:
