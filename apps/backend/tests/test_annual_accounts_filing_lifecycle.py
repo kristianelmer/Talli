@@ -213,6 +213,68 @@ def expect_error(db, message, operation):
     assert caught.value.diag.message_primary == message
 
 
+def test_filing_permission_uses_wrappers_without_auth_schema_access(unexpanded_database):
+    db = unexpanded_database
+    assert db.execute('select rolsuper from pg_roles where rolname=current_user').fetchone() == (False,)
+    assert db.execute("""select has_schema_privilege(current_user,'auth','USAGE'),
+        has_schema_privilege(current_user,'auth','USAGE WITH GRANT OPTION')""").fetchone() == (True, False)
+    hide_existing_accounts_roles(db)
+    auth_schema = db.execute("select nspowner,nspacl::text from pg_namespace where nspname='auth'").fetchone()
+
+    def auth_foreign_keys(schema):
+        return db.execute("""select r.relname,c.conname,c.conkey::text,c.confkey::text,
+            c.confmatchtype,c.confupdtype,c.confdeltype,c.convalidated,c.condeferrable,c.condeferred,
+            pg_get_constraintdef(c.oid)
+            from pg_constraint c join pg_class r on r.oid=c.conrelid
+            join pg_namespace n on n.oid=r.relnamespace
+            where n.nspname=%s and r.relname=any(%s) and c.contype='f'
+              and c.confrelid='auth.users'::regclass
+            order by r.relname,c.conname""", (schema, list(FAMILIES))).fetchall()
+
+    original_foreign_keys = auth_foreign_keys('public')
+    assert len(original_foreign_keys) == 12
+    failed_grants = []
+
+    def record_failed_grant(notice):
+        if notice.sqlstate == '01007':
+            failed_grants.append(notice.sqlstate)
+
+    db.add_notice_handler(record_failed_grant)
+    primary_failure = None
+    try:
+        for artifact in (*EXPANSION, CUTOVER, CONTRACT):
+            apply(db, artifact)
+    except BaseException as error:
+        primary_failure = error
+        raise
+    finally:
+        try:
+            db.remove_notice_handler(record_failed_grant)
+        except BaseException:
+            if primary_failure is None:
+                raise
+            primary_failure.add_note('Grant notice handler cleanup also failed.')
+
+    assert failed_grants == []
+    assert db.execute("select nspowner,nspacl::text from pg_namespace where nspname='auth'").fetchone() == auth_schema
+    assert auth_foreign_keys('annual_accounts_filing') == original_foreign_keys
+    for role in ACCOUNTS_ROLES:
+        assert db.execute("select has_schema_privilege(%s,'auth','USAGE')", (role,)).fetchone() == (False,)
+
+    # The seeded permission exercises the real upsert and read path under the
+    # restricted workflow role. Its definer uses the public identity wrappers.
+    with actor(db) as identity:
+        permission = db.execute('select annual_accounts_filing.confirm_filing_permission_v1(%s,false,%s)',
+                                (COMPANY, identity)).fetchone()[0]
+        assert permission['company_id'] == COMPANY
+        assert permission['confirmed_by'] == identity
+        assert permission['submitter_user_id'] == identity
+        assert permission['production_enabled'] is False
+        workspace = db.execute('select annual_accounts_filing.read_workspace_v1(%s,2025,%s)',
+                               (COMPANY, identity)).fetchone()[0]
+        assert workspace['permissions'] == [permission]
+
+
 def test_latest_state_survives_contract_full_rollback_and_recutover(database):
     db = database
     original = rows(db, 'public')
