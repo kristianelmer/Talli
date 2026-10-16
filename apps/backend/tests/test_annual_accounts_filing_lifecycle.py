@@ -72,25 +72,57 @@ def apply(db, name, *, rollback=False):
         db.execute(sql.SQL('drop table {}.{}').format(sql.Identifier(schema), sql.Identifier(table)))
 
 
+@contextmanager
+def owned_connection(url):
+    db = psycopg.connect(url, autocommit=True)
+    primary = None
+    try:
+        yield db
+    except BaseException as error:
+        primary = error
+        raise
+    finally:
+        try:
+            db.close()
+        except BaseException as error:
+            if primary is None:
+                raise
+            primary.add_note(f'accounts fixture close failed: {type(error).__name__}')
+
+
 @pytest.fixture
 def unexpanded_database():
     url = os.environ.get('DATABASE_URL')
     assert url and conninfo_to_dict(url).get('host') in ('localhost', '127.0.0.1', '::1'), 'owned disposable loopback database required'
-    with psycopg.connect(url, autocommit=True) as db:
+    with owned_connection(url) as db:
         assert db.execute("select to_regnamespace('annual_accounts_filing') is null").fetchone()[0], 'run before Accounts expansion'
         assert db.execute('select phase from backend_system.company_tax_return_migration_state').fetchone()[0] == 'contracted'
         before = memberships(db)
         original_roles = db.execute('select oid,rolname from pg_roles where rolname=any(%s) order by oid', (list(ACCOUNTS_ROLES),)).fetchall()
         db.execute('begin isolation level repeatable read')
+        primary = None
         try:
             seed(db)
             yield db
+        except BaseException as error:
+            primary = error
+            raise
         finally:
-            db.execute('rollback')
-            assert memberships(db) == before
-            assert db.execute('select oid,rolname from pg_roles where rolname=any(%s) order by oid', (list(ACCOUNTS_ROLES),)).fetchall() == original_roles
-            assert db.execute("select to_regnamespace('annual_accounts_filing') is null").fetchone()[0]
-            assert db.execute('select count(*) from public.companies where id=%s', (COMPANY,)).fetchone()[0] == 0
+            cleanup_step = 'rollback'
+            try:
+                db.execute('rollback')
+                cleanup_step = 'memberships'
+                assert memberships(db) == before
+                cleanup_step = 'roles'
+                assert db.execute('select oid,rolname from pg_roles where rolname=any(%s) order by oid', (list(ACCOUNTS_ROLES),)).fetchall() == original_roles
+                cleanup_step = 'namespace'
+                assert db.execute("select to_regnamespace('annual_accounts_filing') is null").fetchone()[0]
+                cleanup_step = 'fixture company'
+                assert db.execute('select count(*) from public.companies where id=%s', (COMPANY,)).fetchone()[0] == 0
+            except BaseException as error:
+                if primary is None:
+                    raise
+                primary.add_note(f'accounts fixture {cleanup_step} cleanup failed: {type(error).__name__}')
 
 
 @pytest.fixture
@@ -190,6 +222,7 @@ def test_expansion_assertion_rejects_changed_preexisting_self_grant(unexpanded_d
 def actor(db, name='owner', *, role='annual_accounts_filing_workflow_executor', fresh=True, aal='aal2'):
     """A real executor and verified claims, with the entire call rolled back."""
     db.execute('savepoint accounts_actor')
+    primary = None
     try:
         runner = db.execute('select current_user').fetchone()[0]
         db.execute(sql.SQL('grant {} to {} with set true granted by {}').format(sql.Identifier(role), sql.Identifier(runner), sql.Identifier(runner)))
@@ -201,9 +234,19 @@ def actor(db, name='owner', *, role='annual_accounts_filing_workflow_executor', 
             db.execute('select set_config(%s,%s,true)', (key, value))
         db.execute(sql.SQL('set local role {}').format(sql.Identifier(role)))
         yield identity
+    except BaseException as error:
+        primary = error
+        raise
     finally:
-        db.execute('rollback to savepoint accounts_actor')
-        db.execute('release savepoint accounts_actor')
+        cleanup_step = 'rollback'
+        try:
+            db.execute('rollback to savepoint accounts_actor')
+            cleanup_step = 'release'
+            db.execute('release savepoint accounts_actor')
+        except BaseException as error:
+            if primary is None:
+                raise
+            primary.add_note(f'accounts actor {cleanup_step} cleanup failed: {type(error).__name__}')
 
 
 def expect_error(db, message, operation):
