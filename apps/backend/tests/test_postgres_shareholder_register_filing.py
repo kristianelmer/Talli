@@ -96,6 +96,70 @@ def session(environment):
     )
 
 
+@pytest.mark.parametrize("error_type,message,primary,expected", [
+    ("RaiseException", "company_access_not_found", "company_access_not_found", "NOT_FOUND"),
+    ("UndefinedTable", "company_access_not_found", "company_access_not_found", "DEPENDENCY_UNAVAILABLE"),
+    ("RaiseException", "unknown_failure", "unknown_failure", "DEPENDENCY_UNAVAILABLE"),
+    ("RaiseException", "prefix_company_access_not_found", "prefix_company_access_not_found", "DEPENDENCY_UNAVAILABLE"),
+    ("RaiseException", "company_access_not_found_suffix", "company_access_not_found_suffix", "DEPENDENCY_UNAVAILABLE"),
+    ("RaiseException", "error: company_access_not_found elsewhere", "error: company_access_not_found elsewhere", "DEPENDENCY_UNAVAILABLE"),
+    ("RaiseException", "company_access_not_found", "unrelated_primary", "DEPENDENCY_UNAVAILABLE"),
+    ("RaiseException", "company_access_not_found", None, "DEPENDENCY_UNAVAILABLE"),
+    ("InsufficientPrivilege", "permission denied", "company_access_not_found", "FORBIDDEN"),
+    ("RaiseException", "company_access_forbidden", "company_access_forbidden", "FORBIDDEN"),
+    ("RaiseException", "rf1086_not_found", "rf1086_not_found", "NOT_FOUND"),
+], ids=["hidden-company", "wrong-sqlstate", "unknown-error", "prefix", "suffix",
+    "embedded", "context-only", "missing-primary", "permission-denied", "forbidden", "existing-not-found"])
+def test_transaction_maps_hidden_company_without_hiding_database_failures(
+    monkeypatch, error_type, message, primary, expected,
+):
+    from contextlib import asynccontextmanager
+    import psycopg
+    from psycopg.pq import DiagnosticField
+    from talli_backend.modules.shareholder_register_filing.public import ShareholderRegisterFilingError
+
+    events = []
+    info = {DiagnosticField.MESSAGE_PRIMARY: primary.encode()} if primary is not None else {}
+    failure = getattr(psycopg.errors, error_type)(message, info=info)
+
+    class Connection:
+        async def execute(self, *_args):
+            return None
+
+        @asynccontextmanager
+        async def transaction(self):
+            try:
+                yield
+            except BaseException:
+                events.append("rollback")
+                raise
+            else:
+                events.append("commit")
+
+    @asynccontextmanager
+    async def connection():
+        try:
+            yield Connection()
+        finally:
+            events.append("close")
+
+    async def connect(*_args, **_kwargs):
+        return connection()
+
+    monkeypatch.setattr(psycopg.AsyncConnection, "connect", connect)
+    store = session({})
+    store._configuration = LedgerSupabaseConfiguration("", "", "unused-by-connection-double")
+
+    async def execute():
+        async with store._transaction():
+            raise failure
+
+    with pytest.raises(ShareholderRegisterFilingError) as caught:
+        asyncio.run(execute())
+    assert caught.value.code == "SHAREHOLDER_REGISTER_FILING_" + expected
+    assert events == ["rollback", "close"]
+
+
 def assert_unavailable(environment):
     store = session(environment)
     assert store._maskinporten is None

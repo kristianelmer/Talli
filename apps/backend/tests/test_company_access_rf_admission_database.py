@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 from datetime import timedelta
+from contextlib import contextmanager
 from uuid import uuid4
 
 import psycopg
@@ -33,6 +34,165 @@ WRITERS = (
     "company_access_review_deletion", "company_access_finalize_deletion",
     "company_access_company_year_allows_consequential_v1",
 )
+
+RECEIPT_DB_OPTIONS = {
+    "connect_timeout": 5,
+    "options": "-c statement_timeout=5000 -c lock_timeout=1000 -c idle_in_transaction_session_timeout=5000",
+}
+RECEIPT_COMMANDS = ("admit_company_year", "recheck_company_year_eligibility")
+
+
+@pytest.fixture(scope="module")
+def receipt_restricted_url(request):
+    """Reuse an explicitly admitted login without creating an unused role."""
+    key = "TALLI_TEST_COMPANY_ACCESS_RECEIPTS_DATABASE_URL"
+    selected = os.environ[key] if key in os.environ else request.getfixturevalue("restricted_url")
+    assert selected, "The receipt test login must be explicitly usable"
+    with psycopg.connect(selected, **RECEIPT_DB_OPTIONS) as db:
+        assert db.execute(
+            "select rolcanlogin,rolsuper,rolinherit,rolbypassrls,"
+            "pg_has_role(current_user,'company_access_executor','SET') "
+            "from pg_roles where rolname=session_user"
+        ).fetchone() == (True, False, False, False, True)
+        db.execute("set local role company_access_executor")
+        assert db.execute("select current_user").fetchone() == ("company_access_executor",)
+    return selected
+
+
+@pytest.fixture
+def company_year_receipts():
+    """Own only these rows; setup is atomic and cleanup runs after failed tests."""
+    assert DATABASE_URL, "DATABASE_URL must identify the owned disposable database"
+    owner, outsider, company = (uuid4() for _ in range(3))
+    operations = {name: uuid4() for name in (*RECEIPT_COMMANDS, "accept_invitation")}
+    owned = [
+        ("public.company_access_command_receipts", "operation_id", list(operations.values())),
+        ("public.companies", "id", [company]),
+        ("auth.users", "id", [owner, outsider]),
+    ]
+    primary = None
+    try:
+        with psycopg.connect(DATABASE_URL, **RECEIPT_DB_OPTIONS) as db:
+            now = db.execute("select clock_timestamp()").fetchone()[0] - timedelta(seconds=1)
+            for actor in (owner, outsider):
+                insert(db, "auth.users", {"id": actor, "email": f"{actor}@example.test"})
+            insert(db, "public.companies", {
+                "id": company, "org_number": str(100000000 + company.int % 899999999),
+                "name": "Receipt Replay AS", "entity_type": "AS", "created_by": owner,
+            })
+            for command, operation in operations.items():
+                db.execute(
+                    "insert into public.company_access_command_receipts "
+                    "(operation_id,command_name,actor_id,company_id,request_fingerprint,result,delivery_token,expires_at) "
+                    "values(%s,%s,%s,%s,%s,'{\"receipt\":true}'::jsonb,%s,%s)",
+                    (operation, command, owner, company, "a" * 64,
+                     "synthetic-token" if command == "accept_invitation" else None,
+                     now - timedelta(hours=1)),
+                )
+        yield {"owner": owner, "outsider": outsider, "company": company,
+               "operations": operations, "now": now}
+    except BaseException as error:
+        primary = error
+        raise
+    finally:
+        failures = []
+        cleanup_primary = None
+        # Independent transactions let every owned resource get a cleanup attempt.
+        for table, key, identifiers in owned:
+            try:
+                with psycopg.connect(DATABASE_URL, **RECEIPT_DB_OPTIONS) as db:
+                    db.execute(sql.SQL("delete from {} where {}=any(%s)").format(
+                        sql.Identifier(*table.split(".")), sql.Identifier(key)), (identifiers,))
+            except BaseException as error:
+                if cleanup_primary is None:
+                    cleanup_primary = error
+                failures.append(f"delete:{table}")
+        for table, key, identifiers in owned:
+            try:
+                with psycopg.connect(DATABASE_URL, **RECEIPT_DB_OPTIONS) as db:
+                    count = db.execute(sql.SQL("select count(*) from {} where {}=any(%s)").format(
+                        sql.Identifier(*table.split(".")), sql.Identifier(key)), (identifiers,)).fetchone()[0]
+                    assert count == 0
+            except BaseException as error:
+                if cleanup_primary is None:
+                    cleanup_primary = error
+                failures.append(f"absence:{table}")
+        if failures:
+            message = "Receipt fixture cleanup failed: " + ",".join(failures)
+            if primary is not None:
+                primary.add_note(message)
+            else:
+                cleanup_primary.add_note(message)
+                raise cleanup_primary from None
+
+
+@contextmanager
+def receipt_actor(db, fixture, actor):
+    with db.transaction(force_rollback=True):
+        db.execute("set local role company_access_executor")
+        claims = {} if actor is None else {
+            "sub": str(actor), "role": "authenticated", "aal": "aal2",
+            "amr": [{"method": "totp", "timestamp": fixture["now"].timestamp()}],
+        }
+        for key, value in {
+            "talli.verified_actor_id": "" if actor is None else str(actor),
+            "talli.verified_actor_claims": json.dumps(claims), "talli.support_case_id": "",
+            "request.jwt.claim.sub": "", "request.jwt.claims": "{}",
+        }.items():
+            db.execute("select set_config(%s,%s,true)", (key, value))
+        assert db.execute("select public.company_access_auth_uid_v1()").fetchone() == (actor,)
+        yield
+
+
+@pytest.mark.parametrize("command", RECEIPT_COMMANDS)
+def test_company_year_receipt_replay_policy(company_year_receipts, receipt_restricted_url, command):
+    fixture = company_year_receipts
+    operation = fixture["operations"][command]
+    invitation = fixture["operations"]["accept_invitation"]
+    query = "select to_jsonb(r) from public.company_access_command_receipts r where operation_id=%s"
+    with psycopg.connect(DATABASE_URL, **RECEIPT_DB_OPTIONS) as admin:
+        before = admin.execute(query, (operation,)).fetchone()
+    assert before is not None and before[0]["command_name"] == command
+
+    with psycopg.connect(receipt_restricted_url, **RECEIPT_DB_OPTIONS, autocommit=True) as db:
+        for actor in (fixture["outsider"], None):
+            with receipt_actor(db, fixture, actor):
+                assert db.execute(query, (operation,)).fetchall() == []
+        with receipt_actor(db, fixture, fixture["owner"]):
+            assert db.execute(query, (operation,)).fetchone() == before
+            assert db.execute(
+                "select expires_at < statement_timestamp() from public.company_access_command_receipts "
+                "where operation_id=%s", (operation,),
+            ).fetchone() == (True,)
+            for change in ("result=result", "result='{}'::jsonb", "command_name='accept_invitation'"):
+                assert db.execute(sql.SQL(
+                    "update public.company_access_command_receipts set {} where operation_id=%s"
+                ).format(sql.SQL(change)), (operation,)).rowcount == 0
+                assert db.execute(query, (operation,)).fetchone() == before
+            assert db.execute(query + " for update", (operation,)).fetchall() == []
+
+            # A visible non-target can still clear its delivery token, but cannot
+            # cross into either immutable command through the UPDATE check.
+            assert db.execute(query, (invitation,)).fetchone()[0]["delivery_token"] == "synthetic-token"
+            with pytest.raises(psycopg.errors.InsufficientPrivilege) as denied:
+                with db.transaction():
+                    db.execute(
+                        "update public.company_access_command_receipts set command_name=%s,delivery_token=null "
+                        "where operation_id=%s", (command, invitation),
+                    )
+            assert denied.value.sqlstate == "42501"
+            assert db.execute(
+                "update public.company_access_command_receipts "
+                "set delivery_token=null,side_effects_completed_at=statement_timestamp() where operation_id=%s",
+                (invitation,),
+            ).rowcount == 1
+            assert db.execute(
+                "select delivery_token is null,side_effects_completed_at is not null "
+                "from public.company_access_command_receipts where operation_id=%s", (invitation,),
+            ).fetchone() == (True, True)
+    with psycopg.connect(DATABASE_URL, **RECEIPT_DB_OPTIONS) as admin:
+        assert admin.execute(query, (operation,)).fetchone() == before
+        assert admin.execute(query, (invitation,)).fetchone()[0]["delivery_token"] == "synthetic-token"
 
 
 @pytest.fixture(scope="module")

@@ -281,6 +281,8 @@ class PostgresShareholderRegisterFilingSession:
                 )
                 yield connection
         except psycopg.Error as error:
+            if error.sqlstate == "P0001" and error.diag.message_primary == "company_access_not_found":
+                raise rf.ShareholderRegisterFilingError.not_found() from None
             for code in ("rf1086_register_predecessor_mismatch", "rf1086_register_idempotency_conflict", "rf1086_register_storage_invalid"):
                 if code in str(error):
                     raise rf.Rf1086RegisterObservationError(code) from None
