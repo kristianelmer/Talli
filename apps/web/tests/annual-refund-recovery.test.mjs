@@ -94,7 +94,7 @@ function mfaPage({ user = { email_confirmed_at: "2026-09-06" }, configured = tru
     "./OwnerMfa": { OwnerMfa: () => null },
   }, { process: { env: { SUPABASE_URL: "http://127.0.0.1:1", SUPABASE_ANON_KEY: "synthetic" } } }).default;
 }
-test("billing rejection reaches the real MFA inspection through its page and client with exact receipt context", async () => {
+test("billing rejection reaches the real MFA inspection through its page and client with exact receipt context", { timeout: 5000 }, async () => {
   const rejected = action({ failure: "step-up" });
   const result = await rejected.run({ kind: "idle" }, form());
   const location = new URL(result.href, "https://talli.example");
@@ -102,24 +102,43 @@ test("billing rejection reaches the real MFA inspection through its page and cli
   const props = page.props.children.props;
   assert.equal(props.requireFreshChallenge, true);
   assert.equal(props.returnTo, location.searchParams.get("next"));
-  let inspection;
+  const accessToken = "synthetic-owner-access-token";
+  const inspection = Promise.withResolvers();
+  const settledMode = Promise.withResolvers();
+  const authCalls = [];
   const navigations = [];
   const mfa = {
-    getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: "aal2", nextLevel: "aal2",
-      currentAuthenticationMethods: [{ method: "totp", timestamp: 1 }] }, error: null }),
-    listFactors: async () => ({ data: { totp: [{ id: "existing-factor" }] }, error: null }),
+    getAuthenticatorAssuranceLevel: async token => {
+      authCalls.push("assurance");
+      assert.equal(token, accessToken);
+      return { data: { currentLevel: "aal2", nextLevel: "aal2",
+        currentAuthenticationMethods: [{ method: "totp", timestamp: 1 }] }, error: null };
+    },
+    listFactors: async () => {
+      authCalls.push("factors");
+      return { data: { totp: [{ id: "existing-factor" }] }, error: null };
+    },
   };
   const ownerMfa = compile(readFileSync(new URL("../app/lib/owner-mfa.ts", import.meta.url), "utf8"));
   const client = compile(readFileSync(new URL("../app/mfa/OwnerMfa.tsx", import.meta.url), "utf8"), {
-    react: { ...React, useMemo: fn => fn(), useState: initial => [initial, () => {}],
+    react: { ...React, useMemo: fn => fn(), useState: initial => [initial, value => {
+      if (initial === "loading") settledMode.resolve(value);
+    }],
       useRef: () => ({ current: null }), useEffect: effect => { effect(); } },
-    "@supabase/ssr": { createBrowserClient: () => ({ auth: { mfa } }) },
+    "@supabase/ssr": { createBrowserClient: () => ({ auth: { mfa, getSession: async () => {
+      authCalls.push("session");
+      return { data: { session: { access_token: accessToken } }, error: null };
+    } } }) },
     "../lib/owner-mfa": { ...ownerMfa, inspectOwnerMfa: (...args) => {
-      inspection = ownerMfa.inspectOwnerMfa(...args); return inspection;
+      const result = ownerMfa.inspectOwnerMfa(...args);
+      inspection.resolve(result);
+      return result;
     } },
   }, { window: { location: { assign: href => navigations.push(href) } } }).OwnerMfa;
   client(props);
-  assert.deepEqual(JSON.parse(JSON.stringify(await inspection)), { kind: "challenge", factorId: "existing-factor" });
+  assert.deepEqual(JSON.parse(JSON.stringify(await inspection.promise)), { kind: "challenge", factorId: "existing-factor" });
+  assert.equal(await settledMode.promise, "challenge");
+  assert.deepEqual(authCalls, ["session", "assurance", "factors"]);
   assert.deepEqual(navigations, []);
   assert.equal(rejected.calls.length, 1);
 });
