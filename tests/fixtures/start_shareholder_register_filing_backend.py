@@ -186,8 +186,8 @@ def main() -> None:
     from talli_backend.main import create_app
     prepared_stop = os.environ.get('TALLI_RF_STOP_AFTER_PREPARE_FILE')
     if prepared_stop:
-        from talli_backend.application.shareholder_register_source_dispatch import _AdmittedJournal
-        install_prepared_stop(_AdmittedJournal, prepared_stop, nonce)
+        from talli_backend.application.shareholder_register_source_dispatch_v3 import _OperationJournalV3
+        install_prepared_stop(_OperationJournalV3, prepared_stop, nonce)
 
     async def mock_transport(request: httpx.Request) -> httpx.Response:
         target = provider_mock_url(str(request.url), mock_origin, request.method)
@@ -200,7 +200,7 @@ def main() -> None:
     maskinporten = MaskinportenClient(MaskinportenConfiguration.production(os.environ), transport=transport)
     from talli_backend.adapters.brreg_company_registry import BrregCompanyRegistryAdapter
     from talli_backend.adapters.postgres_shareholder_register_filing import (
-        PostgresShareholderRegisterFilingAdapter, PostgresCompanyTestRetentionSessionFactory)
+        PostgresShareholderRegisterSourceDispatchV3Adapter, PostgresCompanyTestRetentionSessionFactory)
     from talli_backend.adapters.supabase_billing import SupabaseBillingAdapter
     from talli_backend.adapters.supabase_company_access import SupabaseCompanyAccessAdapter
     from talli_backend.adapters.supabase_documents import SupabaseDocumentsAdapter
@@ -212,7 +212,7 @@ def main() -> None:
     documents = SupabaseDocumentsAdapter.from_environment()
     async def billing_queries(access_token):
         return BillingWorkflow(await billing.session(access_token), SimulationBillingProvider())
-    rf = PostgresShareholderRegisterFilingAdapter(
+    rf = PostgresShareholderRegisterSourceDispatchV3Adapter(
         LedgerSupabaseConfiguration(os.environ["SUPABASE_URL"], os.environ["SUPABASE_ANON_KEY"], os.environ["TALLI_LEDGER_DATABASE_URL"]),
         billing_queries_factory=billing_queries, documents_session_factory=documents,
         company_access_service=CompanyAccessService(SupabaseCompanyAccessAdapter.from_environment(), BrregCompanyRegistryAdapter.from_environment()),
