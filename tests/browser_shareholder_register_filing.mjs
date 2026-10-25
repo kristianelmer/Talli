@@ -327,7 +327,14 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
       redirectMatches = ["push", "replace"].includes(kind) && new URL(target, siteOrigin).href === annualHref;
     } catch { /* A missing or invalid redirect never establishes success. */ }
     console.info("rf_browser_comment_terminal", JSON.stringify({ scenario: scenarioIndex + 1, ...terminal, redirectMatches }));
-    assert.equal(terminal.state, "finished", "comment response must reach a verified terminal state");
+    // Next may cancel the consumed RSC stream on its same-route redirect.
+    // This narrow transport outcome still requires the exact durable write,
+    // subsequent working UI, and the existing browser-health checks below.
+    const redirectedCancellation = terminal.state === "failed" && terminal.failure === "aborted"
+      && redirectMatches && commentResponse.status() === 200
+      && commentResponse.headers()["content-type"]?.split(";")[0].trim() === "text/x-component";
+    assert.ok(terminal.state === "finished" || redirectedCancellation,
+      "comment response must finish or have a bound RSC redirect cancellation");
     phase("comment-response-finished");
     const reviewed = await api.rf1086Workspace(primary.id, 2025, { headers: authorization });
     phase("comment-workspace-read");
