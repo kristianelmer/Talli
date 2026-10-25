@@ -276,6 +276,21 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
     assert.deepEqual(before.approvals, []);
     assert.deepEqual((await api.bankingListTransactions({ companyIds: [primary.id], limit: 100, headers: authorization })).items, []);
     await page.goto(annualHref);
+    await page.getByRole("heading", { name: "Aksjonærregisteroppgaven", exact: true }).waitFor();
+    const annualViewport = page.viewportSize();
+    try {
+      for (const width of [390, 320]) {
+        await page.setViewportSize({ width, height: 844 });
+        const layout = await page.evaluate(() => ({
+          width: window.innerWidth,
+          documentWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+        }));
+        assert.equal(layout.width, width, `annual workspace viewport expanded at ${width}`);
+        assert.ok(layout.documentWidth <= width + 1, `annual workspace overflow at ${width}`);
+      }
+    } finally {
+      await page.setViewportSize(annualViewport);
+    }
     await page.getByRole("button", { name: "Lag ny forhåndsvisning", exact: true }).click();
     await page.getByRole("button", { name: "Lagre kommentar", exact: true }).waitFor();
     const preview = (await api.rf1086Workspace(primary.id, 2025, { headers: authorization })).previews[0];
