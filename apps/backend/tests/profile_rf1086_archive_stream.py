@@ -23,6 +23,7 @@ from talli_backend.application import shareholder_register_archive as c
 from talli_backend.modules.documents.public import RetainedDocumentOriginal,RetainedDocumentOriginalSnapshot,document_metadata_sha256,DocumentId
 from talli_backend.modules.shareholder_register_filing import public as rf
 from test_rf1086_feedback_archive_originals import feedback_archive,ACTOR
+from rf1086_archive_profile_metrics import encode_profile_metrics, parse_profile_metrics, profile_diagnostics
 
 def rss_bytes():
     value = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
@@ -72,7 +73,7 @@ if args.emit:
             sys.stdout.buffer.write(chunk);total+=len(chunk)
         sys.stdout.buffer.flush()
         assert tracemalloc.get_traced_memory()[1] < 256 * 1024 * 1024, "export retained excessive Python allocations"
-        print(json.dumps({'wireBytes':total,'importPeak':import_peak,'fixturePeak':fixture_peak,'exportPeakRssBytes':rss_bytes(),'pythonAllocationBytes':tracemalloc.get_traced_memory()}),file=sys.stderr)
+        print(encode_profile_metrics({'wireBytes':total,'importPeak':import_peak,'fixturePeak':fixture_peak,'exportPeakRssBytes':rss_bytes(),'pythonAllocationBytes':tracemalloc.get_traced_memory()}),file=sys.stderr)
     asyncio.run(emit())
 else:
     tracemalloc.start()
@@ -81,10 +82,11 @@ else:
             restored,sources,feedback=c.verify_archive_stream(child.stdout,query=query,require_source_history=True,require_feedback_originals=True)
             assert restored==archive and sources==0 and feedback==len(sizes)
             output=child.stderr.read().decode()
+            sys.stderr.write(profile_diagnostics(output))
             assert child.wait(timeout=10)==0,output
         except BaseException:
             child.terminate();child.wait(timeout=10);raise
     assert tracemalloc.get_traced_memory()[1] < 256 * 1024 * 1024, 'verifier retained excessive Python allocations'
     print(json.dumps({'status':'passed','originalBytes':sum(sizes),'originals':feedback,'sourceHistoryRequired':True,
         'strictFeedbackRequired':True,'importPeak':import_peak,'fixturePeak':fixture_peak,'verifyPeakRssBytes':rss_bytes(),
-        'pythonAllocationBytes':tracemalloc.get_traced_memory(),'elapsedSeconds':round(time.monotonic()-started,3),'export':json.loads(output)}))
+        'pythonAllocationBytes':tracemalloc.get_traced_memory(),'elapsedSeconds':round(time.monotonic()-started,3),'export':parse_profile_metrics(output)}))
