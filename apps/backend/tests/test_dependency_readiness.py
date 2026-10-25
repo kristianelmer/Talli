@@ -1,5 +1,6 @@
 import asyncio
 import json
+from threading import Event
 
 import httpx
 import psycopg
@@ -8,6 +9,31 @@ from fastapi.testclient import TestClient
 
 from talli_backend.adapters import dependency_readiness as health
 from talli_backend.main import create_app
+
+
+def test_application_lifespan_starts_and_drains_owned_tasks(monkeypatch):
+    entered, cancelled = Event(), Event()
+    closed = []
+    original_close = health.CachedReadiness.close
+
+    class Gateway:
+        async def purge(self):
+            entered.set()
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cancelled.set()
+
+    async def close_readiness(self):
+        await original_close(self)
+        closed.append(True)
+
+    monkeypatch.setattr(health.CachedReadiness, "close", close_readiness)
+    with TestClient(create_app(marketing_measurement_gateway=Gateway())) as client:
+        assert entered.wait(1), "application startup did not start its owned task"
+        assert client.get("/health/live").status_code == 200
+    assert cancelled.is_set(), "application shutdown did not drain its owned task"
+    assert closed == [True]
 
 
 def test_health_uses_explicit_probe_and_preserves_safe_liveness():

@@ -1766,6 +1766,8 @@ RfSourceEventWire = Annotated[RfSourceFormationWire | RfSourceCashIssueWire | Rf
 
 
 class RfSourceCaseWire(StrictTransportModel):
+    # Input and output are identical; retain the published component identity.
+    model_config = ConfigDict(json_schema_mode_override="validation")
     case_id: str
     company: RfSourceCompanyWire
     share_snapshot: RfSourceSharesWire
@@ -5442,7 +5444,7 @@ def create_app(
         redoc_url=None,
     )
     application.add_middleware(RequestIdMiddleware)
-    application.add_event_handler("shutdown", dependency_readiness.close)
+    application.router.add_event_handler("shutdown", dependency_readiness.close)
     gateway = (
         company_access_gateway
         if company_access_gateway is not None
@@ -5613,8 +5615,8 @@ def create_app(
         except asyncio.CancelledError:
             pass
 
-    application.add_event_handler("startup", start_marketing_measurement_maintenance)
-    application.add_event_handler("shutdown", stop_marketing_measurement_maintenance)
+    application.router.add_event_handler("startup", start_marketing_measurement_maintenance)
+    application.router.add_event_handler("shutdown", stop_marketing_measurement_maintenance)
 
     def banking_provider(connector_id: BankConnectorId) -> BankDataProvider:
         provider = provider_registry.get(str(connector_id))
