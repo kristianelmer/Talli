@@ -290,12 +290,17 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
     // Native and hydrated forms encode their payloads differently. Observe
     // this save by its route, then verify the exact committed input below.
     let commentRequest;
-    page.on("requestfinished", request => {
-      if (request === commentRequest) phase("comment-request-finished");
-    });
-    page.on("requestfailed", request => {
-      if (request === commentRequest) phase("comment-request-failed");
-    });
+    let settleComment;
+    const commentTerminal = new Promise(resolve => { settleComment = resolve; });
+    const commentFinished = request => {
+      if (request === commentRequest) settleComment({ state: "finished" });
+    };
+    const commentFailed = request => {
+      if (request === commentRequest) settleComment({ state: "failed",
+        failure: request.failure()?.errorText === "net::ERR_ABORTED" ? "aborted" : "other" });
+    };
+    page.on("requestfinished", commentFinished);
+    page.on("requestfailed", commentFailed);
     const commentSaved = page.waitForResponse((response) => {
       const target = new URL(response.url());
       if (target.origin !== siteOrigin || target.pathname !== new URL(annualHref).pathname
@@ -310,7 +315,19 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
     const commentResponse = await commentSaved;
     phase("comment-response-selected");
     assert.ok([200, 303].includes(commentResponse.status()), "comment save must return a successful action or redirect");
-    assert.equal(await commentResponse.finished(), null);
+    let terminal;
+    try { terminal = await commentTerminal; }
+    finally {
+      page.off("requestfinished", commentFinished);
+      page.off("requestfailed", commentFailed);
+    }
+    let redirectMatches = false;
+    try {
+      const [target, kind] = (commentResponse.headers()["x-action-redirect"] ?? "").split(";");
+      redirectMatches = ["push", "replace"].includes(kind) && new URL(target, siteOrigin).href === annualHref;
+    } catch { /* A missing or invalid redirect never establishes success. */ }
+    console.info("rf_browser_comment_terminal", JSON.stringify({ scenario: scenarioIndex + 1, ...terminal, redirectMatches }));
+    assert.equal(terminal.state, "finished", "comment response must reach a verified terminal state");
     phase("comment-response-finished");
     const reviewed = await api.rf1086Workspace(primary.id, 2025, { headers: authorization });
     phase("comment-workspace-read");
