@@ -4,10 +4,13 @@ set -euo pipefail
 
 # Diagnostic selection is explicit argv only; canonical callers remain full.
 rf10_diagnostic=0
+rf10_fast_diagnostic=0
 if [[ "$#" == "1" && "$1" == "--rf10-diagnostic" ]]; then
   rf10_diagnostic=1
+elif [[ "$#" == "1" && "$1" == "--rf10-fast-diagnostic" ]]; then
+  rf10_fast_diagnostic=1
 elif [[ "$#" != "0" ]]; then
-  printf 'Usage: %s [--rf10-diagnostic]\n' "$0" >&2
+  printf 'Usage: %s [--rf10-diagnostic|--rf10-fast-diagnostic]\n' "$0" >&2
   exit 2
 fi
 
@@ -105,6 +108,13 @@ local_anon_key="${PUBLISHABLE_KEY:-$ANON_KEY}"
 local_service_key="${SECRET_KEY:-$SERVICE_ROLE_KEY}"
 
 TALLI_SUPABASE_WORKDIR="$isolated_workdir" npm run test:supabase-advisors
+if [[ "$rf10_fast_diagnostic" == "1" ]]; then
+  # Fresh owned stack only. Diagnostic bootstrap is not a release-test waiver.
+  DATABASE_URL="$DB_URL" TALLI_SUPABASE_WORKDIR="$isolated_workdir" \
+  node scripts/prepare-rf1086-browser-tail.mjs
+  DATABASE_URL="$DB_URL" node --test tests/rf1086_source_runtime_contract.test.mjs
+  TALLI_SUPABASE_WORKDIR="$isolated_workdir" npm run test:supabase-advisors
+else
 # Frozen support and sibling rehearsals require their original table/RPC
 # topology. Unwind RF151 before its #150 predecessor; neither is the final lane.
 DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs rollback
@@ -196,9 +206,10 @@ SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
 npm run test:browser-authority-connections
+fi
 
 # The fresh RF journey must create its own preview, approval and filing journal.
-if [[ "$rf10_diagnostic" == "1" ]]; then
+if [[ "$rf10_diagnostic" == "1" || "$rf10_fast_diagnostic" == "1" ]]; then
   NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
   NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \
   SUPABASE_URL="$API_URL" \
@@ -207,10 +218,10 @@ if [[ "$rf10_diagnostic" == "1" ]]; then
   DATABASE_URL="$DB_URL" \
   TALLI_SUPABASE_WORKDIR="$isolated_workdir" \
   npm run test:browser-shareholder-register-filing:rf10-diagnostic
-  # This is not a release verdict; the full gate still requires Tax and Accounts.
-  exit 0
-fi
-
+  # The original RF10-only diagnostic still stops here. Fast mode continues
+  # through Tax, Accounts and production-mobile, without granting release credit.
+  if [[ "$rf10_diagnostic" == "1" ]]; then exit 0; fi
+else
 NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_URL="$API_URL" \
@@ -219,6 +230,7 @@ SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
 TALLI_SUPABASE_WORKDIR="$isolated_workdir" \
 npm run test:browser-shareholder-register-filing
+fi
 
 # Tax uses the final private storage and the normal owner login/MFA flow.
 SUPABASE_URL="$API_URL" \

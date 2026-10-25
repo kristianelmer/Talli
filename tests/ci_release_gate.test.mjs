@@ -16,6 +16,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { adaptGovernanceCompletionRehearsal } from "./support/governance_completion_rehearsal.mjs";
+import { prepareRf1086BrowserTail } from "../scripts/prepare-rf1086-browser-tail.mjs";
 
 test("disposable completion replay preserves frozen SQL except the exact successor return", () => {
   const rule = JSON.parse(readFileSync(new URL("./fixtures/governance_completion_replay.json", import.meta.url), "utf8"));
@@ -646,6 +647,22 @@ test("manual release gates can retain linked immutable evidence", () => {
 test("RF10 workflow selection is closed and cannot produce a release verdict", () => {
   const workflow = readFileSync(workflowPath, "utf8");
   assert.match(workflow, /rf_scope:\n\s+description: [^\n]+\n\s+required: false\n\s+type: choice\n\s+default: full\n\s+options:\n\s+- full\n\s+- rf10-diagnostic/u);
+  const application = workflow.split("  application:\n")[1]?.split("\n  database:")[0];
+  const applicationCondition = application?.match(/^    if: \$\{\{ (.+) \}\}$/mu)?.[1];
+  assert.equal(applicationCondition, "github.event_name != 'workflow_dispatch' || inputs.rf_scope != 'rf10-fast-diagnostic'");
+  const shellCondition = applicationCondition.replace("github.event_name", '"$EVENT_NAME"')
+    .replace("inputs.rf_scope", '"$RF_SCOPE"');
+  for (const event of ["pull_request", "push", "workflow_dispatch"]) {
+    for (const scope of ["", "full", "rf10-diagnostic", "rf10-fast-diagnostic", "unknown"]) {
+      const result = run("bash", ["-e", "-c", `if [[ ${shellCondition} ]]; then printf run; else printf skip; fi`], {
+        timeout: 5000, env: { ...process.env, EVENT_NAME: event, RF_SCOPE: scope },
+      });
+      assert.equal(result.error, undefined);
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.stdout, event === "workflow_dispatch" && scope === "rf10-fast-diagnostic" ? "skip" : "run",
+        `${event}/${scope}`);
+    }
+  }
   const normalized = "${{ github.event_name == 'workflow_dispatch' && inputs.rf_scope || 'full' }}";
   const rehearsal = workflow.split("      - name: Rehearse migrations, RLS, storage, and owner persistence\n")[1]?.split("\n      - name:")[0];
   const verdict = workflow.split("      - name: Require every readiness job\n")[1];
@@ -659,7 +676,8 @@ test("RF10 workflow selection is closed and cannot produce a release verdict", (
     const npm = join(dir, "npm");
     writeFileSync(npm, '#!/usr/bin/env bash\nprintf "COMMAND:%s\\n" "$*"\n');
     chmodSync(npm, 0o755);
-    for (const [scope, command] of [["full", "test:supabase:local"], ["rf10-diagnostic", "test:supabase:rf10-diagnostic"], ["unknown", null]]) {
+    for (const [scope, command] of [["full", "test:supabase:local"], ["rf10-diagnostic", "test:supabase:rf10-diagnostic"],
+      ["rf10-fast-diagnostic", "test:supabase:rf10-fast-diagnostic"], ["unknown", null]]) {
       const result = run("bash", ["-e", "-c", script(rehearsal)], { cwd: dir, timeout: 5000, killSignal: "SIGKILL", maxBuffer: 65536,
         env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, RF_SCOPE: scope, TALLI_RF_LEGACY_REPLAY: "false" } });
       assert.equal(result.error, undefined);
@@ -681,8 +699,9 @@ test("RF10 workflow selection is closed and cannot produce a release verdict", (
 test("RF10 package argv selects only the exact source title and omits unmatched generated cases", (t) => {
   const scripts = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).scripts;
   const title = "owner completes RF capture, rejected-predecessor correction and lost main response through the canonical backend";
-  const command = `node --test --test-concurrency=1 --test-name-pattern='^${title}$' tests/shareholder_register_browser_fixture_safety.test.mjs tests/browser_shareholder_register_filing.mjs`;
+  const command = `node --test --test-concurrency=1 --test-reporter=tap --test-name-pattern='^${title}$' tests/shareholder_register_browser_fixture_safety.test.mjs tests/browser_shareholder_register_filing.mjs`;
   assert.equal(scripts["test:supabase:rf10-diagnostic"], "bash scripts/test-supabase-local.sh --rf10-diagnostic");
+  assert.equal(scripts["test:supabase:rf10-fast-diagnostic"], "bash scripts/test-supabase-local.sh --rf10-fast-diagnostic");
   assert.equal(scripts["test:supabase:local"], "bash scripts/test-supabase-local.sh");
   assert.equal(scripts["test:browser-shareholder-register-filing:rf10-diagnostic"], command);
   const source = readFileSync(new URL("./browser_shareholder_register_filing.mjs", import.meta.url), "utf8");
@@ -709,10 +728,10 @@ test("RF10 package argv selects only the exact source title and omits unmatched 
     assert.equal(result.status, 0, result.stdout + result.stderr);
     assert.equal(readFileSync(join(dir, "events"), "utf8"), "before\nrf-10\nafter\n");
     // Node reports the file with no matching tests, not its 28 omitted cases.
-    assert.match(result.stdout, /✔ tests\/shareholder_register_browser_fixture_safety\.test\.mjs \([\d.]+ms\)/u);
-    assert.match(result.stdout, /ℹ tests 2\r?$/mu);
-    assert.match(result.stdout, /ℹ pass 2\r?$/mu);
-    assert.match(result.stdout, /ℹ skipped 0\r?$/mu);
+    assert.match(result.stdout, /^ok \d+ - tests\/shareholder_register_browser_fixture_safety\.test\.mjs\r?$/mu);
+    assert.match(result.stdout, /^# tests 2\r?$/mu);
+    assert.match(result.stdout, /^# pass 2\r?$/mu);
+    assert.match(result.stdout, /^# skipped 0\r?$/mu);
     assert.doesNotMatch(result.stdout, /generated safety omitted|prefix owner|backend suffix|correction and process crash/u);
     t.diagnostic(`generated selection parent ${result.pid} exited ${result.status}; spawnSync waited`);
   } finally { rmSync(dir, { recursive: true, force: true }); }
@@ -977,6 +996,66 @@ test("mandatory Billing and Authority lifecycles refuse missing DB configuration
 });
 
 
+test("fast RF10 bootstrap preserves prerequisite order and all five guarded writer identities", async () => {
+  const billing = readFileSync(new URL("../supabase/contract-migrations/20260905013000_billing_contract.sql", import.meta.url), "utf8");
+  const events = [], rows = Array.from({ length: 5 }, (_, i) => ({ oid: String(100 + i), owner: "owned",
+    body_hash: "a".repeat(32), prosecdef: true, proconfig: ['search_path=""'], guarded: true }));
+  let reads = 0;
+  await prepareRf1086BrowserTail({ database: { async query(sql, args) {
+    if (sql === billing) { events.push("billing-contract"); return { rows: [] }; }
+    assert.match(sql, /md5\(p\.prosrc\)/u);
+    assert.equal(new Set(args[0]).size, 5);
+    events.push(`guard-read-${++reads}`);
+    return { rows };
+  } }, run(args, env = {}) {
+    if (args[2] === "test:ledger-hosted-migration-authority") assert.equal(env.TALLI_LEDGER_HOSTED_AUTHORITY_REHEARSAL, "1");
+    events.push(args.join(" "));
+  } });
+  assert.deepEqual(events, [
+    "node scripts/rehearse-authority-topology.mjs rollback", "npm run test:ledger-hosted-migration-authority",
+    "npm run test:corporate-governance-database-lifecycle", "billing-contract",
+    "node scripts/rehearse-governance-contract.mjs", "node scripts/rehearse-authority-topology.mjs recutover",
+    "guard-read-1", "node scripts/rehearse-tax-topology.mjs prepare", "node scripts/rehearse-tax-topology.mjs contract",
+    "node scripts/rehearse-tax-topology.mjs filing-expand", "node scripts/rehearse-tax-topology.mjs filing-contract",
+    "node scripts/rehearse-accounts-topology.mjs activate", "guard-read-2", "node scripts/activate-rf-source-runtime.mjs",
+  ]);
+});
+
+test("fast RF10 bootstrap refuses missing or changed guards before runtime activation and preserves the first failure", async () => {
+  for (const fault of ["missing-guard", "changed-guard", "billing-failure", "tax-failure"]) {
+    const events = [], primary = new Error("synthetic first failure");
+    let reads = 0;
+    const rows = Array.from({ length: 5 }, (_, i) => ({ oid: String(i), body_hash: "original", prosecdef: true, guarded: true }));
+    await assert.rejects(prepareRf1086BrowserTail({ database: { async query(sql) {
+      if (!sql.includes("body_hash")) {
+        if (fault === "billing-failure") throw primary;
+        return { rows: [] };
+      }
+      reads++;
+      return { rows: rows.map((row, i) => ({ ...row,
+        guarded: !(fault === "missing-guard" && i === 4),
+        body_hash: fault === "changed-guard" && reads === 2 && i === 4 ? "replaced" : row.body_hash })) };
+    } }, run(args) {
+      events.push(args.join(" "));
+      if (fault === "tax-failure" && args[1] === "scripts/rehearse-tax-topology.mjs") throw primary;
+    } }), error => fault.endsWith("failure") ? error === primary : error.message ===
+      (fault === "missing-guard" ? "browser_bootstrap_rf_writer_guard_missing" : "browser_bootstrap_rf_writer_guard_changed"));
+    assert.ok(!events.includes("node scripts/activate-rf-source-runtime.mjs"));
+    if (["missing-guard", "billing-failure"].includes(fault)) assert.ok(!events.some(value => value.includes("rehearse-tax-topology")));
+  }
+});
+
+test("fast RF10 helper refuses remote and extra-argument targets without printing connection secrets", () => {
+  const helper = fileURLToPath(new URL("../scripts/prepare-rf1086-browser-tail.mjs", import.meta.url));
+  for (const args of [[], ["unexpected"]]) {
+    const result = run(process.execPath, [helper, ...args], { timeout: 5000,
+      env: { ...process.env, DATABASE_URL: "postgresql://private:secret@remote.invalid/postgres", TALLI_SUPABASE_WORKDIR: "/not-opened" } });
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    assert.equal(result.stderr.trim(), "browser_bootstrap_requires_owned_loopback_workdir");
+  }
+});
+
 test("mandatory local lane preserves every predecessor before Billing and final Authority verification", () => {
   const failures = {
     "billing-failure": [13, "HARNESS_NPM:run test:billing-database-lifecycle"],
@@ -1184,7 +1263,7 @@ test('package partition retains every original file once',()=>{
 test("complete local runner requires the fresh RF browser after historical recovery", () => {
   const scripts = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).scripts;
   assert.equal(scripts["test:browser-shareholder-register-filing"],
-    "node --test --test-concurrency=1 tests/shareholder_register_browser_fixture_safety.test.mjs tests/browser_shareholder_register_filing.mjs");
+    "node --test --test-concurrency=1 --test-reporter=tap tests/shareholder_register_browser_fixture_safety.test.mjs tests/browser_shareholder_register_filing.mjs");
   const harness = readFileSync(databaseHarnessPath, "utf8");
   const fresh = "npm run test:browser-shareholder-register-filing";
   assert.equal(harness.split("\n").filter(line => line.trim() === fresh).length, 1);
@@ -1203,7 +1282,9 @@ test('RF10 diagnostic arguments reject unknown, repeated and extra tokens before
   const sentinel=join(dir,'bin','mktemp');
   writeFileSync(sentinel,'#!/usr/bin/env bash\nprintf acquired > acquired\nexit 91\n');
   chmodSync(sentinel,0o755);
-  for(const args of [['--unknown'],['--rf10-diagnostic=1'],['--rf10-diagnostic','--rf10-diagnostic'],['--rf10-diagnostic','extra'],[''],['--']]) {
+  for(const args of [['--unknown'],['--rf10-diagnostic=1'],['--rf10-diagnostic','--rf10-diagnostic'],['--rf10-diagnostic','extra'],
+    ['--rf10-fast-diagnostic=1'],['--rf10-fast-diagnostic','--rf10-fast-diagnostic'],['--rf10-fast-diagnostic','extra'],
+    ['--rf10-diagnostic','--rf10-fast-diagnostic'],[''],['--']]) {
    const result=run('bash',[shell,...args],{cwd:dir,timeout:5000,killSignal:'SIGKILL',maxBuffer:65536,
     env:{...process.env,PATH:join(dir,'bin')+':'+process.env.PATH}});
    assert.equal(result.error,undefined);
@@ -1238,6 +1319,9 @@ if [[ "$1" == "--test" ]]; then
   [[ "$SUPABASE_URL" == "http://127.0.0.1:54321" && "$SUPABASE_ANON_KEY" == "synthetic" ]]
   [[ "$SUPABASE_SERVICE_ROLE_KEY" == "synthetic" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
  fi
+elif [[ "$1" == "scripts/prepare-rf1086-browser-tail.mjs" ]]; then
+ [[ "$#" == "1" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" && -d "$TALLI_SUPABASE_WORKDIR" ]]
+ phase="node:browser-tail-bootstrap"
 elif [[ "$1" == "scripts/rehearse-governance-contract.mjs" || "$1" == "scripts/activate-rf-source-runtime.mjs" ]]; then
  [[ "$#" == "1" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
  if [[ "$1" == "scripts/rehearse-governance-contract.mjs" ]]; then phase="node:governance-contract"; else phase="node:rf-source-runtime"; fi
@@ -1289,13 +1373,21 @@ const fullFailures=['', 'npm:test:supabase-advisors:initial','topology:workspace
  'npm:test:company-tax-database','npm:test:annual-accounts-database','npm:test:browser-owner-annual','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts',
  'node:connected-viewport','npm:build:web','node:mobile-tax','node:mobile-accounts'];
 const diagnosticPhases=[...phases.slice(0,phases.indexOf('npm:test:browser-shareholder-register-filing')),'npm:test:browser-shareholder-register-filing:rf10-diagnostic'];
+const fastPhases=['npm:test:supabase-advisors:initial','node:browser-tail-bootstrap','node:rf-source-runtime-tests',
+ 'npm:test:supabase-advisors','npm:test:browser-shareholder-register-filing:rf10-diagnostic',
+ 'npm:test:browser-company-tax','npm:test:browser-annual-accounts','node:connected-viewport','npm:build:web','node:mobile-tax','node:mobile-accounts'];
 for(const {fail,args=[],ambient={},expected=phases,label=fail||'success',existingGuides=false} of [
  ...fullFailures.map(fail=>({fail})),
  {fail:'npm:build:web',existingGuides:true,label:'mobile build failure with existing guides'},
  {fail:'',ambient:{RF_SCOPE:'rf10-diagnostic',TALLI_RF_SCOPE:'rf10-diagnostic',rf10_diagnostic:'1'},label:'ambient RF10 still full'},
+ {fail:'',ambient:{RF_SCOPE:'rf10-fast-diagnostic',rf10_fast_diagnostic:'1'},label:'ambient fast RF10 still full'},
  ...['','npm:test:authority-connections-database','npm:test:browser-shareholder-register-filing:rf10-diagnostic'].map(fail=>({
   fail,args:['--rf10-diagnostic'],expected:diagnosticPhases,label:`RF10 diagnostic ${fail||'success'}`,
  })),
+ ...['','node:browser-tail-bootstrap','node:rf-source-runtime-tests','npm:test:supabase-advisors',
+   'npm:test:browser-shareholder-register-filing:rf10-diagnostic','npm:test:browser-company-tax','npm:test:browser-annual-accounts',
+   'npm:build:web','node:mobile-tax','node:mobile-accounts'].map(fail=>({fail,args:['--rf10-fast-diagnostic'],
+   expected:fastPhases,label:`fast RF10 ${fail||'success'}`})),
 ]) {
  test(`real shell stops at ${label} and restores owned generated files`,()=>{
   const dir=mkdtempSync(join(tmpdir(),'talli-151-shell-proof-'));

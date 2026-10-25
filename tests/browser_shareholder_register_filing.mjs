@@ -45,6 +45,8 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
   timeout: 360_000,
 }, async (t) => {
   const replayTestStarted = performance.now();
+  const phase = value => console.info("rf_browser_phase", JSON.stringify({ scenario: scenarioIndex + 1, phase: value }));
+  phase("setup");
   assert.ok(supabaseUrl && anonKey && serviceRoleKey && databaseUrl, "authority browser requires isolated Supabase configuration");
   assert.ok(isLoopbackSupabaseUrl(supabaseUrl) && isLoopbackPostgresUrl(databaseUrl), "authority browser fixtures require loopback");
   assert.notEqual(process.env.TALLI_AUTHORITY_OPS_ENABLED, "true");
@@ -171,6 +173,10 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
           const line = httpOutput.slice(0, newline);
           httpOutput = httpOutput.slice(newline + 1);
           if (line.startsWith("TALLI_AUTHORITY_HTTP:") || line.startsWith("TALLI_RF_SOURCE_CAPTURE_TEST:")) apiCalls.push(line);
+          const failedHttp = /^TALLI_AUTHORITY_HTTP:(GET|POST|PATCH|DELETE):(\/api\/v1\/[a-zA-Z0-9_/-]+):([45][0-9]{2})$/u.exec(line);
+          if (failedHttp) console.info("rf_browser_http_denial", JSON.stringify({ scenario: scenarioIndex + 1,
+            method: failedHttp[1], path: failedHttp[2].replace(/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}/gu, ":id"),
+            status: Number(failedHttp[3]) }));
           if (line.startsWith(`TALLI_RF_PREPARED_STOP:${nonce}:`)) {
             const operation = line.slice(`TALLI_RF_PREPARED_STOP:${nonce}:`.length);
             preparedSignals.get(operation)?.();
@@ -190,6 +196,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
       await waitForOwnedReadiness({ process: resources.backend, url: `${backendOrigin}/health/ready` });
     };
     await waitForOwnedReadiness({ process: resources.backend, url: `${backendOrigin}/health/ready` });
+    phase("backend-ready");
     const observation = await requestObserver.prepare({ root: process.cwd(), nextCli, port: webPort,
       scenario: scenarioIndex + 1, deadline: replayTestStarted + 360_000, signal: t.signal,
       nodeOptions: `--import=${new URL("./fixtures/system-user-authority-mock.mjs", import.meta.url).href}` });
@@ -216,6 +223,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
     const rfArchiveUrl = `${siteOrigin}/filing/aksjonaerregisteroppgaven/source/archive?companyId=${primary.id}&incomeYear=2025`;
     const noMfaArchive = await context.request.get(rfArchiveUrl, { maxRedirects: 0, ...context.rfLowAalObservation?.requestOptions });
     await assertRfArchiveLowAalDenied(noMfaArchive, { observation: context.rfLowAalObservation });
+    phase("low-aal-denied");
     assert.equal(noMfaArchive.headers()["content-disposition"], undefined);
     assert.ok(!(await noMfaArchive.text()).includes("canonicalArchive"));
     await establishOwnerAal2(page, siteOrigin);
@@ -279,26 +287,48 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
       underskjema_xml: preview.underskjemaXml })).digest("hex");
     const reviewComment = "Synthetic owner reviewed the original shareholder basis.";
     await page.getByLabel("Kommentar", { exact: true }).fill(reviewComment);
-    // A streamed server action can still be pending after networkidle. Wait for
-    // this save's complete response before inspecting its durable result.
-    const commentSaved = page.waitForResponse((response) => response.url() === annualHref
-      && response.request().method() === "POST"
-      && response.request().postData()?.includes(reviewComment));
+    // Native and hydrated forms encode their payloads differently. Observe
+    // this save by its route, then verify the exact committed input below.
+    let commentRequest;
+    page.on("requestfinished", request => {
+      if (request === commentRequest) phase("comment-request-finished");
+    });
+    page.on("requestfailed", request => {
+      if (request === commentRequest) phase("comment-request-failed");
+    });
+    const commentSaved = page.waitForResponse((response) => {
+      const target = new URL(response.url());
+      if (target.origin !== siteOrigin || target.pathname !== new URL(annualHref).pathname
+          || response.request().method() !== "POST") return false;
+      commentRequest = response.request();
+      console.info("rf_browser_comment_response", JSON.stringify({ scenario: scenarioIndex + 1,
+        status: response.status(), contentType: response.headers()["content-type"] ?? null }));
+      return true;
+    });
     await page.getByRole("button", { name: "Lagre kommentar", exact: true }).click();
+    phase("comment-click-returned");
     const commentResponse = await commentSaved;
-    assert.equal(commentResponse.status(), 200);
+    phase("comment-response-selected");
+    assert.ok([200, 303].includes(commentResponse.status()), "comment save must return a successful action or redirect");
     assert.equal(await commentResponse.finished(), null);
+    phase("comment-response-finished");
     const reviewed = await api.rf1086Workspace(primary.id, 2025, { headers: authorization });
+    phase("comment-workspace-read");
     assert.equal(reviewed.reviewComments.length, 1);
     assert.equal(reviewed.reviewComments[0].previewId, preview.id);
     assert.equal(reviewed.reviewComments[0].severity, "advisory");
+    assert.equal(reviewed.reviewComments[0].body, reviewComment);
     await page.goto(`${siteOrigin}/filing/aksjonaerregisteroppgaven`);
+    phase("production-goto-complete");
     const productionSection = page.locator("section").filter({
       has: page.getByRole("heading", { name: "Reell innsending av aksjonærregisteroppgaven", exact: true }),
     });
     await productionSection.locator('input[name="realFilingConfirmed"]').check();
+    phase("legacy-approval");
     await productionSection.getByRole("button", { name: "Godkjenn innholdet", exact: true }).click();
-    await productionSection.getByRole("button", { name: "Send aksjonærregisteroppgaven", exact: true }).waitFor();
+    await productionSection.getByRole("button", { name: "Send aksjonærregisteroppgaven", exact: true })
+      .or(productionSection.getByRole("alert")).first().waitFor();
+    assert.deepEqual(await productionSection.getByRole("alert").allTextContents(), [], "legacy approval must succeed");
     const approved = await api.rf1086Workspace(primary.id, 2025, { headers: authorization });
     assert.equal(approved.approvals.length, 1);
     assert.equal(approved.approvals[0].previewId, preview.id);
@@ -309,8 +339,10 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
     const send = productionSection.getByRole("button", { name: "Send aksjonærregisteroppgaven", exact: true });
     await send.focus();
     assert.equal(await send.evaluate((element) => element === document.activeElement), true);
+    phase("legacy-send");
     await send.press("Enter");
     await productionSection.getByText("Godkjent", { exact: true }).waitFor();
+    phase("legacy-accepted");
     const accepted = await api.rf1086Workspace(primary.id, 2025, { headers: authorization });
     assert.equal(accepted.productionSubmissions.length, 1);
     assert.equal(accepted.productionSubmissions[0].feedbackState, "accepted");
@@ -352,6 +384,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
       assert.ok(await archiveLink.isVisible());
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `RF archive overflow at ${width}`);
     }
+    phase("legacy-archive-download");
     const archived = page.waitForEvent("download");
     await archiveLink.click();
     const archiveDownload = await archived;
@@ -373,6 +406,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
     assert.equal(verification.sourceHistoryIncluded, true);
     assert.equal(verification.overrideHistoryIncluded, true);
     assert.equal(verification.databaseRestorePerformed, false);
+    phase("legacy-archive-verified");
     const successfulCalls = resources.mock.snapshot();
     const archiveReads = successfulCalls.filter(({ operation }) => operation === "list_documents");
     assert.equal(archiveReads.length, 1);
@@ -387,6 +421,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
     assert.equal(successfulCalls.find(({ operation }) => operation === "post_underskjema").digest,
       createHash("sha256").update(Object.values(preview.underskjemaXml)[0]).digest("hex"));
 
+    phase("outsider-and-unknown-replay");
     const otherContext = await resources.browser.newContext({ viewport: { width: 1440, height: 900 } });
     captureBrowserHealth(otherContext, health);
     await installBrowserEgressGuard(otherContext, { approvalEnabled: true, blockedRequests: egressViolations, mockBaseUrl: resources.mock.baseUrl });
@@ -459,6 +494,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
       const inventoryCompany = await seedCompany(admin, database, owner.id, "Synthetic Company Test Inventory", resources.companies);
       const openings = [];
       for (const incomeYear of [2024, 2025]) openings.push({ ...await seedFreshBasis(database, inventoryCompany.id, owner.id, incomeYear), incomeYear });
+      phase("company-test-inventory-restore");
       await exerciseCompanyTestRetention({ page, siteOrigin, company: inventoryCompany, openings,
         database, api, ownerId: owner.id, outsiderId: other.id, ownerToken: session.access_token,
         outsiderToken: otherSession.access_token, lowAalToken: lowAalSession.access_token,
@@ -469,6 +505,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
     await otherContext.close();
     // A distinct year keeps the first full-year submission independent of the
     // accepted legacy filing and its correction head. No source/approval is seeded.
+    phase("full-year-source-journey");
     const sourceYear = await seedFullYearAdmission(database, primary, owner.id, python, runtimeEnvironment());
     const sourceOpening = await seedFreshBasis(database, primary.id, owner.id, sourceYear, false);
     const sourceEntitlement = await grant(session.access_token, primary.id, owner.id, original.id,
@@ -482,6 +519,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
       const alerts = await page.getByRole("alert").allTextContents();
       throw new Error(`full_year_source_journey_failed: ${error.message}; alerts=${JSON.stringify(alerts)}`, { cause: error });
     });
+    phase("full-year-source-archive-ready");
     if (recoverSourceCapture) {
       assert.equal(apiCalls.filter(call => call.startsWith("TALLI_RF_SOURCE_CAPTURE_TEST:"))
         .map(call => JSON.parse(call.slice("TALLI_RF_SOURCE_CAPTURE_TEST:".length)))
@@ -512,6 +550,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
           cancellation = deletion.cancellation;
           await reviewContext.close();
         }
+        phase("native-restore");
         const restored = JSON.parse(execFileSync(python, ["scripts/rehearse-rf1086-owned-restore.py", sourceArchive.path,
           "--company-id", primary.id, "--income-year", String(sourceYear), "--actor-id", owner.id,
           ...(restoreStorage ? ["--restore-storage", "--expired-pilot-id", sourceEntitlement,
@@ -558,6 +597,7 @@ for (const [scenarioIndex, { lostResponse, crash, beforeMutation, predecessorFee
     await context.close();
     assert.deepEqual(health, []);
     assert.deepEqual(egressViolations, []);
+    phase("complete");
   } catch (error) {
     primaryFailure = error;
     // Only process health diagnostics are retained; no environment, bearer,

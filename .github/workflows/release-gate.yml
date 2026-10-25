@@ -14,6 +14,7 @@ on:
         options:
           - full
           - rf10-diagnostic
+          - rf10-fast-diagnostic
       record_evidence:
         description: Produce and retain the canonical immutable gate receipt
         required: false
@@ -35,6 +36,7 @@ concurrency:
 jobs:
   application:
     name: Application
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.rf_scope != 'rf10-fast-diagnostic' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -125,7 +127,7 @@ jobs:
   database:
     name: Database isolation
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && inputs.rf_scope == 'rf10-fast-diagnostic' && 20 || 90 }}
     env:
       # The repaired bootstrap/stream is outside the sealed bare-restore protocol.
       TALLI_RF_LEGACY_REPLAY: "false"
@@ -177,6 +179,7 @@ jobs:
           case "$RF_SCOPE" in
             full) npm run test:supabase:local ;;
             rf10-diagnostic) npm run test:supabase:rf10-diagnostic ;;
+            rf10-fast-diagnostic) npm run test:supabase:rf10-fast-diagnostic ;;
             *) echo "Unsupported RF scope" >&2; exit 2 ;;
           esac
 

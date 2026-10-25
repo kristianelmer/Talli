@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { fixtureTableTransaction } from "../support/rf1086-fixture-access.mjs";
 import { isLoopbackSupabaseUrl } from "../support/supabase_fixture_safety.mjs";
+import { loadRetainedBrowserHistory } from "./rf1086-retained-browser-history.mjs";
 
 // Uses the already authenticated owner and the loopback-only fresh filing mock.
 // Only admission, opening facts and a pilot entitlement are prepared. Every
@@ -298,7 +299,7 @@ async function approveSourceCorrection({ page, sourceHref, company, incomeYear, 
 async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear, api, scope, options, storage,
   mock, python, environment, source, approved, processed, documentId, predecessorLabel, renamedOriginal }) {
   const prior = processed.productionSubmissions[0];
-  const historyBefore = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
+  const historyBefore = await loadRetainedBrowserHistory(api, company.id, incomeYear, options, python, environment);
   const callsBefore = mock.snapshot().filter(({ service }) => service === "skatteetaten").length;
   const { current, nextApproval, nextPreview, panel } = await approveSourceCorrection({ page, sourceHref,
     company, incomeYear, api, scope, options, storage, source, prior, documentId,
@@ -320,7 +321,7 @@ async function exerciseSourceCorrection({ page, sourceHref, company, incomeYear,
   assert.equal(replacement.supersedesSubmissionId, prior.id);
   assert.deepEqual(after.productionSubmissions.find(row => row.id === prior.id), prior);
   assert.deepEqual(after.feedbackArtifacts.filter(row => row.submissionId === prior.id), processed.feedbackArtifacts);
-  const historyAfter = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
+  const historyAfter = await loadRetainedBrowserHistory(api, company.id, incomeYear, options, python, environment);
   assert.deepEqual(historyAfter.productionEvents.filter(row => row.submissionId === prior.id),
     historyBefore.productionEvents.filter(row => row.submissionId === prior.id));
   await page.reload();
@@ -386,7 +387,7 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
         timer = setTimeout(() => reject(new Error("mock_mutation_hold_deadline_exceeded")), 10_000);
       })]);
     } finally { clearTimeout(timer); }
-    const atCrash = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
+    const atCrash = await loadRetainedBrowserHistory(api, company.id, incomeYear, options, python, environment);
     const active = atCrash.productionSubmissions.find(row => row.approvalId === nextApproval.id);
     const lastMutation = mock.snapshot().filter(row => row.service === "skatteetaten").at(-1);
     const intent = atCrash.productionEvents.filter(row => row.submissionId === active.id && (armPreparedCrash
@@ -411,7 +412,7 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
     await page.setViewportSize({ width, height: 900 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `unknown-outcome overflow at ${width}`);
   }
-  const retained = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
+  const retained = await loadRetainedBrowserHistory(api, company.id, incomeYear, options, python, environment);
   if (crashBackend) {
     assert.deepEqual(mock.snapshot(), callsAtCrash, "restart and initial reads must not acquire tokens or call providers");
     for (const field of ["productionSubmissions", "productionEvents", "sourceSubmissionClaims", "submissionHead", "feedbackArtifacts"])
@@ -501,13 +502,13 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
     assert.equal(current.manifestSha256, position.manifestSha256);
   }
   assert.deepEqual(mock.snapshot(), callsAfterLoss, "retries and status reads must not acquire provider tokens or resend");
-  const after = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
+  const after = await loadRetainedBrowserHistory(api, company.id, incomeYear, options, python, environment);
   for (const field of ["productionSubmissions", "productionEvents", "sourceSubmissionClaims", "submissionHead", "feedbackArtifacts"])
     assert.deepEqual(after[field], retained[field], field);
   assert.equal(after.feedbackArtifacts.some(row => row.submissionId === unknown.id), false);
   if (includeUnapprovedHistory) {
-    await exerciseUnapprovedPriorYearSource({ page, sourceHref, company, incomeYear, api, scope, options, storage });
-    const withDraft = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
+    await exerciseUnapprovedPriorYearSource({ page, sourceHref, company, incomeYear, api, scope, options, storage, python, environment });
+    const withDraft = await loadRetainedBrowserHistory(api, company.id, incomeYear, options, python, environment);
     for (const field of ["approvals", "sourceApprovalLineage", "productionSubmissions", "productionEvents", "sourceSubmissionClaims", "submissionHead", "feedbackArtifacts"])
       assert.deepEqual(withDraft[field], after[field], `unapproved source changed ${field}`);
     assert.deepEqual(mock.snapshot(), callsAfterLoss, "saving an unapproved source must not call a provider");
@@ -515,7 +516,7 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
       newValue: "Retained explanation", reason: "Synthetic owner annotation for archive recovery",
       riskLevel: "advisory", ownerConfirmed: true };
     const recorded = await api.rf1086RecordOverride(override, options);
-    const archived = await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options);
+    const archived = await loadRetainedBrowserHistory(api, company.id, incomeYear, options, python, environment);
     assert.equal(archived.overrides.length, 1);
     const row = archived.overrides[0];
     assert.equal(row.id, recorded.recordId);
@@ -547,10 +548,10 @@ async function exerciseUnknownSourceOutcome({ page, sourceHref, company, incomeY
   return { path: await download.path(), verification };
 }
 
-async function exerciseUnapprovedPriorYearSource({ page, sourceHref, company, incomeYear, api, scope, options, storage }) {
+async function exerciseUnapprovedPriorYearSource({ page, sourceHref, company, incomeYear, api, scope, options, storage, python, environment }) {
   const before = await api.rf1086Workspace(company.id, incomeYear, options);
   const history = archive => JSON.parse(JSON.parse(archive.canonicalArchive).snapshotText).fields.source_history.fields;
-  const historyBefore = history(await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options));
+  const historyBefore = history(await loadRetainedBrowserHistory(api, company.id, incomeYear, options, python, environment));
   const originalSource = (await api.rf1086ReadCurrentYearSource(scope)).currentSource;
   const priorYear = incomeYear - 1;
   const original = await uploadOriginal({ api, options, storage, company, incomeYear: priorYear, consideration: "20000" });
@@ -579,7 +580,7 @@ async function exerciseUnapprovedPriorYearSource({ page, sourceHref, company, in
   // Workspace previews are materialized by review preparation. An unreviewed
   // preview belongs only to the complete source history in the canonical archive.
   assert.deepEqual(after.previews, before.previews);
-  const historyAfter = history(await api.rf1086GetProductionArchiveSourceV4(company.id, incomeYear, options));
+  const historyAfter = history(await loadRetainedBrowserHistory(api, company.id, incomeYear, options, python, environment));
   for (const field of ["year_sources", "source_previews"]) {
     assert.equal(historyAfter[field].length, historyBefore[field].length + 1, field);
     for (const record of historyBefore[field])
