@@ -35,8 +35,10 @@ from talli_backend.application.shareholder_register_filing_session import (
 )
 from talli_backend.application.shareholder_register_filing_workflow import ShareholderRegisterFilingWorkflow
 from talli_backend.application.shareholder_register_source_workflow import ShareholderRegisterSourceWorkflow
-from talli_backend.application.shareholder_register_source_approval import ShareholderRegisterSourceApprovalWorkflow
-from talli_backend.application.shareholder_register_source_dispatch import ShareholderRegisterSourceDispatchWorkflow
+from talli_backend.application.shareholder_register_source_capture_v2 import ShareholderRegisterSourceCaptureV2
+from talli_backend.application.shareholder_register_source_preview_v2 import ShareholderRegisterSourcePreviewV2
+from talli_backend.application.shareholder_register_source_approval_v3 import ShareholderRegisterSourceApprovalV3
+from talli_backend.application.shareholder_register_source_dispatch_v3 import ShareholderRegisterSourceDispatchV3
 from talli_backend.application.shareholder_register_company_test_retention_http import (
     CompanyTestRetentionSessionFactory, ShareholderRegisterCompanyTestRetentionHttp,
 )
@@ -5478,10 +5480,10 @@ def create_app(
 
     billing_provider = billing_payment_provider or SimulationBillingProvider()
     if shareholder_register_filing_session_factory is None:
-        from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterFilingAdapter
+        from talli_backend.adapters.postgres_shareholder_register_filing import PostgresShareholderRegisterSourceDispatchV3Adapter
         async def rf_billing_queries(access_token: str):
             return BillingWorkflow(await billing_sessions.session(access_token), billing_provider)
-        shareholder_register_filing_session_factory = PostgresShareholderRegisterFilingAdapter.from_environment(
+        shareholder_register_filing_session_factory = PostgresShareholderRegisterSourceDispatchV3Adapter.from_environment(
             billing_queries_factory=rf_billing_queries, documents_session_factory=documents_application,
             company_access_service=company_access_service,
         )
@@ -5495,10 +5497,16 @@ def create_app(
         shareholder_register_filing_session_factory, company_access_service,
         documents_application, corporate_governance_application,
     )
-    shareholder_register_source_approval = ShareholderRegisterSourceApprovalWorkflow(
+    shareholder_register_source_capture = ShareholderRegisterSourceCaptureV2(
+        shareholder_register_filing_session_factory, company_access_service, documents_application,
+    )
+    shareholder_register_source_preview = ShareholderRegisterSourcePreviewV2(
         shareholder_register_filing_session_factory, documents_application,
     )
-    shareholder_register_source_dispatch = ShareholderRegisterSourceDispatchWorkflow(
+    shareholder_register_source_approval = ShareholderRegisterSourceApprovalV3(
+        shareholder_register_filing_session_factory, documents_application,
+    )
+    shareholder_register_source_dispatch = ShareholderRegisterSourceDispatchV3(
         shareholder_register_filing_session_factory, documents_application,
     )
 
@@ -12725,7 +12733,7 @@ def create_app(
             token = bearer_token(credentials)
             session = await shareholder_register_filing_session_factory.session(token)
             command = _rf_source_command(body, session.actor_id)
-            result = await shareholder_register_source_workflow.capture_year_source(token, command,
+            result = await shareholder_register_source_capture.capture_year_source(token, command,
                 idempotency_key=IdempotencyKey(idempotency_key), correlation_id=CorrelationId(request.state.request_id))
             return RfYearSourceReceiptWire(source_id=UUID(result.source_id.value),
                 company_id=UUID(str(result.company_id)), income_year=int(result.income_year), version=result.version,
@@ -12793,10 +12801,10 @@ def create_app(
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> RfSourcePreviewWire:
         async def execute():
-            result = await shareholder_register_source_workflow.generate_source_preview(bearer_token(credentials),
+            result = await shareholder_register_source_preview.generate(bearer_token(credentials),
                 company_id=CompanyId(str(body.company_id)), income_year=IncomeYear(body.income_year),
                 source_id=Rf1086YearSourceId(str(body.source_id)), correlation_id=CorrelationId(request.state.request_id))
-            return _rf_source_preview_wire(result)
+            return _rf_source_preview_wire(result.preview)
         return await shareholder_register_source_call(execute)
 
     @application.get(
@@ -12812,7 +12820,7 @@ def create_app(
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> RfSourcePreviewWire:
         async def execute():
-            result = await shareholder_register_source_workflow.read_source_preview(bearer_token(credentials),
+            result = await shareholder_register_source_preview.read(bearer_token(credentials),
                 company_id=CompanyId(str(company_id)), income_year=IncomeYear(income_year),
                 preview_id=PreviewId(str(previewId)), correlation_id=CorrelationId(request.state.request_id))
             return _rf_source_preview_wire(result)
@@ -12829,10 +12837,11 @@ def create_app(
         credentials: HTTPAuthorizationCredentials | None = BEARER_DEPENDENCY,
     ) -> RfSourceProductionReviewWire:
         async def execute():
-            value = await shareholder_register_source_approval.read_review(bearer_token(credentials),
+            context = await shareholder_register_source_approval.read_review(bearer_token(credentials),
                 company_id=CompanyId(str(body.company_id)), income_year=IncomeYear(body.income_year),
                 preview_id=PreviewId(str(body.preview_id)), entitlement_id=str(body.entitlement_id),
                 correlation_id=CorrelationId(request.state.request_id))
+            value = context.review
             return RfSourceProductionReviewWire(
                 company_id=UUID(str(value.company_id)), income_year=int(value.income_year),
                 preview_id=UUID(value.preview_id.value), source_id=UUID(value.source_id.value),

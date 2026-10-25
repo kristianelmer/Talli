@@ -613,3 +613,28 @@ recognizes the exact 28-routine topology (also preserving older 22/23/24 states)
 drops only the four new triggers before their helper, and refuses populated
 amendment history. The new RF database tests use fixture-only producer grants;
 collection/native stubs do not claim full database execution.
+
+
+### Deferred default source runtime cutover
+
+The earlier staged slices remain closed during their database suites. The
+separate CLI-created deferred contract
+`supabase/contract-migrations/20261025104137_rf1086_source_runtime_v3_contract.sql`
+then grants only the actual default V2/V3 callgraph to the RF executor. Its
+retentive closure is
+`supabase/rollback/20261025104137_rf1086_source_runtime_v3_contract.sql`.
+The two Governance RPCs remain owner-verifying and guard-bound; internal
+parsers/receivers/invalidators gain no runtime grant. Owner-to-owner proof
+delegation, retained reads and history locks remain distinct from fresh effects.
+Seven superseded RF source writers close without dropping their definitions or
+records. No provider flag, tenant/MFA/legal control, table ownership or RLS rule
+is relaxed. See `tests/rf1086_source_runtime_contract.test.mjs` for the focused
+post-activation restricted-login and retentive-rollback checks.
+
+Rollback profile `rf1086-v3-retentive-read-only-rollback-v1` intentionally keeps
+`lock_source_claim_recovery_v3` newly enabled at activation: the actual dispatch
+consumer reads confirmed/unknown history before configuration/provider admission.
+It rechecks original actor and current OWNER and only reads/locks; the eight
+other new entrypoints and all seven superseded writers close. This is not
+pre-contract ACL restoration. The backend-system document names the actual
+consumers and unchanged real revocation regressions.

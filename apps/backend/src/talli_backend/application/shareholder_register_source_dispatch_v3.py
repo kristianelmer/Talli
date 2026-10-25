@@ -1,4 +1,4 @@
-"""Closed V3 dispatch construction; no route, runtime grant or provider effect."""
+"""V3 dispatch: retained recovery, fresh held admission and gated provider effects."""
 from dataclasses import dataclass
 
 from talli_backend.application.shareholder_register_source_claim_v3 import (

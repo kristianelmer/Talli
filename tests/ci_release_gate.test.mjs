@@ -74,6 +74,56 @@ const cleanWorktreePath = fileURLToPath(
 
 const postgresPrefetchPath = fileURLToPath(new URL("../scripts/prefetch-postgres-fixture-images.sh", import.meta.url));
 
+test("Supabase advisor child opts out of telemetry while keeping security and process failures closed", () => {
+  const directory = mkdtempSync(join(tmpdir(), "talli-advisor-process-test-"));
+  const advisor = fileURLToPath(new URL("../scripts/assert-supabase-advisors.mjs", import.meta.url));
+  try {
+    const bin = join(directory, "bin");
+    mkdirSync(bin);
+    const npm = join(bin, "npm");
+    writeFileSync(npm, `#!${process.execPath}
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+assert.equal(process.env.SUPABASE_TELEMETRY_DISABLED, '1');
+assert.equal(process.env.DO_NOT_TRACK, '1');
+assert.equal(process.env.ADVISOR_TEST_PRESERVED, 'preserved');
+assert.deepEqual(process.argv.slice(2), ['exec', '--', 'supabase', 'db', 'advisors', '--local', '--output', 'json',
+  ...(process.env.TALLI_SUPABASE_WORKDIR ? ['--workdir', process.env.TALLI_SUPABASE_WORKDIR] : [])]);
+fs.writeFileSync(process.env.ADVISOR_TEST_MARKER, 'child checked');
+process.stdout.write(process.env.ADVISOR_TEST_JSON);
+if (process.env.ADVISOR_TEST_STATUS !== '0') process.stderr.write('synthetic CLI failure');
+process.exit(Number(process.env.ADVISOR_TEST_STATUS));
+`);
+    chmodSync(npm, 0o755);
+    for (const [name, json, status, passes] of [
+      ['standalone empty findings', '[]', 0, true],
+      ['performance warning', '[{"level":"WARN","categories":["PERFORMANCE"]}]', 0, true],
+      ['error finding', '[{"level":"ERROR"}]', 0, false],
+      ['external security finding', '[{"level":"WARN","facing":"EXTERNAL","categories":["SECURITY"]}]', 0, false],
+      ['nonzero despite valid JSON', '[]', 23, false],
+      ['malformed JSON', 'not JSON', 0, false],
+      ['wrong JSON shape', '{}', 0, false],
+    ]) {
+      const marker = join(directory, 'child-checked');
+      rmSync(marker, { force: true });
+      const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`,
+        SUPABASE_TELEMETRY_DISABLED: '0', DO_NOT_TRACK: '0',
+        ADVISOR_TEST_PRESERVED: 'preserved', ADVISOR_TEST_MARKER: marker,
+        ADVISOR_TEST_JSON: json, ADVISOR_TEST_STATUS: String(status) };
+      if (name === 'standalone empty findings') delete env.TALLI_SUPABASE_WORKDIR;
+      else env.TALLI_SUPABASE_WORKDIR = directory;
+      const result = spawnSync(process.execPath, [advisor], { encoding: 'utf8', timeout: 10_000, env });
+      assert.ifError(result.error);
+      assert.equal(readFileSync(marker, 'utf8'), 'child checked', name);
+      assert.equal(result.status === 0, passes, `${name}: ${result.stderr}`);
+      if (passes) assert.match(result.stdout, /0 blocking security\/error findings/u);
+      else assert.doesNotMatch(result.stdout, /0 blocking security\/error findings/u);
+      assert.equal(env.SUPABASE_TELEMETRY_DISABLED, '0', 'child settings must not mutate caller environment');
+      assert.equal(env.DO_NOT_TRACK, '0');
+    }
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
 function runPostgresPrefetch({ pullFailures = {}, failTag = false } = {}) {
   const directory = mkdtempSync(join(tmpdir(), "talli-postgres-prefetch-test-"));
   try {
@@ -421,6 +471,15 @@ function createHarnessWorkspace(mode, guideState) {
   writeFileSync(join(directory, "scripts/rehearse-authority-topology.mjs"),
     "console.log('AUTHORITY_TOPOLOGY:' + process.argv[2]);\n"
     + `if (process.argv[2] === 'recutover' && ${JSON.stringify(mode)} === 'authority-recutover-failure') process.exit(11);\n`);
+  for (const [script, marker, failure, status] of [
+    ["rehearse-governance-contract.mjs", "GOVERNANCE_CONTRACT", "governance-contract-failure", 15],
+    ["activate-rf-source-runtime.mjs", "RF_SOURCE_RUNTIME", "rf-runtime-failure", 17],
+  ]) {
+    writeFileSync(join(directory, "scripts", script),
+      "if (process.env.DATABASE_URL !== 'postgresql://127.0.0.1/local') process.exit(96);\n"
+      + `console.log(${JSON.stringify(marker)});\n`
+      + `if (${JSON.stringify(mode)} === ${JSON.stringify(failure)}) process.exit(${status});\n`);
+  }
   const npmPath = join(binDirectory, "npm");
   writeFileSync(
     npmPath,
@@ -459,6 +518,12 @@ if [[ "$1" == "--test" ]]; then
   [[ "$#" == "2" ]]
   case "$2" in
     tests/connected_viewport.test.mjs) ;;
+    tests/rf1086_source_runtime_contract.test.mjs)
+      [[ "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
+      printf 'HARNESS_NODE:%s\\n' "$*"
+      if [[ "${mode}" == "rf-runtime-verification-failure" ]]; then exit 19; fi
+      exit 0
+      ;;
     tests/browser_tax_filing.mjs|tests/browser_annual_accounts_filing.mjs)
       [[ "$TALLI_CONNECTED_VIEWPORT" == "mobile" && "$TALLI_CONNECTED_WEB_MODE" == "production" ]]
       [[ "$SUPABASE_URL" == "http://127.0.0.1:54321" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
@@ -468,7 +533,7 @@ if [[ "$1" == "--test" ]]; then
   printf 'HARNESS_NODE:%s\\n' "$*"
   exit 0
 fi
-[[ "$1" == "scripts/prepare-isolated-supabase-workdir.mjs" || "$1" == "scripts/rehearse-authority-topology.mjs" ]]
+[[ "$1" == "scripts/prepare-isolated-supabase-workdir.mjs" || "$1" == "scripts/rehearse-authority-topology.mjs" || "$1" == "scripts/rehearse-governance-contract.mjs" || "$1" == "scripts/activate-rf-source-runtime.mjs" ]]
 exec ${executable} "$@"
 `);
   chmodSync(nodePath, 0o755);
@@ -913,13 +978,21 @@ test("mandatory Billing and Authority lifecycles refuse missing DB configuration
 
 
 test("mandatory local lane preserves every predecessor before Billing and final Authority verification", () => {
-  for (const mode of ["success", "billing-failure", "authority-recutover-failure"]) {
+  const failures = {
+    "billing-failure": [13, "HARNESS_NPM:run test:billing-database-lifecycle"],
+    "governance-contract-failure": [15, "GOVERNANCE_CONTRACT"],
+    "authority-recutover-failure": [11, "AUTHORITY_TOPOLOGY:recutover"],
+    "rf-runtime-failure": [17, "RF_SOURCE_RUNTIME"],
+    "rf-runtime-verification-failure": [19, "HARNESS_NODE:--test tests/rf1086_source_runtime_contract.test.mjs"],
+  };
+  for (const mode of ["success", ...Object.keys(failures)]) {
     const workspace = createHarnessWorkspace(mode, "absent");
     try {
       const result = run("bash", [fileURLToPath(databaseHarnessPath)], { cwd: workspace.directory,
         env: { ...process.env, PATH: `${workspace.binDirectory}:${process.env.PATH}`, TMPDIR: workspace.snapshotDirectory } });
-      assert.equal(result.status, mode === "success" ? 0 : mode === "billing-failure" ? 13 : 11, result.stderr);
+      assert.equal(result.status, failures[mode]?.[0] ?? 0, result.stderr);
       const milestones = [
+        "HARNESS_NPM:run test:supabase-advisors",
         "AUTHORITY_TOPOLOGY:rollback",
         "HARNESS_NPM:run test:ledger-database-lifecycle", "HARNESS_NPM:run test:banking-database-lifecycle",
         "HARNESS_NPM:run test:investments-database-lifecycle", "HARNESS_NPM:run test:documents-database-lifecycle",
@@ -929,16 +1002,22 @@ test("mandatory local lane preserves every predecessor before Billing and final 
         "AUTHORITY_TOPOLOGY:rollback",
         "HARNESS_NPM:run test:ledger-hosted-migration-authority", "HARNESS_NPM:run test:corporate-governance-database-lifecycle",
         "HARNESS_NPM:run test:billing-database-lifecycle",
-        ...(mode !== "billing-failure" ? ["AUTHORITY_TOPOLOGY:recutover"] : []),
-        ...(mode === "success" ? ["HARNESS_NPM:run test:authority-connections-database", "HARNESS_NPM:run test:company-tax-database", "HARNESS_NPM:run test:annual-accounts-database", "HARNESS_NPM:run test:browser-owner-annual", "HARNESS_NPM:run test:supabase-rf-feedback", "HARNESS_NPM:run test:browser-authority-connections", "HARNESS_NPM:run test:browser-shareholder-register-filing", "HARNESS_NPM:run test:browser-company-tax", "HARNESS_NPM:run test:browser-annual-accounts", "HARNESS_NODE:--test tests/connected_viewport.test.mjs", "HARNESS_NPM:run build:web", "HARNESS_NODE:--test tests/browser_tax_filing.mjs", "HARNESS_NODE:--test tests/browser_annual_accounts_filing.mjs"] : []),
+        "GOVERNANCE_CONTRACT", "AUTHORITY_TOPOLOGY:recutover",
+        "HARNESS_NPM:run test:authority-connections-database", "HARNESS_NPM:run test:company-tax-database", "HARNESS_NPM:run test:annual-accounts-database",
+        "RF_SOURCE_RUNTIME", "HARNESS_NODE:--test tests/rf1086_source_runtime_contract.test.mjs",
+        "HARNESS_NPM:run test:supabase-advisors",
+        "HARNESS_NPM:run test:browser-owner-annual", "HARNESS_NPM:run test:supabase-rf-feedback", "HARNESS_NPM:run test:browser-authority-connections", "HARNESS_NPM:run test:browser-shareholder-register-filing", "HARNESS_NPM:run test:browser-company-tax", "HARNESS_NPM:run test:browser-annual-accounts", "HARNESS_NODE:--test tests/connected_viewport.test.mjs", "HARNESS_NPM:run build:web", "HARNESS_NODE:--test tests/browser_tax_filing.mjs", "HARNESS_NODE:--test tests/browser_annual_accounts_filing.mjs",
       ];
+      const expected = failures[mode] ? milestones.slice(0, milestones.indexOf(failures[mode][1]) + 1) : milestones;
+      const seen = result.stdout.split("\n").filter(line => /^(?:AUTHORITY_TOPOLOGY:|HARNESS_NPM:run |HARNESS_NODE:|GOVERNANCE_CONTRACT$|RF_SOURCE_RUNTIME$)/u.test(line));
+      assert.deepEqual(seen, expected, mode);
       let previous = -1;
-      for (const milestone of milestones) {
+      for (const milestone of expected) {
         const position = result.stdout.indexOf(milestone + "\n", previous + 1);
         assert.ok(position > previous, `${mode}: missing or reordered ${milestone}\n${result.stdout}`);
         previous = position;
       }
-      if (mode !== "success") assert.doesNotMatch(result.stdout, /HARNESS_NPM:run test:(?:authority-connections-database|browser-authority-connections)/u);
+      if (mode !== "success") assert.doesNotMatch(result.stdout, /HARNESS_NPM:run test:browser-(?:owner-annual|authority-connections)/u);
       assert.deepEqual(readdirSync(workspace.snapshotDirectory), []);
     } finally { rmSync(workspace.directory, { recursive: true, force: true }); }
   }
@@ -1133,12 +1212,12 @@ test('RF10 diagnostic arguments reject unknown, repeated and extra tokens before
   }
  } finally {rmSync(dir,{recursive:true,force:true});}
 });
-const phases=['topology:rollback:1','npm:test:ledger-database-lifecycle','npm:test:banking-database-lifecycle',
+const phases=['npm:test:supabase-advisors:initial','topology:rollback:1','npm:test:ledger-database-lifecycle','npm:test:banking-database-lifecycle',
  'npm:test:investments-database-lifecycle','npm:test:documents-database-lifecycle','npm:test:marketing-measurement-database',
  'npm:test:validation-observation','npm:test:supabase-predecessor','topology:workspace','npm:test:supabase-rf-workspace',
  'npm:test:browser-owner','topology:rollback:2','npm:test:ledger-hosted-migration-authority',
- 'npm:test:corporate-governance-database-lifecycle','npm:test:billing-database-lifecycle','topology:recutover',
- 'npm:test:authority-connections-database','npm:test:company-tax-database','npm:test:annual-accounts-database','npm:test:browser-owner-annual','npm:test:supabase-rf-feedback','npm:test:browser-authority-connections','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts',
+ 'npm:test:corporate-governance-database-lifecycle','npm:test:billing-database-lifecycle','node:governance-contract','topology:recutover',
+ 'npm:test:authority-connections-database','npm:test:company-tax-database','npm:test:annual-accounts-database','node:rf-source-runtime','node:rf-source-runtime-tests','npm:test:supabase-advisors','npm:test:browser-owner-annual','npm:test:supabase-rf-feedback','npm:test:browser-authority-connections','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts',
  'node:connected-viewport','npm:build:web','node:mobile-tax','node:mobile-accounts'];
 const nodeShim=`#!/usr/bin/env bash
 set -euo pipefail
@@ -1147,15 +1226,21 @@ if [[ "$1" == "--test" ]]; then
  [[ "$#" == "2" ]]
  case "$2" in
   tests/connected_viewport.test.mjs) phase="node:connected-viewport" ;;
+  tests/rf1086_source_runtime_contract.test.mjs) phase="node:rf-source-runtime-tests" ;;
   tests/browser_tax_filing.mjs) phase="node:mobile-tax" ;;
   tests/browser_annual_accounts_filing.mjs) phase="node:mobile-accounts" ;;
   *) exit 97 ;;
  esac
- if [[ "$phase" != "node:connected-viewport" ]]; then
+ if [[ "$phase" == "node:rf-source-runtime-tests" ]]; then
+  [[ "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
+ elif [[ "$phase" != "node:connected-viewport" ]]; then
   [[ "$TALLI_CONNECTED_VIEWPORT" == "mobile" && "$TALLI_CONNECTED_WEB_MODE" == "production" ]]
   [[ "$SUPABASE_URL" == "http://127.0.0.1:54321" && "$SUPABASE_ANON_KEY" == "synthetic" ]]
   [[ "$SUPABASE_SERVICE_ROLE_KEY" == "synthetic" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
  fi
+elif [[ "$1" == "scripts/rehearse-governance-contract.mjs" || "$1" == "scripts/activate-rf-source-runtime.mjs" ]]; then
+ [[ "$#" == "1" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
+ if [[ "$1" == "scripts/rehearse-governance-contract.mjs" ]]; then phase="node:governance-contract"; else phase="node:rf-source-runtime"; fi
 else
  [[ "$1" == "scripts/rehearse-authority-topology.mjs" ]]
  phase="topology:$2"
@@ -1169,6 +1254,7 @@ if [[ "$phase" == "$FAIL_PHASE" ]]; then exit 23; fi
 `;
 const npmShim=`#!/usr/bin/env bash
 set -euo pipefail
+[[ "$SUPABASE_TELEMETRY_DISABLED" == "1" && "$DO_NOT_TRACK" == "1" ]]
 if [[ "$*" == *"supabase status --workdir"* && "$*" == *"--output env"* ]]; then
  printf '%s\\n' 'API_URL=http://127.0.0.1:54321' 'PUBLISHABLE_KEY=synthetic' 'SECRET_KEY=synthetic' 'DB_URL=postgresql://127.0.0.1/local'
  exit 0
@@ -1178,8 +1264,14 @@ if [[ "$1" == "exec" ]]; then
  exit 0
 fi
 [[ "$1" == "run" ]]
-if [[ "$2" == "test:supabase-advisors" ]]; then exit 0; fi
-phase="npm:$2"; printf 'PHASE:%s\\n' "$phase"
+phase="npm:$2"
+if [[ "$2" == "test:supabase-advisors" ]]; then
+ if [[ ! -f initial-advisors-seen ]]; then
+  printf 'seen' > initial-advisors-seen
+  phase="$phase:initial"
+ fi
+fi
+printf 'PHASE:%s\\n' "$phase"
 if [[ "$2" == "build:web" ]]; then
  [[ "$NEXT_PUBLIC_SUPABASE_URL" == "http://127.0.0.1:54321" && "$NEXT_PUBLIC_SUPABASE_ANON_KEY" == "synthetic" ]]
  [[ "$TALLI_BACKEND_URL" == "http://127.0.0.1:8000" && "$NEXT_TELEMETRY_DISABLED" == "1" ]]
@@ -1192,8 +1284,8 @@ if [[ "$2" == "test:browser-owner" || "$2" == "build:web" ]]; then
 fi
 if [[ "$phase" == "$FAIL_PHASE" ]]; then exit 23; fi
 `;
-const fullFailures=['', 'topology:workspace','npm:test:supabase-rf-workspace','npm:test:browser-owner','topology:rollback:2',
- 'npm:test:ledger-hosted-migration-authority','npm:test:billing-database-lifecycle','topology:recutover','npm:test:supabase-rf-feedback',
+const fullFailures=['', 'npm:test:supabase-advisors:initial','topology:workspace','npm:test:supabase-rf-workspace','npm:test:browser-owner','topology:rollback:2',
+ 'npm:test:ledger-hosted-migration-authority','npm:test:billing-database-lifecycle','node:governance-contract','topology:recutover','node:rf-source-runtime','node:rf-source-runtime-tests','npm:test:supabase-advisors','npm:test:supabase-rf-feedback',
  'npm:test:company-tax-database','npm:test:annual-accounts-database','npm:test:browser-owner-annual','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts',
  'node:connected-viewport','npm:build:web','node:mobile-tax','node:mobile-accounts'];
 const diagnosticPhases=[...phases.slice(0,phases.indexOf('npm:test:browser-shareholder-register-filing')),'npm:test:browser-shareholder-register-filing:rf10-diagnostic'];
@@ -1214,7 +1306,7 @@ for(const {fail,args=[],ambient={},expected=phases,label=fail||'success',existin
    if(existingGuides) for(const name of ['AGENTS.md','CLAUDE.md']) writeFileSync(join(dir,'apps/web',name),`original ${name}\r\n`);
    for(const [name,body] of [['node',nodeShim],['npm',npmShim]]) {const path=join(dir,'bin',name);writeFileSync(path,body);chmodSync(path,0o755);}
    const result=spawnSync('bash',[shell,...args],{cwd:dir,encoding:'utf8',timeout:10000,killSignal:'SIGKILL',maxBuffer:65536,
-    env:{...process.env,...ambient,FAIL_PHASE:fail,PATH:join(dir,'bin')+':'+process.env.PATH,TMPDIR:join(dir,'snapshots')}});
+    env:{...process.env,SUPABASE_TELEMETRY_DISABLED:'0',DO_NOT_TRACK:'0',...ambient,FAIL_PHASE:fail,PATH:join(dir,'bin')+':'+process.env.PATH,TMPDIR:join(dir,'snapshots')}});
    assert.equal(result.error,undefined);
    assert.equal(result.status,fail?23:0,result.stderr);
    const seen=result.stdout.split('\n').filter(x=>x.startsWith('PHASE:')).map(x=>x.slice(6));

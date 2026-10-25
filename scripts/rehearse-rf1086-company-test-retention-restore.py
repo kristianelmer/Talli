@@ -34,7 +34,7 @@ sys.path.insert(0, str(ROOT / 'apps/backend/src'))
 
 from rf1086_identity_restore import fingerprint, owned_identity_source, restored_identity
 from rf1086_restore_control import (RecoveryBudget, run_async, current_budget, budget_scope, bounded_boundary,
-    budgeted_async, io_deadline, io_checked, deadline_dsn, unwind_scope)
+    budgeted_async, io_deadline, io_checked, deadline_dsn, unwind_scope, RestoreUnavailable, REASONS)
 from rf1086_stateless_owner_fixture import stateless_es256_owner_token
 from rf1086_company_test_inventory_identity_restore import verify_company_test_inventory_actor_recovery
 from verify_rf1086_company_test_retention import artifact_capture, local_file
@@ -281,6 +281,44 @@ def _failure_diagnostic(error, progress):
     return 'stage=' + stage + ' fingerprint=' + components
 
 
+def _failure_location(error):
+    """Closed type/reason and source coordinates; never messages, locals or paths."""
+    category = 'unclassified'
+    reason = 'unclassified'
+    if isinstance(error, RestoreUnavailable):
+        category = 'RestoreUnavailable'
+        if error.reason in REASONS:
+            reason = error.reason
+    elif type(error).__module__ == 'builtins' and type(error).__name__ in (
+            'ValueError', 'TypeError', 'AttributeError', 'KeyError', 'NameError',
+            'RuntimeError', 'OSError', 'FileNotFoundError', 'PermissionError',
+            'TimeoutError', 'ImportError', 'ModuleNotFoundError', 'AssertionError'):
+        category = type(error).__name__
+    modules = {
+        str(ROOT / 'scripts' / filename): label for filename, label in (
+            ('rehearse-rf1086-company-test-retention-restore.py', 'inventory_runner'),
+            ('rf1086_identity_restore.py', 'identity'),
+            ('rf1086_company_test_inventory_identity_restore.py', 'inventory'),
+            ('rf1086_restore_control.py', 'control'),
+            ('rf1086_restore_metadata.py', 'metadata'),
+            ('rf1086_sql_ledger.py', 'ledger'),
+            ('rf1086_sql_lexical.py', 'lexical'),
+            ('rf1086_raw_toc.py', 'raw_toc'),
+        )}
+    module, line = 'unclassified', 0
+    trace = error.__traceback__
+    for _ in range(64):
+        if trace is None:
+            break
+        frame = trace.tb_frame.f_code
+        # Prefer the failed guard/call site over its generic require() raiser.
+        if (frame.co_filename in modules and 1 <= trace.tb_lineno <= 32768
+                and not (modules[frame.co_filename] == 'control' and frame.co_name == 'require')):
+            module, line = modules[frame.co_filename], trace.tb_lineno
+        trace = trace.tb_next
+    return f'error={category} reason={reason} module={module} line={line}'
+
+
 def main():
     budget = RecoveryBudget(_RECOVERY_STARTED)
     with budget_scope(budget):
@@ -315,6 +353,8 @@ def _main(budget):
     except Exception as error:
         lines = ['owned_company_test_inventory_restore_failed',
             'owned_company_test_inventory_restore_diagnostic ' + _failure_diagnostic(error, progress)]
+        if progress.get('stage') == 'independent-recovery':
+            lines.append('owned_company_test_inventory_restore_failure_location ' + _failure_location(error))
         if progress.get('stage') == 'stateless-token':
             lines.append('owned_company_test_inventory_restore_stateless_diagnostic ' + _stateless_failure_diagnostic(error, progress))
         _failure_output(error, lines, budget)

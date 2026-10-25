@@ -1,4 +1,4 @@
-"""Staged v2 preview creation; existing routes and runtime grants are unchanged."""
+"""V2 preview creation and current-owner review through the held admission."""
 from talli_backend.application.shareholder_register_source_admission_v2 import (
     ShareholderRegisterSourceAdmissionV2, SourceAdmissionV2Sessions,
 )
@@ -12,6 +12,12 @@ class ShareholderRegisterSourcePreviewV2:
     def __init__(self, sessions: SourceAdmissionV2Sessions, documents: DocumentsSessionFactory):
         self._sessions = sessions
         self._admission = ShareholderRegisterSourceAdmissionV2(sessions, documents)
+
+    async def read(self, access_token: str, *, company_id: CompanyId, income_year: IncomeYear,
+            preview_id: rf.PreviewId, correlation_id: CorrelationId) -> rf.Rf1086SourcePreview:
+        async with self._admission.admit(access_token, company_id=company_id, income_year=income_year,
+                preview_id=preview_id, correlation_id=correlation_id) as admitted:
+            return admitted.preview
 
     async def generate(self, access_token: str, *, company_id: CompanyId, income_year: IncomeYear,
             source_id: rf.Rf1086YearSourceId, correlation_id: CorrelationId) -> rf.Rf1086ArchiveSourcePreview:

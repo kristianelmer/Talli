@@ -1,7 +1,7 @@
-"""Staged capture: committed replay first, original bytes before guarded append.
+"""V2 capture: committed replay first, original bytes before guarded append.
 
-No existing route calls this workflow. Its atomic persistence method depends on
-closed SQL execute permissions and cannot activate a runtime writer by itself.
+The atomic persistence method still depends on deployment-owned SQL execute
+permissions; application composition does not grant them.
 """
 from dataclasses import replace
 from typing import Protocol

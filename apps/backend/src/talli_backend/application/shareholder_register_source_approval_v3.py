@@ -1,4 +1,4 @@
-"""Staged retained v3 review/approval; existing routes and grants are unchanged."""
+"""Retained V3 review/approval through current held owners and annual inputs."""
 from uuid import UUID
 
 from talli_backend.application.shareholder_register_source_admission_v2 import ShareholderRegisterSourceAdmissionV2

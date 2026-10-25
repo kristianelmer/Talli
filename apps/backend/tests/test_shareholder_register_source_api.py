@@ -10,7 +10,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from talli_backend.main import create_app
+from rf1086_legacy_http_fixture import create_legacy_source_app as create_app
 from talli_backend.application.shareholder_register_filing_session import ShareholderRegisterFilingAuthenticationError
 from talli_backend.modules.corporate_governance.public import CorporateReportingYearBasis, CorporateLifecycleSnapshot
 from talli_backend.modules.documents.public import document_metadata_sha256, DocumentId

@@ -102,11 +102,12 @@ test('admitted preload preserves authority import exactly and binds only closed 
   assert.ok(Buffer.byteLength(p.env[observer.ENV]) <= 512);
 });
 test('pinned Next worker formatter preserves authority import and observer require with spaces', async () => {
-  const authority = 'file:///fixed/authority-mock.mjs';
+  const authority = 'file:///fixed/authority%20mock.mjs';
+  const previousRequire = '/fixed/another preload.cjs';
   const p = await observer.prepare({ root, nextCli: join(nextRoot, 'dist/bin/next'), port: 3000,
-    scenario: 7, nodeOptions: '--import=' + authority, deadline: performance.now() + 1000 });
+    scenario: 7, nodeOptions: '--import=' + authority + ' --require=' + JSON.stringify(previousRequire), deadline: performance.now() + 1000 });
   const source = readFileSync(join(nextRoot, 'dist/server/lib/utils.js'), 'utf8');
-  const begin = source.indexOf('const parseNodeArgs ='), end = source.indexOf('function getParsedNodeOptionsWithoutInspect()', begin);
+  const begin = source.indexOf('const REPEATABLE_OPTIONS ='), end = source.indexOf('function getParsedNodeOptionsWithoutInspect()', begin);
   assert.ok(begin >= 0 && end > begin);
   const context = vm.createContext({ _nodeutil: { parseArgs },
     process: { execArgv: [], env: { NODE_OPTIONS: p.env.NODE_OPTIONS } } });
@@ -114,9 +115,11 @@ test('pinned Next worker formatter preserves authority import and observer requi
   const initial = context.parse(), formatted = context.format(initial);
   context.process.env.NODE_OPTIONS = formatted.nodeOptions;
   const inherited = context.parse();
-  assert.equal(initial.import, authority); assert.equal(inherited.import, authority);
-  assert.equal(initial.require, join(root, 'tests/support/rf1086-low-aal-request-observer.cjs'));
-  assert.equal(inherited.require, initial.require); assert.equal(formatted.execArgv.length, 0);
+  assert.deepEqual(Array.from(initial.import), [authority]);
+  assert.deepEqual(Array.from(inherited.import), [authority]);
+  assert.deepEqual(Array.from(initial.require), [previousRequire, join(root, 'tests/support/rf1086-low-aal-request-observer.cjs')]);
+  assert.deepEqual(Array.from(inherited.require), Array.from(initial.require));
+  assert.equal(formatted.execArgv.length, 0);
 });
 test('load hook edits only one hash-verified getter; unknown source remains byte-identical', () => {
   const source = readFileSync(join(nextRoot, 'dist/server/lib/router-utils/filesystem.js'), 'utf8');
@@ -353,11 +356,15 @@ test('actual route seam is inert when absent; installed callback calls exact hel
   await assert.rejects(active.actualGET({}), e => e === error); assert.equal(calls, 2);
 });
 
-function actualChecker(worker, matched, ensureError) {
+function actualChecker(worker, matched, failure, hasRoute = true) {
   // Execute only these three pure source functions with synthetic inputs; no Next module/bootstrap.
   const fsCode = readFileSync(join(nextRoot, 'dist/server/lib/router-utils/filesystem.js'), 'utf8');
   const metaCode = readFileSync(join(nextRoot, 'dist/lib/metadata/is-metadata-route.js'), 'utf8');
   const routeCode = readFileSync(join(nextRoot, 'dist/lib/metadata/get-metadata-route.js'), 'utf8');
+  for (const [file, source] of [['dist/server/lib/router-utils/filesystem.js', fsCode],
+    ['dist/lib/metadata/is-metadata-route.js', metaCode], ['dist/lib/metadata/get-metadata-route.js', routeCode]]) {
+    assert.equal(sha(source), observer.PROFILE_FILES[file]);
+  }
   const context = vm.createContext({ _normalizepathsep: { normalizePathSep: x => x },
     _apppaths: { normalizeAppPath: x => x }, _isapprouteroute: { isAppRouteRoute: x => x.endsWith('/route') } });
   const begin = metaCode.indexOf('const STATIC_METADATA_IMAGES'), end = metaCode.indexOf('function isMetadataRoute(route)', begin);
@@ -367,7 +374,15 @@ function actualChecker(worker, matched, ensureError) {
   const nBegin = routeCode.indexOf('function normalizeMetadataRoute('), nEnd = routeCode.indexOf('function normalizeMetadataPageToRoute(', nBegin);
   assert.ok(nBegin >= 0 && nEnd > nBegin);
   vm.runInContext(routeCode.slice(nBegin, nEnd) + ';globalThis.normalizer=normalizeMetadataRoute;', context, { timeout: 100 });
-  const start = fsCode.indexOf('async getItem (itemPath) {'), stop = fsCode.indexOf('        getDynamicRoutes () {', start);
+  const definitionStart = fsCode.indexOf('const getRouteDefinition ='), definitionStop = fsCode.indexOf('    const pagesNormalizers =', definitionStart);
+  assert.ok(definitionStart >= 0 && definitionStop > definitionStart);
+  context.routeDefinitions = { appFile: new Map(hasRoute ? [[PATH, [{ kind: 'APP_ROUTE', pathname: PATH }]]] : []), pageFile: new Map() };
+  vm.runInContext(fsCode.slice(definitionStart, definitionStop) + ';globalThis.getRouteDefinition=getRouteDefinition;', context, { timeout: 100 });
+  const start = fsCode.indexOf('async getItem (itemPath, requestPath) {'), stop = fsCode.indexOf('        getDynamicRoutes () {', start);
+  assert.ok(start >= 0 && stop > start);
+  // These are the getter's bounded route-kind/error-class ports, not a replacement getter.
+  vm.runInContext('globalThis._utils1={PageNotFoundError:class PageNotFoundError extends Error{}};globalThis.failure=new Error("compile");', context);
+  context._apppageroutedefinition = { isAppPageRouteDefinition: route => route.kind === 'APP_PAGE' };
   Object.assign(context, { getItemsLru: undefined, notFound: null, nextStaticFolderPath: null, legacyStaticFolderPath: null, publicFolderPath: null,
     opts: { dev: true, config: { basePath: '' } }, i18n: undefined, staticMetadataFiles: new Map(),
     nextStaticFolderItems: new Set(), legacyStaticFolderItems: new Set(), publicFolderItems: new Set(),
@@ -375,19 +390,31 @@ function actualChecker(worker, matched, ensureError) {
     _pathhasprefix: { pathHasPrefix: (a, b) => a.startsWith(b) }, _getmetadataroute: { normalizeMetadataRoute: context.normalizer },
     _path: { default: { posix: { join: (...x) => x.join('/') } } },
     _fileexists: { fileExists: () => { throw Error('unexpected filesystem call'); } } });
-  const paths = []; context.ensureFn = async item => { paths.push(item.itemPath); if (ensureError) throw Error(privateText); };
+  const paths = []; context.ensureFn = async item => {
+    paths.push(item.itemPath);
+    assert.equal(item.requestPath, PATH);
+    assert.equal(item.route, context.routeDefinitions.appFile.get(PATH)?.[0]);
+    if (failure === 'missing') throw new context._utils1.PageNotFoundError(privateText);
+    if (failure === 'compile') throw context.failure;
+  };
   vm.runInContext('globalThis.checker={devVirtualFsItems:new Set(),' + fsCode.slice(start, stop) + 'ensureCallback(fn){ensureFn=fn;}};', context, { timeout: 100 });
   const original = context.ensureFn, c = worker.checker(context.checker); c.ensureCallback(original);
-  return { c, paths };
+  return { c, paths, compilationError: context.failure };
 }
-for (const [name, matched, ensureError] of [['canonical ensure', false, false], ['live appFiles no ensure', true, false], ['swallowed ensure error', false, true]]) {
+for (const [name, matched, failure, hasRoute] of [
+  ['canonical ensure', false, null, true], ['live appFiles still ensures route', true, null, true],
+  ['disappeared route is not matched', false, 'missing', true],
+  ['compilation error remains attached to route', false, 'compile', true],
+  ['missing route metadata cannot ensure', false, null, false],
+]) {
   test(`pinned actual getItem/metadata normalization: ${name}`, async () => {
-    const { worker, lines } = core(); const { c, paths } = actualChecker(worker, matched, ensureError);
-    const result = await inRequest(worker, () => c.getItem(PATH));
+    const { worker, lines } = core(); const { c, paths, compilationError } = actualChecker(worker, matched, failure, hasRoute);
+    const result = await inRequest(worker, () => c.getItem(PATH, PATH));
     assert.ok(paths.every(p => p === PATH));
-    assert.equal(paths.length, matched ? 0 : ensureError ? 2 : 1);
-    if (ensureError) { assert.equal(result, null); assert.equal(decoded(lines).filter(r => r.event === 'ensure_result' && r.outcome === 'error').length, 2); }
-    else { assert.equal(result.itemPath, PATH); assert.equal(result.type, 'appFile'); }
+    assert.equal(paths.length, hasRoute ? 1 : 0);
+    assert.equal(decoded(lines).filter(r => r.event === 'ensure_result' && r.outcome === 'error').length, failure ? 1 : 0);
+    if (failure === 'missing' || !hasRoute) assert.equal(result, null);
+    else { assert.equal(result.itemPath, PATH); assert.equal(result.type, 'appFile'); assert.equal(result.error, failure === 'compile' ? compilationError : undefined); }
   });
 }
 test('authority preload behavior coexists with observer; observer adds no network/process guard', async () => {

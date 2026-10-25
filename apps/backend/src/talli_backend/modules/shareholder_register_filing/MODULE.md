@@ -2397,3 +2397,35 @@ doubles. Mandatory schema cases create parent intents, record synthetic provider
 results, retain actual Docs feedback, reconcile, approve and claim the successor
 through existing owner commands. Collection does not establish execution, live
 Auth, independent recovery, origin, provider or all-three readiness.
+
+
+### Deferred default source runtime cutover
+
+The earlier staged slices remain closed during their database suites. The
+separate CLI-created deferred contract
+`supabase/contract-migrations/20261025104137_rf1086_source_runtime_v3_contract.sql`
+then grants only the actual default V2/V3 callgraph to the RF executor. Its
+retentive closure is
+`supabase/rollback/20261025104137_rf1086_source_runtime_v3_contract.sql`.
+The two Governance RPCs remain owner-verifying and guard-bound; internal
+parsers/receivers/invalidators gain no runtime grant. Owner-to-owner proof
+delegation, retained reads and history locks remain distinct from fresh effects.
+Seven superseded RF source writers close without dropping their definitions or
+records. No provider flag, tenant/MFA/legal control, table ownership or RLS rule
+is relaxed. See `tests/rf1086_source_runtime_contract.test.mjs` for the focused
+post-activation restricted-login and retentive-rollback checks.
+
+The runtime closure follows these existing staged implementations:
+
+- `supabase/migrations/20261010111100_rf1086_closed_year_source_capture.sql`
+- `supabase/migrations/20261010150223_rf1086_closed_retained_approval_v3.sql`
+- `supabase/migrations/20261010212500_rf1086_closed_source_claim_v3.sql`
+- `supabase/migrations/20261011045100_rf1086_closed_source_operation_v3.sql`
+
+Rollback profile `rf1086-v3-retentive-read-only-rollback-v1` intentionally keeps
+`lock_source_claim_recovery_v3` newly enabled at activation: the actual dispatch
+consumer reads confirmed/unknown history before configuration/provider admission.
+It rechecks original actor and current OWNER and only reads/locks; the eight
+other new entrypoints and all seven superseded writers close. This is not
+pre-contract ACL restoration. The backend-system document names the actual
+consumers and unchanged real revocation regressions.

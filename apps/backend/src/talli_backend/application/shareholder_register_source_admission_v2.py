@@ -85,7 +85,7 @@ class PreparedRf1086SourceAdmissionV2:
 
 
 class ShareholderRegisterSourceAdmissionV2:
-    """Existing routes are unchanged; yielded scopes confer no authority after release."""
+    """Yielded scopes confer no authority after release."""
     def __init__(self, sessions: SourceAdmissionV2Sessions, documents: DocumentsSessionFactory):
         self._sessions, self._documents = sessions, documents
 

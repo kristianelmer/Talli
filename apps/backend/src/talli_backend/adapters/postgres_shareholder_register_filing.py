@@ -1850,7 +1850,7 @@ class _SourceClaimRecoveryV3:
 
 
 class PostgresShareholderRegisterSourceDispatchV3Adapter(PostgresShareholderRegisterFilingAdapter):
-    """Staged composition; reuse current Auth and own the fixed correction receiver."""
+    """V3 composition: reuse current Auth and own the fixed correction receiver."""
     async def session(self, access_token: str) -> PostgresShareholderRegisterFilingSession:
         session = await super().session(access_token)
         if self._documents is not None:

@@ -2,7 +2,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from talli_backend.main import create_app
+from rf1086_legacy_http_fixture import create_legacy_source_app as create_app
 
 BASE = '/api/v1/shareholder-register-filings'
 HEADERS = {'Authorization': 'Bearer token', 'X-Request-ID': 'source-approval-api-proof'}

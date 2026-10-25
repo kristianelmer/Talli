@@ -705,7 +705,9 @@
       "supabase/migrations/20260929182856_rf1086_durable_source_operation_intent.sql",
       "supabase/rollback/20260929182856_rf1086_durable_source_operation_intent.sql",
       "supabase/migrations/20260929192057_rf1086_dispatch_binding_identity.sql",
-      "supabase/rollback/20260929192057_rf1086_dispatch_binding_identity.sql"
+      "supabase/rollback/20260929192057_rf1086_dispatch_binding_identity.sql",
+      "supabase/contract-migrations/20261025104137_rf1086_source_runtime_v3_contract.sql",
+      "supabase/rollback/20261025104137_rf1086_source_runtime_v3_contract.sql"
     ],
     "statement": "These tables implement idempotency, cursor signing, migration evidence, operational control, bounded consented measurement, bounded invited-validation evidence, and event delivery only; they own no accounting, filing, billing policy, eligibility, acquisition-spend, product-behavior, or authorization decision."
   },
@@ -1100,6 +1102,12 @@
       "adapter": "talli_backend.application.shareholder_register_source_dispatch._AdmittedJournal",
       "owner": "backend-system",
       "mode": "held company/year admission with current annual proof for main document, committed operation intents and exact outcomes outside provider I/O"
+    },
+    {
+      "port": "Rf1086SourceOperationJournal",
+      "adapter": "talli_backend.application.shareholder_register_source_dispatch_v3._OperationJournalV3",
+      "owner": "backend-system",
+      "mode": "default V3 retained recovery and fresh same-connection operation admission; original-byte preflight outside guards, committed intents before gated provider I/O"
     }
   ],
   "allowedDependencies": {
@@ -1182,9 +1190,11 @@
       "talli_backend.json_transport",
       "talli_backend.application.shareholder_register_source_workflow",
       "talli_backend.application.corporate_register_evidence",
-      "talli_backend.application.shareholder_register_source_approval",
+      "talli_backend.application.shareholder_register_source_capture_v2",
+      "talli_backend.application.shareholder_register_source_preview_v2",
+      "talli_backend.application.shareholder_register_source_approval_v3",
       "talli_backend.application.shareholder_register_archive",
-      "talli_backend.application.shareholder_register_source_dispatch",
+      "talli_backend.application.shareholder_register_source_dispatch_v3",
       "talli_backend.adapters.dependency_readiness",
       "talli_backend.application.shareholder_register_company_test_retention_http",
       "talli_backend.adapters.company_test_retention_runtime"

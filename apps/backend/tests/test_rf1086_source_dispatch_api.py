@@ -49,7 +49,7 @@ def test_exact_identity_and_correlation_reach_dispatch(monkeypatch):
     async def send(token, **args):
         calls.append((token, args))
         return rf.Rf1086SendResult(SUBMISSION)
-    monkeypatch.setattr(main, 'ShareholderRegisterSourceDispatchWorkflow', lambda *args: SimpleNamespace(send=send))
+    monkeypatch.setattr(main, 'ShareholderRegisterSourceDispatchV3', lambda *args: SimpleNamespace(send=send))
     client = TestClient(main.create_app())
     response = client.post(PATH, json={**body(), 'expectedHead': SUBMISSION}, headers=HEADERS)
     assert response.status_code == 200 and response.json() == {'submissionId': SUBMISSION}
@@ -72,7 +72,7 @@ def test_exact_identity_and_correlation_reach_dispatch(monkeypatch):
 ])
 def test_actionable_errors_preserve_uncertainty_without_leaking_details(monkeypatch, error, status, code):
     async def send(*args, **kwargs): raise error
-    monkeypatch.setattr(main, 'ShareholderRegisterSourceDispatchWorkflow', lambda *args: SimpleNamespace(send=send))
+    monkeypatch.setattr(main, 'ShareholderRegisterSourceDispatchV3', lambda *args: SimpleNamespace(send=send))
     response = TestClient(main.create_app()).post(PATH, json=body(), headers=HEADERS)
     assert response.status_code == status and response.json()['code'] == code
     assert response.headers['content-type'].startswith('application/problem+json')
@@ -88,7 +88,7 @@ def test_http_dispatch_replay_and_lost_responses_never_duplicate_posts(monkeypat
             await original(**args)
             raise rf.Rf1086AuthorityError('LOST_RESPONSE')
         setattr(h.authority, stage, lost)
-    monkeypatch.setattr(main, 'ShareholderRegisterSourceDispatchWorkflow', lambda *args: h.workflow)
+    monkeypatch.setattr(main, 'ShareholderRegisterSourceDispatchV3', lambda *args: h.workflow)
     client = TestClient(main.create_app())
     command = {'approvalId': h.claim.approval_id.value, 'manifestSha256': h.claim.manifest_sha256,
         'expectedHead': None if h.claim.predecessor_submission_id is None else h.claim.predecessor_submission_id.value}
@@ -122,7 +122,7 @@ def test_position_reads_retained_evidence_without_configuration_claim_or_provide
             calls.append('archive')
             return archive
     workflow = ShareholderRegisterSourceDispatchWorkflow(Sessions(), None)
-    monkeypatch.setattr(main, 'ShareholderRegisterSourceDispatchWorkflow', lambda *args: workflow)
+    monkeypatch.setattr(main, 'ShareholderRegisterSourceDispatchV3', lambda *args: workflow)
     response = TestClient(main.create_app()).get(PATH+'/'+archive.approvals[0].id, headers=HEADERS)
     assert response.status_code == 200
     assert response.json()['disposition'] == 'confirmed'

@@ -15,6 +15,9 @@ fi
 # For an already configured test database, use only the named predecessor,
 # RF-workspace or RF-feedback command that matches its explicit schema phase.
 
+# Optional CLI analytics must not affect the owned local rehearsal or cleanup.
+export SUPABASE_TELEMETRY_DISABLED=1 DO_NOT_TRACK=1
+
 : "${TALLI_PYTHON_BIN:=apps/backend/.venv/bin/python}"
 export TALLI_PYTHON_BIN
 
@@ -152,6 +155,11 @@ DATABASE_URL="$DB_URL" npm run test:corporate-governance-database-lifecycle
 # its unchanged lifecycle runs against the physical predecessor request table.
 DATABASE_URL="$DB_URL" npm run test:billing-database-lifecycle
 
+# Historical Governance rehearsals leave predecessor writers installed. Finish
+# their contracts before RF wraps them, so Tax prepare cannot later replace the
+# guarded definitions with frozen bodies.
+DATABASE_URL="$DB_URL" node scripts/rehearse-governance-contract.mjs
+
 # Require the already established Ledger contract before the RF final contract.
 # Recutover also replays consequential company guards and the guarded reporting
 # reader after historical
@@ -162,6 +170,10 @@ DATABASE_URL="$DB_URL" node scripts/rehearse-authority-topology.mjs recutover
 TALLI_SUPABASE_WORKDIR="$isolated_workdir" DATABASE_URL="$DB_URL" npm run test:authority-connections-database
 DATABASE_URL="$DB_URL" npm run test:company-tax-database
 DATABASE_URL="$DB_URL" npm run test:annual-accounts-database
+# Staged RF ACL assertions above intentionally run before this deferred contract.
+# The default HTTP/browser composition requires the narrow V2/V3 RPC closure.
+DATABASE_URL="$DB_URL" node scripts/activate-rf-source-runtime.mjs
+DATABASE_URL="$DB_URL" node --test tests/rf1086_source_runtime_contract.test.mjs
 TALLI_SUPABASE_WORKDIR="$isolated_workdir" npm run test:supabase-advisors
 # Annual readiness requires the contracted Tax and Accounts read sources.
 # Predecessor cleanup/onboarding checks above retain their original topology.

@@ -7,6 +7,7 @@ import hmac
 import importlib.util
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -255,9 +256,15 @@ raise SystemExit(code)
             process.communicate()
     assert process.returncode == (1 if phase == 'cleanup-failure' else 143)
     assert stdout == ''
-    assert stderr.strip() == ('owned_company_test_inventory_restore_failed\n'
-        'owned_company_test_inventory_restore_diagnostic stage=independent-recovery fingerprint=unclassified' if phase == 'cleanup-failure'
-        else 'owned_company_test_inventory_restore_cancelled')
+    if phase == 'cleanup-failure':
+        lines = stderr.strip().splitlines()
+        assert lines[:2] == ['owned_company_test_inventory_restore_failed',
+            'owned_company_test_inventory_restore_diagnostic stage=independent-recovery fingerprint=unclassified']
+        assert len(lines) == 3
+        assert re.fullmatch(r'owned_company_test_inventory_restore_failure_location '
+            r'error=RuntimeError reason=unclassified module=inventory_runner line=[1-9][0-9]{0,4}', lines[2])
+    else:
+        assert stderr.strip() == 'owned_company_test_inventory_restore_cancelled'
     events = (tmp_path/'events').read_text().splitlines()
     assert events.count('registered') == 1
     assert events.count('cleanup-start') == events.count('cleanup-finished') == 1
@@ -282,6 +289,54 @@ def test_failure_diagnostic_exposes_only_fixed_fingerprint_component_labels(comp
 def test_failure_diagnostic_never_echoes_unknown_exception_or_caller_stage(error):
     assert runner._failure_diagnostic(error, {'stage':'secret-token'}) == (
         'stage=unclassified fingerprint=unclassified')
+
+
+def test_failure_location_reports_actual_pre_docker_guard_without_invoking_docker(monkeypatch):
+    import rf1086_restore_control as control
+    calls = []
+    def forbidden_command(*args, **kwargs):
+        calls.append(True)
+        raise AssertionError('Docker must not start')
+    with monkeypatch.context() as patch:
+        patch.setattr(control.sys, 'platform', 'darwin')
+        patch.setattr(control, 'require_direct_loopback', lambda budget: None)
+        with pytest.raises(control.RestoreUnavailable) as caught:
+            control.require_local_docker(SimpleNamespace(command=forbidden_command))
+    assert calls == []
+    diagnostic = runner._failure_location(caught.value)
+    assert re.fullmatch(r'error=RestoreUnavailable reason=source_binding module=control line=[1-9][0-9]{0,4}', diagnostic)
+    assert 'require' not in diagnostic and str(ROOT) not in diagnostic
+
+
+def test_failure_location_never_formats_messages_locals_or_unknown_types():
+    class SecretError(Exception):
+        def __str__(self):
+            raise AssertionError('Diagnostic formatted private exception')
+    try:
+        private_local = 'postgresql://private:password@private/token'
+        raise SecretError(private_local)
+    except SecretError as error:
+        assert runner._failure_location(error) == (
+            'error=unclassified reason=unclassified module=unclassified line=0')
+
+
+def test_main_recovery_failure_adds_only_closed_location(monkeypatch, capsys):
+    monkeypatch.setattr(runner, '_RECOVERY_STARTED', time.monotonic())
+    def failed(args, *, progress):
+        progress['stage'] = 'independent-recovery'
+        raise runner.RestoreUnavailable('source_binding')
+    monkeypatch.setattr(runner, 'rehearse', failed)
+    monkeypatch.setattr(sys, 'argv', ['runner', '--company-id', str(COMPANY),
+        '--stream', 'private-source', '--writer-expectation', 'private-writer'])
+    assert runner.main() == 1
+    result = capsys.readouterr()
+    assert result.out == ''
+    lines = result.err.splitlines()
+    assert lines[:2] == ['owned_company_test_inventory_restore_failed',
+        'owned_company_test_inventory_restore_diagnostic stage=independent-recovery fingerprint=unclassified']
+    assert len(lines) == 3
+    assert re.fullmatch(r'owned_company_test_inventory_restore_failure_location '
+        r'error=RestoreUnavailable reason=source_binding module=inventory_runner line=[1-9][0-9]{0,4}', lines[2])
 
 
 def test_main_failure_reports_bounded_progress_and_no_exception_text(monkeypatch,capsys):

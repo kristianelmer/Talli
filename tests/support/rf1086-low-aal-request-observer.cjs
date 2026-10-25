@@ -18,18 +18,18 @@ const FILESYSTEM = 'dist/server/lib/router-utils/filesystem.js';
 const LIMITS = Object.freeze({ frame: 256, records: 64, total: 16384, lookups: 8, ensures: 16,
   summary: 4096, config: 512, file: 262144, files: 1048576 });
 const PROFILE_FILES = Object.freeze({
-  'package.json': '6da8fc4823b66b8f2906d150002618e3f3e0d2446ebf3823b2a2f7efe73a46a4',
-  [FILESYSTEM]: '85576c822c55deded167755d6b9e821c597e8ff8f0ea16add59f90f308e08a3f',
-  'dist/server/lib/router-utils/setup-dev-bundler.js': 'fbba0195b8f5c7eb2bd33f4abb75e590f7a895c0f84aab85470d95b41d6b0748',
+  'package.json': 'b67bad7944d603b27dd2d2719b57203fd3b3e5c147b2efa6dea5ceb135274caf',
+  [FILESYSTEM]: '24dde0d99e0aabdcbbc435e7c58a678a295733be87ca4246898a5500a9565488',
+  'dist/server/lib/router-utils/setup-dev-bundler.js': 'bfcdf32d5f14c80903876e2bdef6ea502702eb5a449628f968f2d548671f34f4',
   'dist/lib/metadata/get-metadata-route.js': '9083a7fa69483e0b7433371206cacf776ad578fd2c00ffb3f54d8c1172116a18',
   'dist/lib/metadata/is-metadata-route.js': '0fd467d163874b8c1a00c5b4c8b4a688853be0fc2b0ab5af27ff3d7c1a52031e',
-  'dist/cli/next-dev.js': 'e6202db1ebc93814d32215436bb7b6e8fef7a2747fcc32aa1800bf757089dd1b',
-  'dist/server/lib/utils.js': '1cfc963c2f2707c3dc6068cd53c061c50097d297291fb0ad31d38fd06d1b487e',
+  'dist/cli/next-dev.js': 'f69fb7d6f5d8453cacc454553b62dceab70dd8377a0d568c7e0cfd6fa203191a',
+  'dist/server/lib/utils.js': '74cc2da0166f527cfffc9b87d05def503aa4b62874617a70f55feb36843a740b',
 });
 const ROUTE = 'apps/web/app/(owner)/filing/aksjonaerregisteroppgaven/source/archive/route.ts';
 // Filled from the reviewed tiny seam, never from a runtime manifest.
 const ROUTE_HASH = 'b735fbd9563a2bae1084e7104123545ee5c081179d734428dd84d153000a658b';
-const PROFILE = createHash('sha256').update(JSON.stringify({ node: 24, next: '16.3.8',
+const PROFILE = createHash('sha256').update(JSON.stringify({ node: 24, next: '16.4.3',
   files: PROFILE_FILES, route: ROUTE_HASH, policy: 'same-realm-H-R-v1' })).digest('hex');
 const OUTCOMES = new Set(['appFile', 'pageFile', 'devVirtualFsItem']);
 const REASONS = new Set(['profile_unavailable', 'binding', 'duplicate_request', 'frame', 'limit',
@@ -89,7 +89,7 @@ async function preflight({ root, nextCli, deadline, nodeVersion = process.versio
         check(); const raw = await read(file, LIMITS.file, check); check();
         total += raw.length;
         if (raw.length > LIMITS.file || total > LIMITS.files || hash(raw) !== expected) return false;
-        if (file === packagePath && JSON.parse(raw).version !== '16.3.8') return false;
+        if (file === packagePath && JSON.parse(raw).version !== '16.4.3') return false;
         if (file === join(nextRoot, FILESYSTEM) && raw.toString('utf8').split(ANCHOR).length !== 2) return false;
       }
       return true;

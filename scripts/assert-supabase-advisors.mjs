@@ -8,7 +8,10 @@ const result = spawnSync(
     "exec", "--", "supabase", "db", "advisors", "--local", "--output", "json",
     ...(workdir ? ["--workdir", workdir] : []),
   ],
-  { encoding: "utf8" },
+  {
+    encoding: "utf8",
+    env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "1", DO_NOT_TRACK: "1" },
+  },
 );
 
 assert.equal(result.status, 0, result.stderr || result.stdout);
