@@ -85,6 +85,13 @@ function runPostgresPrefetch({ pullFailures = {}, failTag = false } = {}) {
     writeFileSync(join(originalConfig, "config.json"), original);
     const trace = join(directory, "trace.jsonl");
     const sleepTrace = join(directory, "sleep.jsonl");
+    const credentialTrace = join(directory, "credential-helper-used");
+    const credentialShim = join(bin, "docker-credential-synthetic-helper");
+    writeFileSync(credentialShim, `#!${process.execPath}
+require('node:fs').writeFileSync(process.env.PREFETCH_CREDENTIAL_TRACE, 'unexpected credential-helper access');
+process.exit(97);
+`);
+    chmodSync(credentialShim, 0o755);
     const shim = join(bin, "docker");
     writeFileSync(shim, `#!${process.execPath}
 const assert = require('node:assert/strict');
@@ -97,19 +104,31 @@ const config = process.env.DOCKER_CONFIG;
 assert.ok(args[0] === 'pull' || args[0] === 'tag', 'unexpected Docker operation');
 assert.notEqual(config, process.env.PREFETCH_CALLER_CONFIG);
 assert.deepEqual(fs.readdirSync(config), ['config.json']);
-assert.deepEqual(JSON.parse(fs.readFileSync(path.join(config, 'config.json'))), {auths: {'public.ecr.aws': {}}});
+const authConfig = JSON.parse(fs.readFileSync(path.join(config, 'config.json')));
+assert.deepEqual(Object.keys(authConfig), ['auths'], 'no credential helper, store or other caller settings');
+assert.deepEqual(authConfig.auths['public.ecr.aws'], {});
+assert.deepEqual(authConfig.auths['https://index.docker.io/v1/'], {});
+assert.ok(Object.keys(authConfig.auths).every(key => ['public.ecr.aws', 'https://index.docker.io/v1/', 'docker.io', 'registry-1.docker.io'].includes(key)));
+assert.ok(Object.values(authConfig.auths).every(value => JSON.stringify(value) === '{}'), 'both sources stay anonymous');
 assert.equal(fs.statSync(config).mode & 0o077, 0);
 assert.equal(fs.statSync(path.join(config, 'config.json')).mode & 0o077, 0);
 for (const variable of ['DOCKER_AUTH_CONFIG', 'DOCKER_CONTEXT', 'DOCKER_HOST']) assert.equal(process.env[variable], undefined);
 const previousCalls = fs.existsSync(process.env.PREFETCH_TRACE)
   ? fs.readFileSync(process.env.PREFETCH_TRACE, 'utf8').trim().split('\\n').map(line => JSON.parse(line)) : [];
 fs.appendFileSync(process.env.PREFETCH_TRACE, JSON.stringify({args, config}) + '\\n');
+const tag = args[1].split(':').at(-1);
+assert.ok(['17', '17-alpine', '16-alpine'].includes(tag));
+assert.ok(['public.ecr.aws/docker/library/postgres:' + tag, 'docker.io/library/postgres:' + tag].includes(args[1]), 'fixed official source only');
+assert.equal(args.length, args[0] === 'pull' ? 2 : 3);
+if (args[0] === 'tag') assert.equal(args[2], 'postgres:' + tag);
 if (args[0] === 'pull') {
   const attempt = previousCalls.filter(call => call.args[0] === 'pull' && call.args[1] === args[1]).length;
-  const failures = JSON.parse(process.env.PREFETCH_PULL_FAILURES)[args[1].split(':').at(-1)] ?? [];
+  const injected = JSON.parse(process.env.PREFETCH_PULL_FAILURES);
+  const failures = injected[args[1]] ?? injected[tag] ?? [];
   if (attempt < failures.length) {
-    process.stderr.write(failures[attempt] + '\\n');
-    process.exit(23);
+    const failure = failures[attempt];
+    process.stderr.write((typeof failure === 'string' ? failure : failure.message) + '\\n');
+    process.exit(typeof failure === 'string' ? 23 : failure.status);
   }
 }
 if (args[0] === 'tag' && process.env.PREFETCH_FAIL_TAG === '1' && args[1].endsWith(':17-alpine')) process.exit(24);
@@ -126,6 +145,7 @@ require('node:fs').appendFileSync(process.env.PREFETCH_SLEEP_TRACE, JSON.stringi
         DOCKER_CONFIG: originalConfig, DOCKER_AUTH_CONFIG: "synthetic-caller-environment",
         DOCKER_CONTEXT: "synthetic-caller-context", DOCKER_HOST: "tcp://synthetic.invalid:2376",
         PREFETCH_CALLER_CONFIG: originalConfig, PREFETCH_TRACE: trace, PREFETCH_SLEEP_TRACE: sleepTrace,
+        PREFETCH_CREDENTIAL_TRACE: credentialTrace,
         PREFETCH_PULL_FAILURES: JSON.stringify(pullFailures), PREFETCH_FAIL_TAG: failTag ? "1" : "0" },
     });
     assert.ifError(result.error);
@@ -137,6 +157,7 @@ require('node:fs').appendFileSync(process.env.PREFETCH_SLEEP_TRACE, JSON.stringi
     for (const config of privateConfigs) assert.equal(existsSync(config), false, "owned config is removed on every exit");
     assert.deepEqual(readdirSync(temporary), []);
     assert.equal(readFileSync(join(originalConfig, "config.json"), "utf8"), original);
+    assert.equal(existsSync(credentialTrace), false, "no credential helper may run");
     return { result, calls: calls.map(call => call.args), sleeps };
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -148,6 +169,8 @@ const postgresPrefetchCalls = ["17", "17-alpine", "16-alpine"].flatMap(tag => [
   ["tag", `public.ecr.aws/docker/library/postgres:${tag}`, `postgres:${tag}`],
 ]);
 const ecrThrottle = 'Error response from daemon: toomanyrequests: Rate exceeded';
+const ecrDataLimit = 'Error response from daemon: toomanyrequests: Data limit exceeded';
+const dockerHubSource = tag => `docker.io/library/postgres:${tag}`;
 const ecrDeadline = 'Error response from daemon: Head "https://public.ecr.aws/v2/docker/library/postgres/manifests/17-alpine": Get "https://public.ecr.aws/token/?scope=repository%3Adocker%2Flibrary%2Fpostgres%3Apull&service=public.ecr.aws": context deadline exceeded';
 
 for (const failure of [null, "pull", "tag"]) test(`PostgreSQL fixture prefetch preserves anonymous scope and stops on ${failure ?? "success"}`, () => {
@@ -219,6 +242,109 @@ test("PostgreSQL fixture prefetch stops if a retry encounters a permanent failur
   assert.equal(result.status, 23, result.stderr);
   assert.deepEqual(calls, Array(2).fill(postgresPrefetchCalls[0]));
   assert.deepEqual(sleeps, [["5"]]);
+});
+
+for (const [index, tag] of ["17", "17-alpine", "16-alpine"].entries()) {
+  test(`PostgreSQL fixture prefetch uses fixed anonymous Docker Hub source only for ECR Data Limit on ${tag}`, () => {
+    const ecr = postgresPrefetchCalls[index * 2][1];
+    const hub = dockerHubSource(tag);
+    const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: { [ecr]: [ecrDataLimit] } });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(calls, [
+      ...postgresPrefetchCalls.slice(0, index * 2),
+      ["pull", ecr], ["pull", hub], ["tag", hub, `postgres:${tag}`],
+      ...postgresPrefetchCalls.slice(index * 2 + 2),
+    ]);
+    assert.deepEqual(sleeps, [], "data quota must switch sources instead of retrying ECR");
+  });
+}
+
+for (const message of [
+  'toomanyrequests: You have reached your unauthenticated pull rate limit',
+  '429 Too Many Requests',
+  'unauthorized: authentication required',
+  'x509: certificate signed by unknown authority',
+  'manifest unknown',
+]) test(`PostgreSQL fixture prefetch stops on Docker Hub quota/permanent failure: ${message}`, () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: {
+    [postgresPrefetchCalls[0][1]]: [ecrDataLimit],
+    [dockerHubSource("17")]: [message],
+  } });
+  assert.equal(result.status, 23, result.stderr);
+  assert.deepEqual(calls, [postgresPrefetchCalls[0], ["pull", dockerHubSource("17")]]);
+  assert.deepEqual(sleeps, [], "fallback quota and permanent errors must not retry or tag");
+});
+
+for (const fatal of ['unauthorized: authentication required', 'x509: certificate has expired']) {
+  for (const messages of [[ecrDataLimit, fatal], [fatal, ecrDataLimit]]) {
+    test(`PostgreSQL fixture prefetch fatal diagnostic outranks Data Limit in either order: ${messages.join(" then ")}`, () => {
+      const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: {
+        [postgresPrefetchCalls[0][1]]: [messages.join("\n")],
+      } });
+      assert.equal(result.status, 23, result.stderr);
+      assert.deepEqual(calls, [postgresPrefetchCalls[0]], "mixed fatal output must not use Docker Hub");
+      assert.deepEqual(sleeps, []);
+    });
+  }
+}
+
+test("PostgreSQL fixture prefetch does not retry Docker Hub transport failures or tag a failed image", () => {
+  const hub = dockerHubSource("17");
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: {
+    [postgresPrefetchCalls[0][1]]: [ecrDataLimit],
+    [hub]: Array(4).fill('net/http: TLS handshake timeout'),
+  } });
+  assert.equal(result.status, 23, result.stderr);
+  assert.deepEqual(calls, [postgresPrefetchCalls[0], ["pull", hub]]);
+  assert.deepEqual(sleeps, []);
+});
+
+test("PostgreSQL fixture prefetch cannot recursively fallback on a Docker Hub Data Limit diagnostic", () => {
+  const hub = dockerHubSource("17");
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: {
+    [postgresPrefetchCalls[0][1]]: [ecrDataLimit],
+    [hub]: [ecrDataLimit, ecrDataLimit],
+  } });
+  assert.equal(result.status, 23, result.stderr);
+  assert.deepEqual(calls, [postgresPrefetchCalls[0], ["pull", hub]]);
+  assert.deepEqual(sleeps, []);
+});
+
+test("PostgreSQL fixture prefetch bounds the complete three-image schedule to twelve pulls", () => {
+  const pullFailures = {};
+  const expected = [];
+  for (const tag of ["17", "17-alpine", "16-alpine"]) {
+    const ecr = `public.ecr.aws/docker/library/postgres:${tag}`;
+    const hub = dockerHubSource(tag);
+    pullFailures[ecr] = [ecrThrottle, 'unexpected EOF', ecrDataLimit];
+    expected.push(...Array(3).fill(["pull", ecr]), ["pull", hub], ["tag", hub, `postgres:${tag}`]);
+  }
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(calls, expected);
+  assert.equal(calls.filter(call => call[0] === "pull").length, 12);
+  assert.deepEqual(sleeps, Array.from({ length: 3 }, () => [["5"], ["10"]]).flat());
+});
+
+test("PostgreSQL fixture prefetch does not switch back to ECR after fallback tagging fails", () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({
+    pullFailures: { [postgresPrefetchCalls[2][1]]: [ecrDataLimit] }, failTag: true,
+  });
+  assert.equal(result.status, 24, result.stderr);
+  assert.deepEqual(calls, [
+    ...postgresPrefetchCalls.slice(0, 3),
+    ["pull", dockerHubSource("17-alpine")], ["tag", dockerHubSource("17-alpine"), "postgres:17-alpine"],
+  ]);
+  assert.deepEqual(sleeps, []);
+});
+
+test("PostgreSQL fixture prefetch preserves interruption status instead of falling back", () => {
+  const { result, calls, sleeps } = runPostgresPrefetch({ pullFailures: {
+    [postgresPrefetchCalls[0][1]]: [{ message: ecrDataLimit, status: 130 }],
+  } });
+  assert.equal(result.status, 130, result.stderr);
+  assert.deepEqual(calls, [postgresPrefetchCalls[0]]);
+  assert.deepEqual(sleeps, []);
 });
 
 test("PostgreSQL prefetch rejects caller-selected image references before any command", () => {
