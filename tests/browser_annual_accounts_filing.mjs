@@ -74,6 +74,7 @@ test("Accounts owner imports pending evidence, records controls and reads scoped
   await activateConnectedButton(page, manual.getByRole('button', { name: 'Lagre test-evidens', exact: true }), viewport);
   await poll(() => fixture.controls.filingCalls.some(call => call.path === '/api/v1/annual-accounts/test-evidence'));
   assert.equal(fixture.controls.filingCalls.find(call => call.path === '/api/v1/annual-accounts/test-evidence').status, 200);
+  await accountsEvidence.getByText('Siste testref: synthetic-accounts-browser (Venter på klassifisering)', { exact: true }).waitFor();
   const sourcePath = `/api/v1/annual-accounts/source-facts?companyId=${fixture.companyId}&incomeYear=2025`;
   const response = await fixture.accountsRequest(sourcePath);
   assert.equal(response.status, 200);
@@ -110,7 +111,16 @@ test("Accounts owner imports pending evidence, records controls and reads scoped
   assert.equal(imports().length, importsBeforeFailure, 'read recovery must not re-import evidence');
   const recovered = await fixture.accountsRequest(sourcePath);
   assert.equal(recovered.status, 200);
-  assert.deepEqual((await recovered.json()).historyCoverage, source.historyCoverage);
+  const recoveredSource = await recovered.json();
+  const { asOf: sourceAsOf, ...sourceCoverage } = source.historyCoverage;
+  const { asOf: recoveredAsOf, ...recoveredCoverage } = recoveredSource.historyCoverage;
+  assert.deepEqual(recoveredCoverage, sourceCoverage);
+  // Each source read has its own transaction timestamp; retained history stays identical.
+  assert.equal(typeof sourceAsOf, 'string');
+  assert.equal(typeof recoveredAsOf, 'string');
+  const sourceReadAt = Date.parse(sourceAsOf), recoveredReadAt = Date.parse(recoveredAsOf);
+  assert.ok(Number.isFinite(sourceReadAt) && Number.isFinite(recoveredReadAt), 'source read timestamps must be valid');
+  assert.ok(recoveredReadAt >= sourceReadAt, 'recovered source read must not predate the original read');
   await assertConnectedLayout(page, viewport, 'Accounts restored evidence');
   await assertConnectedReflow(page, viewport);
   await fixtureTableTransaction(fixture.db, ['public.company_memberships'], async () => {
