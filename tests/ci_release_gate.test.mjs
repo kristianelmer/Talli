@@ -611,6 +611,12 @@ test("release gate runs every customer-readiness check before promotion", () => 
   assert.match(workflow, /uses: actions\/setup-node@[0-9a-f]{40}/);
   assert.match(workflow, /uses: actions\/setup-python@[0-9a-f]{40}/);
   assert.match(workflow, /TALLI_PYTHON_BIN:\s+\.venv\/bin\/python/);
+  const launchRehearsal = workflow.match(
+    /- name: Run the complete launch rehearsal\n([\s\S]*?)(?=\n      - name:)/,
+  )?.[1];
+  assert.ok(launchRehearsal, "launch rehearsal step must remain explicit");
+  assert.match(launchRehearsal, /TALLI_PYTHON_BIN:\s+\.venv\/bin\/python/);
+  assert.match(launchRehearsal, /TALLI_BACKEND_PYTHON_BIN:\s+apps\/backend\/\.venv\/bin\/python/);
   assert.match(workflow, /timeout-minutes:/);
   assert.ok(
     workflow.indexOf("npm run build:backend") <

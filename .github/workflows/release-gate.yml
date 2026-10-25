@@ -113,6 +113,7 @@ jobs:
       - name: Run the complete launch rehearsal
         env:
           TALLI_PYTHON_BIN: .venv/bin/python
+          TALLI_BACKEND_PYTHON_BIN: apps/backend/.venv/bin/python
           TALLI_SKATTE_XSD_DIR: ${{ runner.temp }}/skattemeldingen/src/resources/xsd
         run: npm run test:launch-rehearsal
 
