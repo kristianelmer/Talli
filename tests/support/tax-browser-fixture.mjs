@@ -9,8 +9,10 @@ import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
 import { allocateLoopbackPort,startOwnedProcess,stopOwnedProcess,waitForOwnedReadiness } from "./owned-process-lifecycle.mjs";
 import { isLoopbackPostgresUrl,isLoopbackSupabaseUrl } from "./supabase_fixture_safety.mjs";
+import { connectedWebMode } from "./connected-viewport.mjs";
 
 export async function startTaxBrowserFixture({incomeYear=2026}={}) {
+  const webMode=connectedWebMode();
   assert.ok([2025,2026].includes(incomeYear));
   const databaseUrl=process.env.DATABASE_URL;
   const supabaseUrl=process.env.SUPABASE_URL;
@@ -93,7 +95,7 @@ export async function startTaxBrowserFixture({incomeYear=2026}={}) {
     });
     await new Promise(resolve=>proxy.listen(proxyPort,'127.0.0.1',resolve));
     const nextCli=createRequire(new URL('../../apps/web/package.json',import.meta.url)).resolve('next/dist/bin/next');
-    web=startOwnedProcess({command:process.execPath,args:[nextCli,'dev','apps/web','--hostname','127.0.0.1','--port',String(webPort)],cwd:process.cwd(),readinessProof:'Ready in',env:{...baseEnv,NEXT_TELEMETRY_DISABLED:'1',NEXT_PUBLIC_SUPABASE_URL:supabaseUrl,NEXT_PUBLIC_SUPABASE_ANON_KEY:anonKey,SUPABASE_URL:supabaseUrl,SUPABASE_ANON_KEY:anonKey,TALLI_BACKEND_URL:`http://127.0.0.1:${proxyPort}`,SITE_URL:siteOrigin}});
+    web=startOwnedProcess({command:process.execPath,args:[nextCli,webMode.command,'apps/web','--hostname','127.0.0.1','--port',String(webPort)],cwd:process.cwd(),readinessProof:webMode.readinessProof,env:{...baseEnv,...webMode.env,NEXT_TELEMETRY_DISABLED:'1',NEXT_PUBLIC_SUPABASE_URL:supabaseUrl,NEXT_PUBLIC_SUPABASE_ANON_KEY:anonKey,SUPABASE_URL:supabaseUrl,SUPABASE_ANON_KEY:anonKey,TALLI_BACKEND_URL:`http://127.0.0.1:${proxyPort}`,SITE_URL:siteOrigin}});
     await waitForOwnedReadiness({process:web,url:siteOrigin});
     const filingRequest=(capability,path,options={})=>{
       assert.ok(path.startsWith(`/api/v1/${capability}/`));

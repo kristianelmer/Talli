@@ -323,6 +323,29 @@ fi
 `,
   );
   chmodSync(npmPath, 0o755);
+  // Intercept only the added connected tail; keep the existing local script
+  // fixtures on the actual Node executable, never a browser or database runner.
+  const nodePath = join(binDirectory, "node");
+  const executable = "'" + process.execPath.replaceAll("'", "'\\''") + "'";
+  writeFileSync(nodePath, `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$1" == "--test" ]]; then
+  [[ "$#" == "2" ]]
+  case "$2" in
+    tests/connected_viewport.test.mjs) ;;
+    tests/browser_tax_filing.mjs|tests/browser_annual_accounts_filing.mjs)
+      [[ "$TALLI_CONNECTED_VIEWPORT" == "mobile" && "$TALLI_CONNECTED_WEB_MODE" == "production" ]]
+      [[ "$SUPABASE_URL" == "http://127.0.0.1:54321" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
+      ;;
+    *) exit 97 ;;
+  esac
+  printf 'HARNESS_NODE:%s\\n' "$*"
+  exit 0
+fi
+[[ "$1" == "scripts/prepare-isolated-supabase-workdir.mjs" || "$1" == "scripts/rehearse-authority-topology.mjs" ]]
+exec ${executable} "$@"
+`);
+  chmodSync(nodePath, 0o755);
   return {
     directory,
     nextEnvPath,
@@ -781,7 +804,7 @@ test("mandatory local lane preserves every predecessor before Billing and final 
         "HARNESS_NPM:run test:ledger-hosted-migration-authority", "HARNESS_NPM:run test:corporate-governance-database-lifecycle",
         "HARNESS_NPM:run test:billing-database-lifecycle",
         ...(mode !== "billing-failure" ? ["AUTHORITY_TOPOLOGY:recutover"] : []),
-        ...(mode === "success" ? ["HARNESS_NPM:run test:authority-connections-database", "HARNESS_NPM:run test:company-tax-database", "HARNESS_NPM:run test:browser-owner-annual", "HARNESS_NPM:run test:supabase-rf-feedback", "HARNESS_NPM:run test:browser-authority-connections", "HARNESS_NPM:run test:browser-shareholder-register-filing"] : []),
+        ...(mode === "success" ? ["HARNESS_NPM:run test:authority-connections-database", "HARNESS_NPM:run test:company-tax-database", "HARNESS_NPM:run test:annual-accounts-database", "HARNESS_NPM:run test:browser-owner-annual", "HARNESS_NPM:run test:supabase-rf-feedback", "HARNESS_NPM:run test:browser-authority-connections", "HARNESS_NPM:run test:browser-shareholder-register-filing", "HARNESS_NPM:run test:browser-company-tax", "HARNESS_NPM:run test:browser-annual-accounts", "HARNESS_NODE:--test tests/connected_viewport.test.mjs", "HARNESS_NPM:run build:web", "HARNESS_NODE:--test tests/browser_tax_filing.mjs", "HARNESS_NODE:--test tests/browser_annual_accounts_filing.mjs"] : []),
       ];
       let previous = -1;
       for (const milestone of milestones) {
@@ -818,7 +841,7 @@ const DLG='20260923125730_documents_ledger_evidence_guard.sql';
 const TAX='20260913171000_company_tax_settlement_expand.sql';
 const predecessor={rf_owned:false,authority_kind:'r',ledger_kind:'v',ledger_setup:true,opening_kind:'r'};
 const forward=[`migrations/${AU}`,`migrations/${OP}`,`migrations/${RF}`,`contract-migrations/${AUC}`,`contract-migrations/${SIGN}`,`migrations/${RFX}`,`migrations/${RFC}`,`migrations/${DLG}`,`migrations/${RFR}`,`migrations/${RFA}`,`migrations/${RFY}`,`migrations/${RFO}`,`migrations/${RFP}`,`migrations/${RFG}`];
-const consequentialGuards=['20260924080208_company_access_rf_admission_guard.sql','20260924080249_documents_rf_consequential_company_guards.sql','20260924080355_governance_ledger_company_write_guards.sql','20260924083154_governance_guarded_reporting_year_read.sql','20260924084752_billing_rf_full_year_pilot_profile.sql','20260924085227_rf1086_source_review_bridge.sql','20260924091015_rf1086_source_approval_foundation.sql','20260924094631_rf1086_journal_company_guard.sql','20260928060732_rf1086_source_submission_claim.sql','20260928110000_rf1086_feedback_original_binding.sql','20260928124000_documents_historical_original_assertion.sql','20260929092425_banking_company_write_guards.sql','20260929144619_rf_annual_interview_read_admission.sql','20260929160247_rf_annual_ledger_read_admission.sql','20260929162030_rf_annual_document_read_admission.sql','20260929173935_rf1086_annual_approval_binding.sql','20260929182856_rf1086_durable_source_operation_intent.sql', '20260929192057_rf1086_dispatch_binding_identity.sql', '20260930083000_rf1086_override_receiver_cutover.sql', '20260930160335_rf1086_retained_archive_generations.sql', '20261009213032_rf1086_observation_withdrawal_foundation.sql', '20261009215302_rf1086_withdrawal_source_admission_guards.sql', '20261009220727_rf1086_withdrawal_archive_generation.sql', '20261009221151_rf1086_withdrawal_review_read_guards.sql', '20261009222053_rf1086_observation_evidence_assertions.sql', '20261009223340_governance_register_observation_completion_guard.sql', '20261009225857_ledger_governance_entry_assertion.sql', '20261009231107_rf1086_current_observation_evidence_reader.sql', '20261009232839_documents_historical_original_integrity.sql', '20261009234529_governance_register_evidence_amendments.sql', '20261010001936_governance_register_evidence_application.sql', '20261010004653_governance_register_evidence_company_guard.sql', '20261010005413_governance_reporting_register_evidence.sql', '20261010013307_rf1086_closed_year_source_v2.sql', '20261010015851_governance_rf_year_source_proof.sql', '20261010032531_governance_supported_event_replay_visibility.sql', '20261010111100_rf1086_closed_year_source_capture.sql', '20261010150223_rf1086_closed_retained_approval_v3.sql', '20261010212500_rf1086_closed_source_claim_v3.sql', '20261011045100_rf1086_closed_source_operation_v3.sql'].map(file=>`migrations/${file}`);
+const consequentialGuards=['20260924080208_company_access_rf_admission_guard.sql','20260924080249_documents_rf_consequential_company_guards.sql','20260924080355_governance_ledger_company_write_guards.sql','20260924083154_governance_guarded_reporting_year_read.sql','20260924084752_billing_rf_full_year_pilot_profile.sql','20260924085227_rf1086_source_review_bridge.sql','20260924091015_rf1086_source_approval_foundation.sql','20260924094631_rf1086_journal_company_guard.sql','20260928060732_rf1086_source_submission_claim.sql','20260928110000_rf1086_feedback_original_binding.sql','20260928124000_documents_historical_original_assertion.sql','20260929092425_banking_company_write_guards.sql','20260929144619_rf_annual_interview_read_admission.sql','20260929160247_rf_annual_ledger_read_admission.sql','20260929162030_rf_annual_document_read_admission.sql','20260929173935_rf1086_annual_approval_binding.sql','20260929182856_rf1086_durable_source_operation_intent.sql', '20260929192057_rf1086_dispatch_binding_identity.sql', '20260930083000_rf1086_override_receiver_cutover.sql', '20260930160335_rf1086_retained_archive_generations.sql', '20261009213032_rf1086_observation_withdrawal_foundation.sql', '20261009215302_rf1086_withdrawal_source_admission_guards.sql', '20261009220727_rf1086_withdrawal_archive_generation.sql', '20261009221151_rf1086_withdrawal_review_read_guards.sql', '20261009222053_rf1086_observation_evidence_assertions.sql', '20261009223340_governance_register_observation_completion_guard.sql', '20261009225857_ledger_governance_entry_assertion.sql', '20261009231107_rf1086_current_observation_evidence_reader.sql', '20261009232839_documents_historical_original_integrity.sql', '20261009234529_governance_register_evidence_amendments.sql', '20261010001936_governance_register_evidence_application.sql', '20261010004653_governance_register_evidence_company_guard.sql', '20261010005413_governance_reporting_register_evidence.sql', '20261010013307_rf1086_closed_year_source_v2.sql', '20261010015851_governance_rf_year_source_proof.sql', '20261010032531_governance_supported_event_replay_visibility.sql', '20261010111100_rf1086_closed_year_source_capture.sql', '20261010150223_rf1086_closed_retained_approval_v3.sql', '20261010212500_rf1086_closed_source_claim_v3.sql', '20261011045100_rf1086_closed_source_operation_v3.sql', '20261016134500_company_year_receipt_replay.sql'].map(file=>`migrations/${file}`);
 const workspaceForward=[...forward.filter(path=>path!==`contract-migrations/${AUC}`),...consequentialGuards];
 function fake(initial,{fail,noEffect=false}={}) {
  const state={signoff_open:true,...initial},executed=[];
@@ -989,15 +1012,31 @@ const phases=['topology:rollback:1','npm:test:ledger-database-lifecycle','npm:te
  'npm:test:validation-observation','npm:test:supabase-predecessor','topology:workspace','npm:test:supabase-rf-workspace',
  'npm:test:browser-owner','topology:rollback:2','npm:test:ledger-hosted-migration-authority',
  'npm:test:corporate-governance-database-lifecycle','npm:test:billing-database-lifecycle','topology:recutover',
- 'npm:test:authority-connections-database','npm:test:company-tax-database','npm:test:annual-accounts-database','npm:test:browser-owner-annual','npm:test:supabase-rf-feedback','npm:test:browser-authority-connections','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts'];
+ 'npm:test:authority-connections-database','npm:test:company-tax-database','npm:test:annual-accounts-database','npm:test:browser-owner-annual','npm:test:supabase-rf-feedback','npm:test:browser-authority-connections','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts',
+ 'node:connected-viewport','npm:build:web','node:mobile-tax','node:mobile-accounts'];
 const nodeShim=`#!/usr/bin/env bash
 set -euo pipefail
 if [[ "$1" == "scripts/prepare-isolated-supabase-workdir.mjs" ]]; then exit 0; fi
-[[ "$1" == "scripts/rehearse-authority-topology.mjs" ]]
-phase="topology:$2"
-if [[ "$2" == "rollback" ]]; then
- count=0; [[ ! -f rollback-count ]] || count=$(cat rollback-count)
- count=$((count+1)); printf '%s' "$count" > rollback-count; phase="$phase:$count"
+if [[ "$1" == "--test" ]]; then
+ [[ "$#" == "2" ]]
+ case "$2" in
+  tests/connected_viewport.test.mjs) phase="node:connected-viewport" ;;
+  tests/browser_tax_filing.mjs) phase="node:mobile-tax" ;;
+  tests/browser_annual_accounts_filing.mjs) phase="node:mobile-accounts" ;;
+  *) exit 97 ;;
+ esac
+ if [[ "$phase" != "node:connected-viewport" ]]; then
+  [[ "$TALLI_CONNECTED_VIEWPORT" == "mobile" && "$TALLI_CONNECTED_WEB_MODE" == "production" ]]
+  [[ "$SUPABASE_URL" == "http://127.0.0.1:54321" && "$SUPABASE_ANON_KEY" == "synthetic" ]]
+  [[ "$SUPABASE_SERVICE_ROLE_KEY" == "synthetic" && "$DATABASE_URL" == "postgresql://127.0.0.1/local" ]]
+ fi
+else
+ [[ "$1" == "scripts/rehearse-authority-topology.mjs" ]]
+ phase="topology:$2"
+ if [[ "$2" == "rollback" ]]; then
+  count=0; [[ ! -f rollback-count ]] || count=$(cat rollback-count)
+  count=$((count+1)); printf '%s' "$count" > rollback-count; phase="$phase:$count"
+ fi
 fi
 printf 'PHASE:%s\\n' "$phase"
 if [[ "$phase" == "$FAIL_PHASE" ]]; then exit 23; fi
@@ -1008,11 +1047,18 @@ if [[ "$*" == *"supabase status --workdir"* && "$*" == *"--output env"* ]]; then
  printf '%s\\n' 'API_URL=http://127.0.0.1:54321' 'PUBLISHABLE_KEY=synthetic' 'SECRET_KEY=synthetic' 'DB_URL=postgresql://127.0.0.1/local'
  exit 0
 fi
-if [[ "$1" == "exec" ]]; then exit 0; fi
+if [[ "$1" == "exec" ]]; then
+ if [[ "$*" == *"supabase stop --workdir"* ]]; then printf 'stop\\n' >> cleanup-events; fi
+ exit 0
+fi
 [[ "$1" == "run" ]]
 if [[ "$2" == "test:supabase-advisors" ]]; then exit 0; fi
 phase="npm:$2"; printf 'PHASE:%s\\n' "$phase"
-if [[ "$2" == "test:browser-owner" ]]; then
+if [[ "$2" == "build:web" ]]; then
+ [[ "$NEXT_PUBLIC_SUPABASE_URL" == "http://127.0.0.1:54321" && "$NEXT_PUBLIC_SUPABASE_ANON_KEY" == "synthetic" ]]
+ [[ "$TALLI_BACKEND_URL" == "http://127.0.0.1:8000" && "$NEXT_TELEMETRY_DISABLED" == "1" ]]
+fi
+if [[ "$2" == "test:browser-owner" || "$2" == "build:web" ]]; then
  printf 'generated\\n' > apps/web/next-env.d.ts
  printf 'generated\\n' > apps/web/tsconfig.json
  printf 'generated\\n' > apps/web/AGENTS.md
@@ -1022,10 +1068,12 @@ if [[ "$phase" == "$FAIL_PHASE" ]]; then exit 23; fi
 `;
 const fullFailures=['', 'topology:workspace','npm:test:supabase-rf-workspace','npm:test:browser-owner','topology:rollback:2',
  'npm:test:ledger-hosted-migration-authority','npm:test:billing-database-lifecycle','topology:recutover','npm:test:supabase-rf-feedback',
- 'npm:test:company-tax-database','npm:test:annual-accounts-database','npm:test:browser-owner-annual','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts'];
+ 'npm:test:company-tax-database','npm:test:annual-accounts-database','npm:test:browser-owner-annual','npm:test:browser-shareholder-register-filing','npm:test:browser-company-tax','npm:test:browser-annual-accounts',
+ 'node:connected-viewport','npm:build:web','node:mobile-tax','node:mobile-accounts'];
 const diagnosticPhases=[...phases.slice(0,phases.indexOf('npm:test:browser-shareholder-register-filing')),'npm:test:browser-shareholder-register-filing:rf10-diagnostic'];
-for(const {fail,args=[],ambient={},expected=phases,label=fail||'success'} of [
+for(const {fail,args=[],ambient={},expected=phases,label=fail||'success',existingGuides=false} of [
  ...fullFailures.map(fail=>({fail})),
+ {fail:'npm:build:web',existingGuides:true,label:'mobile build failure with existing guides'},
  {fail:'',ambient:{RF_SCOPE:'rf10-diagnostic',TALLI_RF_SCOPE:'rf10-diagnostic',rf10_diagnostic:'1'},label:'ambient RF10 still full'},
  ...['','npm:test:authority-connections-database','npm:test:browser-shareholder-register-filing:rf10-diagnostic'].map(fail=>({
   fail,args:['--rf10-diagnostic'],expected:diagnosticPhases,label:`RF10 diagnostic ${fail||'success'}`,
@@ -1037,6 +1085,7 @@ for(const {fail,args=[],ambient={},expected=phases,label=fail||'success'} of [
    mkdirSync(join(dir,'apps/web'),{recursive:true});mkdirSync(join(dir,'bin'));mkdirSync(join(dir,'snapshots'));
    writeFileSync(join(dir,'apps/web/next-env.d.ts'),'original declaration\r\n');
    writeFileSync(join(dir,'apps/web/tsconfig.json'),'original config\r\n');
+   if(existingGuides) for(const name of ['AGENTS.md','CLAUDE.md']) writeFileSync(join(dir,'apps/web',name),`original ${name}\r\n`);
    for(const [name,body] of [['node',nodeShim],['npm',npmShim]]) {const path=join(dir,'bin',name);writeFileSync(path,body);chmodSync(path,0o755);}
    const result=spawnSync('bash',[shell,...args],{cwd:dir,encoding:'utf8',timeout:10000,killSignal:'SIGKILL',maxBuffer:65536,
     env:{...process.env,...ambient,FAIL_PHASE:fail,PATH:join(dir,'bin')+':'+process.env.PATH,TMPDIR:join(dir,'snapshots')}});
@@ -1046,7 +1095,9 @@ for(const {fail,args=[],ambient={},expected=phases,label=fail||'success'} of [
    assert.deepEqual(seen,fail?expected.slice(0,expected.indexOf(fail)+1):expected);
    assert.equal(readFileSync(join(dir,'apps/web/next-env.d.ts'),'utf8'),'original declaration\r\n');
    assert.equal(readFileSync(join(dir,'apps/web/tsconfig.json'),'utf8'),'original config\r\n');
-   assert.deepEqual(readdirSync(join(dir,'apps/web')).sort(),['next-env.d.ts','tsconfig.json']);
+   if(existingGuides) for(const name of ['AGENTS.md','CLAUDE.md']) assert.equal(readFileSync(join(dir,'apps/web',name),'utf8'),`original ${name}\r\n`);
+   assert.deepEqual(readdirSync(join(dir,'apps/web')).sort(),[...(existingGuides?['AGENTS.md','CLAUDE.md']:[]),'next-env.d.ts','tsconfig.json']);
+   assert.equal(readFileSync(join(dir,'cleanup-events'),'utf8'),'stop\n','owned Supabase must stop exactly once after success or failure');
    assert.deepEqual(readdirSync(join(dir,'snapshots')),[]);
   } finally {rmSync(dir,{recursive:true,force:true});}
  });

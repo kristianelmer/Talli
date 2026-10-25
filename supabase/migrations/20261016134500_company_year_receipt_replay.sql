@@ -27,6 +27,10 @@ begin
     )
   );
 
+  -- Historical support rehearsals replace SELECT but retain this UPDATE guard.
+  -- Recreate it atomically so the exact successor can be replayed afterward.
+  drop policy if exists "company year receipts reject updates"
+  on public.company_access_command_receipts;
   create policy "company year receipts reject updates"
   on public.company_access_command_receipts
   as restrictive for update

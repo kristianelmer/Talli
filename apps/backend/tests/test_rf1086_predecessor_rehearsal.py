@@ -12,6 +12,34 @@ ROOT = Path(__file__).resolve().parents[3]
 RULE = json.loads((ROOT / 'tests/fixtures/governance_completion_replay.json').read_text())
 COMPLETION_PATH = 'supabase/migrations/' + RULE['migration']
 COMPLETION_SOURCE = (ROOT / COMPLETION_PATH).read_text()
+RECEIPT_REPLAY = '20261016134500_company_year_receipt_replay.sql'
+
+
+def test_receipt_successor_is_detected_even_when_historical_select_policy_was_replaced():
+    names = [layer['migration'] for layer in rehearsal.RF193_CONSEQUENTIAL]
+    assert RECEIPT_REPLAY in names
+    assert names.index(RECEIPT_REPLAY) > names.index('20260924080208_company_access_rf_admission_guard.sql')
+    layer = next(layer for layer in rehearsal.RF193_CONSEQUENTIAL if layer['migration'] == RECEIPT_REPLAY)
+    # The historical support rehearsal replaces SELECT, but retains this
+    # installed UPDATE guard. Probing SELECT's repaired text would miss exactly
+    # the damaged topology that the successor must restore.
+    assert 'pg_policy' in layer['presenceQuery']
+    assert 'company year receipts reject updates' in layer['presenceQuery']
+    assert 'company access commands read receipts' not in layer['presenceQuery']
+
+
+def test_receipt_successor_replay_recreates_both_update_checks_without_changing_actor_scope():
+    source = rehearsal.read_rehearsal_migration(ROOT, RECEIPT_REPLAY)
+    assert source == (ROOT / 'supabase/migrations' / RECEIPT_REPLAY).read_text()
+    drop = source.index('drop policy if exists "company year receipts reject updates"')
+    create = source.index('create policy "company year receipts reject updates"')
+    assert drop < create
+    assert 'actor_id = public.company_access_auth_uid_v1()' in source
+    assert "command_name in ('accept_invitation', 'admit_company_year', 'recheck_company_year_eligibility')" in source
+    assert 'as restrictive for update' in source
+    assert 'to company_access_executor, company_access_recovery_executor' in source
+    assert "using (command_name not in ('admit_company_year', 'recheck_company_year_eligibility'))" in source
+    assert "with check (command_name not in ('admit_company_year', 'recheck_company_year_eligibility'))" in source
 
 
 @pytest.mark.parametrize('phase',['legacy_overlap','canonical_overlap','contracted'])

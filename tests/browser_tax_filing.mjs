@@ -8,6 +8,9 @@ import { startTaxBrowserFixture } from "./support/tax-browser-fixture.mjs";
 import { establishOwnerAal2 } from "./support/tax-browser-auth.mjs";
 import { fixtureTableTransaction } from "./support/rf1086-fixture-access.mjs";
 import { installBrowserEgressGuard } from "./fixtures/system-user-authority-mock.mjs";
+import { connectedViewport, assertConnectedLayout, activateConnectedButton, assertConnectedReflow } from "./support/connected-viewport.mjs";
+
+const viewport = connectedViewport();
 
 // Synthetic TT02 metadata only. No authority request, acceptance or production
 // claim: the real owner form/JWT/FastAPI/SQL write the pending imported evidence.
@@ -16,13 +19,13 @@ test("Tax owner imports pending TT02 feedback, recovers a lost response and read
   let browser;
   t.after(async()=>{try{await browser?.close();}finally{await fixture.close();}});
   browser=await chromium.launch({headless:true});
-  const context=await browser.newContext(),blockedRequests=[];
+  const context=await browser.newContext(viewport.contextOptions),blockedRequests=[];
   await installBrowserEgressGuard(context,{approvalEnabled:false,blockedRequests,mockBaseUrl:fixture.siteOrigin});
   const page=await context.newPage();page.setDefaultTimeout(25_000);
   await page.goto(fixture.siteOrigin+'/login');
   await page.getByRole('textbox',{name:'E-post',exact:true}).fill(fixture.owner.email);
   await page.locator('input[name="password"]').fill(fixture.owner.password);
-  await page.getByRole('button',{name:'Logg inn',exact:true}).click();
+  await activateConnectedButton(page,page.getByRole('button',{name:'Logg inn',exact:true}),viewport);
   await page.waitForURL(url=>url.pathname!=='/login');
   const archive=JSON.parse(await readFile(new URL('../architecture/evidence/issues/152/legacy-characterization.json',import.meta.url),'utf8'));
   const original=archive.evidenceCases.find(c=>c.id==='synthetic-completed-pending-feedback').input.evidence;
@@ -33,9 +36,10 @@ test("Tax owner imports pending TT02 feedback, recovers a lost response and read
     await page.goto(fixture.siteOrigin+'/workspace');
     const form=page.locator('form').filter({has:page.getByRole('button',{name:'Importer skattemelding-evidens',exact:true})});
     assert.equal(await form.locator('input[name="incomeYear"]').inputValue(),'2025');
-    await form.locator('input[type="file"]').setInputFiles({name:'synthetic-tax-evidence.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(value))});
+    await form.getByLabel('Verifisert skattemelding-evidens fra TT02').setInputFiles({name:'synthetic-tax-evidence.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(value))});
     await Promise.all([page.waitForURL(url=>url.pathname==='/workspace'&&url.searchParams.has('error')),
-      form.getByRole('button',{name:'Importer skattemelding-evidens',exact:true}).click()]);
+      activateConnectedButton(page,form.getByRole('button',{name:'Importer skattemelding-evidens',exact:true}),viewport)]);
+    await assertConnectedLayout(page,viewport,'Tax import error/retry');
   }
   const auth=createClient(process.env.SUPABASE_URL,process.env.SUPABASE_ANON_KEY,{auth:{autoRefreshToken:false,persistSession:false}});
   const signed=await auth.auth.signInWithPassword({email:fixture.owner.email,password:fixture.owner.password});
@@ -45,6 +49,7 @@ test("Tax owner imports pending TT02 feedback, recovers a lost response and read
     body:JSON.stringify({companyId:fixture.companyId,incomeYear:2025,evidenceJson:JSON.stringify(evidence),evidenceUrl:null})});
   assert.equal(unstepped.status,403,'real AAL1 owner cannot import evidence');
   await establishOwnerAal2(page,fixture.siteOrigin);
+  await assertConnectedLayout(page,viewport,'after owner MFA');
   await submit({...evidence,incomeYear:2024});
   assert.equal(imports().at(-1).status,422,'wrong year fails closed');
   fixture.controls.dropNextTaxImport=true;
@@ -54,13 +59,15 @@ test("Tax owner imports pending TT02 feedback, recovers a lost response and read
   // Replay through the same owner form after the first response was lost.
   await page.goto(fixture.siteOrigin+'/workspace');
   const form=page.locator('form').filter({has:page.getByRole('button',{name:'Importer skattemelding-evidens',exact:true})});
-  await form.locator('input[type="file"]').setInputFiles({name:'synthetic-tax-evidence.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(evidence))});
-  await form.getByRole('button',{name:'Importer skattemelding-evidens',exact:true}).click();
+  await form.getByLabel('Verifisert skattemelding-evidens fra TT02').setInputFiles({name:'synthetic-tax-evidence.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(evidence))});
+  await activateConnectedButton(page,form.getByRole('button',{name:'Importer skattemelding-evidens',exact:true}),viewport);
   await poll(()=>imports().length===3);
   await page.getByRole('heading',{name:'Mottatt testtilbakemelding venter på klassifisering.'}).waitFor();
   assert.deepEqual(imports().at(-1).response,{...committed.response,created:false});
   assert.equal(new URL(page.url()).searchParams.has('error'),false);
   await page.getByText('Venter på klassifisering',{exact:true}).waitFor();
+  await assertConnectedLayout(page,viewport,'Tax recovered pending evidence');
+  await assertConnectedReflow(page,viewport);
   const sourceResponse=await fixture.taxRequest(`/api/v1/company-tax/source-facts?companyId=${fixture.companyId}&incomeYear=2025`);
   assert.equal(sourceResponse.status,200);
   const source=await sourceResponse.json();
@@ -77,7 +84,7 @@ test("Tax owner imports pending TT02 feedback, recovers a lost response and read
   // The generic permission form must route the Tax branch through FastAPI.
   const permission=page.locator('form').filter({has:page.getByRole('button',{name:'Bekreft innsendingsrett',exact:true})});
   await permission.locator('select[name="obligation"]').selectOption('skattemelding');
-  await permission.getByRole('button',{name:'Bekreft innsendingsrett',exact:true}).click();
+  await activateConnectedButton(page,permission.getByRole('button',{name:'Bekreft innsendingsrett',exact:true}),viewport);
   await poll(()=>fixture.controls.filingCalls.some(c=>c.path==='/api/v1/company-tax/permissions'));
   const permissionCall=fixture.controls.filingCalls.find(c=>c.path==='/api/v1/company-tax/permissions');
   assert.equal(permissionCall.status,200);assert.equal(permissionCall.body.productionEnabled,false);
@@ -87,7 +94,7 @@ test("Tax owner imports pending TT02 feedback, recovers a lost response and read
   await manual.locator('select[name="environment"]').selectOption('manual_evidence');
   await manual.locator('input[name="testReference"]').fill('synthetic-browser-manual-evidence');
   await manual.locator('textarea[name="feedbackSummary"]').fill('Synthetic manual evidence remains pending.');
-  await manual.getByRole('button',{name:'Lagre test-evidens',exact:true}).click();
+  await activateConnectedButton(page,manual.getByRole('button',{name:'Lagre test-evidens',exact:true}),viewport);
   await poll(()=>fixture.controls.filingCalls.some(c=>c.path==='/api/v1/company-tax/test-evidence'));
   assert.equal(fixture.controls.filingCalls.find(c=>c.path==='/api/v1/company-tax/test-evidence').status,200);
   const relations=['company_tax_filing.filing_submissions','company_tax_filing.authority_test_runs','company_tax_filing.authority_permissions','public.audit_events'];

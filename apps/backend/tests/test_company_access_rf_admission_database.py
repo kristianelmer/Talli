@@ -16,6 +16,7 @@ from psycopg.conninfo import make_conninfo
 import pytest
 
 from test_annual_purchase_basis_runtime import admitted, insert
+from test_authority_connections_database_runtime import delete_fixture_company
 
 pytestmark = pytest.mark.authority_database
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
@@ -40,6 +41,72 @@ RECEIPT_DB_OPTIONS = {
     "options": "-c statement_timeout=5000 -c lock_timeout=1000 -c idle_in_transaction_session_timeout=5000",
 }
 RECEIPT_COMMANDS = ("admit_company_year", "recheck_company_year_eligibility")
+
+
+def receipt_cleanup_security_state(db):
+    relations = ["public.companies", "auth.users", "public.company_access_command_receipts",
+                 "billing.billing_command_receipts"]
+    return (
+        db.execute("select current_user").fetchone(),
+        db.execute(
+            "select oid,relowner,relacl::text,relrowsecurity,relforcerowsecurity "
+            "from pg_class where oid=any(%s::regclass[]) order by oid", (relations,),
+        ).fetchall(),
+        db.execute(
+            "select tgrelid,tgname,tgenabled from pg_trigger "
+            "where tgrelid=any(%s::regclass[]) order by tgrelid,tgname", (relations,),
+        ).fetchall(),
+        db.execute(
+            "select member,grantor,admin_option,inherit_option,set_option from pg_auth_members "
+            "where roleid='billing_store_owner'::regrole order by member,grantor",
+        ).fetchall(),
+    )
+
+
+def delete_receipt_fixture_company(db, company):
+    # The existing janitor borrows the Billing trigger owner's missing DELETE
+    # only inside this transaction, restoring it before commit. No product ACL,
+    # ownership, RLS policy or trigger mode may change, even on a failed delete.
+    with db.transaction():
+        before = receipt_cleanup_security_state(db)
+        principal, bypass = db.execute(
+            "select current_user,rolbypassrls from pg_roles where rolname=current_user",
+        ).fetchone()
+        assert principal == "postgres" and bypass, "Receipt cleanup requires the disposable database admin"
+        borrowed_role = not db.execute(
+            "select pg_has_role(current_user,'billing_store_owner','SET')",
+        ).fetchone()[0]
+        prior = None
+        if borrowed_role:
+            prior = db.execute(
+                "select admin_option,inherit_option,set_option from pg_auth_members "
+                "where roleid='billing_store_owner'::regrole "
+                "and member=(select oid from pg_roles where rolname=current_user) and grantor=member",
+            ).fetchone()
+            db.execute(sql.SQL("grant billing_store_owner to {} with set true granted by {}").format(
+                sql.Identifier(principal), sql.Identifier(principal)))
+        borrowed_delete = not db.execute(
+            "select has_table_privilege('billing_store_owner','billing.billing_command_receipts','DELETE')",
+        ).fetchone()[0]
+        if borrowed_delete:
+            db.execute("set local role billing_store_owner")
+            db.execute("grant delete on billing.billing_command_receipts to billing_store_owner")
+            db.execute("reset role")
+        delete_fixture_company(db, company)
+        if borrowed_delete:
+            db.execute("set local role billing_store_owner")
+            db.execute("revoke delete on billing.billing_command_receipts from billing_store_owner")
+            db.execute("reset role")
+        if borrowed_role:
+            if prior is None:
+                db.execute(sql.SQL("revoke billing_store_owner from {} granted by {}").format(
+                    sql.Identifier(principal), sql.Identifier(principal)))
+            else:
+                db.execute(sql.SQL(
+                    "grant billing_store_owner to {} with admin {},inherit {},set {} granted by {}"
+                ).format(sql.Identifier(principal), *(sql.SQL(str(flag).lower()) for flag in prior),
+                         sql.Identifier(principal)))
+        assert receipt_cleanup_security_state(db) == before
 
 
 @pytest.fixture(scope="module")
@@ -101,8 +168,12 @@ def company_year_receipts():
         for table, key, identifiers in owned:
             try:
                 with psycopg.connect(DATABASE_URL, **RECEIPT_DB_OPTIONS) as db:
-                    db.execute(sql.SQL("delete from {} where {}=any(%s)").format(
-                        sql.Identifier(*table.split(".")), sql.Identifier(key)), (identifiers,))
+                    if table == "public.companies":
+                        for identifier in identifiers:
+                            delete_receipt_fixture_company(db, identifier)
+                    else:
+                        db.execute(sql.SQL("delete from {} where {}=any(%s)").format(
+                            sql.Identifier(*table.split(".")), sql.Identifier(key)), (identifiers,))
             except BaseException as error:
                 if cleanup_primary is None:
                     cleanup_primary = error
@@ -124,6 +195,45 @@ def company_year_receipts():
             else:
                 cleanup_primary.add_note(message)
                 raise cleanup_primary from None
+
+
+@pytest.mark.parametrize("late_failure", [False, True])
+def test_receipt_fixture_cleanup_preserves_security_and_rollback(company_year_receipts, late_failure):
+    fixture = company_year_receipts
+    with psycopg.connect(DATABASE_URL, **RECEIPT_DB_OPTIONS) as db:
+        before = receipt_cleanup_security_state(db)
+        failure = RuntimeError("synthetic_receipt_cleanup_failure")
+
+        def cleanup():
+            # Exercise the teardown order, with its real company trigger and FK
+            # checks, while keeping these fixture rows available after rollback.
+            with db.transaction(force_rollback=True):
+                db.execute("delete from public.company_access_command_receipts where operation_id=any(%s)",
+                           (list(fixture["operations"].values()),))
+                delete_receipt_fixture_company(db, fixture["company"])
+                db.execute("delete from auth.users where id=any(%s)",
+                           ([fixture["owner"], fixture["outsider"]],))
+                assert db.execute("select count(*) from public.companies where id=%s",
+                                  (fixture["company"],)).fetchone() == (0,)
+                assert db.execute("select count(*) from auth.users where id=any(%s)",
+                                  ([fixture["owner"], fixture["outsider"]],)).fetchone() == (0,)
+                assert receipt_cleanup_security_state(db) == before
+                if late_failure:
+                    raise failure
+
+        if late_failure:
+            with pytest.raises(RuntimeError) as caught:
+                cleanup()
+            assert caught.value is failure
+        else:
+            cleanup()
+        assert receipt_cleanup_security_state(db) == before
+        assert db.execute("select count(*) from public.companies where id=%s",
+                          (fixture["company"],)).fetchone() == (1,)
+        assert db.execute("select count(*) from auth.users where id=any(%s)",
+                          ([fixture["owner"], fixture["outsider"]],)).fetchone() == (2,)
+        assert db.execute("select count(*) from public.company_access_command_receipts where operation_id=any(%s)",
+                          (list(fixture["operations"].values()),)).fetchone() == (3,)
 
 
 @contextmanager

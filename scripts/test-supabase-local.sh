@@ -222,3 +222,23 @@ SUPABASE_ANON_KEY="$local_anon_key" \
 SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
 DATABASE_URL="$DB_URL" \
 npm run test:browser-annual-accounts
+
+# Exercise the same owner/auth/recovery contracts on the production web build
+# with touch input. Build once against this exact owned stack, then keep Tax
+# before Accounts; the EXIT trap still owns every resource and generated file.
+node --test tests/connected_viewport.test.mjs
+NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
+NEXT_PUBLIC_SUPABASE_ANON_KEY="$local_anon_key" \
+TALLI_BACKEND_URL="http://127.0.0.1:8000" \
+NEXT_TELEMETRY_DISABLED=1 \
+npm run build:web
+
+for connected_journey in tests/browser_tax_filing.mjs tests/browser_annual_accounts_filing.mjs; do
+  SUPABASE_URL="$API_URL" \
+  SUPABASE_ANON_KEY="$local_anon_key" \
+  SUPABASE_SERVICE_ROLE_KEY="$local_service_key" \
+  DATABASE_URL="$DB_URL" \
+  TALLI_CONNECTED_VIEWPORT=mobile \
+  TALLI_CONNECTED_WEB_MODE=production \
+  node --test "$connected_journey"
+done
